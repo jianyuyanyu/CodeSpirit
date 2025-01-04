@@ -254,14 +254,14 @@ namespace CodeSpirit.IdentityApi.Data
 
         public static async Task SeedAdminUserAsync(IServiceProvider serviceProvider)
         {
-            var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
+            var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var roleManager = serviceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
 
             // 创建管理员用户
             var adminUser = await userManager.FindByNameAsync("admin");
             if (adminUser == null)
             {
-                adminUser = new IdentityUser
+                adminUser = new ApplicationUser
                 {
                     UserName = "admin",
                     Email = "admin@example.com",

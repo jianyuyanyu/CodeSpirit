@@ -13,7 +13,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         [MaxLength(256)]
         public string Description { get; set; }
 
-        // 可选：权限ID列表
-        public List<int> PermissionIds { get; set; }
+        // 权限ID列表
+        public List<int> PermissionAssignments { get; set; }
     }
 }

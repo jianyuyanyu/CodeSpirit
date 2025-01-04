@@ -42,35 +42,61 @@ builder.Services.AddTransient<IIdentityAccessor, IdentityAccessor>();
 
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 {
+    // 密码设置
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireUppercase = true;
     options.Password.RequiredLength = 6;
     options.Password.RequiredUniqueChars = 1;
+
+    // 锁定设置
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // 用户设置
+    options.User.AllowedUserNameCharacters =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+    options.User.RequireUniqueEmail = true;
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-// 配置 JWT 认证
-builder.Services.AddAuthentication(options =>
+// 配置 CORS
+builder.Services.AddCors(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]))
-    };
+    options.AddPolicy("AllowSpecificOriginsWithCredentials",
+        builder =>
+        {
+            builder
+                .WithOrigins("http://localhost:3000") // 前端应用的地址
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials(); // 允许凭证
+        });
 });
+
+
+//// 配置 JWT 认证
+//builder.Services.AddAuthentication(options =>
+//{
+//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+//})
+//.AddJwtBearer(options =>
+//{
+//    options.TokenValidationParameters = new TokenValidationParameters
+//    {
+//        ValidateIssuer = true,
+//        ValidateAudience = true,
+//        ValidateLifetime = true,
+//        ValidateIssuerSigningKey = true,
+//        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+//        ValidAudience = builder.Configuration["Jwt:Audience"],
+//        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]))
+//    };
+//});
 
 // 注册分布式缓存服务（如使用内存缓存）
 builder.Services.AddDistributedMemoryCache();
@@ -117,7 +143,7 @@ using (var scope = app.Services.CreateScope())
     //        policy.Requirements.Add(new PermissionRequirement(permission.Name)));
     //}
 }
-
+app.UseCors("AllowSpecificOriginsWithCredentials");
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -8,11 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 
-namespace RoleManagementApiIdentity.Controllers
+namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Administrator")] // 仅管理员可以管理角色
+    //[Authorize(Roles = "Administrator")] // 仅管理员可以管理角色
     public class RolesController : ControllerBase
     {
         private readonly RoleManager<ApplicationRole> _roleManager;
@@ -59,7 +59,16 @@ namespace RoleManagementApiIdentity.Controllers
                 }).ToList()
             });
 
-            return Ok(roleDtos);
+            return Ok(new
+            {
+                status = 0,
+                msg = "查询成功！",
+                data = new
+                {
+                    items = roleDtos,
+                    total = roleDtos.Count()
+                }
+            });
         }
 
         // GET: api/Roles/5
@@ -104,85 +113,86 @@ namespace RoleManagementApiIdentity.Controllers
             return roleDto;
         }
 
-        //// POST: api/Roles
-        //[HttpPost]
+        // POST: api/Roles
+        [HttpPost]
         //[Authorize(Policy = "edit_roles")]
-        //public async Task<ActionResult<RoleDto>> PostRole(RoleCreateDto roleDto)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(ModelState);
-        //    }
+        public async Task<ActionResult<RoleDto>> PostRole(RoleCreateDto roleDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        //    // 检查角色名称是否已存在
-        //    if (await _roleManager.RoleExistsAsync(roleDto.Name))
-        //    {
-        //        return BadRequest("角色名称已存在。");
-        //    }
+            // 检查角色名称是否已存在
+            if (await _roleManager.RoleExistsAsync(roleDto.Name))
+            {
+                return BadRequest("角色名称已存在。");
+            }
 
-        //    var role = new ApplicationRole
-        //    {
-        //        Name = roleDto.Name,
-        //        Description = roleDto.Description
-        //    };
+            var role = new ApplicationRole
+            {
+                Name = roleDto.Name,
+                Description = roleDto.Description
+            };
 
-        //    var result = await _roleManager.CreateAsync(role);
-        //    if (result.Succeeded)
-        //    {
-        //        // 分配权限（如果有）
-        //        if (roleDto.PermissionIds != null && roleDto.PermissionIds.Any())
-        //        {
-        //            var permissions = await _context.Permissions
-        //                .Where(p => roleDto.PermissionIds.Contains(p.Id))
-        //                .ToListAsync();
+            var result = await _roleManager.CreateAsync(role);
+            if (result.Succeeded)
+            {
+                // 分配权限（如果有）
+                if (roleDto.PermissionAssignments != null && roleDto.PermissionAssignments.Any())
+                {
+                    var permissions = await _context.Permissions
+                        .Where(p => roleDto.PermissionAssignments.Contains(p.Id))
+                        .ToListAsync();
 
-        //            foreach (var permission in permissions)
-        //            {
-        //                role.RolePermissions.Add(permission);
-        //            }
+                    foreach (var permission in permissions)
+                    {
+                        role.RolePermissions.Add(new RolePermission() { IsAllowed = true, Permission = permission, Role = role });
+                    }
 
-        //            await _roleManager.UpdateAsync(role);
-        //        }
-        //        // 清理所有拥有该角色的用户的权限缓存
-        //        await ClearUserPermissionsCacheByRoleAsync(role.Name);
+                    await _roleManager.UpdateAsync(role);
+                }
+                // 清理所有拥有该角色的用户的权限缓存
+                await ClearUserPermissionsCacheByRoleAsync(role.Name);
 
-        //        // 获取角色信息
-        //        var createdRole = await _roleManager.Roles
-        //            .Include(r => r.Permissions)
-        //            .ThenInclude(p => p.Children)
-        //            .FirstOrDefaultAsync(r => r.Id == role.Id);
+                // 获取角色信息
+                var createdRole = await _roleManager.Roles
+                    .Include(r => r.RolePermissions)
+                    .ThenInclude(r => r.Permission)
+                    .ThenInclude(p => p.Children)
+                    .FirstOrDefaultAsync(r => r.Id == role.Id);
 
-        //        var createdRoleDto = new RoleDto
-        //        {
-        //            Id = createdRole.Id,
-        //            Name = createdRole.Name,
-        //            Description = createdRole.Description,
-        //            Permissions = createdRole.Permissions.Select(p => new PermissionDto
-        //            {
-        //                Id = p.Id,
-        //                Name = p.Name,
-        //                Description = p.Description,
-        //                IsAllowed = p.IsAllowed,
-        //                ParentId = p.ParentId,
-        //                Children = p.Children?.Select(c => new PermissionDto
-        //                {
-        //                    Id = c.Id,
-        //                    Name = c.Name,
-        //                    Description = c.Description,
-        //                    IsAllowed = p.IsAllowed,
-        //                    ParentId = c.ParentId,
-        //                    Children = null // 可以根据需要递归更多层级
-        //                }).ToList()
-        //            }).ToList()
-        //        };
+                var createdRoleDto = new RoleDto
+                {
+                    Id = createdRole.Id,
+                    Name = createdRole.Name,
+                    Description = createdRole.Description,
+                    Permissions = createdRole.RolePermissions.Select(p => new PermissionDto
+                    {
+                        Id = p.Permission.Id,
+                        Name = p.Permission.Name,
+                        Description = p.Permission.Description,
+                        IsAllowed = p.Permission.IsAllowed,
+                        ParentId = p.Permission.ParentId,
+                        Children = p.Permission.Children?.Select(c => new PermissionDto
+                        {
+                            Id = c.Id,
+                            Name = c.Name,
+                            Description = c.Description,
+                            IsAllowed = p.IsAllowed,
+                            ParentId = c.ParentId,
+                            Children = null // 可以根据需要递归更多层级
+                        }).ToList()
+                    }).ToList()
+                };
 
-        //        return CreatedAtAction(nameof(GetRole), new { id = role.Id }, createdRoleDto);
-        //    }
-        //    else
-        //    {
-        //        return BadRequest(result.Errors);
-        //    }
-        //}
+                return CreatedAtAction(nameof(GetRole), new { id = role.Id }, createdRoleDto);
+            }
+            else
+            {
+                return BadRequest(result.Errors);
+            }
+        }
 
         //// PUT: api/Roles/5
         //[HttpPut("{id}")]

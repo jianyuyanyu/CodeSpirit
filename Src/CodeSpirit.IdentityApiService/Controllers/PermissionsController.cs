@@ -8,11 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 
-namespace RoleManagementApiIdentity.Controllers
+namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Administrator")] // 仅管理员可以管理权限
+    //[Authorize(Roles = "Administrator")] // 仅管理员可以管理权限
     public class PermissionsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;

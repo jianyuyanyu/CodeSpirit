@@ -1,4 +1,5 @@
-﻿using CodeSpirit.IdentityApiService.Data.Models;
+﻿using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Extensions;
@@ -9,23 +10,39 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
 
-namespace CodeSpirit.IdentityApiService.Data
+namespace CodeSpirit.IdentityApi.Data
 {
-    public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<int>, int>
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string>
     {
         public DbSet<Tenant> Tenants { get; set; }
-        public DbSet<AppUser> AppUsers { get; set; }
+        //public DbSet<ApplicationUser> Users { get; set; }
+
+        //public DbSet<ApplicationRole> Roles { get; set; }
+
+        //public DbSet<ApplicationUserRole> UserRoles { get; set; }
+        /// <summary>
+        /// 权限实体集。
+        /// </summary>
+        public DbSet<Permission> Permissions { get; set; }
+
+        /// <summary>
+        /// 角色与权限的关联实体集。
+        /// </summary>
+        public DbSet<RolePermission> RolePermissions { get; set; }
+
+        /// <summary>
+        /// 登录日志实体集。
+        /// </summary>
+        public DbSet<LoginLog> LoginLogs { get; set; }
 
         private IServiceProvider serviceProvider;
-        private ILogger<AppDbContext> logger;
+        private ILogger<ApplicationDbContext> logger;
         private ChangeTracker changeTracker;
         private Lazy<IIdentityAccessor> identityAccessorObject = null;
 
@@ -56,10 +73,10 @@ namespace CodeSpirit.IdentityApiService.Data
 
 
 
-        public AppDbContext(DbContextOptions<AppDbContext> options, IServiceProvider serviceProvider) : base(options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IServiceProvider serviceProvider) : base(options)
         {
             this.serviceProvider = serviceProvider;
-            logger = serviceProvider.GetService<ILogger<AppDbContext>>() ?? NullLogger<AppDbContext>.Instance;
+            logger = serviceProvider.GetService<ILogger<ApplicationDbContext>>() ?? NullLogger<ApplicationDbContext>.Instance;
             changeTracker = ChangeTracker;
 
             changeTracker.StateChanged += ChangeTracker_StateChanged;
@@ -72,45 +89,97 @@ namespace CodeSpirit.IdentityApiService.Data
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
-            #region 转换配置
-            var intConvertToString = new ValueConverter<List<int>, string>(
-                          v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                       v => JsonSerializer.Deserialize<List<int>>(v, (JsonSerializerOptions)null));
-
-            var stringConvertToString = new ValueConverter<List<string>, string>(
-              v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-              v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions)null));
-
-            #endregion
-
-            #region 值比较器
-            var intComparer = new ValueComparer<List<int>>(
-            (c1, c2) => c1.SequenceEqual(c2),
-            c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-            c => c.ToList());
-
-            var stringComparer = new ValueComparer<List<string>>(
-            (c1, c2) => c1.SequenceEqual(c2),
-            c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-            c => c.ToList());
-
-            #endregion
+            base.OnModelCreating(builder);
 
             #region 用户
-            builder.Entity<AppUser>(b =>
+            builder.Entity<ApplicationUser>(b =>
             {
+                b.ToTable(nameof(ApplicationUser));
                 b.Property(q => q.PhoneNumber).HasColumnType("varchar(15)");
                 b.HasIndex(q => q.IdNo).IsUnique(true);
                 b.HasIndex(q => q.PhoneNumber);
-
             });
             #endregion
+
+            builder.Entity<ApplicationRole>(b =>
+            {
+                b.ToTable(nameof(ApplicationRole));
+            });
+
+            builder.Entity<ApplicationUserRole>(b =>
+            {
+                b.ToTable(nameof(ApplicationUserRole));
+            });
 
             builder.Entity<Tenant>(b =>
             {
                 b.HasIndex(x => x.Name).IsUnique(true);
             });
-            base.OnModelCreating(builder);
+
+            //// 配置 UserRole 的主键
+            //builder.Entity<ApplicationUserRole>()
+            //    .HasKey(ur => new { ur.UserId, ur.RoleId });
+
+            //// 配置用户与角色的关系
+            //builder.Entity<ApplicationUserRole>()
+            //    .HasOne(ur => ur.Role)
+            //    .WithMany(r => r.UserRoles)
+            //    .HasForeignKey(ur => ur.RoleId)
+            //    .IsRequired();
+
+            //builder.Entity<ApplicationUserRole>()
+            //    .HasOne(ur => ur.User)
+            //    .WithMany(u => u.UserRoles)
+            //    .HasForeignKey(ur => ur.UserId)
+            //    .IsRequired();
+
+            // 配置权限的自引用关系（用于权限层级）
+            builder.Entity<Permission>()
+                .HasOne(p => p.Parent)
+                .WithMany(p => p.Children)
+                .HasForeignKey(p => p.ParentId)
+                .OnDelete(DeleteBehavior.Restrict); // 防止级联删除
+
+            // 配置角色与权限的多对多关系
+            builder.Entity<RolePermission>()
+                .HasKey(rp => new { rp.RoleId, rp.PermissionId });
+
+            builder.Entity<RolePermission>()
+                .HasOne(rp => rp.Role)
+                .WithMany(r => r.RolePermissions)
+                .HasForeignKey(rp => rp.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<RolePermission>()
+                .HasOne(rp => rp.Permission)
+                .WithMany(p => p.RolePermissions)
+                .HasForeignKey(rp => rp.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 配置 LoginLog 的索引
+            builder.Entity<LoginLog>(entity =>
+            {
+                // 索引 UserId，提高按用户查询的性能
+                entity.HasIndex(l => l.UserId)
+                      .HasDatabaseName("IX_LoginLogs_UserId");
+
+                // 索引 LoginTime，提高按时间范围查询或排序的性能
+                entity.HasIndex(l => l.LoginTime)
+                      .HasDatabaseName("IX_LoginLogs_LoginTime");
+
+                // 索引 UserName，提高按用户名过滤的性能
+                entity.HasIndex(l => l.UserName)
+                      .HasDatabaseName("IX_LoginLogs_UserName");
+
+                // 索引 IsSuccess，提高按登录结果过滤的性能
+                entity.HasIndex(l => l.IsSuccess)
+                      .HasDatabaseName("IX_LoginLogs_IsSuccess");
+
+                // 添加复合索引
+                entity.HasIndex(l => new { l.UserId, l.LoginTime })
+                      .HasDatabaseName("IX_LoginLogs_UserId_LoginTime");
+            });
+
             ConfigureGlobalFiltersOnModelCreating(builder);
         }
 
@@ -128,7 +197,7 @@ namespace CodeSpirit.IdentityApiService.Data
         }
 
         internal static readonly MethodInfo ConfigureGlobalFiltersMethodInfo
-      = typeof(AppDbContext)
+      = typeof(ApplicationDbContext)
       .GetMethod(nameof(ConfigureGlobalFilters),
                  BindingFlags.Instance | BindingFlags.Public);
 

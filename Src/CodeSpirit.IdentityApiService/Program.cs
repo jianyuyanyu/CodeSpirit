@@ -1,9 +1,15 @@
-using CodeSpirit.IdentityApiService.Data;
-using CodeSpirit.IdentityApiService.Data.Models;
+using CodeSpirit.IdentityApi.Authorization;
+using CodeSpirit.IdentityApi.Data;
+using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Shared.Data;
+using CodeSpirit.Shared.DependencyInjection;
+using CodeSpirit.Shared.Entities;
+using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -15,15 +21,38 @@ builder.AddServiceDefaults();
 // Add services to the container.
 builder.Services.AddProblemDetails();
 
-// �������ݿ������ĺ� Identity ����
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// 添加数据库上下文和 Identity 服务
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("identity-api")));
 
-builder.Services.AddIdentity<AppUser, IdentityRole>()
-    .AddEntityFrameworkStores<AppDbContext>()
+builder.Services.AddSingleton<IDataFilter, DataFilter>();
+builder.Services.AddSingleton(typeof(IDataFilter<>), typeof(DataFilter<>));
+builder.Services.Configure<DataFilterOptions>(options =>
+{
+    options.DefaultStates[typeof(IDeletionAuditedObject)] = new DataFilterState(isEnabled: true);
+    options.DefaultStates[typeof(ITenant)] = new DataFilterState(isEnabled: true);
+    options.DefaultStates[typeof(IIsActive)] = new DataFilterState(isEnabled: true);
+});
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<IIdentityAccessor, IdentityAccessor>();
+////依赖注入驱动注册
+//builder.Services.AddScopedRegister<IScopedDependency>();
+//builder.Services.AddTransientRegister<ITransientDependency>();
+//builder.Services.AddSingletonRegister<ISingletonDependency>();
+
+builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
+{
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 6;
+    options.Password.RequiredUniqueChars = 1;
+})
+    .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-// ���� JWT ��֤
+// 配置 JWT 认证
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -43,12 +72,55 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// 注册分布式缓存服务（如使用内存缓存）
+builder.Services.AddDistributedMemoryCache();
+
+// 注册自定义授权处理程序
+builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
+
+// 注册权限授权策略
+builder.Services.AddPermissionAuthorization();
+
 builder.Services.AddControllers();
 var app = builder.Build();
+// 执行数据初始化
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        // 调用数据初始化方法
+        await DataSeeder.SeedRolesAndPermissionsAsync(services);
+    }
+    catch (Exception ex)
+    {
+        // 在控制台输出错误
+        Console.WriteLine($"数据初始化失败：{ex.Message}");
+    }
+}
 
-//app.UseAuthentication();
-//app.UseAuthorization();
+// 动态注册权限策略
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var authorizationOptions = services.GetRequiredService<IAuthorizationPolicyProvider>();
+    var dbContext = services.GetRequiredService<ApplicationDbContext>();
 
-//app.MapControllers();
+    var permissions = dbContext.Permissions.ToList();
+
+    //var authorizationOptionsMutable = options => { /* 这里需要扩展 */ };
+
+    //foreach (var permission in permissions)
+    //{
+    //    options.AddPolicy(permission.Name, policy =>
+    //        policy.Requirements.Add(new PermissionRequirement(permission.Name)));
+    //}
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
 
 app.Run();

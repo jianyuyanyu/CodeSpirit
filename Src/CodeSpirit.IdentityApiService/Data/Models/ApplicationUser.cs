@@ -2,15 +2,14 @@
 using CodeSpirit.Shared.Entities;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CodeSpirit.IdentityApiService.Data.Models
+namespace CodeSpirit.IdentityApi.Data.Models
 {
     /// <summary>
     /// 用户信息
     /// </summary> 
-
-    public class AppUser : IdentityUser<int>, IIsActive, IFullEntityEvent
+    public class ApplicationUser : IdentityUser<string>, IIsActive, IFullEntityEvent
     {
         /// <summary>
         /// 姓名
@@ -37,5 +36,11 @@ namespace CodeSpirit.IdentityApiService.Data.Models
         /// </summary>
         public DateTimeOffset? LastLoginTime { get; set; }
         public bool IsActive { get; }
+
+        /// <summary>
+        /// 用户与角色的多对多关系。
+        /// </summary>
+        public ICollection<ApplicationUserRole> UserRoles { get; set; }
     }
+
 }

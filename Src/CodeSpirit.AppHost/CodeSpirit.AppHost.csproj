@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CodeSpirit.ApiService\CodeSpirit.ApiService.csproj" />
+    <ProjectReference Include="..\CodeSpirit.IdentityApiService\CodeSpirit.IdentityApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>

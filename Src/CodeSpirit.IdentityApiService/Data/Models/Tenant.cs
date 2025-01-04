@@ -2,7 +2,7 @@
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.IdentityApiService.Data.Models
+namespace CodeSpirit.IdentityApi.Data.Models
 {
     /// <summary>
     /// 租户

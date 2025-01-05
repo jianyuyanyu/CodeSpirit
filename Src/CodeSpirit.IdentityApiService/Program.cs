@@ -23,7 +23,9 @@ builder.Services.AddProblemDetails();
 
 // 添加数据库上下文和 Identity 服务
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("identity-api")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("identity-api"))
+    .EnableSensitiveDataLogging()
+    .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole())));
 
 builder.Services.AddSingleton<IDataFilter, DataFilter>();
 builder.Services.AddSingleton(typeof(IDataFilter<>), typeof(DataFilter<>));

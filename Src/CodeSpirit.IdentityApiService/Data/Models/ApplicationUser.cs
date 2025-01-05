@@ -35,7 +35,7 @@ namespace CodeSpirit.IdentityApi.Data.Models
         /// 最后登录时间
         /// </summary>
         public DateTimeOffset? LastLoginTime { get; set; }
-        public bool IsActive { get; }
+        public bool IsActive { get; set; }
 
         /// <summary>
         /// 用户与角色的多对多关系。

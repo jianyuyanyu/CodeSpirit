@@ -28,6 +28,6 @@ namespace CodeSpirit.IdentityApi.Data.Models
         [MaxLength(225)]
         public string Logo { get; set; }
 
-        public bool IsActive { get; }
+        public bool IsActive { get; set; }
     }
 }

@@ -18,7 +18,9 @@ using System.Text.Json;
 
 namespace CodeSpirit.IdentityApi.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string>
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string,
+    IdentityUserClaim<string>, ApplicationUserRole, IdentityUserLogin<string>,
+    IdentityRoleClaim<string>, IdentityUserToken<string>>
     {
         public DbSet<Tenant> Tenants { get; set; }
         //public DbSet<ApplicationUser> Users { get; set; }
@@ -106,32 +108,32 @@ namespace CodeSpirit.IdentityApi.Data
                 b.ToTable(nameof(ApplicationRole));
             });
 
-            builder.Entity<ApplicationUserRole>(b =>
-            {
-                b.ToTable(nameof(ApplicationUserRole));
-            });
-
             builder.Entity<Tenant>(b =>
             {
                 b.HasIndex(x => x.Name).IsUnique(true);
             });
 
-            //// 配置 UserRole 的主键
-            //builder.Entity<ApplicationUserRole>()
-            //    .HasKey(ur => new { ur.UserId, ur.RoleId });
+            // 配置 ApplicationUserRole 的关系
+            builder.Entity<ApplicationUserRole>(userRole =>
+            {
+                userRole.ToTable(nameof(ApplicationUserRole));
 
-            //// 配置用户与角色的关系
-            //builder.Entity<ApplicationUserRole>()
-            //    .HasOne(ur => ur.Role)
-            //    .WithMany(r => r.UserRoles)
-            //    .HasForeignKey(ur => ur.RoleId)
-            //    .IsRequired();
+                //userRole.HasKey(ur => ur.Id); // 使用单独的主键
 
-            //builder.Entity<ApplicationUserRole>()
-            //    .HasOne(ur => ur.User)
-            //    .WithMany(u => u.UserRoles)
-            //    .HasForeignKey(ur => ur.UserId)
-            //    .IsRequired();
+                userRole.HasOne(ur => ur.User)
+                    .WithMany(u => u.UserRoles)
+                    .HasForeignKey(ur => ur.UserId)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Restrict); // 设置为 Restrict，避免级联删除
+
+                userRole.HasOne(ur => ur.Role)
+                    .WithMany(r => r.UserRoles)
+                    .HasForeignKey(ur => ur.RoleId)
+                    .IsRequired()
+                    .OnDelete(DeleteBehavior.Cascade); // 保持级联删除
+
+                //userRole.HasIndex(ur => new { ur.UserId, ur.RoleId }).IsUnique();
+            });           
 
             // 配置权限的自引用关系（用于权限层级）
             builder.Entity<Permission>()

@@ -1,4 +1,6 @@
-﻿public class UserDto
+﻿using CodeSpirit.IdentityApi.Data.Models;
+
+public class UserDto
 {
     public string Id { get; set; }
     public string Name { get; set; }
@@ -11,4 +13,8 @@
     public DateTimeOffset? LastLoginTime { get; set; }
     public bool IsActive { get; set; }
     public List<string> Roles { get; set; }
+
+    // 新增字段
+    public string PhoneNumber { get; set; }
+    public Gender Gender { get; set; }
 }

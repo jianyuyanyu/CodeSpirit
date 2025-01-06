@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using CodeSpirit.IdentityApi.Data.Models;
+using System.ComponentModel.DataAnnotations;
 
 public class CreateUserDto
 {
@@ -21,4 +22,6 @@ public class CreateUserDto
     public string Password { get; set; }
 
     public List<string> Roles { get; set; }
+    public Gender Gender { get; set; }
+    public string PhoneNumber { get; set; }
 }

@@ -17,6 +17,6 @@ public class UpdateUserDto
     public bool IsActive { get; set; }
 
     public List<string> Roles { get; set; }
-    public Gender Gender { get; set; }
-    public string PhoneNumber { get; set; }
+    public Gender Gender { get; internal set; }
+    public string PhoneNumber { get; internal set; }
 }

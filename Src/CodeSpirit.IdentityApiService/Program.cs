@@ -1,6 +1,9 @@
 using CodeSpirit.IdentityApi.Authorization;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Filters;
+using CodeSpirit.IdentityApi.MappingProfiles;
+using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.DependencyInjection;
@@ -106,11 +109,21 @@ builder.Services.AddDistributedMemoryCache();
 // 注册自定义授权处理程序
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+// 注册 AutoMapper 并扫描指定的程序集中的配置文件
+builder.Services.AddAutoMapper(typeof(UserProfile));
 
 // 注册权限授权策略
 builder.Services.AddPermissionAuthorization();
 
-builder.Services.AddControllers();
+// 添加服务到容器
+builder.Services.AddControllers(options =>
+{
+    // 全局注册 ValidateModelAttribute
+    options.Filters.Add<ValidateModelAttribute>();
+});
+
 var app = builder.Build();
 // 执行数据初始化
 using (var scope = app.Services.CreateScope())

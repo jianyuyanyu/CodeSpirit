@@ -41,18 +41,7 @@ namespace CodeSpirit.IdentityApi.Data.Models
         /// 用户与角色的多对多关系。
         /// </summary>
         public ICollection<ApplicationUserRole> UserRoles { get; set; }
-
-        /// <summary>
-        /// 手机号码（覆盖 IdentityUser 中的 PhoneNumber）
-        /// </summary>
-        [Phone(ErrorMessage = "无效的手机号码格式")]
-        [MaxLength(11, ErrorMessage = "手机号码长度不能超过11位")]
-        public override string PhoneNumber { get; set; }
-
-        /// <summary>
-        /// 性别（使用枚举）
-        /// </summary>
-        [Required]
-        public Gender Gender { get; set; }
+        public Gender Gender { get; internal set; }
     }
+
 }

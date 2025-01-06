@@ -6,7 +6,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
     /// 通用 API 响应封装类
     /// </summary>
     /// <typeparam name="T">数据类型</typeparam>
-    public class ApiResponse<T>
+    public class ApiResponse<T> where T : class
     {
         /// <summary>
         /// 状态码，0 表示成功，非 0 表示错误

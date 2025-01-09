@@ -271,6 +271,7 @@ namespace CodeSpirit.IdentityApi.Data
                 if (deletionObj.DeletionTime == default)
                     deletionObj.DeletionTime = DateTime.Now;
 
+                deletionObj.IsDeleted = true;
                 return Update(entity);
             }
             throw new NotSupportedException($"{typeof(TEntity).Name} 未实现接口'IDeletionAuditedObject'，无法执行软删除逻辑！");

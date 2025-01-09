@@ -9,199 +9,180 @@ using CodeSpirit.IdentityApi.Utilities;
 using System.Linq.Dynamic.Core.Exceptions;
 using CodeSpirit.IdentityApi.Repositories;
 
-[Route("api/[controller]")]
-[ApiController]
-public class UsersController : ControllerBase
+namespace CodeSpirit.IdentityApi.Controllers
 {
-    private readonly IUserRepository _userRepository;
-
-    public UsersController(
-        IUserRepository userRepository)
+    [Route("api/[controller]")]
+    [ApiController]
+    public class UsersController : ApiControllerBase
     {
-        _userRepository = userRepository;
-    }
+        private readonly IUserRepository _userRepository;
+
+        public UsersController(
+            IUserRepository userRepository)
+        {
+            _userRepository = userRepository;
+        }
 
 
-    // GET: api/Users
-    [HttpGet]
-    public async Task<ActionResult<ApiResponse<ListData<UserDto>>>> GetUsers([FromQuery] UserQueryDto queryDto)
-    {
-        try
+        // GET: api/Users
+        [HttpGet]
+        public async Task<ActionResult<ApiResponse<ListData<UserDto>>>> GetUsers([FromQuery] UserQueryDto queryDto)
         {
             var users = await _userRepository.GetUsersAsync(queryDto);
-            var response = new ApiResponse<ListData<UserDto>>(0, "查询成功！", users);
+            return SuccessResponse(users);
+        }
+
+        // GET: api/Users/{id}
+        [HttpGet("{id}")]
+        public async Task<ActionResult<ApiResponse<UserDto>>> GetUser(string id)
+        {
+            var userDto = await _userRepository.GetUserByIdAsync(id);
+            return SuccessResponse(userDto);
+        }
+
+
+        // POST: api/Users
+        [HttpPost]
+        public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser(CreateUserDto createUserDto)
+        {
+            var (result, userId) = await _userRepository.CreateUserAsync(createUserDto);
+            if (!result.Succeeded)
+            {
+                return BadResponse<UserDto>(message: result.Errors.FirstOrDefault()?.Description);
+            }
+
+            var createdUserDto = await _userRepository.GetUserByIdAsync(userId);
+
+            return SuccessResponseWithCreate<UserDto>(nameof(GetUser), createdUserDto);
+        }
+
+
+        // PUT: api/Users/{id}
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ApiResponse<string>>> UpdateUser(string id, UpdateUserDto updateUserDto)
+        {
+            var result = await _userRepository.UpdateUserAsync(id, updateUserDto);
+            if (!result.Succeeded)
+            {
+                // 检查具体的错误描述
+                var errorDescription = result.Errors != null && result.Errors.Any()
+                    ? result.Errors.First().Description
+                    : "更新用户失败！";
+                return BadRequest(new ApiResponse<string>(1, errorDescription, null));
+            }
+
+            var response = new ApiResponse<string>(0, "用户更新成功！", null);
             return Ok(response);
         }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new ApiResponse<string>(1, ex.Message, null));
-        }
-        catch (Exception)
-        {
-            // 记录异常（根据实际项目配置日志服务）
-            return StatusCode(500, new ApiResponse<string>(1, "服务器内部错误，请稍后再试。", null));
-        }
-    }
 
-    // GET: api/Users/{id}
-    [HttpGet("{id}")]
-    public async Task<ActionResult<ApiResponse<UserDto>>> GetUser(string id)
-    {
-        var userDto = await _userRepository.GetUserByIdAsync(id);
-        if (userDto == null)
+        // DELETE: api/Users/{id}
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<string>>> DeleteUser(string id)
         {
-            return NotFound(new ApiResponse<string>(1, "用户不存在！", null));
+            var result = await _userRepository.DeleteUserAsync(id);
+            if (!result.Succeeded)
+            {
+                var errorDescription = result.Errors != null && result.Errors.Any()
+                    ? result.Errors.First().Description
+                    : "禁用用户失败！";
+                return BadRequest(new ApiResponse<string>(1, errorDescription, null));
+            }
+            return SuccessResponse<string>();
         }
 
-        var response = new ApiResponse<UserDto>(0, "查询成功！", userDto);
-        return Ok(response);
-    }
 
-
-    // POST: api/Users
-    [HttpPost]
-    public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser(CreateUserDto createUserDto)
-    {
-        var (result, userId) = await _userRepository.CreateUserAsync(createUserDto);
-        if (!result.Succeeded)
+        // 额外：分配角色给用户
+        [HttpPost("{id}/roles")]
+        public async Task<IActionResult> AssignRoles(string id, [FromBody] List<string> roles)
         {
-            return BadRequest(new ApiResponse<string>(1, "创建用户失败！", null));
+            var result = await _userRepository.AssignRolesAsync(id, roles);
+            if (!result.Succeeded)
+            {
+                var errorDescription = result.Errors != null && result.Errors.Any()
+                    ? result.Errors.First().Description
+                    : "角色分配失败！";
+                return BadRequest(new { msg = errorDescription });
+            }
+
+            return Ok(new { msg = "角色分配成功。" });
         }
 
-        var createdUserDto = await _userRepository.GetUserByIdAsync(userId);
 
-        var response = new ApiResponse<UserDto>(0, "用户创建成功！", createdUserDto);
-        return CreatedAtAction(nameof(GetUser), new { id = createdUserDto.Id }, response);
-    }
-
-
-    // PUT: api/Users/{id}
-    [HttpPut("{id}")]
-    public async Task<ActionResult<ApiResponse<string>>> UpdateUser(string id, UpdateUserDto updateUserDto)
-    {
-        var result = await _userRepository.UpdateUserAsync(id, updateUserDto);
-        if (!result.Succeeded)
+        // 额外：移除用户的角色
+        [HttpDelete("{id}/roles")]
+        public async Task<IActionResult> RemoveRoles(string id, [FromBody] List<string> roles)
         {
-            // 检查具体的错误描述
-            var errorDescription = result.Errors != null && result.Errors.Any()
-                ? result.Errors.First().Description
-                : "更新用户失败！";
-            return BadRequest(new ApiResponse<string>(1, errorDescription, null));
+            var result = await _userRepository.RemoveRolesAsync(id, roles);
+            if (!result.Succeeded)
+            {
+                var errorDescription = result.Errors != null && result.Errors.Any()
+                    ? result.Errors.First().Description
+                    : "角色移除失败！";
+                return BadRequest(new { msg = errorDescription });
+            }
+
+            return Ok(new { msg = "角色移除成功。" });
         }
 
-        var response = new ApiResponse<string>(0, "用户更新成功！", null);
-        return Ok(response);
-    }
 
-    // DELETE: api/Users/{id}
-    [HttpDelete("{id}")]
-    public async Task<ActionResult<ApiResponse<string>>> DeleteUser(string id)
-    {
-        var result = await _userRepository.DeleteUserAsync(id);
-        if (!result.Succeeded)
+        /// <summary>
+        /// 合并激活和禁用：通过参数 isActive 设置激活(true) 或禁用(false)
+        /// PUT: /api/Users/{id}/setActive?isActive=true/false
+        /// </summary>
+        [HttpPut("{id}/setActive")]
+        public async Task<ActionResult<ApiResponse<string>>> SetActiveStatus(string id, [FromQuery] bool isActive)
         {
-            var errorDescription = result.Errors != null && result.Errors.Any()
-                ? result.Errors.First().Description
-                : "禁用用户失败！";
-            return BadRequest(new ApiResponse<string>(1, errorDescription, null));
+            var result = await _userRepository.SetActiveStatusAsync(id, isActive);
+            if (!result.Succeeded)
+            {
+                var errorDescription = result.Errors != null && result.Errors.Any()
+                    ? result.Errors.First().Description
+                    : "更新用户状态失败！";
+                return BadRequest(new ApiResponse<string>(1, errorDescription, null));
+            }
+
+            var status = isActive ? "激活" : "禁用";
+            var responseMsg = $"用户已{status}成功！";
+            var response = new ApiResponse<string>(0, responseMsg, null);
+
+            return Ok(response);
         }
 
-        var response = new ApiResponse<string>(0, "用户禁用成功！", null);
-        return NoContent(); // 或者返回 Ok(response);
-    }
 
-
-    // 额外：分配角色给用户
-    [HttpPost("{id}/roles")]
-    public async Task<IActionResult> AssignRoles(string id, [FromBody] List<string> roles)
-    {
-        var result = await _userRepository.AssignRolesAsync(id, roles);
-        if (!result.Succeeded)
+        /// <summary>
+        /// 随机生成新密码并重置（无需管理员输入新密码）
+        /// POST: /api/Users/{id}/resetRandomPassword
+        /// </summary>
+        [HttpPost("{id}/resetRandomPassword")]
+        public async Task<ActionResult<ApiResponse<string>>> ResetRandomPassword(string id)
         {
-            var errorDescription = result.Errors != null && result.Errors.Any()
-                ? result.Errors.First().Description
-                : "角色分配失败！";
-            return BadRequest(new { msg = errorDescription });
+            var (success, newPassword) = await _userRepository.ResetRandomPasswordAsync(id);
+            if (!success)
+            {
+                return BadRequest(new ApiResponse<string>(1, "密码重置失败！", null));
+            }
+
+            var response = new ApiResponse<string>(0, "密码已重置成功！", newPassword);
+            return Ok(response);
         }
 
-        return Ok(new { msg = "角色分配成功。" });
-    }
-
-
-    // 额外：移除用户的角色
-    [HttpDelete("{id}/roles")]
-    public async Task<IActionResult> RemoveRoles(string id, [FromBody] List<string> roles)
-    {
-        var result = await _userRepository.RemoveRolesAsync(id, roles);
-        if (!result.Succeeded)
+        /// <summary>
+        /// 解除用户锁定
+        /// PUT: /api/Users/{id}/unlock
+        /// </summary>
+        [HttpPut("{id}/unlock")]
+        public async Task<IActionResult> UnlockUser(string id)
         {
-            var errorDescription = result.Errors != null && result.Errors.Any()
-                ? result.Errors.First().Description
-                : "角色移除失败！";
-            return BadRequest(new { msg = errorDescription });
+            var result = await _userRepository.UnlockUserAsync(id);
+            if (!result.Succeeded)
+            {
+                var errorDescription = result.Errors != null && result.Errors.Any()
+                    ? result.Errors.First().Description
+                    : "解除锁定失败！";
+                return BadRequest(new { msg = errorDescription });
+            }
+
+            return Ok(new { msg = "用户已成功解锁。" });
         }
-
-        return Ok(new { msg = "角色移除成功。" });
-    }
-
-
-    /// <summary>
-    /// 合并激活和禁用：通过参数 isActive 设置激活(true) 或禁用(false)
-    /// PUT: /api/Users/{id}/setActive?isActive=true/false
-    /// </summary>
-    [HttpPut("{id}/setActive")]
-    public async Task<ActionResult<ApiResponse<string>>> SetActiveStatus(string id, [FromQuery] bool isActive)
-    {
-        var result = await _userRepository.SetActiveStatusAsync(id, isActive);
-        if (!result.Succeeded)
-        {
-            var errorDescription = result.Errors != null && result.Errors.Any()
-                ? result.Errors.First().Description
-                : "更新用户状态失败！";
-            return BadRequest(new ApiResponse<string>(1, errorDescription, null));
-        }
-
-        var status = isActive ? "激活" : "禁用";
-        var responseMsg = $"用户已{status}成功！";
-        var response = new ApiResponse<string>(0, responseMsg, null);
-
-        return Ok(response);
-    }
-
-
-    /// <summary>
-    /// 随机生成新密码并重置（无需管理员输入新密码）
-    /// POST: /api/Users/{id}/resetRandomPassword
-    /// </summary>
-    [HttpPost("{id}/resetRandomPassword")]
-    public async Task<ActionResult<ApiResponse<string>>> ResetRandomPassword(string id)
-    {
-        var (success, newPassword) = await _userRepository.ResetRandomPasswordAsync(id);
-        if (!success)
-        {
-            return BadRequest(new ApiResponse<string>(1, "密码重置失败！", null));
-        }
-
-        var response = new ApiResponse<string>(0, "密码已重置成功！", newPassword);
-        return Ok(response);
-    }
-
-    /// <summary>
-    /// 解除用户锁定
-    /// PUT: /api/Users/{id}/unlock
-    /// </summary>
-    [HttpPut("{id}/unlock")]
-    public async Task<IActionResult> UnlockUser(string id)
-    {
-        var result = await _userRepository.UnlockUserAsync(id);
-        if (!result.Succeeded)
-        {
-            var errorDescription = result.Errors != null && result.Errors.Any()
-                ? result.Errors.First().Description
-                : "解除锁定失败！";
-            return BadRequest(new { msg = errorDescription });
-        }
-
-        return Ok(new { msg = "用户已成功解锁。" });
     }
 }

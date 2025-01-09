@@ -6,15 +6,11 @@ using CodeSpirit.IdentityApi.MappingProfiles;
 using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Data;
-using CodeSpirit.Shared.DependencyInjection;
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -122,9 +118,11 @@ builder.Services.AddControllers(options =>
 {
     // 全局注册 ValidateModelAttribute
     options.Filters.Add<ValidateModelAttribute>();
+    options.Filters.Add<HttpResponseExceptionFilter>();
 });
 
 var app = builder.Build();
+
 // 执行数据初始化
 using (var scope = app.Services.CreateScope())
 {

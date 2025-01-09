@@ -9,7 +9,7 @@ namespace CodeSpirit.IdentityApi.Data.Models
     /// <summary>
     /// 用户信息
     /// </summary> 
-    public class ApplicationUser : IdentityUser<string>, IIsActive, IFullEntityEvent
+    public class ApplicationUser : IdentityUser<string>, IIsActive, IFullEntityEvent, IDeletionAuditedObject
     {
         /// <summary>
         /// 姓名
@@ -41,7 +41,14 @@ namespace CodeSpirit.IdentityApi.Data.Models
         /// 用户与角色的多对多关系。
         /// </summary>
         public ICollection<ApplicationUserRole> UserRoles { get; set; }
+
+        /// <summary>
+        /// 性别
+        /// </summary>
         public Gender Gender { get; internal set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletionTime { get; set; }
+        public long? DeleterUserId { get; set; }
     }
 
 }

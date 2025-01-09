@@ -1,6 +1,7 @@
 ﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace CodeSpirit.IdentityApi.Filters
 {
@@ -16,7 +17,7 @@ namespace CodeSpirit.IdentityApi.Filters
                     .Select(e => e.ErrorMessage)
                     .ToList();
 
-                context.Result = new BadRequestObjectResult(new ApiResponse<string>(1, string.Join("; ", errors), null));
+                context.Result = new BadRequestObjectResult(new ApiResponse<ModelStateDictionary>(400, string.Join("; ", errors), null));
             }
         }
     }

@@ -105,8 +105,9 @@ namespace CodeSpirit.IdentityApi.Repositories
             if (user == null)
                 return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
 
-            user.IsActive = false;
-            return await _userManager.UpdateAsync(user);
+            _context.SoftDelete(user);
+            await _context.SaveChangesAsync();
+            return IdentityResult.Success;
         }
 
         public async Task<IdentityResult> AssignRolesAsync(string id, List<string> roles)

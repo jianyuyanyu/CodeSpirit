@@ -11,6 +11,7 @@ using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +35,11 @@ builder.Services.Configure<DataFilterOptions>(options =>
     options.DefaultStates[typeof(ITenant)] = new DataFilterState(isEnabled: true);
     options.DefaultStates[typeof(IIsActive)] = new DataFilterState(isEnabled: true);
 });
+builder.Services.AddSingleton<AmisGenerator>(provider =>
+{
+    return new AmisGenerator(Assembly.GetExecutingAssembly());
+});
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<IIdentityAccessor, IdentityAccessor>();
 ////依赖注入驱动注册
@@ -119,6 +125,11 @@ builder.Services.AddControllers(options =>
     // 全局注册 ValidateModelAttribute
     options.Filters.Add<ValidateModelAttribute>();
     options.Filters.Add<HttpResponseExceptionFilter>();
+}).AddNewtonsoftJson(options =>
+{
+    // 可选：在此处配置 Newtonsoft.Json 的设置
+    options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+    options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore;
 });
 
 var app = builder.Build();

@@ -7,11 +7,14 @@ using System.Reflection;
 using CodeSpirit.IdentityApi.Authorization;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json.Linq;
 
+/// <summary>
+/// 用于生成 AMIS（阿里云前端框架）所需的 JSON 配置的生成器类。
+/// </summary>
 public class AmisGenerator
 {
     private readonly Assembly _assembly;
@@ -19,6 +22,13 @@ public class AmisGenerator
     private readonly IPermissionService _permissionService;
     private readonly IMemoryCache _cache;
 
+    /// <summary>
+    /// 构造函数，初始化依赖项。
+    /// </summary>
+    /// <param name="assembly">包含控制器的程序集。</param>
+    /// <param name="httpContextAccessor">用于访问当前 HTTP 上下文。</param>
+    /// <param name="permissionService">权限服务，用于检查用户权限。</param>
+    /// <param name="cache">内存缓存，用于缓存生成的 AMIS JSON。</param>
     public AmisGenerator(Assembly assembly, IHttpContextAccessor httpContextAccessor, IPermissionService permissionService, IMemoryCache cache)
     {
         _assembly = assembly;
@@ -28,43 +38,30 @@ public class AmisGenerator
     }
 
     /// <summary>
-    /// 生成指定控制器的 AMIS JSON
+    /// 生成指定控制器的 AMIS JSON 配置。
     /// </summary>
-    /// <param name="controllerName">控制器名称（不含 "Controller" 后缀）</param>
-    /// <returns>AMIS 定义的 JSON 对象，如果控制器不存在或不支持则返回 null</returns>
+    /// <param name="controllerName">控制器名称（不含 "Controller" 后缀）。</param>
+    /// <returns>AMIS 定义的 JSON 对象，如果控制器不存在或不支持则返回 null。</returns>
     public JObject GenerateAmisJsonForController(string controllerName)
     {
-        var user = _httpContextAccessor.HttpContext?.User;
-        var userId = user?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
-
-        // 获取用户权限集合
-        var userPermissions = user?.Claims
-            .Where(c => c.Type == "Permission")
-            .Select(c => c.Value)
-            .OrderBy(p => p)
-            .ToList() ?? new List<string>();
-
-        // 生成权限集合的哈希值
-        var permissionsHash = string.Join(",", userPermissions);
-        var cacheKey = $"AmisJson_{controllerName.ToLower()}_{permissionsHash.GetHashCode()}";
-
+        // 生成缓存键以尝试从缓存中获取已生成的 AMIS JSON
+        var cacheKey = GenerateCacheKey(controllerName);
         if (_cache.TryGetValue(cacheKey, out JObject cachedAmisJson))
         {
             return cachedAmisJson;
         }
 
-        // 查找控制器类型
+        // 获取控制器类型
         var controllerType = GetControllerType(controllerName);
         if (controllerType == null)
             return null;
 
-        var baseRoute = GetRoute(controllerType);
-        var actions = GetControllerActions(controllerType);
-
-        // 检查是否包含 CRUD 操作
-        if (!HasCrudActions(actions))
+        // 检查控制器是否包含 CRUD 操作，并获取相关方法
+        if (!HasCrudActions(controllerType, out var actions))
             return null;
 
+        // 获取控制器的基本路由
+        var baseRoute = GetRoute(controllerType);
         // 生成 AMIS CRUD 配置
         var crudConfig = GenerateAmisCrudConfig(controllerName, baseRoute, actions);
         if (crudConfig != null)
@@ -73,132 +70,282 @@ public class AmisGenerator
             var cacheEntryOptions = new MemoryCacheEntryOptions()
                 .SetSlidingExpiration(TimeSpan.FromMinutes(30));
 
+            // 将生成的 AMIS JSON 缓存起来
             _cache.Set(cacheKey, crudConfig, cacheEntryOptions);
         }
 
         return crudConfig;
     }
 
-    private Type GetControllerType(string controllerName)
+    #region 缓存键生成
+
+    /// <summary>
+    /// 生成用于缓存的键值。
+    /// </summary>
+    /// <param name="controllerName">控制器名称。</param>
+    /// <returns>生成的缓存键。</returns>
+    private string GenerateCacheKey(string controllerName)
     {
-        // 查找以指定名称结尾的控制器类
-        return _assembly.GetTypes()
-                        .FirstOrDefault(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(typeof(Microsoft.AspNetCore.Mvc.ControllerBase)) && t.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase));
+        var user = _httpContextAccessor.HttpContext?.User;
+        var permissionsHash = GetUserPermissionsHash(user);
+        return $"AmisJson_{controllerName.ToLower()}_{permissionsHash.GetHashCode()}";
     }
 
+    /// <summary>
+    /// 获取当前用户的权限哈希值。
+    /// </summary>
+    /// <param name="user">当前用户的 ClaimsPrincipal。</param>
+    /// <returns>权限集合的哈希字符串。</returns>
+    private string GetUserPermissionsHash(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var userPermissions = user?.Claims
+            .Where(c => c.Type == "Permission")
+            .Select(c => c.Value)
+            .OrderBy(p => p)
+            .ToList() ?? new List<string>();
+
+        return string.Join(",", userPermissions);
+    }
+
+    #endregion
+
+    #region 控制器获取
+
+    /// <summary>
+    /// 获取指定名称的控制器类型。
+    /// </summary>
+    /// <param name="controllerName">控制器名称（不含 "Controller" 后缀）。</param>
+    /// <returns>控制器的 Type 对象，如果未找到则返回 null。</returns>
+    private Type GetControllerType(string controllerName)
+    {
+        return _assembly.GetTypes()
+                        .FirstOrDefault(t => IsValidController(t, controllerName));
+    }
+
+    /// <summary>
+    /// 判断给定的 Type 是否为有效的控制器。
+    /// </summary>
+    /// <param name="type">要检查的 Type。</param>
+    /// <param name="controllerName">控制器名称。</param>
+    /// <returns>如果是有效控制器则返回 true，否则返回 false。</returns>
+    private bool IsValidController(Type type, string controllerName)
+    {
+        return type.IsClass
+            && !type.IsAbstract
+            && typeof(ControllerBase).IsAssignableFrom(type)
+            && type.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase);
+    }
+
+    #endregion
+
+    #region 路由和操作
+
+    /// <summary>
+    /// 获取控制器的基本路由。
+    /// </summary>
+    /// <param name="controller">控制器的 Type 对象。</param>
+    /// <returns>基本路由字符串。</returns>
     private string GetRoute(Type controller)
     {
         var routeAttr = controller.GetCustomAttribute<RouteAttribute>();
-        return routeAttr?.Template?.Replace("[controller]", controller.Name.Replace("Controller", "")) ?? "";
+        return routeAttr?.Template?.Replace("[controller]", GetControllerName(controller)) ?? string.Empty;
     }
 
-    private IEnumerable<MethodInfo> GetControllerActions(Type controller)
+    /// <summary>
+    /// 从控制器类型中提取控制器名称（不含 "Controller" 后缀）。
+    /// </summary>
+    /// <param name="controller">控制器的 Type 对象。</param>
+    /// <returns>控制器名称。</returns>
+    private string GetControllerName(Type controller)
     {
-        return controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-                        .Where(m => m.GetCustomAttribute<HttpMethodAttribute>() != null);
+        return controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool HasCrudActions(IEnumerable<MethodInfo> actions)
+    /// <summary>
+    /// 检查控制器是否包含所有 CRUD 操作，并获取这些操作的方法信息。
+    /// </summary>
+    /// <param name="controller">控制器的 Type 对象。</param>
+    /// <param name="actions">输出参数，包含 CRUD 操作的方法信息。</param>
+    /// <returns>如果包含所有 CRUD 操作则返回 true，否则返回 false。</returns>
+    private bool HasCrudActions(Type controller, out IEnumerable<MethodInfo> actions)
     {
+        actions = GetControllerActions(controller);
         var httpMethods = actions.SelectMany(a => a.GetCustomAttributes<HttpMethodAttribute>()
                                                      .SelectMany(attr => attr.HttpMethods));
         return httpMethods.Contains("GET") && httpMethods.Contains("POST") &&
                httpMethods.Contains("PUT") && httpMethods.Contains("DELETE");
     }
 
+    /// <summary>
+    /// 获取控制器中所有具有 HTTP 方法特性的公开实例方法。
+    /// </summary>
+    /// <param name="controller">控制器的 Type 对象。</param>
+    /// <returns>方法信息的集合。</returns>
+    private IEnumerable<MethodInfo> GetControllerActions(Type controller)
+    {
+        return controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                        .Where(m => m.GetCustomAttributes<HttpMethodAttribute>().Any());
+    }
+
+    #endregion
+
+    #region AMIS CRUD 配置
+
+    /// <summary>
+    /// 生成 AMIS CRUD 配置的 JSON 对象。
+    /// </summary>
+    /// <param name="controllerName">控制器名称。</param>
+    /// <param name="baseRoute">控制器的基本路由。</param>
+    /// <param name="actions">控制器的 CRUD 操作方法信息。</param>
+    /// <returns>AMIS CRUD 配置的 JSON 对象，如果生成失败则返回 null。</returns>
     private JObject GenerateAmisCrudConfig(string controllerName, string baseRoute, IEnumerable<MethodInfo> actions)
     {
-        // 获取 CRUD 操作对应的路由模板
-        var getListRouteTemplate = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any())?.GetCustomAttribute<HttpGetAttribute>()?.Template ?? "";
-        var createRouteTemplate = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPostAttribute>().Any())?.GetCustomAttribute<HttpPostAttribute>()?.Template ?? "";
-        var updateRouteTemplate = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPutAttribute>().Any())?.GetCustomAttribute<HttpPutAttribute>()?.Template ?? "";
-        var deleteRouteTemplate = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpDeleteAttribute>().Any())?.GetCustomAttribute<HttpDeleteAttribute>()?.Template ?? "";
+        // 获取 CRUD 操作对应的路由
+        var apiRoutes = GetApiRoutes(baseRoute, actions);
 
-        // 构建完整的 API 路径
-        var getListRoute = BuildAbsoluteUrl(CombineRoutes(baseRoute, getListRouteTemplate));
-        var createRoute = BuildAbsoluteUrl(CombineRoutes(baseRoute, createRouteTemplate));
-        var updateRoute = BuildAbsoluteUrl(CombineRoutes(baseRoute, updateRouteTemplate));
-        var deleteRoute = BuildAbsoluteUrl(CombineRoutes(baseRoute, deleteRouteTemplate));
-
-        // 获取返回类型以生成表格列和表单字段
-        var getListAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any());
-        if (getListAction == null)
-            return null;
-
-        var returnType = getListAction.ReturnType;
-        var dataType = GetDataTypeFromReturnType(returnType);
+        // 获取 CRUD 操作返回的数据类型
+        var dataType = GetDataTypeFromAction(actions);
         if (dataType == null)
             return null;
 
-        var columns = GetAmisColumns(dataType, controllerName, updateRoute, deleteRoute);
-        var searchFields = GetAmisSearchFields(getListAction);
+        // 生成 AMIS 表格列配置
+        var columns = GetAmisColumns(dataType, controllerName, apiRoutes);
+        // 生成 AMIS 搜索字段配置
+        var searchFields = GetAmisSearchFields(actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any()));
 
+        // 构建 CRUD 配置的 JSON 对象
         var crud = new JObject
         {
             ["type"] = "crud",
             ["name"] = $"{controllerName.ToLower()}Crud",
             ["api"] = new JObject
             {
-                ["url"] = getListRoute,
+                ["url"] = apiRoutes.GetListRoute,
                 ["method"] = "get"
             },
             ["columns"] = new JArray(columns),
-            ["searchConfig"] = new JObject
+            ["autoGenerateFilter"] = new JObject
             {
-                ["submitText"] = "搜索",
-                ["resetText"] = "重置",
-                ["controls"] = new JArray(searchFields)
+                ["columnsNum"] = 2,
+                ["showBtnToolbar"] = false,
+                ["defaultCollapsed"] = false
             },
             ["createApi"] = new JObject
             {
-                ["url"] = createRoute,
+                ["url"] = apiRoutes.CreateRoute,
                 ["method"] = "post"
             },
             ["updateApi"] = new JObject
             {
-                ["url"] = $"{updateRoute}/$id",
+                ["url"] = apiRoutes.UpdateRoute,
                 ["method"] = "put"
             },
             ["deleteApi"] = new JObject
             {
-                ["url"] = $"{deleteRoute}/$id",
+                ["url"] = apiRoutes.DeleteRoute,
                 ["method"] = "delete"
             },
             ["title"] = $"{controllerName} 管理",
-            ["toolbar"] = new JObject
+            ["headerToolbar"] = new JArray
             {
-                ["buttons"] = new JArray
-                {
-                    new JObject
-                    {
-                        ["type"] = "button",
-                        ["label"] = "新增",
-                        ["level"] = "primary",
-                        ["actionType"] = "dialog",
-                        ["dialog"] = new JObject
-                        {
-                            ["title"] = "新增",
-                            ["body"] = new JObject
-                            {
-                                ["type"] = "form",
-                                ["api"] = new JObject
-                                {
-                                    ["url"] = createRoute,
-                                    ["method"] = "post"
-                                },
-                                ["body"] = new JArray(GetAmisFormFields(dataType))
-                            }
-                        }
-                    }
-                }
-            },
-            ["bulkActions"] = new JArray(), // 根据需要添加批量操作
-            ["actions"] = new JArray(GetCustomOperationsButtons(controllerName, dataType, updateRoute, deleteRoute)) // 添加自定义操作按钮
+                CreateHeaderButton(apiRoutes.CreateRoute, dataType)
+            }
         };
+
+        // 可选：添加自定义操作按钮
+        // crud["actions"] = new JArray(GetCustomOperationsButtons(controllerName, dataType, apiRoutes.UpdateRoute, apiRoutes.DeleteRoute));
 
         return crud;
     }
 
+    /// <summary>
+    /// 获取 CRUD 操作对应的 API 路由。
+    /// </summary>
+    /// <param name="baseRoute">控制器的基本路由。</param>
+    /// <param name="actions">控制器的 CRUD 操作方法信息。</param>
+    /// <returns>包含各 CRUD 操作路由的元组，如果获取失败则返回 null。</returns>
+    private (string GetListRoute, string CreateRoute, string UpdateRoute, string DeleteRoute) GetApiRoutes(string baseRoute, IEnumerable<MethodInfo> actions)
+    {
+        // 内部函数，用于组合和生成完整的 API 路由
+        string Combine(string template) => BuildAbsoluteUrl(CombineRoutes(baseRoute, template));
+
+        // 查找各 CRUD 操作的方法
+        var getListAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any());
+        var createAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPostAttribute>().Any());
+        var updateAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPutAttribute>().Any());
+        var deleteAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpDeleteAttribute>().Any());
+
+        // 获取各 CRUD 操作的路由模板，并组合成完整的 API 路由
+        var getListRouteTemplate = GetRouteTemplate(getListAction, "GET");
+        var createRouteTemplate = GetRouteTemplate(createAction, "POST");
+        var updateRouteTemplate = GetRouteTemplate(updateAction, "PUT");
+        var deleteRouteTemplate = GetRouteTemplate(deleteAction, "DELETE");
+
+        return (
+            Combine(getListRouteTemplate),
+            Combine(createRouteTemplate),
+            Combine(updateRouteTemplate),
+            Combine(deleteRouteTemplate)
+        );
+    }
+
+    /// <summary>
+    /// 获取指定 HTTP 方法的路由模板。
+    /// </summary>
+    /// <param name="method">方法的信息。</param>
+    /// <param name="httpMethod">HTTP 方法类型（如 "GET", "POST"）。</param>
+    /// <returns>路由模板字符串，如果未定义则返回空字符串。</returns>
+    private string GetRouteTemplate(MethodInfo method, string httpMethod)
+    {
+        if (method == null)
+            return string.Empty;
+
+        var attribute = method.GetCustomAttributes()
+                              .OfType<HttpMethodAttribute>()
+                              .FirstOrDefault(a => a.HttpMethods.Contains(httpMethod, StringComparer.OrdinalIgnoreCase));
+        return attribute?.Template ?? string.Empty;
+    }
+
+    /// <summary>
+    /// 创建 AMIS 表头的“新增”按钮配置。
+    /// </summary>
+    /// <param name="createRoute">新增操作的 API 路由。</param>
+    /// <param name="dataType">数据类型，用于生成表单字段。</param>
+    /// <returns>AMIS 按钮的 JSON 对象。</returns>
+    private JObject CreateHeaderButton(string createRoute, Type dataType)
+    {
+        return new JObject
+        {
+            ["type"] = "button",
+            ["label"] = "新增",
+            ["level"] = "primary",
+            ["actionType"] = "dialog",
+            ["dialog"] = new JObject
+            {
+                ["title"] = "新增",
+                ["body"] = new JObject
+                {
+                    ["type"] = "form",
+                    ["api"] = new JObject
+                    {
+                        ["url"] = createRoute,
+                        ["method"] = "post"
+                    },
+                    ["body"] = new JArray(GetAmisFormFields(dataType))
+                }
+            }
+        };
+    }
+
+    #endregion
+
+    #region API 路由助手
+
+    /// <summary>
+    /// 构建完整的绝对 URL。
+    /// </summary>
+    /// <param name="relativePath">相对路径。</param>
+    /// <returns>完整的绝对 URL。</returns>
     private string BuildAbsoluteUrl(string relativePath)
     {
         var request = _httpContextAccessor.HttpContext?.Request;
@@ -211,49 +358,82 @@ public class AmisGenerator
         return $"{scheme}://{host}/{relativePath.TrimStart('/')}";
     }
 
+    /// <summary>
+    /// 组合基础路由和模板路由，处理占位符。
+    /// </summary>
+    /// <param name="baseRoute">基础路由。</param>
+    /// <param name="template">模板路由。</param>
+    /// <returns>组合后的路由。</returns>
     private string CombineRoutes(string baseRoute, string template)
     {
+        template = template?.Replace("{id}", "${id}") ?? string.Empty;
         if (string.IsNullOrEmpty(template))
             return baseRoute;
 
         return $"{baseRoute}/{template}".Replace("//", "/");
     }
 
-    private Type GetDataTypeFromReturnType(Type returnType)
+    #endregion
+
+    #region 数据类型提取
+
+    /// <summary>
+    /// 从控制器操作方法中提取数据类型。
+    /// </summary>
+    /// <param name="actions">控制器的 CRUD 操作方法信息。</param>
+    /// <returns>数据类型的 Type 对象，如果提取失败则返回 null。</returns>
+    private Type GetDataTypeFromAction(IEnumerable<MethodInfo> actions)
     {
-        // 处理 ActionResult<T>, Task<ActionResult<T>>, etc.
-        if (returnType.IsGenericType)
+        var getListAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any());
+        if (getListAction == null)
+            return null;
+
+        var returnType = getListAction.ReturnType;
+        return ExtractDataType(GetUnderlyingType(returnType));
+    }
+
+    /// <summary>
+    /// 获取方法返回类型的底层类型，处理异步和包装类型。
+    /// </summary>
+    /// <param name="type">方法的返回类型。</param>
+    /// <returns>底层数据类型的 Type 对象，如果未找到则返回 null。</returns>
+    private Type GetUnderlyingType(Type type)
+    {
+        if (type.IsGenericType)
         {
-            var genericDef = returnType.GetGenericTypeDefinition();
+            var genericDef = type.GetGenericTypeDefinition();
             if (genericDef == typeof(ActionResult<>))
             {
-                var innerType = returnType.GetGenericArguments()[0];
-                return ExtractDataType(innerType);
+                return type.GetGenericArguments()[0];
             }
             if (genericDef == typeof(Task<>))
             {
-                var taskInnerType = returnType.GetGenericArguments()[0];
+                var taskInnerType = type.GetGenericArguments()[0];
                 if (taskInnerType.IsGenericType && taskInnerType.GetGenericTypeDefinition() == typeof(ActionResult<>))
                 {
-                    var innerType = taskInnerType.GetGenericArguments()[0];
-                    return ExtractDataType(innerType);
+                    return taskInnerType.GetGenericArguments()[0];
                 }
             }
         }
-
         return null;
     }
 
+    /// <summary>
+    /// 从包装类型中提取实际的数据类型。
+    /// </summary>
+    /// <param name="type">包装类型的 Type 对象。</param>
+    /// <returns>实际的数据类型的 Type 对象，如果未找到则返回 null。</returns>
     private Type ExtractDataType(Type type)
     {
-        // 假设 ApiResponse<T> 或 ListData<T>
+        if (type == null)
+            return null;
+
         if (type.IsGenericType)
         {
             var genericDef = type.GetGenericTypeDefinition();
             if (genericDef == typeof(ApiResponse<>))
             {
                 var innerType = type.GetGenericArguments()[0];
-                // 如果是列表数据
                 if (innerType.IsGenericType && innerType.GetGenericTypeDefinition() == typeof(ListData<>))
                 {
                     return innerType.GetGenericArguments()[0];
@@ -269,122 +449,28 @@ public class AmisGenerator
         return type;
     }
 
-    private List<JObject> GetAmisColumns(Type dataType, string controllerName, string updateRoute, string deleteRoute)
+    #endregion
+
+    #region AMIS 表格列和字段
+
+    /// <summary>
+    /// 生成 AMIS 表格的列配置。
+    /// </summary>
+    /// <param name="dataType">数据类型的 Type 对象。</param>
+    /// <param name="controllerName">控制器名称。</param>
+    /// <param name="apiRoutes">包含 CRUD 操作路由的元组。</param>
+    /// <returns>AMIS 表格列的列表。</returns>
+    private List<JObject> GetAmisColumns(Type dataType, string controllerName, (string GetListRoute, string CreateRoute, string UpdateRoute, string DeleteRoute) apiRoutes)
     {
         var properties = dataType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-        var columns = new List<JObject>();
+        var columns = properties
+            .Where(p => !IsIgnoredProperty(p) && HasViewPermission(p))
+            .Select(p => CreateAmisColumn(p))
+            .ToList();
 
-        foreach (var prop in properties)
-        {
-            // 忽略某些不需要显示的字段（如密码）
-            if (prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            // 权限控制：检查属性是否有 [Permission] 特性
-            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
-            if (permissionAttr != null && !_permissionService.HasPermission(permissionAttr.Permission))
-            {
-                // 当前用户没有权限查看此字段，跳过
-                continue;
-            }
-
-            // 获取 DisplayName，如果没有，则使用默认的 TitleCase
-            var displayNameAttr = prop.GetCustomAttribute<DisplayNameAttribute>();
-            string label = displayNameAttr != null ? displayNameAttr.DisplayName : ToTitleCase(prop.Name);
-
-            // 转换字段名称为 camelCase
-            string fieldName = ToCamelCase(prop.Name);
-
-            var column = new JObject
-            {
-                ["name"] = fieldName,
-                ["label"] = label,
-                ["sortable"] = true
-            };
-
-            // 根据属性类型，决定列的类型
-            if (prop.PropertyType == typeof(bool))
-            {
-                column["type"] = "switch";
-            }
-            else if (prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(DateTime?))
-            {
-                column["type"] = "datetime";
-                column["format"] = "YYYY-MM-DD HH:mm:ss";
-            }
-            else
-            {
-                column["type"] = "text";
-            }
-
-            // 识别主键
-            if (prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
-            {
-                column["type"] = "text"; // 保持为文本显示
-            }
-
-            columns.Add(column);
-        }
-
-        // 添加操作列，基于权限控制是否显示编辑和删除按钮
-        var operations = new JObject
-        {
-            ["label"] = "操作",
-            ["type"] = "operation",
-            ["buttons"] = new JArray()
-        };
-
-        // 编辑按钮权限
-        if (_permissionService.HasPermission($"{controllerName}Edit"))
-        {
-            (operations["buttons"] as JArray).Add(new JObject
-            {
-                ["type"] = "button",
-                ["label"] = "编辑",
-                ["actionType"] = "drawer",
-                ["drawer"] = new JObject
-                {
-                    ["title"] = "编辑",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "form",
-                        ["api"] = new JObject
-                        {
-                            ["url"] = $"{updateRoute}/$id",
-                            ["method"] = "put"
-                        },
-                        ["body"] = new JArray(GetAmisFormFields(dataType))
-                    }
-                }
-            });
-        }
-
-        // 删除按钮权限
-        if (_permissionService.HasPermission($"{controllerName}Delete"))
-        {
-            (operations["buttons"] as JArray).Add(new JObject
-            {
-                ["type"] = "button",
-                ["label"] = "删除",
-                ["actionType"] = "ajax",
-                ["confirmText"] = "确定要删除吗？",
-                ["api"] = new JObject
-                {
-                    ["url"] = $"{deleteRoute}/$id",
-                    ["method"] = "delete"
-                }
-            });
-        }
-
-        // 添加自定义操作按钮
-        var customOperations = GetCustomOperationsButtons(controllerName, dataType, updateRoute, deleteRoute);
-        foreach (var btn in customOperations)
-        {
-            (operations["buttons"] as JArray).Add(btn);
-        }
-
-        // 只有存在按钮时才添加操作列
-        if ((operations["buttons"] as JArray).Count > 0)
+        // 创建操作列（如编辑、删除按钮）
+        var operations = CreateOperationsColumn(controllerName, dataType, apiRoutes.UpdateRoute, apiRoutes.DeleteRoute);
+        if (operations != null)
         {
             columns.Add(operations);
         }
@@ -393,263 +479,526 @@ public class AmisGenerator
     }
 
     /// <summary>
-    /// 获取自定义操作按钮
+    /// 判断属性是否应被忽略（例如密码字段）。
     /// </summary>
-    /// <param name="controllerName">控制器名称</param>
-    /// <param name="dataType">数据类型</param>
-    /// <param name="updateRoute">更新路由</param>
-    /// <param name="deleteRoute">删除路由</param>
-    /// <returns>自定义操作按钮列表</returns>
+    /// <param name="prop">属性的信息。</param>
+    /// <returns>如果应忽略则返回 true，否则返回 false。</returns>
+    private bool IsIgnoredProperty(PropertyInfo prop)
+    {
+        return prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 检查当前用户是否有权限查看该属性。
+    /// </summary>
+    /// <param name="prop">属性的信息。</param>
+    /// <returns>如果有权限则返回 true，否则返回 false。</returns>
+    private bool HasViewPermission(PropertyInfo prop)
+    {
+        var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+        return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+    }
+
+    /// <summary>
+    /// 创建 AMIS 表格的单个列配置。
+    /// </summary>
+    /// <param name="prop">属性的信息。</param>
+    /// <returns>AMIS 表格列的 JSON 对象。</returns>
+    private JObject CreateAmisColumn(PropertyInfo prop)
+    {
+        var displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? ToTitleCase(prop.Name);
+        var fieldName = ToCamelCase(prop.Name);
+
+        var column = new JObject
+        {
+            ["name"] = fieldName,
+            ["label"] = displayName,
+            ["sortable"] = true,
+            ["type"] = GetColumnType(prop)
+        };
+
+        // 如果是主键，则隐藏该列
+        if (IsPrimaryKey(prop))
+        {
+            column["hidden"] = true;
+        }
+
+        return column;
+    }
+
+    /// <summary>
+    /// 根据属性类型确定 AMIS 列的显示类型。
+    /// </summary>
+    /// <param name="prop">属性的信息。</param>
+    /// <returns>AMIS 列的类型字符串。</returns>
+    private string GetColumnType(PropertyInfo prop)
+    {
+        return prop.PropertyType switch
+        {
+            Type t when t == typeof(bool) => "switch",
+            Type t when t == typeof(DateTime) || t == typeof(DateTime?) => "datetime",
+            _ => "text"
+        };
+    }
+
+    /// <summary>
+    /// 判断属性是否为主键（假设名称为 "Id"）。
+    /// </summary>
+    /// <param name="prop">属性的信息。</param>
+    /// <returns>如果是主键则返回 true，否则返回 false。</returns>
+    private bool IsPrimaryKey(PropertyInfo prop)
+    {
+        return prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 创建 AMIS 表格的操作列，包括编辑和删除按钮。
+    /// </summary>
+    /// <param name="controllerName">控制器名称。</param>
+    /// <param name="dataType">数据类型，用于生成表单字段。</param>
+    /// <param name="updateRoute">更新操作的 API 路由。</param>
+    /// <param name="deleteRoute">删除操作的 API 路由。</param>
+    /// <returns>AMIS 操作列的 JSON 对象，如果没有按钮则返回 null。</returns>
+    private JObject CreateOperationsColumn(string controllerName, Type dataType, string updateRoute, string deleteRoute)
+    {
+        var buttons = new JArray();
+
+        // 如果用户有编辑权限，则添加编辑按钮
+        if (_permissionService.HasPermission($"{controllerName}Edit"))
+        {
+            buttons.Add(CreateEditButton(updateRoute, dataType));
+        }
+
+        // 如果用户有删除权限，则添加删除按钮
+        if (_permissionService.HasPermission($"{controllerName}Delete"))
+        {
+            buttons.Add(CreateDeleteButton(deleteRoute));
+        }
+
+        // 添加自定义操作按钮
+        var customButtons = GetCustomOperationsButtons(controllerName, dataType, updateRoute, deleteRoute);
+        foreach (var btn in customButtons)
+        {
+            buttons.Add(btn);
+        }
+
+        // 如果没有任何按钮，则不添加操作列
+        if (buttons.Count == 0)
+            return null;
+
+        return new JObject
+        {
+            ["label"] = "操作",
+            ["type"] = "operation",
+            ["buttons"] = buttons
+        };
+    }
+
+    /// <summary>
+    /// 创建编辑按钮的 AMIS 配置。
+    /// </summary>
+    /// <param name="updateRoute">编辑操作的 API 路由。</param>
+    /// <param name="dataType">数据类型，用于生成表单字段。</param>
+    /// <returns>编辑按钮的 JSON 对象。</returns>
+    private JObject CreateEditButton(string updateRoute, Type dataType)
+    {
+        return new JObject
+        {
+            ["type"] = "button",
+            ["label"] = "编辑",
+            ["actionType"] = "drawer",
+            ["drawer"] = new JObject
+            {
+                ["title"] = "编辑",
+                ["body"] = new JObject
+                {
+                    ["type"] = "form",
+                    ["api"] = new JObject
+                    {
+                        ["url"] = updateRoute,
+                        ["method"] = "put"
+                    },
+                    ["body"] = new JArray(GetAmisFormFields(dataType))
+                }
+            }
+        };
+    }
+
+    /// <summary>
+    /// 创建删除按钮的 AMIS 配置。
+    /// </summary>
+    /// <param name="deleteRoute">删除操作的 API 路由。</param>
+    /// <returns>删除按钮的 JSON 对象。</returns>
+    private JObject CreateDeleteButton(string deleteRoute)
+    {
+        return new JObject
+        {
+            ["type"] = "button",
+            ["label"] = "删除",
+            ["actionType"] = "ajax",
+            ["confirmText"] = "确定要删除吗？",
+            ["api"] = new JObject
+            {
+                ["url"] = deleteRoute,
+                ["method"] = "delete"
+            }
+        };
+    }
+
+    #endregion
+
+    #region 自定义操作
+
+    /// <summary>
+    /// 获取控制器中所有自定义操作按钮的配置。
+    /// </summary>
+    /// <param name="controllerName">控制器名称。</param>
+    /// <param name="dataType">数据类型，用于生成表单字段。</param>
+    /// <param name="updateRoute">更新操作的 API 路由。</param>
+    /// <param name="deleteRoute">删除操作的 API 路由。</param>
+    /// <returns>自定义操作按钮的列表。</returns>
     private List<JObject> GetCustomOperationsButtons(string controllerName, Type dataType, string updateRoute, string deleteRoute)
     {
         var buttons = new List<JObject>();
-
-        // 查找控制器中标记了 [Operation] 特性的操作方法
-        var controllerType = _assembly.GetTypes()
-            .FirstOrDefault(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(typeof(Microsoft.AspNetCore.Mvc.ControllerBase)) && t.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase));
-
+        var controllerType = GetControllerType(controllerName);
         if (controllerType == null)
             return buttons;
 
+        // 查找控制器中标记了 [Operation] 特性的操作方法
         var operationMethods = controllerType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-            .Where(m => m.GetCustomAttributes<OperationAttribute>().Any());
+                                             .Where(m => m.GetCustomAttributes<OperationAttribute>().Any());
 
         foreach (var method in operationMethods)
         {
             var operationAttrs = method.GetCustomAttributes<OperationAttribute>();
             foreach (var op in operationAttrs)
             {
-                var button = new JObject
-                {
-                    ["type"] = "button",
-                    ["label"] = op.Label,
-                    ["actionType"] = op.ActionType
-                };
-
-                if (!string.IsNullOrEmpty(op.Api))
-                {
-                    button["api"] = new JObject
-                    {
-                        ["url"] = op.Api,
-                        ["method"] = op.ActionType == "download" ? "get" : "post"
-                    };
-                }
-
-                if (!string.IsNullOrEmpty(op.ConfirmText))
-                {
-                    button["confirmText"] = op.ConfirmText;
-                }
-
-                // 例如，如果是 download 操作，可以配置下载逻辑
-                if (op.ActionType == "download")
-                {
-                    button["download"] = true;
-                }
-
-                buttons.Add(button);
+                buttons.Add(CreateCustomOperationButton(op));
             }
         }
 
         return buttons;
     }
 
+    /// <summary>
+    /// 创建自定义操作按钮的 AMIS 配置。
+    /// </summary>
+    /// <param name="op">操作属性的信息。</param>
+    /// <returns>自定义操作按钮的 JSON 对象。</returns>
+    private JObject CreateCustomOperationButton(OperationAttribute op)
+    {
+        var button = new JObject
+        {
+            ["type"] = "button",
+            ["label"] = op.Label,
+            ["actionType"] = op.ActionType
+        };
+
+        // 如果定义了 API，则添加 API 配置
+        if (!string.IsNullOrEmpty(op.Api))
+        {
+            button["api"] = new JObject
+            {
+                ["url"] = op.Api,
+                ["method"] = op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase) ? "get" : "post"
+            };
+        }
+
+        // 如果定义了确认文本，则添加确认提示
+        if (!string.IsNullOrEmpty(op.ConfirmText))
+        {
+            button["confirmText"] = op.ConfirmText;
+        }
+
+        // 如果操作类型为下载，则添加下载配置
+        if (op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase))
+        {
+            button["download"] = true;
+        }
+
+        return button;
+    }
+
+    #endregion
+
+    #region AMIS 搜索字段
+
+    /// <summary>
+    /// 生成 AMIS 表格的搜索字段配置。
+    /// </summary>
+    /// <param name="getListAction">获取列表数据的控制器方法信息。</param>
+    /// <returns>AMIS 搜索字段的列表。</returns>
     private List<JObject> GetAmisSearchFields(MethodInfo getListAction)
     {
+        if (getListAction == null)
+            return new List<JObject>();
+
         var parameters = getListAction.GetParameters();
         var searchFields = new List<JObject>();
 
-        foreach (var param in parameters)
+        foreach (var param in parameters.Where(p => p.GetCustomAttribute<FromQueryAttribute>() != null))
         {
-            if (param.GetCustomAttribute<FromQueryAttribute>() != null)
-            {
-                // 权限控制：检查参数是否有 [Permission] 特性
-                var permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
-                if (permissionAttr != null && !_permissionService.HasPermission(permissionAttr.Permission))
-                {
-                    // 当前用户没有权限使用此搜索字段，跳过
-                    continue;
-                }
+            // 检查用户是否有权限使用该搜索字段
+            if (!HasSearchPermission(param))
+                continue;
 
-                var paramType = param.ParameterType;
-
-                // 获取 DisplayName，如果没有，则使用默认的 TitleCase
-                var displayNameAttr = param.GetCustomAttribute<DisplayNameAttribute>();
-                string label = displayNameAttr != null ? displayNameAttr.DisplayName : ToTitleCase(param.Name);
-
-                // 转换字段名称为 camelCase
-                string fieldName = ToCamelCase(param.Name);
-
-                var field = new JObject
-                {
-                    ["name"] = fieldName,
-                    ["label"] = label
-                };
-
-                // 根据参数类型调整搜索控件类型
-                if (paramType == typeof(int) || paramType == typeof(int?))
-                {
-                    field["type"] = "input-number";
-                }
-                else if (paramType == typeof(bool) || paramType == typeof(bool?))
-                {
-                    field["type"] = "select";
-                    field["options"] = new JArray
-                    {
-                        new JObject { ["label"] = "是", ["value"] = true },
-                        new JObject { ["label"] = "否", ["value"] = false }
-                    };
-                }
-                else if (paramType.IsEnum || (Nullable.GetUnderlyingType(paramType)?.IsEnum ?? false))
-                {
-                    field["type"] = "select";
-                    var enumType = Nullable.GetUnderlyingType(paramType) ?? paramType;
-                    var enumOptions = Enum.GetValues(enumType).Cast<object>().Select(e => new JObject
-                    {
-                        ["label"] = e.ToString(),
-                        ["value"] = e.ToString()
-                    }).ToArray();
-                    field["options"] = new JArray(enumOptions);
-                }
-                else if (paramType == typeof(DateTime) || paramType == typeof(DateTime?))
-                {
-                    field["type"] = "date";
-                    field["format"] = "YYYY-MM-DD";
-                }
-                else
-                {
-                    field["type"] = "input-text";
-                }
-
-                searchFields.Add(field);
-            }
+            // 创建搜索字段的 AMIS 配置
+            searchFields.Add(CreateSearchField(param));
         }
 
         return searchFields;
     }
 
-    private List<JObject> GetAmisFormFields(Type dataType)
+    /// <summary>
+    /// 检查当前用户是否有权限使用指定的搜索参数。
+    /// </summary>
+    /// <param name="param">参数的信息。</param>
+    /// <returns>如果有权限则返回 true，否则返回 false。</returns>
+    private bool HasSearchPermission(ParameterInfo param)
     {
-        var properties = dataType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-        var formFields = new List<JObject>();
-
-        foreach (var prop in properties)
-        {
-            // 忽略某些不需要显示的字段（如密码）
-            if (prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            // 权限控制：检查属性是否有 [Permission] 特性
-            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
-            if (permissionAttr != null && !_permissionService.HasPermission(permissionAttr.Permission))
-            {
-                // 当前用户没有权限编辑此字段，跳过
-                continue;
-            }
-
-            // 获取 DisplayName，如果没有，则使用默认的 TitleCase
-            var displayNameAttr = prop.GetCustomAttribute<DisplayNameAttribute>();
-            string label = displayNameAttr != null ? displayNameAttr.DisplayName : ToTitleCase(prop.Name);
-
-            // 转换字段名称为 camelCase
-            string fieldName = ToCamelCase(prop.Name);
-
-            var field = new JObject
-            {
-                ["name"] = fieldName,
-                ["label"] = label,
-                ["required"] = !IsNullable(prop)
-            };
-
-            // 根据属性类型，决定表单控件的类型
-            if (prop.PropertyType == typeof(string))
-            {
-                field["type"] = "input-text";
-            }
-            else if (prop.PropertyType == typeof(int) || prop.PropertyType == typeof(long) ||
-                     prop.PropertyType == typeof(float) || prop.PropertyType == typeof(double))
-            {
-                field["type"] = "input-number";
-            }
-            else if (prop.PropertyType == typeof(bool))
-            {
-                field["type"] = "switch";
-            }
-            else if (prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(DateTime?))
-            {
-                field["type"] = "datetime";
-                field["format"] = "YYYY-MM-DD HH:mm:ss";
-            }
-            else if (prop.PropertyType.IsEnum)
-            {
-                field["type"] = "select";
-                var enumOptions = Enum.GetValues(prop.PropertyType).Cast<object>().Select(e => new JObject
-                {
-                    ["label"] = e.ToString(),
-                    ["value"] = e.ToString()
-                }).ToArray();
-                field["options"] = new JArray(enumOptions);
-            }
-            //else if (prop.PropertyType.IsClass && prop.PropertyType != typeof(string))
-            //{
-            //    // 假设这是一个关联实体，生成级联选择器
-            //    field["type"] = "cascader";
-            //    // 添加相关配置，例如数据源 API
-            //    field["source"] = $"https://yourdomain.com/api/{prop.PropertyType.Name.ToLower()}/options";
-            //}
-            else
-            {
-                field["type"] = "input-text";
-            }
-
-            // 表单验证
-            var validationRules = new JObject();
-
-            var requiredAttr = prop.GetCustomAttribute<RequiredAttribute>();
-            if (requiredAttr != null)
-            {
-                field["required"] = true;
-                validationRules["required"] = true;
-            }
-
-            var stringLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>();
-            if (stringLengthAttr != null)
-            {
-                if (stringLengthAttr.MinimumLength > 0)
-                {
-                    validationRules["minLength"] = stringLengthAttr.MinimumLength;
-                }
-                if (stringLengthAttr.MaximumLength > 0)
-                {
-                    validationRules["maxLength"] = stringLengthAttr.MaximumLength;
-                }
-            }
-
-            var rangeAttr = prop.GetCustomAttribute<RangeAttribute>();
-            if (rangeAttr != null)
-            {
-                if (rangeAttr.Minimum != null)
-                {
-                    validationRules["min"] = Convert.ToDouble(rangeAttr.Minimum);
-                }
-                if (rangeAttr.Maximum != null)
-                {
-                    validationRules["max"] = Convert.ToDouble(rangeAttr.Maximum);
-                }
-            }
-
-            // 其他验证属性可以在此添加
-
-            if (validationRules.HasValues)
-            {
-                field["validate"] = validationRules;
-            }
-
-            formFields.Add(field);
-        }
-
-        return formFields;
+        var permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
+        return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
     }
 
+    /// <summary>
+    /// 创建单个搜索字段的 AMIS 配置。
+    /// </summary>
+    /// <param name="param">参数的信息。</param>
+    /// <returns>搜索字段的 JSON 对象。</returns>
+    private JObject CreateSearchField(ParameterInfo param)
+    {
+        var label = param.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? ToTitleCase(param.Name);
+        var fieldName = ToCamelCase(param.Name);
+        var fieldType = DetermineSearchFieldType(param.ParameterType);
+
+        var field = new JObject
+        {
+            ["name"] = fieldName,
+            ["label"] = label,
+            ["type"] = fieldType
+        };
+
+        // 如果是枚举类型，则添加枚举选项
+        if (fieldType == "select" && (param.ParameterType.IsEnum || IsNullableEnum(param.ParameterType)))
+        {
+            field["options"] = GetEnumOptions(param.ParameterType);
+        }
+
+        // 如果是日期类型，则添加日期格式
+        if (fieldType == "date")
+        {
+            field["format"] = "YYYY-MM-DD";
+        }
+
+        return field;
+    }
+
+    /// <summary>
+    /// 确定搜索字段的类型，根据参数的类型进行映射。
+    /// </summary>
+    /// <param name="type">参数的类型。</param>
+    /// <returns>AMIS 搜索字段的类型字符串。</returns>
+    private string DetermineSearchFieldType(Type type)
+    {
+        if (type == typeof(int) || type == typeof(int?))
+            return "input-number";
+        if (type == typeof(bool) || type == typeof(bool?))
+            return "select";
+        if (type.IsEnum || IsNullableEnum(type))
+            return "select";
+        if (type == typeof(DateTime) || type == typeof(DateTime?))
+            return "date";
+
+        return "input-text";
+    }
+
+    /// <summary>
+    /// 判断类型是否为可空的枚举类型。
+    /// </summary>
+    /// <param name="type">要检查的类型。</param>
+    /// <returns>如果是可空枚举类型则返回 true，否则返回 false。</returns>
+    private bool IsNullableEnum(Type type)
+    {
+        var underlying = Nullable.GetUnderlyingType(type);
+        return underlying != null && underlying.IsEnum;
+    }
+
+    /// <summary>
+    /// 获取枚举类型的选项列表，用于 AMIS 的下拉选择框。
+    /// </summary>
+    /// <param name="type">枚举类型或可空枚举类型。</param>
+    /// <returns>AMIS 枚举选项的 JSON 数组。</returns>
+    private JArray GetEnumOptions(Type type)
+    {
+        var enumType = Nullable.GetUnderlyingType(type) ?? type;
+        var enumOptions = Enum.GetValues(enumType).Cast<object>().Select(e => new JObject
+        {
+            ["label"] = e.ToString(),
+            ["value"] = e.ToString()
+        });
+
+        return new JArray(enumOptions);
+    }
+
+    #endregion
+
+    #region AMIS 表单字段
+
+    /// <summary>
+    /// 生成 AMIS 表单的字段配置。
+    /// </summary>
+    /// <param name="dataType">数据类型的 Type 对象。</param>
+    /// <returns>AMIS 表单字段的列表。</returns>
+    private List<JObject> GetAmisFormFields(Type dataType)
+    {
+        return dataType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                       .Where(p => !IsIgnoredProperty(p) && HasEditPermission(p))
+                       .Select(p => CreateAmisFormField(p))
+                       .ToList();
+    }
+
+    /// <summary>
+    /// 检查当前用户是否有权限编辑指定的属性。
+    /// </summary>
+    /// <param name="prop">属性的信息。</param>
+    /// <returns>如果有权限则返回 true，否则返回 false。</returns>
+    private bool HasEditPermission(PropertyInfo prop)
+    {
+        var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+        return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+    }
+
+    /// <summary>
+    /// 创建单个表单字段的 AMIS 配置。
+    /// </summary>
+    /// <param name="prop">属性的信息。</param>
+    /// <returns>表单字段的 JSON 对象。</returns>
+    private JObject CreateAmisFormField(PropertyInfo prop)
+    {
+        var label = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? ToTitleCase(prop.Name);
+        var fieldName = ToCamelCase(prop.Name);
+        var isRequired = !IsNullable(prop);
+
+        var field = new JObject
+        {
+            ["name"] = fieldName,
+            ["label"] = label,
+            ["required"] = isRequired,
+            ["type"] = GetFormFieldType(prop)
+        };
+
+        // 根据属性添加验证规则
+        AddValidationRules(prop, field);
+
+        return field;
+    }
+
+    /// <summary>
+    /// 根据属性类型确定表单字段的类型。
+    /// </summary>
+    /// <param name="prop">属性的信息。</param>
+    /// <returns>AMIS 表单字段的类型字符串。</returns>
+    private string GetFormFieldType(PropertyInfo prop)
+    {
+        return prop.PropertyType switch
+        {
+            Type t when t == typeof(string) => "input-text",
+            Type t when t == typeof(int) || t == typeof(long) ||
+                       t == typeof(float) || t == typeof(double) => "input-number",
+            Type t when t == typeof(bool) => "switch",
+            Type t when t == typeof(DateTime) || t == typeof(DateTime?) => "datetime",
+            Type t when t.IsEnum => "select",
+            _ => "input-text"
+        };
+    }
+
+    /// <summary>
+    /// 根据属性的验证特性添加 AMIS 表单字段的验证规则。
+    /// </summary>
+    /// <param name="prop">属性的信息。</param>
+    /// <param name="field">表单字段的 JSON 对象。</param>
+    private void AddValidationRules(PropertyInfo prop, JObject field)
+    {
+        var validationRules = new JObject();
+
+        // 检查是否为必填字段
+        if (prop.GetCustomAttribute<RequiredAttribute>() != null)
+        {
+            field["required"] = true;
+            validationRules["required"] = true;
+        }
+
+        // 检查字符串长度限制
+        var stringLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>();
+        if (stringLengthAttr != null)
+        {
+            if (stringLengthAttr.MinimumLength > 0)
+                validationRules["minLength"] = stringLengthAttr.MinimumLength;
+            if (stringLengthAttr.MaximumLength > 0)
+                validationRules["maxLength"] = stringLengthAttr.MaximumLength;
+        }
+
+        // 检查数值范围限制
+        var rangeAttr = prop.GetCustomAttribute<RangeAttribute>();
+        if (rangeAttr != null)
+        {
+            if (rangeAttr.Minimum != null)
+                validationRules["min"] = Convert.ToDouble(rangeAttr.Minimum);
+            if (rangeAttr.Maximum != null)
+                validationRules["max"] = Convert.ToDouble(rangeAttr.Maximum);
+        }
+
+        // 如果有验证规则，则添加到字段配置中
+        if (validationRules.HasValues)
+        {
+            field["validate"] = validationRules;
+        }
+
+        // 如果是枚举类型，则添加枚举选项
+        if (prop.PropertyType.IsEnum || IsNullableEnum(prop.PropertyType))
+        {
+            field["options"] = GetEnumOptions(prop.PropertyType);
+        }
+    }
+
+    #endregion
+
+    #region 工具方法
+
+    /// <summary>
+    /// 将字符串转换为标题大小写（首字母大写）。
+    /// </summary>
+    /// <param name="str">要转换的字符串。</param>
+    /// <returns>转换后的字符串。</returns>
+    private string ToTitleCase(string str)
+    {
+        if (string.IsNullOrEmpty(str))
+            return str;
+
+        return char.ToUpper(str[0]) + str.Substring(1);
+    }
+
+    /// <summary>
+    /// 将字符串转换为 camelCase（首字母小写）。
+    /// </summary>
+    /// <param name="str">要转换的字符串。</param>
+    /// <returns>转换后的字符串。</returns>
+    private string ToCamelCase(string str)
+    {
+        if (string.IsNullOrEmpty(str))
+            return str;
+
+        if (str.Length == 1)
+            return str.ToLower();
+
+        return char.ToLower(str[0]) + str.Substring(1);
+    }
+
+    /// <summary>
+    /// 判断属性是否可为空。
+    /// </summary>
+    /// <param name="prop">属性的信息。</param>
+    /// <returns>如果可为空则返回 true，否则返回 false。</returns>
     private bool IsNullable(PropertyInfo prop)
     {
         if (!prop.PropertyType.IsValueType)
@@ -661,22 +1010,5 @@ public class AmisGenerator
         return false; // 非 Nullable 的值类型不可为空
     }
 
-    private string ToTitleCase(string str)
-    {
-        if (string.IsNullOrEmpty(str))
-            return str;
-
-        return char.ToUpper(str[0]) + str.Substring(1);
-    }
-
-    private string ToCamelCase(string str)
-    {
-        if (string.IsNullOrEmpty(str))
-            return str;
-
-        if (str.Length == 1)
-            return str.ToLower();
-
-        return char.ToLower(str[0]) + str.Substring(1);
-    }
+    #endregion
 }

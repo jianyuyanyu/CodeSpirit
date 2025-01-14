@@ -184,5 +184,24 @@ namespace CodeSpirit.IdentityApi.Controllers
 
             return Ok(new { msg = "用户已成功解锁。" });
         }
+
+        // 自定义操作：导出用户
+        [HttpPost("{id}/export")]
+        [Operation("导出", "download", "/api/users/$id/export", "确定要导出此用户吗？")]
+        public async Task<IActionResult> ExportUser(string id)
+        {
+            var user = await _userRepository.GetUserByIdAsync(id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            // 实现导出逻辑
+            // 例如，将用户数据导出为 CSV 文件
+            var csv = $"Id,Username,Email,IsActive,Role\n{user.Id},{user.Username},{user.Email},{user.IsActive}";
+            var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+            return File(bytes, "text/csv", $"{user.Username}.csv");
+        }
+
     }
 }

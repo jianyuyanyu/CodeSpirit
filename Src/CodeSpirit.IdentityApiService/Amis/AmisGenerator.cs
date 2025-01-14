@@ -4,13 +4,13 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
+using CodeSpirit.IdentityApi.Authorization;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json.Linq;
-using CodeSpirit.IdentityApi.Authorization;
 
 public class AmisGenerator
 {
@@ -34,7 +34,20 @@ public class AmisGenerator
     /// <returns>AMIS 定义的 JSON 对象，如果控制器不存在或不支持则返回 null</returns>
     public JObject GenerateAmisJsonForController(string controllerName)
     {
-        var cacheKey = $"AmisJson_{controllerName.ToLower()}";
+        var user = _httpContextAccessor.HttpContext?.User;
+        var userId = user?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
+
+        // 获取用户权限集合
+        var userPermissions = user?.Claims
+            .Where(c => c.Type == "Permission")
+            .Select(c => c.Value)
+            .OrderBy(p => p)
+            .ToList() ?? new List<string>();
+
+        // 生成权限集合的哈希值
+        var permissionsHash = string.Join(",", userPermissions);
+        var cacheKey = $"AmisJson_{controllerName.ToLower()}_{permissionsHash.GetHashCode()}";
+
         if (_cache.TryGetValue(cacheKey, out JObject cachedAmisJson))
         {
             return cachedAmisJson;
@@ -151,7 +164,36 @@ public class AmisGenerator
                 ["url"] = $"{deleteRoute}/$id",
                 ["method"] = "delete"
             },
-            ["title"] = $"{controllerName} 管理"
+            ["title"] = $"{controllerName} 管理",
+            ["toolbar"] = new JObject
+            {
+                ["buttons"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["type"] = "button",
+                        ["label"] = "新增",
+                        ["level"] = "primary",
+                        ["actionType"] = "dialog",
+                        ["dialog"] = new JObject
+                        {
+                            ["title"] = "新增",
+                            ["body"] = new JObject
+                            {
+                                ["type"] = "form",
+                                ["api"] = new JObject
+                                {
+                                    ["url"] = createRoute,
+                                    ["method"] = "post"
+                                },
+                                ["body"] = new JArray(GetAmisFormFields(dataType))
+                            }
+                        }
+                    }
+                }
+            },
+            ["bulkActions"] = new JArray(), // 根据需要添加批量操作
+            ["actions"] = new JArray(GetCustomOperationsButtons(controllerName, dataType, updateRoute, deleteRoute)) // 添加自定义操作按钮
         };
 
         return crud;
@@ -334,13 +376,81 @@ public class AmisGenerator
             });
         }
 
+        // 添加自定义操作按钮
+        var customOperations = GetCustomOperationsButtons(controllerName, dataType, updateRoute, deleteRoute);
+        foreach (var btn in customOperations)
+        {
+            (operations["buttons"] as JArray).Add(btn);
+        }
+
         // 只有存在按钮时才添加操作列
-        if (operations["buttons"].HasValues)
+        if ((operations["buttons"] as JArray).Count > 0)
         {
             columns.Add(operations);
         }
 
         return columns;
+    }
+
+    /// <summary>
+    /// 获取自定义操作按钮
+    /// </summary>
+    /// <param name="controllerName">控制器名称</param>
+    /// <param name="dataType">数据类型</param>
+    /// <param name="updateRoute">更新路由</param>
+    /// <param name="deleteRoute">删除路由</param>
+    /// <returns>自定义操作按钮列表</returns>
+    private List<JObject> GetCustomOperationsButtons(string controllerName, Type dataType, string updateRoute, string deleteRoute)
+    {
+        var buttons = new List<JObject>();
+
+        // 查找控制器中标记了 [Operation] 特性的操作方法
+        var controllerType = _assembly.GetTypes()
+            .FirstOrDefault(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(typeof(Microsoft.AspNetCore.Mvc.ControllerBase)) && t.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase));
+
+        if (controllerType == null)
+            return buttons;
+
+        var operationMethods = controllerType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+            .Where(m => m.GetCustomAttributes<OperationAttribute>().Any());
+
+        foreach (var method in operationMethods)
+        {
+            var operationAttrs = method.GetCustomAttributes<OperationAttribute>();
+            foreach (var op in operationAttrs)
+            {
+                var button = new JObject
+                {
+                    ["type"] = "button",
+                    ["label"] = op.Label,
+                    ["actionType"] = op.ActionType
+                };
+
+                if (!string.IsNullOrEmpty(op.Api))
+                {
+                    button["api"] = new JObject
+                    {
+                        ["url"] = op.Api,
+                        ["method"] = op.ActionType == "download" ? "get" : "post"
+                    };
+                }
+
+                if (!string.IsNullOrEmpty(op.ConfirmText))
+                {
+                    button["confirmText"] = op.ConfirmText;
+                }
+
+                // 例如，如果是 download 操作，可以配置下载逻辑
+                if (op.ActionType == "download")
+                {
+                    button["download"] = true;
+                }
+
+                buttons.Add(button);
+            }
+        }
+
+        return buttons;
     }
 
     private List<JObject> GetAmisSearchFields(MethodInfo getListAction)

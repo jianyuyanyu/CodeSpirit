@@ -1,23 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
-using Newtonsoft.Json.Linq;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Routing;
-using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using Newtonsoft.Json.Linq;
+using CodeSpirit.IdentityApi.Authorization;
 
 public class AmisGenerator
 {
     private readonly Assembly _assembly;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IPermissionService _permissionService;
+    private readonly IMemoryCache _cache;
 
-    public AmisGenerator(IHttpContextAccessor httpContextAccessor)
+    public AmisGenerator(Assembly assembly, IHttpContextAccessor httpContextAccessor, IPermissionService permissionService, IMemoryCache cache)
     {
-        _assembly = typeof(AmisGenerator).Assembly;
+        _assembly = assembly;
         _httpContextAccessor = httpContextAccessor;
+        _permissionService = permissionService;
+        _cache = cache;
     }
 
     /// <summary>
@@ -27,6 +34,12 @@ public class AmisGenerator
     /// <returns>AMIS 定义的 JSON 对象，如果控制器不存在或不支持则返回 null</returns>
     public JObject GenerateAmisJsonForController(string controllerName)
     {
+        var cacheKey = $"AmisJson_{controllerName.ToLower()}";
+        if (_cache.TryGetValue(cacheKey, out JObject cachedAmisJson))
+        {
+            return cachedAmisJson;
+        }
+
         // 查找控制器类型
         var controllerType = GetControllerType(controllerName);
         if (controllerType == null)
@@ -41,6 +54,15 @@ public class AmisGenerator
 
         // 生成 AMIS CRUD 配置
         var crudConfig = GenerateAmisCrudConfig(controllerName, baseRoute, actions);
+        if (crudConfig != null)
+        {
+            // 设置缓存选项，例如缓存 30 分钟
+            var cacheEntryOptions = new MemoryCacheEntryOptions()
+                .SetSlidingExpiration(TimeSpan.FromMinutes(30));
+
+            _cache.Set(cacheKey, crudConfig, cacheEntryOptions);
+        }
+
         return crudConfig;
     }
 
@@ -48,7 +70,7 @@ public class AmisGenerator
     {
         // 查找以指定名称结尾的控制器类
         return _assembly.GetTypes()
-                        .FirstOrDefault(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(typeof(ControllerBase)) && t.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase));
+                        .FirstOrDefault(t => t.IsClass && !t.IsAbstract && t.IsSubclassOf(typeof(Microsoft.AspNetCore.Mvc.ControllerBase)) && t.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase));
     }
 
     private string GetRoute(Type controller)
@@ -121,12 +143,12 @@ public class AmisGenerator
             },
             ["updateApi"] = new JObject
             {
-                ["url"] = updateRoute + "/$id",
+                ["url"] = $"{updateRoute}/$id",
                 ["method"] = "put"
             },
             ["deleteApi"] = new JObject
             {
-                ["url"] = deleteRoute + "/$id",
+                ["url"] = $"{deleteRoute}/$id",
                 ["method"] = "delete"
             },
             ["title"] = $"{controllerName} 管理"
@@ -216,10 +238,25 @@ public class AmisGenerator
             if (prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase))
                 continue;
 
+            // 权限控制：检查属性是否有 [Permission] 特性
+            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+            if (permissionAttr != null && !_permissionService.HasPermission(permissionAttr.Permission))
+            {
+                // 当前用户没有权限查看此字段，跳过
+                continue;
+            }
+
+            // 获取 DisplayName，如果没有，则使用默认的 TitleCase
+            var displayNameAttr = prop.GetCustomAttribute<DisplayNameAttribute>();
+            string label = displayNameAttr != null ? displayNameAttr.DisplayName : ToTitleCase(prop.Name);
+
+            // 转换字段名称为 camelCase
+            string fieldName = ToCamelCase(prop.Name);
+
             var column = new JObject
             {
-                ["name"] = prop.Name,
-                ["label"] = ToTitleCase(prop.Name),
+                ["name"] = fieldName,
+                ["label"] = label,
                 ["sortable"] = true
             };
 
@@ -247,51 +284,55 @@ public class AmisGenerator
             columns.Add(column);
         }
 
-
-        // 编辑按钮权限
-        //if (_permissionService.HasPermission($"{controllerName}Edit"))
-        //{ }
-        // 添加操作列
+        // 添加操作列，基于权限控制是否显示编辑和删除按钮
         var operations = new JObject
         {
             ["label"] = "操作",
             ["type"] = "operation",
-            ["buttons"] = new JArray
+            ["buttons"] = new JArray()
+        };
+
+        // 编辑按钮权限
+        if (_permissionService.HasPermission($"{controllerName}Edit"))
+        {
+            (operations["buttons"] as JArray).Add(new JObject
             {
-                new JObject
+                ["type"] = "button",
+                ["label"] = "编辑",
+                ["actionType"] = "drawer",
+                ["drawer"] = new JObject
                 {
-                    ["type"] = "button",
-                    ["label"] = "编辑",
-                    ["actionType"] = "drawer",
-                    ["drawer"] = new JObject
+                    ["title"] = "编辑",
+                    ["body"] = new JObject
                     {
-                        ["title"] = "编辑",
-                        ["body"] = new JObject
+                        ["type"] = "form",
+                        ["api"] = new JObject
                         {
-                            ["type"] = "form",
-                            ["api"] = new JObject
-                            {
-                                ["url"] = $"{updateRoute}/$id",
-                                ["method"] = "put"
-                            },
-                            ["body"] = new JArray(GetAmisFormFields(dataType))
-                        }
-                    }
-                },
-                new JObject
-                {
-                    ["type"] = "button",
-                    ["label"] = "删除",
-                    ["actionType"] = "ajax",
-                    ["confirmText"] = "确定要删除吗？",
-                    ["api"] = new JObject
-                    {
-                        ["url"] = $"{deleteRoute}/$id",
-                        ["method"] = "delete"
+                            ["url"] = $"{updateRoute}/$id",
+                            ["method"] = "put"
+                        },
+                        ["body"] = new JArray(GetAmisFormFields(dataType))
                     }
                 }
-            }
-        };
+            });
+        }
+
+        // 删除按钮权限
+        if (_permissionService.HasPermission($"{controllerName}Delete"))
+        {
+            (operations["buttons"] as JArray).Add(new JObject
+            {
+                ["type"] = "button",
+                ["label"] = "删除",
+                ["actionType"] = "ajax",
+                ["confirmText"] = "确定要删除吗？",
+                ["api"] = new JObject
+                {
+                    ["url"] = $"{deleteRoute}/$id",
+                    ["method"] = "delete"
+                }
+            });
+        }
 
         // 只有存在按钮时才添加操作列
         if (operations["buttons"].HasValues)
@@ -311,11 +352,27 @@ public class AmisGenerator
         {
             if (param.GetCustomAttribute<FromQueryAttribute>() != null)
             {
+                // 权限控制：检查参数是否有 [Permission] 特性
+                var permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
+                if (permissionAttr != null && !_permissionService.HasPermission(permissionAttr.Permission))
+                {
+                    // 当前用户没有权限使用此搜索字段，跳过
+                    continue;
+                }
+
                 var paramType = param.ParameterType;
+
+                // 获取 DisplayName，如果没有，则使用默认的 TitleCase
+                var displayNameAttr = param.GetCustomAttribute<DisplayNameAttribute>();
+                string label = displayNameAttr != null ? displayNameAttr.DisplayName : ToTitleCase(param.Name);
+
+                // 转换字段名称为 camelCase
+                string fieldName = ToCamelCase(param.Name);
+
                 var field = new JObject
                 {
-                    ["name"] = param.Name,
-                    ["label"] = ToTitleCase(param.Name)
+                    ["name"] = fieldName,
+                    ["label"] = label
                 };
 
                 // 根据参数类型调整搜索控件类型
@@ -371,10 +428,25 @@ public class AmisGenerator
             if (prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase))
                 continue;
 
+            // 权限控制：检查属性是否有 [Permission] 特性
+            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+            if (permissionAttr != null && !_permissionService.HasPermission(permissionAttr.Permission))
+            {
+                // 当前用户没有权限编辑此字段，跳过
+                continue;
+            }
+
+            // 获取 DisplayName，如果没有，则使用默认的 TitleCase
+            var displayNameAttr = prop.GetCustomAttribute<DisplayNameAttribute>();
+            string label = displayNameAttr != null ? displayNameAttr.DisplayName : ToTitleCase(prop.Name);
+
+            // 转换字段名称为 camelCase
+            string fieldName = ToCamelCase(prop.Name);
+
             var field = new JObject
             {
-                ["name"] = prop.Name,
-                ["label"] = ToTitleCase(prop.Name),
+                ["name"] = fieldName,
+                ["label"] = label,
                 ["required"] = !IsNullable(prop)
             };
 
@@ -485,5 +557,16 @@ public class AmisGenerator
             return str;
 
         return char.ToUpper(str[0]) + str.Substring(1);
+    }
+
+    private string ToCamelCase(string str)
+    {
+        if (string.IsNullOrEmpty(str))
+            return str;
+
+        if (str.Length == 1)
+            return str.ToLower();
+
+        return char.ToLower(str[0]) + str.Substring(1);
     }
 }

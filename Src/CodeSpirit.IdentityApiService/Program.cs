@@ -36,19 +36,25 @@ builder.Services.Configure<DataFilterOptions>(options =>
     options.DefaultStates[typeof(ITenant)] = new DataFilterState(isEnabled: true);
     options.DefaultStates[typeof(IIsActive)] = new DataFilterState(isEnabled: true);
 });
-builder.Services.AddSingleton<AmisGenerator>();
-
-//// 注册 AmisGenerator
-//builder.Services.AddSingleton<AmisGenerator>(provider =>
-//{
-//    var assembly = Assembly.GetExecutingAssembly();
-//    var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
-//    var permissionService = provider.GetRequiredService<IPermissionService>();
-//    var memoryCache = provider.GetRequiredService<IMemoryCache>();
-//    return new AmisGenerator(assembly, httpContextAccessor, permissionService, memoryCache);
-//});
 
 builder.Services.AddHttpContextAccessor();
+// 注册内存缓存
+builder.Services.AddMemoryCache();
+
+// 注册权限服务
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+// 注册 AmisGenerator 为 Scoped
+builder.Services.AddScoped<AmisGenerator>(provider =>
+{
+    var assembly = Assembly.GetExecutingAssembly();
+    var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
+    var permissionService = provider.GetRequiredService<IPermissionService>();
+    var memoryCache = provider.GetRequiredService<IMemoryCache>();
+    return new AmisGenerator(assembly, httpContextAccessor, permissionService, memoryCache);
+});
+
+
 builder.Services.AddTransient<IIdentityAccessor, IdentityAccessor>();
 ////依赖注入驱动注册
 //builder.Services.AddScopedRegister<IScopedDependency>();

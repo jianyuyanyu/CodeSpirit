@@ -4,16 +4,20 @@ using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using Microsoft.AspNetCore.Mvc.Routing;
+using System.ComponentModel.DataAnnotations;
 
 public class AmisGenerator
 {
     private readonly Assembly _assembly;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public AmisGenerator(Assembly assembly)
+    public AmisGenerator(IHttpContextAccessor httpContextAccessor)
     {
-        _assembly = assembly;
+        _assembly = typeof(AmisGenerator).Assembly;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     /// <summary>
@@ -69,17 +73,17 @@ public class AmisGenerator
 
     private JObject GenerateAmisCrudConfig(string controllerName, string baseRoute, IEnumerable<MethodInfo> actions)
     {
-        // 获取 CRUD 操作对应的路由
-        var getListRoute = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any())?.GetCustomAttribute<HttpGetAttribute>()?.Template ?? "";
-        var createRoute = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPostAttribute>().Any())?.GetCustomAttribute<HttpPostAttribute>()?.Template ?? "";
-        var updateRoute = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPutAttribute>().Any())?.GetCustomAttribute<HttpPutAttribute>()?.Template ?? "";
-        var deleteRoute = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpDeleteAttribute>().Any())?.GetCustomAttribute<HttpDeleteAttribute>()?.Template ?? "";
+        // 获取 CRUD 操作对应的路由模板
+        var getListRouteTemplate = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any())?.GetCustomAttribute<HttpGetAttribute>()?.Template ?? "";
+        var createRouteTemplate = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPostAttribute>().Any())?.GetCustomAttribute<HttpPostAttribute>()?.Template ?? "";
+        var updateRouteTemplate = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPutAttribute>().Any())?.GetCustomAttribute<HttpPutAttribute>()?.Template ?? "";
+        var deleteRouteTemplate = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpDeleteAttribute>().Any())?.GetCustomAttribute<HttpDeleteAttribute>()?.Template ?? "";
 
         // 构建完整的 API 路径
-        getListRoute = CombineRoutes(baseRoute, getListRoute);
-        createRoute = CombineRoutes(baseRoute, createRoute);
-        updateRoute = CombineRoutes(baseRoute, updateRoute);
-        deleteRoute = CombineRoutes(baseRoute, deleteRoute);
+        var getListRoute = BuildAbsoluteUrl(CombineRoutes(baseRoute, getListRouteTemplate));
+        var createRoute = BuildAbsoluteUrl(CombineRoutes(baseRoute, createRouteTemplate));
+        var updateRoute = BuildAbsoluteUrl(CombineRoutes(baseRoute, updateRouteTemplate));
+        var deleteRoute = BuildAbsoluteUrl(CombineRoutes(baseRoute, deleteRouteTemplate));
 
         // 获取返回类型以生成表格列和表单字段
         var getListAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any());
@@ -91,7 +95,7 @@ public class AmisGenerator
         if (dataType == null)
             return null;
 
-        var columns = GetAmisColumns(dataType, controllerName);
+        var columns = GetAmisColumns(dataType, controllerName, updateRoute, deleteRoute);
         var searchFields = GetAmisSearchFields(getListAction);
 
         var crud = new JObject
@@ -117,18 +121,30 @@ public class AmisGenerator
             },
             ["updateApi"] = new JObject
             {
-                ["url"] = $"{updateRoute}/$id",
+                ["url"] = updateRoute + "/$id",
                 ["method"] = "put"
             },
             ["deleteApi"] = new JObject
             {
-                ["url"] = $"{deleteRoute}/$id",
+                ["url"] = deleteRoute + "/$id",
                 ["method"] = "delete"
             },
             ["title"] = $"{controllerName} 管理"
         };
 
         return crud;
+    }
+
+    private string BuildAbsoluteUrl(string relativePath)
+    {
+        var request = _httpContextAccessor.HttpContext?.Request;
+        if (request == null)
+            return relativePath; // 如果没有请求上下文，则返回相对路径
+
+        var host = request.Host.Value; // 例如 "localhost:5000"
+        var scheme = request.Scheme; // "http" 或 "https"
+
+        return $"{scheme}://{host}/{relativePath.TrimStart('/')}";
     }
 
     private string CombineRoutes(string baseRoute, string template)
@@ -189,7 +205,7 @@ public class AmisGenerator
         return type;
     }
 
-    private List<JObject> GetAmisColumns(Type dataType, string controllerName)
+    private List<JObject> GetAmisColumns(Type dataType, string controllerName, string updateRoute, string deleteRoute)
     {
         var properties = dataType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
         var columns = new List<JObject>();
@@ -222,16 +238,19 @@ public class AmisGenerator
                 column["type"] = "text";
             }
 
-            // 添加操作列
+            // 识别主键
             if (prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
             {
-                // 假设 "Id" 是主键，用于编辑和删除
                 column["type"] = "text"; // 保持为文本显示
             }
 
             columns.Add(column);
         }
 
+
+        // 编辑按钮权限
+        //if (_permissionService.HasPermission($"{controllerName}Edit"))
+        //{ }
         // 添加操作列
         var operations = new JObject
         {
@@ -252,7 +271,7 @@ public class AmisGenerator
                             ["type"] = "form",
                             ["api"] = new JObject
                             {
-                                ["url"] = $"/api/{controllerName.ToLower()}/amis.json/$id",
+                                ["url"] = $"{updateRoute}/$id",
                                 ["method"] = "put"
                             },
                             ["body"] = new JArray(GetAmisFormFields(dataType))
@@ -267,14 +286,18 @@ public class AmisGenerator
                     ["confirmText"] = "确定要删除吗？",
                     ["api"] = new JObject
                     {
-                        ["url"] = $"/api/{controllerName.ToLower()}/amis.json/$id",
+                        ["url"] = $"{deleteRoute}/$id",
                         ["method"] = "delete"
                     }
                 }
             }
         };
 
-        columns.Add(operations);
+        // 只有存在按钮时才添加操作列
+        if (operations["buttons"].HasValues)
+        {
+            columns.Add(operations);
+        }
 
         return columns;
     }
@@ -384,9 +407,59 @@ public class AmisGenerator
                 }).ToArray();
                 field["options"] = new JArray(enumOptions);
             }
+            //else if (prop.PropertyType.IsClass && prop.PropertyType != typeof(string))
+            //{
+            //    // 假设这是一个关联实体，生成级联选择器
+            //    field["type"] = "cascader";
+            //    // 添加相关配置，例如数据源 API
+            //    field["source"] = $"https://yourdomain.com/api/{prop.PropertyType.Name.ToLower()}/options";
+            //}
             else
             {
                 field["type"] = "input-text";
+            }
+
+            // 表单验证
+            var validationRules = new JObject();
+
+            var requiredAttr = prop.GetCustomAttribute<RequiredAttribute>();
+            if (requiredAttr != null)
+            {
+                field["required"] = true;
+                validationRules["required"] = true;
+            }
+
+            var stringLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>();
+            if (stringLengthAttr != null)
+            {
+                if (stringLengthAttr.MinimumLength > 0)
+                {
+                    validationRules["minLength"] = stringLengthAttr.MinimumLength;
+                }
+                if (stringLengthAttr.MaximumLength > 0)
+                {
+                    validationRules["maxLength"] = stringLengthAttr.MaximumLength;
+                }
+            }
+
+            var rangeAttr = prop.GetCustomAttribute<RangeAttribute>();
+            if (rangeAttr != null)
+            {
+                if (rangeAttr.Minimum != null)
+                {
+                    validationRules["min"] = Convert.ToDouble(rangeAttr.Minimum);
+                }
+                if (rangeAttr.Maximum != null)
+                {
+                    validationRules["max"] = Convert.ToDouble(rangeAttr.Maximum);
+                }
+            }
+
+            // 其他验证属性可以在此添加
+
+            if (validationRules.HasValues)
+            {
+                field["validate"] = validationRules;
             }
 
             formFields.Add(field);

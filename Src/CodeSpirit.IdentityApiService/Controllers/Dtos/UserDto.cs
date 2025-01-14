@@ -1,8 +1,11 @@
 ﻿using CodeSpirit.IdentityApi.Data.Models;
+using System.ComponentModel;
 
 public class UserDto
 {
     public string Id { get; set; }
+
+    [DisplayName("姓名")]
     public string Name { get; set; }
 
     public string Email { get; set; }

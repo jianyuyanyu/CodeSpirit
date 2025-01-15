@@ -16,10 +16,19 @@ public class CreateUserDto
 
     [MaxLength(255)]
     [DataType(DataType.ImageUrl)]
+    [AmisInputImageField(
+        Label = "头像",
+        UploadUrl = "/api/upload/avatar",
+        Accept = "image/png,image/jpeg",
+        MaxSize = 1048576, // 1MB
+        Multiple = false,
+        Required = true,
+        Placeholder = "请上传您的头像"
+    )]
     public string AvatarUrl { get; set; }
 
     [Required]
-    [EmailAddress]
+    [DataType(DataType.EmailAddress)]
     public string Email { get; set; }
 
     [DisplayName("分配角色")]

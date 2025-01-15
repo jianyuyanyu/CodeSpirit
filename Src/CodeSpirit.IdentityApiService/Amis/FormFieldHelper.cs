@@ -7,7 +7,6 @@ using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json.Linq;
 using CodeSpirit.IdentityApi.Amis.Attributes;
 using CodeSpirit.IdentityApi.Authorization;
-using AutoMapper.Execution;
 
 namespace CodeSpirit.IdentityApi.Amis.Helpers
 {
@@ -47,6 +46,14 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 // 检查当前用户是否有权限编辑该参数
                 if (!HasEditPermission(param))
                     continue;
+
+                // 获取自定义的 AmisInputImageFieldAttribute
+                var inputImageAttr = param.GetCustomAttribute<AmisInputImageFieldAttribute>();
+                if (inputImageAttr != null)
+                {
+                    fields.Add(CreateAmisInputImageFormFieldFromAttribute(param.Member, inputImageAttr));
+                    continue;
+                }
 
                 // 获取自定义的 AmisSelectFieldAttribute
                 var selectAmisAttr = param.GetCustomAttribute<AmisSelectFieldAttribute>();
@@ -88,6 +95,14 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                         // 检查当前用户是否有权限编辑该属性
                         if (!HasEditPermission(prop))
                             continue;
+
+                        // 获取自定义的 AmisInputImageFieldAttribute
+                        var nestedInputImageAttr = prop.GetCustomAttribute<AmisInputImageFieldAttribute>();
+                        if (nestedInputImageAttr != null)
+                        {
+                            fields.Add(CreateAmisInputImageFormFieldFromAttribute(prop, nestedInputImageAttr, parentName: param.Name));
+                            continue;
+                        }
 
                         // 获取自定义的 AmisSelectFieldAttribute
                         var nestedSelectAmisAttr = prop.GetCustomAttribute<AmisSelectFieldAttribute>();
@@ -223,7 +238,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             // 获取显示名称，优先使用 DisplayNameAttribute
             var displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
             // 转换为 camelCase，并包含父级名称（如嵌套对象）
-            var fieldName = parentName != null ? _utilityHelper.ToCamelCase($"{parentName}.{prop.Name}") : _utilityHelper.ToCamelCase(prop.Name);
+            var fieldName = parentName != null ? _utilityHelper.ToCamelCase($"{prop.Name}") : _utilityHelper.ToCamelCase(prop.Name);
             // 判断是否为必填字段
             var isRequired = !_utilityHelper.IsNullable(prop.PropertyType) || prop.GetCustomAttribute<RequiredAttribute>() != null;
 
@@ -458,7 +473,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 field["type"] = "avatar";
                 field["src"] = $"${{{field["name"]}}}"; // 设置头像来源字段
                 field["altText"] = field["label"];
-                field["className"] = "avatar-field"; // 可选：添加自定义样式类
+                //field["className"] = "avatar-field"; // 可选：添加自定义样式类
             }
         }
 
@@ -520,6 +535,54 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 try
                 {
                     var additionalConfig = JObject.Parse(amisAttr.AdditionalConfig);
+                    foreach (var prop in additionalConfig.Properties())
+                    {
+                        field[prop.Name] = prop.Value;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // 处理 JSON 解析错误（可记录日志或抛出异常）
+                    throw new ArgumentException($"Invalid AdditionalConfig JSON: {ex.Message}");
+                }
+            }
+
+            return field;
+        }
+
+        /// <summary>
+        /// 创建 AMIS 表单的 InputImage 类型字段配置，基于自定义的 AmisInputImageFieldAttribute。
+        /// </summary>
+        /// <param name="member">参数或属性的信息。</param>
+        /// <param name="inputImageAttr">AmisInputImageFieldAttribute 的实例。</param>
+        /// <param name="parentName">父级参数名称，用于嵌套对象。</param>
+        /// <returns>AMIS 表单 InputImage 字段的 JSON 对象。</returns>
+        private JObject CreateAmisInputImageFormFieldFromAttribute(MemberInfo member, AmisInputImageFieldAttribute inputImageAttr, string parentName = null)
+        {
+            // 获取显示名称，优先使用 DisplayNameAttribute
+            var displayName = member.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(member.Name);
+            // 转换为 camelCase，并包含父级名称（如嵌套对象）
+            var fieldName = parentName != null ? _utilityHelper.ToCamelCase($"{parentName}.{member.Name}") : _utilityHelper.ToCamelCase(member.Name);
+
+            var field = new JObject
+            {
+                ["name"] = fieldName,
+                ["label"] = inputImageAttr.Label ?? displayName,
+                ["type"] = inputImageAttr.Type,
+                ["uploadUrl"] = inputImageAttr.UploadUrl,
+                ["accept"] = inputImageAttr.Accept,
+                ["maxSize"] = inputImageAttr.MaxSize,
+                ["multiple"] = inputImageAttr.Multiple,
+                ["required"] = inputImageAttr.Required,
+                ["placeholder"] = inputImageAttr.Placeholder
+            };
+
+            // 处理额外的自定义配置
+            if (!string.IsNullOrEmpty(inputImageAttr.AdditionalConfig))
+            {
+                try
+                {
+                    var additionalConfig = JObject.Parse(inputImageAttr.AdditionalConfig);
                     foreach (var prop in additionalConfig.Properties())
                     {
                         field[prop.Name] = prop.Value;

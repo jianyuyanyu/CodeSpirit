@@ -11,8 +11,10 @@ using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using System.Globalization;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,7 +23,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 // Add services to the container.
-builder.Services.AddProblemDetails();
+//builder.Services.AddProblemDetails();
 
 // 添加数据库上下文和 Identity 服务
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -145,6 +147,32 @@ builder.Services.AddControllers(options =>
     // 可选：在此处配置 Newtonsoft.Json 的设置
     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
     options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore;
+})
+.ConfigureApiBehaviorOptions(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        // 提取验证错误
+        var errors = context.ModelState
+            .Where(ms => ms.Value.Errors.Count > 0)
+            .ToDictionary(
+                kvp => ToCamelCase(kvp.Key),
+                kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).FirstOrDefault()
+            );
+
+        // 构建 Amis 期望的响应格式
+        var amisResponse = new
+        {
+            msg = "验证错误，请检查输入项！",
+            status = 422,
+            errors = errors,
+        };
+
+        return new BadRequestObjectResult(amisResponse)
+        {
+            ContentTypes = { "application/json" }
+        };
+    };
 });
 
 var app = builder.Build();
@@ -189,3 +217,16 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+/// <summary>
+/// 将字符串转换为驼峰命名法（首字母小写）
+/// </summary>
+/// <param name="input">输入字符串</param>
+/// <returns>首字母小写的字符串</returns>
+static string ToCamelCase(string input)
+{
+    if (string.IsNullOrEmpty(input) || char.IsLower(input[0]))
+        return input;
+
+    return char.ToLower(input[0], CultureInfo.InvariantCulture) + input.Substring(1);
+}

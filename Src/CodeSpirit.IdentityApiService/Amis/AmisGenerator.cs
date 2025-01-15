@@ -17,7 +17,7 @@ namespace CodeSpirit.IdentityApi.Amis
     /// <summary>
     /// 用于生成 AMIS（阿里云前端框架）所需的 JSON 配置的生成器类。
     /// </summary>
-    public class AmisGenerator
+    public partial class AmisGenerator
     {
         private readonly Assembly _assembly;
         private readonly IHttpContextAccessor _httpContextAccessor;
@@ -248,29 +248,6 @@ namespace CodeSpirit.IdentityApi.Amis
                    method.Name.StartsWith("Remove", StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// 包含 CRUD 操作方法的信息的类。
-        /// </summary>
-        private class CrudActions
-        {
-            public MethodInfo Create { get; set; }
-            public MethodInfo Read { get; set; }
-            public MethodInfo Update { get; set; }
-            public MethodInfo Delete { get; set; }
-
-            /// <summary>
-            /// 获取所有 CRUD 操作的方法集合。
-            /// </summary>
-            /// <returns>CRUD 操作的方法集合。</returns>
-            public IEnumerable<MethodInfo> GetAllMethods()
-            {
-                if (Create != null) yield return Create;
-                if (Read != null) yield return Read;
-                if (Update != null) yield return Update;
-                if (Delete != null) yield return Delete;
-            }
-        }
-
         #endregion
 
         #region AMIS CRUD 配置生成
@@ -303,12 +280,6 @@ namespace CodeSpirit.IdentityApi.Amis
                     ["method"] = "get"
                 },
                 ["columns"] = new JArray(columns),
-                ["autoGenerateFilter"] = new JObject
-                {
-                    ["columnsNum"] = 2,
-                    ["showBtnToolbar"] = false,
-                    ["defaultCollapsed"] = false
-                },
                 ["createApi"] = new JObject
                 {
                     ["url"] = apiRoutes.CreateRoute,
@@ -324,7 +295,7 @@ namespace CodeSpirit.IdentityApi.Amis
                     ["url"] = apiRoutes.DeleteRoute,
                     ["method"] = "delete"
                 },
-                ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",
+                //["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",
                 ["headerToolbar"] = new JArray
                 {
                     CreateHeaderButton(apiRoutes.CreateRoute, actions.Create?.GetParameters())
@@ -341,7 +312,15 @@ namespace CodeSpirit.IdentityApi.Amis
                 };
             }
 
-            return crud;
+            // 创建 Page 组件并将 CRUD 组件作为其子组件
+            var page = new JObject
+            {
+                ["type"] = "page",
+                ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",
+                ["body"] = crud
+            };
+
+            return page;
         }
 
         /// <summary>
@@ -1070,7 +1049,8 @@ namespace CodeSpirit.IdentityApi.Amis
         private JObject CreateAmisFormFieldFromProperty(PropertyInfo prop, string parentName)
         {
             var label = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? ToTitleCase(prop.Name);
-            var fieldName = ToCamelCase($"{parentName}.{prop.Name}");
+            //var fieldName = ToCamelCase($"{parentName}.{prop.Name}");
+            var fieldName = ToCamelCase($"{prop.Name}");
             var isRequired = !IsNullable(prop);
 
             var field = new JObject
@@ -1218,13 +1198,6 @@ namespace CodeSpirit.IdentityApi.Amis
         private void AddValidationRules(PropertyInfo prop, JObject field)
         {
             var validationRules = new JObject();
-
-            // 检查是否为必填字段
-            if (prop.GetCustomAttribute<RequiredAttribute>() != null)
-            {
-                field["required"] = true;
-                validationRules["required"] = true;
-            }
 
             // 检查字符串长度限制
             var stringLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>();

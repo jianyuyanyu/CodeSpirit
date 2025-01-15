@@ -25,6 +25,24 @@ namespace CodeSpirit.IdentityApi.Amis
         private readonly IMemoryCache _cache;
 
         /// <summary>
+        /// 定义排除的分页和排序参数名称列表。
+        /// </summary>
+        private static readonly HashSet<string> ExcludedQueryParameters = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "page",
+            "pageSize",
+            "limit",
+            "offset",
+            "perPage",
+            "sort",
+            "order",
+            "orderBy",
+            "orderDir",
+            "sortBy",
+            "sortOrder"
+        };
+
+        /// <summary>
         /// 构造函数，初始化依赖项。
         /// </summary>
         /// <param name="assembly">包含控制器的程序集。</param>
@@ -46,33 +64,25 @@ namespace CodeSpirit.IdentityApi.Amis
         /// <returns>AMIS 定义的 JSON 对象，如果控制器不存在或不支持则返回 null。</returns>
         public JObject GenerateAmisJsonForController(string controllerName)
         {
-            // 生成缓存键以尝试从缓存中获取已生成的 AMIS JSON
             var cacheKey = GenerateCacheKey(controllerName);
             if (_cache.TryGetValue(cacheKey, out JObject cachedAmisJson))
             {
                 return cachedAmisJson;
             }
 
-            // 获取控制器类型
             var controllerType = GetControllerType(controllerName);
             if (controllerType == null)
                 return null;
 
-            // 检查控制器是否包含 CRUD 操作，并获取相关方法
             if (!HasCrudActions(controllerType, out var actions))
                 return null;
 
-            // 获取控制器的基本路由
-            var baseRoute = GetRoute(controllerType);
-            // 生成 AMIS CRUD 配置
-            var crudConfig = GenerateAmisCrudConfig(controllerName, baseRoute, controllerType, actions);
+            var crudConfig = GenerateAmisCrudConfig(controllerName, controllerType, actions);
             if (crudConfig != null)
             {
-                // 设置缓存选项，例如缓存 30 分钟
                 var cacheEntryOptions = new MemoryCacheEntryOptions()
                     .SetSlidingExpiration(TimeSpan.FromMinutes(30));
 
-                // 将生成的 AMIS JSON 缓存起来
                 _cache.Set(cacheKey, crudConfig, cacheEntryOptions);
             }
 
@@ -138,10 +148,6 @@ namespace CodeSpirit.IdentityApi.Amis
                 && type.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase);
         }
 
-        #endregion
-
-        #region 路由和操作
-
         /// <summary>
         /// 获取控制器的基本路由。
         /// </summary>
@@ -163,71 +169,137 @@ namespace CodeSpirit.IdentityApi.Amis
             return controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
         }
 
+        #endregion
+
+        #region CRUD 操作检查
+
         /// <summary>
         /// 检查控制器是否包含所有 CRUD 操作，并获取这些操作的方法信息。
+        /// 优先根据命名约定提取 CRUD 操作。
         /// </summary>
         /// <param name="controller">控制器的 Type 对象。</param>
         /// <param name="actions">输出参数，包含 CRUD 操作的方法信息。</param>
         /// <returns>如果包含所有 CRUD 操作则返回 true，否则返回 false。</returns>
-        private bool HasCrudActions(Type controller, out IEnumerable<MethodInfo> actions)
+        private bool HasCrudActions(Type controller, out CrudActions actions)
         {
-            actions = GetControllerActions(controller);
-            var httpMethods = actions.SelectMany(a => a.GetCustomAttributes<HttpMethodAttribute>()
-                                                         .SelectMany(attr => attr.HttpMethods));
-            return httpMethods.Contains("GET") && httpMethods.Contains("POST") &&
-                   httpMethods.Contains("PUT") && httpMethods.Contains("DELETE");
+            actions = new CrudActions();
+
+            var methods = GetControllerMethods(controller);
+
+            // 根据命名约定提取 CRUD 操作
+            actions.Create = methods.FirstOrDefault(m => IsCreateMethod(m));
+            actions.Read = methods.FirstOrDefault(m => IsReadMethod(m));
+            actions.Update = methods.FirstOrDefault(m => IsUpdateMethod(m));
+            actions.Delete = methods.FirstOrDefault(m => IsDeleteMethod(m));
+
+            return actions.Create != null && actions.Read != null && actions.Update != null && actions.Delete != null;
         }
 
         /// <summary>
-        /// 获取控制器中所有具有 HTTP 方法特性的公开实例方法。
+        /// 获取控制器中所有公开的实例方法，排除继承的方法。
         /// </summary>
         /// <param name="controller">控制器的 Type 对象。</param>
         /// <returns>方法信息的集合。</returns>
-        private IEnumerable<MethodInfo> GetControllerActions(Type controller)
+        private IEnumerable<MethodInfo> GetControllerMethods(Type controller)
         {
-            return controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-                            .Where(m => m.GetCustomAttributes<HttpMethodAttribute>().Any());
+            return controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+        }
+
+        /// <summary>
+        /// 判断方法是否为 Create 操作，根据命名约定（以 "Create" 或 "Add" 开头）。
+        /// </summary>
+        /// <param name="method">方法的信息。</param>
+        /// <returns>如果是 Create 操作则返回 true，否则返回 false。</returns>
+        private bool IsCreateMethod(MethodInfo method)
+        {
+            return method.Name.StartsWith("Create", StringComparison.OrdinalIgnoreCase) ||
+                   method.Name.StartsWith("Add", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 判断方法是否为 Read 操作，根据命名约定（以 "Get" 开头）。
+        /// </summary>
+        /// <param name="method">方法的信息。</param>
+        /// <returns>如果是 Read 操作则返回 true，否则返回 false。</returns>
+        private bool IsReadMethod(MethodInfo method)
+        {
+            return method.Name.StartsWith("Get", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 判断方法是否为 Update 操作，根据命名约定（以 "Update" 或 "Modify" 开头）。
+        /// </summary>
+        /// <param name="method">方法的信息。</param>
+        /// <returns>如果是 Update 操作则返回 true，否则返回 false。</returns>
+        private bool IsUpdateMethod(MethodInfo method)
+        {
+            return method.Name.StartsWith("Update", StringComparison.OrdinalIgnoreCase) ||
+                   method.Name.StartsWith("Modify", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 判断方法是否为 Delete 操作，根据命名约定（以 "Delete" 或 "Remove" 开头）。
+        /// </summary>
+        /// <param name="method">方法的信息。</param>
+        /// <returns>如果是 Delete 操作则返回 true，否则返回 false。</returns>
+        private bool IsDeleteMethod(MethodInfo method)
+        {
+            return method.Name.StartsWith("Delete", StringComparison.OrdinalIgnoreCase) ||
+                   method.Name.StartsWith("Remove", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 包含 CRUD 操作方法的信息的类。
+        /// </summary>
+        private class CrudActions
+        {
+            public MethodInfo Create { get; set; }
+            public MethodInfo Read { get; set; }
+            public MethodInfo Update { get; set; }
+            public MethodInfo Delete { get; set; }
+
+            /// <summary>
+            /// 获取所有 CRUD 操作的方法集合。
+            /// </summary>
+            /// <returns>CRUD 操作的方法集合。</returns>
+            public IEnumerable<MethodInfo> GetAllMethods()
+            {
+                if (Create != null) yield return Create;
+                if (Read != null) yield return Read;
+                if (Update != null) yield return Update;
+                if (Delete != null) yield return Delete;
+            }
         }
 
         #endregion
 
-        #region AMIS CRUD 配置
+        #region AMIS CRUD 配置生成
 
         /// <summary>
         /// 生成 AMIS CRUD 配置的 JSON 对象。
         /// </summary>
         /// <param name="controllerName">控制器名称。</param>
-        /// <param name="baseRoute">控制器的基本路由。</param>
         /// <param name="controllerType">控制器的 Type 对象。</param>
         /// <param name="actions">控制器的 CRUD 操作方法信息。</param>
         /// <returns>AMIS CRUD 配置的 JSON 对象，如果生成失败则返回 null。</returns>
-        private JObject GenerateAmisCrudConfig(string controllerName, string baseRoute, Type controllerType, IEnumerable<MethodInfo> actions)
+        private JObject GenerateAmisCrudConfig(string controllerName, Type controllerType, CrudActions actions)
         {
-            // 获取 CRUD 操作对应的路由
+            var baseRoute = GetRoute(controllerType);
             var apiRoutes = GetApiRoutes(baseRoute, actions);
-
-            // 获取 CRUD 操作返回的数据类型
-            var dataType = GetDataTypeFromAction(actions);
+            var dataType = GetDataTypeFromAction(actions.Read);
             if (dataType == null)
                 return null;
 
-            // 生成 AMIS 表格列配置
             var columns = GetAmisColumns(dataType, controllerName, apiRoutes);
-            // 生成 AMIS 搜索字段配置
-            var searchFields = GetAmisSearchFields(actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any()));
+            var searchFields = GetAmisSearchFields(actions.Read);
 
-            // 获取 Create and Update action methods
-            var createAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPostAttribute>().Any());
-            var updateAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPutAttribute>().Any());
-
-            // 构建 CRUD 配置的 JSON 对象
             var crud = new JObject
             {
                 ["type"] = "crud",
                 ["name"] = $"{controllerName.ToLower()}Crud",
                 ["api"] = new JObject
                 {
-                    ["url"] = apiRoutes.GetListRoute,
+                    ["url"] = apiRoutes.ReadRoute,
                     ["method"] = "get"
                 },
                 ["columns"] = new JArray(columns),
@@ -255,14 +327,11 @@ namespace CodeSpirit.IdentityApi.Amis
                 ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",
                 ["headerToolbar"] = new JArray
                 {
-                    CreateHeaderButton(apiRoutes.CreateRoute, createAction?.GetParameters())
+                    CreateHeaderButton(apiRoutes.CreateRoute, actions.Create?.GetParameters())
                 }
             };
 
-            // 可选：添加自定义操作按钮
-            // crud["actions"] = new JArray(GetCustomOperationsButtons(controllerName, dataType, apiRoutes.UpdateRoute, apiRoutes.DeleteRoute));
-
-            // Add search fields if needed
+            // 添加搜索字段（如果有）
             if (searchFields.Any())
             {
                 crud["filter"] = new JObject
@@ -281,26 +350,18 @@ namespace CodeSpirit.IdentityApi.Amis
         /// <param name="baseRoute">控制器的基本路由。</param>
         /// <param name="actions">控制器的 CRUD 操作方法信息。</param>
         /// <returns>包含各 CRUD 操作路由的元组。</returns>
-        private (string GetListRoute, string CreateRoute, string UpdateRoute, string DeleteRoute) GetApiRoutes(string baseRoute, IEnumerable<MethodInfo> actions)
+        private (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) GetApiRoutes(string baseRoute, CrudActions actions)
         {
-            // 内部函数，用于组合和生成完整的 API 路由
             string Combine(string template) => BuildAbsoluteUrl(CombineRoutes(baseRoute, template));
 
-            // 查找各 CRUD 操作的方法
-            var getListAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any());
-            var createAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPostAttribute>().Any());
-            var updateAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpPutAttribute>().Any());
-            var deleteAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpDeleteAttribute>().Any());
-
-            // 获取各 CRUD 操作的路由模板，并组合成完整的 API 路由
-            var getListRouteTemplate = GetRouteTemplate(getListAction, "GET");
-            var createRouteTemplate = GetRouteTemplate(createAction, "POST");
-            var updateRouteTemplate = GetRouteTemplate(updateAction, "PUT");
-            var deleteRouteTemplate = GetRouteTemplate(deleteAction, "DELETE");
+            var createRouteTemplate = GetRouteTemplate(actions.Create, "POST");
+            var readRouteTemplate = GetRouteTemplate(actions.Read, "GET");
+            var updateRouteTemplate = GetRouteTemplate(actions.Update, "PUT");
+            var deleteRouteTemplate = GetRouteTemplate(actions.Delete, "DELETE");
 
             return (
-                Combine(getListRouteTemplate),
                 Combine(createRouteTemplate),
+                Combine(readRouteTemplate),
                 Combine(updateRouteTemplate),
                 Combine(deleteRouteTemplate)
             );
@@ -324,88 +385,16 @@ namespace CodeSpirit.IdentityApi.Amis
         }
 
         /// <summary>
-        /// 创建 AMIS 表头的“新增”按钮配置。
-        /// </summary>
-        /// <param name="createRoute">新增操作的 API 路由。</param>
-        /// <param name="createParameters">新增操作的方法参数。</param>
-        /// <returns>AMIS 按钮的 JSON 对象。</returns>
-        private JObject CreateHeaderButton(string createRoute, IEnumerable<ParameterInfo> createParameters)
-        {
-            return new JObject
-            {
-                ["type"] = "button",
-                ["label"] = "新增",
-                ["level"] = "primary",
-                ["actionType"] = "dialog",
-                ["dialog"] = new JObject
-                {
-                    ["title"] = "新增",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "form",
-                        ["api"] = new JObject
-                        {
-                            ["url"] = createRoute,
-                            ["method"] = "post"
-                        },
-                        ["body"] = new JArray(GetAmisFormFieldsFromParameters(createParameters))
-                    }
-                }
-            };
-        }
-
-        #endregion
-
-        #region API 路由助手
-
-        /// <summary>
-        /// 构建完整的绝对 URL。
-        /// </summary>
-        /// <param name="relativePath">相对路径。</param>
-        /// <returns>完整的绝对 URL。</returns>
-        private string BuildAbsoluteUrl(string relativePath)
-        {
-            var request = _httpContextAccessor.HttpContext?.Request;
-            if (request == null)
-                return relativePath; // 如果没有请求上下文，则返回相对路径
-
-            var host = request.Host.Value; // 例如 "localhost:5000"
-            var scheme = request.Scheme; // "http" 或 "https"
-
-            return $"{scheme}://{host}/{relativePath.TrimStart('/')}";
-        }
-
-        /// <summary>
-        /// 组合基础路由和模板路由，处理占位符。
-        /// </summary>
-        /// <param name="baseRoute">基础路由。</param>
-        /// <param name="template">模板路由。</param>
-        /// <returns>组合后的路由。</returns>
-        private string CombineRoutes(string baseRoute, string template)
-        {
-            template = template?.Replace("{id}", "${id}") ?? string.Empty;
-            if (string.IsNullOrEmpty(template))
-                return baseRoute;
-
-            return $"{baseRoute}/{template}".Replace("//", "/");
-        }
-
-        #endregion
-
-        #region 数据类型提取
-
-        /// <summary>
         /// 从控制器操作方法中提取数据类型。
         /// </summary>
-        /// <param name="actions">控制器的 CRUD 操作方法信息。</param>
+        /// <param name="readMethod">读取数据的控制器方法信息。</param>
         /// <returns>数据类型的 Type 对象，如果提取失败则返回 null。</returns>
-        private Type GetDataTypeFromAction(IEnumerable<MethodInfo> actions)
+        private Type GetDataTypeFromAction(MethodInfo readMethod)
         {
-            var getListAction = actions.FirstOrDefault(a => a.GetCustomAttributes<HttpGetAttribute>().Any());
-            if (getListAction == null)
+            if (readMethod == null)
                 return null;
 
-            var returnType = getListAction.ReturnType;
+            var returnType = readMethod.ReturnType;
             return ExtractDataType(GetUnderlyingType(returnType));
         }
 
@@ -477,7 +466,7 @@ namespace CodeSpirit.IdentityApi.Amis
         /// <param name="controllerName">控制器名称。</param>
         /// <param name="apiRoutes">包含 CRUD 操作路由的元组。</param>
         /// <returns>AMIS 表格列的列表。</returns>
-        private List<JObject> GetAmisColumns(Type dataType, string controllerName, (string GetListRoute, string CreateRoute, string UpdateRoute, string DeleteRoute) apiRoutes)
+        private List<JObject> GetAmisColumns(Type dataType, string controllerName, (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) apiRoutes)
         {
             var properties = dataType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
             var columns = properties
@@ -507,17 +496,7 @@ namespace CodeSpirit.IdentityApi.Amis
         }
 
         /// <summary>
-        /// 判断参数是否应被忽略（例如 Id 参数）。
-        /// </summary>
-        /// <param name="param">参数的信息。</param>
-        /// <returns>如果应忽略则返回 true，否则返回 false。</returns>
-        private bool IsIgnoredParameter(ParameterInfo param)
-        {
-            return param.Name.Equals("Id", StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// 检查当前用户是否有权限查看该属性。
+        /// 判断当前用户是否有权限查看该属性。
         /// </summary>
         /// <param name="prop">属性的信息。</param>
         /// <returns>如果有权限则返回 true，否则返回 false。</returns>
@@ -579,6 +558,45 @@ namespace CodeSpirit.IdentityApi.Amis
             return prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase);
         }
 
+        #endregion
+
+        #region AMIS CRUD 配置生成
+
+        /// <summary>
+        /// 创建 AMIS 表头的“新增”按钮配置。
+        /// </summary>
+        /// <param name="createRoute">新增操作的 API 路由。</param>
+        /// <param name="createParameters">新增操作的方法参数。</param>
+        /// <returns>AMIS 按钮的 JSON 对象。</returns>
+        private JObject CreateHeaderButton(string createRoute, IEnumerable<ParameterInfo> createParameters)
+        {
+            return new JObject
+            {
+                ["type"] = "button",
+                ["label"] = "新增",
+                ["level"] = "primary",
+                ["actionType"] = "dialog",
+                ["dialog"] = new JObject
+                {
+                    ["title"] = "新增",
+                    ["body"] = new JObject
+                    {
+                        ["type"] = "form",
+                        ["api"] = new JObject
+                        {
+                            ["url"] = createRoute,
+                            ["method"] = "post"
+                        },
+                        ["body"] = new JArray(GetAmisFormFieldsFromParameters(createParameters))
+                    }
+                }
+            };
+        }
+
+        #endregion
+
+        #region AMIS 操作列
+
         /// <summary>
         /// 创建 AMIS 表格的操作列，包括编辑和删除按钮。
         /// </summary>
@@ -631,10 +649,12 @@ namespace CodeSpirit.IdentityApi.Amis
         /// <returns>编辑按钮的 JSON 对象。</returns>
         private JObject CreateEditButton(string controllerName, string updateRoute, Type dataType)
         {
-            // Find the update method in the controller to get its parameters
-            var controllerType = GetControllerType(controllerName);
-            var updateMethod = controllerType?.GetMethods()
-                                             .FirstOrDefault(m => m.GetCustomAttributes<HttpPutAttribute>().Any());
+            // 查找更新方法以获取其参数
+            var updateMethod = _assembly.GetTypes()
+                .FirstOrDefault(t => t.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase))
+                ?.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                .FirstOrDefault(m => IsUpdateMethod(m));
+
             var updateParameters = updateMethod?.GetParameters() ?? Enumerable.Empty<ParameterInfo>();
 
             return new JObject
@@ -679,10 +699,6 @@ namespace CodeSpirit.IdentityApi.Amis
                 }
             };
         }
-
-        #endregion
-
-        #region 自定义操作
 
         /// <summary>
         /// 获取控制器中所有自定义操作按钮的配置。
@@ -761,18 +777,22 @@ namespace CodeSpirit.IdentityApi.Amis
         /// <summary>
         /// 生成 AMIS 表格的搜索字段配置。
         /// </summary>
-        /// <param name="getListAction">获取列表数据的控制器方法信息。</param>
+        /// <param name="readMethod">获取列表数据的控制器方法信息。</param>
         /// <returns>AMIS 搜索字段的列表。</returns>
-        private List<JObject> GetAmisSearchFields(MethodInfo getListAction)
+        private List<JObject> GetAmisSearchFields(MethodInfo readMethod)
         {
-            if (getListAction == null)
+            if (readMethod == null)
                 return new List<JObject>();
 
-            var parameters = getListAction.GetParameters();
+            var parameters = readMethod.GetParameters();
             var searchFields = new List<JObject>();
 
             foreach (var param in parameters.Where(p => p.GetCustomAttribute<FromQueryAttribute>() != null))
             {
+                // 排除分页和排序参数
+                if (IsExcludedParameter(param.Name))
+                    continue;
+
                 // 检查用户是否有权限使用该搜索字段
                 if (!HasSearchPermission(param))
                     continue;
@@ -785,20 +805,13 @@ namespace CodeSpirit.IdentityApi.Amis
         }
 
         /// <summary>
-        /// 检查当前用户是否有权限使用指定的搜索参数。
+        /// 判断参数是否应被排除（如分页和排序参数）。
         /// </summary>
         /// <param name="param">参数的信息。</param>
-        /// <returns>如果有权限则返回 true，否则返回 false。</returns>
-        private bool HasSearchPermission(ParameterInfo param)
+        /// <returns>如果应排除则返回 true，否则返回 false。</returns>
+        private bool IsExcludedParameter(string param)
         {
-            var permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
-        }
-
-        private bool HasSearchPermission(PropertyInfo param)
-        {
-            var permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+            return ExcludedQueryParameters.Contains(param, StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -819,6 +832,10 @@ namespace CodeSpirit.IdentityApi.Amis
                 var properties = param.ParameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
                 foreach (var prop in properties)
                 {
+                    // 排除分页和排序参数
+                    if (IsExcludedParameter(prop.Name))
+                        continue;
+
                     // 检查用户是否有权限使用该搜索字段
                     if (!HasSearchPermission(prop))
                         continue;
@@ -828,37 +845,6 @@ namespace CodeSpirit.IdentityApi.Amis
             }
 
             return fields;
-        }
-
-        /// <summary>
-        /// 判断类型是否为简单类型（基元类型、字符串、枚举等）。
-        /// </summary>
-        /// <param name="type">要检查的类型。</param>
-        /// <returns>如果是简单类型则返回 true，否则返回 false。</returns>
-        private bool IsSimpleType(Type type)
-        {
-            return type.IsPrimitive
-                || new Type[]
-                {
-                    typeof(string),
-                    typeof(decimal),
-                    typeof(DateTime),
-                    typeof(DateTimeOffset),
-                    typeof(TimeSpan),
-                    typeof(Guid)
-                }.Contains(type)
-                || (type.IsEnum)
-                || (Nullable.GetUnderlyingType(type) != null && IsSimpleType(Nullable.GetUnderlyingType(type)));
-        }
-
-        /// <summary>
-        /// 判断类型是否为复杂类型（类但非字符串）。
-        /// </summary>
-        /// <param name="type">要检查的类型。</param>
-        /// <returns>如果是复杂类型则返回 true，否则返回 false。</returns>
-        private bool IsComplexType(Type type)
-        {
-            return type.IsClass && type != typeof(string);
         }
 
         /// <summary>
@@ -938,7 +924,7 @@ namespace CodeSpirit.IdentityApi.Amis
             if (type == typeof(int) || type == typeof(int?))
                 return "input-number";
             if (type == typeof(bool) || type == typeof(bool?))
-                return "select";
+                return "switch";
             if (type.IsEnum || IsNullableEnum(type))
                 return "select";
             if (type == typeof(DateTime) || type == typeof(DateTime?))
@@ -948,14 +934,25 @@ namespace CodeSpirit.IdentityApi.Amis
         }
 
         /// <summary>
-        /// 判断类型是否为可空的枚举类型。
+        /// 判断当前用户是否有权限使用指定的搜索参数。
         /// </summary>
-        /// <param name="type">要检查的类型。</param>
-        /// <returns>如果是可空枚举类型则返回 true，否则返回 false。</returns>
-        private bool IsNullableEnum(Type type)
+        /// <param name="param">参数的信息。</param>
+        /// <returns>如果有权限则返回 true，否则返回 false。</returns>
+        private bool HasSearchPermission(ParameterInfo param)
         {
-            var underlying = Nullable.GetUnderlyingType(type);
-            return underlying != null && underlying.IsEnum;
+            var permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+        }
+
+        /// <summary>
+        /// 判断当前用户是否有权限使用指定的搜索属性。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果有权限则返回 true，否则返回 false。</returns>
+        private bool HasSearchPermission(PropertyInfo prop)
+        {
+            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
         }
 
         /// <summary>
@@ -977,20 +974,7 @@ namespace CodeSpirit.IdentityApi.Amis
 
         #endregion
 
-        #region AMIS 表单字段
-
-        /// <summary>
-        /// 生成 AMIS 表单的字段配置。
-        /// </summary>
-        /// <param name="dataType">数据类型的 Type 对象。</param>
-        /// <returns>AMIS 表单字段的列表。</returns>
-        private List<JObject> GetAmisFormFields(Type dataType)
-        {
-            return dataType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                           .Where(p => !IsIgnoredProperty(p) && HasEditPermission(p))
-                           .Select(p => CreateAmisFormField(p))
-                           .ToList();
-        }
+        #region AMIS 表单字段生成
 
         /// <summary>
         /// 生成 AMIS 表单的字段配置基于方法参数。
@@ -1032,18 +1016,17 @@ namespace CodeSpirit.IdentityApi.Amis
         }
 
         /// <summary>
-        /// 检查当前用户是否有权限编辑指定的属性。
+        /// 判断参数是否应被忽略（例如 Id 参数）。
         /// </summary>
-        /// <param name="prop">属性的信息。</param>
-        /// <returns>如果有权限则返回 true，否则返回 false。</returns>
-        private bool HasEditPermission(PropertyInfo prop)
+        /// <param name="param">参数的信息。</param>
+        /// <returns>如果应忽略则返回 true，否则返回 false。</returns>
+        private bool IsIgnoredParameter(ParameterInfo param)
         {
-            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+            return param.Name.Equals("Id", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
-        /// 检查当前用户是否有权限编辑指定的参数。
+        /// 判断当前用户是否有权限编辑指定的参数。
         /// </summary>
         /// <param name="param">参数的信息。</param>
         /// <returns>如果有权限则返回 true，否则返回 false。</returns>
@@ -1051,31 +1034,6 @@ namespace CodeSpirit.IdentityApi.Amis
         {
             var permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
-        }
-
-        /// <summary>
-        /// 创建单个表单字段的 AMIS 配置基于属性。
-        /// </summary>
-        /// <param name="prop">属性的信息。</param>
-        /// <returns>表单字段的 JSON 对象。</returns>
-        private JObject CreateAmisFormField(PropertyInfo prop)
-        {
-            var label = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? ToTitleCase(prop.Name);
-            var fieldName = ToCamelCase(prop.Name);
-            var isRequired = !IsNullable(prop);
-
-            var field = new JObject
-            {
-                ["name"] = fieldName,
-                ["label"] = label,
-                ["required"] = isRequired,
-                ["type"] = GetFormFieldType(prop)
-            };
-
-            // 根据属性添加验证规则
-            AddValidationRules(prop, field);
-
-            return field;
         }
 
         /// <summary>
@@ -1130,7 +1088,60 @@ namespace CodeSpirit.IdentityApi.Amis
         }
 
         /// <summary>
-        /// 根据属性类型确定表单字段的类型。
+        /// 判断当前用户是否有权限编辑指定的属性。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果有权限则返回 true，否则返回 false。</returns>
+        private bool HasEditPermission(PropertyInfo prop)
+        {
+            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+        }
+
+        /// <summary>
+        /// 判断类型是否为简单类型（基元类型、字符串、枚举等）。
+        /// </summary>
+        /// <param name="type">要检查的类型。</param>
+        /// <returns>如果是简单类型则返回 true，否则返回 false。</returns>
+        private bool IsSimpleType(Type type)
+        {
+            return type.IsPrimitive
+                || new Type[]
+                {
+                    typeof(string),
+                    typeof(decimal),
+                    typeof(DateTime),
+                    typeof(DateTimeOffset),
+                    typeof(TimeSpan),
+                    typeof(Guid)
+                }.Contains(type)
+                || type.IsEnum
+                || (Nullable.GetUnderlyingType(type) != null && IsSimpleType(Nullable.GetUnderlyingType(type)));
+        }
+
+        /// <summary>
+        /// 判断类型是否为复杂类型（类但非字符串）。
+        /// </summary>
+        /// <param name="type">要检查的类型。</param>
+        /// <returns>如果是复杂类型则返回 true，否则返回 false。</returns>
+        private bool IsComplexType(Type type)
+        {
+            return type.IsClass && type != typeof(string);
+        }
+
+        /// <summary>
+        /// 判断类型是否为可空的枚举类型。
+        /// </summary>
+        /// <param name="type">要检查的类型。</param>
+        /// <returns>如果是可空枚举类型则返回 true，否则返回 false。</returns>
+        private bool IsNullableEnum(Type type)
+        {
+            var underlying = Nullable.GetUnderlyingType(type);
+            return underlying != null && underlying.IsEnum;
+        }
+
+        /// <summary>
+        /// 确定表单字段的类型，根据属性的类型进行映射。
         /// </summary>
         /// <param name="prop">属性的信息。</param>
         /// <returns>AMIS 表单字段的类型字符串。</returns>
@@ -1149,7 +1160,7 @@ namespace CodeSpirit.IdentityApi.Amis
         }
 
         /// <summary>
-        /// 根据参数类型确定表单字段的类型。
+        /// 确定表单字段的类型，根据参数的类型进行映射。
         /// </summary>
         /// <param name="type">参数的类型。</param>
         /// <returns>AMIS 表单字段的类型字符串。</returns>
@@ -1328,6 +1339,42 @@ namespace CodeSpirit.IdentityApi.Amis
                 return str.ToLower();
 
             return char.ToLower(str[0]) + str.Substring(1);
+        }
+
+        #endregion
+
+        #region API 路由助手
+
+        /// <summary>
+        /// 构建完整的绝对 URL。
+        /// </summary>
+        /// <param name="relativePath">相对路径。</param>
+        /// <returns>完整的绝对 URL。</returns>
+        private string BuildAbsoluteUrl(string relativePath)
+        {
+            var request = _httpContextAccessor.HttpContext?.Request;
+            if (request == null)
+                return relativePath; // 如果没有请求上下文，则返回相对路径
+
+            var host = request.Host.Value; // 例如 "localhost:5000"
+            var scheme = request.Scheme; // "http" 或 "https"
+
+            return $"{scheme}://{host}/{relativePath.TrimStart('/')}";
+        }
+
+        /// <summary>
+        /// 组合基础路由和模板路由，处理占位符。
+        /// </summary>
+        /// <param name="baseRoute">基础路由。</param>
+        /// <param name="template">模板路由。</param>
+        /// <returns>组合后的路由。</returns>
+        private string CombineRoutes(string baseRoute, string template)
+        {
+            template = template?.Replace("{id}", "${id}") ?? string.Empty;
+            if (string.IsNullOrEmpty(template))
+                return baseRoute;
+
+            return $"{baseRoute}/{template}".Replace("//", "/");
         }
 
         #endregion

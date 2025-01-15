@@ -1,5 +1,6 @@
 ﻿// 文件路径: Controllers/Dtos/UserQueryDto.cs
 using CodeSpirit.IdentityApi.Data.Models;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
 {
@@ -11,16 +12,19 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         /// <summary>
         /// 是否激活
         /// </summary>
+        [DisplayName("是否激活")]
         public bool? IsActive { get; set; }
 
         /// <summary>
         /// 性别筛选
         /// </summary>
+        [DisplayName("性别")]
         public Gender? Gender { get; set; }
 
         /// <summary>
         /// 角色名称筛选
         /// </summary>
+        [DisplayName("角色")]
         public string? Role { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 ﻿// 文件路径: Controllers/Dtos/UserQueryDto.cs
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
@@ -8,6 +9,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         /// <summary>
         /// 关键字搜索
         /// </summary>
+        [DisplayName("关键字")]
         public string? Keywords { get; set; }
 
         /// <summary>

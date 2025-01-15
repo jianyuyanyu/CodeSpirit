@@ -58,8 +58,8 @@ namespace CodeSpirit.IdentityApi.Repositories
         public async Task<(IdentityResult Result, string UserId)> CreateUserAsync(CreateUserDto createUserDto)
         {
             var user = _mapper.Map<ApplicationUser>(createUserDto);
-
-            var result = await _userManager.CreateAsync(user, "123456");
+            var newPassword = PasswordGenerator.GenerateRandomPassword(12);
+            var result = await _userManager.CreateAsync(user, newPassword);
             if (!result.Succeeded)
                 return (result, null);
 

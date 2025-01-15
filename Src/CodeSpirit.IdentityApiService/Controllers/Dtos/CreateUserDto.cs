@@ -1,4 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Data.Models;
+﻿using CodeSpirit.IdentityApi.Amis.Attributes;
+using CodeSpirit.IdentityApi.Data.Models;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -21,9 +22,18 @@ public class CreateUserDto
     [EmailAddress]
     public string Email { get; set; }
 
-    //[Required]
-    //public string Password { get; set; }
-
+    [DisplayName("分配角色")]
+    [AmisSelectField(
+            Source = "${API_HOST}/api/Roles",
+            ValueField = "name",
+            LabelField = "name",
+            Multiple = true,
+            JoinValues = false,
+            ExtractValue = true,
+            Searchable = true,
+            Clearable = true,
+            Placeholder = "请选择角色"
+        )]
     public List<string> Roles { get; set; }
     public Gender Gender { get; set; }
     public string PhoneNumber { get; set; }

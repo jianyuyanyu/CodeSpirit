@@ -1,29 +1,53 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
-using CodeSpirit.IdentityApi.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using System.ComponentModel.DataAnnotations;
+using CodeSpirit.IdentityApi.Authorization;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Amis.Helpers
 {
+    /// <summary>
+    /// 帮助类，用于生成 AMIS 表格的列配置。
+    /// </summary>
     public class ColumnHelper
     {
         private readonly PermissionService _permissionService;
         private readonly UtilityHelper _utilityHelper;
 
+        /// <summary>
+        /// 初始化 <see cref="ColumnHelper"/> 的新实例。
+        /// </summary>
+        /// <param name="permissionService">权限服务，用于检查用户权限。</param>
+        /// <param name="utilityHelper">实用工具类，提供辅助方法。</param>
         public ColumnHelper(PermissionService permissionService, UtilityHelper utilityHelper)
         {
             _permissionService = permissionService;
             _utilityHelper = utilityHelper;
         }
 
+        /// <summary>
+        /// 生成 AMIS 表格的列配置列表。
+        /// </summary>
+        /// <param name="dataType">数据类型的 <see cref="Type"/> 对象。</param>
+        /// <param name="controllerName">控制器名称。</param>
+        /// <param name="apiRoutes">包含 CRUD 操作路由的元组。</param>
+        /// <returns>AMIS 表格列的列表。</returns>
         public List<JObject> GetAmisColumns(Type dataType, string controllerName, (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) apiRoutes)
         {
+            // 获取数据类型的所有公共实例属性
             var properties = dataType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            // 过滤出不被忽略且用户有查看权限的属性，并生成对应的 AMIS 列配置
             var columns = properties
                 .Where(p => !IsIgnoredProperty(p) && HasViewPermission(p))
                 .Select(p => CreateAmisColumn(p))
                 .ToList();
 
+            // 创建操作列（如编辑、删除按钮）
             var operations = CreateOperationsColumn(controllerName, dataType, apiRoutes.UpdateRoute, apiRoutes.DeleteRoute);
             if (operations != null)
             {
@@ -33,21 +57,38 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             return columns;
         }
 
+        /// <summary>
+        /// 判断属性是否应被忽略（例如密码字段或 Id 字段）。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果应忽略则返回 true，否则返回 false。</returns>
         private bool IsIgnoredProperty(PropertyInfo prop)
         {
             return prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase)
                 || prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// 判断当前用户是否有权限查看该属性。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果有权限则返回 true，否则返回 false。</returns>
         private bool HasViewPermission(PropertyInfo prop)
         {
             var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
         }
 
+        /// <summary>
+        /// 创建 AMIS 表格的单个列配置。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>AMIS 表格列的 JSON 对象。</returns>
         private JObject CreateAmisColumn(PropertyInfo prop)
         {
+            // 获取属性的显示名称，优先使用 DisplayNameAttribute
             var displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
+            // 将属性名称转换为 camelCase 以符合 AMIS 的命名约定
             var fieldName = _utilityHelper.ToCamelCase(prop.Name);
 
             var column = new JObject
@@ -58,16 +99,43 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 ["type"] = GetColumnType(prop)
             };
 
+            // 如果是主键，则隐藏该列
             if (IsPrimaryKey(prop))
             {
                 column["hidden"] = true;
             }
 
+            // 如果属性是枚举类型，设置选项
+            if (IsEnumProperty(prop))
+            {
+                column["type"] = "select"; // 设置列类型为下拉选择框
+                column["options"] = GetEnumOptions(prop.PropertyType); // 添加枚举选项
+            }
+
+            // 如果属性是图片或头像类型，设置为 AMIS 的 image 或 avatar 类型
+            if (IsImageField(prop))
+            {
+                column["type"] = GetImageColumnType(prop);
+                column["src"] = $"${{{fieldName}}}"; // 设置图片的来源字段
+                column["altText"] = displayName;
+                column["className"] = "image-column"; // 可选：添加自定义样式类
+            }
+
             return column;
         }
 
+        /// <summary>
+        /// 获取 AMIS 列的类型，根据属性的类型进行映射。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>AMIS 列的类型字符串。</returns>
         private string GetColumnType(PropertyInfo prop)
         {
+            if (IsEnumProperty(prop))
+            {
+                return "select";
+            }
+
             return prop.PropertyType switch
             {
                 Type t when t == typeof(bool) => "switch",
@@ -76,36 +144,157 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             };
         }
 
+        /// <summary>
+        /// 判断属性是否为枚举类型或可空枚举类型。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果是枚举类型则返回 true，否则返回 false。</returns>
+        private bool IsEnumProperty(PropertyInfo prop)
+        {
+            return prop.PropertyType.IsEnum || Nullable.GetUnderlyingType(prop.PropertyType)?.IsEnum == true;
+        }
+
+        /// <summary>
+        /// 获取枚举类型的选项列表，用于 AMIS 的下拉选择框。
+        /// </summary>
+        /// <param name="type">枚举类型或可空枚举类型。</param>
+        /// <returns>AMIS 枚举选项的 JSON 数组。</returns>
+        private JArray GetEnumOptions(Type type)
+        {
+            var enumType = Nullable.GetUnderlyingType(type) ?? type;
+            var enumValues = Enum.GetValues(enumType).Cast<object>();
+            var enumOptions = enumValues.Select(e => new JObject
+            {
+                ["label"] = GetEnumDisplayName(enumType, e),
+                ["value"] = e.ToString()
+            });
+
+            return new JArray(enumOptions);
+        }
+
+        /// <summary>
+        /// 获取枚举成员的显示名称。优先从 <see cref="DisplayNameAttribute"/> 获取，否则使用枚举成员的名称。
+        /// </summary>
+        /// <param name="enumType">枚举类型。</param>
+        /// <param name="value">枚举值。</param>
+        /// <returns>枚举成员的显示名称。</returns>
+        private string GetEnumDisplayName(Type enumType, object value)
+        {
+            var name = Enum.GetName(enumType, value);
+            if (name == null)
+                return value.ToString();
+
+            var member = enumType.GetMember(name).FirstOrDefault();
+            if (member == null)
+                return name;
+
+            var displayNameAttr = member.GetCustomAttribute<DisplayNameAttribute>();
+            return displayNameAttr?.DisplayName ?? name;
+        }
+
+        /// <summary>
+        /// 判断属性是否为主键（假设名称为 "Id"）。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果是主键则返回 true，否则返回 false。</returns>
         private bool IsPrimaryKey(PropertyInfo prop)
         {
             return prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// 判断属性是否为图片或头像字段。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果是图片或头像字段则返回 true，否则返回 false。</returns>
+        private bool IsImageField(PropertyInfo prop)
+        {
+            // 判断属性是否标注了 [DataType(DataType.ImageUrl)]
+            var dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
+            if (dataTypeAttr != null && dataTypeAttr.DataType == DataType.ImageUrl)
+            {
+                return true;
+            }
+
+            // 另外，可以根据属性名称包含 "Image" 或 "Avatar" 来判断
+            if (prop.Name.IndexOf("Image", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 获取 AMIS 图片或头像列的类型，根据属性名称或其他逻辑决定是 'image' 还是 'avatar'。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>AMIS 列的类型字符串。</returns>
+        private string GetImageColumnType(PropertyInfo prop)
+        {
+            if (prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "avatar";
+            }
+
+            return "image";
+        }
+
+        /// <summary>
+        /// 生成 AMIS 表格的列配置列表，包括操作列（如编辑、删除按钮）。
+        /// </summary>
+        /// <param name="dataType">数据类型的 <see cref="Type"/> 对象。</param>
+        /// <param name="controllerName">控制器名称。</param>
+        /// <param name="apiRoutes">包含 CRUD 操作路由的元组。</param>
+        /// <returns>AMIS 表格列的列表。</returns>
+        public List<JObject> GetAmisColumnsWithOperations(Type dataType, string controllerName, (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) apiRoutes)
+        {
+            var columns = GetAmisColumns(dataType, controllerName, apiRoutes);
+
+            var operations = CreateOperationsColumn(controllerName, dataType, apiRoutes.UpdateRoute, apiRoutes.DeleteRoute);
+            if (operations != null)
+            {
+                columns.Add(operations);
+            }
+
+            return columns;
+        }
+
+        /// <summary>
+        /// 创建 AMIS 表格的操作列，包括编辑和删除按钮。
+        /// </summary>
+        /// <param name="controllerName">控制器名称。</param>
+        /// <param name="dataType">数据类型，用于生成表单字段。</param>
+        /// <param name="updateRoute">更新操作的 API 路由。</param>
+        /// <param name="deleteRoute">删除操作的 API 路由。</param>
+        /// <returns>AMIS 操作列的 JSON 对象，如果没有按钮则返回 null。</returns>
         private JObject CreateOperationsColumn(string controllerName, Type dataType, string updateRoute, string deleteRoute)
         {
             var buttons = new JArray();
 
-            // 编辑按钮
+            // 如果用户有编辑权限，则添加编辑按钮
             if (_permissionService.HasPermission($"{controllerName}Edit"))
             {
                 var editButton = new ButtonHelper(_permissionService, dataType, controllerName).CreateEditButton(updateRoute);
                 buttons.Add(editButton);
             }
 
-            // 删除按钮
+            // 如果用户有删除权限，则添加删除按钮
             if (_permissionService.HasPermission($"{controllerName}Delete"))
             {
                 var deleteButton = new ButtonHelper(_permissionService, dataType, controllerName).CreateDeleteButton(deleteRoute);
                 buttons.Add(deleteButton);
             }
 
-            // 自定义操作按钮
+            // 添加自定义操作按钮
             var customButtons = new ButtonHelper(_permissionService, dataType, controllerName).GetCustomOperationsButtons();
             foreach (var btn in customButtons)
             {
                 buttons.Add(btn);
             }
 
+            // 如果没有任何按钮，则不添加操作列
             if (buttons.Count == 0)
                 return null;
 
@@ -118,4 +307,3 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         }
     }
 }
-

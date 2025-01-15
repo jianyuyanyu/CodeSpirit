@@ -8,11 +8,13 @@ using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Utilities;
 using System.Linq.Dynamic.Core.Exceptions;
 using CodeSpirit.IdentityApi.Repositories;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [DisplayName("用户管理")]
     public class UsersController : ApiControllerBase
     {
         private readonly IUserRepository _userRepository;

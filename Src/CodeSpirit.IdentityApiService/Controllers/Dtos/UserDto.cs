@@ -22,12 +22,21 @@ public class UserDto
     [DisplayName("是否激活")]
     public bool IsActive { get; set; }
 
+    [DisplayName("身份证")]
     public string IdNo { get; set; }
+
+    [DisplayName("头像")]
     public string AvatarUrl { get; set; }
+
+    [DisplayName("最后登录时间")]
     public DateTimeOffset? LastLoginTime { get; set; }
+
+    [DisplayName("角色")]
     public List<string> Roles { get; set; }
 
-    // 新增字段
+    [DisplayName("手机号码")]
     public string PhoneNumber { get; set; }
+
+    [DisplayName("性别")]
     public Gender Gender { get; set; }
 }

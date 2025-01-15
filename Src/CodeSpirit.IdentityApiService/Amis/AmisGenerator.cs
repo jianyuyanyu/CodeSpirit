@@ -245,7 +245,7 @@ public class AmisGenerator
                 ["url"] = apiRoutes.DeleteRoute,
                 ["method"] = "delete"
             },
-            ["title"] = $"{controllerName} 管理",
+            ["title"] = GetControllerType(controllerName).GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",
             ["headerToolbar"] = new JArray
             {
                 CreateHeaderButton(apiRoutes.CreateRoute, dataType)
@@ -485,7 +485,8 @@ public class AmisGenerator
     /// <returns>如果应忽略则返回 true，否则返回 false。</returns>
     private bool IsIgnoredProperty(PropertyInfo prop)
     {
-        return prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase);
+        return prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase)
+            || prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -943,15 +944,15 @@ public class AmisGenerator
         if (rangeAttr != null)
         {
             if (rangeAttr.Minimum != null)
-                validationRules["min"] = Convert.ToDouble(rangeAttr.Minimum);
+                validationRules["minimum"] = Convert.ToDouble(rangeAttr.Minimum);
             if (rangeAttr.Maximum != null)
-                validationRules["max"] = Convert.ToDouble(rangeAttr.Maximum);
+                validationRules["maximum"] = Convert.ToDouble(rangeAttr.Maximum);
         }
 
         // 如果有验证规则，则添加到字段配置中
         if (validationRules.HasValues)
         {
-            field["validate"] = validationRules;
+            field["validations"] = validationRules;
         }
 
         // 如果是枚举类型，则添加枚举选项

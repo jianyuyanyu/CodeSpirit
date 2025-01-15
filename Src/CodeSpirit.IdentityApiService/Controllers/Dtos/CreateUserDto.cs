@@ -1,13 +1,16 @@
 ﻿using CodeSpirit.IdentityApi.Data.Models;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 public class CreateUserDto
 {
     [Required]
     [MaxLength(20)]
+    [DisplayName("姓名")]
     public string Name { get; set; }
 
     [MaxLength(18)]
+    [DisplayName("身份证")]
     public string IdNo { get; set; }
 
     [MaxLength(255)]

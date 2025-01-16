@@ -129,6 +129,18 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                        .OrderBy(p => p.MetadataToken)
                        .ToList();
         }
+
+        /// <summary>
+        /// 判断类型是否为可空枚举类型。
+        /// </summary>
+        /// <param name="type">需要判断的类型。</param>
+        /// <returns>如果是可空枚举类型则返回 true，否则返回 false。</returns>
+        public bool IsNullableEnum(Type type)
+        {
+            var underlying = Nullable.GetUnderlyingType(type);
+            return underlying != null && underlying.IsEnum;
+        }
+
     }
 }
 

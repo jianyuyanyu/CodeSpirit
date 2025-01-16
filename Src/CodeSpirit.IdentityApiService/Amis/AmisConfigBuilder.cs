@@ -72,7 +72,11 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 crud["filter"] = new JObject
                 {
                     ["title"] = "筛选",
-                    ["body"] = new JArray(searchFields)
+                    ["body"] = new JObject
+                    {
+                        ["type"] = "group",
+                        ["body"] = new JArray(searchFields)
+                    }
                 };
             }
 

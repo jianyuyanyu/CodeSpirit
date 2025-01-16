@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace CodeSpirit.IdentityApi.Amis.Helpers
@@ -102,8 +103,8 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             if (member == null)
                 return name;
 
-            var displayNameAttr = member.GetCustomAttribute<DisplayNameAttribute>();
-            return displayNameAttr?.DisplayName ?? name;
+            var displayNameAttr = member.GetCustomAttribute<DisplayAttribute>();
+            return displayNameAttr?.Name ?? name;
         }
 
         /// <summary>
@@ -119,6 +120,14 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 ParameterInfo param => param.ParameterType,
                 _ => throw new ArgumentException("Unsupported member type.")
             };
+        }
+
+        public List<PropertyInfo> GetOrderedProperties(Type type)
+        {
+            // 使用 MetadataToken 按声明顺序排序
+            return type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                       .OrderBy(p => p.MetadataToken)
+                       .ToList();
         }
     }
 }

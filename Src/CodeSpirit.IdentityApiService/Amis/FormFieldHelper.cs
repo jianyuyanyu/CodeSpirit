@@ -398,7 +398,6 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             if (prop.GetCustomAttribute<RequiredAttribute>() != null)
             {
                 field["required"] = true;
-                validationRules["required"] = true;
             }
 
             // 处理 [StringLength] 特性

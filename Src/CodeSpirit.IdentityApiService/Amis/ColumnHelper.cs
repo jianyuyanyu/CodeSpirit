@@ -7,6 +7,8 @@ using Newtonsoft.Json.Linq;
 using System.ComponentModel.DataAnnotations;
 using CodeSpirit.IdentityApi.Authorization;
 using System.ComponentModel;
+using System.Globalization;
+using System.Collections.Concurrent;
 
 namespace CodeSpirit.IdentityApi.Amis.Helpers
 {
@@ -39,7 +41,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         public List<JObject> GetAmisColumns(Type dataType, string controllerName, (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) apiRoutes)
         {
             // 获取数据类型的所有公共实例属性
-            var properties = dataType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var properties = _utilityHelper.GetOrderedProperties(dataType);
 
             // 过滤出不被忽略且用户有查看权限的属性，并生成对应的 AMIS 列配置
             var columns = properties
@@ -105,11 +107,11 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 column["hidden"] = true;
             }
 
-            // 如果属性是枚举类型，设置选项
+            // 如果属性是枚举类型，设置映射
             if (IsEnumProperty(prop))
             {
-                column["type"] = "select"; // 设置列类型为下拉选择框
-                column["options"] = GetEnumOptions(prop.PropertyType); // 添加枚举选项
+                column["type"] = "mapping"; // 设置列类型为 mapping
+                column["map"] = GetEnumMapping(prop.PropertyType); // 添加枚举映射
             }
 
             // 如果属性是图片或头像类型，设置为 AMIS 的 image 或 avatar 类型
@@ -124,6 +126,52 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             return column;
         }
 
+        private static readonly ConcurrentDictionary<Type, JObject> EnumMappingCache = new ConcurrentDictionary<Type, JObject>();
+
+        private JObject GetEnumMapping(Type type)
+        {
+            var enumType = Nullable.GetUnderlyingType(type) ?? type;
+            return EnumMappingCache.GetOrAdd(enumType, CreateEnumMapping);
+        }
+
+        /// <summary>
+        /// 创建枚举映射。
+        /// </summary>
+        /// <param name="enumType">枚举类型。</param>
+        /// <returns>AMIS 枚举映射的 JSON 对象。</returns>
+        private JObject CreateEnumMapping(Type enumType)
+        {
+            var enumValues = Enum.GetValues(enumType).Cast<object>();
+            var mapping = new JObject();
+
+            foreach (var e in enumValues)
+            {
+                // 获取枚举的实际值（根据基础类型动态转换）
+                var underlyingType = Enum.GetUnderlyingType(enumType);
+                var value = Convert.ChangeType(e, underlyingType, CultureInfo.InvariantCulture).ToString();
+                var label = _utilityHelper.GetEnumDisplayName(enumType, e);
+                mapping[value] = label;
+            }
+
+            // 检查是否为可空枚举，添加 null 映射
+            if (Nullable.GetUnderlyingType(enumType) != null)
+            {
+                mapping[""] = GetNullEnumDisplayName();
+            }
+
+            return mapping;
+        }
+
+        /// <summary>
+        /// 获取可空枚举的 null 显示名称。
+        /// </summary>
+        /// <returns>可空枚举的 null 显示名称。</returns>
+        private string GetNullEnumDisplayName()
+        {
+            // 可以扩展为从资源文件中获取显示名称以支持国际化
+            return "";
+        }
+
         /// <summary>
         /// 获取 AMIS 列的类型，根据属性的类型进行映射。
         /// </summary>
@@ -133,7 +181,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         {
             if (IsEnumProperty(prop))
             {
-                return "select";
+                return "mapping";
             }
 
             return prop.PropertyType switch
@@ -152,44 +200,6 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         private bool IsEnumProperty(PropertyInfo prop)
         {
             return prop.PropertyType.IsEnum || Nullable.GetUnderlyingType(prop.PropertyType)?.IsEnum == true;
-        }
-
-        /// <summary>
-        /// 获取枚举类型的选项列表，用于 AMIS 的下拉选择框。
-        /// </summary>
-        /// <param name="type">枚举类型或可空枚举类型。</param>
-        /// <returns>AMIS 枚举选项的 JSON 数组。</returns>
-        private JArray GetEnumOptions(Type type)
-        {
-            var enumType = Nullable.GetUnderlyingType(type) ?? type;
-            var enumValues = Enum.GetValues(enumType).Cast<object>();
-            var enumOptions = enumValues.Select(e => new JObject
-            {
-                ["label"] = GetEnumDisplayName(enumType, e),
-                ["value"] = e.ToString()
-            });
-
-            return new JArray(enumOptions);
-        }
-
-        /// <summary>
-        /// 获取枚举成员的显示名称。优先从 <see cref="DisplayNameAttribute"/> 获取，否则使用枚举成员的名称。
-        /// </summary>
-        /// <param name="enumType">枚举类型。</param>
-        /// <param name="value">枚举值。</param>
-        /// <returns>枚举成员的显示名称。</returns>
-        private string GetEnumDisplayName(Type enumType, object value)
-        {
-            var name = Enum.GetName(enumType, value);
-            if (name == null)
-                return value.ToString();
-
-            var member = enumType.GetMember(name).FirstOrDefault();
-            if (member == null)
-                return name;
-
-            var displayNameAttr = member.GetCustomAttribute<DisplayNameAttribute>();
-            return displayNameAttr?.DisplayName ?? name;
         }
 
         /// <summary>
@@ -300,6 +310,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
 
             return new JObject
             {
+                ["name"] = "operation",
                 ["label"] = "操作",
                 ["type"] = "operation",
                 ["buttons"] = buttons

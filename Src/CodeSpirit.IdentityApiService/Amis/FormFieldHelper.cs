@@ -141,7 +141,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             // 获取显示名称，优先使用 DisplayNameAttribute
             var displayName = member.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(member.Name);
             // 转换为 camelCase，并包含父级名称（如嵌套对象）
-            var fieldName = parentName != null ? _utilityHelper.ToCamelCase($"{parentName}.{member.Name}") : _utilityHelper.ToCamelCase(member.Name);
+            var fieldName = parentName != null ? _utilityHelper.ToCamelCase($"{member.Name}") : _utilityHelper.ToCamelCase(member.Name);
 
             var field = new JObject
             {
@@ -322,11 +322,10 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         {
             var validationRules = new JObject();
 
-            // 处理 [Required] 特性
+            // 处理 [Required] 特性【不应处理】
             if (param.GetCustomAttribute<RequiredAttribute>() != null)
             {
                 field["required"] = true;
-                validationRules["required"] = true;
             }
 
             // 处理 [StringLength] 特性
@@ -562,7 +561,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             // 获取显示名称，优先使用 DisplayNameAttribute
             var displayName = member.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(member.Name);
             // 转换为 camelCase，并包含父级名称（如嵌套对象）
-            var fieldName = parentName != null ? _utilityHelper.ToCamelCase($"{parentName}.{member.Name}") : _utilityHelper.ToCamelCase(member.Name);
+            var fieldName = parentName != null ? _utilityHelper.ToCamelCase($"{member.Name}") : _utilityHelper.ToCamelCase(member.Name);
 
             var field = new JObject
             {

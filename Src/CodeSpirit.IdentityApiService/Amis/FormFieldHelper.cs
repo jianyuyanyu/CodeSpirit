@@ -569,7 +569,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 ["name"] = fieldName,
                 ["label"] = inputImageAttr.Label ?? displayName,
                 ["type"] = inputImageAttr.Type,
-                ["uploadUrl"] = inputImageAttr.UploadUrl,
+                ["receiver"] = inputImageAttr.Receiver,
                 ["accept"] = inputImageAttr.Accept,
                 ["maxSize"] = inputImageAttr.MaxSize,
                 ["multiple"] = inputImageAttr.Multiple,

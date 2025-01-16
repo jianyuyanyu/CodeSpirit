@@ -9,7 +9,7 @@
         /// <summary>
         /// 图片上传的目标 URL。
         /// </summary>
-        public string UploadUrl { get; set; }
+        public string Receiver { get; set; }
 
         /// <summary>
         /// 接受的文件类型（例如 "image/png,image/jpeg"）。

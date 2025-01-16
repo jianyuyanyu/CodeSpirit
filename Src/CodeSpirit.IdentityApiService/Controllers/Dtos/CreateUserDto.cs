@@ -18,7 +18,7 @@ public class CreateUserDto
     [DataType(DataType.ImageUrl)]
     [AmisInputImageField(
         Label = "头像",
-        UploadUrl = "/api/upload/avatar",
+        Receiver = "${API_HOST}/api/upload/avatar",
         Accept = "image/png,image/jpeg",
         MaxSize = 1048576, // 1MB
         Multiple = false,

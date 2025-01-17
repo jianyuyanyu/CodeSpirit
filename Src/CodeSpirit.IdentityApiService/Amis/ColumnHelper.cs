@@ -122,11 +122,6 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 column["altText"] = displayName;
                 column["className"] = "image-column"; // 可选：添加自定义样式类
             }
-
-            //if (column["type"].ToString() == "datetime")
-            //{
-            //    column["locale"] = "zh-CN";
-            //}
             return column;
         }
 
@@ -286,7 +281,6 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         private JObject CreateOperationsColumn(string controllerName, Type dataType, string updateRoute, string deleteRoute)
         {
             var buttons = new JArray();
-
             // 如果用户有编辑权限，则添加编辑按钮
             if (_permissionService.HasPermission($"{controllerName}Edit"))
             {

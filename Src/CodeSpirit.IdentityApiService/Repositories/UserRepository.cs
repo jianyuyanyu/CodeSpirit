@@ -3,6 +3,7 @@ using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Utilities;
+using CodeSpirit.Shared.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,21 +29,24 @@ namespace CodeSpirit.IdentityApi.Repositories
 
         public async Task<ListData<UserDto>> GetUsersAsync(UserQueryDto queryDto)
         {
-            var query = _userManager.Users
-                .Include(u => u.UserRoles)
-                    .ThenInclude(ur => ur.Role)
-                .AsQueryable();
+            using (_context.DataFilter.Disable<IIsActive>())
+            {
+                var query = _userManager.Users
+                    .Include(u => u.UserRoles)
+                        .ThenInclude(ur => ur.Role)
+                    .AsQueryable();
 
-            query = ApplyFilters(query, queryDto);
-            query = ApplySorting(query, queryDto);
+                query = ApplyFilters(query, queryDto);
+                query = ApplySorting(query, queryDto);
 
-            var totalCount = await query.CountAsync();
-            var users = await query.ApplyPaging(queryDto.Page, queryDto.PerPage).ToListAsync();
+                var totalCount = await query.CountAsync();
+                var users = await query.ApplyPaging(queryDto.Page, queryDto.PerPage).ToListAsync();
 
-            // 使用 AutoMapper 进行映射
-            var userDtos = _mapper.Map<List<UserDto>>(users);
+                // 使用 AutoMapper 进行映射
+                var userDtos = _mapper.Map<List<UserDto>>(users);
 
-            return new ListData<UserDto>(userDtos, totalCount);
+                return new ListData<UserDto>(userDtos, totalCount);
+            }
         }
 
         public async Task<UserDto> GetUserByIdAsync(string id)

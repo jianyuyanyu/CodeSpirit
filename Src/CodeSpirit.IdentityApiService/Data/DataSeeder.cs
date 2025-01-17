@@ -417,7 +417,7 @@ namespace CodeSpirit.IdentityApi.Data
                     EmailConfirmed = true,
                     Name = $"User {random.Next(1000, 9999)}", // 随机生成用户姓名
                     Gender = genderValues[random.Next(genderValues.Length)], // 随机分配性别
-                    IsActive = true, // 默认为激活状态
+                    IsActive = random.Next(1, 10) % 2 == 0,
                     AvatarUrl = avatarUrl // 默认头像地址
                 };
 

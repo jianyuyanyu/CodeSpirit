@@ -156,6 +156,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// POST: /api/Users/{id}/resetRandomPassword
         /// </summary>
         [HttpPost("{id}/resetRandomPassword")]
+        [Operation("重置密码", "download", "/api/users/$id/export", "确定要导出此用户吗？")]
         public async Task<ActionResult<ApiResponse<string>>> ResetRandomPassword(string id)
         {
             var (success, newPassword) = await _userRepository.ResetRandomPasswordAsync(id);

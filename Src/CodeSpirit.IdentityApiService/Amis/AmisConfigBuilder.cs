@@ -33,7 +33,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             if (dataType == null)
                 return null;
 
-            var columns = _columnHelper.GetAmisColumns(dataType, controllerName, apiRoutes);
+            var columns = _columnHelper.GetAmisColumns(dataType, controllerName, apiRoutes, actions);
             var searchFields = _searchFieldHelper.GetAmisSearchFields(actions.Read);
 
             var crud = new JObject
@@ -55,21 +55,21 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                     ["method"] = "get"
                 },
                 ["columns"] = new JArray(columns),
-                ["createApi"] = new JObject
-                {
-                    ["url"] = apiRoutes.CreateRoute,
-                    ["method"] = "post"
-                },
-                ["updateApi"] = new JObject
-                {
-                    ["url"] = apiRoutes.UpdateRoute,
-                    ["method"] = "put"
-                },
-                ["deleteApi"] = new JObject
-                {
-                    ["url"] = apiRoutes.DeleteRoute,
-                    ["method"] = "delete"
-                },
+                //["createApi"] = new JObject
+                //{
+                //    ["url"] = apiRoutes.CreateRoute,
+                //    ["method"] = "post"
+                //},
+                //["updateApi"] = new JObject
+                //{
+                //    ["url"] = apiRoutes.UpdateRoute,
+                //    ["method"] = "put"
+                //},
+                //["deleteApi"] = new JObject
+                //{
+                //    ["url"] = apiRoutes.DeleteRoute,
+                //    ["method"] = "delete"
+                //},
                 ["headerToolbar"] = new JArray
                 {
                     _buttonHelper.CreateHeaderButton(apiRoutes.CreateRoute, actions.Create?.GetParameters())

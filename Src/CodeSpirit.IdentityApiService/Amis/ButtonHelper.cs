@@ -17,111 +17,112 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             _controllerName = controllerName;
         }
 
-        public JObject CreateHeaderButton(string createRoute, IEnumerable<ParameterInfo> createParameters)
-        {
-            return new JObject
-            {
-                ["type"] = "button",
-                ["label"] = "新增",
-                ["level"] = "primary",
-                ["actionType"] = "dialog",
-                ["dialog"] = new JObject
-                {
-                    ["title"] = "新增",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "form",
-                        ["api"] = new JObject
-                        {
-                            ["url"] = createRoute,
-                            ["method"] = "post"
-                        },
-                        ["body"] = new JArray(new FormFieldHelper(_permissionService, new UtilityHelper()).GetAmisFormFieldsFromParameters(createParameters))
-                    }
-                }
-            };
-        }
-
-        public JObject CreateEditButton(string updateRoute)
-        {
-            return new JObject
-            {
-                ["type"] = "button",
-                ["label"] = "编辑",
-                ["actionType"] = "drawer",
-                ["drawer"] = new JObject
-                {
-                    ["title"] = "编辑",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "form",
-                        ["api"] = new JObject
-                        {
-                            ["url"] = updateRoute,
-                            ["method"] = "put"
-                        },
-                        ["body"] = new JArray(new FormFieldHelper(_permissionService, new UtilityHelper()).GetAmisFormFieldsFromParameters(null)) // Pass actual parameters if needed
-                    }
-                }
-            };
-        }
-
-        public JObject CreateDeleteButton(string deleteRoute)
-        {
-            return new JObject
-            {
-                ["type"] = "button",
-                ["label"] = "删除",
-                ["actionType"] = "ajax",
-                ["confirmText"] = "确定要删除吗？",
-                ["api"] = new JObject
-                {
-                    ["url"] = deleteRoute,
-                    ["method"] = "delete"
-                }
-            };
-        }
-
-        public List<JObject> GetCustomOperationsButtons()
-        {
-            var buttons = new List<JObject>();
-            // 实现自定义按钮逻辑，可能通过反射查找带有 [Operation] 特性的操作方法
-
-            // 示例：假设有自定义操作
-            // 可以通过注入其他依赖或使用反射动态生成
-            return buttons;
-        }
-
-        public JObject CreateCustomOperationButton(OperationAttribute op)
+        // 创建一个通用的按钮模板
+        private JObject CreateButton(string label, string actionType, JObject dialogOrDrawer = null, JObject api = null, string confirmText = null, bool? download = null)
         {
             var button = new JObject
             {
                 ["type"] = "button",
-                ["label"] = op.Label,
-                ["actionType"] = op.ActionType
+                ["label"] = label,
+                ["actionType"] = actionType
             };
 
-            if (!string.IsNullOrEmpty(op.Api))
+            if (dialogOrDrawer != null)
             {
-                button["api"] = new JObject
-                {
-                    ["url"] = op.Api,
-                    ["method"] = op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase) ? "get" : "post"
-                };
+                button["dialog"] = dialogOrDrawer;
             }
 
-            if (!string.IsNullOrEmpty(op.ConfirmText))
+            if (api != null)
             {
-                button["confirmText"] = op.ConfirmText;
+                button["api"] = api;
             }
 
-            if (op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(confirmText))
+            {
+                button["confirmText"] = confirmText;
+            }
+
+            if (download.HasValue && download.Value)
             {
                 button["download"] = true;
             }
 
             return button;
         }
+
+        // 创建“新增”按钮
+        public JObject CreateHeaderButton(string createRoute, IEnumerable<ParameterInfo> createParameters)
+        {
+            var title = "新增";
+            var dialogBody = new JObject
+            {
+                ["title"] = title,
+                ["body"] = new JObject
+                {
+                    ["type"] = "form",
+                    ["api"] = new JObject
+                    {
+                        ["url"] = createRoute,
+                        ["method"] = "post"
+                    },
+                    ["controls"] = new JArray(new FormFieldHelper(_permissionService, new UtilityHelper()).GetAmisFormFieldsFromParameters(createParameters))
+                },
+            };
+
+            return CreateButton(title, "dialog", dialogOrDrawer: dialogBody);
+        }
+
+        // 创建“编辑”按钮
+        public JObject CreateEditButton(string updateRoute, IEnumerable<ParameterInfo> updateParameters)
+        {
+            var title = "编辑";
+            var drawerBody = new JObject
+            {
+                ["title"] = title,
+                ["body"] = new JObject
+                {
+                    ["type"] = "form",
+                    ["api"] = new JObject
+                    {
+                        ["url"] = updateRoute,
+                        ["method"] = "put"
+                    },
+                    ["controls"] = new JArray(new FormFieldHelper(_permissionService, new UtilityHelper()).GetAmisFormFieldsFromParameters(updateParameters))
+                }
+            };
+            return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+        }
+
+        // 创建“删除”按钮
+        public JObject CreateDeleteButton(string deleteRoute)
+        {
+            var api = new JObject
+            {
+                ["url"] = deleteRoute,
+                ["method"] = "delete"
+            };
+
+            return CreateButton("删除", "ajax", api: api, confirmText: "确定要删除吗？");
+        }
+
+        // 获取自定义操作按钮
+        public List<JObject> GetCustomOperationsButtons()
+        {
+            var buttons = new List<JObject>();
+            // 这里可以扩展自定义操作按钮的逻辑，使用反射查找带有 [Operation] 特性的操作方法
+            return buttons;
+        }
+
+        // 创建自定义操作按钮
+        public JObject CreateCustomOperationButton(OperationAttribute op)
+        {
+            var api = string.IsNullOrEmpty(op.Api) ? null : new JObject
+            {
+                ["url"] = op.Api,
+                ["method"] = op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase) ? "get" : "post"
+            };
+
+            return CreateButton(op.Label, op.ActionType, api: api, confirmText: op.ConfirmText, download: op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase));
+        }
     }
 }
-

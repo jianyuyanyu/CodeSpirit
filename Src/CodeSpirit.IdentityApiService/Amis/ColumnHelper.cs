@@ -38,7 +38,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// <param name="controllerName">控制器名称。</param>
         /// <param name="apiRoutes">包含 CRUD 操作路由的元组。</param>
         /// <returns>AMIS 表格列的列表。</returns>
-        public List<JObject> GetAmisColumns(Type dataType, string controllerName, (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) apiRoutes)
+        public List<JObject> GetAmisColumns(Type dataType, string controllerName, (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) apiRoutes, CrudActions actions)
         {
             // 获取数据类型的所有公共实例属性
             var properties = _utilityHelper.GetOrderedProperties(dataType);
@@ -50,7 +50,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 .ToList();
 
             // 创建操作列（如编辑、删除按钮）
-            var operations = CreateOperationsColumn(controllerName, dataType, apiRoutes.UpdateRoute, apiRoutes.DeleteRoute);
+            var operations = CreateOperationsColumn(controllerName, dataType, apiRoutes.UpdateRoute, apiRoutes.DeleteRoute, actions);
             if (operations != null)
             {
                 columns.Add(operations);
@@ -251,26 +251,6 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         }
 
         /// <summary>
-        /// 生成 AMIS 表格的列配置列表，包括操作列（如编辑、删除按钮）。
-        /// </summary>
-        /// <param name="dataType">数据类型的 <see cref="Type"/> 对象。</param>
-        /// <param name="controllerName">控制器名称。</param>
-        /// <param name="apiRoutes">包含 CRUD 操作路由的元组。</param>
-        /// <returns>AMIS 表格列的列表。</returns>
-        public List<JObject> GetAmisColumnsWithOperations(Type dataType, string controllerName, (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) apiRoutes)
-        {
-            var columns = GetAmisColumns(dataType, controllerName, apiRoutes);
-
-            var operations = CreateOperationsColumn(controllerName, dataType, apiRoutes.UpdateRoute, apiRoutes.DeleteRoute);
-            if (operations != null)
-            {
-                columns.Add(operations);
-            }
-
-            return columns;
-        }
-
-        /// <summary>
         /// 创建 AMIS 表格的操作列，包括编辑和删除按钮。
         /// </summary>
         /// <param name="controllerName">控制器名称。</param>
@@ -278,13 +258,13 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// <param name="updateRoute">更新操作的 API 路由。</param>
         /// <param name="deleteRoute">删除操作的 API 路由。</param>
         /// <returns>AMIS 操作列的 JSON 对象，如果没有按钮则返回 null。</returns>
-        private JObject CreateOperationsColumn(string controllerName, Type dataType, string updateRoute, string deleteRoute)
+        private JObject CreateOperationsColumn(string controllerName, Type dataType, string updateRoute, string deleteRoute, CrudActions actions)
         {
             var buttons = new JArray();
             // 如果用户有编辑权限，则添加编辑按钮
             if (_permissionService.HasPermission($"{controllerName}Edit"))
             {
-                var editButton = new ButtonHelper(_permissionService, dataType, controllerName).CreateEditButton(updateRoute);
+                var editButton = new ButtonHelper(_permissionService, dataType, controllerName).CreateEditButton(updateRoute, actions.Update?.GetParameters());
                 buttons.Add(editButton);
             }
 

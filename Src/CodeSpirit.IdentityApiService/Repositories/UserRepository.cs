@@ -79,28 +79,31 @@ namespace CodeSpirit.IdentityApi.Repositories
 
         public async Task<IdentityResult> UpdateUserAsync(string id, UpdateUserDto updateUserDto)
         {
-            var user = await _userManager.Users
+            using (_context.DataFilter.Disable<IIsActive>())
+            {
+                var user = await _userManager.Users
                 .Include(u => u.UserRoles)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
-            if (user == null)
-                return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
+                if (user == null)
+                    return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
 
-            // 使用 AutoMapper 更新用户属性
-            _mapper.Map(updateUserDto, user);
+                // 使用 AutoMapper 更新用户属性
+                _mapper.Map(updateUserDto, user);
 
-            var updateResult = await _userManager.UpdateAsync(user);
-            if (!updateResult.Succeeded)
-                return updateResult;
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                    return updateResult;
 
-            if (updateUserDto.Roles != null)
-            {
-                var roleResult = await UpdateUserRolesAsync(user, updateUserDto.Roles);
-                if (!roleResult.Succeeded)
-                    return roleResult;
+                if (updateUserDto.Roles != null)
+                {
+                    var roleResult = await UpdateUserRolesAsync(user, updateUserDto.Roles);
+                    if (!roleResult.Succeeded)
+                        return roleResult;
+                }
+
+                return IdentityResult.Success;
             }
-
-            return IdentityResult.Success;
         }
 
         public async Task<IdentityResult> DeleteUserAsync(string id)

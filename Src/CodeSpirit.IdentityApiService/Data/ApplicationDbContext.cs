@@ -1,4 +1,4 @@
-﻿using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities;

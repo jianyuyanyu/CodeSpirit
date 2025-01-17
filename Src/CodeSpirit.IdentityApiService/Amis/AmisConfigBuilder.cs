@@ -40,6 +40,15 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             {
                 ["type"] = "crud",
                 ["name"] = $"{controllerName.ToLower()}Crud",
+                ["showIndex"] = true,
+                //["parsePrimitiveQuery"] = new JObject
+                //{
+                //    ["enable"] = true,
+                //    ["types"] = new JArray
+                //    {
+                //        "boolean","number"
+                //    }
+                //},
                 ["api"] = new JObject
                 {
                     ["url"] = apiRoutes.ReadRoute,

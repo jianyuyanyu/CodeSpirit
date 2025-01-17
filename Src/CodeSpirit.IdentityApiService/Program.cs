@@ -17,6 +17,8 @@ using Microsoft.Extensions.Caching.Memory;
 using System.Globalization;
 using System.Reflection;
 
+Console.OutputEncoding = System.Text.Encoding.UTF8;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
@@ -181,15 +183,16 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
     try
     {
         // 调用数据初始化方法
-        await DataSeeder.SeedRolesAndPermissionsAsync(services);
+        await DataSeeder.SeedRolesAndPermissionsAsync(services, logger);
     }
     catch (Exception ex)
     {
         // 在控制台输出错误
-        Console.WriteLine($"数据初始化失败：{ex.Message}");
+        logger.LogError(ex, $"数据初始化失败：{ex.Message}");
     }
 }
 

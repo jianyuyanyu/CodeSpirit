@@ -123,6 +123,10 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 column["className"] = "image-column"; // 可选：添加自定义样式类
             }
 
+            //if (column["type"].ToString() == "datetime")
+            //{
+            //    column["locale"] = "zh-CN";
+            //}
             return column;
         }
 
@@ -187,7 +191,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             return prop.PropertyType switch
             {
                 Type t when t == typeof(bool) => "switch",
-                Type t when t == typeof(DateTime) || t == typeof(DateTime?) => "datetime",
+                Type t when t == typeof(DateTime) || t == typeof(DateTime?) || t == typeof(DateTimeOffset) || t == typeof(DateTimeOffset?) => "datetime",
                 _ => "text"
             };
         }

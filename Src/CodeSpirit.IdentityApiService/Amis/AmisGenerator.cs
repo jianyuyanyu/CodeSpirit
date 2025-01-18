@@ -7,7 +7,7 @@ using System.Reflection;
 namespace CodeSpirit.IdentityApi.Amis
 {
     /// <summary>
-    /// 用于生成 AMIS（阿里云前端框架）所需的 JSON 配置的生成器类。
+    /// 用于生成 AMIS（百度前端框架）所需的 JSON 配置的生成器类。
     /// </summary>
     public partial class AmisGenerator
     {
@@ -31,8 +31,9 @@ namespace CodeSpirit.IdentityApi.Amis
             _permissionService = (PermissionService)permissionService;
             _cachingHelper = new CachingHelper(httpContextAccessor, cache);
             _controllerHelper = new ControllerHelper(assembly);
-            _crudHelper = new CrudHelper();
             var utilityHelper = new UtilityHelper();
+
+            _crudHelper = new CrudHelper();
             var apiRouteHelper = new ApiRouteHelper(_controllerHelper, httpContextAccessor);
             var columnHelper = new ColumnHelper(_permissionService, utilityHelper);
             var buttonHelper = new ButtonHelper(_permissionService, null, null); // 根据需要传递必要的参数

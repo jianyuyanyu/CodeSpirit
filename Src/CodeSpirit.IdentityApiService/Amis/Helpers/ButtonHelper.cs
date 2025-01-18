@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using CodeSpirit.IdentityApi.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.IdentityApi.Amis.Helpers
@@ -109,7 +110,21 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         public List<JObject> GetCustomOperationsButtons()
         {
             var buttons = new List<JObject>();
-            // 这里可以扩展自定义操作按钮的逻辑，使用反射查找带有 [Operation] 特性的操作方法
+            // 获取当前类型的所有方法
+            var methods = _dataType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+
+            // 查找带有 [Operation] 特性的所有方法
+            foreach (var method in methods)
+            {
+                var operationAttribute = method.GetCustomAttribute<OperationAttribute>();
+                if (operationAttribute != null)
+                {
+                    // 为每个操作方法创建按钮
+                    var button = CreateCustomOperationButton(operationAttribute);
+                    buttons.Add(button);
+                }
+            }
+
             return buttons;
         }
 

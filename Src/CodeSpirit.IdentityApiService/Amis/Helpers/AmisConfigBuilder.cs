@@ -5,8 +5,12 @@ using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.IdentityApi.Amis.Helpers
 {
+    /// <summary>
+    /// 负责生成 AMIS CRUD 配置的构建器。
+    /// </summary>
     public class AmisConfigBuilder
     {
+        // 依赖注入的助手类
         private readonly ApiRouteHelper _apiRouteHelper;
         private readonly ColumnHelper _columnHelper;
         private readonly ButtonHelper _buttonHelper;
@@ -14,6 +18,9 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         private readonly FormFieldHelper _formFieldHelper;
         private readonly PermissionService _permissionService;
 
+        /// <summary>
+        /// 构造函数，初始化所需的助手类。
+        /// </summary>
         public AmisConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
                                  SearchFieldHelper searchFieldHelper, FormFieldHelper formFieldHelper, PermissionService permissionService)
         {
@@ -25,79 +32,97 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             _permissionService = permissionService;
         }
 
+        /// <summary>
+        /// 生成 AMIS 的 CRUD 配置。
+        /// </summary>
+        /// <param name="controllerName">控制器名称</param>
+        /// <param name="controllerType">控制器类型</param>
+        /// <param name="actions">CRUD 操作类型</param>
+        /// <returns>返回 AMIS 配置的 JSON 对象</returns>
         public JObject GenerateAmisCrudConfig(string controllerName, Type controllerType, CrudActions actions)
         {
+            // 获取基础路由信息
             var baseRoute = _apiRouteHelper.GetRoute(controllerType);
             var apiRoutes = _apiRouteHelper.GetApiRoutes(baseRoute, actions);
+
+            // 获取读取数据的类型，如果类型为空，则返回空
             var dataType = _apiRouteHelper.GetDataTypeFromAction(actions.Read);
             if (dataType == null)
                 return null;
 
+            // 获取列配置和搜索字段
             var columns = _columnHelper.GetAmisColumns(dataType, controllerName, apiRoutes, actions);
             var searchFields = _searchFieldHelper.GetAmisSearchFields(actions.Read);
 
-            var crud = new JObject
+            // 构建 CRUD 配置
+            var crudConfig = new JObject
             {
-                ["type"] = "crud",
-                ["name"] = $"{controllerName.ToLower()}Crud",
-                ["showIndex"] = true,
-                //["parsePrimitiveQuery"] = new JObject
-                //{
-                //    ["enable"] = true,
-                //    ["types"] = new JArray
-                //    {
-                //        "boolean","number"
-                //    }
-                //},
-                ["api"] = new JObject
-                {
-                    ["url"] = apiRoutes.ReadRoute,
-                    ["method"] = "get"
-                },
-                ["columns"] = new JArray(columns),
-                //["createApi"] = new JObject
-                //{
-                //    ["url"] = apiRoutes.CreateRoute,
-                //    ["method"] = "post"
-                //},
-                //["updateApi"] = new JObject
-                //{
-                //    ["url"] = apiRoutes.UpdateRoute,
-                //    ["method"] = "put"
-                //},
-                //["deleteApi"] = new JObject
-                //{
-                //    ["url"] = apiRoutes.DeleteRoute,
-                //    ["method"] = "delete"
-                //},
-                ["headerToolbar"] = new JArray
-                {
-                    _buttonHelper.CreateHeaderButton(apiRoutes.CreateRoute, actions.Create?.GetParameters())
-                }
+                ["type"] = "crud",  // 设置类型为 CRUD
+                ["name"] = $"{controllerName.ToLower()}Crud",  // 设置配置名称
+                ["showIndex"] = true,  // 显示索引列
+                ["api"] = BuildApiConfig(apiRoutes.ReadRoute),  // 设置 API 配置
+                ["columns"] = new JArray(columns),  // 设置列
+                ["headerToolbar"] = BuildHeaderToolbar(apiRoutes.CreateRoute, actions.Create?.GetParameters())  // 设置头部工具栏
             };
 
+            // 如果有搜索字段，加入筛选配置
             if (searchFields.Any())
             {
-                crud["filter"] = new JObject
-                {
-                    ["title"] = "筛选",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "group",
-                        ["body"] = new JArray(searchFields)
-                    }
-                };
+                crudConfig["filter"] = BuildFilterConfig(searchFields);
             }
 
-            var page = new JObject
+            // 构建页面配置
+            var pageConfig = new JObject
             {
-                ["type"] = "page",
-                ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",
-                ["body"] = crud
+                ["type"] = "page",  // 设置页面类型
+                ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",  // 设置页面标题
+                ["body"] = crudConfig  // 设置页面主体为 CRUD 配置
             };
 
-            return page;
+            return pageConfig;
         }
+
+        #region 辅助方法
+
+        /// <summary>
+        /// 构建 API 配置对象。
+        /// </summary>
+        private JObject BuildApiConfig(string apiRoute)
+        {
+            return new JObject
+            {
+                ["url"] = apiRoute,  // API 路径
+                ["method"] = "get"   // 请求方法为 GET
+            };
+        }
+
+        /// <summary>
+        /// 构建头部工具栏配置。
+        /// </summary>
+        private JArray BuildHeaderToolbar(string createRoute, IEnumerable<ParameterInfo> createParameters)
+        {
+            return new JArray
+            {
+                _buttonHelper.CreateHeaderButton(createRoute, createParameters)  // 创建按钮
+            };
+        }
+
+        /// <summary>
+        /// 构建筛选配置对象。
+        /// </summary>
+        private JObject BuildFilterConfig(IEnumerable<JObject> searchFields)
+        {
+            return new JObject
+            {
+                ["title"] = "筛选",  // 筛选标题
+                ["body"] = new JObject
+                {
+                    ["type"] = "group",  // 筛选类型为组合
+                    ["body"] = new JArray(searchFields)  // 添加搜索字段
+                }
+            };
+        }
+
+        #endregion
     }
 }
-

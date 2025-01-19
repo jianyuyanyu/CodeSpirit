@@ -17,7 +17,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         }
 
         // 创建一个通用的按钮模板
-        private JObject CreateButton(string label, string actionType, JObject dialogOrDrawer = null, JObject api = null, string confirmText = null, bool? download = null)
+        private JObject CreateButton(string label, string actionType, JObject dialogOrDrawer = null, JObject api = null, string confirmText = null, bool? download = null, string visibleOn = null)
         {
             var button = new JObject
             {
@@ -44,6 +44,11 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             if (download.HasValue && download.Value)
             {
                 button["download"] = true;
+            }
+
+            if (!string.IsNullOrEmpty(visibleOn))
+            {
+                button["visibleOn"] = visibleOn;
             }
 
             return button;
@@ -109,7 +114,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         {
             var buttons = new List<JObject>();
             // 获取当前类型的所有方法
-            var methods = amisContext.ListDataType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+            var methods = amisContext.ControllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
 
             // 查找带有 [Operation] 特性的所有方法
             foreach (var method in methods)
@@ -135,7 +140,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 ["method"] = op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase) ? "get" : "post"
             };
 
-            return CreateButton(op.Label, op.ActionType, api: api, confirmText: op.ConfirmText, download: op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase));
+            return CreateButton(op.Label, op.ActionType, api: api, confirmText: op.ConfirmText, download: op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase), visibleOn: op.VisibleOn);
         }
     }
 }

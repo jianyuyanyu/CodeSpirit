@@ -3,6 +3,7 @@ using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Utilities;
+using CodeSpirit.Shared;
 using CodeSpirit.Shared.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -163,7 +164,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
-                return (false, null);
+                throw new AppServiceException(400, "账户不存在或已被禁用，请启用后再试！");
 
             var newPassword = PasswordGenerator.GenerateRandomPassword(12);
             var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);

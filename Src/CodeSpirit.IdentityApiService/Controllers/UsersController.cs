@@ -156,7 +156,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// POST: /api/Users/{id}/resetRandomPassword
         /// </summary>
         [HttpPost("{id}/resetRandomPassword")]
-        [Operation("重置密码", "download", "/api/users/$id/export", "确定要重置密码吗？")]
+        [Operation("重置密码", "ajax", "${API_HOST}/api/users/$id/resetRandomPassword", "确定要重置密码吗？", "isActive == true")]
         public async Task<ActionResult<ApiResponse<string>>> ResetRandomPassword(string id)
         {
             var (success, newPassword) = await _userRepository.ResetRandomPasswordAsync(id);
@@ -174,6 +174,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// PUT: /api/Users/{id}/unlock
         /// </summary>
         [HttpPut("{id}/unlock")]
+        [Operation("解锁", "ajax", "${API_HOST}/api/users/$id/unlock", "确定要解除用户锁定吗？")]
         public async Task<IActionResult> UnlockUser(string id)
         {
             var result = await _userRepository.UnlockUserAsync(id);
@@ -187,24 +188,5 @@ namespace CodeSpirit.IdentityApi.Controllers
 
             return Ok(new { msg = "用户已成功解锁。" });
         }
-
-        // 自定义操作：导出用户
-        [HttpPost("{id}/export")]
-        [Operation("导出", "download", "/api/users/$id/export", "确定要导出此用户吗？")]
-        public async Task<IActionResult> ExportUser(string id)
-        {
-            var user = await _userRepository.GetUserByIdAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            // 实现导出逻辑
-            // 例如，将用户数据导出为 CSV 文件
-            var csv = $"Id,Username,Email,IsActive,Role\n{user.Id},{user.Username},{user.Email},{user.IsActive}";
-            var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
-            return File(bytes, "text/csv", $"{user.Username}.csv");
-        }
-
     }
 }

@@ -27,9 +27,9 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// </summary>
         /// <param name="permissionService">权限服务，用于检查用户权限。</param>
         /// <param name="utilityHelper">工具辅助类，提供辅助方法。</param>
-        public SearchFieldHelper(PermissionService permissionService, UtilityHelper utilityHelper)
+        public SearchFieldHelper(IPermissionService permissionService, UtilityHelper utilityHelper)
         {
-            _permissionService = permissionService;
+            _permissionService = (PermissionService)permissionService;
             _utilityHelper = utilityHelper;
         }
 
@@ -105,12 +105,12 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         {
             var fields = new List<JObject>();
 
-            if (IsSimpleType(param.ParameterType))
+            if (_utilityHelper.IsSimpleType(param.ParameterType))
             {
                 // 简单类型直接创建一个搜索字段
                 fields.Add(CreateSearchField(param));
             }
-            else if (IsComplexType(param.ParameterType))
+            else if (_utilityHelper.IsComplexType(param.ParameterType))
             {
                 // 复杂类型则遍历其属性并为每个合适的属性创建搜索字段
                 var properties = param.ParameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
@@ -127,33 +127,6 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             }
 
             return fields;
-        }
-
-        /// <summary>
-        /// 判断类型是否为简单类型（如基本数据类型、字符串、枚举等）。
-        /// </summary>
-        /// <param name="type">需要判断的类型。</param>
-        /// <returns>如果是简单类型则返回 true，否则返回 false。</returns>
-        private bool IsSimpleType(Type type)
-        {
-            return type.IsPrimitive
-                || new Type[]
-                {
-                    typeof(string), typeof(decimal), typeof(DateTime),
-                    typeof(DateTimeOffset), typeof(TimeSpan), typeof(Guid)
-                }.Contains(type)
-                || type.IsEnum
-                || (Nullable.GetUnderlyingType(type) != null && IsSimpleType(Nullable.GetUnderlyingType(type)));
-        }
-
-        /// <summary>
-        /// 判断类型是否为复杂类型（类类型且不是字符串）。
-        /// </summary>
-        /// <param name="type">需要判断的类型。</param>
-        /// <returns>如果是复杂类型则返回 true，否则返回 false。</returns>
-        private bool IsComplexType(Type type)
-        {
-            return type.IsClass && type != typeof(string);
         }
 
         /// <summary>

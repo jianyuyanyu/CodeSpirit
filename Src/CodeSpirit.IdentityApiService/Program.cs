@@ -1,4 +1,5 @@
 using CodeSpirit.IdentityApi.Amis;
+using CodeSpirit.IdentityApi.Amis.Helpers;
 using CodeSpirit.IdentityApi.Authorization;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
@@ -49,15 +50,21 @@ builder.Services.AddMemoryCache();
 // 注册权限服务
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 
-// 注册 AmisGenerator 为 Scoped
-builder.Services.AddScoped<AmisGenerator>(provider =>
-{
-    var assembly = Assembly.GetExecutingAssembly();
-    var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
-    var permissionService = provider.GetRequiredService<IPermissionService>();
-    var memoryCache = provider.GetRequiredService<IMemoryCache>();
-    return new AmisGenerator(assembly, httpContextAccessor, permissionService, memoryCache);
-});
+// 注册其他服务
+builder.Services.AddScoped<CachingHelper>();
+builder.Services.AddScoped<ControllerHelper>();
+builder.Services.AddScoped<CrudHelper>();
+builder.Services.AddSingleton<UtilityHelper>();
+
+builder.Services.AddScoped<ApiRouteHelper>();
+builder.Services.AddScoped<ColumnHelper>();
+builder.Services.AddScoped<ButtonHelper>();
+builder.Services.AddScoped<FormFieldHelper>();
+builder.Services.AddScoped<SearchFieldHelper>();
+
+builder.Services.AddScoped<AmisConfigBuilder>();
+builder.Services.AddScoped<AmisContext>();
+builder.Services.AddScoped<AmisGenerator>(); // 注入 AmisGenerator
 
 
 builder.Services.AddTransient<IIdentityAccessor, IdentityAccessor>();

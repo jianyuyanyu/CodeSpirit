@@ -8,14 +8,12 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
     public class ButtonHelper
     {
         private readonly PermissionService _permissionService;
-        private readonly Type _dataType;
-        private readonly string _controllerName;
+        private readonly AmisContext amisContext;
 
-        public ButtonHelper(PermissionService permissionService, Type dataType, string controllerName)
+        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext)
         {
-            _permissionService = permissionService;
-            _dataType = dataType;
-            _controllerName = controllerName;
+            _permissionService = (PermissionService)permissionService;
+            this.amisContext = amisContext;
         }
 
         // 创建一个通用的按钮模板
@@ -111,7 +109,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         {
             var buttons = new List<JObject>();
             // 获取当前类型的所有方法
-            var methods = _dataType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+            var methods = amisContext.ListDataType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
 
             // 查找带有 [Operation] 特性的所有方法
             foreach (var method in methods)

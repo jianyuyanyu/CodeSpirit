@@ -19,16 +19,20 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
     {
         private readonly PermissionService _permissionService;
         private readonly UtilityHelper _utilityHelper;
+        private readonly AmisContext amisContext;
+        private readonly ButtonHelper buttonHelper;
 
         /// <summary>
         /// 初始化 <see cref="ColumnHelper"/> 的新实例。
         /// </summary>
         /// <param name="permissionService">权限服务，用于检查用户权限。</param>
         /// <param name="utilityHelper">实用工具类，提供辅助方法。</param>
-        public ColumnHelper(PermissionService permissionService, UtilityHelper utilityHelper)
+        public ColumnHelper(IPermissionService permissionService, UtilityHelper utilityHelper, AmisContext amisContext, ButtonHelper buttonHelper)
         {
-            _permissionService = permissionService;
+            _permissionService = (PermissionService)permissionService;
             _utilityHelper = utilityHelper;
+            this.amisContext = amisContext;
+            this.buttonHelper = buttonHelper;
         }
 
         /// <summary>
@@ -57,6 +61,11 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             }
 
             return columns;
+        }
+
+        public List<JObject> GetAmisColumns()
+        {
+            return GetAmisColumns(amisContext.ListDataType, amisContext.ControllerName, amisContext.ApiRoutes, amisContext.Actions);
         }
 
         /// <summary>
@@ -264,19 +273,19 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             // 如果用户有编辑权限，则添加编辑按钮
             if (_permissionService.HasPermission($"{controllerName}Edit"))
             {
-                var editButton = new ButtonHelper(_permissionService, dataType, controllerName).CreateEditButton(updateRoute, actions.Update?.GetParameters());
+                var editButton = buttonHelper.CreateEditButton(updateRoute, actions.Update?.GetParameters());
                 buttons.Add(editButton);
             }
 
             // 如果用户有删除权限，则添加删除按钮
             if (_permissionService.HasPermission($"{controllerName}Delete"))
             {
-                var deleteButton = new ButtonHelper(_permissionService, dataType, controllerName).CreateDeleteButton(deleteRoute);
+                var deleteButton = buttonHelper.CreateDeleteButton(deleteRoute);
                 buttons.Add(deleteButton);
             }
 
             // 添加自定义操作按钮
-            var customButtons = new ButtonHelper(_permissionService, dataType, controllerName).GetCustomOperationsButtons();
+            var customButtons = buttonHelper.GetCustomOperationsButtons();
             foreach (var btn in customButtons)
             {
                 buttons.Add(btn);

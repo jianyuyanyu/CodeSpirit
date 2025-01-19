@@ -7,13 +7,13 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
 {
     public class ApiRouteHelper
     {
-        private readonly ControllerHelper _controllerHelper;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly AmisContext amisContext;
 
-        public ApiRouteHelper(ControllerHelper controllerHelper, IHttpContextAccessor httpContextAccessor)
+        public ApiRouteHelper(IHttpContextAccessor httpContextAccessor, AmisContext amisContext)
         {
-            _controllerHelper = controllerHelper;
             _httpContextAccessor = httpContextAccessor;
+            this.amisContext = amisContext;
         }
 
         public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) GetApiRoutes(string baseRoute, CrudActions actions)
@@ -33,6 +33,11 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             );
         }
 
+        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) GetApiRoutes()
+        {
+            return GetApiRoutes(amisContext.BaseRoute, amisContext.Actions);
+        }
+
         /// <summary>
         /// 获取控制器的基本路由。
         /// </summary>
@@ -41,7 +46,12 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         public string GetRoute(Type controller)
         {
             var routeAttr = controller.GetCustomAttribute<RouteAttribute>();
-            return routeAttr?.Template?.Replace("[controller]", _controllerHelper.GetControllerName(controller)) ?? string.Empty;
+            return routeAttr?.Template?.Replace("[controller]", amisContext.ControllerName) ?? string.Empty;
+        }
+
+        public string GetRoute()
+        {
+            return GetRoute(amisContext.ControllerType);
         }
 
         private string GetRouteTemplate(MethodInfo method, string httpMethod)

@@ -15,21 +15,19 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         private readonly ColumnHelper _columnHelper;
         private readonly ButtonHelper _buttonHelper;
         private readonly SearchFieldHelper _searchFieldHelper;
-        private readonly FormFieldHelper _formFieldHelper;
-        private readonly PermissionService _permissionService;
+        private readonly AmisContext amisContext;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
-                                 SearchFieldHelper searchFieldHelper, FormFieldHelper formFieldHelper, PermissionService permissionService)
+                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
             _buttonHelper = buttonHelper;
             _searchFieldHelper = searchFieldHelper;
-            _formFieldHelper = formFieldHelper;
-            _permissionService = permissionService;
+            this.amisContext = amisContext;
         }
 
         /// <summary>
@@ -42,16 +40,20 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         public JObject GenerateAmisCrudConfig(string controllerName, Type controllerType, CrudActions actions)
         {
             // 获取基础路由信息
-            var baseRoute = _apiRouteHelper.GetRoute(controllerType);
-            var apiRoutes = _apiRouteHelper.GetApiRoutes(baseRoute, actions);
+            var baseRoute = _apiRouteHelper.GetRoute();
+            amisContext.BaseRoute = baseRoute;
+
+            var apiRoutes = _apiRouteHelper.GetApiRoutes();
+            amisContext.ApiRoutes = apiRoutes;
 
             // 获取读取数据的类型，如果类型为空，则返回空
             var dataType = _apiRouteHelper.GetDataTypeFromAction(actions.Read);
             if (dataType == null)
                 return null;
+            amisContext.ListDataType = dataType;
 
             // 获取列配置和搜索字段
-            var columns = _columnHelper.GetAmisColumns(dataType, controllerName, apiRoutes, actions);
+            var columns = _columnHelper.GetAmisColumns();
             var searchFields = _searchFieldHelper.GetAmisSearchFields(actions.Read);
 
             // 构建 CRUD 配置
@@ -121,6 +123,11 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                     ["body"] = new JArray(searchFields)  // 添加搜索字段
                 }
             };
+        }
+
+        internal JObject GenerateAmisCrudConfig()
+        {
+            return GenerateAmisCrudConfig(amisContext.ControllerName, amisContext.ControllerType, amisContext.Actions);
         }
 
         #endregion

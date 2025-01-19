@@ -5,17 +5,22 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
 {
     public class ControllerHelper
     {
-        private readonly Assembly _assembly;
+        private readonly AmisContext amisContext;
 
-        public ControllerHelper(Assembly assembly)
+        public ControllerHelper(AmisContext amisContext)
         {
-            _assembly = assembly;
+            this.amisContext = amisContext;
         }
 
         public Type GetControllerType(string controllerName)
         {
-            return _assembly.GetTypes()
+            return amisContext.Assembly.GetTypes()
                             .FirstOrDefault(t => IsValidController(t, controllerName));
+        }
+
+        public Type GetControllerType()
+        {
+            return GetControllerType(amisContext.ControllerName);
         }
 
         private bool IsValidController(Type type, string controllerName)

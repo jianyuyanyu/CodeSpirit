@@ -23,9 +23,9 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// </summary>
         /// <param name="permissionService">权限服务，用于检查用户权限。</param>
         /// <param name="utilityHelper">实用工具类，提供辅助方法。</param>
-        public FormFieldHelper(PermissionService permissionService, UtilityHelper utilityHelper)
+        public FormFieldHelper(IPermissionService permissionService, UtilityHelper utilityHelper)
         {
-            _permissionService = permissionService;
+            _permissionService = (PermissionService)permissionService;
             _utilityHelper = utilityHelper;
         }
 

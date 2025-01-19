@@ -63,6 +63,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 ["name"] = $"{controllerName.ToLower()}Crud",  // 设置配置名称
                 ["showIndex"] = true,  // 显示索引列
                 ["api"] = BuildApiConfig(apiRoutes.ReadRoute),  // 设置 API 配置
+                ["quickSaveApi"] = BuildApiConfig(apiRoutes.UpdateRoute),
                 ["columns"] = new JArray(columns),  // 设置列
                 ["headerToolbar"] = BuildHeaderToolbar(apiRoutes.CreateRoute, actions.Create?.GetParameters())  // 设置头部工具栏
             };

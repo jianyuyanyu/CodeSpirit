@@ -5,6 +5,7 @@ using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Filters;
 using CodeSpirit.IdentityApi.MappingProfiles;
+using CodeSpirit.IdentityApi.ModelBindings;
 using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Data;
@@ -152,6 +153,7 @@ builder.Services.AddControllers(options =>
     // 全局注册 ValidateModelAttribute
     options.Filters.Add<ValidateModelAttribute>();
     options.Filters.Add<HttpResponseExceptionFilter>();
+    options.ModelBinderProviders.Insert(0, new DateRangeModelBinderProvider());
 }).AddNewtonsoftJson(options =>
 {
     // 可选：在此处配置 Newtonsoft.Json 的设置

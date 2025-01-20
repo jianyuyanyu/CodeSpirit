@@ -26,5 +26,11 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         /// </summary>
         [DisplayName("角色")]
         public string? Role { get; set; }
+
+        /// <summary>
+        /// 最后登录时间起始 (时间戳，逗号分隔)
+        /// </summary>
+        [DisplayName("最后登录时间")]
+        public DateTime[] LastLoginTime { get; set; }
     }
 }

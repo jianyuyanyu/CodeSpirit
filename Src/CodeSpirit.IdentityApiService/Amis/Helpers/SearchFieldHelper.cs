@@ -157,7 +157,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             }
 
             // 如果是日期类型，设置日期格式
-            if (fieldType == "date")
+            if (fieldType == "date" || fieldType == "input-date-range")
             {
                 field["format"] = "YYYY-MM-DD";
             }
@@ -186,6 +186,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 ["label"] = label,
                 ["type"] = fieldType
             };
+
             if (fieldType == "switch")
             {
                 field["trueValue"] = true;
@@ -200,11 +201,10 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             }
 
             // 如果是日期类型，设置日期格式
-            if (fieldType == "date")
+            if (fieldType == "date" || fieldType == "input-date-range")
             {
                 field["format"] = "YYYY-MM-DD";
             }
-
             return field;
         }
 
@@ -223,6 +223,8 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 return "select";
             if (type == typeof(DateTime) || type == typeof(DateTime?))
                 return "date";
+            if (type == typeof(DateTime[]))
+                return "input-date-range";
 
             return "input-text";
         }

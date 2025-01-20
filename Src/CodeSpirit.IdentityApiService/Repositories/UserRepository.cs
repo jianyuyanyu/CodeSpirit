@@ -239,6 +239,14 @@ namespace CodeSpirit.IdentityApi.Repositories
                 query = query.Where(u => u.UserRoles.Any(ur => ur.Role.Name == roleName));
             }
 
+            if (queryDto.LastLoginTime != null && queryDto.LastLoginTime.Length == 2)
+            {
+                var startDate = queryDto.LastLoginTime[0];
+                query = query.Where(u => u.LastLoginTime >= startDate);
+
+                var endDate = queryDto.LastLoginTime[1];
+                query = query.Where(u => u.LastLoginTime <= endDate);
+            }
             return query;
         }
 

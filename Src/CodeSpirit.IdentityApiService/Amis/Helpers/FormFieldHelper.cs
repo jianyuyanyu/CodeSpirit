@@ -304,11 +304,10 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 Type t when t == typeof(int) || t == typeof(long) ||
                            t == typeof(float) || t == typeof(double) => "input-number",
                 Type t when t == typeof(bool) => "switch",
-                Type t when t == typeof(DateTime) || t == typeof(DateTime?) => "datetime",
-                Type t when t.GetCustomAttribute<DataTypeAttribute>()?.DataType == DataType.EmailAddress => "input-email",
+                Type t when t == typeof(DateTime) || t == typeof(DateTime?) || 
+                t == typeof(DateTimeOffset) || t == typeof(DateTimeOffset?) => "datetime",
                 Type t when t.GetCustomAttribute<DataTypeAttribute>()?.DataType == DataType.Password => "input-password",
                 Type t when t.GetCustomAttribute<DataTypeAttribute>()?.DataType == DataType.ImageUrl => "image",
-                Type t when t.GetCustomAttribute<DataTypeAttribute>()?.DataType == DataType.Url => "input-text",
                 _ => "input-text"
             };
         }

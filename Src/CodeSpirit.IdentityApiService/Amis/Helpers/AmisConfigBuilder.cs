@@ -91,18 +91,6 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
 
         #region 辅助方法
 
-        ///// <summary>
-        ///// 构建 API 配置对象。
-        ///// </summary>
-        //private JObject BuildApiConfig(string apiRoute)
-        //{
-        //    return new JObject
-        //    {
-        //        ["url"] = apiRoute,  // API 路径
-        //        ["method"] = "get"   // 请求方法为 GET
-        //    };
-        //}
-
         /// <summary>
         /// 构建头部工具栏配置。
         /// </summary>

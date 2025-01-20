@@ -25,6 +25,8 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             actions.Update = FindMethodByActionPrefix(methods, ["Update", "Modify"]);
             // 查找符合删除操作前缀的方法
             actions.Delete = FindMethodByActionPrefix(methods, ["Delete", "Remove"]);
+            //  查找快速保存方法
+            actions.QuickSave = FindMethodByActionPrefix(methods, ["QuickSave"]);
 
             return actions;
         }

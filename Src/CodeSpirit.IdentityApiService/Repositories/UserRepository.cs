@@ -30,24 +30,21 @@ namespace CodeSpirit.IdentityApi.Repositories
 
         public async Task<ListData<UserDto>> GetUsersAsync(UserQueryDto queryDto)
         {
-            using (_context.DataFilter.Disable<IIsActive>())
-            {
-                var query = _userManager.Users
-                    .Include(u => u.UserRoles)
-                        .ThenInclude(ur => ur.Role)
-                    .AsQueryable();
+            var query = _userManager.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .AsQueryable();
 
-                query = ApplyFilters(query, queryDto);
-                query = ApplySorting(query, queryDto);
+            query = ApplyFilters(query, queryDto);
+            query = ApplySorting(query, queryDto);
 
-                var totalCount = await query.CountAsync();
-                var users = await query.ApplyPaging(queryDto.Page, queryDto.PerPage).ToListAsync();
+            var totalCount = await query.CountAsync();
+            var users = await query.ApplyPaging(queryDto.Page, queryDto.PerPage).ToListAsync();
 
-                // 使用 AutoMapper 进行映射
-                var userDtos = _mapper.Map<List<UserDto>>(users);
+            // 使用 AutoMapper 进行映射
+            var userDtos = _mapper.Map<List<UserDto>>(users);
 
-                return new ListData<UserDto>(userDtos, totalCount);
-            }
+            return new ListData<UserDto>(userDtos, totalCount);
         }
 
         public async Task<UserDto> GetUserByIdAsync(string id)
@@ -80,31 +77,28 @@ namespace CodeSpirit.IdentityApi.Repositories
 
         public async Task<IdentityResult> UpdateUserAsync(string id, UpdateUserDto updateUserDto)
         {
-            using (_context.DataFilter.Disable<IIsActive>())
+            var user = await _userManager.Users
+            .Include(u => u.UserRoles)
+            .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user == null)
+                return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
+
+            // 使用 AutoMapper 更新用户属性
+            _mapper.Map(updateUserDto, user);
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+                return updateResult;
+
+            if (updateUserDto.Roles != null)
             {
-                var user = await _userManager.Users
-                .Include(u => u.UserRoles)
-                .FirstOrDefaultAsync(u => u.Id == id);
-
-                if (user == null)
-                    return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
-
-                // 使用 AutoMapper 更新用户属性
-                _mapper.Map(updateUserDto, user);
-
-                var updateResult = await _userManager.UpdateAsync(user);
-                if (!updateResult.Succeeded)
-                    return updateResult;
-
-                if (updateUserDto.Roles != null)
-                {
-                    var roleResult = await UpdateUserRolesAsync(user, updateUserDto.Roles);
-                    if (!roleResult.Succeeded)
-                        return roleResult;
-                }
-
-                return IdentityResult.Success;
+                var roleResult = await UpdateUserRolesAsync(user, updateUserDto.Roles);
+                if (!roleResult.Succeeded)
+                    return roleResult;
             }
+
+            return IdentityResult.Success;
         }
 
         public async Task<IdentityResult> DeleteUserAsync(string id)
@@ -190,6 +184,29 @@ namespace CodeSpirit.IdentityApi.Repositories
             user.AccessFailedCount = 0;
             var updateResult = await _userManager.UpdateAsync(user);
             return updateResult.Succeeded ? IdentityResult.Success : updateResult;
+        }
+
+        public async Task<List<ApplicationUser>> GetUsersByIdsAsync(List<string> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                return [];
+            }
+
+            // 从数据库中查询指定 IDs 的用户信息
+            var users = await _userManager.Users
+                .Where(u => ids.Contains(u.Id))  // 根据 ID 过滤
+                .Include(u => u.UserRoles)  // 包括用户角色
+                    .ThenInclude(ur => ur.Role)  // 包括角色信息
+                .ToListAsync();
+
+            // 如果没有找到任何用户，返回空列表
+            if (users == null || !users.Any())
+            {
+                return [];
+            }
+
+            return users;
         }
 
         #region 私有辅助方法

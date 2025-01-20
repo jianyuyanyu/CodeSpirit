@@ -10,7 +10,7 @@ namespace CodeSpirit.IdentityApi.Amis
         public CrudActions Actions { get; internal set; }
         public Assembly Assembly { get; internal set; }
         public string BaseRoute { get; internal set; }
-        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) ApiRoutes { get; internal set; }
+        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute, string QuickSaveRoute) ApiRoutes { get; internal set; }
         public Type ListDataType { get; internal set; }
     }
 

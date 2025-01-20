@@ -16,5 +16,6 @@ namespace CodeSpirit.IdentityApi.Repositories
         Task<IdentityResult> SetActiveStatusAsync(string id, bool isActive);
         Task<(bool Success, string NewPassword)> ResetRandomPasswordAsync(string id);
         Task<IdentityResult> UnlockUserAsync(string id);
+        Task<List<ApplicationUser>> GetUsersByIdsAsync(List<string> ids);
     }
 }

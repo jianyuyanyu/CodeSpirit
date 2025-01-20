@@ -58,10 +58,10 @@ namespace CodeSpirit.IdentityApi.Data
         /// </summary>
         protected virtual bool IsSoftDeleteFilterEnabled => DataFilter?.IsEnabled<IDeletionAuditedObject>() ?? false;
 
-        /// <summary>
-        /// 是否启用激活筛选器
-        /// </summary>
-        protected virtual bool IsActiveFilterEnabled => DataFilter?.IsEnabled<IIsActive>() ?? false;
+        ///// <summary>
+        ///// 是否启用激活筛选器
+        ///// </summary>
+        //protected virtual bool IsActiveFilterEnabled => DataFilter?.IsEnabled<IIsActive>() ?? false;
 
         /// <summary>
         /// 数据筛选器
@@ -399,14 +399,14 @@ namespace CodeSpirit.IdentityApi.Data
                 expression = expression == null ? multiTenantFilter : CombineExpressions(expression, multiTenantFilter);
             }
 
-            if (typeof(IIsActive).IsAssignableFrom(typeof(TEntity)))
-            {
-                Expression<Func<TEntity, bool>> isActiveFilter =
-                    e => !IsActiveFilterEnabled || EF.Property<bool>(e, "IsActive");
-                expression = expression == null
-                    ? isActiveFilter
-                    : CombineExpressions(expression, isActiveFilter);
-            }
+            //if (typeof(IIsActive).IsAssignableFrom(typeof(TEntity)))
+            //{
+            //    Expression<Func<TEntity, bool>> isActiveFilter =
+            //        e => !IsActiveFilterEnabled || EF.Property<bool>(e, "IsActive");
+            //    expression = expression == null
+            //        ? isActiveFilter
+            //        : CombineExpressions(expression, isActiveFilter);
+            //}
 
             return expression;
         }

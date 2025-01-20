@@ -17,12 +17,13 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         private readonly SearchFieldHelper _searchFieldHelper;
         private readonly AmisContext amisContext;
         private readonly UtilityHelper utilityHelper;
+        private readonly AmisApiHelper amisApiHelper;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
-                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper)
+                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
@@ -30,6 +31,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             _searchFieldHelper = searchFieldHelper;
             this.amisContext = amisContext;
             this.utilityHelper = utilityHelper;
+            this.amisApiHelper = amisApiHelper;
         }
 
         /// <summary>
@@ -64,8 +66,8 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 ["type"] = "crud",  // 设置类型为 CRUD
                 ["name"] = $"{controllerName.ToLower()}Crud",  // 设置配置名称
                 ["showIndex"] = true,  // 显示索引列
-                ["api"] = BuildApiConfig(apiRoutes.ReadRoute),  // 设置 API 配置
-                ["quickSaveApi"] = BuildApiConfig(apiRoutes.UpdateRoute),
+                ["api"] = amisApiHelper.CreateApi(apiRoutes.ReadRoute, "get"),  // 设置 API 配置
+                ["quickSaveApi"] = amisApiHelper.CreateApi(apiRoutes.QuickSaveRoute, "patch"),
                 ["columns"] = new JArray(columns),  // 设置列
                 ["headerToolbar"] = BuildHeaderToolbar(apiRoutes.CreateRoute, actions.Create?.GetParameters())  // 设置头部工具栏
             };
@@ -89,17 +91,17 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
 
         #region 辅助方法
 
-        /// <summary>
-        /// 构建 API 配置对象。
-        /// </summary>
-        private JObject BuildApiConfig(string apiRoute)
-        {
-            return new JObject
-            {
-                ["url"] = apiRoute,  // API 路径
-                ["method"] = "get"   // 请求方法为 GET
-            };
-        }
+        ///// <summary>
+        ///// 构建 API 配置对象。
+        ///// </summary>
+        //private JObject BuildApiConfig(string apiRoute)
+        //{
+        //    return new JObject
+        //    {
+        //        ["url"] = apiRoute,  // API 路径
+        //        ["method"] = "get"   // 请求方法为 GET
+        //    };
+        //}
 
         /// <summary>
         /// 构建头部工具栏配置。

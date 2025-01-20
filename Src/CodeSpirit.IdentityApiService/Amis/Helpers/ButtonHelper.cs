@@ -10,12 +10,14 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         private readonly PermissionService _permissionService;
         private readonly AmisContext amisContext;
         private readonly ApiRouteHelper apiRouteHelper;
+        private readonly AmisApiHelper amisApiHelper;
 
-        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper)
+        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper)
         {
             _permissionService = (PermissionService)permissionService;
             this.amisContext = amisContext;
             this.apiRouteHelper = apiRouteHelper;
+            this.amisApiHelper = amisApiHelper;
         }
 
         // 创建一个通用的按钮模板
@@ -136,13 +138,11 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         // 创建自定义操作按钮
         public JObject CreateCustomOperationButton(OperationAttribute op, MethodInfo method)
         {
-            var (apiPath, httpMethod) = apiRouteHelper.GetApiRouteInfoForMethod(method);
-            var api = new JObject
+            var api = amisApiHelper.CreateApiForMethod(method);
+            if (api["url"] == null)
             {
-                ["url"] = op.Api ?? apiPath,
-                ["method"] = op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase) ? "get" : (op.Api ?? httpMethod)
-            };
-
+                api["url"] = op.Api;
+            }
             return CreateButton(op.Label, op.ActionType, api: api, confirmText: op.ConfirmText, download: op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase), visibleOn: op.VisibleOn);
         }
     }

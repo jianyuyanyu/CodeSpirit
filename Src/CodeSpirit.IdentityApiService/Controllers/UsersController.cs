@@ -188,5 +188,50 @@ namespace CodeSpirit.IdentityApi.Controllers
 
             return Ok(new { msg = "用户已成功解锁。" });
         }
+
+        [HttpPatch("quickSave")]
+        public async Task<ActionResult<ApiResponse<string>>> QuickSaveUsers([FromBody] QuickSaveRequestDto request)
+        {
+            // 1. 确保请求数据有效
+            if (request?.Rows == null || !request.Rows.Any())
+            {
+                return BadRequest(new ApiResponse<string>(1, "请求数据无效或为空", null));
+            }
+
+            // 2. 获取需要更新的用户ID列表
+            var userIdsToUpdate = request.Rows.Select(row => row.Id).ToList();
+            var usersToUpdate = await _userRepository.GetUsersByIdsAsync(userIdsToUpdate);
+            if (usersToUpdate.Count != userIdsToUpdate.Count)
+            {
+                return NotFound(new ApiResponse<string>(1, "部分用户未找到", null));
+            }
+
+            // 3. 执行批量更新：更新 `rowsDiff` 中的变化字段
+            foreach (var rowDiff in request.RowsDiff)
+            {
+                var user = usersToUpdate.FirstOrDefault(u => u.Id == rowDiff.Id);
+                if (user != null)
+                {
+                    // 更新变化字段（仅更新在 rowsDiff 中的字段）
+                    if (rowDiff.IsActive.HasValue)
+                    {
+                        user.IsActive = rowDiff.IsActive.Value;
+                    }
+
+                    // 你可以根据需求增加更多字段的更新
+                }
+            }
+
+            // 4. 保存更新结果
+            var updateResult = await _userRepository.SaveChangesAsync();
+            if (updateResult == 0)
+            {
+                return BadRequest(new ApiResponse<string>(1, "批量更新失败", null));
+            }
+
+            // 5. 返回成功响应
+            return Ok(new ApiResponse<string>(0, "批量更新成功", null));
+        }
+
     }
 }

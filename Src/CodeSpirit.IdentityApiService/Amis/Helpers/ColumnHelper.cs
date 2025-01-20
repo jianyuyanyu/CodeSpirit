@@ -42,7 +42,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// <param name="controllerName">控制器名称。</param>
         /// <param name="apiRoutes">包含 CRUD 操作路由的元组。</param>
         /// <returns>AMIS 表格列的列表。</returns>
-        public List<JObject> GetAmisColumns(Type dataType, string controllerName, (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) apiRoutes, CrudActions actions)
+        public List<JObject> GetAmisColumns(Type dataType, string controllerName, (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute, string QuickSaveRoute) apiRoutes, CrudActions actions)
         {
             // 获取数据类型的所有公共实例属性
             var properties = _utilityHelper.GetOrderedProperties(dataType);

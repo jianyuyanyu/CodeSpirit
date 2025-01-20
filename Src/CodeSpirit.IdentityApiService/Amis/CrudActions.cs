@@ -11,6 +11,7 @@ namespace CodeSpirit.IdentityApi.Amis
         public MethodInfo Read { get; set; }
         public MethodInfo Update { get; set; }
         public MethodInfo Delete { get; set; }
+        public MethodInfo QuickSave { get; set; }
 
         /// <summary>
         /// 获取所有 CRUD 操作的方法集合。
@@ -22,6 +23,7 @@ namespace CodeSpirit.IdentityApi.Amis
             if (Read != null) yield return Read;
             if (Update != null) yield return Update;
             if (Delete != null) yield return Delete;
+            if (QuickSave != null) yield return QuickSave;
         }
     }
 }

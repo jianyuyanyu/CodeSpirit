@@ -27,7 +27,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// <param name="baseRoute">基本路由。</param>
         /// <param name="actions">CRUD 操作配置。</param>
         /// <returns>包含创建、读取、更新和删除操作的 API 路由元组。</returns>
-        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) GetApiRoutes(string baseRoute, CrudActions actions)
+        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute,string QuickSaveRoute) GetApiRoutes(string baseRoute, CrudActions actions)
         {
             // 辅助方法：将模板与基本路由合并并转换为绝对 URL
             string Combine(string template) => BuildAbsoluteUrl(CombineRoutes(baseRoute, template));
@@ -37,13 +37,15 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             var readRouteTemplate = GetRouteTemplate(actions.Read, "GET");
             var updateRouteTemplate = GetRouteTemplate(actions.Update, "PUT");
             var deleteRouteTemplate = GetRouteTemplate(actions.Delete, "DELETE");
+            var quickSaveRouteTemplate = GetRouteTemplate(actions.QuickSave, "PATCH");
 
             // 返回各个操作的绝对 URL 路由
             return (
                 Combine(createRouteTemplate),
                 Combine(readRouteTemplate),
                 Combine(updateRouteTemplate),
-                Combine(deleteRouteTemplate)
+                Combine(deleteRouteTemplate),
+                Combine(quickSaveRouteTemplate)
             );
         }
 
@@ -51,7 +53,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// 根据当前 AmisContext 配置的基本路由和 CRUD 操作，生成对应的 API 路由。
         /// </summary>
         /// <returns>包含创建、读取、更新和删除操作的 API 路由元组。</returns>
-        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute) GetApiRoutes()
+        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute, string QuickSaveRoute) GetApiRoutes()
         {
             return GetApiRoutes(amisContext.BaseRoute, amisContext.Actions);
         }

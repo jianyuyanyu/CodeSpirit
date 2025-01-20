@@ -55,6 +55,7 @@ builder.Services.AddScoped<CachingHelper>();
 builder.Services.AddScoped<ControllerHelper>();
 builder.Services.AddScoped<CrudHelper>();
 builder.Services.AddSingleton<UtilityHelper>();
+builder.Services.AddScoped<AmisApiHelper>();
 
 builder.Services.AddScoped<ApiRouteHelper>();
 builder.Services.AddScoped<ColumnHelper>();

@@ -174,7 +174,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// PUT: /api/Users/{id}/unlock
         /// </summary>
         [HttpPut("{id}/unlock")]
-        [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？")]
+        [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？", "lockoutEnd != null")]
         public async Task<IActionResult> UnlockUser(string id)
         {
             var result = await _userRepository.UnlockUserAsync(id);

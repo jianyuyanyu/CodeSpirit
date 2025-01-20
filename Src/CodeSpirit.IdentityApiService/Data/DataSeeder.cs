@@ -421,6 +421,11 @@ namespace CodeSpirit.IdentityApi.Data
                     AvatarUrl = avatarUrl // 默认头像地址
                 };
 
+                if (i > 5)
+                {
+                    user.LockoutEnd = DateTimeOffset.Now.AddHours(5);
+                }
+
                 // 创建用户
                 var result = await userManager.CreateAsync(user, "Password@123");
                 if (result.Succeeded)

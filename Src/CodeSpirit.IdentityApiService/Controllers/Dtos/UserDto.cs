@@ -39,4 +39,10 @@ public class UserDto
 
     [DisplayName("性别")]
     public Gender Gender { get; set; }
+
+    public bool LockoutEnabled { get; set; }
+
+    public DateTimeOffset? LockoutEnd { get; set; }
+
+    public int AccessFailedCount { get; set; }
 }

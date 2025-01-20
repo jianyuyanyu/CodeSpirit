@@ -9,11 +9,13 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
     {
         private readonly PermissionService _permissionService;
         private readonly AmisContext amisContext;
+        private readonly ApiRouteHelper apiRouteHelper;
 
-        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext)
+        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper)
         {
             _permissionService = (PermissionService)permissionService;
             this.amisContext = amisContext;
+            this.apiRouteHelper = apiRouteHelper;
         }
 
         // 创建一个通用的按钮模板
@@ -123,7 +125,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 if (operationAttribute != null)
                 {
                     // 为每个操作方法创建按钮
-                    var button = CreateCustomOperationButton(operationAttribute);
+                    var button = CreateCustomOperationButton(operationAttribute, method);
                     buttons.Add(button);
                 }
             }
@@ -132,12 +134,13 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         }
 
         // 创建自定义操作按钮
-        public JObject CreateCustomOperationButton(OperationAttribute op)
+        public JObject CreateCustomOperationButton(OperationAttribute op, MethodInfo method)
         {
-            var api = string.IsNullOrEmpty(op.Api) ? null : new JObject
+            var (apiPath, httpMethod) = apiRouteHelper.GetApiRouteInfoForMethod(method);
+            var api = new JObject
             {
-                ["url"] = op.Api,
-                ["method"] = op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase) ? "get" : "post"
+                ["url"] = op.Api ?? apiPath,
+                ["method"] = op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase) ? "get" : (op.Api ?? httpMethod)
             };
 
             return CreateButton(op.Label, op.ActionType, api: api, confirmText: op.ConfirmText, download: op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase), visibleOn: op.VisibleOn);

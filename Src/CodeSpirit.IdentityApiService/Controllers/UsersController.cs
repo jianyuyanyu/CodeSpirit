@@ -156,7 +156,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// POST: /api/Users/{id}/resetRandomPassword
         /// </summary>
         [HttpPost("{id}/resetRandomPassword")]
-        [Operation("重置密码", "ajax", "${API_HOST}/api/users/$id/resetRandomPassword", "确定要重置密码吗？", "isActive == true")]
+        [Operation("重置密码", "ajax", null, "确定要重置密码吗？", "isActive == true")]
         public async Task<ActionResult<ApiResponse<string>>> ResetRandomPassword(string id)
         {
             var (success, newPassword) = await _userRepository.ResetRandomPasswordAsync(id);
@@ -174,7 +174,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// PUT: /api/Users/{id}/unlock
         /// </summary>
         [HttpPut("{id}/unlock")]
-        [Operation("解锁", "ajax", "${API_HOST}/api/users/$id/unlock", "确定要解除用户锁定吗？")]
+        [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？")]
         public async Task<IActionResult> UnlockUser(string id)
         {
             var result = await _userRepository.UnlockUserAsync(id);

@@ -16,18 +16,20 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         private readonly ButtonHelper _buttonHelper;
         private readonly SearchFieldHelper _searchFieldHelper;
         private readonly AmisContext amisContext;
+        private readonly UtilityHelper utilityHelper;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
-                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext)
+                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
             _buttonHelper = buttonHelper;
             _searchFieldHelper = searchFieldHelper;
             this.amisContext = amisContext;
+            this.utilityHelper = utilityHelper;
         }
 
         /// <summary>
@@ -47,7 +49,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             amisContext.ApiRoutes = apiRoutes;
 
             // 获取读取数据的类型，如果类型为空，则返回空
-            var dataType = _apiRouteHelper.GetDataTypeFromAction(actions.Read);
+            var dataType = utilityHelper.GetDataTypeFromMethod(actions.Read);
             if (dataType == null)
                 return null;
             amisContext.ListDataType = dataType;

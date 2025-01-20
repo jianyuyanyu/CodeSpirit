@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
@@ -141,6 +143,76 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             return underlying != null && underlying.IsEnum;
         }
 
+        /// <summary>
+        /// 获取类型的基础类型，处理泛型类型（如 ActionResult<> 和 Task<>）。
+        /// </summary>
+        /// <param name="type">待分析的类型。</param>
+        /// <returns>基础类型。</returns>
+        public Type GetUnderlyingType(Type type)
+        {
+            if (type.IsGenericType)
+            {
+                var genericDef = type.GetGenericTypeDefinition();
+                if (genericDef == typeof(ActionResult<>))
+                {
+                    return type.GetGenericArguments()[0];
+                }
+                if (genericDef == typeof(Task<>))
+                {
+                    var taskInnerType = type.GetGenericArguments()[0];
+                    if (taskInnerType.IsGenericType && taskInnerType.GetGenericTypeDefinition() == typeof(ActionResult<>))
+                    {
+                        return taskInnerType.GetGenericArguments()[0];
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 提取 API 响应的数据类型。
+        /// </summary>
+        /// <param name="type">待分析的类型。</param>
+        /// <returns>提取后的数据类型。</returns>
+        public Type ExtractDataType(Type type)
+        {
+            if (type == null)
+                return null;
+
+            if (type.IsGenericType)
+            {
+                var genericDef = type.GetGenericTypeDefinition();
+                if (genericDef == typeof(ApiResponse<>))
+                {
+                    var innerType = type.GetGenericArguments()[0];
+                    if (innerType.IsGenericType && innerType.GetGenericTypeDefinition() == typeof(ListData<>))
+                    {
+                        return innerType.GetGenericArguments()[0];
+                    }
+                    return innerType;
+                }
+                if (genericDef == typeof(ListData<>))
+                {
+                    return type.GetGenericArguments()[0];
+                }
+            }
+
+            return type;
+        }
+
+        /// <summary>
+        /// 从读取方法中提取返回的数据类型。
+        /// </summary>
+        /// <param name="method">方法。</param>
+        /// <returns>返回的数据类型。</returns>
+        public Type GetDataTypeFromMethod(MethodInfo method)
+        {
+            if (method == null)
+                return null;
+
+            var returnType = method.ReturnType;
+            return ExtractDataType(GetUnderlyingType(returnType));
+        }
     }
 }
 

@@ -1,0 +1,36 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>@ViewData["Title"] - CodeSpirit App</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <!-- 样式表 -->
+    <link rel="stylesheet" href="https://unpkg.com/amis@6.10.0/sdk/antd.css" />
+    <link rel="stylesheet" href="https://unpkg.com/amis@6.10.0/sdk/helper.css" />
+    <link rel="stylesheet" href="https://unpkg.com/amis@6.10.0/sdk/iconfont.css" />
+
+    <!-- 脚本 -->
+    <script src="https://unpkg.com/amis@6.10.0/sdk/sdk.js"></script>
+    <script src="https://unpkg.com/vue@2"></script>
+    <script src="https://unpkg.com/history@4.10.1/umd/history.js"></script>
+
+    <style>
+        html, body, .app-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+
+    @RenderSection("Head", required: false)  <!-- 可选的 Razor section -->
+</head>
+<body>
+    @RenderBody()  <!-- 页面主体内容 -->
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

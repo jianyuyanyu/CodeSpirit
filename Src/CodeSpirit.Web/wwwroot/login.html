@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>amis admin</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <link rel="stylesheet" title="default" href="https://unpkg.com/amis@6.10.0/sdk/sdk.css" />
+    <link rel="stylesheet" href="https://unpkg.com/amis@6.10.0/sdk/helper.css" />
+    <link rel="stylesheet" href="https://unpkg.com/amis@6.10.0/sdk/iconfont.css" />
+    <script src="https://unpkg.com/amis@6.10.0/sdk/sdk.js"></script>
+    <script src="https://unpkg.com/vue@2"></script>
+    <script src="https://unpkg.com/history@4.10.1
+/umd/history.js"></script>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root" class="app-wrapper"></div>
+    <script type="text/javascript">
+        (function () {
+            let amis = amisRequire('amis/embed');
+            const match = amisRequire('path-to-regexp').match;
+            // 通过替换下面这个配置来生成不同页面
+            let amisJSON =
+            {
+                "type": "form",
+                "title": "登录",
+                "controls": [
+                    {
+                        "type": "text",
+                        "name": "username",
+                        "label": "用户名",
+                        "required": true,
+                        "placeholder": "请输入用户名",
+                        "inputClassName": "custom-input",
+                        "validation": {
+                            "pattern": "^[a-zA-Z0-9_]{4,16}$",
+                            "message": "用户名必须为4-16位的字母、数字或下划线"
+                        }
+                    },
+                    {
+                        "type": "password",
+                        "name": "password",
+                        "label": "密码",
+                        "required": true,
+                        "placeholder": "请输入密码",
+                        "inputClassName": "custom-input"
+                    },
+                    {
+                        "type": "checkbox",
+                        "name": "remember",
+                        "label": "记住我"
+                    },
+                    {
+                        "type": "button",
+                        "label": "登录",
+                        "primary": true,
+                        "actionType": "ajax",
+                        "api": "POST /api/login",
+                        "messages": {
+                            "success": "登录成功",
+                            "failed": "登录失败"
+                        },
+                        "block": true,
+                        "className": "login-button",
+                        "busyConfig": {
+                            "tip": "正在登录..."
+                        }
+                    },
+                    {
+                        "type": "divider",
+                        "className": "divider"
+                    },
+                    {
+                        "type": "button",
+                        "label": "忘记密码",
+                        "actionType": "link",
+                        "to": "/forgot-password",
+                        "className": "forgot-password-link"
+                    }
+                ]
+            };
+            let amisScoped = amis.embed('#root', amisJSON);
+        })();
+    </script>
+</body>
+
+</html>

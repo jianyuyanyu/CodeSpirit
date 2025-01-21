@@ -106,6 +106,7 @@ builder.Services.AddCors(options =>
         {
             builder
                 .WithOrigins("http://localhost:3000") // 前端应用的地址
+                .WithOrigins("https://localhost:7120")
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials(); // 允许凭证

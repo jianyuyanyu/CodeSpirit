@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <Sdk Name="Aspire.AppHost.Sdk" Version="9.0.0" />
 
@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CodeSpirit.ApiService\CodeSpirit.ApiService.csproj" />
     <ProjectReference Include="..\CodeSpirit.IdentityApiService\CodeSpirit.IdentityApi.csproj" />
+    <ProjectReference Include="..\CodeSpirit.Web\CodeSpirit.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

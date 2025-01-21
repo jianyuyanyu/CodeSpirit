@@ -7,11 +7,29 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="wwwroot\sdk\thirds\markdown-it\node_modules\entities\lib\maps\._entities.json" />
+    <Content Include="wwwroot\sdk\thirds\markdown-it\node_modules\entities\lib\maps\entities.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\sdk\thirds\markdown-it\node_modules\._entities" />
+    <None Include="wwwroot\sdk\thirds\markdown-it\node_modules\entities\._lib" />
+    <None Include="wwwroot\sdk\thirds\markdown-it\node_modules\entities\lib\._maps" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Aspire.StackExchange.Redis.OutputCaching" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="Pages\Login.cshtml">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

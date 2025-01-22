@@ -24,6 +24,10 @@
             }
           },
           {
+            "label": "用户统计",
+            "schemaApi": "/test.json"
+          },
+          {
             "label": "用户管理",
             "schemaApi": "https://localhost:17134/api/amis/users"
           },

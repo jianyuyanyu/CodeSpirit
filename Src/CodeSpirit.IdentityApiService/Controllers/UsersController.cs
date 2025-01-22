@@ -233,5 +233,22 @@ namespace CodeSpirit.IdentityApi.Controllers
             return Ok(new ApiResponse<string>(0, "批量更新成功", null));
         }
 
+        #region 数据统计
+        [HttpGet("user-growth")]
+        public async Task<IActionResult> GetUserGrowth()
+        {
+            var data = await _userRepository.GetUserGrowthAsync(DateTime.Now.AddDays(-7), DateTime.Now);
+            return Ok(new { dates = data.Select(x => x.Date.ToString("yyyy-MM-dd")).ToArray(), userCounts = data.Select(x => x.UserCount).ToArray() });
+        }
+
+        [HttpGet("active-users")]
+        public async Task<IActionResult> GetActiveUsers()
+        {
+            var data = await _userRepository.GetActiveUsersAsync(DateTime.Now.AddDays(-7), DateTime.Now);
+            return Ok(new { dates = data.Select(x => x.Date.ToString("yyyy-MM-dd")).ToArray(), activeUserCounts = data.Select(x => x.ActiveUserCount).ToArray() });
+        }
+
+        #endregion
+
     }
 }

@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.IdentityApi.Repositories
 {
-    public class UserRepository : Repository<ApplicationUser>, IUserRepository
+    public partial class UserRepository : Repository<ApplicationUser>, IUserRepository
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<ApplicationRole> _roleManager;
@@ -208,6 +208,64 @@ namespace CodeSpirit.IdentityApi.Repositories
 
             return users;
         }
+
+        #region 数据统计
+        /// <summary>
+        /// 用户增长趋势图（折线图/柱状图）
+        /// </summary>
+        /// <param name="startDate"></param>
+        /// <param name="endDate"></param>
+        /// <returns></returns>
+        public async Task<List<UserGrowthDto>> GetUserGrowthAsync(DateTime startDate, DateTime endDate)
+        {
+            var query = _userManager.Users
+                .Where(u => u.LastLoginTime >= startDate && u.LastLoginTime <= endDate);
+
+            // 按天统计用户注册数量
+            var dailyGrowth = await query
+                .GroupBy(u => u.LastLoginTime.Value.Date)
+                .Select(g => new { Date = g.Key, UserCount = g.Count() })
+                .OrderBy(g => g.Date)
+                .ToListAsync();
+
+            // 返回前端所需格式
+            var result = dailyGrowth.Select(g => new UserGrowthDto
+            {
+                Date = g.Date,
+                UserCount = g.UserCount
+            }).ToList();
+
+            return result;
+        }
+
+        /// <summary>
+        /// 活跃用户统计图（柱状图/漏斗图）
+        /// </summary>
+        /// <param name="startDate"></param>
+        /// <param name="endDate"></param>
+        /// <returns></returns>
+        public async Task<List<ActiveUserDto>> GetActiveUsersAsync(DateTime startDate, DateTime endDate)
+        {
+            var query = _userManager.Users
+                .Where(u => u.IsActive && u.LastLoginTime >= startDate && u.LastLoginTime <= endDate);
+
+            // 按天统计活跃用户数量
+            var dailyActiveUsers = await query
+                .GroupBy(u => u.LastLoginTime.Value.Date)
+                .Select(g => new { Date = g.Key, ActiveUserCount = g.Count() })
+                .OrderBy(g => g.Date)
+                .ToListAsync();
+
+            // 返回前端所需格式
+            var result = dailyActiveUsers.Select(g => new ActiveUserDto
+            {
+                Date = g.Date,
+                ActiveUserCount = g.ActiveUserCount
+            }).ToList();
+
+            return result;
+        }
+        #endregion
 
         #region 私有辅助方法
 

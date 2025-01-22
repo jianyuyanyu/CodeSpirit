@@ -27,7 +27,8 @@ namespace CodeSpirit.IdentityApi.Controllers
         public async Task<ActionResult<EChartsConfig>> GetUserGrowthAsync(DateTimeOffset? startDate, DateTimeOffset? endDate)
         {
             var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-1);
-            var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now;
+            var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
+
             var dailyGrowth = await _userRepository.GetUserGrowthAsync(date1, date2);
             var dates = dailyGrowth.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
             var userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
@@ -95,12 +96,12 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("activeusers")]
         public async Task<ActionResult<EChartsConfig>> GetActiveUsersAsync(DateTimeOffset? startDate, DateTimeOffset? endDate)
         {
-            var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-1);
+            var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-3);
             var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now;
-            var dailyActiveUsers = await _userRepository.GetUserGrowthAsync(date1, date2);
+            var dailyActiveUsers = await _userRepository.GetActiveUsersAsync(date1, date2);
 
             var dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
-            var activeUserCounts = dailyActiveUsers.Select(g => g.UserCount).ToList();
+            var activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
 
             // 创建 ECharts 配置
             var eChartConfig = new EChartsConfig
@@ -158,15 +159,16 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("usergrowth-and-active-users")]
         public async Task<ActionResult<EChartsConfig>> GetUserGrowthAndActiveUsersAsync(DateTimeOffset? startDate, DateTimeOffset? endDate)
         {
-            var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-1);
-            var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now;
+            var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-2);
+            var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
             var dailyGrowth = await _userRepository.GetUserGrowthAsync(date1, date2);
-            var dates = dailyGrowth.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
+            
             var userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
 
             // 获取活跃用户数据
-            var dailyActiveUsers = await _userRepository.GetUserGrowthAsync(date1, date2);
-            var activeUserCounts = dailyActiveUsers.Select(g => g.UserCount).ToList();
+            var dailyActiveUsers = await _userRepository.GetActiveUsersAsync(date1, date2);
+            var activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
+            var dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
 
             // 合并图表配置
             var eChartConfig = new EChartsConfig

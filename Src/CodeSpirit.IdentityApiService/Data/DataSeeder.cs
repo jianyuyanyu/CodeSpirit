@@ -407,6 +407,7 @@ namespace CodeSpirit.IdentityApi.Data
 
                 // 随机生成 LastLoginTime（过去三个月内）
                 var lastLoginTime = GetRandomDate(DateTime.Now.AddMonths(-3), DateTime.Now);
+                var createTime = GetRandomDate(DateTime.Now.AddMonths(-1), DateTime.Now);
 
                 var user = new ApplicationUser
                 {
@@ -418,7 +419,8 @@ namespace CodeSpirit.IdentityApi.Data
                     Name = $"User {random.Next(1000, 9999)}", // 随机生成用户姓名
                     Gender = genderValues[random.Next(genderValues.Length)], // 随机分配性别
                     IsActive = random.Next(1, 10) % 2 == 0,
-                    AvatarUrl = avatarUrl // 默认头像地址
+                    AvatarUrl = avatarUrl,
+                    CreationTime = createTime.DateTime
                 };
 
                 if (i > 5)

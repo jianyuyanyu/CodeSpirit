@@ -60,6 +60,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         public async Task<(IdentityResult Result, string UserId)> CreateUserAsync(CreateUserDto createUserDto)
         {
             var user = _mapper.Map<ApplicationUser>(createUserDto);
+
             var newPassword = PasswordGenerator.GenerateRandomPassword(12);
             var result = await _userManager.CreateAsync(user, newPassword);
             if (!result.Succeeded)
@@ -219,11 +220,11 @@ namespace CodeSpirit.IdentityApi.Repositories
         public async Task<List<UserGrowthDto>> GetUserGrowthAsync(DateTimeOffset startDate, DateTimeOffset endDate)
         {
             var query = _userManager.Users
-                .Where(u => u.LastLoginTime >= startDate && u.LastLoginTime <= endDate);
+                .Where(u => u.CreationTime >= startDate.Date && u.CreationTime <= endDate.Date);
 
             // 按天统计用户注册数量
             var dailyGrowth = await query
-                .GroupBy(u => u.LastLoginTime.Value.Date)
+                .GroupBy(u => u.CreationTime.Date)
                 .Select(g => new { Date = g.Key, UserCount = g.Count() })
                 .OrderBy(g => g.Date)
                 .ToListAsync();

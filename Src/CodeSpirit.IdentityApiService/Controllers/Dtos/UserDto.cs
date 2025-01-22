@@ -9,6 +9,9 @@ public class UserDto
     [DisplayName("姓名")]
     public string Name { get; set; }
 
+    [DisplayName("头像")]
+    public string AvatarUrl { get; set; }
+
     [Required]
     [StringLength(50, MinimumLength = 3)]
     [DisplayName("用户名")]
@@ -25,8 +28,6 @@ public class UserDto
     [DisplayName("身份证")]
     public string IdNo { get; set; }
 
-    [DisplayName("头像")]
-    public string AvatarUrl { get; set; }
 
     [DisplayName("最后登录时间")]
     public DateTimeOffset? LastLoginTime { get; set; }

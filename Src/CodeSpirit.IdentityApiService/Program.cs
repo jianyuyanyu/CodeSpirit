@@ -50,6 +50,7 @@ builder.Services.AddMemoryCache();
 
 // 注册权限服务
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<AuthService>();
 
 // 注册其他服务
 builder.Services.AddScoped<CachingHelper>();
@@ -142,6 +143,7 @@ builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<ILoginLogRepository, LoginLogRepository>();
 // 注册 AutoMapper 并扫描指定的程序集中的配置文件
 builder.Services.AddAutoMapper(typeof(UserProfile));
 

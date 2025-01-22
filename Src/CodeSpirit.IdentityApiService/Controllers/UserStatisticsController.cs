@@ -346,7 +346,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 //}
             }
         ],
-                BackgroundColor = "#f4f4f4"
+                //BackgroundColor = "#f4f4f4"
             };
 
             return Ok(eChartConfig);

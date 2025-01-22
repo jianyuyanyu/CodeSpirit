@@ -1,9 +1,10 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
+using CodeSpirit.IdentityApi.Amis.Helpers;
 using CodeSpirit.IdentityApi.Authorization;
 using Newtonsoft.Json.Linq;
 
-namespace CodeSpirit.IdentityApi.Amis.Helpers
+namespace CodeSpirit.IdentityApi.Amis
 {
     /// <summary>
     /// 负责生成 AMIS CRUD 配置的构建器。
@@ -83,7 +84,14 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             {
                 ["type"] = "page",  // 设置页面类型
                 ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",  // 设置页面标题
-                ["body"] = crudConfig  // 设置页面主体为 CRUD 配置
+                ["body"] = new JArray()
+                {
+                    //new JObject {
+                    //    ["type"] = "chart",
+                    //    ["api"] = "${API_HOST}/api/userStatistics/usergrowth-and-active-users"
+                    //},
+                    crudConfig
+                }
             };
 
             return pageConfig;

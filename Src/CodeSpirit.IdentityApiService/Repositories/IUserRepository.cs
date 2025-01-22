@@ -17,7 +17,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         Task<(bool Success, string NewPassword)> ResetRandomPasswordAsync(string id);
         Task<IdentityResult> UnlockUserAsync(string id);
         Task<List<ApplicationUser>> GetUsersByIdsAsync(List<string> ids);
-        Task<List<ActiveUserDto>> GetActiveUsersAsync(DateTime startDate, DateTime endDate);
-        Task<List<UserGrowthDto>> GetUserGrowthAsync(DateTime startDate, DateTime endDate);
+        Task<List<ActiveUserDto>> GetActiveUsersAsync(DateTimeOffset startDate, DateTimeOffset endDate);
+        Task<List<UserGrowthDto>> GetUserGrowthAsync(DateTimeOffset startDate, DateTimeOffset endDate);
     }
 }

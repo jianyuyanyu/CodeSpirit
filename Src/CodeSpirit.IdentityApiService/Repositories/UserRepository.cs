@@ -216,7 +216,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// <param name="startDate"></param>
         /// <param name="endDate"></param>
         /// <returns></returns>
-        public async Task<List<UserGrowthDto>> GetUserGrowthAsync(DateTime startDate, DateTime endDate)
+        public async Task<List<UserGrowthDto>> GetUserGrowthAsync(DateTimeOffset startDate, DateTimeOffset endDate)
         {
             var query = _userManager.Users
                 .Where(u => u.LastLoginTime >= startDate && u.LastLoginTime <= endDate);
@@ -244,10 +244,10 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// <param name="startDate"></param>
         /// <param name="endDate"></param>
         /// <returns></returns>
-        public async Task<List<ActiveUserDto>> GetActiveUsersAsync(DateTime startDate, DateTime endDate)
+        public async Task<List<ActiveUserDto>> GetActiveUsersAsync(DateTimeOffset startDate, DateTimeOffset endDate)
         {
             var query = _userManager.Users
-                .Where(u => u.IsActive && u.LastLoginTime >= startDate && u.LastLoginTime <= endDate);
+                .Where(u => u.LastLoginTime >= startDate && u.LastLoginTime <= endDate);
 
             // 按天统计活跃用户数量
             var dailyActiveUsers = await query

@@ -4,58 +4,15 @@
   "body": [
     {
       "type": "chart",
-      "title": "用户增长趋势",
-      "description": "按天统计的用户增长数",
-      "config": {
-        "type": "line",
-        "data": {
-          "labels": "${data.dates}", // 动态绑定 API 数据中的日期数组
-          "datasets": [
-            {
-              "label": "用户数",
-              "data": "${data.userCounts}", // 动态绑定 API 数据中的用户数字段
-              "borderColor": "#4bc0c0",
-              "backgroundColor": "rgba(75, 192, 192, 0.2)",
-              "fill": false,
-              "tension": 0.4
-            }
-          ]
-        },
-        "options": {
-          "responsive": true,
-          "plugins": {
-            "tooltip": {
-              "mode": "index",
-              "intersect": false
-            },
-            "legend": {
-              "display": true,
-              "position": "top"
-            }
-          },
-          "scales": {
-            "x": {
-              "type": "time",
-              "time": {
-                "unit": "day",
-                "tooltipFormat": "YYYY-MM-DD"
-              },
-              "title": {
-                "display": true,
-                "text": "日期"
-              }
-            },
-            "y": {
-              "beginAtZero": true,
-              "title": {
-                "display": true,
-                "text": "用户增长数"
-              }
-            }
-          }
-        }
-      },
-      "api": "${API_HOST}/api/user/user-growth"
+      "api": "${API_HOST}/api/userStatistics/usergrowth"
+    },
+    {
+      "type": "chart",
+      "api": "${API_HOST}/api/userStatistics/activeusers"
+    },
+    {
+      "type": "chart",
+      "api": "${API_HOST}/api/userStatistics/usergrowth-and-active-users"
     }
   ]
 }

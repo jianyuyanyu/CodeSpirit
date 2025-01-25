@@ -7,13 +7,15 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize(Roles = "Administrator")] // 仅管理员可以管理角色
-    public class RolesController : ControllerBase
+    [DisplayName("角色管理")]
+    public class RolesController : ApiControllerBase
     {
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly ApplicationDbContext _context;
@@ -28,7 +30,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Roles
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RoleDto>>> GetRoles()
+        public async Task<ActionResult<ApiResponse<ListData<RoleDto>>>> GetRoles()
         {
             var roles = await _roleManager.Roles
                 .Include(r => r.RolePermissions)
@@ -116,7 +118,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: api/Roles
         [HttpPost]
         //[Authorize(Policy = "edit_roles")]
-        public async Task<ActionResult<RoleDto>> PostRole(RoleCreateDto roleDto)
+        public async Task<ActionResult<RoleDto>> Create(RoleCreateDto roleDto)
         {
             if (!ModelState.IsValid)
             {
@@ -194,71 +196,72 @@ namespace CodeSpirit.IdentityApi.Controllers
             }
         }
 
-        //// PUT: api/Roles/5
-        //[HttpPut("{id}")]
-        //[Authorize(Policy = "edit_roles")]
-        //public async Task<IActionResult> PutRole(string id, RoleUpdateDto roleDto)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(ModelState);
-        //    }
+        // PUT: api/Roles/5
+        [HttpPut("{id}")]
+        [Authorize(Policy = "edit_roles")]
+        public async Task<IActionResult> Update(string id, RoleUpdateDto roleDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        //    var role = await _roleManager.Roles
-        //        .Include(r => r.Permissions)
-        //        .ThenInclude(p => p.Children)
-        //        .FirstOrDefaultAsync(r => r.Id == id);
+            var role = await _roleManager.Roles
+                .Include(r => r.RolePermissions)
+                    .ThenInclude(r => r.Permission)
+                .ThenInclude(p => p.Children)
+                .FirstOrDefaultAsync(r => r.Id == id);
 
-        //    if (role == null)
-        //    {
-        //        return NotFound();
-        //    }
+            if (role == null)
+            {
+                return NotFound();
+            }
 
-        //    // 检查是否有重名的角色
-        //    if (role.Name != roleDto.Name && await _roleManager.RoleExistsAsync(roleDto.Name))
-        //    {
-        //        return BadRequest("角色名称已存在。");
-        //    }
+            // 检查是否有重名的角色
+            if (role.Name != roleDto.Name && await _roleManager.RoleExistsAsync(roleDto.Name))
+            {
+                return BadRequest("角色名称已存在。");
+            }
 
-        //    role.Name = roleDto.Name;
-        //    role.Description = roleDto.Description;
+            role.Name = roleDto.Name;
+            role.Description = roleDto.Description;
 
-        //    // 更新权限
-        //    if (roleDto.PermissionIds != null)
-        //    {
-        //        // 获取新的权限列表
-        //        var newPermissions = await _context.Permissions
-        //            .Where(p => roleDto.PermissionIds.Contains(p.Id))
-        //            .ToListAsync();
+            // 更新权限
+            if (roleDto.PermissionIds != null)
+            {
+                // 获取新的权限列表
+                var newPermissions = await _context.Permissions
+                    .Where(p => roleDto.PermissionIds.Contains(p.Id))
+                    .ToListAsync();
 
-        //        // 移除所有现有权限
-        //        role.Permissions.Clear();
+                // 移除所有现有权限
+                role.RolePermissions.Clear();
 
-        //        // 添加新的权限
-        //        foreach (var permission in newPermissions)
-        //        {
-        //            role.Permissions.Add(permission);
-        //        }
-        //    }
+                // 添加新的权限
+                foreach (var permission in newPermissions)
+                {
+                    role.RolePermissions.Add(new RolePermission() { IsAllowed = true, Permission = permission, Role = role });
+                }
+            }
 
-        //    var result = await _roleManager.UpdateAsync(role);
-        //    if (result.Succeeded)
-        //    {
-        //        // 清理所有拥有该角色的用户的权限缓存
-        //        await ClearUserPermissionsCacheByRoleAsync(role.Name);
+            var result = await _roleManager.UpdateAsync(role);
+            if (result.Succeeded)
+            {
+                // 清理所有拥有该角色的用户的权限缓存
+                await ClearUserPermissionsCacheByRoleAsync(role.Name);
 
-        //        return NoContent();
-        //    }
-        //    else
-        //    {
-        //        return BadRequest(result.Errors);
-        //    }
-        //}
+                return NoContent();
+            }
+            else
+            {
+                return BadRequest(result.Errors);
+            }
+        }
 
         // DELETE: api/Roles/5
         [HttpDelete("{id}")]
         [Authorize(Policy = "delete_roles")]
-        public async Task<IActionResult> DeleteRole(string id)
+        public async Task<IActionResult> Delete(string id)
         {
             var role = await _roleManager.FindByIdAsync(id);
             if (role == null)

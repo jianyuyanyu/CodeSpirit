@@ -15,6 +15,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         public Type GetControllerType(string controllerName)
         {
             return amisContext.Assembly.GetTypes()
+                .Where(p => p.Name.EndsWith("Controller", StringComparison.OrdinalIgnoreCase))
                             .FirstOrDefault(t => IsValidController(t, controllerName));
         }
 

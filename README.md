@@ -32,6 +32,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
   - [ ] 基于列表方法生成列表
 
     - [x] 分页
+    - [ ] 支持嵌套
     - [ ] 列
       - [x] 列类型
         - [x] enum——>mapping
@@ -39,6 +40,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] DateTime|DateTimeOffset——>datetime
         - [x] [DataType(DataType.ImageUrl)] | 包含Avatar列——>avatar
         - [x] [DataType(DataType.ImageUrl)] | 包含Image列——>image
+        - [ ] List<T> where T:calss——>List 
       - [ ] 列排序
       - [x] 默认隐藏
         - [x] 主键

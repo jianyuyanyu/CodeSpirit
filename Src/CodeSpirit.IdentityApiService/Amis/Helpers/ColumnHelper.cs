@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json.Linq;
-using System.ComponentModel.DataAnnotations;
+﻿using CodeSpirit.IdentityApi.Amis.Attributes;
 using CodeSpirit.IdentityApi.Authorization;
-using System.ComponentModel;
-using System.Globalization;
+using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Reflection;
 
 namespace CodeSpirit.IdentityApi.Amis.Helpers
 {
@@ -131,7 +128,56 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 column["altText"] = displayName;
                 column["className"] = "image-column"; // 可选：添加自定义样式类
             }
+
+            // 如果属性是 List 类型，生成 List 配置
+            if (IsListProperty(prop))
+            {
+                column["type"] = "list";
+                column["placeholder"] = "-"; // 可以根据需要修改 placeholder 内容
+                column["listItem"] = CreateListItemConfiguration(prop);
+            }
             return column;
+        }
+
+        /// <summary>
+        /// 判断属性是否为 List 类型且列表项是类类型（即 List<T>，T 是类）。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果是 List 类型且列表项是类类型则返回 true，否则返回 false。</returns>
+        private bool IsListProperty(PropertyInfo prop)
+        {
+            if (prop.PropertyType.IsGenericType)
+            {
+                var genericType = prop.PropertyType.GetGenericTypeDefinition();
+
+                // 检查是否为 List<T> 类型
+                if (genericType == typeof(List<>) || genericType == typeof(IEnumerable<>))
+                {
+                    var elementType = prop.PropertyType.GetGenericArguments()[0];
+
+                    // 确保元素类型是类（class）
+                    return elementType.IsClass;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 创建 List 类型列的 listItem 配置。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>List 类型列的 listItem 配置。</returns>
+        private JObject CreateListItemConfiguration(PropertyInfo prop)
+        {
+            var listItem = new JObject();
+
+            // 获取 ListItemAttribute 特性，如果存在
+            var listItemAttr = prop.GetCustomAttribute<ListColumnAttribute>();
+            // 使用特性中的配置字段，若特性没有配置，则使用默认值
+            listItem["title"] = $"${{{_utilityHelper.ToCamelCase(listItemAttr?.Title ?? "titile")}}}";
+            listItem["subTitle"] = $"${{{_utilityHelper.ToCamelCase(listItemAttr?.SubTitle ?? "subTitile")}}}";
+            listItem["placeholder"] = listItemAttr?.Placeholder ?? "-";
+            return listItem;
         }
 
         private static readonly ConcurrentDictionary<Type, JObject> EnumMappingCache = new ConcurrentDictionary<Type, JObject>();

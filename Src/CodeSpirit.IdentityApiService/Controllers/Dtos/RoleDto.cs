@@ -1,4 +1,6 @@
 ﻿// Controllers/RolesController.cs
+using CodeSpirit.IdentityApi.Amis.Attributes;
+
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
 {
     // DTO 用于角色数据传输
@@ -10,6 +12,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
 
         public string Description { get; set; }
 
+        [ListColumn(Title = "Name", SubTitle = "Description", Placeholder = "暂无权限")]
         public List<PermissionDto> Permissions { get; set; }
     }
 }

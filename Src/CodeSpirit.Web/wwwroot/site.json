@@ -29,11 +29,13 @@
           },
           {
             "label": "用户管理",
-            "schemaApi": "https://localhost:17134/api/amis/users"
+            "schemaApi": "https://localhost:17134/api/amis/users",
+            "url": "/page/identity/users"
           },
           {
             "label": "角色管理",
-            "schemaApi": "/pages/role-manager.json"
+            "schemaApi": "https://localhost:17134/api/amis/roles",
+            "url": "/page/identity/roles"
           },
           {
             "label": "权限管理",

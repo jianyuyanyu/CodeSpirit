@@ -201,6 +201,11 @@ namespace CodeSpirit.IdentityApi.Data
                 .Include(rp => rp.Permission)
                 .ToListAsync();
 
+            if (allRolePermissions.Any())
+            {
+                return;
+            }
+
             foreach (var role in roles)
             {
                 // 获取角色

@@ -18,6 +18,11 @@ namespace CodeSpirit.IdentityApi.Controllers
             return Ok(new ApiResponse<T>(0, "操作成功！", data));
         }
 
+        protected ActionResult<ApiResponse<string>> SuccessResponse()
+        {
+            return Ok(new ApiResponse<string>(0, "操作成功！", null));
+        }
+
         protected ActionResult<ApiResponse<T>> SuccessResponseWithCreate<T>(string actionName, T data = default) where T : class
         {
             var response = new ApiResponse<T>(0, "创建成功！", data);
@@ -31,9 +36,14 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="code">错误代码（默认1）</param>
         /// <param name="statusCode">HTTP状态码（默认400）</param>
         /// <returns>统一格式的错误响应</returns>
-        protected ActionResult<ApiResponse<T>> BadResponse<T>(string message, int code = 1, int statusCode = 400) where T : class
+        protected ActionResult<ApiResponse<T>> BadResponse<T>(string message = "操作失败！", int code = 1, int statusCode = 400) where T : class
         {
             return StatusCode(statusCode, new ApiResponse<T>(code, message, null));
+        }
+
+        protected ActionResult<ApiResponse<string>> BadResponse()
+        {
+            return BadResponse<string>();
         }
     }
 }

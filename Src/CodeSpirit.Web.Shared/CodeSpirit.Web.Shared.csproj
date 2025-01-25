@@ -14,19 +14,4 @@
     <ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Update="MessagesRes.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>MessagesRes.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="MessagesRes.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>MessagesRes.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
-
 </Project>

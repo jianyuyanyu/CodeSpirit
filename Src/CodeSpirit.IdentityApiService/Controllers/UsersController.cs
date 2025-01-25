@@ -1,12 +1,6 @@
-﻿using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Data;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
-using CodeSpirit.IdentityApi.Utilities;
-using System.Linq.Dynamic.Core.Exceptions;
+﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Repositories;
+using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
@@ -225,11 +219,11 @@ namespace CodeSpirit.IdentityApi.Controllers
             var updateResult = await _userRepository.SaveChangesAsync();
             if (updateResult == 0)
             {
-                return BadRequest(new ApiResponse<string>(1, "批量更新失败", null));
+                return BadRequest();
             }
 
             // 5. 返回成功响应
-            return Ok(new ApiResponse<string>(0, "批量更新成功", null));
+            return SuccessResponse();
         }
     }
 }

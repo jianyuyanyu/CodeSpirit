@@ -33,7 +33,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
 
     - [x] 分页
     - [ ] 列
-      - [ ] 列类型
+      - [x] 列类型
         - [x] enum——>mapping
         - [x] bool——>switch
         - [x] DateTime|DateTimeOffset——>datetime

@@ -155,8 +155,11 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 {
                     var elementType = prop.PropertyType.GetGenericArguments()[0];
 
-                    // 确保元素类型是类（class）
-                    return elementType.IsClass;
+                    // 排除 string 类型，string 是类类型
+                    if (elementType != typeof(string) && elementType.IsClass)
+                    {
+                        return true;
+                    }
                 }
             }
             return false;

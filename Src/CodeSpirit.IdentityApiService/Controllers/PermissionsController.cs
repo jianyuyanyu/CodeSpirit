@@ -1,4 +1,5 @@
 ﻿// Controllers/PermissionsController.cs
+using CodeSpirit.IdentityApi.Amis.Attributes;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
@@ -15,6 +16,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     [ApiController]
     //[Authorize(Roles = "Administrator")] // 仅管理员可以管理权限
     [DisplayName("权限管理")]
+    [Page(Label = "权限管理", ParentLabel = "控制台")]
     public class PermissionsController : ApiControllerBase
     {
         private readonly ApplicationDbContext _context;

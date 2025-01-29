@@ -1,4 +1,5 @@
 ﻿// Controllers/RolesController.cs
+using CodeSpirit.IdentityApi.Amis.Attributes;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
@@ -15,6 +16,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     [ApiController]
     //[Authorize(Roles = "Administrator")] // 仅管理员可以管理角色
     [DisplayName("角色管理")]
+    [Page(Label = "角色管理", ParentLabel = "控制台", Url = "/page/identity/roles", SchemaApi = "https://localhost:17134/api/amis/roles")]
     public class RolesController : ApiControllerBase
     {
         private readonly RoleManager<ApplicationRole> _roleManager;

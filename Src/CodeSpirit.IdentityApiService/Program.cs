@@ -1,4 +1,5 @@
 using CodeSpirit.IdentityApi.Amis;
+using CodeSpirit.IdentityApi.Amis.Configuration;
 using CodeSpirit.IdentityApi.Amis.Helpers;
 using CodeSpirit.IdentityApi.Authorization;
 using CodeSpirit.IdentityApi.Data;
@@ -69,6 +70,9 @@ builder.Services.AddScoped<SearchFieldHelper>();
 builder.Services.AddScoped<AmisConfigBuilder>();
 builder.Services.AddScoped<AmisContext>();
 builder.Services.AddScoped<AmisGenerator>(); // 注入 AmisGenerator
+
+// 注册 SiteConfigurationService
+builder.Services.AddScoped<ISiteConfigurationService, SiteConfigurationService>();
 
 
 builder.Services.AddTransient<IIdentityAccessor, IdentityAccessor>();
@@ -200,6 +204,9 @@ builder.Services.AddControllers(options =>
         };
     };
 });
+
+// 配置读取 PagesConfiguration 部分
+builder.Services.Configure<PagesConfiguration>(builder.Configuration.GetSection("PagesConfiguration"));
 
 var app = builder.Build();
 

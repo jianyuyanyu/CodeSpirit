@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CodeSpirit.IdentityApi.Data;
 using Microsoft.AspNetCore.Authorization;
+using CodeSpirit.IdentityApi.Amis.Attributes;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "Administrator")] // 仅管理员可以查看登录日志
+    [Page(Label = "登录日志", ParentLabel = "控制台", SchemaApi = "jsonp:/pages/LoginLogs.js?callback=jsonpCallback")]
     public partial class LoginLogsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;

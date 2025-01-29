@@ -213,6 +213,16 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             var returnType = method.ReturnType;
             return ExtractDataType(GetUnderlyingType(returnType));
         }
+
+        /// <summary>
+        /// 判断属性是否为枚举类型或可空枚举类型。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果是枚举类型则返回 true，否则返回 false。</returns>
+        public bool IsEnumProperty(PropertyInfo prop)
+        {
+            return prop.PropertyType.IsEnum || Nullable.GetUnderlyingType(prop.PropertyType)?.IsEnum == true;
+        }
     }
 }
 

@@ -1,4 +1,6 @@
 ﻿// Controllers/RolesController.cs
+using CodeSpirit.IdentityApi.Amis.Attributes;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
@@ -8,12 +10,15 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
     {
         [Required]
         [MaxLength(100)]
+        [DisplayName("名称")]
         public string Name { get; set; }
 
         [MaxLength(256)]
+        [DisplayName("描述")]
         public string Description { get; set; }
 
         // 权限ID列表
+        [DisplayName("权限")]
         public List<int> PermissionAssignments { get; set; }
     }
 }

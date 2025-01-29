@@ -3,6 +3,7 @@ using CodeSpirit.IdentityApi.Amis.Helpers;
 using CodeSpirit.IdentityApi.Authorization;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Data.Seeders;
 using CodeSpirit.IdentityApi.Filters;
 using CodeSpirit.IdentityApi.MappingProfiles;
 using CodeSpirit.IdentityApi.ModelBindings;
@@ -144,6 +145,16 @@ builder.Services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>(
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ILoginLogRepository, LoginLogRepository>();
+
+
+// 注册 Seeder 类
+builder.Services.AddScoped<RoleSeeder>();
+builder.Services.AddScoped<PermissionSeeder>();
+builder.Services.AddScoped<RolePermissionAssigner>();
+builder.Services.AddScoped<UserSeeder>();
+builder.Services.AddScoped<SeederService>();
+
+
 // 注册 AutoMapper 并扫描指定的程序集中的配置文件
 builder.Services.AddAutoMapper(typeof(UserProfile));
 
@@ -196,11 +207,11 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
+    var logger = services.GetRequiredService<ILogger<SeederService>>();
     try
     {
         // 调用数据初始化方法
-        await DataSeeder.SeedRolesAndPermissionsAsync(services, logger);
+        await DataSeeder.SeedAsync(services, logger);
     }
     catch (Exception ex)
     {

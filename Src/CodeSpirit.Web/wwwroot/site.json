@@ -39,7 +39,7 @@
           },
           {
             "label": "权限管理",
-            "schemaApi": "/pages/permissions.json"
+            "schemaApi": "https://localhost:17134/api/amis/permissions"
           },
           {
             "label": "登录日志",

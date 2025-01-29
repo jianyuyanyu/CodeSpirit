@@ -18,11 +18,11 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             var methods = GetControllerMethods(controller);
 
             // 查找符合创建操作前缀的方法
-            actions.Create = FindMethodByActionPrefix(methods, ["Create", "Add"]);
+            actions.Create = FindMethodByActionPrefix(methods, ["Create", "Add", "Post"]);
             // 查找符合读取操作前缀的方法
             actions.Read = FindMethodByActionPrefix(methods, ["Get"]);
             // 查找符合更新操作前缀的方法
-            actions.Update = FindMethodByActionPrefix(methods, ["Update", "Modify"]);
+            actions.Update = FindMethodByActionPrefix(methods, ["Update", "Modify", "Put"]);
             // 查找符合删除操作前缀的方法
             actions.Delete = FindMethodByActionPrefix(methods, ["Delete", "Remove"]);
             //  查找快速保存方法

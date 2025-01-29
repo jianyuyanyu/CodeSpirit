@@ -1,5 +1,7 @@
 ﻿using CodeSpirit.IdentityApi.Amis.Helpers;
 using CodeSpirit.IdentityApi.Authorization;
+using CodeSpirit.Shared.Services.Dtos;
+using CodeSpirit.Shared;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
@@ -58,7 +60,7 @@ namespace CodeSpirit.IdentityApi.Amis
 
             var actions = _crudHelper.HasCrudActions(controllerType);
             if (actions.Create == null || actions.Read == null || actions.Update == null || actions.Delete == null)
-                return null;
+                throw new AppServiceException(-100, "CRUD方法定义不全，无法生成！");
 
             _amisContext.Actions = actions;
 

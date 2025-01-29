@@ -1,5 +1,7 @@
 ﻿using CodeSpirit.IdentityApi.Amis.Attributes;
 using CodeSpirit.IdentityApi.Authorization;
+using CodeSpirit.Shared.Services.Dtos;
+using CodeSpirit.Shared;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 using System.ComponentModel;
@@ -57,6 +59,10 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                 columns.Add(operations);
             }
 
+            if (columns.Count == 1 && columns[0] == operations)
+            {
+                throw new AppServiceException(-100, "请检查返回参数的定义是否为“ApiResponse<ListData<T>>>”!");
+            }
             return columns;
         }
 
@@ -66,14 +72,27 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         }
 
         /// <summary>
-        /// 判断属性是否应被忽略（例如密码字段或 Id 字段）。
+        /// 判断属性是否应被忽略（例如密码字段、Id 字段或被 IgnoreColumnAttribute 标记的字段）。
         /// </summary>
         /// <param name="prop">属性的信息。</param>
         /// <returns>如果应忽略则返回 true，否则返回 false。</returns>
         private bool IsIgnoredProperty(PropertyInfo prop)
         {
-            return prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase)
-                || prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase);
+            // 忽略特定名称的字段
+            if (prop.Name.Equals("Password", StringComparison.OrdinalIgnoreCase)
+                || prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // 检查是否应用了 IgnoreColumnAttribute
+            var ignoreAttr = prop.GetCustomAttribute<IgnoreColumnAttribute>();
+            if (ignoreAttr != null)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -114,7 +133,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             }
 
             // 如果属性是枚举类型，设置映射
-            if (IsEnumProperty(prop))
+            if (_utilityHelper.IsEnumProperty(prop))
             {
                 column["type"] = "mapping"; // 设置列类型为 mapping
                 column["map"] = GetEnumMapping(prop.PropertyType); // 添加枚举映射
@@ -236,7 +255,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// <returns>AMIS 列的类型字符串。</returns>
         private string GetColumnType(PropertyInfo prop)
         {
-            if (IsEnumProperty(prop))
+            if (_utilityHelper.IsEnumProperty(prop))
             {
                 return "mapping";
             }
@@ -249,15 +268,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             };
         }
 
-        /// <summary>
-        /// 判断属性是否为枚举类型或可空枚举类型。
-        /// </summary>
-        /// <param name="prop">属性的信息。</param>
-        /// <returns>如果是枚举类型则返回 true，否则返回 false。</returns>
-        private bool IsEnumProperty(PropertyInfo prop)
-        {
-            return prop.PropertyType.IsEnum || Nullable.GetUnderlyingType(prop.PropertyType)?.IsEnum == true;
-        }
+        
 
         /// <summary>
         /// 判断属性是否为主键（假设名称为 "Id"）。

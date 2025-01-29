@@ -1,0 +1,67 @@
+﻿using CodeSpirit.IdentityApi.Data;
+using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Data.Seeders;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+public class SeederService
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<SeederService> _logger;
+
+    public SeederService(IServiceProvider serviceProvider, ILogger<SeederService> logger)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+    }
+
+    public async Task SeedAsync()
+    {
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            // 应用迁移
+            await dbContext.Database.MigrateAsync();
+
+            // 初始化各个 Seeder
+            var roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeeder>();
+            var permissionSeeder = scope.ServiceProvider.GetRequiredService<PermissionSeeder>();
+            var rolePermissionAssigner = scope.ServiceProvider.GetRequiredService<RolePermissionAssigner>();
+            var userSeeder = scope.ServiceProvider.GetRequiredService<UserSeeder>();
+
+            // 获取角色和权限数据
+            var roles = roleSeeder.GetRoles();
+
+            // 创建角色
+            await roleSeeder.SeedRolesAsync(roles);
+            _logger.LogInformation("角色创建完毕！");
+
+            // 创建权限
+            await permissionSeeder.SeedPermissionsAsync();
+            _logger.LogInformation("权限创建完毕！");
+
+            // 该方法内部已记录日志
+
+            // 分配权限给角色
+            await rolePermissionAssigner.AssignPermissionsToRolesAsync(roles);
+            _logger.LogInformation("权限分配完毕！");
+
+            // 创建管理员用户
+            await userSeeder.SeedAdminUserAsync();
+            _logger.LogInformation("管理员创建完毕！");
+
+            // 创建随机用户
+            await userSeeder.SeedRandomUsersAsync(20, roleManager);
+            _logger.LogInformation("随机用户创建完毕！");
+
+            // 保存更改
+            await dbContext.SaveChangesAsync();
+        }
+    }
+}
+
+
+

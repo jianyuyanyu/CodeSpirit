@@ -1,4 +1,5 @@
 ﻿// Controllers/RolesController.cs
+using CodeSpirit.IdentityApi.Amis.Attributes;
 using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
@@ -17,6 +18,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
 
         public int? ParentId { get; set; }
 
+        [IgnoreColumn]
         public List<PermissionDto> Children { get; set; }
     }
 }

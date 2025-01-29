@@ -7,32 +7,42 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize(Roles = "Administrator")] // 仅管理员可以管理权限
-    public class PermissionsController : ControllerBase
+    [DisplayName("权限管理")]
+    public class PermissionsController : ApiControllerBase
     {
         private readonly ApplicationDbContext _context;
 
         private readonly IDistributedCache _cache;
+        private readonly ILogger<PermissionsController> logger;
 
-        public PermissionsController(ApplicationDbContext context, IDistributedCache cache)
+        public PermissionsController(ApplicationDbContext context, IDistributedCache cache, ILogger<PermissionsController> logger)
         {
             _context = context;
             _cache = cache;
+            this.logger = logger;
         }
 
 
         // GET: api/Permissions
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PermissionDto>>> GetPermissions()
+        public async Task<ActionResult<ApiResponse<ListData<PermissionDto>>>> GetPermissions()
         {
             var permissions = await _context.Permissions
                 .Include(p => p.Children)
                 .ToListAsync();
+
+            // 调试检查
+            foreach (var p in permissions)
+            {
+                logger.LogInformation($"Permission: {p.Name},Id：{p.Id},ParentId：{p.ParentId}, Children Count: {p.Children?.Count}");
+            }
 
             var permissionDtos = permissions
                 .Where(p => p.ParentId == null) // 获取顶级权限

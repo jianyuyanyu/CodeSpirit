@@ -186,7 +186,8 @@ namespace CodeSpirit.IdentityApi.Amis
                 SchemaApi = configPage.SchemaApi,
                 ParentLabel = configPage.ParentLabel,
                 Schema = configPage.Schema,
-                Children = configPage.Children
+                Children = configPage.Children,
+                Icon = configPage.Icon
             };
             return page;
         }

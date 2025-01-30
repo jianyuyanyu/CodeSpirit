@@ -12,7 +12,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     [Route("api/[controller]")]
     [ApiController]
     //[Authorize(Roles = "Administrator")] // 仅管理员可以查看登录日志
-    [Page(Label = "登录日志", ParentLabel = "控制台")]
+    [Page(Label = "登录日志", ParentLabel = "用户中心", Icon = "fa-solid fa-info")]
     [DisplayName("登录日志")]
     public partial class LoginLogsController : ControllerBase
     {

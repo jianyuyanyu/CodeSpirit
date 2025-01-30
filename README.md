@@ -45,6 +45,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] [DataType(DataType.ImageUrl)] | 包含Avatar列——>avatar
         - [x] [DataType(DataType.ImageUrl)] | 包含Image列——>image
         - [x] List<T> where T:calss——>List 
+        - [ ] 状态
       - [x] 列排序
       - [x] 列忽略：IgnoreColumnAttribute
       - [x] 默认隐藏
@@ -60,12 +61,15 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [ ] 只读列
     - [ ] 头部操作
       - [x] 添加
-      - [ ] 批量导入
+      - [ ] 批量导入（Magicodes.IE)
       - [x] 导出Excel
         - [x] 导出当前页
         - [x] 导出全部
-        - [ ] 后端导出
+        - [ ] 后端导出（Magicodes.IE)
       - [ ] 导出Csv
+        - [ ] 导出当前页
+        - [ ] 导出全部
+        - [ ] 后端导出（Magicodes.IE)
       - [ ] 批量操作
         - [ ] 批量删除
     - [x] 底部信息及操作
@@ -94,7 +98,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [ ] 评分
         - [ ] 标签
         - [ ] 签名
-      - [ ] 字段验证
+      - [x] 字段验证
         - [x] 必填
         - [x] 文本长度验证
         - [x] 数值范围验证

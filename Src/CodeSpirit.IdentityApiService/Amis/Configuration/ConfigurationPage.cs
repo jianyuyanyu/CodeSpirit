@@ -49,5 +49,8 @@ namespace CodeSpirit.IdentityApi.Amis.Configuration
         /// </summary>
         [JsonProperty("children")]
         public List<Page> Children { get; set; }
+
+        [JsonProperty("icon")]
+        public string Icon { get; set; }
     }
 }

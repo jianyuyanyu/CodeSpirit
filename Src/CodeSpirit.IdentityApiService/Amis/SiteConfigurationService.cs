@@ -134,7 +134,8 @@ namespace CodeSpirit.IdentityApi.Amis
                 Url = attr.Url,
                 Redirect = attr.Redirect,
                 SchemaApi = attr.SchemaApi,
-                ParentLabel = attr.ParentLabel
+                ParentLabel = attr.ParentLabel,
+                Icon = attr.Icon,
             };
 
             if (controller != null)

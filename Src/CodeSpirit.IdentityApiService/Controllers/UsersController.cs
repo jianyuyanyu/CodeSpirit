@@ -9,7 +9,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [DisplayName("用户管理")]
-    [Page(Label = "用户管理", ParentLabel = "控制台", Url = "/page/identity/users", SchemaApi = "https://localhost:17134/api/amis/users")]
+    [Page(Label = "用户管理", ParentLabel = "控制台", Icon = "fa-solid fa-user")]
     public class UsersController : ApiControllerBase
     {
         private readonly IUserRepository _userRepository;

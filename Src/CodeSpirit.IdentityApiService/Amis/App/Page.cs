@@ -48,5 +48,11 @@ namespace CodeSpirit.IdentityApi.Amis.App
         /// </summary>
         [JsonIgnore]
         public string ParentLabel { get; set; }
+
+        /// <summary>
+        /// 图标
+        /// </summary>
+        [JsonProperty("icon")]
+        public string Icon { get; set; }
     }
 }

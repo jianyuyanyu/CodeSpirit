@@ -36,6 +36,11 @@
         /// </summary>
         public string Schema { get; set; }
 
+        /// <summary>
+        /// 菜单图标，比如：fa fa-file
+        /// </summary>
+        public string Icon {  get; set; }
+
         public PageAttribute() { }
         /// <summary>
         /// 构造函数
@@ -46,12 +51,13 @@
             Label = label;
         }
 
-        public PageAttribute(string label, string ParentLabel, string Url, string SchemaApi) : this(label)
+        public PageAttribute(string label, string ParentLabel, string Url, string SchemaApi, string icon) : this(label)
         {
             this.ParentLabel = ParentLabel;
             this.Url = Url;
             this.SchemaApi = SchemaApi;
             this.Schema = Schema;
+            Icon = icon;
         }
     }
 }

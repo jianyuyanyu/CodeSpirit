@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
 using CodeSpirit.IdentityApi.Amis.Helpers;
+using CodeSpirit.IdentityApi.Amis.Helpers.Dtos;
 using CodeSpirit.IdentityApi.Authorization;
 using Newtonsoft.Json.Linq;
 
@@ -52,14 +53,14 @@ namespace CodeSpirit.IdentityApi.Amis
             amisContext.ApiRoutes = apiRoutes;
 
             // 获取读取数据的类型，如果类型为空，则返回空
-            var dataType = utilityHelper.GetDataTypeFromMethod(actions.Read);
+            var dataType = utilityHelper.GetDataTypeFromMethod(actions.List);
             if (dataType == null)
                 return null;
             amisContext.ListDataType = dataType;
 
             // 获取列配置和搜索字段
             var columns = _columnHelper.GetAmisColumns();
-            var searchFields = _searchFieldHelper.GetAmisSearchFields(actions.Read);
+            var searchFields = _searchFieldHelper.GetAmisSearchFields(actions.List);
 
             // 构建 CRUD 配置
             var crudConfig = new JObject
@@ -67,10 +68,16 @@ namespace CodeSpirit.IdentityApi.Amis
                 ["type"] = "crud",  // 设置类型为 CRUD
                 ["name"] = $"{controllerName.ToLower()}Crud",  // 设置配置名称
                 ["showIndex"] = true,  // 显示索引列
-                ["api"] = amisApiHelper.CreateApi(apiRoutes.ReadRoute, "get"),  // 设置 API 配置
-                ["quickSaveApi"] = amisApiHelper.CreateApi(apiRoutes.QuickSaveRoute, "patch"),
+                ["api"] = amisApiHelper.CreateApi(apiRoutes.Read),  // 设置 API 配置
+                ["quickSaveApi"] = amisApiHelper.CreateApi(apiRoutes.QuickSave),
                 ["columns"] = new JArray(columns),  // 设置列
-                ["headerToolbar"] = BuildHeaderToolbar(apiRoutes.CreateRoute, actions.Create?.GetParameters(), actions)  // 设置头部工具栏
+                ["headerToolbar"] = BuildHeaderToolbar(apiRoutes.Create, actions.Create?.GetParameters(), actions),  // 设置头部工具栏
+                ["footerToolbar"] = new JArray()
+                {
+                    "switch-per-page",
+                    "pagination",
+                    "statistics"
+                }
             };
 
             // 如果有搜索字段，加入筛选配置
@@ -102,12 +109,33 @@ namespace CodeSpirit.IdentityApi.Amis
         /// <summary>
         /// 构建头部工具栏配置。
         /// </summary>
-        private JArray BuildHeaderToolbar(string createRoute, IEnumerable<ParameterInfo> createParameters, CrudActions actions)
+        private JArray BuildHeaderToolbar(ApiRouteInfo createRoute, IEnumerable<ParameterInfo> createParameters, CrudActions actions)
         {
             var buttons = new JArray();
-            if (createRoute != null && actions.Create!=null) { 
-            
+            if (createRoute != null && actions.Create != null)
+            {
+
                 buttons.Add(_buttonHelper.CreateHeaderButton(createRoute, createParameters));
+            }
+            buttons.Add(new JObject()
+            {
+                ["type"] = "export-excel",
+                ["label"] = "导出当前页",
+                //["filename"] = ""
+            });
+
+            if (actions.Export != null)
+            {
+                buttons.Add(new JObject()
+                {
+                    ["type"] = "export-excel",
+                    ["label"] = "导出全部",
+                    ["api"] = new JObject
+                    {
+                        ["url"] = amisContext.ApiRoutes.Export.ApiPath,
+                        ["method"] = amisContext.ApiRoutes.Export.HttpMethod
+                    },
+                });
             }
             return buttons;
         }

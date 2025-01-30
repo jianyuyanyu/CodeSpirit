@@ -29,6 +29,16 @@ namespace CodeSpirit.IdentityApi.Controllers
             return SuccessResponse(users);
         }
 
+        [HttpGet("Export")]
+        public async Task<ActionResult<ApiResponse<ListData<UserDto>>>> Export([FromQuery] UserQueryDto queryDto)
+        {
+            //暂时写死1万数据
+            queryDto.PerPage = 10000;
+            queryDto.Page = 1;
+            var users = await _userRepository.GetUsersAsync(queryDto);
+            return SuccessResponse(users);
+        }
+
         // GET: api/Users/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponse<UserDto>>> GetUser(string id)

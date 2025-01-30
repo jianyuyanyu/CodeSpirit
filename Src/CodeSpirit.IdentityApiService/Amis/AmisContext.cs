@@ -1,4 +1,5 @@
 ﻿
+using CodeSpirit.IdentityApi.Amis.Helpers.Dtos;
 using System.Reflection;
 
 namespace CodeSpirit.IdentityApi.Amis
@@ -10,7 +11,7 @@ namespace CodeSpirit.IdentityApi.Amis
         public CrudActions Actions { get; internal set; }
         public Assembly Assembly { get; internal set; }
         public string BaseRoute { get; internal set; }
-        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute, string QuickSaveRoute) ApiRoutes { get; internal set; }
+        public ApiRoutesInfo ApiRoutes { get; internal set; }
         public Type ListDataType { get; internal set; }
     }
 

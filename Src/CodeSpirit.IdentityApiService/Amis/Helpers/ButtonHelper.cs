@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using CodeSpirit.IdentityApi.Amis.Helpers.Dtos;
 using CodeSpirit.IdentityApi.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
@@ -59,7 +60,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         }
 
         // 创建“新增”按钮
-        public JObject CreateHeaderButton(string createRoute, IEnumerable<ParameterInfo> createParameters)
+        public JObject CreateHeaderButton(ApiRouteInfo createRoute, IEnumerable<ParameterInfo> createParameters)
         {
             var title = "新增";
             var dialogBody = new JObject
@@ -70,8 +71,8 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                     ["type"] = "form",
                     ["api"] = new JObject
                     {
-                        ["url"] = createRoute,
-                        ["method"] = "post"
+                        ["url"] = createRoute.ApiPath,
+                        ["method"] = createRoute.HttpMethod
                     },
                     ["controls"] = new JArray(new FormFieldHelper(_permissionService, new UtilityHelper()).GetAmisFormFieldsFromParameters(createParameters))
                 },
@@ -81,7 +82,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         }
 
         // 创建“编辑”按钮
-        public JObject CreateEditButton(string updateRoute, IEnumerable<ParameterInfo> updateParameters)
+        public JObject CreateEditButton(ApiRouteInfo updateRoute, IEnumerable<ParameterInfo> updateParameters)
         {
             var title = "编辑";
             var drawerBody = new JObject
@@ -92,8 +93,8 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                     ["type"] = "form",
                     ["api"] = new JObject
                     {
-                        ["url"] = updateRoute,
-                        ["method"] = "put"
+                        ["url"] = updateRoute.ApiPath,
+                        ["method"] = updateRoute.HttpMethod
                     },
                     ["controls"] = new JArray(new FormFieldHelper(_permissionService, new UtilityHelper()).GetAmisFormFieldsFromParameters(updateParameters))
                 }
@@ -102,12 +103,12 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         }
 
         // 创建“删除”按钮
-        public JObject CreateDeleteButton(string deleteRoute)
+        public JObject CreateDeleteButton(ApiRouteInfo deleteRoute)
         {
             var api = new JObject
             {
-                ["url"] = deleteRoute,
-                ["method"] = "delete"
+                ["url"] = deleteRoute.ApiPath,
+                ["method"] = deleteRoute.HttpMethod
             };
 
             return CreateButton("删除", "ajax", api: api, confirmText: "确定要删除吗？");

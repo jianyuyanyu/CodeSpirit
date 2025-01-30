@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using CodeSpirit.IdentityApi.Amis.Helpers.Dtos;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -11,14 +12,14 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
     public class ApiRouteHelper
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly AmisContext amisContext;
-        private readonly UtilityHelper utilityHelper;
+        private readonly AmisContext _amisContext;
+        private readonly UtilityHelper _utilityHelper;
 
         public ApiRouteHelper(IHttpContextAccessor httpContextAccessor, AmisContext amisContext, UtilityHelper utilityHelper)
         {
             _httpContextAccessor = httpContextAccessor;
-            this.amisContext = amisContext;
-            this.utilityHelper = utilityHelper;
+            _amisContext = amisContext;
+            _utilityHelper = utilityHelper;
         }
 
         /// <summary>
@@ -26,36 +27,40 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// </summary>
         /// <param name="baseRoute">基本路由。</param>
         /// <param name="actions">CRUD 操作配置。</param>
-        /// <returns>包含创建、读取、更新和删除操作的 API 路由元组。</returns>
-        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute,string QuickSaveRoute) GetApiRoutes(string baseRoute, CrudActions actions)
+        /// <returns>包含创建、读取、更新、删除和快速保存操作的API路由。</returns>
+        public ApiRoutesInfo GetApiRoutes(string baseRoute, CrudActions actions)
         {
-            // 辅助方法：将模板与基本路由合并并转换为绝对 URL
-            string Combine(string template) => BuildAbsoluteUrl(CombineRoutes(baseRoute, template));
-
-            // 获取各个 CRUD 操作对应的路由模板
-            var createRouteTemplate = GetRouteTemplate(actions.Create, "POST");
-            var readRouteTemplate = GetRouteTemplate(actions.Read, "GET");
-            var updateRouteTemplate = GetRouteTemplate(actions.Update, "PUT");
-            var deleteRouteTemplate = GetRouteTemplate(actions.Delete, "DELETE");
-            var quickSaveRouteTemplate = GetRouteTemplate(actions.QuickSave, "PATCH");
-
-            // 返回各个操作的绝对 URL 路由
-            return (
-                Combine(createRouteTemplate),
-                Combine(readRouteTemplate),
-                Combine(updateRouteTemplate),
-                Combine(deleteRouteTemplate),
-                Combine(quickSaveRouteTemplate)
+            return new ApiRoutesInfo(
+                CreateRouteInfo(baseRoute, actions.Create, "POST"),
+                CreateRouteInfo(baseRoute, actions.List, "GET"),
+                CreateRouteInfo(baseRoute, actions.Update, "PUT"),
+                CreateRouteInfo(baseRoute, actions.Delete, "DELETE"),
+                CreateRouteInfo(baseRoute, actions.QuickSave, "PATCH"),
+                CreateRouteInfo(baseRoute, actions.Export, "GET")
             );
+        }
+
+        /// <summary>
+        /// 创建 ApiRouteInfo 对象，封装 API 路径和 HTTP 方法。
+        /// </summary>
+        /// <param name="baseRoute">基本路由。</param>
+        /// <param name="method">操作方法信息。</param>
+        /// <param name="httpMethod">HTTP 方法。</param>
+        /// <returns>封装后的 ApiRouteInfo 对象。</returns>
+        private ApiRouteInfo CreateRouteInfo(string baseRoute, MethodInfo method, string httpMethod)
+        {
+            var template = GetRouteTemplate(method, httpMethod);
+            var combinedUrl = BuildAbsoluteUrl(CombineRoutes(baseRoute, template));
+            return new ApiRouteInfo(combinedUrl, httpMethod);
         }
 
         /// <summary>
         /// 根据当前 AmisContext 配置的基本路由和 CRUD 操作，生成对应的 API 路由。
         /// </summary>
-        /// <returns>包含创建、读取、更新和删除操作的 API 路由元组。</returns>
-        public (string CreateRoute, string ReadRoute, string UpdateRoute, string DeleteRoute, string QuickSaveRoute) GetApiRoutes()
+        /// <returns>包含创建、读取、更新、删除和快速保存操作的API路由。</returns>
+        public ApiRoutesInfo GetApiRoutes()
         {
-            return GetApiRoutes(amisContext.BaseRoute, amisContext.Actions);
+            return GetApiRoutes(_amisContext.BaseRoute, _amisContext.Actions);
         }
 
         /// <summary>
@@ -67,7 +72,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         {
             // 获取路由特性，替换 [controller] 为当前控制器的名称
             var routeAttr = controller.GetCustomAttribute<RouteAttribute>();
-            return routeAttr?.Template?.Replace("[controller]", amisContext.ControllerName) ?? string.Empty;
+            return routeAttr?.Template?.Replace("[controller]", _amisContext.ControllerName) ?? string.Empty;
         }
 
         /// <summary>
@@ -76,7 +81,7 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// <returns>当前控制器的路由模板。</returns>
         public string GetRoute()
         {
-            return GetRoute(amisContext.ControllerType);
+            return GetRoute(_amisContext.ControllerType);
         }
 
         /// <summary>
@@ -133,10 +138,10 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
         /// 根据方法信息返回该方法的 API 路径和请求方法。
         /// </summary>
         /// <param name="method">操作方法信息。</param>
-        /// <returns>一个包含 API 路径和请求方法的元组。</returns>
-        public (string ApiPath, string HttpMethod) GetApiRouteInfoForMethod(MethodInfo method)
+        /// <returns>包含 API 路径和请求方法的 ApiRouteInfo 对象。</returns>
+        public ApiRouteInfo GetApiRouteInfoForMethod(MethodInfo method)
         {
-            if (method == null) return (string.Empty, string.Empty);
+            if (method == null) return new ApiRouteInfo(string.Empty, string.Empty);
 
             // 查找方法上的 HTTP 方法特性
             var httpMethodAttribute = method.GetCustomAttributes()
@@ -144,14 +149,14 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
                                              .FirstOrDefault();
 
             if (httpMethodAttribute == null)
-                return (string.Empty, string.Empty);
+                return new ApiRouteInfo(string.Empty, string.Empty);
 
             // 获取路由模板和 HTTP 方法
             var routeTemplate = httpMethodAttribute.Template;
             var httpMethod = httpMethodAttribute.HttpMethods.FirstOrDefault();
 
             if (string.IsNullOrEmpty(routeTemplate) || string.IsNullOrEmpty(httpMethod))
-                return (string.Empty, string.Empty);
+                return new ApiRouteInfo(string.Empty, string.Empty);
 
             // 结合控制器的基本路由生成完整的路由
             string baseRoute = GetRoute(method.DeclaringType);
@@ -160,8 +165,8 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
             // 构建绝对 URL
             string fullUrl = BuildAbsoluteUrl(fullRoute);
 
-            // 返回 API 路径和请求方法的元组
-            return (fullUrl, httpMethod);
+            // 返回 ApiRouteInfo 对象
+            return new ApiRouteInfo(fullUrl, httpMethod);
         }
     }
 }

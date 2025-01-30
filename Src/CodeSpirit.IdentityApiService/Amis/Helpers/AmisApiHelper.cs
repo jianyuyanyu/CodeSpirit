@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using CodeSpirit.IdentityApi.Amis.Helpers.Dtos;
 using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.IdentityApi.Amis.Helpers
@@ -14,16 +15,16 @@ namespace CodeSpirit.IdentityApi.Amis.Helpers
 
         public JObject CreateApiForMethod(MethodInfo method)
         {
-            var (apiPath, httpMethod) = apiRouteHelper.GetApiRouteInfoForMethod(method);
-            return CreateApi(apiPath, httpMethod);
+            var apiRoute = apiRouteHelper.GetApiRouteInfoForMethod(method);
+            return CreateApi(apiRoute);
         }
 
-        public JObject CreateApi(string apiPath, string httpMethod)
+        public JObject CreateApi(ApiRouteInfo apiRoute)
         {
             return new JObject
             {
-                ["url"] = apiPath,
-                ["method"] = httpMethod
+                ["url"] = apiRoute.ApiPath,
+                ["method"] = apiRoute.HttpMethod
             };
         }
     }

@@ -70,7 +70,7 @@ namespace CodeSpirit.IdentityApi.Amis
                 ["api"] = amisApiHelper.CreateApi(apiRoutes.ReadRoute, "get"),  // 设置 API 配置
                 ["quickSaveApi"] = amisApiHelper.CreateApi(apiRoutes.QuickSaveRoute, "patch"),
                 ["columns"] = new JArray(columns),  // 设置列
-                ["headerToolbar"] = BuildHeaderToolbar(apiRoutes.CreateRoute, actions.Create?.GetParameters())  // 设置头部工具栏
+                ["headerToolbar"] = BuildHeaderToolbar(apiRoutes.CreateRoute, actions.Create?.GetParameters(), actions)  // 设置头部工具栏
             };
 
             // 如果有搜索字段，加入筛选配置
@@ -102,12 +102,14 @@ namespace CodeSpirit.IdentityApi.Amis
         /// <summary>
         /// 构建头部工具栏配置。
         /// </summary>
-        private JArray BuildHeaderToolbar(string createRoute, IEnumerable<ParameterInfo> createParameters)
+        private JArray BuildHeaderToolbar(string createRoute, IEnumerable<ParameterInfo> createParameters, CrudActions actions)
         {
-            return new JArray
-            {
-                _buttonHelper.CreateHeaderButton(createRoute, createParameters)  // 创建按钮
-            };
+            var buttons = new JArray();
+            if (createRoute != null && actions.Create!=null) { 
+            
+                buttons.Add(_buttonHelper.CreateHeaderButton(createRoute, createParameters));
+            }
+            return buttons;
         }
 
         /// <summary>

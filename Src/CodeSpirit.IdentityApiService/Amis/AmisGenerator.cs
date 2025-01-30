@@ -59,9 +59,6 @@ namespace CodeSpirit.IdentityApi.Amis
             _amisContext.ControllerType = controllerType;
 
             var actions = _crudHelper.HasCrudActions(controllerType);
-            if (actions.Create == null || actions.Read == null || actions.Update == null || actions.Delete == null)
-                throw new AppServiceException(-100, "CRUD方法定义不全，无法生成！");
-
             _amisContext.Actions = actions;
 
             var _amisConfigBuilder = serviceProvider.GetRequiredService<AmisConfigBuilder>();

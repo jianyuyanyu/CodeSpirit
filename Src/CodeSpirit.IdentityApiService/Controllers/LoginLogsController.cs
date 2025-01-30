@@ -4,13 +4,16 @@ using Microsoft.EntityFrameworkCore;
 using CodeSpirit.IdentityApi.Data;
 using Microsoft.AspNetCore.Authorization;
 using CodeSpirit.IdentityApi.Amis.Attributes;
+using CodeSpirit.IdentityApi.Controllers.Dtos;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Administrator")] // 仅管理员可以查看登录日志
-    [Page(Label = "登录日志", ParentLabel = "控制台", SchemaApi = "jsonp:/pages/LoginLogs.js?callback=jsonpCallback")]
+    //[Authorize(Roles = "Administrator")] // 仅管理员可以查看登录日志
+    [Page(Label = "登录日志", ParentLabel = "控制台")]
+    [DisplayName("登录日志")]
     public partial class LoginLogsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -29,7 +32,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="isSuccess">按登录结果过滤（可选）。</param>
         /// <returns>分页的登录日志列表。</returns>
         [HttpGet]
-        public async Task<ActionResult<PagedResult<LoginLogDto>>> GetLoginLogs(
+        public async Task<ActionResult<ApiResponse<ListData<LoginLogDto>>>> GetLoginLogs(
             int pageNumber = 1,
             int pageSize = 20,
             string userName = null,

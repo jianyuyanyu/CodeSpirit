@@ -74,7 +74,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SeederService>();
 
         // 注册 AutoMapper
-        services.AddAutoMapper(typeof(UserProfile));
+        services.AddAutoMapper(typeof(UserProfile), typeof(PermissionProfile));
 
         // 注册自定义授权处理程序
         services.AddScoped<IAuthorizationHandler, PermissionHandler>();

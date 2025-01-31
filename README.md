@@ -87,7 +87,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] bool——>switch
         - [x] DateTime|DateTimeOffset——>datetime
         - [x] 密码字段：DataTypeAttribute|DataType.Password
-        - [ ] InputTree 
+        - [x] InputTree 
         - [ ] 数组
         - [ ] 文件
         - [ ] 城市选择器

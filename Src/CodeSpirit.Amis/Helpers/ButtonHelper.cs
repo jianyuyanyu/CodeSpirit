@@ -11,13 +11,15 @@ namespace CodeSpirit.Amis.Helpers
         private readonly AmisContext amisContext;
         private readonly ApiRouteHelper apiRouteHelper;
         private readonly AmisApiHelper amisApiHelper;
+        private readonly FormFieldHelper formFieldHelper;
 
-        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper)
+        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper,FormFieldHelper formFieldHelper)
         {
             _permissionService = permissionService;
             this.amisContext = amisContext;
             this.apiRouteHelper = apiRouteHelper;
             this.amisApiHelper = amisApiHelper;
+            this.formFieldHelper = formFieldHelper;
         }
 
         // 创建一个通用的按钮模板
@@ -73,7 +75,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["url"] = createRoute.ApiPath,
                         ["method"] = createRoute.HttpMethod
                     },
-                    ["controls"] = new JArray(new FormFieldHelper(_permissionService, new UtilityHelper()).GetAmisFormFieldsFromParameters(createParameters))
+                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(createParameters))
                 },
             };
 
@@ -95,7 +97,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["url"] = updateRoute.ApiPath,
                         ["method"] = updateRoute.HttpMethod
                     },
-                    ["controls"] = new JArray(new FormFieldHelper(_permissionService, new UtilityHelper()).GetAmisFormFieldsFromParameters(updateParameters))
+                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(updateParameters))
                 }
             };
             return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);

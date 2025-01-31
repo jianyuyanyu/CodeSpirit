@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data.Models;
 using System.Linq;
 

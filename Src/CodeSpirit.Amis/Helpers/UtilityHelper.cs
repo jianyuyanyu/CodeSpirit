@@ -9,23 +9,95 @@ namespace CodeSpirit.Amis.Helpers
 {
     public class UtilityHelper
     {
-        public string ToTitleCase(string str)
+        /// <summary>
+        /// 获取成员的显示名称，优先使用 DisplayNameAttribute。
+        /// </summary>
+        public string GetDisplayName(ICustomAttributeProvider member)
         {
-            if (string.IsNullOrEmpty(str))
-                return str;
-
-            return char.ToUpper(str[0]) + str.Substring(1);
+            return member switch
+            {
+                MemberInfo m => m.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? ToTitleCase(m.Name),
+                ParameterInfo p => p.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? ToTitleCase(p.Name),
+                _ => ToTitleCase(member.ToString())
+            };
         }
 
-        public string ToCamelCase(string str)
+        /// <summary>
+        /// 构建字段名称，支持嵌套对象。
+        /// </summary>
+        public string GetFieldName(ICustomAttributeProvider member, string parentName)
         {
-            if (string.IsNullOrEmpty(str))
-                return str;
+            string name = member switch
+            {
+                MemberInfo m => m.Name,
+                ParameterInfo p => p.Name,
+                _ => throw new NotSupportedException("Unsupported member type")
+            };
 
-            if (str.Length == 1)
-                return str.ToLower();
+            return parentName != null
+                ? ToCamelCase($"{parentName}.{name}")
+                : ToCamelCase(name);
+        }
 
-            return char.ToLower(str[0]) + str.Substring(1);
+        public void HandleAdditionalConfig(string additionalConfig, JObject field)
+        {
+            if (string.IsNullOrEmpty(additionalConfig))
+                return;
+
+            try
+            {
+                var additional = JObject.Parse(additionalConfig);
+                foreach (var prop in additional.Properties())
+                {
+                    field[prop.Name] = prop.Value;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException($"Invalid AdditionalConfig JSON: {ex.Message}");
+            }
+        }
+
+        public string ToCamelCase(string input)
+        {
+            if (string.IsNullOrEmpty(input) || !char.IsUpper(input[0]))
+                return input;
+
+            var chars = input.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                if (i == 0 || (i > 0 && char.IsUpper(chars[i])))
+                    chars[i] = char.ToLower(chars[i]);
+                else
+                    break;
+            }
+            return new string(chars);
+        }
+
+        public string ToTitleCase(string input)
+        {
+            return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(input);
+        }
+
+        //public bool IsNullable(Type type)
+        //{
+        //    return Nullable.GetUnderlyingType(type) != null || !type.IsValueType;
+        //}
+
+        public Type GetMemberType(ICustomAttributeProvider member)
+        {
+            return member switch
+            {
+                PropertyInfo prop => prop.PropertyType,
+                FieldInfo field => field.FieldType,
+                ParameterInfo param => param.ParameterType,
+                _ => throw new NotSupportedException("Member type not supported")
+            };
+        }
+
+        public bool IsComplexType(Type type)
+        {
+            return !IsSimpleType(type);
         }
 
         /// <summary>
@@ -59,16 +131,6 @@ namespace CodeSpirit.Amis.Helpers
                 }.Contains(type)
                 || type.IsEnum
                 || Nullable.GetUnderlyingType(type) != null && IsSimpleType(Nullable.GetUnderlyingType(type));
-        }
-
-        /// <summary>
-        /// 判断类型是否为复杂类型（如类类型，不包括字符串）。
-        /// </summary>
-        /// <param name="type">参数或属性的类型。</param>
-        /// <returns>如果是复杂类型则返回 true，否则返回 false。</returns>
-        public bool IsComplexType(Type type)
-        {
-            return type.IsClass && type != typeof(string);
         }
 
         /// <summary>
@@ -109,20 +171,20 @@ namespace CodeSpirit.Amis.Helpers
             return displayNameAttr?.Name ?? name;
         }
 
-        /// <summary>
-        /// 获取成员的类型（PropertyInfo 或 ParameterInfo）。
-        /// </summary>
-        /// <param name="member">成员信息。</param>
-        /// <returns>成员的类型。</returns>
-        public Type GetMemberType(ICustomAttributeProvider member)
-        {
-            return member switch
-            {
-                PropertyInfo prop => prop.PropertyType,
-                ParameterInfo param => param.ParameterType,
-                _ => throw new ArgumentException("Unsupported member type.")
-            };
-        }
+        ///// <summary>
+        ///// 获取成员的类型（PropertyInfo 或 ParameterInfo）。
+        ///// </summary>
+        ///// <param name="member">成员信息。</param>
+        ///// <returns>成员的类型。</returns>
+        //public Type GetMemberType(ICustomAttributeProvider member)
+        //{
+        //    return member switch
+        //    {
+        //        PropertyInfo prop => prop.PropertyType,
+        //        ParameterInfo param => param.ParameterType,
+        //        _ => throw new ArgumentException("Unsupported member type.")
+        //    };
+        //}
 
         public List<PropertyInfo> GetOrderedProperties(Type type)
         {

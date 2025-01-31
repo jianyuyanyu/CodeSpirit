@@ -1,12 +1,20 @@
-﻿using CodeSpirit.Amis.Attributes;
+﻿// 文件路径: CodeSpirit.IdentityApi.Controllers/PermissionsController.cs
+
+using AutoMapper;
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -18,17 +26,17 @@ namespace CodeSpirit.IdentityApi.Controllers
     public class PermissionsController : ApiControllerBase
     {
         private readonly ApplicationDbContext _context;
-
         private readonly IDistributedCache _cache;
-        private readonly ILogger<PermissionsController> logger;
+        private readonly ILogger<PermissionsController> _logger;
+        private readonly IMapper _mapper;
 
-        public PermissionsController(ApplicationDbContext context, IDistributedCache cache, ILogger<PermissionsController> logger)
+        public PermissionsController(ApplicationDbContext context, IDistributedCache cache, ILogger<PermissionsController> logger, IMapper mapper)
         {
             _context = context;
             _cache = cache;
-            this.logger = logger;
+            _logger = logger;
+            _mapper = mapper;
         }
-
 
         // GET: api/Permissions
         [HttpGet]
@@ -41,15 +49,16 @@ namespace CodeSpirit.IdentityApi.Controllers
             // 调试检查
             foreach (var p in permissions)
             {
-                logger.LogInformation($"Permission: {p.Name},Id：{p.Id},ParentId：{p.ParentId}, Children Count: {p.Children?.Count}");
+                _logger.LogInformation($"Permission: {p.Name}, Id：{p.Id}, ParentId：{p.ParentId}, Children Count: {p.Children?.Count}");
             }
 
-            var permissionDtos = permissions
+            var permissionDtos = _mapper.Map<List<PermissionDto>>(permissions)
                 .Where(p => p.ParentId == null) // 获取顶级权限
-                .Select(p => MapPermissionToDto(p))
                 .ToList();
 
-            return Ok(permissionDtos);
+            var listData = new ListData<PermissionDto>(permissionDtos, permissionDtos.Count);
+
+            return SuccessResponse<ListData<PermissionDto>>(listData);
         }
 
         // GET: api/Permissions/5
@@ -65,7 +74,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return NotFound();
             }
 
-            var permissionDto = MapPermissionToDto(permission);
+            var permissionDto = _mapper.Map<PermissionDto>(permission);
 
             return Ok(permissionDto);
         }
@@ -85,13 +94,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadRequest("权限名称已存在。");
             }
 
-            var permission = new Permission
-            {
-                Name = permissionDto.Name,
-                Description = permissionDto.Description,
-                ParentId = permissionDto.ParentId,
-                IsAllowed = permissionDto.IsAllowed
-            };
+            var permission = _mapper.Map<Permission>(permissionDto);
 
             _context.Permissions.Add(permission);
             await _context.SaveChangesAsync();
@@ -100,7 +103,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 .Include(p => p.Children)
                 .FirstOrDefaultAsync(p => p.Id == permission.Id);
 
-            var createdPermissionDto = MapPermissionToDto(createdPermission);
+            var createdPermissionDto = _mapper.Map<PermissionDto>(createdPermission);
 
             // 清理所有拥有相关权限的用户的权限缓存
             await ClearUserPermissionsCacheByPermissionAsync(permission.Name);
@@ -129,10 +132,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadRequest("权限名称已存在。");
             }
 
-            permission.Name = permissionDto.Name;
-            permission.Description = permissionDto.Description;
-            permission.ParentId = permissionDto.ParentId;
-            permission.IsAllowed = permissionDto.IsAllowed;
+            _mapper.Map(permissionDto, permission);
 
             _context.Entry(permission).State = EntityState.Modified;
 
@@ -196,6 +196,28 @@ namespace CodeSpirit.IdentityApi.Controllers
             return NoContent();
         }
 
+        // 新增的 GET: api/Permissions/Tree 端点
+        /// <summary>
+        /// 获取权限树结构，供前端（如 AMIS InputTree）使用。
+        /// </summary>
+        /// <returns>权限树的 JSON 结构。</returns>
+        [HttpGet("Tree")]
+        public async Task<ActionResult<List<PermissionTreeDto>>> GetPermissionTree()
+        {
+            var permissions = await _context.Permissions
+                .Include(p => p.Children)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var tree = _mapper.Map<List<PermissionTreeDto>>(
+                permissions
+                    .Where(p => p.ParentId == null)
+                    .ToList()
+            );
+
+            return Ok(tree);
+        }
+
         // 辅助方法：按权限清理拥有该权限的用户的权限缓存
         private async Task ClearUserPermissionsCacheByPermissionAsync(string permissionName)
         {
@@ -226,20 +248,6 @@ namespace CodeSpirit.IdentityApi.Controllers
         private bool PermissionExists(int id)
         {
             return _context.Permissions.Any(e => e.Id == id);
-        }
-
-        // 辅助方法：映射权限到 DTO，包含子权限
-        private PermissionDto MapPermissionToDto(Permission permission)
-        {
-            return new PermissionDto
-            {
-                Id = permission.Id,
-                Name = permission.Name,
-                Description = permission.Description,
-                IsAllowed = permission.IsAllowed,
-                ParentId = permission.ParentId,
-                Children = permission.Children?.Select(c => MapPermissionToDto(c)).ToList()
-            };
         }
     }
 }

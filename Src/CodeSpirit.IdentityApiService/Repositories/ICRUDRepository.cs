@@ -1,4 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
+﻿using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Controllers.Dtos;
 
 namespace CodeSpirit.IdentityApi.Repositories
 {

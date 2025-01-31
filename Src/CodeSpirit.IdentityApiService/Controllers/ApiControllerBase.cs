@@ -1,5 +1,5 @@
 ﻿using Azure;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+using CodeSpirit.Core;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.IdentityApi.Controllers

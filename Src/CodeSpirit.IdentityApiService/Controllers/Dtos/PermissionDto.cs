@@ -1,5 +1,5 @@
 ﻿// Controllers/RolesController.cs
-using CodeSpirit.IdentityApi.Amis.Attributes;
+using CodeSpirit.Amis.Attributes;
 using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos

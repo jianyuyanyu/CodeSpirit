@@ -1,6 +1,6 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
-using Microsoft.AspNetCore.Mvc.Filters;
+﻿using CodeSpirit.Core;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace CodeSpirit.IdentityApi.Filters

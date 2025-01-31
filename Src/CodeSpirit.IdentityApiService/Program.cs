@@ -1,25 +1,7 @@
-using CodeSpirit.IdentityApi.Amis;
-using CodeSpirit.IdentityApi.Amis.Configuration;
-using CodeSpirit.IdentityApi.Amis.Helpers;
+using CodeSpirit.Amis;
 using CodeSpirit.IdentityApi.Authorization;
 using CodeSpirit.IdentityApi.Data;
-using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Data.Seeders;
-using CodeSpirit.IdentityApi.Filters;
-using CodeSpirit.IdentityApi.MappingProfiles;
-using CodeSpirit.IdentityApi.ModelBindings;
-using CodeSpirit.IdentityApi.Repositories;
-using CodeSpirit.IdentityApi.Services;
-using CodeSpirit.Shared.Data;
-using CodeSpirit.Shared.Entities;
-using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using System.Globalization;
-using System.Reflection;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
@@ -31,183 +13,25 @@ builder.AddServiceDefaults();
 // Add services to the container.
 //builder.Services.AddProblemDetails();
 
-// 添加数据库上下文和 Identity 服务
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("identity-api"))
-    .EnableSensitiveDataLogging()
-    .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole())));
+builder.Services.AddDatabase(builder.Configuration);
+builder.Services.AddDataFilters();
+builder.Services.AddCustomServices();
+builder.Services.AddIdentityServices();
+builder.Services.AddCorsPolicy();
+// 如果需要启用 JWT 认证，取消注释以下行
+// builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddAuthorizationPolicies();
+builder.Services.AddFluentValidationServices();
+builder.Services.ConfigureControllers();
+builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);
 
-builder.Services.AddSingleton<IDataFilter, DataFilter>();
-builder.Services.AddSingleton(typeof(IDataFilter<>), typeof(DataFilter<>));
-builder.Services.Configure<DataFilterOptions>(options =>
-{
-    options.DefaultStates[typeof(IDeletionAuditedObject)] = new DataFilterState(isEnabled: true);
-    options.DefaultStates[typeof(ITenant)] = new DataFilterState(isEnabled: true);
-    options.DefaultStates[typeof(IIsActive)] = new DataFilterState(isEnabled: true);
-});
-
-builder.Services.AddHttpContextAccessor();
-// 注册内存缓存
-builder.Services.AddMemoryCache();
-
-// 注册权限服务
-builder.Services.AddScoped<IPermissionService, PermissionService>();
-builder.Services.AddScoped<AuthService>();
-
-// 注册其他服务
-builder.Services.AddScoped<CachingHelper>();
-builder.Services.AddScoped<ControllerHelper>();
-builder.Services.AddScoped<CrudHelper>();
-builder.Services.AddSingleton<UtilityHelper>();
-builder.Services.AddScoped<AmisApiHelper>();
-
-builder.Services.AddScoped<ApiRouteHelper>();
-builder.Services.AddScoped<ColumnHelper>();
-builder.Services.AddScoped<ButtonHelper>();
-builder.Services.AddScoped<FormFieldHelper>();
-builder.Services.AddScoped<SearchFieldHelper>();
-
-builder.Services.AddScoped<AmisConfigBuilder>();
-builder.Services.AddScoped<AmisContext>();
-builder.Services.AddScoped<AmisGenerator>(); // 注入 AmisGenerator
-
-// 注册 SiteConfigurationService
-builder.Services.AddScoped<ISiteConfigurationService, SiteConfigurationService>();
-
-
-builder.Services.AddTransient<IIdentityAccessor, IdentityAccessor>();
 ////依赖注入驱动注册
 //builder.Services.AddScopedRegister<IScopedDependency>();
 //builder.Services.AddTransientRegister<ITransientDependency>();
 //builder.Services.AddSingletonRegister<ISingletonDependency>();
 
-builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
-{
-    // 密码设置
-    options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = true;
-    options.Password.RequiredLength = 6;
-    options.Password.RequiredUniqueChars = 1;
-
-    // 锁定设置
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-    options.Lockout.MaxFailedAccessAttempts = 5;
-    options.Lockout.AllowedForNewUsers = true;
-
-    // 用户设置
-    options.User.AllowedUserNameCharacters =
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
-    options.User.RequireUniqueEmail = true;
-})
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
-
-// 配置 CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowSpecificOriginsWithCredentials",
-        builder =>
-        {
-            builder
-                .WithOrigins("http://localhost:3000") // 前端应用的地址
-                .WithOrigins("https://localhost:7120")
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials(); // 允许凭证
-        });
-});
-
-
-//// 配置 JWT 认证
-//builder.Services.AddAuthentication(options =>
-//{
-//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-//})
-//.AddJwtBearer(options =>
-//{
-//    options.TokenValidationParameters = new TokenValidationParameters
-//    {
-//        ValidateIssuer = true,
-//        ValidateAudience = true,
-//        ValidateLifetime = true,
-//        ValidateIssuerSigningKey = true,
-//        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-//        ValidAudience = builder.Configuration["Jwt:Audience"],
-//        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]))
-//    };
-//});
-
-// 注册分布式缓存服务（如使用内存缓存）
-builder.Services.AddDistributedMemoryCache();
-
-// 注册自定义授权处理程序
-builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
-builder.Services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<ILoginLogRepository, LoginLogRepository>();
-
-
-// 注册 Seeder 类
-builder.Services.AddScoped<RoleSeeder>();
-builder.Services.AddScoped<PermissionSeeder>();
-builder.Services.AddScoped<RolePermissionAssigner>();
-builder.Services.AddScoped<UserSeeder>();
-builder.Services.AddScoped<SeederService>();
-
-
-// 注册 AutoMapper 并扫描指定的程序集中的配置文件
-builder.Services.AddAutoMapper(typeof(UserProfile));
-
 // 注册权限授权策略
 builder.Services.AddPermissionAuthorization();
-
-// 添加服务到容器
-builder.Services.AddControllers(options =>
-{
-    // 全局注册 ValidateModelAttribute
-    options.Filters.Add<ValidateModelAttribute>();
-    options.Filters.Add<HttpResponseExceptionFilter>();
-    options.ModelBinderProviders.Insert(0, new DateRangeModelBinderProvider());
-}).AddNewtonsoftJson(options =>
-{
-    // 可选：在此处配置 Newtonsoft.Json 的设置
-    options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
-    options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore;
-})
-.ConfigureApiBehaviorOptions(options =>
-{
-    options.InvalidModelStateResponseFactory = context =>
-    {
-        // 提取验证错误
-        var errors = context.ModelState
-            .Where(ms => ms.Value.Errors.Count > 0)
-            .ToDictionary(
-                kvp => ToCamelCase(kvp.Key),
-                kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).FirstOrDefault()
-            );
-
-        // 构建 Amis 期望的响应格式
-        var amisResponse = new
-        {
-            msg = "验证错误，请检查输入项！",
-            status = 422,
-            errors = errors,
-        };
-
-        return new BadRequestObjectResult(amisResponse)
-        {
-            ContentTypes = { "application/json" }
-        };
-    };
-});
-
-// 配置读取 PagesConfiguration 部分
-builder.Services.Configure<PagesConfiguration>(builder.Configuration.GetSection("PagesConfiguration"));
-
 var app = builder.Build();
 
 // 执行数据初始化
@@ -251,16 +75,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-/// <summary>
-/// 将字符串转换为驼峰命名法（首字母小写）
-/// </summary>
-/// <param name="input">输入字符串</param>
-/// <returns>首字母小写的字符串</returns>
-static string ToCamelCase(string input)
-{
-    if (string.IsNullOrEmpty(input) || char.IsLower(input[0]))
-        return input;
-
-    return char.ToLower(input[0], CultureInfo.InvariantCulture) + input.Substring(1);
-}

@@ -1,13 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Amis;
-using CodeSpirit.IdentityApi.Amis.App;
-using CodeSpirit.IdentityApi.Amis.Attributes;
-using CodeSpirit.IdentityApi.Amis.Configuration;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+﻿using CodeSpirit.Amis;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Routing;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json.Linq;
-using System.Reflection;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -47,9 +39,9 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// </summary>
         /// <returns>配置的 JSON 数据。</returns>
         [HttpGet("site")]
-        public IActionResult GetSiteConfiguration()
+        public async Task<IActionResult> GetSiteConfiguration()
         {
-            var site = _siteConfigurationService.GetSiteConfiguration();
+            var site = await _siteConfigurationService.GetSiteConfigurationAsync();
             return Ok(site);
         }
     }

@@ -1,10 +1,9 @@
 ﻿// Controllers/AuthController.cs
+using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CodeSpirit.IdentityApi.Data;
-using Microsoft.AspNetCore.Authorization;
-using CodeSpirit.IdentityApi.Amis.Attributes;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
 using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers

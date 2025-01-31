@@ -1,5 +1,5 @@
 ﻿// Authorization/AuthorizationExtensions.cs
-using CodeSpirit.IdentityApi.Data;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.IdentityApi.Authorization
 {
@@ -10,20 +10,20 @@ namespace CodeSpirit.IdentityApi.Authorization
             services.AddAuthorization(options =>
             {
                 // 使用 IServiceProvider 获取 ApplicationDbContext
-                using (var serviceProvider = services.BuildServiceProvider())
-                {
-                    var dbContext = serviceProvider.GetService<ApplicationDbContext>();
-                    if (dbContext != null)
-                    {
-                        var permissions = dbContext.Permissions.ToList();
+                //using (var serviceProvider = services.BuildServiceProvider())
+                //{
+                //    var dbContext = serviceProvider.GetService<ApplicationDbContext>();
+                //    if (dbContext != null)
+                //    {
+                //        var permissions = dbContext.Permissions.ToList();
 
-                        foreach (var permission in permissions)
-                        {
-                            options.AddPolicy(permission.Name, policy =>
-                                policy.Requirements.Add(new PermissionRequirement(permission.Name)));
-                        }
-                    }
-                }
+                //        foreach (var permission in permissions)
+                //        {
+                //            options.AddPolicy(permission.Name, policy =>
+                //                policy.Requirements.Add(new PermissionRequirement(permission.Name)));
+                //        }
+                //    }
+                //}
             });
         }
     }

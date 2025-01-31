@@ -1,4 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
+﻿using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
 

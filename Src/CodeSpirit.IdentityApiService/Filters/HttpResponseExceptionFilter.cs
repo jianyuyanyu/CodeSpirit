@@ -1,5 +1,4 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
-using CodeSpirit.Shared;
+﻿using CodeSpirit.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;

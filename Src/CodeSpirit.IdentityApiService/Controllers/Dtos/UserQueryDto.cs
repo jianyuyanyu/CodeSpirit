@@ -34,3 +34,4 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         public DateTime[] LastLoginTime { get; set; }
     }
 }
+

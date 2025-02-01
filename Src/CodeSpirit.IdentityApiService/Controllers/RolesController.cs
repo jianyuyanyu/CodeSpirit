@@ -1,4 +1,5 @@
 ﻿// Controllers/RolesController.cs
+using AutoMapper;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
@@ -23,55 +24,69 @@ namespace CodeSpirit.IdentityApi.Controllers
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly ApplicationDbContext _context;
         private readonly IDistributedCache _cache;
+        private readonly IMapper _mapper;
 
-        public RolesController(RoleManager<ApplicationRole> roleManager, ApplicationDbContext context, IDistributedCache cache)
+        public RolesController(RoleManager<ApplicationRole> roleManager, ApplicationDbContext context, IDistributedCache cache, IMapper mapper)
         {
             _roleManager = roleManager;
             _context = context;
             _cache = cache;
+            _mapper = mapper;
         }
 
         // GET: api/Roles
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<ListData<RoleDto>>>> GetRoles()
+        public async Task<ActionResult<ApiResponse<ListData<RoleDto>>>> GetRoles([FromQuery] RoleQueryDto queryDto)
         {
-            var roles = await _roleManager.Roles
+            // 构建基础查询（保持IQueryable特性）
+            var query = _roleManager.Roles
                 .Include(r => r.RolePermissions)
                 .ThenInclude(p => p.Permission.Children)
+                .AsQueryable();
+
+            // 过滤条件（保持不变）
+            if (!string.IsNullOrEmpty(queryDto.Keywords))
+            {
+                query = query.Where(r =>
+                    r.Name.Contains(queryDto.Keywords) ||
+                    r.Description.Contains(queryDto.Keywords));
+            }
+
+            // 动态排序（保持不变）
+            var orderBy = !string.IsNullOrEmpty(queryDto.OrderBy) ? queryDto.OrderBy : "Name";
+            var orderDir = !string.IsNullOrEmpty(queryDto.OrderDir)
+                ? queryDto.OrderDir.ToLower()
+                : "asc";
+
+            var allowedOrderFields = new[] { "Name", "Description", "Id" };
+            if (!allowedOrderFields.Contains(orderBy, StringComparer.OrdinalIgnoreCase))
+            {
+                orderBy = "Name";
+            }
+
+            query = orderDir == "desc"
+                ? query.OrderByDescending(e => EF.Property<object>(e, orderBy))
+                : query.OrderBy(e => EF.Property<object>(e, orderBy));
+
+            // 分页处理（保持不变）
+            int total = await query.CountAsync();
+            int skip = (queryDto.Page - 1) * queryDto.PerPage;
+            var roles = await query
+                .Skip(skip)
+                .Take(queryDto.PerPage)
                 .ToListAsync();
 
-            var roleDtos = roles.Select(role => new RoleDto
-            {
-                Id = role.Id,
-                Name = role.Name,
-                Description = role.Description,
-                Permissions = role.RolePermissions.Select(p => new PermissionDto
-                {
-                    Id = p.Permission.Id,
-                    Name = p.Permission.Name,
-                    Description = p.Permission.Description,
-                    IsAllowed = p.Permission.IsAllowed,
-                    ParentId = p.Permission.ParentId,
-                    Children = p.Permission.Children?.Select(c => new PermissionDto
-                    {
-                        Id = c.Id,
-                        Name = c.Name,
-                        Description = c.Description,
-                        IsAllowed = p.Permission.IsAllowed,
-                        ParentId = c.ParentId,
-                        Children = null // 可以根据需要递归更多层级
-                    }).ToList()
-                }).ToList()
-            });
+            // 使用AutoMapper进行映射
+            var roleDtos = _mapper.Map<List<RoleDto>>(roles);
 
-            return Ok(new
+            return Ok(new ApiResponse<ListData<RoleDto>>
             {
-                status = 0,
-                msg = "查询成功！",
-                data = new
+                Status = 0,
+                Msg = "查询成功！",
+                Data = new ListData<RoleDto>
                 {
-                    items = roleDtos,
-                    total = roleDtos.Count()
+                    Items = roleDtos,
+                    Total = total
                 }
             });
         }

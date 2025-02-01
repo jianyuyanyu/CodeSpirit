@@ -5,7 +5,7 @@ namespace CodeSpirit.IdentityApi.Utilities
 {
     public static class QueryableExtensions
     {
-        public static IQueryable<T> ApplySorting<T>(this IQueryable<T> query, string orderBy, string orderDir, List<string> allowedSortFields)
+        public static IQueryable<T> ApplySorting<T>(this IQueryable<T> query, string orderBy, string orderDir)
         {
             if (string.IsNullOrWhiteSpace(orderBy))
             {
@@ -13,11 +13,6 @@ namespace CodeSpirit.IdentityApi.Utilities
             }
 
             var sortField = orderBy.Trim().ToLower();
-            if (!allowedSortFields.Contains(sortField))
-            {
-                throw new ArgumentException($"不支持的排序字段: {orderBy}");
-            }
-
             var sortOrder = orderDir?.ToLower() == "desc" ? "descending" : "ascending";
             var ordering = $"{orderBy} {sortOrder}";
 

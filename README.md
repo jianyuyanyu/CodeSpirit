@@ -47,6 +47,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] List<T> where T:calss——>List 
         - [ ] 状态
       - [x] 列排序
+        - [ ] 支持配置
       - [x] 列忽略：IgnoreColumnAttribute
       - [x] 默认隐藏
         - [x] 主键

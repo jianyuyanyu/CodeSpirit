@@ -314,26 +314,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         {
             if (!string.IsNullOrWhiteSpace(queryDto.OrderBy))
             {
-                var allowedSortFields = new List<string>
-                {
-                    "name",
-                    "email",
-                    "lastlogintime",
-                    "username",
-                    "gender",
-                    "phonenumber"
-                    // 其他允许排序的字段可以在这里添加
-                };
-
-                if (allowedSortFields.Contains(queryDto.OrderBy.ToLower()))
-                {
-                    query = query.ApplySorting(queryDto.OrderBy, queryDto.OrderDir, allowedSortFields);
-                }
-                else
-                {
-                    // 默认排序
-                    query = query.OrderBy(u => u.Id);
-                }
+                query = query.ApplySorting(queryDto.OrderBy, queryDto.OrderDir);
             }
             else
             {

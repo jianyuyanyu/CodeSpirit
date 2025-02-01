@@ -119,7 +119,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         }
 
         // POST: api/Roles
-        [HttpPost]
+        [HttpPost("")]
         //[Authorize(Policy = "edit_roles")]
         public async Task<ActionResult<RoleDto>> Create(RoleCreateDto roleDto)
         {
@@ -137,7 +137,8 @@ namespace CodeSpirit.IdentityApi.Controllers
             var role = new ApplicationRole
             {
                 Name = roleDto.Name,
-                Description = roleDto.Description
+                Description = roleDto.Description,
+                RolePermissions = new List<RolePermission>()
             };
 
             var result = await _roleManager.CreateAsync(role);

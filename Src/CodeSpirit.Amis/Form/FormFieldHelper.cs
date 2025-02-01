@@ -120,12 +120,12 @@ namespace CodeSpirit.Amis.Helpers
                 if (field != null)
                 {
                     // 添加父级名称
-                    AddParentName(field, param.Name);
+                    AddParentName(field, null);
                     fields.Add(field);
                     continue;
                 }
 
-                fields.Add(CreateAmisFormFieldFromProperty(prop, param.Name));
+                fields.Add(CreateAmisFormFieldFromProperty(prop, null));
             }
 
             return fields;

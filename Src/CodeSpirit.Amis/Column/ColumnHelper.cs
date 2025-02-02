@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Authorization;
@@ -9,7 +10,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Reflection;
 
-namespace CodeSpirit.Amis.Helpers
+namespace CodeSpirit.Amis.Column
 {
     /// <summary>
     /// 帮助类，用于生成 AMIS 表格的列配置。
@@ -125,6 +126,33 @@ namespace CodeSpirit.Amis.Helpers
                 ["sortable"] = true,
                 ["type"] = GetColumnType(prop)
             };
+
+            var columnAttr = (ColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(ColumnAttribute));
+            if (columnAttr != null)
+            {
+                if (!string.IsNullOrEmpty(columnAttr.Name))
+                    column["name"] = columnAttr.Name;
+
+                if (!string.IsNullOrEmpty(columnAttr.Label))
+                    column["label"] = columnAttr.Label;
+
+                column["sortable"] = columnAttr.Sortable;
+
+                if (!string.IsNullOrEmpty(columnAttr.Type))
+                    column["type"] = columnAttr.Type;
+
+                column["quickEdit"] = columnAttr.QuickEdit;
+
+                if (!string.IsNullOrEmpty(columnAttr.Remark))
+                    column["remark"] = columnAttr.Remark;
+
+                column["copyable"] = columnAttr.Copyable;
+
+                if (!string.IsNullOrEmpty(columnAttr.Fixed))
+                    column["fixed"] = columnAttr.Fixed;
+
+                column["hidden"] = columnAttr.Hidden;
+            }
 
             // 如果是主键，则隐藏该列
             if (IsPrimaryKey(prop))
@@ -338,10 +366,14 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             // 如果用户有删除权限，则添加删除按钮
-            if (_permissionService.HasPermission($"{controllerName}Delete"))
+            if (actions.Delete != null && _permissionService.HasPermission($"{controllerName}Delete"))
             {
-                var deleteButton = buttonHelper.CreateDeleteButton(deleteRoute);
-                buttons.Add(deleteButton);
+                var operationAttribute = actions.Delete.GetCustomAttribute<OperationAttribute>();
+                if (operationAttribute == null)
+                {
+                    var deleteButton = buttonHelper.CreateDeleteButton(deleteRoute);
+                    buttons.Add(deleteButton);
+                }
             }
 
             // 添加自定义操作按钮

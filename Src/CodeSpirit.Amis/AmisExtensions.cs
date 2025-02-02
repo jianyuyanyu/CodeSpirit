@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Amis.App;
+using CodeSpirit.Amis.Column;
 using CodeSpirit.Amis.Configuration;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers;

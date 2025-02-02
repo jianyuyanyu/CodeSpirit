@@ -1,20 +1,12 @@
-﻿// 文件路径: CodeSpirit.IdentityApi.Controllers/PermissionsController.cs
-
-using AutoMapper;
-using CodeSpirit.Amis.Attributes;
+﻿using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {

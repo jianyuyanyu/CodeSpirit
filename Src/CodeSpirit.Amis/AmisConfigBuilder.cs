@@ -1,4 +1,5 @@
-﻿using CodeSpirit.Amis.Helpers;
+﻿using CodeSpirit.Amis.Column;
+using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;

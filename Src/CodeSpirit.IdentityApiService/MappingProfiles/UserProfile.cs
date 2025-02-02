@@ -17,7 +17,7 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
             // 从 CreateUserDto 到 ApplicationUser 的映射
             CreateMap<CreateUserDto, ApplicationUser>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid().ToString("N")))
-                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email))
+                //.ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
 
             // 从 UpdateUserDto 到 ApplicationUser 的映射

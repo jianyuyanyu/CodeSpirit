@@ -196,7 +196,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         }
 
         [HttpPatch("quickSave")]
-        public async Task<ActionResult<ApiResponse<string>>> QuickSaveUsers([FromBody] QuickSaveRequestDto request)
+        public async Task<ActionResult<ApiResponse>> QuickSaveUsers([FromBody] QuickSaveRequestDto request)
         {
             // 1. 确保请求数据有效
             if (request?.Rows == null || !request.Rows.Any())

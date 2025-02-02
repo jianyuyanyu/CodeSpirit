@@ -18,9 +18,9 @@ namespace CodeSpirit.IdentityApi.Controllers
             return Ok(new ApiResponse<T>(0, "操作成功！", data));
         }
 
-        protected ActionResult<ApiResponse<string>> SuccessResponse()
+        protected ActionResult<ApiResponse> SuccessResponse()
         {
-            return Ok(new ApiResponse<string>(0, "操作成功！", null));
+            return Ok(new ApiResponse(0, "操作成功！"));
         }
 
         protected ActionResult<ApiResponse<T>> SuccessResponseWithCreate<T>(string actionName, T data = default) where T : class

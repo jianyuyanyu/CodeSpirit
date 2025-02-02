@@ -1,7 +1,8 @@
 ﻿using AutoMapper;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data.Models;
-using System.Data;
+using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
+using System.Linq;
 
 namespace CodeSpirit.IdentityApi.MappingProfiles
 {
@@ -9,22 +10,58 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
     {
         public RoleProfile()
         {
+            // 映射 ApplicationRole 到 RoleDto
             CreateMap<ApplicationRole, RoleDto>()
-                .ForMember(dest => dest.Permissions,
-                           opt => opt.MapFrom(src => src.RolePermissions.Select(rp => rp.Permission)));
+                .ForMember(dest => dest.Children,
+                           opt => opt.MapFrom(src => src.RolePermissions != null ? src.RolePermissions.Select(rp => MapToRolePermissionDto(rp)).ToList() : new List<RolePermissionDto>()));
 
-            //CreateMap<Permission, PermissionDto>()
-            //    .ForMember(dest => dest.Children,
-            //               opt => opt.MapFrom(src => src.Children != null
-            //                   ? src.Children.Select(c => new PermissionDto
-            //                   {
-            //                       Id = c.Id,
-            //                       Name = c.Name,
-            //                       Description = c.Description,
-            //                       IsAllowed = c.IsAllowed,  // 确保使用子权限自身的值
-            //                       ParentId = c.ParentId
-            //                   })
-            //                   : null));
+            // 映射 RoleCreateDto 到 ApplicationRole
+            CreateMap<RoleCreateDto, ApplicationRole>();
+
+            // 映射 RoleUpdateDto 到 ApplicationRole
+            CreateMap<RoleUpdateDto, ApplicationRole>();
+        }
+
+        // 辅助方法，将 RolePermission 映射为 RolePermissionDto
+        private RolePermissionDto MapToRolePermissionDto(RolePermission rp)
+        {
+            // 确保 rp.Permission 不为 null
+            if (rp?.Permission == null)
+            {
+                return null;
+            }
+
+            return new RolePermissionDto
+            {
+                Id = rp.Permission.Id,
+                Name = rp.Permission.Name,
+                RoleId = rp.RoleId,
+                ParentId = rp.Permission.ParentId,
+                Description = rp.Permission.Description,
+                IsAllowed = rp.Permission.IsAllowed,
+                Children = rp.Permission.Children != null ? rp.Permission.Children.Select(child => MapToPermissionDto(child, rp.RoleId)).ToList() : new List<RolePermissionDto>()
+            };
+        }
+
+        // 辅助方法，将 Permission 映射为 RolePermissionDto
+        private RolePermissionDto MapToPermissionDto(Permission permission, string roleId)
+        {
+            // 确保 permission 不为 null
+            if (permission == null)
+            {
+                return null;
+            }
+
+            return new RolePermissionDto
+            {
+                Id = permission.Id,
+                Name = permission.Name,
+                RoleId = roleId,
+                ParentId = permission.ParentId,
+                Description = permission.Description,
+                IsAllowed = permission.IsAllowed,
+                Children = permission.Children != null ? permission.Children.Select(child => MapToPermissionDto(child, roleId)).ToList() : new List<RolePermissionDto>()
+            };
         }
     }
 }

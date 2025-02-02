@@ -16,7 +16,8 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         public string Description { get; set; }
 
         [DisplayName("权限")]
-        [ListColumn(Title = "Name", SubTitle = "Description", Placeholder = "暂无权限")]
-        public List<PermissionDto> Permissions { get; set; }
+        //[ListColumn(Title = "Name", SubTitle = "Description", Placeholder = "暂无权限")]
+        [IgnoreColumn]
+        public List<RolePermissionDto> Children { get; set; }
     }
 }

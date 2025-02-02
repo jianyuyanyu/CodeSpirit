@@ -51,4 +51,13 @@ namespace CodeSpirit.Core
             return new ApiResponse<T>(status, msg, data);
         }
     }
+
+    public class ApiResponse : ApiResponse<string>
+    {
+        public ApiResponse(int status, string msg)
+        {
+            Status = status;
+            Msg = msg;
+        }
+    }
 }

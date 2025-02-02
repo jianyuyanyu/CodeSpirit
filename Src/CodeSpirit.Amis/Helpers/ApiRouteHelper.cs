@@ -127,7 +127,7 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>合并后的路由路径。</returns>
         private string CombineRoutes(string baseRoute, string template)
         {
-            template = template?.Replace("{id}", "${id}") ?? string.Empty; // 替换模板中的 {id} 占位符
+            template = template?.Replace("{", "${") ?? string.Empty; // 替换模板中的 {id} 占位符
             if (string.IsNullOrEmpty(template))
                 return baseRoute;
 

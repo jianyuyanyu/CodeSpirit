@@ -64,7 +64,9 @@ public static class ServiceCollectionExtensions
         // 注册 Repositories 和 Handlers
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<ILoginLogRepository, LoginLogRepository>();
+        services.AddScoped<IRoleService, RoleService>();
 
         // 注册 Seeder 类
         services.AddScoped<RoleSeeder>();
@@ -74,7 +76,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SeederService>();
 
         // 注册 AutoMapper
-        services.AddAutoMapper(typeof(UserProfile), typeof(PermissionProfile), typeof(RoleProfile));
+        services.AddAutoMapper(typeof(Program));
 
         // 注册自定义授权处理程序
         services.AddScoped<IAuthorizationHandler, PermissionHandler>();

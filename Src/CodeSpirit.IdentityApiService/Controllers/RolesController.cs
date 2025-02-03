@@ -52,22 +52,14 @@ public class RolesController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Update(string id, RoleUpdateDto updateDto)
     {
         await _roleService.UpdateRoleAsync(id, updateDto);
-        return NoContent();
-    }
-
-    [HttpDelete("{id}")]
-    [Operation("删除角色", "ajax", null, "确定要删除吗？", "typeof roleId !== 'string' && children.length == 0")]
-    public async Task<ActionResult<ApiResponse>> Delete(string id)
-    {
-        await _roleService.DeleteRoleAsync(id);
         return SuccessResponse();
     }
 
-    [HttpDelete("{roleId}/{id}")]
-    [Operation("移除权限", "ajax", null, "确定要删除吗？", "typeof roleId === 'string'")]
-    public async Task<ActionResult<ApiResponse>> RemoveRolePermission(string roleId, int id)
+    [HttpDelete("{id}")]
+    [Operation("删除角色", "ajax", null, "确定要删除此角色吗？", "typeof roleId !== 'string' && permissionIds.length == 0")]
+    public async Task<ActionResult<ApiResponse>> Delete(string id)
     {
-        //await _roleService.DeleteRoleAsync(id);
+        await _roleService.DeleteRoleAsync(id);
         return SuccessResponse();
     }
 }

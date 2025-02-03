@@ -37,10 +37,10 @@ namespace CodeSpirit.IdentityApi.Repositories
                 .AsQueryable();
 
             query = ApplyFilters(query, queryDto);
-            query = ApplySorting(query, queryDto);
+            query = query.ApplySorting(queryDto);
 
             var totalCount = await query.CountAsync();
-            var users = await query.ApplyPaging(queryDto.Page, queryDto.PerPage).ToListAsync();
+            var users = await query.ApplyPaging(queryDto).ToListAsync();
 
             // 使用 AutoMapper 进行映射
             var userDtos = _mapper.Map<List<UserDto>>(users);
@@ -307,21 +307,6 @@ namespace CodeSpirit.IdentityApi.Repositories
                 var endDate = queryDto.LastLoginTime[1];
                 query = query.Where(u => u.LastLoginTime <= endDate);
             }
-            return query;
-        }
-
-        private IQueryable<ApplicationUser> ApplySorting(IQueryable<ApplicationUser> query, UserQueryDto queryDto)
-        {
-            if (!string.IsNullOrWhiteSpace(queryDto.OrderBy))
-            {
-                query = query.ApplySorting(queryDto.OrderBy, queryDto.OrderDir);
-            }
-            else
-            {
-                // 默认排序
-                query = query.OrderBy(u => u.Id);
-            }
-
             return query;
         }
 

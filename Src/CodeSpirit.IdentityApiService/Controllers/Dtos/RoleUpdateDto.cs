@@ -1,4 +1,5 @@
 ﻿// Controllers/RolesController.cs
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
@@ -14,6 +15,18 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         public string Description { get; set; }
 
         // 可选：权限ID列表
+        // 权限ID列表
+        [DisplayName("权限")]
+        [AmisInputTreeField(
+        DataSource = "${API_HOST}/api/permissions/tree",
+        LabelField = "label",
+        ValueField = "id",
+        Multiple = true,
+        JoinValues = false,
+        ExtractValue = true,
+        Required = true,
+        Placeholder = "请选择权限"
+        )]
         public List<int> PermissionIds { get; set; }
     }
 }

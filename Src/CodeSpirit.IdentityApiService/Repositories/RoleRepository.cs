@@ -1,6 +1,8 @@
 ﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
+using CodeSpirit.IdentityApi.Utilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
@@ -17,30 +19,27 @@ namespace CodeSpirit.IdentityApi.Repositories
             _context = context;
             _roleManager = roleManager;
         }
-
         public async Task<(List<ApplicationRole>, int)> GetRolesAsync(RoleQueryDto queryDto)
         {
             var query = _roleManager.Roles
-                                        .Include(r => r.RolePermissions
-                                            .Where(rp => rp.Permission.ParentId == null))
-                                        .ThenInclude(rp => rp.Permission.Children)
+                                        .Include(r => r.RolePermissions)
                                         .AsQueryable();
-
-            if (!string.IsNullOrEmpty(queryDto.Keywords))
+            if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
             {
-                query = query.Where(r =>
-                    EF.Functions.Like(r.Name, $"%{queryDto.Keywords}%") ||
-                    EF.Functions.Like(r.Description, $"%{queryDto.Keywords}%"));
+                var searchLower = queryDto.Keywords.ToLower();
+                query = query.Where(u =>
+                    u.Name.ToLower().Contains(searchLower) ||
+                    u.Description.ToLower().Contains(searchLower)
+                    );
             }
 
             var count = await query.CountAsync();
+
             // Sorting logic
-            query = ApplySorting(query, queryDto);
-
-            int skip = (queryDto.Page - 1) * queryDto.PerPage;
-            query = query.Skip(skip).Take(queryDto.PerPage);
-
-            return (await query.ToListAsync(), count);
+            query = query.ApplySorting(queryDto);
+            query = query.ApplyPaging(queryDto);
+            var list = await query.ToListAsync();
+            return (list, count);
         }
 
         public async Task<ApplicationRole> GetRoleByIdAsync(string id)
@@ -142,32 +141,42 @@ namespace CodeSpirit.IdentityApi.Repositories
 
         public async Task RemovePermissionsFromRoleAsync(ApplicationRole role, IEnumerable<int> permissionIds)
         {
+            // 先获取需要移除的权限列表
             var removeList = role.RolePermissions
                 .Where(rp => permissionIds.Contains(rp.PermissionId))
                 .ToList();
 
+            // 遍历移除的权限
             foreach (var rp in removeList)
             {
+                // 如果权限是子权限，需要先检查并重新赋权
+                var permission = rp.Permission;
+                if (permission.ParentId != null) // 权限是子权限
+                {
+                    // 重新赋权父权限
+                    var parentPermission = permission.Parent;
+                    // 只移除当前权限，保留父权限
+                    var parentRolePermission = role.RolePermissions
+                        .FirstOrDefault(rp => rp.PermissionId == parentPermission.Id);
+
+                    if (parentRolePermission == null)
+                    {
+                        // 如果父权限不存在角色权限列表中，则添加父权限
+                        role.RolePermissions.Add(new RolePermission
+                        {
+                            RoleId = role.Id,
+                            PermissionId = parentPermission.Id,
+                            IsAllowed = rp.IsAllowed
+                        });
+                    }
+                }
+
+                // 从角色中移除当前权限
                 role.RolePermissions.Remove(rp);
             }
 
+            // 更新角色
             await _roleManager.UpdateAsync(role);
-        }
-
-        private IQueryable<ApplicationRole> ApplySorting(IQueryable<ApplicationRole> query, RoleQueryDto queryDto)
-        {
-            var orderBy = !string.IsNullOrEmpty(queryDto.OrderBy) ? queryDto.OrderBy : "Name";
-            var orderDir = queryDto.OrderDir?.ToLower() == "desc" ? "desc" : "asc";
-
-            var allowedOrderFields = new[] { "Name", "Description", "Id" };
-            if (!allowedOrderFields.Contains(orderBy, StringComparer.OrdinalIgnoreCase))
-            {
-                orderBy = "Name";
-            }
-
-            return orderDir == "desc"
-                ? query.OrderByDescending(e => EF.Property<object>(e, orderBy))
-                : query.OrderBy(e => EF.Property<object>(e, orderBy));
         }
     }
 

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Repositories;
@@ -53,6 +54,10 @@ namespace CodeSpirit.IdentityApi.Services
         public async Task DeleteRoleAsync(string id)
         {
             var role = await _roleRepository.GetRoleByIdAsync(id);
+            if (role.RolePermissions.Any())
+            {
+                throw new AppServiceException(400, "请移除权限后再删除该角色！");
+            }
             await _roleRepository.DeleteRoleAsync(role);
             // 清理所有拥有该角色的用户的权限缓存
             await ClearUserPermissionsCacheByRoleAsync(role.Id);
@@ -66,6 +71,13 @@ namespace CodeSpirit.IdentityApi.Services
                 _cache.RemoveAsync($"UserPermissions_{userId}"));
 
             await Task.WhenAll(cacheTasks);
+        }
+
+        public async Task RemovePermissionsFromRoleAsync(string id, IEnumerable<int> permissionIds)
+        {
+            var role = await _roleRepository.GetRoleByIdAsync(id);
+            await _roleRepository.RemovePermissionsFromRoleAsync(role, permissionIds);
+            await ClearUserPermissionsCacheByRoleAsync(id);
         }
     }
 

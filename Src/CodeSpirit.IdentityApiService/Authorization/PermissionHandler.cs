@@ -1,7 +1,6 @@
 // Authorization/PermissionHandler.cs
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -40,12 +39,12 @@ namespace CodeSpirit.IdentityApi.Authorization
 
             // 尝试从缓存中获取用户权限
             var cachedPermissions = await _cache.GetStringAsync(cacheKey);
-            List<Permission> userPermissions;
+            List<RolePermission> userPermissions;
 
             if (!string.IsNullOrEmpty(cachedPermissions))
             {
                 // 从缓存中反序列化权限列表
-                userPermissions = JsonSerializer.Deserialize<List<Permission>>(cachedPermissions);
+                userPermissions = JsonSerializer.Deserialize<List<RolePermission>>(cachedPermissions);
             }
             else
             {
@@ -63,12 +62,12 @@ namespace CodeSpirit.IdentityApi.Authorization
                     .Where(r => user.UserRoles.Any(ur => ur.RoleId == r.Id))
                     .Include(r => r.RolePermissions)  // 加载角色的权限关系
                         .ThenInclude(rp => rp.Permission)  // 加载角色权限的具体权限
-                        .ThenInclude(p => p.Children)  // 加载权限的子权限
+                                                           //.ThenInclude(p => p.Children)  // 加载权限的子权限
                     .ToListAsync();
 
                 // 获取所有权限，包括继承的权限
                 userPermissions = roles
-                    .SelectMany(rp => GetAllPermissions(rp.RolePermissions.Select(p => p.Permission)))  // 获取权限及其继承的所有权限
+                    .SelectMany(rp => rp.RolePermissions)  // 获取权限及其继承的所有权限
                     .Distinct()
                     .ToList();
 
@@ -81,35 +80,15 @@ namespace CodeSpirit.IdentityApi.Authorization
                 await _cache.SetStringAsync(cacheKey, serializedPermissions, cacheOptions);
             }
 
-            // 检查是否存在拒绝权限
-            bool hasExplicitDeny = userPermissions.Any(p => p.Name == requirement.PermissionName && !p.IsAllowed);
-            if (hasExplicitDeny)
-            {
-                // 如果存在拒绝权限，直接拒绝
-                return;
-            }
-
             // 检查是否存在允许权限
-            bool hasAllow = userPermissions.Any(p => p.Name == requirement.PermissionName && p.IsAllowed);
+            bool hasAllow = userPermissions.Any(p => p.Permission.Name == requirement.PermissionName);
             if (hasAllow)
             {
                 context.Succeed(requirement);
             }
-        }
-
-        private IEnumerable<Permission> GetAllPermissions(IEnumerable<Permission> permissions)
-        {
-            foreach (var permission in permissions)
+            else
             {
-                yield return permission;
-
-                if (permission.Children != null && permission.Children.Any())
-                {
-                    foreach (var child in GetAllPermissions(permission.Children))
-                    {
-                        yield return child;
-                    }
-                }
+                return;
             }
         }
     }

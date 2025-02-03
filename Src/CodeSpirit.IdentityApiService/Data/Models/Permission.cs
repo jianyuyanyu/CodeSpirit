@@ -1,6 +1,6 @@
 ﻿namespace CodeSpirit.IdentityApi.Data.Models
 {
-    // Models/Permission.cs
+    using Microsoft.EntityFrameworkCore;
     using System.Collections.Generic;
     using System.ComponentModel.DataAnnotations;
     using System.ComponentModel.DataAnnotations.Schema;
@@ -31,11 +31,6 @@
             /// </summary>
             [MaxLength(256)]
             public string Description { get; set; }
-
-            /// <summary>
-            /// 指示权限是允许（true）还是拒绝（false）。
-            /// </summary>
-            public bool IsAllowed { get; set; } = true; // 默认允许
 
             /// <summary>
             /// 父权限的外键，用于权限的层级结构。

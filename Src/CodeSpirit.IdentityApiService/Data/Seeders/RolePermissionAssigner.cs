@@ -90,7 +90,6 @@ public class RolePermissionAssigner
                         {
                             existingRole.RolePermissions.Add(new RolePermission()
                             {
-                                IsAllowed = true,
                                 Permission = permission,
                                 Role = existingRole
                             });

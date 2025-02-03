@@ -108,7 +108,6 @@ public class PermissionSeeder
                     {
                         Name = parent.Name,
                         Description = parent.Description,
-                        IsAllowed = true // 默认允许
                     };
                     _dbContext.Permissions.Add(newParent);
                     _logger.LogInformation($"权限 '{parent.Name}' 已添加到数据库。");
@@ -150,7 +149,6 @@ public class PermissionSeeder
                             Name = child.Name,
                             Description = child.Description,
                             ParentId = parentId,
-                            IsAllowed = true // 默认允许
                         };
                         _dbContext.Permissions.Add(newChild);
                         _logger.LogInformation($"权限 '{child.Name}' 已添加到数据库。");

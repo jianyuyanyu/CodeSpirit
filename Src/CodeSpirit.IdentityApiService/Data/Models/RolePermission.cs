@@ -24,11 +24,6 @@ public class RolePermission
     /// 导航属性，指向权限。
     /// </summary>
     public Permission Permission { get; set; }
-
-    /// <summary>
-    /// 指示权限是允许（true）还是拒绝（false）给定角色。
-    /// </summary>
-    public bool IsAllowed { get; set; } = true; // 默认允许
 }
 
 

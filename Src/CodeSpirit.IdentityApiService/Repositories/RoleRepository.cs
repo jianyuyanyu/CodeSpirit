@@ -81,7 +81,6 @@ namespace CodeSpirit.IdentityApi.Repositories
             role.RolePermissions = permissions.Select(p => new RolePermission
             {
                 PermissionId = p.Id,
-                IsAllowed = true
             }).ToList();
 
             // 创建角色（自动级联创建关联的RolePermissions）
@@ -111,7 +110,6 @@ namespace CodeSpirit.IdentityApi.Repositories
                 {
                     role.RolePermissions.Add(new RolePermission
                     {
-                        IsAllowed = true,
                         Permission = permission
                     });
                 }
@@ -170,7 +168,6 @@ namespace CodeSpirit.IdentityApi.Repositories
                 {
                     role.RolePermissions.Add(new RolePermission
                     {
-                        IsAllowed = true,
                         Permission = permission
                     });
                 }
@@ -210,7 +207,6 @@ namespace CodeSpirit.IdentityApi.Repositories
                         {
                             RoleId = role.Id,
                             PermissionId = parentPermission.Id,
-                            IsAllowed = rp.IsAllowed  // 继承原有状态
                         });
                     }
                 }

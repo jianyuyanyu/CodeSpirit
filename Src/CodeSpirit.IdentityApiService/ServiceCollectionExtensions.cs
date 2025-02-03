@@ -64,6 +64,7 @@ public static class ServiceCollectionExtensions
         // 注册 Repositories 和 Handlers
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<ILoginLogRepository, LoginLogRepository>();
         services.AddScoped<IRoleService, RoleService>();

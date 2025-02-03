@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.IdentityApi.Repositories;
+using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,12 +10,12 @@ namespace CodeSpirit.IdentityApi.Controllers
     [ApiController]
     public class UserStatisticsController : ApiControllerBase
     {
-        private readonly IUserRepository _userRepository;
+        private readonly IUserService _userService;
 
         public UserStatisticsController(
-            IUserRepository userRepository)
+            IUserService userService)
         {
-            _userRepository = userRepository;
+            _userService = userService;
         }
 
         /// <summary>
@@ -29,7 +30,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-1);
             var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
 
-            var dailyGrowth = await _userRepository.GetUserGrowthAsync(date1, date2);
+            var dailyGrowth = await _userService.GetUserGrowthAsync(date1, date2);
             var dates = dailyGrowth.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
             var userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
 
@@ -98,7 +99,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-3);
             var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now;
-            var dailyActiveUsers = await _userRepository.GetActiveUsersAsync(date1, date2);
+            var dailyActiveUsers = await _userService.GetActiveUsersAsync(date1, date2);
 
             var dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
             var activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
@@ -161,12 +162,12 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-2);
             var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
-            var dailyGrowth = await _userRepository.GetUserGrowthAsync(date1, date2);
-            
+            var dailyGrowth = await _userService.GetUserGrowthAsync(date1, date2);
+
             var userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
 
             // 获取活跃用户数据
-            var dailyActiveUsers = await _userRepository.GetActiveUsersAsync(date1, date2);
+            var dailyActiveUsers = await _userService.GetActiveUsersAsync(date1, date2);
             var activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
             var dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
 

@@ -1,5 +1,6 @@
 ﻿// 文件路径: CodeSpirit.Amis.Helpers/FormFieldHelper.cs
 
+using AutoMapper.Execution;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Core.Authorization;
@@ -227,11 +228,19 @@ namespace CodeSpirit.Amis.Helpers
         private void AddValidationRules(PropertyInfo prop, JObject field)
         {
             var validationRules = new JObject();
-
+            var validationErrors = new JObject();
+            
             // 处理 [Required] 特性
-            if (prop.GetCustomAttribute<RequiredAttribute>() != null)
+            var requiredAttribute = prop.GetCustomAttribute<RequiredAttribute>();
+            if (requiredAttribute != null)
             {
                 field["required"] = true;
+            }
+
+            var descriptionAttribute = prop.GetCustomAttribute<DescriptionAttribute>();
+            if (descriptionAttribute != null && !string.IsNullOrEmpty(descriptionAttribute.Description))
+            {
+                field["description"] = descriptionAttribute.Description;
             }
 
             // 处理 [StringLength] 特性
@@ -242,6 +251,12 @@ namespace CodeSpirit.Amis.Helpers
                     validationRules["minLength"] = stringLengthAttr.MinimumLength;
                 if (stringLengthAttr.MaximumLength > 0)
                     validationRules["maxLength"] = stringLengthAttr.MaximumLength;
+
+                if (!string.IsNullOrEmpty(stringLengthAttr.ErrorMessage))
+                {
+                    validationErrors["minLength"] = stringLengthAttr.ErrorMessage;
+                    validationErrors["maxLength"] = stringLengthAttr.ErrorMessage;
+                }
             }
 
             // 处理 [Range] 特性
@@ -252,19 +267,41 @@ namespace CodeSpirit.Amis.Helpers
                     validationRules["minimum"] = Convert.ToDouble(rangeAttr.Minimum);
                 if (rangeAttr.Maximum != null)
                     validationRules["maximum"] = Convert.ToDouble(rangeAttr.Maximum);
+
+                if (!string.IsNullOrEmpty(rangeAttr.ErrorMessage))
+                {
+                    validationErrors["minimum"] = rangeAttr.ErrorMessage;
+                    validationErrors["maximum"] = rangeAttr.ErrorMessage;
+                }
             }
 
             // 处理 [DataType] 特性
             var dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
             if (dataTypeAttr != null)
             {
-                AddDataTypeValidation(dataTypeAttr, validationRules, field, prop.Name);
+                AddDataTypeValidation(dataTypeAttr, validationRules, field);
+            }
+
+            // 添加正则匹配规则
+            var regexAttr = prop.GetCustomAttribute<RegularExpressionAttribute>();
+            if (regexAttr != null)
+            {
+                validationRules["matchRegexp"] = regexAttr.Pattern;
+                if (!string.IsNullOrEmpty(regexAttr.ErrorMessage))
+                {
+                    validationErrors["matchRegexp"] = regexAttr.ErrorMessage;
+                }
             }
 
             // 添加验证规则
             if (validationRules.HasValues)
             {
                 field["validations"] = validationRules;
+            }
+
+            if (validationErrors.HasValues)
+            {
+                field["validationErrors"] = validationErrors;
             }
 
             // 处理枚举类型
@@ -289,11 +326,19 @@ namespace CodeSpirit.Amis.Helpers
         private void AddValidationRulesFromParameter(ParameterInfo param, JObject field)
         {
             var validationRules = new JObject();
+            var validationErrors = new JObject();
 
             // 处理 [Required] 特性
-            if (param.GetCustomAttribute<RequiredAttribute>() != null)
+            var requiredAttribute = param.GetCustomAttribute<RequiredAttribute>();
+            if (requiredAttribute != null)
             {
                 field["required"] = true;
+            }
+
+            var descriptionAttribute = param.GetCustomAttribute<DescriptionAttribute>();
+            if (descriptionAttribute != null && !string.IsNullOrEmpty(descriptionAttribute.Description))
+            {
+                field["description"] = descriptionAttribute.Description;
             }
 
             // 处理 [StringLength] 特性
@@ -304,6 +349,12 @@ namespace CodeSpirit.Amis.Helpers
                     validationRules["minLength"] = stringLengthAttr.MinimumLength;
                 if (stringLengthAttr.MaximumLength > 0)
                     validationRules["maxLength"] = stringLengthAttr.MaximumLength;
+
+                if (!string.IsNullOrEmpty(stringLengthAttr.ErrorMessage))
+                {
+                    validationErrors["minLength"] = stringLengthAttr.ErrorMessage;
+                    validationErrors["maxLength"] = stringLengthAttr.ErrorMessage;
+                }
             }
 
             // 处理 [Range] 特性
@@ -314,19 +365,41 @@ namespace CodeSpirit.Amis.Helpers
                     validationRules["minimum"] = Convert.ToDouble(rangeAttr.Minimum);
                 if (rangeAttr.Maximum != null)
                     validationRules["maximum"] = Convert.ToDouble(rangeAttr.Maximum);
+
+                if (!string.IsNullOrEmpty(rangeAttr.ErrorMessage))
+                {
+                    validationErrors["minimum"] = rangeAttr.ErrorMessage;
+                    validationErrors["maximum"] = rangeAttr.ErrorMessage;
+                }
             }
 
             // 处理 [DataType] 特性
             var dataTypeAttr = param.GetCustomAttribute<DataTypeAttribute>();
             if (dataTypeAttr != null)
             {
-                AddDataTypeValidation(dataTypeAttr, validationRules, field, param.Name);
+                AddDataTypeValidation(dataTypeAttr, validationRules, field);
+            }
+
+            // 添加正则匹配规则
+            var regexAttr = param.GetCustomAttribute<RegularExpressionAttribute>();
+            if (regexAttr != null)
+            {
+                validationRules["matchRegexp"] = regexAttr.Pattern;
+                if (!string.IsNullOrEmpty(regexAttr.ErrorMessage))
+                {
+                    validationErrors["matchRegexp"] = regexAttr.ErrorMessage;
+                }
             }
 
             // 添加验证规则
             if (validationRules.HasValues)
             {
                 field["validations"] = validationRules;
+            }
+
+            if (validationErrors.HasValues)
+            {
+                field["validationErrors"] = validationErrors;
             }
 
             // 处理枚举类型
@@ -340,24 +413,47 @@ namespace CodeSpirit.Amis.Helpers
             {
                 field["format"] = "YYYY-MM-DD";
             }
+
+            // 处理图片类型
+            HandleImageType(dataTypeAttr, field, param.Name);
         }
 
         /// <summary>
         /// 根据 DataTypeAttribute 添加验证规则和特定配置。
         /// </summary>
-        private void AddDataTypeValidation(DataTypeAttribute dataTypeAttr, JObject validationRules, JObject field, string memberName)
+        private void AddDataTypeValidation(DataTypeAttribute dataTypeAttr, JObject validationRules, JObject field)
         {
             switch (dataTypeAttr.DataType)
             {
                 case DataType.EmailAddress:
-                    validationRules["pattern"] = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
-                    validationRules["errorMessage"] = "请输入有效的电子邮件地址";
+                    validationRules["isEmail"] = true;
                     break;
                 case DataType.Url:
-                    validationRules["pattern"] = @"^(http|https)://[^ ""]+$";
-                    validationRules["errorMessage"] = "请输入有效的URL";
+                    validationRules["isUrl"] = true;
                     break;
-                    // 可以根据需要添加更多 DataType 处理
+                case DataType.PhoneNumber:
+                    validationRules["isPhoneNumber"] = true;
+                    break;
+                case DataType.PostalCode:
+                    validationRules["isZipcode"] = true;
+                    break;
+                case DataType.Custom:
+                case DataType.DateTime:
+                case DataType.Date:
+                case DataType.Time:
+                case DataType.Duration:
+                case DataType.Currency:
+                case DataType.Text:
+                case DataType.Html:
+                case DataType.MultilineText:
+                case DataType.Password:
+                    break;
+                case DataType.ImageUrl:
+                    validationRules["isUrl"] = true;
+                    break;
+                case DataType.CreditCard:
+                case DataType.Upload:
+                    break;
             }
         }
 

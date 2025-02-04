@@ -38,6 +38,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
     - [x] 分页
     - [x] 支持嵌套
     - [x] 列
+      - [x] 列特性：ColumnAttribute
       - [x] 列类型
         - [x] enum——>mapping
         - [x] bool——>switch
@@ -59,7 +60,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] 自定义操作：OperationAttribute
         - [ ] 根据权限控制操作按钮
       - [x] 快速编辑
-        - [ ] 只读列
+        - [x] 只读列
     - [ ] 头部操作
       - [x] 添加
       - [ ] 批量导入（Magicodes.IE)
@@ -87,7 +88,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] int|long|float|double——>number
         - [x] bool——>switch
         - [x] DateTime|DateTimeOffset——>datetime
-        - [x] 密码字段：DataTypeAttribute|DataType.Password
+        - [x] 密码字段：`DataTypeAttribute`|`DataType.Password`
         - [x] InputTree 
         - [ ] 数组
         - [ ] 文件
@@ -104,8 +105,18 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] 文本长度验证
         - [x] 数值范围验证
         - [ ] 日期范围验证
-        - [ ] 正则表达式
+        - [x] 正则表达式
+        - [x] 特殊类型验证（Email、Url等）
+          - [x] DataType.EmailAddress
+          - [x] DataType.Url
+          - [x] DataType.PhoneNumber
+          - [x] DataType.PostalCode
+          - [x] DataType.ImageUrl
+        - [x] 自定义错误消息
+          - [x] `[RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "用户名只能包含字母、数字和下划线。")]`
+          - [x] `[Required(ErrorMessage = "请填写姓名！")]`
       - [ ] 并发控制
+      - [x] 支持描述：`DescriptionAttribute`
 
 ### 后台代码
 

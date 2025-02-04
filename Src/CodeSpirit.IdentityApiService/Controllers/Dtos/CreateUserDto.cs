@@ -2,6 +2,7 @@
 using CodeSpirit.IdentityApi.Data.Models;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 
 public class CreateUserDto
 {
@@ -13,10 +14,13 @@ public class CreateUserDto
     [Required]
     [DisplayName("用户名")]
     [MaxLength(256)]
+    [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "用户名只能包含字母、数字和下划线。")]
+    [Description("用户名只能包含字母、数字和下划线。")]
     public string UserName { get; set; }
 
     [MaxLength(18)]
     [DisplayName("身份证")]
+    [RegularExpression(@"^\d{15}|\d{18}$", ErrorMessage = "身份证号码格式不正确。")]
     public string IdNo { get; set; }
 
     [MaxLength(255)]
@@ -49,6 +53,11 @@ public class CreateUserDto
             Placeholder = "请选择角色"
         )]
     public List<string> Roles { get; set; }
+
+    [DisplayName("性别")]
     public Gender Gender { get; set; }
+
+    [DisplayName("手机号码")]
+    [DataType(DataType.PhoneNumber)]
     public string PhoneNumber { get; set; }
 }

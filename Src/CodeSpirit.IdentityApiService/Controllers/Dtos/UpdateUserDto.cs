@@ -41,5 +41,6 @@ public class UpdateUserDto
     )]
     public List<string> Roles { get; set; }
     public Gender Gender { get; set; }
+
     public string PhoneNumber { get; set; }
 }

@@ -10,6 +10,11 @@ public class CreateUserDto
     [DisplayName("姓名")]
     public string Name { get; set; }
 
+    [Required]
+    [DisplayName("用户名")]
+    [MaxLength(256)]
+    public string UserName { get; set; }
+
     [MaxLength(18)]
     [DisplayName("身份证")]
     public string IdNo { get; set; }

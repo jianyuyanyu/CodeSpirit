@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -73,8 +74,10 @@ public class PermissionService
                 // 构造权限名称，格式为 "{controllerShortName}_{actionShortName}"
                 string permissionName = $"{controllerName}_{actionShortName}";
 
-                // 获取动作上定义的路由模板（若有）
-                string actionRoute = action.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
+                // 获取动作上定义的路由模板（优先从 HTTP 方法特性获取，其次从 RouteAttribute 获取）
+                var httpMethodAttribute = action.GetCustomAttributes<HttpMethodAttribute>().FirstOrDefault();
+                string actionRoute = httpMethodAttribute?.Template ?? action.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
+
                 // 合并控制器与动作路由，得到实际请求路径
                 string actionPath = CombineRoutes(controllerRoute, actionRoute, controllerName);
 

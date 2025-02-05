@@ -51,23 +51,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 动态注册权限策略
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var authorizationOptions = services.GetRequiredService<IAuthorizationPolicyProvider>();
-    var dbContext = services.GetRequiredService<ApplicationDbContext>();
-
-    var permissions = dbContext.Permissions.ToList();
-
-    //var authorizationOptionsMutable = options => { /* 这里需要扩展 */ };
-
-    //foreach (var permission in permissions)
-    //{
-    //    options.AddPolicy(permission.Name, policy =>
-    //        policy.Requirements.Add(new PermissionRequirement(permission.Name)));
-    //}
-}
 app.UseCors("AllowSpecificOriginsWithCredentials");
 app.UseAuthentication();
 app.UseAuthorization();

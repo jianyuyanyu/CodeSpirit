@@ -1,6 +1,3 @@
-// Authorization/PermissionRequirement.cs
-
-// Authorization/PermissionRequirement.cs
 using Microsoft.AspNetCore.Authorization;
 
 namespace CodeSpirit.IdentityApi.Authorization

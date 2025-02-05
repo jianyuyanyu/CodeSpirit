@@ -34,13 +34,13 @@ namespace CodeSpirit.Authorization
             // 遍历每个控制器，构造控制器节点和对应的动作节点
             foreach (var controller in controllerFeature.Controllers)
             {
+                // 获取模块名称：优先从 ModuleAttribute 获取，其次使用程序集名称
+                var moduleAttribute = controller.GetCustomAttribute<ModuleAttribute>() ?? controller.Assembly.GetCustomAttribute<ModuleAttribute>();
+                var moduleName = moduleAttribute?.Name;
+
                 // 获取控制器名称并短化（剔除 "Controller" 后缀）
-                string controllerName = controller.Name;
-                if (controllerName.EndsWith("Controller"))
-                {
-                    controllerName = controllerName.Substring(0, controllerName.Length - "Controller".Length);
-                }
-                controllerName = controllerName.ToCamelCase();
+                string controllerName = controller.Name.RemovePostFix("Controller").ToCamelCase();
+
                 // 通过 DisplayNameAttribute 获取控制器描述，若未设置则使用控制器短名
                 string controllerDescription = controller.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? controllerName;
 
@@ -48,7 +48,7 @@ namespace CodeSpirit.Authorization
                 string controllerRoute = controller.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
 
                 // 创建控制器节点（根节点），控制器节点无需请求路径和请求方法
-                var controllerNode = new PermissionNode(controllerName, controllerDescription);
+                var controllerNode = new PermissionNode($"{moduleName}_{controllerName}".TrimStart('_'), controllerDescription);
                 _permissionTree.Add(controllerNode);
 
                 // 获取控制器中所有公共实例方法，并排除继承自基类的方法
@@ -72,7 +72,7 @@ namespace CodeSpirit.Authorization
                     }
 
                     // 构造权限名称，格式为 "{controllerShortName}_{actionShortName}"
-                    string permissionName = $"{controllerName}_{actionShortName}";
+                    string permissionName = $"{moduleName}_{controllerName}_{actionShortName}";
 
                     // 获取动作上定义的路由模板（优先从 HTTP 方法特性获取，其次从 RouteAttribute 获取）
                     var httpMethodAttribute = action.GetCustomAttributes<HttpMethodAttribute>().FirstOrDefault();
@@ -85,7 +85,7 @@ namespace CodeSpirit.Authorization
                     string requestMethod = GetRequestMethod(action);
 
                     // 创建动作节点，其中 Parent 字段设置为所属控制器短名
-                    var actionNode = new PermissionNode(permissionName, actionDescription, controllerName, actionPath, requestMethod);
+                    var actionNode = new PermissionNode(permissionName.TrimStart('_'), actionDescription, controllerName, actionPath, requestMethod);
                     controllerNode.Children.Add(actionNode);
                 }
             }

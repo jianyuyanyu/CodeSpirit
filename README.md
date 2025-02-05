@@ -145,6 +145,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
 - [x] 权限控制
   - [x] 自动获取权限树
     - [x] 支持权限特性：`PermissionAttribute`
+    - [ ] ModuleAttribute
   
 - [ ] ORM封装
   - [ ] 实体基类

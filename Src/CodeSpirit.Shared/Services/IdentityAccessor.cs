@@ -29,7 +29,7 @@ namespace CodeSpirit.Shared.Services
         {
             get
             {
-                var userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
+                string userId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
                 if (userId != null)
                 {
                     int id = 0;
@@ -48,7 +48,7 @@ namespace CodeSpirit.Shared.Services
         {
             get
             {
-                var roleIds = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value;
+                string roleIds = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value;
                 if (string.IsNullOrWhiteSpace(roleIds))
                 {
                     return string.Empty;
@@ -65,7 +65,7 @@ namespace CodeSpirit.Shared.Services
         {
             get
             {
-                var tenant = _httpContextAccessor.HttpContext?.Request.Headers["TenantId"].ToString();
+                string tenant = _httpContextAccessor.HttpContext?.Request.Headers["TenantId"].ToString();
                 if (string.IsNullOrEmpty(tenant))
                     tenant = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "tenant_id")?.Value;
                 if (!string.IsNullOrEmpty(tenant))
@@ -90,7 +90,7 @@ namespace CodeSpirit.Shared.Services
         {
             get
             {
-                var identity = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "identity")?.Value;
+                string identity = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "identity")?.Value;
                 if (identity != null)
                 {
                     int identityType = 0;
@@ -107,7 +107,7 @@ namespace CodeSpirit.Shared.Services
         {
             get
             {
-                var roleId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "role_id")?.Value;
+                string roleId = _httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(c => c.Type == "role_id")?.Value;
                 if (roleId != null)
                 {
                     int id = 0;

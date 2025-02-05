@@ -1,5 +1,4 @@
 ﻿// 文件路径: Controllers/Dtos/UserQueryDto.cs
-using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
 {
     /// <summary>
@@ -7,7 +6,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
     /// </summary>
     public class RoleQueryDto : QueryDtoBase
     {
-        
+
     }
 }
 

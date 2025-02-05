@@ -12,8 +12,8 @@ namespace CodeSpirit.Shared.Extensions
         /// <returns></returns>
         public static string GetEnumDesc(this Enum value)
         {
-            var type = value.GetType();
-            var names = Enum.GetNames(type).ToList();
+            Type type = value.GetType();
+            List<string> names = Enum.GetNames(type).ToList();
 
             FieldInfo[] fields = type.GetFields();
             foreach (FieldInfo item in fields)

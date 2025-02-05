@@ -34,30 +34,30 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet]
         public async Task<ActionResult<ApiResponse<ListData<PermissionDto>>>> GetPermissions()
         {
-            var permissions = await _context.Permissions
+            List<Permission> permissions = await _context.Permissions
                 .Include(p => p.Children)
                 .ToListAsync();
 
             // 调试检查
-            foreach (var p in permissions)
+            foreach (Permission p in permissions)
             {
                 _logger.LogInformation($"Permission: {p.Name}, Id：{p.Id}, ParentId：{p.ParentId}, Children Count: {p.Children?.Count}");
             }
 
-            var permissionDtos = _mapper.Map<List<PermissionDto>>(permissions)
+            List<PermissionDto> permissionDtos = _mapper.Map<List<PermissionDto>>(permissions)
                 .Where(p => p.ParentId == null) // 获取顶级权限
                 .ToList();
 
-            var listData = new ListData<PermissionDto>(permissionDtos, permissionDtos.Count);
+            ListData<PermissionDto> listData = new ListData<PermissionDto>(permissionDtos, permissionDtos.Count);
 
-            return SuccessResponse<ListData<PermissionDto>>(listData);
+            return SuccessResponse(listData);
         }
 
         // GET: api/Permissions/5
         [HttpGet("{id}")]
         public async Task<ActionResult<PermissionDto>> GetPermission(int id)
         {
-            var permission = await _context.Permissions
+            Permission permission = await _context.Permissions
                 .Include(p => p.Children)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
@@ -66,7 +66,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return NotFound();
             }
 
-            var permissionDto = _mapper.Map<PermissionDto>(permission);
+            PermissionDto permissionDto = _mapper.Map<PermissionDto>(permission);
 
             return Ok(permissionDto);
         }
@@ -86,16 +86,16 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadRequest("权限名称已存在。");
             }
 
-            var permission = _mapper.Map<Permission>(permissionDto);
+            Permission permission = _mapper.Map<Permission>(permissionDto);
 
             _context.Permissions.Add(permission);
             await _context.SaveChangesAsync();
 
-            var createdPermission = await _context.Permissions
+            Permission createdPermission = await _context.Permissions
                 .Include(p => p.Children)
                 .FirstOrDefaultAsync(p => p.Id == permission.Id);
 
-            var createdPermissionDto = _mapper.Map<PermissionDto>(createdPermission);
+            PermissionDto createdPermissionDto = _mapper.Map<PermissionDto>(createdPermission);
 
             // 清理所有拥有相关权限的用户的权限缓存
             await ClearUserPermissionsCacheByPermissionAsync(permission.Name);
@@ -112,7 +112,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var permission = await _context.Permissions.FindAsync(id);
+            Permission permission = await _context.Permissions.FindAsync(id);
             if (permission == null)
             {
                 return NotFound();
@@ -154,7 +154,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePermission(int id)
         {
-            var permission = await _context.Permissions
+            Permission permission = await _context.Permissions
                 .Include(p => p.Children)
                 .Include(p => p.RolePermissions)
                 .FirstOrDefaultAsync(p => p.Id == id);
@@ -173,7 +173,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             // 移除与角色的关联
             if (permission.RolePermissions != null && permission.RolePermissions.Any())
             {
-                foreach (var role in permission.RolePermissions.ToList())
+                foreach (RolePermission role in permission.RolePermissions.ToList())
                 {
                     permission.RolePermissions.Remove(role);
                 }
@@ -196,12 +196,12 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("Tree")]
         public async Task<ActionResult<List<PermissionTreeDto>>> GetPermissionTree()
         {
-            var permissions = await _context.Permissions
+            List<Permission> permissions = await _context.Permissions
                 .Include(p => p.Children)
                 .AsNoTracking()
                 .ToListAsync();
 
-            var tree = _mapper.Map<List<PermissionTreeDto>>(
+            List<PermissionTreeDto> tree = _mapper.Map<List<PermissionTreeDto>>(
                 permissions
                     .Where(p => p.ParentId == null)
                     .ToList()
@@ -214,7 +214,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         private async Task ClearUserPermissionsCacheByPermissionAsync(string permissionName)
         {
             // 获取拥有该权限的角色 ID
-            var roleIds = await _context.RolePermissions
+            List<string> roleIds = await _context.RolePermissions
                 .Where(rp => rp.Permission.Name == permissionName)
                 .Select(rp => rp.RoleId)
                 .Distinct()
@@ -224,15 +224,15 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return;
 
             // 获取拥有这些角色的用户 ID
-            var userIds = await _context.UserRoles
+            List<string> userIds = await _context.UserRoles
                 .Where(ur => roleIds.Contains(ur.RoleId))
                 .Select(ur => ur.UserId)
                 .Distinct()
                 .ToListAsync();
 
-            foreach (var userId in userIds)
+            foreach (string userId in userIds)
             {
-                var cacheKey = $"UserPermissions_{userId}";
+                string cacheKey = $"UserPermissions_{userId}";
                 await _cache.RemoveAsync(cacheKey);
             }
         }

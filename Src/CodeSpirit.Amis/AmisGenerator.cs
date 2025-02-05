@@ -1,5 +1,4 @@
-﻿using CodeSpirit.Amis.Authorization;
-using CodeSpirit.Amis.Helpers;
+﻿using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Core.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
@@ -48,25 +47,25 @@ namespace CodeSpirit.Amis
         {
             _amisContext.ControllerName = controllerName; // 在方法内设置 controllerName
 
-            var cacheKey = _cachingHelper.GenerateCacheKey(controllerName);
+            string cacheKey = _cachingHelper.GenerateCacheKey(controllerName);
             if (_cachingHelper.TryGetValue(cacheKey, out JObject cachedAmisJson))
             {
                 return cachedAmisJson;
             }
 
-            var controllerType = _controllerHelper.GetControllerType(controllerName);
+            Type controllerType = _controllerHelper.GetControllerType(controllerName);
             if (controllerType == null)
                 return null;
             _amisContext.ControllerType = controllerType;
 
-            var actions = _crudHelper.HasCrudActions(controllerType);
+            CrudActions actions = _crudHelper.HasCrudActions(controllerType);
             _amisContext.Actions = actions;
 
-            var _amisConfigBuilder = serviceProvider.GetRequiredService<AmisConfigBuilder>();
-            var crudConfig = _amisConfigBuilder.GenerateAmisCrudConfig();
+            AmisConfigBuilder _amisConfigBuilder = serviceProvider.GetRequiredService<AmisConfigBuilder>();
+            JObject crudConfig = _amisConfigBuilder.GenerateAmisCrudConfig();
             if (crudConfig != null)
             {
-                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                MemoryCacheEntryOptions cacheEntryOptions = new MemoryCacheEntryOptions()
                     .SetSlidingExpiration(TimeSpan.FromMinutes(30));
 
                 _cachingHelper.Set(cacheKey, crudConfig, cacheEntryOptions);

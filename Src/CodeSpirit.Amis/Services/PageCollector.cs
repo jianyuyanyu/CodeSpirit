@@ -42,23 +42,23 @@ namespace CodeSpirit.Amis.Services
 
         public async Task<Dictionary<string, Page>> CollectPagesAsync()
         {
-            var pageDict = new Dictionary<string, Page>();
-            var controllerTypes = GetPublicNonAbstractControllers();
+            Dictionary<string, Page> pageDict = [];
+            List<Type> controllerTypes = GetPublicNonAbstractControllers();
 
-            foreach (var controller in controllerTypes)
+            foreach (Type controller in controllerTypes)
             {
                 // 处理控制器级别的 PageAttribute
                 AddPageIfAttributeExists(pageDict, controller.GetCustomAttribute<PageAttribute>(), controller);
 
                 // 处理动作方法级别的 PageAttribute
-                var actionPages = controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                List<Page> actionPages = controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
                     .Where(m => m.IsDefined(typeof(HttpMethodAttribute), inherit: true))
                     .Select(m => m.GetCustomAttribute<PageAttribute>())
                     .Where(attr => attr != null)
                     .Select(attr => _mapper.Map<Page>(attr))
                     .ToList();
 
-                foreach (var page in actionPages)
+                foreach (Page page in actionPages)
                 {
                     SetPagePropertiesFromController(page, controller);
                     ValidateAndAddPage(pageDict, page);
@@ -66,9 +66,9 @@ namespace CodeSpirit.Amis.Services
             }
 
             // 处理从配置文件中加载的页面信息
-            var configPages = _pagesConfig.Value.Pages ?? Enumerable.Empty<ConfigurationPage>();
-            var mappedConfigPages = _mapper.Map<IEnumerable<Page>>(configPages);
-            foreach (var page in mappedConfigPages)
+            IEnumerable<ConfigurationPage> configPages = _pagesConfig.Value.Pages ?? Enumerable.Empty<ConfigurationPage>();
+            IEnumerable<Page> mappedConfigPages = _mapper.Map<IEnumerable<Page>>(configPages);
+            foreach (Page page in mappedConfigPages)
             {
                 ValidateAndAddPage(pageDict, page);
             }
@@ -83,7 +83,7 @@ namespace CodeSpirit.Amis.Services
         {
             if (attr == null) return;
 
-            var page = _mapper.Map<Page>(attr);
+            Page page = _mapper.Map<Page>(attr);
             if (controller != null)
             {
                 SetPagePropertiesFromController(page, controller);
@@ -96,19 +96,19 @@ namespace CodeSpirit.Amis.Services
         {
             if (string.IsNullOrEmpty(page.Url))
             {
-                var controllerName = controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
+                string controllerName = controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
                 page.Url = $"/{controllerName}";
             }
 
             if (string.IsNullOrEmpty(page.SchemaApi) && page.Schema == null && string.IsNullOrEmpty(page.Redirect))
             {
-                var controllerName = controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
-                var request = _httpContextAccessor.HttpContext?.Request;
+                string controllerName = controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
+                HttpRequest request = _httpContextAccessor.HttpContext?.Request;
                 if (request != null)
                 {
-                    var host = request.Host.Value;
-                    var scheme = request.Scheme;
-                    var route = GetRoute(controller, controllerName).Replace("api/", "api/amis/");
+                    string host = request.Host.Value;
+                    string scheme = request.Scheme;
+                    string route = GetRoute(controller, controllerName).Replace("api/", "api/amis/");
                     page.SchemaApi = $"{scheme}://{host}/" + route;
                 }
             }
@@ -119,7 +119,7 @@ namespace CodeSpirit.Amis.Services
             ValidationResult result = _pageValidator.Validate(page);
             if (!result.IsValid)
             {
-                foreach (var failure in result.Errors)
+                foreach (ValidationFailure failure in result.Errors)
                 {
                     _logger.LogWarning("Validation failed for page '{Label}': {Error}", page.Label, failure.ErrorMessage);
                 }
@@ -137,7 +137,7 @@ namespace CodeSpirit.Amis.Services
 
         public List<Type> GetPublicNonAbstractControllers()
         {
-            var controllerFeature = new ControllerFeature();
+            ControllerFeature controllerFeature = new ControllerFeature();
             applicationPartManager.PopulateFeature(controllerFeature);
             return controllerFeature.Controllers
                                      .Select(c => c.AsType())

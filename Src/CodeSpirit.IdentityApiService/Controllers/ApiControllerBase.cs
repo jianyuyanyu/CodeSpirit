@@ -1,5 +1,4 @@
-﻿using Azure;
-using CodeSpirit.Core;
+﻿using CodeSpirit.Core;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.IdentityApi.Controllers
@@ -25,7 +24,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         protected ActionResult<ApiResponse<T>> SuccessResponseWithCreate<T>(string actionName, T data = default) where T : class
         {
-            var response = new ApiResponse<T>(0, "创建成功！", data);
+            ApiResponse<T> response = new ApiResponse<T>(0, "创建成功！", data);
             return CreatedAtAction(actionName, data, response);
         }
 

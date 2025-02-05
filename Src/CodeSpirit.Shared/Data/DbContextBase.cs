@@ -111,7 +111,7 @@ namespace CodeSpirit.Shared.Data
             {
                 if (deletionObj.DeleterUserId == default)
                 {
-                    var identityAccessor = identityAccessorObject.Value;
+                    IIdentityAccessor identityAccessor = identityAccessorObject.Value;
                     if (identityAccessor != null && identityAccessor.UserId == default)
                         deletionObj.DeleterUserId = identityAccessor.UserId;
                 }
@@ -131,12 +131,12 @@ namespace CodeSpirit.Shared.Data
         /// </summary>
         public void SetAuditFields()
         {
-            foreach (var entry in changeTracker.Entries()
+            foreach (EntityEntry entry in changeTracker.Entries()
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
             {
                 if (entry.Entity is IAuditedObject modifiedObj)
                 {
-                    var identityAccessor = identityAccessorObject.Value;
+                    IIdentityAccessor identityAccessor = identityAccessorObject.Value;
                     if (identityAccessor != null && identityAccessor.UserId.HasValue)
                         modifiedObj.LastModifierUserId = identityAccessor.UserId;
                     modifiedObj.LastModificationTime = DateTime.Now;
@@ -148,7 +148,7 @@ namespace CodeSpirit.Shared.Data
                     {
                         if (addedObj.CreatorUserId == default)
                         {
-                            var identityAccessor = identityAccessorObject.Value;
+                            IIdentityAccessor identityAccessor = identityAccessorObject.Value;
                             if (identityAccessor != null && identityAccessor.UserId.HasValue)
                                 addedObj.CreatorUserId = identityAccessor.UserId;
                         }
@@ -161,7 +161,7 @@ namespace CodeSpirit.Shared.Data
                     {
                         if (!tenant.TenantId.HasValue)
                         {
-                            var identityAccessor = identityAccessorObject.Value;
+                            IIdentityAccessor identityAccessor = identityAccessorObject.Value;
                             if (identityAccessor != null && identityAccessor.TenantId.HasValue)
                                 tenant.TenantId = identityAccessor.TenantId;
                         }
@@ -170,7 +170,7 @@ namespace CodeSpirit.Shared.Data
 
                 if (entry.Entity is IDeletionAuditedObject deletionObj && deletionObj.IsDeleted && deletionObj.DeleterUserId == default)
                 {
-                    var identityAccessor = identityAccessorObject.Value;
+                    IIdentityAccessor identityAccessor = identityAccessorObject.Value;
                     if (identityAccessor != null && identityAccessor.UserId.HasValue)
                         deletionObj.DeleterUserId = identityAccessor.UserId;
 
@@ -182,7 +182,7 @@ namespace CodeSpirit.Shared.Data
 
         public virtual void ConfigureGlobalFiltersOnModelCreating(ModelBuilder modelBuilder)
         {
-            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
             {
                 ConfigureGlobalFiltersMethodInfo
                 .MakeGenericMethod(entityType.ClrType)
@@ -199,7 +199,7 @@ namespace CodeSpirit.Shared.Data
 
             if (mutableEntityType.BaseType == null && ShouldFilterEntity<TEntity>(mutableEntityType))
             {
-                var filterExpression = CreateFilterExpression<TEntity>();
+                Expression<Func<TEntity, bool>> filterExpression = CreateFilterExpression<TEntity>();
                 if (filterExpression != null)
                 {
                     modelBuilder.Entity<TEntity>().HasQueryFilter(filterExpression);
@@ -257,18 +257,18 @@ namespace CodeSpirit.Shared.Data
 
         protected virtual Expression<Func<T, bool>> CombineExpressions<T>(Expression<Func<T, bool>> expression1, Expression<Func<T, bool>> expression2)
         {
-            var parameter = Expression.Parameter(typeof(T));
+            ParameterExpression parameter = Expression.Parameter(typeof(T));
 
-            var leftVisitor = new ReplaceExpressionVisitor(expression1.Parameters[0], parameter);
-            var left = leftVisitor.Visit(expression1.Body);
+            ReplaceExpressionVisitor leftVisitor = new ReplaceExpressionVisitor(expression1.Parameters[0], parameter);
+            Expression left = leftVisitor.Visit(expression1.Body);
 
-            var rightVisitor = new ReplaceExpressionVisitor(expression2.Parameters[0], parameter);
-            var right = rightVisitor.Visit(expression2.Body);
+            ReplaceExpressionVisitor rightVisitor = new ReplaceExpressionVisitor(expression2.Parameters[0], parameter);
+            Expression right = rightVisitor.Visit(expression2.Body);
 
             return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(left, right), parameter);
         }
 
-        class ReplaceExpressionVisitor : ExpressionVisitor
+        private class ReplaceExpressionVisitor : ExpressionVisitor
         {
             private readonly Expression _oldValue;
             private readonly Expression _newValue;

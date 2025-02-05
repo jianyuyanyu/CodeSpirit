@@ -2,7 +2,7 @@
 {
     public static async Task SeedAsync(IServiceProvider serviceProvider, ILogger<SeederService> logger)
     {
-        var seederService = serviceProvider.GetRequiredService<SeederService>();
+        SeederService seederService = serviceProvider.GetRequiredService<SeederService>();
         await seederService.SeedAsync();
     }
 }

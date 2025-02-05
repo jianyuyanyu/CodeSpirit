@@ -17,7 +17,7 @@ namespace CodeSpirit.Amis
 {
     public static class AmisExtensions
     {
-        public static IServiceCollection AddAmisServices(this IServiceCollection services, IConfiguration configuration,Assembly apiAssembly = null)
+        public static IServiceCollection AddAmisServices(this IServiceCollection services, IConfiguration configuration, Assembly apiAssembly = null)
         {
             services.AddScoped<CachingHelper>();
             services.AddScoped<ControllerHelper>();
@@ -41,16 +41,16 @@ namespace CodeSpirit.Amis
             // 注册 AmisGenerator，并传递可选的 apiAssembly
             services.AddScoped<AmisGenerator>(sp =>
             {
-                var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-                var permissionService = sp.GetRequiredService<IPermissionService>();
-                var amisContext = sp.GetRequiredService<AmisContext>();
-                var cachingHelper = sp.GetRequiredService<CachingHelper>();
-                var controllerHelper = sp.GetRequiredService<ControllerHelper>();
-                var crudHelper = sp.GetRequiredService<CrudHelper>();
-                var serviceProvider = sp;
+                IHttpContextAccessor httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+                IPermissionService permissionService = sp.GetRequiredService<IPermissionService>();
+                AmisContext amisContext = sp.GetRequiredService<AmisContext>();
+                CachingHelper cachingHelper = sp.GetRequiredService<CachingHelper>();
+                ControllerHelper controllerHelper = sp.GetRequiredService<ControllerHelper>();
+                CrudHelper crudHelper = sp.GetRequiredService<CrudHelper>();
+                IServiceProvider serviceProvider = sp;
 
                 // 如果未提供 apiAssembly，则使用调用程序集
-                var assembly = apiAssembly ?? Assembly.GetCallingAssembly();
+                Assembly assembly = apiAssembly ?? Assembly.GetCallingAssembly();
 
                 return new AmisGenerator(httpContextAccessor, permissionService, amisContext, cachingHelper, controllerHelper, crudHelper, serviceProvider, assembly);
             });

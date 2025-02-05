@@ -1,4 +1,5 @@
-﻿using CodeSpirit.Amis.Helpers.Dtos;
+﻿using CodeSpirit.Amis.Form;
+using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Core.Authorization;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
@@ -13,7 +14,7 @@ namespace CodeSpirit.Amis.Helpers
         private readonly AmisApiHelper amisApiHelper;
         private readonly FormFieldHelper formFieldHelper;
 
-        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper,FormFieldHelper formFieldHelper)
+        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper)
         {
             _permissionService = permissionService;
             this.amisContext = amisContext;
@@ -25,7 +26,7 @@ namespace CodeSpirit.Amis.Helpers
         // 创建一个通用的按钮模板
         private JObject CreateButton(string label, string actionType, JObject dialogOrDrawer = null, JObject api = null, string confirmText = null, bool? download = null, string visibleOn = null)
         {
-            var button = new JObject
+            JObject button = new JObject
             {
                 ["type"] = "button",
                 ["label"] = label,
@@ -63,8 +64,8 @@ namespace CodeSpirit.Amis.Helpers
         // 创建“新增”按钮
         public JObject CreateHeaderButton(ApiRouteInfo createRoute, IEnumerable<ParameterInfo> createParameters)
         {
-            var title = "新增";
-            var dialogBody = new JObject
+            string title = "新增";
+            JObject dialogBody = new JObject
             {
                 ["title"] = title,
                 ["body"] = new JObject
@@ -85,8 +86,8 @@ namespace CodeSpirit.Amis.Helpers
         // 创建“编辑”按钮
         public JObject CreateEditButton(ApiRouteInfo updateRoute, IEnumerable<ParameterInfo> updateParameters)
         {
-            var title = "编辑";
-            var drawerBody = new JObject
+            string title = "编辑";
+            JObject drawerBody = new JObject
             {
                 ["title"] = title,
                 ["body"] = new JObject
@@ -106,7 +107,7 @@ namespace CodeSpirit.Amis.Helpers
         // 创建“删除”按钮
         public JObject CreateDeleteButton(ApiRouteInfo deleteRoute)
         {
-            var api = new JObject
+            JObject api = new JObject
             {
                 ["url"] = deleteRoute.ApiPath,
                 ["method"] = deleteRoute.HttpMethod
@@ -118,18 +119,18 @@ namespace CodeSpirit.Amis.Helpers
         // 获取自定义操作按钮
         public List<JObject> GetCustomOperationsButtons()
         {
-            var buttons = new List<JObject>();
+            List<JObject> buttons = [];
             // 获取当前类型的所有方法
-            var methods = amisContext.ControllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+            MethodInfo[] methods = amisContext.ControllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
 
             // 查找带有 [Operation] 特性的所有方法
-            foreach (var method in methods)
+            foreach (MethodInfo method in methods)
             {
-                var operationAttribute = method.GetCustomAttribute<OperationAttribute>();
+                OperationAttribute operationAttribute = method.GetCustomAttribute<OperationAttribute>();
                 if (operationAttribute != null)
                 {
                     // 为每个操作方法创建按钮
-                    var button = CreateCustomOperationButton(operationAttribute, method);
+                    JObject button = CreateCustomOperationButton(operationAttribute, method);
                     buttons.Add(button);
                 }
             }
@@ -140,7 +141,7 @@ namespace CodeSpirit.Amis.Helpers
         // 创建自定义操作按钮
         public JObject CreateCustomOperationButton(OperationAttribute op, MethodInfo method)
         {
-            var api = amisApiHelper.CreateApiForMethod(method);
+            JObject api = amisApiHelper.CreateApiForMethod(method);
             if (api["url"] == null)
             {
                 api["url"] = op.Api;

@@ -8,7 +8,7 @@ namespace CodeSpirit.Shared.Extensions
         {
             return new Lazy<T>(() =>
             {
-                var service = serviceProvider.GetService<T>();
+                T service = serviceProvider.GetService<T>();
 
                 if (service == null)
                 {

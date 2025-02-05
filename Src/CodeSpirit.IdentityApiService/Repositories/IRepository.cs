@@ -1,6 +1,4 @@
-﻿using CodeSpirit.IdentityApi.Data.Models;
-using Microsoft.AspNetCore.Identity;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 
 namespace CodeSpirit.IdentityApi.Repositories
 {

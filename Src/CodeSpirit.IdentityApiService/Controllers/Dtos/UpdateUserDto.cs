@@ -1,5 +1,4 @@
-﻿using CodeSpirit.Amis.Attributes;
-using CodeSpirit.IdentityApi.Data.Models;
+﻿using CodeSpirit.IdentityApi.Data.Models;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 

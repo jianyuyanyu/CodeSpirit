@@ -1,16 +1,12 @@
-﻿using CodeSpirit.Amis;
-using CodeSpirit.Amis.App;
-using CodeSpirit.Amis.Helpers;
-using CodeSpirit.Amis.MappingProfiles;
+﻿using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
+using CodeSpirit.Authorization;
 using CodeSpirit.Core.Authorization;
-using CodeSpirit.IdentityApi.Authorization;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Data.Seeders;
 using CodeSpirit.IdentityApi.Filters;
-using CodeSpirit.IdentityApi.MappingProfiles;
 using CodeSpirit.IdentityApi.ModelBindings;
 using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;
@@ -18,7 +14,6 @@ using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Services;
 using FluentValidation;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -58,7 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddDistributedMemoryCache();
 
         // 注册权限服务
-        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IPermissionService, CodeSpirit.IdentityApi.Authorization.PermissionService>();
         services.AddScoped<AuthService>();
 
         // 注册 Repositories 和 Handlers
@@ -80,7 +75,6 @@ public static class ServiceCollectionExtensions
         services.AddAutoMapper(typeof(Program));
 
         // 注册自定义授权处理程序
-        services.AddScoped<IAuthorizationHandler, PermissionHandler>();
         services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
 
         services.AddTransient<IIdentityAccessor, IdentityAccessor>();
@@ -136,7 +130,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddAuthorizationPolicies(this IServiceCollection services)
     {
-        services.AddPermissionAuthorization();
+        services.AddCodeSpiritAuthorization();
         return services;
     }
 
@@ -172,7 +166,7 @@ public static class ServiceCollectionExtensions
             options.InvalidModelStateResponseFactory = context =>
             {
                 // 提取验证错误
-                var errors = context.ModelState
+                Dictionary<string, string> errors = context.ModelState
                     .Where(ms => ms.Value.Errors.Count > 0)
                     .ToDictionary(
                         kvp => ToCamelCase(kvp.Key),

@@ -1,8 +1,8 @@
-var builder = DistributedApplication.CreateBuilder(args);
+IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 //var cache = builder.AddRedis("cache");
 
-var apiService = builder.AddProject<Projects.CodeSpirit_ApiService>("apiservice");
+IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.CodeSpirit_ApiService>("apiservice");
 
 builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity-service");
 

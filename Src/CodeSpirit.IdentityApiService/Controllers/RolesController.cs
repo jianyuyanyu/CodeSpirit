@@ -1,6 +1,6 @@
 ﻿using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Controllers;
+using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -21,7 +21,7 @@ public class RolesController : ApiControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<ListData<RoleDto>>>> GetRoles([FromQuery] RoleQueryDto queryDto)
     {
-        var (roles, total) = await _roleService.GetRolesAsync(queryDto);
+        (List<RoleDto> roles, int total) = await _roleService.GetRolesAsync(queryDto);
         return Ok(new ApiResponse<ListData<RoleDto>>
         {
             Status = 0,
@@ -37,14 +37,14 @@ public class RolesController : ApiControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<ApiResponse<RoleDto>>> GetRole(string id)
     {
-        var role = await _roleService.GetRoleByIdAsync(id);
+        RoleDto role = await _roleService.GetRoleByIdAsync(id);
         return SuccessResponse(role);
     }
 
     [HttpPost]
     public async Task<ActionResult<ApiResponse<RoleDto>>> Create(RoleCreateDto createDto)
     {
-        var role = await _roleService.CreateRoleAsync(createDto);
+        RoleDto role = await _roleService.CreateRoleAsync(createDto);
         return SuccessResponseWithCreate<RoleDto>(nameof(GetRole), role);
     }
 

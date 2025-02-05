@@ -38,7 +38,7 @@
         public static DateTime UnixTimeMillisecondsToDateTime(long timeStamp)
         {
             DateTime startTime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc); // Unix 时间戳的起始时间
-            var time = startTime.AddMilliseconds(timeStamp);
+            DateTime time = startTime.AddMilliseconds(timeStamp);
             return time.ToLocalTime();
         }
 

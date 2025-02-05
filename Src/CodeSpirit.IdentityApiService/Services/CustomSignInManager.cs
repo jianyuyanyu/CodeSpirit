@@ -27,9 +27,9 @@ namespace CodeSpirit.IdentityApi.Services
 
         public override async Task<SignInResult> CheckPasswordSignInAsync(ApplicationUser user, string password, bool lockoutOnFailure)
         {
-            var result = await base.CheckPasswordSignInAsync(user, password, lockoutOnFailure);
-            
-            var loginLog = new LoginLog
+            SignInResult result = await base.CheckPasswordSignInAsync(user, password, lockoutOnFailure);
+
+            LoginLog loginLog = new LoginLog
             {
                 UserId = user.Id,
                 UserName = user.UserName,

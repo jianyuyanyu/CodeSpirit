@@ -12,7 +12,7 @@ namespace CodeSpirit.IdentityApi.Filters
         {
             if (!context.ModelState.IsValid)
             {
-                var errors = context.ModelState.Values
+                List<string> errors = context.ModelState.Values
                     .SelectMany(v => v.Errors)
                     .Select(e => e.ErrorMessage)
                     .ToList();

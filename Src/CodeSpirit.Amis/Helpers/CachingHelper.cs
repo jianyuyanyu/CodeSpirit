@@ -17,18 +17,18 @@ namespace CodeSpirit.Amis.Helpers
 
         public string GenerateCacheKey(string controllerName)
         {
-            var user = _httpContextAccessor.HttpContext?.User;
-            var permissionsHash = GetUserPermissionsHash(user);
+            System.Security.Claims.ClaimsPrincipal user = _httpContextAccessor.HttpContext?.User;
+            string permissionsHash = GetUserPermissionsHash(user);
             return $"AmisJson_{controllerName.ToLower()}_{permissionsHash.GetHashCode()}";
         }
 
         private string GetUserPermissionsHash(System.Security.Claims.ClaimsPrincipal user)
         {
-            var userPermissions = user?.Claims
+            List<string> userPermissions = user?.Claims
                 .Where(c => c.Type == "Permission")
                 .Select(c => c.Value)
                 .OrderBy(p => p)
-                .ToList() ?? new List<string>();
+                .ToList() ?? [];
 
             return string.Join(",", userPermissions);
         }

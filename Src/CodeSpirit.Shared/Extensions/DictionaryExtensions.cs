@@ -50,7 +50,7 @@ namespace CodeSpirit.Shared.Extensions
         /// <returns>Value if found, default if can not found.</returns>
         public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key)
         {
-            return dictionary.TryGetValue(key, out var obj) ? obj : default;
+            return dictionary.TryGetValue(key, out TValue obj) ? obj : default;
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace CodeSpirit.Shared.Extensions
         /// <returns>Value if found, default if can not found.</returns>
         public static TValue GetOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> dictionary, TKey key)
         {
-            return dictionary.TryGetValue(key, out var obj) ? obj : default;
+            return dictionary.TryGetValue(key, out TValue obj) ? obj : default;
         }
 
         /// <summary>
@@ -76,7 +76,7 @@ namespace CodeSpirit.Shared.Extensions
         /// <returns>Value if found, default if can not found.</returns>
         public static TValue GetOrDefault<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> dictionary, TKey key)
         {
-            return dictionary.TryGetValue(key, out var obj) ? obj : default;
+            return dictionary.TryGetValue(key, out TValue obj) ? obj : default;
         }
 
         /// <summary>
@@ -134,10 +134,10 @@ namespace CodeSpirit.Shared.Extensions
         /// <returns>If value is correct, return ExpandoObject that represents an object</returns>
         public static dynamic ConvertToDynamicObject(this Dictionary<string, object> dictionary)
         {
-            var expandoObject = new ExpandoObject();
-            var expendObjectCollection = (ICollection<KeyValuePair<string, object>>)expandoObject;
+            ExpandoObject expandoObject = new ExpandoObject();
+            ICollection<KeyValuePair<string, object>> expendObjectCollection = expandoObject;
 
-            foreach (var keyValuePair in dictionary)
+            foreach (KeyValuePair<string, object> keyValuePair in dictionary)
             {
                 expendObjectCollection.Add(keyValuePair);
             }

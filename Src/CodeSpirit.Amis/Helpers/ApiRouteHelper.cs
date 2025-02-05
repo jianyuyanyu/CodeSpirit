@@ -1,8 +1,8 @@
-﻿using System.Reflection;
-using CodeSpirit.Amis.Helpers.Dtos;
+﻿using CodeSpirit.Amis.Helpers.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using System.Reflection;
 
 namespace CodeSpirit.Amis.Helpers
 {
@@ -49,8 +49,8 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>封装后的 ApiRouteInfo 对象。</returns>
         private ApiRouteInfo CreateRouteInfo(string baseRoute, MethodInfo method, string httpMethod)
         {
-            var template = GetRouteTemplate(method, httpMethod);
-            var combinedUrl = BuildAbsoluteUrl(CombineRoutes(baseRoute, template));
+            string template = GetRouteTemplate(method, httpMethod);
+            string combinedUrl = BuildAbsoluteUrl(CombineRoutes(baseRoute, template));
             return new ApiRouteInfo(combinedUrl, httpMethod);
         }
 
@@ -71,7 +71,7 @@ namespace CodeSpirit.Amis.Helpers
         public string GetRoute(Type controller)
         {
             // 获取路由特性，替换 [controller] 为当前控制器的名称
-            var routeAttr = controller.GetCustomAttribute<RouteAttribute>();
+            RouteAttribute routeAttr = controller.GetCustomAttribute<RouteAttribute>();
             return routeAttr?.Template?.Replace("[controller]", _amisContext.ControllerName) ?? string.Empty;
         }
 
@@ -96,7 +96,7 @@ namespace CodeSpirit.Amis.Helpers
                 return string.Empty;
 
             // 查找方法上的 HTTP 方法特性，返回对应的路由模板
-            var attribute = method.GetCustomAttributes()
+            HttpMethodAttribute attribute = method.GetCustomAttributes()
                                   .OfType<HttpMethodAttribute>()
                                   .FirstOrDefault(a => a.HttpMethods.Contains(httpMethod, StringComparer.OrdinalIgnoreCase));
             return attribute?.Template ?? string.Empty;
@@ -109,12 +109,12 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>构建的绝对 URL。</returns>
         private string BuildAbsoluteUrl(string relativePath)
         {
-            var request = _httpContextAccessor.HttpContext?.Request;
+            HttpRequest request = _httpContextAccessor.HttpContext?.Request;
             if (request == null)
                 return relativePath;
 
-            var host = request.Host.Value;
-            var scheme = request.Scheme;
+            string host = request.Host.Value;
+            string scheme = request.Scheme;
 
             return $"{scheme}://{host}/{relativePath.TrimStart('/')}"; // 构建并返回绝对 URL
         }
@@ -144,7 +144,7 @@ namespace CodeSpirit.Amis.Helpers
             if (method == null) return new ApiRouteInfo(string.Empty, string.Empty);
 
             // 查找方法上的 HTTP 方法特性
-            var httpMethodAttribute = method.GetCustomAttributes()
+            HttpMethodAttribute httpMethodAttribute = method.GetCustomAttributes()
                                              .OfType<HttpMethodAttribute>()
                                              .FirstOrDefault();
 
@@ -152,8 +152,8 @@ namespace CodeSpirit.Amis.Helpers
                 return new ApiRouteInfo(string.Empty, string.Empty);
 
             // 获取路由模板和 HTTP 方法
-            var routeTemplate = httpMethodAttribute.Template;
-            var httpMethod = httpMethodAttribute.HttpMethods.FirstOrDefault();
+            string routeTemplate = httpMethodAttribute.Template;
+            string httpMethod = httpMethodAttribute.HttpMethods.FirstOrDefault();
 
             if (string.IsNullOrEmpty(routeTemplate) || string.IsNullOrEmpty(httpMethod))
                 return new ApiRouteInfo(string.Empty, string.Empty);

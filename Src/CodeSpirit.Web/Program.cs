@@ -1,4 +1,6 @@
-var builder = WebApplication.CreateBuilder(args);
+using CodeSpirit.ServiceDefaults;
+
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
@@ -8,7 +10,7 @@ builder.AddServiceDefaults();
 builder.Services.AddRazorPages();
 
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
 {

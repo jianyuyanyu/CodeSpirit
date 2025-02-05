@@ -1,5 +1,4 @@
 ﻿using CodeSpirit.Amis.App;
-using CodeSpirit.Core;
 
 namespace CodeSpirit.Amis
 {

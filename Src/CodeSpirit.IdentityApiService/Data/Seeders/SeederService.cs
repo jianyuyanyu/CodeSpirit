@@ -17,23 +17,23 @@ public class SeederService
 
     public async Task SeedAsync()
     {
-        using (var scope = _serviceProvider.CreateScope())
+        using (IServiceScope scope = _serviceProvider.CreateScope())
         {
-            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            RoleManager<ApplicationRole> roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+            UserManager<ApplicationUser> userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            ApplicationDbContext dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             // 应用迁移
             await dbContext.Database.MigrateAsync();
 
             // 初始化各个 Seeder
-            var roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeeder>();
-            var permissionSeeder = scope.ServiceProvider.GetRequiredService<PermissionSeeder>();
-            var rolePermissionAssigner = scope.ServiceProvider.GetRequiredService<RolePermissionAssigner>();
-            var userSeeder = scope.ServiceProvider.GetRequiredService<UserSeeder>();
+            RoleSeeder roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeeder>();
+            PermissionSeeder permissionSeeder = scope.ServiceProvider.GetRequiredService<PermissionSeeder>();
+            RolePermissionAssigner rolePermissionAssigner = scope.ServiceProvider.GetRequiredService<RolePermissionAssigner>();
+            UserSeeder userSeeder = scope.ServiceProvider.GetRequiredService<UserSeeder>();
 
             // 获取角色和权限数据
-            var roles = roleSeeder.GetRoles();
+            List<ApplicationRole> roles = roleSeeder.GetRoles();
 
             // 创建角色
             await roleSeeder.SeedRolesAsync(roles);

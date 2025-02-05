@@ -1,6 +1,4 @@
 ﻿using CodeSpirit.IdentityApi.Data;
-using CodeSpirit.IdentityApi.Utilities;
-using CodeSpirit.Shared.Extensions;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 

@@ -46,24 +46,24 @@ namespace CodeSpirit.Amis
         public JObject GenerateAmisCrudConfig(string controllerName, Type controllerType, CrudActions actions)
         {
             // 获取基础路由信息
-            var baseRoute = _apiRouteHelper.GetRoute();
+            string baseRoute = _apiRouteHelper.GetRoute();
             amisContext.BaseRoute = baseRoute;
 
-            var apiRoutes = _apiRouteHelper.GetApiRoutes();
+            ApiRoutesInfo apiRoutes = _apiRouteHelper.GetApiRoutes();
             amisContext.ApiRoutes = apiRoutes;
 
             // 获取读取数据的类型，如果类型为空，则返回空
-            var dataType = utilityHelper.GetDataTypeFromMethod(actions.List);
+            Type dataType = utilityHelper.GetDataTypeFromMethod(actions.List);
             if (dataType == null)
                 return null;
             amisContext.ListDataType = dataType;
 
             // 获取列配置和搜索字段
-            var columns = _columnHelper.GetAmisColumns();
-            var searchFields = _searchFieldHelper.GetAmisSearchFields(actions.List);
+            List<JObject> columns = _columnHelper.GetAmisColumns();
+            List<JObject> searchFields = _searchFieldHelper.GetAmisSearchFields(actions.List);
 
             // 构建 CRUD 配置
-            var crudConfig = new JObject
+            JObject crudConfig = new JObject
             {
                 ["type"] = "crud",  // 设置类型为 CRUD
                 ["name"] = $"{controllerName.ToLower()}Crud",  // 设置配置名称
@@ -87,7 +87,7 @@ namespace CodeSpirit.Amis
             }
 
             // 构建页面配置
-            var pageConfig = new JObject
+            JObject pageConfig = new JObject
             {
                 ["type"] = "page",  // 设置页面类型
                 ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",  // 设置页面标题
@@ -111,7 +111,7 @@ namespace CodeSpirit.Amis
         /// </summary>
         private JArray BuildHeaderToolbar(ApiRouteInfo createRoute, IEnumerable<ParameterInfo> createParameters, CrudActions actions)
         {
-            var buttons = new JArray();
+            JArray buttons = [];
             if (createRoute != null && actions.Create != null)
             {
 

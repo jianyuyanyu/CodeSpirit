@@ -26,7 +26,7 @@ namespace CodeSpirit.Shared.Extensions
         /// <returns></returns>
         public static async Task<T> ReadFromContentJsonAsync<T>(this Task<HttpResponseMessage> responseTask)
         {
-            var response = await responseTask;
+            HttpResponseMessage response = await responseTask;
             return await response.Content.ReadFromJsonAsync<T>();
         }
     }

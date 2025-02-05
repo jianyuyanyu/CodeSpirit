@@ -1,17 +1,13 @@
 ﻿// 文件路径: CodeSpirit.Amis.Helpers/FormFieldHelper.cs
 
-using AutoMapper.Execution;
-using CodeSpirit.Amis.Attributes;
-using CodeSpirit.Amis.Form;
+using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Core.Authorization;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
-namespace CodeSpirit.Amis.Helpers
+namespace CodeSpirit.Amis.Form
 {
     /// <summary>
     /// 帮助类，用于生成 AMIS 表单的字段配置。
@@ -42,18 +38,18 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>AMIS 表单字段的 JSON 对象列表。</returns>
         public List<JObject> GetAmisFormFieldsFromParameters(IEnumerable<ParameterInfo> parameters)
         {
-            var fields = new List<JObject>();
+            List<JObject> fields = [];
 
             if (parameters == null)
                 return fields;
 
-            foreach (var param in parameters)
+            foreach (ParameterInfo param in parameters)
             {
                 if (!CanProcessMember(param))
                     continue;
 
                 // 尝试使用工厂创建字段
-                var field = CreateFieldUsingFactories(param);
+                JObject field = CreateFieldUsingFactories(param);
                 if (field != null)
                 {
                     fields.Add(field);
@@ -95,9 +91,9 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>如果成功创建则返回字段配置，否则返回 null。</returns>
         private JObject CreateFieldUsingFactories(ICustomAttributeProvider member)
         {
-            foreach (var factory in _fieldFactories)
+            foreach (IAmisFieldFactory factory in _fieldFactories)
             {
-                var field = factory.CreateField(member, _utilityHelper);
+                JObject field = factory.CreateField(member, _utilityHelper);
                 if (field != null)
                     return field;
             }
@@ -109,15 +105,15 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         private IEnumerable<JObject> ProcessComplexType(ParameterInfo param)
         {
-            var fields = new List<JObject>();
-            var nestedProperties = param.ParameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            List<JObject> fields = [];
+            PropertyInfo[] nestedProperties = param.ParameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-            foreach (var prop in nestedProperties)
+            foreach (PropertyInfo prop in nestedProperties)
             {
                 if (!CanProcessMember(prop))
                     continue;
 
-                var field = CreateFieldUsingFactories(prop);
+                JObject field = CreateFieldUsingFactories(prop);
                 if (field != null)
                 {
                     // 添加父级名称
@@ -139,7 +135,7 @@ namespace CodeSpirit.Amis.Helpers
         {
             if (field["name"] != null && parentName != null)
             {
-                var originalName = field["name"].ToString();
+                string originalName = field["name"].ToString();
                 field["name"] = _utilityHelper.ToCamelCase($"{parentName}.{originalName}");
             }
         }
@@ -160,11 +156,11 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         private JObject CreateAmisFormFieldFromProperty(PropertyInfo prop, string parentName)
         {
-            var displayName = _utilityHelper.GetDisplayName(prop);
-            var fieldName = _utilityHelper.GetFieldName(prop, parentName);
-            var isRequired = !_utilityHelper.IsNullable(prop.PropertyType) || prop.GetCustomAttribute<RequiredAttribute>() != null;
+            string displayName = _utilityHelper.GetDisplayName(prop);
+            string fieldName = _utilityHelper.GetFieldName(prop, parentName);
+            bool isRequired = !_utilityHelper.IsNullable(prop.PropertyType) || prop.GetCustomAttribute<RequiredAttribute>() != null;
 
-            var field = new JObject
+            JObject field = new JObject
             {
                 ["name"] = fieldName,
                 ["label"] = displayName,
@@ -182,11 +178,11 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         private JObject CreateAmisFormField(ParameterInfo param)
         {
-            var label = _utilityHelper.GetDisplayName(param);
-            var fieldName = _utilityHelper.GetFieldName(param, parentName: null);
-            var isRequired = !_utilityHelper.IsNullable(param.ParameterType) || param.GetCustomAttribute<RequiredAttribute>() != null;
+            string label = _utilityHelper.GetDisplayName(param);
+            string fieldName = _utilityHelper.GetFieldName(param, parentName: null);
+            bool isRequired = !_utilityHelper.IsNullable(param.ParameterType) || param.GetCustomAttribute<RequiredAttribute>() != null;
 
-            var field = new JObject
+            JObject field = new JObject
             {
                 ["name"] = fieldName,
                 ["label"] = label,
@@ -227,24 +223,24 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         private void AddValidationRules(PropertyInfo prop, JObject field)
         {
-            var validationRules = new JObject();
-            var validationErrors = new JObject();
-            
+            JObject validationRules = [];
+            JObject validationErrors = [];
+
             // 处理 [Required] 特性
-            var requiredAttribute = prop.GetCustomAttribute<RequiredAttribute>();
+            RequiredAttribute requiredAttribute = prop.GetCustomAttribute<RequiredAttribute>();
             if (requiredAttribute != null)
             {
                 field["required"] = true;
             }
 
-            var descriptionAttribute = prop.GetCustomAttribute<DescriptionAttribute>();
+            DescriptionAttribute descriptionAttribute = prop.GetCustomAttribute<DescriptionAttribute>();
             if (descriptionAttribute != null && !string.IsNullOrEmpty(descriptionAttribute.Description))
             {
                 field["description"] = descriptionAttribute.Description;
             }
 
             // 处理 [StringLength] 特性
-            var stringLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>();
+            StringLengthAttribute stringLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>();
             if (stringLengthAttr != null)
             {
                 if (stringLengthAttr.MinimumLength > 0)
@@ -260,7 +256,7 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             // 处理 [Range] 特性
-            var rangeAttr = prop.GetCustomAttribute<RangeAttribute>();
+            RangeAttribute rangeAttr = prop.GetCustomAttribute<RangeAttribute>();
             if (rangeAttr != null)
             {
                 if (rangeAttr.Minimum != null)
@@ -276,14 +272,14 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             // 处理 [DataType] 特性
-            var dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
+            DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
             if (dataTypeAttr != null)
             {
                 AddDataTypeValidation(dataTypeAttr, validationRules, field);
             }
 
             // 添加正则匹配规则
-            var regexAttr = prop.GetCustomAttribute<RegularExpressionAttribute>();
+            RegularExpressionAttribute regexAttr = prop.GetCustomAttribute<RegularExpressionAttribute>();
             if (regexAttr != null)
             {
                 validationRules["matchRegexp"] = regexAttr.Pattern;
@@ -325,24 +321,24 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         private void AddValidationRulesFromParameter(ParameterInfo param, JObject field)
         {
-            var validationRules = new JObject();
-            var validationErrors = new JObject();
+            JObject validationRules = [];
+            JObject validationErrors = [];
 
             // 处理 [Required] 特性
-            var requiredAttribute = param.GetCustomAttribute<RequiredAttribute>();
+            RequiredAttribute requiredAttribute = param.GetCustomAttribute<RequiredAttribute>();
             if (requiredAttribute != null)
             {
                 field["required"] = true;
             }
 
-            var descriptionAttribute = param.GetCustomAttribute<DescriptionAttribute>();
+            DescriptionAttribute descriptionAttribute = param.GetCustomAttribute<DescriptionAttribute>();
             if (descriptionAttribute != null && !string.IsNullOrEmpty(descriptionAttribute.Description))
             {
                 field["description"] = descriptionAttribute.Description;
             }
 
             // 处理 [StringLength] 特性
-            var stringLengthAttr = param.GetCustomAttribute<StringLengthAttribute>();
+            StringLengthAttribute stringLengthAttr = param.GetCustomAttribute<StringLengthAttribute>();
             if (stringLengthAttr != null)
             {
                 if (stringLengthAttr.MinimumLength > 0)
@@ -358,7 +354,7 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             // 处理 [Range] 特性
-            var rangeAttr = param.GetCustomAttribute<RangeAttribute>();
+            RangeAttribute rangeAttr = param.GetCustomAttribute<RangeAttribute>();
             if (rangeAttr != null)
             {
                 if (rangeAttr.Minimum != null)
@@ -374,14 +370,14 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             // 处理 [DataType] 特性
-            var dataTypeAttr = param.GetCustomAttribute<DataTypeAttribute>();
+            DataTypeAttribute dataTypeAttr = param.GetCustomAttribute<DataTypeAttribute>();
             if (dataTypeAttr != null)
             {
                 AddDataTypeValidation(dataTypeAttr, validationRules, field);
             }
 
             // 添加正则匹配规则
-            var regexAttr = param.GetCustomAttribute<RegularExpressionAttribute>();
+            RegularExpressionAttribute regexAttr = param.GetCustomAttribute<RegularExpressionAttribute>();
             if (regexAttr != null)
             {
                 validationRules["matchRegexp"] = regexAttr.Pattern;
@@ -493,7 +489,7 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         private bool HasEditPermission(ParameterInfo param)
         {
-            var permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
+            PermissionAttribute permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
         }
 
@@ -502,7 +498,7 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         private bool HasEditPermission(PropertyInfo prop)
         {
-            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+            PermissionAttribute permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
         }
 

@@ -1,8 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Repositories;
-using CodeSpirit.IdentityApi.Services;
-using Microsoft.AspNetCore.Identity;
+﻿using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -27,15 +24,15 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("usergrowth")]
         public async Task<ActionResult<EChartsConfig>> GetUserGrowthAsync(DateTimeOffset? startDate, DateTimeOffset? endDate)
         {
-            var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-1);
-            var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
+            DateTimeOffset date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-1);
+            DateTimeOffset date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
 
-            var dailyGrowth = await _userService.GetUserGrowthAsync(date1, date2);
-            var dates = dailyGrowth.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
-            var userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
+            List<UserGrowthDto> dailyGrowth = await _userService.GetUserGrowthAsync(date1, date2);
+            List<string> dates = dailyGrowth.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
+            List<int> userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
 
             // 创建 ECharts 配置
-            var eChartConfig = new EChartsConfig
+            EChartsConfig eChartConfig = new EChartsConfig
             {
                 Title = new EChartsTitle
                 {
@@ -97,15 +94,15 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("activeusers")]
         public async Task<ActionResult<EChartsConfig>> GetActiveUsersAsync(DateTimeOffset? startDate, DateTimeOffset? endDate)
         {
-            var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-3);
-            var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now;
-            var dailyActiveUsers = await _userService.GetActiveUsersAsync(date1, date2);
+            DateTimeOffset date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-3);
+            DateTimeOffset date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now;
+            List<ActiveUserDto> dailyActiveUsers = await _userService.GetActiveUsersAsync(date1, date2);
 
-            var dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
-            var activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
+            List<string> dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
+            List<int> activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
 
             // 创建 ECharts 配置
-            var eChartConfig = new EChartsConfig
+            EChartsConfig eChartConfig = new EChartsConfig
             {
                 Title = new EChartsTitle
                 {
@@ -160,19 +157,19 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("usergrowth-and-active-users")]
         public async Task<ActionResult<EChartsConfig>> GetUserGrowthAndActiveUsersAsync(DateTimeOffset? startDate, DateTimeOffset? endDate)
         {
-            var date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-2);
-            var date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
-            var dailyGrowth = await _userService.GetUserGrowthAsync(date1, date2);
+            DateTimeOffset date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-2);
+            DateTimeOffset date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
+            List<UserGrowthDto> dailyGrowth = await _userService.GetUserGrowthAsync(date1, date2);
 
-            var userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
+            List<int> userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
 
             // 获取活跃用户数据
-            var dailyActiveUsers = await _userService.GetActiveUsersAsync(date1, date2);
-            var activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
-            var dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
+            List<ActiveUserDto> dailyActiveUsers = await _userService.GetActiveUsersAsync(date1, date2);
+            List<int> activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
+            List<string> dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
 
             // 合并图表配置
-            var eChartConfig = new EChartsConfig
+            EChartsConfig eChartConfig = new EChartsConfig
             {
                 Title = new EChartsTitle
                 {

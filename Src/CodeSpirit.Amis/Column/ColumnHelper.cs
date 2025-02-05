@@ -1,7 +1,6 @@
 ﻿using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
-using CodeSpirit.Core;
 using CodeSpirit.Core.Authorization;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
@@ -45,16 +44,16 @@ namespace CodeSpirit.Amis.Column
         public List<JObject> GetAmisColumns(Type dataType, string controllerName, ApiRoutesInfo apiRoutes, CrudActions actions)
         {
             // 获取数据类型的所有公共实例属性
-            var properties = _utilityHelper.GetOrderedProperties(dataType);
+            List<PropertyInfo> properties = _utilityHelper.GetOrderedProperties(dataType);
 
             // 过滤出不被忽略且用户有查看权限的属性，并生成对应的 AMIS 列配置
-            var columns = properties
+            List<JObject> columns = properties
                 .Where(p => !IsIgnoredProperty(p) && HasViewPermission(p))
                 .Select(p => CreateAmisColumn(p))
                 .ToList();
 
             // 创建操作列（如编辑、删除按钮）
-            var operations = CreateOperationsColumn(controllerName, dataType, apiRoutes.Update, apiRoutes.Delete, actions);
+            JObject operations = CreateOperationsColumn(controllerName, dataType, apiRoutes.Update, apiRoutes.Delete, actions);
             if (operations != null)
             {
                 columns.Add(operations);
@@ -87,7 +86,7 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 检查是否应用了 IgnoreColumnAttribute
-            var ignoreAttr = prop.GetCustomAttribute<IgnoreColumnAttribute>();
+            IgnoreColumnAttribute ignoreAttr = prop.GetCustomAttribute<IgnoreColumnAttribute>();
             if (ignoreAttr != null)
             {
                 return true;
@@ -103,7 +102,7 @@ namespace CodeSpirit.Amis.Column
         /// <returns>如果有权限则返回 true，否则返回 false。</returns>
         private bool HasViewPermission(PropertyInfo prop)
         {
-            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+            PermissionAttribute permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
         }
 
@@ -115,11 +114,11 @@ namespace CodeSpirit.Amis.Column
         private JObject CreateAmisColumn(PropertyInfo prop)
         {
             // 获取属性的显示名称，优先使用 DisplayNameAttribute
-            var displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
+            string displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
             // 将属性名称转换为 camelCase 以符合 AMIS 的命名约定
-            var fieldName = _utilityHelper.ToCamelCase(prop.Name);
+            string fieldName = _utilityHelper.ToCamelCase(prop.Name);
 
-            var column = new JObject
+            JObject column = new JObject
             {
                 ["name"] = fieldName,
                 ["label"] = displayName,
@@ -127,7 +126,7 @@ namespace CodeSpirit.Amis.Column
                 ["type"] = GetColumnType(prop)
             };
 
-            var columnAttr = (ColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(ColumnAttribute));
+            ColumnAttribute columnAttr = (ColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(ColumnAttribute));
             if (columnAttr != null)
             {
                 if (!string.IsNullOrEmpty(columnAttr.Name))
@@ -195,12 +194,12 @@ namespace CodeSpirit.Amis.Column
         {
             if (prop.PropertyType.IsGenericType)
             {
-                var genericType = prop.PropertyType.GetGenericTypeDefinition();
+                Type genericType = prop.PropertyType.GetGenericTypeDefinition();
 
                 // 检查是否为 List<T> 类型
                 if (genericType == typeof(List<>) || genericType == typeof(IEnumerable<>))
                 {
-                    var elementType = prop.PropertyType.GetGenericArguments()[0];
+                    Type elementType = prop.PropertyType.GetGenericArguments()[0];
 
                     // 排除 string 类型，string 是类类型
                     if (elementType != typeof(string) && elementType.IsClass)
@@ -219,10 +218,10 @@ namespace CodeSpirit.Amis.Column
         /// <returns>List 类型列的 listItem 配置。</returns>
         private JObject CreateListItemConfiguration(PropertyInfo prop)
         {
-            var listItem = new JObject();
+            JObject listItem = [];
 
             // 获取 ListItemAttribute 特性，如果存在
-            var listItemAttr = prop.GetCustomAttribute<ListColumnAttribute>();
+            ListColumnAttribute listItemAttr = prop.GetCustomAttribute<ListColumnAttribute>();
             // 使用特性中的配置字段，若特性没有配置，则使用默认值
             listItem["title"] = $"${{{_utilityHelper.ToCamelCase(listItemAttr?.Title ?? "titile")}}}";
             listItem["subTitle"] = $"${{{_utilityHelper.ToCamelCase(listItemAttr?.SubTitle ?? "subTitile")}}}";
@@ -234,7 +233,7 @@ namespace CodeSpirit.Amis.Column
 
         private JObject GetEnumMapping(Type type)
         {
-            var enumType = Nullable.GetUnderlyingType(type) ?? type;
+            Type enumType = Nullable.GetUnderlyingType(type) ?? type;
             return EnumMappingCache.GetOrAdd(enumType, CreateEnumMapping);
         }
 
@@ -245,15 +244,15 @@ namespace CodeSpirit.Amis.Column
         /// <returns>AMIS 枚举映射的 JSON 对象。</returns>
         private JObject CreateEnumMapping(Type enumType)
         {
-            var enumValues = Enum.GetValues(enumType).Cast<object>();
-            var mapping = new JObject();
+            IEnumerable<object> enumValues = Enum.GetValues(enumType).Cast<object>();
+            JObject mapping = [];
 
-            foreach (var e in enumValues)
+            foreach (object e in enumValues)
             {
                 // 获取枚举的实际值（根据基础类型动态转换）
-                var underlyingType = Enum.GetUnderlyingType(enumType);
-                var value = Convert.ChangeType(e, underlyingType, CultureInfo.InvariantCulture).ToString();
-                var label = _utilityHelper.GetEnumDisplayName(enumType, e);
+                Type underlyingType = Enum.GetUnderlyingType(enumType);
+                string value = Convert.ChangeType(e, underlyingType, CultureInfo.InvariantCulture).ToString();
+                string label = _utilityHelper.GetEnumDisplayName(enumType, e);
                 mapping[value] = label;
             }
 
@@ -316,7 +315,7 @@ namespace CodeSpirit.Amis.Column
         private bool IsImageField(PropertyInfo prop)
         {
             // 判断属性是否标注了 [DataType(DataType.ImageUrl)]
-            var dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
+            DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
             if (dataTypeAttr != null && dataTypeAttr.DataType == DataType.ImageUrl)
             {
                 return true;
@@ -357,28 +356,28 @@ namespace CodeSpirit.Amis.Column
         /// <returns>AMIS 操作列的 JSON 对象，如果没有按钮则返回 null。</returns>
         private JObject CreateOperationsColumn(string controllerName, Type dataType, ApiRouteInfo updateRoute, ApiRouteInfo deleteRoute, CrudActions actions)
         {
-            var buttons = new JArray();
+            JArray buttons = [];
             // 如果用户有编辑权限，则添加编辑按钮
             if (_permissionService.HasPermission($"{controllerName}Edit"))
             {
-                var editButton = buttonHelper.CreateEditButton(updateRoute, actions.Update?.GetParameters());
+                JObject editButton = buttonHelper.CreateEditButton(updateRoute, actions.Update?.GetParameters());
                 buttons.Add(editButton);
             }
 
             // 如果用户有删除权限，则添加删除按钮
             if (actions.Delete != null && _permissionService.HasPermission($"{controllerName}Delete"))
             {
-                var operationAttribute = actions.Delete.GetCustomAttribute<OperationAttribute>();
+                OperationAttribute operationAttribute = actions.Delete.GetCustomAttribute<OperationAttribute>();
                 if (operationAttribute == null)
                 {
-                    var deleteButton = buttonHelper.CreateDeleteButton(deleteRoute);
+                    JObject deleteButton = buttonHelper.CreateDeleteButton(deleteRoute);
                     buttons.Add(deleteButton);
                 }
             }
 
             // 添加自定义操作按钮
-            var customButtons = buttonHelper.GetCustomOperationsButtons();
-            foreach (var btn in customButtons)
+            List<JObject> customButtons = buttonHelper.GetCustomOperationsButtons();
+            foreach (JObject btn in customButtons)
             {
                 buttons.Add(btn);
             }

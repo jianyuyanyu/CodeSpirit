@@ -22,7 +22,7 @@ public class UserSeeder
 
     public async Task SeedAdminUserAsync()
     {
-        var adminUser = await _userManager.FindByNameAsync("admin");
+        ApplicationUser adminUser = await _userManager.FindByNameAsync("admin");
 
         if (adminUser == null)
         {
@@ -37,7 +37,7 @@ public class UserSeeder
                 Gender = Gender.Unknown
             };
 
-            var result = await _userManager.CreateAsync(adminUser, "Admin@123");
+            IdentityResult result = await _userManager.CreateAsync(adminUser, "Admin@123");
             if (result.Succeeded)
             {
                 _logger.LogInformation("管理员用户创建成功。");
@@ -45,7 +45,7 @@ public class UserSeeder
             else
             {
                 _logger.LogError("创建管理员用户失败：");
-                foreach (var error in result.Errors)
+                foreach (IdentityError error in result.Errors)
                 {
                     _logger.LogError($" - {error.Description}");
                 }
@@ -59,7 +59,7 @@ public class UserSeeder
 
         if (!await _roleManager.RoleExistsAsync("Administrator"))
         {
-            var createRoleResult = await _roleManager.CreateAsync(new ApplicationRole() { Name = "Administrator" });
+            IdentityResult createRoleResult = await _roleManager.CreateAsync(new ApplicationRole() { Name = "Administrator" });
             if (createRoleResult.Succeeded)
             {
                 _logger.LogInformation("管理员角色创建成功。");
@@ -67,7 +67,7 @@ public class UserSeeder
             else
             {
                 _logger.LogError("创建管理员角色失败：");
-                foreach (var error in createRoleResult.Errors)
+                foreach (IdentityError error in createRoleResult.Errors)
                 {
                     _logger.LogError($" - {error.Description}");
                 }
@@ -77,7 +77,7 @@ public class UserSeeder
 
         if (!await _userManager.IsInRoleAsync(adminUser, "Administrator"))
         {
-            var addToRoleResult = await _userManager.AddToRoleAsync(adminUser, "Administrator");
+            IdentityResult addToRoleResult = await _userManager.AddToRoleAsync(adminUser, "Administrator");
             if (addToRoleResult.Succeeded)
             {
                 _logger.LogInformation("管理员用户已分配 'Administrator' 角色。");
@@ -85,7 +85,7 @@ public class UserSeeder
             else
             {
                 _logger.LogError("分配 'Administrator' 角色失败：");
-                foreach (var error in addToRoleResult.Errors)
+                foreach (IdentityError error in addToRoleResult.Errors)
                 {
                     _logger.LogError($" - {error.Description}");
                 }
@@ -99,10 +99,10 @@ public class UserSeeder
 
     public async Task SeedRandomUsersAsync(int userCount, RoleManager<ApplicationRole> roleManager)
     {
-        var random = new Random();
-        var genderValues = Enum.GetValues(typeof(Gender)).Cast<Gender>().ToArray();
+        Random random = new Random();
+        Gender[] genderValues = Enum.GetValues(typeof(Gender)).Cast<Gender>().ToArray();
 
-        var defaultRole = await _roleManager.FindByNameAsync("User");
+        ApplicationRole defaultRole = await _roleManager.FindByNameAsync("User");
         if (defaultRole == null)
         {
             _logger.LogWarning("未找到默认角色 'User'，将跳过角色分配！");
@@ -110,9 +110,9 @@ public class UserSeeder
 
         for (int i = 0; i < userCount; i++)
         {
-            var userName = $"user{random.Next(1000, 9999)}";
-            var avatarStyle = random.Next(0, 3);
-            var avatarUrl = avatarStyle switch
+            string userName = $"user{random.Next(1000, 9999)}";
+            int avatarStyle = random.Next(0, 3);
+            string avatarUrl = avatarStyle switch
             {
                 0 => $"https://avatars.dicebear.com/api/identicon/{userName}.svg",
                 1 => $"https://avatars.dicebear.com/api/bottts/{userName}.svg",
@@ -120,10 +120,10 @@ public class UserSeeder
                 _ => $"https://avatars.dicebear.com/api/identicon/{userName}.svg",
             };
 
-            var lastLoginTime = GetRandomDate(DateTime.Now.AddMonths(-3), DateTime.Now);
-            var createTime = GetRandomDate(DateTime.Now.AddMonths(-1), DateTime.Now);
+            DateTimeOffset lastLoginTime = GetRandomDate(DateTime.Now.AddMonths(-3), DateTime.Now);
+            DateTimeOffset createTime = GetRandomDate(DateTime.Now.AddMonths(-1), DateTime.Now);
 
-            var user = new ApplicationUser
+            ApplicationUser user = new ApplicationUser
             {
                 Id = Guid.NewGuid().ToString("N"),
                 UserName = userName,
@@ -142,14 +142,14 @@ public class UserSeeder
                 user.LockoutEnd = DateTimeOffset.Now.AddHours(5);
             }
 
-            var result = await _userManager.CreateAsync(user, "Password@123");
+            IdentityResult result = await _userManager.CreateAsync(user, "Password@123");
             if (result.Succeeded)
             {
                 _logger.LogInformation($"用户 {user.UserName} 创建成功。");
 
                 if (defaultRole != null)
                 {
-                    var addToRoleResult = await _userManager.AddToRoleAsync(user, defaultRole.Name);
+                    IdentityResult addToRoleResult = await _userManager.AddToRoleAsync(user, defaultRole.Name);
                     if (addToRoleResult.Succeeded)
                     {
                         _logger.LogInformation($"用户 {user.UserName} 被分配到角色 '{defaultRole.Name}'。");
@@ -157,7 +157,7 @@ public class UserSeeder
                     else
                     {
                         _logger.LogError($"分配角色 '{defaultRole.Name}' 给用户 {user.UserName} 失败：");
-                        foreach (var error in addToRoleResult.Errors)
+                        foreach (IdentityError error in addToRoleResult.Errors)
                         {
                             _logger.LogError($" - {error.Description}");
                         }
@@ -167,7 +167,7 @@ public class UserSeeder
             else
             {
                 _logger.LogError($"创建用户 {user.UserName} 失败：");
-                foreach (var error in result.Errors)
+                foreach (IdentityError error in result.Errors)
                 {
                     _logger.LogError($" - {error.Description}");
                 }
@@ -177,9 +177,9 @@ public class UserSeeder
 
     private DateTimeOffset GetRandomDate(DateTime startDate, DateTime endDate)
     {
-        var random = new Random();
-        var range = endDate - startDate;
-        var randomTimeSpan = new TimeSpan((long)(random.NextDouble() * range.Ticks));
+        Random random = new Random();
+        TimeSpan range = endDate - startDate;
+        TimeSpan randomTimeSpan = new TimeSpan((long)(random.NextDouble() * range.Ticks));
         return startDate + randomTimeSpan;
     }
 }

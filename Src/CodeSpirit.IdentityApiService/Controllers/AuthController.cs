@@ -3,7 +3,6 @@ using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -27,7 +26,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
-            var (success, message, token, user) = await _authService.LoginAsync(model.UserName, model.Password);
+            (bool success, string message, string token, UserDto user) = await _authService.LoginAsync(model.UserName, model.Password);
             if (success)
             {
                 return Ok(new { token, user });

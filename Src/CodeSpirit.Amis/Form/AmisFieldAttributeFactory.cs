@@ -20,14 +20,14 @@ namespace CodeSpirit.Amis.Form
         public JObject CreateField(ICustomAttributeProvider member, UtilityHelper utilityHelper)
         {
             // 使用扩展方法尝试获取 AmisFieldAttribute 及相关信息
-            if (!member.TryGetAmisFieldData(utilityHelper, out var attr, out var displayName, out var fieldName))
+            if (!member.TryGetAmisFieldData(utilityHelper, out Attributes.AmisFieldAttribute attr, out string displayName, out string fieldName))
                 return null;
 
             // 计算是否为必填字段
-            var isRequired = attr.Required || !utilityHelper.IsNullable(utilityHelper.GetMemberType(member));
+            bool isRequired = attr.Required || !utilityHelper.IsNullable(utilityHelper.GetMemberType(member));
 
             // 创建字段配置
-            var field = new JObject
+            JObject field = new JObject
             {
                 ["name"] = fieldName,
                 ["label"] = attr.Label ?? displayName,

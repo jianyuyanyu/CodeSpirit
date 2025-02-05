@@ -245,7 +245,7 @@ namespace CodeSpirit.IdentityApi.Filters
 
         private void SetServerErrorByException(ExceptionContext context, Exception exception = null)
         {
-            var ex = exception ?? context.Exception;
+            Exception ex = exception ?? context.Exception;
             context.Result = new ObjectResult(ApiResponse<object>.Error(
                 StatusCodes.Status500InternalServerError,
                 "服务器繁忙，请稍后再试！"))

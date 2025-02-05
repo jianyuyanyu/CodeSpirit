@@ -41,13 +41,13 @@ namespace CodeSpirit.Amis.Helpers
         public List<JObject> GetAmisSearchFields(MethodInfo readMethod)
         {
             if (readMethod == null)
-                return new List<JObject>();
+                return [];
 
-            var parameters = readMethod.GetParameters();
-            var searchFields = new List<JObject>();
+            ParameterInfo[] parameters = readMethod.GetParameters();
+            List<JObject> searchFields = [];
 
             // 遍历所有带有 [FromQuery] 特性的参数
-            foreach (var param in parameters.Where(p => p.GetCustomAttribute<FromQueryAttribute>() != null))
+            foreach (ParameterInfo param in parameters.Where(p => p.GetCustomAttribute<FromQueryAttribute>() != null))
             {
                 // 跳过被排除的参数
                 if (IsExcludedParameter(param.Name))
@@ -81,7 +81,7 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>如果有权限或未定义权限属性则返回 true，否则返回 false。</returns>
         private bool HasSearchPermission(ParameterInfo param)
         {
-            var permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
+            PermissionAttribute permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
         }
 
@@ -92,7 +92,7 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>如果有权限或未定义权限属性则返回 true，否则返回 false。</returns>
         private bool HasSearchPermission(PropertyInfo prop)
         {
-            var permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+            PermissionAttribute permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
         }
 
@@ -103,7 +103,7 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>包含搜索字段的 JSON 对象列表。</returns>
         private List<JObject> CreateSearchFieldsFromParameter(ParameterInfo param)
         {
-            var fields = new List<JObject>();
+            List<JObject> fields = [];
 
             if (_utilityHelper.IsSimpleType(param.ParameterType))
             {
@@ -113,8 +113,8 @@ namespace CodeSpirit.Amis.Helpers
             else if (_utilityHelper.IsComplexType(param.ParameterType))
             {
                 // 复杂类型则遍历其属性并为每个合适的属性创建搜索字段
-                var properties = param.ParameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-                foreach (var prop in properties)
+                PropertyInfo[] properties = param.ParameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                foreach (PropertyInfo prop in properties)
                 {
                     if (IsExcludedParameter(prop.Name))
                         continue;
@@ -137,13 +137,13 @@ namespace CodeSpirit.Amis.Helpers
         private JObject CreateSearchField(ParameterInfo param)
         {
             // 获取显示名称，如果未定义则转换参数名为标题格式
-            var label = param.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(param.Name);
+            string label = param.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(param.Name);
             // 转换参数名为驼峰命名
-            var fieldName = _utilityHelper.ToCamelCase(param.Name);
+            string fieldName = _utilityHelper.ToCamelCase(param.Name);
             // 确定字段类型
-            var fieldType = DetermineSearchFieldType(param.ParameterType);
+            string fieldType = DetermineSearchFieldType(param.ParameterType);
 
-            var field = new JObject
+            JObject field = new JObject
             {
                 ["name"] = fieldName,
                 ["label"] = label,
@@ -174,13 +174,13 @@ namespace CodeSpirit.Amis.Helpers
         private JObject CreateSearchFieldFromProperty(PropertyInfo prop, string parentName)
         {
             // 获取显示名称，如果未定义则转换属性名为标题格式
-            var label = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
+            string label = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
             // 构建嵌套字段名，例如 parent.property
-            var fieldName = _utilityHelper.ToCamelCase($"{prop.Name}");
+            string fieldName = _utilityHelper.ToCamelCase($"{prop.Name}");
             // 确定字段类型
-            var fieldType = DetermineSearchFieldType(prop.PropertyType);
+            string fieldType = DetermineSearchFieldType(prop.PropertyType);
 
-            var field = new JObject
+            JObject field = new JObject
             {
                 ["name"] = fieldName,
                 ["label"] = label,

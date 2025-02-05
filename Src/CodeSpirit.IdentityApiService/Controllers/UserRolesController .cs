@@ -26,18 +26,18 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpPost("Assign")]
         public async Task<IActionResult> AssignRolesToUser(AssignRolesDto assignDto)
         {
-            var user = await _userManager.FindByIdAsync(assignDto.UserId);
+            IdentityUser user = await _userManager.FindByIdAsync(assignDto.UserId);
             if (user == null)
             {
                 return NotFound("用户不存在。");
             }
 
-            var roles = await _roleManager.Roles
+            List<string> roles = await _roleManager.Roles
                 .Where(r => assignDto.RoleNames.Contains(r.Name))
                 .Select(r => r.Name)
                 .ToListAsync();
 
-            var result = await _userManager.AddToRolesAsync(user, roles);
+            IdentityResult result = await _userManager.AddToRolesAsync(user, roles);
             if (result.Succeeded)
             {
                 return Ok("角色分配成功。");
@@ -52,18 +52,18 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpPost("Remove")]
         public async Task<IActionResult> RemoveRolesFromUser(RemoveRolesDto removeDto)
         {
-            var user = await _userManager.FindByIdAsync(removeDto.UserId);
+            IdentityUser user = await _userManager.FindByIdAsync(removeDto.UserId);
             if (user == null)
             {
                 return NotFound("用户不存在。");
             }
 
-            var roles = await _roleManager.Roles
+            List<string> roles = await _roleManager.Roles
                 .Where(r => removeDto.RoleNames.Contains(r.Name))
                 .Select(r => r.Name)
                 .ToListAsync();
 
-            var result = await _userManager.RemoveFromRolesAsync(user, roles);
+            IdentityResult result = await _userManager.RemoveFromRolesAsync(user, roles);
             if (result.Succeeded)
             {
                 return Ok("角色移除成功。");
@@ -78,13 +78,13 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("{userId}")]
         public async Task<ActionResult<UserRolesDto>> GetUserRoles(string userId)
         {
-            var user = await _userManager.FindByIdAsync(userId);
+            IdentityUser user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 return NotFound("用户不存在。");
             }
 
-            var roles = await _userManager.GetRolesAsync(user);
+            IList<string> roles = await _userManager.GetRolesAsync(user);
 
             return Ok(new UserRolesDto
             {

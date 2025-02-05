@@ -13,14 +13,14 @@
         /// <returns></returns>
         public static string Generate()
         {
-            var guid = Guid.NewGuid();
-            var bytes = guid.ToByteArray();
+            Guid guid = Guid.NewGuid();
+            byte[] bytes = guid.ToByteArray();
 
             // Get rid of the first couple of bytes which contain timestamps
             bytes = bytes.Skip(2).ToArray();
 
             // Base64 url-encode the remaining bytes
-            var base64String = Convert.ToBase64String(bytes)
+            string base64String = Convert.ToBase64String(bytes)
                 .Replace("/", "_")
                 .Replace("+", "-")
                 .Replace("=", "");

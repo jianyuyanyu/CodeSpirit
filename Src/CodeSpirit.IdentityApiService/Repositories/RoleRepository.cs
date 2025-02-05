@@ -32,20 +32,20 @@ namespace CodeSpirit.IdentityApi.Repositories
         public async Task<(List<ApplicationRole>, int)> GetRolesAsync(RoleQueryDto queryDto)
         {
             // 基础查询包含权限信息
-            var query = _roleManager.Roles
+            IQueryable<ApplicationRole> query = _roleManager.Roles
                 .Include(r => r.RolePermissions)
                 .AsQueryable();
 
             // 应用关键词过滤
             if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
             {
-                var searchLower = queryDto.Keywords.ToLower();
+                string searchLower = queryDto.Keywords.ToLower();
                 query = query.Where(u =>
                     u.Name.ToLower().Contains(searchLower) ||
                     u.Description.ToLower().Contains(searchLower));
             }
 
-            var count = await query.CountAsync();
+            int count = await query.CountAsync();
 
             // 应用排序和分页
             query = query
@@ -73,7 +73,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         public async Task CreateRoleAsync(ApplicationRole role, IEnumerable<int> permissionIds)
         {
             // 验证权限是否存在
-            var permissions = await _context.Permissions
+            List<Permission> permissions = await _context.Permissions
                 .Where(p => permissionIds.Contains(p.Id))
                 .ToListAsync();
 
@@ -94,19 +94,19 @@ namespace CodeSpirit.IdentityApi.Repositories
         public async Task UpdateRoleAsync(ApplicationRole role, IEnumerable<int> permissionIds)
         {
             // 获取当前权限ID集合
-            var currentPermissionIds = role.RolePermissions
+            List<int> currentPermissionIds = role.RolePermissions
                 .Select(rp => rp.PermissionId)
                 .ToList();
 
             // 计算需要添加和移除的权限
-            var permissionsToAdd = permissionIds.Except(currentPermissionIds).ToList();
-            var permissionsToRemove = currentPermissionIds.Except(permissionIds).ToList();
+            List<int> permissionsToAdd = permissionIds.Except(currentPermissionIds).ToList();
+            List<int> permissionsToRemove = currentPermissionIds.Except(permissionIds).ToList();
 
             // 添加新权限
             if (permissionsToAdd.Any())
             {
-                var newPermissions = await GetPermissionsByIdsAsync(permissionsToAdd);
-                foreach (var permission in newPermissions)
+                List<Permission> newPermissions = await GetPermissionsByIdsAsync(permissionsToAdd);
+                foreach (Permission permission in newPermissions)
                 {
                     role.RolePermissions.Add(new RolePermission
                     {
@@ -118,11 +118,11 @@ namespace CodeSpirit.IdentityApi.Repositories
             // 移除旧权限
             if (permissionsToRemove.Any())
             {
-                var removeList = role.RolePermissions
+                List<RolePermission> removeList = role.RolePermissions
                     .Where(rp => permissionsToRemove.Contains(rp.PermissionId))
                     .ToList();
 
-                foreach (var rp in removeList)
+                foreach (RolePermission rp in removeList)
                 {
                     role.RolePermissions.Remove(rp);
                 }
@@ -156,13 +156,13 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// </summary>
         public async Task AssignPermissionsToRoleAsync(ApplicationRole role, IEnumerable<int> permissionIds)
         {
-            var existingPermissionIds = role.RolePermissions
+            HashSet<int> existingPermissionIds = role.RolePermissions
                 .Select(rp => rp.PermissionId)
                 .ToHashSet();
 
-            var permissions = await GetPermissionsByIdsAsync(permissionIds);
+            List<Permission> permissions = await GetPermissionsByIdsAsync(permissionIds);
 
-            foreach (var permission in permissions)
+            foreach (Permission permission in permissions)
             {
                 if (!existingPermissionIds.Contains(permission.Id))
                 {
@@ -186,18 +186,18 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// </remarks>
         public async Task RemovePermissionsFromRoleAsync(ApplicationRole role, IEnumerable<int> permissionIds)
         {
-            var removeList = role.RolePermissions
+            List<RolePermission> removeList = role.RolePermissions
                 .Where(rp => permissionIds.Contains(rp.PermissionId))
                 .ToList();
 
-            foreach (var rp in removeList)
+            foreach (RolePermission rp in removeList)
             {
-                var permission = rp.Permission;
+                Permission permission = rp.Permission;
 
                 // 处理子权限的特殊情况
                 if (permission.ParentId.HasValue)
                 {
-                    var parentPermission = await _context.Permissions
+                    Permission parentPermission = await _context.Permissions
                         .FindAsync(permission.ParentId.Value);
 
                     // 确保父权限存在且未被包含
@@ -224,7 +224,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// </summary>
         private async Task<List<Permission>> GetPermissionsByIdsAsync(IEnumerable<int> ids)
         {
-            var uniqueIds = ids.Distinct().ToList();
+            List<int> uniqueIds = ids.Distinct().ToList();
             return await _context.Permissions
                 .Where(p => uniqueIds.Contains(p.Id))
                 .ToListAsync();

@@ -6,7 +6,7 @@
 
         public DataFilterOptions()
         {
-            DefaultStates = new Dictionary<Type, DataFilterState>();
+            DefaultStates = [];
         }
     }
 }

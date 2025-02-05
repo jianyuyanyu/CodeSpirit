@@ -1,6 +1,5 @@
 ﻿using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Services;
-using CodeSpirit.Core;
 using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.Amis
@@ -31,8 +30,8 @@ namespace CodeSpirit.Amis
         /// <returns>包含站点配置的 API 响应。</returns>
         public async Task<ApiResponse<AmisApp>> GetSiteConfigurationAsync()
         {
-            var pageDict = await _pageCollector.CollectPagesAsync();
-            var topLevelPages = BuildHierarchy(pageDict);
+            Dictionary<string, Page> pageDict = await _pageCollector.CollectPagesAsync();
+            List<Page> topLevelPages = BuildHierarchy(pageDict);
 
             return new ApiResponse<AmisApp>
             {
@@ -40,13 +39,13 @@ namespace CodeSpirit.Amis
                 Msg = string.Empty,
                 Data = new AmisApp
                 {
-                    Pages = new List<PageGroup>
-                    {
+                    Pages =
+                    [
                         new PageGroup
                         {
                             Children = topLevelPages
                         }
-                    }
+                    ]
                 }
             };
         }
@@ -60,13 +59,13 @@ namespace CodeSpirit.Amis
         /// <returns>顶级页面列表。</returns>
         private List<Page> BuildHierarchy(Dictionary<string, Page> pageDict)
         {
-            var topLevelPages = new List<Page>();
+            List<Page> topLevelPages = [];
 
-            foreach (var page in pageDict.Values)
+            foreach (Page page in pageDict.Values)
             {
                 if (!string.IsNullOrEmpty(page.ParentLabel))
                 {
-                    if (pageDict.TryGetValue(page.ParentLabel, out var parentPage))
+                    if (pageDict.TryGetValue(page.ParentLabel, out Page parentPage))
                     {
                         // 检测循环引用
                         if (DetectCycle(pageDict, page.Label, parentPage.Label))
@@ -76,7 +75,7 @@ namespace CodeSpirit.Amis
                             continue;
                         }
 
-                        parentPage.Children ??= new List<Page>();
+                        parentPage.Children ??= [];
                         parentPage.Children.Add(page);
                     }
                     else
@@ -103,12 +102,12 @@ namespace CodeSpirit.Amis
         /// <returns>如果存在循环引用，则返回 true；否则，返回 false。</returns>
         private bool DetectCycle(Dictionary<string, Page> pageDict, string childLabel, string parentLabel)
         {
-            var currentLabel = parentLabel;
-            var visited = new HashSet<string> { childLabel };
+            string currentLabel = parentLabel;
+            HashSet<string> visited = [childLabel];
 
             while (!string.IsNullOrEmpty(currentLabel))
             {
-                if (!pageDict.TryGetValue(currentLabel, out var currentPage))
+                if (!pageDict.TryGetValue(currentLabel, out Page currentPage))
                     break;
 
                 if (visited.Contains(currentPage.Label))

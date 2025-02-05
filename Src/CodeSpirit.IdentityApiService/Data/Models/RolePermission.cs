@@ -1,5 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
-using CodeSpirit.IdentityApi.Data.Models;
+﻿using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
 /// <summary>
 /// 角色与权限的关联实体，用于表示角色拥有的权限及其允许状态。
 /// </summary>

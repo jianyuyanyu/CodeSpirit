@@ -1,7 +1,4 @@
 ﻿// 文件路径: Utilities/PasswordGenerator.cs
-using System;
-using System.Linq;
-
 namespace CodeSpirit.IdentityApi.Utilities
 {
     /// <summary>
@@ -21,11 +18,11 @@ namespace CodeSpirit.IdentityApi.Utilities
             const string digits = "0123456789";
             const string special = "!@#$%^&*()-_=+[]{}|;:,.<>?";
 
-            var allChars = upper + lower + digits + special;
-            var random = new Random();
+            string allChars = upper + lower + digits + special;
+            Random random = new Random();
 
             // 确保密码包含至少一个大写字母、小写字母、数字和特殊字符
-            var password = new char[length];
+            char[] password = new char[length];
             password[0] = upper[random.Next(upper.Length)];
             password[1] = lower[random.Next(lower.Length)];
             password[2] = digits[random.Next(digits.Length)];

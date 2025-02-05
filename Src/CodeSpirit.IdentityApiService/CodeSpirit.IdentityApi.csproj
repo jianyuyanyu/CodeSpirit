@@ -21,6 +21,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\CodeSpirit.Amis\CodeSpirit.Amis.csproj" />
+		<ProjectReference Include="..\CodeSpirit.Authorization\CodeSpirit.Authorization.csproj" />
 		<ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
 	</ItemGroup>

@@ -42,8 +42,8 @@ public class PermissionSeeder
     /// <returns>权限列表</returns>
     public List<PermissionSeedModel> GetPermissions()
     {
-        return new List<PermissionSeedModel>
-            {
+        return
+            [
                 // 父权限
                 new PermissionSeedModel { Name = "UserManagement", Description = "用户管理权限" },
                 new PermissionSeedModel { Name = "RoleManagement", Description = "角色管理权限" },
@@ -76,7 +76,7 @@ public class PermissionSeeder
                 // 子权限 - 系统设置
                 new PermissionSeedModel { Name = "configure_settings", Description = "配置设置", ParentName = "SystemSettings" },
                 new PermissionSeedModel { Name = "manage_system", Description = "管理系统", ParentName = "SystemSettings" }
-            };
+            ];
     }
 
     /// <summary>
@@ -85,26 +85,26 @@ public class PermissionSeeder
     /// <returns>异步任务</returns>
     public async Task SeedPermissionsAsync()
     {
-        var permissions = GetPermissions();
+        List<PermissionSeedModel> permissions = GetPermissions();
 
         // 分离父权限和子权限
-        var parentPermissions = permissions.Where(p => string.IsNullOrEmpty(p.ParentName)).ToList();
-        var childPermissions = permissions.Where(p => !string.IsNullOrEmpty(p.ParentName)).ToList();
+        List<PermissionSeedModel> parentPermissions = permissions.Where(p => string.IsNullOrEmpty(p.ParentName)).ToList();
+        List<PermissionSeedModel> childPermissions = permissions.Where(p => !string.IsNullOrEmpty(p.ParentName)).ToList();
 
         // 使用事务确保种子操作的原子性
-        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction = await _dbContext.Database.BeginTransactionAsync();
 
         try
         {
             // 添加或更新父权限
-            foreach (var parent in parentPermissions)
+            foreach (PermissionSeedModel parent in parentPermissions)
             {
-                var existingParent = await _dbContext.Permissions
+                Permission existingParent = await _dbContext.Permissions
                     .FirstOrDefaultAsync(p => p.Name == parent.Name);
 
                 if (existingParent == null)
                 {
-                    var newParent = new Permission
+                    Permission newParent = new Permission
                     {
                         Name = parent.Name,
                         Description = parent.Description,
@@ -130,21 +130,21 @@ public class PermissionSeeder
             await _dbContext.SaveChangesAsync();
 
             // 获取父权限的 ID 映射
-            var parentPermissionDict = await _dbContext.Permissions
+            Dictionary<string, int> parentPermissionDict = await _dbContext.Permissions
                 .Where(p => parentPermissions.Select(pp => pp.Name).Contains(p.Name))
                 .ToDictionaryAsync(p => p.Name, p => p.Id);
 
             // 添加或更新子权限
-            foreach (var child in childPermissions)
+            foreach (PermissionSeedModel child in childPermissions)
             {
-                var existingChild = await _dbContext.Permissions
+                Permission existingChild = await _dbContext.Permissions
                     .FirstOrDefaultAsync(p => p.Name == child.Name);
 
                 if (existingChild == null)
                 {
-                    if (parentPermissionDict.TryGetValue(child.ParentName, out var parentId))
+                    if (parentPermissionDict.TryGetValue(child.ParentName, out int parentId))
                     {
-                        var newChild = new Permission
+                        Permission newChild = new Permission
                         {
                             Name = child.Name,
                             Description = child.Description,

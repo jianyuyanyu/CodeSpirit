@@ -1,6 +1,5 @@
-﻿using System.Reflection;
-using CodeSpirit.Amis;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using System.Reflection;
 
 namespace CodeSpirit.Amis.Helpers
 {
@@ -35,7 +34,7 @@ namespace CodeSpirit.Amis.Helpers
 
         public string GetRoute(Type controller)
         {
-            var routeAttr = controller.GetCustomAttribute<RouteAttribute>();
+            RouteAttribute routeAttr = controller.GetCustomAttribute<RouteAttribute>();
             return routeAttr?.Template?.Replace("[controller]", GetControllerName(controller)) ?? string.Empty;
         }
 

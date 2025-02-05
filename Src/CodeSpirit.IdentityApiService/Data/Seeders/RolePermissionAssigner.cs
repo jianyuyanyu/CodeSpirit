@@ -51,14 +51,14 @@ public class RolePermissionAssigner
                 p.Name == "view_reports" || p.Name == "view_data").ToList(),
             "Guest" => allPermissions.Where(p =>
                 p.Name == "view_users").ToList(),
-            _ => new List<Permission>()
+            _ => []
         };
     }
 
     public async Task AssignPermissionsToRolesAsync(List<ApplicationRole> roles)
     {
-        var permissions = await _dbContext.Permissions.ToListAsync();
-        var allRolePermissions = await _dbContext.RolePermissions
+        List<Permission> permissions = await _dbContext.Permissions.ToListAsync();
+        List<RolePermission> allRolePermissions = await _dbContext.RolePermissions
             .Include(rp => rp.Permission)
             .ToListAsync();
 
@@ -68,21 +68,21 @@ public class RolePermissionAssigner
             return;
         }
 
-        foreach (var role in roles)
+        foreach (ApplicationRole role in roles)
         {
-            var existingRole = await _roleManager.Roles
+            ApplicationRole existingRole = await _roleManager.Roles
                 .FirstOrDefaultAsync(r => r.Name == role.Name);
 
             if (existingRole != null)
             {
-                var rolePermissions = GetPermissionsForRole(existingRole.Name, permissions);
+                List<Permission> rolePermissions = GetPermissionsForRole(existingRole.Name, permissions);
 
                 if (existingRole.RolePermissions == null)
                 {
-                    existingRole.RolePermissions = new List<RolePermission>();
+                    existingRole.RolePermissions = [];
                 }
 
-                foreach (var permission in rolePermissions)
+                foreach (Permission permission in rolePermissions)
                 {
                     if (!existingRole.RolePermissions.Any(rp => rp.PermissionId == permission.Id))
                     {
@@ -101,7 +101,7 @@ public class RolePermissionAssigner
                     }
                 }
 
-                var updateResult = await _roleManager.UpdateAsync(existingRole);
+                IdentityResult updateResult = await _roleManager.UpdateAsync(existingRole);
                 if (updateResult.Succeeded)
                 {
                     _logger.LogInformation($"权限已分配给角色 '{existingRole.Name}'。");
@@ -109,7 +109,7 @@ public class RolePermissionAssigner
                 else
                 {
                     _logger.LogError($"分配权限给角色 '{existingRole.Name}' 失败。错误：");
-                    foreach (var error in updateResult.Errors)
+                    foreach (IdentityError error in updateResult.Errors)
                     {
                         _logger.LogError($" - {error.Description}");
                     }

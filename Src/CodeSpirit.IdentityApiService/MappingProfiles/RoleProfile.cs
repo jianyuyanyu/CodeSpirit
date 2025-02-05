@@ -1,8 +1,6 @@
 ﻿using AutoMapper;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
-using System.Linq;
 
 namespace CodeSpirit.IdentityApi.MappingProfiles
 {

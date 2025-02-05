@@ -2,7 +2,6 @@
 using CodeSpirit.Shared.Entities;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CodeSpirit.IdentityApi.Data.Models
 {

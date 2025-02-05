@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
-using System.Globalization;
 
 namespace CodeSpirit.IdentityApi.ModelBindings
 {
@@ -15,7 +14,7 @@ namespace CodeSpirit.IdentityApi.ModelBindings
 
         public Task BindModelAsync(ModelBindingContext bindingContext)
         {
-            var valueProviderResult = bindingContext.ValueProvider.GetValue(bindingContext.ModelName);
+            ValueProviderResult valueProviderResult = bindingContext.ValueProvider.GetValue(bindingContext.ModelName);
             _logger.LogDebug($"ModelName: {bindingContext.ModelName}, Value: {valueProviderResult.FirstValue}");
 
 
@@ -25,7 +24,7 @@ namespace CodeSpirit.IdentityApi.ModelBindings
                 return Task.CompletedTask; // 没有值时无需处理
             }
 
-            var value = valueProviderResult.FirstValue;
+            string value = valueProviderResult.FirstValue;
 
             if (string.IsNullOrEmpty(value))
             {
@@ -36,7 +35,7 @@ namespace CodeSpirit.IdentityApi.ModelBindings
             // 记录接收到的值
             _logger.LogDebug("Received value for {ModelName}: {Value}", bindingContext.ModelName, value);
             // 解码并分割日期范围
-            var values = value.Split(',');
+            string[] values = value.Split(',');
 
             if (values.Length != 2)
             {

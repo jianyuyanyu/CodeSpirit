@@ -25,7 +25,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("{name}")]
         public IActionResult GenerateAmis([FromRoute] string name)
         {
-            var amisJson = _amisGenerator.GenerateAmisJsonForController(name);
+            Newtonsoft.Json.Linq.JObject amisJson = _amisGenerator.GenerateAmisJsonForController(name);
             if (amisJson == null)
             {
                 return NotFound(new { message = $"AMIS JSON for controller '{name}' not found or not supported." });
@@ -41,7 +41,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("site")]
         public async Task<IActionResult> GetSiteConfiguration()
         {
-            var site = await _siteConfigurationService.GetSiteConfigurationAsync();
+            Core.ApiResponse<Amis.App.AmisApp> site = await _siteConfigurationService.GetSiteConfigurationAsync();
             return Ok(site);
         }
     }

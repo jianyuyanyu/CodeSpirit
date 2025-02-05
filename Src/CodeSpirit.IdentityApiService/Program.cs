@@ -1,11 +1,9 @@
 using CodeSpirit.Amis;
-using CodeSpirit.IdentityApi.Authorization;
-using CodeSpirit.IdentityApi.Data;
-using Microsoft.AspNetCore.Authorization;
+using CodeSpirit.ServiceDefaults;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
@@ -30,15 +28,13 @@ builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Prog
 //builder.Services.AddTransientRegister<ITransientDependency>();
 //builder.Services.AddSingletonRegister<ISingletonDependency>();
 
-// 注册权限授权策略
-builder.Services.AddPermissionAuthorization();
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // 执行数据初始化
-using (var scope = app.Services.CreateScope())
+using (IServiceScope scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<SeederService>>();
+    IServiceProvider services = scope.ServiceProvider;
+    ILogger<SeederService> logger = services.GetRequiredService<ILogger<SeederService>>();
     try
     {
         // 调用数据初始化方法

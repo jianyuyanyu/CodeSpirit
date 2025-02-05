@@ -1,8 +1,5 @@
 ﻿using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace CodeSpirit.IdentityApi.Data.Seeders
 {
@@ -19,12 +16,12 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
         public async Task SeedRolesAsync(List<ApplicationRole> roles)
         {
-            foreach (var role in roles)
+            foreach (ApplicationRole role in roles)
             {
-                var roleExists = await _roleManager.RoleExistsAsync(role.Name);
+                bool roleExists = await _roleManager.RoleExistsAsync(role.Name);
                 if (!roleExists)
                 {
-                    var result = await _roleManager.CreateAsync(role);
+                    IdentityResult result = await _roleManager.CreateAsync(role);
                     if (result.Succeeded)
                     {
                         _logger.LogInformation($"角色 '{role.Name}' 创建成功。");
@@ -32,7 +29,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     else
                     {
                         _logger.LogError($"创建角色 '{role.Name}' 失败。错误：");
-                        foreach (var error in result.Errors)
+                        foreach (IdentityError error in result.Errors)
                         {
                             _logger.LogError($" - {error.Description}");
                         }
@@ -47,8 +44,8 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
         public List<ApplicationRole> GetRoles()
         {
-            return new List<ApplicationRole>
-            {
+            return
+            [
                 new ApplicationRole { Name = "Administrator", Description = "系统管理员，拥有所有权限。" },
                 new ApplicationRole { Name = "Manager", Description = "项目经理，负责项目管理和团队协调。" },
                 new ApplicationRole { Name = "Developer", Description = "开发人员，负责编码和实现功能。" },
@@ -59,7 +56,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                 new ApplicationRole { Name = "Sales", Description = "销售人员，负责销售和市场推广。" },
                 new ApplicationRole { Name = "Marketing", Description = "市场营销，负责市场分析和营销策略。" },
                 new ApplicationRole { Name = "Guest", Description = "访客，具有最低权限的用户。" }
-            };
+            ];
         }
     }
 }

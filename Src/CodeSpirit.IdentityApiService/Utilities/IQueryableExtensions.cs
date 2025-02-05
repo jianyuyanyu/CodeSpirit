@@ -1,6 +1,4 @@
 ﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
-using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.Shared.Extensions;
 using System.Linq.Dynamic.Core;
 using System.Linq.Dynamic.Core.Exceptions;
 
@@ -15,9 +13,9 @@ namespace CodeSpirit.IdentityApi.Utilities
                 return query;
             }
 
-            var sortField = orderBy.Trim().ToLower();
-            var sortOrder = orderDir?.ToLower() == "desc" ? "descending" : "ascending";
-            var ordering = $"{orderBy} {sortOrder}";
+            string sortField = orderBy.Trim().ToLower();
+            string sortOrder = orderDir?.ToLower() == "desc" ? "descending" : "ascending";
+            string ordering = $"{orderBy} {sortOrder}";
 
             try
             {
@@ -41,13 +39,13 @@ namespace CodeSpirit.IdentityApi.Utilities
 
         public static IQueryable<T> ApplyPaging<T>(this IQueryable<T> query, int page, int perPage)
         {
-            var skip = (page - 1) * perPage;
+            int skip = (page - 1) * perPage;
             return query.Skip(skip).Take(perPage);
         }
 
         public static IQueryable<T> ApplyPaging<T>(this IQueryable<T> query, QueryDtoBase queryDto)
         {
-            var skip = (queryDto.Page - 1) * queryDto.PerPage;
+            int skip = (queryDto.Page - 1) * queryDto.PerPage;
             return query.Skip(skip).Take(queryDto.PerPage);
         }
     }

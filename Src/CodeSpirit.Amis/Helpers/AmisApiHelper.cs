@@ -1,6 +1,6 @@
-﻿using System.Reflection;
-using CodeSpirit.Amis.Helpers.Dtos;
+﻿using CodeSpirit.Amis.Helpers.Dtos;
 using Newtonsoft.Json.Linq;
+using System.Reflection;
 
 namespace CodeSpirit.Amis.Helpers
 {
@@ -15,7 +15,7 @@ namespace CodeSpirit.Amis.Helpers
 
         public JObject CreateApiForMethod(MethodInfo method)
         {
-            var apiRoute = apiRouteHelper.GetApiRouteInfoForMethod(method);
+            ApiRouteInfo apiRoute = apiRouteHelper.GetApiRouteInfoForMethod(method);
             return CreateApi(apiRoute);
         }
 

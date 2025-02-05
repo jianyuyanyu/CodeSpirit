@@ -1,5 +1,4 @@
-﻿using CodeSpirit.Amis;
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace CodeSpirit.Amis.Helpers
 {
@@ -13,10 +12,10 @@ namespace CodeSpirit.Amis.Helpers
         public CrudActions HasCrudActions(Type controller)
         {
             // 初始化 CRUD 操作对象
-            var actions = new CrudActions();
+            CrudActions actions = new CrudActions();
 
             // 获取控制器的所有公共实例方法
-            var methods = GetControllerMethods(controller);
+            IEnumerable<MethodInfo> methods = GetControllerMethods(controller);
 
             // 查找符合创建操作前缀的方法
             actions.Create = FindMethodByActionPrefix(methods, ["Create", "Add", "Post"]);

@@ -1,6 +1,6 @@
 ﻿// Controllers/AuthController.cs
-using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -40,7 +40,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             if (pageNumber <= 0) pageNumber = 1;
             if (pageSize <= 0) pageSize = 20;
 
-            var query = _context.LoginLogs
+            IQueryable<Data.Models.LoginLog> query = _context.LoginLogs
                 .Include(l => l.User)
                 .AsQueryable();
 
@@ -54,16 +54,16 @@ namespace CodeSpirit.IdentityApi.Controllers
                 query = query.Where(l => l.IsSuccess == isSuccess.Value);
             }
 
-            var totalRecords = await query.CountAsync();
-            var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
+            int totalRecords = await query.CountAsync();
+            int totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
 
-            var logs = await query
+            List<Data.Models.LoginLog> logs = await query
                 .OrderByDescending(l => l.LoginTime)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            var logDtos = logs.Select(l => new LoginLogDto
+            IEnumerable<LoginLogDto> logDtos = logs.Select(l => new LoginLogDto
             {
                 Id = l.Id,
                 UserId = l.UserId,
@@ -74,7 +74,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 FailureReason = l.FailureReason
             });
 
-            var pagedResult = new PagedResult<LoginLogDto>
+            PagedResult<LoginLogDto> pagedResult = new PagedResult<LoginLogDto>
             {
                 Items = logDtos,
                 TotalRecords = totalRecords,
@@ -94,7 +94,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<LoginLogDto>> GetLoginLog(int id)
         {
-            var log = await _context.LoginLogs
+            Data.Models.LoginLog log = await _context.LoginLogs
                 .Include(l => l.User)
                 .FirstOrDefaultAsync(l => l.Id == id);
 
@@ -103,7 +103,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return NotFound();
             }
 
-            var logDto = new LoginLogDto
+            LoginLogDto logDto = new LoginLogDto
             {
                 Id = log.Id,
                 UserId = log.UserId,

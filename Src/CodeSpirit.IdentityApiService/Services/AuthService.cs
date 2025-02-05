@@ -1,17 +1,12 @@
 ﻿// Services/AuthService.cs
+using AutoMapper;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Repositories;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.AspNetCore.Http;  // 引入 HttpContextAccessor
-using System;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
-using Microsoft.IdentityModel.Tokens;
-using AutoMapper;
 
 namespace CodeSpirit.IdentityApi.Services
 {
@@ -56,7 +51,7 @@ namespace CodeSpirit.IdentityApi.Services
         private string GetClientIpAddress()
         {
             // 从请求头中获取代理服务器（如果有的话）设置的客户端 IP 地址
-            var remoteIpAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+            string remoteIpAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
             return remoteIpAddress ?? "NotAvailable"; // 如果为空，返回默认值
         }
 
@@ -68,8 +63,8 @@ namespace CodeSpirit.IdentityApi.Services
         /// <returns>返回一个包含登录成功与否、信息和JWT Token的元组</returns>
         public async Task<(bool Success, string Message, string Token, UserDto UserInfo)> LoginAsync(string userName, string password)
         {
-            var user = await _userManager.FindByNameAsync(userName);
-            var loginLog = CreateLoginLog(user);
+            ApplicationUser user = await _userManager.FindByNameAsync(userName);
+            LoginLog loginLog = CreateLoginLog(user);
 
             // 如果用户不存在，记录登录日志并返回失败信息
             if (user == null)
@@ -80,7 +75,7 @@ namespace CodeSpirit.IdentityApi.Services
             }
 
             // 检查用户密码是否正确并处理结果
-            var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+            SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
 
             if (result.Succeeded)
             {
@@ -124,10 +119,10 @@ namespace CodeSpirit.IdentityApi.Services
             await _loginLogRepository.AddLoginLogAsync(loginLog);
 
             // 生成JWT Token
-            var token = GenerateJwtToken(user);
+            string token = GenerateJwtToken(user);
 
             // 将用户对象映射到DTO对象
-            var userDto = _mapper.Map<UserDto>(user);
+            UserDto userDto = _mapper.Map<UserDto>(user);
 
             // 返回成功信息、Token和用户信息
             return (true, "登录成功", token, userDto);
@@ -159,7 +154,7 @@ namespace CodeSpirit.IdentityApi.Services
         private string GenerateJwtToken(ApplicationUser user)
         {
             // 构建JWT声明
-            var claims = new[]
+            Claim[] claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
@@ -168,11 +163,11 @@ namespace CodeSpirit.IdentityApi.Services
             };
 
             // 创建加密密钥和签名凭证
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            SymmetricSecurityKey key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
+            SigningCredentials credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             // 生成JWT Token
-            var token = new JwtSecurityToken(
+            JwtSecurityToken token = new JwtSecurityToken(
                 issuer: _issuer,
                 audience: _audience,
                 claims: claims,

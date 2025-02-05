@@ -21,7 +21,6 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
     - [x] 支持PageAttribute
 
     - [x] 支持配置文件配置（PagesConfiguration）
-
 - [x] 增删改查
 
   - [x] 基于QueryDto生成查询表单
@@ -32,9 +31,8 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
       - [x] string——>text
       - [x] DateTime[]——>日期范围
       - [ ] Int[]——>整数范围
-
   - [x] 基于列表方法生成列表
-
+  
     - [x] 分页
     - [x] 支持嵌套
     - [x] 列
@@ -114,9 +112,8 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
           - [x] DataType.ImageUrl
         - [x] 自定义错误消息
           - [x] `[RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "用户名只能包含字母、数字和下划线。")]`
-          - [x] `[Required(ErrorMessage = "请填写姓名！")]`
       - [ ] 并发控制
-      - [x] 支持描述：`DescriptionAttribute`
+      - [x] 支持字段描述：`DescriptionAttribute`
 
 ### 后台代码
 
@@ -145,6 +142,9 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
 - [ ] 配置中心集成
 - [ ] 日志服务
 - [ ] 审计服务
+- [ ] 权限控制
+  - [ ] 自动获取权限树
+
 - [ ] ORM封装
   - [ ] 实体基类
   - [ ] 事件触发器

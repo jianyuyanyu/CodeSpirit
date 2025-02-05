@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Amis", "Src\Code
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Core", "Src\CodeSpirit.Core\CodeSpirit.Core.csproj", "{A8B78C7A-8390-409B-B909-8AD826A38063}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Authorization", "Src\CodeSpirit.Authorization\CodeSpirit.Authorization.csproj", "{DCEB4A00-9768-49C1-81C7-1A5E88E5A4B4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -70,6 +72,10 @@ Global
 		{A8B78C7A-8390-409B-B909-8AD826A38063}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A8B78C7A-8390-409B-B909-8AD826A38063}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A8B78C7A-8390-409B-B909-8AD826A38063}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DCEB4A00-9768-49C1-81C7-1A5E88E5A4B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCEB4A00-9768-49C1-81C7-1A5E88E5A4B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCEB4A00-9768-49C1-81C7-1A5E88E5A4B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCEB4A00-9768-49C1-81C7-1A5E88E5A4B4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,5 +1,5 @@
 ﻿// Controllers/AuthController.cs
-namespace CodeSpirit.IdentityApi.Controllers
+namespace CodeSpirit.IdentityApi.Controllers.Dtos
 {
     /// <summary>
     /// 登录日志数据传输对象。

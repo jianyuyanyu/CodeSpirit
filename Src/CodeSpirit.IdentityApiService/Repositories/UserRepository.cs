@@ -1,5 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Data;
+﻿using CodeSpirit.IdentityApi.Data;
+using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

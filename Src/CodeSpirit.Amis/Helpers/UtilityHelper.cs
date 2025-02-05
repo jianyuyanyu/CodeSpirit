@@ -1,5 +1,4 @@
-﻿using CodeSpirit.Core;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -46,8 +45,8 @@ namespace CodeSpirit.Amis.Helpers
 
             try
             {
-                var additional = JObject.Parse(additionalConfig);
-                foreach (var prop in additional.Properties())
+                JObject additional = JObject.Parse(additionalConfig);
+                foreach (JProperty prop in additional.Properties())
                 {
                     field[prop.Name] = prop.Value;
                 }
@@ -63,7 +62,7 @@ namespace CodeSpirit.Amis.Helpers
             if (string.IsNullOrEmpty(input) || !char.IsUpper(input[0]))
                 return input;
 
-            var chars = input.ToCharArray();
+            char[] chars = input.ToCharArray();
             for (int i = 0; i < chars.Length; i++)
             {
                 if (i == 0 || (i > 0 && char.IsUpper(chars[i])))
@@ -140,9 +139,9 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>AMIS 枚举选项的 JSON 数组。</returns>
         public JArray GetEnumOptions(Type type)
         {
-            var enumType = Nullable.GetUnderlyingType(type) ?? type;
-            var enumValues = Enum.GetValues(enumType).Cast<object>();
-            var enumOptions = enumValues.Select(e => new JObject
+            Type enumType = Nullable.GetUnderlyingType(type) ?? type;
+            IEnumerable<object> enumValues = Enum.GetValues(enumType).Cast<object>();
+            IEnumerable<JObject> enumOptions = enumValues.Select(e => new JObject
             {
                 ["label"] = GetEnumDisplayName(enumType, e),
                 ["value"] = e.ToString()
@@ -159,15 +158,15 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>枚举成员的显示名称。</returns>
         public string GetEnumDisplayName(Type enumType, object value)
         {
-            var name = Enum.GetName(enumType, value);
+            string name = Enum.GetName(enumType, value);
             if (name == null)
                 return value.ToString();
 
-            var member = enumType.GetMember(name).FirstOrDefault();
+            MemberInfo member = enumType.GetMember(name).FirstOrDefault();
             if (member == null)
                 return name;
 
-            var displayNameAttr = member.GetCustomAttribute<DisplayAttribute>();
+            DisplayAttribute displayNameAttr = member.GetCustomAttribute<DisplayAttribute>();
             return displayNameAttr?.Name ?? name;
         }
 
@@ -201,7 +200,7 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>如果是可空枚举类型则返回 true，否则返回 false。</returns>
         public bool IsNullableEnum(Type type)
         {
-            var underlying = Nullable.GetUnderlyingType(type);
+            Type underlying = Nullable.GetUnderlyingType(type);
             return underlying != null && underlying.IsEnum;
         }
 
@@ -214,14 +213,14 @@ namespace CodeSpirit.Amis.Helpers
         {
             if (type.IsGenericType)
             {
-                var genericDef = type.GetGenericTypeDefinition();
+                Type genericDef = type.GetGenericTypeDefinition();
                 if (genericDef == typeof(ActionResult<>))
                 {
                     return type.GetGenericArguments()[0];
                 }
                 if (genericDef == typeof(Task<>))
                 {
-                    var taskInnerType = type.GetGenericArguments()[0];
+                    Type taskInnerType = type.GetGenericArguments()[0];
                     if (taskInnerType.IsGenericType && taskInnerType.GetGenericTypeDefinition() == typeof(ActionResult<>))
                     {
                         return taskInnerType.GetGenericArguments()[0];
@@ -243,10 +242,10 @@ namespace CodeSpirit.Amis.Helpers
 
             if (type.IsGenericType)
             {
-                var genericDef = type.GetGenericTypeDefinition();
+                Type genericDef = type.GetGenericTypeDefinition();
                 if (genericDef == typeof(ApiResponse<>))
                 {
-                    var innerType = type.GetGenericArguments()[0];
+                    Type innerType = type.GetGenericArguments()[0];
                     if (innerType.IsGenericType && innerType.GetGenericTypeDefinition() == typeof(ListData<>))
                     {
                         return innerType.GetGenericArguments()[0];
@@ -272,7 +271,7 @@ namespace CodeSpirit.Amis.Helpers
             if (method == null)
                 return null;
 
-            var returnType = method.ReturnType;
+            Type returnType = method.ReturnType;
             return ExtractDataType(GetUnderlyingType(returnType));
         }
 

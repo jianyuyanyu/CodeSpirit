@@ -18,6 +18,7 @@ public class PermissionService
     /// 权限树根节点集合（一般每个控制器为一个根节点，其下挂载动作节点）
     /// </summary>
     private readonly List<PermissionNode> _permissionTree = [];
+
     /// <summary>
     /// 构造函数，通过依赖注入的 IServiceProvider 获取应用中所有控制器类型，
     /// 并构造权限树。
@@ -33,10 +34,17 @@ public class PermissionService
         // 遍历每个控制器，构造控制器节点和对应的动作节点
         foreach (var controller in controllerFeature.Controllers)
         {
-            // 获取控制器名称
+            // 获取控制器名称并短化（剔除 "Controller" 后缀）
             string controllerName = controller.Name;
-            // 通过 DisplayNameAttribute 获取控制器描述，若未设置则使用控制器名称
+            if (controllerName.EndsWith("Controller"))
+            {
+                controllerName = controllerName.Substring(0, controllerName.Length - "Controller".Length);
+            }
+            // 通过 DisplayNameAttribute 获取控制器描述，若未设置则使用控制器短名
             string controllerDescription = controller.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? controllerName;
+
+            // 获取控制器上定义的路由模板（若有）
+            string controllerRoute = controller.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
 
             // 创建控制器节点（根节点），控制器节点无需请求路径和请求方法
             var controllerNode = new PermissionNode(controllerName, controllerDescription);
@@ -50,24 +58,31 @@ public class PermissionService
             // 遍历控制器中的每个动作方法
             foreach (var action in actions)
             {
-                // 默认的动作名称和描述
-                string actionName = action.Name;
-                string actionDescription = action.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? actionName;
-                // 获取动作请求路径（例如通过 RouteAttribute 指定的模板）
-                string actionPath = GetActionPath(action);
-                // 获取动作支持的 HTTP 请求方法（GET、POST 等）
-                string requestMethod = GetRequestMethod(action);
+                // 默认的动作短名称与描述
+                string actionShortName = action.Name;
+                string actionDescription = action.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? actionShortName;
 
-                // 如果动作上定义了自定义的 PermissionAttribute，则使用该特性中的信息覆盖默认值
+                // 检查是否定义了自定义的 PermissionAttribute，若有则使用其中的名称和描述
                 var permissionAttribute = action.GetCustomAttribute<PermissionAttribute>();
                 if (permissionAttribute != null)
                 {
-                    actionName = permissionAttribute.Name;
+                    actionShortName = permissionAttribute.Name;
                     actionDescription = permissionAttribute.Description;
                 }
 
-                // 创建动作节点，其中 Parent 字段设置为所属控制器名称
-                var actionNode = new PermissionNode(actionName, actionDescription, controllerName, actionPath, requestMethod);
+                // 构造权限名称，格式为 "{controllerShortName}_{actionShortName}"
+                string permissionName = $"{controllerName}_{actionShortName}";
+
+                // 获取动作上定义的路由模板（若有）
+                string actionRoute = action.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
+                // 合并控制器与动作路由，得到实际请求路径
+                string actionPath = CombineRoutes(controllerRoute, actionRoute, controllerName);
+
+                // 获取动作支持的 HTTP 请求方法（GET、POST 等）
+                string requestMethod = GetRequestMethod(action);
+
+                // 创建动作节点，其中 Parent 字段设置为所属控制器短名
+                var actionNode = new PermissionNode(permissionName, actionDescription, controllerName, actionPath, requestMethod);
                 controllerNode.Children.Add(actionNode);
             }
         }
@@ -105,14 +120,25 @@ public class PermissionService
     public List<PermissionNode> GetPermissionTree() => _permissionTree;
 
     /// <summary>
-    /// 获取指定动作方法的请求路径，优先使用 RouteAttribute 指定的模板
+    /// 合并控制器和动作的路由模板，构造实际的请求路径。
+    /// 例如：控制器模板为 "api/[controller]"，动作模板为 "getAll"，
+    /// 合并后为 "api/getAll"（若控制器模板中存在占位符，则需根据实际情况处理）。
     /// </summary>
-    /// <param name="action">动作方法的反射信息</param>
-    /// <returns>请求路径模板字符串，若未定义则返回空字符串</returns>
-    private string GetActionPath(MethodInfo action)
+    /// <param name="controllerRoute">控制器路由模板</param>
+    /// <param name="actionRoute">动作路由模板</param>
+    /// <returns>实际请求路径</returns>
+    private string CombineRoutes(string controllerRoute, string actionRoute, string controllerName)
     {
-        var routeAttribute = action.GetCustomAttribute<RouteAttribute>();
-        return routeAttribute?.Template ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(controllerRoute))
+            return actionRoute ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(actionRoute))
+            return controllerRoute;
+
+        // 替换控制器路由中的 [controller] 为控制器短名
+        controllerRoute = controllerRoute.Replace("[controller]", controllerName);
+
+        // 注意：此处简单处理 "/" 分隔符，若存在占位符请根据实际业务逻辑进一步处理
+        return $"{controllerRoute.TrimEnd('/')}/{actionRoute.TrimStart('/')}";
     }
 
     /// <summary>
@@ -124,15 +150,15 @@ public class PermissionService
     private string GetRequestMethod(MethodInfo action)
     {
         // 判断动作方法是否标识了各类 HTTP 请求特性
-        if (action.IsDefined(typeof(HttpGetAttribute), false))
+        if (action.IsDefined(typeof(HttpGetAttribute), inherit: false))
             return "GET";
-        if (action.IsDefined(typeof(HttpPostAttribute), false))
+        if (action.IsDefined(typeof(HttpPostAttribute), inherit: false))
             return "POST";
-        if (action.IsDefined(typeof(HttpPutAttribute), false))
+        if (action.IsDefined(typeof(HttpPutAttribute), inherit: false))
             return "PUT";
-        if (action.IsDefined(typeof(HttpDeleteAttribute), false))
+        if (action.IsDefined(typeof(HttpDeleteAttribute), inherit: false))
             return "DELETE";
-        if (action.IsDefined(typeof(HttpPatchAttribute), false))
+        if (action.IsDefined(typeof(HttpPatchAttribute), inherit: false))
             return "PATCH";
         // 可根据需要添加更多 HTTP 方法支持
 

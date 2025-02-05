@@ -185,5 +185,24 @@ namespace CodeSpirit.Authorization
             // 默认返回空字符串，表示未定义请求方法
             return string.Empty;
         }
+
+        // 权限代码生成方法
+        private string GeneratePermissionCode(PermissionNode permissionNode)
+        {
+            string rawCode = $"{permissionNode.RequestMethod}:{permissionNode.Name}";
+            return GenerateShortCode(rawCode);
+        }
+
+        private string GenerateShortCode(string input)
+        {
+            // 使用 MD5 哈希并取前8位字符生成简短的权限代码
+            using (var md5 = System.Security.Cryptography.MD5.Create())
+            {
+                byte[] inputBytes = System.Text.Encoding.UTF8.GetBytes(input);
+                byte[] hashBytes = md5.ComputeHash(inputBytes);
+                string shortCode = BitConverter.ToString(hashBytes).Replace("-", "").Substring(0, 8);  // 截取前8位
+                return shortCode;
+            }
+        }
     }
 }

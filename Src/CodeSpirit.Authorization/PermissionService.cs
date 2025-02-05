@@ -47,8 +47,11 @@ namespace CodeSpirit.Authorization
                 // 获取控制器上定义的路由模板（若有）
                 string controllerRoute = controller.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
 
+                // 合并控制器与动作路由，得到实际请求路径
+                string controllerPath = CombineRoutes(controllerRoute, null, controllerName);
+
                 // 创建控制器节点（根节点），控制器节点无需请求路径和请求方法
-                var controllerNode = new PermissionNode($"{moduleName}_{controllerName}".TrimStart('_'), controllerDescription);
+                var controllerNode = new PermissionNode($"{moduleName}_{controllerName}".TrimStart('_'), controllerDescription, path: controllerPath);
                 _permissionTree.Add(controllerNode);
 
                 // 获取控制器中所有公共实例方法，并排除继承自基类的方法

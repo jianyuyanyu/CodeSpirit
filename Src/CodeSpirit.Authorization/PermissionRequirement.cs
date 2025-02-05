@@ -1,11 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-
-public class PermissionRequirement : IAuthorizationRequirement
+namespace CodeSpirit.Authorization
 {
-    //public string PermissionName { get; }
+    public class PermissionRequirement : IAuthorizationRequirement
+    {
+        //public string PermissionName { get; }
 
-    //public PermissionRequirement(string permissionName)
-    //{
-    //    PermissionName = permissionName;
-    //}
+        //public PermissionRequirement(string permissionName)
+        //{
+        //    PermissionName = permissionName;
+        //}
+    }
 }

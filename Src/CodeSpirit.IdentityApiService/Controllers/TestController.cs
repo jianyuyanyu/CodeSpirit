@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CodeSpirit.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {

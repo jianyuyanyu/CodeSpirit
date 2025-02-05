@@ -2,6 +2,7 @@
 
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Core.Authorization;
+using CodeSpirit.Core.Extensions;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -136,7 +137,7 @@ namespace CodeSpirit.Amis.Form
             if (field["name"] != null && parentName != null)
             {
                 string originalName = field["name"].ToString();
-                field["name"] = _utilityHelper.ToCamelCase($"{parentName}.{originalName}");
+                field["name"] = $"{parentName}.{originalName}".ToCamelCase();
             }
         }
 

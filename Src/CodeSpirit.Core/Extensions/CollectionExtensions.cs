@@ -1,4 +1,7 @@
-﻿namespace CodeSpirit.Shared.Extensions
+﻿using System;
+using System.Collections.Generic;
+
+namespace CodeSpirit.Core.Extensions
 {
     public static class CollectionExtensions
     {

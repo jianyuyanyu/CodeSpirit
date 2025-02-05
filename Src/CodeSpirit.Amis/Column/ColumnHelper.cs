@@ -2,6 +2,7 @@
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Core.Authorization;
+using CodeSpirit.Core.Extensions;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 using System.ComponentModel;
@@ -116,7 +117,7 @@ namespace CodeSpirit.Amis.Column
             // 获取属性的显示名称，优先使用 DisplayNameAttribute
             string displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
             // 将属性名称转换为 camelCase 以符合 AMIS 的命名约定
-            string fieldName = _utilityHelper.ToCamelCase(prop.Name);
+            string fieldName = prop.Name.ToCamelCase();
 
             JObject column = new JObject
             {
@@ -223,8 +224,8 @@ namespace CodeSpirit.Amis.Column
             // 获取 ListItemAttribute 特性，如果存在
             ListColumnAttribute listItemAttr = prop.GetCustomAttribute<ListColumnAttribute>();
             // 使用特性中的配置字段，若特性没有配置，则使用默认值
-            listItem["title"] = $"${{{_utilityHelper.ToCamelCase(listItemAttr?.Title ?? "titile")}}}";
-            listItem["subTitle"] = $"${{{_utilityHelper.ToCamelCase(listItemAttr?.SubTitle ?? "subTitile")}}}";
+            listItem["title"] = $"${{{listItemAttr?.Title.ToCamelCase() ?? "titile"}}}";
+            listItem["subTitle"] = $"${{{listItemAttr?.SubTitle ?? "subTitile".ToCamelCase()}}}";
             listItem["placeholder"] = listItemAttr?.Placeholder ?? "-";
             return listItem;
         }

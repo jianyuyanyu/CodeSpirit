@@ -3,6 +3,7 @@ using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using CodeSpirit.Core.Extensions;
 
 namespace CodeSpirit.Amis.Helpers
 {
@@ -34,8 +35,8 @@ namespace CodeSpirit.Amis.Helpers
             };
 
             return parentName != null
-                ? ToCamelCase($"{parentName}.{name}")
-                : ToCamelCase(name);
+                ? $"{parentName}.{name}".ToCamelCase()
+                : name.ToCamelCase();
         }
 
         public void HandleAdditionalConfig(string additionalConfig, JObject field)
@@ -55,22 +56,6 @@ namespace CodeSpirit.Amis.Helpers
             {
                 throw new ArgumentException($"Invalid AdditionalConfig JSON: {ex.Message}");
             }
-        }
-
-        public string ToCamelCase(string input)
-        {
-            if (string.IsNullOrEmpty(input) || !char.IsUpper(input[0]))
-                return input;
-
-            char[] chars = input.ToCharArray();
-            for (int i = 0; i < chars.Length; i++)
-            {
-                if (i == 0 || (i > 0 && char.IsUpper(chars[i])))
-                    chars[i] = char.ToLower(chars[i]);
-                else
-                    break;
-            }
-            return new string(chars);
         }
 
         public string ToTitleCase(string input)

@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Core.Authorization;
+using CodeSpirit.Core.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
@@ -139,7 +140,7 @@ namespace CodeSpirit.Amis.Helpers
             // 获取显示名称，如果未定义则转换参数名为标题格式
             string label = param.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(param.Name);
             // 转换参数名为驼峰命名
-            string fieldName = _utilityHelper.ToCamelCase(param.Name);
+            string fieldName = param.Name.ToCamelCase();
             // 确定字段类型
             string fieldType = DetermineSearchFieldType(param.ParameterType);
 
@@ -176,7 +177,7 @@ namespace CodeSpirit.Amis.Helpers
             // 获取显示名称，如果未定义则转换属性名为标题格式
             string label = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
             // 构建嵌套字段名，例如 parent.property
-            string fieldName = _utilityHelper.ToCamelCase($"{prop.Name}");
+            string fieldName = $"{prop.Name}".ToCamelCase();
             // 确定字段类型
             string fieldType = DetermineSearchFieldType(prop.PropertyType);
 

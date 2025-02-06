@@ -53,11 +53,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             var permissions = _permissionService.GetPermissionTree();
 
-            List<PermissionTreeDto> tree = _mapper.Map<List<PermissionTreeDto>>(
-                permissions
-                    .Where(p => p.Parent == null)
-                    .ToList()
-            );
+            var tree = _mapper.Map<List<PermissionTreeDto>>(permissions);
 
             return Ok(tree);
         }

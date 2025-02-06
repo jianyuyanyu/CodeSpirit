@@ -23,5 +23,3 @@ public class RolePermission
     [MaxLength(5000)]
     public string[] PermissionIds { get; set; }
 }
-
-

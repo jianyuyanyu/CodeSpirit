@@ -361,8 +361,11 @@ namespace CodeSpirit.Amis.Column
             // 如果用户有编辑权限，则添加编辑按钮
             if (_permissionService.HasPermission($"{controllerName}Edit"))
             {
-                JObject editButton = buttonHelper.CreateEditButton(updateRoute, actions.Update?.GetParameters());
-                buttons.Add(editButton);
+                if (updateRoute != null && actions.Update != null)
+                {
+                    JObject editButton = buttonHelper.CreateEditButton(updateRoute, actions.Update?.GetParameters());
+                    buttons.Add(editButton);
+                }
             }
 
             // 如果用户有删除权限，则添加删除按钮

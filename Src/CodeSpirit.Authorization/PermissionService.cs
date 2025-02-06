@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -34,6 +35,11 @@ namespace CodeSpirit.Authorization
             // 遍历每个控制器，构造控制器节点和对应的动作节点
             foreach (var controller in controllerFeature.Controllers)
             {
+                if (controller.GetCustomAttribute<AllowAnonymousAttribute>() != null)
+                {
+                    continue;
+                }
+
                 // 获取模块名称：优先从 ModuleAttribute 获取，其次使用程序集名称
                 var moduleAttribute = controller.GetCustomAttribute<ModuleAttribute>() ?? controller.Assembly.GetCustomAttribute<ModuleAttribute>();
                 var moduleName = moduleAttribute?.Name;
@@ -63,6 +69,11 @@ namespace CodeSpirit.Authorization
                 // 遍历控制器中的每个动作方法
                 foreach (var action in actions)
                 {
+                    if (action.GetCustomAttribute<AllowAnonymousAttribute>() != null)
+                    {
+                        continue;
+                    }
+
                     // 默认的动作短名称与描述
                     string actionShortName = action.Name.ToCamelCase();
                     string actionDescription = action.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? actionShortName;

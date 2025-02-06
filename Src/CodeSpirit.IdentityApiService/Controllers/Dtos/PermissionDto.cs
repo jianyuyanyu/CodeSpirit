@@ -14,7 +14,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
 
         public string Description { get; set; }
 
-        public string ParentId { get; set; }
+        public string Parent { get; set; }
 
         public string Code { get; set; }
 

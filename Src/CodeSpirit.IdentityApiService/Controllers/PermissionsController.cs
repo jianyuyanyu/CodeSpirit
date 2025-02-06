@@ -34,9 +34,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             var permissions = _permissionService.GetPermissionTree();
 
-            List<PermissionDto> permissionDtos = _mapper.Map<List<PermissionDto>>(permissions)
-                .Where(p => p.ParentId == null) // 获取顶级权限
-                .ToList();
+            List<PermissionDto> permissionDtos = _mapper.Map<List<PermissionDto>>(permissions);
 
             ListData<PermissionDto> listData = new(permissionDtos, permissionDtos.Count);
 

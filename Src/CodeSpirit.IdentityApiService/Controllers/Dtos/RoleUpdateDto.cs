@@ -27,6 +27,6 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         Required = true,
         Placeholder = "请选择权限"
         )]
-        public List<int> PermissionIds { get; set; }
+        public List<string> PermissionIds { get; set; }
     }
 }

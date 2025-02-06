@@ -9,7 +9,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         /// <summary>
         /// 节点的唯一标识。
         /// </summary>
-        public int Id { get; set; }
+        public string Id { get; set; }
 
         /// <summary>
         /// 节点的显示名称。

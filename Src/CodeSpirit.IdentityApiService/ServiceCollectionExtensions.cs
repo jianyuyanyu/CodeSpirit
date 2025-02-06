@@ -66,8 +66,6 @@ public static class ServiceCollectionExtensions
 
         // 注册 Seeder 类
         services.AddScoped<RoleSeeder>();
-        services.AddScoped<PermissionSeeder>();
-        services.AddScoped<RolePermissionAssigner>();
         services.AddScoped<UserSeeder>();
         services.AddScoped<SeederService>();
 

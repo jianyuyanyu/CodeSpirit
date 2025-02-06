@@ -1,10 +1,9 @@
 ﻿using AutoMapper;
+using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
-using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using System.ComponentModel;
 
@@ -12,7 +11,6 @@ namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize(Roles = "Administrator")] // 仅管理员可以管理权限
     [DisplayName("权限管理")]
     [Page(Label = "权限管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-plus")]
     public class PermissionsController : ApiControllerBase
@@ -20,13 +18,13 @@ namespace CodeSpirit.IdentityApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IDistributedCache _cache;
         private readonly ILogger<PermissionsController> _logger;
+        private readonly PermissionService _permissionService;
         private readonly IMapper _mapper;
 
-        public PermissionsController(ApplicationDbContext context, IDistributedCache cache, ILogger<PermissionsController> logger, IMapper mapper)
+        public PermissionsController(PermissionService permissionService, IDistributedCache distributedCache, IMapper mapper)
         {
-            _context = context;
-            _cache = cache;
-            _logger = logger;
+            _cache = distributedCache;
+            _permissionService = permissionService;
             _mapper = mapper;
         }
 
@@ -34,158 +32,15 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet]
         public async Task<ActionResult<ApiResponse<ListData<PermissionDto>>>> GetPermissions()
         {
-            List<Permission> permissions = await _context.Permissions
-                .Include(p => p.Children)
-                .ToListAsync();
-
-            // 调试检查
-            foreach (Permission p in permissions)
-            {
-                _logger.LogInformation($"Permission: {p.Name}, Id：{p.Id}, ParentId：{p.ParentId}, Children Count: {p.Children?.Count}");
-            }
+            var permissions = _permissionService.GetPermissionTree();
 
             List<PermissionDto> permissionDtos = _mapper.Map<List<PermissionDto>>(permissions)
                 .Where(p => p.ParentId == null) // 获取顶级权限
                 .ToList();
 
-            ListData<PermissionDto> listData = new ListData<PermissionDto>(permissionDtos, permissionDtos.Count);
+            ListData<PermissionDto> listData = new(permissionDtos, permissionDtos.Count);
 
             return SuccessResponse(listData);
-        }
-
-        // GET: api/Permissions/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<PermissionDto>> GetPermission(int id)
-        {
-            Permission permission = await _context.Permissions
-                .Include(p => p.Children)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (permission == null)
-            {
-                return NotFound();
-            }
-
-            PermissionDto permissionDto = _mapper.Map<PermissionDto>(permission);
-
-            return Ok(permissionDto);
-        }
-
-        // POST: api/Permissions
-        [HttpPost]
-        public async Task<ActionResult<PermissionDto>> PostPermission(PermissionCreateDto permissionDto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            // 检查权限名称是否已存在
-            if (await _context.Permissions.AnyAsync(p => p.Name == permissionDto.Name))
-            {
-                return BadRequest("权限名称已存在。");
-            }
-
-            Permission permission = _mapper.Map<Permission>(permissionDto);
-
-            _context.Permissions.Add(permission);
-            await _context.SaveChangesAsync();
-
-            Permission createdPermission = await _context.Permissions
-                .Include(p => p.Children)
-                .FirstOrDefaultAsync(p => p.Id == permission.Id);
-
-            PermissionDto createdPermissionDto = _mapper.Map<PermissionDto>(createdPermission);
-
-            // 清理所有拥有相关权限的用户的权限缓存
-            await ClearUserPermissionsCacheByPermissionAsync(permission.Name);
-
-            return CreatedAtAction(nameof(GetPermission), new { id = permission.Id }, createdPermissionDto);
-        }
-
-        // PUT: api/Permissions/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutPermission(int id, PermissionUpdateDto permissionDto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            Permission permission = await _context.Permissions.FindAsync(id);
-            if (permission == null)
-            {
-                return NotFound();
-            }
-
-            // 检查是否有重名的权限
-            if (permission.Name != permissionDto.Name && await _context.Permissions.AnyAsync(p => p.Name == permissionDto.Name))
-            {
-                return BadRequest("权限名称已存在。");
-            }
-
-            _mapper.Map(permissionDto, permission);
-
-            _context.Entry(permission).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!PermissionExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            // 清理所有拥有相关权限的用户的权限缓存
-            await ClearUserPermissionsCacheByPermissionAsync(permission.Name);
-
-            return NoContent();
-        }
-
-        // DELETE: api/Permissions/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeletePermission(int id)
-        {
-            Permission permission = await _context.Permissions
-                .Include(p => p.Children)
-                .Include(p => p.RolePermissions)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (permission == null)
-            {
-                return NotFound();
-            }
-
-            // 检查是否有子权限
-            if (permission.Children != null && permission.Children.Any())
-            {
-                return BadRequest("该权限有子权限，无法删除。请先删除或移除子权限。");
-            }
-
-            // 移除与角色的关联
-            if (permission.RolePermissions != null && permission.RolePermissions.Any())
-            {
-                foreach (RolePermission role in permission.RolePermissions.ToList())
-                {
-                    permission.RolePermissions.Remove(role);
-                }
-            }
-
-            _context.Permissions.Remove(permission);
-            await _context.SaveChangesAsync();
-
-            // 清理所有拥有相关权限的用户的权限缓存
-            await ClearUserPermissionsCacheByPermissionAsync(permission.Name);
-
-            return NoContent();
         }
 
         // 新增的 GET: api/Permissions/Tree 端点
@@ -194,52 +49,17 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// </summary>
         /// <returns>权限树的 JSON 结构。</returns>
         [HttpGet("Tree")]
-        public async Task<ActionResult<List<PermissionTreeDto>>> GetPermissionTree()
+        public ActionResult<List<PermissionTreeDto>> GetPermissionTree()
         {
-            List<Permission> permissions = await _context.Permissions
-                .Include(p => p.Children)
-                .AsNoTracking()
-                .ToListAsync();
+            var permissions = _permissionService.GetPermissionTree();
 
             List<PermissionTreeDto> tree = _mapper.Map<List<PermissionTreeDto>>(
                 permissions
-                    .Where(p => p.ParentId == null)
+                    .Where(p => p.Parent == null)
                     .ToList()
             );
 
             return Ok(tree);
-        }
-
-        // 辅助方法：按权限清理拥有该权限的用户的权限缓存
-        private async Task ClearUserPermissionsCacheByPermissionAsync(string permissionName)
-        {
-            // 获取拥有该权限的角色 ID
-            List<string> roleIds = await _context.RolePermissions
-                .Where(rp => rp.Permission.Name == permissionName)
-                .Select(rp => rp.RoleId)
-                .Distinct()
-                .ToListAsync();
-
-            if (!roleIds.Any())
-                return;
-
-            // 获取拥有这些角色的用户 ID
-            List<string> userIds = await _context.UserRoles
-                .Where(ur => roleIds.Contains(ur.RoleId))
-                .Select(ur => ur.UserId)
-                .Distinct()
-                .ToListAsync();
-
-            foreach (string userId in userIds)
-            {
-                string cacheKey = $"UserPermissions_{userId}";
-                await _cache.RemoveAsync(cacheKey);
-            }
-        }
-
-        private bool PermissionExists(int id)
-        {
-            return _context.Permissions.Any(e => e.Id == id);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -35,6 +36,14 @@ namespace CodeSpirit.IdentityApi.Migrations
                     AvatarUrl = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     LastLoginTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    Gender = table.Column<int>(type: "int", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletionTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeleterUserId = table.Column<long>(type: "bigint", nullable: true),
+                    CreatorUserId = table.Column<long>(type: "bigint", nullable: true),
+                    CreationTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LastModifierUserId = table.Column<long>(type: "bigint", nullable: true),
+                    LastModificationTime = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -53,28 +62,6 @@ namespace CodeSpirit.IdentityApi.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ApplicationUser", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Permissions",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    IsAllowed = table.Column<bool>(type: "bit", nullable: false),
-                    ParentId = table.Column<int>(type: "int", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Permissions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Permissions_Permissions_ParentId",
-                        column: x => x.ParentId,
-                        principalTable: "Permissions",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -112,6 +99,25 @@ namespace CodeSpirit.IdentityApi.Migrations
                         principalTable: "ApplicationRole",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RolePermissions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    PermissionIds = table.Column<string>(type: "nvarchar(max)", maxLength: 5000, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RolePermissions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RolePermissions_ApplicationRole_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "ApplicationRole",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -223,31 +229,6 @@ namespace CodeSpirit.IdentityApi.Migrations
                         principalColumn: "Id");
                 });
 
-            migrationBuilder.CreateTable(
-                name: "RolePermissions",
-                columns: table => new
-                {
-                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    PermissionId = table.Column<int>(type: "int", nullable: false),
-                    IsAllowed = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_RolePermissions", x => new { x.RoleId, x.PermissionId });
-                    table.ForeignKey(
-                        name: "FK_RolePermissions_ApplicationRole_RoleId",
-                        column: x => x.RoleId,
-                        principalTable: "ApplicationRole",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_RolePermissions_Permissions_PermissionId",
-                        column: x => x.PermissionId,
-                        principalTable: "Permissions",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.CreateIndex(
                 name: "RoleNameIndex",
                 table: "ApplicationRole",
@@ -325,14 +306,11 @@ namespace CodeSpirit.IdentityApi.Migrations
                 column: "UserName");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Permissions_ParentId",
-                table: "Permissions",
-                column: "ParentId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_RolePermissions_PermissionId",
+                name: "IX_RolePermissions_RoleId",
                 table: "RolePermissions",
-                column: "PermissionId");
+                column: "RoleId",
+                unique: true,
+                filter: "[RoleId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Tenants_Name",
@@ -373,9 +351,6 @@ namespace CodeSpirit.IdentityApi.Migrations
 
             migrationBuilder.DropTable(
                 name: "ApplicationRole");
-
-            migrationBuilder.DropTable(
-                name: "Permissions");
         }
     }
 }

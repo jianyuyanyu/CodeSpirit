@@ -1,5 +1,4 @@
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Extensions;
@@ -9,6 +8,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Data;
 using System.Linq.Expressions;
@@ -21,15 +21,6 @@ namespace CodeSpirit.IdentityApi.Data
     IdentityRoleClaim<string>, IdentityUserToken<string>>
     {
         public DbSet<Tenant> Tenants { get; set; }
-        //public DbSet<ApplicationUser> Users { get; set; }
-
-        //public DbSet<ApplicationRole> Roles { get; set; }
-
-        //public DbSet<ApplicationUserRole> UserRoles { get; set; }
-        /// <summary>
-        /// 权限实体集。
-        /// </summary>
-        public DbSet<Permission> Permissions { get; set; }
 
         /// <summary>
         /// 角色与权限的关联实体集。
@@ -91,6 +82,12 @@ namespace CodeSpirit.IdentityApi.Data
         {
             base.OnModelCreating(builder);
 
+            // 定义一个转换器：将 string[] 转换为单一字符串存储，反之转换回来
+            var stringArrayConverter = new ValueConverter<string[], string>(
+                v => string.Join(",", v),   // 数组 -> 字符串（写入数据库时）
+                v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) // 字符串 -> 数组（读取数据库时）
+            );
+
             #region 用户
             builder.Entity<ApplicationUser>(b =>
             {
@@ -133,28 +130,10 @@ namespace CodeSpirit.IdentityApi.Data
                 //userRole.HasIndex(ur => new { ur.UserId, ur.RoleId }).IsUnique();
             });
 
-            // 配置权限的自引用关系（用于权限层级）
-            builder.Entity<Permission>()
-                .HasOne(p => p.Parent)
-                .WithMany(p => p.Children)
-                .HasForeignKey(p => p.ParentId)
-                .OnDelete(DeleteBehavior.Restrict); // 防止级联删除
-
-            // 配置角色与权限的多对多关系
+            // 应用转换器到 RolePermission 实体的 PermissionIds 属性
             builder.Entity<RolePermission>()
-                .HasKey(rp => new { rp.RoleId, rp.PermissionId });
-
-            builder.Entity<RolePermission>()
-                .HasOne(rp => rp.Role)
-                .WithMany(r => r.RolePermissions)
-                .HasForeignKey(rp => rp.RoleId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<RolePermission>()
-                .HasOne(rp => rp.Permission)
-                .WithMany(p => p.RolePermissions)
-                .HasForeignKey(rp => rp.PermissionId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .Property(rp => rp.PermissionIds)
+                .HasConversion(stringArrayConverter);
 
             // 配置 LoginLog 的索引
             builder.Entity<LoginLog>(entity =>

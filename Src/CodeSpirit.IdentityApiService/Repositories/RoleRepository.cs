@@ -1,7 +1,7 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
+﻿using CodeSpirit.Authorization;
+using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models;
 using CodeSpirit.IdentityApi.Utilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -15,13 +15,16 @@ namespace CodeSpirit.IdentityApi.Repositories
     {
         private readonly ApplicationDbContext _context;
         private readonly RoleManager<ApplicationRole> _roleManager;
+        private readonly PermissionService permissionService;
 
         public RoleRepository(
             ApplicationDbContext context,
-            RoleManager<ApplicationRole> roleManager)
+            RoleManager<ApplicationRole> roleManager,
+            PermissionService permissionService)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _roleManager = roleManager ?? throw new ArgumentNullException(nameof(roleManager));
+            this.permissionService = permissionService;
         }
 
         /// <summary>
@@ -33,7 +36,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         {
             // 基础查询包含权限信息
             IQueryable<ApplicationRole> query = _roleManager.Roles
-                .Include(r => r.RolePermissions)
+                .Include(r => r.RolePermission)
                 .AsQueryable();
 
             // 应用关键词过滤
@@ -61,8 +64,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         public async Task<ApplicationRole> GetRoleByIdAsync(string id)
         {
             return await _roleManager.Roles
-                .Include(r => r.RolePermissions)
-                    .ThenInclude(rp => rp.Permission)
+                .Include(r => r.RolePermission)
                 .FirstOrDefaultAsync(r => r.Id == id);
         }
 
@@ -70,18 +72,18 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// 创建新角色并关联权限
         /// </summary>
         /// <remarks>需要事务保证角色和权限的原子性操作</remarks>
-        public async Task CreateRoleAsync(ApplicationRole role, IEnumerable<int> permissionIds)
+        public async Task CreateRoleAsync(ApplicationRole role, IEnumerable<string> permissionIds)
         {
             // 验证权限是否存在
-            List<Permission> permissions = await _context.Permissions
-                .Where(p => permissionIds.Contains(p.Id))
-                .ToListAsync();
+            var permissions = permissionService.GetPermissionTree()
+                .Where(p => permissionIds.Contains(p.Code))
+                .Select(p => p.Code)
+                .ToArray();
 
-            // 构建角色-权限关联关系
-            role.RolePermissions = permissions.Select(p => new RolePermission
+            role.RolePermission = new RolePermission()
             {
-                PermissionId = p.Id,
-            }).ToList();
+                PermissionIds = permissions
+            };
 
             // 创建角色（自动级联创建关联的RolePermissions）
             await _roleManager.CreateAsync(role);
@@ -91,42 +93,12 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// 更新角色信息及其权限配置
         /// </summary>
         /// <param name="permissionIds">更新后的完整权限ID集合</param>
-        public async Task UpdateRoleAsync(ApplicationRole role, IEnumerable<int> permissionIds)
+        public async Task UpdateRoleAsync(ApplicationRole role, IEnumerable<string> permissionIds)
         {
-            // 获取当前权限ID集合
-            List<int> currentPermissionIds = role.RolePermissions
-                .Select(rp => rp.PermissionId)
-                .ToList();
-
-            // 计算需要添加和移除的权限
-            List<int> permissionsToAdd = permissionIds.Except(currentPermissionIds).ToList();
-            List<int> permissionsToRemove = currentPermissionIds.Except(permissionIds).ToList();
-
-            // 添加新权限
-            if (permissionsToAdd.Any())
+            role.RolePermission = new RolePermission()
             {
-                List<Permission> newPermissions = await GetPermissionsByIdsAsync(permissionsToAdd);
-                foreach (Permission permission in newPermissions)
-                {
-                    role.RolePermissions.Add(new RolePermission
-                    {
-                        Permission = permission
-                    });
-                }
-            }
-
-            // 移除旧权限
-            if (permissionsToRemove.Any())
-            {
-                List<RolePermission> removeList = role.RolePermissions
-                    .Where(rp => permissionsToRemove.Contains(rp.PermissionId))
-                    .ToList();
-
-                foreach (RolePermission rp in removeList)
-                {
-                    role.RolePermissions.Remove(rp);
-                }
-            }
+                PermissionIds = permissionIds.ToArray()
+            };
 
             await _roleManager.UpdateAsync(role);
         }
@@ -151,85 +123,5 @@ namespace CodeSpirit.IdentityApi.Repositories
             await _roleManager.DeleteAsync(role);
         }
 
-        /// <summary>
-        /// 为角色批量添加权限
-        /// </summary>
-        public async Task AssignPermissionsToRoleAsync(ApplicationRole role, IEnumerable<int> permissionIds)
-        {
-            HashSet<int> existingPermissionIds = role.RolePermissions
-                .Select(rp => rp.PermissionId)
-                .ToHashSet();
-
-            List<Permission> permissions = await GetPermissionsByIdsAsync(permissionIds);
-
-            foreach (Permission permission in permissions)
-            {
-                if (!existingPermissionIds.Contains(permission.Id))
-                {
-                    role.RolePermissions.Add(new RolePermission
-                    {
-                        Permission = permission
-                    });
-                }
-            }
-
-            await _roleManager.UpdateAsync(role);
-        }
-
-        /// <summary>
-        /// 从角色中移除指定权限（处理父子权限关系）
-        /// </summary>
-        /// <remarks>
-        /// 当移除子权限时，需要确保父权限保持有效状态：
-        /// 1. 如果父权限不存在于角色权限中，则自动添加父权限
-        /// 2. 保留原有权限的IsAllowed状态
-        /// </remarks>
-        public async Task RemovePermissionsFromRoleAsync(ApplicationRole role, IEnumerable<int> permissionIds)
-        {
-            List<RolePermission> removeList = role.RolePermissions
-                .Where(rp => permissionIds.Contains(rp.PermissionId))
-                .ToList();
-
-            foreach (RolePermission rp in removeList)
-            {
-                Permission permission = rp.Permission;
-
-                // 处理子权限的特殊情况
-                if (permission.ParentId.HasValue)
-                {
-                    Permission parentPermission = await _context.Permissions
-                        .FindAsync(permission.ParentId.Value);
-
-                    // 确保父权限存在且未被包含
-                    if (!role.RolePermissions.Any(x => x.PermissionId == parentPermission.Id))
-                    {
-                        role.RolePermissions.Add(new RolePermission
-                        {
-                            RoleId = role.Id,
-                            PermissionId = parentPermission.Id,
-                        });
-                    }
-                }
-
-                role.RolePermissions.Remove(rp);
-            }
-
-            await _roleManager.UpdateAsync(role);
-        }
-
-        #region Private Methods
-
-        /// <summary>
-        /// 根据ID集合获取权限实体（带缓存校验）
-        /// </summary>
-        private async Task<List<Permission>> GetPermissionsByIdsAsync(IEnumerable<int> ids)
-        {
-            List<int> uniqueIds = ids.Distinct().ToList();
-            return await _context.Permissions
-                .Where(p => uniqueIds.Contains(p.Id))
-                .ToListAsync();
-        }
-
-        #endregion
     }
 }

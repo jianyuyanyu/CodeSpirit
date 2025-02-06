@@ -28,8 +28,6 @@ public class SeederService
 
             // 初始化各个 Seeder
             RoleSeeder roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeeder>();
-            PermissionSeeder permissionSeeder = scope.ServiceProvider.GetRequiredService<PermissionSeeder>();
-            RolePermissionAssigner rolePermissionAssigner = scope.ServiceProvider.GetRequiredService<RolePermissionAssigner>();
             UserSeeder userSeeder = scope.ServiceProvider.GetRequiredService<UserSeeder>();
 
             // 获取角色和权限数据
@@ -38,16 +36,6 @@ public class SeederService
             // 创建角色
             await roleSeeder.SeedRolesAsync(roles);
             _logger.LogInformation("角色创建完毕！");
-
-            // 创建权限
-            await permissionSeeder.SeedPermissionsAsync();
-            _logger.LogInformation("权限创建完毕！");
-
-            // 该方法内部已记录日志
-
-            // 分配权限给角色
-            await rolePermissionAssigner.AssignPermissionsToRolesAsync(roles);
-            _logger.LogInformation("权限分配完毕！");
 
             // 创建管理员用户
             await userSeeder.SeedAdminUserAsync();

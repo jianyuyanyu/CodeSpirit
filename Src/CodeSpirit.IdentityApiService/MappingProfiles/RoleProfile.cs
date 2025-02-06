@@ -11,7 +11,7 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
             // 映射 ApplicationRole 到 RoleDto
             CreateMap<ApplicationRole, RoleDto>()
                 .ForMember(dest => dest.PermissionIds,
-                           opt => opt.MapFrom(src => src.RolePermissions != null ? src.RolePermissions.Select(rp => rp.PermissionId).ToList() : new List<int>()));
+                           opt => opt.MapFrom(src => src.RolePermission != null ? src.RolePermission.PermissionIds.ToList() : new List<string>()));
 
             // 映射 RoleCreateDto 到 ApplicationRole
             CreateMap<RoleCreateDto, ApplicationRole>();

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CodeSpirit.IdentityApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250203084814_ApplicationRole_Remove_IsAllowed")]
-    partial class ApplicationRole_Remove_IsAllowed
+    [Migration("20250206050237_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -238,33 +238,6 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.ToTable("LoginLogs");
                 });
 
-            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models.Permission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int?>("ParentId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ParentId");
-
-                    b.ToTable("Permissions");
-                });
-
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.Tenant", b =>
                 {
                     b.Property<int>("Id")
@@ -390,15 +363,24 @@ namespace CodeSpirit.IdentityApi.Migrations
 
             modelBuilder.Entity("RolePermission", b =>
                 {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("PermissionIds")
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("RoleId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("PermissionId")
-                        .HasColumnType("int");
+                    b.HasKey("Id");
 
-                    b.HasKey("RoleId", "PermissionId");
-
-                    b.HasIndex("PermissionId");
+                    b.HasIndex("RoleId")
+                        .IsUnique()
+                        .HasFilter("[RoleId] IS NOT NULL");
 
                     b.ToTable("RolePermissions");
                 });
@@ -429,16 +411,6 @@ namespace CodeSpirit.IdentityApi.Migrations
                         .HasForeignKey("UserId");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models.Permission", b =>
-                {
-                    b.HasOne("CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models.Permission", "Parent")
-                        .WithMany("Children")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Parent");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -479,26 +451,16 @@ namespace CodeSpirit.IdentityApi.Migrations
 
             modelBuilder.Entity("RolePermission", b =>
                 {
-                    b.HasOne("CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models.Permission", "Permission")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationRole", "Role")
-                        .WithMany("RolePermissions")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
+                        .WithOne("RolePermission")
+                        .HasForeignKey("RolePermission", "RoleId");
 
                     b.Navigation("Role");
                 });
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ApplicationRole", b =>
                 {
-                    b.Navigation("RolePermissions");
+                    b.Navigation("RolePermission");
 
                     b.Navigation("UserRoles");
                 });
@@ -506,13 +468,6 @@ namespace CodeSpirit.IdentityApi.Migrations
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", b =>
                 {
                     b.Navigation("UserRoles");
-                });
-
-            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.RoleManagementApiIdentity.Models.Permission", b =>
-                {
-                    b.Navigation("Children");
-
-                    b.Navigation("RolePermissions");
                 });
 #pragma warning restore 612, 618
         }

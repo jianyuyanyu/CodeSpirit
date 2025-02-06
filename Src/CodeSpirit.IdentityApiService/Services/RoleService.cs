@@ -53,7 +53,7 @@ namespace CodeSpirit.IdentityApi.Services
         public async Task DeleteRoleAsync(string id)
         {
             ApplicationRole role = await _roleRepository.GetRoleByIdAsync(id);
-            if (role.RolePermissions.Any())
+            if (role.RolePermission != null && role.RolePermission.PermissionIds != null)
             {
                 throw new AppServiceException(400, "请移除权限后再删除该角色！");
             }
@@ -70,13 +70,6 @@ namespace CodeSpirit.IdentityApi.Services
                 _cache.RemoveAsync($"UserPermissions_{userId}"));
 
             await Task.WhenAll(cacheTasks);
-        }
-
-        public async Task RemovePermissionsFromRoleAsync(string id, IEnumerable<int> permissionIds)
-        {
-            ApplicationRole role = await _roleRepository.GetRoleByIdAsync(id);
-            await _roleRepository.RemovePermissionsFromRoleAsync(role, permissionIds);
-            await ClearUserPermissionsCacheByRoleAsync(id);
         }
     }
 

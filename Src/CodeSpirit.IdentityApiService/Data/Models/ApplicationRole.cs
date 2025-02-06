@@ -14,7 +14,7 @@ namespace CodeSpirit.IdentityApi.Data.Models
         /// <summary>
         /// 角色与权限的多对多关系。
         /// </summary>
-        public ICollection<RolePermission> RolePermissions { get; set; }
+        public RolePermission RolePermission { get; set; }
 
         /// <summary>
         /// 角色与用户的多对多关系。

@@ -15,6 +15,6 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         public string Description { get; set; }
 
         [Column(Hidden = true)]
-        public List<int> PermissionIds { get; set; }
+        public List<string> PermissionIds { get; set; }
     }
 }

@@ -13,6 +13,7 @@ namespace CodeSpirit.Amis
         public MethodInfo Delete { get; set; }
         public MethodInfo QuickSave { get; set; }
         public MethodInfo Export { get; set; }
+        public MethodInfo Import { get; set; }
 
         /// <summary>
         /// 获取所有 CRUD 操作的方法集合。
@@ -26,6 +27,7 @@ namespace CodeSpirit.Amis
             if (Delete != null) yield return Delete;
             if (QuickSave != null) yield return QuickSave;
             if (Export != null) yield return Export;
+            if (Import != null) yield return Import;
         }
     }
 }

@@ -4,7 +4,7 @@
     /// 自定义特性，用于标注需要生成 AMIS InputTree 字段的属性或参数。
     /// </summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = false)]
-    public class AmisInputTreeFieldAttribute : AmisFieldAttribute
+    public class AmisInputTreeFieldAttribute : AmisFormFieldAttribute
     {
         /// <summary>
         /// 数据源接口，用于加载树形数据。

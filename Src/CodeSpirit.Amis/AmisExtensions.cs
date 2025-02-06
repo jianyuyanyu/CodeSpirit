@@ -2,6 +2,7 @@
 using CodeSpirit.Amis.Column;
 using CodeSpirit.Amis.Configuration;
 using CodeSpirit.Amis.Form;
+using CodeSpirit.Amis.Form.Fields;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.MappingProfiles;
 using CodeSpirit.Amis.Services;
@@ -36,6 +37,7 @@ namespace CodeSpirit.Amis
             services.AddTransient<IAmisFieldFactory, AmisInputImageFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisSelectFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisInputTreeFieldFactory>();
+            services.AddTransient<IAmisFieldFactory, AmisInputExcelFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisFieldAttributeFactory>();
 
             // 注册 AmisGenerator，并传递可选的 apiAssembly

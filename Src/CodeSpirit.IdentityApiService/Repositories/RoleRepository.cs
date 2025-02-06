@@ -123,5 +123,15 @@ namespace CodeSpirit.IdentityApi.Repositories
             await _roleManager.DeleteAsync(role);
         }
 
+        /// <summary>
+        /// 批量插入角色信息（高性能实现）
+        /// </summary>
+        /// <param name="roles">待导入的角色集合</param>
+        public async Task BulkInsertRolesAsync(IEnumerable<ApplicationRole> roles)
+        {
+            // 直接添加实体集合到 DbContext
+            await _context.AddRangeAsync(roles);
+            await _context.SaveChangesAsync();
+        }
     }
 }

@@ -62,9 +62,8 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         // 创建“新增”按钮
-        public JObject CreateHeaderButton(ApiRouteInfo createRoute, IEnumerable<ParameterInfo> createParameters)
+        public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null)
         {
-            string title = "新增";
             JObject dialogBody = new JObject
             {
                 ["title"] = title,
@@ -73,10 +72,10 @@ namespace CodeSpirit.Amis.Helpers
                     ["type"] = "form",
                     ["api"] = new JObject
                     {
-                        ["url"] = createRoute.ApiPath,
-                        ["method"] = createRoute.HttpMethod
+                        ["url"] = route.ApiPath,
+                        ["method"] = route.HttpMethod
                     },
-                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(createParameters))
+                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(formParameters))
                 },
             };
 

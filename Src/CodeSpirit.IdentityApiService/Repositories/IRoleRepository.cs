@@ -5,6 +5,7 @@ namespace CodeSpirit.IdentityApi.Repositories
 {
     public interface IRoleRepository
     {
+        Task BulkInsertRolesAsync(IEnumerable<ApplicationRole> roles);
         Task CreateRoleAsync(ApplicationRole role, IEnumerable<string> permissionIds);
         Task DeleteRoleAsync(ApplicationRole role);
         Task<ApplicationRole> GetRoleByIdAsync(string id);

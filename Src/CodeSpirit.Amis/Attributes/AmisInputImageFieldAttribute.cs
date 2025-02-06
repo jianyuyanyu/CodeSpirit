@@ -4,7 +4,7 @@
     /// 自定义属性，用于配置 AMIS 的 InputImage 字段。
     /// </summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = false)]
-    public class AmisInputImageFieldAttribute : AmisFieldAttribute
+    public class AmisInputImageFieldAttribute : AmisFormFieldAttribute
     {
         /// <summary>
         /// 图片上传的目标 URL。

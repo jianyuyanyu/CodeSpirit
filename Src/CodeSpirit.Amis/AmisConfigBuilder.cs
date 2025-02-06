@@ -71,7 +71,7 @@ namespace CodeSpirit.Amis
                 ["api"] = amisApiHelper.CreateApi(apiRoutes.Read),  // 设置 API 配置
                 ["quickSaveApi"] = amisApiHelper.CreateApi(apiRoutes.QuickSave),
                 ["columns"] = new JArray(columns),  // 设置列
-                ["headerToolbar"] = BuildHeaderToolbar(apiRoutes.Create, actions.Create?.GetParameters(), actions),  // 设置头部工具栏
+                ["headerToolbar"] = BuildHeaderToolbar(),  // 设置头部工具栏
                 ["footerToolbar"] = new JArray()
                 {
                     "switch-per-page",
@@ -109,13 +109,12 @@ namespace CodeSpirit.Amis
         /// <summary>
         /// 构建头部工具栏配置。
         /// </summary>
-        private JArray BuildHeaderToolbar(ApiRouteInfo createRoute, IEnumerable<ParameterInfo> createParameters, CrudActions actions)
+        private JArray BuildHeaderToolbar()
         {
             JArray buttons = [];
-            if (createRoute != null && actions.Create != null)
+            if (amisContext.ApiRoutes.Create != null && amisContext.Actions.Create != null)
             {
-
-                buttons.Add(_buttonHelper.CreateHeaderButton(createRoute, createParameters));
+                buttons.Add(_buttonHelper.CreateHeaderButton("新增", amisContext.ApiRoutes.Create, amisContext.Actions.Create?.GetParameters()));
             }
             buttons.Add(new JObject()
             {
@@ -124,7 +123,7 @@ namespace CodeSpirit.Amis
                 //["filename"] = ""
             });
 
-            if (actions.Export != null)
+            if (amisContext.Actions.Export != null)
             {
                 buttons.Add(new JObject()
                 {
@@ -136,6 +135,10 @@ namespace CodeSpirit.Amis
                         ["method"] = amisContext.ApiRoutes.Export.HttpMethod
                     },
                 });
+            }
+            if (amisContext.ApiRoutes.Import != null && amisContext.Actions.Import != null)
+            {
+                buttons.Add(_buttonHelper.CreateHeaderButton("导入", amisContext.ApiRoutes.Import, amisContext.Actions.Import?.GetParameters()));
             }
             return buttons;
         }

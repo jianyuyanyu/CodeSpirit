@@ -11,8 +11,9 @@
         public ApiRouteInfo Delete { get; set; }
         public ApiRouteInfo QuickSave { get; set; }
         public ApiRouteInfo Export { get; set; }
+        public ApiRouteInfo Import { get; internal set; }
 
-        public ApiRoutesInfo(ApiRouteInfo create, ApiRouteInfo read, ApiRouteInfo update, ApiRouteInfo delete, ApiRouteInfo quickSave, ApiRouteInfo export = null)
+        public ApiRoutesInfo(ApiRouteInfo create, ApiRouteInfo read, ApiRouteInfo update, ApiRouteInfo delete, ApiRouteInfo quickSave, ApiRouteInfo export = null, ApiRouteInfo import = null)
         {
             Create = create;
             Read = read;
@@ -20,6 +21,7 @@
             Delete = delete;
             QuickSave = quickSave;
             Export = export;
+            Import = import;
         }
     }
 }

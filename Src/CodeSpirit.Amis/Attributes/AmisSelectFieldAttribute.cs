@@ -4,7 +4,7 @@
     /// 自定义特性，用于配置 AMIS 表单中的 select 类型字段的详细属性。
     /// </summary>
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public class AmisSelectFieldAttribute : AmisFieldAttribute
+    public class AmisSelectFieldAttribute : AmisFormFieldAttribute
     {
         /// <summary>
         /// 数据源 URL，用于动态加载选项，仅适用于 "select" 类型字段。

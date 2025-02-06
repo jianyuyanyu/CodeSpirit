@@ -4,6 +4,7 @@ namespace CodeSpirit.IdentityApi.Services
 {
     public interface IRoleService
     {
+        Task BatchImportRolesAsync(List<RoleBatchImportDto> importDtos);
         Task<RoleDto> CreateRoleAsync(RoleCreateDto createDto);
         Task DeleteRoleAsync(string id);
         Task<RoleDto> GetRoleByIdAsync(string id);

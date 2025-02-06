@@ -17,9 +17,9 @@ namespace CodeSpirit.Amis.Form
         /// <param name="displayName">输出的显示名称。</param>
         /// <param name="fieldName">输出的字段名称。</param>
         /// <returns>如果成功获取则返回 true，否则返回 false。</returns>
-        public static bool TryGetAmisFieldData(this ICustomAttributeProvider member, UtilityHelper utilityHelper, out AmisFieldAttribute attr, out string displayName, out string fieldName)
+        public static bool TryGetAmisFieldData(this ICustomAttributeProvider member, UtilityHelper utilityHelper, out AmisFormFieldAttribute attr, out string displayName, out string fieldName)
         {
-            return member.TryGetAmisFieldData<AmisFieldAttribute>(utilityHelper, out attr, out displayName, out fieldName);
+            return member.TryGetAmisFieldData<AmisFormFieldAttribute>(utilityHelper, out attr, out displayName, out fieldName);
         }
 
         /// <summary>
@@ -31,7 +31,7 @@ namespace CodeSpirit.Amis.Form
         /// <param name="displayName">输出的显示名称。</param>
         /// <param name="fieldName">输出的字段名称。</param>
         /// <returns>如果成功获取则返回 true，否则返回 false。</returns>
-        public static bool TryGetAmisFieldData<T>(this ICustomAttributeProvider member, UtilityHelper utilityHelper, out T attr, out string displayName, out string fieldName) where T : AmisFieldAttribute
+        public static bool TryGetAmisFieldData<T>(this ICustomAttributeProvider member, UtilityHelper utilityHelper, out T attr, out string displayName, out string fieldName) where T : AmisFormFieldAttribute
         {
             displayName = null;
             fieldName = null;

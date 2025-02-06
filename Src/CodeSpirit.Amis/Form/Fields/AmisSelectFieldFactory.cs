@@ -5,14 +5,14 @@ using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
-namespace CodeSpirit.Amis.Form
+namespace CodeSpirit.Amis.Form.Fields
 {
     public class AmisSelectFieldFactory : IAmisFieldFactory
     {
         public JObject CreateField(ICustomAttributeProvider member, UtilityHelper utilityHelper)
         {
             // 使用扩展方法尝试获取 AmisFieldAttribute 及相关信息
-            if (!member.TryGetAmisFieldData<AmisSelectFieldAttribute>(utilityHelper, out AmisSelectFieldAttribute attr, out string displayName, out string fieldName))
+            if (!member.TryGetAmisFieldData(utilityHelper, out AmisSelectFieldAttribute attr, out string displayName, out string fieldName))
                 return null;
 
             JObject field = new JObject

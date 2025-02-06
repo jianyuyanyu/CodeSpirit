@@ -40,9 +40,9 @@ namespace CodeSpirit.IdentityApi.Controllers
             return StatusCode(statusCode, new ApiResponse<T>(code, message, null));
         }
 
-        protected ActionResult<ApiResponse<string>> BadResponse()
+        protected ActionResult<ApiResponse> BadResponse(string message = "操作失败！")
         {
-            return BadResponse<string>();
+            return BadResponse(message: message);
         }
     }
 }

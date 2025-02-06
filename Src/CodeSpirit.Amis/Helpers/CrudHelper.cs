@@ -29,6 +29,8 @@ namespace CodeSpirit.Amis.Helpers
             actions.QuickSave = FindMethodByActionPrefix(methods, ["QuickSave"]);
             //  查找导出方法
             actions.Export = FindMethodByActionPrefix(methods, ["Export"]);
+            //  查账导入方法
+            actions.Import = FindMethodByActionPrefix(methods, ["Import", "BatchImport"]);
             return actions;
         }
 

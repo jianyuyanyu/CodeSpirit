@@ -22,15 +22,10 @@ public class RolesController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<ListData<RoleDto>>>> GetRoles([FromQuery] RoleQueryDto queryDto)
     {
         (List<RoleDto> roles, int total) = await _roleService.GetRolesAsync(queryDto);
-        return Ok(new ApiResponse<ListData<RoleDto>>
+        return SuccessResponse(new ListData<RoleDto>
         {
-            Status = 0,
-            Msg = "查询成功！",
-            Data = new ListData<RoleDto>
-            {
-                Items = roles,
-                Total = total
-            }
+            Items = roles,
+            Total = total
         });
     }
 
@@ -60,6 +55,23 @@ public class RolesController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Delete(string id)
     {
         await _roleService.DeleteRoleAsync(id);
+        return SuccessResponse();
+    }
+
+    /// <summary>
+    /// 批量导入角色
+    /// </summary>
+    /// <param name="importDto">批量导入角色 DTO 列表</param>
+    /// <returns>操作结果</returns>
+    [HttpPost("batch/import")]
+    public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<RoleBatchImportDto> importDto)
+    {
+        if (importDto.ImportData == null || !importDto.ImportData.Any())
+        {
+            return BadResponse("导入数据不能为空！");
+        }
+
+        await _roleService.BatchImportRolesAsync(importDto.ImportData);
         return SuccessResponse();
     }
 }

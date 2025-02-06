@@ -71,6 +71,32 @@ namespace CodeSpirit.IdentityApi.Services
 
             await Task.WhenAll(cacheTasks);
         }
+
+        /// <summary>
+        /// 批量导入角色（高性能）
+        /// </summary>
+        /// <param name="importDtos">批量导入 DTO 列表</param>
+        public async Task BatchImportRolesAsync(List<RoleBatchImportDto> importDtos)
+        {
+            if (importDtos == null || !importDtos.Any())
+            {
+                throw new AppServiceException(400, "导入数据不能为空！");
+            }
+
+            // 将 DTO 转换为实体集合
+            var roles = new List<ApplicationRole>();
+
+            foreach (var dto in importDtos)
+            {
+                // 利用 AutoMapper 将 DTO 映射为 ApplicationRole 实体
+                var role = _mapper.Map<ApplicationRole>(dto);
+                roles.Add(role);
+            }
+
+            // 批量插入角色（利用 EF Core 的 AddRange 提高性能）
+            await _roleRepository.BulkInsertRolesAsync(roles);
+
+        }
     }
 
 }

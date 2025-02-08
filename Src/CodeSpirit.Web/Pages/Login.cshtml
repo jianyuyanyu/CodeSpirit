@@ -174,8 +174,8 @@
                                             },
                                             "className": "form-wrap",
                                             "type": "form",
+                                                // "api": "/api/auth/login",
                                             "title": "",
-                                            "api": "/api/login",
                                             "body": [
                                                 {
                                                     "type": "tabs",
@@ -183,12 +183,19 @@
                                                     "tabs": [
                                                         {
                                                             "title": "密码登录",
-                                                            "body": [
+                                                            "body": {
+                                                                "type":"form",
+                                                                "title": "",
+                                                                "api": "/api/auth/login",
+                                                                "submitText":"登录",
+                                                                "trimValues":true,
+                                                                "wrapWithPanel": false,
+                                                                "body":[
                                                                 {
                                                                     "type": "input-text",
-                                                                    "label": "用户",
-                                                                    "name": "loginName",
-                                                                    "placeholder": "手机号码",
+                                                                    "label": "账号",
+                                                                    "name": "userName",
+                                                                    "placeholder": "手机号码/账号/邮箱",
                                                                     "required": true,
                                                                     "className": "input-field"
                                                                 },
@@ -201,10 +208,15 @@
                                                                     "className": "input-field"
                                                                 }
                                                             ]
+                                                            }
                                                         },
                                                         {
                                                             "title": "短信登录",
-                                                            "body": [
+                                                            "body": {
+                                                                "type":"form",
+                                                                "api": "/api/auth/login",
+                                                                "wrapWithPanel": false,
+                                                                "body":[
                                                                 {
                                                                     "type": "input-text",
                                                                     "label": "用户",
@@ -222,6 +234,7 @@
                                                                     "className": "input-field"
                                                                 }
                                                             ]
+                                                            }
                                                         },
                                                         {
                                                             "title": "扫码登录",

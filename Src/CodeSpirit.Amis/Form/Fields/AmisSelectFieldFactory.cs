@@ -7,32 +7,22 @@ using System.Reflection;
 
 namespace CodeSpirit.Amis.Form.Fields
 {
-    public class AmisSelectFieldFactory : IAmisFieldFactory
+    public class AmisSelectFieldFactory : AmisFieldAttributeFactoryBase
     {
-        public JObject CreateField(ICustomAttributeProvider member, UtilityHelper utilityHelper)
+        public override JObject CreateField(ICustomAttributeProvider member, UtilityHelper utilityHelper)
         {
-            // 使用扩展方法尝试获取 AmisFieldAttribute 及相关信息
-            if (!member.TryGetAmisFieldData(utilityHelper, out AmisSelectFieldAttribute attr, out string displayName, out string fieldName))
-                return null;
-
-            JObject field = new JObject
+            (JObject field, AmisSelectFieldAttribute attr) = CreateField<AmisSelectFieldAttribute>(member, utilityHelper);
+            if (field != null)
             {
-                ["name"] = fieldName,
-                ["label"] = attr.Label ?? displayName,
-                ["type"] = attr.Type,
-                ["source"] = attr.Source,
-                ["valueField"] = attr.ValueField,
-                ["labelField"] = attr.LabelField,
-                ["multiple"] = attr.Multiple,
-                ["joinValues"] = attr.JoinValues,
-                ["extractValue"] = attr.ExtractValue,
-                ["searchable"] = attr.Searchable,
-                ["clearable"] = attr.Clearable,
-                ["placeholder"] = attr.Placeholder
-            };
-
-            utilityHelper.HandleAdditionalConfig(attr.AdditionalConfig, field);
-
+                field["source"] = attr.Source;
+                field["labelField"] = attr.LabelField;
+                field["valueField"] = attr.ValueField;
+                field["multiple"] = attr.Multiple;
+                field["joinValues"] = attr.JoinValues;
+                field["extractValue"] = attr.ExtractValue;
+                field["searchable"] = attr.Searchable;
+                field["clearable"] = attr.Clearable;
+            }
             return field;
         }
     }

@@ -1,8 +1,8 @@
 ﻿// 文件路径: CodeSpirit.Amis.Helpers/FormFieldHelper.cs
 
+using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Core.Authorization;
-using CodeSpirit.Core.Extensions;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -11,7 +11,8 @@ using System.Reflection;
 namespace CodeSpirit.Amis.Form
 {
     /// <summary>
-    /// 帮助类，用于生成 AMIS 表单的字段配置。
+    /// AMIS 表单字段生成帮助类
+    /// <para>提供从方法参数生成AMIS表单字段配置的核心逻辑</para>
     /// </summary>
     public class FormFieldHelper
     {
@@ -20,64 +21,61 @@ namespace CodeSpirit.Amis.Form
         private readonly IEnumerable<IAmisFieldFactory> _fieldFactories;
 
         /// <summary>
-        /// 初始化 <see cref="FormFieldHelper"/> 的新实例。
+        /// 初始化表单字段帮助类实例
         /// </summary>
-        /// <param name="permissionService">权限服务，用于检查用户权限。</param>
-        /// <param name="utilityHelper">实用工具类，提供辅助方法。</param>
-        /// <param name="fieldFactories">AMIS 字段工厂集合。</param>
-        public FormFieldHelper(IPermissionService permissionService, UtilityHelper utilityHelper, IEnumerable<IAmisFieldFactory> fieldFactories)
+        /// <param name="permissionService">权限校验服务</param>
+        /// <param name="utilityHelper">通用工具类</param>
+        /// <param name="fieldFactories">字段工厂集合</param>
+        /// <exception cref="ArgumentNullException">当任何参数为null时抛出</exception>
+        public FormFieldHelper(
+            IPermissionService permissionService,
+            UtilityHelper utilityHelper,
+            IEnumerable<IAmisFieldFactory> fieldFactories)
         {
-            _permissionService = permissionService;
-            _utilityHelper = utilityHelper;
-            _fieldFactories = fieldFactories;
+            _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
+            _utilityHelper = utilityHelper ?? throw new ArgumentNullException(nameof(utilityHelper));
+            _fieldFactories = fieldFactories?.ToList() ?? throw new ArgumentNullException(nameof(fieldFactories));
         }
 
         /// <summary>
-        /// 根据方法参数生成 AMIS 表单字段的配置列表。
+        /// 从方法参数生成AMIS表单字段配置
         /// </summary>
-        /// <param name="parameters">控制器方法的参数列表。</param>
-        /// <returns>AMIS 表单字段的 JSON 对象列表。</returns>
+        /// <param name="parameters">方法参数集合</param>
+        /// <returns>AMIS字段配置列表</returns>
         public List<JObject> GetAmisFormFieldsFromParameters(IEnumerable<ParameterInfo> parameters)
         {
             List<JObject> fields = [];
 
-            if (parameters == null)
-                return fields;
-
-            foreach (ParameterInfo param in parameters)
+            foreach (ParameterInfo param in parameters ?? Enumerable.Empty<ParameterInfo>())
             {
-                if (!CanProcessMember(param))
-                    continue;
-
-                // 尝试使用工厂创建字段
-                JObject field = CreateFieldUsingFactories(param);
-                if (field != null)
+                if (!ShouldProcess(param))
                 {
-                    fields.Add(field);
                     continue;
                 }
 
-                if (_utilityHelper.IsSimpleType(param.ParameterType) && !IsIgnoredParameter(param))
+                // 优先使用工厂创建字段
+                JObject factoryField = CreateFieldUsingFactories(param);
+                if (factoryField != null)
                 {
-                    fields.Add(CreateAmisFormField(param));
+                    fields.Add(factoryField);
+                    continue;
                 }
-                else if (_utilityHelper.IsComplexType(param.ParameterType))
-                {
-                    fields.AddRange(ProcessComplexType(param));
-                }
+
+                fields.AddRange(ProcessParameter(param));
             }
 
             return fields;
         }
 
+        #region 处理逻辑
         /// <summary>
         /// 检查成员（参数或属性）是否可以处理（权限和忽略检查）。
         /// </summary>
         /// <param name="member">参数或属性的信息。</param>
         /// <returns>如果可以处理则返回 true，否则返回 false。</returns>
-        private bool CanProcessMember(ICustomAttributeProvider member)
+        private bool ShouldProcess(ICustomAttributeProvider member)
         {
-            return member switch
+            return member != null && member switch
             {
                 ParameterInfo param => HasEditPermission(param) && !IsIgnoredParameter(param),
                 PropertyInfo prop => HasEditPermission(prop) && !IsIgnoredProperty(prop),
@@ -86,439 +84,349 @@ namespace CodeSpirit.Amis.Form
         }
 
         /// <summary>
-        /// 尝试使用工厂创建字段配置。
+        /// 使用注册的字段工厂创建字段配置
         /// </summary>
-        /// <param name="member">参数或属性的信息。</param>
-        /// <returns>如果成功创建则返回字段配置，否则返回 null。</returns>
         private JObject CreateFieldUsingFactories(ICustomAttributeProvider member)
         {
-            foreach (IAmisFieldFactory factory in _fieldFactories)
-            {
-                JObject field = factory.CreateField(member, _utilityHelper);
-                if (field != null)
-                    return field;
-            }
-            return null;
+            return _fieldFactories
+                .Select(factory => factory.CreateField(member, _utilityHelper))
+                .FirstOrDefault(field => field != null);
         }
 
         /// <summary>
-        /// 处理复杂类型的参数，生成嵌套字段配置。
+        /// 处理单个参数生成字段配置
+        /// </summary>
+        private IEnumerable<JObject> ProcessParameter(ParameterInfo param)
+        {
+            return _utilityHelper.IsSimpleType(param.ParameterType)
+                ? [CreateFormField(param)]
+                : ProcessComplexType(param);
+        }
+
+        /// <summary>
+        /// 处理复杂类型参数生成嵌套字段
         /// </summary>
         private IEnumerable<JObject> ProcessComplexType(ParameterInfo param)
         {
-            List<JObject> fields = [];
-            PropertyInfo[] nestedProperties = param.ParameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-            foreach (PropertyInfo prop in nestedProperties)
-            {
-                if (!CanProcessMember(prop))
-                    continue;
-
-                JObject field = CreateFieldUsingFactories(prop);
-                if (field != null)
-                {
-                    // 添加父级名称
-                    AddParentName(field, null);
-                    fields.Add(field);
-                    continue;
-                }
-
-                fields.Add(CreateAmisFormFieldFromProperty(prop, null));
-            }
-
-            return fields;
+            return param.ParameterType
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(ShouldProcess)
+                .Select(ProcessProperty)
+                .Where(field => field != null);
         }
 
         /// <summary>
-        /// 在字段名称中添加父级名称（用于嵌套对象）。
+        /// 处理单个属性生成字段配置
         /// </summary>
-        private void AddParentName(JObject field, string parentName)
+        private JObject ProcessProperty(PropertyInfo prop)
         {
-            if (field["name"] != null && parentName != null)
-            {
-                string originalName = field["name"].ToString();
-                field["name"] = $"{parentName}.{originalName}".ToCamelCase();
-            }
+            return CreateFieldUsingFactories(prop) ?? CreateFormField(prop);
         }
+        #endregion
 
-
+        #region 字段创建
         /// <summary>
-        /// 判断类型是否为复杂类型（如类类型，不包括字符串）。
+        /// 创建基础字段配置
         /// </summary>
-        /// <param name="type">参数或属性的类型。</param>
-        /// <returns>如果是复杂类型则返回 true，否则返回 false。</returns>
-        public bool IsComplexType(Type type)
+        private JObject CreateFormField(ICustomAttributeProvider member)
         {
-            return type.IsClass && type != typeof(string);
-        }
+            (string name, Type type, string label) = GetMemberMetadata(member);
+            bool isRequired = IsRequired(member);
 
-        /// <summary>
-        /// 创建 AMIS 表单的通用字段配置，基于属性信息。
-        /// </summary>
-        private JObject CreateAmisFormFieldFromProperty(PropertyInfo prop, string parentName)
-        {
-            string displayName = _utilityHelper.GetDisplayName(prop);
-            string fieldName = _utilityHelper.GetFieldName(prop, parentName);
-            bool isRequired = !_utilityHelper.IsNullable(prop.PropertyType) || prop.GetCustomAttribute<RequiredAttribute>() != null;
-
-            JObject field = new JObject
+            JObject field = new()
             {
-                ["name"] = fieldName,
-                ["label"] = displayName,
-                ["required"] = isRequired,
-                ["type"] = GetFormFieldType(prop.PropertyType)
-            };
-
-            AddValidationRules(prop, field);
-
-            return field;
-        }
-
-        /// <summary>
-        /// 创建 AMIS 表单的单个字段配置（通用）。
-        /// </summary>
-        private JObject CreateAmisFormField(ParameterInfo param)
-        {
-            string label = _utilityHelper.GetDisplayName(param);
-            string fieldName = _utilityHelper.GetFieldName(param, parentName: null);
-            bool isRequired = !_utilityHelper.IsNullable(param.ParameterType) || param.GetCustomAttribute<RequiredAttribute>() != null;
-
-            JObject field = new JObject
-            {
-                ["name"] = fieldName,
+                ["name"] = name,
                 ["label"] = label,
                 ["required"] = isRequired,
-                ["type"] = GetFormFieldType(param.ParameterType)
+                ["type"] = GetFormFieldType(type)
             };
 
-            AddValidationRulesFromParameter(param, field);
+            AddCommonValidations(member, field);
+            AddTypeSpecificConfigurations(member, type, field);
 
             return field;
         }
 
         /// <summary>
-        /// 根据类型确定 AMIS 表单字段的类型。
+        /// 获取成员元数据
+        /// </summary>
+        private (string name, Type type, string label) GetMemberMetadata(ICustomAttributeProvider member)
+        {
+            return member switch
+            {
+                ParameterInfo p => (
+                    _utilityHelper.GetFieldName(p, null),
+                    p.ParameterType,
+                    _utilityHelper.GetDisplayName(p)
+                ),
+                PropertyInfo prop => (
+                    _utilityHelper.GetFieldName(prop, null),
+                    prop.PropertyType,
+                    _utilityHelper.GetDisplayName(prop)
+                ),
+                _ => throw new NotSupportedException("不支持除参数和属性外的其他成员类型")
+            };
+        }
+
+        /// <summary>
+        /// 判断字段是否必填
+        /// </summary>
+        private bool IsRequired(ICustomAttributeProvider member)
+        {
+            return member.GetAttribute<RequiredAttribute>() != null
+                || IsTypeRequired(member.GetMemberType());
+        }
+
+
+        /// <summary>
+        /// 根据类型判断是否必填
+        /// </summary>
+        private bool IsTypeRequired(Type type) =>
+            !_utilityHelper.IsNullable(type);
+
+        /// <summary>
+        /// 获取字段类型映射
         /// </summary>
         private string GetFormFieldType(Type type)
         {
-            // 处理枚举类型
-            if (type.IsEnum || Nullable.GetUnderlyingType(type)?.IsEnum == true)
+            if (type.IsEnumType())
+            {
                 return "select";
+            }
 
-            return type switch
-            {
-                Type t when t == typeof(string) => "input-text",
-                Type t when t == typeof(int) || t == typeof(long) ||
-                           t == typeof(float) || t == typeof(double) => "input-number",
-                Type t when t == typeof(bool) => "switch",
-                Type t when t == typeof(DateTime) || t == typeof(DateTime?) ||
-                           t == typeof(DateTimeOffset) || t == typeof(DateTimeOffset?) => "datetime",
-                Type t when t.GetCustomAttribute<DataTypeAttribute>()?.DataType == DataType.Password => "input-password",
-                Type t when t.GetCustomAttribute<DataTypeAttribute>()?.DataType == DataType.ImageUrl => "image",
-                _ => "input-text"
-            };
+            return type.IsDateType()
+                ? "datetime"
+                : type switch
+                {
+                    Type t when t == typeof(string) => "input-text",
+                    Type t when t == typeof(bool) => "switch",
+                    Type t when t.IsNumericType() => "input-number",
+                    Type t when t.IsImageType() => "image",
+                    _ => "input-text"
+                };
+        }
+        #endregion
+
+        #region 验证规则
+        /// <summary>
+        /// 添加通用验证规则
+        /// </summary>
+        private void AddCommonValidations(ICustomAttributeProvider member, JObject field)
+        {
+            AddValidationAttributes(member, field);
+            AddDescription(member, field);
         }
 
         /// <summary>
-        /// 添加属性级别的验证规则到字段配置中。
+        /// 添加验证特性配置
         /// </summary>
-        private void AddValidationRules(PropertyInfo prop, JObject field)
+        private void AddValidationAttributes(ICustomAttributeProvider member, JObject field)
         {
-            JObject validationRules = [];
-            JObject validationErrors = [];
+            JObject validations = [];
+            JObject errors = [];
 
-            // 处理 [Required] 特性
-            RequiredAttribute requiredAttribute = prop.GetCustomAttribute<RequiredAttribute>();
-            if (requiredAttribute != null)
+            ProcessStringLengthAttribute(member, validations, errors);
+            ProcessRangeAttribute(member, validations, errors);
+            ProcessRegexAttribute(member, validations, errors);
+            ProcessDataTypeAttribute(member, validations, field);
+
+            if (validations.HasValues)
             {
-                field["required"] = true;
+                field["validations"] = validations;
             }
 
-            DescriptionAttribute descriptionAttribute = prop.GetCustomAttribute<DescriptionAttribute>();
-            if (descriptionAttribute != null && !string.IsNullOrEmpty(descriptionAttribute.Description))
+            if (errors.HasValues)
             {
-                field["description"] = descriptionAttribute.Description;
+                field["validationErrors"] = errors;
             }
-
-            // 处理 [StringLength] 特性
-            StringLengthAttribute stringLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>();
-            if (stringLengthAttr != null)
-            {
-                if (stringLengthAttr.MinimumLength > 0)
-                    validationRules["minLength"] = stringLengthAttr.MinimumLength;
-                if (stringLengthAttr.MaximumLength > 0)
-                    validationRules["maxLength"] = stringLengthAttr.MaximumLength;
-
-                if (!string.IsNullOrEmpty(stringLengthAttr.ErrorMessage))
-                {
-                    validationErrors["minLength"] = stringLengthAttr.ErrorMessage;
-                    validationErrors["maxLength"] = stringLengthAttr.ErrorMessage;
-                }
-            }
-
-            // 处理 [Range] 特性
-            RangeAttribute rangeAttr = prop.GetCustomAttribute<RangeAttribute>();
-            if (rangeAttr != null)
-            {
-                if (rangeAttr.Minimum != null)
-                    validationRules["minimum"] = Convert.ToDouble(rangeAttr.Minimum);
-                if (rangeAttr.Maximum != null)
-                    validationRules["maximum"] = Convert.ToDouble(rangeAttr.Maximum);
-
-                if (!string.IsNullOrEmpty(rangeAttr.ErrorMessage))
-                {
-                    validationErrors["minimum"] = rangeAttr.ErrorMessage;
-                    validationErrors["maximum"] = rangeAttr.ErrorMessage;
-                }
-            }
-
-            // 处理 [DataType] 特性
-            DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
-            if (dataTypeAttr != null)
-            {
-                AddDataTypeValidation(dataTypeAttr, validationRules, field);
-            }
-
-            // 添加正则匹配规则
-            RegularExpressionAttribute regexAttr = prop.GetCustomAttribute<RegularExpressionAttribute>();
-            if (regexAttr != null)
-            {
-                validationRules["matchRegexp"] = regexAttr.Pattern;
-                if (!string.IsNullOrEmpty(regexAttr.ErrorMessage))
-                {
-                    validationErrors["matchRegexp"] = regexAttr.ErrorMessage;
-                }
-            }
-
-            // 添加验证规则
-            if (validationRules.HasValues)
-            {
-                field["validations"] = validationRules;
-            }
-
-            if (validationErrors.HasValues)
-            {
-                field["validationErrors"] = validationErrors;
-            }
-
-            // 处理枚举类型
-            if (prop.PropertyType.IsEnum || Nullable.GetUnderlyingType(prop.PropertyType)?.IsEnum == true)
-            {
-                field["options"] = _utilityHelper.GetEnumOptions(prop.PropertyType);
-            }
-
-            // 处理日期类型
-            if (IsDateType(prop.PropertyType))
-            {
-                field["format"] = "YYYY-MM-DD";
-            }
-
-            // 处理图片类型
-            HandleImageType(dataTypeAttr, field, prop.Name);
         }
 
         /// <summary>
-        /// 添加参数级别的验证规则到字段配置中。
+        /// 处理字符串长度验证
         /// </summary>
-        private void AddValidationRulesFromParameter(ParameterInfo param, JObject field)
+        private void ProcessStringLengthAttribute(ICustomAttributeProvider member, JObject validations, JObject errors)
         {
-            JObject validationRules = [];
-            JObject validationErrors = [];
-
-            // 处理 [Required] 特性
-            RequiredAttribute requiredAttribute = param.GetCustomAttribute<RequiredAttribute>();
-            if (requiredAttribute != null)
+            StringLengthAttribute attr = member.GetAttribute<StringLengthAttribute>();
+            if (attr == null)
             {
-                field["required"] = true;
+                return;
             }
 
-            DescriptionAttribute descriptionAttribute = param.GetCustomAttribute<DescriptionAttribute>();
-            if (descriptionAttribute != null && !string.IsNullOrEmpty(descriptionAttribute.Description))
+            if (attr.MinimumLength > 0)
             {
-                field["description"] = descriptionAttribute.Description;
+                validations["minLength"] = attr.MinimumLength;
             }
 
-            // 处理 [StringLength] 特性
-            StringLengthAttribute stringLengthAttr = param.GetCustomAttribute<StringLengthAttribute>();
-            if (stringLengthAttr != null)
+            if (attr.MaximumLength > 0)
             {
-                if (stringLengthAttr.MinimumLength > 0)
-                    validationRules["minLength"] = stringLengthAttr.MinimumLength;
-                if (stringLengthAttr.MaximumLength > 0)
-                    validationRules["maxLength"] = stringLengthAttr.MaximumLength;
-
-                if (!string.IsNullOrEmpty(stringLengthAttr.ErrorMessage))
-                {
-                    validationErrors["minLength"] = stringLengthAttr.ErrorMessage;
-                    validationErrors["maxLength"] = stringLengthAttr.ErrorMessage;
-                }
+                validations["maxLength"] = attr.MaximumLength;
             }
 
-            // 处理 [Range] 特性
-            RangeAttribute rangeAttr = param.GetCustomAttribute<RangeAttribute>();
-            if (rangeAttr != null)
+            if (!string.IsNullOrEmpty(attr.ErrorMessage))
             {
-                if (rangeAttr.Minimum != null)
-                    validationRules["minimum"] = Convert.ToDouble(rangeAttr.Minimum);
-                if (rangeAttr.Maximum != null)
-                    validationRules["maximum"] = Convert.ToDouble(rangeAttr.Maximum);
-
-                if (!string.IsNullOrEmpty(rangeAttr.ErrorMessage))
-                {
-                    validationErrors["minimum"] = rangeAttr.ErrorMessage;
-                    validationErrors["maximum"] = rangeAttr.ErrorMessage;
-                }
+                errors["minLength"] = attr.ErrorMessage;
+                errors["maxLength"] = attr.ErrorMessage;
             }
-
-            // 处理 [DataType] 特性
-            DataTypeAttribute dataTypeAttr = param.GetCustomAttribute<DataTypeAttribute>();
-            if (dataTypeAttr != null)
-            {
-                AddDataTypeValidation(dataTypeAttr, validationRules, field);
-            }
-
-            // 添加正则匹配规则
-            RegularExpressionAttribute regexAttr = param.GetCustomAttribute<RegularExpressionAttribute>();
-            if (regexAttr != null)
-            {
-                validationRules["matchRegexp"] = regexAttr.Pattern;
-                if (!string.IsNullOrEmpty(regexAttr.ErrorMessage))
-                {
-                    validationErrors["matchRegexp"] = regexAttr.ErrorMessage;
-                }
-            }
-
-            // 添加验证规则
-            if (validationRules.HasValues)
-            {
-                field["validations"] = validationRules;
-            }
-
-            if (validationErrors.HasValues)
-            {
-                field["validationErrors"] = validationErrors;
-            }
-
-            // 处理枚举类型
-            if (param.ParameterType.IsEnum || Nullable.GetUnderlyingType(param.ParameterType)?.IsEnum == true)
-            {
-                field["options"] = _utilityHelper.GetEnumOptions(param.ParameterType);
-            }
-
-            // 处理日期类型
-            if (IsDateType(param.ParameterType))
-            {
-                field["format"] = "YYYY-MM-DD";
-            }
-
-            // 处理图片类型
-            HandleImageType(dataTypeAttr, field, param.Name);
         }
 
         /// <summary>
-        /// 根据 DataTypeAttribute 添加验证规则和特定配置。
+        /// 处理数值范围验证
         /// </summary>
-        private void AddDataTypeValidation(DataTypeAttribute dataTypeAttr, JObject validationRules, JObject field)
+        private void ProcessRangeAttribute(ICustomAttributeProvider member, JObject validations, JObject errors)
         {
-            switch (dataTypeAttr.DataType)
+            RangeAttribute attr = member.GetAttribute<RangeAttribute>();
+            if (attr == null)
+            {
+                return;
+            }
+
+            if (attr.Minimum != null)
+            {
+                validations["minimum"] = Convert.ToDouble(attr.Minimum);
+            }
+
+            if (attr.Maximum != null)
+            {
+                validations["maximum"] = Convert.ToDouble(attr.Maximum);
+            }
+
+            if (!string.IsNullOrEmpty(attr.ErrorMessage))
+            {
+                errors["minimum"] = attr.ErrorMessage;
+                errors["maximum"] = attr.ErrorMessage;
+            }
+        }
+
+        /// <summary>
+        /// 处理正则表达式验证
+        /// </summary>
+        private void ProcessRegexAttribute(ICustomAttributeProvider member, JObject validations, JObject errors)
+        {
+            RegularExpressionAttribute attr = member.GetAttribute<RegularExpressionAttribute>();
+            if (attr == null)
+            {
+                return;
+            }
+
+            validations["matchRegexp"] = attr.Pattern;
+            if (!string.IsNullOrEmpty(attr.ErrorMessage))
+            {
+                errors["matchRegexp"] = attr.ErrorMessage;
+            }
+        }
+
+        /// <summary>
+        /// 处理数据类型验证
+        /// </summary>
+        private void ProcessDataTypeAttribute(ICustomAttributeProvider member, JObject validations, JObject field)
+        {
+            DataTypeAttribute attr = member.GetAttribute<DataTypeAttribute>();
+            if (attr == null)
+            {
+                return;
+            }
+
+            switch (attr.DataType)
             {
                 case DataType.EmailAddress:
-                    validationRules["isEmail"] = true;
+                    validations["isEmail"] = true;
                     break;
                 case DataType.Url:
-                    validationRules["isUrl"] = true;
-                    break;
-                case DataType.PhoneNumber:
-                    validationRules["isPhoneNumber"] = true;
-                    break;
-                case DataType.PostalCode:
-                    validationRules["isZipcode"] = true;
-                    break;
-                case DataType.Custom:
-                case DataType.DateTime:
-                case DataType.Date:
-                case DataType.Time:
-                case DataType.Duration:
-                case DataType.Currency:
-                case DataType.Text:
-                case DataType.Html:
-                case DataType.MultilineText:
-                case DataType.Password:
+                    validations["isUrl"] = true;
                     break;
                 case DataType.ImageUrl:
-                    validationRules["isUrl"] = true;
-                    break;
-                case DataType.CreditCard:
-                case DataType.Upload:
+                    HandleImageType(member, field);
                     break;
             }
         }
 
         /// <summary>
-        /// 处理图片类型的特定字段配置。
+        /// 添加描述信息
         /// </summary>
-        private void HandleImageType(DataTypeAttribute dataTypeAttr, JObject field, string memberName)
+        private void AddDescription(ICustomAttributeProvider member, JObject field)
         {
+            string description = member.GetAttribute<DescriptionAttribute>()?.Description;
+            if (!string.IsNullOrEmpty(description))
+            {
+                field["description"] = description;
+            }
+        }
+        #endregion
+
+        #region 类型特定配置
+        /// <summary>
+        /// 添加类型相关特殊配置
+        /// </summary>
+        private void AddTypeSpecificConfigurations(ICustomAttributeProvider member, Type type, JObject field)
+        {
+            if (type.IsEnumType())
+            {
+                field["options"] = _utilityHelper.GetEnumOptions(type);
+            }
+
+            if (type.IsDateType())
+            {
+                field["format"] = "YYYY-MM-DD";
+            }
+
+            HandleImageType(member, field);
+        }
+
+        /// <summary>
+        /// 处理图片类型字段的特殊配置
+        /// </summary>
+        private void HandleImageType(ICustomAttributeProvider member, JObject field)
+        {
+            DataTypeAttribute dataTypeAttr = member.GetAttribute<DataTypeAttribute>();
             if (dataTypeAttr?.DataType == DataType.ImageUrl)
             {
                 field["type"] = "image";
-                field["src"] = $"${{{field["name"]}}}"; // 设置图片来源字段
+                field["src"] = $"${{{field["name"]}}}";
                 field["altText"] = field["label"];
-                field["className"] = "image-field"; // 可选：添加自定义样式类
             }
 
-            if (memberName.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0)
+            if (member.GetMemberName().Contains("Avatar", StringComparison.OrdinalIgnoreCase))
             {
                 field["type"] = "avatar";
-                field["src"] = $"${{{field["name"]}}}"; // 设置头像来源字段
-                field["altText"] = field["label"];
-                // field["className"] = "avatar-field"; // 可选：添加自定义样式类
+                field["src"] = $"${{{field["name"]}}}";
             }
         }
+        #endregion
 
+        #region 权限与忽略规则
         /// <summary>
-        /// 判断类型是否为日期类型。
-        /// </summary>
-        private bool IsDateType(Type type)
-        {
-            return type == typeof(DateTime) || type == typeof(DateTime?) ||
-                   type == typeof(DateTimeOffset) || type == typeof(DateTimeOffset?);
-        }
-
-        /// <summary>
-        /// 判断当前用户是否有权限编辑该参数。
+        /// 检查参数编辑权限
         /// </summary>
         private bool HasEditPermission(ParameterInfo param)
         {
-            PermissionAttribute permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
+            PermissionAttribute permissionAttr = param.GetAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
         }
 
         /// <summary>
-        /// 判断当前用户是否有权限编辑该属性。
+        /// 检查属性编辑权限
         /// </summary>
         private bool HasEditPermission(PropertyInfo prop)
         {
-            PermissionAttribute permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
+            PermissionAttribute permissionAttr = prop.GetAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
         }
 
         /// <summary>
-        /// 判断是否需要忽略该参数。
+        /// 判断是否忽略参数
         /// </summary>
         private bool IsIgnoredParameter(ParameterInfo param)
         {
-            // 示例：忽略名为 "id" 的参数
-            return string.Equals(param.Name, "id", StringComparison.OrdinalIgnoreCase);
+            return param.Name.Equals("id", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
-        /// 判断是否需要忽略该属性。
+        /// 判断是否忽略属性
         /// </summary>
         private bool IsIgnoredProperty(PropertyInfo prop)
         {
-            // 示例：忽略名为 "CreatedDate" 的属性
-            return string.Equals(prop.Name, "CreatedDate", StringComparison.OrdinalIgnoreCase);
+            return prop.Name.Equals("CreatedDate", StringComparison.OrdinalIgnoreCase);
         }
+        #endregion
     }
 }

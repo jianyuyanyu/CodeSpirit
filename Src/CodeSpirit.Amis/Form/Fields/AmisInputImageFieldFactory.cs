@@ -7,28 +7,18 @@ using System.Reflection;
 
 namespace CodeSpirit.Amis.Form.Fields
 {
-    public class AmisInputImageFieldFactory : IAmisFieldFactory
+    public class AmisInputImageFieldFactory : AmisFieldAttributeFactoryBase
     {
-        public JObject CreateField(ICustomAttributeProvider member, UtilityHelper utilityHelper)
+        public override JObject CreateField(ICustomAttributeProvider member, UtilityHelper utilityHelper)
         {
-            // 使用扩展方法尝试获取 AmisFieldAttribute 及相关信息
-            if (!member.TryGetAmisFieldData(utilityHelper, out AmisInputImageFieldAttribute attr, out string displayName, out string fieldName))
-                return null;
-
-            JObject field = new JObject
+            (JObject field, AmisInputImageFieldAttribute attr) = CreateField<AmisInputImageFieldAttribute>(member, utilityHelper);
+            if (field != null)
             {
-                ["name"] = fieldName,
-                ["label"] = attr.Label ?? displayName,
-                ["type"] = attr.Type,
-                ["receiver"] = attr.Receiver,
-                ["accept"] = attr.Accept,
-                ["maxSize"] = attr.MaxSize,
-                ["multiple"] = attr.Multiple,
-                ["placeholder"] = attr.Placeholder
-            };
-
-            utilityHelper.HandleAdditionalConfig(attr.AdditionalConfig, field);
-
+                field["receiver"] = attr.Receiver;
+                field["accept"] = attr.Accept;
+                field["maxSize"] = attr.MaxSize;
+                field["multiple"] = attr.Multiple;
+            }
             return field;
         }
     }

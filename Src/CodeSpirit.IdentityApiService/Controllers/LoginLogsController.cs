@@ -5,15 +5,15 @@ using CodeSpirit.IdentityApi.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
+using System.Data;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize(Roles = "Administrator")] // 仅管理员可以查看登录日志
     [Page(Label = "登录日志", ParentLabel = "用户中心", Icon = "fa-solid fa-info")]
     [DisplayName("登录日志")]
-    public partial class LoginLogsController : ControllerBase
+    public partial class LoginLogsController : ApiControllerBase
     {
         private readonly ApplicationDbContext _context;
 
@@ -31,39 +31,42 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="isSuccess">按登录结果过滤（可选）。</param>
         /// <returns>分页的登录日志列表。</returns>
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<ListData<LoginLogDto>>>> GetLoginLogs(
-            int pageNumber = 1,
-            int pageSize = 20,
-            string userName = null,
-            bool? isSuccess = null)
+        public async Task<ActionResult<ApiResponse<ListData<LoginLogDto>>>> GetLoginLogs([FromQuery]LoginLogsQueryDto queryDto)
         {
-            if (pageNumber <= 0) pageNumber = 1;
-            if (pageSize <= 0) pageSize = 20;
-
             IQueryable<Data.Models.LoginLog> query = _context.LoginLogs
                 .Include(l => l.User)
                 .AsQueryable();
 
-            if (!string.IsNullOrEmpty(userName))
+            // 应用关键词过滤
+            if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
             {
-                query = query.Where(l => l.UserName.Contains(userName));
+                string searchLower = queryDto.Keywords.ToLower();
+                query = query.Where(u =>
+                    u.UserName.ToLower().Contains(searchLower) ||
+                    u.User.PhoneNumber.ToLower().Contains(searchLower) ||
+                    u.IPAddress.ToLower().Contains(searchLower));
             }
 
-            if (isSuccess.HasValue)
+            if (!string.IsNullOrEmpty(queryDto.UserName))
             {
-                query = query.Where(l => l.IsSuccess == isSuccess.Value);
+                query = query.Where(l => l.UserName.Contains(queryDto.UserName));
+            }
+
+            if (queryDto.IsSuccess.HasValue)
+            {
+                query = query.Where(l => l.IsSuccess == queryDto.IsSuccess.Value);
             }
 
             int totalRecords = await query.CountAsync();
-            int totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
+            int totalPages = (int)Math.Ceiling(totalRecords / (double)queryDto.PerPage);
 
             List<Data.Models.LoginLog> logs = await query
                 .OrderByDescending(l => l.LoginTime)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
+                .Skip((queryDto.Page - 1) * queryDto.PerPage)
+                .Take(queryDto.PerPage)
                 .ToListAsync();
 
-            IEnumerable<LoginLogDto> logDtos = logs.Select(l => new LoginLogDto
+            var logDtos = logs.Select(l => new LoginLogDto
             {
                 Id = l.Id,
                 UserId = l.UserId,
@@ -72,18 +75,13 @@ namespace CodeSpirit.IdentityApi.Controllers
                 IPAddress = l.IPAddress,
                 IsSuccess = l.IsSuccess,
                 FailureReason = l.FailureReason
-            });
+            }).ToList();
 
-            PagedResult<LoginLogDto> pagedResult = new PagedResult<LoginLogDto>
+            return SuccessResponse(new ListData<LoginLogDto>
             {
                 Items = logDtos,
-                TotalRecords = totalRecords,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                TotalPages = totalPages
-            };
-
-            return Ok(pagedResult);
+                Total = totalPages
+            });
         }
 
         /// <summary>

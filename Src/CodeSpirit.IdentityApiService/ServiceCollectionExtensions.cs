@@ -2,6 +2,7 @@
 using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
 using CodeSpirit.Authorization;
+using CodeSpirit.Core;
 using CodeSpirit.Core.Authorization;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
@@ -14,10 +15,13 @@ using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
+using System.Text;
 
 public static class ServiceCollectionExtensions
 {
@@ -195,5 +199,63 @@ public static class ServiceCollectionExtensions
             return input;
 
         return char.ToLower(input[0], CultureInfo.InvariantCulture) + input.Substring(1);
+    }
+
+    /// <summary>
+    /// 添加Jwt认证
+    /// </summary>
+    /// <param name="builder"></param>
+    public static void AddJwtAuthentication(this IServiceCollection services, ConfigurationManager configuration)
+    {
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+
+        })
+        .AddJwtBearer(options =>
+        {
+            options.RequireHttpsMetadata = false;
+            options.IncludeErrorDetails = true;
+            //用于指定是否将从令牌提取的数据保存到当前的安全上下文中。当设置为true时，可以通过HttpContext.User.Claims来访问这些数据。
+            //如果不需要使用从令牌提取的数据，可以将该属性设置为false以节省系统资源和提高性能。
+            options.SaveToken = true;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(configuration["Jwt:SecretKey"])),
+                ClockSkew = TimeSpan.Zero, // 设置时钟偏移量为0，即不允许过期的Token被接受
+                RequireExpirationTime = true, // 要求Token必须有过期时间
+                ValidIssuer = configuration["Jwt:Issuer"],
+                ValidAudience = configuration["Jwt:Audience"],
+                NameClaimType = "id",
+
+                /***********************************TokenValidationParameters的参数默认值***********************************/
+                // RequireSignedTokens = true,
+                // SaveSigninToken = false,
+                // ValidateActor = false,
+                // 将下面两个参数设置为false，可以不验证Issuer和Audience，但是不建议这样做。
+                // ValidateAudience = true,
+                // ValidateIssuer = true, 
+                // ValidateIssuerSigningKey = false,
+                // 是否要求Token的Claims中必须包含Expires
+                // RequireExpirationTime = true,
+                // 允许的服务器时间偏移量
+                // ClockSkew = TimeSpan.FromSeconds(300),
+                // 是否验证Token有效期，使用当前时间与Token的Claims中的NotBefore和Expires对比
+                // ValidateLifetime = true
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = context =>
+                {
+                    return Task.CompletedTask;
+                }
+            };
+        });
     }
 }

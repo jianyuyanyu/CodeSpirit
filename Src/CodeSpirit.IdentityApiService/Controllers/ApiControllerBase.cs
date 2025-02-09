@@ -1,9 +1,11 @@
 ﻿using CodeSpirit.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [ApiController]
+    [Authorize]
     public abstract class ApiControllerBase : ControllerBase
     {
         /// <summary>

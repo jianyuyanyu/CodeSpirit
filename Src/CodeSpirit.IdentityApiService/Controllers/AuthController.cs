@@ -1,4 +1,5 @@
 ﻿// Controllers/AuthController.cs
+using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [AllowAnonymous]
-    public class AuthController : ControllerBase
+    public class AuthController : ApiControllerBase
     {
         private readonly AuthService _authService;
 
@@ -25,14 +26,18 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>登录结果。</returns>
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] LoginModel model)
+        public async Task<ActionResult<ApiResponse<LoginResult>>> Login([FromBody] LoginModel model)
         {
             (bool success, string message, string token, UserDto user) = await _authService.LoginAsync(model.UserName, model.Password);
             if (success)
             {
-                return Ok(new { token, user });
+                var result = new LoginResult()
+                {
+                    Token = token,
+                };
+                return SuccessResponse(result);
             }
-            return Unauthorized(new { message });
+            return BadResponse<LoginResult>(message);
         }
     }
 }

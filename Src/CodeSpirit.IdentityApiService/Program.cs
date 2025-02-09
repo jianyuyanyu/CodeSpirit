@@ -16,8 +16,7 @@ builder.Services.AddDataFilters();
 builder.Services.AddCustomServices();
 builder.Services.AddIdentityServices();
 builder.Services.AddCorsPolicy();
-// 如果需要启用 JWT 认证，取消注释以下行
-// builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddAuthorizationPolicies();
 builder.Services.AddFluentValidationServices();
 builder.Services.ConfigureControllers();

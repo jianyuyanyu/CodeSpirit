@@ -69,8 +69,6 @@ namespace CodeSpirit.IdentityApi.Services
             // 如果用户不存在，记录登录日志并返回失败信息
             if (user == null)
             {
-                loginLog.FailureReason = "用户不存在";
-                await _loginLogRepository.AddLoginLogAsync(loginLog);
                 return (false, ErrorMessages.InvalidCredentials, null, null);
             }
 
@@ -185,7 +183,7 @@ namespace CodeSpirit.IdentityApi.Services
     /// </summary>
     public static class ErrorMessages
     {
-        public const string InvalidCredentials = "用户名或密码不正确";
-        public const string AccountLocked = "账户被锁定，请稍后再试";
+        public const string InvalidCredentials = "用户名或密码不正确，请重新输入！";
+        public const string AccountLocked = "账户被锁定，请稍后再试！";
     }
 }

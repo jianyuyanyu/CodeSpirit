@@ -5,7 +5,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AmisController : ControllerBase
+    public class AmisController : ApiControllerBase
     {
         private readonly AmisGenerator _amisGenerator;
         private readonly ISiteConfigurationService _siteConfigurationService;

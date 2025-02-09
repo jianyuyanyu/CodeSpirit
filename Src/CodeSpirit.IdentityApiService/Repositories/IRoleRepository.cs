@@ -10,6 +10,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         Task DeleteRoleAsync(ApplicationRole role);
         Task<ApplicationRole> GetRoleByIdAsync(string id);
         Task<(List<ApplicationRole>, int)> GetRolesAsync(RoleQueryDto queryDto);
+        Task<List<ApplicationRole>> GetRolesByNamesAsync(List<string> roleNames);
         Task<List<string>> GetUserIdsByRoleId(string id);
         Task UpdateRoleAsync(ApplicationRole role, IEnumerable<string> permissionIds);
     }

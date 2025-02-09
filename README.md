@@ -64,12 +64,15 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
       - [x] 批量导入
         - [x] Excel上传解析
         - [x] 导入预览
+          - [x] 显示序号
         - [x] 导入数据修改
+          - [x] 支持删除行
+          - [x] 支持添加行
+          - [ ] 导入编辑控件支持
+            - [ ] bool——>switch
+            - [ ] enum——>select
+            - [x] string——>text
         - [ ] 导入数据验证
-        - [x] 导入编辑控件支持
-          - [ ] bool——>switch
-          - [ ] enum——>select
-          - [x] string——>text
       - [x] 导出Excel
         - [x] 导出当前页
         - [x] 导出全部
@@ -154,7 +157,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
 - [x] 权限控制
   - [x] 自动获取权限树
     - [x] 支持权限特性：`PermissionAttribute`
-    - [ ] ModuleAttribute
+    - [x] ModuleAttribute
   
 - [ ] ORM封装
   - [ ] 实体基类
@@ -178,11 +181,10 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
 
 ### 用户中心
 
-- [ ] 登录
-- [ ] 用户管理
-- [ ] 角色管理
-- [ ] 权限管理
-- [ ] 租户管理
+- [x] 登录
+- [x] 用户管理
+- [x] 角色管理
+- [x] 权限管理
 
 ## DevOps
 

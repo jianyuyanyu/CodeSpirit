@@ -1,22 +1,25 @@
-﻿using System.Text.Json.Serialization;
-
+﻿using Newtonsoft.Json;
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
 {
     /// <summary>
     /// 批量导入角色 DTO
     /// </summary>
-    public class RoleBatchImportDto
+    public class RoleBatchImportItemDto
     {
         /// <summary>
         /// 角色名称
         /// </summary>
-        [JsonPropertyName("名称")]
+        [JsonProperty("名称")]
+        [Required]
+        [MaxLength(100)]
         public string Name { get; set; }
 
         /// <summary>
         /// 角色描述
         /// </summary>
-        [JsonPropertyName("描述")]
+        [JsonProperty("描述")]
+        [MaxLength(256)]
+        [Required]
         public string Description { get; set; }
     }
 }

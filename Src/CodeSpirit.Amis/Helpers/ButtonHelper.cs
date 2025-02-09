@@ -62,11 +62,12 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         // 创建“新增”按钮
-        public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null)
+        public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null)
         {
             JObject dialogBody = new JObject
             {
                 ["title"] = title,
+                ["size"] = size,
                 ["body"] = new JObject
                 {
                     ["type"] = "form",

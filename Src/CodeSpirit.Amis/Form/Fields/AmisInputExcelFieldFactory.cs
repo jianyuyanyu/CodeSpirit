@@ -2,9 +2,9 @@
 
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Helpers;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
-using System.Text.Json.Serialization;
 
 namespace CodeSpirit.Amis.Form.Fields
 {
@@ -28,6 +28,11 @@ namespace CodeSpirit.Amis.Form.Fields
                         {
                             ["type"] = "input-table",
                             ["name"] = field["name"],
+                            ["showIndex"] = true,
+                            ["addable"] = true,
+                            ["editable"] = true,
+                            ["copyable"] = true,
+                            ["removable"] = true,
                             ["visibleOn"] = $"data.{field["name"]}",
                             ["columns"] = cols
                         }
@@ -50,8 +55,8 @@ namespace CodeSpirit.Amis.Form.Fields
                 JObject fieldInfo = [];
 
                 // 获取字段名称
-                var jsonPropertyName = property.GetCustomAttribute<JsonPropertyNameAttribute>();
-                string fieldName = jsonPropertyName?.Name ?? property.Name; // 如果有JsonPropertyName则使用它，否则使用默认名称
+                var jsonPropertyName = property.GetCustomAttribute<JsonPropertyAttribute>();
+                string fieldName = jsonPropertyName?.PropertyName ?? property.Name; // 如果有JsonPropertyName则使用它，否则使用默认名称
                 fieldInfo["name"] = fieldName;
 
                 // 获取标签信息

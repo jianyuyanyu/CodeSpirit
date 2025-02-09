@@ -18,6 +18,8 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
 
             // 映射 RoleUpdateDto 到 ApplicationRole
             CreateMap<RoleUpdateDto, ApplicationRole>();
+
+            CreateMap<RoleBatchImportItemDto, ApplicationRole>();
         }
     }
 }

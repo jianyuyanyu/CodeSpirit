@@ -133,5 +133,12 @@ namespace CodeSpirit.IdentityApi.Repositories
             await _context.AddRangeAsync(roles);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<List<ApplicationRole>> GetRolesByNamesAsync(List<string> roleNames)
+        {
+            return await _context.Roles
+                .Where(role => roleNames.Contains(role.Name))
+                .ToListAsync();
+        }
     }
 }

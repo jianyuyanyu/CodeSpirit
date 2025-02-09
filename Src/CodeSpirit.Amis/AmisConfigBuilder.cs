@@ -138,7 +138,7 @@ namespace CodeSpirit.Amis
             }
             if (amisContext.ApiRoutes.Import != null && amisContext.Actions.Import != null)
             {
-                buttons.Add(_buttonHelper.CreateHeaderButton("导入", amisContext.ApiRoutes.Import, amisContext.Actions.Import?.GetParameters()));
+                buttons.Add(_buttonHelper.CreateHeaderButton("导入", amisContext.ApiRoutes.Import, amisContext.Actions.Import?.GetParameters(), size: "lg"));
             }
             return buttons;
         }

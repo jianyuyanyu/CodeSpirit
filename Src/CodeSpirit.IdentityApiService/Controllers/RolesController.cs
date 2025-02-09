@@ -64,13 +64,8 @@ public class RolesController : ApiControllerBase
     /// <param name="importDto">批量导入角色 DTO 列表</param>
     /// <returns>操作结果</returns>
     [HttpPost("batch/import")]
-    public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<RoleBatchImportDto> importDto)
+    public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<RoleBatchImportItemDto> importDto)
     {
-        if (importDto.ImportData == null || !importDto.ImportData.Any())
-        {
-            return BadResponse("导入数据不能为空！");
-        }
-
         await _roleService.BatchImportRolesAsync(importDto.ImportData);
         return SuccessResponse();
     }

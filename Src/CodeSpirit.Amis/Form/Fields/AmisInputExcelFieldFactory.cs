@@ -1,9 +1,11 @@
 ﻿// 文件路径: CodeSpirit.Amis.Helpers/FormFieldHelper.cs
 
 using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace CodeSpirit.Amis.Form.Fields
@@ -43,7 +45,7 @@ namespace CodeSpirit.Amis.Form.Fields
             return field;
         }
 
-        public static JArray ExtractPropertyInfo(Type targetType)
+        public JArray ExtractPropertyInfo(Type targetType)
         {
             if (targetType == null) return null;
             JArray fieldArray = [];
@@ -52,21 +54,12 @@ namespace CodeSpirit.Amis.Form.Fields
 
             foreach (var property in properties)
             {
-                JObject fieldInfo = [];
-
                 // 获取字段名称
-                var jsonPropertyName = property.GetCustomAttribute<JsonPropertyAttribute>();
-                string fieldName = jsonPropertyName?.PropertyName ?? property.Name; // 如果有JsonPropertyName则使用它，否则使用默认名称
-                fieldInfo["name"] = fieldName;
-
-                // 获取标签信息
-                fieldInfo["label"] = fieldName;
-
-                // 获取类型
-                var fieldType = property.PropertyType.Name.ToLower(); // 获取字段的类型
-                fieldInfo["type"] = fieldType.Contains("list") ? "input-table" : "input-text"; // 判断是否为List类型
-
-                fieldArray.Add(fieldInfo);
+                var jsonProperty = property.GetCustomAttribute<JsonPropertyAttribute>();
+                string fieldName = jsonProperty?.PropertyName;
+                //导入表格使用友好名称作为字段和显示名
+                var field = property.CreateFormField(fieldName: fieldName, lableName: fieldName);
+                fieldArray.Add(field);
             }
 
             return fieldArray;

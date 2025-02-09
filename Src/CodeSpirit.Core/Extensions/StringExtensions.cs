@@ -11,6 +11,11 @@ namespace CodeSpirit.Core.Extensions
     /// </summary>
     public static class StringExtensions
     {
+        public static string ToTitleCase(this string input)
+        {
+            return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(input);
+        }
+
         /// <summary>
         /// 将字符串转换为小驼峰格式（过时版本，建议使用下方ToCamelCase重载）
         /// </summary>

@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using CodeSpirit.Amis.Helpers;
+using Newtonsoft.Json.Linq;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace CodeSpirit.Amis.Extensions
@@ -50,6 +52,66 @@ namespace CodeSpirit.Amis.Extensions
                 PropertyInfo prop => prop.Name,
                 _ => string.Empty
             };
+        }
+
+        /// <summary>
+        /// 根据类型判断是否必填
+        /// </summary>
+        public static bool IsTypeRequired(this Type type) =>
+            !type.IsNullable();
+
+        /// <summary>
+        /// 判断参数或属性是否为可空类型。
+        /// </summary>
+        /// <param name="type">类型信息。</param>
+        /// <returns>如果是可空类型则返回 true，否则返回 false。</returns>
+        public static bool IsNullable(this Type type)
+        {
+            if (!type.IsValueType)
+                return true;
+
+            if (Nullable.GetUnderlyingType(type) != null)
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// 获取枚举类型的选项列表，用于 AMIS 的下拉选择框。
+        /// </summary>
+        /// <param name="type">枚举类型或可空枚举类型。</param>
+        /// <returns>AMIS 枚举选项的 JSON 数组。</returns>
+        public static JArray GetEnumOptions(this Type type)
+        {
+            Type enumType = Nullable.GetUnderlyingType(type) ?? type;
+            IEnumerable<object> enumValues = Enum.GetValues(enumType).Cast<object>();
+            IEnumerable<JObject> enumOptions = enumValues.Select(e => new JObject
+            {
+                ["label"] = GetEnumDisplayName(enumType, e),
+                ["value"] = e.ToString()
+            });
+
+            return new JArray(enumOptions);
+        }
+
+        /// <summary>
+        /// 获取枚举成员的显示名称。优先从 <see cref="DisplayNameAttribute"/> 获取，否则使用枚举成员的名称。
+        /// </summary>
+        /// <param name="enumType">枚举类型。</param>
+        /// <param name="value">枚举值。</param>
+        /// <returns>枚举成员的显示名称。</returns>
+        public static string GetEnumDisplayName(this Type enumType, object value)
+        {
+            string name = Enum.GetName(enumType, value);
+            if (name == null)
+                return value.ToString();
+
+            MemberInfo member = enumType.GetMember(name).FirstOrDefault();
+            if (member == null)
+                return name;
+
+            DisplayAttribute displayNameAttr = member.GetCustomAttribute<DisplayAttribute>();
+            return displayNameAttr?.Name ?? name;
         }
     }
 }

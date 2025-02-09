@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Core.Authorization;
@@ -115,7 +116,7 @@ namespace CodeSpirit.Amis.Column
         private JObject CreateAmisColumn(PropertyInfo prop)
         {
             // 获取属性的显示名称，优先使用 DisplayNameAttribute
-            string displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
+            string displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase();
             // 将属性名称转换为 camelCase 以符合 AMIS 的命名约定
             string fieldName = prop.Name.ToCamelCase();
 
@@ -253,7 +254,7 @@ namespace CodeSpirit.Amis.Column
                 // 获取枚举的实际值（根据基础类型动态转换）
                 Type underlyingType = Enum.GetUnderlyingType(enumType);
                 string value = Convert.ChangeType(e, underlyingType, CultureInfo.InvariantCulture).ToString();
-                string label = _utilityHelper.GetEnumDisplayName(enumType, e);
+                string label = enumType.GetEnumDisplayName(e);
                 mapping[value] = label;
             }
 

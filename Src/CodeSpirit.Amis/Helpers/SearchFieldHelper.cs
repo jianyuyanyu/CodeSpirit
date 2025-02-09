@@ -1,4 +1,5 @@
-﻿using CodeSpirit.Core.Authorization;
+﻿using CodeSpirit.Amis.Extensions;
+using CodeSpirit.Core.Authorization;
 using CodeSpirit.Core.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
@@ -138,7 +139,7 @@ namespace CodeSpirit.Amis.Helpers
         private JObject CreateSearchField(ParameterInfo param)
         {
             // 获取显示名称，如果未定义则转换参数名为标题格式
-            string label = param.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(param.Name);
+            string label = param.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? param.Name.ToTitleCase();
             // 转换参数名为驼峰命名
             string fieldName = param.Name.ToCamelCase();
             // 确定字段类型
@@ -154,7 +155,7 @@ namespace CodeSpirit.Amis.Helpers
             // 如果是下拉选择框并且是枚举类型，添加选项
             if (fieldType == "select" && (param.ParameterType.IsEnum || _utilityHelper.IsNullableEnum(param.ParameterType)))
             {
-                field["options"] = _utilityHelper.GetEnumOptions(param.ParameterType);
+                field["options"] = param.ParameterType.GetEnumOptions();
             }
 
             // 如果是日期类型，设置日期格式
@@ -175,7 +176,7 @@ namespace CodeSpirit.Amis.Helpers
         private JObject CreateSearchFieldFromProperty(PropertyInfo prop, string parentName)
         {
             // 获取显示名称，如果未定义则转换属性名为标题格式
-            string label = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? _utilityHelper.ToTitleCase(prop.Name);
+            string label = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase();
             // 构建嵌套字段名，例如 parent.property
             string fieldName = $"{prop.Name}".ToCamelCase();
             // 确定字段类型
@@ -197,7 +198,7 @@ namespace CodeSpirit.Amis.Helpers
             // 如果是下拉选择框并且是枚举类型，添加选项
             if (fieldType == "select" && (prop.PropertyType.IsEnum || _utilityHelper.IsNullableEnum(prop.PropertyType)))
             {
-                field["options"] = _utilityHelper.GetEnumOptions(prop.PropertyType);
+                field["options"] = prop.PropertyType.GetEnumOptions();
                 field["clearable"] = true;
             }
 

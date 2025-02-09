@@ -9,36 +9,6 @@ namespace CodeSpirit.Amis.Helpers
 {
     public class UtilityHelper
     {
-        /// <summary>
-        /// 获取成员的显示名称，优先使用 DisplayNameAttribute。
-        /// </summary>
-        public string GetDisplayName(ICustomAttributeProvider member)
-        {
-            return member switch
-            {
-                MemberInfo m => m.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? ToTitleCase(m.Name),
-                ParameterInfo p => p.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? ToTitleCase(p.Name),
-                _ => ToTitleCase(member.ToString())
-            };
-        }
-
-        /// <summary>
-        /// 构建字段名称，支持嵌套对象。
-        /// </summary>
-        public string GetFieldName(ICustomAttributeProvider member, string parentName)
-        {
-            string name = member switch
-            {
-                MemberInfo m => m.Name,
-                ParameterInfo p => p.Name,
-                _ => throw new NotSupportedException("Unsupported member type")
-            };
-
-            return parentName != null
-                ? $"{parentName}.{name}".ToCamelCase()
-                : name.ToCamelCase();
-        }
-
         public void HandleAdditionalConfig(string additionalConfig, JObject field)
         {
             if (string.IsNullOrEmpty(additionalConfig))
@@ -58,10 +28,7 @@ namespace CodeSpirit.Amis.Helpers
             }
         }
 
-        public string ToTitleCase(string input)
-        {
-            return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(input);
-        }
+        
 
         //public bool IsNullable(Type type)
         //{
@@ -117,43 +84,7 @@ namespace CodeSpirit.Amis.Helpers
                 || Nullable.GetUnderlyingType(type) != null && IsSimpleType(Nullable.GetUnderlyingType(type));
         }
 
-        /// <summary>
-        /// 获取枚举类型的选项列表，用于 AMIS 的下拉选择框。
-        /// </summary>
-        /// <param name="type">枚举类型或可空枚举类型。</param>
-        /// <returns>AMIS 枚举选项的 JSON 数组。</returns>
-        public JArray GetEnumOptions(Type type)
-        {
-            Type enumType = Nullable.GetUnderlyingType(type) ?? type;
-            IEnumerable<object> enumValues = Enum.GetValues(enumType).Cast<object>();
-            IEnumerable<JObject> enumOptions = enumValues.Select(e => new JObject
-            {
-                ["label"] = GetEnumDisplayName(enumType, e),
-                ["value"] = e.ToString()
-            });
-
-            return new JArray(enumOptions);
-        }
-
-        /// <summary>
-        /// 获取枚举成员的显示名称。优先从 <see cref="DisplayNameAttribute"/> 获取，否则使用枚举成员的名称。
-        /// </summary>
-        /// <param name="enumType">枚举类型。</param>
-        /// <param name="value">枚举值。</param>
-        /// <returns>枚举成员的显示名称。</returns>
-        public string GetEnumDisplayName(Type enumType, object value)
-        {
-            string name = Enum.GetName(enumType, value);
-            if (name == null)
-                return value.ToString();
-
-            MemberInfo member = enumType.GetMember(name).FirstOrDefault();
-            if (member == null)
-                return name;
-
-            DisplayAttribute displayNameAttr = member.GetCustomAttribute<DisplayAttribute>();
-            return displayNameAttr?.Name ?? name;
-        }
+        
 
         ///// <summary>
         ///// 获取成员的类型（PropertyInfo 或 ParameterInfo）。

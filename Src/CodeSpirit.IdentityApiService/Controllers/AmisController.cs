@@ -1,6 +1,8 @@
 ﻿using CodeSpirit.Amis;
+using CodeSpirit.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -26,7 +28,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("{name}")]
         public IActionResult GenerateAmis([FromRoute] string name)
         {
-            Newtonsoft.Json.Linq.JObject amisJson = _amisGenerator.GenerateAmisJsonForController(name);
+            JObject amisJson = _amisGenerator.GenerateAmisJsonForController(name);
             return amisJson == null ? NotFound(new { message = $"AMIS JSON for controller '{name}' not found or not supported." }) : Ok(amisJson);
         }
 
@@ -38,7 +40,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetSiteConfiguration()
         {
-            Core.ApiResponse<Amis.App.AmisApp> site = await _siteConfigurationService.GetSiteConfigurationAsync();
+            ApiResponse<Amis.App.AmisApp> site = await _siteConfigurationService.GetSiteConfigurationAsync();
             return Ok(site);
         }
     }

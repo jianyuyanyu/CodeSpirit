@@ -21,6 +21,8 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
     - [x] 支持PageAttribute
 
     - [x] 支持配置文件配置（PagesConfiguration）
+    
+    - [ ] 根据权限生成
 - [x] 增删改查
 
   - [x] 基于QueryDto生成查询表单

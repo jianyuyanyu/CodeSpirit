@@ -43,7 +43,9 @@ public class UserService : IUserService
         int totalCount = await filteredQuery.CountAsync();
 
         // 分页
-        IQueryable<ApplicationUser> pagedQuery = filteredQuery.ApplyPaging(queryDto);
+        IQueryable<ApplicationUser> pagedQuery = filteredQuery
+            .ApplySorting(queryDto)  // 自定义排序扩展方法
+                .ApplyPaging(queryDto);  // 自定义分页扩展方法
 
         // 获取数据并映射到 DTO
         List<UserDto> userDtos = _mapper.Map<List<UserDto>>(await pagedQuery.ToListAsync());

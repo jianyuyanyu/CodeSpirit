@@ -1,11 +1,18 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
 namespace CodeSpirit.Authorization
 {
     public class RolePermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
     {
+        private readonly ILogger<RolePermissionAuthorizationHandler> logger;
+
+        public RolePermissionAuthorizationHandler(ILogger<RolePermissionAuthorizationHandler> logger)
+        {
+            this.logger = logger;
+        }
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
         {
             // 确保 Resource 是 HttpContext
@@ -42,8 +49,25 @@ namespace CodeSpirit.Authorization
 
                 // 检查权限
                 PermissionAttribute permissionAttribute = endpoint.Metadata.GetMetadata<PermissionAttribute>();
-                if (permissionAttribute != null && userPermissions.Contains(permissionAttribute.Name))
+                string permissionCode;
+                if (permissionAttribute?.Code != null)
                 {
+                    permissionCode = permissionAttribute.Code;
+                }
+                else
+                {
+                    // 获取请求方法和终结点名称
+                    string requestMethod = httpContext.Request.Method;
+                    string endpointName = endpoint.DisplayName ?? endpoint.ToString();
+                    string rawCode = $"{requestMethod}:{endpointName}";
+                    permissionCode = rawCode.GenerateShortCode();
+                    logger.LogInformation(rawCode + " => " + permissionCode);
+                }
+
+                if (userPermissions.Contains(permissionCode))
+                {
+                    logger.LogInformation("User {UserId} has permission {PermissionCode}", context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, permissionCode);
+
                     context.Succeed(requirement);
                 }
             }

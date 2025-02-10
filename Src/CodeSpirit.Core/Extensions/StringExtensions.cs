@@ -1,8 +1,8 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Globalization;
 using System.Security.Cryptography;
-using System.Text.RegularExpressions;
 using System.Text;
-using System;
+using System.Text.RegularExpressions;
 
 namespace CodeSpirit.Core.Extensions
 {
@@ -22,15 +22,21 @@ namespace CodeSpirit.Core.Extensions
         public static string ToCamelCase(this string input)
         {
             if (string.IsNullOrEmpty(input) || !char.IsUpper(input[0]))
+            {
                 return input;
+            }
 
             char[] chars = input.ToCharArray();
             for (int i = 0; i < chars.Length; i++)
             {
                 if (i == 0 || (i > 0 && char.IsUpper(chars[i])))
+                {
                     chars[i] = char.ToLower(chars[i]);
+                }
                 else
+                {
                     break;
+                }
             }
             return new string(chars);
         }
@@ -54,9 +60,9 @@ namespace CodeSpirit.Core.Extensions
         /// <exception cref="ArgumentException">当长度超过字符串实际长度时抛出</exception>
         public static string Left(this string str, int len)
         {
-            if (str == null) throw new ArgumentNullException(nameof(str));
-            if (str.Length < len) throw new ArgumentException("截取长度不能超过字符串实际长度");
-            return str[..len];
+            return str == null
+                ? throw new ArgumentNullException(nameof(str))
+                : str.Length < len ? throw new ArgumentException("截取长度不能超过字符串实际长度") : str[..len];
         }
 
         /// <summary>
@@ -69,16 +75,29 @@ namespace CodeSpirit.Core.Extensions
         /// 移除字符串结尾的指定后缀（匹配第一个符合的后缀）
         /// </summary>
         /// <param name="postFixes">要移除的后缀集合</param>
-        public static string RemovePostFix(this string str, params string[] postFixes)
+        public static string? RemovePostFix(this string str, params string[] postFixes)
         {
-            if (str == null) return null;
-            if (str.Length == 0) return string.Empty;
-            if (postFixes.IsNullOrEmpty()) return str;
+            if (str == null)
+            {
+                return null;
+            }
 
-            foreach (var postfix in postFixes)
+            if (str.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            if (postFixes.IsNullOrEmpty())
+            {
+                return str;
+            }
+
+            foreach (string postfix in postFixes)
             {
                 if (str.EndsWith(postfix))
+                {
                     return str.Left(str.Length - postfix.Length);
+                }
             }
             return str;
         }
@@ -87,16 +106,29 @@ namespace CodeSpirit.Core.Extensions
         /// 移除字符串开头的指定前缀（匹配第一个符合的前缀）
         /// </summary>
         /// <param name="preFixes">要移除的前缀集合</param>
-        public static string RemovePreFix(this string str, params string[] preFixes)
+        public static string? RemovePreFix(this string str, params string[] preFixes)
         {
-            if (str == null) return null;
-            if (str.Length == 0) return string.Empty;
-            if (preFixes.IsNullOrEmpty()) return str;
+            if (str == null)
+            {
+                return null;
+            }
 
-            foreach (var prefix in preFixes)
+            if (str.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            if (preFixes.IsNullOrEmpty())
+            {
+                return str;
+            }
+
+            foreach (string prefix in preFixes)
             {
                 if (str.StartsWith(prefix))
+                {
                     return str.Right(str.Length - prefix.Length);
+                }
             }
             return str;
         }
@@ -108,9 +140,9 @@ namespace CodeSpirit.Core.Extensions
         /// <exception cref="ArgumentException">当长度超过字符串实际长度时抛出</exception>
         public static string Right(this string str, int len)
         {
-            if (str == null) throw new ArgumentNullException(nameof(str));
-            if (str.Length < len) throw new ArgumentException("截取长度不能超过字符串实际长度");
-            return str.Substring(str.Length - len, len);
+            return str == null
+                ? throw new ArgumentNullException(nameof(str))
+                : str.Length < len ? throw new ArgumentException("截取长度不能超过字符串实际长度") : str.Substring(str.Length - len, len);
         }
 
         /// <summary>
@@ -143,10 +175,17 @@ namespace CodeSpirit.Core.Extensions
         /// <param name="invariantCulture">是否使用不变文化规则</param>
         public static string ToCamelCase(this string str, bool invariantCulture = true)
         {
-            if (string.IsNullOrWhiteSpace(str)) return str;
-            if (str.Length == 1) return invariantCulture ? str.ToLowerInvariant() : str.ToLower();
+            if (string.IsNullOrWhiteSpace(str))
+            {
+                return str;
+            }
 
-            var firstChar = invariantCulture
+            if (str.Length == 1)
+            {
+                return invariantCulture ? str.ToLowerInvariant() : str.ToLower();
+            }
+
+            char firstChar = invariantCulture
                 ? char.ToLowerInvariant(str[0])
                 : char.ToLower(str[0]);
             return firstChar + str[1..];
@@ -157,9 +196,7 @@ namespace CodeSpirit.Core.Extensions
         /// </summary>
         public static string ToCamelCase(this string str, CultureInfo culture)
         {
-            if (string.IsNullOrWhiteSpace(str)) return str;
-            if (str.Length == 1) return str.ToLower(culture);
-            return char.ToLower(str[0], culture) + str[1..];
+            return string.IsNullOrWhiteSpace(str) ? str : str.Length == 1 ? str.ToLower(culture) : char.ToLower(str[0], culture) + str[1..];
         }
 
         /// <summary>
@@ -191,8 +228,7 @@ namespace CodeSpirit.Core.Extensions
         /// <exception cref="ArgumentNullException">当值为null时抛出</exception>
         public static T ToEnum<T>(this string value) where T : struct
         {
-            if (value == null) throw new ArgumentNullException(nameof(value));
-            return (T)Enum.Parse(typeof(T), value);
+            return value == null ? throw new ArgumentNullException(nameof(value)) : (T)Enum.Parse(typeof(T), value);
         }
 
         /// <summary>
@@ -200,8 +236,7 @@ namespace CodeSpirit.Core.Extensions
         /// </summary>
         public static T ToEnum<T>(this string value, bool ignoreCase) where T : struct
         {
-            if (value == null) throw new ArgumentNullException(nameof(value));
-            return (T)Enum.Parse(typeof(T), value, ignoreCase);
+            return value == null ? throw new ArgumentNullException(nameof(value)) : (T)Enum.Parse(typeof(T), value, ignoreCase);
         }
 
         /// <summary>
@@ -209,10 +244,14 @@ namespace CodeSpirit.Core.Extensions
         /// </summary>
         public static string ToMd5(this string str)
         {
-            using var md5 = MD5.Create();
+            using MD5 md5 = MD5.Create();
             byte[] hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(str));
-            var sb = new StringBuilder();
-            foreach (byte b in hashBytes) sb.Append(b.ToString("X2"));
+            StringBuilder sb = new StringBuilder();
+            foreach (byte b in hashBytes)
+            {
+                sb.Append(b.ToString("X2"));
+            }
+
             return sb.ToString();
         }
 
@@ -222,10 +261,17 @@ namespace CodeSpirit.Core.Extensions
         /// <param name="invariantCulture">是否使用不变文化规则</param>
         public static string ToPascalCase(this string str, bool invariantCulture = true)
         {
-            if (string.IsNullOrWhiteSpace(str)) return str;
-            if (str.Length == 1) return invariantCulture ? str.ToUpperInvariant() : str.ToUpper();
+            if (string.IsNullOrWhiteSpace(str))
+            {
+                return str;
+            }
 
-            var firstChar = invariantCulture
+            if (str.Length == 1)
+            {
+                return invariantCulture ? str.ToUpperInvariant() : str.ToUpper();
+            }
+
+            char firstChar = invariantCulture
                 ? char.ToUpperInvariant(str[0])
                 : char.ToUpper(str[0]);
             return firstChar + str[1..];
@@ -236,18 +282,15 @@ namespace CodeSpirit.Core.Extensions
         /// </summary>
         public static string ToPascalCase(this string str, CultureInfo culture)
         {
-            if (string.IsNullOrWhiteSpace(str)) return str;
-            if (str.Length == 1) return str.ToUpper(culture);
-            return char.ToUpper(str[0], culture) + str[1..];
+            return string.IsNullOrWhiteSpace(str) ? str : str.Length == 1 ? str.ToUpper(culture) : char.ToUpper(str[0], culture) + str[1..];
         }
 
         /// <summary>
         /// 截断字符串到指定长度
         /// </summary>
-        public static string Truncate(this string str, int maxLength)
+        public static string? Truncate(this string str, int maxLength)
         {
-            if (str == null) return null;
-            return str.Length <= maxLength ? str : str[..maxLength];
+            return str == null ? null : str.Length <= maxLength ? str : str[..maxLength];
         }
 
         /// <summary>
@@ -260,14 +303,32 @@ namespace CodeSpirit.Core.Extensions
         /// 截断字符串并添加自定义后缀
         /// </summary>
         /// <param name="postfix">要添加的后缀</param>
-        public static string TruncateWithPostfix(this string str, int maxLength, string postfix)
+        public static string? TruncateWithPostfix(this string str, int maxLength, string postfix)
         {
-            if (str == null) return null;
-            if (str == string.Empty || maxLength == 0) return string.Empty;
-            if (str.Length <= maxLength) return str;
-            if (maxLength <= postfix.Length) return postfix[..maxLength];
+            return str == null
+                ? null
+                : str == string.Empty || maxLength == 0
+                ? string.Empty
+                : str.Length <= maxLength
+                ? str
+                : maxLength <= postfix.Length ? postfix[..maxLength] : str[..(maxLength - postfix.Length)] + postfix;
+        }
 
-            return str[..(maxLength - postfix.Length)] + postfix;
+        /// <summary>
+        /// 生成权限Code
+        /// </summary>
+        /// <param name="rawCode"></param>
+        /// <returns></returns>
+        public static string GenerateShortCode(this string rawCode)
+        {
+            // 使用 MD5 哈希并取前8位字符生成简短的权限代码
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] inputBytes = System.Text.Encoding.UTF8.GetBytes(rawCode);
+                byte[] hashBytes = md5.ComputeHash(inputBytes);
+                string shortCode = BitConverter.ToString(hashBytes).Replace("-", "").Substring(0, 8);  // 截取前8位
+                return shortCode;
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 
 namespace CodeSpirit.Amis
 {
@@ -12,16 +14,19 @@ namespace CodeSpirit.Amis
     {
         private readonly IPageCollector _pageCollector;
         private readonly ILogger<SiteConfigurationService> _logger;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         /// <summary>
-        /// 构造函数，注入页面收集器和日志记录服务。
+        /// 构造函数，注入页面收集器、日志记录服务和 HTTP 上下文访问器。
         /// </summary>
         public SiteConfigurationService(
             IPageCollector pageCollector,
-            ILogger<SiteConfigurationService> logger)
+            ILogger<SiteConfigurationService> logger,
+            IHttpContextAccessor httpContextAccessor)
         {
             _pageCollector = pageCollector;
             _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         /// <summary>
@@ -31,7 +36,24 @@ namespace CodeSpirit.Amis
         public async Task<ApiResponse<AmisApp>> GetSiteConfigurationAsync()
         {
             Dictionary<string, Page> pageDict = await _pageCollector.CollectPagesAsync();
-            List<Page> topLevelPages = BuildHierarchy(pageDict);
+
+            // 获取用户权限
+            ClaimsPrincipal user = _httpContextAccessor.HttpContext?.User;
+            HashSet<string> userPermissions = [];
+            bool isAdmin = false;
+
+            if (user?.Claims != null)
+            {
+                userPermissions = user.FindAll("permissions").Select(c => c.Value).ToHashSet();
+                isAdmin = user.FindAll(ClaimTypes.Role).Any(c => c.Value == "Administrator");
+            }
+
+            // 过滤没有权限的页面
+            Dictionary<string, Page> filteredPageDict = pageDict
+                .Where(kvp => isAdmin)
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            List<Page> topLevelPages = BuildHierarchy(filteredPageDict);
 
             return new ApiResponse<AmisApp>
             {
@@ -108,10 +130,14 @@ namespace CodeSpirit.Amis
             while (!string.IsNullOrEmpty(currentLabel))
             {
                 if (!pageDict.TryGetValue(currentLabel, out Page currentPage))
+                {
                     break;
+                }
 
                 if (visited.Contains(currentPage.Label))
+                {
                     return true;
+                }
 
                 visited.Add(currentPage.Label);
                 currentLabel = currentPage.ParentLabel;

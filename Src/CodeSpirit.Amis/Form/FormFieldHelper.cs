@@ -2,10 +2,9 @@
 
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
+using CodeSpirit.Authorization;
 using CodeSpirit.Core.Authorization;
 using Newtonsoft.Json.Linq;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace CodeSpirit.Amis.Form
@@ -16,7 +15,7 @@ namespace CodeSpirit.Amis.Form
     /// </summary>
     public class FormFieldHelper
     {
-        private readonly IPermissionService _permissionService;
+        private readonly IHasPermissionService _permissionService;
         private readonly UtilityHelper _utilityHelper;
         private readonly IEnumerable<IAmisFieldFactory> _fieldFactories;
 
@@ -28,7 +27,7 @@ namespace CodeSpirit.Amis.Form
         /// <param name="fieldFactories">字段工厂集合</param>
         /// <exception cref="ArgumentNullException">当任何参数为null时抛出</exception>
         public FormFieldHelper(
-            IPermissionService permissionService,
+            IHasPermissionService permissionService,
             UtilityHelper utilityHelper,
             IEnumerable<IAmisFieldFactory> fieldFactories)
         {
@@ -131,7 +130,7 @@ namespace CodeSpirit.Amis.Form
         private bool HasEditPermission(ParameterInfo param)
         {
             PermissionAttribute permissionAttr = param.GetAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
         }
 
         /// <summary>
@@ -140,7 +139,7 @@ namespace CodeSpirit.Amis.Form
         private bool HasEditPermission(PropertyInfo prop)
         {
             PermissionAttribute permissionAttr = prop.GetAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
         }
 
         /// <summary>

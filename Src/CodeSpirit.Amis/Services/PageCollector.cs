@@ -2,6 +2,7 @@
 using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Configuration;
+using CodeSpirit.Core.Authorization;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
@@ -23,6 +24,7 @@ namespace CodeSpirit.Amis.Services
         private readonly IMapper _mapper;
         private readonly IValidator<Page> _pageValidator;
         private readonly ApplicationPartManager applicationPartManager;
+        private readonly IHasPermissionService _permissionService;
 
         public PageCollector(
             IOptions<PagesConfiguration> pagesConfig,
@@ -30,7 +32,8 @@ namespace CodeSpirit.Amis.Services
             IHttpContextAccessor httpContextAccessor,
             IMapper mapper,
             IValidator<Page> pageValidator,
-            ApplicationPartManager applicationPartManager)
+            ApplicationPartManager applicationPartManager,
+            IHasPermissionService permissionService)
         {
             _pagesConfig = pagesConfig;
             _logger = logger;
@@ -38,6 +41,7 @@ namespace CodeSpirit.Amis.Services
             _mapper = mapper;
             _pageValidator = pageValidator;
             this.applicationPartManager = applicationPartManager;
+            _permissionService = permissionService;
         }
 
         public async Task<Dictionary<string, Page>> CollectPagesAsync()
@@ -116,6 +120,13 @@ namespace CodeSpirit.Amis.Services
 
         private void ValidateAndAddPage(Dictionary<string, Page> pageDict, Page page)
         {
+            // 首先验证权限
+            if (!string.IsNullOrEmpty(page.PermissionCode) && !_permissionService.HasPermission(page.PermissionCode))
+            {
+                _logger.LogDebug("Page '{Label}' skipped due to insufficient permissions", page.Label);
+                return;
+            }
+
             ValidationResult result = _pageValidator.Validate(page);
             if (!result.IsValid)
             {
@@ -130,6 +141,24 @@ namespace CodeSpirit.Amis.Services
             {
                 _logger.LogWarning("Duplicate page label detected: {Label}. Ignoring duplicate.", page.Label);
                 return;
+            }
+
+            // 如果页面有子页面，递归检查子页面的权限
+            if (page.Children?.Any() == true)
+            {
+                page.Children = page.Children
+                    .Where(child => string.IsNullOrEmpty(child.PermissionCode) || 
+                                   _permissionService.HasPermission(child.PermissionCode))
+                    .ToList();
+                
+                // 如果过滤后没有子页面了，且该页面本身没有其他内容（schema/schemaApi/redirect），则不添加该页面
+                if (!page.Children.Any() && 
+                    page.Schema == null && 
+                    string.IsNullOrEmpty(page.SchemaApi) && 
+                    string.IsNullOrEmpty(page.Redirect))
+                {
+                    return;
+                }
             }
 
             pageDict[page.Label] = page;

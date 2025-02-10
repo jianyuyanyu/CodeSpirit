@@ -13,7 +13,7 @@ namespace CodeSpirit.Authorization
     /// 权限服务：用于从应用中的所有控制器及其动作中构建权限树，
     /// 可用于后续权限管理或动态生成菜单等场景。
     /// </summary>
-    public class PermissionService
+    public class PermissionService : IPermissionService
     {
         /// <summary>
         /// 权限树根节点集合（一般每个控制器为一个根节点，其下挂载动作节点）
@@ -223,6 +223,41 @@ namespace CodeSpirit.Authorization
         private string GeneratePermissionCode(PermissionNode permissionNode)
         {
             return $"{permissionNode.RequestMethod}:{permissionNode.Name}".GenerateShortCode();
+        }
+
+        /// <summary>
+        /// 检查权限代码是否存在
+        /// </summary>
+        /// <param name="permissionCode">权限代码</param>
+        /// <returns>true 表示权限存在，false 表示权限不存在</returns>
+        public bool HasPermission(string permissionCode)
+        {
+            return FindNodeByCode(permissionCode, _permissionTree) != null;
+        }
+
+        /// <summary>
+        /// 递归查找指定权限代码的节点
+        /// </summary>
+        /// <param name="code">权限代码</param>
+        /// <param name="nodes">要搜索的节点集合</param>
+        /// <returns>找到的节点，如果未找到则返回 null</returns>
+        private PermissionNode FindNodeByCode(string code, List<PermissionNode> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                if (node.Code == code)
+                {
+                    return node;
+                }
+
+                var foundInChildren = FindNodeByCode(code, node.Children);
+                if (foundInChildren != null)
+                {
+                    return foundInChildren;
+                }
+            }
+
+            return null;
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using CodeSpirit.Amis.Extensions;
+using CodeSpirit.Authorization;
 using CodeSpirit.Core.Authorization;
-using CodeSpirit.Core.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
@@ -13,7 +13,7 @@ namespace CodeSpirit.Amis.Helpers
     /// </summary>
     public class SearchFieldHelper
     {
-        private readonly IPermissionService _permissionService;
+        private readonly IHasPermissionService _permissionService;
         private readonly UtilityHelper _utilityHelper;
 
         /// <summary>
@@ -29,7 +29,7 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         /// <param name="permissionService">权限服务，用于检查用户权限。</param>
         /// <param name="utilityHelper">工具辅助类，提供辅助方法。</param>
-        public SearchFieldHelper(IPermissionService permissionService, UtilityHelper utilityHelper)
+        public SearchFieldHelper(IHasPermissionService permissionService, UtilityHelper utilityHelper)
         {
             _permissionService = permissionService;
             _utilityHelper = utilityHelper;
@@ -84,7 +84,7 @@ namespace CodeSpirit.Amis.Helpers
         private bool HasSearchPermission(ParameterInfo param)
         {
             PermissionAttribute permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
         }
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace CodeSpirit.Amis.Helpers
         private bool HasSearchPermission(PropertyInfo prop)
         {
             PermissionAttribute permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using CodeSpirit.Core.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.Authorization
@@ -7,7 +8,8 @@ namespace CodeSpirit.Authorization
     {
         public static IServiceCollection AddCodeSpiritAuthorization(this IServiceCollection services)
         {
-            services.AddSingleton<PermissionService>();
+            services.AddSingleton<IPermissionService,PermissionService>();
+            services.AddSingleton<IHasPermissionService, PermissionService>();
             services.AddAuthorization(options =>
             {
                 options.AddPolicy("DynamicPermissions", policy =>

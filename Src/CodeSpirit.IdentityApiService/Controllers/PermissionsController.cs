@@ -6,22 +6,24 @@ using CodeSpirit.IdentityApi.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using System.ComponentModel;
+using CodeSpirit.IdentityApi.Constants;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [DisplayName("权限管理")]
-    [Page(Label = "权限管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-plus")]
+    [Page(Label = "权限管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-plus", PermissionCode = PermissionCodes.PermissionManagement)]
+    [Permission(code: PermissionCodes.PermissionManagement)]
     public class PermissionsController : ApiControllerBase
     {
         private readonly ApplicationDbContext _context;
         private readonly IDistributedCache _cache;
         private readonly ILogger<PermissionsController> _logger;
-        private readonly PermissionService _permissionService;
+        private readonly IPermissionService _permissionService;
         private readonly IMapper _mapper;
 
-        public PermissionsController(PermissionService permissionService, IDistributedCache distributedCache, IMapper mapper)
+        public PermissionsController(IPermissionService permissionService, IDistributedCache distributedCache, IMapper mapper)
         {
             _cache = distributedCache;
             _permissionService = permissionService;

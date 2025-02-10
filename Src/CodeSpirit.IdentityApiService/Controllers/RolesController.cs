@@ -4,11 +4,14 @@ using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
+using CodeSpirit.IdentityApi.Constants;
+using CodeSpirit.Authorization;
 
 [Route("api/[controller]")]
 [ApiController]
 [DisplayName("角色管理")]
-[Page(Label = "角色管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-group")]
+[Page(Label = "角色管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-group", PermissionCode = PermissionCodes.RoleManagement)]
+[Permission(code: PermissionCodes.RoleManagement)]
 public class RolesController : ApiControllerBase
 {
     private readonly IRoleService _roleService;

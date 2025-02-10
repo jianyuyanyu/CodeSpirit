@@ -41,23 +41,27 @@
         /// </summary>
         public string Icon { get; set; }
 
+        public string PermissionCode { get; set; }
+
         public PageAttribute() { }
         /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="label">页面标签</param>
-        public PageAttribute(string label)
+        public PageAttribute(string label, string permissionCode = null)
         {
             Label = label;
+            PermissionCode = permissionCode;
         }
 
-        public PageAttribute(string label, string ParentLabel, string Url, string SchemaApi, string icon) : this(label)
+        public PageAttribute(string label, string ParentLabel, string Url, string SchemaApi, string icon,string permissionCode = null) : this(label)
         {
             this.ParentLabel = ParentLabel;
             this.Url = Url;
             this.SchemaApi = SchemaApi;
             Schema = Schema;
             Icon = icon;
+            PermissionCode = permissionCode;
         }
     }
 }

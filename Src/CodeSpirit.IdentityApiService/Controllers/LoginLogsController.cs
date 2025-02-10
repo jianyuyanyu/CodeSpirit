@@ -1,18 +1,18 @@
 ﻿// Controllers/AuthController.cs
+using CodeSpirit.Authorization;
 using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
-using CodeSpirit.IdentityApi.Data;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel;
-using System.Data;
 using CodeSpirit.IdentityApi.Services;
+using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Page(Label = "登录日志", ParentLabel = "用户中心", Icon = "fa-solid fa-info")]
+    [Page(Label = "登录日志", ParentLabel = "用户中心", Icon = "fa-solid fa-info", PermissionCode = PermissionCodes.LoginLogs)]
+    [Permission(code: PermissionCodes.LoginLogs)]
     [DisplayName("登录日志")]
     public partial class LoginLogsController : ApiControllerBase
     {

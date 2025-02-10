@@ -8,13 +8,13 @@ namespace CodeSpirit.Amis.Helpers
 {
     public class ButtonHelper
     {
-        private readonly IPermissionService _permissionService;
+        private readonly IHasPermissionService _permissionService;
         private readonly AmisContext amisContext;
         private readonly ApiRouteHelper apiRouteHelper;
         private readonly AmisApiHelper amisApiHelper;
         private readonly FormFieldHelper formFieldHelper;
 
-        public ButtonHelper(IPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper)
+        public ButtonHelper(IHasPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper)
         {
             _permissionService = permissionService;
             this.amisContext = amisContext;

@@ -44,7 +44,6 @@ namespace CodeSpirit.Amis
             services.AddScoped<AmisGenerator>(sp =>
             {
                 IHttpContextAccessor httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-                IPermissionService permissionService = sp.GetRequiredService<IPermissionService>();
                 AmisContext amisContext = sp.GetRequiredService<AmisContext>();
                 CachingHelper cachingHelper = sp.GetRequiredService<CachingHelper>();
                 ControllerHelper controllerHelper = sp.GetRequiredService<ControllerHelper>();
@@ -54,7 +53,7 @@ namespace CodeSpirit.Amis
                 // 如果未提供 apiAssembly，则使用调用程序集
                 Assembly assembly = apiAssembly ?? Assembly.GetCallingAssembly();
 
-                return new AmisGenerator(httpContextAccessor, permissionService, amisContext, cachingHelper, controllerHelper, crudHelper, serviceProvider, assembly);
+                return new AmisGenerator(httpContextAccessor, amisContext, cachingHelper, controllerHelper, crudHelper, serviceProvider, assembly);
             });
 
             services.AddScoped<ISiteConfigurationService, SiteConfigurationService>();

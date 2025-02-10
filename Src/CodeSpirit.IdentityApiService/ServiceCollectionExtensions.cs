@@ -3,7 +3,6 @@ using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
-using CodeSpirit.Core.Authorization;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Data.Seeders;
@@ -57,7 +56,6 @@ public static class ServiceCollectionExtensions
         services.AddDistributedMemoryCache();
 
         // 注册权限服务
-        services.AddScoped<IPermissionService, CodeSpirit.IdentityApi.Authorization.PermissionService>();
         services.AddScoped<AuthService>();
 
         // 注册 Repositories 和 Handlers
@@ -82,6 +80,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
 
         services.AddTransient<IIdentityAccessor, IdentityAccessor>();
+
+        // 注册黑名单服务
+        services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
 
         return services;
     }
@@ -233,29 +234,30 @@ public static class ServiceCollectionExtensions
                 RequireExpirationTime = true, // 要求Token必须有过期时间
                 ValidIssuer = configuration["Jwt:Issuer"],
                 ValidAudience = configuration["Jwt:Audience"],
-                NameClaimType = "id",
-
-                /***********************************TokenValidationParameters的参数默认值***********************************/
-                // RequireSignedTokens = true,
-                // SaveSigninToken = false,
-                // ValidateActor = false,
-                // 将下面两个参数设置为false，可以不验证Issuer和Audience，但是不建议这样做。
-                // ValidateAudience = true,
-                // ValidateIssuer = true, 
-                // ValidateIssuerSigningKey = false,
-                // 是否要求Token的Claims中必须包含Expires
-                // RequireExpirationTime = true,
-                // 允许的服务器时间偏移量
-                // ClockSkew = TimeSpan.FromSeconds(300),
-                // 是否验证Token有效期，使用当前时间与Token的Claims中的NotBefore和Expires对比
-                // ValidateLifetime = true
+                NameClaimType = "id"
             };
 
             options.Events = new JwtBearerEvents
             {
-                OnTokenValidated = context =>
+                OnTokenValidated = async context =>
                 {
-                    return Task.CompletedTask;
+                    var blacklistService = context.HttpContext.RequestServices
+                        .GetRequiredService<ITokenBlacklistService>();
+                    
+                    // 获取原始令牌
+                    var token = context.SecurityToken.ToString();
+                    
+                    // 检查令牌是否在黑名单中
+                    if (await blacklistService.IsBlacklistedAsync(token))
+                    {
+                        context.Fail("令牌已被禁用！");
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        await context.Response.WriteAsJsonAsync(
+                            new ApiResponse(401, "令牌已被禁用，请重新登录！"));
+                        return;
+                    }
+                    
+                    return;
                 }
             };
         });

@@ -25,9 +25,8 @@ namespace CodeSpirit.Amis
         /// </summary>
         /// <param name="assembly">包含控制器的程序集。</param>
         /// <param name="httpContextAccessor">用于访问当前 HTTP 上下文。</param>
-        /// <param name="permissionService">权限服务，用于检查用户权限。</param>
         /// <param name="cache">内存缓存，用于缓存生成的 AMIS JSON。</param>
-        public AmisGenerator(IHttpContextAccessor httpContextAccessor, IPermissionService permissionService, AmisContext amisContext, CachingHelper cachingHelper, ControllerHelper controllerHelper, CrudHelper crudHelper, IServiceProvider serviceProvider, Assembly assembly)
+        public AmisGenerator(IHttpContextAccessor httpContextAccessor, AmisContext amisContext, CachingHelper cachingHelper, ControllerHelper controllerHelper, CrudHelper crudHelper, IServiceProvider serviceProvider, Assembly assembly)
         {
             _assembly = assembly;
             _amisContext = amisContext;

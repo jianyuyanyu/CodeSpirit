@@ -6,9 +6,11 @@ public class UpdateUserDto
 {
     [Required]
     [MaxLength(20)]
+    [DisplayName("姓名")]
     public string Name { get; set; }
 
     [MaxLength(18)]
+    [DisplayName("身份证")]
     public string IdNo { get; set; }
 
     [MaxLength(255)]
@@ -24,6 +26,7 @@ public class UpdateUserDto
     )]
     public string AvatarUrl { get; set; }
 
+    [DisplayName("是否激活")]
     public bool IsActive { get; set; }
 
     [DisplayName("分配角色")]
@@ -39,6 +42,8 @@ public class UpdateUserDto
         Placeholder = "请选择角色"
     )]
     public List<string> Roles { get; set; }
+
+    [DisplayName("性别")]
     public Gender Gender { get; set; }
 
     public string PhoneNumber { get; set; }

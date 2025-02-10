@@ -54,5 +54,11 @@ namespace CodeSpirit.Amis.App
         /// </summary>
         [JsonProperty("icon")]
         public string Icon { get; set; }
+
+        /// <summary>
+        /// 访问该页面所需的权限代码
+        /// </summary>
+        [JsonProperty("permissionCode")]
+        public string PermissionCode { get; set; }
     }
 }

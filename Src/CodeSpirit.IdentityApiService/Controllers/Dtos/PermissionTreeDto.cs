@@ -1,4 +1,7 @@
 ﻿// Controllers/RolesController.cs
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
 {
     /// <summary>
@@ -6,19 +9,15 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
     /// </summary>
     public class PermissionTreeDto
     {
-        /// <summary>
-        /// 节点的唯一标识。
-        /// </summary>
+        [Required]
+        [DisplayName("节点ID")]
         public string Id { get; set; }
 
-        /// <summary>
-        /// 节点的显示名称。
-        /// </summary>
+        [Required]
+        [DisplayName("节点名称")]
         public string Label { get; set; }
 
-        /// <summary>
-        /// 子节点列表。
-        /// </summary>
+        [DisplayName("子节点")]
         public List<PermissionTreeDto> Children { get; set; }
     }
 }

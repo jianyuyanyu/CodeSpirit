@@ -33,12 +33,17 @@ public class PermissionNode
     /// 子节点集合
     /// </summary>
     public List<PermissionNode> Children { get; set; } = [];
+
+    /// <summary>
+    /// 权限节点代码（唯一）
+    /// </summary>
     public string Code { get; set; }
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="name">节点名称</param>
+
     /// <param name="description">节点描述</param>
     /// <param name="parent">父节点名称</param>
     /// <param name="path">请求路径</param>

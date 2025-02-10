@@ -15,12 +15,12 @@ namespace CodeSpirit.IdentityApi.Repositories
     {
         private readonly ApplicationDbContext _context;
         private readonly RoleManager<ApplicationRole> _roleManager;
-        private readonly PermissionService permissionService;
+        private readonly IPermissionService permissionService;
 
         public RoleRepository(
             ApplicationDbContext context,
             RoleManager<ApplicationRole> roleManager,
-            PermissionService permissionService)
+            IPermissionService permissionService)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _roleManager = roleManager ?? throw new ArgumentNullException(nameof(roleManager));

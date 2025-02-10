@@ -2,8 +2,8 @@
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
+using CodeSpirit.Authorization;
 using CodeSpirit.Core.Authorization;
-using CodeSpirit.Core.Extensions;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 using System.ComponentModel;
@@ -18,7 +18,7 @@ namespace CodeSpirit.Amis.Column
     /// </summary>
     public class ColumnHelper
     {
-        private readonly IPermissionService _permissionService;
+        private readonly IHasPermissionService _permissionService;
         private readonly UtilityHelper _utilityHelper;
         private readonly AmisContext amisContext;
         private readonly ButtonHelper buttonHelper;
@@ -28,7 +28,7 @@ namespace CodeSpirit.Amis.Column
         /// </summary>
         /// <param name="permissionService">权限服务，用于检查用户权限。</param>
         /// <param name="utilityHelper">实用工具类，提供辅助方法。</param>
-        public ColumnHelper(IPermissionService permissionService, UtilityHelper utilityHelper, AmisContext amisContext, ButtonHelper buttonHelper)
+        public ColumnHelper(IHasPermissionService permissionService, UtilityHelper utilityHelper, AmisContext amisContext, ButtonHelper buttonHelper)
         {
             _permissionService = permissionService;
             _utilityHelper = utilityHelper;
@@ -105,7 +105,7 @@ namespace CodeSpirit.Amis.Column
         private bool HasViewPermission(PropertyInfo prop)
         {
             PermissionAttribute permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Permission);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
         }
 
         /// <summary>

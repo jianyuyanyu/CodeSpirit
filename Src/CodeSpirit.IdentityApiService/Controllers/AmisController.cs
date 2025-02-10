@@ -37,7 +37,6 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// </summary>
         /// <returns>配置的 JSON 数据。</returns>
         [HttpGet("site")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetSiteConfiguration()
         {
             ApiResponse<Amis.App.AmisApp> site = await _siteConfigurationService.GetSiteConfigurationAsync();

@@ -28,12 +28,12 @@ namespace CodeSpirit.Authorization
         public PermissionService(IServiceProvider serviceProvider)
         {
             // 从 DI 容器中获取 ApplicationPartManager
-            var partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
+            ApplicationPartManager partManager = serviceProvider.GetRequiredService<ApplicationPartManager>();
             ControllerFeature controllerFeature = new();
             partManager.PopulateFeature(controllerFeature);
 
             // 遍历每个控制器，构造控制器节点和对应的动作节点
-            foreach (var controller in controllerFeature.Controllers)
+            foreach (TypeInfo controller in controllerFeature.Controllers)
             {
                 if (controller.GetCustomAttribute<AllowAnonymousAttribute>() != null)
                 {
@@ -41,14 +41,22 @@ namespace CodeSpirit.Authorization
                 }
 
                 // 获取模块名称：优先从 ModuleAttribute 获取，其次使用程序集名称
-                var moduleAttribute = controller.GetCustomAttribute<ModuleAttribute>() ?? controller.Assembly.GetCustomAttribute<ModuleAttribute>();
-                var moduleName = moduleAttribute?.Name;
+                ModuleAttribute moduleAttribute = controller.GetCustomAttribute<ModuleAttribute>() ?? controller.Assembly.GetCustomAttribute<ModuleAttribute>();
+                string moduleName = moduleAttribute?.Name;
 
                 // 获取控制器名称并短化（剔除 "Controller" 后缀）
                 string controllerName = controller.Name.RemovePostFix("Controller").ToCamelCase();
 
                 // 通过 DisplayNameAttribute 获取控制器描述，若未设置则使用控制器短名
                 string controllerDescription = controller.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? controllerName;
+
+                // 检查是否定义了自定义的 PermissionAttribute，若有则使用其中的名称和描述
+                PermissionAttribute controllerPermissionAttribute = controller.GetCustomAttribute<PermissionAttribute>();
+                if (controllerPermissionAttribute != null)
+                {
+                    controllerName = controllerPermissionAttribute.Name;
+                    controllerDescription = controllerPermissionAttribute.Description;
+                }
 
                 // 获取控制器上定义的路由模板（若有）
                 string controllerRoute = controller.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
@@ -57,17 +65,17 @@ namespace CodeSpirit.Authorization
                 string controllerPath = CombineRoutes(controllerRoute, null, controllerName);
 
                 // 创建控制器节点（根节点），控制器节点无需请求路径和请求方法
-                var controllerNode = new PermissionNode($"{moduleName}_{controllerName}".TrimStart('_'), controllerDescription, path: controllerPath);
-                controllerNode.Code = GeneratePermissionCode(controllerNode);
+                PermissionNode controllerNode = new($"{moduleName}_{controllerName}".TrimStart('_'), controllerDescription, path: controllerPath);
+                controllerNode.Code = controllerPermissionAttribute?.Code ?? GeneratePermissionCode(controllerNode);
                 _permissionTree.Add(controllerNode);
 
                 // 获取控制器中所有公共实例方法，并排除继承自基类的方法
-                var actions = controller.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                List<MethodInfo> actions = controller.GetMethods(BindingFlags.Public | BindingFlags.Instance)
                     .Where(m => m.DeclaringType == controller)
                     .ToList();
 
                 // 遍历控制器中的每个动作方法
-                foreach (var action in actions)
+                foreach (MethodInfo action in actions)
                 {
                     if (action.GetCustomAttribute<AllowAnonymousAttribute>() != null)
                     {
@@ -79,7 +87,7 @@ namespace CodeSpirit.Authorization
                     string actionDescription = action.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? actionShortName;
 
                     // 检查是否定义了自定义的 PermissionAttribute，若有则使用其中的名称和描述
-                    var permissionAttribute = action.GetCustomAttribute<PermissionAttribute>();
+                    PermissionAttribute permissionAttribute = action.GetCustomAttribute<PermissionAttribute>();
                     if (permissionAttribute != null)
                     {
                         actionShortName = permissionAttribute.Name;
@@ -90,7 +98,7 @@ namespace CodeSpirit.Authorization
                     string permissionName = $"{moduleName}_{controllerName}_{actionShortName}";
 
                     // 获取动作上定义的路由模板（优先从 HTTP 方法特性获取，其次从 RouteAttribute 获取）
-                    var httpMethodAttribute = action.GetCustomAttributes<HttpMethodAttribute>().FirstOrDefault();
+                    HttpMethodAttribute httpMethodAttribute = action.GetCustomAttributes<HttpMethodAttribute>().FirstOrDefault();
                     string actionRoute = httpMethodAttribute?.Template ?? action.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
 
                     // 合并控制器与动作路由，得到实际请求路径
@@ -100,8 +108,8 @@ namespace CodeSpirit.Authorization
                     string requestMethod = GetRequestMethod(action);
 
                     // 创建动作节点，其中 Parent 字段设置为所属控制器短名
-                    var actionNode = new PermissionNode(permissionName.TrimStart('_'), actionDescription, controllerName, actionPath, requestMethod);
-                    actionNode.Code = GeneratePermissionCode(actionNode);
+                    PermissionNode actionNode = new(permissionName.TrimStart('_'), actionDescription, controllerName, actionPath, requestMethod);
+                    actionNode.Code = permissionAttribute?.Code ?? GeneratePermissionCode(actionNode);
                     controllerNode.Children.Add(actionNode);
                 }
             }
@@ -118,12 +126,12 @@ namespace CodeSpirit.Authorization
         private void BuildPermissionTree(List<PermissionNode> permissionNodes)
         {
             // 遍历所有节点，如果节点存在父节点标识，则将其添加到对应父节点的 Children 集合中
-            foreach (var node in permissionNodes)
+            foreach (PermissionNode node in permissionNodes)
             {
                 if (!string.IsNullOrEmpty(node.Parent))
                 {
                     // 查找与节点 Parent 名称匹配的父节点
-                    var parentNode = permissionNodes.FirstOrDefault(n => n.Name == node.Parent);
+                    PermissionNode parentNode = permissionNodes.FirstOrDefault(n => n.Name == node.Parent);
                     if (parentNode != null && !parentNode.Children.Contains(node))
                     {
                         parentNode.Children.Add(node);
@@ -164,14 +172,9 @@ namespace CodeSpirit.Authorization
             controllerRoute = controllerRoute.Replace("[controller]", controllerName);
 
             // 处理路径分隔符，确保路径格式正确
-            if (!string.IsNullOrWhiteSpace(actionRoute))
-            {
-                return $"{controllerRoute.TrimEnd('/')}/{actionRoute.TrimStart('/')}";
-            }
-            else
-            {
-                return controllerRoute.TrimEnd('/');
-            }
+            return !string.IsNullOrWhiteSpace(actionRoute)
+                ? $"{controllerRoute.TrimEnd('/')}/{actionRoute.TrimStart('/')}"
+                : controllerRoute.TrimEnd('/');
         }
 
         /// <summary>
@@ -184,15 +187,29 @@ namespace CodeSpirit.Authorization
         {
             // 判断动作方法是否标识了各类 HTTP 请求特性
             if (action.IsDefined(typeof(HttpGetAttribute), inherit: false))
+            {
                 return "GET";
+            }
+
             if (action.IsDefined(typeof(HttpPostAttribute), inherit: false))
+            {
                 return "POST";
+            }
+
             if (action.IsDefined(typeof(HttpPutAttribute), inherit: false))
+            {
                 return "PUT";
+            }
+
             if (action.IsDefined(typeof(HttpDeleteAttribute), inherit: false))
+            {
                 return "DELETE";
+            }
+
             if (action.IsDefined(typeof(HttpPatchAttribute), inherit: false))
+            {
                 return "PATCH";
+            }
             // 可根据需要添加更多 HTTP 方法支持
 
             // 默认返回空字符串，表示未定义请求方法
@@ -204,7 +221,7 @@ namespace CodeSpirit.Authorization
         {
             string rawCode = $"{permissionNode.RequestMethod}:{permissionNode.Name}";
             // 使用 MD5 哈希并取前8位字符生成简短的权限代码
-            using (var md5 = System.Security.Cryptography.MD5.Create())
+            using (System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create())
             {
                 byte[] inputBytes = System.Text.Encoding.UTF8.GetBytes(rawCode);
                 byte[] hashBytes = md5.ComputeHash(inputBytes);

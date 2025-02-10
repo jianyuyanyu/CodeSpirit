@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.IdentityApi.Services
 {
@@ -63,7 +64,12 @@ namespace CodeSpirit.IdentityApi.Services
         /// <returns>返回一个包含登录成功与否、信息和JWT Token的元组</returns>
         public async Task<(bool Success, string Message, string Token, UserDto UserInfo)> LoginAsync(string userName, string password)
         {
-            ApplicationUser user = await _userManager.FindByNameAsync(userName);
+            // 使用Include确保加载所需的关联数据
+            ApplicationUser user = await _userManager.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                        .ThenInclude(r => r.RolePermission)
+                .FirstOrDefaultAsync(u => u.UserName == userName);
             LoginLog loginLog = CreateLoginLog(user);
 
             // 如果用户不存在，记录登录日志并返回失败信息
@@ -75,14 +81,7 @@ namespace CodeSpirit.IdentityApi.Services
             // 检查用户密码是否正确并处理结果
             SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
 
-            if (result.Succeeded)
-            {
-                return await HandleSuccessfulLoginAsync(user, loginLog);
-            }
-            else
-            {
-                return await HandleFailedLoginAsync(result, loginLog);
-            }
+            return result.Succeeded ? await HandleSuccessfulLoginAsync(user, loginLog) : await HandleFailedLoginAsync(result, loginLog);
         }
 
         /// <summary>
@@ -152,20 +151,41 @@ namespace CodeSpirit.IdentityApi.Services
         private string GenerateJwtToken(ApplicationUser user)
         {
             // 构建JWT声明
-            Claim[] claims = new[]
+            List<Claim> claims =
+            [
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),// JWT ID
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
+            ];
+
+            // 添加角色声明
+            if (user.UserRoles != null)
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Name, user.UserName),
-                // 添加其他需要的声明
-            };
+                foreach (var role in user.UserRoles.Where(ur => ur.Role != null))
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role.Role.Name));
+                }
+            }
+
+            // 添加权限声明
+            var allPermissions = user.UserRoles?
+                .Where(ur => ur.Role?.RolePermission != null)
+                .SelectMany(ur => ur.Role.RolePermission.PermissionIds ?? Array.Empty<string>())
+                .Distinct() ?? Enumerable.Empty<string>();
+
+            foreach (string permission in allPermissions)
+            {
+                claims.Add(new Claim("permissions", permission));
+            }
 
             // 创建加密密钥和签名凭证
-            SymmetricSecurityKey key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
-            SigningCredentials credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(_secretKey));
+            SigningCredentials credentials = new(key, SecurityAlgorithms.HmacSha256);
 
             // 生成JWT Token
-            JwtSecurityToken token = new JwtSecurityToken(
+            JwtSecurityToken token = new(
                 issuer: _issuer,
                 audience: _audience,
                 claims: claims,

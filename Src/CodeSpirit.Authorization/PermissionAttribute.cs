@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace CodeSpirit.Authorization
+﻿namespace CodeSpirit.Authorization
 {
     /// <summary>
     /// 自定义权限特性，用于标识权限信息，可覆盖默认的名称和描述。
@@ -23,11 +21,17 @@ namespace CodeSpirit.Authorization
         /// </summary>
         public string Parent { get; }
 
-        public PermissionAttribute(string name, string description, string parent = null)
+        /// <summary>
+        /// 权限Code（为空则生成）
+        /// </summary>
+        public string Code { get; }
+
+        public PermissionAttribute(string name, string description, string parent = null, string code = null)
         {
             Name = name;
             Description = description;
             Parent = parent;
+            Code = code;
         }
     }
 }

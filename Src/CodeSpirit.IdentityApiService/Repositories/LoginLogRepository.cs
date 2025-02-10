@@ -47,5 +47,54 @@ namespace CodeSpirit.IdentityApi.Repositories
                 .Take(take)
                 .ToListAsync();
         }
+
+        public async Task<(List<LoginLog> Items, int Total)> GetPagedLoginLogsAsync(
+            string keywords,
+            string userName,
+            bool? isSuccess,
+            int page,
+            int perPage)
+        {
+            IQueryable<LoginLog> query = _context.LoginLogs
+                .Include(l => l.User)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(keywords))
+            {
+                string searchLower = keywords.ToLower();
+                query = query.Where(u =>
+                    u.UserName.ToLower().Contains(searchLower) ||
+                    u.User.PhoneNumber.ToLower().Contains(searchLower) ||
+                    u.IPAddress.ToLower().Contains(searchLower));
+            }
+
+            if (!string.IsNullOrEmpty(userName))
+            {
+                query = query.Where(l => l.UserName.Contains(userName));
+            }
+
+            if (isSuccess.HasValue)
+            {
+                query = query.Where(l => l.IsSuccess == isSuccess.Value);
+            }
+
+            int totalRecords = await query.CountAsync();
+            int totalPages = (int)Math.Ceiling(totalRecords / (double)perPage);
+
+            List<LoginLog> items = await query
+                .OrderByDescending(l => l.LoginTime)
+                .Skip((page - 1) * perPage)
+                .Take(perPage)
+                .ToListAsync();
+
+            return (items, totalPages);
+        }
+
+        public async Task<LoginLog> GetByIdAsync(int id)
+        {
+            return await _context.LoginLogs
+                .Include(l => l.User)
+                .FirstOrDefaultAsync(l => l.Id == id);
+        }
     }
 }

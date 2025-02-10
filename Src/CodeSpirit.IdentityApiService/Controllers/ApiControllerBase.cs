@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [ApiController]
-    [Authorize]
+    [Authorize(policy: "DynamicPermissions")]
     public abstract class ApiControllerBase : ControllerBase
     {
         /// <summary>
@@ -26,7 +26,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         protected ActionResult<ApiResponse<T>> SuccessResponseWithCreate<T>(string actionName, T data = default) where T : class
         {
-            ApiResponse<T> response = new ApiResponse<T>(0, "创建成功！", data);
+            ApiResponse<T> response = new(0, "创建成功！", data);
             return CreatedAtAction(actionName, data, response);
         }
 

@@ -67,6 +67,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<ILoginLogRepository, LoginLogRepository>();
         services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<ILoginLogRepository, LoginLogRepository>();
+        services.AddScoped<ILoginLogService, LoginLogService>();
 
         // 注册 Seeder 类
         services.AddScoped<RoleSeeder>();

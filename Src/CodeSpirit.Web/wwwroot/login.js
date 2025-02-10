@@ -1,6 +1,7 @@
 ﻿(function () {
     let amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
+    
     // 通过替换下面这个配置来生成不同页面
     let amisJSON =
     {
@@ -102,7 +103,7 @@
                                                                 "actions": [
                                                                     {
                                                                         "actionType": "custom",
-                                                                        "script": "localStorage.setItem('token', event.data.result.data.token);"
+                                                                        "script": "TokenManager.setToken(event.data.result.data.token);"
                                                                     }
                                                                 ]
                                                             }

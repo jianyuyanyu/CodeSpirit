@@ -26,7 +26,7 @@ namespace CodeSpirit.Amis.Helpers
         // 创建一个通用的按钮模板
         private JObject CreateButton(string label, string actionType, JObject dialogOrDrawer = null, JObject api = null, string confirmText = null, bool? download = null, string visibleOn = null)
         {
-            JObject button = new JObject
+            JObject button = new()
             {
                 ["type"] = "button",
                 ["label"] = label,
@@ -64,7 +64,7 @@ namespace CodeSpirit.Amis.Helpers
         // 创建“新增”按钮
         public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null)
         {
-            JObject dialogBody = new JObject
+            JObject dialogBody = new()
             {
                 ["title"] = title,
                 ["size"] = size,
@@ -87,7 +87,7 @@ namespace CodeSpirit.Amis.Helpers
         public JObject CreateEditButton(ApiRouteInfo updateRoute, IEnumerable<ParameterInfo> updateParameters)
         {
             string title = "编辑";
-            JObject drawerBody = new JObject
+            JObject drawerBody = new()
             {
                 ["title"] = title,
                 ["body"] = new JObject
@@ -107,7 +107,7 @@ namespace CodeSpirit.Amis.Helpers
         // 创建“删除”按钮
         public JObject CreateDeleteButton(ApiRouteInfo deleteRoute)
         {
-            JObject api = new JObject
+            JObject api = new()
             {
                 ["url"] = deleteRoute.ApiPath,
                 ["method"] = deleteRoute.HttpMethod
@@ -126,11 +126,17 @@ namespace CodeSpirit.Amis.Helpers
             // 查找带有 [Operation] 特性的所有方法
             foreach (MethodInfo method in methods)
             {
-                OperationAttribute operationAttribute = method.GetCustomAttribute<OperationAttribute>();
-                if (operationAttribute != null)
+                OperationAttribute op = method.GetCustomAttribute<OperationAttribute>();
+                if (op != null)
                 {
                     // 为每个操作方法创建按钮
-                    JObject button = CreateCustomOperationButton(operationAttribute, method);
+                    JObject button = CreateCustomOperationButton(op, method);
+
+                    // Add redirect configuration if specified
+                    if (op.ActionType == "ajax" && !string.IsNullOrEmpty(op.Redirect))
+                    {
+                        button["redirect"] = op.Redirect;
+                    }
                     buttons.Add(button);
                 }
             }
@@ -146,6 +152,7 @@ namespace CodeSpirit.Amis.Helpers
             {
                 api["url"] = op.Api;
             }
+
             return CreateButton(op.Label, op.ActionType, api: api, confirmText: op.ConfirmText, download: op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase), visibleOn: op.VisibleOn);
         }
     }

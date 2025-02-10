@@ -8,6 +8,11 @@ public class OperationAttribute : Attribute
 
     public string VisibleOn { get; }
 
+    /// <summary>
+    /// 请求成功后，跳转至某个页面
+    /// </summary>
+    public string Redirect { get; set; }
+
     public OperationAttribute(string label, string actionType = "ajax", string api = null, string confirmText = null)
     {
         Label = label;

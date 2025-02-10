@@ -1,7 +1,6 @@
 ﻿(function () {
     let amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
-
     // 使用 HashHistory
     const history = History.createHashHistory();
 
@@ -149,10 +148,15 @@
             responseAdaptor: function (api, payload, query, request, response) {
                 console.debug('payload', payload);
                 console.debug('response', response);
-                if (response.status === 401) {
+                if (response.status === 403) {
+                    // 提示没有权限
+                    //amisInstance.doAction({ actionType: 'toast', args: { msgType :'error',msg:'您没有权限访问此页面，请联系管理员！' } });
+                    return { msg:'您没有权限访问此页面，请联系管理员！'}
+                }
+                else if (response.status === 401) {
                     // 跳转到登录页
                     window.location.href = '/login';  // 替换为实际的登录页路径
-                    return {};  // 返回一个空对象，避免 Amis 继续处理
+                    return { msg:'登录过期！' };  // 返回一个空对象，避免 Amis 继续处理
                 }
 
                 return payload;  // 正常返回数据

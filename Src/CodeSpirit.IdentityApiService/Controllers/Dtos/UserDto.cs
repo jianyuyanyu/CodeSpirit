@@ -15,7 +15,7 @@ public class UserDto
     [Required]
     [StringLength(50, MinimumLength = 3)]
     [DisplayName("用户名")]
-    public string Username { get; set; }
+    public string UserName { get; set; }
 
     [Required]
     [EmailAddress]

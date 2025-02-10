@@ -3,11 +3,11 @@ using AutoMapper;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Repositories;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.IdentityApi.Services
 {
@@ -82,6 +82,32 @@ namespace CodeSpirit.IdentityApi.Services
             SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
 
             return result.Succeeded ? await HandleSuccessfulLoginAsync(user, loginLog) : await HandleFailedLoginAsync(result, loginLog);
+        }
+
+        /// <summary>
+        /// 模拟用户登录，直接生成JWT Token而不验证密码
+        /// </summary>
+        /// <param name="userName">用户名</param>
+        /// <returns>返回登录结果</returns>
+        public async Task<(bool Success, string Message, string Token, UserDto UserInfo)> ImpersonateLoginAsync(string userName)
+        {
+            // 使用Include确保加载所需的关联数据
+            ApplicationUser user = await _userManager.Users
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                        .ThenInclude(r => r.RolePermission)
+                .FirstOrDefaultAsync(u => u.UserName == userName);
+
+            LoginLog loginLog = CreateLoginLog(user);
+
+            // 如果用户不存在，记录登录日志并返回失败信息
+            if (user == null)
+            {
+                return (false, ErrorMessages.InvalidCredentials, null, null);
+            }
+
+            // 模拟登录：直接生成token
+            return await HandleSuccessfulLoginAsync(user, loginLog);
         }
 
         /// <summary>
@@ -163,14 +189,14 @@ namespace CodeSpirit.IdentityApi.Services
             // 添加角色声明
             if (user.UserRoles != null)
             {
-                foreach (var role in user.UserRoles.Where(ur => ur.Role != null))
+                foreach (ApplicationUserRole role in user.UserRoles.Where(ur => ur.Role != null))
                 {
                     claims.Add(new Claim(ClaimTypes.Role, role.Role.Name));
                 }
             }
 
             // 添加权限声明
-            var allPermissions = user.UserRoles?
+            IEnumerable<string> allPermissions = user.UserRoles?
                 .Where(ur => ur.Role?.RolePermission != null)
                 .SelectMany(ur => ur.Role.RolePermission.PermissionIds ?? Array.Empty<string>())
                 .Distinct() ?? Enumerable.Empty<string>();

@@ -13,10 +13,14 @@ namespace CodeSpirit.IdentityApi.Controllers
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _userService;
+        private readonly AuthService _authService;
 
-        public UsersController(IUserService userService)
+        public UsersController(
+            IUserService userService,
+            AuthService authService)
         {
             _userService = userService;
+            _authService = authService;
         }
 
         // GET: api/Users
@@ -136,12 +140,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         public async Task<ActionResult<ApiResponse<string>>> ResetRandomPassword(string id)
         {
             (bool success, string newPassword) = await _userService.ResetRandomPasswordAsync(id);
-            if (!success)
-            {
-                return BadRequest(new ApiResponse<string>(1, "密码重置失败！", null));
-            }
-
-            return Ok(new ApiResponse<string>(0, "密码已重置成功！", newPassword));
+            return !success ? (ActionResult<ApiResponse<string>>)BadRequest(new ApiResponse<string>(1, "密码重置失败！", null)) : (ActionResult<ApiResponse<string>>)Ok(new ApiResponse<string>(0, "密码已重置成功！", newPassword));
         }
 
         // PUT: /api/Users/{id}/unlock
@@ -165,6 +164,32 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             await _userService.QuickSaveUsersAsync(request);
             return SuccessResponse();
+        }
+
+        // POST: api/Users/{id}/impersonate
+        [HttpPost("{id}/impersonate")]
+        [Operation("模拟登录", "ajax", null, "确定要模拟此用户登录吗？", "isActive == true", Redirect = "/impersonate?token=${token}")]
+        public async Task<ActionResult<ApiResponse<object>>> ImpersonateUser(string id)
+        {
+            // Check if current user is Administrator
+            if (!User.IsInRole("Administrator"))
+            {
+                return BadResponse<object>("只有超级管理员可以使用模拟登录功能！");
+            }
+
+            UserDto user = await _userService.GetUserByIdAsync(id);
+            if (user == null)
+            {
+                return BadResponse<object>("用户不存在！");
+            }
+
+            if (!user.IsActive)
+            {
+                return BadResponse<object>("无法模拟已禁用的用户！");
+            }
+
+            (bool success, string message, string token, UserDto userInfo) = await _authService.ImpersonateLoginAsync(user.UserName);
+            return !success ? BadResponse<object>(message) : SuccessResponse<object>(new { token, userInfo });
         }
     }
 }

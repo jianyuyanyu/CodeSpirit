@@ -67,7 +67,7 @@
                                                     "body": {
                                                         "type": "form",
                                                         "title": "",
-                                                        "api": "${API_HOST}/api/auth/login",
+                                                        "api": "${API_HOST}/api/identity/auth/login",
                                                         "submitText": "登录",
                                                         "trimValues": true,
                                                         "wrapWithPanel": false,
@@ -114,7 +114,7 @@
                                                     "title": "短信登录",
                                                     "body": {
                                                         "type": "form",
-                                                        "api": "/api/auth/login",
+                                                        "api": "/api/identity/auth/login",
                                                         "wrapWithPanel": false,
                                                         "body": [
                                                             {
@@ -164,7 +164,8 @@
         location: history.location,
         data: {},
         context: {
-            API_HOST: 'https://localhost:17134'
+            API_HOST: apiHost,
+            WEB_HOST: webHost
         }
     }, { theme: 'antd' });
 })();

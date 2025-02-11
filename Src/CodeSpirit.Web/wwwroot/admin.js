@@ -7,14 +7,14 @@
     const app = {
         type: 'app',
         brandName: 'CodeSpirit',
-        logo: 'https://localhost:17109/favicon.ico',
+        logo: webHost+'/favicon.ico',
         header: {
             type: 'tpl',
             inline: false,
             className: 'w-full',
             // tpl: '<div class="flex justify-between"><div>顶部区域左侧</div><div>顶部区域右侧</div></div>'
         },
-        api: 'https://localhost:17134/api/amis/site'
+        api: apiHost+ '/api/identity/amis/site'
     };
 
     function normalizeLink(to, location = history.location) {
@@ -79,7 +79,8 @@
             location: history.location,
             data: {},
             context: {
-                API_HOST: 'https://localhost:17134'
+                API_HOST: apiHost,
+                WEB_HOST: webHost
             }
         },
         {

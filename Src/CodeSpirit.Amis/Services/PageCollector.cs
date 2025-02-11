@@ -85,7 +85,10 @@ namespace CodeSpirit.Amis.Services
 
         private void AddPageIfAttributeExists(Dictionary<string, Page> pageDict, PageAttribute attr, Type controller = null)
         {
-            if (attr == null) return;
+            if (attr == null)
+            {
+                return;
+            }
 
             Page page = _mapper.Map<Page>(attr);
             if (controller != null)
@@ -112,7 +115,8 @@ namespace CodeSpirit.Amis.Services
                 {
                     string host = request.Host.Value;
                     string scheme = request.Scheme;
-                    string route = GetRoute(controller, controllerName).Replace("api/", "api/amis/");
+                    //TODO:路径优化
+                    string route = GetRoute(controller, controllerName).Replace("api/identity/", "api/identity/amis/");
                     page.SchemaApi = $"{scheme}://{host}/" + route;
                 }
             }
@@ -147,14 +151,14 @@ namespace CodeSpirit.Amis.Services
             if (page.Children?.Any() == true)
             {
                 page.Children = page.Children
-                    .Where(child => string.IsNullOrEmpty(child.PermissionCode) || 
+                    .Where(child => string.IsNullOrEmpty(child.PermissionCode) ||
                                    _permissionService.HasPermission(child.PermissionCode))
                     .ToList();
-                
+
                 // 如果过滤后没有子页面了，且该页面本身没有其他内容（schema/schemaApi/redirect），则不添加该页面
-                if (!page.Children.Any() && 
-                    page.Schema == null && 
-                    string.IsNullOrEmpty(page.SchemaApi) && 
+                if (!page.Children.Any() &&
+                    page.Schema == null &&
+                    string.IsNullOrEmpty(page.SchemaApi) &&
                     string.IsNullOrEmpty(page.Redirect))
                 {
                     return;
@@ -166,7 +170,7 @@ namespace CodeSpirit.Amis.Services
 
         public List<Type> GetPublicNonAbstractControllers()
         {
-            ControllerFeature controllerFeature = new ControllerFeature();
+            ControllerFeature controllerFeature = new();
             applicationPartManager.PopulateFeature(controllerFeature);
             return controllerFeature.Controllers
                                      .Select(c => c.AsType())

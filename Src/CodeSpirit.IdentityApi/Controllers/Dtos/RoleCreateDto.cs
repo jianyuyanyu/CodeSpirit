@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos
 {
@@ -18,7 +17,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         // 权限ID列表
         [DisplayName("权限")]
         [AmisInputTreeField(
-        DataSource = "${API_HOST}/api/permissions/tree",
+        DataSource = "${API_HOST}/api/identity/permissions/tree",
         LabelField = "label",
         ValueField = "id",
         Multiple = true,

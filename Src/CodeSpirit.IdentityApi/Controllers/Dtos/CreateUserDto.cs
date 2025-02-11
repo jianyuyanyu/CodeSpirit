@@ -1,6 +1,5 @@
 ﻿using CodeSpirit.IdentityApi.Data.Models;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 public class CreateUserDto
 {
@@ -25,7 +24,7 @@ public class CreateUserDto
     [DataType(DataType.ImageUrl)]
     [AmisInputImageField(
         Label = "头像",
-        Receiver = "${API_HOST}/api/upload/avatar",
+        Receiver = "${API_HOST}/api/identity/upload/avatar",
         Accept = "image/png,image/jpeg",
         MaxSize = 1048576, // 1MB
         Multiple = false,
@@ -40,7 +39,7 @@ public class CreateUserDto
 
     [DisplayName("分配角色")]
     [AmisSelectField(
-            Source = "${API_HOST}/api/Roles",
+            Source = "${API_HOST}/api/identity/Roles",
             ValueField = "name",
             LabelField = "name",
             Multiple = true,

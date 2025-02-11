@@ -80,7 +80,8 @@
             data: {},
             context: {
                 API_HOST: apiHost,
-                WEB_HOST: webHost
+                WEB_HOST: webHost,
+                aspire_dashboard: aspire_dashboard
             }
         },
         {

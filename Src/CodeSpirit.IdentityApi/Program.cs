@@ -1,7 +1,5 @@
 using CodeSpirit.Amis;
 using CodeSpirit.ServiceDefaults;
-using CodeSpirit.IdentityApi.Repositories;
-using CodeSpirit.IdentityApi.Services;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
@@ -46,6 +44,7 @@ using (IServiceScope scope = app.Services.CreateScope())
     {
         // 在控制台输出错误
         logger.LogError(ex, $"数据初始化失败：{ex.Message}");
+        throw;
     }
 }
 

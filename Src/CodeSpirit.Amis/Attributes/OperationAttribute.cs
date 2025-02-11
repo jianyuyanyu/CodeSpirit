@@ -13,20 +13,18 @@ public class OperationAttribute : Attribute
     /// </summary>
     public string Redirect { get; set; }
 
-    public OperationAttribute(string label, string actionType = "ajax", string api = null, string confirmText = null)
-    {
-        Label = label;
-        ActionType = actionType;
-        Api = api;
-        ConfirmText = confirmText;
-    }
+    /// <summary>
+    /// 是否批量操作
+    /// </summary>
+    public bool IsBulkOperation {  get; set; }
 
-    public OperationAttribute(string label, string actionType = "ajax", string api = null, string confirmText = null, string visibleOn = null)
+    public OperationAttribute(string label, string actionType = "ajax", string api = null, string confirmText = null, string visibleOn = null, bool isBulkOperation = false)
     {
         Label = label;
         ActionType = actionType;
         Api = api;
         ConfirmText = confirmText;
         VisibleOn = visibleOn;
+        IsBulkOperation = isBulkOperation;
     }
 }

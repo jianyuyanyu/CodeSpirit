@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using CodeSpirit.IdentityApi.Data;
+using System.Linq.Expressions;
 
 namespace CodeSpirit.IdentityApi.Repositories
 {
@@ -30,5 +31,6 @@ namespace CodeSpirit.IdentityApi.Repositories
 
         // 保存更改
         Task<int> SaveChangesAsync();
+        ApplicationDbContext GetDbContext();
     }
 }

@@ -84,5 +84,10 @@ namespace CodeSpirit.IdentityApi.Services
         /// 批量导入用户
         /// </summary>
         Task<int> BatchImportUsersAsync(List<UserBatchImportItemDto> importDtos);
+
+        /// <summary>
+        /// 批量删除用户
+        /// </summary>
+        Task<(int SuccessCount, List<string> FailedUserNames)> BatchDeleteUsersAsync(List<string> userIds);
     }
 }

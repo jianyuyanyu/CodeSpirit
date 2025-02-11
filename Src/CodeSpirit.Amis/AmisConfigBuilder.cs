@@ -72,6 +72,7 @@ namespace CodeSpirit.Amis
                 ["quickSaveApi"] = amisApiHelper.CreateApi(apiRoutes.QuickSave),
                 ["columns"] = new JArray(columns),  // 设置列
                 ["headerToolbar"] = BuildHeaderToolbar(),  // 设置头部工具栏
+                ["bulkActions"] = new JArray(_buttonHelper.GetBulkOperationButtons()), //设置批量操作
                 ["footerToolbar"] = new JArray()
                 {
                     "switch-per-page",
@@ -111,7 +112,7 @@ namespace CodeSpirit.Amis
         /// </summary>
         private JArray BuildHeaderToolbar()
         {
-            JArray buttons = [];
+            JArray buttons = ["bulkActions"];
             if (amisContext.ApiRoutes.Create != null && amisContext.Actions.Create != null)
             {
                 buttons.Add(_buttonHelper.CreateHeaderButton("新增", amisContext.ApiRoutes.Create, amisContext.Actions.Create?.GetParameters()));

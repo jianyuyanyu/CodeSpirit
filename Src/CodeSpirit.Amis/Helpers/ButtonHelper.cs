@@ -116,7 +116,7 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         // 获取自定义操作按钮
-        public List<JObject> GetCustomOperationsButtons()
+        public List<JObject> GetCustomOperationsButtons(bool isBulkOperation = false)
         {
             List<JObject> buttons = [];
             // 获取当前类型的所有方法
@@ -126,7 +126,7 @@ namespace CodeSpirit.Amis.Helpers
             foreach (MethodInfo method in methods)
             {
                 OperationAttribute op = method.GetCustomAttribute<OperationAttribute>();
-                if (op != null)
+                if (op != null && op.IsBulkOperation == isBulkOperation)
                 {
                     // 为每个操作方法创建按钮
                     JObject button = CreateCustomOperationButton(op, method);
@@ -141,6 +141,12 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             return buttons;
+        }
+
+        // 获取批量操作按钮
+        public List<JObject> GetBulkOperationButtons()
+        {
+            return GetCustomOperationsButtons(true);
         }
 
         // 创建自定义操作按钮

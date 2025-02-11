@@ -7,6 +7,7 @@ using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Utilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 public class UserService : IUserService
 {
@@ -495,6 +496,53 @@ public class UserService : IUserService
         {
             _logger.LogError($"批量导入用户数据失败: {ex.Message}");
             throw new AppServiceException(500, "批量导入用户时发生错误，请稍后重试！");
+        }
+    }
+
+    public async Task<(int SuccessCount, List<string> FailedUserNames)> BatchDeleteUsersAsync(List<string> userIds)
+    {
+        if (userIds == null || !userIds.Any())
+        {
+            throw new AppServiceException(400, "请选择要删除的用户！");
+        }
+
+        // 去重并验证ID格式
+        userIds = userIds.Distinct().Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
+        if (!userIds.Any())
+        {
+            throw new AppServiceException(400, "无有效的用户ID！");
+        }
+
+        // 获取要删除的用户
+        List<ApplicationUser> usersToDelete = await GetUsersByIdsAsync(userIds);
+        
+        if (!usersToDelete.Any())
+        {
+            throw new AppServiceException(400, "未找到指定的用户！");
+        }
+
+        // 验证是否包含当前用户
+        string currentUserId = _userManager.GetUserId(ClaimsPrincipal.Current);
+        if (usersToDelete.Any(u => u.Id == currentUserId))
+        {
+            throw new AppServiceException(400, "不能删除当前登录用户！");
+        }
+
+        using var transaction = await _userRepository.GetDbContext().Database.BeginTransactionAsync();
+        try
+        {
+            _userRepository.RemoveRange(usersToDelete);
+            await _userRepository.SaveChangesAsync();
+            
+            await transaction.CommitAsync();
+            _logger.LogInformation($"批量删除用户完成。成功删除 {usersToDelete.Count} 个用户");
+            return (usersToDelete.Count, new List<string>());
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "批量删除用户时发生异常");
+            return (0, usersToDelete.Select(u => u.UserName).ToList());
         }
     }
 }

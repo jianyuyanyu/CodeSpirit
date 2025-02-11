@@ -209,5 +209,21 @@ namespace CodeSpirit.IdentityApi.Controllers
             int count = await _userService.BatchImportUsersAsync(importDto.ImportData);
             return SuccessResponse($"成功批量导入了 {count} 个用户！");
         }
+
+        // POST: api/Users/batch/delete
+        [HttpPost("batch/delete")]
+        [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
+        public async Task<ActionResult<ApiResponse<string>>> BatchDelete([FromBody] List<string> ids)
+        {
+            var (successCount, failedUserNames) = await _userService.BatchDeleteUsersAsync(ids);
+
+            if (failedUserNames.Any())
+            {
+                string failedMessage = $"成功删除 {successCount} 个用户，但以下用户删除失败: {string.Join(", ", failedUserNames)}";
+                return SuccessResponse(failedMessage);
+            }
+
+            return SuccessResponse($"成功删除 {successCount} 个用户！");
+        }
     }
 }

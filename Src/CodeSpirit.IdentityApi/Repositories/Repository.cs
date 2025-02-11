@@ -59,5 +59,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         {
             return await _context.SaveChangesAsync();
         }
+
+        public ApplicationDbContext GetDbContext() => _context;
     }
 }

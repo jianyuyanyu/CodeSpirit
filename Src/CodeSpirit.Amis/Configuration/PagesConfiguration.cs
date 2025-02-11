@@ -12,5 +12,7 @@ namespace CodeSpirit.Amis.Configuration
         /// </summary>
         [JsonProperty("Pages")]
         public List<ConfigurationPage> Pages { get; set; }
+
+        public bool ForceHttps { get; set; } = true;
     }
 }

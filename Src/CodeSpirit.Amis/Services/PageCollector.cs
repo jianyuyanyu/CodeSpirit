@@ -114,7 +114,7 @@ namespace CodeSpirit.Amis.Services
                 if (request != null)
                 {
                     string host = request.Host.Value;
-                    string scheme = request.Scheme;
+                    string scheme = _pagesConfig.Value.ForceHttps ? "https" : request.Scheme;
                     //TODO:路径优化
                     string route = GetRoute(controller, controllerName).Replace("api/identity/", "api/identity/amis/");
                     page.SchemaApi = $"{scheme}://{host}/" + route;

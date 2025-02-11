@@ -1,6 +1,4 @@
 ﻿using CodeSpirit.Amis.Extensions;
-using CodeSpirit.Authorization;
-using CodeSpirit.Core.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;

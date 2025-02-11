@@ -41,9 +41,12 @@ public class UserDto
     [DisplayName("性别")]
     public Gender Gender { get; set; }
 
+    [DisplayName("启用锁定")]
     public bool LockoutEnabled { get; set; }
 
+    [DisplayName("锁定结束时间")]
     public DateTimeOffset? LockoutEnd { get; set; }
 
+    [DisplayName("访问失败次数")]
     public int AccessFailedCount { get; set; }
 }

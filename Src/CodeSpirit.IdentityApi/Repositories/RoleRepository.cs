@@ -1,5 +1,4 @@
-﻿using CodeSpirit.Authorization;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Utilities;

@@ -2,8 +2,6 @@
 
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
-using CodeSpirit.Authorization;
-using CodeSpirit.Core.Authorization;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 

@@ -1,5 +1,3 @@
-using CodeSpirit.Core.Authorization;
-
 namespace CodeSpirit.Authorization
 {
     /// <summary>

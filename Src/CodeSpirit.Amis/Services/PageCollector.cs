@@ -2,7 +2,6 @@
 using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Configuration;
-using CodeSpirit.Core.Authorization;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;

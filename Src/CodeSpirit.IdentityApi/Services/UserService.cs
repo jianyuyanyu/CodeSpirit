@@ -7,28 +7,27 @@ using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Utilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
-    private readonly IDistributedCache _cache;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly ILogger<UserService> _logger;
 
     public UserService(
         IUserRepository userRepository,
         IMapper mapper,
-        IDistributedCache cache,
         UserManager<ApplicationUser> userManager,
-        RoleManager<ApplicationRole> roleManager)
+        RoleManager<ApplicationRole> roleManager,
+        ILogger<UserService> logger)
     {
         _userRepository = userRepository;
         _mapper = mapper;
-        _cache = cache;
         _userManager = userManager;
         _roleManager = roleManager;
+        this._logger = logger;
     }
 
     public async Task<ListData<UserDto>> GetUsersAsync(UserQueryDto queryDto)
@@ -265,12 +264,22 @@ public class UserService : IUserService
             return IdentityResult.Failed(new IdentityError { Description = "用户不存在" });
 
         DateTimeOffset? lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
-        if (!lockoutEnd.HasValue || lockoutEnd.Value <= DateTimeOffset.UtcNow)
+        if (!lockoutEnd.HasValue || lockoutEnd.Value <= DateTimeOffset.Now)
             return IdentityResult.Failed(new IdentityError { Description = "该用户未被锁定，无需解锁" });
 
-        await _userManager.SetLockoutEndDateAsync(user, null);
+        // 先重置锁定结束时间
+        IdentityResult setLockoutResult = await _userManager.SetLockoutEndDateAsync(user, null);
+        if (!setLockoutResult.Succeeded)
+            return setLockoutResult;
+
+        // 重置访问失败次数
         user.AccessFailedCount = 0;
-        return await _userManager.UpdateAsync(user);
+        IdentityResult updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            return updateResult;
+
+        // 确保锁定功能启用
+        return await _userManager.SetLockoutEnabledAsync(user, true);
     }
 
     public async Task<List<ApplicationUser>> GetUsersByIdsAsync(List<string> ids)
@@ -322,6 +331,9 @@ public class UserService : IUserService
                 {
                     user.IsActive = rowDiff.IsActive.Value;
                 }
+
+                if (rowDiff.LockoutEnabled.HasValue)
+                    user.LockoutEnabled = rowDiff.LockoutEnabled.Value;
 
                 // 可以根据需求增加更多字段的更新
             }
@@ -392,4 +404,97 @@ public class UserService : IUserService
         return result;
     }
     #endregion
+
+    public async Task<int> BatchImportUsersAsync(List<UserBatchImportItemDto> importDtos)
+    {
+        // 数据不能为空
+        if (importDtos == null || !importDtos.Any())
+        {
+            throw new AppServiceException(400, "导入数据不能为空！");
+        }
+
+        // 校验导入数据格式
+        var invalidDtos = importDtos.Where(dto =>
+            string.IsNullOrEmpty(dto.UserName) ||
+            string.IsNullOrEmpty(dto.Email) ||
+            string.IsNullOrEmpty(dto.Name) ||  // 姓名为必填
+            dto.UserName.Length > 100 ||
+            dto.Email.Length > 256 ||
+            (dto.PhoneNumber != null && dto.PhoneNumber.Length > 20) ||
+            (dto.Name != null && dto.Name.Length > 20) ||
+            (dto.IdNo != null && dto.IdNo.Length > 18)
+        ).ToList();
+
+        if (invalidDtos.Any())
+        {
+            throw new AppServiceException(400, $"以下用户数据格式错误: {string.Join(", ", invalidDtos.Select(dto => dto.UserName))}！");
+        }
+
+        // 去重处理：确保用户名、邮箱和手机号唯一
+        var distinctDtos = importDtos
+            .GroupBy(dto => new { dto.UserName, dto.Email, dto.PhoneNumber })
+            .Select(group => group.First())
+            .ToList();
+
+        // 检查数据库中是否已有重复的用户名、邮箱或手机号
+        var existingUsers = await _userManager.Users
+            .Where(u => distinctDtos.Select(dto => dto.UserName).Contains(u.UserName) ||
+                       distinctDtos.Select(dto => dto.Email).Contains(u.Email) ||
+                       distinctDtos.Where(dto => !string.IsNullOrEmpty(dto.PhoneNumber))
+                                 .Select(dto => dto.PhoneNumber)
+                                 .Contains(u.PhoneNumber))
+            .ToListAsync();
+
+        var duplicateUsers = distinctDtos.Where(dto =>
+            existingUsers.Any(user =>
+                user.UserName.Equals(dto.UserName, StringComparison.OrdinalIgnoreCase) ||
+                user.Email.Equals(dto.Email, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(dto.PhoneNumber) && dto.PhoneNumber.Equals(user.PhoneNumber))
+            )).ToList();
+
+        if (duplicateUsers.Any())
+        {
+            throw new AppServiceException(400, $"以下用户名、邮箱或手机号已存在: {string.Join(", ", duplicateUsers.Select(dto => dto.UserName))}！");
+        }
+
+        // 批量创建用户
+        try
+        {
+            foreach (var dto in distinctDtos)
+            {
+                var user = new ApplicationUser
+                {
+                    UserName = dto.UserName,
+                    Email = dto.Email,
+                    PhoneNumber = dto.PhoneNumber,
+                    Name = dto.Name,
+                    IdNo = dto.IdNo,
+                    Gender = dto.Gender,
+                    IsActive = true,
+                    EmailConfirmed = true, // 默认确认邮箱
+                    PhoneNumberConfirmed = !string.IsNullOrEmpty(dto.PhoneNumber), // 如果提供了手机号，则确认
+                    LockoutEnabled = true, // 启用锁定功能
+                    CreationTime = DateTime.Now
+                };
+
+                // 生成随机密码
+                var password = PasswordGenerator.GenerateRandomPassword(12);
+                var result = await _userManager.CreateAsync(user, password);
+
+                if (!result.Succeeded)
+                {
+                    _logger.LogError($"创建用户 {dto.UserName} 失败: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                    throw new AppServiceException(500, $"创建用户 {dto.UserName} 失败！");
+                }
+            }
+
+            _logger.LogInformation($"成功批量导入了 {distinctDtos.Count} 个用户！");
+            return distinctDtos.Count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"批量导入用户数据失败: {ex.Message}");
+            throw new AppServiceException(500, "批量导入用户时发生错误，请稍后重试！");
+        }
+    }
 }

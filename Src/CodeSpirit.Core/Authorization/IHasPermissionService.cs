@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Core.Authorization
+﻿namespace CodeSpirit.Authorization
 {
     /// <summary>
     /// 权限服务接口：用于管理和查询应用的权限

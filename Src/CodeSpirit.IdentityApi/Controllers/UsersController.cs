@@ -35,10 +35,20 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("Export")]
         public async Task<ActionResult<ApiResponse<ListData<UserDto>>>> Export([FromQuery] UserQueryDto queryDto)
         {
-            //暂时写死1万数据
-            queryDto.PerPage = 10000;
+            // 设置导出时的分页参数
+            const int MaxExportLimit = 10000; // 最大导出数量限制
+            queryDto.PerPage = MaxExportLimit;
             queryDto.Page = 1;
+
+            // 获取用户数据
             ListData<UserDto> users = await _userService.GetUsersAsync(queryDto);
+
+            // 如果数据为空则返回错误信息
+            if (users.Items.Count == 0)
+            {
+                return BadResponse<ListData<UserDto>>("没有数据可供导出");
+            }
+
             return SuccessResponse(users);
         }
 
@@ -190,6 +200,14 @@ namespace CodeSpirit.IdentityApi.Controllers
 
             (bool success, string message, string token, UserDto userInfo) = await _authService.ImpersonateLoginAsync(user.UserName);
             return !success ? BadResponse<object>(message) : SuccessResponse<object>(new { token, userInfo });
+        }
+
+        // POST: api/Users/batch/import
+        [HttpPost("batch/import")]
+        public async Task<ActionResult<ApiResponse<string>>> BatchImport([FromBody] BatchImportDtoBase<UserBatchImportItemDto> importDto)
+        {
+            int count = await _userService.BatchImportUsersAsync(importDto.ImportData);
+            return SuccessResponse($"成功批量导入了 {count} 个用户！");
         }
     }
 }

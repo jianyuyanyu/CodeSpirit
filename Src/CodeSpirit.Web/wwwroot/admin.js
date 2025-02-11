@@ -7,14 +7,14 @@
     const app = {
         type: 'app',
         brandName: 'CodeSpirit',
-        logo: webHost+'/favicon.ico',
+        logo: webHost + '/favicon.ico',
         header: {
             type: 'tpl',
             inline: false,
             className: 'w-full',
             // tpl: '<div class="flex justify-between"><div>顶部区域左侧</div><div>顶部区域右侧</div></div>'
         },
-        api: apiHost+ '/api/identity/amis/site'
+        api: apiHost + '/api/identity/amis/site'
     };
 
     function normalizeLink(to, location = history.location) {
@@ -54,6 +54,7 @@
         if (!to) {
             return false;
         }
+
         const pathname = history.location.pathname;
         const link = normalizeLink(to, {
             ...location,
@@ -113,6 +114,11 @@
                     return;
                 }
 
+                if (to.startsWith('/impersonate')) {
+                    window.location.href = to;
+                    return;
+                }
+
                 if (action && action.actionType === 'url') {
                     action.blank === false
                         ? (window.location.href = to)
@@ -153,12 +159,12 @@
                 if (response.status === 403) {
                     // 提示没有权限
                     //amisInstance.doAction({ actionType: 'toast', args: { msgType :'error',msg:'您没有权限访问此页面，请联系管理员！' } });
-                    return { msg:'您没有权限访问此页面，请联系管理员！'}
+                    return { msg: '您没有权限访问此页面，请联系管理员！' }
                 }
                 else if (response.status === 401) {
                     // 跳转到登录页
                     window.location.href = '/login';  // 替换为实际的登录页路径
-                    return { msg:'登录过期！' };  // 返回一个空对象，避免 Amis 继续处理
+                    return { msg: '登录过期！' };  // 返回一个空对象，避免 Amis 继续处理
                 }
 
                 return payload;  // 正常返回数据

@@ -7,7 +7,6 @@ using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.MappingProfiles;
 using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
-using CodeSpirit.Core.Authorization;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;

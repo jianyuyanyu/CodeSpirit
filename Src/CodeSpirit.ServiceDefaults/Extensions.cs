@@ -58,7 +58,8 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource(builder.Environment.ApplicationName)
+                Console.WriteLine($"Application Name: {builder.Environment.ApplicationName}");
+                tracing.AddSource(builder.Environment.ApplicationName)  // ApplicationName can be configured via ASPNETCORE_APPLICATIONNAME environment variable
                     .AddAspNetCoreInstrumentation()
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()

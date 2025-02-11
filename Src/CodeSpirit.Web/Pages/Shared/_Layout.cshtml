@@ -17,14 +17,13 @@
         @{
             var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
         }
-        window.webHost = '@(isDevelopment ? "https://localhost:17109" : "https://codespirit-app.xin-lai.com")';
+        window.webHost = '@(isDevelopment ? "https://localhost:7120" : "https://codespirit-app.xin-lai.com")';
         window.apiHost = '@(isDevelopment ? "https://localhost:17134" : "https://codespirit-api.xin-lai.com")';
         window.aspire_dashboard = '@(isDevelopment ? "https://localhost:17109" : "https://codespirit-api.xin-lai.com")';
     </script>
 
     <!-- 脚本 -->
     <script src="/sdk/sdk.js"></script>
-    @* <script src="https://unpkg.com/vue@2"></script> *@
     <script src="/history.js"></script>
     <script src="/tokenManager.js"></script>
     @RenderSection("Head", required: false)  <!-- 可选的 Razor section -->

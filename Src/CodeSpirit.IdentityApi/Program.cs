@@ -6,7 +6,7 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
-builder.AddServiceDefaults();
+builder.AddServiceDefaults("identity-api");
 
 // Add services to the container.
 //builder.Services.AddProblemDetails();

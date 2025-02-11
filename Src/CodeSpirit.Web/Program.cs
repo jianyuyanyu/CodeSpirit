@@ -3,7 +3,7 @@ using CodeSpirit.ServiceDefaults;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
-builder.AddServiceDefaults();
+builder.AddServiceDefaults("web-app");
 //builder.AddRedisOutputCache("cache");
 
 // Add services to the container.

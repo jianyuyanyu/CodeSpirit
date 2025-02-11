@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     public class UserStatisticsController : ApiControllerBase
     {
         private readonly IUserService _userService;
@@ -32,7 +30,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             List<int> userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
 
             // 创建 ECharts 配置
-            EChartsConfig eChartConfig = new EChartsConfig
+            EChartsConfig eChartConfig = new()
             {
                 Title = new EChartsTitle
                 {
@@ -102,7 +100,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             List<int> activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
 
             // 创建 ECharts 配置
-            EChartsConfig eChartConfig = new EChartsConfig
+            EChartsConfig eChartConfig = new()
             {
                 Title = new EChartsTitle
                 {
@@ -169,7 +167,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             List<string> dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
 
             // 合并图表配置
-            EChartsConfig eChartConfig = new EChartsConfig
+            EChartsConfig eChartConfig = new()
             {
                 Title = new EChartsTitle
                 {
@@ -226,8 +224,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 },
                 YAxis = new List<EChartsYAxis>
         {
-            new EChartsYAxis
-            {
+            new() {
                 Type = "value",
                 Name = "用户数量",
                 AxisLine = new EChartsAxisLine
@@ -252,8 +249,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                     }
                 }
             },
-            new EChartsYAxis
-            {
+            new() {
                 Type = "value",
                 Name = "活跃用户数量",
                 AxisLine = new EChartsAxisLine

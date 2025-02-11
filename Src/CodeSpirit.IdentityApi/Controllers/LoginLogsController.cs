@@ -1,5 +1,4 @@
 ﻿// Controllers/AuthController.cs
-using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
@@ -9,8 +8,6 @@ using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [Page(Label = "登录日志", ParentLabel = "用户中心", Icon = "fa-solid fa-info", PermissionCode = PermissionCodes.LoginLogs)]
     [Permission(code: PermissionCodes.LoginLogs)]
     [DisplayName("登录日志")]
@@ -32,9 +29,9 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="isSuccess">按登录结果过滤（可选）。</param>
         /// <returns>分页的登录日志列表。</returns>
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<ListData<LoginLogDto>>>> GetLoginLogs([FromQuery]LoginLogsQueryDto queryDto)
+        public async Task<ActionResult<ApiResponse<ListData<LoginLogDto>>>> GetLoginLogs([FromQuery] LoginLogsQueryDto queryDto)
         {
-            var result = await _loginLogService.GetPagedLoginLogsAsync(queryDto);
+            ListData<LoginLogDto> result = await _loginLogService.GetPagedLoginLogsAsync(queryDto);
             return SuccessResponse(result);
         }
 
@@ -46,13 +43,8 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<LoginLogDto>> GetLoginLog(int id)
         {
-            var logDto = await _loginLogService.GetLoginLogByIdAsync(id);
-            if (logDto == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(logDto);
+            LoginLogDto logDto = await _loginLogService.GetLoginLogByIdAsync(id);
+            return logDto == null ? (ActionResult<LoginLogDto>)NotFound() : (ActionResult<LoginLogDto>)Ok(logDto);
         }
     }
 }

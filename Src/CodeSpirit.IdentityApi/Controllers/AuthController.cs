@@ -7,8 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [AllowAnonymous]
     public class AuthController : ApiControllerBase
     {
@@ -31,7 +29,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             (bool success, string message, string token, UserDto user) = await _authService.LoginAsync(model.UserName, model.Password);
             if (success)
             {
-                var result = new LoginResult()
+                LoginResult result = new()
                 {
                     Token = token,
                 };

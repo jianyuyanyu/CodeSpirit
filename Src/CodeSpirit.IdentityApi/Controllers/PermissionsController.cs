@@ -1,17 +1,15 @@
 ﻿using AutoMapper;
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using System.ComponentModel;
-using CodeSpirit.IdentityApi.Constants;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [DisplayName("权限管理")]
     [Page(Label = "权限管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-plus", PermissionCode = PermissionCodes.PermissionManagement)]
     [Permission(code: PermissionCodes.PermissionManagement)]
@@ -32,9 +30,9 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Permissions
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<ListData<PermissionDto>>>> GetPermissions()
+        public ActionResult<ApiResponse<ListData<PermissionDto>>> GetPermissions()
         {
-            var permissions = _permissionService.GetPermissionTree();
+            List<PermissionNode> permissions = _permissionService.GetPermissionTree();
 
             List<PermissionDto> permissionDtos = _mapper.Map<List<PermissionDto>>(permissions);
 
@@ -51,9 +49,9 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("Tree")]
         public ActionResult<List<PermissionTreeDto>> GetPermissionTree()
         {
-            var permissions = _permissionService.GetPermissionTree();
+            List<PermissionNode> permissions = _permissionService.GetPermissionTree();
 
-            var tree = _mapper.Map<List<PermissionTreeDto>>(permissions);
+            List<PermissionTreeDto> tree = _mapper.Map<List<PermissionTreeDto>>(permissions);
 
             return Ok(tree);
         }

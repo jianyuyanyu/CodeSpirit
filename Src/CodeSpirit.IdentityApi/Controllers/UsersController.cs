@@ -1,15 +1,12 @@
-﻿using CodeSpirit.Authorization;
-using CodeSpirit.Core;
+﻿using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers.Dtos;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
-using CodeSpirit.IdentityApi.Constants;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [DisplayName("用户管理")]
     [Page(Label = "用户管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user", PermissionCode = PermissionCodes.UserManagement)]
     [Permission(code: PermissionCodes.UserManagement)]

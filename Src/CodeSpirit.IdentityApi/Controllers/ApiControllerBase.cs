@@ -6,6 +6,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 {
     [ApiController]
     [Authorize(policy: "DynamicPermissions")]
+    [Route("api/identity/[controller]")]
     public abstract class ApiControllerBase : ControllerBase
     {
         /// <summary>

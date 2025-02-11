@@ -1,13 +1,10 @@
 ﻿using CodeSpirit.Amis;
 using CodeSpirit.Core;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     public class AmisController : ApiControllerBase
     {
         private readonly AmisGenerator _amisGenerator;

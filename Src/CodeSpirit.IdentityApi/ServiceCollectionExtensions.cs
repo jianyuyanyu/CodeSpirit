@@ -126,7 +126,7 @@ public static class ServiceCollectionExtensions
                 builder =>
                 {
                     builder
-                        .WithOrigins("http://localhost:3000", "https://localhost:7120")
+                        .WithOrigins("http://localhost:3000", "https://localhost:7120","https://*.xin-lai.com")
                         .AllowAnyHeader()
                         .AllowAnyMethod()
                         .AllowCredentials();

@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     public class UploadController : ApiControllerBase
     {
 

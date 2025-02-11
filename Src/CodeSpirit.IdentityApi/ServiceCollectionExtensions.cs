@@ -1,7 +1,6 @@
 ﻿using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
-using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
@@ -26,7 +25,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("identity-api");
+        string connectionString = configuration.GetConnectionString("identity-api");
         Console.WriteLine($"Connection string: {connectionString}");
 
         services.AddDbContext<ApplicationDbContext>(options =>
@@ -126,7 +125,8 @@ public static class ServiceCollectionExtensions
                 builder =>
                 {
                     builder
-                        .WithOrigins("http://localhost:3000", "https://localhost:7120","https://*.xin-lai.com")
+                        .WithOrigins("http://localhost:3000", "https://localhost:7120", "https://*.xin-lai.com")
+                        .SetIsOriginAllowedToAllowWildcardSubdomains()
                         .AllowAnyHeader()
                         .AllowAnyMethod()
                         .AllowCredentials();
@@ -186,7 +186,7 @@ public static class ServiceCollectionExtensions
                 {
                     msg = "验证错误，请检查输入项！",
                     status = 422,
-                    errors = errors,
+                    errors,
                 };
 
                 return new BadRequestObjectResult(amisResponse)
@@ -201,10 +201,9 @@ public static class ServiceCollectionExtensions
 
     private static string ToCamelCase(string input)
     {
-        if (string.IsNullOrEmpty(input) || char.IsLower(input[0]))
-            return input;
-
-        return char.ToLower(input[0], CultureInfo.InvariantCulture) + input.Substring(1);
+        return string.IsNullOrEmpty(input) || char.IsLower(input[0])
+            ? input
+            : char.ToLower(input[0], CultureInfo.InvariantCulture) + input.Substring(1);
     }
 
     /// <summary>
@@ -244,12 +243,12 @@ public static class ServiceCollectionExtensions
             {
                 OnTokenValidated = async context =>
                 {
-                    var blacklistService = context.HttpContext.RequestServices
+                    ITokenBlacklistService blacklistService = context.HttpContext.RequestServices
                         .GetRequiredService<ITokenBlacklistService>();
-                    
+
                     // 获取原始令牌
-                    var token = context.SecurityToken.ToString();
-                    
+                    string token = context.SecurityToken.ToString();
+
                     // 检查令牌是否在黑名单中
                     if (await blacklistService.IsBlacklistedAsync(token))
                     {
@@ -259,7 +258,7 @@ public static class ServiceCollectionExtensions
                             new ApiResponse(401, "令牌已被禁用，请重新登录！"));
                         return;
                     }
-                    
+
                     return;
                 }
             };

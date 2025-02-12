@@ -21,7 +21,7 @@
         /// <summary>
         /// 是否可复制
         /// </summary>
-        public string Copyable { get; set; }
+        public bool Copyable { get; set; }
 
         /// <summary>
         /// 是否固定当前列（left | right | none）
@@ -32,6 +32,20 @@
         /// 是否隐藏
         /// </summary>
         public bool Hidden { get; set; }
-    }
 
+        /// <summary>
+        /// 背景色阶最小值
+        /// </summary>
+        public double BackgroundScaleMin { get; set; }
+
+        /// <summary>
+        /// 背景色阶最大值
+        /// </summary>
+        public double BackgroundScaleMax { get; set; }
+
+        /// <summary>
+        /// 背景色阶颜色数组（至少包含两个颜色值）
+        /// </summary>
+        public string[] BackgroundScaleColors { get; set; }
+    }
 }

@@ -93,7 +93,6 @@ namespace CodeSpirit.IdentityApi.Data.Models
         /// 事件发生时间
         /// </summary>
         [Required]
-        [Column(TypeName = "timestamp")]
         public DateTime EventTime { get; set; } = DateTime.UtcNow;
     }
 }

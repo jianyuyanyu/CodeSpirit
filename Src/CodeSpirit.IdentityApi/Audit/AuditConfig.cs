@@ -24,7 +24,9 @@ namespace CodeSpirit.IdentityApi.Audit
         {
             "Authorization",
             "Cookie",
-            "X-CSRF"
+            "X-CSRF",
+            "Accept-Encoding",
+            "Accept"
         };
 
         /// <summary>

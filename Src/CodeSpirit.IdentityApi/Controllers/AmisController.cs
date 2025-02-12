@@ -1,10 +1,12 @@
-﻿using CodeSpirit.Amis;
+﻿using Audit.WebApi;
+using CodeSpirit.Amis;
 using CodeSpirit.Core;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
+    [AuditIgnore]
     public class AmisController : ApiControllerBase
     {
         private readonly AmisGenerator _amisGenerator;

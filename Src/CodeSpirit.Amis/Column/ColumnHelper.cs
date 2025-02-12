@@ -60,7 +60,7 @@ namespace CodeSpirit.Amis.Column
             }
 
             return columns.Count == 1 && columns[0] == operations
-                ? throw new AppServiceException(-100, "请检查返回参数的定义是否为“ApiResponse<ListData<T>>>”!")
+                ? throw new AppServiceException(-100, "请检查返回参数的定义是否为ApiResponse<ListData<T>>>!")
                 : columns;
         }
 
@@ -154,6 +154,17 @@ namespace CodeSpirit.Amis.Column
                 }
 
                 column["hidden"] = columnAttr.Hidden;
+
+                // 添加背景色阶配置
+                if (columnAttr.BackgroundScaleColors?.Length >= 2)
+                {
+                    column["backgroundScale"] = new JObject
+                    {
+                        ["min"] = columnAttr.BackgroundScaleMin,
+                        ["max"] = columnAttr.BackgroundScaleMax,
+                        ["colors"] = new JArray(columnAttr.BackgroundScaleColors)
+                    };
+                }
             }
 
             // 如果是主键，则隐藏该列
@@ -294,8 +305,6 @@ namespace CodeSpirit.Amis.Column
                     _ => "text"
                 };
         }
-
-
 
         /// <summary>
         /// 判断属性是否为主键（假设名称为 "Id"）。

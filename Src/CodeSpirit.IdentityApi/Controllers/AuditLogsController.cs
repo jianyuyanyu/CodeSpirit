@@ -1,3 +1,4 @@
+using Audit.WebApi;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog;
@@ -10,6 +11,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     [DisplayName("审计日志")]
     [Page(Label = "审计日志", ParentLabel = "系统管理", Icon = "fa-solid fa-list-check", PermissionCode = PermissionCodes.AuditLogManagement)]
     [Permission(code: PermissionCodes.AuditLogManagement)]
+    [AuditIgnore]
     public class AuditLogsController : ApiControllerBase
     {
         private readonly IAuditLogService _auditLogService;

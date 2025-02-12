@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Data;

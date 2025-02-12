@@ -1,4 +1,6 @@
-﻿using Audit.WebApi;
+﻿using Audit.Core;
+using Audit.WebApi;
+using CodeSpirit.Amis;
 using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
@@ -12,6 +14,7 @@ using CodeSpirit.IdentityApi.Filters;
 using CodeSpirit.IdentityApi.ModelBindings;
 using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities;
 using FluentValidation;
@@ -31,9 +34,16 @@ public static class ServiceCollectionExtensions
         Console.WriteLine($"Connection string: {connectionString}");
 
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(connectionString)
-                   .EnableSensitiveDataLogging()
-                   .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole())));
+        {
+            options.UseSqlServer(connectionString);
+
+            // 仅在开发环境下启用敏感数据日志和控制台日志
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                options.EnableSensitiveDataLogging()
+                       .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
+            }
+        });
 
         return services;
     }
@@ -165,7 +175,8 @@ public static class ServiceCollectionExtensions
     {
         // 配置审计
         Audit.Core.Configuration.Setup()
-        .UseCustomProvider(new CustomAuditDataProvider(serviceProvider: services.BuildServiceProvider()));
+            .UseCustomProvider(new CustomAuditDataProvider(serviceProvider: services.BuildServiceProvider()))
+            .WithCreationPolicy(EventCreationPolicy.InsertOnEnd);
 
         services.AddControllers(options =>
         {
@@ -174,14 +185,15 @@ public static class ServiceCollectionExtensions
             options.Filters.Add<HttpResponseExceptionFilter>();
             options.ModelBinderProviders.Insert(0, new DateRangeModelBinderProvider());
 
-            // 配置审计过滤器
+            // 修改审计过滤器配置
             options.AddAuditFilter(config => config
                 .LogAllActions()
                 .WithEventType("{verb}.{controller}.{action}")
                 .IncludeHeaders()
-                .IncludeRequestBody(true)
-                .IncludeResponseBody(true)
+                .IncludeRequestBody()
+                .IncludeResponseBody()
                 .IncludeModelState()
+                .SerializeActionParameters()
             );
         })
         .AddNewtonsoftJson(options =>
@@ -284,5 +296,60 @@ public static class ServiceCollectionExtensions
                 }
             };
         });
+    }
+
+    public static WebApplicationBuilder AddIdentityApiServices(this WebApplicationBuilder builder)
+    {
+        // Add service defaults & Aspire client integrations
+        builder.AddServiceDefaults("identity-api");
+
+        // Add services to the container
+        builder.Services.AddDatabase(builder.Configuration);
+        builder.Services.AddDataFilters();
+        builder.Services.AddCustomServices();
+        builder.Services.AddIdentityServices();
+        builder.Services.AddCorsPolicy();
+        builder.Services.AddJwtAuthentication(builder.Configuration);
+        builder.Services.AddAuthorizationPolicies();
+        builder.Services.AddFluentValidationServices();
+        builder.Services.ConfigureControllers();
+        builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);
+        
+        // 配置审计
+        builder.Services.Configure<AuditConfig>(
+            builder.Configuration.GetSection("Audit"));
+
+        return builder;
+    }
+
+    public static async Task InitializeDatabaseAsync(this WebApplication app)
+    {
+        // 执行数据初始化
+        using (IServiceScope scope = app.Services.CreateScope())
+        {
+            IServiceProvider services = scope.ServiceProvider;
+            ILogger<SeederService> logger = services.GetRequiredService<ILogger<SeederService>>();
+            try
+            {
+                // 调用数据初始化方法
+                await DataSeeder.SeedAsync(services, logger);
+            }
+            catch (Exception ex)
+            {
+                // 在控制台输出错误
+                logger.LogError(ex, $"数据初始化失败：{ex.Message}");
+                throw;
+            }
+        }
+    }
+
+    public static WebApplication ConfigureApp(this WebApplication app)
+    {
+        app.UseCors("AllowSpecificOriginsWithCredentials");
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseAuditLogging();
+        app.MapControllers();
+        return app;
     }
 }

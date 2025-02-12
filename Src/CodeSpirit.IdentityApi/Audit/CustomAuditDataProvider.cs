@@ -1,5 +1,7 @@
 using Audit.Core;
 using Audit.WebApi;
+using CodeSpirit.Core;
+using CodeSpirit.Core.Extensions;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Services;
@@ -31,16 +33,24 @@ namespace CodeSpirit.IdentityApi.Audit
                     return null;
                 }
 
+                string queryString = null;
+                if (!string.IsNullOrEmpty(webApiAudit.RequestUrl))
+                {
+                    var uri = new Uri(webApiAudit.RequestUrl);
+                    queryString = uri.Query;
+                }
+
                 AuditLog auditLog = new()
                 {
-                    EventType = auditEvent.EventType,
-                    UserName = currentUser.UserName ?? "anonymous",
-                    IpAddress = GetClientIpAddress(httpContextAccessor),
-                    Method = webApiAudit.HttpMethod,
-                    Url = webApiAudit.RequestUrl,
-                    Headers = SerializeObject(webApiAudit.Headers),
-                    RequestBody = SerializeObject(webApiAudit.RequestBody),
-                    ResponseBody = SerializeObject(webApiAudit.ResponseBody),
+                    EventType = auditEvent.EventType?.Truncate(50),
+                    UserName = (currentUser.UserName ?? "anonymous").Truncate(50),
+                    IpAddress = GetClientIpAddress(httpContextAccessor).Truncate(50),
+                    Method = webApiAudit.HttpMethod?.Truncate(10),
+                    Url = webApiAudit.RequestUrl?.Truncate(2000),
+                    QueryString = queryString?.Truncate(2000),
+                    Headers = SerializeObject(webApiAudit.Headers)?.Truncate(2000),
+                    RequestBody = SerializeObject(webApiAudit.RequestBody)?.Truncate(4000),
+                    ResponseBody = SerializeObject(webApiAudit.ResponseBody)?.Truncate(4000),
                     StatusCode = webApiAudit.ResponseStatusCode,
                     Duration = auditEvent.Duration,
                     EventTime = DateTime.UtcNow,
@@ -86,7 +96,7 @@ namespace CodeSpirit.IdentityApi.Audit
                 }
 
                 // 更新响应相关信息
-                auditLog.ResponseBody = SerializeObject(webApiAudit.ResponseBody);
+                auditLog.ResponseBody = SerializeObject(webApiAudit.ResponseBody)?.Truncate(4000);
                 auditLog.StatusCode = webApiAudit.ResponseStatusCode;
                 auditLog.Duration = auditEvent.Duration;
 

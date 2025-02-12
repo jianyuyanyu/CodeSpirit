@@ -1,7 +1,7 @@
 ﻿namespace CodeSpirit.Amis.Attributes
 {
     [AttributeUsage(AttributeTargets.Property)]
-    public class ColumnAttribute : Attribute
+    public class AmisColumnAttribute : Attribute
     {
         public string Label { get; set; } // 列标题
         public bool Sortable { get; set; } // 是否支持排序

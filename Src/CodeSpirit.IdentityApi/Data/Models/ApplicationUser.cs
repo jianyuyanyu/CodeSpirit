@@ -8,7 +8,7 @@ namespace CodeSpirit.IdentityApi.Data.Models
     /// <summary>
     /// 用户信息
     /// </summary> 
-    public class ApplicationUser : IdentityUser<string>, IIsActive, IFullEntityEvent, IDeletionAuditedObject, IAuditedObject
+    public class ApplicationUser : IdentityUser<long>, IIsActive, IFullEntityEvent, IDeletionAuditedObject, IAuditedObject
     {
         /// <summary>
         /// 姓名

@@ -10,10 +10,10 @@ namespace CodeSpirit.IdentityApi.Repositories
             bool? isSuccess,
             int page,
             int perPage);
-            
+
         Task<LoginLog> GetByIdAsync(int id);
         Task AddLoginLogAsync(LoginLog loginLog);
-        Task<List<LoginLog>> GetLoginLogsByUserIdAsync(string userId, int take = 10);
+        Task<List<LoginLog>> GetLoginLogsByUserIdAsync(long userId, int take = 10);
         Task<List<LoginLog>> GetAllLoginLogsAsync(int take = 10);
     }
 }

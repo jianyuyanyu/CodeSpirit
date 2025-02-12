@@ -45,7 +45,7 @@ namespace CodeSpirit.Amis
             if (user?.Claims != null)
             {
                 userPermissions = user.FindAll("permissions").Select(c => c.Value).ToHashSet();
-                isAdmin = user.FindAll(ClaimTypes.Role).Any(c => c.Value == "Administrator");
+                isAdmin = user.FindAll(ClaimTypes.Role).Any(c => c.Value == "Admin");
             }
 
             // 过滤没有权限的页面

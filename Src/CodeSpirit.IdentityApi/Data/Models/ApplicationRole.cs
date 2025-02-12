@@ -1,11 +1,10 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CodeSpirit.IdentityApi.Data.Models
 {
     [Table(nameof(ApplicationRole))]
-    public class ApplicationRole : IdentityRole
+    public class ApplicationRole : IdentityRole<long>
     {
         // 添加自定义属性，例如描述
         [MaxLength(256)]

@@ -1,7 +1,6 @@
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers.Dtos.LoginLogs;
 using CodeSpirit.IdentityApi.Repositories;
-using System.Threading.Tasks;
 
 namespace CodeSpirit.IdentityApi.Services
 {
@@ -66,7 +65,7 @@ namespace CodeSpirit.IdentityApi.Services
                 : new LoginLogDto
                 {
                     Id = log.Id,
-                    UserId = log.UserId,
+                    UserId = (long)log.UserId,
                     UserName = log.UserName,
                     LoginTime = log.LoginTime,
                     IPAddress = log.IPAddress,

@@ -1,10 +1,9 @@
 ﻿using CodeSpirit.IdentityApi.Data.Models;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 public class UserDto
 {
-    public string Id { get; set; }
+    public long Id { get; set; }
 
     [DisplayName("姓名")]
     public string Name { get; set; }

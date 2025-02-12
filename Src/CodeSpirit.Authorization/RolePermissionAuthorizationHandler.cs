@@ -41,7 +41,7 @@ namespace CodeSpirit.Authorization
                 HashSet<string> userPermissions = context.User.FindAll("permissions").Select(c => c.Value).ToHashSet();
 
                 // 管理员直接通过
-                if (roles.Contains("Administrator"))
+                if (roles.Contains("Admin"))
                 {
                     context.Succeed(requirement);
                     return Task.CompletedTask;

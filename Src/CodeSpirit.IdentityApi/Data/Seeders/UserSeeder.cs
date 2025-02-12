@@ -1,4 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Data.Models;
+﻿using CodeSpirit.Core.IdGenerator;
+using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
 
 public class UserSeeder
@@ -7,17 +8,20 @@ public class UserSeeder
     private readonly ILogger<UserSeeder> _logger;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IIdGenerator _idGenerator;
 
     public UserSeeder(
         IServiceProvider serviceProvider,
         ILogger<UserSeeder> logger,
         RoleManager<ApplicationRole> roleManager,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IIdGenerator idGenerator)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _roleManager = roleManager;
         _userManager = userManager;
+        _idGenerator = idGenerator;
     }
 
     public async Task SeedAdminUserAsync()
@@ -28,7 +32,7 @@ public class UserSeeder
         {
             adminUser = new ApplicationUser
             {
-                Id = Guid.NewGuid().ToString("N"),
+                Id = _idGenerator.NewId(),
                 UserName = "admin",
                 Email = "admin@example.com",
                 EmailConfirmed = true,
@@ -57,9 +61,9 @@ public class UserSeeder
             _logger.LogInformation("管理员用户已存在，跳过创建。");
         }
 
-        if (!await _roleManager.RoleExistsAsync("Administrator"))
+        if (!await _roleManager.RoleExistsAsync("Admin"))
         {
-            IdentityResult createRoleResult = await _roleManager.CreateAsync(new ApplicationRole() { Name = "Administrator" });
+            IdentityResult createRoleResult = await _roleManager.CreateAsync(new ApplicationRole() { Name = "Admin" });
             if (createRoleResult.Succeeded)
             {
                 _logger.LogInformation("管理员角色创建成功。");
@@ -75,16 +79,16 @@ public class UserSeeder
             }
         }
 
-        if (!await _userManager.IsInRoleAsync(adminUser, "Administrator"))
+        if (!await _userManager.IsInRoleAsync(adminUser, "Admin"))
         {
-            IdentityResult addToRoleResult = await _userManager.AddToRoleAsync(adminUser, "Administrator");
+            IdentityResult addToRoleResult = await _userManager.AddToRoleAsync(adminUser, "Admin");
             if (addToRoleResult.Succeeded)
             {
-                _logger.LogInformation("管理员用户已分配 'Administrator' 角色。");
+                _logger.LogInformation("管理员用户已分配 'Admin' 角色。");
             }
             else
             {
-                _logger.LogError("分配 'Administrator' 角色失败：");
+                _logger.LogError("分配 'Admin' 角色失败：");
                 foreach (IdentityError error in addToRoleResult.Errors)
                 {
                     _logger.LogError($" - {error.Description}");
@@ -93,13 +97,13 @@ public class UserSeeder
         }
         else
         {
-            _logger.LogInformation("管理员用户已存在 'Administrator' 角色，跳过角色分配。");
+            _logger.LogInformation("管理员用户已存在 'Admin' 角色，跳过角色分配。");
         }
     }
 
     public async Task SeedRandomUsersAsync(int userCount, RoleManager<ApplicationRole> roleManager)
     {
-        Random random = new Random();
+        Random random = new();
         Gender[] genderValues = Enum.GetValues(typeof(Gender)).Cast<Gender>().ToArray();
 
         ApplicationRole defaultRole = await _roleManager.FindByNameAsync("User");
@@ -123,9 +127,9 @@ public class UserSeeder
             DateTimeOffset lastLoginTime = GetRandomDate(DateTime.Now.AddMonths(-3), DateTime.Now);
             DateTimeOffset createTime = GetRandomDate(DateTime.Now.AddMonths(-1), DateTime.Now);
 
-            ApplicationUser user = new ApplicationUser
+            ApplicationUser user = new()
             {
-                Id = Guid.NewGuid().ToString("N"),
+                Id = _idGenerator.NewId(),
                 UserName = userName,
                 Email = $"{userName}@example.com",
                 LastLoginTime = lastLoginTime,
@@ -177,9 +181,9 @@ public class UserSeeder
 
     private DateTimeOffset GetRandomDate(DateTime startDate, DateTime endDate)
     {
-        Random random = new Random();
+        Random random = new();
         TimeSpan range = endDate - startDate;
-        TimeSpan randomTimeSpan = new TimeSpan((long)(random.NextDouble() * range.Ticks));
+        TimeSpan randomTimeSpan = new((long)(random.NextDouble() * range.Ticks));
         return startDate + randomTimeSpan;
     }
 }

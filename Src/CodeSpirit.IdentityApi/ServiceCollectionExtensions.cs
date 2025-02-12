@@ -1,7 +1,10 @@
-﻿using CodeSpirit.Amis.App;
+﻿using Audit.WebApi;
+using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
 using CodeSpirit.Core;
+using CodeSpirit.Core.IdGenerator;
+using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Data.Seeders;
@@ -11,7 +14,6 @@ using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities;
-using CodeSpirit.Shared.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -81,11 +83,15 @@ public static class ServiceCollectionExtensions
         // 注册自定义授权处理程序
         services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
 
-        services.AddTransient<IIdentityAccessor, IdentityAccessor>();
-
         // 注册黑名单服务
         services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
 
+        // 注册审计服务
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
+
+        // 注册雪花ID生成器服务
+        services.AddSingleton<IIdGenerator, SnowflakeIdGenerator>();
         return services;
     }
 
@@ -156,12 +162,26 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection ConfigureControllers(this IServiceCollection services)
     {
+        // 配置审计
+        Audit.Core.Configuration.Setup()
+        .UseCustomProvider(new CustomAuditDataProvider(serviceProvider: services.BuildServiceProvider()));
+
         services.AddControllers(options =>
         {
             // 全局注册 ValidateModelAttribute
             options.Filters.Add<ValidateModelAttribute>();
             options.Filters.Add<HttpResponseExceptionFilter>();
             options.ModelBinderProviders.Insert(0, new DateRangeModelBinderProvider());
+
+            // 配置审计过滤器
+            options.AddAuditFilter(config => config
+                .LogAllActions()
+                .WithEventType("{verb}.{controller}.{action}")
+                .IncludeHeaders()
+                .IncludeRequestBody(true)
+                .IncludeResponseBody(true)
+                .IncludeModelState()
+            );
         })
         .AddNewtonsoftJson(options =>
         {

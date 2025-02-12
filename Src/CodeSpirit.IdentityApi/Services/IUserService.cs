@@ -5,23 +5,89 @@ using Microsoft.AspNetCore.Identity;
 
 namespace CodeSpirit.IdentityApi.Services
 {
+    /// <summary>
+    /// 用户服务接口
+    /// </summary>
     public interface IUserService
     {
-        Task<IdentityResult> AssignRolesAsync(string id, List<string> roles);
-        Task<(int SuccessCount, List<string> FailedUserNames)> BatchDeleteUsersAsync(List<string> userIds);
+        /// <summary>
+        /// 分配角色给用户
+        /// </summary>
+        Task<IdentityResult> AssignRolesAsync(long id, List<string> roles);
+
+        /// <summary>
+        /// 批量删除用户
+        /// </summary>
+        Task<(int SuccessCount, List<string> FailedUserNames)> BatchDeleteUsersAsync(List<long> userIds);
+
+        /// <summary>
+        /// 批量导入用户
+        /// </summary>
         Task<int> BatchImportUsersAsync(List<UserBatchImportItemDto> importDtos);
-        Task<(IdentityResult, string)> CreateUserAsync(CreateUserDto createUserDto);
-        Task<IdentityResult> DeleteUserAsync(string id);
+
+        /// <summary>
+        /// 创建用户
+        /// </summary>
+        Task<(IdentityResult, long?)> CreateUserAsync(CreateUserDto createUserDto);
+
+        /// <summary>
+        /// 删除用户
+        /// </summary>
+        Task<IdentityResult> DeleteUserAsync(long id);
+
+        /// <summary>
+        /// 获取活跃用户列表
+        /// </summary>
         Task<List<ActiveUserDto>> GetActiveUsersAsync(DateTimeOffset startDate, DateTimeOffset endDate);
-        Task<UserDto> GetUserByIdAsync(string id);
+
+        /// <summary>
+        /// 根据ID获取用户
+        /// </summary>
+        Task<UserDto> GetUserByIdAsync(long id);
+
+        /// <summary>
+        /// 获取用户增长数据
+        /// </summary>
         Task<List<UserGrowthDto>> GetUserGrowthAsync(DateTimeOffset startDate, DateTimeOffset endDate);
+
+        /// <summary>
+        /// 获取用户列表
+        /// </summary>
         Task<ListData<UserDto>> GetUsersAsync(UserQueryDto queryDto);
-        Task<List<ApplicationUser>> GetUsersByIdsAsync(List<string> ids);
+
+        /// <summary>
+        /// 根据ID列表获取用户
+        /// </summary>
+        Task<List<ApplicationUser>> GetUsersByIdsAsync(List<long> ids);
+
+        /// <summary>
+        /// 快速保存用户
+        /// </summary>
         Task QuickSaveUsersAsync(QuickSaveRequestDto request);
-        Task<IdentityResult> RemoveRolesAsync(string id, List<string> roles);
-        Task<(bool Success, string NewPassword)> ResetRandomPasswordAsync(string id);
-        Task<IdentityResult> SetActiveStatusAsync(string id, bool isActive);
-        Task<IdentityResult> UnlockUserAsync(string id);
-        Task<IdentityResult> UpdateUserAsync(string id, UpdateUserDto updateUserDto);
+
+        /// <summary>
+        /// 移除用户角色
+        /// </summary>
+        Task<IdentityResult> RemoveRolesAsync(long id, List<string> roles);
+
+        /// <summary>
+        /// 重置随机密码
+        /// </summary>
+        Task<(bool Success, string NewPassword)> ResetRandomPasswordAsync(long id);
+
+        /// <summary>
+        /// 设置用户活动状态
+        /// </summary>
+        Task<IdentityResult> SetActiveStatusAsync(long id, bool isActive);
+
+        /// <summary>
+        /// 解锁用户
+        /// </summary>
+        Task<IdentityResult> UnlockUserAsync(long id);
+
+        /// <summary>
+        /// 更新用户
+        /// </summary>
+        Task<IdentityResult> UpdateUserAsync(long id, UpdateUserDto updateUserDto);
     }
 }

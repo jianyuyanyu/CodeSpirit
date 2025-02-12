@@ -1,7 +1,7 @@
 ﻿namespace CodeSpirit.Amis.Attributes
 {
     [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-    public class ListColumnAttribute : ColumnAttribute
+    public class ListColumnAttribute : AmisColumnAttribute
     {
         public string Title { get; set; }
         public string SubTitle { get; set; }

@@ -1,8 +1,7 @@
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities;
-using CodeSpirit.Shared.Extensions;
-using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -16,9 +15,9 @@ using System.Reflection;
 
 namespace CodeSpirit.IdentityApi.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string,
-    IdentityUserClaim<string>, ApplicationUserRole, IdentityUserLogin<string>,
-    IdentityRoleClaim<string>, IdentityUserToken<string>>
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, long,
+    IdentityUserClaim<long>, ApplicationUserRole, IdentityUserLogin<long>,
+    IdentityRoleClaim<long>, IdentityUserToken<long>>
     {
         public DbSet<Tenant> Tenants { get; set; }
 
@@ -32,50 +31,45 @@ namespace CodeSpirit.IdentityApi.Data
         /// </summary>
         public DbSet<LoginLog> LoginLogs { get; set; }
 
-        private IServiceProvider serviceProvider;
-        private ILogger<ApplicationDbContext> logger;
-        private ChangeTracker changeTracker;
-        private Lazy<IIdentityAccessor> identityAccessorObject = null;
-
-        /// <summary>
-        /// 是否启用租户筛选器
-        /// </summary>
-        protected virtual bool IsMultiTenantFilterEnabled => DataFilter?.IsEnabled<ITenant>() ?? false;
+        private readonly IServiceProvider serviceProvider;
+        private readonly ILogger<ApplicationDbContext> logger;
+        private readonly ChangeTracker changeTracker;
+        private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly ICurrentUser _currentUser;
 
         /// <summary>
         /// 是否启用软删除
         /// </summary>
         protected virtual bool IsSoftDeleteFilterEnabled => DataFilter?.IsEnabled<IDeletionAuditedObject>() ?? false;
 
-        ///// <summary>
-        ///// 是否启用激活筛选器
-        ///// </summary>
-        //protected virtual bool IsActiveFilterEnabled => DataFilter?.IsEnabled<IIsActive>() ?? false;
-
         /// <summary>
         /// 数据筛选器
         /// </summary>
         public IDataFilter DataFilter { get; private set; }
 
+        public DbSet<AuditLog> AuditLogs { get; set; }
+
         /// <summary>
-        /// 当前租户Id
+        /// 获取当前用户ID
         /// </summary>
-        public int? CurrentTenantId => identityAccessorObject.Value?.TenantId;
+        protected virtual long? CurrentUserId => _currentUser.Id;
 
-
-
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IServiceProvider serviceProvider) : base(options)
+        public ApplicationDbContext(
+            DbContextOptions<ApplicationDbContext> options,
+            IServiceProvider serviceProvider,
+            IHttpContextAccessor httpContextAccessor,
+            ICurrentUser currentUser) : base(options)
         {
             this.serviceProvider = serviceProvider;
+            this.httpContextAccessor = httpContextAccessor;
             logger = serviceProvider.GetService<ILogger<ApplicationDbContext>>() ?? NullLogger<ApplicationDbContext>.Instance;
             changeTracker = ChangeTracker;
 
             changeTracker.StateChanged += ChangeTracker_StateChanged;
             changeTracker.Tracking += ChangeTracker_Tracking;
 
-            identityAccessorObject = serviceProvider.GetServiceLazy<IIdentityAccessor>();
             DataFilter = serviceProvider.GetService<IDataFilter>();
-
+            _currentUser = currentUser;
         }
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -83,7 +77,7 @@ namespace CodeSpirit.IdentityApi.Data
             base.OnModelCreating(builder);
 
             // 定义一个转换器：将 string[] 转换为单一字符串存储，反之转换回来
-            var stringArrayConverter = new ValueConverter<string[], string>(
+            ValueConverter<string[], string> stringArrayConverter = new(
                 v => string.Join(",", v),   // 数组 -> 字符串（写入数据库时）
                 v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) // 字符串 -> 数组（读取数据库时）
             );
@@ -92,6 +86,7 @@ namespace CodeSpirit.IdentityApi.Data
             builder.Entity<ApplicationUser>(b =>
             {
                 b.ToTable(nameof(ApplicationUser));
+                b.Property(q => q.Id).ValueGeneratedNever();
                 b.Property(q => q.PhoneNumber).HasColumnType("varchar(15)");
                 b.HasIndex(q => q.IdNo).IsUnique(true);
                 b.HasIndex(q => q.PhoneNumber);
@@ -100,6 +95,7 @@ namespace CodeSpirit.IdentityApi.Data
 
             builder.Entity<ApplicationRole>(b =>
             {
+                b.Property(q => q.Id).ValueGeneratedNever();
                 b.ToTable(nameof(ApplicationRole));
             });
 
@@ -186,7 +182,7 @@ namespace CodeSpirit.IdentityApi.Data
 
         }
 
-        private async void ChangeTracker_StateChanged(object sender, EntityStateChangedEventArgs e)
+        private void ChangeTracker_StateChanged(object sender, EntityStateChangedEventArgs e)
         {
             switch (e.OldState)
             {
@@ -197,19 +193,19 @@ namespace CodeSpirit.IdentityApi.Data
                 case EntityState.Deleted:
                     if (e.Entry.Entity is IEntityDeletedEvent entityDeleted)
                     {
-                        await PublishEntityEventDataAsync(e, entityDeleted);
+                        PublishEntityEventData(e, entityDeleted);
                     }
                     break;
                 case EntityState.Modified:
                     if (e.Entry.Entity is IEntityUpdatedEvent entityUpdated)
                     {
-                        await PublishEntityEventDataAsync(e, entityUpdated);
+                        PublishEntityEventData(e, entityUpdated);
                     }
                     break;
                 case EntityState.Added:
                     if (e.Entry.Entity is IEntityCreatedEvent entityCreated)
                     {
-                        await PublishEntityEventDataAsync(e, entityCreated);
+                        PublishEntityEventData(e, entityCreated);
                     }
                     break;
                 default:
@@ -223,7 +219,7 @@ namespace CodeSpirit.IdentityApi.Data
         /// <param name="e"></param>
         /// <param name="entity"></param>
         /// <returns></returns>
-        private async Task PublishEntityEventDataAsync(EntityStateChangedEventArgs e, object entity)
+        private void PublishEntityEventData(EntityStateChangedEventArgs e, object entity)
         {
         }
 
@@ -240,13 +236,13 @@ namespace CodeSpirit.IdentityApi.Data
             {
                 if (deletionObj.DeleterUserId == default)
                 {
-                    IIdentityAccessor identityAccessor = identityAccessorObject.Value;
-                    if (identityAccessor != null && identityAccessor.UserId == default)
-                        deletionObj.DeleterUserId = identityAccessor.UserId;
+                    deletionObj.DeleterUserId = CurrentUserId;
                 }
 
                 if (deletionObj.DeletionTime == default)
+                {
                     deletionObj.DeletionTime = DateTime.Now;
+                }
 
                 deletionObj.IsDeleted = true;
                 return Update(entity);
@@ -262,53 +258,46 @@ namespace CodeSpirit.IdentityApi.Data
             foreach (EntityEntry entry in changeTracker.Entries()
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
             {
+                // 处理修改审计
                 if (entry.Entity is IAuditedObject modifiedObj)
                 {
                     if (modifiedObj.LastModifierUserId == default)
                     {
-                        IIdentityAccessor identityAccessor = identityAccessorObject.Value;
-                        if (identityAccessor != null && identityAccessor.UserId.HasValue)
-                            modifiedObj.LastModifierUserId = identityAccessor.UserId;
+                        modifiedObj.LastModifierUserId = CurrentUserId;
                     }
 
                     if (modifiedObj.LastModificationTime == default)
+                    {
                         modifiedObj.LastModificationTime = DateTime.Now;
+                    }
                 }
 
+                // 处理创建审计
                 if (entry.State == EntityState.Added)
                 {
                     if (entry.Entity is IAuditedObject addedObj)
                     {
                         if (addedObj.CreatorUserId == default)
                         {
-                            IIdentityAccessor identityAccessor = identityAccessorObject.Value;
-                            if (identityAccessor != null && identityAccessor.UserId.HasValue)
-                                addedObj.CreatorUserId = identityAccessor.UserId;
+                            addedObj.CreatorUserId = CurrentUserId;
                         }
 
                         if (addedObj.CreationTime == default)
-                            addedObj.CreationTime = DateTime.Now;
-                    }
-                    //仅创建时判断
-                    if (entry.Entity is ITenant tenant)
-                    {
-                        if (!tenant.TenantId.HasValue)
                         {
-                            IIdentityAccessor identityAccessor = identityAccessorObject.Value;
-                            if (identityAccessor != null && identityAccessor.TenantId.HasValue)
-                                tenant.TenantId = identityAccessor.TenantId;
+                            addedObj.CreationTime = DateTime.Now;
                         }
                     }
                 }
 
+                // 处理删除审计
                 if (entry.Entity is IDeletionAuditedObject deletionObj && deletionObj.IsDeleted && deletionObj.DeleterUserId == default)
                 {
-                    IIdentityAccessor identityAccessor = identityAccessorObject.Value;
-                    if (identityAccessor != null && identityAccessor.UserId.HasValue)
-                        deletionObj.DeleterUserId = identityAccessor.UserId;
+                    deletionObj.DeleterUserId = CurrentUserId;
 
                     if (deletionObj.DeletionTime == default)
+                    {
                         deletionObj.DeletionTime = DateTime.Now;
+                    }
                 }
             }
         }
@@ -342,22 +331,9 @@ namespace CodeSpirit.IdentityApi.Data
 
         protected virtual bool ShouldFilterEntity<TEntity>(IMutableEntityType entityType) where TEntity : class
         {
-            if (typeof(ITenant).IsAssignableFrom(typeof(TEntity)))
-            {
-                return true;
-            }
-
-            if (typeof(IDeletionAuditedObject).IsAssignableFrom(typeof(TEntity)))
-            {
-                return true;
-            }
-
-            if (typeof(IIsActive).IsAssignableFrom(typeof(TEntity)))
-            {
-                return true;
-            }
-
-            return false;
+            // 移除 ITenant 相关的过滤
+            return typeof(IDeletionAuditedObject).IsAssignableFrom(typeof(TEntity)) ||
+                   typeof(IIsActive).IsAssignableFrom(typeof(TEntity));
         }
 
         protected virtual Expression<Func<TEntity, bool>> CreateFilterExpression<TEntity>()
@@ -370,21 +346,6 @@ namespace CodeSpirit.IdentityApi.Data
                 expression = e => !IsSoftDeleteFilterEnabled || !EF.Property<bool>(e, "IsDeleted");
             }
 
-            if (typeof(ITenant).IsAssignableFrom(typeof(TEntity)))
-            {
-                Expression<Func<TEntity, bool>> multiTenantFilter = e => !IsMultiTenantFilterEnabled || EF.Property<int>(e, "TenantId") == CurrentTenantId;
-                expression = expression == null ? multiTenantFilter : CombineExpressions(expression, multiTenantFilter);
-            }
-
-            //if (typeof(IIsActive).IsAssignableFrom(typeof(TEntity)))
-            //{
-            //    Expression<Func<TEntity, bool>> isActiveFilter =
-            //        e => !IsActiveFilterEnabled || EF.Property<bool>(e, "IsActive");
-            //    expression = expression == null
-            //        ? isActiveFilter
-            //        : CombineExpressions(expression, isActiveFilter);
-            //}
-
             return expression;
         }
 
@@ -392,10 +353,10 @@ namespace CodeSpirit.IdentityApi.Data
         {
             ParameterExpression parameter = Expression.Parameter(typeof(T));
 
-            ReplaceExpressionVisitor leftVisitor = new ReplaceExpressionVisitor(expression1.Parameters[0], parameter);
+            ReplaceExpressionVisitor leftVisitor = new(expression1.Parameters[0], parameter);
             Expression left = leftVisitor.Visit(expression1.Body);
 
-            ReplaceExpressionVisitor rightVisitor = new ReplaceExpressionVisitor(expression2.Parameters[0], parameter);
+            ReplaceExpressionVisitor rightVisitor = new(expression2.Parameters[0], parameter);
             Expression right = rightVisitor.Visit(expression2.Body);
 
             return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(left, right), parameter);
@@ -414,12 +375,7 @@ namespace CodeSpirit.IdentityApi.Data
 
             public override Expression Visit(Expression node)
             {
-                if (node == _oldValue)
-                {
-                    return _newValue;
-                }
-
-                return base.Visit(node);
+                return node == _oldValue ? _newValue : base.Visit(node);
             }
 
         }

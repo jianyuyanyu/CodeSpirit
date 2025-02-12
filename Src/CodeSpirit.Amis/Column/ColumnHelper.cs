@@ -119,7 +119,7 @@ namespace CodeSpirit.Amis.Column
                 ["type"] = GetColumnType(prop)
             };
 
-            ColumnAttribute columnAttr = (ColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(ColumnAttribute));
+            AmisColumnAttribute columnAttr = (AmisColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(AmisColumnAttribute));
             if (columnAttr != null)
             {
                 if (!string.IsNullOrEmpty(columnAttr.Name))

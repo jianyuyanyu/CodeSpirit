@@ -61,7 +61,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// <summary>
         /// 根据ID获取角色详细信息（包含完整权限树）
         /// </summary>
-        public async Task<ApplicationRole> GetRoleByIdAsync(string id)
+        public async Task<ApplicationRole> GetRoleByIdAsync(long id)
         {
             return await _roleManager.Roles
                 .Include(r => r.RolePermission)
@@ -106,7 +106,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// <summary>
         /// 获取拥有指定角色的用户ID列表
         /// </summary>
-        public async Task<List<string>> GetUserIdsByRoleId(string id)
+        public async Task<List<long>> GetUserIdsByRoleId(long id)
         {
             return await _context.UserRoles
                 .Where(ur => ur.RoleId == id)

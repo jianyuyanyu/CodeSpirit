@@ -14,7 +14,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos.Role
         [DisplayName("描述")]
         public string Description { get; set; }
 
-        [Column(Hidden = true)]
+        [AmisColumn(Hidden = true)]
         public List<string> PermissionIds { get; set; }
     }
 }

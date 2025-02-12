@@ -15,7 +15,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                 name: "ApplicationRole",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -30,7 +30,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                 name: "ApplicationUser",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     IdNo = table.Column<string>(type: "nvarchar(18)", maxLength: 18, nullable: true),
                     AvatarUrl = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
@@ -65,6 +65,31 @@ namespace CodeSpirit.IdentityApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AuditLogs",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EventType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    UserId = table.Column<long>(type: "bigint", nullable: true),
+                    UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    IpAddress = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Method = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    Url = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
+                    QueryString = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    Headers = table.Column<string>(type: "ntext", nullable: true),
+                    RequestBody = table.Column<string>(type: "ntext", nullable: true),
+                    ResponseBody = table.Column<string>(type: "ntext", nullable: true),
+                    StatusCode = table.Column<int>(type: "int", nullable: false),
+                    Duration = table.Column<decimal>(type: "decimal(18,4)", nullable: false),
+                    EventTime = table.Column<byte[]>(type: "timestamp", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AuditLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Tenants",
                 columns: table => new
                 {
@@ -86,7 +111,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    RoleId = table.Column<long>(type: "bigint", nullable: false),
                     ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
@@ -107,7 +132,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    RoleId = table.Column<long>(type: "bigint", nullable: false),
                     PermissionIds = table.Column<string>(type: "nvarchar(max)", maxLength: 5000, nullable: true)
                 },
                 constraints: table =>
@@ -117,15 +142,16 @@ namespace CodeSpirit.IdentityApi.Migrations
                         name: "FK_RolePermissions_ApplicationRole_RoleId",
                         column: x => x.RoleId,
                         principalTable: "ApplicationRole",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
                 name: "ApplicationUserRole",
                 columns: table => new
                 {
-                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    RoleId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    UserId = table.Column<long>(type: "bigint", nullable: false),
+                    RoleId = table.Column<long>(type: "bigint", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
@@ -151,7 +177,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    UserId = table.Column<long>(type: "bigint", nullable: false),
                     ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
@@ -173,7 +199,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                     LoginProvider = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     ProviderKey = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     ProviderDisplayName = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                    UserId = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -190,7 +216,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                 name: "AspNetUserTokens",
                 columns: table => new
                 {
-                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    UserId = table.Column<long>(type: "bigint", nullable: false),
                     LoginProvider = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Value = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -212,7 +238,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    UserId = table.Column<long>(type: "bigint", nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     LoginTime = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IPAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: true),
@@ -226,7 +252,8 @@ namespace CodeSpirit.IdentityApi.Migrations
                         name: "FK_LoginLogs_ApplicationUser_UserId",
                         column: x => x.UserId,
                         principalTable: "ApplicationUser",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateIndex(
@@ -309,8 +336,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                 name: "IX_RolePermissions_RoleId",
                 table: "RolePermissions",
                 column: "RoleId",
-                unique: true,
-                filter: "[RoleId] IS NOT NULL");
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Tenants_Name",
@@ -336,6 +362,9 @@ namespace CodeSpirit.IdentityApi.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "AuditLogs");
 
             migrationBuilder.DropTable(
                 name: "LoginLogs");

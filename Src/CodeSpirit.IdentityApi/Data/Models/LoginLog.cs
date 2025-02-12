@@ -18,7 +18,7 @@ namespace CodeSpirit.IdentityApi.Data.Models
         /// <summary>
         /// 登录用户的唯一标识（外键）。
         /// </summary>
-        public string UserId { get; set; }
+        public long? UserId { get; set; }
 
         /// <summary>
         /// 导航属性，指向用户。

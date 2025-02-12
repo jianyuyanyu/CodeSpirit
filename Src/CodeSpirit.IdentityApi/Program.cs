@@ -1,4 +1,6 @@
 using CodeSpirit.Amis;
+using CodeSpirit.IdentityApi.Audit;
+using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.ServiceDefaults;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -21,7 +23,10 @@ builder.Services.AddAuthorizationPolicies();
 builder.Services.AddFluentValidationServices();
 builder.Services.ConfigureControllers();
 builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);
-
+// 配置审计
+builder.Services.Configure<AuditConfig>(
+    builder.Configuration.GetSection("Audit"));
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 ////依赖注入驱动注册
 //builder.Services.AddScopedRegister<IScopedDependency>();
 //builder.Services.AddTransientRegister<ITransientDependency>();
@@ -50,7 +55,7 @@ using (IServiceScope scope = app.Services.CreateScope())
 app.UseCors("AllowSpecificOriginsWithCredentials");
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseAuditLogging();
 app.MapControllers();
 
 app.Run();

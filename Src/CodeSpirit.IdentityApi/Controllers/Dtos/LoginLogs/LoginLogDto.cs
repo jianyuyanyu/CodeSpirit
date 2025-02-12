@@ -1,6 +1,5 @@
 ﻿// Controllers/AuthController.cs
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos.LoginLogs
 {
@@ -13,7 +12,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos.LoginLogs
 
         [Required]
         [DisplayName("用户ID")]
-        public string UserId { get; set; }
+        public long? UserId { get; set; }
 
         [Required]
         [DisplayName("用户名")]

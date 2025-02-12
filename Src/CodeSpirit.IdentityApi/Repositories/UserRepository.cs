@@ -21,7 +21,7 @@ public partial class UserRepository : Repository<ApplicationUser>, IUserReposito
         return _userManager.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role);
     }
 
-    public async Task<ApplicationUser> GetUserByIdAsync(string id)
+    public async Task<ApplicationUser> GetUserByIdAsync(long id)
     {
         return await _userManager.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.Id == id);

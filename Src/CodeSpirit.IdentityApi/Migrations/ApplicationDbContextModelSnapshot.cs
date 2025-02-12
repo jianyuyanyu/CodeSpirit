@@ -24,8 +24,8 @@ namespace CodeSpirit.IdentityApi.Migrations
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ApplicationRole", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -55,8 +55,8 @@ namespace CodeSpirit.IdentityApi.Migrations
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
@@ -169,11 +169,11 @@ namespace CodeSpirit.IdentityApi.Migrations
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ApplicationUserRole", b =>
                 {
-                    b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
 
-                    b.Property<string>("RoleId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("RoleId")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -183,6 +183,68 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("ApplicationUserRole", (string)null);
+                });
+
+            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.AuditLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Duration")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<byte[]>("EventTime")
+                        .IsRequired()
+                        .HasColumnType("timestamp");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Headers")
+                        .HasColumnType("ntext");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("QueryString")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("RequestBody")
+                        .HasColumnType("ntext");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("ntext");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<long?>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.LoginLog", b =>
@@ -207,8 +269,8 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.Property<DateTime>("LoginTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long?>("UserId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("UserName")
                         .IsRequired()
@@ -267,7 +329,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.ToTable("Tenants");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<long>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -281,9 +343,8 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.Property<string>("ClaimValue")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("RoleId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("RoleId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -292,7 +353,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.ToTable("AspNetRoleClaims", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<long>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -306,9 +367,8 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.Property<string>("ClaimValue")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -317,7 +377,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.ToTable("AspNetUserClaims", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<long>", b =>
                 {
                     b.Property<string>("LoginProvider")
                         .HasColumnType("nvarchar(450)");
@@ -328,9 +388,8 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.Property<string>("ProviderDisplayName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -339,10 +398,10 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.ToTable("AspNetUserLogins", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<long>", b =>
                 {
-                    b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("LoginProvider")
                         .HasColumnType("nvarchar(450)");
@@ -370,14 +429,13 @@ namespace CodeSpirit.IdentityApi.Migrations
                         .HasMaxLength(5000)
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("RoleId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<long>("RoleId")
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
                     b.HasIndex("RoleId")
-                        .IsUnique()
-                        .HasFilter("[RoleId] IS NOT NULL");
+                        .IsUnique();
 
                     b.ToTable("RolePermissions");
                 });
@@ -411,7 +469,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<long>", b =>
                 {
                     b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationRole", null)
                         .WithMany()
@@ -420,7 +478,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<long>", b =>
                 {
                     b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", null)
                         .WithMany()
@@ -429,7 +487,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<long>", b =>
                 {
                     b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", null)
                         .WithMany()
@@ -438,7 +496,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<long>", b =>
                 {
                     b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", null)
                         .WithMany()
@@ -451,7 +509,9 @@ namespace CodeSpirit.IdentityApi.Migrations
                 {
                     b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationRole", "Role")
                         .WithOne("RolePermission")
-                        .HasForeignKey("RolePermission", "RoleId");
+                        .HasForeignKey("RolePermission", "RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Role");
                 });

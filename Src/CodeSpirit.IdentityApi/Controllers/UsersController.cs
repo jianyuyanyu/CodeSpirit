@@ -51,7 +51,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Users/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<ApiResponse<UserDto>>> GetUser(string id)
+        public async Task<ActionResult<ApiResponse<UserDto>>> GetUser(long id)
         {
             UserDto userDto = await _userService.GetUserByIdAsync(id);
             return SuccessResponse(userDto);
@@ -61,19 +61,19 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpPost]
         public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser(CreateUserDto createUserDto)
         {
-            (Microsoft.AspNetCore.Identity.IdentityResult result, string userId) = await _userService.CreateUserAsync(createUserDto);
+            (Microsoft.AspNetCore.Identity.IdentityResult result, long? userId) = await _userService.CreateUserAsync(createUserDto);
             if (!result.Succeeded)
             {
                 return BadResponse<UserDto>(message: result.Errors.FirstOrDefault()?.Description);
             }
 
-            UserDto createdUserDto = await _userService.GetUserByIdAsync(userId);
+            UserDto createdUserDto = await _userService.GetUserByIdAsync(userId.Value);
             return SuccessResponseWithCreate<UserDto>(nameof(GetUser), createdUserDto);
         }
 
         // PUT: api/Users/{id}
         [HttpPut("{id}")]
-        public async Task<ActionResult<ApiResponse<string>>> UpdateUser(string id, UpdateUserDto updateUserDto)
+        public async Task<ActionResult<ApiResponse<string>>> UpdateUser(long id, UpdateUserDto updateUserDto)
         {
             Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.UpdateUserAsync(id, updateUserDto);
             if (!result.Succeeded)
@@ -87,7 +87,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // DELETE: api/Users/{id}
         [HttpDelete("{id}")]
-        public async Task<ActionResult<ApiResponse<string>>> DeleteUser(string id)
+        public async Task<ActionResult<ApiResponse<string>>> DeleteUser(long id)
         {
             Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.DeleteUserAsync(id);
             if (!result.Succeeded)
@@ -100,7 +100,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // POST: api/Users/{id}/roles
         [HttpPost("{id}/roles")]
-        public async Task<IActionResult> AssignRoles(string id, [FromBody] List<string> roles)
+        public async Task<IActionResult> AssignRoles(long id, [FromBody] List<string> roles)
         {
             Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.AssignRolesAsync(id, roles);
             if (!result.Succeeded)
@@ -114,7 +114,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // DELETE: api/Users/{id}/roles
         [HttpDelete("{id}/roles")]
-        public async Task<IActionResult> RemoveRoles(string id, [FromBody] List<string> roles)
+        public async Task<IActionResult> RemoveRoles(long id, [FromBody] List<string> roles)
         {
             Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.RemoveRolesAsync(id, roles);
             if (!result.Succeeded)
@@ -128,7 +128,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // PUT: /api/Users/{id}/setActive?isActive=true/false
         [HttpPut("{id}/setActive")]
-        public async Task<ActionResult<ApiResponse<string>>> SetActiveStatus(string id, [FromQuery] bool isActive)
+        public async Task<ActionResult<ApiResponse<string>>> SetActiveStatus(long id, [FromQuery] bool isActive)
         {
             Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.SetActiveStatusAsync(id, isActive);
             if (!result.Succeeded)
@@ -144,7 +144,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: /api/Users/{id}/resetRandomPassword
         [HttpPost("{id}/resetRandomPassword")]
         [Operation("重置密码", "ajax", null, "确定要重置密码吗？", "isActive == true")]
-        public async Task<ActionResult<ApiResponse<string>>> ResetRandomPassword(string id)
+        public async Task<ActionResult<ApiResponse<string>>> ResetRandomPassword(long id)
         {
             (bool success, string newPassword) = await _userService.ResetRandomPasswordAsync(id);
             return !success ? (ActionResult<ApiResponse<string>>)BadRequest(new ApiResponse<string>(1, "密码重置失败！", null)) : (ActionResult<ApiResponse<string>>)Ok(new ApiResponse<string>(0, "密码已重置成功！", newPassword));
@@ -153,7 +153,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         // PUT: /api/Users/{id}/unlock
         [HttpPut("{id}/unlock")]
         [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？", "lockoutEnd != null")]
-        public async Task<IActionResult> UnlockUser(string id)
+        public async Task<IActionResult> UnlockUser(long id)
         {
             Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.UnlockUserAsync(id);
             if (!result.Succeeded)
@@ -176,10 +176,10 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: api/Users/{id}/impersonate
         [HttpPost("{id}/impersonate")]
         [Operation("模拟登录", "ajax", null, "确定要模拟此用户登录吗？", "isActive == true", Redirect = "/impersonate?token=${token}")]
-        public async Task<ActionResult<ApiResponse<object>>> ImpersonateUser(string id)
+        public async Task<ActionResult<ApiResponse<object>>> ImpersonateUser(long id)
         {
-            // Check if current user is Administrator
-            if (!User.IsInRole("Administrator"))
+            // Check if current user is Admin
+            if (!User.IsInRole("Admin"))
             {
                 return BadResponse<object>("只有超级管理员可以使用模拟登录功能！");
             }
@@ -210,9 +210,9 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: api/Users/batch/delete
         [HttpPost("batch/delete")]
         [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
-        public async Task<ActionResult<ApiResponse<string>>> BatchDelete([FromBody] BatchDeleteDto<string> request)
+        public async Task<ActionResult<ApiResponse<string>>> BatchDelete([FromBody] BatchDeleteDto<long> request)
         {
-            var (successCount, failedUserNames) = await _userService.BatchDeleteUsersAsync(request.Ids);
+            (int successCount, List<string> failedUserNames) = await _userService.BatchDeleteUsersAsync(request.Ids);
 
             if (failedUserNames.Any())
             {

@@ -26,7 +26,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// <param name="userId">用户的唯一标识。</param>
         /// <param name="take">每次查询返回的记录数量。</param>
         /// <returns>登录日志列表。</returns>
-        public async Task<List<LoginLog>> GetLoginLogsByUserIdAsync(string userId, int take = 10)
+        public async Task<List<LoginLog>> GetLoginLogsByUserIdAsync(long userId, int take = 10)
         {
             return await _context.LoginLogs
                 .Where(log => log.UserId == userId)
@@ -96,5 +96,6 @@ namespace CodeSpirit.IdentityApi.Repositories
                 .Include(l => l.User)
                 .FirstOrDefaultAsync(l => l.Id == id);
         }
+
     }
 }

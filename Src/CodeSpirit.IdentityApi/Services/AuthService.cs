@@ -179,7 +179,7 @@ namespace CodeSpirit.IdentityApi.Services
             // 构建JWT声明
             List<Claim> claims =
             [
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),// JWT ID
                 new Claim(ClaimTypes.Name, user.Name),
                 new Claim(ClaimTypes.Email, user.Email),

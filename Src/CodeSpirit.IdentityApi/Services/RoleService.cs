@@ -28,7 +28,7 @@ namespace CodeSpirit.IdentityApi.Services
             return (_mapper.Map<List<RoleDto>>(roles), total);
         }
 
-        public async Task<RoleDto> GetRoleByIdAsync(string id)
+        public async Task<RoleDto> GetRoleByIdAsync(long id)
         {
             ApplicationRole role = await _roleRepository.GetRoleByIdAsync(id);
             return _mapper.Map<RoleDto>(role);
@@ -43,7 +43,7 @@ namespace CodeSpirit.IdentityApi.Services
             return _mapper.Map<RoleDto>(role);
         }
 
-        public async Task UpdateRoleAsync(string id, RoleUpdateDto updateDto)
+        public async Task UpdateRoleAsync(long id, RoleUpdateDto updateDto)
         {
             ApplicationRole role = await _roleRepository.GetRoleByIdAsync(id);
             _mapper.Map(updateDto, role);
@@ -52,7 +52,7 @@ namespace CodeSpirit.IdentityApi.Services
             await ClearUserPermissionsCacheByRoleAsync(role.Id);
         }
 
-        public async Task DeleteRoleAsync(string id)
+        public async Task DeleteRoleAsync(long id)
         {
             ApplicationRole role = await _roleRepository.GetRoleByIdAsync(id);
             if (role.RolePermission != null && role.RolePermission.PermissionIds != null)
@@ -64,9 +64,9 @@ namespace CodeSpirit.IdentityApi.Services
             await ClearUserPermissionsCacheByRoleAsync(role.Id);
         }
 
-        private async Task ClearUserPermissionsCacheByRoleAsync(string id)
+        private async Task ClearUserPermissionsCacheByRoleAsync(long id)
         {
-            List<string> userIds = await _roleRepository.GetUserIdsByRoleId(id);
+            List<long> userIds = await _roleRepository.GetUserIdsByRoleId(id);
 
             IEnumerable<Task> cacheTasks = userIds.Select(userId =>
                 _cache.RemoveAsync($"UserPermissions_{userId}"));
@@ -87,33 +87,33 @@ namespace CodeSpirit.IdentityApi.Services
             }
 
             // 校验导入数据格式是否合法
-            var invalidDtos = importDtos.Where(dto => string.IsNullOrEmpty(dto.Name) || dto.Name.Length > 100).ToList();
+            List<RoleBatchImportItemDto> invalidDtos = importDtos.Where(dto => string.IsNullOrEmpty(dto.Name) || dto.Name.Length > 100).ToList();
             if (invalidDtos.Any())
             {
                 throw new AppServiceException(400, $"以下角色数据格式错误: {string.Join(", ", invalidDtos.Select(dto => dto.Name))}！");
             }
 
             // 去重处理：确保每个角色名唯一（在导入时去重）
-            var distinctDtos = importDtos
+            List<RoleBatchImportItemDto> distinctDtos = importDtos
                 .GroupBy(dto => dto.Name)
                 .Select(group => group.First())
                 .ToList();
 
             // 检查数据库中是否已有重复的角色名
-            var existingRoles = await _roleRepository.GetRolesByNamesAsync(distinctDtos.Select(dto => dto.Name).ToList());
+            List<ApplicationRole> existingRoles = await _roleRepository.GetRolesByNamesAsync(distinctDtos.Select(dto => dto.Name).ToList());
 
-            var duplicateRoles = distinctDtos.Where(dto => existingRoles.Any(role => role.Name.Equals(dto.Name, StringComparison.OrdinalIgnoreCase))).ToList();
+            List<RoleBatchImportItemDto> duplicateRoles = distinctDtos.Where(dto => existingRoles.Any(role => role.Name.Equals(dto.Name, StringComparison.OrdinalIgnoreCase))).ToList();
             if (duplicateRoles.Any())
             {
                 throw new AppServiceException(400, $"以下角色名已存在: {string.Join(", ", duplicateRoles.Select(dto => dto.Name))}！");
             }
 
             // 将 DTO 转换为实体集合
-            var roles = new List<ApplicationRole>();
-            foreach (var dto in distinctDtos)
+            List<ApplicationRole> roles = [];
+            foreach (RoleBatchImportItemDto dto in distinctDtos)
             {
                 // 利用 AutoMapper 将 DTO 映射为 ApplicationRole 实体
-                var role = _mapper.Map<ApplicationRole>(dto);
+                ApplicationRole role = _mapper.Map<ApplicationRole>(dto);
                 roles.Add(role);
             }
 
@@ -135,6 +135,21 @@ namespace CodeSpirit.IdentityApi.Services
                 _logger.LogError($"批量插入角色数据失败: {ex.Message}");
                 throw new AppServiceException(500, "批量导入角色时发生错误，请稍后重试！");
             }
+        }
+
+        public Task<RoleDto> GetRoleByIdAsync(string id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task DeleteRoleAsync(string id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task UpdateRoleAsync(string id, RoleUpdateDto updateDto)
+        {
+            throw new NotImplementedException();
         }
     }
 

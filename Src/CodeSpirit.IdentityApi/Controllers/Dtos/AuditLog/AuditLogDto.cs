@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog
 {
     /// <summary>

@@ -61,6 +61,7 @@ public static class ServiceCollectionExtensions
 
         // 注册权限服务
         services.AddScoped<AuthService>();
+        services.AddScoped<ICurrentUser, CurrentUser>();
 
         // 注册 Repositories 和 Handlers
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

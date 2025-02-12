@@ -26,7 +26,7 @@ builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Prog
 // 配置审计
 builder.Services.Configure<AuditConfig>(
     builder.Configuration.GetSection("Audit"));
-builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+
 ////依赖注入驱动注册
 //builder.Services.AddScopedRegister<IScopedDependency>();
 //builder.Services.AddTransientRegister<ITransientDependency>();

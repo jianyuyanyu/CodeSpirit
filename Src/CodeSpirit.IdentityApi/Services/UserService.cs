@@ -7,7 +7,6 @@ using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Utilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 public class UserService : IUserService
 {
@@ -16,19 +15,22 @@ public class UserService : IUserService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly ILogger<UserService> _logger;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public UserService(
         IUserRepository userRepository,
         IMapper mapper,
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        ILogger<UserService> logger)
+        ILogger<UserService> logger,
+        IHttpContextAccessor httpContextAccessor)
     {
         _userRepository = userRepository;
         _mapper = mapper;
         _userManager = userManager;
         _roleManager = roleManager;
         this._logger = logger;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<ListData<UserDto>> GetUsersAsync(UserQueryDto queryDto)
@@ -112,13 +114,17 @@ public class UserService : IUserService
         string newPassword = PasswordGenerator.GenerateRandomPassword(12);
         IdentityResult result = await _userManager.CreateAsync(user, newPassword);
         if (!result.Succeeded)
+        {
             return (result, null);
+        }
 
         if (createUserDto.Roles != null && createUserDto.Roles.Any())
         {
             IdentityResult roleResult = await AssignRolesAsync(user, createUserDto.Roles);
             if (!roleResult.Succeeded)
+            {
                 return (roleResult, null);
+            }
         }
         return (IdentityResult.Success, user.Id);
     }
@@ -126,25 +132,23 @@ public class UserService : IUserService
     public async Task<IdentityResult> AssignRolesAsync(string id, List<string> roles)
     {
         ApplicationUser user = await _userManager.FindByIdAsync(id);
-        if (user == null)
-            return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
-
-        return await AssignRolesAsync(user, roles);
+        return user == null ? IdentityResult.Failed(new IdentityError { Description = "用户不存在！" }) : await AssignRolesAsync(user, roles);
     }
 
     public async Task<IdentityResult> RemoveRolesAsync(string id, List<string> roles)
     {
         ApplicationUser user = await _userManager.FindByIdAsync(id);
         if (user == null)
+        {
             return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
+        }
 
         IList<string> userRoles = await _userManager.GetRolesAsync(user);
         List<string> rolesToRemove = roles.Intersect(userRoles).ToList();
 
-        if (!rolesToRemove.Any())
-            return IdentityResult.Failed(new IdentityError { Description = "用户不具备指定的角色。" });
-
-        return await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+        return !rolesToRemove.Any()
+            ? IdentityResult.Failed(new IdentityError { Description = "用户不具备指定的角色。" })
+            : await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
     }
 
     private async Task<IdentityResult> AssignRolesAsync(ApplicationUser user, List<string> roles)
@@ -159,12 +163,9 @@ public class UserService : IUserService
             }
         }
 
-        if (!validRoles.Any())
-        {
-            return IdentityResult.Failed(new IdentityError { Description = "没有有效的角色可分配。" });
-        }
-
-        return await _userManager.AddToRolesAsync(user, validRoles);
+        return !validRoles.Any()
+            ? IdentityResult.Failed(new IdentityError { Description = "没有有效的角色可分配。" })
+            : await _userManager.AddToRolesAsync(user, validRoles);
     }
 
     public async Task<IdentityResult> UpdateUserAsync(string id, UpdateUserDto updateUserDto)
@@ -174,20 +175,26 @@ public class UserService : IUserService
             .FirstOrDefaultAsync(u => u.Id == id);
 
         if (user == null)
+        {
             return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
+        }
 
         // 使用 AutoMapper 更新用户属性
         _mapper.Map(updateUserDto, user);
 
         IdentityResult updateResult = await _userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
+        {
             return updateResult;
+        }
 
         if (updateUserDto.Roles != null)
         {
             IdentityResult roleResult = await UpdateUserRolesAsync(user, updateUserDto.Roles);
             if (!roleResult.Succeeded)
+            {
                 return roleResult;
+            }
         }
 
         return IdentityResult.Success;
@@ -205,14 +212,18 @@ public class UserService : IUserService
         {
             IdentityResult addResult = await AssignRolesAsync(user, rolesToAdd);
             if (!addResult.Succeeded)
+            {
                 return addResult;
+            }
         }
 
         if (rolesToRemove.Any())
         {
             IdentityResult removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
             if (!removeResult.Succeeded)
+            {
                 return removeResult;
+            }
         }
 
         return result;
@@ -221,17 +232,18 @@ public class UserService : IUserService
     public async Task<IdentityResult> DeleteUserAsync(string id)
     {
         ApplicationUser user = await _userRepository.GetUserByIdAsync(id);
-        if (user == null)
-            return IdentityResult.Failed(new IdentityError { Description = "用户不存在" });
-
-        return await _userRepository.DeleteUserAsync(user);
+        return user == null
+            ? IdentityResult.Failed(new IdentityError { Description = "用户不存在" })
+            : await _userRepository.DeleteUserAsync(user);
     }
 
     public async Task<IdentityResult> SetActiveStatusAsync(string id, bool isActive)
     {
         ApplicationUser user = await _userRepository.GetUserByIdAsync(id);
         if (user == null)
+        {
             return IdentityResult.Failed(new IdentityError { Description = "用户不存在" });
+        }
 
         if (user.IsActive == isActive)
         {
@@ -249,7 +261,9 @@ public class UserService : IUserService
     {
         ApplicationUser user = await _userRepository.GetUserByIdAsync(id);
         if (user == null)
+        {
             throw new AppServiceException(400, "账户不存在或已被禁用，请启用后再试！");
+        }
 
         string newPassword = PasswordGenerator.GenerateRandomPassword(12);
         string resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
@@ -262,22 +276,30 @@ public class UserService : IUserService
     {
         ApplicationUser user = await _userRepository.GetUserByIdAsync(id);
         if (user == null)
+        {
             return IdentityResult.Failed(new IdentityError { Description = "用户不存在" });
+        }
 
         DateTimeOffset? lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
         if (!lockoutEnd.HasValue || lockoutEnd.Value <= DateTimeOffset.Now)
+        {
             return IdentityResult.Failed(new IdentityError { Description = "该用户未被锁定，无需解锁" });
+        }
 
         // 先重置锁定结束时间
         IdentityResult setLockoutResult = await _userManager.SetLockoutEndDateAsync(user, null);
         if (!setLockoutResult.Succeeded)
+        {
             return setLockoutResult;
+        }
 
         // 重置访问失败次数
         user.AccessFailedCount = 0;
         IdentityResult updateResult = await _userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
+        {
             return updateResult;
+        }
 
         // 确保锁定功能启用
         return await _userManager.SetLockoutEnabledAsync(user, true);
@@ -298,12 +320,7 @@ public class UserService : IUserService
             .ToListAsync();
 
         // 如果没有找到任何用户，返回空列表
-        if (users == null || !users.Any())
-        {
-            return [];
-        }
-
-        return users;
+        return users == null || !users.Any() ? [] : users;
     }
 
     public async Task QuickSaveUsersAsync(QuickSaveRequestDto request)
@@ -334,7 +351,9 @@ public class UserService : IUserService
                 }
 
                 if (rowDiff.LockoutEnabled.HasValue)
+                {
                     user.LockoutEnabled = rowDiff.LockoutEnabled.Value;
+                }
 
                 // 可以根据需求增加更多字段的更新
             }
@@ -415,7 +434,7 @@ public class UserService : IUserService
         }
 
         // 校验导入数据格式
-        var invalidDtos = importDtos.Where(dto =>
+        List<UserBatchImportItemDto> invalidDtos = importDtos.Where(dto =>
             string.IsNullOrEmpty(dto.UserName) ||
             string.IsNullOrEmpty(dto.Email) ||
             string.IsNullOrEmpty(dto.Name) ||  // 姓名为必填
@@ -432,13 +451,13 @@ public class UserService : IUserService
         }
 
         // 去重处理：确保用户名、邮箱和手机号唯一
-        var distinctDtos = importDtos
+        List<UserBatchImportItemDto> distinctDtos = importDtos
             .GroupBy(dto => new { dto.UserName, dto.Email, dto.PhoneNumber })
             .Select(group => group.First())
             .ToList();
 
         // 检查数据库中是否已有重复的用户名、邮箱或手机号
-        var existingUsers = await _userManager.Users
+        List<ApplicationUser> existingUsers = await _userManager.Users
             .Where(u => distinctDtos.Select(dto => dto.UserName).Contains(u.UserName) ||
                        distinctDtos.Select(dto => dto.Email).Contains(u.Email) ||
                        distinctDtos.Where(dto => !string.IsNullOrEmpty(dto.PhoneNumber))
@@ -446,7 +465,7 @@ public class UserService : IUserService
                                  .Contains(u.PhoneNumber))
             .ToListAsync();
 
-        var duplicateUsers = distinctDtos.Where(dto =>
+        List<UserBatchImportItemDto> duplicateUsers = distinctDtos.Where(dto =>
             existingUsers.Any(user =>
                 user.UserName.Equals(dto.UserName, StringComparison.OrdinalIgnoreCase) ||
                 user.Email.Equals(dto.Email, StringComparison.OrdinalIgnoreCase) ||
@@ -461,9 +480,9 @@ public class UserService : IUserService
         // 批量创建用户
         try
         {
-            foreach (var dto in distinctDtos)
+            foreach (UserBatchImportItemDto dto in distinctDtos)
             {
-                var user = new ApplicationUser
+                ApplicationUser user = new()
                 {
                     UserName = dto.UserName,
                     Email = dto.Email,
@@ -479,8 +498,8 @@ public class UserService : IUserService
                 };
 
                 // 生成随机密码
-                var password = PasswordGenerator.GenerateRandomPassword(12);
-                var result = await _userManager.CreateAsync(user, password);
+                string password = PasswordGenerator.GenerateRandomPassword(12);
+                IdentityResult result = await _userManager.CreateAsync(user, password);
 
                 if (!result.Succeeded)
                 {
@@ -515,34 +534,45 @@ public class UserService : IUserService
 
         // 获取要删除的用户
         List<ApplicationUser> usersToDelete = await GetUsersByIdsAsync(userIds);
-        
+
         if (!usersToDelete.Any())
         {
             throw new AppServiceException(400, "未找到指定的用户！");
         }
 
         // 验证是否包含当前用户
-        string currentUserId = _userManager.GetUserId(ClaimsPrincipal.Current);
+        string currentUserId = _userManager.GetUserId(_httpContextAccessor.HttpContext?.User);
         if (usersToDelete.Any(u => u.Id == currentUserId))
         {
             throw new AppServiceException(400, "不能删除当前登录用户！");
         }
 
-        using var transaction = await _userRepository.GetDbContext().Database.BeginTransactionAsync();
-        try
+        // 检查是否包含管理员用户
+        List<string> adminUsers = [];
+        foreach (ApplicationUser user in usersToDelete)
         {
-            _userRepository.RemoveRange(usersToDelete);
-            await _userRepository.SaveChangesAsync();
-            
-            await transaction.CommitAsync();
-            _logger.LogInformation($"批量删除用户完成。成功删除 {usersToDelete.Count} 个用户");
-            return (usersToDelete.Count, new List<string>());
+            if (await _userManager.IsInRoleAsync(user, "Administrator"))
+            {
+                adminUsers.Add(user.UserName);
+            }
         }
-        catch (Exception ex)
+
+        if (adminUsers.Any())
         {
-            await transaction.RollbackAsync();
-            _logger.LogError(ex, "批量删除用户时发生异常");
-            return (0, usersToDelete.Select(u => u.UserName).ToList());
+            throw new AppServiceException(400, $"以下管理员用户不能被删除: {string.Join(", ", adminUsers)}");
         }
+
+        List<string> failUsers = [];
+        foreach (ApplicationUser user in usersToDelete)
+        {
+            IdentityResult result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+            {
+                failUsers.Add(user.UserName);
+            }
+        }
+
+        _logger.LogInformation($"批量删除用户完成。成功删除 {usersToDelete.Count - failUsers.Count} 个用户");
+        return (usersToDelete.Count - failUsers.Count, failUsers);
     }
 }

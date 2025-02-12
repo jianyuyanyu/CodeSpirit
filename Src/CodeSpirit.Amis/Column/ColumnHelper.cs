@@ -59,11 +59,9 @@ namespace CodeSpirit.Amis.Column
                 columns.Add(operations);
             }
 
-            if (columns.Count == 1 && columns[0] == operations)
-            {
-                throw new AppServiceException(-100, "请检查返回参数的定义是否为“ApiResponse<ListData<T>>>”!");
-            }
-            return columns;
+            return columns.Count == 1 && columns[0] == operations
+                ? throw new AppServiceException(-100, "请检查返回参数的定义是否为“ApiResponse<ListData<T>>>”!")
+                : columns;
         }
 
         public List<JObject> GetAmisColumns()
@@ -87,12 +85,7 @@ namespace CodeSpirit.Amis.Column
 
             // 检查是否应用了 IgnoreColumnAttribute
             IgnoreColumnAttribute ignoreAttr = prop.GetCustomAttribute<IgnoreColumnAttribute>();
-            if (ignoreAttr != null)
-            {
-                return true;
-            }
-
-            return false;
+            return ignoreAttr != null;
         }
 
         /// <summary>
@@ -118,7 +111,7 @@ namespace CodeSpirit.Amis.Column
             // 将属性名称转换为 camelCase 以符合 AMIS 的命名约定
             string fieldName = prop.Name.ToCamelCase();
 
-            JObject column = new JObject
+            JObject column = new()
             {
                 ["name"] = fieldName,
                 ["label"] = displayName,
@@ -130,25 +123,35 @@ namespace CodeSpirit.Amis.Column
             if (columnAttr != null)
             {
                 if (!string.IsNullOrEmpty(columnAttr.Name))
+                {
                     column["name"] = columnAttr.Name;
+                }
 
                 if (!string.IsNullOrEmpty(columnAttr.Label))
+                {
                     column["label"] = columnAttr.Label;
+                }
 
                 column["sortable"] = columnAttr.Sortable;
 
                 if (!string.IsNullOrEmpty(columnAttr.Type))
+                {
                     column["type"] = columnAttr.Type;
+                }
 
                 column["quickEdit"] = columnAttr.QuickEdit;
 
                 if (!string.IsNullOrEmpty(columnAttr.Remark))
+                {
                     column["remark"] = columnAttr.Remark;
+                }
 
                 column["copyable"] = columnAttr.Copyable;
 
                 if (!string.IsNullOrEmpty(columnAttr.Fixed))
+                {
                     column["fixed"] = columnAttr.Fixed;
+                }
 
                 column["hidden"] = columnAttr.Hidden;
             }
@@ -229,7 +232,7 @@ namespace CodeSpirit.Amis.Column
             return listItem;
         }
 
-        private static readonly ConcurrentDictionary<Type, JObject> EnumMappingCache = new ConcurrentDictionary<Type, JObject>();
+        private static readonly ConcurrentDictionary<Type, JObject> EnumMappingCache = new();
 
         private JObject GetEnumMapping(Type type)
         {
@@ -282,17 +285,14 @@ namespace CodeSpirit.Amis.Column
         /// <returns>AMIS 列的类型字符串。</returns>
         private string GetColumnType(PropertyInfo prop)
         {
-            if (_utilityHelper.IsEnumProperty(prop))
-            {
-                return "mapping";
-            }
-
-            return prop.PropertyType switch
-            {
-                Type t when t == typeof(bool) => "switch",
-                Type t when t == typeof(DateTime) || t == typeof(DateTime?) || t == typeof(DateTimeOffset) || t == typeof(DateTimeOffset?) => "datetime",
-                _ => "text"
-            };
+            return _utilityHelper.IsEnumProperty(prop)
+                ? "mapping"
+                : prop.PropertyType switch
+                {
+                    Type t when t == typeof(bool) => "switch",
+                    Type t when t == typeof(DateTime) || t == typeof(DateTime?) || t == typeof(DateTimeOffset) || t == typeof(DateTimeOffset?) => "datetime",
+                    _ => "text"
+                };
         }
 
 
@@ -322,13 +322,8 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 另外，可以根据属性名称包含 "Image" 或 "Avatar" 来判断
-            if (prop.Name.IndexOf("Image", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return true;
-            }
-
-            return false;
+            return prop.Name.IndexOf("Image", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         /// <summary>
@@ -338,12 +333,7 @@ namespace CodeSpirit.Amis.Column
         /// <returns>AMIS 列的类型字符串。</returns>
         private string GetImageColumnType(PropertyInfo prop)
         {
-            if (prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return "avatar";
-            }
-
-            return "image";
+            return prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0 ? "avatar" : "image";
         }
 
         /// <summary>
@@ -358,7 +348,8 @@ namespace CodeSpirit.Amis.Column
         {
             JArray buttons = [];
             // 如果用户有编辑权限，则添加编辑按钮
-            if (_permissionService.HasPermission($"{controllerName}Edit"))
+            //if (_permissionService.HasPermission($"{controllerName}Edit"))
+            if (actions.Update != null)
             {
                 if (updateRoute != null && actions.Update != null)
                 {
@@ -368,7 +359,9 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 如果用户有删除权限，则添加删除按钮
-            if (actions.Delete != null && _permissionService.HasPermission($"{controllerName}Delete"))
+            if (actions.Delete != null
+                //&& _permissionService.HasPermission($"{controllerName}Delete")
+                )
             {
                 OperationAttribute operationAttribute = actions.Delete.GetCustomAttribute<OperationAttribute>();
                 if (operationAttribute == null)
@@ -386,16 +379,15 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 如果没有任何按钮，则不添加操作列
-            if (buttons.Count == 0)
-                return null;
-
-            return new JObject
-            {
-                ["name"] = "operation",
-                ["label"] = "操作",
-                ["type"] = "operation",
-                ["buttons"] = buttons
-            };
+            return buttons.Count == 0
+                ? null
+                : new JObject
+                {
+                    ["name"] = "operation",
+                    ["label"] = "操作",
+                    ["type"] = "operation",
+                    ["buttons"] = buttons
+                };
         }
     }
 }

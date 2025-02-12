@@ -213,9 +213,9 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: api/Users/batch/delete
         [HttpPost("batch/delete")]
         [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
-        public async Task<ActionResult<ApiResponse<string>>> BatchDelete([FromBody] List<string> ids)
+        public async Task<ActionResult<ApiResponse<string>>> BatchDelete([FromBody] BatchDeleteDto<string> request)
         {
-            var (successCount, failedUserNames) = await _userService.BatchDeleteUsersAsync(ids);
+            var (successCount, failedUserNames) = await _userService.BatchDeleteUsersAsync(request.Ids);
 
             if (failedUserNames.Any())
             {

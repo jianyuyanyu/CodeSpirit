@@ -45,5 +45,6 @@ public class UpdateUserDto
     [DisplayName("性别")]
     public Gender Gender { get; set; }
 
+    [DisplayName("手机号码")]
     public string PhoneNumber { get; set; }
 }

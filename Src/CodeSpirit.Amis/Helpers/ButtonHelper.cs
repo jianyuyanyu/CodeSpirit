@@ -158,6 +158,14 @@ namespace CodeSpirit.Amis.Helpers
                 api["url"] = op.Api;
             }
 
+            if (op.IsBulkOperation)
+            {
+                api["data"] = new JObject()
+                {
+                    ["ids"] = "${ids|split}"
+                };
+            }
+
             return CreateButton(op.Label, op.ActionType, api: api, confirmText: op.ConfirmText, download: op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase), visibleOn: op.VisibleOn);
         }
     }

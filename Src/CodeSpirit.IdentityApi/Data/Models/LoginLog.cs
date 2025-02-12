@@ -1,5 +1,5 @@
 ﻿// Models/LoginLog.cs
-using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CodeSpirit.IdentityApi.Data.Models
@@ -24,6 +24,7 @@ namespace CodeSpirit.IdentityApi.Data.Models
         /// 导航属性，指向用户。
         /// </summary>
         [ForeignKey("UserId")]
+        [DeleteBehavior(DeleteBehavior.SetNull)]
         public ApplicationUser User { get; set; }
 
         /// <summary>

@@ -22,7 +22,6 @@ builder.Services.AddFluentValidationServices();
 builder.Services.ConfigureControllers();
 builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);
 
-
 ////依赖注入驱动注册
 //builder.Services.AddScopedRegister<IScopedDependency>();
 //builder.Services.AddTransientRegister<ITransientDependency>();

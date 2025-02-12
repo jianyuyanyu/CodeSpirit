@@ -1,7 +1,5 @@
 ﻿// Controllers/AuthController.cs
-using System.ComponentModel.DataAnnotations;
-
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Auth
 {
     /// <summary>
     /// 登录请求模型。

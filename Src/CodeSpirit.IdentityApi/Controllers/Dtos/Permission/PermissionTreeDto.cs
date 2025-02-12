@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Permission
 {
     /// <summary>
     /// DTO 类，用于表示权限树的节点。

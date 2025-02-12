@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Repositories;
 using Microsoft.Extensions.Caching.Distributed;

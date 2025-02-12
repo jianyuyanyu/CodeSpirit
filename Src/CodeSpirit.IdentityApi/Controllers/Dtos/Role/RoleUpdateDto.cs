@@ -1,19 +1,19 @@
-﻿using System.ComponentModel;
+﻿// Controllers/RolesController.cs
+using System.ComponentModel;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Role
 {
-    // DTO 用于创建角色
-    public class RoleCreateDto
+    // DTO 用于更新角色
+    public class RoleUpdateDto
     {
         [Required]
         [MaxLength(100)]
-        [DisplayName("名称")]
         public string Name { get; set; }
 
         [MaxLength(256)]
-        [DisplayName("描述")]
         public string Description { get; set; }
 
+        // 可选：权限ID列表
         // 权限ID列表
         [DisplayName("权限")]
         [AmisInputTreeField(
@@ -26,6 +26,6 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         Required = true,
         Placeholder = "请选择权限"
         )]
-        public List<string> PermissionAssignments { get; set; }
+        public List<string> PermissionIds { get; set; }
     }
 }

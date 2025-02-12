@@ -1,5 +1,5 @@
 ﻿using Newtonsoft.Json;
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Role
 {
     /// <summary>
     /// 批量导入角色 DTO

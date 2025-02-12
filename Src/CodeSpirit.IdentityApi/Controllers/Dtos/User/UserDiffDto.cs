@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.IdentityApi.Controllers.Dtos
+﻿namespace CodeSpirit.IdentityApi.Controllers.Dtos.User
 {
     public class UserDiffDto
     {

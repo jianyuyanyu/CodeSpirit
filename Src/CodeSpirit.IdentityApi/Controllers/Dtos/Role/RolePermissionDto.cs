@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Role
 {
     /// <summary>
     /// DTO 用于角色权限数据传输

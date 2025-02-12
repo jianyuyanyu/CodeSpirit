@@ -1,7 +1,7 @@
 ﻿// Controllers/RolesController.cs
 using System.ComponentModel;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Role
 {
     // DTO 用于角色数据传输
     public class RoleDto

@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+using CodeSpirit.IdentityApi.Controllers.Dtos.User;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;

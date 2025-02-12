@@ -1,4 +1,4 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
+﻿using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Data.Models;
 
 namespace CodeSpirit.IdentityApi.Repositories

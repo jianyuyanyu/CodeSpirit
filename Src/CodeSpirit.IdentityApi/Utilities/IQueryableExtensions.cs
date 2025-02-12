@@ -1,4 +1,4 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos;
+﻿using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
 using System.Linq.Dynamic.Core;
 using System.Linq.Dynamic.Core.Exceptions;
 

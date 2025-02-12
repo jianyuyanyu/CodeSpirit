@@ -1,7 +1,8 @@
 ﻿using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;

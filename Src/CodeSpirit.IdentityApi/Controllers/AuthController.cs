@@ -1,6 +1,6 @@
 ﻿// Controllers/AuthController.cs
 using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Auth;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -1,8 +1,9 @@
 ﻿// 文件路径: Controllers/Dtos/UserQueryDto.cs
+using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
 using CodeSpirit.IdentityApi.Data.Models;
 using System.ComponentModel;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.User
 {
     /// <summary>
     /// 用户查询参数
@@ -25,7 +26,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         /// 角色名称筛选
         /// </summary>
         [DisplayName("角色")]
-        public string? Role { get; set; }
+        public string Role { get; set; }
 
         /// <summary>
         /// 最后登录时间起始 (时间戳，逗号分隔)

@@ -1,10 +1,10 @@
 ﻿// Controllers/RolesController.cs
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Permission
 {
-    // DTO 用于分配权限
-    public class AssignPermissionsDto
+    // DTO 用于移除权限
+    public class RemovePermissionsDto
     {
         [Required]
         public List<int> PermissionIds { get; set; }

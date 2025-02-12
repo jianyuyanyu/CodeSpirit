@@ -2,7 +2,7 @@ using CodeSpirit.IdentityApi.Data.Models;
 using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.User
 {
     /// <summary>
     /// 批量导入用户 DTO

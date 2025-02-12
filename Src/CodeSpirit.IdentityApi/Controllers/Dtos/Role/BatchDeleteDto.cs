@@ -1,4 +1,4 @@
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Role
 {
     /// <summary>
     /// 批量删除请求DTO

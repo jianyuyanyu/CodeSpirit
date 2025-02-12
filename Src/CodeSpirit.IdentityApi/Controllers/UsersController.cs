@@ -1,6 +1,8 @@
 ﻿using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
+using CodeSpirit.IdentityApi.Controllers.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -44,12 +46,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             ListData<UserDto> users = await _userService.GetUsersAsync(queryDto);
 
             // 如果数据为空则返回错误信息
-            if (users.Items.Count == 0)
-            {
-                return BadResponse<ListData<UserDto>>("没有数据可供导出");
-            }
-
-            return SuccessResponse(users);
+            return users.Items.Count == 0 ? BadResponse<ListData<UserDto>>("没有数据可供导出") : SuccessResponse(users);
         }
 
         // GET: api/Users/{id}

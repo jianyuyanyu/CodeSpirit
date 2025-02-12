@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Common
 {
     public class QueryDtoBase
     {
@@ -10,7 +10,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         /// 关键字搜索
         /// </summary>
         [DisplayName("关键字")]
-        public string? Keywords { get; set; }
+        public string Keywords { get; set; }
 
         /// <summary>
         /// 页码（默认第1页）
@@ -27,11 +27,11 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos
         /// <summary>
         /// 排序字段（可选，例如 "Name", "Email" 等）
         /// </summary>
-        public string? OrderBy { get; set; }
+        public string OrderBy { get; set; }
 
         /// <summary>
         /// 排序顺序（"asc" 或 "desc"，默认 "asc"）
         /// </summary>
-        public string? OrderDir { get; set; } = "asc";
+        public string OrderDir { get; set; } = "asc";
     }
 }

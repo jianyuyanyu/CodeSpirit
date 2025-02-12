@@ -1,10 +1,10 @@
 ﻿// Controllers/UserRolesController.cs
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.Role
 {
-    // DTO 用于移除角色
-    public class RemoveRolesDto
+    // DTO 用于分配角色
+    public class AssignRolesDto
     {
         [Required]
         public string UserId { get; set; }

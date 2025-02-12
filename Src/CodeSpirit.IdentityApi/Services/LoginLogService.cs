@@ -1,5 +1,5 @@
 using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+using CodeSpirit.IdentityApi.Controllers.Dtos.LoginLogs;
 using CodeSpirit.IdentityApi.Repositories;
 using System.Threading.Tasks;
 

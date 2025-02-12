@@ -1,5 +1,5 @@
 ﻿// Controllers/UserRolesController.cs
-namespace CodeSpirit.IdentityApi.Controllers.Dtos
+namespace CodeSpirit.IdentityApi.Controllers.Dtos.User
 {
     // DTO 用于展示用户角色
     public class UserRolesDto

@@ -1,7 +1,8 @@
 ﻿using AutoMapper;
+using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Permission;
 using CodeSpirit.IdentityApi.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;

@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using CodeSpirit.IdentityApi.Controllers.Dtos;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Permission;
 
 namespace CodeSpirit.IdentityApi.MappingProfiles
 {

@@ -11,7 +11,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog
         /// 唯一标识
         /// </summary>
         [DisplayName("唯一标识")]
-        public string Id { get; set; }
+        public long Id { get; set; }
 
         /// <summary>
         /// 事件类型
@@ -66,6 +66,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog
         /// </summary>
         [DisplayName("HTTP请求头")]
         [AmisColumn(Type = "json", Copyable = true, Toggled = false)]
+        [AmisFormField(type: "json")]
         public string Headers { get; set; }
 
         /// <summary>
@@ -73,6 +74,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog
         /// </summary>
         [DisplayName("请求体")]
         [AmisColumn(Type = "json", Copyable = true, Toggled = false)]
+        [AmisFormField(type: "json")]
         public string RequestBody { get; set; }
 
         /// <summary>
@@ -80,6 +82,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog
         /// </summary>
         [DisplayName("响应体")]
         [AmisColumn(Type = "json", Copyable = true, Toggled = false)]
+        [AmisFormField(type: "json")]
         public string ResponseBody { get; set; }
 
         /// <summary>

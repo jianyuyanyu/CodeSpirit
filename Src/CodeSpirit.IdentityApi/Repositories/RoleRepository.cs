@@ -1,4 +1,4 @@
-﻿using CodeSpirit.Authorization;
+﻿using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
@@ -16,15 +16,18 @@ namespace CodeSpirit.IdentityApi.Repositories
         private readonly ApplicationDbContext _context;
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly IPermissionService permissionService;
+        private readonly IIdGenerator _idGenerator;
 
         public RoleRepository(
             ApplicationDbContext context,
             RoleManager<ApplicationRole> roleManager,
-            IPermissionService permissionService)
+            IPermissionService permissionService,
+            IIdGenerator idGenerator)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _roleManager = roleManager ?? throw new ArgumentNullException(nameof(roleManager));
             this.permissionService = permissionService;
+            _idGenerator = idGenerator ?? throw new ArgumentNullException(nameof(idGenerator));
         }
 
         /// <summary>
@@ -74,8 +77,11 @@ namespace CodeSpirit.IdentityApi.Repositories
         /// <remarks>需要事务保证角色和权限的原子性操作</remarks>
         public async Task CreateRoleAsync(ApplicationRole role, IEnumerable<string> permissionIds)
         {
-            // 验证权限是否存在
-            var permissions = permissionService.GetPermissionTree()
+            // Generate new ID using IIdGenerator
+            role.Id = _idGenerator.NewId();
+
+            // Validate permissions
+            string[] permissions = permissionService.GetPermissionTree()
                 .Where(p => permissionIds.Contains(p.Code))
                 .Select(p => p.Code)
                 .ToArray();
@@ -85,7 +91,6 @@ namespace CodeSpirit.IdentityApi.Repositories
                 PermissionIds = permissions
             };
 
-            // 创建角色（自动级联创建关联的RolePermissions）
             await _roleManager.CreateAsync(role);
         }
 

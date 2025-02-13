@@ -19,24 +19,25 @@ namespace CodeSpirit.IdentityApi.Services
 
         public async Task<(List<AuditLogDto> logs, int total)> GetAuditLogsAsync(AuditLogQueryDto queryDto)
         {
-            var (logs, total) = await _auditLogRepository.GetAuditLogsAsync(
+            (List<AuditLog> logs, int total) = await _auditLogRepository.GetAuditLogsAsync(
                 queryDto.PageSize,
                 queryDto.Page,
                 queryDto.UserName,
-                queryDto.EventType);
+                queryDto.EventType,
+                queryDto.EventTime,
+                queryDto.IpAddress,
+                queryDto.Url,
+                queryDto.Method,
+                queryDto.StatusCode);
 
             return (_mapper.Map<List<AuditLogDto>>(logs), total);
         }
 
-        public async Task<AuditLogDto> GetAuditLogByIdAsync(string id)
+        public async Task<AuditLogDto> GetAuditLogByIdAsync(long id)
         {
-            var log = await _auditLogRepository.GetByIdAsync(id);
-            if (log == null)
-            {
-                throw new AppServiceException(404, "审计日志不存在");
-            }
-
-            return _mapper.Map<AuditLogDto>(log);
+            AuditLog log = await _auditLogRepository.GetByIdAsync(id);
+            return log == null ? throw new AppServiceException(404, "审计日志不存在") : _mapper.Map<AuditLogDto>(log);
         }
+
     }
-} 
+}

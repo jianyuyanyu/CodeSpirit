@@ -33,7 +33,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<ApiResponse<AuditLogDto>>> Detail(string id)
+        public async Task<ActionResult<ApiResponse<AuditLogDto>>> Detail(long id)
         {
             AuditLogDto log = await _auditLogService.GetAuditLogByIdAsync(id);
             return SuccessResponse(log);

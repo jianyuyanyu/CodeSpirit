@@ -6,7 +6,7 @@ namespace CodeSpirit.IdentityApi.Repositories
     /// <summary>
     /// 用户仓储接口
     /// </summary>
-    public interface IUserRepository : IRepository<ApplicationUser>
+    public interface IUserRepository : IRepository<ApplicationUser, long>
     {
         /// <summary>
         /// 创建用户

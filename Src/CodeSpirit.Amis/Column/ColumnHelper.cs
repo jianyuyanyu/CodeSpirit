@@ -411,7 +411,8 @@ namespace CodeSpirit.Amis.Column
                     ["name"] = "operation",
                     ["label"] = "操作",
                     ["type"] = "operation",
-                    ["buttons"] = buttons
+                    ["buttons"] = buttons,
+                    ["fixed"] = "right"
                 };
         }
     }

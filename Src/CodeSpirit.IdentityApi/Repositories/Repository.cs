@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 
 namespace CodeSpirit.IdentityApi.Repositories
 {
-    public class Repository<T> : IRepository<T> where T : class
+    public class Repository<T, TKey> : IRepository<T, TKey> where T : class
     {
         protected readonly ApplicationDbContext _context;
         protected readonly DbSet<T> _dbSet;
@@ -25,7 +25,7 @@ namespace CodeSpirit.IdentityApi.Repositories
             return await _dbSet.Where(predicate).ToListAsync();
         }
 
-        public async Task<T> GetByIdAsync(object id)
+        public async Task<T> GetByIdAsync(TKey id)
         {
             return await _dbSet.FindAsync(id);
         }

@@ -5,6 +5,6 @@ namespace CodeSpirit.IdentityApi.Services
     public interface IAuditLogService
     {
         Task<(List<AuditLogDto> logs, int total)> GetAuditLogsAsync(AuditLogQueryDto queryDto);
-        Task<AuditLogDto> GetAuditLogByIdAsync(string id);
+        Task<AuditLogDto> GetAuditLogByIdAsync(long id);
     }
-} 
+}

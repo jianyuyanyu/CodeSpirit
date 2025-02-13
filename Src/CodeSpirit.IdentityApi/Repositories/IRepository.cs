@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace CodeSpirit.IdentityApi.Repositories
 {
-    public interface IRepository<T> where T : class
+    public interface IRepository<T, TKey> where T : class
     {
         // 获取所有实体
         Task<IEnumerable<T>> GetAllAsync();
@@ -12,7 +12,7 @@ namespace CodeSpirit.IdentityApi.Repositories
         Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
 
         // 根据ID获取实体
-        Task<T> GetByIdAsync(object id);
+        Task<T> GetByIdAsync(TKey id);
 
         // 添加新实体
         Task AddAsync(T entity);

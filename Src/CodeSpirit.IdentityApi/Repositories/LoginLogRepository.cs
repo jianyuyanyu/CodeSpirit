@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.IdentityApi.Repositories
 {
-    public class LoginLogRepository : Repository<LoginLog>, ILoginLogRepository
+    public class LoginLogRepository : Repository<LoginLog, int>, ILoginLogRepository
     {
         public LoginLogRepository(ApplicationDbContext context) : base(context)
         {
@@ -90,7 +90,7 @@ namespace CodeSpirit.IdentityApi.Repositories
             return (items, totalPages);
         }
 
-        public async Task<LoginLog> GetByIdAsync(int id)
+        public new async Task<LoginLog> GetByIdAsync(int id)
         {
             return await _context.LoginLogs
                 .Include(l => l.User)

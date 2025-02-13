@@ -147,7 +147,8 @@ namespace CodeSpirit.Amis.Helpers
             {
                 ["name"] = fieldName,
                 ["label"] = label,
-                ["type"] = fieldType
+                ["type"] = fieldType,
+                ["clearable"] = true
             };
 
             // 如果是下拉选择框并且是枚举类型，添加选项
@@ -184,7 +185,8 @@ namespace CodeSpirit.Amis.Helpers
             {
                 ["name"] = fieldName,
                 ["label"] = label,
-                ["type"] = fieldType
+                ["type"] = fieldType,
+                ["clearable"] = true
             };
 
             if (fieldType == "switch")
@@ -197,7 +199,6 @@ namespace CodeSpirit.Amis.Helpers
             if (fieldType == "select" && (prop.PropertyType.IsEnum || _utilityHelper.IsNullableEnum(prop.PropertyType)))
             {
                 field["options"] = prop.PropertyType.GetEnumOptions();
-                field["clearable"] = true;
             }
 
             // 如果是日期类型，设置日期格式

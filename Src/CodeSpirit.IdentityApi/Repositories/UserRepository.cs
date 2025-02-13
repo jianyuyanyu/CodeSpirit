@@ -3,7 +3,7 @@ using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-public partial class UserRepository : Repository<ApplicationUser>, IUserRepository
+public partial class UserRepository : Repository<ApplicationUser, long>, IUserRepository
 {
     private readonly UserManager<ApplicationUser> _userManager;
 

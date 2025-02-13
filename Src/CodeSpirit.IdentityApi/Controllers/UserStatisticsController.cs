@@ -1,8 +1,13 @@
-﻿using CodeSpirit.IdentityApi.Services;
+﻿using CodeSpirit.IdentityApi.Constants;
+using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
+    [DisplayName("用户统计")]
+    [Page(Label = "用户统计", ParentLabel = "控制台", Icon = "fa-solid fa-gauge-high", PermissionCode = PermissionCodes.UserStatistics)]
+    [Permission(code: PermissionCodes.UserStatistics)]
     public class UserStatisticsController : ApiControllerBase
     {
         private readonly IUserService _userService;
@@ -16,16 +21,16 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <summary>
         /// 获取用户增长趋势图的 ECharts 配置
         /// </summary>
-        /// <param name="startDate">开始日期</param>
-        /// <param name="endDate">结束日期</param>
+        /// <param name="dateRange">日期范围</param>
         /// <returns>ECharts 配置</returns>
         [HttpGet("usergrowth")]
-        public async Task<ActionResult<EChartsConfig>> GetUserGrowthAsync(DateTimeOffset? startDate, DateTimeOffset? endDate)
+        [Display(Name = "用户增长趋势")]
+        public async Task<ActionResult<EChartsConfig>> GetUserGrowthStatisticsAsync([FromQuery] DateTime[] dateRange)
         {
-            DateTimeOffset date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-1);
-            DateTimeOffset date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
+            DateTimeOffset startDate = dateRange?.Length > 0 ? dateRange[0] : DateTimeOffset.Now.AddMonths(-1);
+            DateTimeOffset endDate = dateRange?.Length > 1 ? dateRange[1] : DateTimeOffset.Now.AddDays(1);
 
-            List<UserGrowthDto> dailyGrowth = await _userService.GetUserGrowthAsync(date1, date2);
+            List<UserGrowthDto> dailyGrowth = await _userService.GetUserGrowthAsync(startDate, endDate);
             List<string> dates = dailyGrowth.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
             List<int> userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
 
@@ -86,15 +91,14 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <summary>
         /// 获取活跃用户统计图的 ECharts 配置
         /// </summary>
-        /// <param name="startDate">开始日期</param>
-        /// <param name="endDate">结束日期</param>
+        /// <param name="dateRange">日期范围</param>
         /// <returns>ECharts 配置</returns>
         [HttpGet("activeusers")]
-        public async Task<ActionResult<EChartsConfig>> GetActiveUsersAsync(DateTimeOffset? startDate, DateTimeOffset? endDate)
+        public async Task<ActionResult<EChartsConfig>> GetActiveUsersStatisticsAsync([FromQuery] DateTime[] dateRange)
         {
-            DateTimeOffset date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-3);
-            DateTimeOffset date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now;
-            List<ActiveUserDto> dailyActiveUsers = await _userService.GetActiveUsersAsync(date1, date2);
+            DateTimeOffset startDate = dateRange?.Length > 0 ? dateRange[0] : DateTimeOffset.Now.AddMonths(-3);
+            DateTimeOffset endDate = dateRange?.Length > 1 ? dateRange[1] : DateTimeOffset.Now;
+            List<ActiveUserDto> dailyActiveUsers = await _userService.GetActiveUsersAsync(startDate, endDate);
 
             List<string> dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
             List<int> activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
@@ -153,16 +157,16 @@ namespace CodeSpirit.IdentityApi.Controllers
         }
 
         [HttpGet("usergrowth-and-active-users")]
-        public async Task<ActionResult<EChartsConfig>> GetUserGrowthAndActiveUsersAsync(DateTimeOffset? startDate, DateTimeOffset? endDate)
+        public async Task<ActionResult<EChartsConfig>> GetUserGrowthAndActiveUsersStatisticsAsync([FromQuery] DateTime[] dateRange)
         {
-            DateTimeOffset date1 = startDate.HasValue ? startDate.Value : DateTimeOffset.Now.AddMonths(-2);
-            DateTimeOffset date2 = endDate.HasValue ? endDate.Value : DateTimeOffset.Now.AddDays(1);
-            List<UserGrowthDto> dailyGrowth = await _userService.GetUserGrowthAsync(date1, date2);
+            DateTimeOffset startDate = dateRange?.Length > 0 ? dateRange[0] : DateTimeOffset.Now.AddMonths(-2);
+            DateTimeOffset endDate = dateRange?.Length > 1 ? dateRange[1] : DateTimeOffset.Now.AddDays(1);
+            List<UserGrowthDto> dailyGrowth = await _userService.GetUserGrowthAsync(startDate, endDate);
 
             List<int> userCounts = dailyGrowth.Select(g => g.UserCount).ToList();
 
             // 获取活跃用户数据
-            List<ActiveUserDto> dailyActiveUsers = await _userService.GetActiveUsersAsync(date1, date2);
+            List<ActiveUserDto> dailyActiveUsers = await _userService.GetActiveUsersAsync(startDate, endDate);
             List<int> activeUserCounts = dailyActiveUsers.Select(g => g.ActiveUserCount).ToList();
             List<string> dates = dailyActiveUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList();
 

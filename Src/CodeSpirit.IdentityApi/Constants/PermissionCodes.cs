@@ -6,6 +6,7 @@ namespace CodeSpirit.IdentityApi.Constants
         public const string LoginLogs = "login_logs";
         public const string PermissionManagement = "perm_manage";
         public const string RoleManagement = "role_manage";
-        public const string AuditLogManagement = "audit-log-management";
+        public const string AuditLogManagement = "audit_log_management";
+        public const string UserStatistics = "user_statistics";
     }
 } 

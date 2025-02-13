@@ -27,6 +27,10 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet("{name}")]
         public IActionResult GenerateAmis([FromRoute] string name)
         {
+            if (name.EndsWith("Statistics", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return GenerateAmisStatis(name);
+            }
             JObject amisJson = _amisGenerator.GenerateAmisJsonForController(name);
             return amisJson == null ? NotFound(new { message = $"AMIS JSON for controller '{name}' not found or not supported." }) : Ok(amisJson);
         }
@@ -40,6 +44,14 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             ApiResponse<Amis.App.AmisApp> site = await _siteConfigurationService.GetSiteConfigurationAsync();
             return Ok(site);
+        }
+
+
+        [HttpGet("{name}/statistics")]
+        public IActionResult GenerateAmisStatis([FromRoute] string name)
+        {
+            JObject amisJson = _amisGenerator.GenerateStatisticsAmisJson(name);
+            return amisJson == null ? NotFound(new { message = $"AMIS JSON for controller '{name}' not found or not supported." }) : Ok(amisJson);
         }
     }
 }

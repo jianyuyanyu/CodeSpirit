@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -246,7 +247,7 @@ namespace CodeSpirit.Core.Extensions
         {
             using MD5 md5 = MD5.Create();
             byte[] hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(str));
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             foreach (byte b in hashBytes)
             {
                 sb.Append(b.ToString("X2"));
@@ -329,6 +330,18 @@ namespace CodeSpirit.Core.Extensions
                 string shortCode = BitConverter.ToString(hashBytes).Replace("-", "").Substring(0, 8);  // 截取前8位
                 return shortCode;
             }
+        }
+
+        public static string ToKebabCase(this string str)
+        {
+            return string.IsNullOrEmpty(str)
+                ? str
+                : string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? "-" + x.ToString() : x.ToString())).ToLower();
+        }
+
+        public static string ToSpacedWords(this string str)
+        {
+            return string.IsNullOrEmpty(str) ? str : string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? " " + x : x.ToString()));
         }
     }
 }

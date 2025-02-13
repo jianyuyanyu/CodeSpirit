@@ -1,5 +1,5 @@
-﻿using CodeSpirit.Amis.Helpers;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
@@ -67,13 +67,7 @@ namespace CodeSpirit.Amis.Extensions
         /// <returns>如果是可空类型则返回 true，否则返回 false。</returns>
         public static bool IsNullable(this Type type)
         {
-            if (!type.IsValueType)
-                return true;
-
-            if (Nullable.GetUnderlyingType(type) != null)
-                return true;
-
-            return false;
+            return !type.IsValueType || Nullable.GetUnderlyingType(type) != null;
         }
 
         /// <summary>
@@ -104,11 +98,15 @@ namespace CodeSpirit.Amis.Extensions
         {
             string name = Enum.GetName(enumType, value);
             if (name == null)
+            {
                 return value.ToString();
+            }
 
             MemberInfo member = enumType.GetMember(name).FirstOrDefault();
             if (member == null)
+            {
                 return name;
+            }
 
             DisplayAttribute displayNameAttr = member.GetCustomAttribute<DisplayAttribute>();
             return displayNameAttr?.Name ?? name;

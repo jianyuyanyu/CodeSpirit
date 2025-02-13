@@ -30,6 +30,7 @@ namespace CodeSpirit.Amis
             services.AddScoped<FormFieldHelper>();
             services.AddScoped<SearchFieldHelper>();
             services.AddScoped<AmisConfigBuilder>();
+            services.AddScoped<StatisticsConfigBuilder>();
             services.AddScoped<AmisContext>();
 
             // 注册工厂

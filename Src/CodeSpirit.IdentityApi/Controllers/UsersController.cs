@@ -15,11 +15,11 @@ namespace CodeSpirit.IdentityApi.Controllers
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _userService;
-        private readonly AuthService _authService;
+        private readonly IAuthService _authService;
 
         public UsersController(
             IUserService userService,
-            AuthService authService)
+            IAuthService authService)
         {
             _userService = userService;
             _authService = authService;

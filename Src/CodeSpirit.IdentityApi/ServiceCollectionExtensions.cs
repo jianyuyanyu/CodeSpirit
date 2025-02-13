@@ -4,6 +4,7 @@ using CodeSpirit.Amis;
 using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
+using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Audit;
@@ -16,6 +17,7 @@ using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Data;
+using CodeSpirit.Shared.DependencyInjection;
 using CodeSpirit.Shared.Entities;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -24,6 +26,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 
 public static class ServiceCollectionExtensions
@@ -69,19 +72,14 @@ public static class ServiceCollectionExtensions
         services.AddMemoryCache();
         services.AddDistributedMemoryCache();
 
+        // 添加服务注册，确保包含了 AuthService 所在的程序集
+        services.AddDependencyInjection(typeof(Program).Assembly);
+
         // 注册权限服务
-        services.AddScoped<AuthService>();
         services.AddScoped<ICurrentUser, CurrentUser>();
 
         // 注册 Repositories 和 Handlers
         services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IUserService, UserService>();
-        services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<ILoginLogRepository, LoginLogRepository>();
-        services.AddScoped<IRoleService, RoleService>();
-        services.AddScoped<ILoginLogRepository, LoginLogRepository>();
-        services.AddScoped<ILoginLogService, LoginLogService>();
 
         // 注册 Seeder 类
         services.AddScoped<RoleSeeder>();

@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Shared.DependencyInjection
+﻿namespace CodeSpirit.Core.DependencyInjection
 {
     /// <summary>
     /// 每次都构造一个新的实例

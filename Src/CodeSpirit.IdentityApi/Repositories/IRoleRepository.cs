@@ -1,4 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
+﻿using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Data.Models;
 
 namespace CodeSpirit.IdentityApi.Repositories
@@ -6,7 +7,7 @@ namespace CodeSpirit.IdentityApi.Repositories
     /// <summary>
     /// 角色仓储接口
     /// </summary>
-    public interface IRoleRepository
+    public interface IRoleRepository: IScopedDependency
     {
         /// <summary>
         /// 批量插入角色

@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.IdentityApi.Controllers.Dtos.User;
 using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
@@ -8,7 +9,7 @@ namespace CodeSpirit.IdentityApi.Services
     /// <summary>
     /// 用户服务接口
     /// </summary>
-    public interface IUserService
+    public interface IUserService: IScopedDependency
     {
         /// <summary>
         /// 分配角色给用户

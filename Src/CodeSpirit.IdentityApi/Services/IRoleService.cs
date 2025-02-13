@@ -1,11 +1,12 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
+﻿using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 
 namespace CodeSpirit.IdentityApi.Services
 {
     /// <summary>
     /// 角色服务接口，提供角色管理相关的业务逻辑操作
     /// </summary>
-    public interface IRoleService
+    public interface IRoleService: IScopedDependency
     {
         /// <summary>
         /// 批量导入角色信息

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using CodeSpirit.Core.DependencyInjection;
+using System.Collections.Generic;
 using System.Security.Claims;
 
 namespace CodeSpirit.Core

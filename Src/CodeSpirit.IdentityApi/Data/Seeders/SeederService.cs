@@ -4,7 +4,7 @@ using CodeSpirit.IdentityApi.Data.Seeders;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-public class SeederService
+public class SeederService: IScopedDependency
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<SeederService> _logger;

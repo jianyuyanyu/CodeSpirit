@@ -2,7 +2,7 @@
 using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
 
-public class UserSeeder
+public class UserSeeder: IScopedDependency
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UserSeeder> _logger;

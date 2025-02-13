@@ -72,35 +72,24 @@ public static class ServiceCollectionExtensions
         services.AddMemoryCache();
         services.AddDistributedMemoryCache();
 
-        // 添加服务注册，确保包含了 AuthService 所在的程序集
+        // 添加服务注册，确保包含了所有服务所在的程序集
         services.AddDependencyInjection(typeof(Program).Assembly);
-
-        // 注册权限服务
-        services.AddScoped<ICurrentUser, CurrentUser>();
-
-        // 注册 Repositories 和 Handlers
-        services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
-
-        // 注册 Seeder 类
-        services.AddScoped<RoleSeeder>();
-        services.AddScoped<UserSeeder>();
-        services.AddScoped<SeederService>();
 
         // 注册 AutoMapper
         services.AddAutoMapper(typeof(Program));
 
-        // 注册自定义授权处理程序
-        services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
-
-        // 注册黑名单服务
-        services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
-
-        // 注册审计服务
-        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
-        services.AddScoped<IAuditLogService, AuditLogService>();
+        // 注册权限服务
+        services.AddScoped<ICurrentUser, CurrentUser>();
 
         // 注册雪花ID生成器服务
         services.AddSingleton<IIdGenerator, SnowflakeIdGenerator>();
+
+        // 注册 Repositories 和 Handlers
+        services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
+
+        // 注册自定义授权处理程序（这个需要特殊处理，因为是 Identity 框架的组件）
+        services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
+
         return services;
     }
 

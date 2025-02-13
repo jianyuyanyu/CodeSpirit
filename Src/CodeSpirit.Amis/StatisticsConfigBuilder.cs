@@ -138,7 +138,7 @@ namespace CodeSpirit.Amis
                 ["name"] = "dateRange",
                 ["label"] = "时间范围",
                 ["format"] = "YYYY-MM-DD",
-                ["value"] = "30daysago"
+                ["value"] = "-30days,today"
             };
         }
 

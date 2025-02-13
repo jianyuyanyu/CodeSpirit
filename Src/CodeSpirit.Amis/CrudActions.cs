@@ -15,19 +15,53 @@ namespace CodeSpirit.Amis
         public MethodInfo Export { get; set; }
         public MethodInfo Import { get; set; }
 
+        public MethodInfo Detail { get; set; }
+
         /// <summary>
         /// 获取所有 CRUD 操作的方法集合。
         /// </summary>
         /// <returns>CRUD 操作的方法集合。</returns>
         public IEnumerable<MethodInfo> GetAllMethods()
         {
-            if (Create != null) yield return Create;
-            if (List != null) yield return List;
-            if (Update != null) yield return Update;
-            if (Delete != null) yield return Delete;
-            if (QuickSave != null) yield return QuickSave;
-            if (Export != null) yield return Export;
-            if (Import != null) yield return Import;
+            if (Create != null)
+            {
+                yield return Create;
+            }
+
+            if (List != null)
+            {
+                yield return List;
+            }
+
+            if (Update != null)
+            {
+                yield return Update;
+            }
+
+            if (Delete != null)
+            {
+                yield return Delete;
+            }
+
+            if (QuickSave != null)
+            {
+                yield return QuickSave;
+            }
+
+            if (Export != null)
+            {
+                yield return Export;
+            }
+
+            if (Import != null)
+            {
+                yield return Import;
+            }
+
+            if (Detail != null)
+            {
+                yield return Detail;
+            }
         }
     }
 }

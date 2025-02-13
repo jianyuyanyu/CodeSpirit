@@ -2,6 +2,7 @@
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 using System.ComponentModel;
@@ -53,7 +54,7 @@ namespace CodeSpirit.Amis.Column
                 .ToList();
 
             // 创建操作列（如编辑、删除按钮）
-            JObject operations = CreateOperationsColumn(controllerName, dataType, apiRoutes.Update, apiRoutes.Delete, actions);
+            JObject operations = CreateOperationsColumn(controllerName, dataType, apiRoutes, actions);
             if (operations != null)
             {
                 columns.Add(operations);
@@ -154,6 +155,11 @@ namespace CodeSpirit.Amis.Column
                 }
 
                 column["hidden"] = columnAttr.Hidden;
+
+                if (!columnAttr.Toggled)
+                {
+                    column["toggled"] = columnAttr.Toggled;
+                }
 
                 // 添加背景色阶配置
                 if (columnAttr.BackgroundScaleColors?.Length >= 2)
@@ -350,19 +356,29 @@ namespace CodeSpirit.Amis.Column
         /// </summary>
         /// <param name="controllerName">控制器名称。</param>
         /// <param name="dataType">数据类型，用于生成表单字段。</param>
-        /// <param name="updateRoute">更新操作的 API 路由。</param>
-        /// <param name="deleteRoute">删除操作的 API 路由。</param>
         /// <returns>AMIS 操作列的 JSON 对象，如果没有按钮则返回 null。</returns>
-        private JObject CreateOperationsColumn(string controllerName, Type dataType, ApiRouteInfo updateRoute, ApiRouteInfo deleteRoute, CrudActions actions)
+        private JObject CreateOperationsColumn(string controllerName, Type dataType, ApiRoutesInfo apiRoute, CrudActions actions)
         {
             JArray buttons = [];
+            if (actions.Detail != null)
+            {
+                if (apiRoute.Detail != null && actions.Detail != null)
+                {
+                    Type actualType = actions.Detail.ReturnType.GetUnderlyingDataType();
+                    PropertyInfo[] properties = actualType.GetProperties();
+
+                    JObject detailButton = buttonHelper.CreateDetailButton(apiRoute.Detail, properties);
+                    buttons.Add(detailButton);
+                }
+            }
+
             // 如果用户有编辑权限，则添加编辑按钮
             //if (_permissionService.HasPermission($"{controllerName}Edit"))
             if (actions.Update != null)
             {
-                if (updateRoute != null && actions.Update != null)
+                if (apiRoute.Update != null && actions.Update != null)
                 {
-                    JObject editButton = buttonHelper.CreateEditButton(updateRoute, actions.Update?.GetParameters());
+                    JObject editButton = buttonHelper.CreateEditButton(apiRoute.Update, actions.Update?.GetParameters());
                     buttons.Add(editButton);
                 }
             }
@@ -375,7 +391,7 @@ namespace CodeSpirit.Amis.Column
                 OperationAttribute operationAttribute = actions.Delete.GetCustomAttribute<OperationAttribute>();
                 if (operationAttribute == null)
                 {
-                    JObject deleteButton = buttonHelper.CreateDeleteButton(deleteRoute);
+                    JObject deleteButton = buttonHelper.CreateDeleteButton(apiRoute.Delete);
                     buttons.Add(deleteButton);
                 }
             }

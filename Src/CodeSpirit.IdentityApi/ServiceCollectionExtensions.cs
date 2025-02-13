@@ -189,9 +189,9 @@ public static class ServiceCollectionExtensions
             options.AddAuditFilter(config => config
                 .LogAllActions()
                 .WithEventType("{verb}.{controller}.{action}")
-                .IncludeHeaders()
+                .IncludeHeaders(ctx => !ctx.ModelState.IsValid)
                 .IncludeRequestBody()
-                .IncludeResponseBody()
+                .IncludeResponseBody(ctx => ctx.HttpContext.Response.StatusCode != 200)
                 .IncludeModelState()
                 .SerializeActionParameters()
             );
@@ -314,7 +314,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddFluentValidationServices();
         builder.Services.ConfigureControllers();
         builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);
-        
+
         // 配置审计
         builder.Services.Configure<AuditConfig>(
             builder.Configuration.GetSection("Audit"));

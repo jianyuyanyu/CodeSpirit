@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
@@ -110,6 +111,39 @@ namespace CodeSpirit.Amis.Extensions
 
             DisplayAttribute displayNameAttr = member.GetCustomAttribute<DisplayAttribute>();
             return displayNameAttr?.Name ?? name;
+        }
+
+        /// <summary>
+        /// 获取包装类型（如 Task<ActionResult<ApiResponse<T>>>）中的实际数据类型
+        /// </summary>
+        /// <param name="type">包装类型</param>
+        /// <returns>实际的数据类型</returns>
+        public static Type GetUnderlyingDataType(this Type type)
+        {
+            Type actualType = type;
+
+            if (actualType.IsGenericType)
+            {
+                // 解析 Task<T> 获取内部类型
+                if (actualType.GetGenericTypeDefinition() == typeof(Task<>))
+                {
+                    actualType = actualType.GetGenericArguments()[0];
+                }
+
+                // 解析 ActionResult<T> 获取内部类型
+                if (actualType.IsGenericType && actualType.GetGenericTypeDefinition() == typeof(ActionResult<>))
+                {
+                    actualType = actualType.GetGenericArguments()[0];
+                }
+
+                // 解析 ApiResponse<T> 获取实际数据类型
+                if (actualType.IsGenericType && actualType.GetGenericTypeDefinition() == typeof(ApiResponse<>))
+                {
+                    actualType = actualType.GetGenericArguments()[0];
+                }
+            }
+
+            return actualType;
         }
     }
 }

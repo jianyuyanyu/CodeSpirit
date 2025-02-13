@@ -41,7 +41,8 @@ namespace CodeSpirit.Amis.Helpers
                 CreateRouteInfo(baseRoute, actions.Delete, "DELETE"),
                 CreateRouteInfo(baseRoute, actions.QuickSave, "PATCH"),
                 CreateRouteInfo(baseRoute, actions.Export, "GET"),
-                CreateRouteInfo(baseRoute, actions.Import, "POST")
+                CreateRouteInfo(baseRoute, actions.Import, "POST"),
+                CreateRouteInfo(baseRoute, actions.Detail, "GET")
             );
         }
 

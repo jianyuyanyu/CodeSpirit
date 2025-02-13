@@ -55,7 +55,10 @@ namespace CodeSpirit.Amis
             // 获取读取数据的类型，如果类型为空，则返回空
             Type dataType = utilityHelper.GetDataTypeFromMethod(actions.List);
             if (dataType == null)
+            {
                 return null;
+            }
+
             amisContext.ListDataType = dataType;
 
             // 获取列配置和搜索字段
@@ -63,7 +66,7 @@ namespace CodeSpirit.Amis
             List<JObject> searchFields = _searchFieldHelper.GetAmisSearchFields(actions.List);
 
             // 构建 CRUD 配置
-            JObject crudConfig = new JObject
+            JObject crudConfig = new()
             {
                 ["type"] = "crud",  // 设置类型为 CRUD
                 ["name"] = $"{controllerName.ToLower()}Crud",  // 设置配置名称
@@ -88,7 +91,7 @@ namespace CodeSpirit.Amis
             }
 
             // 构建页面配置
-            JObject pageConfig = new JObject
+            JObject pageConfig = new()
             {
                 ["type"] = "page",  // 设置页面类型
                 ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",  // 设置页面标题

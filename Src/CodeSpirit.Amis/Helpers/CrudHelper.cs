@@ -12,7 +12,7 @@ namespace CodeSpirit.Amis.Helpers
         public CrudActions HasCrudActions(Type controller)
         {
             // 初始化 CRUD 操作对象
-            CrudActions actions = new CrudActions();
+            CrudActions actions = new();
 
             // 获取控制器的所有公共实例方法
             IEnumerable<MethodInfo> methods = GetControllerMethods(controller);
@@ -31,6 +31,7 @@ namespace CodeSpirit.Amis.Helpers
             actions.Export = FindMethodByActionPrefix(methods, ["Export"]);
             //  查账导入方法
             actions.Import = FindMethodByActionPrefix(methods, ["Import", "BatchImport"]);
+            actions.Detail = FindMethodByActionPrefix(methods, ["Detail"]);
             return actions;
         }
 

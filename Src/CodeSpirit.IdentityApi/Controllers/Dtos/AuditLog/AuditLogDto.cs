@@ -46,12 +46,6 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog
         public string Url { get; set; }
 
         /// <summary>
-        /// 查询字符串
-        /// </summary>
-        [DisplayName("查询字符串")]
-        public string QueryString { get; set; }
-
-        /// <summary>
         /// HTTP状态码
         /// </summary>
         [DisplayName("HTTP状态码")]
@@ -71,21 +65,21 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog
         /// HTTP请求头
         /// </summary>
         [DisplayName("HTTP请求头")]
-        [AmisColumn(Type = "json", Copyable = true)]
+        [AmisColumn(Type = "json", Copyable = true, Toggled = false)]
         public string Headers { get; set; }
 
         /// <summary>
         /// 请求体
         /// </summary>
         [DisplayName("请求体")]
-        [AmisColumn(Type = "json")]
+        [AmisColumn(Type = "json", Copyable = true, Toggled = false)]
         public string RequestBody { get; set; }
 
         /// <summary>
         /// 响应体
         /// </summary>
         [DisplayName("响应体")]
-        [AmisColumn(Type = "json")]
+        [AmisColumn(Type = "json", Copyable = true, Toggled = false)]
         public string ResponseBody { get; set; }
 
         /// <summary>

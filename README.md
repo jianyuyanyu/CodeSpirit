@@ -47,6 +47,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] [DataType(DataType.ImageUrl)] | 包含Image列——>image
         - [x] List<T> where T:calss——>List 
         - [ ] 状态
+        - [x] JSON
       - [x] 列排序
         - [x] 支持配置
       - [x] 列忽略：IgnoreColumnAttribute
@@ -54,7 +55,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] 主键
         - [x] 密码
       - [x] 操作列
-        - [ ] 查看
+        - [x] 查看
         - [x] 编辑
         - [x] 删除
         - [x] 自定义操作：OperationAttribute
@@ -109,6 +110,7 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
         - [x] 密码字段：`DataTypeAttribute`|`DataType.Password`
         - [x] InputTree
         - [x] Excel上传及解析：`AmisInputExcelFieldAttribute` 
+        - [ ] JSON
         - [ ] 数组
         - [ ] 文件
         - [ ] 城市选择器
@@ -209,7 +211,6 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
 ## 数据洞察
 
 - [x] 统计图表
-- [ ] 指标
 
 ## 未来
 

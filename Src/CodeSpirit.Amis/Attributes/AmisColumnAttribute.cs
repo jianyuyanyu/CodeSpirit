@@ -47,5 +47,10 @@
         /// 背景色阶颜色数组（至少包含两个颜色值）
         /// </summary>
         public string[] BackgroundScaleColors { get; set; }
+
+        /// <summary>
+        /// 默认是否显示
+        /// </summary>
+        public bool Toggled { get; set; } = true;
     }
 }

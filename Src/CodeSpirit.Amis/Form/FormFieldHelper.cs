@@ -64,6 +64,40 @@ namespace CodeSpirit.Amis.Form
             return fields;
         }
 
+        /// <summary>
+        /// 从属性集合生成AMIS表单字段配置
+        /// </summary>
+        /// <param name="properties">属性集合</param>
+        /// <returns>AMIS字段配置列表</returns>
+        public List<JObject> GetAmisFormFieldsFromProperties(IEnumerable<PropertyInfo> properties)
+        {
+            List<JObject> fields = [];
+
+            foreach (PropertyInfo prop in properties ?? Enumerable.Empty<PropertyInfo>())
+            {
+                if (!ShouldProcess(prop))
+                {
+                    continue;
+                }
+
+                // 优先使用工厂创建字段
+                JObject factoryField = CreateFieldUsingFactories(prop);
+                if (factoryField != null)
+                {
+                    fields.Add(factoryField);
+                    continue;
+                }
+
+                JObject field = ProcessProperty(prop);
+                if (field != null)
+                {
+                    fields.Add(field);
+                }
+            }
+
+            return fields;
+        }
+
         #region 处理逻辑
         /// <summary>
         /// 检查成员（参数或属性）是否可以处理（权限和忽略检查）。
@@ -120,13 +154,18 @@ namespace CodeSpirit.Amis.Form
             return CreateFieldUsingFactories(prop) ?? prop.CreateFormField();
         }
         #endregion
-        
+
         #region 权限与忽略规则
         /// <summary>
         /// 检查参数编辑权限
         /// </summary>
         private bool HasEditPermission(ParameterInfo param)
         {
+            if (param == null)
+            {
+                return false;
+            }
+
             PermissionAttribute permissionAttr = param.GetAttribute<PermissionAttribute>();
             return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
         }
@@ -145,7 +184,7 @@ namespace CodeSpirit.Amis.Form
         /// </summary>
         private bool IsIgnoredParameter(ParameterInfo param)
         {
-            return param.Name.Equals("id", StringComparison.OrdinalIgnoreCase);
+            return param != null && param.Name.Equals("id", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -153,7 +192,7 @@ namespace CodeSpirit.Amis.Form
         /// </summary>
         private bool IsIgnoredProperty(PropertyInfo prop)
         {
-            return prop.Name.Equals("CreatedDate", StringComparison.OrdinalIgnoreCase);
+            return prop != null && prop.Name.Equals("CreatedDate", StringComparison.OrdinalIgnoreCase);
         }
         #endregion
     }

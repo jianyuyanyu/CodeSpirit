@@ -51,7 +51,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Users/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<ApiResponse<UserDto>>> GetUser(long id)
+        public async Task<ActionResult<ApiResponse<UserDto>>> Detail(long id)
         {
             UserDto userDto = await _userService.GetUserByIdAsync(id);
             return SuccessResponse(userDto);
@@ -68,7 +68,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             }
 
             UserDto createdUserDto = await _userService.GetUserByIdAsync(userId.Value);
-            return SuccessResponseWithCreate<UserDto>(nameof(GetUser), createdUserDto);
+            return SuccessResponseWithCreate<UserDto>(nameof(Detail), createdUserDto);
         }
 
         // PUT: api/Users/{id}

@@ -60,7 +60,7 @@ namespace CodeSpirit.Amis.Helpers
             return button;
         }
 
-        // 创建“新增”按钮
+        // 创建"新增"按钮
         public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null)
         {
             JObject dialogBody = new()
@@ -82,7 +82,7 @@ namespace CodeSpirit.Amis.Helpers
             return CreateButton(title, "dialog", dialogOrDrawer: dialogBody);
         }
 
-        // 创建“编辑”按钮
+        // 创建"编辑"按钮
         public JObject CreateEditButton(ApiRouteInfo updateRoute, IEnumerable<ParameterInfo> updateParameters)
         {
             string title = "编辑";
@@ -103,7 +103,45 @@ namespace CodeSpirit.Amis.Helpers
             return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
         }
 
-        // 创建“删除”按钮
+        public JObject CreateDetailButton(ApiRouteInfo detailRoute, IEnumerable<PropertyInfo> detailPropertites)
+        {
+            string title = "查看";
+            JObject drawerBody = new()
+            {
+                ["title"] = title,
+                ["size"] = "lg",
+                ["body"] = new JObject
+                {
+                    ["type"] = "form",
+                    ["api"] = new JObject
+                    {
+                        ["url"] = detailRoute.ApiPath,
+                        ["method"] = detailRoute.HttpMethod
+                    },
+                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromProperties(detailPropertites)),
+                    ["mode"] = "horizontal",
+                    ["horizontal"] = new JObject
+                    {
+                        ["left"] = 3,
+                        ["right"] = 9
+                    },
+                    ["static"] = true,
+                    ["submitText"] = "",
+                    ["actions"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["type"] = "button",
+                            ["label"] = "关闭",
+                            ["actionType"] = "close"
+                        }
+                    }
+                }
+            };
+            return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+        }
+
+        // 创建"删除"按钮
         public JObject CreateDeleteButton(ApiRouteInfo deleteRoute)
         {
             JObject api = new()

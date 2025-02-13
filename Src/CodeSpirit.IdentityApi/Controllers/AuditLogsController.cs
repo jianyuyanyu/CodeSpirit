@@ -24,7 +24,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet]
         public async Task<ActionResult<ApiResponse<ListData<AuditLogDto>>>> GetAuditLogs([FromQuery] AuditLogQueryDto queryDto)
         {
-            var (logs, total) = await _auditLogService.GetAuditLogsAsync(queryDto);
+            (List<AuditLogDto> logs, int total) = await _auditLogService.GetAuditLogsAsync(queryDto);
             return SuccessResponse(new ListData<AuditLogDto>
             {
                 Items = logs,
@@ -33,10 +33,10 @@ namespace CodeSpirit.IdentityApi.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<ApiResponse<AuditLogDto>>> GetAuditLog(string id)
+        public async Task<ActionResult<ApiResponse<AuditLogDto>>> Detail(string id)
         {
-            var log = await _auditLogService.GetAuditLogByIdAsync(id);
+            AuditLogDto log = await _auditLogService.GetAuditLogByIdAsync(id);
             return SuccessResponse(log);
         }
     }
-} 
+}

@@ -1,8 +1,8 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
+﻿using CodeSpirit.Core.Dtos;
 using System.Linq.Dynamic.Core;
 using System.Linq.Dynamic.Core.Exceptions;
 
-namespace CodeSpirit.IdentityApi.Utilities
+namespace CodeSpirit.Shared.Extensions
 {
     public static class QueryableExtensions
     {

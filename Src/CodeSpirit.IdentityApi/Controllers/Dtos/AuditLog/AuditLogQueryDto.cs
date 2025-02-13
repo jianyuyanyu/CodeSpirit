@@ -1,4 +1,4 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
+﻿using CodeSpirit.Core.Dtos;
 using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog

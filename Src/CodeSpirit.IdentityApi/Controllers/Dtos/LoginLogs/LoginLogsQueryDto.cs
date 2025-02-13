@@ -1,7 +1,6 @@
 ﻿// 文件路径: Controllers/Dtos/UserQueryDto.cs
-using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
+using CodeSpirit.Core.Dtos;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos.LoginLogs
 {

@@ -1,7 +1,4 @@
-﻿// 文件路径: Controllers/Dtos/UserQueryDto.cs
-
-// 文件路径: Controllers/Dtos/UserQueryDto.cs
-using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
+﻿using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos.Role
 {

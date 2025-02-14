@@ -55,10 +55,18 @@ namespace CodeSpirit.IdentityApi.Services
         public async Task DeleteRoleAsync(long id)
         {
             ApplicationRole role = await _roleRepository.GetRoleByIdAsync(id);
+            
+            // 检查是否为 Admin 角色
+            if (role.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new AppServiceException(400, "Admin角色不允许删除！");
+            }
+
             if (role.RolePermission != null && role.RolePermission.PermissionIds != null)
             {
                 throw new AppServiceException(400, "请移除权限后再删除该角色！");
             }
+            
             await _roleRepository.DeleteRoleAsync(role);
             // 清理所有拥有该角色的用户的权限缓存
             await ClearUserPermissionsCacheByRoleAsync(role.Id);
@@ -135,21 +143,6 @@ namespace CodeSpirit.IdentityApi.Services
                 _logger.LogError($"批量插入角色数据失败: {ex.Message}");
                 throw new AppServiceException(500, "批量导入角色时发生错误，请稍后重试！");
             }
-        }
-
-        public Task<RoleDto> GetRoleByIdAsync(string id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task DeleteRoleAsync(string id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task UpdateRoleAsync(string id, RoleUpdateDto updateDto)
-        {
-            throw new NotImplementedException();
         }
     }
 

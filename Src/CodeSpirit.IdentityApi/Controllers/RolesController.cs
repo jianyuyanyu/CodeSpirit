@@ -31,7 +31,7 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ApiResponse<RoleDto>>> GetRole(string id)
+    public async Task<ActionResult<ApiResponse<RoleDto>>> GetRole(long id)
     {
         RoleDto role = await _roleService.GetRoleByIdAsync(id);
         return SuccessResponse(role);
@@ -45,7 +45,7 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<ApiResponse>> Update(string id, RoleUpdateDto updateDto)
+    public async Task<ActionResult<ApiResponse>> Update(long id, RoleUpdateDto updateDto)
     {
         await _roleService.UpdateRoleAsync(id, updateDto);
         return SuccessResponse();
@@ -53,7 +53,7 @@ public class RolesController : ApiControllerBase
 
     [HttpDelete("{id}")]
     [Operation("删除角色", "ajax", null, "确定要删除此角色吗？", "typeof roleId !== 'string' && permissionIds.length == 0")]
-    public async Task<ActionResult<ApiResponse>> Delete(string id)
+    public async Task<ActionResult<ApiResponse>> Delete(long id)
     {
         await _roleService.DeleteRoleAsync(id);
         return SuccessResponse();

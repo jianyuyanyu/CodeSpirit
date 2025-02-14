@@ -1,12 +1,11 @@
-﻿using CodeSpirit.Core.DependencyInjection;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
+﻿using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 
 namespace CodeSpirit.IdentityApi.Services
 {
     /// <summary>
     /// 角色服务接口，提供角色管理相关的业务逻辑操作
     /// </summary>
-    public interface IRoleService: IScopedDependency
+    public interface IRoleService : IScopedDependency
     {
         /// <summary>
         /// 批量导入角色信息
@@ -25,14 +24,14 @@ namespace CodeSpirit.IdentityApi.Services
         /// 删除指定角色
         /// </summary>
         /// <param name="id">角色ID</param>
-        Task DeleteRoleAsync(string id);
+        Task DeleteRoleAsync(long id);
 
         /// <summary>
         /// 根据ID获取角色详细信息
         /// </summary>
         /// <param name="id">角色ID</param>
         /// <returns>角色详细信息</returns>
-        Task<RoleDto> GetRoleByIdAsync(string id);
+        Task<RoleDto> GetRoleByIdAsync(long id);
 
         /// <summary>
         /// 分页获取角色列表
@@ -46,6 +45,6 @@ namespace CodeSpirit.IdentityApi.Services
         /// </summary>
         /// <param name="id">角色ID</param>
         /// <param name="updateDto">角色更新数据传输对象</param>
-        Task UpdateRoleAsync(string id, RoleUpdateDto updateDto);
+        Task UpdateRoleAsync(long id, RoleUpdateDto updateDto);
     }
 }

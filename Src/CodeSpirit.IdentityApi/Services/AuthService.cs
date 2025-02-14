@@ -137,6 +137,10 @@ namespace CodeSpirit.IdentityApi.Services
         /// <returns>返回一个包含登录成功、消息、JWT Token以及用户信息的元组</returns>
         private async Task<(bool Success, string Message, string Token, UserDto UserInfo)> HandleSuccessfulLoginAsync(ApplicationUser user, LoginLog loginLog)
         {
+            // 更新最后登录时间
+            user.LastLoginTime = DateTimeOffset.UtcNow;
+            await _userManager.UpdateAsync(user);
+
             // 登录成功，更新日志并保存
             loginLog.IsSuccess = true;
             await _loginLogRepository.AddLoginLogAsync(loginLog);
@@ -147,7 +151,6 @@ namespace CodeSpirit.IdentityApi.Services
             // 将用户对象映射到DTO对象
             UserDto userDto = _mapper.Map<UserDto>(user);
 
-            // 返回成功信息、Token和用户信息
             return (true, "登录成功", token, userDto);
         }
 
@@ -163,7 +166,9 @@ namespace CodeSpirit.IdentityApi.Services
             loginLog.FailureReason = result.IsLockedOut ? "账户被锁定" : "密码不正确";
             await _loginLogRepository.AddLoginLogAsync(loginLog);
 
-            // 如果账户被锁定，返回相应的错误消息
+            // 更新访问失败次数已经由 SignInManager 在 CheckPasswordSignInAsync 中自动处理
+            // 因为我们在调用时设置了 lockoutOnFailure: true
+
             return result.IsLockedOut
                 ? (false, ErrorMessages.AccountLocked, null, null)
                 : (false, ErrorMessages.InvalidCredentials, null, null);

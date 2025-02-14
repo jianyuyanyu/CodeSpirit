@@ -56,7 +56,7 @@
                                         },
                                         {
                                             type: 'static',
-                                            name: 'username',
+                                            name: 'userName',
                                             label: '用户名'
                                         },
                                         {

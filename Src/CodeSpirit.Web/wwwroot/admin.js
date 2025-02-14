@@ -10,10 +10,78 @@
         logo: webHost + '/favicon.ico',
         //logo: webHost + '/logo.png',
         header: {
-            type: 'tpl',
-            inline: false,
-            className: 'w-full',
-            // tpl: '<div class="flex justify-between"><div>顶部区域左侧</div><div>顶部区域右侧</div></div>'
+            type: 'service',
+            api: apiHost + '/api/identity/profile',
+            silentPolling: false,
+            className: 'flex w-full justify-end',
+            body: [
+                {
+                    type: 'avatar',
+                    src: '${avatar}',
+                    text: '${name}',
+                    icon: 'fa fa-user',
+                    className: 'mr-2',
+                    size: 30,
+                    onError: function() {
+                        return true;
+                    }
+                },
+                {
+                    type: 'dropdown-button',
+                    label: '${name}',
+                    align: 'right',
+                    className: 'ml-2',
+                    buttons: [
+                        {
+                            type: 'button',
+                            label: '个人信息',
+                            icon: 'fa fa-address-card',
+                            actionType: 'dialog',
+                            dialog: {
+                                title: '个人信息',
+                                size: 'md',
+                                body: {
+                                    type: 'form',
+                                    api: apiHost + '/api/identity/profile',
+                                    controls: [
+                                        {
+                                            type: 'image',
+                                            name: 'avatar',
+                                            label: '头像',
+                                            thumbMode: 'cover',
+                                            thumbRatio: '1:1',
+                                            width: 100,
+                                            height: 100,
+                                            className: 'rounded-full'
+                                        },
+                                        {
+                                            type: 'static',
+                                            name: 'username',
+                                            label: '用户名'
+                                        },
+                                        {
+                                            type: 'static', 
+                                            name: 'email',
+                                            label: '邮箱'
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            type: 'button',
+                            label: '退出登录',
+                            icon: 'fa fa-sign-out',
+                            level: 'danger',
+                            actionType: 'ajax',
+                            confirmText: '确认要退出登录？',
+                            api: apiHost + '/api/identity/Profile/logout',
+                            reload: 'none',
+                            redirect: '/login'
+                        }
+                    ]
+                }
+            ]
         },
         api: apiHost + '/api/identity/amis/site'
     };
@@ -115,7 +183,7 @@
                     return;
                 }
 
-                if (to.startsWith('/impersonate')) {
+                if (to.startsWith('/impersonate') || to.startsWith('/login')) {
                     window.location.href = to;
                     return;
                 }
@@ -149,42 +217,35 @@
                 return {
                     ...api,
                     headers: {
-                        ...api.headers,  // 保留已有的请求头
-                        'Authorization': 'Bearer ' + token  // 添加新的请求头
+                        ...api.headers,
+                        'Authorization': 'Bearer ' + token
                     }
                 };
             },
             responseAdaptor: function (api, payload, query, request, response) {
                 console.debug('payload', payload);
                 console.debug('response', response);
+                
+                // 处理错误响应
                 if (response.status === 403) {
-                    // 提示没有权限
-                    //amisInstance.doAction({ actionType: 'toast', args: { msgType :'error',msg:'您没有权限访问此页面，请联系管理员！' } });
                     return { msg: '您没有权限访问此页面，请联系管理员！' }
                 }
                 else if (response.status === 401) {
-                    // 跳转到登录页
-                    window.location.href = '/login';  // 替换为实际的登录页路径
-                    return { msg: '登录过期！' };  // 返回一个空对象，避免 Amis 继续处理
+                    window.location.href = '/login';
+                    return { msg: '登录过期！' };
                 }
 
-                return payload;  // 正常返回数据
+                // 如果是获取用户信息的接口,将数据注入到全局
+                if (api.url === apiHost + '/api/identity/profile') {
+                    amisInstance.updateProps({
+                        data: {
+                            ...payload.data // 将用户信息数据注入到全局
+                        }
+                    });
+                }
+
+                return payload;
             },
-            //fetcher: ({ url, method, data, config }) => {
-            //    return axios({ url, method, data, ...config })
-            //        .then(response => {
-            //            console.debug(response);
-            //            if (response.status === 401) {
-            //                window.location.href = '/login';
-            //                return Promise.reject(response);
-            //            }
-            //            return response;
-            //        })
-            //        .catch(error => {
-            //            console.error('请求错误', error);
-            //            return Promise.reject(error);
-            //        });
-            //},
             theme: 'antd'
         }
     );

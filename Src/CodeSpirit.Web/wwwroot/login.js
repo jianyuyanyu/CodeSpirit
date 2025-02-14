@@ -2,6 +2,7 @@
     let amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
     
+    TokenManager.clearToken();
     // 通过替换下面这个配置来生成不同页面
     let amisJSON =
     {

@@ -12,8 +12,7 @@ namespace CodeSpirit.Amis.Validators
                 .MaximumLength(100).WithMessage("Page label cannot exceed 100 characters.");
 
             RuleFor(page => page.Url)
-                .NotEmpty().WithMessage("Page URL is required.")
-                .Matches(@"^\/[a-zA-Z0-9\-\/]*$").WithMessage("Page URL is invalid.");
+                .NotEmpty().WithMessage("Page URL is required.");
 
             RuleFor(page => page.ParentLabel)
                 .MaximumLength(100).WithMessage("Parent label cannot exceed 100 characters.");

@@ -17,30 +17,30 @@ namespace CodeSpirit.Core.Extensions
             return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(input);
         }
 
-        /// <summary>
-        /// 将字符串转换为小驼峰格式（过时版本，建议使用下方ToCamelCase重载）
-        /// </summary>
-        public static string ToCamelCase(this string input)
-        {
-            if (string.IsNullOrEmpty(input) || !char.IsUpper(input[0]))
-            {
-                return input;
-            }
+        ///// <summary>
+        ///// 将字符串转换为小驼峰格式（过时版本，建议使用下方ToCamelCase重载）
+        ///// </summary>
+        //public static string ToCamelCase(this string input)
+        //{
+        //    if (string.IsNullOrEmpty(input) || !char.IsUpper(input[0]))
+        //    {
+        //        return input;
+        //    }
 
-            char[] chars = input.ToCharArray();
-            for (int i = 0; i < chars.Length; i++)
-            {
-                if (i == 0 || (i > 0 && char.IsUpper(chars[i])))
-                {
-                    chars[i] = char.ToLower(chars[i]);
-                }
-                else
-                {
-                    break;
-                }
-            }
-            return new string(chars);
-        }
+        //    char[] chars = input.ToCharArray();
+        //    for (int i = 0; i < chars.Length; i++)
+        //    {
+        //        if (i == 0 || (i > 0 && char.IsUpper(chars[i])))
+        //        {
+        //            chars[i] = char.ToLower(chars[i]);
+        //        }
+        //        else
+        //        {
+        //            break;
+        //        }
+        //    }
+        //    return new string(chars);
+        //}
 
         /// <summary>
         /// 判断字符串是否为null或空

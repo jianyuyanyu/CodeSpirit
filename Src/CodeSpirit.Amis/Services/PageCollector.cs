@@ -2,7 +2,6 @@
 using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Configuration;
-using CodeSpirit.Core.Authorization;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
@@ -101,15 +100,14 @@ namespace CodeSpirit.Amis.Services
 
         private void SetPagePropertiesFromController(Page page, Type controller)
         {
+            string controllerName = controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
             if (string.IsNullOrEmpty(page.Url))
             {
-                string controllerName = controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
-                page.Url = $"/{controllerName}";
+                page.Url = controllerName.ToCamelCase();
             }
 
             if (string.IsNullOrEmpty(page.SchemaApi) && page.Schema == null && string.IsNullOrEmpty(page.Redirect))
             {
-                string controllerName = controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
                 HttpRequest request = _httpContextAccessor.HttpContext?.Request;
                 if (request != null)
                 {

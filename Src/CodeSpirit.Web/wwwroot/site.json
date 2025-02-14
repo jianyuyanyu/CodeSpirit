@@ -7,13 +7,13 @@
         "children": [
           {
             "label": "控制台",
-            "url": "/",
-            "redirect": "/page/res",
+            "url": "/dashboard",
+            "redirect": "statistics",
             "children": [
               {
                 "label": "用户统计",
-                "url": "/UserStatistics",
-                "schemaApi": "https://localhost:17134/api/identity/amis/UserStatistics",
+                "url": "statistics",
+                "schemaApi": "https://codespirit-api.xin-lai.com/api/identity/amis/UserStatistics",
                 "icon": "fa-solid fa-gauge-high",
                 "permissionCode": "user_statistics"
               }
@@ -22,35 +22,35 @@
           },
           {
             "label": "用户中心",
-            "url": "/user-center",
+            "url": "/users",
             "children": [
               {
                 "label": "角色管理",
-                "url": "/Roles",
-                "schemaApi": "https://localhost:17134/api/identity/amis/Roles",
-                "permissionCode": "role_manage",
-                "icon": "fa-solid fa-user-shield"
-              },
-              {
-                "label": "登录日志",
-                "url": "/LoginLogs",
-                "schemaApi": "https://localhost:17134/api/identity/amis/LoginLogs",
-                "permissionCode": "login_logs",
-                "icon": "fa-solid fa-clock-rotate-left"
-              },
-              {
-                "label": "权限管理",
-                "url": "/Permissions",
-                "schemaApi": "https://localhost:17134/api/identity/amis/Permissions",
-                "permissionCode": "perm_manage",
-                "icon": "fa-solid fa-key"
+                "url": "roles",
+                "schemaApi": "https://codespirit-api.xin-lai.com/api/identity/amis/Roles",
+                "icon": "fa-solid fa-user-shield",
+                "permissionCode": "role_manage"
               },
               {
                 "label": "用户管理",
-                "url": "/Users",
-                "schemaApi": "https://localhost:17134/api/identity/amis/Users",
-                "permissionCode": "user_manage",
-                "icon": "fa-solid fa-users"
+                "url": "list",
+                "schemaApi": "https://codespirit-api.xin-lai.com/api/identity/amis/Users",
+                "icon": "fa-solid fa-users",
+                "permissionCode": "user_manage"
+              },
+              {
+                "label": "权限管理",
+                "url": "permissions",
+                "schemaApi": "https://codespirit-api.xin-lai.com/api/identity/amis/Permissions",
+                "icon": "fa-solid fa-key",
+                "permissionCode": "perm_manage"
+              },
+              {
+                "label": "登录日志",
+                "url": "login-logs",
+                "schemaApi": "https://codespirit-api.xin-lai.com/api/identity/amis/LoginLogs",
+                "icon": "fa-solid fa-clock-rotate-left",
+                "permissionCode": "login_logs"
               }
             ],
             "icon": "fa-solid fa-user-group"
@@ -61,8 +61,8 @@
             "children": [
               {
                 "label": "审计日志",
-                "url": "/AuditLogs",
-                "schemaApi": "https://localhost:17134/api/identity/amis/AuditLogs",
+                "url": "audit-logs",
+                "schemaApi": "https://codespirit-api.xin-lai.com/api/identity/amis/AuditLogs",
                 "icon": "fa-solid fa-list-check",
                 "permissionCode": "audit_log_management"
               }
@@ -71,11 +71,11 @@
           },
           {
             "label": "监控中心",
-            "url": "/page",
+            "url": "/monitor",
             "children": [
               {
                 "label": "资源",
-                "url": "res",
+                "url": "resources",
                 "schema": {
                   "type": "page",
                   "body": {
@@ -88,7 +88,7 @@
               },
               {
                 "label": "控制台日志",
-                "url": "consolelogs",
+                "url": "console-logs",
                 "schema": {
                   "type": "page",
                   "body": {
@@ -101,7 +101,7 @@
               },
               {
                 "label": "结构化日志",
-                "url": "structuredlogs",
+                "url": "structured-logs",
                 "schema": {
                   "type": "page",
                   "body": {

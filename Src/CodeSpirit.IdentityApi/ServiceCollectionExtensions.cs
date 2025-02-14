@@ -4,6 +4,7 @@ using CodeSpirit.Amis;
 using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
+using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Audit;
@@ -16,6 +17,7 @@ using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Data;
+using CodeSpirit.Shared.DependencyInjection;
 using CodeSpirit.Shared.Entities;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -26,6 +28,7 @@ using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 
 public class LongToStringConverter : JsonConverter
@@ -109,40 +112,24 @@ public static class ServiceCollectionExtensions
         services.AddMemoryCache();
         services.AddDistributedMemoryCache();
 
-        // 注册权限服务
-        services.AddScoped<AuthService>();
-        services.AddScoped<ICurrentUser, CurrentUser>();
-
-        // 注册 Repositories 和 Handlers
-        services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IUserService, UserService>();
-        services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<ILoginLogRepository, LoginLogRepository>();
-        services.AddScoped<IRoleService, RoleService>();
-        services.AddScoped<ILoginLogRepository, LoginLogRepository>();
-        services.AddScoped<ILoginLogService, LoginLogService>();
-
-        // 注册 Seeder 类
-        services.AddScoped<RoleSeeder>();
-        services.AddScoped<UserSeeder>();
-        services.AddScoped<SeederService>();
+        // 添加服务注册，确保包含了所有服务所在的程序集
+        services.AddDependencyInjection(typeof(Program).Assembly);
 
         // 注册 AutoMapper
         services.AddAutoMapper(typeof(Program));
 
-        // 注册自定义授权处理程序
-        services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
-
-        // 注册黑名单服务
-        services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
-
-        // 注册审计服务
-        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
-        services.AddScoped<IAuditLogService, AuditLogService>();
+        // 注册权限服务
+        services.AddScoped<ICurrentUser, CurrentUser>();
 
         // 注册雪花ID生成器服务
         services.AddSingleton<IIdGenerator, SnowflakeIdGenerator>();
+
+        // 注册 Repositories 和 Handlers
+        services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
+
+        // 注册自定义授权处理程序（这个需要特殊处理，因为是 Identity 框架的组件）
+        services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
+
         return services;
     }
 

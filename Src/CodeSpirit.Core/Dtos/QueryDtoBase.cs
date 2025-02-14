@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.IdentityApi.Controllers.Dtos.Common
+namespace CodeSpirit.Core.Dtos
 {
     public class QueryDtoBase
     {

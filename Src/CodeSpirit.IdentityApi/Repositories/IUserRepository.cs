@@ -1,4 +1,5 @@
-﻿using CodeSpirit.IdentityApi.Data.Models;
+﻿using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
 
 namespace CodeSpirit.IdentityApi.Repositories
@@ -6,7 +7,7 @@ namespace CodeSpirit.IdentityApi.Repositories
     /// <summary>
     /// 用户仓储接口
     /// </summary>
-    public interface IUserRepository : IRepository<ApplicationUser, long>
+    public interface IUserRepository : IRepository<ApplicationUser, long>, IScopedDependency
     {
         /// <summary>
         /// 创建用户

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace CodeSpirit.IdentityApi.Data.Seeders
 {
-    public class RoleSeeder
+    public class RoleSeeder : IScopedDependency
     {
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly ILogger<RoleSeeder> _logger;

@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Shared.DependencyInjection
+﻿namespace CodeSpirit.Core.DependencyInjection
 {
     /// <summary>
     /// 任何时候构造的都是同一个实例

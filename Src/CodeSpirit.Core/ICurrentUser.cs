@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using CodeSpirit.Core.DependencyInjection;
+using System.Collections.Generic;
 using System.Security.Claims;
 
 namespace CodeSpirit.Core
@@ -6,7 +7,7 @@ namespace CodeSpirit.Core
     /// <summary>
     /// 当前用户接口，定义获取当前用户信息的基本操作
     /// </summary>
-    public interface ICurrentUser
+    public interface ICurrentUser : IScopedDependency
     {
         /// <summary>
         /// 获取用户ID
@@ -40,4 +41,4 @@ namespace CodeSpirit.Core
         /// <returns>如果用户属于该角色返回true，否则返回false</returns>
         bool IsInRole(string role);
     }
-} 
+}

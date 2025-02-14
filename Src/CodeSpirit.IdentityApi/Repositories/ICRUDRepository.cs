@@ -1,5 +1,5 @@
 ﻿using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
+using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.IdentityApi.Repositories
 {

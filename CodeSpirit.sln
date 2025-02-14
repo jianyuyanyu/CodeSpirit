@@ -14,8 +14,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.ApiService", "Sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Shared", "Src\CodeSpirit.Shared\CodeSpirit.Shared.csproj", "{56F4BA82-F6EE-4007-A1F9-3063C6ECFBDF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Web.Shared", "Src\CodeSpirit.Web.Shared\CodeSpirit.Web.Shared.csproj", "{BD04DC12-E0F0-49E8-8143-8ED76DCF794D}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Web", "Src\CodeSpirit.Web\CodeSpirit.Web.csproj", "{ADD4B54A-24DF-37C8-D910-48748A560D6E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Amis", "Src\CodeSpirit.Amis\CodeSpirit.Amis.csproj", "{722D0E64-04A3-4915-8B89-FC657570E408}"
@@ -54,10 +52,6 @@ Global
 		{56F4BA82-F6EE-4007-A1F9-3063C6ECFBDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{56F4BA82-F6EE-4007-A1F9-3063C6ECFBDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{56F4BA82-F6EE-4007-A1F9-3063C6ECFBDF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BD04DC12-E0F0-49E8-8143-8ED76DCF794D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BD04DC12-E0F0-49E8-8143-8ED76DCF794D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BD04DC12-E0F0-49E8-8143-8ED76DCF794D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BD04DC12-E0F0-49E8-8143-8ED76DCF794D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{ADD4B54A-24DF-37C8-D910-48748A560D6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{ADD4B54A-24DF-37C8-D910-48748A560D6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ADD4B54A-24DF-37C8-D910-48748A560D6E}.Release|Any CPU.ActiveCfg = Release|Any CPU

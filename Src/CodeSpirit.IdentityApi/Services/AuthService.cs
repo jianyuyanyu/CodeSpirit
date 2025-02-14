@@ -11,7 +11,7 @@ using System.Text;
 
 namespace CodeSpirit.IdentityApi.Services
 {
-    public class AuthService
+    public class AuthService : IAuthService
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;

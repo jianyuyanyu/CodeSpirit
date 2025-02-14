@@ -1,5 +1,5 @@
 ﻿// 文件路径: Controllers/Dtos/UserQueryDto.cs
-using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
+using CodeSpirit.Core.Dtos;
 using CodeSpirit.IdentityApi.Data.Models;
 using System.ComponentModel;
 

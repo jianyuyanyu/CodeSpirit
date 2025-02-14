@@ -6,6 +6,7 @@ using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Repositories;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Utilities;
+using CodeSpirit.Shared.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 

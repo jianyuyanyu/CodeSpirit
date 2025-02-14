@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Shared.DependencyInjection
+﻿namespace CodeSpirit.Core.DependencyInjection
 {
     /// <summary>
     /// 作用域注入

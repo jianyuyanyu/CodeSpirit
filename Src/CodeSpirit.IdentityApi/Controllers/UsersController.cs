@@ -1,9 +1,9 @@
 ﻿using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Common;
 using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Controllers.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
@@ -15,11 +15,11 @@ namespace CodeSpirit.IdentityApi.Controllers
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _userService;
-        private readonly AuthService _authService;
+        private readonly IAuthService _authService;
 
         public UsersController(
             IUserService userService,
-            AuthService authService)
+            IAuthService authService)
         {
             _userService = userService;
             _authService = authService;

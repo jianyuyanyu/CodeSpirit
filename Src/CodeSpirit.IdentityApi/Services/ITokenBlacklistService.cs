@@ -1,10 +1,8 @@
-using Microsoft.Extensions.Caching.Distributed;
-
 namespace CodeSpirit.IdentityApi.Services
 {
-    public interface ITokenBlacklistService
+    public interface ITokenBlacklistService : IScopedDependency
     {
         Task AddToBlacklistAsync(string token, TimeSpan duration);
         Task<bool> IsBlacklistedAsync(string token);
     }
-} 
+}

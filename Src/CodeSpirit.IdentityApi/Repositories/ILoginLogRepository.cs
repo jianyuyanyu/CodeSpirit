@@ -1,8 +1,9 @@
-﻿using CodeSpirit.IdentityApi.Data.Models;
+﻿using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.IdentityApi.Data.Models;
 
 namespace CodeSpirit.IdentityApi.Repositories
 {
-    public interface ILoginLogRepository
+    public interface ILoginLogRepository: IScopedDependency
     {
         Task<(List<LoginLog> Items, int Total)> GetPagedLoginLogsAsync(
             string keywords,

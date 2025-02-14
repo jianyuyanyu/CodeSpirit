@@ -1,8 +1,9 @@
-﻿using CodeSpirit.Core.IdGenerator;
+﻿using CodeSpirit.Authorization;
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Utilities;
+using CodeSpirit.Shared.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 

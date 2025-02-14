@@ -1,4 +1,6 @@
-﻿namespace CodeSpirit.IdentityApi.Controllers.Dtos.Common
+﻿using CodeSpirit.Amis.Attributes;
+
+namespace CodeSpirit.Shared.Dtos.Common
 {
     /// <summary>
     /// 批量导入数据的基础DTO类

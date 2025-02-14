@@ -10,9 +10,9 @@ namespace CodeSpirit.IdentityApi.Controllers
     [AllowAnonymous]
     public class AuthController : ApiControllerBase
     {
-        private readonly AuthService _authService;
+        private readonly IAuthService _authService;
 
-        public AuthController(AuthService authService)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
         }

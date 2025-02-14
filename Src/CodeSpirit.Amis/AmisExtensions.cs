@@ -5,10 +5,11 @@ using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Form.Fields;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.MappingProfiles;
+using CodeSpirit.Amis.Middleware;
 using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
 using FluentValidation;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -41,20 +42,7 @@ namespace CodeSpirit.Amis
             services.AddTransient<IAmisFieldFactory, AmisFieldAttributeFactory>();
 
             // 注册 AmisGenerator，并传递可选的 apiAssembly
-            services.AddScoped<AmisGenerator>(sp =>
-            {
-                IHttpContextAccessor httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-                AmisContext amisContext = sp.GetRequiredService<AmisContext>();
-                CachingHelper cachingHelper = sp.GetRequiredService<CachingHelper>();
-                ControllerHelper controllerHelper = sp.GetRequiredService<ControllerHelper>();
-                CrudHelper crudHelper = sp.GetRequiredService<CrudHelper>();
-                IServiceProvider serviceProvider = sp;
-
-                // 如果未提供 apiAssembly，则使用调用程序集
-                Assembly assembly = apiAssembly ?? Assembly.GetCallingAssembly();
-
-                return new AmisGenerator(httpContextAccessor, amisContext, cachingHelper, controllerHelper, crudHelper, serviceProvider, assembly);
-            });
+            services.AddScoped<AmisGenerator>();
 
             services.AddScoped<ISiteConfigurationService, SiteConfigurationService>();
 
@@ -69,5 +57,11 @@ namespace CodeSpirit.Amis
             services.Configure<PagesConfiguration>(configuration.GetSection("PagesConfiguration"));
             return services;
         }
+
+        public static IApplicationBuilder UseAmis(this IApplicationBuilder builder)
+        {
+            return builder.UseMiddleware<AmisMiddleware>();
+        }
     }
+
 }

@@ -6,6 +6,7 @@ using CodeSpirit.Amis.Services;
 using CodeSpirit.Amis.Validators;
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;
@@ -26,7 +27,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using System.Globalization;
 using System.Text;
 
 public static class ServiceCollectionExtensions
@@ -201,7 +201,7 @@ public static class ServiceCollectionExtensions
                 Dictionary<string, string> errors = context.ModelState
                     .Where(ms => ms.Value.Errors.Count > 0)
                     .ToDictionary(
-                        kvp => ToCamelCase(kvp.Key),
+                        kvp => kvp.Key.ToCamelCase(),
                         kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).FirstOrDefault()
                     );
 
@@ -221,13 +221,6 @@ public static class ServiceCollectionExtensions
         });
 
         return services;
-    }
-
-    private static string ToCamelCase(string input)
-    {
-        return string.IsNullOrEmpty(input) || char.IsLower(input[0])
-            ? input
-            : char.ToLower(input[0], CultureInfo.InvariantCulture) + input.Substring(1);
     }
 
     /// <summary>
@@ -341,6 +334,7 @@ public static class ServiceCollectionExtensions
         app.UseAuthorization();
         app.UseAuditLogging();
         app.MapControllers();
+        app.UseAmis();
         return app;
     }
 }

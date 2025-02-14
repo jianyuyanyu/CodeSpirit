@@ -1,9 +1,9 @@
 ﻿using CodeSpirit.Amis.Helpers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
-using System.Reflection;
 
 namespace CodeSpirit.Amis
 {
@@ -13,7 +13,6 @@ namespace CodeSpirit.Amis
     /// </summary>
     public partial class AmisGenerator
     {
-        private readonly Assembly _assembly;
         private readonly CachingHelper _cachingHelper;
         private readonly ControllerHelper _controllerHelper;
         private readonly CrudHelper _crudHelper;
@@ -30,19 +29,15 @@ namespace CodeSpirit.Amis
         /// <param name="controllerHelper">控制器帮助类</param>
         /// <param name="crudHelper">CRUD 操作帮助类</param>
         /// <param name="serviceProvider">服务提供者</param>
-        /// <param name="assembly">包含控制器的程序集</param>
         public AmisGenerator(
             IHttpContextAccessor httpContextAccessor,
             AmisContext amisContext,
             CachingHelper cachingHelper,
             ControllerHelper controllerHelper,
             CrudHelper crudHelper,
-            IServiceProvider serviceProvider,
-            Assembly assembly)
+            IServiceProvider serviceProvider)
         {
-            _assembly = assembly;
             _amisContext = amisContext;
-            _amisContext.Assembly = _assembly;
             _cachingHelper = cachingHelper;
             _controllerHelper = controllerHelper;
             _crudHelper = crudHelper;
@@ -54,23 +49,23 @@ namespace CodeSpirit.Amis
         /// 为指定的控制器生成 AMIS CRUD 配置。
         /// </summary>
         /// <param name="controllerName">控制器名称（不含 Controller 后缀）</param>
+        /// <param name="endpoint">HTTP 请求的 endpoint</param>
         /// <returns>AMIS CRUD 配置的 JSON 对象，如果控制器不存在则返回 null</returns>
-        public JObject GenerateAmisJsonForController(string controllerName)
+        public JObject GenerateAmisJsonForController(Endpoint endpoint)
         {
-            _amisContext.ControllerName = controllerName;
-
-            Type controllerType = GetAndValidateControllerType(controllerName);
-            return controllerType == null ? null : GetOrGenerateCrudConfig(controllerType, controllerName);
+            Type controllerType = GetAndValidateControllerType(endpoint);
+            return controllerType == null ? null : GetOrGenerateCrudConfig(controllerType);
         }
 
         /// <summary>
         /// 为指定的控制器生成统计图表配置。
         /// </summary>
         /// <param name="controllerName">控制器名称（不含 Controller 后缀）</param>
+        /// <param name="endpoint">HTTP 请求的 endpoint</param>
         /// <returns>统计图表配置的 JSON 对象，如果控制器不存在或没有统计方法则返回 null</returns>
-        public JObject GenerateStatisticsAmisJson(string controllerName)
+        public JObject GenerateStatisticsAmisJson(Endpoint endpoint)
         {
-            Type controllerType = GetAndValidateControllerType(controllerName);
+            Type controllerType = GetAndValidateControllerType(endpoint);
             return controllerType == null ? null : _statisticsBuilder.BuildStatisticsConfig(controllerType);
         }
 
@@ -78,17 +73,29 @@ namespace CodeSpirit.Amis
         /// 获取并验证控制器类型。
         /// </summary>
         /// <param name="controllerName">控制器名称</param>
+        /// <param name="endpoint">HTTP 请求的 endpoint</param>
         /// <returns>控制器类型，如果不存在则返回 null</returns>
-        private Type GetAndValidateControllerType(string controllerName)
+        private Type GetAndValidateControllerType(Endpoint endpoint)
         {
-            Type controllerType = _controllerHelper.GetControllerType(controllerName);
-            if (controllerType == null)
+            Type controllerType = null;
+            if (endpoint != null)
             {
-                return null;
+                // 从 endpoint 获取控制器类型
+                ControllerActionDescriptor actionDescriptor = endpoint.Metadata
+                    .OfType<ControllerActionDescriptor>()
+                    .FirstOrDefault();
+
+                controllerType = actionDescriptor?.ControllerTypeInfo;
+                if (controllerType != null)
+                {
+                    _amisContext.Assembly = controllerType.Assembly;
+                }
+                _amisContext.ControllerName = actionDescriptor.ControllerName;
+                _amisContext.ControllerType = controllerType;
+                _amisContext.Assembly = controllerType.Assembly;
             }
 
-            _amisContext.ControllerType = controllerType;
-            return controllerType;
+            return controllerType == null ? null : controllerType;
         }
 
         /// <summary>
@@ -97,9 +104,9 @@ namespace CodeSpirit.Amis
         /// <param name="controllerType">控制器类型</param>
         /// <param name="controllerName">控制器名称</param>
         /// <returns>CRUD 配置的 JSON 对象</returns>
-        private JObject GetOrGenerateCrudConfig(Type controllerType, string controllerName)
+        private JObject GetOrGenerateCrudConfig(Type controllerType)
         {
-            string cacheKey = _cachingHelper.GenerateCacheKey(controllerName);
+            string cacheKey = _cachingHelper.GenerateCacheKey(controllerType.FullName);
 
             // 尝试从缓存获取配置
             if (_cachingHelper.TryGetValue(cacheKey, out JObject cachedAmisJson))

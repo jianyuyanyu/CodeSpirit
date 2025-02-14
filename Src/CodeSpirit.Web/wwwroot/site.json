@@ -4,54 +4,142 @@
   "data": {
     "pages": [
       {
-        "label": "Home",
-        "url": "/",
-        "redirect": "/page/console"
-      },
-      {
-        "label": "控制台",
         "children": [
           {
             "label": "控制台",
-            "url": "/page/console",
-            "schema": {
-              "type": "page",
-              "body": {
-                "type": "iframe",
-                "src": "https://localhost:17109/",
-                "height": "100%"
+            "url": "/",
+            "redirect": "/page/res",
+            "children": [
+              {
+                "label": "用户统计",
+                "url": "/UserStatistics",
+                "schemaApi": "https://localhost:17134/api/identity/amis/UserStatistics",
+                "icon": "fa-solid fa-gauge-high",
+                "permissionCode": "user_statistics"
               }
-            }
+            ],
+            "icon": "fa-solid fa-gauge-high"
           },
           {
-            "label": "用户统计",
-            "schemaApi": "/test.json"
+            "label": "用户中心",
+            "url": "/user-center",
+            "children": [
+              {
+                "label": "角色管理",
+                "url": "/Roles",
+                "schemaApi": "https://localhost:17134/api/identity/amis/Roles",
+                "permissionCode": "role_manage",
+                "icon": "fa-solid fa-user-shield"
+              },
+              {
+                "label": "登录日志",
+                "url": "/LoginLogs",
+                "schemaApi": "https://localhost:17134/api/identity/amis/LoginLogs",
+                "permissionCode": "login_logs",
+                "icon": "fa-solid fa-clock-rotate-left"
+              },
+              {
+                "label": "权限管理",
+                "url": "/Permissions",
+                "schemaApi": "https://localhost:17134/api/identity/amis/Permissions",
+                "permissionCode": "perm_manage",
+                "icon": "fa-solid fa-key"
+              },
+              {
+                "label": "用户管理",
+                "url": "/Users",
+                "schemaApi": "https://localhost:17134/api/identity/amis/Users",
+                "permissionCode": "user_manage",
+                "icon": "fa-solid fa-users"
+              }
+            ],
+            "icon": "fa-solid fa-user-group"
           },
           {
-            "label": "用户管理",
-            "schemaApi": "https://localhost:17134/api/amis/users",
-            "url": "/page/identity/users"
+            "label": "系统管理",
+            "url": "/system",
+            "children": [
+              {
+                "label": "审计日志",
+                "url": "/AuditLogs",
+                "schemaApi": "https://localhost:17134/api/identity/amis/AuditLogs",
+                "icon": "fa-solid fa-list-check",
+                "permissionCode": "audit_log_management"
+              }
+            ],
+            "icon": "fa-solid fa-gear"
           },
           {
-            "label": "角色管理",
-            "schemaApi": "https://localhost:17134/api/amis/roles",
-            "url": "/page/identity/roles"
-          },
-          {
-            "label": "权限管理",
-            "schemaApi": "https://localhost:17134/api/amis/permissions"
-          },
-          {
-            "label": "登录日志",
-            "schemaApi": "jsonp:/pages/LoginLogs.js?callback=jsonpCallback"
-          },
-          {
-            "label": "操作日志",
-            "schemaApi": "jsonp:/pages/OperationLogs.js?callback=jsonpCallback"
-          },
-          {
-            "label": "系统设置",
-            "schemaApi": "/pages/system-settings.json"
+            "label": "监控中心",
+            "url": "/page",
+            "children": [
+              {
+                "label": "资源",
+                "url": "res",
+                "schema": {
+                  "type": "page",
+                  "body": {
+                    "type": "iframe",
+                    "src": "${aspire_dashboard}/",
+                    "height": "100%"
+                  }
+                },
+                "icon": "fa-solid fa-server"
+              },
+              {
+                "label": "控制台日志",
+                "url": "consolelogs",
+                "schema": {
+                  "type": "page",
+                  "body": {
+                    "type": "iframe",
+                    "src": "${aspire_dashboard}/consolelogs",
+                    "height": "100%"
+                  }
+                },
+                "icon": "fa-solid fa-terminal"
+              },
+              {
+                "label": "结构化日志",
+                "url": "structuredlogs",
+                "schema": {
+                  "type": "page",
+                  "body": {
+                    "type": "iframe",
+                    "src": "${aspire_dashboard}/structuredlogs",
+                    "height": "100%"
+                  }
+                },
+                "icon": "fa-solid fa-list"
+              },
+              {
+                "label": "跟踪",
+                "url": "traces",
+                "schema": {
+                  "type": "page",
+                  "body": {
+                    "type": "iframe",
+                    "src": "${aspire_dashboard}/traces",
+                    "height": "100%"
+                  }
+                },
+                "icon": "fa-solid fa-route"
+              },
+              {
+                "label": "指标",
+                "url": "metrics",
+                "schema": {
+                  "type": "page",
+                  "body": {
+                    "type": "iframe",
+                    "src": "${aspire_dashboard}/metrics",
+                    "height": "100%"
+                  }
+                },
+                "icon": "fa-solid fa-chart-simple"
+              }
+            ],
+            "icon": "fa-solid fa-chart-line"
           }
         ]
       }

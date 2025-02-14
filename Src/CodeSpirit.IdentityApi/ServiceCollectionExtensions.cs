@@ -23,8 +23,48 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System.Globalization;
 using System.Text;
+
+public class LongToStringConverter : JsonConverter
+{
+    public override bool CanConvert(Type objectType)
+    {
+        return objectType == typeof(long) || objectType == typeof(long?);
+    }
+
+    public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+    {
+        if (reader.TokenType == JsonToken.Null)
+        {
+            return null;
+        }
+        if (reader.TokenType == JsonToken.String)
+        {
+            if (long.TryParse((string)reader.Value, out long result))
+            {
+                return result;
+            }
+        }
+        return reader.TokenType == JsonToken.Integer
+            ? (object)Convert.ToInt64(reader.Value)
+            : throw new JsonSerializationException($"Unexpected token type: {reader.TokenType}");
+    }
+
+    public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+    {
+        if (value == null)
+        {
+            writer.WriteNull();
+        }
+        else
+        {
+            writer.WriteValue(value.ToString());
+        }
+    }
+}
 
 public static class ServiceCollectionExtensions
 {
@@ -199,8 +239,12 @@ public static class ServiceCollectionExtensions
         .AddNewtonsoftJson(options =>
         {
             // 可选：在此处配置 Newtonsoft.Json 的设置
-            options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
-            options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore;
+            options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+            options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+
+            // 添加长整型转字符串的转换器
+            options.SerializerSettings.Converters.Add(new StringEnumConverter());
+            options.SerializerSettings.Converters.Add(new LongToStringConverter());
         })
         .ConfigureApiBehaviorOptions(options =>
         {

@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers.Dtos.Permission;
@@ -11,7 +10,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("权限管理")]
-    [Page(Label = "权限管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-plus", PermissionCode = PermissionCodes.PermissionManagement)]
+    [Page(Label = "权限管理", ParentLabel = "用户中心", Icon = "fa-solid fa-key", PermissionCode = PermissionCodes.PermissionManagement)]
     [Permission(code: PermissionCodes.PermissionManagement)]
     public class PermissionsController : ApiControllerBase
     {

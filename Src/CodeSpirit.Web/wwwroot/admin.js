@@ -8,6 +8,7 @@
         type: 'app',
         brandName: 'CodeSpirit',
         logo: webHost + '/favicon.ico',
+        //logo: webHost + '/logo.png',
         header: {
             type: 'tpl',
             inline: false,

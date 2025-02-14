@@ -20,7 +20,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             return Ok(new ApiResponse<T>(0, "操作成功！", data));
         }
 
-        protected ActionResult<ApiResponse> SuccessResponse()
+        protected ActionResult<ApiResponse> SuccessResponse(string msg = "操作成功！")
         {
             return Ok(new ApiResponse(0, "操作成功！"));
         }

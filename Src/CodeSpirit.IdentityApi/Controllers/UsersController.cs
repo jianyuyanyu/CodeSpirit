@@ -201,7 +201,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // POST: api/Users/batch/import
         [HttpPost("batch/import")]
-        public async Task<ActionResult<ApiResponse<string>>> BatchImport([FromBody] BatchImportDtoBase<UserBatchImportItemDto> importDto)
+        public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<UserBatchImportItemDto> importDto)
         {
             int count = await _userService.BatchImportUsersAsync(importDto.ImportData);
             return SuccessResponse($"成功批量导入了 {count} 个用户！");
@@ -210,7 +210,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: api/Users/batch/delete
         [HttpPost("batch/delete")]
         [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
-        public async Task<ActionResult<ApiResponse<string>>> BatchDelete([FromBody] BatchDeleteDto<long> request)
+        public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchDeleteDto<long> request)
         {
             (int successCount, List<string> failedUserNames) = await _userService.BatchDeleteUsersAsync(request.Ids);
 

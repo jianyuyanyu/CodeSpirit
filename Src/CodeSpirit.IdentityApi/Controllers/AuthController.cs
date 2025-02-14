@@ -1,8 +1,10 @@
 ﻿// Controllers/AuthController.cs
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers.Dtos.Auth;
+using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.IdentityApi.Controllers
@@ -11,10 +13,12 @@ namespace CodeSpirit.IdentityApi.Controllers
     public class AuthController : ApiControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, SignInManager<ApplicationUser> signInManager)
         {
             _authService = authService;
+            _signInManager = signInManager;
         }
 
         /// <summary>
@@ -36,6 +40,17 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return SuccessResponse(result);
             }
             return BadResponse<LoginResult>(message);
+        }
+
+        /// <summary>
+        /// 退出登录
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("logout")]
+        public async Task<ActionResult<ApiResponse>> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            return SuccessResponse("退出登录成功!");
         }
     }
 }

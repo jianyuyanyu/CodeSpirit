@@ -75,7 +75,7 @@
                             level: 'danger',
                             actionType: 'ajax',
                             confirmText: '确认要退出登录？',
-                            api: apiHost + '/api/identity/Profile/logout',
+                            api: apiHost + '/api/identity/auth/logout',
                             reload: 'none',
                             redirect: '/login'
                         }

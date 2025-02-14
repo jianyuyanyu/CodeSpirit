@@ -64,7 +64,7 @@ namespace CodeSpirit.IdentityApi.Audit
 
         private bool ShouldSkipPath(HttpRequest request)
         {
-            return _config.ExcludePaths?.Any(path => 
+            return _config.ExcludePaths?.Any(path =>
                 request.Path.StartsWithSegments(path, StringComparison.OrdinalIgnoreCase)) ?? false;
         }
 

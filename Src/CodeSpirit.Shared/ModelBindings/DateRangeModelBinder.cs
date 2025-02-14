@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Logging;
 
-namespace CodeSpirit.IdentityApi.ModelBindings
+namespace CodeSpirit.Shared.ModelBindings
 {
     public class DateRangeModelBinder : IModelBinder
     {

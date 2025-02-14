@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-namespace CodeSpirit.IdentityApi.Filters
+namespace CodeSpirit.Shared.Filters
 {
     // 自定义验证过滤器
     public class ValidateModelAttribute : ActionFilterAttribute

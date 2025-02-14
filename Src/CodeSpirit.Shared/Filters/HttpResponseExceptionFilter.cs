@@ -1,10 +1,12 @@
 ﻿using CodeSpirit.Core;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Data;
 
-namespace CodeSpirit.IdentityApi.Filters
+namespace CodeSpirit.Shared.Filters
 {
     public class HttpResponseExceptionFilter : IExceptionFilter
     {

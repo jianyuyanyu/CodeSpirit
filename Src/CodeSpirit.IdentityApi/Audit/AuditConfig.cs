@@ -40,4 +40,4 @@ namespace CodeSpirit.IdentityApi.Audit
             "currentPassword"
         };
     }
-} 
+}

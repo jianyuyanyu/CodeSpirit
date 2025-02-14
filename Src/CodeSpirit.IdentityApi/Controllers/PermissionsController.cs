@@ -15,15 +15,11 @@ namespace CodeSpirit.IdentityApi.Controllers
     [Permission(code: PermissionCodes.PermissionManagement)]
     public class PermissionsController : ApiControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        private readonly IDistributedCache _cache;
-        private readonly ILogger<PermissionsController> _logger;
         private readonly IPermissionService _permissionService;
         private readonly IMapper _mapper;
 
-        public PermissionsController(IPermissionService permissionService, IDistributedCache distributedCache, IMapper mapper)
+        public PermissionsController(IPermissionService permissionService, IMapper mapper)
         {
-            _cache = distributedCache;
             _permissionService = permissionService;
             _mapper = mapper;
         }

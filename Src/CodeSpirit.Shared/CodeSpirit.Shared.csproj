@@ -6,8 +6,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-
-
+		<PackageReference Include="Audit.WebApi.Core" Version="27.4.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.1.1" />
 		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.5.1" />
 

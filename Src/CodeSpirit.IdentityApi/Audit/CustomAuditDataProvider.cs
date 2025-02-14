@@ -4,7 +4,6 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Services;
 using Newtonsoft.Json;
 
 namespace CodeSpirit.IdentityApi.Audit
@@ -22,6 +21,7 @@ namespace CodeSpirit.IdentityApi.Audit
         {
             try
             {
+                //TODO：通过队列记录日志
                 using IServiceScope scope = _serviceProvider.CreateScope();
                 ApplicationDbContext dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 IHttpContextAccessor httpContextAccessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();

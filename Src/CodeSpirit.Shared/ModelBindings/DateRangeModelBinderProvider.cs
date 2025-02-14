@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
-namespace CodeSpirit.IdentityApi.ModelBindings
+namespace CodeSpirit.Shared.ModelBindings
 {
     public class DateRangeModelBinderProvider : IModelBinderProvider
     {

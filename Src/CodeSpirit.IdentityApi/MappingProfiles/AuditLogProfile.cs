@@ -2,7 +2,7 @@ using AutoMapper;
 using CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog;
 using CodeSpirit.IdentityApi.Data.Models;
 
-namespace CodeSpirit.IdentityApi.Mappings
+namespace CodeSpirit.IdentityApi.MappingProfiles
 {
     public class AuditLogProfile : Profile
     {
@@ -11,4 +11,4 @@ namespace CodeSpirit.IdentityApi.Mappings
             CreateMap<AuditLog, AuditLogDto>();
         }
     }
-} 
+}

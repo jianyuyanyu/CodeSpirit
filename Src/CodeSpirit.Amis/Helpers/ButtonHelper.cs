@@ -107,6 +107,44 @@ namespace CodeSpirit.Amis.Helpers
         public JObject CreateDetailButton(ApiRouteInfo detailRoute, IEnumerable<PropertyInfo> detailPropertites)
         {
             string title = "查看";
+            JArray controls = new();
+            
+            var formFields = formFieldHelper.GetAmisFormFieldsFromProperties(detailPropertites);
+            
+            // 遍历字段,在每个字段后面添加分割线(最后一个字段除外)
+            for (int i = 0; i < formFields.Count(); i++)
+            {
+                var field = formFields[i];
+                
+                // 检查是否为图片或头像类型
+                if (field["type"]?.ToString() == "image" || field["type"]?.ToString() == "avatar")
+                {
+                    // 创建control包裹
+                    var controlWrapper = new JObject
+                    {
+                        ["type"] = "control",
+                        ["label"] = field["label"],
+                        ["body"] = new JArray { field }
+                    };
+                    // 移除原始的label，因为已经移到control层级
+                    field.Remove("label");
+                    controls.Add(controlWrapper);
+                }
+                else
+                {
+                    controls.Add(field);
+                }
+                
+                // 如果不是最后一个字段,添加分割线
+                if (i < formFields.Count() - 1)
+                {
+                    controls.Add(new JObject
+                    {
+                        ["type"] = "divider"
+                    });
+                }
+            }
+
             JObject drawerBody = new()
             {
                 ["title"] = title,
@@ -119,7 +157,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["url"] = detailRoute.ApiPath,
                         ["method"] = detailRoute.HttpMethod
                     },
-                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromProperties(detailPropertites)),
+                    ["controls"] = controls,
                     ["mode"] = "horizontal",
                     ["horizontal"] = new JObject
                     {

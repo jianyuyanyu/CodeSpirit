@@ -10,8 +10,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.ServiceDefaults"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.AppHost", "Src\CodeSpirit.AppHost\CodeSpirit.AppHost.csproj", "{914C9414-C7DB-839C-DFF4-5F9043825A5B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.ApiService", "Src\CodeSpirit.ApiService\CodeSpirit.ApiService.csproj", "{86E30F90-CA03-2CB1-9DF5-1953197E13C3}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Shared", "Src\CodeSpirit.Shared\CodeSpirit.Shared.csproj", "{56F4BA82-F6EE-4007-A1F9-3063C6ECFBDF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Web", "Src\CodeSpirit.Web\CodeSpirit.Web.csproj", "{ADD4B54A-24DF-37C8-D910-48748A560D6E}"
@@ -44,10 +42,6 @@ Global
 		{914C9414-C7DB-839C-DFF4-5F9043825A5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{914C9414-C7DB-839C-DFF4-5F9043825A5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{914C9414-C7DB-839C-DFF4-5F9043825A5B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{86E30F90-CA03-2CB1-9DF5-1953197E13C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{86E30F90-CA03-2CB1-9DF5-1953197E13C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{86E30F90-CA03-2CB1-9DF5-1953197E13C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{86E30F90-CA03-2CB1-9DF5-1953197E13C3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{56F4BA82-F6EE-4007-A1F9-3063C6ECFBDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{56F4BA82-F6EE-4007-A1F9-3063C6ECFBDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{56F4BA82-F6EE-4007-A1F9-3063C6ECFBDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -81,7 +75,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{86E30F90-CA03-2CB1-9DF5-1953197E13C3} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{9E555849-46D1-4E55-9BBE-965860664221} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{3E892DF0-F3A0-9617-9E95-6DF09B3E63F4} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection

@@ -155,7 +155,7 @@ CodeSpirit（码灵）是一款革命性的全栈低代码开发框架，通过�
 
 https://codespirit-app.xin-lai.com/
 
-请关注下方公众号获取最新的体验账号及密码。
+请关注“麦扣聊技术”公众号获取最新的体验账号及密码。
 
 ## 开发文档
 
@@ -165,5 +165,5 @@ https://codespirit-app.xin-lai.com/
 2. [后端架构说明](./Docs/后端架构.md)
 3. CRUD开发（TODO）
 
-![公众号](.\Res\qrcode.jpg)
+![公众号](./Res/qrcode.jpg)
 

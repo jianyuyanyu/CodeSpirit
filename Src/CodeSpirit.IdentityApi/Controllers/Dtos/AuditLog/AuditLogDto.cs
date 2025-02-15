@@ -57,7 +57,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog
         [DisplayName("请求持续时间(毫秒)")]
         [AmisColumn(
             BackgroundScaleMin = 0,
-            BackgroundScaleMax = 10000,
+            BackgroundScaleMax = 100,
             BackgroundScaleColors = new[] { "#FFEF9C", "#FF7127" })]
         public double Duration { get; set; }
 

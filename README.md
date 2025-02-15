@@ -42,11 +42,14 @@ CodeSpirit（码灵）是一款高效的后台低代码框架，旨在通过后�
       - [x] 列类型
         - [x] enum——>mapping
         - [x] bool——>switch
-        - [x] DateTime|DateTimeOffset——>datetime
-        - [x] [DataType(DataType.ImageUrl)] | 包含Avatar列——>avatar
-        - [x] [DataType(DataType.ImageUrl)] | 包含Image列——>image
-        - [x] List<T> where T:calss——>List 
+        - [x] `DateTime`|`DateTimeOffset`|`DateColumnAttribute`——>date
+        - [x]  `AvatarColumnAttribute`|包含Avatar列|——>avatar
+        - [x] `[DataType(DataType.ImageUrl)]` | 包含Image列——>image
+        - [x] `List<T> where T:calss`——>List 
+        - [x] `TplColumnAttribute`——>tpl
+        - [x] `LinkColumnAttribute`——>link
         - [ ] 状态
+        - [x] `BadgeAttribute`（仅支持tpl、link、avatar）
         - [x] JSON
       - [x] 列排序
         - [x] 支持配置

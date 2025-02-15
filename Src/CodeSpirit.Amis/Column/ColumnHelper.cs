@@ -188,12 +188,104 @@ namespace CodeSpirit.Amis.Column
             // 如果属性是图片或头像类型，设置为 AMIS 的 image 或 avatar 类型
             if (IsImageField(prop))
             {
-                column["type"] = GetImageColumnType(prop);
-                column["src"] = $"${{{fieldName}}}"; // 设置图片的来源字段
-                column["altText"] = displayName;
-                column["className"] = "image-column"; // 可选：添加自定义样式类
+                string columnType = GetImageColumnType(prop);
+                column["type"] = columnType;
+
+                // 处理 Avatar 特定配置
+                if (columnType == "avatar")
+                {
+                    AvatarColumnAttribute avatarAttr = prop.GetCustomAttribute<AvatarColumnAttribute>();
+                    if (avatarAttr != null)
+                    {
+                        // Avatar 基本配置
+                        if (!string.IsNullOrEmpty(avatarAttr.Text))
+                        {
+                            column["text"] = avatarAttr.Text;
+                        }
+                        if (!string.IsNullOrEmpty(avatarAttr.Icon))
+                        {
+                            column["icon"] = avatarAttr.Icon;
+                        }
+                        if (!string.IsNullOrEmpty(avatarAttr.OnError))
+                        {
+                            column["onError"] = avatarAttr.OnError;
+                        }
+                        if (!string.IsNullOrEmpty(avatarAttr.Fit))
+                        {
+                            column["fit"] = avatarAttr.Fit;
+                        }
+                        if (!string.IsNullOrEmpty(avatarAttr.Shape))
+                        {
+                            column["shape"] = avatarAttr.Shape;
+                        }
+                        if (avatarAttr.Size != null)
+                        {
+                            column["size"] = avatarAttr.Size;
+                        }
+                        if (avatarAttr.Gap.HasValue)
+                        {
+                            column["gap"] = avatarAttr.Gap.Value;
+                        }
+                    }
+                    else
+                    {
+                        column["src"] = $"${{{fieldName}}}"; // 设置图片的来源字段
+                        column["altText"] = displayName;
+                    }
+
+
+                }
             }
 
+            // Badge 配置
+            BadgeAttribute badgeAttr = prop.GetCustomAttribute<BadgeAttribute>();
+            if (badgeAttr != null)
+            {
+                JObject badge = [];
+
+                if (!string.IsNullOrEmpty(badgeAttr.Mode))
+                {
+                    badge["mode"] = badgeAttr.Mode;
+                }
+                if (!string.IsNullOrEmpty(badgeAttr.Text))
+                {
+                    badge["text"] = badgeAttr.Text;
+                }
+                if (!string.IsNullOrEmpty(badgeAttr.ClassName))
+                {
+                    badge["className"] = badgeAttr.ClassName;
+                }
+                if (badgeAttr.Size != default)
+                {
+                    badge["size"] = badgeAttr.Size;
+                }
+                if (!string.IsNullOrEmpty(badgeAttr.Level))
+                {
+                    badge["level"] = badgeAttr.Level;
+                }
+                if (badgeAttr.OverflowCount != default)
+                {
+                    badge["overflowCount"] = badgeAttr.OverflowCount;
+                }
+                if (!string.IsNullOrEmpty(badgeAttr.Position))
+                {
+                    badge["position"] = badgeAttr.Position;
+                }
+                if (badgeAttr.OffsetX != default && badgeAttr.OffsetY != default)
+                {
+                    badge["offset"] = new JArray(badgeAttr.OffsetX, badgeAttr.OffsetY);
+                }
+                if (badgeAttr.Animation)
+                {
+                    badge["animation"] = badgeAttr.Animation;
+                }
+                if (!string.IsNullOrEmpty(badgeAttr.VisibleOn))
+                {
+                    badge["visibleOn"] = badgeAttr.VisibleOn;
+                }
+
+                column["badge"] = badge;
+            }
             // 如果属性是 List 类型，生成 List 配置
             if (IsListProperty(prop))
             {
@@ -201,6 +293,75 @@ namespace CodeSpirit.Amis.Column
                 column["placeholder"] = "-"; // 可以根据需要修改 placeholder 内容
                 column["listItem"] = CreateListItemConfiguration(prop);
             }
+
+            // 处理 Tpl 列
+            TplColumnAttribute tplAttr = prop.GetCustomAttribute<TplColumnAttribute>();
+            if (tplAttr != null)
+            {
+                column["type"] = "tpl";
+                column["tpl"] = tplAttr.Template;
+            }
+
+            // 处理 Link 列
+            LinkColumnAttribute linkAttr = prop.GetCustomAttribute<LinkColumnAttribute>();
+            if (linkAttr != null)
+            {
+                column["type"] = "link";
+                if (!string.IsNullOrEmpty(linkAttr.Href))
+                {
+                    column["href"] = linkAttr.Href;
+                }
+                if (!string.IsNullOrEmpty(linkAttr.Blank))
+                {
+                    column["blank"] = linkAttr.Blank;
+                }
+                if (!string.IsNullOrEmpty(linkAttr.Icon))
+                {
+                    column["icon"] = linkAttr.Icon;
+                }
+                if (!string.IsNullOrEmpty(linkAttr.Label))
+                {
+                    column["label"] = linkAttr.Label;
+                }
+            }
+
+            // 处理 Date 列
+            if (prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(DateTime?) ||
+                prop.PropertyType == typeof(DateTimeOffset) || prop.PropertyType == typeof(DateTimeOffset?))
+            {
+                DateColumnAttribute dateAttr = prop.GetCustomAttribute<DateColumnAttribute>();
+                if (dateAttr != null)
+                {
+                    column["type"] = "date";
+                    if (!string.IsNullOrEmpty(dateAttr.Format))
+                    {
+                        column["format"] = dateAttr.Format;
+                    }
+                    if (!string.IsNullOrEmpty(dateAttr.InputFormat))
+                    {
+                        column["inputFormat"] = dateAttr.InputFormat;
+                    }
+                    if (!string.IsNullOrEmpty(dateAttr.Placeholder))
+                    {
+                        column["placeholder"] = dateAttr.Placeholder;
+                    }
+                    if (dateAttr.TimeZone != default)
+                    {
+                        column["timeZone"] = dateAttr.TimeZone;
+                    }
+                    if(dateAttr.FromNow)
+                    {
+                        column["fromNow"] = dateAttr.FromNow;
+                    }
+                }
+                else
+                {
+                    // 默认日期格式
+                    column["type"] = "date";
+                    column["format"] = "YYYY-MM-DD HH:mm:ss";
+                }
+            }
+
             return column;
         }
 
@@ -301,14 +462,31 @@ namespace CodeSpirit.Amis.Column
         /// <returns>AMIS 列的类型字符串。</returns>
         private string GetColumnType(PropertyInfo prop)
         {
-            return _utilityHelper.IsEnumProperty(prop)
-                ? "mapping"
-                : prop.PropertyType switch
-                {
-                    Type t when t == typeof(bool) => "switch",
-                    Type t when t == typeof(DateTime) || t == typeof(DateTime?) || t == typeof(DateTimeOffset) || t == typeof(DateTimeOffset?) => "datetime",
-                    _ => "text"
-                };
+            if (_utilityHelper.IsEnumProperty(prop))
+            {
+                return "mapping";
+            }
+
+            // 检查是否有 TplColumn 特性
+            TplColumnAttribute tplAttr = prop.GetCustomAttribute<TplColumnAttribute>();
+            if (tplAttr != null)
+            {
+                return "tpl";
+            }
+
+            // 检查是否有 LinkColumn 特性
+            LinkColumnAttribute linkAttr = prop.GetCustomAttribute<LinkColumnAttribute>();
+            if (linkAttr != null)
+            {
+                return "link";
+            }
+
+            return prop.PropertyType switch
+            {
+                Type t when t == typeof(bool) => "switch",
+                Type t when t == typeof(DateTime) || t == typeof(DateTime?) || t == typeof(DateTimeOffset) || t == typeof(DateTimeOffset?) => "date",
+                _ => "text"
+            };
         }
 
         /// <summary>
@@ -347,6 +525,7 @@ namespace CodeSpirit.Amis.Column
         /// <returns>AMIS 列的类型字符串。</returns>
         private string GetImageColumnType(PropertyInfo prop)
         {
+            if (prop.GetCustomAttribute<AvatarColumnAttribute>() != null) return "avatar";
             return prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0 ? "avatar" : "image";
         }
 

@@ -1,172 +1,170 @@
-# CodeSpirit（码灵）低代码框架
+# CodeSpirit Low-Code Framework
 
-## 框架概览
+## Framework Overview
 
-CodeSpirit（码灵）是一款革命性的全栈低代码开发框架，通过智能代码生成引擎与AI深度协同，实现**后端驱动式全栈开发范式**。基于.NET 9技术栈构建，将具备企业级技术深度与云原生扩展能力，提供从界面生成、业务逻辑编排到系统运维的全生命周期支持。
+CodeSpirit is a revolutionary full-stack low-code development framework that achieves **backend-driven full-stack development paradigm** through intelligent code generation engine and deep AI collaboration. Built on .NET 9 technology stack, it provides enterprise-level technical depth and cloud-native scalability, supporting the entire lifecycle from UI generation and business logic orchestration to system operations.
 
-**让全栈开发回归工程本质**
+**Return Full-Stack Development to Engineering Essence**
 
-- **后端驱动式开发范式 · 企业级开放架构 · AI增强工程闭环**
+- **Backend-Driven Development Paradigm · Enterprise-Grade Open Architecture · AI-Enhanced Engineering Loop**
 
-[![立即体验](https://img.shields.io/badge/%E7%AB%8B%E5%8D%B3%E4%BD%93%E9%AA%8C-%E4%B8%93%E4%B8%9A%E7%89%88-brightgreen)](https://codespirit-app.xin-lai.com/)
-	*请关注下方公众号获取最新的体验账号及密码。*
+[![Try Now](https://img.shields.io/badge/Try%20Now-Professional%20Edition-brightgreen)](https://codespirit-app.xin-lai.com/)
+*Please follow our WeChat Official Account below for the latest demo account and password.*
 
-***CodeSpirit，让复杂系统开发回归优雅本质！***
+***CodeSpirit, bringing elegant simplicity to complex system development!***
 
-### 核心价值主张
+### Core Value Propositions
 
-- **全栈智能生成**：通过后端模型驱动前端界面生成，消除80%重复编码工作
-- **深度可控架构**：生成代码完全开放可控，支持从快速原型到复杂系统的平滑演进
-- **企业级工程能力**：内置权限体系、审计追踪、分布式架构支持，开箱即用
-- **AI协同编程**：需求描述` → `原型生成` → `代码验证` → `部署监控
-- **云原生底座**：Kubernetes原生支持，一键部署到多云环境
+- **Full-Stack Intelligent Generation**: Eliminate 80% repetitive coding through backend model-driven frontend UI generation
+- **Deeply Controllable Architecture**: Generated code is fully open and controllable, supporting smooth evolution from rapid prototyping to complex systems
+- **Enterprise-Grade Engineering Capabilities**: Built-in permission system, audit tracking, distributed architecture support, out-of-the-box
+- **AI-Collaborative Programming**: Requirement Description → Prototype Generation → Code Verification → Deployment Monitoring
+- **Cloud-Native Foundation**: Native Kubernetes support, one-click deployment to multi-cloud environments
 
-## 功能架构全景
+## Functional Architecture Overview
 
-### 一、智能界面生成引擎
+### I. Intelligent UI Generation Engine
 
-#### 1. 动态导航系统
+#### 1. Dynamic Navigation System
 
-- 多维度配置：注解驱动(`PageAttribute`) +`appsettings` 配置+可视化配置中心（*vNext*）
-- 智能权限适配：自动同步RBAC权限模型，实现动态菜单渲染
-- 多级导航支持：支持全局导航(*vNext*)/局部导航混合架构
+- Intelligent Permission Adaptation: Automatic synchronization with RBAC permission model for dynamic menu rendering
+- Multi-level Navigation Support: Global navigation(*vNext*)/local navigation hybrid architecture
 
-#### 2. 零代码CRUD生成
+#### 2. Zero-Code CRUD Generation
 
-| 功能模块     | 实现能力                                                   |
-| :----------- | :--------------------------------------------------------- |
-| 智能表单     | 支持20+字段类型自动映射，包含图片上传、Excel导入等复杂场景 |
-| 智能表格     | 嵌套数据呈现、列配置热加载、实时快速编辑                   |
-| 批量处理     | Excel模板导入/导出、多格式数据校验、可视化数据修正         |
-| 扩展操作体系 | 自定义操作按钮、多步骤审批流、基于权限的上下文敏感操作     |
+| Module | Capabilities |
+| :--- | :--- |
+| Smart Forms | 20+ field type automatic mapping, including complex scenarios like image upload and Excel import |
+| Smart Tables | Nested data presentation, column configuration hot reload, real-time quick editing |
+| Batch Processing | Excel template import/export, multi-format data validation, visual data correction |
+| Extended Operation System | Custom operation buttons, multi-step approval flows, permission-based context-sensitive operations |
 
-*注意：这里的零代码指的是零前端代码。*
+*Note: Zero-code here refers to zero frontend code.*
 
-#### 3. 可视化分析模块（*VNext*）
+#### 3. Visual Analysis Module (*VNext*)
 
-- 动态图表引擎：根据数据特征自动匹配最佳可视化方案
-- SQL2API：根据SQL生成API接口
-- SQL2Chart：基于SQL生成图表
-- 智能时间维度：支持同比/环比自动计算，时间颗粒度智能适配
-- 多数据源聚合：SQL/NoSQL混合数据源联合分析
+- Dynamic Chart Engine: Automatically matches optimal visualization solutions based on data characteristics
+- SQL2API: Generate API interfaces from SQL
+- SQL2Chart: Generate charts based on SQL
+- Intelligent Time Dimension: Support automatic year-over-year/month-over-month calculations, intelligent time granularity adaptation
+- Multi-data Source Aggregation: SQL/NoSQL hybrid data source joint analysis
 
-#### 4. 零代码H5生成（*VNext*）
+#### 4. Zero-Code H5 Generation (*VNext*)
 
-- 智能表单
-- 智能图表
+- Smart Forms
+- Smart Charts
 
-### 二、企业级后端架构
+### II. Enterprise-Grade Backend Architecture
 
-#### 1. 核心框架特性
+#### 1. Core Framework Features
 
-- **云原生底座**：k8s原生支持，深度集成.NET Aspire，原生支持Dapr分布式架构
-- **安全体系**：四层防御体系（认证/授权/审计/加密）
-- **高性能保障**：分布式缓存、二级自动缓存、智能查询优化
+- **Cloud-Native Foundation**: Native k8s support, deep integration with .NET Aspire, native support for Dapr distributed architecture
+- **Security System**: Four-layer defense system (Authentication/Authorization/Audit/Encryption)
+- **High-Performance Guarantee**: Distributed caching, automatic second-level caching, intelligent query optimization
 
-#### 2. 关键功能组件
+#### 2. Key Functional Components
 
-- **权限系统**
-- **ORM扩展**
-- **多租户**
-- **数据筛选器**
-- **审计服务**
-- **健康检查**
-- **事件总线**
+- **Permission System**
+- **ORM Extensions**
+- **Multi-tenancy**
+- **Data Filters**
+- **Audit Service**
+- **Health Checks**
+- **Event Bus**
 - ...
 
-### 三、开箱即用功能模块
+### III. Out-of-the-Box Functional Modules
 
-| 模块名称 | 核心功能                                            | 技术特性          |
-| :------- | :-------------------------------------------------- | :---------------- |
-| 用户中心 | 多因子认证、组织架构管理（*VNext*）、细粒度权限控制 | RBAC+ABAC混合模型 |
-| 审计中心 | 操作日志追溯、数据变更追踪、安全合规报告            |                   |
-| 订单中心 |                                                     |                   |
-| ...      | ...                                                 | ...               |
+| Module Name | Core Features | Technical Characteristics |
+| :--- | :--- | :--- |
+| User Center | Multi-factor authentication, Organization management(*VNext*), Fine-grained permission control | RBAC+ABAC hybrid model |
+| Audit Center | Operation log tracing, Data change tracking, Security compliance reporting | |
+| Order Center | | |
+| ... | ... | ... |
 
-### 四、全栈生成引擎
+### IV. Full-Stack Generation Engine
 
-- **代码反哺**：根据前端操作自动生成后端仓储、控制器代码
+- **Code Feedback**: Automatically generate backend repository and controller code based on frontend operations
 
-- **AI辅助设计**：
+- **AI-Assisted Design**:
 
-  - 用自然语言描述需求→自动生成页面原型
-  - 截图页面→自动推导DTO结构
-  - 语音指令→实时修改表格、表单配置
+  - Natural language requirement description → Automatic page prototype generation
+  - Screenshot page → Automatic DTO structure inference
+  - Voice commands → Real-time modification of table and form configurations
 
-  想象这样的场景：
+  Imagine this scenario:
 
-  ***"灵儿，给用户表加个生日字段，要日历组件，在列表页显示为年龄"***
+  ***"Spirit, add a birthday field to the user table, use a calendar component, and display it as age in the list page"***
 
-  AI助手即刻完成：
+  AI assistant completes instantly:
 
-  ✅ 修改DTO模型
+  ✅ Modify DTO model
 
-  ✅ 重新生成前端
+  ✅ Regenerate frontend
 
-  ✅ 编写数据库迁移脚本
+  ✅ Write database migration script
 
-
-## 路线图规划
+## Roadmap
 
 ### Q1 2025
 
-- 智能界面生成引擎
-- 码灵Beta版发布
-- H5生成引擎
+- Intelligent UI Generation Engine
+- CodeSpirit Beta Release
+- H5 Generation Engine
 
 ### Q2 2025
 
-- 可视化分析模块
-- 深度集成LLM代码生成能力
+- Visual Analysis Module
+- Deep Integration of LLM Code Generation Capabilities
 
 ### Q3 2025
 
-- 全栈生成引擎
-- 多云部署支持
-- Java支持
+- Full-Stack Generation Engine
+- Multi-Cloud Deployment Support
+- Java Support
 
 ### Q4 2025
 
-- DSL支持
-- 智能运维机器人
-- 低代码应用市场
+- DSL Support
+- Intelligent Operations Robot
+- Low-Code Application Marketplace
 
-## 框架优势对比
+## Framework Advantages Comparison
 
-### 低代码框架对比
+### Low-Code Framework Comparison
 
-| 维度       | CodeSpirit      | 传统低代码平台   |
-| :--------- | :-------------- | :--------------- |
-| 架构开放性 | 全代码开放      | 黑箱生成         |
-| 性能表现   | 原生代码级性能  | 解释执行性能损耗 |
-| 定制能力   | 底层架构可定制  | 有限扩展         |
-| 技术栈     | 最新.NET生态    | 私有技术栈       |
-| 部署模式   | 混合云/本地部署 | SaaS绑定         |
+| Dimension | CodeSpirit | Traditional Low-Code Platforms |
+| :--- | :--- | :--- |
+| Architecture Openness | Fully Open Code | Black Box Generation |
+| Performance | Native Code-Level Performance | Interpretation Execution Performance Loss |
+| Customization Capability | Customizable Base Architecture | Limited Extensions |
+| Technology Stack | Latest .NET Ecosystem | Proprietary Tech Stack |
+| Deployment Mode | Hybrid Cloud/On-Premises | SaaS Bound |
 
-### 典型开发场景对比
+### Typical Development Scenario Comparison
 
-| 传统模式          | CodeSpirit模式      | 效率提升 |
-| :---------------- | :------------------ | :------- |
-| 前后端联调3小时   | 自动生成联调完成    | 8x       |
-| 表单校验开发0.5天 | 声明式配置5分钟     | 12x      |
-| 权限系统集成2天   | 开箱即用 + 策略扩展 | ∞        |
+| Traditional Mode | CodeSpirit Mode | Efficiency Improvement |
+| :--- | :--- | :--- |
+| Frontend-Backend Integration 3 hours | Auto-generation Complete | 8x |
+| Form Validation Development 0.5 day | Declarative Configuration 5 minutes | 12x |
+| Permission System Integration 2 days | Out-of-box + Policy Extension | ∞ |
 
-## 立即体验
+## Try Now
 
 https://codespirit-app.xin-lai.com/
 
-请关注“麦扣聊技术”公众号获取最新的体验账号及密码。
+Please follow "麦扣聊技术" WeChat Official Account for the latest demo account and password.
 
-## 开发文档
+## Development Documentation
 
-- Github：[xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit)
-- Gitee：[magicodes/CodeSpirit](https://gitee.com/magicodes/code-spirit)
+- Github: [xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit)
+- Gitee: [magicodes/CodeSpirit](https://gitee.com/magicodes/code-spirit)
 
-[📘 完整开发文档](https://codespirit-docs.xin-lai.com/) | [💬 加入技术社区](https://codespirit-chat.xin-lai.com/)
+[📘 Complete Development Docs](https://codespirit-docs.xin-lai.com/) | [💬 Join Technical Community](https://codespirit-chat.xin-lai.com/)
 
-1. [界面生成引擎](./Docs/CodeSpirit.Amis.md)
-2. [后端架构说明](./Docs/后端架构.md)
-3. CRUD开发（TODO）
+1. [UI Generation Engine](./Docs/CodeSpirit.Amis.md)
+2. [Backend Architecture](./Docs/后端架构.md)
+3. CRUD Development (TODO)
 
-![公众号](./Res/qrcode.jpg)
+![WeChat Official Account](./Res/qrcode.jpg)
 

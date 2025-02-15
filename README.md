@@ -11,6 +11,8 @@ CodeSpirit（码灵）是一款革命性的全栈低代码开发框架，通过�
 [![立即体验](https://img.shields.io/badge/%E7%AB%8B%E5%8D%B3%E4%BD%93%E9%AA%8C-%E4%B8%93%E4%B8%9A%E7%89%88-brightgreen)](https://codespirit-app.xin-lai.com/)
 	*请关注下方公众号获取最新的体验账号及密码。*
 
+***CodeSpirit，让复杂系统开发回归优雅本质！***
+
 ### 核心价值主张
 
 - **全栈智能生成**：通过后端模型驱动前端界面生成，消除80%重复编码工作
@@ -18,8 +20,6 @@ CodeSpirit（码灵）是一款革命性的全栈低代码开发框架，通过�
 - **企业级工程能力**：内置权限体系、审计追踪、分布式架构支持，开箱即用
 - **AI协同编程**：需求描述` → `原型生成` → `代码验证` → `部署监控
 - **云原生底座**：Kubernetes原生支持，一键部署到多云环境
-
-**CodeSpirit，让复杂系统开发回归优雅本质！**
 
 ## 功能架构全景
 
@@ -158,6 +158,9 @@ https://codespirit-app.xin-lai.com/
 请关注“麦扣聊技术”公众号获取最新的体验账号及密码。
 
 ## 开发文档
+
+- Github：[xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit)
+- Gitee：[magicodes/CodeSpirit](https://gitee.com/magicodes/code-spirit)
 
 [📘 完整开发文档](https://codespirit-docs.xin-lai.com/) | [💬 加入技术社区](https://codespirit-chat.xin-lai.com/)
 

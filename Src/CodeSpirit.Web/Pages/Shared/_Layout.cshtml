@@ -8,9 +8,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
 
     <!-- 样式表 -->
-    <link rel="stylesheet" href="/sdk/antd.css" />
-    <link rel="stylesheet" href="/sdk/helper.css" />
-    <link rel="stylesheet" href="/sdk/iconfont.css" />
+    <link rel="stylesheet" href="~/sdk/antd.css" asp-append-version="true" />
+    <link rel="stylesheet" asp-append-version="true" href="~/sdk/helper.css" />
+    <link rel="stylesheet" asp-append-version="true" href="~/sdk/iconfont.css" />
 
     <!-- 全局变量配置 -->
     <script>
@@ -23,9 +23,9 @@
     </script>
 
     <!-- 脚本 -->
-    <script src="/sdk/sdk.js"></script>
-    <script src="/history.js"></script>
-    <script src="/tokenManager.js"></script>
+    <script asp-append-version="true" src="~/sdk/sdk.js"></script>
+    <script asp-append-version="true" src="~/js/history.js"></script>
+    <script asp-append-version="true" src="~/js/tokenManager.js"></script>
     @RenderSection("Head", required: false)  <!-- 可选的 Razor section -->
     
 </head>

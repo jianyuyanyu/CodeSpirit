@@ -235,14 +235,14 @@
                     return { msg: '登录过期！' };
                 }
 
-                // 如果是获取用户信息的接口,将数据注入到全局
-                if (api.url === apiHost + '/api/identity/profile') {
-                    amisInstance.updateProps({
-                        data: {
-                            ...payload.data // 将用户信息数据注入到全局
-                        }
-                    });
-                }
+                //// 如果是获取用户信息的接口,将数据注入到全局
+                //if (api.url === apiHost + '/api/identity/profile') {
+                //    amisInstance.updateProps({
+                //        data: {
+                //            ...payload.data // 将用户信息数据注入到全局
+                //        }
+                //    });
+                //}
 
                 return payload;
             },

@@ -9,6 +9,15 @@ builder.AddServiceDefaults("web-app");
 // Add services to the container.
 builder.Services.AddRazorPages();
 
+// Add WebOptimizer
+builder.Services.AddWebOptimizer(pipeline =>
+{
+    // Minify and bundle JavaScript files
+    pipeline.MinifyJsFiles("/sdk/sdk.js", "/js/*.js");
+
+    // Minify CSS files
+    pipeline.MinifyCssFiles("/sdk/antd.css", "/sdk/helper.css", "/sdk/iconfont.css", "/css/*.css");
+});
 
 WebApplication app = builder.Build();
 
@@ -29,5 +38,8 @@ app.UseAntiforgery();
 app.MapRazorPages();
 
 app.MapDefaultEndpoints();
+
+// Add WebOptimizer middleware
+app.UseWebOptimizer();
 
 app.Run();

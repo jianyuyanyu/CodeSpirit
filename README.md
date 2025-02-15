@@ -1,4 +1,4 @@
-# CodeSpirit Low-Code Framework
+# CodeSpirit Low-Code Framework | [简体中文](README.zh-CN.md)
 
 ## Framework Overview
 

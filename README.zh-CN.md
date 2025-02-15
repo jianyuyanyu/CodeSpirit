@@ -1,4 +1,4 @@
-# CodeSpirit（码灵）低代码框架
+# CodeSpirit（码灵）低代码框架 | [English](README.md)
 
 ## 框架概览
 

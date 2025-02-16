@@ -6,7 +6,7 @@ namespace CodeSpirit.IdentityApi.Services
 {
     public interface ILoginLogService: IScopedDependency
     {
-        Task<ListData<LoginLogDto>> GetPagedLoginLogsAsync(LoginLogsQueryDto queryDto);
+        Task<PageList<LoginLogDto>> GetPagedLoginLogsAsync(LoginLogsQueryDto queryDto);
         Task<LoginLogDto> GetLoginLogByIdAsync(int id);
     }
 }

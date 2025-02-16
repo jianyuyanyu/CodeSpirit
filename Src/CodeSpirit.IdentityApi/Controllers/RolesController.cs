@@ -20,10 +20,10 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<ListData<RoleDto>>>> GetRoles([FromQuery] RoleQueryDto queryDto)
+    public async Task<ActionResult<ApiResponse<PageList<RoleDto>>>> GetRoles([FromQuery] RoleQueryDto queryDto)
     {
         (List<RoleDto> roles, int total) = await _roleService.GetRolesAsync(queryDto);
-        return SuccessResponse(new ListData<RoleDto>
+        return SuccessResponse(new PageList<RoleDto>
         {
             Items = roles,
             Total = total

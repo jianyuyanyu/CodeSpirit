@@ -1,5 +1,5 @@
 using CodeSpirit.Shared.Data;
-using CodeSpirit.Shared.Entities;
+using CodeSpirit.Shared.Entities.Interfaces;
 using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.OrderApi.Data.Models
@@ -7,7 +7,7 @@ namespace CodeSpirit.OrderApi.Data.Models
     /// <summary>
     /// 订单信息
     /// </summary>
-    public class Order : IIsActive, IFullEntityEvent, IDeletionAuditedObject, IAuditedObject
+    public class Order : IIsActive, IFullEntityEvent
     {
         /// <summary>
         /// 订单ID

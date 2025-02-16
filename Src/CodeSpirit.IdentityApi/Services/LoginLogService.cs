@@ -25,7 +25,7 @@ namespace CodeSpirit.IdentityApi.Services
         /// </summary>
         /// <param name="queryDto">查询参数DTO</param>
         /// <returns>登录日志列表数据</returns>
-        public async Task<ListData<LoginLogDto>> GetPagedLoginLogsAsync(LoginLogsQueryDto queryDto)
+        public async Task<PageList<LoginLogDto>> GetPagedLoginLogsAsync(LoginLogsQueryDto queryDto)
         {
             (List<Data.Models.LoginLog> logs, int totalPages) = await _loginLogRepository.GetPagedLoginLogsAsync(
                 queryDto.Keywords,
@@ -45,7 +45,7 @@ namespace CodeSpirit.IdentityApi.Services
                 FailureReason = l.FailureReason
             }).ToList();
 
-            return new ListData<LoginLogDto>
+            return new PageList<LoginLogDto>
             {
                 Items = logDtos,
                 Total = totalPages

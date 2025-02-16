@@ -41,7 +41,7 @@ public class UserService : IUserService
         _currentUser = currentUser;
     }
 
-    public async Task<ListData<UserDto>> GetUsersAsync(UserQueryDto queryDto)
+    public async Task<PageList<UserDto>> GetUsersAsync(UserQueryDto queryDto)
     {
         // 获取 IQueryable 类型的用户数据
         IQueryable<ApplicationUser> query = _userRepository.GetUsersQueryable();
@@ -60,7 +60,7 @@ public class UserService : IUserService
         // 获取数据并映射到 DTO
         List<UserDto> userDtos = _mapper.Map<List<UserDto>>(await pagedQuery.ToListAsync());
 
-        return new ListData<UserDto>(userDtos, totalCount);
+        return new PageList<UserDto>(userDtos, totalCount);
     }
 
     private IQueryable<ApplicationUser> ApplyFilters(IQueryable<ApplicationUser> query, UserQueryDto queryDto)
@@ -386,11 +386,11 @@ public class UserService : IUserService
     public async Task<List<UserGrowthDto>> GetUserGrowthAsync(DateTimeOffset startDate, DateTimeOffset endDate)
     {
         IQueryable<ApplicationUser> query = _userManager.Users
-            .Where(u => u.CreationTime >= startDate.Date && u.CreationTime <= endDate.Date);
+            .Where(u => u.CreatedAt >= startDate.UtcDateTime.Date && u.CreatedAt <= endDate.UtcDateTime.Date);
 
         // 按天统计用户注册数量
         var dailyGrowth = await query
-            .GroupBy(u => u.CreationTime.Date)
+            .GroupBy(u => u.CreatedAt.Date)
             .Select(g => new { Date = g.Key, UserCount = g.Count() })
             .OrderBy(g => g.Date)
             .ToListAsync();
@@ -503,7 +503,6 @@ public class UserService : IUserService
                     EmailConfirmed = true, // 默认确认邮箱
                     PhoneNumberConfirmed = !string.IsNullOrEmpty(dto.PhoneNumber), // 如果提供了手机号，则确认
                     LockoutEnabled = true, // 启用锁定功能
-                    CreationTime = DateTime.Now
                 };
 
                 // 生成随机密码

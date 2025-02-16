@@ -54,7 +54,7 @@ namespace CodeSpirit.IdentityApi.Services
         /// <summary>
         /// 获取用户列表
         /// </summary>
-        Task<ListData<UserDto>> GetUsersAsync(UserQueryDto queryDto);
+        Task<PageList<UserDto>> GetUsersAsync(UserQueryDto queryDto);
 
         /// <summary>
         /// 根据ID列表获取用户

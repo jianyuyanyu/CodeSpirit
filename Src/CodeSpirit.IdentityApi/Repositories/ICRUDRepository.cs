@@ -10,7 +10,7 @@ namespace CodeSpirit.IdentityApi.Repositories
     where TUpdateDto : IUpdateDto
     where TQueryDto : QueryDtoBase
     {
-        Task<ListData<TDto>> GetAllAsync(TQueryDto parameters);
+        Task<PageList<TDto>> GetAllAsync(TQueryDto parameters);
         Task<TDto> GetByIdAsync(TKey id);
         Task<(bool Success, TKey Id)> CreateAsync(TCreateDto createDto);
         Task<bool> UpdateAsync(TKey id, TUpdateDto updateDto);

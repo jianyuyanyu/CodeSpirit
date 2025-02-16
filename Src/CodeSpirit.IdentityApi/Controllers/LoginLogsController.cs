@@ -29,9 +29,9 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="isSuccess">按登录结果过滤（可选）。</param>
         /// <returns>分页的登录日志列表。</returns>
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<ListData<LoginLogDto>>>> GetLoginLogs([FromQuery] LoginLogsQueryDto queryDto)
+        public async Task<ActionResult<ApiResponse<PageList<LoginLogDto>>>> GetLoginLogs([FromQuery] LoginLogsQueryDto queryDto)
         {
-            ListData<LoginLogDto> result = await _loginLogService.GetPagedLoginLogsAsync(queryDto);
+            PageList<LoginLogDto> result = await _loginLogService.GetPagedLoginLogsAsync(queryDto);
             return SuccessResponse(result);
         }
 

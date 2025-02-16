@@ -16,7 +16,7 @@ using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.DependencyInjection;
-using CodeSpirit.Shared.Entities;
+using CodeSpirit.Shared.Entities.Interfaces;
 using CodeSpirit.Shared.Filters;
 using CodeSpirit.Shared.JsonConverters;
 using CodeSpirit.Shared.ModelBindings;
@@ -58,8 +58,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(typeof(IDataFilter<>), typeof(DataFilter<>));
         services.Configure<DataFilterOptions>(options =>
         {
-            options.DefaultStates[typeof(IDeletionAuditedObject)] = new DataFilterState(isEnabled: true);
-            options.DefaultStates[typeof(ITenant)] = new DataFilterState(isEnabled: true);
+            options.DefaultStates[typeof(ISoftDeleteAuditable)] = new DataFilterState(isEnabled: true);
             options.DefaultStates[typeof(IIsActive)] = new DataFilterState(isEnabled: true);
         });
 

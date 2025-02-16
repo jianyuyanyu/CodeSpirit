@@ -1,6 +1,6 @@
 ﻿using CodeSpirit.Core;
+using CodeSpirit.Core.Dtos;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Controllers.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Dtos.Common;
@@ -27,15 +27,15 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Users
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<ListData<UserDto>>>> GetUsers([FromQuery] UserQueryDto queryDto)
+        public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> GetUsers([FromQuery] UserQueryDto queryDto)
         {
-            ListData<UserDto> users = await _userService.GetUsersAsync(queryDto);
+            PageList<UserDto> users = await _userService.GetUsersAsync(queryDto);
             return SuccessResponse(users);
         }
 
         // GET: api/Users/Export
         [HttpGet("Export")]
-        public async Task<ActionResult<ApiResponse<ListData<UserDto>>>> Export([FromQuery] UserQueryDto queryDto)
+        public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> Export([FromQuery] UserQueryDto queryDto)
         {
             // 设置导出时的分页参数
             const int MaxExportLimit = 10000; // 最大导出数量限制
@@ -43,10 +43,10 @@ namespace CodeSpirit.IdentityApi.Controllers
             queryDto.Page = 1;
 
             // 获取用户数据
-            ListData<UserDto> users = await _userService.GetUsersAsync(queryDto);
+            PageList<UserDto> users = await _userService.GetUsersAsync(queryDto);
 
             // 如果数据为空则返回错误信息
-            return users.Items.Count == 0 ? BadResponse<ListData<UserDto>>("没有数据可供导出") : SuccessResponse(users);
+            return users.Items.Count == 0 ? BadResponse<PageList<UserDto>>("没有数据可供导出") : SuccessResponse(users);
         }
 
         // GET: api/Users/{id}

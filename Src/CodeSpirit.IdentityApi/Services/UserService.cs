@@ -3,6 +3,7 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Controllers.Dtos.User;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Utilities;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
@@ -10,7 +11,7 @@ using LinqKit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-public class UserService : BaseService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IScopedDependency
+public class UserService : BaseService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IUserService
 {
     private readonly IRepository<ApplicationUser> _userRepository;
     private readonly UserManager<ApplicationUser> _userManager;

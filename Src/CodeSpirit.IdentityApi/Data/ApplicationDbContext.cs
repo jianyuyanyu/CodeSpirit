@@ -51,7 +51,9 @@ namespace CodeSpirit.IdentityApi.Data
         /// <summary>
         /// 获取当前用户ID
         /// </summary>
-        protected virtual long? CurrentUserId => _currentUser.Id;
+        protected long? CurrentUserId => this.UserId ?? _currentUser?.Id;
+
+        public long? UserId { get; set; }
 
         public ApplicationDbContext(
             DbContextOptions<ApplicationDbContext> options,

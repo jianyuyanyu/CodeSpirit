@@ -5,6 +5,7 @@ using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Data.Seeders;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
@@ -12,11 +13,29 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
+using CodeSpirit.Shared.Repositories;
 
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddCustomServices(this IServiceCollection services)
     {
+        // 添加 DbContext 基类的解析
+        services.AddScoped<DbContext>(provider =>
+            provider.GetRequiredService<ApplicationDbContext>());
+
+        // 注册 Repositories 和 Handlers
+        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
+        services.AddScoped<SeederService>();
+        services.AddScoped<UserSeeder>();
+        services.AddScoped<RoleSeeder>();
+        services.AddScoped<ILoginLogService, LoginLogService>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
+
         // 注册自定义授权处理程序（这个需要特殊处理，因为是 Identity 框架的组件）
         services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
 
@@ -135,15 +154,35 @@ public static class ServiceCollectionExtensions
         });
     }
 
+    public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
+    {
+        string connectionString = configuration.GetConnectionString("identity-api");
+        Console.WriteLine($"Connection string: {connectionString}");
+
+        services.AddDbContext<ApplicationDbContext>(options =>
+        {
+            options.UseSqlServer(connectionString);
+
+            // 仅在开发环境下启用敏感数据日志和控制台日志
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                options.EnableSensitiveDataLogging()
+                       .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
+            }
+        });
+
+        return services;
+    }
+
     public static WebApplicationBuilder AddIdentityApiServices(this WebApplicationBuilder builder)
     {
         // Add service defaults & Aspire client integrations
         builder.AddServiceDefaults("identity-api");
 
         // Add services to the container
-        builder.Services.AddDatabase<ApplicationDbContext>(builder.Configuration, appName: "identity-api");
-        builder.Services.AddSystemServices(builder.Configuration, typeof(Program));
+        builder.Services.AddDatabase(builder.Configuration);
         builder.Services.AddCustomServices();
+        builder.Services.AddSystemServices(builder.Configuration, typeof(Program));
         builder.Services.AddIdentityServices();
         builder.Services.AddJwtAuthentication(builder.Configuration);
         builder.Services.ConfigureCustomControllers();
@@ -165,7 +204,7 @@ public static class ServiceCollectionExtensions
             try
             {
                 // 调用数据初始化方法
-                await DataSeeder.SeedAsync(services, logger);
+                await DataSeeder.SeedAsync(services);
             }
             catch (Exception ex)
             {

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data.Models;
 using System.Data;
 
@@ -22,6 +23,9 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
             CreateMap<UpdateUserDto, ApplicationUser>()
                 .ForMember(dest => dest.UserName, opt => opt.Ignore()) // 通常不允许通过 UpdateUserDto 修改 UserName
                 .ForMember(dest => dest.Email, opt => opt.Ignore()); // 如果需要，可以根据需求调整
+
+            // 添加 PageList 映射配置
+            CreateMap<PageList<ApplicationUser>, PageList<UserDto>>();
         }
     }
 }

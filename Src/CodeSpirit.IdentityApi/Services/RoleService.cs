@@ -11,7 +11,7 @@ using Microsoft.Extensions.Caching.Distributed;
 
 namespace CodeSpirit.IdentityApi.Services
 {
-    public class RoleService : BaseService<ApplicationRole, RoleDto, long, RoleCreateDto, RoleUpdateDto, RoleBatchImportItemDto>, IScopedDependency
+    public class RoleService : BaseService<ApplicationRole, RoleDto, long, RoleCreateDto, RoleUpdateDto, RoleBatchImportItemDto>, IRoleService
     {
         private readonly IRepository<ApplicationRole> _roleRepository;
         private readonly IDistributedCache _cache;

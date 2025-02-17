@@ -12,9 +12,9 @@ using System.ComponentModel;
 [Permission(code: PermissionCodes.RoleManagement)]
 public class RolesController : ApiControllerBase
 {
-    private readonly RoleService _roleService;
+    private readonly IRoleService _roleService;
 
-    public RolesController(RoleService roleService)
+    public RolesController(IRoleService roleService)
     {
         _roleService = roleService;
     }

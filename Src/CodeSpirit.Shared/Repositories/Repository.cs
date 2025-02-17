@@ -1,12 +1,13 @@
 ﻿using CodeSpirit.Core;
 using CodeSpirit.Shared.Entities.Interfaces;
-using CodeSpirit.Shared.Extensions.Extensions;
+using CodeSpirit.Shared.Extensions;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
 namespace CodeSpirit.Shared.Repositories
 {
-    public class Repository<TEntity> : IRepository<TEntity> where TEntity : class
+    public class Repository<TEntity> : IRepository<TEntity>
+        where TEntity : class
     {
         protected readonly DbContext _context;
         protected readonly DbSet<TEntity> _dbSet;

@@ -4,41 +4,38 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.Shared.Data;
-using CodeSpirit.Shared.DependencyInjection;
 using CodeSpirit.Shared.Entities.Interfaces;
 using CodeSpirit.Shared.Filters;
 using CodeSpirit.Shared.JsonConverters;
 using CodeSpirit.Shared.ModelBindings;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 namespace CodeSpirit.Shared.Extensions;
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddDatabase<TDbContext>(this IServiceCollection services, IConfiguration configuration, string appName) where TDbContext : DbContext
-    {
-        string connectionString = configuration.GetConnectionString(appName);
+    //public static IServiceCollection AddDatabase<TDbContext>(this IServiceCollection services, IConfiguration configuration, string appName) where TDbContext : DbContext
+    //{
+    //    string connectionString = configuration.GetConnectionString(appName);
 
-        services.AddDbContext<DbContext>(options =>
-        {
-            options.UseSqlServer(connectionString);
+    //    services.AddDbContext<DbContext>(options =>
+    //    {
+    //        options.UseSqlServer(connectionString);
 
-            // 仅在开发环境下启用敏感数据日志和控制台日志
-            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
-            {
-                options.EnableSensitiveDataLogging()
-                       .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
-            }
-        });
+    //        // 仅在开发环境下启用敏感数据日志和控制台日志
+    //        if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+    //        {
+    //            options.EnableSensitiveDataLogging()
+    //                   .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
+    //        }
+    //    });
 
-        return services;
-    }
+    //    return services;
+    //}
 
     public static IServiceCollection AddDataFilters(this IServiceCollection services)
     {
@@ -60,9 +57,6 @@ public static class ServiceCollectionExtensions
         services.AddMemoryCache();
         services.AddDistributedMemoryCache();
 
-        // 添加服务注册，确保包含了所有服务所在的程序集
-        services.AddDependencyInjection(programType.Assembly);
-
         // 注册 AutoMapper
         services.AddAutoMapper(programType);
 
@@ -72,8 +66,8 @@ public static class ServiceCollectionExtensions
         // 注册雪花ID生成器服务
         services.AddSingleton<IIdGenerator, SnowflakeIdGenerator>();
 
-        // 注册 Repositories 和 Handlers
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        //// 注册 Repositories 和 Handlers
+        //services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddDataFilters();
         services.AddCodeSpiritAuthorization();
 
@@ -81,6 +75,8 @@ public static class ServiceCollectionExtensions
 
         //注册 AMIS 服务
         services.AddAmisServices(configuration, apiAssembly: programType.Assembly);
+        // 添加服务注册，确保包含了所有服务所在的程序集
+        //services.AddDependencyInjection(programType.Assembly);
         return services;
     }
 

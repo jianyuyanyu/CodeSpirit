@@ -16,8 +16,7 @@ namespace CodeSpirit.Shared.Services;
 /// <typeparam name="TCreateDto">创建DTO类型</typeparam>
 /// <typeparam name="TUpdateDto">更新DTO类型</typeparam>
 /// <typeparam name="TBatchImportDto">批量导入DTO类型</typeparam>
-public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, TBatchImportDto>
-    where TEntity : class
+public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, TBatchImportDto> : IBaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, TBatchImportDto> where TEntity : class
     where TDto : class
     where TKey : IEquatable<TKey>
     where TCreateDto : class

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Data.Models;
 
@@ -20,6 +21,9 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
             CreateMap<RoleUpdateDto, ApplicationRole>();
 
             CreateMap<RoleBatchImportItemDto, ApplicationRole>();
+
+            // 添加 PageList 映射配置
+            CreateMap<PageList<ApplicationRole>, PageList<RoleDto>>();
         }
     }
 }

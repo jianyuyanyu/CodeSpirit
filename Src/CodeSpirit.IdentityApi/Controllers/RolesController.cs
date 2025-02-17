@@ -43,8 +43,7 @@ public class RolesController : ApiControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<ApiResponse>> Update(long id, RoleUpdateDto updateDto)
     {
-        updateDto.Id = id; // 确保 ID 被正确设置
-        await _roleService.UpdateAsync(updateDto);
+        await _roleService.UpdateAsync(id, updateDto);
         return SuccessResponse();
     }
 

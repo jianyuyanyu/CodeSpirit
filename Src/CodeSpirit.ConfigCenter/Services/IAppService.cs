@@ -1,5 +1,6 @@
 ﻿using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Dtos.QueryDtos;
+using CodeSpirit.ConfigCenter.Models;
 
 namespace CodeSpirit.ConfigCenter.Services
 {
@@ -53,7 +54,7 @@ namespace CodeSpirit.ConfigCenter.Services
         /// 更新应用信息
         /// </summary>
         /// <param name="appDto">应用更新数据传输对象</param>
-        Task UpdateAppAsync(UpdateAppDto appDto);
+        Task UpdateAppAsync(string id, UpdateAppDto appDto);
 
         /// <summary>
         /// 验证应用密钥

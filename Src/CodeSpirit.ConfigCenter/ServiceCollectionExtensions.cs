@@ -5,7 +5,6 @@ using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using Newtonsoft.Json;
-
 public static class ServiceCollectionExtensions
 {
 

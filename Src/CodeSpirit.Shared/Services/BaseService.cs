@@ -1,7 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Dtos;
-using CodeSpirit.Core.Models;
 using CodeSpirit.Shared.Repositories;
 using System.Linq.Expressions;
 
@@ -20,7 +19,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     where TDto : class
     where TKey : IEquatable<TKey>
     where TCreateDto : class
-    where TUpdateDto : IHasId<TKey>
+    where TUpdateDto : class
     where TBatchImportDto : class
 {
     protected readonly IRepository<TEntity> Repository;
@@ -49,14 +48,16 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
         int perPage,
         Expression<Func<TEntity, bool>> predicate = null,
         string orderBy = null,
-        string orderDir = null)
+        string orderDir = null,
+        params string[] includes)
     {
         PageList<TEntity> result = await Repository.GetPagedAsync(
             page,
             perPage,
             predicate,
             orderBy,
-            orderDir
+            orderDir,
+            includes
         );
 
         return Mapper.Map<PageList<TDto>>(result);
@@ -65,14 +66,16 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// <summary>
     /// 获取分页列表
     /// </summary>
-    public virtual async Task<PageList<TDto>> GetPagedListAsync<TQueryDto>(TQueryDto queryDto, Expression<Func<TEntity, bool>> predicate = null) where TQueryDto : QueryDtoBase
+    public virtual async Task<PageList<TDto>> GetPagedListAsync<TQueryDto>(TQueryDto queryDto, Expression<Func<TEntity, bool>> predicate = null,
+        params string[] includes) where TQueryDto : QueryDtoBase
     {
         PageList<TEntity> result = await Repository.GetPagedAsync(
             queryDto.Page,
             queryDto.PerPage,
             predicate,
             queryDto.OrderBy,
-            queryDto.OrderDir
+            queryDto.OrderDir,
+            includes
         );
 
         return Mapper.Map<PageList<TDto>>(result);
@@ -99,13 +102,13 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// <summary>
     /// 更新实体
     /// </summary>
-    public virtual async Task UpdateAsync(TUpdateDto updateDto)
+    public virtual async Task UpdateAsync(TKey id, TUpdateDto updateDto)
     {
         ArgumentNullException.ThrowIfNull(updateDto);
 
-        await ValidateUpdateDto(updateDto);
+        await ValidateUpdateDto(id, updateDto);
 
-        TEntity entity = await GetEntityForUpdate(updateDto);
+        TEntity entity = await GetEntityForUpdate(id, updateDto);
         ArgumentNullException.ThrowIfNull(entity);
 
         Mapper.Map(updateDto, entity);
@@ -216,7 +219,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// <summary>
     /// 验证更新DTO
     /// </summary>
-    protected virtual Task ValidateUpdateDto(TUpdateDto updateDto) => Task.CompletedTask;
+    protected virtual Task ValidateUpdateDto(TKey id, TUpdateDto updateDto) => Task.CompletedTask;
 
     /// <summary>
     /// 验证导入项
@@ -226,9 +229,9 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// <summary>
     /// 获取要更新的实体
     /// </summary>
-    protected virtual async Task<TEntity> GetEntityForUpdate(TUpdateDto updateDto)
+    protected virtual async Task<TEntity> GetEntityForUpdate(TKey id, TUpdateDto updateDto)
     {
-        TEntity entity = await Repository.GetByIdAsync(updateDto.Id);
+        TEntity entity = await Repository.GetByIdAsync(id);
         return entity == null ? throw new AppServiceException(404, "实体不存在！") : entity;
     }
 

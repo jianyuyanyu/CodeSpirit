@@ -113,18 +113,18 @@ public class UserService : BaseService<ApplicationUser, UserDto, long, CreateUse
         return Mapper.Map<UserDto>(user);
     }
 
-    protected override async Task<ApplicationUser> GetEntityForUpdate(UpdateUserDto updateDto)
+    protected override async Task<ApplicationUser> GetEntityForUpdate(long id, UpdateUserDto updateDto)
     {
         ApplicationUser user = await _userManager.Users
             .Include(u => u.UserRoles)
-            .FirstOrDefaultAsync(u => u.Id == updateDto.Id);
+            .FirstOrDefaultAsync(u => u.Id == id);
 
         return user ?? throw new AppServiceException(404, "用户不存在！");
     }
 
-    public override async Task UpdateAsync(UpdateUserDto updateDto)
+    public override async Task UpdateAsync(long id, UpdateUserDto updateDto)
     {
-        ApplicationUser entity = await GetEntityForUpdate(updateDto);
+        ApplicationUser entity = await GetEntityForUpdate(id, updateDto);
         // 使用 AutoMapper 更新用户属性
         Mapper.Map(updateDto, entity);
         IdentityResult result = await _userManager.UpdateAsync(entity);

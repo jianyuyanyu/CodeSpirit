@@ -1,14 +1,11 @@
 ﻿// Controllers/RolesController.cs
-using CodeSpirit.Core.Models;
 using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers.Dtos.Role
 {
     // DTO 用于更新角色
-    public class RoleUpdateDto : IHasId<long>
+    public class RoleUpdateDto
     {
-        public long Id { get; set; }
-
         [Required]
         [MaxLength(100)]
         public string Name { get; set; }

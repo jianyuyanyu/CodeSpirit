@@ -76,9 +76,9 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     /// 更新应用信息
     /// </summary>
     /// <param name="appDto">更新应用DTO</param>
-    public async Task UpdateAppAsync(UpdateAppDto appDto)
+    public async Task UpdateAppAsync(string id,UpdateAppDto appDto)
     {
-        await UpdateAsync(appDto);
+        await UpdateAsync(id, appDto);
     }
 
     /// <summary>
@@ -145,9 +145,9 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     /// </summary>
     /// <param name="updateDto">更新DTO</param>
     /// <returns>待更新的应用实体</returns>
-    protected override async Task<App> GetEntityForUpdate(UpdateAppDto updateDto)
+    protected override async Task<App> GetEntityForUpdate(string id, UpdateAppDto updateDto)
     {
-        return await Repository.GetByIdAsync(updateDto.Id);
+        return await Repository.GetByIdAsync(id);
     }
 
     /// <summary>

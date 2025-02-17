@@ -88,13 +88,7 @@ public class AppsController : ApiControllerBase
     [HttpPut("{appId}")]
     public async Task<ActionResult<ApiResponse>> UpdateApp(string appId, UpdateAppDto updateAppDto)
     {
-        ArgumentNullException.ThrowIfNull(updateAppDto);
-
-        if (appId != updateAppDto.Id)
-        {
-            return BadResponse("应用ID不匹配");
-        }
-        await _appService.UpdateAppAsync(updateAppDto);
+        await _appService.UpdateAppAsync(appId, updateAppDto);
         return SuccessResponse();
     }
 

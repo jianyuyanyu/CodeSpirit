@@ -1,8 +1,7 @@
-﻿using CodeSpirit.Core.Models;
-using CodeSpirit.IdentityApi.Data.Models;
+﻿using CodeSpirit.IdentityApi.Data.Models;
 using System.ComponentModel;
 
-public class UpdateUserDto : IHasId<long>
+public class UpdateUserDto
 {
     [Required]
     [MaxLength(20)]
@@ -48,5 +47,4 @@ public class UpdateUserDto : IHasId<long>
 
     [DisplayName("手机号码")]
     public string PhoneNumber { get; set; }
-    public long Id { get; }
 }

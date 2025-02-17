@@ -1,9 +1,7 @@
-using CodeSpirit.Core.Models;
-
 /// <summary>
 /// 更新配置 DTO
 /// </summary>
-public class UpdateConfigDto : IHasId<int>
+public class UpdateConfigDto
 {
     /// <summary>
     /// 配置值
@@ -28,5 +26,4 @@ public class UpdateConfigDto : IHasId<int>
     /// </summary>
     [StringLength(50)]
     public string Type { get; set; }
-    public int Id { get; }
 }

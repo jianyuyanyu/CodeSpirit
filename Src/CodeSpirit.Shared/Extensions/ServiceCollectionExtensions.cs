@@ -10,32 +10,34 @@ using CodeSpirit.Shared.JsonConverters;
 using CodeSpirit.Shared.ModelBindings;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 namespace CodeSpirit.Shared.Extensions;
 public static class ServiceCollectionExtensions
 {
-    //public static IServiceCollection AddDatabase<TDbContext>(this IServiceCollection services, IConfiguration configuration, string appName) where TDbContext : DbContext
-    //{
-    //    string connectionString = configuration.GetConnectionString(appName);
+    public static IServiceCollection AddDatabase<TDbContext>(this IServiceCollection services, IConfiguration configuration, string appName) where TDbContext : DbContext
+    {
+        string connectionString = configuration.GetConnectionString(appName);
 
-    //    services.AddDbContext<DbContext>(options =>
-    //    {
-    //        options.UseSqlServer(connectionString);
+        services.AddDbContext<DbContext>(options =>
+        {
+            options.UseSqlServer(connectionString);
 
-    //        // 仅在开发环境下启用敏感数据日志和控制台日志
-    //        if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
-    //        {
-    //            options.EnableSensitiveDataLogging()
-    //                   .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
-    //        }
-    //    });
+            // 仅在开发环境下启用敏感数据日志和控制台日志
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                options.EnableSensitiveDataLogging()
+                       .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
+            }
+        });
 
-    //    return services;
-    //}
+        return services;
+    }
 
     public static IServiceCollection AddDataFilters(this IServiceCollection services)
     {

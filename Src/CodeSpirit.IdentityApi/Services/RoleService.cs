@@ -44,7 +44,8 @@ namespace CodeSpirit.IdentityApi.Services
 
             return await GetPagedListAsync(
                 queryDto,
-                predicate
+                predicate,
+                "RolePermission"
             );
         }
 
@@ -94,9 +95,9 @@ namespace CodeSpirit.IdentityApi.Services
                 : distinctDtos;
         }
 
-        protected override async Task<ApplicationRole> GetEntityForUpdate(RoleUpdateDto updateDto)
+        protected override async Task<ApplicationRole> GetEntityForUpdate(long id, RoleUpdateDto updateDto)
         {
-            ApplicationRole entity = await _roleRepository.GetByIdAsync(updateDto.Id);
+            ApplicationRole entity = await _roleRepository.GetByIdAsync(id);
             return entity == null ? throw new AppServiceException(404, "角色不存在！") : entity;
         }
 

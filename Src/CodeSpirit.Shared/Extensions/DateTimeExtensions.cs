@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Shared.Extensions
+﻿namespace CodeSpirit.Shared.Extensions.Extensions
 {
     public static class DateTimeExtensions
     {

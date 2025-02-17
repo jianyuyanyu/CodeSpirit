@@ -1,6 +1,6 @@
 ﻿using CodeSpirit.Core;
 using CodeSpirit.Shared.Entities.Interfaces;
-using CodeSpirit.Shared.Extensions;
+using CodeSpirit.Shared.Extensions.Extensions;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -22,39 +22,54 @@ namespace CodeSpirit.Shared.Repositories
             return _dbSet.AsQueryable();
         }
 
-        public async Task<TEntity> AddAsync(TEntity entity)
+        public async Task<int> SaveChangesAsync()
+        {
+            return await _context.SaveChangesAsync();
+        }
+
+        public async Task<TEntity> AddAsync(TEntity entity, bool saveChanges = true)
         {
             await _dbSet.AddAsync(entity);
-            await _context.SaveChangesAsync();
+            if (saveChanges)
+            {
+                await SaveChangesAsync();
+            }
             return entity;
         }
 
-        public async Task UpdateAsync(TEntity entity)
+        public async Task UpdateAsync(TEntity entity, bool saveChanges = true)
         {
             _dbSet.Update(entity);
-            await _context.SaveChangesAsync();
+            if (saveChanges)
+            {
+                await SaveChangesAsync();
+            }
         }
 
-        public async Task DeleteAsync(TEntity entity)
+        public async Task DeleteAsync(TEntity entity, bool saveChanges = true)
         {
             if (entity is ISoftDeleteAuditable softDeleteEntity)
             {
                 softDeleteEntity.IsDeleted = true;
-                await UpdateAsync(entity);
+                _dbSet.Update(entity);
             }
             else
             {
                 _dbSet.Remove(entity);
-                await _context.SaveChangesAsync();
+            }
+
+            if (saveChanges)
+            {
+                await SaveChangesAsync();
             }
         }
 
-        public async Task DeleteAsync(object id)
+        public async Task DeleteAsync(object id, bool saveChanges = true)
         {
-            var entity = await GetByIdAsync(id);
+            TEntity entity = await GetByIdAsync(id);
             if (entity != null)
             {
-                await DeleteAsync(entity);
+                await DeleteAsync(entity, saveChanges);
             }
         }
 
@@ -75,23 +90,70 @@ namespace CodeSpirit.Shared.Repositories
 
         public async Task<PageList<TEntity>> GetPagedAsync(int pageIndex, int pageSize,
             Expression<Func<TEntity, bool>> predicate = null,
-            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null)
+            Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
+            params string[] includes)
         {
-            var query = _dbSet.AsQueryable();
+            IQueryable<TEntity> query = _dbSet.AsQueryable();
+
+            if (includes != null)
+            {
+                foreach (string include in includes)
+                {
+                    query = query.Include(include);
+                }
+            }
 
             if (predicate != null)
             {
                 query = query.Where(predicate);
             }
 
-            var totalCount = await query.CountAsync();
+            int totalCount = await query.CountAsync();
 
             if (orderBy != null)
             {
                 query = orderBy(query);
             }
 
-            var items = await query
+            List<TEntity> items = await query
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PageList<TEntity>(items, totalCount);
+        }
+
+        public async Task<PageList<TEntity>> GetPagedAsync(
+            int pageIndex,
+            int pageSize,
+            Expression<Func<TEntity, bool>> predicate = null,
+            string orderBy = null,
+            string orderDir = null,
+            params string[] includes)
+        {
+            IQueryable<TEntity> query = _dbSet.AsQueryable();
+
+            if (includes != null)
+            {
+                foreach (string include in includes)
+                {
+                    query = query.Include(include);
+                }
+            }
+
+            if (predicate != null)
+            {
+                query = query.Where(predicate);
+            }
+
+            int totalCount = await query.CountAsync();
+
+            if (orderBy != null)
+            {
+                query = query.ApplySorting(orderBy, orderDir);
+            }
+
+            List<TEntity> items = await query
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -101,7 +163,7 @@ namespace CodeSpirit.Shared.Repositories
 
         public async Task ExecuteInTransactionAsync(Func<Task> operation)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 await operation();
@@ -114,30 +176,54 @@ namespace CodeSpirit.Shared.Repositories
             }
         }
 
-        public async Task<PageList<TEntity>> GetPagedAsync(int pageIndex, int pageSize, Expression<Func<TEntity, bool>> predicate = null, string orderBy = null, string orderDir = null)
+        /// <summary>
+        /// 异步检查是否存在满足条件的实体
+        /// </summary>
+        /// <param name="predicate">查询条件表达式</param>
+        /// <returns>如果存在返回 true，否则返回 false</returns>
+        public async Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate)
         {
-            var query = _dbSet.AsQueryable();
+            return await _dbSet.AnyAsync(predicate);
+        }
 
-            if (predicate != null)
-            {
-                query = query.Where(predicate);
-            }
+        /// <summary>
+        /// 同步检查是否存在满足条件的实体
+        /// </summary>
+        /// <param name="predicate">查询条件表达式</param>
+        /// <returns>如果存在返回 true，否则返回 false</returns>
+        public bool Exists(Expression<Func<TEntity, bool>> predicate)
+        {
+            return _dbSet.Any(predicate);
+        }
 
-            var totalCount = await query.CountAsync();
+        public Task<PageList<TEntity>> GetPagedAsync(int pageIndex, int pageSize, Expression<Func<TEntity, bool>> predicate = null, Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null)
+        {
+            throw new NotImplementedException();
+        }
 
-            if (orderBy != null)
-            {
-                // 应用排序
-                query = query
-                    .ApplySorting(orderBy, orderDir);  // 自定义排序扩展方法
-            }
+        public Task<PageList<TEntity>> GetPagedAsync(int pageIndex, int pageSize, Expression<Func<TEntity, bool>> predicate = null, string orderBy = null, string orderDir = null)
+        {
+            throw new NotImplementedException();
+        }
 
-            var items = await query
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+        public Task<TEntity> AddAsync(TEntity entity)
+        {
+            throw new NotImplementedException();
+        }
 
-            return new PageList<TEntity>(items, totalCount);
+        public Task UpdateAsync(TEntity entity)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task DeleteAsync(TEntity entity)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task DeleteAsync(object id)
+        {
+            throw new NotImplementedException();
         }
     }
 }

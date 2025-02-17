@@ -1,6 +1,7 @@
 using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Core.Models;
 using CodeSpirit.Shared.Repositories;
 using System.Linq.Expressions;
 
@@ -20,7 +21,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     where TDto : class
     where TKey : IEquatable<TKey>
     where TCreateDto : class
-    where TUpdateDto : class
+    where TUpdateDto : IHasId<TKey>
     where TBatchImportDto : class
 {
     protected readonly IRepository<TEntity> Repository;
@@ -37,7 +38,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// </summary>
     public virtual async Task<TDto> GetAsync(TKey id)
     {
-        var entity = await Repository.GetByIdAsync(id);
+        TEntity entity = await Repository.GetByIdAsync(id);
         return entity != null ? Mapper.Map<TDto>(entity) : null;
     }
 
@@ -51,7 +52,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
         string orderBy = null,
         string orderDir = null)
     {
-        var result = await Repository.GetPagedAsync(
+        PageList<TEntity> result = await Repository.GetPagedAsync(
             page,
             perPage,
             predicate,
@@ -67,7 +68,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// </summary>
     public virtual async Task<PageList<TDto>> GetPagedListAsync<TQueryDto>(TQueryDto queryDto, Expression<Func<TEntity, bool>> predicate = null) where TQueryDto : QueryDtoBase
     {
-        var result = await Repository.GetPagedAsync(
+        PageList<TEntity> result = await Repository.GetPagedAsync(
             queryDto.Page,
             queryDto.PerPage,
             predicate,
@@ -81,18 +82,19 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// <summary>
     /// 创建实体
     /// </summary>
-    public virtual async Task<TEntity> CreateAsync(TCreateDto createDto)
+    public virtual async Task<TDto> CreateAsync(TCreateDto createDto)
     {
         ArgumentNullException.ThrowIfNull(createDto);
 
         await ValidateCreateDto(createDto);
 
-        var entity = Mapper.Map<TEntity>(createDto);
-        await OnCreating(entity);
+        TEntity entity = Mapper.Map<TEntity>(createDto);
+        await OnCreating(entity, createDto);
 
-        var createdEntity = await Repository.AddAsync(entity);
-        await OnCreated(createdEntity);
-        return createdEntity;
+        TEntity createdEntity = await Repository.AddAsync(entity);
+        await OnCreated(createdEntity, createDto);
+        TDto dto = Mapper.Map<TDto>(createdEntity);
+        return dto;
     }
 
     /// <summary>
@@ -104,7 +106,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
 
         await ValidateUpdateDto(updateDto);
 
-        var entity = await GetEntityForUpdate(updateDto);
+        TEntity entity = await GetEntityForUpdate(updateDto);
         ArgumentNullException.ThrowIfNull(entity);
 
         Mapper.Map(updateDto, entity);
@@ -119,8 +121,11 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// </summary>
     public virtual async Task DeleteAsync(TKey id)
     {
-        var entity = await Repository.GetByIdAsync(id);
-        if (entity == null) return;
+        TEntity entity = await Repository.GetByIdAsync(id);
+        if (entity == null)
+        {
+            return;
+        }
 
         await OnDeleting(entity);
         await Repository.DeleteAsync(id);
@@ -134,16 +139,16 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     {
         ArgumentNullException.ThrowIfNull(importData);
 
-        var successCount = 0;
-        var failedIds = new List<string>();
-        var validEntities = new List<TEntity>();
+        int successCount = 0;
+        List<string> failedIds = [];
+        List<TEntity> validEntities = [];
+        IEnumerable<TBatchImportDto> items = await ValidateImportItems(importData);
 
-        foreach (var item in importData)
+        foreach (TBatchImportDto item in items)
         {
             try
             {
-                await ValidateImportItem(item);
-                var entity = Mapper.Map<TEntity>(item);
+                TEntity entity = Mapper.Map<TEntity>(item);
                 await OnImporting(entity);
                 validEntities.Add(entity);
             }
@@ -155,11 +160,12 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
 
         await Repository.ExecuteInTransactionAsync(async () =>
         {
-            foreach (var entity in validEntities)
+            foreach (TEntity entity in validEntities)
             {
-                await Repository.AddAsync(entity);
+                await Repository.AddAsync(entity, false);
                 successCount++;
             }
+            await Repository.SaveChangesAsync();
         });
 
         return (successCount, failedIds);
@@ -172,15 +178,19 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     {
         ArgumentNullException.ThrowIfNull(ids);
 
-        var successCount = 0;
-        var failedIds = new List<TKey>();
-        var distinctIds = ids.Distinct().ToList();
+        int successCount = 0;
+        List<TKey> failedIds = [];
+        List<TKey> distinctIds = ids.Distinct().ToList();
+        if (!distinctIds.Any())
+        {
+            throw new AppServiceException(400, "无有效的ID！");
+        }
 
         await Repository.ExecuteInTransactionAsync(async () =>
         {
-            foreach (var id in distinctIds)
+            foreach (TKey id in distinctIds)
             {
-                var entity = await Repository.GetByIdAsync(id);
+                TEntity entity = await Repository.GetByIdAsync(id);
                 if (entity == null)
                 {
                     failedIds.Add(id);
@@ -189,6 +199,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
 
                 await OnDeleting(entity);
                 await Repository.DeleteAsync(id);
+                await OnDeleted(entity);
                 successCount++;
             }
         });
@@ -211,12 +222,16 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// <summary>
     /// 验证导入项
     /// </summary>
-    protected virtual Task ValidateImportItem(TBatchImportDto importDto) => Task.CompletedTask;
+    protected virtual Task<IEnumerable<TBatchImportDto>> ValidateImportItems(IEnumerable<TBatchImportDto> importData) => (Task<IEnumerable<TBatchImportDto>>)Task.CompletedTask;
 
     /// <summary>
     /// 获取要更新的实体
     /// </summary>
-    protected abstract Task<TEntity> GetEntityForUpdate(TUpdateDto updateDto);
+    protected virtual async Task<TEntity> GetEntityForUpdate(TUpdateDto updateDto)
+    {
+        TEntity entity = await Repository.GetByIdAsync(updateDto.Id);
+        return entity == null ? throw new AppServiceException(404, "实体不存在！") : entity;
+    }
 
     /// <summary>
     /// 获取导入项的ID
@@ -226,7 +241,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// <summary>
     /// 创建前的处理
     /// </summary>
-    protected virtual Task OnCreating(TEntity entity) => Task.CompletedTask;
+    protected virtual Task OnCreating(TEntity entity, TCreateDto createDto) => Task.CompletedTask;
 
     /// <summary>
     /// 更新前的处理
@@ -246,7 +261,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// <summary>
     /// 创建后的处理
     /// </summary>
-    protected virtual Task OnCreated(TEntity entity) => Task.CompletedTask;
+    protected virtual Task OnCreated(TEntity entity, TCreateDto createDto) => Task.CompletedTask;
 
     /// <summary>
     /// 更新后的处理

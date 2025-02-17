@@ -1,44 +1,13 @@
-using CodeSpirit.ConfigCenter.Services;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Ìí¼Ó SignalR
-builder.Services.AddSignalR();
+// ä½¿ç”¨ ConfigCenter æ‰©å±•æ–¹æ³•æ³¨å†Œæ‰€æœ‰æœåŠ¡
+builder.AddConfigCenter();
 
-// ×¢²áÅäÖÃ»º´æ·şÎñ
-builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<IConfigCacheService, MemoryCacheConfigService>();
+WebApplication app = builder.Build();
 
-// ×¢²áÅäÖÃ±ä¸üÍ¨Öª·şÎñ
-builder.Services.AddSingleton<IConfigChangeNotifier, SignalRConfigChangeNotifier>();
-
-// ... ÆäËû·şÎñ×¢²á ...
-
-// ÅäÖÃ SignalR ÖÕ½áµã
-//app.MapHub<ConfigChangeHub>("/hubs/configChange");
-
-////¿Í»§¶ËÁ¬½ÓÊ¾Àı
-//// ´´½¨ SignalR Á¬½Ó
-//const connection = new signalR.HubConnectionBuilder()
-//.withUrl("/hubs/configChange")
-//    .build();
-
-//// ¶©ÔÄÅäÖÃ±ä¸ü
-//connection.on("ConfigChanged", (appId, environment) => {
-//console.log(`Config changed for ${ appId}/${ environment}`);
-//// ÖØĞÂ¼ÓÔØÅäÖÃ
-//loadConfigs();
-//});
-
-//// Á¬½Óµ½ Hub
-//await connection.start();
-
-//// ¼ÓÈëÓ¦ÓÃÅäÖÃ×é
-//await connection.invoke("JoinAppGroup", appId, environment);
-
-var app = builder.Build();
+// é…ç½®ä¸­é—´ä»¶
+app.UseCors("AllowSpecificOriginsWithCredentials");
+app.ConfigureApp();
 app.Run();

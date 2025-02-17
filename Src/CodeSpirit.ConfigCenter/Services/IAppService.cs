@@ -1,6 +1,5 @@
 ﻿using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Dtos.QueryDtos;
-using CodeSpirit.ConfigCenter.Models;
 
 namespace CodeSpirit.ConfigCenter.Services
 {
@@ -28,7 +27,7 @@ namespace CodeSpirit.ConfigCenter.Services
         /// </summary>
         /// <param name="appDto">应用创建数据传输对象</param>
         /// <returns>创建的应用实体</returns>
-        Task<App> CreateAppAsync(CreateAppDto appDto);
+        Task<AppDto> CreateAppAsync(CreateAppDto appDto);
 
         /// <summary>
         /// 删除指定应用

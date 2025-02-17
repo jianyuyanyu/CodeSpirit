@@ -24,12 +24,8 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpGet]
         public async Task<ActionResult<ApiResponse<PageList<AuditLogDto>>>> GetAuditLogs([FromQuery] AuditLogQueryDto queryDto)
         {
-            (List<AuditLogDto> logs, int total) = await _auditLogService.GetAuditLogsAsync(queryDto);
-            return SuccessResponse(new PageList<AuditLogDto>
-            {
-                Items = logs,
-                Total = total
-            });
+            PageList<AuditLogDto> results = await _auditLogService.GetAuditLogsAsync(queryDto);
+            return SuccessResponse(results);
         }
 
         [HttpGet("{id}")]

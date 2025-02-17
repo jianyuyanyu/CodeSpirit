@@ -6,8 +6,6 @@ using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System.ComponentModel;
 
 namespace CodeSpirit.ConfigCenter.Controllers;
 
@@ -37,7 +35,7 @@ public class AppsController : ApiControllerBase
         ArgumentNullException.ThrowIfNull(appService);
         ArgumentNullException.ThrowIfNull(mapper);
         ArgumentNullException.ThrowIfNull(logger);
-        
+
         _appService = appService;
         _mapper = mapper;
         _logger = logger;
@@ -51,7 +49,7 @@ public class AppsController : ApiControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PageList<AppDto>>>> GetApps([FromQuery] AppQueryDto queryDto)
     {
-        var apps = await _appService.GetAppsAsync(queryDto);
+        PageList<AppDto> apps = await _appService.GetAppsAsync(queryDto);
         return SuccessResponse(apps);
     }
 
@@ -63,7 +61,7 @@ public class AppsController : ApiControllerBase
     [HttpGet("{appId}")]
     public async Task<ActionResult<ApiResponse<AppDto>>> GetApp(string appId)
     {
-        var app = await _appService.GetAppAsync(appId);
+        AppDto app = await _appService.GetAppAsync(appId);
         return SuccessResponse(app);
     }
 
@@ -76,9 +74,8 @@ public class AppsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<AppDto>>> CreateApp(CreateAppDto createAppDto)
     {
         ArgumentNullException.ThrowIfNull(createAppDto);
-        
-        var app = await _appService.CreateAppAsync(createAppDto);
-        var appDto = _mapper.Map<AppDto>(app);
+
+        AppDto appDto = await _appService.CreateAppAsync(createAppDto);
         return SuccessResponseWithCreate(nameof(GetApp), appDto);
     }
 
@@ -92,7 +89,7 @@ public class AppsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> UpdateApp(string appId, UpdateAppDto updateAppDto)
     {
         ArgumentNullException.ThrowIfNull(updateAppDto);
-        
+
         if (appId != updateAppDto.Id)
         {
             return BadResponse("应用ID不匹配");
@@ -123,15 +120,12 @@ public class AppsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<AppBatchImportItemDto> importDto)
     {
         ArgumentNullException.ThrowIfNull(importDto);
-        
-        var (successCount, failedAppIds) = await _appService.BatchImportAppsAsync(importDto.ImportData);
-        
-        if (failedAppIds.Any())
-        {
-            return SuccessResponse($"成功导入 {successCount} 个应用，但以下应用导入失败: {string.Join(", ", failedAppIds)}");
-        }
-        
-        return SuccessResponse($"成功导入 {successCount} 个应用！");
+
+        (int successCount, List<string> failedAppIds) = await _appService.BatchImportAppsAsync(importDto.ImportData);
+
+        return failedAppIds.Any()
+            ? SuccessResponse($"成功导入 {successCount} 个应用，但以下应用导入失败: {string.Join(", ", failedAppIds)}")
+            : SuccessResponse($"成功导入 {successCount} 个应用！");
     }
 
     /// <summary>
@@ -144,14 +138,11 @@ public class AppsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchDeleteDto<string> request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
-        var (successCount, failedAppIds) = await _appService.BatchDeleteAppsAsync(request.Ids);
 
-        if (failedAppIds.Any())
-        {
-            return SuccessResponse($"成功删除 {successCount} 个应用，但以下应用删除失败: {string.Join(", ", failedAppIds)}");
-        }
+        (int successCount, List<string> failedAppIds) = await _appService.BatchDeleteAppsAsync(request.Ids);
 
-        return SuccessResponse($"成功删除 {successCount} 个应用！");
+        return failedAppIds.Any()
+            ? SuccessResponse($"成功删除 {successCount} 个应用，但以下应用删除失败: {string.Join(", ", failedAppIds)}")
+            : SuccessResponse($"成功删除 {successCount} 个应用！");
     }
-} 
+}

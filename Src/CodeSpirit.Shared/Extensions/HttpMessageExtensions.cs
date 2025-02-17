@@ -1,6 +1,6 @@
 ﻿using System.Net.Http.Json;
 
-namespace CodeSpirit.Shared.Extensions
+namespace CodeSpirit.Shared.Extensions.Extensions
 {
     /// <summary>
     /// http请求、响应 扩展类

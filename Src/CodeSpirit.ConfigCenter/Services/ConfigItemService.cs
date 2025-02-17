@@ -5,7 +5,6 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace CodeSpirit.ConfigCenter.Services;
@@ -45,19 +44,19 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         try
         {
             // 尝试从缓存获取
-            var cacheKey = $"config:{appId}:{environment}:{key}";
-            var cachedValue = await _cacheService.GetAsync(cacheKey);
+            string cacheKey = $"config:{appId}:{environment}:{key}";
+            string cachedValue = await _cacheService.GetAsync(cacheKey);
             if (cachedValue != null)
             {
                 return JsonConvert.DeserializeObject<ConfigItemDto>(cachedValue);
             }
 
-            var predicate = PredicateBuilder.New<ConfigItem>()
+            System.Linq.Expressions.Expression<Func<ConfigItem, bool>> predicate = PredicateBuilder.New<ConfigItem>()
                 .And(x => x.AppId == appId)
                 .And(x => x.Environment.ToString() == environment)
                 .And(x => x.Key == key);
 
-            var config = await repository.Find(predicate).FirstOrDefaultAsync();
+            ConfigItem config = await repository.Find(predicate).FirstOrDefaultAsync();
             if (config == null)
             {
                 throw new AppServiceException(404, "配置不存在");
@@ -79,7 +78,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     /// </summary>
     public async Task<PageList<ConfigItemDto>> GetConfigsAsync(ConfigItemQueryDto queryDto)
     {
-        var predicate = PredicateBuilder.New<ConfigItem>(true);
+        ExpressionStarter<ConfigItem> predicate = PredicateBuilder.New<ConfigItem>(true);
 
         if (!string.IsNullOrEmpty(queryDto.AppId))
         {
@@ -128,14 +127,14 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     protected override async Task ValidateCreateDto(CreateConfigDto createDto)
     {
         // 验证应用是否存在
-        var app = await _appRepository.GetByIdAsync(createDto.AppId);
+        App app = await _appRepository.GetByIdAsync(createDto.AppId);
         if (app == null)
         {
             throw new AppServiceException(404, "应用不存在");
         }
 
         // 验证配置是否已存在
-        var exists = await Repository.Find(x =>
+        ConfigItem exists = await Repository.Find(x =>
             x.AppId == createDto.AppId &&
             x.Environment.ToString() == createDto.Environment &&
             x.Key == createDto.Key).FirstOrDefaultAsync();
@@ -149,7 +148,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     /// <summary>
     /// 创建实体后的处理
     /// </summary>
-    protected override async Task OnCreated(ConfigItem entity)
+    protected override async Task OnCreated(ConfigItem entity, CreateConfigDto createConfigDto)
     {
         // 清除缓存
         await _cacheService.RemoveAsync($"config:{entity.AppId}:{entity.Environment}:{entity.Key}");

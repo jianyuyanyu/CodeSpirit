@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace CodeSpirit.Shared.Extensions
+namespace CodeSpirit.Shared.Extensions.Extensions
 {
     /// <summary>
     /// 小写转大写

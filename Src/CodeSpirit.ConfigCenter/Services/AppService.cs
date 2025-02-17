@@ -19,7 +19,7 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     /// </summary>
     /// <param name="repository">应用仓储</param>
     /// <param name="mapper">对象映射器</param>
-    public AppService(IRepository<App> repository, IMapper mapper) 
+    public AppService(IRepository<App> repository, IMapper mapper)
         : base(repository, mapper)
     {
     }
@@ -41,7 +41,7 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     /// <returns>应用信息分页列表</returns>
     public async Task<PageList<AppDto>> GetAppsAsync(AppQueryDto queryDto)
     {
-        var predicate = PredicateBuilder.New<App>(true);
+        ExpressionStarter<App> predicate = PredicateBuilder.New<App>(true);
 
         if (!string.IsNullOrEmpty(queryDto.AppId))
         {
@@ -67,7 +67,7 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     /// </summary>
     /// <param name="appDto">创建应用DTO</param>
     /// <returns>创建的应用实体</returns>
-    public async Task<App> CreateAppAsync(CreateAppDto appDto)
+    public async Task<AppDto> CreateAppAsync(CreateAppDto appDto)
     {
         return await CreateAsync(appDto);
     }
@@ -98,7 +98,7 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     /// <returns>验证是否通过</returns>
     public async Task<bool> ValidateAppSecretAsync(string appId, string secret)
     {
-        var app = await GetAsync(appId);
+        AppDto app = await GetAsync(appId);
         return app?.Secret == secret;
     }
 
@@ -120,7 +120,7 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     /// <returns>删除结果，包含成功数量和失败的应用ID列表</returns>
     public async Task<(int successCount, List<string> failedAppIds)> BatchDeleteAppsAsync(IEnumerable<string> appIds)
     {
-        var result = await BatchDeleteAsync(appIds);
+        (int successCount, List<string> failedIds) result = await BatchDeleteAsync(appIds);
         return (result.successCount, result.failedIds.Select(x => x.ToString()).ToList());
     }
 
@@ -133,7 +133,7 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     /// <exception cref="AppServiceException">当应用ID已存在时抛出异常</exception>
     protected override async Task ValidateCreateDto(CreateAppDto createDto)
     {
-        var exists = await GetAsync(createDto.Id);
+        AppDto exists = await GetAsync(createDto.Id);
         if (exists != null)
         {
             throw new AppServiceException(400, "ID已存在！");
@@ -164,7 +164,7 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     /// 创建实体前的处理
     /// </summary>
     /// <param name="entity">待创建的应用实体</param>
-    protected override Task OnCreating(App entity)
+    protected override Task OnCreating(App entity, CreateAppDto createAppDto)
     {
         entity.Secret = GenerateAppSecret();
         return Task.CompletedTask;

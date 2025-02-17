@@ -1,4 +1,4 @@
-﻿using CodeSpirit.Shared.Extensions;
+﻿using CodeSpirit.Shared.Extensions.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;

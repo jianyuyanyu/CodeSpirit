@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
 
-namespace CodeSpirit.Shared.Extensions
+namespace CodeSpirit.Shared.Extensions.Extensions
 {
     public static class EnumExtensions
     {

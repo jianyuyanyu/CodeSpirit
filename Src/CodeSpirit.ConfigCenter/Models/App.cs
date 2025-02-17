@@ -1,6 +1,4 @@
-using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.Shared.Entities;
-using System.ComponentModel;
 
 namespace CodeSpirit.ConfigCenter.Models;
 /// <summary>
@@ -72,4 +70,4 @@ public class App : AuditableEntityBase<string>
     /// 应用的配置项集合
     /// </summary>
     public ICollection<ConfigItem> ConfigItems { get; set; }
-} 
+}

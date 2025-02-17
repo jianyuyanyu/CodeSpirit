@@ -2,7 +2,7 @@
 using System.Linq.Dynamic.Core;
 using System.Linq.Dynamic.Core.Exceptions;
 
-namespace CodeSpirit.Shared.Extensions
+namespace CodeSpirit.Shared.Extensions.Extensions
 {
     public static class QueryableExtensions
     {

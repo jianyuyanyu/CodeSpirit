@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Dynamic;
 
-namespace CodeSpirit.Shared.Extensions
+namespace CodeSpirit.Shared.Extensions.Extensions
 {
     public static class DictionaryExtensions
     {

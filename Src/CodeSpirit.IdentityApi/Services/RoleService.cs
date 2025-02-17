@@ -1,149 +1,117 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Repositories;
+using CodeSpirit.Shared.Repositories;
+using CodeSpirit.Shared.Services;
+using LinqKit;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 
 namespace CodeSpirit.IdentityApi.Services
 {
-    public class RoleService : IRoleService
+    public class RoleService : BaseService<ApplicationRole, RoleDto, long, RoleCreateDto, RoleUpdateDto, RoleBatchImportItemDto>, IScopedDependency
     {
-        private readonly IRoleRepository _roleRepository;
-        private readonly IMapper _mapper;
+        private readonly IRepository<ApplicationRole> _roleRepository;
         private readonly IDistributedCache _cache;
         private readonly ILogger<RoleService> _logger;
+        private readonly IIdGenerator idGenerator;
 
-        public RoleService(IRoleRepository roleRepository, IMapper mapper, IDistributedCache cache, ILogger<RoleService> logger)
+        public RoleService(
+            IRepository<ApplicationRole> roleRepository,
+            IMapper mapper,
+            IDistributedCache cache,
+            ILogger<RoleService> logger,
+            IIdGenerator idGenerator)
+            : base(roleRepository, mapper)
         {
             _roleRepository = roleRepository;
-            _mapper = mapper;
             _cache = cache;
             _logger = logger;
+            this.idGenerator = idGenerator;
         }
 
-        public async Task<(List<RoleDto> roles, int total)> GetRolesAsync(RoleQueryDto queryDto)
+        public async Task<PageList<RoleDto>> GetRolesAsync(RoleQueryDto queryDto)
         {
-            (List<ApplicationRole> roles, int total) = await _roleRepository.GetRolesAsync(queryDto);
-            return (_mapper.Map<List<RoleDto>>(roles), total);
-        }
+            ExpressionStarter<ApplicationRole> predicate = PredicateBuilder.New<ApplicationRole>(true);
 
-        public async Task<RoleDto> GetRoleByIdAsync(long id)
-        {
-            ApplicationRole role = await _roleRepository.GetRoleByIdAsync(id);
-            return _mapper.Map<RoleDto>(role);
-        }
-
-        public async Task<RoleDto> CreateRoleAsync(RoleCreateDto createDto)
-        {
-            ApplicationRole role = _mapper.Map<ApplicationRole>(createDto);
-            await _roleRepository.CreateRoleAsync(role, createDto.PermissionAssignments);
-            // 清理所有拥有该角色的用户的权限缓存
-            await ClearUserPermissionsCacheByRoleAsync(role.Id);
-            return _mapper.Map<RoleDto>(role);
-        }
-
-        public async Task UpdateRoleAsync(long id, RoleUpdateDto updateDto)
-        {
-            ApplicationRole role = await _roleRepository.GetRoleByIdAsync(id);
-            _mapper.Map(updateDto, role);
-            await _roleRepository.UpdateRoleAsync(role, updateDto.PermissionIds);
-            // 清理所有拥有该角色的用户的权限缓存
-            await ClearUserPermissionsCacheByRoleAsync(role.Id);
-        }
-
-        public async Task DeleteRoleAsync(long id)
-        {
-            ApplicationRole role = await _roleRepository.GetRoleByIdAsync(id);
-            
-            // 检查是否为 Admin 角色
-            if (role.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(queryDto.Keywords))
             {
-                throw new AppServiceException(400, "Admin角色不允许删除！");
+                predicate = predicate.Or(x => x.Name.Contains(queryDto.Keywords));
+                predicate = predicate.Or(x => x.Description.Contains(queryDto.Keywords));
             }
 
-            if (role.RolePermission != null && role.RolePermission.PermissionIds != null)
-            {
-                throw new AppServiceException(400, "请移除权限后再删除该角色！");
-            }
-            
-            await _roleRepository.DeleteRoleAsync(role);
-            // 清理所有拥有该角色的用户的权限缓存
-            await ClearUserPermissionsCacheByRoleAsync(role.Id);
+            return await GetPagedListAsync(
+                queryDto,
+                predicate
+            );
         }
 
-        private async Task ClearUserPermissionsCacheByRoleAsync(long id)
+        public async Task<(int successCount, List<string> failedIds)> BatchImportRolesAsync(List<RoleBatchImportItemDto> importDtos)
         {
-            List<long> userIds = await _roleRepository.GetUserIdsByRoleId(id);
+            // 去重处理
+            List<RoleBatchImportItemDto> distinctImportDtos = importDtos
+                .GroupBy(x => x.Name.ToLower())
+                .Select(g => g.First())
+                .ToList();
 
-            IEnumerable<Task> cacheTasks = userIds.Select(userId =>
-                _cache.RemoveAsync($"UserPermissions_{userId}"));
-
-            await Task.WhenAll(cacheTasks);
+            (int successCount, List<string> failedIds) result = await BatchImportAsync(distinctImportDtos);
+            return result;
         }
 
-        /// <summary>
-        /// 批量导入角色（高性能）
-        /// </summary>
-        /// <param name="importDtos">批量导入 DTO 列表</param>
-        public async Task BatchImportRolesAsync(List<RoleBatchImportItemDto> importDtos)
+        #region Override Base Methods
+
+        protected override async Task ValidateCreateDto(RoleCreateDto createDto)
         {
-            // 数据不能为空
-            if (importDtos == null || !importDtos.Any())
+            if (await _roleRepository.ExistsAsync(r => r.Name == createDto.Name))
             {
-                throw new AppServiceException(400, "导入数据不能为空！");
+                throw new AppServiceException(400, "角色名称已存在！");
             }
+        }
 
-            // 校验导入数据格式是否合法
-            List<RoleBatchImportItemDto> invalidDtos = importDtos.Where(dto => string.IsNullOrEmpty(dto.Name) || dto.Name.Length > 100).ToList();
-            if (invalidDtos.Any())
-            {
-                throw new AppServiceException(400, $"以下角色数据格式错误: {string.Join(", ", invalidDtos.Select(dto => dto.Name))}！");
-            }
-
+        protected override async Task<IEnumerable<RoleBatchImportItemDto>> ValidateImportItems(IEnumerable<RoleBatchImportItemDto> importData)
+        {
             // 去重处理：确保每个角色名唯一（在导入时去重）
-            List<RoleBatchImportItemDto> distinctDtos = importDtos
+            List<RoleBatchImportItemDto> distinctDtos = importData
                 .GroupBy(dto => dto.Name)
                 .Select(group => group.First())
                 .ToList();
 
             // 检查数据库中是否已有重复的角色名
-            List<ApplicationRole> existingRoles = await _roleRepository.GetRolesByNamesAsync(distinctDtos.Select(dto => dto.Name).ToList());
+            List<string> roleNames = distinctDtos.Select(dto => dto.Name).ToList();
+            List<ApplicationRole> existingRoles = await _roleRepository.CreateQuery()
+                .Where(role => roleNames.Contains(role.Name))
+                .ToListAsync();
 
-            List<RoleBatchImportItemDto> duplicateRoles = distinctDtos.Where(dto => existingRoles.Any(role => role.Name.Equals(dto.Name, StringComparison.OrdinalIgnoreCase))).ToList();
-            if (duplicateRoles.Any())
-            {
-                throw new AppServiceException(400, $"以下角色名已存在: {string.Join(", ", duplicateRoles.Select(dto => dto.Name))}！");
-            }
+            List<RoleBatchImportItemDto> duplicateRoles = distinctDtos
+                .Where(dto => existingRoles.Any(role =>
+                    role.Name.Equals(dto.Name, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
 
-            // 将 DTO 转换为实体集合
-            List<ApplicationRole> roles = [];
-            foreach (RoleBatchImportItemDto dto in distinctDtos)
-            {
-                // 利用 AutoMapper 将 DTO 映射为 ApplicationRole 实体
-                ApplicationRole role = _mapper.Map<ApplicationRole>(dto);
-                roles.Add(role);
-            }
-
-            if (!roles.Any())
-            {
-                throw new AppServiceException(400, "没有有效的角色数据可以导入！");
-            }
-
-            // 批量插入角色（利用 EF Core 的 AddRange 提高性能）
-            try
-            {
-                // 使用批量插入 API，避免单条插入过多导致性能问题
-                await _roleRepository.BulkInsertRolesAsync(roles);
-                _logger.LogInformation($"成功批量导入了 {roles.Count} 个角色！");
-            }
-            catch (Exception ex)
-            {
-                // 记录批量插入异常日志
-                _logger.LogError($"批量插入角色数据失败: {ex.Message}");
-                throw new AppServiceException(500, "批量导入角色时发生错误，请稍后重试！");
-            }
+            return duplicateRoles.Any()
+                ? throw new AppServiceException(400, $"以下角色名已存在: {string.Join(", ", duplicateRoles.Select(dto => dto.Name))}！")
+                : distinctDtos;
         }
-    }
 
+        protected override async Task<ApplicationRole> GetEntityForUpdate(RoleUpdateDto updateDto)
+        {
+            ApplicationRole entity = await _roleRepository.GetByIdAsync(updateDto.Id);
+            return entity == null ? throw new AppServiceException(404, "角色不存在！") : entity;
+        }
+
+        protected override string GetImportItemId(RoleBatchImportItemDto importDto)
+        {
+            return importDto.Name;
+        }
+
+        protected override Task OnDeleting(ApplicationRole entity)
+        {
+            return entity.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase)
+                ? throw new AppServiceException(400, "Admin角色不允许删除！")
+                : entity.RolePermission?.PermissionIds != null ? throw new AppServiceException(400, "请移除权限后再删除该角色！") : Task.CompletedTask;
+        }
+
+        #endregion
+    }
 }

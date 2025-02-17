@@ -1,7 +1,9 @@
+using CodeSpirit.Core.Models;
+
 /// <summary>
 /// 更新应用 DTO
 /// </summary>
-public class UpdateAppDto
+public class UpdateAppDto : IHasId<string>
 {
     /// <summary>
     /// 应用名称
@@ -31,5 +33,5 @@ public class UpdateAppDto
     /// 是否自动发布
     /// </summary>
     public bool AutoPublish { get; set; }
-    public string Id { get; internal set; }
-} 
+    public string Id { get; set; }
+}

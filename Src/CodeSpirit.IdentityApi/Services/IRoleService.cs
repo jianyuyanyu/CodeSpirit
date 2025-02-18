@@ -1,6 +1,6 @@
 using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Dtos.Role;
 using CodeSpirit.Shared.Services;
 
 namespace CodeSpirit.IdentityApi.Services;

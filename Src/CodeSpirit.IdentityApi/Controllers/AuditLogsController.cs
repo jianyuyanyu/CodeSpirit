@@ -1,7 +1,7 @@
 using Audit.WebApi;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog;
+using CodeSpirit.IdentityApi.Dtos.AuditLog;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;

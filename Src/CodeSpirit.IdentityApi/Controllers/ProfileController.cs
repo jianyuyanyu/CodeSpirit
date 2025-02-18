@@ -1,5 +1,5 @@
 using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Profile;
+using CodeSpirit.IdentityApi.Dtos.Profile;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 

@@ -1,7 +1,7 @@
 using AutoMapper;
 using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos.LoginLogs;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Dtos.LoginLogs;
 
 namespace CodeSpirit.IdentityApi.MappingProfiles;
 

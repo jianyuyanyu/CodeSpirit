@@ -10,12 +10,14 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
         public UserProfile()
         {
             // 从 ApplicationUser 到 UserDto 的映射
-            CreateMap<ApplicationUser, UserDto>()
-                .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => src.UserRoles.Select(ur => ur.Role.Name)));
-
+        CreateMap<ApplicationUser, UserDto>()
+            .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => 
+                src.UserRoles != null ? 
+                src.UserRoles.Select(ur => ur.Role.Name).ToList() : 
+                new List<string>()));
+                
             // 从 CreateUserDto 到 ApplicationUser 的映射
             CreateMap<CreateUserDto, ApplicationUser>()
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid().ToString("N")))
                 //.ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
 

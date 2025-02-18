@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.Core.IdGenerator;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Dtos.Role;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;

@@ -1,5 +1,5 @@
 using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog;
+using CodeSpirit.IdentityApi.Dtos.AuditLog;
 
 namespace CodeSpirit.IdentityApi.Services
 {

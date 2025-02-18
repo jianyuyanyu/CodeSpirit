@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.Core.IdGenerator;
-using CodeSpirit.IdentityApi.Controllers.Dtos.User;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Utilities;
 using CodeSpirit.Shared.Repositories;
@@ -78,7 +78,27 @@ public class UserService : BaseService<ApplicationUser, UserDto, long, CreateUse
             predicate = predicate.And(u => u.LastLoginTime <= queryDto.LastLoginTime[1]);
         }
 
-        return await GetPagedListAsync(queryDto, predicate);
+        // 修改查询以包含用户角色
+        var query = _userRepository.CreateQuery()
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .Where(predicate);
+
+        // 执行分页查询
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((queryDto.Page - 1) * queryDto.PerPage)
+            .Take(queryDto.PerPage)
+            .ToListAsync();
+
+        // 映射结果
+        var mappedItems = Mapper.Map<List<UserDto>>(items);
+        
+        return new PageList<UserDto>
+        {
+            Total = totalCount,
+            Items = mappedItems
+        };
     }
 
     protected override async Task ValidateCreateDto(CreateUserDto createDto)
@@ -96,21 +116,55 @@ public class UserService : BaseService<ApplicationUser, UserDto, long, CreateUse
 
     public override async Task<UserDto> CreateAsync(CreateUserDto createDto)
     {
-        ApplicationUser user = Mapper.Map<ApplicationUser>(createDto);
+        // 验证用户名和邮箱
+        await ValidateCreateDto(createDto);
+        
+        // 创建用户实体
+        var user = Mapper.Map<ApplicationUser>(createDto);
         user.Id = _idGenerator.NewId();
 
+        // 生成随机密码
         string newPassword = PasswordGenerator.GenerateRandomPassword(12);
-        IdentityResult result = await _userManager.CreateAsync(user, newPassword);
+        
+        // 创建用户
+        var result = await _userManager.CreateAsync(user, newPassword);
         if (!result.Succeeded)
         {
             throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
         }
 
+        // 分配角色
         if (createDto.Roles?.Any() == true)
         {
-            await AssignRolesAsync(user, createDto.Roles);
+            // 验证角色是否存在
+            var validRoles = new List<string>();
+            foreach (var role in createDto.Roles)
+            {
+                if (await _roleManager.RoleExistsAsync(role))
+                {
+                    validRoles.Add(role);
+                }
+            }
+
+            if (validRoles.Any())
+            {
+                result = await _userManager.AddToRolesAsync(user, validRoles);
+                if (!result.Succeeded)
+                {
+                    // 如果角色分配失败，删除已创建的用户
+                    await _userManager.DeleteAsync(user);
+                    throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+                }
+            }
         }
-        return Mapper.Map<UserDto>(user);
+
+        // 重新获取包含角色信息的用户
+        var createdUser = await _userManager.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.Id == user.Id);
+
+        return Mapper.Map<UserDto>(createdUser);
     }
 
     protected override async Task<ApplicationUser> GetEntityForUpdate(long id, UpdateUserDto updateDto)
@@ -187,12 +241,26 @@ public class UserService : BaseService<ApplicationUser, UserDto, long, CreateUse
 
     private async Task AssignRolesAsync(ApplicationUser user, List<string> roles)
     {
-        List<string> validRoles = [];
-        foreach (string role in roles)
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(roles);
+
+        // 获取当前用户的角色
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        
+        // 找出需要添加的角色
+        var rolesToAdd = roles.Except(currentRoles, StringComparer.OrdinalIgnoreCase).ToList();
+        
+        // 验证角色是否存在
+        var validRoles = new List<string>();
+        foreach (var role in rolesToAdd)
         {
             if (await _roleManager.RoleExistsAsync(role))
             {
                 validRoles.Add(role);
+            }
+            else
+            {
+                _logger.LogWarning($"Role '{role}' does not exist and will be skipped.");
             }
         }
 
@@ -201,11 +269,14 @@ public class UserService : BaseService<ApplicationUser, UserDto, long, CreateUse
             throw new AppServiceException(400, "没有有效的角色可分配。");
         }
 
-        IdentityResult result = await _userManager.AddToRolesAsync(user, validRoles);
+        // 分配角色
+        var result = await _userManager.AddToRolesAsync(user, validRoles);
         if (!result.Succeeded)
         {
             throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
         }
+
+        _logger.LogInformation($"Successfully assigned roles {string.Join(", ", validRoles)} to user {user.UserName}");
     }
 
     public async Task UpdateUserAsync(long id, UpdateUserDto updateUserDto)

@@ -2,8 +2,8 @@
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Permission;
 using CodeSpirit.IdentityApi.Data;
+using CodeSpirit.IdentityApi.Dtos.Permission;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using System.ComponentModel;

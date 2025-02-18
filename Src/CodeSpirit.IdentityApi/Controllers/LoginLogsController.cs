@@ -1,7 +1,7 @@
 ﻿// Controllers/AuthController.cs
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos.LoginLogs;
+using CodeSpirit.IdentityApi.Dtos.LoginLogs;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;

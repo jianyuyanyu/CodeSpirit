@@ -1,7 +1,7 @@
 using AutoMapper;
 using CodeSpirit.Core;
-using CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Dtos.AuditLog;
 using CodeSpirit.Shared.Repositories;
 using LinqKit;
 

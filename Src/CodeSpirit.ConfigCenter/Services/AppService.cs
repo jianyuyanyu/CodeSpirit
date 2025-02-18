@@ -1,6 +1,5 @@
 using AutoMapper;
 using CodeSpirit.ConfigCenter.Dtos.App;
-using CodeSpirit.ConfigCenter.Dtos.QueryDtos;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;

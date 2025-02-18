@@ -1,5 +1,4 @@
 ﻿using CodeSpirit.ConfigCenter.Dtos.App;
-using CodeSpirit.ConfigCenter.Dtos.QueryDtos;
 using CodeSpirit.ConfigCenter.Models;
 
 namespace CodeSpirit.ConfigCenter.Services

@@ -1,3 +1,7 @@
+using CodeSpirit.ConfigCenter.Models.Enums;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+
 namespace CodeSpirit.ConfigCenter.Dtos.Config;
 
 /// <summary>
@@ -9,73 +13,72 @@ public class CreateConfigDto
     /// 应用ID
     /// </summary>
     [Required]
-    [StringLength(100)]
+    [StringLength(36)]
     [DisplayName("应用")]
     [AmisSelectField(
-        Source = "${API_HOST}/api/config/Apps",
+        Source = "${ROOT_API}/api/config/Apps",
         ValueField = "id",
         LabelField = "name",
         Searchable = true,
         Required = true,
         Placeholder = "请选择应用"
     )]
-    public string AppId { get; set; }
+    public required string AppId { get; set; }
 
     /// <summary>
-    /// 配置键
+    /// 配置键名
     /// </summary>
     [Required]
     [StringLength(100)]
     [DisplayName("配置键")]
     [RegularExpression(@"^[a-zA-Z0-9_:.]+$", ErrorMessage = "配置键只能包含字母、数字、下划线、冒号和点")]
-    public string Key { get; set; }
+    public required string Key { get; set; }
 
     /// <summary>
     /// 配置值
     /// </summary>
     [Required]
+    [StringLength(4000)]
     [DisplayName("配置值")]
-    //[AmisEditorField(
-    //    Language = "json",
-    //    Size = "lg",
-    //    AllowFullscreen = true,
-    //    VisibleOn = "type === 'json'"
-    //)]
-    //[AmisTextareaField(
-    //    ShowCounter = true,
-    //    VisibleOn = "type === 'text'"
-    //)]
-    public string Value { get; set; }
+    public required string Value { get; set; }
 
     /// <summary>
-    /// 环境
+    /// 应用环境
     /// </summary>
     [Required]
     [DisplayName("环境")]
-    public string Environment { get; set; }
+    public required EnvironmentType Environment { get; set; }
 
     /// <summary>
-    /// 配置组
+    /// 配置分组
     /// </summary>
-    [DisplayName("分组")]
-    [AmisSelectField(
-        Source = "${API_HOST}/api/config/Groups",
-        ValueField = "name",
-        LabelField = "name",
-        Searchable = true,
-        Clearable = true
-    )]
-    public string Group { get; set; }
+    [StringLength(50)]
+    [DisplayName("配置组")]
+    public string Group { get; set; } = string.Empty;
 
     /// <summary>
-    /// 描述
+    /// 配置说明
     /// </summary>
-    [StringLength(500)]
-    public string Description { get; set; }
+    [StringLength(200)]
+    [DisplayName("配置描述")]
+    public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// 配置类型
+    /// 配置值类型
     /// </summary>
-    [DisplayName("类型")]
-    public string Type { get; set; }
+    [Required]
+    [DisplayName("配置类型")]
+    public ConfigValueType ValueType { get; set; } = ConfigValueType.String;
+
+    /// <summary>
+    /// 是否启用
+    /// </summary>
+    [DisplayName("状态")]
+    public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// 配置状态
+    /// </summary>
+    [DisplayName("配置状态")]
+    public ConfigStatus Status { get; set; } = ConfigStatus.Init;
 } 

@@ -12,7 +12,7 @@ namespace CodeSpirit.ConfigCenter.Services;
 /// <summary>
 /// 配置项管理服务实现
 /// </summary>
-public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, CreateConfigDto, UpdateConfigDto, ConfigItemBatchImportDto>
+public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, CreateConfigDto, UpdateConfigDto, ConfigItemBatchImportDto>, IConfigItemService
 {
     private readonly IRepository<ConfigItem> repository;
     private readonly IRepository<App> _appRepository;
@@ -136,7 +136,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         // 验证配置是否已存在
         ConfigItem exists = await Repository.Find(x =>
             x.AppId == createDto.AppId &&
-            x.Environment.ToString() == createDto.Environment &&
+            x.Environment == createDto.Environment &&
             x.Key == createDto.Key).FirstOrDefaultAsync();
 
         if (exists != null)

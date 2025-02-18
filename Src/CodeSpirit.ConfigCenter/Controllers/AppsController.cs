@@ -1,7 +1,6 @@
 using AutoMapper;
 using CodeSpirit.ConfigCenter.Constants;
 using CodeSpirit.ConfigCenter.Dtos.App;
-using CodeSpirit.ConfigCenter.Dtos.QueryDtos;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Shared.Dtos.Common;
@@ -73,10 +72,8 @@ public class AppsController : ApiControllerBase
     [HttpPost]
     public async Task<ActionResult<ApiResponse<AppDto>>> CreateApp(CreateAppDto createAppDto)
     {
-        ArgumentNullException.ThrowIfNull(createAppDto);
-
         AppDto appDto = await _appService.CreateAppAsync(createAppDto);
-        return SuccessResponseWithCreate(nameof(GetApp), appDto);
+        return SuccessResponse(appDto);
     }
 
     /// <summary>

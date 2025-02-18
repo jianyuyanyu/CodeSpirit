@@ -37,10 +37,11 @@ public class CreateAppDto
     [DisplayName("继承自")]
     [StringLength(100)]
     [AmisSelectField(
-        Source = "${API_HOST}/api/config/Apps",
+        Source = "${ROOT_API}/api/config/Apps",
         ValueField = "id",
         LabelField = "name",
         Searchable = true,
+        Multiple = false,
         Clearable = true,
         Placeholder = "请选择要继承的应用"
     )]

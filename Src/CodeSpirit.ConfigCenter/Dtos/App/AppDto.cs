@@ -16,6 +16,7 @@ public class AppDto
     public string Name { get; set; }
 
     [DisplayName("应用密钥")]
+    [AmisColumn(Copyable = true)]
     public string Secret { get; set; }
 
     [DisplayName("描述")]
@@ -31,17 +32,7 @@ public class AppDto
     [DisplayName("自动发布")]
     public bool AutoPublish { get; set; }
 
-    [DisplayName("创建时间")]
-    [DateColumn(Format = "YYYY-MM-DD HH:mm")]
-    public DateTime CreateTime { get; set; }
-
-    [DisplayName("创建人")]
-    public string CreateBy { get; set; }
-
     [DisplayName("更新时间")]
     [DateColumn(Format = "YYYY-MM-DD HH:mm", FromNow = true)]
-    public DateTime? UpdateTime { get; set; }
-
-    [DisplayName("更新人")]
-    public string UpdateBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 } 

@@ -1,3 +1,7 @@
+using CodeSpirit.ConfigCenter.Models.Enums;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+
 namespace CodeSpirit.ConfigCenter.Dtos.Config;
 
 /// <summary>
@@ -8,58 +12,68 @@ public class ConfigItemDto
     /// <summary>
     /// 配置ID
     /// </summary>
-    public long Id { get; set; }
+    public int Id { get; set; }
 
     /// <summary>
     /// 应用ID
     /// </summary>
+    [Required]
+    [StringLength(36)]
     [DisplayName("应用")]
-    public string AppId { get; set; }
+    public required string AppId { get; set; }
 
     /// <summary>
-    /// 配置键
+    /// 配置键名
     /// </summary>
-    [DisplayName("配置项")]
+    [Required]
+    [StringLength(100)]
+    [DisplayName("配置键")]
     [TplColumn(template: "${key}")]
-    //[Badge(VisibleOn = "onlineStatus", Level = "success", Text = "已发布")]
     [Badge(VisibleOn = "!onlineStatus", Level = "warning", Text = "未发布")]
-    public string Key { get; set; }
+    public required string Key { get; set; }
 
     /// <summary>
     /// 配置值
     /// </summary>
+    [Required]
+    [StringLength(4000)]
     [DisplayName("配置值")]
-    public string Value { get; set; }
+    public required string Value { get; set; }
 
     /// <summary>
-    /// 环境
+    /// 应用环境
     /// </summary>
+    [Required]
     [DisplayName("环境")]
     [Badge(Level = "info")]
-    public string Environment { get; set; }
+    public required EnvironmentType Environment { get; set; }
 
     /// <summary>
-    /// 配置组
+    /// 配置分组
     /// </summary>
-    [DisplayName("分组")]
-    public string Group { get; set; }
+    [StringLength(50)]
+    [DisplayName("配置组")]
+    public string Group { get; set; } = string.Empty;
 
     /// <summary>
-    /// 描述
+    /// 配置说明
     /// </summary>
-    [DisplayName("描述")]
-    public string Description { get; set; }
+    [StringLength(200)]
+    [DisplayName("配置描述")]
+    public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// 是否已发布
+    /// 是否已发布上线
     /// </summary>
+    [DisplayName("发布状态")]
     public bool OnlineStatus { get; set; }
 
     /// <summary>
-    /// 配置类型
+    /// 配置值类型
     /// </summary>
-    [DisplayName("类型")]
-    public string Type { get; set; }
+    [Required]
+    [DisplayName("配置类型")]
+    public ConfigValueType ValueType { get; set; }
 
     /// <summary>
     /// 版本号
@@ -68,20 +82,26 @@ public class ConfigItemDto
     public long Version { get; set; }
 
     /// <summary>
-    /// 状态
+    /// 是否启用
     /// </summary>
-    [DisplayName("发布状态")]
-    //[StatusColumn(
-    //    StatusMap = new Dictionary<string, string> {
-    //        { "init", "准备中" },
-    //        { "edit", "编辑中" },
-    //        { "released", "已发布" }
-    //    },
-    //    StatusLabelMap = new Dictionary<string, string> {
-    //        { "init", "warning" },
-    //        { "edit", "info" },
-    //        { "released", "success" }
-    //    }
-    //)]
-    public string Status { get; set; }
+    [DisplayName("状态")]
+    public bool IsEnabled { get; set; }
+
+    /// <summary>
+    /// 配置状态
+    /// </summary>
+    [DisplayName("配置状态")]
+    public ConfigStatus Status { get; set; }
+
+    /// <summary>
+    /// 创建时间
+    /// </summary>
+    [DisplayName("创建时间")]
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// 更新时间
+    /// </summary>
+    [DisplayName("更新时间")]
+    public DateTime? UpdatedAt { get; set; }
 } 

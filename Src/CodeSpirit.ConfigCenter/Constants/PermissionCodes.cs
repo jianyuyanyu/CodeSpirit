@@ -13,7 +13,7 @@ public static class PermissionCodes
     /// <summary>
     /// 配置管理
     /// </summary>
-    public const string ConfigManagement = "config:item:manage";
+    public const string ConfigItemManagement = "config:item:manage";
 
     /// <summary>
     /// 发布管理

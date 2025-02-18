@@ -1,6 +1,6 @@
 using CodeSpirit.Core.Dtos;
 
-namespace CodeSpirit.ConfigCenter.Dtos.QueryDtos;
+namespace CodeSpirit.ConfigCenter.Dtos.App;
 
 /// <summary>
 /// 应用查询参数

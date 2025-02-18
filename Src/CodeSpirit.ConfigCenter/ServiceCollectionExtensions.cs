@@ -26,14 +26,33 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
+    {
+        string connectionString = configuration.GetConnectionString("config-api");
+        Console.WriteLine($"Connection string: {connectionString}");
+
+        services.AddDbContext<ConfigDbContext>(options =>
+        {
+            options.UseSqlServer(connectionString);
+
+            // 仅在开发环境下启用敏感数据日志和控制台日志
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                options.EnableSensitiveDataLogging()
+                       .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
+            }
+        });
+
+        return services;
+    }
+
     public static IServiceCollection AddConfigCenter(this WebApplicationBuilder builder)
     {
-        string appName = "config-api";
         // Add service defaults & Aspire client integrations
         builder.AddServiceDefaults();
 
         // Add services to the container
-        builder.Services.AddDatabase<ConfigDbContext>(builder.Configuration, appName);
+        builder.Services.AddDatabase(builder.Configuration);
         builder.Services.AddSystemServices(builder.Configuration, typeof(Program));
         builder.Services.AddCustomServices();
         builder.Services.ConfigureDefaultControllers();

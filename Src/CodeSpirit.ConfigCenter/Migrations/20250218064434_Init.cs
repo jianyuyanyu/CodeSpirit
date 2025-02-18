@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -14,8 +15,8 @@ namespace CodeSpirit.ConfigCenter.Migrations
                 name: "Apps",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Id = table.Column<string>(type: "nvarchar(36)", maxLength: 36, nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(36)", maxLength: 36, nullable: false),
                     Secret = table.Column<string>(type: "nvarchar(36)", maxLength: 36, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     Enabled = table.Column<bool>(type: "bit", nullable: false),
@@ -118,6 +119,12 @@ namespace CodeSpirit.ConfigCenter.Migrations
                 name: "IX_Apps_InheritancedAppId",
                 table: "Apps",
                 column: "InheritancedAppId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Apps_Name",
+                table: "Apps",
+                column: "Name",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_ConfigPublishHistorys_AppId",

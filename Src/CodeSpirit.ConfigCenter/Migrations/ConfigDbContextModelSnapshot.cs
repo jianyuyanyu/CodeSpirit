@@ -25,7 +25,8 @@ namespace CodeSpirit.ConfigCenter.Migrations
             modelBuilder.Entity("CodeSpirit.ConfigCenter.Models.App", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
 
                     b.Property<bool>("AutoPublish")
                         .HasColumnType("bit");
@@ -61,8 +62,8 @@ namespace CodeSpirit.ConfigCenter.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
 
                     b.Property<string>("Secret")
                         .IsRequired()
@@ -82,6 +83,9 @@ namespace CodeSpirit.ConfigCenter.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("InheritancedAppId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Apps");
                 });

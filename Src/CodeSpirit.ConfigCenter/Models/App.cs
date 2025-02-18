@@ -10,9 +10,9 @@ public class App : AuditableEntityBase<string>
     /// 应用名称
     /// </summary>
     [Required]
-    [StringLength(50)]
+    [StringLength(36)]
     [DisplayName("应用名称")]
-    public required string Name { get; set; }
+    public string Name { get; set; }
 
     /// <summary>
     /// 应用密钥，用于接口认证
@@ -59,7 +59,7 @@ public class App : AuditableEntityBase<string>
     /// </summary>
     [StringLength(36)]
     [DisplayName("继承应用ID")]
-    public string InheritancedAppId { get; set; } = string.Empty;
+    public string InheritancedAppId { get; set; }
 
     /// <summary>
     /// 继承的应用导航属性

@@ -35,6 +35,11 @@ public class ConfigDbContext : AuditableDbContext
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<App>(entity =>
+        {
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.Property(e => e.Id).HasMaxLength(36);
+        });
         base.OnModelCreating(modelBuilder);
     }
 }

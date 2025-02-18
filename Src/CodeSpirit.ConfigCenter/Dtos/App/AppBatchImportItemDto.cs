@@ -18,7 +18,7 @@ public class AppBatchImportItemDto
     /// <summary>
     /// 应用名称
     /// </summary>
-    [JsonProperty("名称")]
+    [JsonProperty("应用名称")]
     [Required]
     [MaxLength(100)]
     public string Name { get; set; }

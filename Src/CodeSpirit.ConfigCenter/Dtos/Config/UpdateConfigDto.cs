@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ConfigCenter.Models.Enums;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -15,6 +16,7 @@ public class UpdateConfigDto
     [Required]
     [StringLength(4000)]
     [DisplayName("配置值")]
+    [AmisTextareaField(MinRows = 3, MaxRows = 6, ShowCounter = true, MaxLength = 500)]
     public required string Value { get; set; }
 
     /// <summary>

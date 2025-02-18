@@ -40,6 +40,7 @@ namespace CodeSpirit.Amis
             services.AddTransient<IAmisFieldFactory, AmisInputTreeFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisInputExcelFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisFieldAttributeFactory>();
+            services.AddTransient<IAmisFieldFactory, AmisTextareaFieldFactory>();
 
             // 注册 AmisGenerator，并传递可选的 apiAssembly
             services.AddScoped<AmisGenerator>();

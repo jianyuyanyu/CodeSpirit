@@ -1,15 +1,17 @@
 namespace CodeSpirit.ConfigCenter.Data;
 
 using CodeSpirit.ConfigCenter.Models;
+using CodeSpirit.Core;
+using CodeSpirit.Shared.Data;
 using Microsoft.EntityFrameworkCore;
+using System;
 
 /// <summary>
 /// 配置中心数据库上下文
 /// </summary>
-public class ConfigDbContext : DbContext
+public class ConfigDbContext : AuditableDbContext
 {
-    public ConfigDbContext(DbContextOptions<ConfigDbContext> options) 
-        : base(options)
+    public ConfigDbContext(DbContextOptions options, IServiceProvider serviceProvider, ICurrentUser currentUser) : base(options, serviceProvider, currentUser)
     {
     }
 
@@ -35,4 +37,4 @@ public class ConfigDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
     }
-} 
+}

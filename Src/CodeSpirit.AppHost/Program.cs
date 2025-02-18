@@ -5,7 +5,10 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 //IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.CodeSpirit_ApiService>("apiservice");
 
 builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity-api");
-//builder.AddProject<Projects.>
+
+// 添加 ConfigCenter 服务
+builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config-center");
+
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     //.WithReference(cache)

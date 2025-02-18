@@ -9,5 +9,5 @@ WebApplication app = builder.Build();
 
 // 配置中间件
 app.UseCors("AllowSpecificOriginsWithCredentials");
-app.ConfigureApp();
+app.ConfigureAppAsync();
 app.Run();

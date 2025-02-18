@@ -9,12 +9,12 @@ using CodeSpirit.IdentityApi.Data.Seeders;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
+using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
-using CodeSpirit.Shared.Repositories;
 
 public static class ServiceCollectionExtensions
 {
@@ -177,7 +177,7 @@ public static class ServiceCollectionExtensions
     public static WebApplicationBuilder AddIdentityApiServices(this WebApplicationBuilder builder)
     {
         // Add service defaults & Aspire client integrations
-        builder.AddServiceDefaults("identity-api");
+        builder.AddServiceDefaults();
 
         // Add services to the container
         builder.Services.AddDatabase(builder.Configuration);

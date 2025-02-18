@@ -1,12 +1,10 @@
 ﻿using CodeSpirit.Amis.Controllers;
-using CodeSpirit.Core;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.ConfigCenter.Controllers
 {
     [ApiController]
-    [Authorize(policy: "DynamicPermissions")]
+    //[Authorize(policy: "DynamicPermissions")]
     [Route("api/config/[controller]")]
     public abstract class ApiControllerBase : AmisApiControllerBase
     {

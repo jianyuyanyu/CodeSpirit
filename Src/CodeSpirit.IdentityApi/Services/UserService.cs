@@ -1,19 +1,19 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.Core.IdGenerator;
-using CodeSpirit.IdentityApi.Controllers.Dtos.User;
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Repositories;
+using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Utilities;
-using CodeSpirit.Shared.Extensions;
+using CodeSpirit.Shared.Repositories;
+using CodeSpirit.Shared.Services;
+using LinqKit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-public class UserService : IUserService
+public class UserService : BaseService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IUserService
 {
-    private readonly IUserRepository _userRepository;
-    private readonly IMapper _mapper;
+    private readonly IRepository<ApplicationUser> _userRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly ILogger<UserService> _logger;
@@ -22,7 +22,7 @@ public class UserService : IUserService
     private readonly ICurrentUser _currentUser;
 
     public UserService(
-        IUserRepository userRepository,
+        IRepository<ApplicationUser> userRepository,
         IMapper mapper,
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
@@ -30,200 +30,285 @@ public class UserService : IUserService
         IHttpContextAccessor httpContextAccessor,
         IIdGenerator idGenerator,
         ICurrentUser currentUser)
+        : base(userRepository, mapper)
     {
         _userRepository = userRepository;
-        _mapper = mapper;
         _userManager = userManager;
         _roleManager = roleManager;
-        this._logger = logger;
+        _logger = logger;
         _httpContextAccessor = httpContextAccessor;
         _idGenerator = idGenerator;
         _currentUser = currentUser;
     }
 
-    public async Task<ListData<UserDto>> GetUsersAsync(UserQueryDto queryDto)
+    public async Task<PageList<UserDto>> GetUsersAsync(UserQueryDto queryDto)
     {
-        // 获取 IQueryable 类型的用户数据
-        IQueryable<ApplicationUser> query = _userRepository.GetUsersQueryable();
+        ExpressionStarter<ApplicationUser> predicate = PredicateBuilder.New<ApplicationUser>(true);
 
-        // 应用过滤、排序、分页等
-        IQueryable<ApplicationUser> filteredQuery = ApplyFilters(query, queryDto);
-
-        // 获取过滤后的总数
-        int totalCount = await filteredQuery.CountAsync();
-
-        // 分页
-        IQueryable<ApplicationUser> pagedQuery = filteredQuery
-            .ApplySorting(queryDto)  // 自定义排序扩展方法
-                .ApplyPaging(queryDto);  // 自定义分页扩展方法
-
-        // 获取数据并映射到 DTO
-        List<UserDto> userDtos = _mapper.Map<List<UserDto>>(await pagedQuery.ToListAsync());
-
-        return new ListData<UserDto>(userDtos, totalCount);
-    }
-
-    private IQueryable<ApplicationUser> ApplyFilters(IQueryable<ApplicationUser> query, UserQueryDto queryDto)
-    {
         // 应用搜索关键词过滤
         if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
         {
             string searchLower = queryDto.Keywords.ToLower();
-            query = query.Where(u =>
-                u.Name.ToLower().Contains(searchLower) ||
-                u.Email.ToLower().Contains(searchLower) ||
-                u.IdNo.Contains(queryDto.Keywords) ||
-                u.UserName.ToLower().Contains(searchLower));
+            predicate = predicate.Or(u => u.Name.ToLower().Contains(searchLower));
+            predicate = predicate.Or(u => u.Email.ToLower().Contains(searchLower));
+            predicate = predicate.Or(u => u.IdNo.Contains(queryDto.Keywords));
+            predicate = predicate.Or(u => u.UserName.ToLower().Contains(searchLower));
         }
 
-        // 应用用户是否激活过滤
+        // 应用其他过滤条件
         if (queryDto.IsActive.HasValue)
         {
-            query = query.Where(u => u.IsActive == queryDto.IsActive.Value);
+            predicate = predicate.And(u => u.IsActive == queryDto.IsActive.Value);
         }
 
-        // 应用性别过滤
         if (queryDto.Gender.HasValue)
         {
-            query = query.Where(u => u.Gender == queryDto.Gender.Value);
+            predicate = predicate.And(u => u.Gender == queryDto.Gender.Value);
         }
 
-        // 应用角色过滤
         if (!string.IsNullOrWhiteSpace(queryDto.Role))
         {
             string roleName = queryDto.Role.Trim();
-            query = query.Where(u => u.UserRoles.Any(ur => ur.Role.Name == roleName));
+            predicate = predicate.And(u => u.UserRoles.Any(ur => ur.Role.Name == roleName));
         }
 
-        // 应用最后登录时间范围过滤
         if (queryDto.LastLoginTime != null && queryDto.LastLoginTime.Length == 2)
         {
-            DateTime startDate = queryDto.LastLoginTime[0];
-            query = query.Where(u => u.LastLoginTime >= startDate);
-
-            DateTime endDate = queryDto.LastLoginTime[1];
-            query = query.Where(u => u.LastLoginTime <= endDate);
+            predicate = predicate.And(u => u.LastLoginTime >= queryDto.LastLoginTime[0]);
+            predicate = predicate.And(u => u.LastLoginTime <= queryDto.LastLoginTime[1]);
         }
 
-        // 返回过滤后的查询
-        return query;
+        // 修改查询以包含用户角色
+        var query = _userRepository.CreateQuery()
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .Where(predicate);
+
+        // 执行分页查询
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((queryDto.Page - 1) * queryDto.PerPage)
+            .Take(queryDto.PerPage)
+            .ToListAsync();
+
+        // 映射结果
+        var mappedItems = Mapper.Map<List<UserDto>>(items);
+        
+        return new PageList<UserDto>
+        {
+            Total = totalCount,
+            Items = mappedItems
+        };
     }
 
-    public async Task<UserDto> GetUserByIdAsync(long id)
+    protected override async Task ValidateCreateDto(CreateUserDto createDto)
     {
-        ApplicationUser user = await _userRepository.GetUserByIdAsync(id);
-        return user == null ? null : _mapper.Map<UserDto>(user);
+        if (await _userManager.FindByNameAsync(createDto.UserName) != null)
+        {
+            throw new AppServiceException(400, "用户名已存在！");
+        }
+
+        if (await _userManager.FindByEmailAsync(createDto.Email) != null)
+        {
+            throw new AppServiceException(400, "邮箱已存在！");
+        }
     }
 
-    public async Task<(IdentityResult, long?)> CreateUserAsync(CreateUserDto createUserDto)
+    public override async Task<UserDto> CreateAsync(CreateUserDto createDto)
     {
-        ApplicationUser user = _mapper.Map<ApplicationUser>(createUserDto);
+        // 验证用户名和邮箱
+        await ValidateCreateDto(createDto);
+        
+        // 创建用户实体
+        var user = Mapper.Map<ApplicationUser>(createDto);
         user.Id = _idGenerator.NewId();
 
+        // 生成随机密码
         string newPassword = PasswordGenerator.GenerateRandomPassword(12);
-        IdentityResult result = await _userManager.CreateAsync(user, newPassword);
+        
+        // 创建用户
+        var result = await _userManager.CreateAsync(user, newPassword);
         if (!result.Succeeded)
         {
-            return (result, null);
+            throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
         }
 
-        if (createUserDto.Roles != null && createUserDto.Roles.Any())
+        // 分配角色
+        if (createDto.Roles?.Any() == true)
         {
-            IdentityResult roleResult = await AssignRolesAsync(user, createUserDto.Roles);
-            if (!roleResult.Succeeded)
+            // 验证角色是否存在
+            var validRoles = new List<string>();
+            foreach (var role in createDto.Roles)
             {
-                return (roleResult, null);
+                if (await _roleManager.RoleExistsAsync(role))
+                {
+                    validRoles.Add(role);
+                }
             }
-        }
-        return (IdentityResult.Success, user.Id);
-    }
 
-    public async Task<IdentityResult> AssignRolesAsync(long id, List<string> roles)
-    {
-        ApplicationUser user = await _userManager.FindByIdAsync(id.ToString());
-        return user == null ? IdentityResult.Failed(new IdentityError { Description = "用户不存在！" }) : await AssignRolesAsync(user, roles);
-    }
-
-    public async Task<IdentityResult> RemoveRolesAsync(long id, List<string> roles)
-    {
-        ApplicationUser user = await _userManager.FindByIdAsync(id.ToString());
-        if (user == null)
-        {
-            return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
-        }
-
-        IList<string> userRoles = await _userManager.GetRolesAsync(user);
-        List<string> rolesToRemove = roles.Intersect(userRoles).ToList();
-
-        return !rolesToRemove.Any()
-            ? IdentityResult.Failed(new IdentityError { Description = "用户不具备指定的角色。" })
-            : await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
-    }
-
-    private async Task<IdentityResult> AssignRolesAsync(ApplicationUser user, List<string> roles)
-    {
-        List<string> validRoles = [];
-
-        foreach (string role in roles)
-        {
-            if (await _roleManager.RoleExistsAsync(role))
+            if (validRoles.Any())
             {
-                validRoles.Add(role);
+                result = await _userManager.AddToRolesAsync(user, validRoles);
+                if (!result.Succeeded)
+                {
+                    // 如果角色分配失败，删除已创建的用户
+                    await _userManager.DeleteAsync(user);
+                    throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+                }
             }
         }
 
-        return !validRoles.Any()
-            ? IdentityResult.Failed(new IdentityError { Description = "没有有效的角色可分配。" })
-            : await _userManager.AddToRolesAsync(user, validRoles);
+        // 重新获取包含角色信息的用户
+        var createdUser = await _userManager.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.Id == user.Id);
+
+        return Mapper.Map<UserDto>(createdUser);
     }
 
-    public async Task<IdentityResult> UpdateUserAsync(long id, UpdateUserDto updateUserDto)
+    protected override async Task<ApplicationUser> GetEntityForUpdate(long id, UpdateUserDto updateDto)
     {
         ApplicationUser user = await _userManager.Users
             .Include(u => u.UserRoles)
             .FirstOrDefaultAsync(u => u.Id == id);
 
-        if (user == null)
+        return user ?? throw new AppServiceException(404, "用户不存在！");
+    }
+
+    public override async Task UpdateAsync(long id, UpdateUserDto updateDto)
+    {
+        ApplicationUser entity = await GetEntityForUpdate(id, updateDto);
+        // 使用 AutoMapper 更新用户属性
+        Mapper.Map(updateDto, entity);
+        IdentityResult result = await _userManager.UpdateAsync(entity);
+        if (!result.Succeeded)
         {
-            return IdentityResult.Failed(new IdentityError { Description = "用户不存在！" });
+            throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+        if (updateDto.Roles != null && updateDto.Roles.Count > 0)
+        {
+            await UpdateUserRolesAsync(entity, updateDto.Roles);
+        }
+    }
+
+
+    protected override async Task OnDeleting(ApplicationUser entity)
+    {
+        if (entity.Id == _currentUser.Id)
+        {
+            throw new AppServiceException(400, "不能删除当前登录用户！");
         }
 
-        // 使用 AutoMapper 更新用户属性
-        _mapper.Map(updateUserDto, user);
+        if (await _userManager.IsInRoleAsync(entity, "Admin"))
+        {
+            throw new AppServiceException(400, "不能删除管理员用户！");
+        }
+    }
+
+    protected override string GetImportItemId(UserBatchImportItemDto importDto)
+    {
+        return importDto.UserName;
+    }
+
+    public async Task AssignRolesAsync(long id, List<string> roles)
+    {
+        ApplicationUser user = await _userManager.FindByIdAsync(id.ToString())
+            ?? throw new AppServiceException(404, "用户不存在！");
+
+        await AssignRolesAsync(user, roles);
+    }
+
+    public async Task RemoveRolesAsync(long id, List<string> roles)
+    {
+        ApplicationUser user = await _userManager.FindByIdAsync(id.ToString())
+            ?? throw new AppServiceException(404, "用户不存在！");
+
+        IList<string> userRoles = await _userManager.GetRolesAsync(user);
+        List<string> rolesToRemove = roles.Intersect(userRoles).ToList();
+
+        if (!rolesToRemove.Any())
+        {
+            throw new AppServiceException(400, "用户不具备指定的角色。");
+        }
+
+        IdentityResult result = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+        if (!result.Succeeded)
+        {
+            throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+    }
+
+    private async Task AssignRolesAsync(ApplicationUser user, List<string> roles)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(roles);
+
+        // 获取当前用户的角色
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        
+        // 找出需要添加的角色
+        var rolesToAdd = roles.Except(currentRoles, StringComparer.OrdinalIgnoreCase).ToList();
+        
+        // 验证角色是否存在
+        var validRoles = new List<string>();
+        foreach (var role in rolesToAdd)
+        {
+            if (await _roleManager.RoleExistsAsync(role))
+            {
+                validRoles.Add(role);
+            }
+            else
+            {
+                _logger.LogWarning($"Role '{role}' does not exist and will be skipped.");
+            }
+        }
+
+        if (!validRoles.Any())
+        {
+            throw new AppServiceException(400, "没有有效的角色可分配。");
+        }
+
+        // 分配角色
+        var result = await _userManager.AddToRolesAsync(user, validRoles);
+        if (!result.Succeeded)
+        {
+            throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+
+        _logger.LogInformation($"Successfully assigned roles {string.Join(", ", validRoles)} to user {user.UserName}");
+    }
+
+    public async Task UpdateUserAsync(long id, UpdateUserDto updateUserDto)
+    {
+        ApplicationUser user = await _userManager.Users
+            .Include(u => u.UserRoles)
+            .FirstOrDefaultAsync(u => u.Id == id)
+            ?? throw new AppServiceException(404, "用户不存在！");
+
+        Mapper.Map(updateUserDto, user);
 
         IdentityResult updateResult = await _userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
         {
-            return updateResult;
+            throw new AppServiceException(400, string.Join(", ", updateResult.Errors.Select(e => e.Description)));
         }
 
         if (updateUserDto.Roles != null)
         {
-            IdentityResult roleResult = await UpdateUserRolesAsync(user, updateUserDto.Roles);
-            if (!roleResult.Succeeded)
-            {
-                return roleResult;
-            }
+            await UpdateUserRolesAsync(user, updateUserDto.Roles);
         }
-
-        return IdentityResult.Success;
     }
 
-    private async Task<IdentityResult> UpdateUserRolesAsync(ApplicationUser user, List<string> newRoles)
+    private async Task UpdateUserRolesAsync(ApplicationUser user, List<string> newRoles)
     {
         IList<string> currentRoles = await _userManager.GetRolesAsync(user);
         List<string> rolesToAdd = newRoles.Except(currentRoles).ToList();
         List<string> rolesToRemove = currentRoles.Except(newRoles).ToList();
 
-        IdentityResult result = IdentityResult.Success;
-
         if (rolesToAdd.Any())
         {
-            IdentityResult addResult = await AssignRolesAsync(user, rolesToAdd);
-            if (!addResult.Succeeded)
-            {
-                return addResult;
-            }
+            await AssignRolesAsync(user, rolesToAdd);
         }
 
         if (rolesToRemove.Any())
@@ -231,87 +316,74 @@ public class UserService : IUserService
             IdentityResult removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
             if (!removeResult.Succeeded)
             {
-                return removeResult;
+                throw new AppServiceException(400, string.Join(", ", removeResult.Errors.Select(e => e.Description)));
             }
         }
-
-        return result;
     }
 
-    public async Task<IdentityResult> DeleteUserAsync(long id)
+    public async Task SetActiveStatusAsync(long id, bool isActive)
     {
-        ApplicationUser user = await _userRepository.GetUserByIdAsync(id);
-        return user == null
-            ? IdentityResult.Failed(new IdentityError { Description = "用户不存在" })
-            : await _userRepository.DeleteUserAsync(user);
-    }
-
-    public async Task<IdentityResult> SetActiveStatusAsync(long id, bool isActive)
-    {
-        ApplicationUser user = await _userRepository.GetUserByIdAsync(id);
-        if (user == null)
-        {
-            return IdentityResult.Failed(new IdentityError { Description = "用户不存在" });
-        }
+        ApplicationUser user = await _userRepository.GetByIdAsync(id)
+            ?? throw new AppServiceException(404, "用户不存在");
 
         if (user.IsActive == isActive)
         {
             string message = isActive
                 ? "用户已处于激活状态，无需重复操作。"
                 : "用户已处于禁用状态，无需重复操作。";
-            return IdentityResult.Failed(new IdentityError { Description = message });
+            throw new AppServiceException(400, message);
         }
 
         user.IsActive = isActive;
-        return await _userManager.UpdateAsync(user);
+        IdentityResult result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
     }
 
-    public async Task<(bool Success, string NewPassword)> ResetRandomPasswordAsync(long id)
+    public async Task<string> ResetRandomPasswordAsync(long id)
     {
-        ApplicationUser user = await _userRepository.GetUserByIdAsync(id);
-        if (user == null)
-        {
-            throw new AppServiceException(400, "账户不存在或已被禁用，请启用后再试！");
-        }
+        ApplicationUser user = await _userRepository.GetByIdAsync(id)
+            ?? throw new AppServiceException(404, "用户不存在");
 
         string newPassword = PasswordGenerator.GenerateRandomPassword(12);
         string resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-        IdentityResult resetResult = await _userManager.ResetPasswordAsync(user, resetToken, newPassword);
 
-        return resetResult.Succeeded ? (true, newPassword) : (false, null);
+        IdentityResult result = await _userManager.ResetPasswordAsync(user, resetToken, newPassword);
+        return !result.Succeeded
+            ? throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)))
+            : newPassword;
     }
 
-    public async Task<IdentityResult> UnlockUserAsync(long id)
+    public async Task UnlockUserAsync(long id)
     {
-        ApplicationUser user = await _userRepository.GetUserByIdAsync(id);
-        if (user == null)
-        {
-            return IdentityResult.Failed(new IdentityError { Description = "用户不存在" });
-        }
+        ApplicationUser user = await _userRepository.GetByIdAsync(id)
+            ?? throw new AppServiceException(404, "用户不存在");
 
         DateTimeOffset? lockoutEnd = await _userManager.GetLockoutEndDateAsync(user);
         if (!lockoutEnd.HasValue || lockoutEnd.Value <= DateTimeOffset.Now)
         {
-            return IdentityResult.Failed(new IdentityError { Description = "该用户未被锁定，无需解锁" });
+            throw new AppServiceException(400, "该用户未被锁定，无需解锁");
         }
 
-        // 先重置锁定结束时间
+        // 重置锁定结束时间
         IdentityResult setLockoutResult = await _userManager.SetLockoutEndDateAsync(user, null);
         if (!setLockoutResult.Succeeded)
         {
-            return setLockoutResult;
+            throw new AppServiceException(400, string.Join(", ", setLockoutResult.Errors.Select(e => e.Description)));
         }
 
         // 重置访问失败次数
         user.AccessFailedCount = 0;
-        IdentityResult updateResult = await _userManager.UpdateAsync(user);
-        if (!updateResult.Succeeded)
-        {
-            return updateResult;
-        }
+        await _userRepository.UpdateAsync(user);
 
         // 确保锁定功能启用
-        return await _userManager.SetLockoutEnabledAsync(user, true);
+        IdentityResult lockoutResult = await _userManager.SetLockoutEnabledAsync(user, true);
+        if (!lockoutResult.Succeeded)
+        {
+            throw new AppServiceException(400, string.Join(", ", lockoutResult.Errors.Select(e => e.Description)));
+        }
     }
 
     public async Task<List<ApplicationUser>> GetUsersByIdsAsync(List<long> ids)
@@ -347,13 +419,12 @@ public class UserService : IUserService
             throw new AppServiceException(400, "部分用户未找到!");
         }
 
-        // 3. 执行批量更新：更新 `rowsDiff` 中的变化字段
+        // 执行批量更新：更新 `rowsDiff` 中的变化字段
         foreach (UserDiffDto rowDiff in request.RowsDiff)
         {
             ApplicationUser user = usersToUpdate.FirstOrDefault(u => u.Id == rowDiff.Id);
             if (user != null)
             {
-                // 更新变化字段（仅更新在 rowsDiff 中的字段）
                 if (rowDiff.IsActive.HasValue)
                 {
                     user.IsActive = rowDiff.IsActive.Value;
@@ -364,15 +435,102 @@ public class UserService : IUserService
                     user.LockoutEnabled = rowDiff.LockoutEnabled.Value;
                 }
 
-                // 可以根据需求增加更多字段的更新
+                await _userRepository.UpdateAsync(user, false);
             }
         }
 
-        // 4. 保存更新结果
+        // 保存更新结果
         int updateResult = await _userRepository.SaveChangesAsync();
         if (updateResult == 0)
         {
             throw new AppServiceException(400, "没有更新!");
+        }
+    }
+
+    public override async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<UserBatchImportItemDto> importData)
+    {
+        // 校验导入数据格式
+        List<UserBatchImportItemDto> invalidDtos = importData.Where(dto =>
+            string.IsNullOrEmpty(dto.UserName) ||
+            string.IsNullOrEmpty(dto.Email) ||
+            string.IsNullOrEmpty(dto.Name) ||  // 姓名为必填
+            dto.UserName.Length > 100 ||
+            dto.Email.Length > 256 ||
+            (dto.PhoneNumber != null && dto.PhoneNumber.Length > 20) ||
+            (dto.Name != null && dto.Name.Length > 20) ||
+            (dto.IdNo != null && dto.IdNo.Length > 18)
+        ).ToList();
+
+        if (invalidDtos.Any())
+        {
+            throw new AppServiceException(400, $"以下用户数据格式错误: {string.Join(", ", invalidDtos.Select(dto => dto.UserName))}！");
+        }
+
+        // 去重处理：确保用户名、邮箱和手机号唯一
+        List<UserBatchImportItemDto> distinctDtos = importData
+            .GroupBy(dto => new { dto.UserName, dto.Email, dto.PhoneNumber })
+            .Select(group => group.First())
+            .ToList();
+
+        // 检查数据库中是否已有重复的用户名、邮箱或手机号
+        List<ApplicationUser> existingUsers = await _userManager.Users
+            .Where(u => distinctDtos.Select(dto => dto.UserName).Contains(u.UserName) ||
+                       distinctDtos.Select(dto => dto.Email).Contains(u.Email) ||
+                       distinctDtos.Where(dto => !string.IsNullOrEmpty(dto.PhoneNumber))
+                                 .Select(dto => dto.PhoneNumber)
+                                 .Contains(u.PhoneNumber))
+            .ToListAsync();
+
+        List<UserBatchImportItemDto> duplicateUsers = distinctDtos.Where(dto =>
+            existingUsers.Any(user =>
+                user.UserName.Equals(dto.UserName, StringComparison.OrdinalIgnoreCase) ||
+                user.Email.Equals(dto.Email, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(dto.PhoneNumber) && dto.PhoneNumber.Equals(user.PhoneNumber))
+            )).ToList();
+
+        if (duplicateUsers.Any())
+        {
+            throw new AppServiceException(400, $"以下用户名、邮箱或手机号已存在: {string.Join(", ", duplicateUsers.Select(dto => dto.UserName))}！");
+        }
+        // 批量创建用户
+        try
+        {
+            int successCount = 0;
+            List<string> failedIds = [];
+            foreach (UserBatchImportItemDto dto in distinctDtos)
+            {
+                ApplicationUser user = new()
+                {
+                    UserName = dto.UserName,
+                    Email = dto.Email,
+                    PhoneNumber = dto.PhoneNumber,
+                    Name = dto.Name,
+                    IdNo = dto.IdNo,
+                    Gender = dto.Gender,
+                    IsActive = true,
+                    EmailConfirmed = true, // 默认确认邮箱
+                    PhoneNumberConfirmed = !string.IsNullOrEmpty(dto.PhoneNumber), // 如果提供了手机号，则确认
+                    LockoutEnabled = true, // 启用锁定功能
+                };
+
+                // 生成随机密码
+                string password = PasswordGenerator.GenerateRandomPassword(12);
+                IdentityResult result = await _userManager.CreateAsync(user, password);
+
+                if (!result.Succeeded)
+                {
+                    _logger.LogError($"创建用户 {dto.UserName} 失败: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                    throw new AppServiceException(500, $"创建用户 {dto.UserName} 失败！");
+                }
+                successCount++;
+            }
+
+            return (successCount, failedIds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"批量导入用户数据失败: {ex.Message}");
+            throw new AppServiceException(500, "批量导入用户时发生错误，请稍后重试！");
         }
     }
 
@@ -386,11 +544,11 @@ public class UserService : IUserService
     public async Task<List<UserGrowthDto>> GetUserGrowthAsync(DateTimeOffset startDate, DateTimeOffset endDate)
     {
         IQueryable<ApplicationUser> query = _userManager.Users
-            .Where(u => u.CreationTime >= startDate.Date && u.CreationTime <= endDate.Date);
+            .Where(u => u.CreatedAt >= startDate.UtcDateTime.Date && u.CreatedAt <= endDate.UtcDateTime.Date);
 
         // 按天统计用户注册数量
         var dailyGrowth = await query
-            .GroupBy(u => u.CreationTime.Date)
+            .GroupBy(u => u.CreatedAt.Date)
             .Select(g => new { Date = g.Key, UserCount = g.Count() })
             .OrderBy(g => g.Date)
             .ToListAsync();
@@ -433,155 +591,4 @@ public class UserService : IUserService
         return result;
     }
     #endregion
-
-    public async Task<int> BatchImportUsersAsync(List<UserBatchImportItemDto> importDtos)
-    {
-        // 数据不能为空
-        if (importDtos == null || !importDtos.Any())
-        {
-            throw new AppServiceException(400, "导入数据不能为空！");
-        }
-
-        // 校验导入数据格式
-        List<UserBatchImportItemDto> invalidDtos = importDtos.Where(dto =>
-            string.IsNullOrEmpty(dto.UserName) ||
-            string.IsNullOrEmpty(dto.Email) ||
-            string.IsNullOrEmpty(dto.Name) ||  // 姓名为必填
-            dto.UserName.Length > 100 ||
-            dto.Email.Length > 256 ||
-            (dto.PhoneNumber != null && dto.PhoneNumber.Length > 20) ||
-            (dto.Name != null && dto.Name.Length > 20) ||
-            (dto.IdNo != null && dto.IdNo.Length > 18)
-        ).ToList();
-
-        if (invalidDtos.Any())
-        {
-            throw new AppServiceException(400, $"以下用户数据格式错误: {string.Join(", ", invalidDtos.Select(dto => dto.UserName))}！");
-        }
-
-        // 去重处理：确保用户名、邮箱和手机号唯一
-        List<UserBatchImportItemDto> distinctDtos = importDtos
-            .GroupBy(dto => new { dto.UserName, dto.Email, dto.PhoneNumber })
-            .Select(group => group.First())
-            .ToList();
-
-        // 检查数据库中是否已有重复的用户名、邮箱或手机号
-        List<ApplicationUser> existingUsers = await _userManager.Users
-            .Where(u => distinctDtos.Select(dto => dto.UserName).Contains(u.UserName) ||
-                       distinctDtos.Select(dto => dto.Email).Contains(u.Email) ||
-                       distinctDtos.Where(dto => !string.IsNullOrEmpty(dto.PhoneNumber))
-                                 .Select(dto => dto.PhoneNumber)
-                                 .Contains(u.PhoneNumber))
-            .ToListAsync();
-
-        List<UserBatchImportItemDto> duplicateUsers = distinctDtos.Where(dto =>
-            existingUsers.Any(user =>
-                user.UserName.Equals(dto.UserName, StringComparison.OrdinalIgnoreCase) ||
-                user.Email.Equals(dto.Email, StringComparison.OrdinalIgnoreCase) ||
-                (!string.IsNullOrEmpty(dto.PhoneNumber) && dto.PhoneNumber.Equals(user.PhoneNumber))
-            )).ToList();
-
-        if (duplicateUsers.Any())
-        {
-            throw new AppServiceException(400, $"以下用户名、邮箱或手机号已存在: {string.Join(", ", duplicateUsers.Select(dto => dto.UserName))}！");
-        }
-
-        // 批量创建用户
-        try
-        {
-            foreach (UserBatchImportItemDto dto in distinctDtos)
-            {
-                ApplicationUser user = new()
-                {
-                    UserName = dto.UserName,
-                    Email = dto.Email,
-                    PhoneNumber = dto.PhoneNumber,
-                    Name = dto.Name,
-                    IdNo = dto.IdNo,
-                    Gender = dto.Gender,
-                    IsActive = true,
-                    EmailConfirmed = true, // 默认确认邮箱
-                    PhoneNumberConfirmed = !string.IsNullOrEmpty(dto.PhoneNumber), // 如果提供了手机号，则确认
-                    LockoutEnabled = true, // 启用锁定功能
-                    CreationTime = DateTime.Now
-                };
-
-                // 生成随机密码
-                string password = PasswordGenerator.GenerateRandomPassword(12);
-                IdentityResult result = await _userManager.CreateAsync(user, password);
-
-                if (!result.Succeeded)
-                {
-                    _logger.LogError($"创建用户 {dto.UserName} 失败: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-                    throw new AppServiceException(500, $"创建用户 {dto.UserName} 失败！");
-                }
-            }
-
-            _logger.LogInformation($"成功批量导入了 {distinctDtos.Count} 个用户！");
-            return distinctDtos.Count;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"批量导入用户数据失败: {ex.Message}");
-            throw new AppServiceException(500, "批量导入用户时发生错误，请稍后重试！");
-        }
-    }
-
-    public async Task<(int SuccessCount, List<string> FailedUserNames)> BatchDeleteUsersAsync(List<long> userIds)
-    {
-        if (userIds == null || !userIds.Any())
-        {
-            throw new AppServiceException(400, "请选择要删除的用户！");
-        }
-
-        // 去重并验证ID格式
-        userIds = userIds.Distinct().Where(id => id > 0).ToList();
-        if (!userIds.Any())
-        {
-            throw new AppServiceException(400, "无有效的用户ID！");
-        }
-
-        // 获取要删除的用户
-        List<ApplicationUser> usersToDelete = await GetUsersByIdsAsync(userIds);
-
-        if (!usersToDelete.Any())
-        {
-            throw new AppServiceException(400, "未找到指定的用户！");
-        }
-
-        // 验证是否包含当前用户
-        long? currentUserId = _currentUser.Id;
-        if (currentUserId.HasValue && usersToDelete.Any(u => u.Id == currentUserId.Value))
-        {
-            throw new AppServiceException(400, "不能删除当前登录用户！");
-        }
-
-        // 检查是否包含管理员用户
-        List<string> adminUsers = [];
-        foreach (ApplicationUser user in usersToDelete)
-        {
-            if (await _userManager.IsInRoleAsync(user, "Admin"))
-            {
-                adminUsers.Add(user.UserName);
-            }
-        }
-
-        if (adminUsers.Any())
-        {
-            throw new AppServiceException(400, $"以下管理员用户不能被删除: {string.Join(", ", adminUsers)}");
-        }
-
-        List<string> failUsers = [];
-        foreach (ApplicationUser user in usersToDelete)
-        {
-            IdentityResult result = await _userManager.DeleteAsync(user);
-            if (!result.Succeeded)
-            {
-                failUsers.Add(user.UserName);
-            }
-        }
-
-        _logger.LogInformation($"批量删除用户完成。成功删除 {usersToDelete.Count - failUsers.Count} 个用户");
-        return (usersToDelete.Count - failUsers.Count, failUsers);
-    }
 }

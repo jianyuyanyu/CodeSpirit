@@ -162,13 +162,13 @@ namespace CodeSpirit.Amis.Helpers
                 if (genericDef == typeof(ApiResponse<>))
                 {
                     Type innerType = type.GetGenericArguments()[0];
-                    if (innerType.IsGenericType && innerType.GetGenericTypeDefinition() == typeof(ListData<>))
+                    if (innerType.IsGenericType && innerType.GetGenericTypeDefinition() == typeof(PageList<>))
                     {
                         return innerType.GetGenericArguments()[0];
                     }
                     return innerType;
                 }
-                if (genericDef == typeof(ListData<>))
+                if (genericDef == typeof(PageList<>))
                 {
                     return type.GetGenericArguments()[0];
                 }

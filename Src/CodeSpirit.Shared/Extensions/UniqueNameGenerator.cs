@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Shared.Extensions
+﻿namespace CodeSpirit.Shared.Extensions.Extensions
 {
     /// <summary>
     /// 唯一短名生成器

@@ -55,6 +55,13 @@ namespace CodeSpirit.Amis
             services.AddScoped<IPageCollector, PageCollector>();
             // 配置读取 PagesConfiguration 部分
             services.Configure<PagesConfiguration>(configuration.GetSection("PagesConfiguration"));
+
+            // 注册 FluentValidation 验证器
+            // services.AddValidatorsFromAssemblyContaining<PageValidator>();
+
+            // 注册特定验证器
+            services.AddTransient<IValidator<Page>, PageValidator>();
+            services.AddScoped<IPageCollector, PageCollector>();
             return services;
         }
 

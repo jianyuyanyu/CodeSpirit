@@ -1,7 +1,7 @@
 ﻿using CodeSpirit.Core;
+using CodeSpirit.Core.Dtos;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
-using CodeSpirit.IdentityApi.Controllers.Dtos.User;
+using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
@@ -27,15 +27,15 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Users
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<ListData<UserDto>>>> GetUsers([FromQuery] UserQueryDto queryDto)
+        public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> GetUsers([FromQuery] UserQueryDto queryDto)
         {
-            ListData<UserDto> users = await _userService.GetUsersAsync(queryDto);
+            PageList<UserDto> users = await _userService.GetUsersAsync(queryDto);
             return SuccessResponse(users);
         }
 
         // GET: api/Users/Export
         [HttpGet("Export")]
-        public async Task<ActionResult<ApiResponse<ListData<UserDto>>>> Export([FromQuery] UserQueryDto queryDto)
+        public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> Export([FromQuery] UserQueryDto queryDto)
         {
             // 设置导出时的分页参数
             const int MaxExportLimit = 10000; // 最大导出数量限制
@@ -43,17 +43,17 @@ namespace CodeSpirit.IdentityApi.Controllers
             queryDto.Page = 1;
 
             // 获取用户数据
-            ListData<UserDto> users = await _userService.GetUsersAsync(queryDto);
+            PageList<UserDto> users = await _userService.GetUsersAsync(queryDto);
 
             // 如果数据为空则返回错误信息
-            return users.Items.Count == 0 ? BadResponse<ListData<UserDto>>("没有数据可供导出") : SuccessResponse(users);
+            return users.Items.Count == 0 ? BadResponse<PageList<UserDto>>("没有数据可供导出") : SuccessResponse(users);
         }
 
         // GET: api/Users/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponse<UserDto>>> Detail(long id)
         {
-            UserDto userDto = await _userService.GetUserByIdAsync(id);
+            UserDto userDto = await _userService.GetAsync(id);
             return SuccessResponse(userDto);
         }
 
@@ -61,108 +61,67 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpPost]
         public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser(CreateUserDto createUserDto)
         {
-            (Microsoft.AspNetCore.Identity.IdentityResult result, long? userId) = await _userService.CreateUserAsync(createUserDto);
-            if (!result.Succeeded)
-            {
-                return BadResponse<UserDto>(message: result.Errors.FirstOrDefault()?.Description);
-            }
-
-            UserDto createdUserDto = await _userService.GetUserByIdAsync(userId.Value);
-            return SuccessResponseWithCreate<UserDto>(nameof(Detail), createdUserDto);
+            var userDto = await _userService.CreateAsync(createUserDto);
+            return SuccessResponseWithCreate<UserDto>(nameof(Detail), userDto);
         }
 
         // PUT: api/Users/{id}
         [HttpPut("{id}")]
-        public async Task<ActionResult<ApiResponse<string>>> UpdateUser(long id, UpdateUserDto updateUserDto)
+        public async Task<ActionResult<ApiResponse>> UpdateUser(long id, UpdateUserDto updateUserDto)
         {
-            Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.UpdateUserAsync(id, updateUserDto);
-            if (!result.Succeeded)
-            {
-                string errorDescription = result.Errors.FirstOrDefault()?.Description ?? "更新用户失败！";
-                return BadRequest(new ApiResponse<string>(1, errorDescription, null));
-            }
-
-            return Ok(new ApiResponse<string>(0, "用户更新成功！", null));
+            await _userService.UpdateUserAsync(id, updateUserDto);
+            return SuccessResponse();
         }
 
         // DELETE: api/Users/{id}
         [HttpDelete("{id}")]
-        public async Task<ActionResult<ApiResponse<string>>> DeleteUser(long id)
+        public async Task<ActionResult<ApiResponse>> DeleteUser(long id)
         {
-            Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.DeleteUserAsync(id);
-            if (!result.Succeeded)
-            {
-                string errorDescription = result.Errors.FirstOrDefault()?.Description ?? "禁用用户失败！";
-                return BadRequest(new ApiResponse<string>(1, errorDescription, null));
-            }
-            return SuccessResponse<string>();
+            await _userService.DeleteAsync(id);
+            return SuccessResponse();
         }
 
         // POST: api/Users/{id}/roles
         [HttpPost("{id}/roles")]
-        public async Task<IActionResult> AssignRoles(long id, [FromBody] List<string> roles)
+        public async Task<ActionResult<ApiResponse>> AssignRoles(long id, [FromBody] List<string> roles)
         {
-            Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.AssignRolesAsync(id, roles);
-            if (!result.Succeeded)
-            {
-                string errorDescription = result.Errors.FirstOrDefault()?.Description ?? "角色分配失败！";
-                return BadRequest(new { msg = errorDescription });
-            }
-
-            return Ok(new { msg = "角色分配成功。" });
+            await _userService.AssignRolesAsync(id, roles);
+            return SuccessResponse();
         }
 
         // DELETE: api/Users/{id}/roles
         [HttpDelete("{id}/roles")]
-        public async Task<IActionResult> RemoveRoles(long id, [FromBody] List<string> roles)
+        public async Task<ActionResult<ApiResponse>> RemoveRoles(long id, [FromBody] List<string> roles)
         {
-            Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.RemoveRolesAsync(id, roles);
-            if (!result.Succeeded)
-            {
-                string errorDescription = result.Errors.FirstOrDefault()?.Description ?? "角色移除失败！";
-                return BadRequest(new { msg = errorDescription });
-            }
-
-            return Ok(new { msg = "角色移除成功。" });
+            await _userService.RemoveRolesAsync(id, roles);
+            return SuccessResponse();
         }
 
-        // PUT: /api/Users/{id}/setActive?isActive=true/false
+        // PUT: /api/Users/{id}/setActive
         [HttpPut("{id}/setActive")]
-        public async Task<ActionResult<ApiResponse<string>>> SetActiveStatus(long id, [FromQuery] bool isActive)
+        public async Task<ActionResult<ApiResponse>> SetActiveStatus(long id, [FromQuery] bool isActive)
         {
-            Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.SetActiveStatusAsync(id, isActive);
-            if (!result.Succeeded)
-            {
-                string errorDescription = result.Errors.FirstOrDefault()?.Description ?? "更新用户状态失败！";
-                return BadRequest(new ApiResponse<string>(1, errorDescription, null));
-            }
-
+            await _userService.SetActiveStatusAsync(id, isActive);
             string status = isActive ? "激活" : "禁用";
-            return Ok(new ApiResponse<string>(0, $"用户已{status}成功！", null));
+            return SuccessResponse($"用户已{status}成功！");
         }
 
         // POST: /api/Users/{id}/resetRandomPassword
         [HttpPost("{id}/resetRandomPassword")]
         [Operation("重置密码", "ajax", null, "确定要重置密码吗？", "isActive == true")]
-        public async Task<ActionResult<ApiResponse<string>>> ResetRandomPassword(long id)
+        public async Task<ActionResult<ApiResponse>> ResetRandomPassword(long id)
         {
-            (bool success, string newPassword) = await _userService.ResetRandomPasswordAsync(id);
-            return !success ? (ActionResult<ApiResponse<string>>)BadRequest(new ApiResponse<string>(1, "密码重置失败！", null)) : (ActionResult<ApiResponse<string>>)Ok(new ApiResponse<string>(0, "密码已重置成功！", newPassword));
+            string newPassword = await _userService.ResetRandomPasswordAsync(id);
+            return SuccessResponse(newPassword);
         }
 
         // PUT: /api/Users/{id}/unlock
         [HttpPut("{id}/unlock")]
         [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？", "lockoutEnd != null")]
-        public async Task<IActionResult> UnlockUser(long id)
+        public async Task<ActionResult<ApiResponse>> UnlockUser(long id)
         {
-            Microsoft.AspNetCore.Identity.IdentityResult result = await _userService.UnlockUserAsync(id);
-            if (!result.Succeeded)
-            {
-                string errorDescription = result.Errors.FirstOrDefault()?.Description ?? "解除锁定失败！";
-                return BadRequest(new { msg = errorDescription });
-            }
-
-            return Ok(new { msg = "用户已成功解锁。" });
+            await _userService.UnlockUserAsync(id);
+            return SuccessResponse("用户已成功解锁。");
         }
 
         // PATCH: /api/Users/quickSave
@@ -184,7 +143,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadResponse<object>("只有超级管理员可以使用模拟登录功能！");
             }
 
-            UserDto user = await _userService.GetUserByIdAsync(id);
+            UserDto user = await _userService.GetAsync(id);
             if (user == null)
             {
                 return BadResponse<object>("用户不存在！");
@@ -203,8 +162,8 @@ namespace CodeSpirit.IdentityApi.Controllers
         [HttpPost("batch/import")]
         public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<UserBatchImportItemDto> importDto)
         {
-            int count = await _userService.BatchImportUsersAsync(importDto.ImportData);
-            return SuccessResponse($"成功批量导入了 {count} 个用户！");
+            var (successCount, failedIds) = await _userService.BatchImportAsync(importDto.ImportData);
+            return SuccessResponse($"成功批量导入了 {successCount} 个用户！");
         }
 
         // POST: api/Users/batch/delete
@@ -212,11 +171,11 @@ namespace CodeSpirit.IdentityApi.Controllers
         [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
         public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchDeleteDto<long> request)
         {
-            (int successCount, List<string> failedUserNames) = await _userService.BatchDeleteUsersAsync(request.Ids);
+            var (successCount, failedIds) = await _userService.BatchDeleteAsync(request.Ids);
 
-            if (failedUserNames.Any())
+            if (failedIds.Any())
             {
-                string failedMessage = $"成功删除 {successCount} 个用户，但以下用户删除失败: {string.Join(", ", failedUserNames)}";
+                string failedMessage = $"成功删除 {successCount} 个用户，但以下用户删除失败: {string.Join(", ", failedIds)}";
                 return SuccessResponse(failedMessage);
             }
 

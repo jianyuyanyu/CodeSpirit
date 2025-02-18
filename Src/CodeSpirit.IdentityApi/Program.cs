@@ -1,10 +1,9 @@
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.AddIdentityApiServices();
 
-var app = builder.Build();
-await app.InitializeDatabaseAsync();
-app.ConfigureApp();
+WebApplication app = builder.Build();
+await app.ConfigureAppAsync();
 
 app.Run();

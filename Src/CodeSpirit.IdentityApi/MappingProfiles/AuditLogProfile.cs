@@ -1,6 +1,7 @@
 using AutoMapper;
-using CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog;
+using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Dtos.AuditLog;
 
 namespace CodeSpirit.IdentityApi.MappingProfiles
 {
@@ -9,6 +10,9 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
         public AuditLogProfile()
         {
             CreateMap<AuditLog, AuditLogDto>();
+            
+            // 添加 PageList 映射配置
+            CreateMap<PageList<AuditLog>, PageList<AuditLogDto>>();
         }
     }
 }

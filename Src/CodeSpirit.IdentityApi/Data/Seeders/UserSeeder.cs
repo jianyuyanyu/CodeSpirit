@@ -1,7 +1,7 @@
 ﻿using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
-
+namespace CodeSpirit.IdentityApi.Data.Seeders;
 public class UserSeeder: IScopedDependency
 {
     private readonly IServiceProvider _serviceProvider;
@@ -138,7 +138,6 @@ public class UserSeeder: IScopedDependency
                 Gender = genderValues[random.Next(genderValues.Length)],
                 IsActive = random.Next(1, 10) % 2 == 0,
                 AvatarUrl = avatarUrl,
-                CreationTime = createTime.DateTime,
                 PhoneNumber = GenerateRandomPhoneNumber(random),
                 IdNo = GenerateRandomIdNumber(random)
             };

@@ -1,5 +1,5 @@
 ﻿using CodeSpirit.Shared.Data;
-using CodeSpirit.Shared.Entities;
+using CodeSpirit.Shared.Entities.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 
@@ -8,7 +8,7 @@ namespace CodeSpirit.IdentityApi.Data.Models
     /// <summary>
     /// 用户信息
     /// </summary> 
-    public class ApplicationUser : IdentityUser<long>, IIsActive, IFullEntityEvent, IDeletionAuditedObject, IAuditedObject
+    public class ApplicationUser : IdentityUser<long>, IIsActive, IFullEntityEvent, IFullAuditable
     {
         /// <summary>
         /// 姓名
@@ -45,13 +45,13 @@ namespace CodeSpirit.IdentityApi.Data.Models
         /// 性别
         /// </summary>
         public Gender Gender { get; internal set; }
+        public long CreatedBy { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public long? UpdatedBy { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public long? DeletedBy { get; set; }
+        public DateTime? DeletedAt { get; set; }
         public bool IsDeleted { get; set; }
-        public DateTime? DeletionTime { get; set; }
-        public long? DeleterUserId { get; set; }
-        public long? CreatorUserId { get; set; }
-        public DateTime CreationTime { get; set; }
-        public long? LastModifierUserId { get; set; }
-        public DateTime? LastModificationTime { get; set; }
     }
 
 }

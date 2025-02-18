@@ -1,7 +1,7 @@
 using Audit.WebApi;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog;
+using CodeSpirit.IdentityApi.Dtos.AuditLog;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -22,14 +22,10 @@ namespace CodeSpirit.IdentityApi.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<ListData<AuditLogDto>>>> GetAuditLogs([FromQuery] AuditLogQueryDto queryDto)
+        public async Task<ActionResult<ApiResponse<PageList<AuditLogDto>>>> GetAuditLogs([FromQuery] AuditLogQueryDto queryDto)
         {
-            (List<AuditLogDto> logs, int total) = await _auditLogService.GetAuditLogsAsync(queryDto);
-            return SuccessResponse(new ListData<AuditLogDto>
-            {
-                Items = logs,
-                Total = total
-            });
+            PageList<AuditLogDto> results = await _auditLogService.GetAuditLogsAsync(queryDto);
+            return SuccessResponse(results);
         }
 
         [HttpGet("{id}")]

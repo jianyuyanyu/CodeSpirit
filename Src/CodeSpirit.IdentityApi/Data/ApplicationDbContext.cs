@@ -2,7 +2,7 @@ using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Data;
-using CodeSpirit.Shared.Entities;
+using CodeSpirit.Shared.Entities.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -20,8 +20,6 @@ namespace CodeSpirit.IdentityApi.Data
     IdentityUserClaim<long>, ApplicationUserRole, IdentityUserLogin<long>,
     IdentityRoleClaim<long>, IdentityUserToken<long>>
     {
-        public DbSet<Tenant> Tenants { get; set; }
-
         /// <summary>
         /// 角色与权限的关联实体集。
         /// </summary>
@@ -41,7 +39,7 @@ namespace CodeSpirit.IdentityApi.Data
         /// <summary>
         /// 是否启用软删除
         /// </summary>
-        protected virtual bool IsSoftDeleteFilterEnabled => DataFilter?.IsEnabled<IDeletionAuditedObject>() ?? false;
+        protected virtual bool IsSoftDeleteFilterEnabled => DataFilter?.IsEnabled<ISoftDeleteAuditable>() ?? false;
 
         /// <summary>
         /// 数据筛选器
@@ -53,7 +51,9 @@ namespace CodeSpirit.IdentityApi.Data
         /// <summary>
         /// 获取当前用户ID
         /// </summary>
-        protected virtual long? CurrentUserId => _currentUser.Id;
+        protected long? CurrentUserId => this.UserId ?? _currentUser?.Id;
+
+        public long? UserId { get; set; }
 
         public ApplicationDbContext(
             DbContextOptions<ApplicationDbContext> options,
@@ -98,11 +98,6 @@ namespace CodeSpirit.IdentityApi.Data
             {
                 b.Property(q => q.Id).ValueGeneratedNever();
                 b.ToTable(nameof(ApplicationRole));
-            });
-
-            builder.Entity<Tenant>(b =>
-            {
-                b.HasIndex(x => x.Name).IsUnique(true);
             });
 
             // 配置 ApplicationUserRole 的关系
@@ -233,22 +228,14 @@ namespace CodeSpirit.IdentityApi.Data
         /// <exception cref="NotSupportedException"></exception>
         public virtual EntityEntry<TEntity> SoftDelete<TEntity>(TEntity entity) where TEntity : class
         {
-            if (entity is IDeletionAuditedObject deletionObj)
+            if (entity is ISoftDeleteAuditable deletionObj)
             {
-                if (deletionObj.DeleterUserId == default)
-                {
-                    deletionObj.DeleterUserId = CurrentUserId;
-                }
-
-                if (deletionObj.DeletionTime == default)
-                {
-                    deletionObj.DeletionTime = DateTime.Now;
-                }
-
                 deletionObj.IsDeleted = true;
+                deletionObj.DeletedBy = CurrentUserId;
+                deletionObj.DeletedAt = DateTime.UtcNow;
                 return Update(entity);
             }
-            throw new NotSupportedException($"{typeof(TEntity).Name} 未实现接口'IDeletionAuditedObject'，无法执行软删除逻辑！");
+            throw new NotSupportedException($"{typeof(TEntity).Name} 未实现接口'ISoftDeleteAuditable'，无法执行软删除逻辑！");
         }
 
         /// <summary>
@@ -256,48 +243,47 @@ namespace CodeSpirit.IdentityApi.Data
         /// </summary>
         public void SetAuditFields()
         {
+            var currentTime = DateTime.UtcNow;
+            
             foreach (EntityEntry entry in changeTracker.Entries()
-            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
             {
                 // 处理修改审计
-                if (entry.Entity is IAuditedObject modifiedObj)
+                if (entry.Entity is IUpdateAuditable modifiedObj)
                 {
-                    if (modifiedObj.LastModifierUserId == default)
+                    if (modifiedObj.UpdatedBy == default)
                     {
-                        modifiedObj.LastModifierUserId = CurrentUserId;
+                        modifiedObj.UpdatedBy = CurrentUserId;
                     }
 
-                    if (modifiedObj.LastModificationTime == default)
+                    if (modifiedObj.UpdatedAt == default)
                     {
-                        modifiedObj.LastModificationTime = DateTime.Now;
+                        modifiedObj.UpdatedAt = currentTime;
                     }
                 }
 
                 // 处理创建审计
-                if (entry.State == EntityState.Added)
+                if (entry.State == EntityState.Added && entry.Entity is ICreationAuditable addedObj)
                 {
-                    if (entry.Entity is IAuditedObject addedObj)
+                    if (addedObj.CreatedBy == default)
                     {
-                        if (addedObj.CreatorUserId == default)
-                        {
-                            addedObj.CreatorUserId = CurrentUserId;
-                        }
+                        addedObj.CreatedBy = CurrentUserId ?? throw new InvalidOperationException("Cannot set CreatedBy: CurrentUserId is null");
+                    }
 
-                        if (addedObj.CreationTime == default)
-                        {
-                            addedObj.CreationTime = DateTime.Now;
-                        }
+                    if (addedObj.CreatedAt == default)
+                    {
+                        addedObj.CreatedAt = currentTime;
                     }
                 }
 
                 // 处理删除审计
-                if (entry.Entity is IDeletionAuditedObject deletionObj && deletionObj.IsDeleted && deletionObj.DeleterUserId == default)
+                if (entry.Entity is ISoftDeleteAuditable deletionObj && deletionObj.IsDeleted && deletionObj.DeletedBy == default)
                 {
-                    deletionObj.DeleterUserId = CurrentUserId;
-
-                    if (deletionObj.DeletionTime == default)
+                    deletionObj.DeletedBy = CurrentUserId;
+                    
+                    if (deletionObj.DeletedAt == default)
                     {
-                        deletionObj.DeletionTime = DateTime.Now;
+                        deletionObj.DeletedAt = currentTime;
                     }
                 }
             }
@@ -332,8 +318,7 @@ namespace CodeSpirit.IdentityApi.Data
 
         protected virtual bool ShouldFilterEntity<TEntity>(IMutableEntityType entityType) where TEntity : class
         {
-            // 移除 ITenant 相关的过滤
-            return typeof(IDeletionAuditedObject).IsAssignableFrom(typeof(TEntity)) ||
+            return typeof(ISoftDeleteAuditable).IsAssignableFrom(typeof(TEntity)) ||
                    typeof(IIsActive).IsAssignableFrom(typeof(TEntity));
         }
 
@@ -342,7 +327,7 @@ namespace CodeSpirit.IdentityApi.Data
         {
             Expression<Func<TEntity, bool>> expression = null;
 
-            if (typeof(IDeletionAuditedObject).IsAssignableFrom(typeof(TEntity)))
+            if (typeof(ISoftDeleteAuditable).IsAssignableFrom(typeof(TEntity)))
             {
                 expression = e => !IsSoftDeleteFilterEnabled || !EF.Property<bool>(e, "IsDeleted");
             }

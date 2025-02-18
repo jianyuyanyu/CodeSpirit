@@ -1,10 +1,11 @@
-using CodeSpirit.IdentityApi.Controllers.Dtos.AuditLog;
+using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Dtos.AuditLog;
 
 namespace CodeSpirit.IdentityApi.Services
 {
-    public interface IAuditLogService: IScopedDependency
+    public interface IAuditLogService : IScopedDependency
     {
-        Task<(List<AuditLogDto> logs, int total)> GetAuditLogsAsync(AuditLogQueryDto queryDto);
         Task<AuditLogDto> GetAuditLogByIdAsync(long id);
+        Task<PageList<AuditLogDto>> GetAuditLogsAsync(AuditLogQueryDto queryDto);
     }
 }

@@ -15,13 +15,18 @@ namespace CodeSpirit.ServiceDefaults;
 // To learn more about using this project, see https://aka.ms/dotnet/aspire/service-defaults
 public static class Extensions
 {
-    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder, string? servicesName = null) where TBuilder : IHostApplicationBuilder
+    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        builder.ConfigureOpenTelemetry(servicesName);
+        builder.ConfigureOpenTelemetry();
 
         builder.AddDefaultHealthChecks();
 
         builder.Services.AddServiceDiscovery();
+        if(builder.Environment.IsDevelopment())
+        {
+            builder.Services.AddDnsSrvServiceEndpointProvider();
+        }
+        builder.Services.AddDnsSrvServiceEndpointProvider();
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
@@ -41,7 +46,7 @@ public static class Extensions
         return builder;
     }
 
-    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder, string? servicesName = null) where TBuilder : IHostApplicationBuilder
+    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.Logging.AddOpenTelemetry(logging =>
         {
@@ -58,8 +63,8 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                Console.WriteLine($"Application Name: {servicesName ?? builder.Environment.ApplicationName}");
-                tracing.AddSource(servicesName ?? builder.Environment.ApplicationName)  // ApplicationName can be configured via ASPNETCORE_APPLICATIONNAME environment variable
+                Console.WriteLine($"Application Name: {builder.Environment.ApplicationName}");
+                tracing.AddSource(builder.Environment.ApplicationName)  // ApplicationName can be configured via ASPNETCORE_APPLICATIONNAME environment variable
                     .AddAspNetCoreInstrumentation()
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()

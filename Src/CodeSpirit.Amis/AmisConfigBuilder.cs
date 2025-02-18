@@ -102,6 +102,10 @@ namespace CodeSpirit.Amis
                     //    ["api"] = "${API_HOST}/api/userStatistics/usergrowth-and-active-users"
                     //},
                     crudConfig
+                },
+                ["data"] = new JObject()
+                {
+                    ["ROOT_API"] = "https://localhost:62144"
                 }
             };
 

@@ -36,7 +36,6 @@ namespace CodeSpirit.Shared.Extensions
             return query;
         }
 
-
         public static IQueryable<T> ApplyPaging<T>(this IQueryable<T> query, int page, int perPage)
         {
             int skip = (page - 1) * perPage;

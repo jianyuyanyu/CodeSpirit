@@ -2,8 +2,8 @@
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Constants;
-using CodeSpirit.IdentityApi.Controllers.Dtos.Permission;
 using CodeSpirit.IdentityApi.Data;
+using CodeSpirit.IdentityApi.Dtos.Permission;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using System.ComponentModel;
@@ -26,13 +26,13 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Permissions
         [HttpGet]
-        public ActionResult<ApiResponse<ListData<PermissionDto>>> GetPermissions()
+        public ActionResult<ApiResponse<PageList<PermissionDto>>> GetPermissions()
         {
             List<PermissionNode> permissions = _permissionService.GetPermissionTree();
 
             List<PermissionDto> permissionDtos = _mapper.Map<List<PermissionDto>>(permissions);
 
-            ListData<PermissionDto> listData = new(permissionDtos, permissionDtos.Count);
+            PageList<PermissionDto> listData = new(permissionDtos, permissionDtos.Count);
 
             return SuccessResponse(listData);
         }

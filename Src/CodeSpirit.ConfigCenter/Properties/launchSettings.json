@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "CodeSpirit.ConfigCenter": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:62144;http://localhost:62145"
+    }
+  }
+}

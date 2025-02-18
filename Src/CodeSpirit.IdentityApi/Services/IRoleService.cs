@@ -1,50 +1,26 @@
-﻿using CodeSpirit.IdentityApi.Controllers.Dtos.Role;
+using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Dtos.Role;
+using CodeSpirit.Shared.Services;
 
-namespace CodeSpirit.IdentityApi.Services
+namespace CodeSpirit.IdentityApi.Services;
+
+/// <summary>
+/// 角色服务接口
+/// </summary>
+public interface IRoleService : IBaseService<ApplicationRole, RoleDto, long, RoleCreateDto, RoleUpdateDto, RoleBatchImportItemDto>, IScopedDependency
 {
     /// <summary>
-    /// 角色服务接口，提供角色管理相关的业务逻辑操作
+    /// 获取角色列表（分页）
     /// </summary>
-    public interface IRoleService : IScopedDependency
-    {
-        /// <summary>
-        /// 批量导入角色信息
-        /// </summary>
-        /// <param name="importDtos">角色导入数据列表</param>
-        Task BatchImportRolesAsync(List<RoleBatchImportItemDto> importDtos);
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>分页后的角色列表</returns>
+    Task<PageList<RoleDto>> GetRolesAsync(RoleQueryDto queryDto);
 
-        /// <summary>
-        /// 创建新角色
-        /// </summary>
-        /// <param name="createDto">角色创建数据传输对象</param>
-        /// <returns>创建成功的角色信息</returns>
-        Task<RoleDto> CreateRoleAsync(RoleCreateDto createDto);
-
-        /// <summary>
-        /// 删除指定角色
-        /// </summary>
-        /// <param name="id">角色ID</param>
-        Task DeleteRoleAsync(long id);
-
-        /// <summary>
-        /// 根据ID获取角色详细信息
-        /// </summary>
-        /// <param name="id">角色ID</param>
-        /// <returns>角色详细信息</returns>
-        Task<RoleDto> GetRoleByIdAsync(long id);
-
-        /// <summary>
-        /// 分页获取角色列表
-        /// </summary>
-        /// <param name="queryDto">查询条件（包含分页、排序和搜索参数）</param>
-        /// <returns>角色列表和总记录数</returns>
-        Task<(List<RoleDto> roles, int total)> GetRolesAsync(RoleQueryDto queryDto);
-
-        /// <summary>
-        /// 更新角色信息
-        /// </summary>
-        /// <param name="id">角色ID</param>
-        /// <param name="updateDto">角色更新数据传输对象</param>
-        Task UpdateRoleAsync(long id, RoleUpdateDto updateDto);
-    }
+    /// <summary>
+    /// 批量导入角色
+    /// </summary>
+    /// <param name="importDtos">要导入的角色列表</param>
+    /// <returns>导入结果，包含成功数量和失败的ID列表</returns>
+    Task<(int successCount, List<string> failedIds)> BatchImportRolesAsync(List<RoleBatchImportItemDto> importDtos);
 }

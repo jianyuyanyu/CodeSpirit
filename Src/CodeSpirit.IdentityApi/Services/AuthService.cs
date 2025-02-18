@@ -1,7 +1,7 @@
 ﻿// Services/AuthService.cs
 using AutoMapper;
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Repositories;
+using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -15,7 +15,7 @@ namespace CodeSpirit.IdentityApi.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly ILoginLogRepository _loginLogRepository;
+        private readonly IRepository<LoginLog> _loginLogRepository;
         private readonly IConfiguration _configuration;
         private readonly IMapper _mapper;
         private readonly IHttpContextAccessor _httpContextAccessor;  // 引入 IHttpContextAccessor
@@ -27,7 +27,7 @@ namespace CodeSpirit.IdentityApi.Services
         public AuthService(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            ILoginLogRepository loginLogRepository,
+            IRepository<LoginLog> loginLogRepository,
             IConfiguration configuration,
             IMapper mapper,
             IHttpContextAccessor httpContextAccessor) // 通过依赖注入获取 IHttpContextAccessor
@@ -143,7 +143,7 @@ namespace CodeSpirit.IdentityApi.Services
 
             // 登录成功，更新日志并保存
             loginLog.IsSuccess = true;
-            await _loginLogRepository.AddLoginLogAsync(loginLog);
+            await _loginLogRepository.AddAsync(loginLog);
 
             // 生成JWT Token
             string token = GenerateJwtToken(user);
@@ -164,7 +164,7 @@ namespace CodeSpirit.IdentityApi.Services
         {
             // 记录失败原因
             loginLog.FailureReason = result.IsLockedOut ? "账户被锁定" : "密码不正确";
-            await _loginLogRepository.AddLoginLogAsync(loginLog);
+            await _loginLogRepository.AddAsync(loginLog);
 
             // 更新访问失败次数已经由 SignInManager 在 CheckPasswordSignInAsync 中自动处理
             // 因为我们在调用时设置了 lockoutOnFailure: true

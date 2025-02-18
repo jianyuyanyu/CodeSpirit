@@ -6,6 +6,9 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 
 builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity-api");
 
+// 添加 ConfigCenter 服务
+builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config");
+
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     //.WithReference(cache)

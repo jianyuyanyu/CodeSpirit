@@ -112,7 +112,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
         ArgumentNullException.ThrowIfNull(entity);
 
         Mapper.Map(updateDto, entity);
-        await OnUpdating(entity);
+        await OnUpdating(entity, updateDto);
 
         await Repository.UpdateAsync(entity);
         await OnUpdated(entity);
@@ -248,7 +248,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// <summary>
     /// 更新前的处理
     /// </summary>
-    protected virtual Task OnUpdating(TEntity entity) => Task.CompletedTask;
+    protected virtual Task OnUpdating(TEntity entity, TUpdateDto updateDto) => Task.CompletedTask;
 
     /// <summary>
     /// 删除前的处理

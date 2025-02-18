@@ -8,6 +8,7 @@ using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using System.Data;
 
 namespace CodeSpirit.IdentityApi.Services
 {
@@ -63,12 +64,72 @@ namespace CodeSpirit.IdentityApi.Services
 
         #region Override Base Methods
 
-        protected override async Task ValidateCreateDto(RoleCreateDto createDto)
+        public override async Task<RoleDto> CreateAsync(RoleCreateDto createDto)
         {
             if (await _roleRepository.ExistsAsync(r => r.Name == createDto.Name))
             {
                 throw new AppServiceException(400, "角色名称已存在！");
             }
+
+            ApplicationRole role = Mapper.Map<ApplicationRole>(createDto);
+            
+            // Generate a new ID for the role
+            role.Id = idGenerator.NewId();
+            
+            if (createDto.PermissionAssignments != null && createDto.PermissionAssignments.Any())
+            {
+                role.RolePermission = new RolePermission
+                {
+                    RoleId = role.Id,
+                    PermissionIds = createDto.PermissionAssignments.Distinct().ToArray()
+                };
+            }
+
+            ApplicationRole createdEntity = await Repository.AddAsync(role);
+            return Mapper.Map<RoleDto>(createdEntity);
+        }
+
+        protected override async Task OnUpdating(ApplicationRole entity, RoleUpdateDto updateDto)
+        {
+            if (updateDto.PermissionIds != null)
+            {
+                string[] distinctPermissionIds = updateDto.PermissionIds.Distinct().ToArray();
+
+                if (distinctPermissionIds.Any())
+                {
+                    // Load the existing RolePermission if not already loaded
+                    if (entity.RolePermission == null)
+                    {
+                        entity.RolePermission = await Repository.CreateQuery()
+                            .Where(r => r.Id == entity.Id)
+                            .Select(r => r.RolePermission)
+                            .FirstOrDefaultAsync();
+                    }
+
+                    if (entity.RolePermission == null)
+                    {
+                        entity.RolePermission = new RolePermission
+                        {
+                            RoleId = entity.Id,
+                            PermissionIds = distinctPermissionIds
+                        };
+                    }
+                    else
+                    {
+                        entity.RolePermission.PermissionIds = distinctPermissionIds;
+                    }
+                }
+                else
+                {
+                    // If no permission IDs are provided, remove the role permission
+                    if (entity.RolePermission != null)
+                    {
+                        entity.RolePermission.PermissionIds = Array.Empty<string>();
+                    }
+                }
+            }
+
+            await base.OnUpdating(entity, updateDto);
         }
 
         protected override async Task<IEnumerable<RoleBatchImportItemDto>> ValidateImportItems(IEnumerable<RoleBatchImportItemDto> importData)
@@ -112,6 +173,7 @@ namespace CodeSpirit.IdentityApi.Services
                 ? throw new AppServiceException(400, "Admin角色不允许删除！")
                 : entity.RolePermission?.PermissionIds != null ? throw new AppServiceException(400, "请移除权限后再删除该角色！") : Task.CompletedTask;
         }
+
 
         #endregion
     }

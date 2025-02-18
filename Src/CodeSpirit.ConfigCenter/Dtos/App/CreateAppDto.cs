@@ -1,3 +1,5 @@
+using CodeSpirit.Amis.Attributes.FormFields;
+
 namespace CodeSpirit.ConfigCenter.Dtos.App;
 
 /// <summary>

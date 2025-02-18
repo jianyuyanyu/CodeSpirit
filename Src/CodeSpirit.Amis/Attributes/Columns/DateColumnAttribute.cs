@@ -1,6 +1,6 @@
 using System;
 
-namespace CodeSpirit.Amis.Attributes
+namespace CodeSpirit.Amis.Attributes.Columns
 {
     [AttributeUsage(AttributeTargets.Property)]
     public class DateColumnAttribute : Attribute
@@ -15,4 +15,4 @@ namespace CodeSpirit.Amis.Attributes
         /// </summary>
         public bool FromNow { get; set; }
     }
-} 
+}

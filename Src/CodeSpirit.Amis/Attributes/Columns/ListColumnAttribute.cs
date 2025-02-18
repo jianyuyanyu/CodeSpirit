@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Amis.Attributes
+﻿namespace CodeSpirit.Amis.Attributes.Columns
 {
     [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
     public class ListColumnAttribute : AmisColumnAttribute

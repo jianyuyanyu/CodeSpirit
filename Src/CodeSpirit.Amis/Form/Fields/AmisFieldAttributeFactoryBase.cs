@@ -1,6 +1,6 @@
 ﻿// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
 
-using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json.Linq;
 using System.Reflection;

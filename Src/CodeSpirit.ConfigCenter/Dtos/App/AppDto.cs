@@ -1,3 +1,5 @@
+using CodeSpirit.Amis.Attributes.Columns;
+
 namespace CodeSpirit.ConfigCenter.Dtos.App;
 
 /// <summary>

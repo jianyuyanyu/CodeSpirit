@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.ConfigCenter.Models.Enums;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;

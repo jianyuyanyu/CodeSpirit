@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Amis.Attributes
+﻿namespace CodeSpirit.Amis.Attributes.FormFields
 {
     /// <summary>
     /// 自定义特性，用于配置 AMIS 表单字段的通用属性。

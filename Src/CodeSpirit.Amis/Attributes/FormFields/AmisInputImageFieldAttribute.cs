@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Amis.Attributes
+﻿namespace CodeSpirit.Amis.Attributes.FormFields
 {
     /// <summary>
     /// 自定义属性，用于配置 AMIS 的 InputImage 字段。

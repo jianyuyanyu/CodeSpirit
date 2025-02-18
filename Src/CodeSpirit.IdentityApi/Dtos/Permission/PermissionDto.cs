@@ -1,4 +1,5 @@
 ﻿// Controllers/RolesController.cs
+using CodeSpirit.Amis.Attributes.Columns;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 

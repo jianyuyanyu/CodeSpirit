@@ -1,6 +1,6 @@
 using System;
 
-namespace CodeSpirit.Amis.Attributes
+namespace CodeSpirit.Amis.Attributes.Columns
 {
     [AttributeUsage(AttributeTargets.Property)]
     public class LinkColumnAttribute : Attribute
@@ -10,4 +10,4 @@ namespace CodeSpirit.Amis.Attributes
         public string Icon { get; set; }
         public string Label { get; set; }
     }
-} 
+}

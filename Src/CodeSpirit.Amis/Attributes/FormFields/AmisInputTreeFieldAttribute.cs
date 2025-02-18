@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Amis.Attributes
+﻿namespace CodeSpirit.Amis.Attributes.FormFields
 {
     /// <summary>
     /// 自定义特性，用于标注需要生成 AMIS InputTree 字段的属性或参数。
@@ -34,7 +34,7 @@
         public AmisInputTreeFieldAttribute()
         {
             // 默认类型为 'input-tree'
-            this.Type = "input-tree";
+            Type = "input-tree";
         }
     }
 }

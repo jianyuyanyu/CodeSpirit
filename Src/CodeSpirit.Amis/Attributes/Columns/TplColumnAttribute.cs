@@ -1,6 +1,6 @@
 using System;
 
-namespace CodeSpirit.Amis.Attributes
+namespace CodeSpirit.Amis.Attributes.Columns
 {
     [AttributeUsage(AttributeTargets.Property)]
     public class TplColumnAttribute : Attribute
@@ -12,4 +12,4 @@ namespace CodeSpirit.Amis.Attributes
             Template = template;
         }
     }
-} 
+}

@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Amis.Attributes
+﻿namespace CodeSpirit.Amis.Attributes.Columns
 {
     /// <summary>
     /// 特性：用于标记在生成 AMIS 列配置时应被忽略的属性。

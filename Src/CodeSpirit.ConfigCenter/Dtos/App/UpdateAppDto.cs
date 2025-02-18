@@ -1,3 +1,5 @@
+using CodeSpirit.Amis.Attributes.FormFields;
+
 /// <summary>
 /// 更新应用 DTO
 /// </summary>

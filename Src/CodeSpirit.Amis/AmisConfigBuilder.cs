@@ -1,6 +1,9 @@
 ﻿using CodeSpirit.Amis.Column;
+using CodeSpirit.Amis.Configuration;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.Reflection;
@@ -20,12 +23,15 @@ namespace CodeSpirit.Amis
         private readonly AmisContext amisContext;
         private readonly UtilityHelper utilityHelper;
         private readonly AmisApiHelper amisApiHelper;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IOptions<PagesConfiguration> _pagesConfig;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
-                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper)
+                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper,
+                                 IHttpContextAccessor httpContextAccessor, IOptions<PagesConfiguration> pagesConfig)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
@@ -34,6 +40,8 @@ namespace CodeSpirit.Amis
             this.amisContext = amisContext;
             this.utilityHelper = utilityHelper;
             this.amisApiHelper = amisApiHelper;
+            _httpContextAccessor = httpContextAccessor;
+            _pagesConfig = pagesConfig;
         }
 
         /// <summary>
@@ -93,19 +101,15 @@ namespace CodeSpirit.Amis
             // 构建页面配置
             JObject pageConfig = new()
             {
-                ["type"] = "page",  // 设置页面类型
-                ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",  // 设置页面标题
+                ["type"] = "page",
+                ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",
                 ["body"] = new JArray()
                 {
-                    //new JObject {
-                    //    ["type"] = "chart",
-                    //    ["api"] = "${API_HOST}/api/userStatistics/usergrowth-and-active-users"
-                    //},
                     crudConfig
                 },
                 ["data"] = new JObject()
                 {
-                    ["ROOT_API"] = "https://localhost:62144"
+                    ["ROOT_API"] = GetRootApi()
                 }
             };
 
@@ -165,6 +169,19 @@ namespace CodeSpirit.Amis
                     ["body"] = new JArray(searchFields)  // 添加搜索字段
                 }
             };
+        }
+
+        private string GetRootApi()
+        {
+            HttpRequest request = _httpContextAccessor.HttpContext?.Request;
+            if (request == null)
+            {
+                return string.Empty;
+            }
+
+            string host = request.Host.Value;
+            string scheme = _pagesConfig.Value.ForceHttps ? "https" : request.Scheme;
+            return $"{scheme}://{host}";
         }
 
         internal JObject GenerateAmisCrudConfig()

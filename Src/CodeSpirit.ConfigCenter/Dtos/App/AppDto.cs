@@ -31,10 +31,16 @@ public class AppDto
     [TplColumn(template: "${inheritancedAppId}")]
     public string InheritancedAppId { get; set; }
 
+    /// <summary>
+    /// 是否为自动注册的应用
+    /// </summary>
+    [DisplayName("自动注册")]
+    public bool IsAutoRegistered { get; set; }
+
     [DisplayName("自动发布")]
     public bool AutoPublish { get; set; }
 
     [DisplayName("更新时间")]
     [DateColumn(Format = "YYYY-MM-DD HH:mm", FromNow = true)]
     public DateTime? UpdatedAt { get; set; }
-} 
+}

@@ -16,6 +16,16 @@ public class ConfigDbContext : AuditableDbContext
     }
 
     /// <summary>
+    /// 用于审计的用户ID
+    /// </summary>
+    public long? UserId { get; set; }
+
+    /// <summary>
+    /// 获取当前用户ID，优先使用设置的UserId，否则使用CurrentUser中的Id
+    /// </summary>
+    protected override long? CurrentUserId => this.UserId ?? base.CurrentUserId;
+
+    /// <summary>
     /// 应用表
     /// </summary>
     public DbSet<App> Apps { get; set; }

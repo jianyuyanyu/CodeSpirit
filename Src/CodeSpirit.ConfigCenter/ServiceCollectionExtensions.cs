@@ -1,5 +1,6 @@
 using CodeSpirit.Amis;
 using CodeSpirit.ConfigCenter.Data;
+using CodeSpirit.ConfigCenter.Data.Seeders;
 using CodeSpirit.ConfigCenter.Hubs;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.ServiceDefaults;
@@ -27,6 +28,7 @@ public static class ServiceCollectionExtensions
         // 注册核心服务
         services.AddSingleton<IConfigCacheService, MemoryCacheConfigService>();
         services.AddSingleton<IConfigChangeNotifier, SignalRConfigChangeNotifier>();
+        services.AddScoped<ConfigSeederService>();
         return services;
     }
 
@@ -84,12 +86,22 @@ public static class ServiceCollectionExtensions
         app.MapControllers();
         app.UseAmis();
 
+        // 初始化数据库
         using (IServiceScope scope = app.Services.CreateScope())
         {
             IServiceProvider services = scope.ServiceProvider;
-            ConfigDbContext dbContext = scope.ServiceProvider.GetRequiredService<ConfigDbContext>();
-            // 调用数据初始化方法
-            await dbContext.Database.MigrateAsync();
+            try
+            {
+                ConfigDbContext dbContext = services.GetRequiredService<ConfigDbContext>();
+                ConfigSeederService seeder = services.GetRequiredService<ConfigSeederService>();
+                await seeder.SeedAsync();
+            }
+            catch (Exception ex)
+            {
+                ILogger<ConfigSeederService> logger = services.GetRequiredService<ILogger<ConfigSeederService>>();
+                logger.LogError(ex, "数据库初始化过程中发生错误");
+                throw;
+            }
         }
 
         return app;

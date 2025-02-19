@@ -346,11 +346,7 @@ namespace CodeSpirit.Amis.Column
                     {
                         column["placeholder"] = dateAttr.Placeholder;
                     }
-                    if (dateAttr.TimeZone != default)
-                    {
-                        column["timeZone"] = dateAttr.TimeZone;
-                    }
-                    if(dateAttr.FromNow)
+                    if (dateAttr.FromNow)
                     {
                         column["fromNow"] = dateAttr.FromNow;
                     }
@@ -477,17 +473,14 @@ namespace CodeSpirit.Amis.Column
 
             // 检查是否有 LinkColumn 特性
             LinkColumnAttribute linkAttr = prop.GetCustomAttribute<LinkColumnAttribute>();
-            if (linkAttr != null)
-            {
-                return "link";
-            }
-
-            return prop.PropertyType switch
-            {
-                Type t when t == typeof(bool) => "switch",
-                Type t when t == typeof(DateTime) || t == typeof(DateTime?) || t == typeof(DateTimeOffset) || t == typeof(DateTimeOffset?) => "date",
-                _ => "text"
-            };
+            return linkAttr != null
+                ? "link"
+                : prop.PropertyType switch
+                {
+                    Type t when t == typeof(bool) => "switch",
+                    Type t when t == typeof(DateTime) || t == typeof(DateTime?) || t == typeof(DateTimeOffset) || t == typeof(DateTimeOffset?) => "date",
+                    _ => "text"
+                };
         }
 
         /// <summary>
@@ -526,8 +519,9 @@ namespace CodeSpirit.Amis.Column
         /// <returns>AMIS 列的类型字符串。</returns>
         private string GetImageColumnType(PropertyInfo prop)
         {
-            if (prop.GetCustomAttribute<AvatarColumnAttribute>() != null) return "avatar";
-            return prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0 ? "avatar" : "image";
+            return prop.GetCustomAttribute<AvatarColumnAttribute>() != null
+                ? "avatar"
+                : prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0 ? "avatar" : "image";
         }
 
         /// <summary>

@@ -8,7 +8,6 @@ using CodeSpirit.Shared.Entities.Interfaces;
 using CodeSpirit.Shared.Filters;
 using CodeSpirit.Shared.JsonConverters;
 using CodeSpirit.Shared.ModelBindings;
-using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -110,7 +109,7 @@ public static class ServiceCollectionExtensions
             options.Filters.Add<ValidateModelAttribute>();
             options.Filters.Add<HttpResponseExceptionFilter>();
             options.ModelBinderProviders.Insert(0, new DateRangeModelBinderProvider());
-
+            options.ModelBinderProviders.Insert(0, new DateTimeModelBinderProvider());
             optionsAction?.Invoke(options);
         })
         .AddNewtonsoftJson(options =>
@@ -119,6 +118,8 @@ public static class ServiceCollectionExtensions
             options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
             options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
 
+            // 添加日期时间转换器
+            options.SerializerSettings.Converters.Add(new UTCToLocalDateTimeConverter());
             // 添加长整型转字符串的转换器
             options.SerializerSettings.Converters.Add(new StringEnumConverter());
             options.SerializerSettings.Converters.Add(new LongToStringConverter());

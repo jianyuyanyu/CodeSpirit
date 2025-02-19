@@ -261,6 +261,12 @@ namespace CodeSpirit.Amis.Helpers
 
                 button["api"] = api;
             }
+            else if (op.ActionType == "service")
+            {
+                // 对于 service 类型，创建一个 service 弹窗
+                var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
+                return CreateServiceDialogButton(op.Label, route);
+            }
 
             // 添加其他通用配置
             if (!string.IsNullOrEmpty(op.ConfirmText))
@@ -279,6 +285,35 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             return button;
+        }
+
+        /// <summary>
+        /// 创建一个Service弹窗按钮
+        /// </summary>
+        /// <param name="title">按钮和弹窗标题</param>
+        /// <param name="route">API路由信息</param>
+        /// <returns>按钮配置对象</returns>
+        public JObject CreateServiceDialogButton(string title, ApiRouteInfo route)
+        {
+            ArgumentNullException.ThrowIfNull(route);
+            
+            JObject serviceBody = new()
+            {
+                ["title"] = title,
+                ["size"] = "lg",
+                ["body"] = new JObject
+                {
+                    ["type"] = "service",
+                    ["schemaApi"] = new JObject
+                    {
+                        ["url"] = route.ApiPath,
+                        ["method"] = route.HttpMethod
+                    },
+                    ["body"] = "${body}" // 使用Service返回的body内容
+                }
+            };
+
+            return CreateButton(title, "dialog", dialogOrDrawer: serviceBody);
         }
     }
 }

@@ -6,6 +6,7 @@ using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.ConfigCenter.Controllers;
 
@@ -146,5 +147,83 @@ public class AppsController : ApiControllerBase
     public ActionResult<ApiResponse> ManageSettings()
     {
         return SuccessResponse();
+    }
+
+    [Operation(label: "批量配置", actionType: "service")]
+    [HttpGet("batch/settings")]
+    public JObject CreateBatchConfigButton(string id)
+    {
+        JObject tabs = new JObject
+        {
+            ["type"] = "tabs",
+            ["tabs"] = new JArray
+            {
+                new JObject
+                {
+                    ["title"] = "开发环境",
+                    ["body"] = new JObject
+                    {
+                        ["type"] = "form",
+                        ["initApi"]="get:${ROOT_API}/api/config/ConfigItems/${id}/Development/collection",
+                        ["api"] = "put:${ROOT_API}/api/config/ConfigItems/${id}/Development/collection",
+                        ["body"] = new JArray
+                        {
+                            new JObject
+                            {
+                                ["type"] = "json-editor",
+                                ["name"] = "configs",
+                                ["language"] = "json",
+                                ["placeholder"] = "请输入JSON格式的配置",
+                                ["required"] = true
+                            }
+                        }
+                    }
+                },
+                new JObject
+                {
+                    ["title"] = "预发布环境",
+                    ["body"] = new JObject
+                    {
+                        ["type"] = "form",
+                        ["initApi"]="get:${ROOT_API}/api/config/ConfigItems/${id}/Staging/collection",
+                        ["api"] = "put:${ROOT_API}/api/config/ConfigItems/${id}/Staging/collection",
+                        ["body"] = new JArray
+                        {
+                            new JObject
+                            {
+                                ["type"] = "json-editor",
+                                ["name"] = "configs",
+                                ["language"] = "json",
+                                ["placeholder"] = "请输入JSON格式的配置",
+                                ["required"] = true
+                            }
+                        }
+                    }
+                },
+                new JObject
+                {
+                    ["title"] = "生产环境",
+                    ["body"] = new JObject
+                    {
+                        ["type"] = "form",
+                        ["initApi"]="get:${ROOT_API}/api/config/ConfigItems/${id}/Production/collection",
+                        ["api"] = "put:${ROOT_API}/api/config/ConfigItems/${id}/Production/collection",
+                        ["body"] = new JArray
+                        {
+                            new JObject
+                            {
+                                ["type"] = "json-editor",
+                                ["name"] = "configs",
+                                ["language"] = "json",
+                                ["placeholder"] = "请输入JSON格式的配置",
+                                ["required"] = true
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        return tabs;
     }
 }

@@ -11,6 +11,13 @@ namespace CodeSpirit.ConfigCenter.Dtos.Config;
 public class UpdateConfigDto
 {
     /// <summary>
+    /// 应用环境
+    /// </summary>
+    [Required]
+    [DisplayName("环境")]
+    public required EnvironmentType Environment { get; set; }
+
+    /// <summary>
     /// 配置值
     /// </summary>
     [Required]
@@ -51,4 +58,10 @@ public class UpdateConfigDto
     /// </summary>
     [DisplayName("配置状态")]
     public ConfigStatus Status { get; set; }
+
+    /// <summary>
+    /// 是否已发布上线
+    /// </summary>
+    [DisplayName("发布状态")]
+    public bool OnlineStatus { get; set; }
 }

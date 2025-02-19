@@ -78,15 +78,21 @@ namespace CodeSpirit.Amis.Extensions
         /// <returns>AMIS 枚举选项的 JSON 数组。</returns>
         public static JArray GetEnumOptions(this Type type)
         {
-            Type enumType = Nullable.GetUnderlyingType(type) ?? type;
-            IEnumerable<object> enumValues = Enum.GetValues(enumType).Cast<object>();
-            IEnumerable<JObject> enumOptions = enumValues.Select(e => new JObject
+            ArgumentNullException.ThrowIfNull(type);
+            
+            var enumType = Nullable.GetUnderlyingType(type) ?? type;
+            if (!enumType.IsEnum)
             {
-                ["label"] = GetEnumDisplayName(enumType, e),
-                ["value"] = e.ToString()
-            });
+                throw new ArgumentException("The type must be an enum type.", nameof(type));
+            }
 
-            return new JArray(enumOptions);
+            return new JArray(
+                from value in Enum.GetValues(enumType).Cast<object>()
+                select new JObject
+                {
+                    ["label"] = GetEnumDisplayName(enumType, value),
+                    ["value"] = Convert.ToInt32(value)
+                });
         }
 
         /// <summary>

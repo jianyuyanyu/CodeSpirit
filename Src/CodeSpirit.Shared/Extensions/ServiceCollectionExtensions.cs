@@ -120,8 +120,11 @@ public static class ServiceCollectionExtensions
 
             // 添加日期时间转换器
             options.SerializerSettings.Converters.Add(new UTCToLocalDateTimeConverter());
+
+            // 添加枚举转字符串的转换器（已默认开启枚举映射，不应开启）
+            //options.SerializerSettings.Converters.Add(new StringEnumConverter());
+
             // 添加长整型转字符串的转换器
-            options.SerializerSettings.Converters.Add(new StringEnumConverter());
             options.SerializerSettings.Converters.Add(new LongToStringConverter());
         })
         .ConfigureApiBehaviorOptions(options =>

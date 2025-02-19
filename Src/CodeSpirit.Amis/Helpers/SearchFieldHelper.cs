@@ -1,7 +1,7 @@
 ﻿using CodeSpirit.Amis.Extensions;
+using CodeSpirit.Amis.Form;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-using System.ComponentModel;
 using System.Reflection;
 
 namespace CodeSpirit.Amis.Helpers
@@ -13,11 +13,12 @@ namespace CodeSpirit.Amis.Helpers
     {
         private readonly IHasPermissionService _permissionService;
         private readonly UtilityHelper _utilityHelper;
+        private readonly IEnumerable<IAmisFieldFactory> _fieldFactories;
 
         /// <summary>
         /// 定义排除在搜索参数之外的查询参数集合，忽略大小写。
         /// </summary>
-        private static readonly HashSet<string> ExcludedQueryParameters = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        private static readonly HashSet<string> ExcludedQueryParameters = new(StringComparer.OrdinalIgnoreCase)
         {
             "page", "pageSize", "limit", "offset", "perPage", "sort", "order", "orderBy", "orderDir", "sortBy", "sortOrder"
         };
@@ -27,10 +28,15 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         /// <param name="permissionService">权限服务，用于检查用户权限。</param>
         /// <param name="utilityHelper">工具辅助类，提供辅助方法。</param>
-        public SearchFieldHelper(IHasPermissionService permissionService, UtilityHelper utilityHelper)
+        /// <param name="fieldFactories">AMIS 字段工厂集合。</param>
+        public SearchFieldHelper(
+            IHasPermissionService permissionService,
+            UtilityHelper utilityHelper,
+            IEnumerable<IAmisFieldFactory> fieldFactories)
         {
             _permissionService = permissionService;
             _utilityHelper = utilityHelper;
+            _fieldFactories = fieldFactories?.ToList() ?? throw new ArgumentNullException(nameof(fieldFactories));
         }
 
         /// <summary>
@@ -41,7 +47,9 @@ namespace CodeSpirit.Amis.Helpers
         public List<JObject> GetAmisSearchFields(MethodInfo readMethod)
         {
             if (readMethod == null)
+            {
                 return [];
+            }
 
             ParameterInfo[] parameters = readMethod.GetParameters();
             List<JObject> searchFields = [];
@@ -51,11 +59,15 @@ namespace CodeSpirit.Amis.Helpers
             {
                 // 跳过被排除的参数
                 if (IsExcludedParameter(param.Name))
+                {
                     continue;
+                }
 
                 // 检查当前参数是否有搜索权限
                 if (!HasSearchPermission(param))
+                {
                     continue;
+                }
 
                 // 根据参数生成对应的搜索字段
                 searchFields.AddRange(CreateSearchFieldsFromParameter(param));
@@ -107,81 +119,60 @@ namespace CodeSpirit.Amis.Helpers
 
             if (_utilityHelper.IsSimpleType(param.ParameterType))
             {
-                // 简单类型直接创建一个搜索字段
-                fields.Add(CreateSearchField(param));
+                JObject factoryField = CreateFieldUsingFactories(param);
+                if (factoryField != null)
+                {
+                    fields.Add(factoryField);
+                }
+                else
+                {
+                    fields.Add(CreateDefaultSearchField(param));
+                }
             }
             else if (_utilityHelper.IsComplexType(param.ParameterType))
             {
-                // 复杂类型则遍历其属性并为每个合适的属性创建搜索字段
                 PropertyInfo[] properties = param.ParameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
                 foreach (PropertyInfo prop in properties)
                 {
                     if (IsExcludedParameter(prop.Name))
+                    {
                         continue;
+                    }
 
                     if (!HasSearchPermission(prop))
+                    {
                         continue;
+                    }
 
-                    fields.Add(CreateSearchFieldFromProperty(prop, param.Name));
+                    JObject factoryField = CreateFieldUsingFactories(prop);
+                    if (factoryField != null)
+                    {
+                        fields.Add(factoryField);
+                    }
+                    else
+                    {
+                        fields.Add(CreateDefaultSearchField(prop, param.Name));
+                    }
                 }
             }
 
             return fields;
         }
 
-        /// <summary>
-        /// 根据参数信息创建单个搜索字段的 JSON 对象。
-        /// </summary>
-        /// <param name="param">参数信息。</param>
-        /// <returns>包含搜索字段信息的 JSON 对象。</returns>
-        private JObject CreateSearchField(ParameterInfo param)
+        private JObject CreateFieldUsingFactories(ICustomAttributeProvider member)
         {
-            // 获取显示名称，如果未定义则转换参数名为标题格式
-            string label = param.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? param.Name.ToTitleCase();
-            // 转换参数名为驼峰命名
-            string fieldName = param.Name.ToCamelCase();
-            // 确定字段类型
-            string fieldType = DetermineSearchFieldType(param.ParameterType);
-
-            JObject field = new JObject
-            {
-                ["name"] = fieldName,
-                ["label"] = label,
-                ["type"] = fieldType,
-                ["clearable"] = true
-            };
-
-            // 如果是下拉选择框并且是枚举类型，添加选项
-            if (fieldType == "select" && (param.ParameterType.IsEnum || _utilityHelper.IsNullableEnum(param.ParameterType)))
-            {
-                field["options"] = param.ParameterType.GetEnumOptions();
-            }
-
-            // 如果是日期类型，设置日期格式
-            if (fieldType == "date" || fieldType == "input-date-range")
-            {
-                field["format"] = "YYYY-MM-DD";
-            }
-
-            return field;
+            return _fieldFactories
+                .Select(factory => factory.CreateField(member, _utilityHelper))
+                .FirstOrDefault(field => field != null);
         }
 
-        /// <summary>
-        /// 根据属性信息和父参数名创建单个搜索字段的 JSON 对象。
-        /// </summary>
-        /// <param name="prop">属性信息。</param>
-        /// <param name="parentName">父参数名称，用于构建嵌套字段名。</param>
-        /// <returns>包含搜索字段信息的 JSON 对象。</returns>
-        private JObject CreateSearchFieldFromProperty(PropertyInfo prop, string parentName)
+        private JObject CreateDefaultSearchField(ICustomAttributeProvider member, string parentName = null)
         {
-            // 获取显示名称，如果未定义则转换属性名为标题格式
-            string label = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase();
-            // 构建嵌套字段名，例如 parent.property
-            string fieldName = $"{prop.Name}".ToCamelCase();
-            // 确定字段类型
-            string fieldType = DetermineSearchFieldType(prop.PropertyType);
+            string label = member.GetDisplayName();
+            string fieldName = member.GetFieldName(parentName);
+            string fieldType = DetermineSearchFieldType(member.GetMemberType());
 
-            JObject field = new JObject
+            JObject field = new()
             {
                 ["name"] = fieldName,
                 ["label"] = label,
@@ -195,17 +186,22 @@ namespace CodeSpirit.Amis.Helpers
                 field["falseValue"] = false;
             }
 
-            // 如果是下拉选择框并且是枚举类型，添加选项
-            if (fieldType == "select" && (prop.PropertyType.IsEnum || _utilityHelper.IsNullableEnum(prop.PropertyType)))
+            // 处理枚举类型
+            if (fieldType == "select")
             {
-                field["options"] = prop.PropertyType.GetEnumOptions();
+                Type memberType = member.GetMemberType();
+                if (memberType.IsEnum || _utilityHelper.IsNullableEnum(memberType))
+                {
+                    field["options"] = memberType.GetEnumOptions();
+                }
             }
 
-            // 如果是日期类型，设置日期格式
+            // 处理日期类型
             if (fieldType == "date" || fieldType == "input-date-range")
             {
                 field["format"] = "YYYY-MM-DD";
             }
+
             return field;
         }
 
@@ -217,17 +213,20 @@ namespace CodeSpirit.Amis.Helpers
         private string DetermineSearchFieldType(Type type)
         {
             if (type == typeof(int) || type == typeof(int?))
+            {
                 return "input-number";
-            if (type == typeof(bool) || type == typeof(bool?))
-                return "switch";
-            if (type.IsEnum || _utilityHelper.IsNullableEnum(type))
-                return "select";
-            if (type == typeof(DateTime) || type == typeof(DateTime?))
-                return "date";
-            if (type == typeof(DateTime[]))
-                return "input-date-range";
+            }
 
-            return "input-text";
+            if (type == typeof(bool) || type == typeof(bool?))
+            {
+                return "switch";
+            }
+
+            return type.IsEnum || _utilityHelper.IsNullableEnum(type)
+                ? "select"
+                : type == typeof(DateTime) || type == typeof(DateTime?)
+                ? "date"
+                : type == typeof(DateTime[]) ? "input-date-range" : "input-text";
         }
     }
 }

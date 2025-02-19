@@ -24,7 +24,7 @@ public class AppDto
     [DisplayName("描述")]
     public string Description { get; set; }
 
-    [DisplayName("状态")]
+    [DisplayName("启用状态")]
     public bool Enabled { get; set; }
 
     [DisplayName("继承自")]

@@ -1,7 +1,5 @@
 using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.ConfigCenter.Models.Enums;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.ConfigCenter.Dtos.Config;
 
@@ -20,8 +18,15 @@ public class ConfigItemDto
     /// </summary>
     [Required]
     [StringLength(36)]
-    [DisplayName("应用")]
+    [DisplayName("应用Id")]
+    [AmisColumn(Hidden = true, Copyable = true)]
     public required string AppId { get; set; }
+
+    /// <summary>
+    /// 应用名称
+    /// </summary>
+    [DisplayName("应用")]
+    public string AppName { get; set; }
 
     /// <summary>
     /// 配置键名
@@ -105,4 +110,4 @@ public class ConfigItemDto
     /// </summary>
     [DisplayName("更新时间")]
     public DateTime? UpdatedAt { get; set; }
-} 
+}

@@ -136,4 +136,14 @@ public class AppsController : ApiControllerBase
             ? SuccessResponse($"成功删除 {successCount} 个应用，但以下应用删除失败: {string.Join(", ", failedAppIds)}")
             : SuccessResponse($"成功删除 {successCount} 个应用！");
     }
+
+    /// <summary>
+    /// 配置管理（仅用于生成跳转操作）
+    /// </summary>
+    /// <returns>操作结果</returns>
+    [Operation("配置管理", "link", "/config/settings?appId=${id}", null)]
+    public ActionResult<ApiResponse> ManageSettings()
+    {
+        return SuccessResponse();
+    }
 }

@@ -1,6 +1,5 @@
 ﻿using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers.Dtos;
-using CodeSpirit.Core.Authorization;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
@@ -107,20 +106,20 @@ namespace CodeSpirit.Amis.Helpers
         public JObject CreateDetailButton(ApiRouteInfo detailRoute, IEnumerable<PropertyInfo> detailPropertites)
         {
             string title = "查看";
-            JArray controls = new();
-            
-            var formFields = formFieldHelper.GetAmisFormFieldsFromProperties(detailPropertites);
-            
+            JArray controls = [];
+
+            List<JObject> formFields = formFieldHelper.GetAmisFormFieldsFromProperties(detailPropertites);
+
             // 遍历字段,在每个字段后面添加分割线(最后一个字段除外)
             for (int i = 0; i < formFields.Count(); i++)
             {
-                var field = formFields[i];
-                
+                JObject field = formFields[i];
+
                 // 检查是否为图片或头像类型
                 if (field["type"]?.ToString() == "image" || field["type"]?.ToString() == "avatar")
                 {
                     // 创建control包裹
-                    var controlWrapper = new JObject
+                    JObject controlWrapper = new()
                     {
                         ["type"] = "control",
                         ["label"] = field["label"],
@@ -134,7 +133,7 @@ namespace CodeSpirit.Amis.Helpers
                 {
                     controls.Add(field);
                 }
-                
+
                 // 如果不是最后一个字段,添加分割线
                 if (i < formFields.Count() - 1)
                 {
@@ -229,21 +228,57 @@ namespace CodeSpirit.Amis.Helpers
         // 创建自定义操作按钮
         public JObject CreateCustomOperationButton(OperationAttribute op, MethodInfo method)
         {
-            JObject api = amisApiHelper.CreateApiForMethod(method);
-            if (api["url"] == null)
+            JObject button = new()
             {
-                api["url"] = op.Api;
-            }
+                ["type"] = "button",
+                ["label"] = op.Label,
+                ["actionType"] = op.ActionType
+            };
 
-            if (op.IsBulkOperation)
+            // 处理不同的操作类型
+            if (op.ActionType == "link")
             {
-                api["data"] = new JObject()
+                // 对于链接类型，使用 link 属性而不是 api
+                string url = op.Api ?? apiRouteHelper.GetApiRouteInfoForMethod(method).ApiPath;
+                button["link"] = url;
+            }
+            else if (op.ActionType == "ajax")
+            {
+                // 对于 ajax 类型，使用 api 属性
+                JObject api = amisApiHelper.CreateApiForMethod(method);
+                if (api["url"] == null)
                 {
-                    ["ids"] = "${ids|split}"
-                };
+                    api["url"] = op.Api;
+                }
+
+                if (op.IsBulkOperation)
+                {
+                    api["data"] = new JObject()
+                    {
+                        ["ids"] = "${ids|split}"
+                    };
+                }
+
+                button["api"] = api;
             }
 
-            return CreateButton(op.Label, op.ActionType, api: api, confirmText: op.ConfirmText, download: op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase), visibleOn: op.VisibleOn);
+            // 添加其他通用配置
+            if (!string.IsNullOrEmpty(op.ConfirmText))
+            {
+                button["confirmText"] = op.ConfirmText;
+            }
+
+            if (op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase))
+            {
+                button["download"] = true;
+            }
+
+            if (!string.IsNullOrEmpty(op.VisibleOn))
+            {
+                button["visibleOn"] = op.VisibleOn;
+            }
+
+            return button;
         }
     }
 }

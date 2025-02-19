@@ -115,7 +115,8 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
 
         return await GetPagedListAsync(
            queryDto,
-           predicate
+           predicate,
+           "App"
        );
     }
 
@@ -176,15 +177,9 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         await _cacheService.RemoveAsync($"config:{entity.AppId}:{entity.Environment}:{entity.Key}");
     }
 
-    protected override Task<ConfigItem> GetEntityForUpdate(int id,UpdateConfigDto updateDto)
-    {
-        throw new NotImplementedException();
-    }
-
     protected override string GetImportItemId(ConfigItemBatchImportDto importDto)
     {
-        throw new NotImplementedException();
+        return importDto.AppId;
     }
-
     #endregion
 }

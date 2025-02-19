@@ -12,7 +12,8 @@ public class ConfigItemMappingProfile : Profile
     public ConfigItemMappingProfile()
     {
         // ConfigItem -> ConfigItemDto
-        CreateMap<ConfigItem, ConfigItemDto>();
+        CreateMap<ConfigItem, ConfigItemDto>()
+            .ForMember(dest => dest.AppName, opt => opt.MapFrom(src => src.App.Name));
 
         // CreateConfigDto -> ConfigItem
         CreateMap<CreateConfigDto, ConfigItem>();

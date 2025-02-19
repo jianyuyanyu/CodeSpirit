@@ -31,9 +31,11 @@ namespace CodeSpirit.Shared.JsonConverters
             }
 
             DateTime dateTime = (DateTime)value;
-            if (dateTime.Kind == DateTimeKind.Utc)
+            // 假设所有时间都是UTC时间（除非明确指定为Local）
+            if (dateTime.Kind != DateTimeKind.Local)
             {
-                // UTC时间转换为本地时间
+                // 将时间视为UTC并转换为本地时间
+                dateTime = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
                 dateTime = TimeZoneInfo.ConvertTimeFromUtc(dateTime, TimeZoneInfo.Local);
             }
 

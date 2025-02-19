@@ -27,9 +27,14 @@ public class AppDto
     [DisplayName("启用状态")]
     public bool Enabled { get; set; }
 
-    [DisplayName("继承自")]
-    [TplColumn(template: "${inheritancedAppId}")]
+    [IgnoreColumn]
     public string InheritancedAppId { get; set; }
+
+    /// <summary>
+    /// 继承应用名称
+    /// </summary>
+    [DisplayName("继承自")]
+    public string InheritancedAppName { get; set; }
 
     /// <summary>
     /// 是否为自动注册的应用

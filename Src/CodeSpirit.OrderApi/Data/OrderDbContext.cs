@@ -40,9 +40,6 @@ namespace CodeSpirit.OrderApi.Data
                 entity.Property(e => e.CreationTime)
                     .HasDefaultValueSql("GETDATE()");
             });
-
-            // 配置全局过滤器（软删除等）
-            ConfigureGlobalFiltersOnModelCreating(modelBuilder);
         }
     }
 }

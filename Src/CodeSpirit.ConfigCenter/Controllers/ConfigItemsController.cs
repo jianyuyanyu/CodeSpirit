@@ -4,6 +4,7 @@ using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 
 namespace CodeSpirit.ConfigCenter.Controllers;
@@ -107,5 +108,169 @@ public class ConfigItemsController : ApiControllerBase
     {
         await _configItemService.BatchImportAsync(importDtos);
         return SuccessResponse("导入成功");
+    }
+
+    /// <summary>
+    /// 获取应用配置集合
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <param name="environment">环境</param>
+    /// <returns>应用配置集合</returns>
+    [HttpGet("{appId}/{environment}/collection")]
+    public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetConfigCollection(string appId, string environment)
+    {
+        ConfigItemsExportDto configs = await _configItemService.GetAppConfigsAsync(appId, environment);
+        return SuccessResponse(configs);
+    }
+
+    /// <summary>
+    /// 批量更新应用配置
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <param name="environment">环境</param>
+    /// <param name="updateDto">更新请求数据</param>
+    /// <returns>更新结果</returns>
+    [HttpPut("{appId}/{environment}/collection")]
+    public async Task<ActionResult<ApiResponse>> UpdateConfigCollection(string appId, string environment, [FromBody] ConfigItemsUpdateDto updateDto)
+    {
+        // 验证路由参数与请求体参数是否一致
+        if (appId != updateDto.AppId || environment != updateDto.Environment)
+        {
+            return BadRequest("路由参数与请求体参数不一致");
+        }
+
+        (int successCount, List<string> failedKeys) = await _configItemService.UpdateConfigCollectionAsync(updateDto);
+
+        if (failedKeys.Any())
+        {
+            return SuccessResponse($"成功更新 {successCount} 个配置，但以下配置更新失败: {string.Join(", ", failedKeys)}");
+        }
+
+        return SuccessResponse($"成功更新 {successCount} 个配置！");
+    }
+
+    //[Operation(label: "批量配置", actionType: "service", dialogSize: "lg")]
+    public JObject CreateBatchConfigButton()
+    {
+        JObject button = new()
+        {
+            ["type"] = "button",
+            ["label"] = "批量配置",
+            ["actionType"] = "dialog",
+            ["dialog"] = new JObject
+            {
+                ["title"] = "批量配置",
+                ["size"] = "lg",
+                ["body"] = new JObject
+                {
+                    ["type"] = "service",
+                    ["api"] = new JObject
+                    {
+                        ["url"] = "${ROOT_API}/api/config/GetConfigCollection",
+                        ["method"] = "post",
+                        ["data"] = new JObject
+                        {
+                            ["ids"] = "${ids|split}"
+                        }
+                    },
+                    ["body"] = new JObject
+                    {
+                        ["type"] = "tabs",
+                        ["tabs"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["title"] = "开发环境",
+                            ["body"] = new JObject
+                            {
+                                ["type"] = "form",
+                                ["api"] = new JObject
+                                {
+                                    ["url"] = "${ROOT_API}/api/config/BatchUpdate",
+                                    ["method"] = "post",
+                                    ["data"] = new JObject
+                                    {
+                                        ["environment"] = "Development",
+                                        ["configs"] = "${Development}"
+                                    }
+                                },
+                                ["body"] = new JArray
+                                {
+                                    new JObject
+                                    {
+                                        ["type"] = "json-editor",
+                                        ["name"] = "Development",
+                                        ["language"] = "json",
+                                        ["placeholder"] = "请输入JSON格式的配置",
+                                        ["required"] = true
+                                    }
+                                }
+                            }
+                        },
+                        new JObject
+                        {
+                            ["title"] = "测试环境",
+                            ["body"] = new JObject
+                            {
+                                ["type"] = "form",
+                                ["api"] = new JObject
+                                {
+                                    ["url"] = "${ROOT_API}/api/config/BatchUpdate",
+                                    ["method"] = "post",
+                                    ["data"] = new JObject
+                                    {
+                                        ["environment"] = "Testing",
+                                        ["configs"] = "${Testing}"
+                                    }
+                                },
+                                ["body"] = new JArray
+                                {
+                                    new JObject
+                                    {
+                                        ["type"] = "json-editor",
+                                        ["name"] = "Testing",
+                                        ["language"] = "json",
+                                        ["placeholder"] = "请输入JSON格式的配置",
+                                        ["required"] = true
+                                    }
+                                }
+                            }
+                        },
+                        new JObject
+                        {
+                            ["title"] = "生产环境",
+                            ["body"] = new JObject
+                            {
+                                ["type"] = "form",
+                                ["api"] = new JObject
+                                {
+                                    ["url"] = "${ROOT_API}/api/config/BatchUpdate",
+                                    ["method"] = "post",
+                                    ["data"] = new JObject
+                                    {
+                                        ["environment"] = "Production",
+                                        ["configs"] = "${Production}"
+                                    }
+                                },
+                                ["body"] = new JArray
+                                {
+                                    new JObject
+                                    {
+                                        ["type"] = "json-editor",
+                                        ["name"] = "Production",
+                                        ["language"] = "json",
+                                        ["placeholder"] = "请输入JSON格式的配置",
+                                        ["required"] = true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    }
+                }
+            }
+        };
+
+        return button;
     }
 } 

@@ -4,6 +4,7 @@ using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
+using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
 
 namespace CodeSpirit.ConfigCenter.Services;
@@ -57,7 +58,8 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
 
         return await GetPagedListAsync(
             queryDto,
-            predicate
+            predicate,
+            "InheritancedApp"
         );
     }
 
@@ -140,6 +142,21 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     }
 
     /// <summary>
+    /// 验证更新DTO
+    /// </summary>
+    /// <param name="id">应用ID</param>
+    /// <param name="updateDto">更新DTO</param>
+    /// <exception cref="AppServiceException">当应用选择自己作为继承源时抛出异常</exception>
+    protected override Task ValidateUpdateDto(string id, UpdateAppDto updateDto)
+    {
+        if (updateDto.InheritancedAppId == id)
+        {
+            throw new AppServiceException(400, "应用不能选择自己作为继承源！");
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
     /// 获取要更新的实体
     /// </summary>
     /// <param name="updateDto">更新DTO</param>
@@ -177,6 +194,24 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
     {
         entity.Secret = GenerateAppSecret();
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 删除实体前的处理
+    /// </summary>
+    /// <param name="entity">待删除的应用实体</param>
+    protected override async Task OnDeleting(App entity)
+    {
+        // Check for existing config items
+        bool hasConfigItems = await Repository.CreateQuery()
+            .Where(x => x.Id == entity.Id)
+            .SelectMany(x => x.ConfigItems)
+            .AnyAsync();
+
+        if (hasConfigItems)
+        {
+            throw new AppServiceException(400, "无法删除存在配置项的应用，请先删除所有配置项！");
+        }
     }
 
     #endregion

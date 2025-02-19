@@ -163,7 +163,7 @@ namespace CodeSpirit.Amis.Form
                 : type switch
                 {
                     Type t when t == typeof(string) => "input-text",
-                    Type t when t == typeof(bool) => "switch",
+                    Type t when t == typeof(bool) || t == typeof(bool?) => "switch",
                     Type t when t.IsNumericType() => "input-number",
                     Type t when t.IsImageType() => "image",
                     _ => "input-text"

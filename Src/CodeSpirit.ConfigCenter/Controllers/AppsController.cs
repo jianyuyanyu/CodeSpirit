@@ -1,4 +1,5 @@
 using AutoMapper;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ConfigCenter.Constants;
 using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Services;
@@ -55,12 +56,12 @@ public class AppsController : ApiControllerBase
     /// <summary>
     /// 获取应用详情
     /// </summary>
-    /// <param name="appId">应用ID</param>
+    /// <param name="id">应用ID</param>
     /// <returns>应用详细信息</returns>
-    [HttpGet("{appId}")]
-    public async Task<ActionResult<ApiResponse<AppDto>>> GetApp(string appId)
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ApiResponse<AppDto>>> GetApp(string id)
     {
-        AppDto app = await _appService.GetAppAsync(appId);
+        AppDto app = await _appService.GetAppAsync(id);
         return SuccessResponse(app);
     }
 
@@ -79,26 +80,26 @@ public class AppsController : ApiControllerBase
     /// <summary>
     /// 更新应用
     /// </summary>
-    /// <param name="appId">应用ID</param>
+    /// <param name="id">应用ID</param>
     /// <param name="updateAppDto">更新应用请求数据</param>
     /// <returns>更新后的应用信息</returns>
-    [HttpPut("{appId}")]
-    public async Task<ActionResult<ApiResponse>> UpdateApp(string appId, UpdateAppDto updateAppDto)
+    [HttpPut("{id}")]
+    public async Task<ActionResult<ApiResponse>> UpdateApp(string id, UpdateAppDto updateAppDto)
     {
-        await _appService.UpdateAppAsync(appId, updateAppDto);
+        await _appService.UpdateAppAsync(id, updateAppDto);
         return SuccessResponse();
     }
 
     /// <summary>
     /// 删除应用
     /// </summary>
-    /// <param name="appId">应用ID</param>
+    /// <param name="id">应用ID</param>
     /// <returns>操作结果</returns>
-    [HttpDelete("{appId}")]
+    [HttpDelete("{id}")]
     [Operation("删除", "ajax", null, "确定要删除此应用吗？")]
-    public async Task<ActionResult<ApiResponse>> DeleteApp(string appId)
+    public async Task<ActionResult<ApiResponse>> DeleteApp(string id)
     {
-        await _appService.DeleteAppAsync(appId);
+        await _appService.DeleteAppAsync(id);
         return SuccessResponse();
     }
 

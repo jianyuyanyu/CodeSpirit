@@ -54,5 +54,5 @@ public class CreateAppDto
     /// </summary>
     [DisplayName("自动发布")]
     [Description("开启后，配置变更将自动发布")]
-    public bool AutoPublish { get; set; }
+    public bool? AutoPublish { get; set; }
 } 

@@ -23,6 +23,7 @@ public class UpdateAppDto
     /// <summary>
     /// 是否启用
     /// </summary>
+    [DisplayName("是否启用")]
     public bool Enabled { get; set; }
 
     /// <summary>
@@ -46,5 +47,5 @@ public class UpdateAppDto
     /// </summary>
     [DisplayName("自动发布")]
     [Description("开启后，配置变更将自动发布")]
-    public bool AutoPublish { get; set; }
+    public bool? AutoPublish { get; set; }
 }

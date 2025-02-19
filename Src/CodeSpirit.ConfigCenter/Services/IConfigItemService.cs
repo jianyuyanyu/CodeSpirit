@@ -26,4 +26,19 @@ public interface IConfigItemService : IBaseService<ConfigItem, ConfigItemDto, in
     /// <param name="queryDto">查询条件</param>
     /// <returns>分页列表</returns>
     Task<PageList<ConfigItemDto>> GetConfigsAsync(ConfigItemQueryDto queryDto);
+
+    /// <summary>
+    /// 获取应用在指定环境下的所有配置
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <param name="environment">环境</param>
+    /// <returns>配置集合</returns>
+    Task<ConfigItemsExportDto> GetAppConfigsAsync(string appId, string environment);
+
+    /// <summary>
+    /// 批量更新应用配置
+    /// </summary>
+    /// <param name="updateDto">更新请求数据</param>
+    /// <returns>更新结果</returns>
+    Task<(int successCount, List<string> failedKeys)> UpdateConfigCollectionAsync(ConfigItemsUpdateDto updateDto);
 } 

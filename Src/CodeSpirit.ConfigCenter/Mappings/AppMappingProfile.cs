@@ -14,14 +14,17 @@ public class AppMappingProfile : Profile
     /// </summary>
     public AppMappingProfile()
     {
-        CreateMap<App, AppDto>();
+        CreateMap<App, AppDto>()
+            .ForMember(dest => dest.InheritancedAppName, 
+                      opt => opt.MapFrom(src => src.InheritancedApp != null ? src.InheritancedApp.Name : null));
 
         CreateMap<CreateAppDto, App>()
             .ForMember(dest => dest.Secret, opt => opt.Ignore())
             .ForMember(dest => dest.Enabled, opt => opt.MapFrom(_ => true));
 
         CreateMap<UpdateAppDto, App>()
-            .ForMember(dest => dest.Secret, opt => opt.Ignore());
+            .ForMember(dest => dest.Secret, opt => opt.Ignore())
+            .ForMember(dest => dest.AutoPublish, opt => opt.MapFrom(p => p.AutoPublish.HasValue ? true : false));
 
         CreateMap<AppBatchImportItemDto, App>()
             .ForMember(dest => dest.Secret, opt => opt.Ignore())
@@ -29,4 +32,4 @@ public class AppMappingProfile : Profile
 
         CreateMap<PageList<App>, PageList<AppDto>>();
     }
-} 
+}

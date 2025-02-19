@@ -288,5 +288,12 @@ namespace CodeSpirit.Shared.Data
         {
             // 派生类可以实现具体的事件发布逻辑
         }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            // 配置全局过滤器（软删除等）
+            ConfigureGlobalFiltersOnModelCreating(modelBuilder);
+            base.OnModelCreating(modelBuilder);
+        }
     }
 } 

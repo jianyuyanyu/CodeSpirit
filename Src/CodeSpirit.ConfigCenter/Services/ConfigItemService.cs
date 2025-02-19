@@ -7,6 +7,9 @@ using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System;
+using System.Globalization;
+using System.Runtime.CompilerServices;
 
 namespace CodeSpirit.ConfigCenter.Services;
 
@@ -175,13 +178,17 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
                 x.Environment.ToString() == updateDto.Environment)
                 .ToDictionaryAsync(x => x.Key);
 
-            foreach (var (key, value) in updateDto.Configs)
+            // 使用解析后的配置对象
+            foreach (var property in updateDto.ParsedConfigs.Properties())
             {
+                var key = property.Name;
+                var value = property.Value.ToString();
+
                 try
                 {
                     // 验证并推断配置值类型
-                    var (isValid, valueType) = ValidateAndInferConfigValueType(value);
-                    if (!isValid)
+                    var validationResult = ValidateAndInferConfigValueType(value);
+                    if (!validationResult.IsValid)
                     {
                         logger.LogWarning("配置值格式无效: {AppId}/{Environment}/{Key}", 
                             updateDto.AppId, updateDto.Environment, key);
@@ -199,7 +206,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
                         // 如果现有配置类型是String，则可以根据值推断更新类型
                         if (existingConfig.ValueType == ConfigValueType.String)
                         {
-                            existingConfig.ValueType = valueType;
+                            existingConfig.ValueType = validationResult.ValueType;
                         }
                         // 如果配置类型不匹配，则验证值是否符合现有类型
                         else if (!ValidateValueForType(value, existingConfig.ValueType))
@@ -218,7 +225,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
                             Key = key,
                             Value = value,
                             Environment = Enum.Parse<EnvironmentType>(updateDto.Environment),
-                            ValueType = valueType,
+                            ValueType = validationResult.ValueType,
                             Version = 1,
                             Status = ConfigStatus.Editing,
                             IsEnabled = true
@@ -253,47 +260,115 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     }
 
     /// <summary>
+    /// 配置值类型判断结果
+    /// </summary>
+    private readonly record struct ConfigValueValidationResult(bool IsValid, ConfigValueType ValueType);
+
+    /// <summary>
     /// 验证并推断配置值类型
     /// </summary>
-    private (bool isValid, ConfigValueType valueType) ValidateAndInferConfigValueType(string value)
+    private ConfigValueValidationResult ValidateAndInferConfigValueType(string value)
     {
-        // 空值默认为字符串类型
         if (string.IsNullOrEmpty(value))
         {
-            return (true, ConfigValueType.String);
+            return new(true, ConfigValueType.String);
         }
 
-        // 尝试解析为布尔值
-        if (bool.TryParse(value, out _))
+        // 使用 AsSpan 避免不必要的字符串分配
+        ReadOnlySpan<char> span = value.AsSpan().Trim();
+        
+        if (span.Length == 0)
         {
-            return (true, ConfigValueType.Boolean);
+            return new(true, ConfigValueType.String);
         }
 
-        // 尝试解析为整数
-        if (int.TryParse(value, out _))
+        // 快速路径：检查第一个字符来预判类型
+        char firstChar = span[0];
+        
+        // 可能是数字或负数
+        if (firstChar is '-' or '+' or >= '0' and <= '9')
         {
-            return (true, ConfigValueType.Int);
+            if (TryParseNumber(span, out var type))
+            {
+                return new(true, type);
+            }
         }
-
-        // 尝试解析为浮点数
-        if (double.TryParse(value, out _))
+        // 可能是布尔值
+        else if (firstChar is 't' or 'T' or 'f' or 'F')
         {
-            return (true, ConfigValueType.Double);
+            if (IsBooleanValue(span))
+            {
+                return new(true, ConfigValueType.Boolean);
+            }
+        }
+        // 可能是JSON
+        else if (firstChar is '{' or '[')
+        {
+            if (IsJsonValue(value)) // 这里使用原始字符串，因为JSON解析需要string
+            {
+                return new(true, ConfigValueType.Json);
+            }
         }
 
-        // 尝试解析为JSON
+        return new(true, ConfigValueType.String);
+    }
+
+    /// <summary>
+    /// 尝试解析数字类型
+    /// </summary>
+    private static bool TryParseNumber(ReadOnlySpan<char> span, out ConfigValueType type)
+    {
+        // 检查是否包含小数点或科学计数法标记
+        bool containsDecimalPoint = span.Contains('.');
+        bool containsExponent = span.Contains("e", StringComparison.OrdinalIgnoreCase) || 
+                              span.Contains("E", StringComparison.OrdinalIgnoreCase);
+
+        if (!containsDecimalPoint && !containsExponent)
+        {
+            // 尝试解析整数
+            if (int.TryParse(span, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            {
+                type = ConfigValueType.Int;
+                return true;
+            }
+        }
+
+        // 尝试解析浮点数
+        if (double.TryParse(span, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+        {
+            type = ConfigValueType.Double;
+            return true;
+        }
+
+        type = ConfigValueType.String;
+        return false;
+    }
+
+    /// <summary>
+    /// 检查是否为布尔值
+    /// </summary>
+    private static bool IsBooleanValue(ReadOnlySpan<char> span) =>
+        MemoryExtensions.Equals(span, "true".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
+        MemoryExtensions.Equals(span, "false".AsSpan(), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 检查是否为有效的JSON
+    /// </summary>
+    private static bool IsJsonValue(string value)
+    {
         try
         {
-            JsonConvert.DeserializeObject(value);
-            return (true, ConfigValueType.Json);
+            using var reader = new JsonTextReader(new StringReader(value));
+            while (reader.Read())
+            {
+                // 只需要验证JSON的有效性，不需要实际解析
+            }
+            return true;
         }
         catch
         {
-            // 不是有效的JSON，视为普通字符串
+            return false;
         }
-
-        // 默认为字符串类型
-        return (true, ConfigValueType.String);
     }
 
     /// <summary>
@@ -301,32 +376,23 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     /// </summary>
     private bool ValidateValueForType(string value, ConfigValueType valueType)
     {
-        try
+        if (string.IsNullOrEmpty(value))
         {
-            switch (valueType)
-            {
-                case ConfigValueType.Boolean:
-                    return bool.TryParse(value, out _);
-                case ConfigValueType.Int:
-                    return int.TryParse(value, out _);
-                case ConfigValueType.Double:
-                    return double.TryParse(value, out _);
-                case ConfigValueType.Json:
-                    JsonConvert.DeserializeObject(value);
-                    return true;
-                case ConfigValueType.String:
-                    return true;
-                case ConfigValueType.Encrypted:
-                    // 加密类型的值应该已经是加密后的格式
-                    return true;
-                default:
-                    return false;
-            }
+            return valueType == ConfigValueType.String;
         }
-        catch
+
+        ReadOnlySpan<char> span = value.AsSpan().Trim();
+        
+        return valueType switch
         {
-            return false;
-        }
+            ConfigValueType.Boolean => IsBooleanValue(span),
+            ConfigValueType.Int => TryParseNumber(span, out var type) && type == ConfigValueType.Int,
+            ConfigValueType.Double => TryParseNumber(span, out _),
+            ConfigValueType.Json => IsJsonValue(value),
+            ConfigValueType.String => true,
+            ConfigValueType.Encrypted => span.Length > 0,
+            _ => false
+        };
     }
 
     #region Override Base Methods

@@ -59,8 +59,8 @@
         - [x] 只读列
       - [x] 背景色阶
       - [ ] 单元格样式
-      - [ ] 默认是否显示
-      - [ ] 固定列
+      - [x] 默认是否显示
+      - [x] 固定列
     - [x] 头部操作
       - [x] 添加
       - [x] 批量导入
@@ -104,7 +104,7 @@
         - [x] 密码字段：`DataTypeAttribute`|`DataType.Password`
         - [x] InputTree
         - [x] Excel上传及解析：`AmisInputExcelFieldAttribute` 
-        - [ ] JSON
+        - [x] JSON
         - [ ] 数组
         - [ ] 文件
         - [ ] 城市选择器

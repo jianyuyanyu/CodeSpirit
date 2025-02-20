@@ -52,5 +52,8 @@ namespace CodeSpirit.Amis.Configuration
 
         [JsonProperty("icon")]
         public string Icon { get; set; }
+
+        [JsonProperty("link")]
+        public string Link { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Amis.Controllers;
+using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     [ApiController]
     [Authorize(policy: "DynamicPermissions")]
     [Route("api/identity/[controller]")]
+    [Module("identity", displayName: "用户中心")]
     public abstract class ApiControllerBase : AmisApiControllerBase
     {
         /// <summary>

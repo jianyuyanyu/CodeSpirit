@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Reflection;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace CodeSpirit.Authorization
 {
@@ -27,33 +28,71 @@ namespace CodeSpirit.Authorization
         private readonly IServiceProvider _serviceProvider;
 
         /// <summary>
+        /// 分布式缓存
+        /// </summary>
+        private readonly IDistributedCache _cache;
+
+        /// <summary>
+        /// 缓存键前缀
+        /// </summary>
+        private const string CACHE_KEY_PREFIX = "CodeSpirit:PermissionTree:Module:";
+
+        /// <summary>
+        /// 缓存键前缀
+        /// </summary>
+        private const string MODULE_NAMES_CACHE_KEY = "CodeSpirit:PermissionTree:ModuleNames";
+
+        /// <summary>
+        /// 缓存选项
+        /// </summary>
+        private static readonly DistributedCacheEntryOptions _cacheOptions = new()
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24),
+            SlidingExpiration = TimeSpan.FromHours(1)
+        };
+
+        /// <summary>
         /// 构造函数，通过依赖注入的 IServiceProvider 获取应用中所有控制器类型，
         /// 并构造权限树。
         /// </summary>
         /// <param name="serviceProvider">服务提供者</param>
-        public PermissionService(IServiceProvider serviceProvider)
+        /// <param name="cache">分布式缓存</param>
+        public PermissionService(
+            IServiceProvider serviceProvider,
+            IDistributedCache cache)
         {
             _serviceProvider = serviceProvider;
-            BuildPermissionTree();
+            _cache = cache;
         }
 
-        /// <summary>
-        /// 构建权限树的主要方法
-        /// </summary>
-        private void BuildPermissionTree()
+        public async Task InitializePermissionTree()
         {
-            IEnumerable<TypeInfo> controllers = GetControllers();
-            foreach (TypeInfo controller in controllers.Where(c => !IsAnonymousController(c)))
+            // 获取当前服务的所有模块
+            var currentModules = GetControllers()
+                .Where(c => !IsAnonymousController(c))
+                .Select(c => c.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default")
+                .Distinct()
+                .ToList();
+
+            // 保存模块名称列表到缓存
+            await _cache.SetAsync(MODULE_NAMES_CACHE_KEY, currentModules, _cacheOptions);
+
+            // 清除并重建每个模块的缓存
+            foreach (var moduleName in currentModules)
             {
-                PermissionNode controllerNode = CreateControllerNode(controller);
-                if (controllerNode != null)
-                {
-                    _permissionTree.Add(controllerNode);
-                    ProcessControllerActions(controller, controllerNode);
-                }
+                var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
+                await _cache.RemoveAsync(cacheKey);
             }
 
-            BuildHierarchicalTree(_permissionTree);
+            // 构建新的权限树
+            BuildPermissionTree();
+
+            // 按模块分组保存到缓存
+            foreach (var moduleNode in _permissionTree)
+            {
+                var cacheKey = $"{CACHE_KEY_PREFIX}{moduleNode.Name}";
+                await _cache.SetAsync(cacheKey, new List<PermissionNode> { moduleNode }, _cacheOptions);
+            }
         }
 
         /// <summary>
@@ -77,41 +116,80 @@ namespace CodeSpirit.Authorization
             controller.GetCustomAttribute<AllowAnonymousAttribute>() != null;
 
         /// <summary>
+        /// 构建权限树的主要方法
+        /// </summary>
+        private void BuildPermissionTree()
+        {
+            IEnumerable<TypeInfo> controllers = GetControllers();
+
+            // 按模块分组处理控制器
+            var moduleGroups = controllers
+                .Where(c => !IsAnonymousController(c))
+                .GroupBy(c => c.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default");
+
+            foreach (var moduleGroup in moduleGroups)
+            {
+                var moduleName = moduleGroup.Key;
+                // 获取第一个控制器上的 ModuleAttribute，用于提取显示名称
+                var moduleAttr = moduleGroup.First().GetCustomAttribute<ModuleAttribute>();
+                var moduleDisplayName = moduleAttr?.DisplayName ?? moduleName;
+
+                var moduleNode = new PermissionNode(
+                    moduleName,
+                    moduleName,
+                    path: string.Empty,
+                    displayName: moduleDisplayName);
+
+                foreach (TypeInfo controller in moduleGroup)
+                {
+                    PermissionNode controllerNode = CreateControllerNode(controller, moduleName);
+                    if (controllerNode != null)
+                    {
+                        moduleNode.Children.Add(controllerNode);
+                        ProcessControllerActions(controller, controllerNode);
+                    }
+                }
+
+                _permissionTree.Add(moduleNode);
+            }
+
+            BuildHierarchicalTree(_permissionTree);
+        }
+
+        /// <summary>
         /// 创建控制器节点
         /// </summary>
         /// <param name="controller">控制器类型信息</param>
+        /// <param name="moduleName">模块名称</param>
         /// <returns>权限节点</returns>
-        private PermissionNode CreateControllerNode(TypeInfo controller)
+        private PermissionNode CreateControllerNode(TypeInfo controller, string moduleName)
         {
-            // 获取模块特性
-            ModuleAttribute moduleAttr = controller.GetCustomAttribute<ModuleAttribute>() ??
-                            controller.Assembly.GetCustomAttribute<ModuleAttribute>();
-            string moduleName = moduleAttr?.Name;
-
             // 获取控制器名称
             string controllerName = controller.Name.RemovePostFix("Controller").ToCamelCase();
 
             // 获取权限和显示名称特性
             PermissionAttribute permissionAttr = controller.GetCustomAttribute<PermissionAttribute>();
-            DisplayNameAttribute displayName = controller.GetCustomAttribute<DisplayNameAttribute>();
+            DisplayNameAttribute displayNameAttr = controller.GetCustomAttribute<DisplayNameAttribute>();
 
             // 确定最终的名称和描述
             string name = permissionAttr?.Name ?? controllerName;
             string description = permissionAttr?.Description ??
-                             displayName?.DisplayName ??
-                             controllerName;
+                              displayNameAttr?.DisplayName ??
+                              controllerName;
+            string displayName = permissionAttr?.DisplayName ?? displayNameAttr?.DisplayName ?? name;
 
             // 处理路由
             string route = controller.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
             string path = RouteHelper.CombineRoutes(route, null, controllerName);
 
-            // 创建节点
+            // 创建节点，设置父节点为模块名
             PermissionNode node = new(
-                $"{moduleName}_{name}".TrimStart('_'),
+                $"{moduleName}_{name}",
                 description,
-                path: path);
+                moduleName, // 设置父节点为模块名
+                path,
+                displayName: displayName);
 
-            node.Code = permissionAttr?.Code ?? GeneratePermissionCode(node);
             return node;
         }
 
@@ -154,14 +232,15 @@ namespace CodeSpirit.Authorization
         {
             // 获取权限和显示名称特性
             PermissionAttribute permissionAttr = action.GetCustomAttribute<PermissionAttribute>();
-            DisplayNameAttribute displayName = action.GetCustomAttribute<DisplayNameAttribute>();
+            DisplayNameAttribute displayNameAttr = action.GetCustomAttribute<DisplayNameAttribute>();
 
             // 确定动作名称
             string actionName = action.Name.ToCamelCase();
             string name = permissionAttr?.Name ?? actionName;
-            string description = permissionAttr?.Description ??
-                             displayName?.DisplayName ??
-                             actionName;
+            string description = permissionAttr?.Description ?? actionName;
+            string displayName = permissionAttr?.DisplayName ??
+                            displayNameAttr?.DisplayName ??
+                            actionName;
 
             // 处理路由
             string controllerRoute = controller.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
@@ -175,9 +254,9 @@ namespace CodeSpirit.Authorization
                 description,
                 controllerNode.Name,
                 path,
-                requestMethod);
+                requestMethod,
+                displayName: displayName);
 
-            node.Code = permissionAttr?.Code ?? GeneratePermissionCode(node);
             return node;
         }
 
@@ -218,7 +297,57 @@ namespace CodeSpirit.Authorization
         /// 获取权限树，即所有控制器及其下属动作组成的节点集合
         /// </summary>
         /// <returns>权限树根节点列表</returns>
-        public List<PermissionNode> GetPermissionTree() => _permissionTree;
+        public List<PermissionNode> GetPermissionTree()
+        {
+            return GetPermissionTreeAsync().GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// 获取权限树，即所有控制器及其下属动作组成的节点集合
+        /// </summary>
+        /// <returns>权限树根节点列表</returns>
+        public async Task<List<PermissionNode>> GetPermissionTreeAsync()
+        {
+            var allModuleNodes = new List<PermissionNode>();
+            
+            // 从缓存获取模块名称列表
+            var moduleNames = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY);
+            if (moduleNames == null)
+            {
+                return allModuleNodes;
+            }
+            
+            // 获取每个模块的权限树
+            foreach (var moduleName in moduleNames)
+            {
+                var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
+                var moduleNodes = await _cache.GetAsync<List<PermissionNode>>(cacheKey);
+                if (moduleNodes != null)
+                {
+                    allModuleNodes.AddRange(moduleNodes);
+                }
+            }
+
+            return allModuleNodes;
+        }
+
+        /// <summary>
+        /// 清除指定模块的权限树缓存
+        /// </summary>
+        public async Task ClearModulePermissionCacheAsync(string moduleName)
+        {
+            // 清除指定模块的缓存
+            var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
+            await _cache.RemoveAsync(cacheKey);
+
+            // 更新模块名称列表
+            var moduleNames = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY);
+            if (moduleNames != null)
+            {
+                moduleNames.Remove(moduleName);
+                await _cache.SetAsync(MODULE_NAMES_CACHE_KEY, moduleNames, _cacheOptions);
+            }
+        }
 
         // 权限代码生成方法
         private string GeneratePermissionCode(PermissionNode permissionNode)
@@ -229,29 +358,29 @@ namespace CodeSpirit.Authorization
         /// <summary>
         /// 检查权限代码是否存在
         /// </summary>
-        /// <param name="permissionCode">权限代码</param>
+        /// <param name="name">权限代码</param>
         /// <returns>true 表示权限存在，false 表示权限不存在</returns>
-        public bool HasPermission(string permissionCode)
+        public bool HasPermission(string name)
         {
-            return FindNodeByCode(permissionCode, _permissionTree) != null;
+            return FindNodeByName(name, _permissionTree) != null;
         }
 
         /// <summary>
         /// 递归查找指定权限代码的节点
         /// </summary>
-        /// <param name="code">权限代码</param>
+        /// <param name="name">权限代码</param>
         /// <param name="nodes">要搜索的节点集合</param>
         /// <returns>找到的节点，如果未找到则返回 null</returns>
-        private PermissionNode FindNodeByCode(string code, List<PermissionNode> nodes)
+        private PermissionNode FindNodeByName(string name, List<PermissionNode> nodes)
         {
             foreach (var node in nodes)
             {
-                if (node.Code == code)
+                if (node.Name == name)
                 {
                     return node;
                 }
 
-                var foundInChildren = FindNodeByCode(code, node.Children);
+                var foundInChildren = FindNodeByName(name, node.Children);
                 if (foundInChildren != null)
                 {
                     return foundInChildren;

@@ -58,8 +58,8 @@ namespace CodeSpirit.Amis.App
         /// <summary>
         /// 访问该页面所需的权限代码
         /// </summary>
-        [JsonProperty("permissionCode")]
-        public string PermissionCode { get; set; }
+        [JsonProperty("permission")]
+        public string Permission { get; set; }
 
         /// <summary>
         /// 链接

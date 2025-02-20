@@ -1,5 +1,6 @@
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization;
+using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.IdGenerator;
@@ -8,10 +9,12 @@ using CodeSpirit.Shared.Entities.Interfaces;
 using CodeSpirit.Shared.Filters;
 using CodeSpirit.Shared.JsonConverters;
 using CodeSpirit.Shared.ModelBindings;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -51,12 +54,23 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddSystemServices(this IServiceCollection services, ConfigurationManager configuration, Type programType, string appName = null)
+    public static IServiceCollection AddSystemServices(this IServiceCollection services, ConfigurationManager configuration, Type programType, IWebHostEnvironment webHostEnvironment)
     {
         // Ìí¼Ó HttpContextAccessor ºÍÄÚ´æ»º´æ
         services.AddHttpContextAccessor();
         services.AddMemoryCache();
-        services.AddDistributedMemoryCache();
+
+        if (webHostEnvironment != null && webHostEnvironment.IsProduction()) {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = configuration.GetConnectionString("RedisConStr");
+                options.InstanceName = "CodeSpirit";
+            });
+        }
+        else
+        {
+            services.AddDistributedMemoryCache();
+        }
 
         // ×¢²á AutoMapper
         services.AddAutoMapper(programType);

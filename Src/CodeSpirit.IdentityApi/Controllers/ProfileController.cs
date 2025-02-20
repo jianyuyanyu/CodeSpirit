@@ -1,3 +1,4 @@
+using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Dtos.Profile;
 using CodeSpirit.IdentityApi.Services;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
+    [Module("default", displayName: "默认")]
     public class ProfileController : ApiControllerBase
     {
         private readonly IUserService _userService;

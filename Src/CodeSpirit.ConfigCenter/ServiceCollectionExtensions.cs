@@ -1,4 +1,5 @@
 using CodeSpirit.Amis;
+using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.ConfigCenter.Data;
 using CodeSpirit.ConfigCenter.Data.Seeders;
 using CodeSpirit.ConfigCenter.Hubs;
@@ -59,7 +60,7 @@ public static class ServiceCollectionExtensions
 
         // Add services to the container
         builder.Services.AddDatabase(builder.Configuration);
-        builder.Services.AddSystemServices(builder.Configuration, typeof(Program));
+        builder.Services.AddSystemServices(builder.Configuration, typeof(Program), builder.Environment);
         builder.Services.AddCustomServices();
         builder.Services.AddJwtAuthentication(builder.Configuration);
         builder.Services.ConfigureDefaultControllers();
@@ -85,6 +86,7 @@ public static class ServiceCollectionExtensions
         app.UseAuthorization();
         app.MapControllers();
         app.UseAmis();
+        app.UseCodeSpiritAuthorization();
 
         // 初始化数据库
         using (IServiceScope scope = app.Services.CreateScope())

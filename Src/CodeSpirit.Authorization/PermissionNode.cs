@@ -5,9 +5,14 @@
 public class PermissionNode
 {
     /// <summary>
-    /// 节点名称（控制器名称或动作名称）
+    /// 节点名称（控制器名称或动作名称，唯一）
     /// </summary>
     public string Name { get; set; }
+
+    /// <summary>
+    /// 显示名称
+    /// </summary>
+    public string DisplayName {  get; set; }
 
     /// <summary>
     /// 节点描述（可以通过 DisplayNameAttribute 或 PermissionAttribute 指定）
@@ -35,11 +40,6 @@ public class PermissionNode
     public List<PermissionNode> Children { get; set; } = [];
 
     /// <summary>
-    /// 权限节点代码（唯一）
-    /// </summary>
-    public string Code { get; set; }
-
-    /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="name">节点名称</param>
@@ -48,12 +48,13 @@ public class PermissionNode
     /// <param name="parent">父节点名称</param>
     /// <param name="path">请求路径</param>
     /// <param name="requestMethod">请求方法</param>
-    public PermissionNode(string name, string description, string parent = "", string path = "", string requestMethod = "")
+    public PermissionNode(string name, string description, string parent = "", string path = "", string requestMethod = "", string displayName = null)
     {
         Name = name;
         Description = description;
         Parent = parent;
         Path = path;
         RequestMethod = requestMethod;
+        DisplayName = displayName;
     }
 }

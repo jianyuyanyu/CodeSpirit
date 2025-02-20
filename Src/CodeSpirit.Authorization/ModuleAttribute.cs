@@ -11,13 +11,16 @@
         /// </summary>
         public string Name { get; }
 
+        public string DisplayName { get; }
+
         /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="name">模块名称</param>
-        public ModuleAttribute(string name)
+        public ModuleAttribute(string name, string displayName = null)
         {
             Name = name;
+            DisplayName = displayName ?? name;
         }
     }
 }

@@ -6,7 +6,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("用户统计")]
-    [Page(Label = "用户统计", ParentLabel = "控制台", Icon = "fa-solid fa-gauge-high", PermissionCode = PermissionCodes.UserStatistics)]
+    [Page(Label = "用户统计", ParentLabel = "控制台", Icon = "fa-solid fa-gauge-high", Permission = PermissionCodes.UserStatistics)]
     [Permission(code: PermissionCodes.UserStatistics)]
     public class UserStatisticsController : ApiControllerBase
     {

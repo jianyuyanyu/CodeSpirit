@@ -16,8 +16,8 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
                 .ReverseMap();
 
             CreateMap<PermissionNode, PermissionTreeDto>()
-                .ForMember(dest => dest.Label, opt => opt.MapFrom(src => src.Description))
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Code))
+                .ForMember(dest => dest.Label, opt => opt.MapFrom(src => src.DisplayName))
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Name))
                 .ForMember(dest => dest.Children, opt => opt.MapFrom(src => src.Children))
                 .ReverseMap();
 

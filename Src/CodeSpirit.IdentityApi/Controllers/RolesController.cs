@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
 [DisplayName("角色管理")]
-[Page(Label = "角色管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-shield", PermissionCode = PermissionCodes.RoleManagement)]
+[Page(Label = "角色管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-shield", Permission = PermissionCodes.RoleManagement)]
 [Permission(code: PermissionCodes.RoleManagement)]
 public class RolesController : ApiControllerBase
 {

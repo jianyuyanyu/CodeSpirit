@@ -1,6 +1,7 @@
 ﻿using Audit.Core;
 using Audit.WebApi;
 using CodeSpirit.Amis;
+using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;
@@ -182,7 +183,7 @@ public static class ServiceCollectionExtensions
         // Add services to the container
         builder.Services.AddDatabase(builder.Configuration);
         builder.Services.AddCustomServices();
-        builder.Services.AddSystemServices(builder.Configuration, typeof(Program));
+        builder.Services.AddSystemServices(builder.Configuration, typeof(Program), builder.Environment);
         builder.Services.AddIdentityServices();
         builder.Services.AddJwtAuthentication(builder.Configuration);
         builder.Services.ConfigureCustomControllers();
@@ -225,6 +226,7 @@ public static class ServiceCollectionExtensions
         app.UseAuditLogging();
         app.MapControllers();
         app.UseAmis();
+        app.UseCodeSpiritAuthorization();
         return app;
     }
 }

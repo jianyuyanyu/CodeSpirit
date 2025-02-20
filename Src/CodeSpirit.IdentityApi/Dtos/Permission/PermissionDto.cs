@@ -1,7 +1,6 @@
 ﻿// Controllers/RolesController.cs
 using CodeSpirit.Amis.Attributes.Columns;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Dtos.Permission
 {
@@ -14,6 +13,10 @@ namespace CodeSpirit.IdentityApi.Dtos.Permission
         [StringLength(50)]
         [DisplayName("权限名称")]
         public string Name { get; set; }
+
+        [Required]
+        [DisplayName("显示名称")]
+        public string DisplayName { get; set; }
 
         [Required]
         [DisplayName("路径")]

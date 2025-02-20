@@ -13,6 +13,8 @@ namespace CodeSpirit.Core.Authorization
         /// </summary>
         public string Name { get; }
 
+        public string DisplayName { get; set; }
+
         /// <summary>
         /// 权限描述
         /// </summary>

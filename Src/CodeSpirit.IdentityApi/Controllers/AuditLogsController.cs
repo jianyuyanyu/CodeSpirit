@@ -9,7 +9,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("审计日志")]
-    [Page(Label = "审计日志", ParentLabel = "系统管理", Icon = "fa-solid fa-list-check", PermissionCode = PermissionCodes.AuditLogManagement)]
+    [Page(Label = "审计日志", ParentLabel = "系统管理", Icon = "fa-solid fa-list-check", Permission = PermissionCodes.AuditLogManagement)]
     [Permission(code: PermissionCodes.AuditLogManagement)]
     [AuditIgnore]
     public class AuditLogsController : ApiControllerBase

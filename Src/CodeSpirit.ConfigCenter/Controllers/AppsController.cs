@@ -14,7 +14,7 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 /// 应用管理控制器
 /// </summary>
 [DisplayName("应用管理")]
-[Page(Label = "应用管理", ParentLabel = "配置中心", Icon = "fa-solid fa-apps", PermissionCode = PermissionCodes.AppManagement)]
+[Page(Label = "应用管理", ParentLabel = "配置中心", Icon = "fa-solid fa-apps", Permission = PermissionCodes.AppManagement)]
 [Permission(code: PermissionCodes.AppManagement)]
 public class AppsController : ApiControllerBase
 {
@@ -137,18 +137,6 @@ public class AppsController : ApiControllerBase
         return failedAppIds.Any()
             ? SuccessResponse($"成功删除 {successCount} 个应用，但以下应用删除失败: {string.Join(", ", failedAppIds)}")
             : SuccessResponse($"成功删除 {successCount} 个应用！");
-    }
-
-    /// <summary>
-    /// 快速保存应用信息
-    /// </summary>
-    /// <param name="request">快速保存请求数据</param>
-    /// <returns>操作结果</returns>
-    [HttpPatch("quickSave")]
-    public async Task<ActionResult<ApiResponse>> QuickSaveApps([FromBody] QuickSaveRequestDto request)
-    {
-        await _appService.QuickSaveAppsAsync(request);
-        return SuccessResponse();
     }
 
     /// <summary>

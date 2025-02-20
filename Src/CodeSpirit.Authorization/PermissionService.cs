@@ -86,34 +86,36 @@ namespace CodeSpirit.Authorization
                 currentModules.Count, 
                 string.Join(", ", currentModules));
 
-            // 保存模块名称列表到缓存
-            await _cache.SetAsync(MODULE_NAMES_CACHE_KEY, currentModules, _cacheOptions);
-            _logger.LogInformation("Cached module names with key: {CacheKey}, modules: {Modules}", 
-                MODULE_NAMES_CACHE_KEY, 
-                string.Join(", ", currentModules));
+            // 获取现有的模块列表
+            var existingModules = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY) ?? [];
+            
+            // 合并现有模块和新模块，保持唯一性
+            var allModules = existingModules.Union(currentModules).Distinct().ToList();
+            
+            // 更新模块名称列表到缓存
+            await _cache.SetAsync(MODULE_NAMES_CACHE_KEY, allModules, _cacheOptions);
+            _logger.LogInformation("Updated module names cache. Total modules: {ModuleCount}", allModules.Count);
 
-            // 清除并重建每个模块的缓存
+            // 仅处理当前服务包含的模块
             foreach (var moduleName in currentModules)
             {
                 var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
-                await _cache.RemoveAsync(cacheKey);
-                _logger.LogDebug("Removed existing cache for module: {ModuleName} with key: {CacheKey}", 
-                    moduleName, 
-                    cacheKey);
-            }
-
-            // 构建新的权限树
-            BuildPermissionTree();
-
-            // 按模块分组保存到缓存
-            foreach (var moduleNode in _permissionTree)
-            {
-                var cacheKey = $"{CACHE_KEY_PREFIX}{moduleNode.Name}";
-                await _cache.SetAsync(cacheKey, new List<PermissionNode> { moduleNode }, _cacheOptions);
-                _logger.LogInformation("Cached permission tree for module: {ModuleName} with key: {CacheKey}, expiration: {Expiration}", 
-                    moduleNode.Name, 
-                    cacheKey,
-                    _cacheOptions.AbsoluteExpirationRelativeToNow);
+                
+                // 构建该模块的权限树
+                var modulePermissions = BuildModulePermissionTree(moduleName);
+                
+                // 获取已存在的模块权限
+                var existingPermissions = await _cache.GetAsync<List<PermissionNode>>(cacheKey);
+                if (existingPermissions != null)
+                {
+                    // 合并权限，保留已存在的权限节点
+                    MergePermissionNodes(existingPermissions[0], modulePermissions[0]);
+                    modulePermissions = existingPermissions;
+                }
+                
+                // 更新缓存
+                await _cache.SetAsync(cacheKey, modulePermissions, _cacheOptions);
+                _logger.LogInformation("Updated permission tree for module: {ModuleName}", moduleName);
             }
 
             _logger.LogInformation("Permission tree initialization completed");
@@ -445,6 +447,63 @@ namespace CodeSpirit.Authorization
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// 构建指定模块的权限树
+        /// </summary>
+        private List<PermissionNode> BuildModulePermissionTree(string targetModule)
+        {
+            var controllers = GetControllers()
+                .Where(c => !IsAnonymousController(c) && 
+                       (c.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default") == targetModule);
+
+            var moduleAttr = controllers.FirstOrDefault()?.GetCustomAttribute<ModuleAttribute>();
+            var moduleDisplayName = moduleAttr?.DisplayName ?? targetModule;
+
+            var moduleNode = new PermissionNode(
+                targetModule,
+                targetModule,
+                path: string.Empty,
+                displayName: moduleDisplayName);
+
+            foreach (var controller in controllers)
+            {
+                var controllerNode = CreateControllerNode(controller, targetModule);
+                if (controllerNode != null)
+                {
+                    moduleNode.Children.Add(controllerNode);
+                    ProcessControllerActions(controller, controllerNode);
+                }
+            }
+
+            return new List<PermissionNode> { moduleNode };
+        }
+
+        /// <summary>
+        /// 合并权限节点，保留现有节点的信息
+        /// </summary>
+        private void MergePermissionNodes(PermissionNode existing, PermissionNode current)
+        {
+            // 更新现有节点的基本信息，保留原有的扩展属性
+            existing.Path = current.Path;
+            existing.RequestMethod = current.RequestMethod;
+            
+            // 处理子节点
+            foreach (var currentChild in current.Children)
+            {
+                var existingChild = existing.Children.FirstOrDefault(c => c.Name == currentChild.Name);
+                if (existingChild != null)
+                {
+                    // 递归合并子节点
+                    MergePermissionNodes(existingChild, currentChild);
+                }
+                else
+                {
+                    // 添加新的子节点
+                    existing.Children.Add(currentChild);
+                }
+            }
         }
     }
 }

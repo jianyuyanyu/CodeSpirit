@@ -17,23 +17,34 @@ public static class Extensions
 {
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        builder.AddSeqEndpoint(connectionName: "seq");
+
+        //// Configure Serilog
+        //builder.Services.AddSerilog((context, services, configuration) =>
+        //{
+        //    configuration
+        //        .MinimumLevel.Information()
+        //        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+        //        .MinimumLevel.Override("System", LogEventLevel.Warning)
+        //        .WriteTo.Console()
+        //        .WriteTo.Seq(
+        //            serverUrl: context.Configuration["Seq:ServerUrl"] ?? "http://seq:5341",
+        //            apiKey: context.Configuration["Seq:ApiKey"]
+        //        );
+        //});
+
         builder.ConfigureOpenTelemetry();
-
         builder.AddDefaultHealthChecks();
-
         builder.Services.AddServiceDiscovery();
+        
         if(builder.Environment.IsDevelopment())
         {
             builder.Services.AddDnsSrvServiceEndpointProvider();
         }
-        builder.Services.AddDnsSrvServiceEndpointProvider();
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            // Turn on resilience by default
             http.AddStandardResilienceHandler();
-
-            // Turn on service discovery by default
             http.AddServiceDiscovery();
         });
 

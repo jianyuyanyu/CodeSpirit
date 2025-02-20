@@ -48,8 +48,8 @@ namespace CodeSpirit.Authorization
         /// </summary>
         private static readonly DistributedCacheEntryOptions _cacheOptions = new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24),
-            SlidingExpiration = TimeSpan.FromHours(1)
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(365),
+            SlidingExpiration = TimeSpan.FromDays(1)
         };
 
         private readonly ILogger<PermissionService> _logger;

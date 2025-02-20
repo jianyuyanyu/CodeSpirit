@@ -163,13 +163,6 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<ApplicationDbContext>(options =>
         {
             options.UseSqlServer(connectionString);
-
-            // 仅在开发环境下启用敏感数据日志和控制台日志
-            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
-            {
-                options.EnableSensitiveDataLogging()
-                       .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
-            }
         });
 
         return services;

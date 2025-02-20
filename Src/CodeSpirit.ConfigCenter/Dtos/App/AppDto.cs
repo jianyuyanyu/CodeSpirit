@@ -40,6 +40,7 @@ public class AppDto
     /// 是否为自动注册的应用
     /// </summary>
     [DisplayName("自动注册")]
+    [AmisColumn(QuickEdit = false, Disabled = true)]
     public bool IsAutoRegistered { get; set; }
 
     [DisplayName("自动发布")]

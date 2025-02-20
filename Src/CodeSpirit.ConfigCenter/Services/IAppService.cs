@@ -62,5 +62,11 @@ namespace CodeSpirit.ConfigCenter.Services
         /// <param name="secret">待验证的密钥</param>
         /// <returns>验证是否通过</returns>
         Task<bool> ValidateAppSecretAsync(string appId, string secret);
+
+        /// <summary>
+        /// 快速保存应用信息
+        /// </summary>
+        /// <param name="request">快速保存请求数据</param>
+        Task QuickSaveAppsAsync(QuickSaveRequestDto request);
     }
 }

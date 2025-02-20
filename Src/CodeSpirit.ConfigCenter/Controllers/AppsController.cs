@@ -140,6 +140,18 @@ public class AppsController : ApiControllerBase
     }
 
     /// <summary>
+    /// 快速保存应用信息
+    /// </summary>
+    /// <param name="request">快速保存请求数据</param>
+    /// <returns>操作结果</returns>
+    [HttpPatch("quickSave")]
+    public async Task<ActionResult<ApiResponse>> QuickSaveApps([FromBody] QuickSaveRequestDto request)
+    {
+        await _appService.QuickSaveAppsAsync(request);
+        return SuccessResponse();
+    }
+
+    /// <summary>
     /// 配置管理（仅用于生成跳转操作）
     /// </summary>
     /// <returns>操作结果</returns>

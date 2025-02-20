@@ -161,6 +161,9 @@ namespace CodeSpirit.Amis.Column
                     column["toggled"] = columnAttr.Toggled;
                 }
 
+                if(columnAttr.Disabled)
+                    column["disabled"] = columnAttr.Disabled;
+
                 // 添加背景色阶配置
                 if (columnAttr.BackgroundScaleColors?.Length >= 2)
                 {

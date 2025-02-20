@@ -52,5 +52,6 @@
         /// 默认是否显示
         /// </summary>
         public bool Toggled { get; set; } = true;
+        public bool Disabled { get; set; }
     }
 }

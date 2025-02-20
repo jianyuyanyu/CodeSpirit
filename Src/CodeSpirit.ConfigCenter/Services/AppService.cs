@@ -125,6 +125,49 @@ public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateA
         return (result.successCount, result.failedIds.Select(x => x.ToString()).ToList());
     }
 
+    /// <summary>
+    /// 快速保存应用信息
+    /// </summary>
+    /// <param name="request">快速保存请求数据</param>
+    public async Task QuickSaveAppsAsync(QuickSaveRequestDto request)
+    {
+        if (request?.Rows == null || !request.Rows.Any())
+        {
+            throw new AppServiceException(400, "请求数据无效或为空！");
+        }
+
+        // 获取需要更新的应用ID列表
+        List<string> appIdsToUpdate = request.Rows.Select(row => row.Id).ToList();
+        List<App> appsToUpdate = await Repository.Find(x => appIdsToUpdate.Contains(x.Id)).ToListAsync();
+        
+        if (appsToUpdate.Count != appIdsToUpdate.Count)
+        {
+            throw new AppServiceException(400, "部分应用未找到!");
+        }
+
+        // 执行批量更新：更新 `rowsDiff` 中的变化字段
+        foreach (var rowDiff in request.RowsDiff)
+        {
+            App app = appsToUpdate.FirstOrDefault(a => a.Id == rowDiff.Id);
+            if (app != null)
+            {
+                if (rowDiff.Enabled.HasValue)
+                {
+                    app.Enabled = rowDiff.Enabled.Value;
+                }
+
+                if (rowDiff.AutoPublish.HasValue)
+                {
+                    app.AutoPublish = rowDiff.AutoPublish.Value;
+                }
+
+                await Repository.UpdateAsync(app, false);
+            }
+        }
+
+        await Repository.SaveChangesAsync();
+    }
+
     #region Override Base Methods
 
     /// <summary>

@@ -41,6 +41,11 @@
         /// </summary>
         public string Icon { get; set; }
 
+        /// <summary>
+        /// 链接
+        /// </summary>
+        public string Link { get; set; }
+
         public string PermissionCode { get; set; }
 
         public PageAttribute() { }

@@ -60,5 +60,11 @@ namespace CodeSpirit.Amis.App
         /// </summary>
         [JsonProperty("permissionCode")]
         public string PermissionCode { get; set; }
+
+        /// <summary>
+        /// 链接
+        /// </summary>
+        [JsonProperty("link")]
+        public string Link { get; set; }
     }
 }

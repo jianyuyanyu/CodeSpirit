@@ -88,12 +88,18 @@ namespace CodeSpirit.Authorization
 
             // 保存模块名称列表到缓存
             await _cache.SetAsync(MODULE_NAMES_CACHE_KEY, currentModules, _cacheOptions);
+            _logger.LogInformation("Cached module names with key: {CacheKey}, modules: {Modules}", 
+                MODULE_NAMES_CACHE_KEY, 
+                string.Join(", ", currentModules));
 
             // 清除并重建每个模块的缓存
             foreach (var moduleName in currentModules)
             {
                 var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
                 await _cache.RemoveAsync(cacheKey);
+                _logger.LogDebug("Removed existing cache for module: {ModuleName} with key: {CacheKey}", 
+                    moduleName, 
+                    cacheKey);
             }
 
             // 构建新的权限树
@@ -104,6 +110,10 @@ namespace CodeSpirit.Authorization
             {
                 var cacheKey = $"{CACHE_KEY_PREFIX}{moduleNode.Name}";
                 await _cache.SetAsync(cacheKey, new List<PermissionNode> { moduleNode }, _cacheOptions);
+                _logger.LogInformation("Cached permission tree for module: {ModuleName} with key: {CacheKey}, expiration: {Expiration}", 
+                    moduleNode.Name, 
+                    cacheKey,
+                    _cacheOptions.AbsoluteExpirationRelativeToNow);
             }
 
             _logger.LogInformation("Permission tree initialization completed");
@@ -336,11 +346,13 @@ namespace CodeSpirit.Authorization
             
             if (moduleNames == null)
             {
-                _logger.LogWarning("No modules found in cache");
+                _logger.LogWarning("No modules found in cache with key: {CacheKey}", MODULE_NAMES_CACHE_KEY);
                 return allModuleNodes;
             }
 
-            _logger.LogDebug("Found {ModuleCount} modules in cache", moduleNames.Count);
+            _logger.LogDebug("Found {ModuleCount} modules in cache with key: {CacheKey}", 
+                moduleNames.Count, 
+                MODULE_NAMES_CACHE_KEY);
             
             // 获取每个模块的权限树
             foreach (var moduleName in moduleNames)
@@ -349,7 +361,17 @@ namespace CodeSpirit.Authorization
                 var moduleNodes = await _cache.GetAsync<List<PermissionNode>>(cacheKey);
                 if (moduleNodes != null)
                 {
+                    _logger.LogDebug("Retrieved permission tree for module: {ModuleName} with key: {CacheKey}, nodes count: {NodesCount}", 
+                        moduleName, 
+                        cacheKey,
+                        moduleNodes.Count);
                     allModuleNodes.AddRange(moduleNodes);
+                }
+                else
+                {
+                    _logger.LogWarning("Cache miss for module: {ModuleName} with key: {CacheKey}", 
+                        moduleName, 
+                        cacheKey);
                 }
             }
 
@@ -366,6 +388,7 @@ namespace CodeSpirit.Authorization
             // 清除指定模块的缓存
             var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
             await _cache.RemoveAsync(cacheKey);
+            _logger.LogInformation("Removed cache for key: {CacheKey}", cacheKey);
 
             // 更新模块名称列表
             var moduleNames = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY);
@@ -373,6 +396,11 @@ namespace CodeSpirit.Authorization
             {
                 moduleNames.Remove(moduleName);
                 await _cache.SetAsync(MODULE_NAMES_CACHE_KEY, moduleNames, _cacheOptions);
+                _logger.LogInformation("Updated module names cache, remaining modules: {ModuleCount}", moduleNames.Count);
+            }
+            else
+            {
+                _logger.LogWarning("Module names cache not found when clearing module: {ModuleName}", moduleName);
             }
 
             _logger.LogInformation("Permission cache cleared for module: {ModuleName}", moduleName);

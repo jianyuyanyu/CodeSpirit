@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Reflection;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.Authorization
 {
@@ -51,28 +52,39 @@ namespace CodeSpirit.Authorization
             SlidingExpiration = TimeSpan.FromHours(1)
         };
 
+        private readonly ILogger<PermissionService> _logger;
+
         /// <summary>
         /// 构造函数，通过依赖注入的 IServiceProvider 获取应用中所有控制器类型，
         /// 并构造权限树。
         /// </summary>
         /// <param name="serviceProvider">服务提供者</param>
         /// <param name="cache">分布式缓存</param>
+        /// <param name="logger">日志记录器</param>
         public PermissionService(
             IServiceProvider serviceProvider,
-            IDistributedCache cache)
+            IDistributedCache cache,
+            ILogger<PermissionService> logger)
         {
             _serviceProvider = serviceProvider;
             _cache = cache;
+            _logger = logger;
         }
 
         public async Task InitializePermissionTree()
         {
+            _logger.LogInformation("Starting permission tree initialization");
+            
             // 获取当前服务的所有模块
             var currentModules = GetControllers()
                 .Where(c => !IsAnonymousController(c))
                 .Select(c => c.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default")
                 .Distinct()
                 .ToList();
+
+            _logger.LogInformation("Found {ModuleCount} modules: {Modules}", 
+                currentModules.Count, 
+                string.Join(", ", currentModules));
 
             // 保存模块名称列表到缓存
             await _cache.SetAsync(MODULE_NAMES_CACHE_KEY, currentModules, _cacheOptions);
@@ -93,6 +105,8 @@ namespace CodeSpirit.Authorization
                 var cacheKey = $"{CACHE_KEY_PREFIX}{moduleNode.Name}";
                 await _cache.SetAsync(cacheKey, new List<PermissionNode> { moduleNode }, _cacheOptions);
             }
+
+            _logger.LogInformation("Permission tree initialization completed");
         }
 
         /// <summary>
@@ -120,6 +134,8 @@ namespace CodeSpirit.Authorization
         /// </summary>
         private void BuildPermissionTree()
         {
+            _logger.LogInformation("Building permission tree");
+            
             IEnumerable<TypeInfo> controllers = GetControllers();
 
             // 按模块分组处理控制器
@@ -130,6 +146,8 @@ namespace CodeSpirit.Authorization
             foreach (var moduleGroup in moduleGroups)
             {
                 var moduleName = moduleGroup.Key;
+                _logger.LogDebug("Processing module: {ModuleName}", moduleName);
+                
                 // 获取第一个控制器上的 ModuleAttribute，用于提取显示名称
                 var moduleAttr = moduleGroup.First().GetCustomAttribute<ModuleAttribute>();
                 var moduleDisplayName = moduleAttr?.DisplayName ?? moduleName;
@@ -154,6 +172,9 @@ namespace CodeSpirit.Authorization
             }
 
             BuildHierarchicalTree(_permissionTree);
+
+            _logger.LogInformation("Permission tree built successfully with {ModuleCount} modules", 
+                _permissionTree.Count);
         }
 
         /// <summary>
@@ -308,14 +329,18 @@ namespace CodeSpirit.Authorization
         /// <returns>权限树根节点列表</returns>
         public async Task<List<PermissionNode>> GetPermissionTreeAsync()
         {
-            var allModuleNodes = new List<PermissionNode>();
+            _logger.LogDebug("Retrieving permission tree from cache");
             
-            // 从缓存获取模块名称列表
+            var allModuleNodes = new List<PermissionNode>();
             var moduleNames = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY);
+            
             if (moduleNames == null)
             {
+                _logger.LogWarning("No modules found in cache");
                 return allModuleNodes;
             }
+
+            _logger.LogDebug("Found {ModuleCount} modules in cache", moduleNames.Count);
             
             // 获取每个模块的权限树
             foreach (var moduleName in moduleNames)
@@ -336,6 +361,8 @@ namespace CodeSpirit.Authorization
         /// </summary>
         public async Task ClearModulePermissionCacheAsync(string moduleName)
         {
+            _logger.LogInformation("Clearing permission cache for module: {ModuleName}", moduleName);
+            
             // 清除指定模块的缓存
             var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
             await _cache.RemoveAsync(cacheKey);
@@ -347,6 +374,8 @@ namespace CodeSpirit.Authorization
                 moduleNames.Remove(moduleName);
                 await _cache.SetAsync(MODULE_NAMES_CACHE_KEY, moduleNames, _cacheOptions);
             }
+
+            _logger.LogInformation("Permission cache cleared for module: {ModuleName}", moduleName);
         }
 
         // 权限代码生成方法

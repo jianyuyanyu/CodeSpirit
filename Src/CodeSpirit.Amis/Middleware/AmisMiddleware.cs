@@ -46,18 +46,6 @@ namespace CodeSpirit.Amis.Middleware
                 context.Request.QueryString.Value.Contains("?amis", StringComparison.OrdinalIgnoreCase);
         }
 
-        //private string GetControllerName(Endpoint endpoint)
-        //{
-        //    if (endpoint == null)
-        //    {
-        //        return null;
-        //    }
-
-        //    // 方法 1: 通过 ControllerActionDescriptor (原方法)
-        //    string controllerName = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>()?.ControllerName;
-        //    return !string.IsNullOrEmpty(controllerName) ? controllerName : null;
-        //}
-
         private async Task HandleAmisRequest(HttpContext context)
         {
             if (context.Request.Path.Value.EndsWith("/amis/site"))

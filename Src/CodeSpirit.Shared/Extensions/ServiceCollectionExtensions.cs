@@ -4,6 +4,7 @@ using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.IdGenerator;
+using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities.Interfaces;
 using CodeSpirit.Shared.Filters;
@@ -80,6 +81,8 @@ public static class ServiceCollectionExtensions
         services.AddAmisServices(configuration, apiAssembly: programType.Assembly);
         // 添加服务注册，确保包含了所有服务所在的程序集
         //services.AddDependencyInjection(programType.Assembly);
+
+        services.AddCodeSpiritNavigation();
         return services;
     }
 

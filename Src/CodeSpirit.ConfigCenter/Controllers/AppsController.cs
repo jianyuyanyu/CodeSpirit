@@ -3,6 +3,7 @@ using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ConfigCenter.Constants;
 using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Services;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
@@ -15,6 +16,7 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 /// </summary>
 [DisplayName("应用管理")]
 [Page(Label = "应用管理", ParentLabel = "配置中心", Icon = "fa-solid fa-apps")]
+[Navigation(Title = "应用管理", Path = "/settings/apps" , Icon = "fa-solid fa-apps")]
 public class AppsController : ApiControllerBase
 {
     private readonly IAppService _appService;

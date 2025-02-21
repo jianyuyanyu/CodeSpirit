@@ -8,6 +8,7 @@ using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Data.Seeders;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
@@ -220,6 +221,7 @@ public static class ServiceCollectionExtensions
         app.MapControllers();
         app.UseAmis();
         app.UseCodeSpiritAuthorization();
+        app.UseCodeSpiritNavigation();
         return app;
     }
 }

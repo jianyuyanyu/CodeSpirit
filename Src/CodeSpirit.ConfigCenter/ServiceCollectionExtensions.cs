@@ -4,6 +4,7 @@ using CodeSpirit.ConfigCenter.Data;
 using CodeSpirit.ConfigCenter.Data.Seeders;
 using CodeSpirit.ConfigCenter.Hubs;
 using CodeSpirit.ConfigCenter.Services;
+using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
@@ -80,6 +81,7 @@ public static class ServiceCollectionExtensions
         app.MapControllers();
         app.UseAmis();
         app.UseCodeSpiritAuthorization();
+        app.UseCodeSpiritNavigation();
 
         // 初始化数据库
         using (IServiceScope scope = app.Services.CreateScope())

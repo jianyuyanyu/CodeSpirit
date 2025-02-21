@@ -19,6 +19,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\CodeSpirit.Amis\CodeSpirit.Amis.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Authorization\CodeSpirit.Authorization.csproj" />
+		<ProjectReference Include="..\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />
 	</ItemGroup>
 
 </Project>

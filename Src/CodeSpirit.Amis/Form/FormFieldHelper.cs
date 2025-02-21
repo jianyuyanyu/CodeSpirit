@@ -2,6 +2,7 @@
 
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
+using CodeSpirit.Core.Attributes;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 

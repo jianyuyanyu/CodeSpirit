@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace CodeSpirit.Core.Authorization
+namespace CodeSpirit.Core.Attributes
 {
     /// <summary>
     /// 自定义权限特性，用于标识权限信息，可覆盖默认的名称和描述。

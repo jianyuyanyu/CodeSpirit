@@ -3,6 +3,10 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 var cache = builder.AddRedis("cache")
                    .WithLifetime(ContainerLifetime.Persistent)
                    .WithRedisCommander()
+                   .WithRedisCommander((op) =>
+                   {
+                       op.WithHttpEndpoint(port: 61689, targetPort: 8081, name: "commander-ui");
+                   })
                    .WithDataVolume(isReadOnly: false);
 
 // Add Seq logging service

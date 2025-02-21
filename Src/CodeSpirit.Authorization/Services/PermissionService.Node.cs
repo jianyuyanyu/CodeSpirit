@@ -1,4 +1,4 @@
-using CodeSpirit.Core.Authorization;
+using CodeSpirit.Core.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;

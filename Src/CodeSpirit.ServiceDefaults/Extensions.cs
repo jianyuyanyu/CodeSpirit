@@ -18,7 +18,10 @@ public static class Extensions
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.AddSeqEndpoint(connectionName: "seq");
-
+        builder.AddRedisDistributedCache(connectionName: "cache", (settings) =>
+        {
+            settings.DisableHealthChecks = false;
+        });
         //// Configure Serilog
         //builder.Services.AddSerilog((context, services, configuration) =>
         //{

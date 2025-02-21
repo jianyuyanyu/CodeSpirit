@@ -60,18 +60,6 @@ public static class ServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddMemoryCache();
 
-        if (webHostEnvironment != null && webHostEnvironment.IsProduction()) {
-            services.AddStackExchangeRedisCache(options =>
-            {
-                options.Configuration = configuration.GetConnectionString("RedisConStr");
-                options.InstanceName = "CodeSpirit";
-            });
-        }
-        else
-        {
-            services.AddDistributedMemoryCache();
-        }
-
         // зЂВс AutoMapper
         services.AddAutoMapper(programType);
 

@@ -72,7 +72,8 @@ namespace CodeSpirit.IdentityApi.Services
             }
 
             ApplicationRole role = Mapper.Map<ApplicationRole>(createDto);
-            
+            role.NormalizedName = role.Name.ToUpperInvariant();
+
             // Generate a new ID for the role
             role.Id = idGenerator.NewId();
             
@@ -91,6 +92,12 @@ namespace CodeSpirit.IdentityApi.Services
 
         protected override async Task OnUpdating(ApplicationRole entity, RoleUpdateDto updateDto)
         {
+            // 如果名称发生变化，需要更新 NormalizedName
+            if (!string.Equals(entity.Name, updateDto.Name, StringComparison.Ordinal))
+            {
+                entity.NormalizedName = updateDto.Name.ToUpperInvariant();
+            }
+
             if (updateDto.PermissionIds != null)
             {
                 string[] distinctPermissionIds = updateDto.PermissionIds.Distinct().ToArray();
@@ -136,19 +143,19 @@ namespace CodeSpirit.IdentityApi.Services
         {
             // 去重处理：确保每个角色名唯一（在导入时去重）
             List<RoleBatchImportItemDto> distinctDtos = importData
-                .GroupBy(dto => dto.Name)
+                .GroupBy(dto => NormalizeRoleName(dto.Name))  // 使用标准化名称进行分组
                 .Select(group => group.First())
                 .ToList();
 
             // 检查数据库中是否已有重复的角色名
-            List<string> roleNames = distinctDtos.Select(dto => dto.Name).ToList();
+            List<string> normalizedRoleNames = distinctDtos.Select(dto => NormalizeRoleName(dto.Name)).ToList();
             List<ApplicationRole> existingRoles = await _roleRepository.CreateQuery()
-                .Where(role => roleNames.Contains(role.Name))
+                .Where(role => normalizedRoleNames.Contains(role.NormalizedName))  // 使用 NormalizedName 进行查询
                 .ToListAsync();
 
             List<RoleBatchImportItemDto> duplicateRoles = distinctDtos
                 .Where(dto => existingRoles.Any(role =>
-                    role.Name.Equals(dto.Name, StringComparison.OrdinalIgnoreCase)))
+                    role.NormalizedName == NormalizeRoleName(dto.Name)))
                 .ToList();
 
             return duplicateRoles.Any()
@@ -174,6 +181,20 @@ namespace CodeSpirit.IdentityApi.Services
                 : entity.RolePermission?.PermissionIds != null ? throw new AppServiceException(400, "请移除权限后再删除该角色！") : Task.CompletedTask;
         }
 
+        protected override Task OnImportMapping(ApplicationRole entity, RoleBatchImportItemDto importDto)
+        {
+            base.OnImportMapping(entity, importDto);
+            
+            // 确保设置 NormalizedName
+            entity.NormalizedName = entity.Name.ToUpperInvariant();
+            return Task.CompletedTask;
+        }
+
+        // 建议添加一个帮助方法来统一处理角色名称的标准化
+        private string NormalizeRoleName(string roleName)
+        {
+            return roleName?.ToUpperInvariant();
+        }
 
         #endregion
     }

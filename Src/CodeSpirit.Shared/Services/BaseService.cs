@@ -151,6 +151,7 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
             try
             {
                 TEntity entity = Mapper.Map<TEntity>(item);
+                OnImportMapping(entity, item);
                 await OnImporting(entity);
                 validEntities.Add(entity);
             }
@@ -274,6 +275,13 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// 删除后的处理
     /// </summary>
     protected virtual Task OnDeleted(TEntity entity) => Task.CompletedTask;
+
+    /// <summary>
+    /// 导入时的映射后处理
+    /// </summary>
+    /// <param name="entity">映射后的实体</param>
+    /// <param name="importDto">导入的DTO</param>
+    protected virtual Task OnImportMapping(TEntity entity, TBatchImportDto importDto) => Task.CompletedTask;
 
     #endregion
 }

@@ -167,7 +167,7 @@ namespace CodeSpirit.Amis.Form
             }
 
             PermissionAttribute permissionAttr = param.GetAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Name);
         }
 
         /// <summary>
@@ -176,7 +176,7 @@ namespace CodeSpirit.Amis.Form
         private bool HasEditPermission(PropertyInfo prop)
         {
             PermissionAttribute permissionAttr = prop.GetAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Name);
         }
 
         /// <summary>

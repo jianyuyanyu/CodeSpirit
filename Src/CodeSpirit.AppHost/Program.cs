@@ -10,6 +10,8 @@ var seqService = builder.AddSeq("seq")
                  .WithDataVolume()
                  .ExcludeFromManifest()
                  .WithLifetime(ContainerLifetime.Persistent)
+                 //.WithHttpsEndpoint(port: 10001, targetPort: 45341)
+                 .WithHttpEndpoint(port: 61688, targetPort: 80, name: "seq-ui")
                  .WithEnvironment("ACCEPT_EULA", "Y");
 
 builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity-api")

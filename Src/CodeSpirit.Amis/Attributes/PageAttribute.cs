@@ -47,26 +47,5 @@
         public string Link { get; set; }
 
         public string Permission { get; set; }
-
-        public PageAttribute() { }
-        /// <summary>
-        /// 构造函数
-        /// </summary>
-        /// <param name="label">页面标签</param>
-        public PageAttribute(string label, string permission = null)
-        {
-            Label = label;
-            Permission = permission;
-        }
-
-        public PageAttribute(string label, string ParentLabel, string Url, string SchemaApi, string icon,string permission = null) : this(label)
-        {
-            this.ParentLabel = ParentLabel;
-            this.Url = Url;
-            this.SchemaApi = SchemaApi;
-            Schema = Schema;
-            Icon = icon;
-            Permission = permission;
-        }
     }
 }

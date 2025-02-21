@@ -32,10 +32,6 @@ namespace CodeSpirit.IdentityApi.Dtos.Permission
         [DisplayName("父级权限")]
         public string Parent { get; set; }
 
-        [Required]
-        [DisplayName("权限代码")]
-        public string Code { get; set; }
-
         [IgnoreColumn]
         [DisplayName("子权限")]
         public List<PermissionDto> Children { get; set; }

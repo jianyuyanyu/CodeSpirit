@@ -97,7 +97,7 @@ namespace CodeSpirit.Amis.Column
         private bool HasViewPermission(PropertyInfo prop)
         {
             PermissionAttribute permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Name);
         }
 
         /// <summary>

@@ -1,7 +1,8 @@
+using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
 using System.Text;
 
-namespace Microsoft.Extensions.Caching.Distributed
+namespace CodeSpirit.Authorization.Extensions
 {
     public static class DistributedCacheExtensions
     {

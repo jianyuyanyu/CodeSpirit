@@ -8,8 +8,7 @@ using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
-    [Page(Label = "登录日志", ParentLabel = "用户中心", Icon = "fa-solid fa-clock-rotate-left", Permission = PermissionCodes.LoginLogs)]
-    [Permission(code: PermissionCodes.LoginLogs)]
+    [Page(Label = "登录日志", ParentLabel = "用户中心", Icon = "fa-solid fa-clock-rotate-left")]
     [DisplayName("登录日志")]
     public partial class LoginLogsController : ApiControllerBase
     {

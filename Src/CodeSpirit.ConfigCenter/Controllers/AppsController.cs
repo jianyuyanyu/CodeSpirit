@@ -14,8 +14,7 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 /// 应用管理控制器
 /// </summary>
 [DisplayName("应用管理")]
-[Page(Label = "应用管理", ParentLabel = "配置中心", Icon = "fa-solid fa-apps", Permission = PermissionCodes.AppManagement)]
-[Permission(code: PermissionCodes.AppManagement)]
+[Page(Label = "应用管理", ParentLabel = "配置中心", Icon = "fa-solid fa-apps")]
 public class AppsController : ApiControllerBase
 {
     private readonly IAppService _appService;

@@ -11,8 +11,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("权限管理")]
-    [Page(Label = "权限管理", ParentLabel = "用户中心", Icon = "fa-solid fa-key", Permission = PermissionCodes.PermissionManagement)]
-    [Permission(code: PermissionCodes.PermissionManagement)]
+    [Page(Label = "权限管理", ParentLabel = "用户中心", Icon = "fa-solid fa-key")]
     public class PermissionsController : ApiControllerBase
     {
         private readonly IPermissionService _permissionService;

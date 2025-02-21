@@ -1,12 +1,10 @@
 namespace CodeSpirit.IdentityApi.Constants
 {
+    /// <summary>
+    /// 自定义权限Code（如业务一直在变化，代码经常性重构，建议写死）
+    /// </summary>
     public static class PermissionCodes
     {
-        public const string UserManagement = "user_manage";
-        public const string LoginLogs = "login_logs";
-        public const string PermissionManagement = "perm_manage";
-        public const string RoleManagement = "role_manage";
-        public const string AuditLogManagement = "audit_log_management";
         public const string UserStatistics = "user_statistics";
     }
 } 

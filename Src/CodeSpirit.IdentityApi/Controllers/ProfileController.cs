@@ -1,5 +1,6 @@
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Dtos.Profile;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;

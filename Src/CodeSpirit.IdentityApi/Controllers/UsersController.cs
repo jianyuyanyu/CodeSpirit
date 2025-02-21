@@ -10,8 +10,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("用户管理")]
-    [Page(Label = "用户管理", ParentLabel = "用户中心", Icon = "fa-solid fa-users", Permission = PermissionCodes.UserManagement)]
-    [Permission(code: PermissionCodes.UserManagement)]
+    [Page(Label = "用户管理", ParentLabel = "用户中心", Icon = "fa-solid fa-users")]
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _userService;

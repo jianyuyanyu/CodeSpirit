@@ -1,5 +1,6 @@
 ﻿using CodeSpirit.Amis.Controllers;
 using CodeSpirit.Authorization;
+using CodeSpirit.Core.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.ConfigCenter.Controllers

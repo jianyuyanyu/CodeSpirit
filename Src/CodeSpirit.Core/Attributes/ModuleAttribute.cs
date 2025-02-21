@@ -1,4 +1,6 @@
-﻿namespace CodeSpirit.Authorization
+﻿using System;
+
+namespace CodeSpirit.Core.Attributes
 {
     /// <summary>
     /// 模块特性：用于标记控制器或动作方法所属的模块。

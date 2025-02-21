@@ -12,7 +12,7 @@ namespace CodeSpirit.Authorization
         /// </summary>
         /// <returns>权限树根节点列表</returns>
         List<PermissionNode> GetPermissionTree();
-
+        bool HasPermission(string permissionName, ISet<string> userPermissions);
         Task InitializePermissionTree();
     }
 }

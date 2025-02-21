@@ -94,7 +94,7 @@ namespace CodeSpirit.Amis.Helpers
         private bool HasSearchPermission(ParameterInfo param)
         {
             PermissionAttribute permissionAttr = param.GetCustomAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Name);
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace CodeSpirit.Amis.Helpers
         private bool HasSearchPermission(PropertyInfo prop)
         {
             PermissionAttribute permissionAttr = prop.GetCustomAttribute<PermissionAttribute>();
-            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Code);
+            return permissionAttr == null || _permissionService.HasPermission(permissionAttr.Name);
         }
 
         /// <summary>

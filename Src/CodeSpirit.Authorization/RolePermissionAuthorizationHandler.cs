@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.Extensions.DependencyInjection;
+using CodeSpirit.Core.Attributes;
 
 namespace CodeSpirit.Authorization
 {
@@ -50,25 +53,34 @@ namespace CodeSpirit.Authorization
 
                 // 检查权限
                 PermissionAttribute permissionAttribute = endpoint.Metadata.GetMetadata<PermissionAttribute>();
-                string permissionCode;
-                if (permissionAttribute?.Code != null)
+                string permissionName = null;
+                if (permissionAttribute?.Name != null)
                 {
-                    permissionCode = permissionAttribute.Code;
+                    permissionName = permissionAttribute.Name;
                 }
                 else
                 {
-                    // 获取请求方法和终结点名称
-                    string requestMethod = httpContext.Request.Method;
-                    string endpointName = endpoint.DisplayName ?? endpoint.ToString();
-                    string rawCode = $"{requestMethod}:{endpointName}";
-                    permissionCode = rawCode.GenerateShortCode();
-                    logger.LogInformation(rawCode + " => " + permissionCode);
+                    // 如果没有显式指定权限名称，则根据路由生成默认的权限代码
+                    string controllerName = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>()?.ControllerName;
+                    string actionName = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>()?.ActionName;
+                    
+                    if (!string.IsNullOrEmpty(controllerName) && !string.IsNullOrEmpty(actionName))
+                    {
+                        string modulePrefix = endpoint.Metadata.GetMetadata<ModuleAttribute>()?.Name ?? "default";
+                        // 生成格式：{module}_{controller}_{action}，与 PermissionService 保持一致
+                        permissionName = $"{modulePrefix}_{controllerName.ToCamelCase()}_{actionName.ToCamelCase()}";
+                    }
+                    else
+                    {
+                        logger.LogWarning("Unable to determine permission name for endpoint {EndpointDisplayName}", endpoint.DisplayName);
+                        return Task.CompletedTask;
+                    }
                 }
 
-                if (userPermissions.Contains(permissionCode))
+                var permissionService = httpContext.RequestServices.GetRequiredService<IPermissionService>();
+                if (permissionService.HasPermission(permissionName, userPermissions))
                 {
-                    logger.LogInformation("User {UserId} has permission {PermissionCode}", context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, permissionCode);
-
+                    logger.LogInformation("User {UserId} has permission {PermissionCode}", context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, permissionName);
                     context.Succeed(requirement);
                 }
             }

@@ -2,6 +2,7 @@
 using CodeSpirit.Amis.App;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Configuration;
+using CodeSpirit.Core.Attributes;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
@@ -51,18 +52,7 @@ namespace CodeSpirit.Amis.Services
                 AddPageIfAttributeExists(pageDict, controller.GetCustomAttribute<PageAttribute>(), controller);
 
                 // 处理动作方法级别的 PageAttribute
-                List<Page> actionPages = controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-                    .Where(m => m.IsDefined(typeof(HttpMethodAttribute), inherit: true))
-                    .Select(m => m.GetCustomAttribute<PageAttribute>())
-                    .Where(attr => attr != null)
-                    .Select(attr => _mapper.Map<Page>(attr))
-                    .ToList();
-
-                foreach (Page page in actionPages)
-                {
-                    SetPagePropertiesFromController(page, controller);
-                    ValidateAndAddPage(pageDict, page);
-                }
+                ProcessControllerActions(pageDict, controller);
             }
 
             // 处理从配置文件中加载的页面信息
@@ -73,9 +63,7 @@ namespace CodeSpirit.Amis.Services
                 ValidateAndAddPage(pageDict, page);
             }
 
-            // 模拟异步操作（如果需要，可以实际执行异步操作）
             await Task.CompletedTask;
-
             return pageDict;
         }
 
@@ -98,11 +86,32 @@ namespace CodeSpirit.Amis.Services
         private void SetPagePropertiesFromController(Page page, Type controller)
         {
             string controllerName = controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
+            
+            // 设置URL（如果未设置）
             if (string.IsNullOrEmpty(page.Url))
             {
                 page.Url = controllerName.ToCamelCase();
             }
 
+            // 设置权限（如果未设置）
+            if (string.IsNullOrEmpty(page.Permission))
+            {
+                string modulePrefix = controller.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default";
+                
+                // 获取控制器级别的权限
+                var controllerPermission = controller.GetCustomAttribute<PermissionAttribute>();
+                if (controllerPermission?.Name != null)
+                {
+                    page.Permission = controllerPermission.Name;
+                }
+                else
+                {
+                    // 生成默认权限名称
+                    page.Permission = $"{modulePrefix}_{controllerName.ToCamelCase()}";
+                }
+            }
+
+            // 设置SchemaApi（如果未设置）
             if (string.IsNullOrEmpty(page.SchemaApi) && page.Schema == null && string.IsNullOrEmpty(page.Redirect))
             {
                 HttpRequest request = _httpContextAccessor.HttpContext?.Request;
@@ -166,5 +175,41 @@ namespace CodeSpirit.Amis.Services
 
         private string GetRoute(Type controller, string name) =>
             controller.GetCustomAttribute<RouteAttribute>()?.Template?.Replace("[controller]", name) ?? string.Empty;
+
+        private void ProcessControllerActions(Dictionary<string, Page> pageDict, Type controller)
+        {
+            var methods = controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                .Where(m => m.IsDefined(typeof(HttpMethodAttribute), inherit: true));
+
+            string controllerName = controller.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
+            string modulePrefix = controller.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default";
+
+            foreach (var method in methods)
+            {
+                var pageAttr = method.GetCustomAttribute<PageAttribute>();
+                if (pageAttr == null) continue;
+
+                Page page = _mapper.Map<Page>(pageAttr);
+                SetPagePropertiesFromController(page, controller);
+
+                // 设置动作方法级别的权限
+                if (string.IsNullOrEmpty(page.Permission))
+                {
+                    var methodPermission = method.GetCustomAttribute<PermissionAttribute>();
+                    if (methodPermission?.Name != null)
+                    {
+                        page.Permission = methodPermission.Name;
+                    }
+                    else
+                    {
+                        // 生成默认权限名称
+                        string actionName = method.Name;
+                        page.Permission = $"{modulePrefix}_{controllerName.ToCamelCase()}_{actionName.ToCamelCase()}";
+                    }
+                }
+
+                ValidateAndAddPage(pageDict, page);
+            }
+        }
     }
 }

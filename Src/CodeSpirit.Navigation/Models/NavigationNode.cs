@@ -67,6 +67,10 @@ namespace CodeSpirit.Navigation.Models
         /// </summary>
         public List<NavigationNode> Children { get; set; } = [];
 
+        public string Route { get; set; }
+
+        public string ModuleName { get; set; }
+
         public NavigationNode(string name, string title, string path)
         {
             Name = name;

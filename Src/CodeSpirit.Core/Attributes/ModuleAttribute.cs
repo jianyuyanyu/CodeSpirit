@@ -15,6 +15,8 @@ namespace CodeSpirit.Core.Attributes
 
         public string DisplayName { get; }
 
+        public string Icon { get; set; }
+
         /// <summary>
         /// 构造函数
         /// </summary>

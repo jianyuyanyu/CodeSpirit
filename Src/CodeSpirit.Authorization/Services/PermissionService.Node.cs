@@ -9,19 +9,6 @@ namespace CodeSpirit.Authorization
 {
     public partial class PermissionService : IPermissionService
     {
-        //private readonly IServiceProvider _serviceProvider;
-        //private readonly ICache _cache;
-        //private readonly ILogger<PermissionService> _logger;
-        //private readonly PermissionOptions _options;
-
-        //public PermissionService(IServiceProvider serviceProvider, ICache cache, ILogger<PermissionService> logger, IOptions<PermissionOptions> options)
-        //{
-        //    _serviceProvider = serviceProvider;
-        //    _cache = cache;
-        //    _logger = logger;
-        //    _options = options.Value;
-        //}
-
         /// <summary>
         /// 创建控制器节点
         /// </summary>

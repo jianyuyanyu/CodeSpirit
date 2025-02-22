@@ -37,7 +37,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 {
                     Token = token,
                 };
-                return SuccessResponse(result);
+                return SuccessResponse(result, msg: "登录成功！");
             }
             return BadResponse<LoginResult>(message);
         }

@@ -2,7 +2,7 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 
 var cache = builder.AddRedis("cache")
                    .WithLifetime(ContainerLifetime.Persistent)
-                   .WithRedisCommander()
+                   //.WithEndpoint(port: 61690, targetPort: 6137, name: "redis")
                    .WithRedisCommander((op) =>
                    {
                        op.WithHttpEndpoint(port: 61689, targetPort: 8081, name: "commander-ui");
@@ -18,19 +18,20 @@ var seqService = builder.AddSeq("seq")
                  .WithHttpEndpoint(port: 61688, targetPort: 80, name: "seq-ui")
                  .WithEnvironment("ACCEPT_EULA", "Y");
 
-builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity-api")
+builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
     .WithReference(seqService)
     .WithReference(cache)
     ;
 
 // 添加 ConfigCenter 服务
-builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config-api")
+builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
     .WithReference(seqService)
     .WithReference(cache)
     ;
 
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
+    .WithReference(cache)
     .WithReference(seqService)
     ;
 

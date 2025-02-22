@@ -221,7 +221,7 @@ public static class ServiceCollectionExtensions
         app.MapControllers();
         app.UseAmis();
         app.UseCodeSpiritAuthorization();
-        app.UseCodeSpiritNavigation();
+        await app.UseCodeSpiritNavigationAsync();
         return app;
     }
 }

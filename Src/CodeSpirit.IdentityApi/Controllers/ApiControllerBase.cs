@@ -10,7 +10,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     [ApiController]
     [Authorize(policy: "DynamicPermissions")]
     [Route("api/identity/[controller]")]
-    [Module("identity", displayName: "用户中心")]
+    [Module("identity", displayName: "用户中心",Icon = "fa-solid fa-user-group")]
     public abstract class ApiControllerBase : AmisApiControllerBase
     {
         /// <summary>
@@ -19,9 +19,9 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <typeparam name="T">数据类型</typeparam>
         /// <param name="data">返回的数据</param>
         /// <returns>统一格式的成功响应</returns>
-        protected ActionResult<ApiResponse<T>> SuccessResponse<T>(T data = default) where T : class
+        protected ActionResult<ApiResponse<T>> SuccessResponse<T>(T data = default, string msg = "操作成功！") where T : class
         {
-            return Ok(new ApiResponse<T>(0, "操作成功！", data));
+            return Ok(new ApiResponse<T>(0, msg, data));
         }
 
         protected ActionResult<ApiResponse> SuccessResponse(string msg = "操作成功！")

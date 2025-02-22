@@ -81,7 +81,7 @@ public static class ServiceCollectionExtensions
         app.MapControllers();
         app.UseAmis();
         app.UseCodeSpiritAuthorization();
-        app.UseCodeSpiritNavigation();
+        await app.UseCodeSpiritNavigationAsync();
 
         // 初始化数据库
         using (IServiceScope scope = app.Services.CreateScope())

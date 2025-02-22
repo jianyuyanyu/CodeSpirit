@@ -2,6 +2,7 @@ using CodeSpirit.ConfigCenter.Constants;
 using CodeSpirit.ConfigCenter.Dtos.Config;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
@@ -14,6 +15,7 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 /// </summary>
 [DisplayName("配置项管理")]
 [Page(Label = "配置项管理", ParentLabel = "配置中心", Icon = "fa-solid fa-gear")]
+[Navigation(Icon = "fa-solid fa-gear")]
 public class ConfigItemsController : ApiControllerBase
 {
     private readonly IConfigItemService _configItemService;

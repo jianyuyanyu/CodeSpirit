@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Core;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers;
 using CodeSpirit.IdentityApi.Dtos.Role;
@@ -9,6 +10,7 @@ using System.ComponentModel;
 
 [DisplayName("角色管理")]
 [Page(Label = "角色管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-shield")]
+[Navigation(Icon = "fa-solid fa-user-shield")]
 public class RolesController : ApiControllerBase
 {
     private readonly IRoleService _roleService;

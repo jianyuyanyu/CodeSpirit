@@ -20,7 +20,7 @@ public static class Extensions
         builder.AddSeqEndpoint(connectionName: "seq");
         builder.AddRedisDistributedCache(connectionName: "cache", (settings) =>
         {
-            settings.DisableHealthChecks = false;
+            settings.DisableHealthChecks = true;
         });
         //// Configure Serilog
         //builder.Services.AddSerilog((context, services, configuration) =>

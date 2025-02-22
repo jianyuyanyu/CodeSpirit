@@ -4,6 +4,7 @@
     /// 自定义属性，用于标注控制器或操作方法的页面元数据。
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    [Obsolete("请使用 CodeSpirit.Core.Attributes.NavigationAttribute")]
     public class PageAttribute : Attribute
     {
         /// <summary>

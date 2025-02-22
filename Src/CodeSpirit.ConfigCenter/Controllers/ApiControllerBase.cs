@@ -8,7 +8,7 @@ namespace CodeSpirit.ConfigCenter.Controllers
     [ApiController]
     //[Authorize(policy: "DynamicPermissions")]
     [Route("api/config/[controller]")]
-    [Module("config", "配置中心")]
+    [Module("config", "配置中心", Icon = "fa-solid fa-sliders")]
     public abstract class ApiControllerBase : AmisApiControllerBase
     {
         /// <summary>

@@ -10,7 +10,7 @@ public class Program
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Add service defaults & Aspire client integrations.
-        builder.AddServiceDefaults();
+        builder.AddServiceDefaults("webfrontend");
         //builder.AddRedisOutputCache("cache");
 
         // Add services to the container.
@@ -56,7 +56,12 @@ public class Program
 
         // Add WebOptimizer middleware
         app.UseWebOptimizer();
-        //app.UseMiddleware<ProxyMiddleware>();
+        app.UseMiddleware<ProxyMiddleware>();
+
+        var provider = app.Services.GetRequiredService<IServiceDiscoveryProvider>();
+        var endpoints = await provider.ResolveAsync("identity");
+        Console.WriteLine($"Resolved endpoints: {string.Join(", ", endpoints)}");
+
         await app.RunAsync();
     }
 }

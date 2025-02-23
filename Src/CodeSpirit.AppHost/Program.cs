@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 var cache = builder.AddRedis("cache")

@@ -83,7 +83,8 @@
                 }
             ]
         },
-        api: 'options:'+apiHost + '/api/identity/amis/site'
+        //api: 'options:'+apiHost + '/api/identity/amis/site'
+        api: '/api/navigation/site'
     };
 
     function normalizeLink(to, location = history.location) {

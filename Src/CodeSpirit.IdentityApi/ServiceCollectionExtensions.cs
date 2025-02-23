@@ -172,7 +172,7 @@ public static class ServiceCollectionExtensions
     public static WebApplicationBuilder AddIdentityApiServices(this WebApplicationBuilder builder)
     {
         // Add service defaults & Aspire client integrations
-        builder.AddServiceDefaults();
+        builder.AddServiceDefaults("identity");
 
         // Add services to the container
         builder.Services.AddDatabase(builder.Configuration);

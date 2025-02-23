@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -15,7 +16,7 @@ namespace CodeSpirit.ServiceDefaults;
 // To learn more about using this project, see https://aka.ms/dotnet/aspire/service-defaults
 public static class Extensions
 {
-    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder, string appName) where TBuilder : IHostApplicationBuilder
     {
         builder.AddSeqEndpoint(connectionName: "seq");
         builder.AddRedisDistributedCache(connectionName: "cache", (settings) =>
@@ -38,13 +39,17 @@ public static class Extensions
 
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();
-        builder.Services.AddServiceDiscovery();
-        
-        if(builder.Environment.IsDevelopment())
+
+        //if (builder.Environment.IsProduction())
         {
+            //k8s
+            builder.Services.AddServiceDiscoveryCore();
             builder.Services.AddDnsSrvServiceEndpointProvider();
         }
 
+        // 添加服务发现
+        builder.Services.AddServiceDiscovery();
+        // 配置 HttpClient 默认使用服务发现
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
             http.AddStandardResilienceHandler();
@@ -52,10 +57,22 @@ public static class Extensions
         });
 
         // Uncomment the following to restrict the allowed schemes for service discovery.
-        // builder.Services.Configure<ServiceDiscoveryOptions>(options =>
-        // {
-        //     options.AllowedSchemes = ["https"];
-        // });
+        builder.Services.Configure<ServiceDiscoveryOptions>(options =>
+        {
+            //options.AllowedSchemes = ["https"];
+            options.AllowAllSchemes = true;
+        });
+
+        // 注册命名 HttpClient（服务名称对应后端服务名）
+        builder.Services.AddHttpClient("config", (client) =>
+        {
+            client.BaseAddress = new Uri("http://config");
+        });
+
+        builder.Services.AddHttpClient("identity", (client) =>
+        {
+            client.BaseAddress = new Uri("http://identity");
+        });
 
         return builder;
     }
@@ -133,6 +150,7 @@ public static class Extensions
                 Predicate = r => r.Tags.Contains("live")
             });
         }
+
 
         return app;
     }

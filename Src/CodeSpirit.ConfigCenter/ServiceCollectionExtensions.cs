@@ -50,7 +50,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddConfigCenter(this WebApplicationBuilder builder)
     {
         // Add service defaults & Aspire client integrations
-        builder.AddServiceDefaults();
+        builder.AddServiceDefaults("config");
 
         // Add services to the container
         builder.Services.AddDatabase(builder.Configuration);

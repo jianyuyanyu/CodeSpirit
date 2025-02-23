@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Headers;
+using System.Net.Http.Headers;
 
 namespace CodeSpirit.Web.Middlewares
 {
@@ -23,8 +23,15 @@ namespace CodeSpirit.Web.Middlewares
         {
             try
             {
+                // 只处理 OPTIONS 请求
+                if (!HttpMethods.IsOptions(context.Request.Method))
+                {
+                    await _next(context);
+                    return;
+                }
+
                 var currentHost = context.Request.Host.Host;
-                _logger.LogInformation("收到请求 - 路径: {Path}, 方法: {Method}, 来源: {Host}",
+                _logger.LogInformation("收到OPTIONS请求 - 路径: {Path}, 方法: {Method}, 来源: {Host}",
                     context.Request.Path, context.Request.Method, currentHost);
 
                 if (!currentHost.Equals(LOCALHOST, StringComparison.OrdinalIgnoreCase))
@@ -34,7 +41,7 @@ namespace CodeSpirit.Web.Middlewares
                     return;
                 }
 
-                _logger.LogInformation("开始处理本地代理请求");
+                _logger.LogInformation("开始处理本地代理OPTIONS请求");
                 await HandleProxyRequest(context);
             }
             catch (Exception ex)
@@ -47,19 +54,48 @@ namespace CodeSpirit.Web.Middlewares
 
         private async Task HandleProxyRequest(HttpContext context)
         {
-            var client = _httpClientFactory.CreateClient();
-            var proxyRequest = await CreateProxyRequest(context);
+            var request = context.Request;
             
-            _logger.LogInformation("准备转发请求到: {Uri}", proxyRequest.RequestUri);
+            if (!request.QueryString.Value?.Contains("amis", StringComparison.OrdinalIgnoreCase) ?? true)
+            {
+                _logger.LogInformation("请求不包含amis参数，跳过代理");
+                await _next(context);
+                return;
+            }
+
+            var pathSegments = request.Path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (pathSegments == null || pathSegments.Length < 1)
+            {
+                await _next(context);
+                return;
+            }
+
+            var serviceName = pathSegments[0];
+            
+            // 重构目标路径：移除开头的服务名，保留 /api 开始的部分
+            var apiIndex = request.Path.Value!.IndexOf("/api/", StringComparison.OrdinalIgnoreCase);
+            var targetPath = apiIndex >= 0 ? request.Path.Value[apiIndex..] : request.Path.Value;
+
+            _logger.LogInformation("代理请求转发到服务 {ServiceName}, 路径: {TargetPath}", serviceName, targetPath);
+
+            // 创建代理请求，使用相对路径
+            var proxyRequest = new HttpRequestMessage
+            {
+                Method = new HttpMethod(context.Request.Method),
+                RequestUri = new Uri(targetPath + context.Request.QueryString, UriKind.Relative)
+            };
+            
+            CopyRequestHeaders(context.Request, proxyRequest);
 
             try
             {
+                var client = _httpClientFactory.CreateClient(serviceName);
                 using var response = await client.SendAsync(proxyRequest,
                     HttpCompletionOption.ResponseHeadersRead,
                     context.RequestAborted);
 
                 _logger.LogInformation("代理请求完成 - 状态码: {StatusCode}, 路径: {Path}",
-                    response.StatusCode, context.Request.Path);
+                    response.StatusCode, targetPath);
 
                 await CopyResponseToContext(context, response);
             }
@@ -79,29 +115,22 @@ namespace CodeSpirit.Web.Middlewares
             }
         }
 
-        private static async Task<HttpRequestMessage> CreateProxyRequest(HttpContext context)
+        private static void CopyRequestHeaders(HttpRequest source, HttpRequestMessage target)
         {
-            // 使用原始请求的路径和查询字符串
-            var uri = new Uri($"https://{context.Request.Host.Value}{context.Request.Path}{context.Request.QueryString}");
-            var request = new HttpRequestMessage(new HttpMethod(context.Request.Method), uri);
-
-            // 复制原始请求的头部信息
-            foreach (var header in context.Request.Headers)
+            foreach (var header in source.Headers)
             {
-                request.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
-            }
-
-            // 复制请求体
-            if (context.Request.Body != null && context.Request.Body.CanRead)
-            {
-                request.Content = new StreamContent(context.Request.Body);
-                if (context.Request.ContentType != null)
+                // 跳过 Host 头，因为我们要使用新的目标主机
+                if (header.Key.Equals("Host", StringComparison.OrdinalIgnoreCase))
                 {
-                    request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(context.Request.ContentType);
+                    continue;
+                }
+                
+                if (!target.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()) &&
+                    target.Content != null)
+                {
+                    target.Content?.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
                 }
             }
-
-            return request;
         }
 
         private static async Task CopyResponseToContext(HttpContext context, HttpResponseMessage response)

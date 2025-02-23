@@ -3,6 +3,7 @@ using CodeSpirit.Navigation;
 using CodeSpirit.Navigation.Models;
 using CodeSpirit.Navigation.Services;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.Web.Controllers
 {
@@ -53,7 +54,31 @@ namespace CodeSpirit.Web.Controllers
             try
             {
                 var tree = await _navigationService.GetNavigationTreeAsync();
-                var pageTree = ConvertToPageFormat(tree);
+                var pageTree = ConvertToPageFormat(tree).ToList();
+                if (pageTree.Any())
+                {
+                    pageTree.Insert(0, new
+                    {
+                        label = "控制台",
+                        url = "/",
+                        icon = "fa-solid fa-gauge-high",
+                        schema = new
+                        {
+                            type = "page",
+                            body = new
+                            {
+                                type = "markdown",
+                                value = "## 框架概览\r\n\r\nCodeSpirit（码灵）是一款革命性的全栈低代码开发框架，通过智能代码生成引擎与AI深度协同，实现**后端驱动式全栈开发范式**。基于.NET 9技术栈构建，将具备企业级技术深度与云原生扩展能力，提供从界面生成、业务逻辑编排到系统运维的全生命周期支持。\r\n- Github：[xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit)\r\n- Gitee：[magicodes/CodeSpirit](https://gitee.com/magicodes/code-spirit)",
+                                options = new
+                                {
+                                    html = true,
+                                    linkify = true,
+                                    breaks = false
+                                }
+                            }
+                        }
+                    });
+                }
 
                 return Ok(new
                 {
@@ -71,7 +96,7 @@ namespace CodeSpirit.Web.Controllers
         {
             if (nodes == null) return Array.Empty<object>();
 
-            return nodes.Select(node => new
+            return nodes.Where(node => !string.IsNullOrEmpty(node.Title)).Select(node => new
             {
                 label = node.Title,
                 url = node.IsExternal ? null : node.Path,

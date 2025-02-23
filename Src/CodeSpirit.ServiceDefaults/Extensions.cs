@@ -40,7 +40,7 @@ public static class Extensions
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();
 
-        //if (builder.Environment.IsProduction())
+        if (builder.Environment.IsProduction())
         {
             //k8s
             builder.Services.AddServiceDiscoveryCore();
@@ -57,22 +57,12 @@ public static class Extensions
         });
 
         // Uncomment the following to restrict the allowed schemes for service discovery.
-        builder.Services.Configure<ServiceDiscoveryOptions>(options =>
-        {
-            //options.AllowedSchemes = ["https"];
-            options.AllowAllSchemes = true;
-        });
+        //builder.Services.Configure<ServiceDiscoveryOptions>(options =>
+        //{
+        //    //options.AllowedSchemes = ["https"];
+        //});
 
-        // 注册命名 HttpClient（服务名称对应后端服务名）
-        builder.Services.AddHttpClient("config", (client) =>
-        {
-            client.BaseAddress = new Uri("http://config");
-        });
-
-        builder.Services.AddHttpClient("identity", (client) =>
-        {
-            client.BaseAddress = new Uri("http://identity");
-        });
+        
 
         return builder;
     }

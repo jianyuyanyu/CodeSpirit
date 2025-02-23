@@ -26,12 +26,25 @@ public class Program
             pipeline.MinifyCssFiles("/sdk/antd.css", "/sdk/helper.css", "/sdk/iconfont.css", "/css/*.css");
         });
 
-        // ���� HttpContextAccessor ���ڴ滺��
+        // 添加 HttpContextAccessor 和内存缓存
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddMemoryCache();
 
         builder.Services.AddCodeSpiritNavigation();
         builder.Services.AddControllers();
+
+        //TODO:动态配置
+        // 注册命名 HttpClient（服务名称对应后端服务名）
+        builder.Services.AddHttpClient("config", (client) =>
+        {
+            client.BaseAddress = new("https+http://config");
+        });
+
+        builder.Services.AddHttpClient("identity", (client) =>
+        {
+            client.BaseAddress = new("https+http://identity");
+        });
+
         WebApplication app = builder.Build();
 
         if (!app.Environment.IsDevelopment())
@@ -57,11 +70,6 @@ public class Program
         // Add WebOptimizer middleware
         app.UseWebOptimizer();
         app.UseMiddleware<ProxyMiddleware>();
-
-        var provider = app.Services.GetRequiredService<IServiceDiscoveryProvider>();
-        var endpoints = await provider.ResolveAsync("identity");
-        Console.WriteLine($"Resolved endpoints: {string.Join(", ", endpoints)}");
-
         await app.RunAsync();
     }
 }

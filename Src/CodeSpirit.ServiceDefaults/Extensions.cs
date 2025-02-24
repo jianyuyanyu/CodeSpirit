@@ -27,13 +27,13 @@ public static class Extensions
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();
 
-        if (builder.Environment.IsProduction())
-        {
-            //k8s
-            builder.Services.AddServiceDiscoveryCore();
-            builder.Services.AddDnsSrvServiceEndpointProvider();
-        }
-        else
+        //if (builder.Environment.IsProduction())
+        //{
+        //    //k8s
+        //    builder.Services.AddServiceDiscoveryCore();
+        //    builder.Services.AddDnsSrvServiceEndpointProvider();
+        //}
+        //else
         {
             // 添加服务发现
             builder.Services.AddServiceDiscovery();

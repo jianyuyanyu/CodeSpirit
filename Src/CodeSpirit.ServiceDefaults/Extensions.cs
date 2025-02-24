@@ -33,9 +33,12 @@ public static class Extensions
             builder.Services.AddServiceDiscoveryCore();
             builder.Services.AddDnsSrvServiceEndpointProvider();
         }
-
-        // 添加服务发现
-        builder.Services.AddServiceDiscovery();
+        else
+        {
+            // 添加服务发现
+            builder.Services.AddServiceDiscovery();
+        }
+        
         // 配置 HttpClient 默认使用服务发现
         builder.Services.ConfigureHttpClientDefaults(http =>
         {

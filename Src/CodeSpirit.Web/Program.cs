@@ -1,6 +1,7 @@
 using CodeSpirit.Core;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
+using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Web.Middlewares;
 
 public class Program
@@ -31,7 +32,6 @@ public class Program
         builder.Services.AddMemoryCache();
 
         builder.Services.AddCodeSpiritNavigation();
-        builder.Services.AddControllers();
 
         //TODO:动态配置
         // 注册命名 HttpClient（服务名称对应后端服务名）
@@ -44,6 +44,8 @@ public class Program
         {
             client.BaseAddress = new("https+http://identity");
         });
+
+        builder.Services.ConfigureDefaultControllers();
 
         WebApplication app = builder.Build();
 

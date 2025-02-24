@@ -23,6 +23,11 @@ namespace CodeSpirit.Navigation.Models
         public string Path { get; set; }
 
         /// <summary>
+        /// 外部地址
+        /// </summary>
+        public string Link { get; set; }
+
+        /// <summary>
         /// 图标
         /// </summary>
         public string Icon { get; set; }
@@ -58,7 +63,7 @@ namespace CodeSpirit.Navigation.Models
         public bool IsExternal { get; set; }
 
         /// <summary>
-        /// 打开方式
+        /// 打开方式（_blank/_self）
         /// </summary>
         public string Target { get; set; }
 

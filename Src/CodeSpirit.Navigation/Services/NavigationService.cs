@@ -4,6 +4,7 @@ using CodeSpirit.Navigation.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,7 @@ namespace CodeSpirit.Navigation
         private readonly IActionDescriptorCollectionProvider _actionProvider;
         private readonly IDistributedCache _cache;
         private readonly ILogger<NavigationService> _logger;
+        private readonly IConfiguration _configuration;
 
         private const string CACHE_KEY_PREFIX = "CodeSpirit:Navigation:Module:";
         private const string MODULE_NAMES_CACHE_KEY = "CodeSpirit:Navigation:ModuleNames";
@@ -32,11 +34,13 @@ namespace CodeSpirit.Navigation
         public NavigationService(
             IActionDescriptorCollectionProvider actionProvider,
             IDistributedCache cache,
-            ILogger<NavigationService> logger)
+            ILogger<NavigationService> logger,
+            IConfiguration configuration)
         {
             _actionProvider = actionProvider;
             _cache = cache;
             _logger = logger;
+            _configuration = configuration;
         }
 
         /// <summary>

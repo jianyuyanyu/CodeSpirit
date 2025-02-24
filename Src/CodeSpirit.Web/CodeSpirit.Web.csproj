@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
     <UserSecretsId>d27e03b0-72d5-4c42-b798-b63326828c36</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />
     <ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

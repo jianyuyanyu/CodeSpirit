@@ -5,6 +5,7 @@ using CodeSpirit.Navigation.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,24 +16,7 @@ namespace CodeSpirit.Navigation
 {
     public partial class NavigationService
     {
-        /// <summary>
-        /// 更新模块导航缓存
-        /// </summary>
-        /// <param name="moduleName">模块名称</param>
-        private async Task UpdateModuleNavigationCache(string moduleName)
-        {
-            var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
-            var moduleNavigation = BuildModuleNavigationTree(moduleName);
-            var existingNavigation = await _cache.GetAsync<List<NavigationNode>>(cacheKey);
-
-            if (existingNavigation != null)
-            {
-                MergeNavigationNodes(existingNavigation[0], moduleNavigation[0]);
-                moduleNavigation = existingNavigation;
-            }
-
-            await _cache.SetAsync(cacheKey, moduleNavigation, _cacheOptions);
-        }
+        private readonly string CONFIG_SECTION_KEY = "Navigation";
 
         /// <summary>
         /// 构建模块导航树
@@ -40,10 +24,37 @@ namespace CodeSpirit.Navigation
         /// <param name="moduleName">模块名称</param>
         private List<NavigationNode> BuildModuleNavigationTree(string moduleName)
         {
+            // 首先尝试从代码构建导航树
+            var codeNavigation = BuildCodeBasedNavigation(moduleName);
+
+            // 然后加载配置文件中的导航
+            var configNavigation = LoadNavigationFromConfig(moduleName);
+
+            // 如果两者都存在且代码导航不为空列表，进行合并
+            if (configNavigation != null && codeNavigation.Count > 0)
+            {
+                MergeNavigationNodes(configNavigation, codeNavigation[0]);
+                return [configNavigation];
+            }
+
+            // 返回非空的那个，如果都为空则返回空列表
+            return configNavigation != null ? [configNavigation] : codeNavigation;
+        }
+
+        /// <summary>
+        /// 从代码构建导航树
+        /// </summary>
+        private List<NavigationNode> BuildCodeBasedNavigation(string moduleName)
+        {
             var controllers = _actionProvider.ActionDescriptors.Items
                 .OfType<ControllerActionDescriptor>()
                 .Where(x => x.ControllerTypeInfo.GetCustomAttribute<ModuleAttribute>()?.Name == moduleName)
                 .GroupBy(x => x.ControllerTypeInfo);
+
+            if (!controllers.Any())
+            {
+                return [];
+            }
 
             // Get module display name from ModuleAttribute
             var moduleType = controllers.FirstOrDefault()?.Key.Assembly.GetTypes()
@@ -55,7 +66,8 @@ namespace CodeSpirit.Navigation
             var moduleNode = new NavigationNode(moduleName, moduleDisplayName, modulePath)
             {
                 ModuleName = moduleName,
-                Permission = moduleName.ToCamelCase()
+                Permission = moduleName.ToCamelCase(),
+                Icon = moduleAttr?.Icon
             };
 
             foreach (var controller in controllers)
@@ -160,6 +172,7 @@ namespace CodeSpirit.Navigation
             existing.Target = current.Target;
             existing.ModuleName = current.ModuleName;
             existing.Route = current.Route;
+            existing.Link = current.Link;
 
             foreach (var currentChild in current.Children)
             {
@@ -173,6 +186,54 @@ namespace CodeSpirit.Navigation
                     existing.Children.Add(currentChild);
                 }
             }
+        }
+
+        /// <summary>
+        /// 从配置文件加载导航配置
+        /// </summary>
+        private NavigationNode LoadNavigationFromConfig(string moduleName)
+        {
+            var config = _configuration.GetSection($"{CONFIG_SECTION_KEY}:{moduleName}")
+                .Get<NavigationConfigItem>();
+
+            if (config == null)
+            {
+                return null;
+            }
+
+            return ConvertToNavigationNode(config, moduleName);
+        }
+
+        /// <summary>
+        /// 将配置项转换为导航节点
+        /// </summary>
+        private NavigationNode ConvertToNavigationNode(NavigationConfigItem item, string moduleName)
+        {
+            var node = new NavigationNode(
+                item.Name ?? item.Path?.Split('/').Last() ?? "unknown",
+                item.Title,
+                item.Path)
+            {
+                Icon = item.Icon,
+                Order = item.Order,
+                ParentPath = item.ParentPath,
+                Hidden = item.Hidden,
+                Permission = item.Permission,
+                Description = item.Description,
+                IsExternal = item.IsExternal,
+                Target = item.Target,
+                ModuleName = item.ModuleName ?? moduleName,
+                Route = item.Route,
+                Link = item.Link
+            };
+
+            if (item.Children?.Any() == true)
+            {
+                node.Children.AddRange(item.Children.Select(child =>
+                    ConvertToNavigationNode(child, moduleName)));
+            }
+
+            return node;
         }
     }
 }

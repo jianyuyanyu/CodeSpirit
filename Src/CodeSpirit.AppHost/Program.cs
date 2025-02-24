@@ -3,13 +3,14 @@ using Microsoft.Extensions.DependencyInjection;
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 var cache = builder.AddRedis("cache")
-                   .WithLifetime(ContainerLifetime.Persistent)
+                   //.WithLifetime(ContainerLifetime.Persistent)
                    //.WithEndpoint(port: 61690, targetPort: 6137, name: "redis")
                    .WithRedisCommander((op) =>
                    {
                        op.WithHttpEndpoint(port: 61689, targetPort: 8081, name: "commander-ui");
                    })
-                   .WithDataVolume(isReadOnly: false);
+                   //.WithDataVolume(isReadOnly: false)
+                   ;
 
 // Add Seq logging service
 var seqService = builder.AddSeq("seq")

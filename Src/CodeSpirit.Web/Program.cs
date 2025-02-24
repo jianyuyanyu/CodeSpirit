@@ -30,6 +30,7 @@ public class Program
         // 添加 HttpContextAccessor 和内存缓存
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddMemoryCache();
+        builder.Services.AddCorsPolicy();
 
         builder.Services.AddCodeSpiritNavigation();
         builder.Services.ConfigureDefaultControllers();
@@ -52,6 +53,7 @@ public class Program
 
         app.MapRazorPages();
 
+        app.UseCors("AllowSpecificOriginsWithCredentials");
         app.MapDefaultEndpoints();
         await app.UseCodeSpiritNavigationAsync();
         app.MapControllers();
@@ -59,6 +61,7 @@ public class Program
         // Add WebOptimizer middleware
         app.UseWebOptimizer();
         app.UseMiddleware<ProxyMiddleware>();
+        
         await app.RunAsync();
     }
 }

@@ -23,19 +23,6 @@ public static class Extensions
         {
             settings.DisableHealthChecks = true;
         });
-        //// Configure Serilog
-        //builder.Services.AddSerilog((context, services, configuration) =>
-        //{
-        //    configuration
-        //        .MinimumLevel.Information()
-        //        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-        //        .MinimumLevel.Override("System", LogEventLevel.Warning)
-        //        .WriteTo.Console()
-        //        .WriteTo.Seq(
-        //            serverUrl: context.Configuration["Seq:ServerUrl"] ?? "http://seq:5341",
-        //            apiKey: context.Configuration["Seq:ApiKey"]
-        //        );
-        //});
 
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();

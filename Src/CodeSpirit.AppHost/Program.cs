@@ -17,17 +17,16 @@ var seqService = builder.AddSeq("seq")
                  .WithDataVolume()
                  .ExcludeFromManifest()
                  .WithLifetime(ContainerLifetime.Persistent)
-                 //.WithHttpsEndpoint(port: 10001, targetPort: 45341)
                  .WithHttpEndpoint(port: 61688, targetPort: 80, name: "seq-ui")
                  .WithEnvironment("ACCEPT_EULA", "Y");
 
-builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
+var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
     .WithReference(seqService)
     .WithReference(cache)
     ;
 
 // 添加 ConfigCenter 服务
-builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
+var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
     .WithReference(seqService)
     .WithReference(cache)
     ;
@@ -35,7 +34,13 @@ builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     .WithReference(cache)
+        .WaitFor(cache)
     .WithReference(seqService)
+        .WaitFor(seqService)
+    .WithReference(identityService)
+        .WaitFor(identityService)
+    .WithReference(configService)
+        .WaitFor(configService)
     ;
 
 builder.Build().Run();

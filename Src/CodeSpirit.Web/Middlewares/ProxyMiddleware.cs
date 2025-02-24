@@ -34,14 +34,6 @@ namespace CodeSpirit.Web.Middlewares
                 _logger.LogInformation("收到OPTIONS请求 - 路径: {Path}, 方法: {Method}, 来源: {Host}",
                     context.Request.Path, context.Request.Method, currentHost);
 
-                if (!currentHost.Equals(LOCALHOST, StringComparison.OrdinalIgnoreCase))
-                {
-                    _logger.LogInformation("非本地请求，跳过代理");
-                    await _next(context);
-                    return;
-                }
-
-                _logger.LogInformation("开始处理本地代理OPTIONS请求");
                 await HandleProxyRequest(context);
             }
             catch (Exception ex)
@@ -78,18 +70,18 @@ namespace CodeSpirit.Web.Middlewares
 
             _logger.LogInformation("代理请求转发到服务 {ServiceName}, 路径: {TargetPath}", serviceName, targetPath);
 
-            // 创建代理请求，使用相对路径
+            // 创建代理请求，使用服务名作为主机名构建完整URL
             var proxyRequest = new HttpRequestMessage
             {
                 Method = new HttpMethod(context.Request.Method),
-                RequestUri = new Uri(targetPath + context.Request.QueryString, UriKind.Relative)
+                RequestUri = new Uri($"{context.Request.Scheme}://{serviceName}{targetPath}{context.Request.QueryString}")
             };
             
             CopyRequestHeaders(context.Request, proxyRequest);
 
             try
             {
-                var client = _httpClientFactory.CreateClient(serviceName);
+                var client = _httpClientFactory.CreateClient();
                 using var response = await client.SendAsync(proxyRequest,
                     HttpCompletionOption.ResponseHeadersRead,
                     context.RequestAborted);

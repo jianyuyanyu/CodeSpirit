@@ -32,19 +32,6 @@ public class Program
         builder.Services.AddMemoryCache();
 
         builder.Services.AddCodeSpiritNavigation();
-
-        //TODO:动态配置
-        // 注册命名 HttpClient（服务名称对应后端服务名）
-        builder.Services.AddHttpClient("config", (client) =>
-        {
-            client.BaseAddress = new("https+http://config");
-        });
-
-        builder.Services.AddHttpClient("identity", (client) =>
-        {
-            client.BaseAddress = new("https+http://identity");
-        });
-
         builder.Services.ConfigureDefaultControllers();
 
         WebApplication app = builder.Build();

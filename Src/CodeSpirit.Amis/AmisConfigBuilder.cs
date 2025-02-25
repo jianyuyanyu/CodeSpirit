@@ -105,7 +105,7 @@ namespace CodeSpirit.Amis
                 },
                 ["data"] = new JObject()
                 {
-                    ["ROOT_API"] = GetRootApi()
+                    ["ROOT_API"] = _apiRouteHelper.GetRootApi()
                 }
             };
 
@@ -165,19 +165,6 @@ namespace CodeSpirit.Amis
                     ["body"] = new JArray(searchFields)  // 添加搜索字段
                 }
             };
-        }
-
-        private string GetRootApi()
-        {
-            HttpRequest request = _httpContextAccessor.HttpContext?.Request;
-            if (request == null)
-            {
-                return string.Empty;
-            }
-
-            string host = request.Host.Value;
-            string scheme = request.Scheme;
-            return $"{scheme}://{host}";
         }
 
         internal JObject GenerateAmisCrudConfig()

@@ -51,7 +51,7 @@ public class UserSeeder: IScopedDependency
                 _logger.LogError("创建管理员用户失败：");
                 foreach (IdentityError error in result.Errors)
                 {
-                    _logger.LogError($" - {error.Description}");
+                    _logger.LogError(" - {Description}", error.Description);
                 }
                 return;
             }

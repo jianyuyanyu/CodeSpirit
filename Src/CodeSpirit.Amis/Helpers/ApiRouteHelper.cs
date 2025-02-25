@@ -118,16 +118,25 @@ namespace CodeSpirit.Amis.Helpers
             {
                 return relativePath;
             }
+            return $"{GetRootApi()}/{relativePath.TrimStart('/')}"; // 构建并返回绝对 URL
+        }
+
+        public string GetRootApi()
+        {
+            HttpRequest request = _httpContextAccessor.HttpContext?.Request;
+            if (request == null)
+            {
+                return string.Empty;
+            }
 
             string host = request.Host.Value;
             string scheme = request.Scheme;
             var proxy_host = request.Headers["proxy-host"];
             if (!string.IsNullOrWhiteSpace(proxy_host))
             {
-                return $"{scheme}://{host}/{proxy_host}/{relativePath.TrimStart('/')}"; // 构建并返回绝对 URL
+                return $"{scheme}://{host}/{proxy_host}"; // 构建并返回绝对 URL
             }
-
-            return $"{scheme}://{host}/{relativePath.TrimStart('/')}"; // 构建并返回绝对 URL
+            return $"{scheme}://{host}";
         }
 
         /// <summary>

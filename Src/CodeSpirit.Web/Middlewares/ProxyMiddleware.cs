@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 
 namespace CodeSpirit.Web.Middlewares
 {
@@ -86,8 +86,8 @@ namespace CodeSpirit.Web.Middlewares
                     HttpCompletionOption.ResponseHeadersRead,
                     context.RequestAborted);
 
-                _logger.LogInformation("代理请求完成 - 状态码: {StatusCode}, 路径: {Path}",
-                    response.StatusCode, targetPath);
+                _logger.LogInformation("代理请求完成 - 状态码: {StatusCode}, 路径: {Path}, 内容: {Content}",
+                    response.StatusCode, targetPath, await response.Content.ReadAsStringAsync());
 
                 await CopyResponseToContext(context, response);
             }

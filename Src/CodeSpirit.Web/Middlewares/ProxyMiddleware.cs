@@ -23,15 +23,14 @@ namespace CodeSpirit.Web.Middlewares
         {
             try
             {
-                // 只处理 OPTIONS 请求
-                if (!HttpMethods.IsOptions(context.Request.Method))
+                var currentHost = context.Request.Host.Host;
+                if (!currentHost.Contains('.') || currentHost.Equals(LOCALHOST, StringComparison.OrdinalIgnoreCase))
                 {
                     await _next(context);
                     return;
                 }
 
-                var currentHost = context.Request.Host.Host;
-                _logger.LogInformation("收到OPTIONS请求 - 路径: {Path}, 方法: {Method}, 来源: {Host}",
+                _logger.LogInformation("收到请求 - 路径: {Path}, 方法: {Method}, 来源: {Host}",
                     context.Request.Path, context.Request.Method, currentHost);
 
                 await HandleProxyRequest(context);
@@ -47,12 +46,6 @@ namespace CodeSpirit.Web.Middlewares
         private async Task HandleProxyRequest(HttpContext context)
         {
             var request = context.Request;
-            
-            // 添加 CORS 响应头
-            context.Response.Headers.Append("Access-Control-Allow-Origin", context.Request.Headers["Origin"].ToString());
-            context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-            context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-            context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
 
             if (!request.QueryString.Value?.Contains("amis", StringComparison.OrdinalIgnoreCase) ?? true)
             {
@@ -60,6 +53,12 @@ namespace CodeSpirit.Web.Middlewares
                 await _next(context);
                 return;
             }
+
+            // 添加 CORS 响应头
+            context.Response.Headers.Append("Access-Control-Allow-Origin", context.Request.Headers["Origin"].ToString());
+            context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+            context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
 
             var pathSegments = request.Path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (pathSegments == null || pathSegments.Length < 1)

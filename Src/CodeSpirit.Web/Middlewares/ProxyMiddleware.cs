@@ -48,6 +48,12 @@ namespace CodeSpirit.Web.Middlewares
         {
             var request = context.Request;
             
+            // 添加 CORS 响应头
+            context.Response.Headers.Append("Access-Control-Allow-Origin", context.Request.Headers["Origin"].ToString());
+            context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+            context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+
             if (!request.QueryString.Value?.Contains("amis", StringComparison.OrdinalIgnoreCase) ?? true)
             {
                 _logger.LogInformation("请求不包含amis参数，跳过代理");
@@ -128,9 +134,6 @@ namespace CodeSpirit.Web.Middlewares
         private static async Task CopyResponseToContext(HttpContext context, HttpResponseMessage response, ILogger<ProxyMiddleware> logger)
         {
             context.Response.StatusCode = (int)response.StatusCode;
-            logger.LogInformation("响应头信息: {Headers}", 
-                string.Join(", ", response.Headers.Concat(response.Content.Headers)
-                    .Select(h => $"{h.Key}: {string.Join(", ", h.Value)}")));
 
             foreach (var header in response.Headers.Concat(response.Content.Headers))
             {

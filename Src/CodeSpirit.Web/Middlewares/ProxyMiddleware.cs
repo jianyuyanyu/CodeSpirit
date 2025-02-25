@@ -92,8 +92,8 @@ namespace CodeSpirit.Web.Middlewares
                     HttpCompletionOption.ResponseHeadersRead,
                     context.RequestAborted);
 
-                _logger.LogInformation("代理请求完成 - 状态码: {StatusCode}, 路径: {Path}, 内容: {Content}",
-                    response.StatusCode, targetPath, await response.Content.ReadAsStringAsync());
+                _logger.LogInformation("代理请求完成 - 状态码: {StatusCode}, 路径: {Path}",
+                    response.StatusCode, targetPath);
 
                 await CopyResponseToContext(context, response, _logger);
             }
@@ -135,12 +135,28 @@ namespace CodeSpirit.Web.Middlewares
         {
             context.Response.StatusCode = (int)response.StatusCode;
 
-            foreach (var header in response.Headers.Concat(response.Content.Headers))
+            foreach (var header in response.Headers)
             {
-                context.Response.Headers[header.Key] = header.Value.ToArray();
+                if (!header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.Headers[header.Key] = header.Value.ToArray();
+                }
             }
 
-            await response.Content.CopyToAsync(context.Response.Body);
+            // 分别处理 Content Headers
+            foreach (var header in response.Content.Headers)
+            {
+                if (!header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.Headers[header.Key] = header.Value.ToArray();
+                }
+            }
+
+            // 读取完整的响应内容
+            var responseBody = await response.Content.ReadAsByteArrayAsync();
+            context.Response.ContentLength = responseBody.Length;
+            await context.Response.Body.WriteAsync(responseBody);
+            await context.Response.Body.FlushAsync();
         }
     }
 }

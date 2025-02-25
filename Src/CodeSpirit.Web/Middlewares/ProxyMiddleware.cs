@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using Microsoft.AspNetCore.Http.Extensions;
+using System.Net.Http.Headers;
 
 namespace CodeSpirit.Web.Middlewares
 {
@@ -24,14 +25,9 @@ namespace CodeSpirit.Web.Middlewares
             try
             {
                 var currentHost = context.Request.Host.Host;
-                if (currentHost.Contains('.'))
-                {
-                    await _next(context);
-                    return;
-                }
 
-                _logger.LogInformation("收到请求 - 路径: {Path}, 方法: {Method}, 来源: {Host}",
-                    context.Request.Path, context.Request.Method, currentHost);
+                _logger.LogInformation("收到请求 - Url: {Url}, 方法: {Method}, 来源: {Host}",
+                    context.Request.GetEncodedUrl(), context.Request.Method, currentHost);
 
                 await HandleProxyRequest(context);
             }
@@ -46,6 +42,15 @@ namespace CodeSpirit.Web.Middlewares
         private async Task HandleProxyRequest(HttpContext context)
         {
             var request = context.Request;
+
+            // Check if the request is for a static resource
+            var staticFileExtensions = new[] { ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg" };
+            if (staticFileExtensions.Any(ext => request.Path.Value?.EndsWith(ext, StringComparison.OrdinalIgnoreCase) == true))
+            {
+                _logger.LogInformation("请求为静态资源，跳过代理 - 路径: {Path}", request.Path);
+                await _next(context);
+                return;
+            }
 
             if (!request.QueryString.Value?.Contains("amis", StringComparison.OrdinalIgnoreCase) ?? true)
             {

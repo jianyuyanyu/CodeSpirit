@@ -18,7 +18,12 @@ public class WebTests : IAsyncDisposable
 
     private IDistributedApplicationBuilder CreateAppBuilder()
     {
-        var builder = DistributedApplication.CreateBuilder();
+        var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions
+        {
+            DisableDashboard = true, // Disable dashboard for tests
+            AssemblyName = typeof(WebTests).Assembly.GetName().Name,
+        });
+        
         builder.Services.ConfigureHttpClientDefaults(clientBuilder =>
         {
             clientBuilder.AddStandardResilienceHandler();

@@ -89,7 +89,7 @@ namespace CodeSpirit.Web.Middlewares
                 _logger.LogInformation("代理请求完成 - 状态码: {StatusCode}, 路径: {Path}, 内容: {Content}",
                     response.StatusCode, targetPath, await response.Content.ReadAsStringAsync());
 
-                await CopyResponseToContext(context, response);
+                await CopyResponseToContext(context, response, _logger);
             }
             catch (OperationCanceledException)
             {
@@ -125,9 +125,12 @@ namespace CodeSpirit.Web.Middlewares
             }
         }
 
-        private static async Task CopyResponseToContext(HttpContext context, HttpResponseMessage response)
+        private static async Task CopyResponseToContext(HttpContext context, HttpResponseMessage response, ILogger<ProxyMiddleware> logger)
         {
             context.Response.StatusCode = (int)response.StatusCode;
+            logger.LogInformation("响应头信息: {Headers}", 
+                string.Join(", ", response.Headers.Concat(response.Content.Headers)
+                    .Select(h => $"{h.Key}: {string.Join(", ", h.Value)}")));
 
             foreach (var header in response.Headers.Concat(response.Content.Headers))
             {

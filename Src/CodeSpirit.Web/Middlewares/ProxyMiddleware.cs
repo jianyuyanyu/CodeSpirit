@@ -24,7 +24,7 @@ namespace CodeSpirit.Web.Middlewares
             try
             {
                 var currentHost = context.Request.Host.Host;
-                if (!currentHost.Contains('.') || currentHost.Equals(LOCALHOST, StringComparison.OrdinalIgnoreCase))
+                if (currentHost.Contains('.'))
                 {
                     await _next(context);
                     return;

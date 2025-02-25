@@ -67,20 +67,20 @@ namespace CodeSpirit.Web.Middlewares
             //    return;
             //}
 
-            // 添加 CORS 响应头
-            context.Response.Headers.Append("Access-Control-Allow-Origin", context.Request.Headers["Origin"].ToString());
-            context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-            context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-            context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
-
             var pathSegments = request.Path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (pathSegments == null || pathSegments.Length < 1)
+            if (pathSegments == null || pathSegments.Length < 2)
             {
                 await _next(context);
                 return;
             }
 
             var serviceName = pathSegments[0];
+
+            if (serviceName == "api")
+            {
+                await _next(context);
+                return;
+            }
             
             // 重构目标路径：移除开头的服务名，保留 /api 开始的部分
             var apiIndex = request.Path.Value!.IndexOf("/api/", StringComparison.OrdinalIgnoreCase);
@@ -94,7 +94,13 @@ namespace CodeSpirit.Web.Middlewares
                 Method = new HttpMethod(context.Request.Method),
                 RequestUri = new Uri($"{context.Request.Scheme}://{serviceName}{targetPath}{context.Request.QueryString}")
             };
-            
+
+            // 添加 CORS 响应头
+            context.Response.Headers.Append("Access-Control-Allow-Origin", context.Request.Headers["Origin"].ToString());
+            context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+            context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+
             CopyRequestHeaders(context.Request, proxyRequest);
 
             try

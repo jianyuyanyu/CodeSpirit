@@ -12,7 +12,6 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("权限管理")]
-    [Page(Label = "权限管理", ParentLabel = "用户中心", Icon = "fa-solid fa-key")]
     [Navigation(Icon = "fa-solid fa-key")]
     public class PermissionsController : ApiControllerBase
     {

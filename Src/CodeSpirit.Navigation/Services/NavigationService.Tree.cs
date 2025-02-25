@@ -22,6 +22,14 @@ namespace CodeSpirit.Navigation
         /// 构建模块导航树
         /// </summary>
         /// <param name="moduleName">模块名称</param>
+        /// <summary>
+        /// 构建指定模块的导航树。
+        /// 首先从代码中构建导航，如果成功则加载配置文件中的导航，并进行合并。
+        /// 如果两者都存在且代码导航不为空，则返回合并后的导航列表；
+        /// 否则返回非空的导航列表，如果都为空则返回空列表。
+        /// </summary>
+        /// <param name="moduleName">模块名称。</param>
+        /// <returns>导航节点列表。</returns>
         private List<NavigationNode> BuildModuleNavigationTree(string moduleName)
         {
             // 首先尝试从代码构建导航树

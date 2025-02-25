@@ -10,7 +10,6 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("审计日志")]
-    [Page(Label = "审计日志", ParentLabel = "系统管理", Icon = "fa-solid fa-list-check")]
     [Navigation(Icon = "fa-solid fa-list-check")]
     [AuditIgnore]
     public class AuditLogsController : ApiControllerBase

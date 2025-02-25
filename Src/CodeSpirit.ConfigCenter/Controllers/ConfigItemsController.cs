@@ -14,7 +14,6 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 /// 配置项管理控制器
 /// </summary>
 [DisplayName("配置项管理")]
-[Page(Label = "配置项管理", ParentLabel = "配置中心", Icon = "fa-solid fa-gear")]
 [Navigation(Icon = "fa-solid fa-gear")]
 public class ConfigItemsController : ApiControllerBase
 {

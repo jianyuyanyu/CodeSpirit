@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
 [DisplayName("角色管理")]
-[Page(Label = "角色管理", ParentLabel = "用户中心", Icon = "fa-solid fa-user-shield")]
 [Navigation(Icon = "fa-solid fa-user-shield")]
 public class RolesController : ApiControllerBase
 {

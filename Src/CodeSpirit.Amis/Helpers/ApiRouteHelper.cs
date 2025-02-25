@@ -1,9 +1,7 @@
-﻿using CodeSpirit.Amis.Configuration;
-using CodeSpirit.Amis.Helpers.Dtos;
+﻿using CodeSpirit.Amis.Helpers.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
-using Microsoft.Extensions.Options;
 using System.Reflection;
 
 namespace CodeSpirit.Amis.Helpers
@@ -16,14 +14,12 @@ namespace CodeSpirit.Amis.Helpers
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly AmisContext _amisContext;
         private readonly UtilityHelper _utilityHelper;
-        private readonly IOptions<PagesConfiguration> _pagesConfig;
 
-        public ApiRouteHelper(IHttpContextAccessor httpContextAccessor, AmisContext amisContext, UtilityHelper utilityHelper, IOptions<PagesConfiguration> pagesConfig)
+        public ApiRouteHelper(IHttpContextAccessor httpContextAccessor, AmisContext amisContext, UtilityHelper utilityHelper)
         {
             _httpContextAccessor = httpContextAccessor;
             _amisContext = amisContext;
             _utilityHelper = utilityHelper;
-            _pagesConfig = pagesConfig;
         }
 
         /// <summary>
@@ -124,7 +120,7 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             string host = request.Host.Value;
-            string scheme = _pagesConfig.Value.ForceHttps ? "https" : request.Scheme;
+            string scheme = request.Scheme;
             var proxy_host = request.Headers["proxy-host"];
             if (!string.IsNullOrWhiteSpace(proxy_host))
             {

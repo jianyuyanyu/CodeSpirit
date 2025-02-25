@@ -11,7 +11,6 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("用户管理")]
-    [Page(Label = "用户管理", ParentLabel = "用户中心", Icon = "fa-solid fa-users")]
     [Navigation(Icon = "fa-solid fa-users")]
     public class UsersController : ApiControllerBase
     {

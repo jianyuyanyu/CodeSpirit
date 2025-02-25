@@ -1,9 +1,7 @@
 ﻿using CodeSpirit.Amis.Column;
-using CodeSpirit.Amis.Configuration;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.Reflection;
@@ -24,14 +22,13 @@ namespace CodeSpirit.Amis
         private readonly UtilityHelper utilityHelper;
         private readonly AmisApiHelper amisApiHelper;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly IOptions<PagesConfiguration> _pagesConfig;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
                                  SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper,
-                                 IHttpContextAccessor httpContextAccessor, IOptions<PagesConfiguration> pagesConfig)
+                                 IHttpContextAccessor httpContextAccessor)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
@@ -41,7 +38,6 @@ namespace CodeSpirit.Amis
             this.utilityHelper = utilityHelper;
             this.amisApiHelper = amisApiHelper;
             _httpContextAccessor = httpContextAccessor;
-            _pagesConfig = pagesConfig;
         }
 
         /// <summary>
@@ -180,7 +176,7 @@ namespace CodeSpirit.Amis
             }
 
             string host = request.Host.Value;
-            string scheme = _pagesConfig.Value.ForceHttps ? "https" : request.Scheme;
+            string scheme = request.Scheme;
             return $"{scheme}://{host}";
         }
 

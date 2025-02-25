@@ -1,14 +1,8 @@
-﻿using CodeSpirit.Amis.App;
-using CodeSpirit.Amis.Column;
-using CodeSpirit.Amis.Configuration;
+﻿using CodeSpirit.Amis.Column;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Form.Fields;
 using CodeSpirit.Amis.Helpers;
-using CodeSpirit.Amis.MappingProfiles;
 using CodeSpirit.Amis.Middleware;
-using CodeSpirit.Amis.Services;
-using CodeSpirit.Amis.Validators;
-using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,24 +39,9 @@ namespace CodeSpirit.Amis
             // 注册 AmisGenerator，并传递可选的 apiAssembly
             services.AddScoped<AmisGenerator>();
 
-            services.AddScoped<ISiteConfigurationService, SiteConfigurationService>();
-
-            // 注册 AutoMapper 并扫描指定的程序集中的配置文件
-            services.AddAutoMapper(typeof(PageMappingProfile));
-
-            // 注册 PageValidator
-            services.AddTransient<IValidator<Page>, PageValidator>();
-            // 注册 PageCollector
-            services.AddScoped<IPageCollector, PageCollector>();
-            // 配置读取 PagesConfiguration 部分
-            services.Configure<PagesConfiguration>(configuration.GetSection("PagesConfiguration"));
-
             // 注册 FluentValidation 验证器
             // services.AddValidatorsFromAssemblyContaining<PageValidator>();
 
-            // 注册特定验证器
-            services.AddTransient<IValidator<Page>, PageValidator>();
-            services.AddScoped<IPageCollector, PageCollector>();
             return services;
         }
 

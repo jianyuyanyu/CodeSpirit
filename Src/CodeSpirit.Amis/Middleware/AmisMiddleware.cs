@@ -48,14 +48,6 @@ namespace CodeSpirit.Amis.Middleware
 
         private async Task HandleAmisRequest(HttpContext context)
         {
-            if (context.Request.Path.Value.EndsWith("/amis/site"))
-            {
-                ISiteConfigurationService _siteConfigurationService = context.RequestServices.GetRequiredService<ISiteConfigurationService>();
-                ApiResponse<App.AmisApp> siteConfig = await _siteConfigurationService.GetSiteConfigurationAsync();
-                await WriteJsonResponse(context, siteConfig);
-                return;
-            }
-
             Endpoint endpoint = context.GetEndpoint();
             if (endpoint == null)
             {

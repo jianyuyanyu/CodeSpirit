@@ -125,6 +125,11 @@ namespace CodeSpirit.Amis.Helpers
 
             string host = request.Host.Value;
             string scheme = _pagesConfig.Value.ForceHttps ? "https" : request.Scheme;
+            var proxy_host = request.Headers["proxy-host"];
+            if (!string.IsNullOrWhiteSpace(proxy_host))
+            {
+                return $"{scheme}://{host}/{proxy_host}/{relativePath.TrimStart('/')}"; // 构建并返回绝对 URL
+            }
 
             return $"{scheme}://{host}/{relativePath.TrimStart('/')}"; // 构建并返回绝对 URL
         }

@@ -81,7 +81,7 @@ namespace CodeSpirit.Web.Middlewares
                 await _next(context);
                 return;
             }
-            
+
             // 重构目标路径：移除开头的服务名，保留 /api 开始的部分
             var apiIndex = request.Path.Value!.IndexOf("/api/", StringComparison.OrdinalIgnoreCase);
             var targetPath = apiIndex >= 0 ? request.Path.Value[apiIndex..] : request.Path.Value;
@@ -94,6 +94,10 @@ namespace CodeSpirit.Web.Middlewares
                 Method = new HttpMethod(context.Request.Method),
                 RequestUri = new Uri($"{context.Request.Scheme}://{serviceName}{targetPath}{context.Request.QueryString}")
             };
+
+            // 添加 Host 头
+            proxyRequest.Headers.Host = context.Request.Host.Value;
+            proxyRequest.Headers.Add("proxy-host", serviceName);
 
             // 添加 CORS 响应头
             context.Response.Headers.Append("Access-Control-Allow-Origin", context.Request.Headers["Origin"].ToString());
@@ -140,7 +144,7 @@ namespace CodeSpirit.Web.Middlewares
                 {
                     continue;
                 }
-                
+
                 if (!target.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()) &&
                     target.Content != null)
                 {

@@ -52,13 +52,13 @@ namespace CodeSpirit.Web.Middlewares
                 return;
             }
 
-            // Check if the request is a JSON request
-            if (!request.ContentType?.Equals("application/json", StringComparison.OrdinalIgnoreCase) ?? true)
-            {
-                _logger.LogInformation("请求不是JSON类型，跳过代理 - 路径: {Path}", request.Path);
-                await _next(context);
-                return;
-            }
+            //// Check if the request is a JSON request
+            //if (!request.ContentType?.Equals("application/json", StringComparison.OrdinalIgnoreCase) ?? true)
+            //{
+            //    _logger.LogInformation("请求不是JSON类型，跳过代理 - 路径: {Path}", request.Path);
+            //    await _next(context);
+            //    return;
+            //}
 
             //if (!request.QueryString.Value?.Contains("amis", StringComparison.OrdinalIgnoreCase) ?? true)
             //{

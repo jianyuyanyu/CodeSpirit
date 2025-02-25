@@ -52,12 +52,20 @@ namespace CodeSpirit.Web.Middlewares
                 return;
             }
 
-            if (!request.QueryString.Value?.Contains("amis", StringComparison.OrdinalIgnoreCase) ?? true)
+            // Check if the request is a JSON request
+            if (!request.ContentType?.Equals("application/json", StringComparison.OrdinalIgnoreCase) ?? true)
             {
-                _logger.LogInformation("请求不包含amis参数，跳过代理");
+                _logger.LogInformation("请求不是JSON类型，跳过代理 - 路径: {Path}", request.Path);
                 await _next(context);
                 return;
             }
+
+            //if (!request.QueryString.Value?.Contains("amis", StringComparison.OrdinalIgnoreCase) ?? true)
+            //{
+            //    _logger.LogInformation("请求不包含amis参数，跳过代理");
+            //    await _next(context);
+            //    return;
+            //}
 
             // 添加 CORS 响应头
             context.Response.Headers.Append("Access-Control-Allow-Origin", context.Request.Headers["Origin"].ToString());

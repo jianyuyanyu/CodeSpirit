@@ -41,4 +41,5 @@ public interface IConfigItemService : IBaseService<ConfigItem, ConfigItemDto, in
     /// <param name="updateDto">更新请求数据</param>
     /// <returns>更新结果</returns>
     Task<(int successCount, List<string> failedKeys)> UpdateConfigCollectionAsync(ConfigItemsUpdateDto updateDto);
+    Task<(int successCount, List<int> failedIds)> BatchPublishAsync(ConfigItemsBatchPublishDto publishDto);
 } 

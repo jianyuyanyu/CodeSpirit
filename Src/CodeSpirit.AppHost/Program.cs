@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 var cache = builder.AddRedis("cache")
-                   //.WithLifetime(ContainerLifetime.Persistent)
+                   .WithLifetime(ContainerLifetime.Persistent)
                    //.WithEndpoint(port: 61690, targetPort: 6137, name: "redis")
                    .WithRedisCommander((op) =>
                    {

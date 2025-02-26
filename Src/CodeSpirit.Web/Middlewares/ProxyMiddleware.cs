@@ -44,7 +44,7 @@ namespace CodeSpirit.Web.Middlewares
             var request = context.Request;
 
             // Check if the request is for a static resource
-            var staticFileExtensions = new[] { ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg" };
+            var staticFileExtensions = new[] { ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".map" };
             if (staticFileExtensions.Any(ext => request.Path.Value?.EndsWith(ext, StringComparison.OrdinalIgnoreCase) == true))
             {
                 _logger.LogInformation("请求为静态资源，跳过代理 - 路径: {Path}", request.Path);
@@ -56,13 +56,6 @@ namespace CodeSpirit.Web.Middlewares
             //if (!request.ContentType?.Equals("application/json", StringComparison.OrdinalIgnoreCase) ?? true)
             //{
             //    _logger.LogInformation("请求不是JSON类型，跳过代理 - 路径: {Path}", request.Path);
-            //    await _next(context);
-            //    return;
-            //}
-
-            //if (!request.QueryString.Value?.Contains("amis", StringComparison.OrdinalIgnoreCase) ?? true)
-            //{
-            //    _logger.LogInformation("请求不包含amis参数，跳过代理");
             //    await _next(context);
             //    return;
             //}
@@ -95,6 +88,30 @@ namespace CodeSpirit.Web.Middlewares
                 RequestUri = new Uri($"{context.Request.Scheme}://{serviceName}{targetPath}{context.Request.QueryString}")
             };
 
+            // 复制请求体
+            if (request.ContentLength > 0)
+            {
+                // 确保请求体可以多次读取
+                request.EnableBuffering();
+                
+                // 读取请求体
+                var buffer = new byte[request.ContentLength.Value];
+                await request.Body.ReadAsync(buffer, 0, buffer.Length);
+                
+                // 重置流位置以便后续中间件可以再次读取
+                request.Body.Position = 0;
+                
+                // 添加到代理请求
+                proxyRequest.Content = new ByteArrayContent(buffer);
+                
+                // 如果有 Content-Type 头，也复制过来
+                if (request.ContentType != null)
+                {
+                    proxyRequest.Content.Headers.ContentType = 
+                        MediaTypeHeaderValue.Parse(request.ContentType);
+                }
+            }
+
             // 添加 Host 头
             proxyRequest.Headers.Host = context.Request.Host.Value;
             proxyRequest.Headers.Add("proxy-host", serviceName);
@@ -105,11 +122,25 @@ namespace CodeSpirit.Web.Middlewares
             context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
             context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
 
+            // 添加原始IP地址
+            var remoteIpAddress = context.Connection.RemoteIpAddress?.ToString();
+            if (!string.IsNullOrEmpty(remoteIpAddress))
+            {
+                proxyRequest.Headers.Add("X-Forwarded-For", remoteIpAddress);
+                proxyRequest.Headers.Add("X-Real-IP", remoteIpAddress);
+            }
+
+            // 添加原始协议
+            proxyRequest.Headers.Add("X-Forwarded-Proto", context.Request.Scheme);
+
             CopyRequestHeaders(context.Request, proxyRequest);
 
             try
             {
                 var client = _httpClientFactory.CreateClient();
+                // 设置请求超时时间
+                client.Timeout = TimeSpan.FromSeconds(30);
+                
                 using var response = await client.SendAsync(proxyRequest,
                     HttpCompletionOption.ResponseHeadersRead,
                     context.RequestAborted);
@@ -174,11 +205,13 @@ namespace CodeSpirit.Web.Middlewares
                 }
             }
 
-            // 读取完整的响应内容
-            var responseBody = await response.Content.ReadAsByteArrayAsync();
-            context.Response.ContentLength = responseBody.Length;
-            await context.Response.Body.WriteAsync(responseBody);
-            await context.Response.Body.FlushAsync();
+            // 使用流式传输而不是一次性读取
+            using (var responseStream = await response.Content.ReadAsStreamAsync())
+            {
+                // 不设置ContentLength，使用分块传输
+                await responseStream.CopyToAsync(context.Response.Body);
+                await context.Response.Body.FlushAsync();
+            }
         }
     }
 }

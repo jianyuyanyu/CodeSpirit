@@ -260,6 +260,74 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     }
 
     /// <summary>
+    /// 批量发布配置项
+    /// </summary>
+    /// <param name="publishDto">批量发布请求数据</param>
+    /// <returns>发布结果</returns>
+    public async Task<(int successCount, List<int> failedIds)> BatchPublishAsync(ConfigItemsBatchPublishDto publishDto)
+    {
+        try
+        {
+            var failedIds = new List<int>();
+            var successCount = 0;
+
+            if (publishDto.Ids == null || !publishDto.Ids.Any())
+            {
+                throw new AppServiceException(400, "请选择要发布的配置项");
+            }
+
+            // 获取所有匹配的配置项
+            var distinctIds = publishDto.Ids.Distinct().ToList();
+            var configsToPublish = await repository.Find(x => distinctIds.Contains(x.Id)).ToListAsync();
+
+            // 检查是否找到所有配置项
+            if (configsToPublish.Count != distinctIds.Count)
+            {
+                // 找出缺失的配置ID
+                var foundIds = configsToPublish.Select(c => c.Id).ToHashSet();
+                var missingIds = distinctIds.Where(id => !foundIds.Contains(id)).ToList();
+                foreach (var id in missingIds)
+                {
+                    failedIds.Add(id);
+                    logger.LogWarning("未找到配置项: ID={Id}", id);
+                }
+            }
+
+            // 批量发布找到的配置项
+            foreach (var config in configsToPublish)
+            {
+                try
+                {
+                    // 更新配置项状态
+                    config.Status = ConfigStatus.Released;
+                    config.OnlineStatus = true;
+                    
+                    await repository.UpdateAsync(config);
+
+                    // 清除缓存
+                    string cacheKey = $"config:{config.AppId}:{config.Environment}:{config.Key}";
+                    await _cacheService.RemoveAsync(cacheKey);
+
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "发布配置失败: ID={Id}", config.Id);
+                    failedIds.Add(config.Id);
+                }
+            }
+
+            await repository.SaveChangesAsync();
+            return (successCount, failedIds);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "批量发布配置失败");
+            throw new AppServiceException(500, "批量发布配置失败");
+        }
+    }
+
+    /// <summary>
     /// 配置值类型判断结果
     /// </summary>
     private readonly record struct ConfigValueValidationResult(bool IsValid, ConfigValueType ValueType);

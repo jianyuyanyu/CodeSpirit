@@ -143,7 +143,7 @@ public class AppsController : ApiControllerBase
     /// 配置管理（仅用于生成跳转操作）
     /// </summary>
     /// <returns>操作结果</returns>
-    [Operation("配置管理", "link", "/config/settings?appId=${id}", null)]
+    [Operation("配置管理", "link", "/config/configItems?appId=${id}", null)]
     public ActionResult<ApiResponse> ManageSettings()
     {
         return SuccessResponse();

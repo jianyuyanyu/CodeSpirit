@@ -148,4 +148,30 @@ public class ConfigItemsController : ApiControllerBase
 
         return SuccessResponse($"成功更新 {successCount} 个配置！");
     }
-} 
+
+    /// <summary>
+    /// 批量发布配置项
+    /// </summary>
+    /// <param name="publishDto">批量发布请求数据</param>
+    /// <returns>发布结果</returns>
+    [HttpPost("batch/publish")]
+    [Operation("批量发布", "ajax", null, "确定要发布选中的配置项吗？", isBulkOperation: true)]
+    public async Task<ActionResult<ApiResponse>> BatchPublishConfigs([FromBody] ConfigItemsBatchPublishDto publishDto)
+    {
+        ArgumentNullException.ThrowIfNull(publishDto);
+        
+        if (publishDto.Ids == null || !publishDto.Ids.Any())
+        {
+            return BadResponse("请选择要发布的配置项");
+        }
+
+        (int successCount, List<int> failedIds) = await _configItemService.BatchPublishAsync(publishDto);
+        
+        if (failedIds.Any())
+        {
+            return SuccessResponse($"成功发布 {successCount} 个配置，但以下配置ID发布失败: {string.Join(", ", failedIds)}");
+        }
+
+        return SuccessResponse($"成功发布 {successCount} 个配置！");
+    }
+}

@@ -42,7 +42,15 @@ namespace CodeSpirit.Web.Middlewares
         private async Task HandleProxyRequest(HttpContext context)
         {
             var request = context.Request;
-
+            
+            // Check if the request has the required header
+            //if (!request.Headers.TryGetValue("X-Forwarded-With", out var forwardedWith) || 
+            //    !forwardedWith.Equals("CodeSpirit"))
+            //{
+            //    await _next(context);
+            //    return;
+            //}
+            
             // Check if the request is for a static resource
             var staticFileExtensions = new[] { ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".map" };
             if (staticFileExtensions.Any(ext => request.Path.Value?.EndsWith(ext, StringComparison.OrdinalIgnoreCase) == true))

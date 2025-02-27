@@ -10,7 +10,7 @@ using Microsoft.Extensions.Primitives;
 namespace CodeSpirit.ConfigCenter.Client;
 
 /// <summary>
-/// ÅäÖÃÖĞĞÄÅäÖÃÌá¹©³ÌĞò
+/// é…ç½®ä¸­å¿ƒé…ç½®æä¾›ç¨‹åº
 /// </summary>
 public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposable
 {
@@ -38,13 +38,13 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
         _options = options.Value;
         _logger = logger;
 
-        // ÉèÖÃSignalRÅäÖÃ±ä¸ü´¦Àí³ÌĞò
+        // è®¾ç½®SignalRé…ç½®å˜æ›´å¤„ç†ç¨‹åº
         if (_options.UseSignalR)
         {
             _hubClient.OnConfigChanged += OnConfigChangedAsync;
         }
 
-        // ³õÊ¼»¯ÂÖÑ¯¶¨Ê±Æ÷
+        // åˆå§‹åŒ–è½®è¯¢å®šæ—¶å™¨
         _pollingTimer = new Timer(
             async _ => await PollForChangesAsync(),
             null,
@@ -53,43 +53,56 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     }
 
     /// <summary>
-    /// ³õÊ¼»¯ÅäÖÃ
+    /// åˆå§‹åŒ–é…ç½®
     /// </summary>
     public override void Load()
     {
-        // ×¢²áÓ¦ÓÃ£¨Èç¹ûĞèÒª£©
-        if (_options.AutoRegisterApp)
-        {
-            try
-            {
-                var registrationResult = _client.RegisterAppAsync(_cts.Token).GetAwaiter().GetResult();
-                if (!registrationResult.Success)
-                {
-                    _logger.LogWarning("Ó¦ÓÃ×Ô¶¯×¢²áÊ§°Ü£º{Message}", registrationResult.Message);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ó¦ÓÃ×Ô¶¯×¢²áÊ§°Ü£º{Message}", ex.Message);
-            }
-        }
+        //// å°†åº”ç”¨æ³¨å†Œé€»è¾‘ä¸ä¸»è¦é…ç½®åŠ è½½æµç¨‹åˆ†ç¦»
+        //if (_options.AutoRegisterApp)
+        //{
+        //    try
+        //    {
+        //        var registrationResult = _client.RegisterAppAsync(_cts.Token).GetAwaiter().GetResult();
+        //        if (registrationResult.Success)
+        //        {
+        //            _logger.LogInformation("åº”ç”¨ {AppId} è‡ªåŠ¨æ³¨å†ŒæˆåŠŸ", _options.AppId);
+        //            // å¦‚æœé…ç½®ä¸­æ²¡æœ‰è®¾ç½® AppSecretï¼Œä½†æ³¨å†ŒæˆåŠŸæ—¶è·å–äº†æ–°çš„å¯†é’¥ï¼Œåˆ™æ›´æ–°å®ƒ
+        //            if (string.IsNullOrEmpty(_options.AppSecret) && !string.IsNullOrEmpty(registrationResult.Secret))
+        //            {
+        //                _logger.LogInformation("å·²è·å–æ–°çš„åº”ç”¨å¯†é’¥");
+        //                // åœ¨è¿™é‡Œä¸èƒ½ç›´æ¥ä¿®æ”¹ _options ä¸­çš„å€¼ï¼Œå› ä¸ºå®ƒæ¥è‡ª IOptions<T>ï¼Œæ˜¯åªè¯»çš„
+        //                // å¯ä»¥è€ƒè™‘ä½¿ç”¨å…¶ä»–æ–¹å¼å­˜å‚¨è·å–åˆ°çš„å¯†é’¥ï¼Œå¦‚ï¼š
+        //                _client.UpdateAppSecret(registrationResult.Secret);
+        //            }
+        //        }
+        //        else
+        //        {
+        //            _logger.LogWarning("åº”ç”¨è‡ªåŠ¨æ³¨å†Œå¤±è´¥ï¼š{Message}", registrationResult.Message);
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "åº”ç”¨è‡ªåŠ¨æ³¨å†Œå¤±è´¥ï¼š{Message}", ex.Message);
+        //        // æ³¨å†Œå¤±è´¥ä¸å½±å“å…¶ä»–æœåŠ¡
+        //    }
+        //}
 
-        // ¼ÓÔØÅäÖÃ
+        // åŠ è½½é…ç½®ï¼ˆå³ä½¿åº”ç”¨æ³¨å†Œå¤±è´¥ä¹Ÿä¼šæ‰§è¡Œï¼‰
         LoadConfigAsync(_cts.Token).GetAwaiter().GetResult();
 
-        // Èç¹ûÊ¹ÓÃSignalR£¬Á¬½Óµ½Hub
+        // å¯åŠ¨ SignalR è¿æ¥ï¼ˆä¸åº”ç”¨æ³¨å†Œæ— å…³ï¼‰
         if (_options.UseSignalR)
         {
             _hubClient.ConnectAsync().ContinueWith(task =>
             {
                 if (task.IsFaulted)
                 {
-                    _logger.LogError(task.Exception, "Á¬½Óµ½ÅäÖÃÖĞĞÄSignalR HubÊ§°Ü");
+                    _logger.LogError(task.Exception, "è¿æ¥åˆ°é…ç½®ä¸­å¿ƒSignalR Hubå¤±è´¥");
                 }
             });
         }
 
-        // Æô¶¯ÂÖÑ¯¶¨Ê±Æ÷
+        // å¯åŠ¨è½®è¯¢å®šæ—¶å™¨ï¼ˆä¸åº”ç”¨æ³¨å†Œæ— å…³ï¼‰
         if (_options.PollIntervalSeconds > 0)
         {
             _pollingTimer.Change(
@@ -99,13 +112,13 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     }
 
     /// <summary>
-    /// ¼ÓÔØÅäÖÃ
+    /// åŠ è½½é…ç½®
     /// </summary>
     private async Task LoadConfigAsync(CancellationToken cancellationToken)
     {
         try
         {
-            // ÅĞ¶ÏÊÇ·ñÓ¦¸ÃÊ¹ÓÃ»º´æ
+            // åˆ¤æ–­æ˜¯å¦åº”è¯¥ä½¿ç”¨ç¼“å­˜
             bool useCache = _options.EnableLocalCache && (
                 _options.PreferCache ||
                 _initialLoadFailed ||
@@ -115,30 +128,30 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
 
             if (useCache)
             {
-                // ³¢ÊÔ´Ó»º´æ¼ÓÔØÅäÖÃ
-                _logger.LogInformation("³¢ÊÔ´Ó±¾µØ»º´æ¼ÓÔØÅäÖÃ");
+                // å°è¯•ä»ç¼“å­˜åŠ è½½é…ç½®
+                _logger.LogInformation("å°è¯•ä»æœ¬åœ°ç¼“å­˜åŠ è½½é…ç½®");
                 configData = await _cacheService.LoadFromCacheAsync();
 
                 if (configData != null)
                 {
-                    _logger.LogInformation("ÒÑ´Ó±¾µØ»º´æ¼ÓÔØÅäÖÃ");
+                    _logger.LogInformation("å·²ä»æœ¬åœ°ç¼“å­˜åŠ è½½é…ç½®");
                 }
                 else
                 {
-                    _logger.LogWarning("±¾µØ»º´æ²»¿ÉÓÃ»òÒÑ¹ıÆÚ");
+                    _logger.LogWarning("æœ¬åœ°ç¼“å­˜ä¸å¯ç”¨æˆ–å·²è¿‡æœŸ");
                 }
             }
 
-            // Èç¹û»º´æ²»¿ÉÓÃ»òÎ´ÆôÓÃ»º´æ£¬Ôò´Ó·şÎñÆ÷»ñÈ¡ÅäÖÃ
+            // å¦‚æœç¼“å­˜ä¸å¯ç”¨æˆ–æœªå¯ç”¨ç¼“å­˜ï¼Œåˆ™ä»æœåŠ¡å™¨è·å–é…ç½®
             if (configData == null)
             {
                 try
                 {
-                    _logger.LogInformation("ÕıÔÚ´ÓÅäÖÃÖĞĞÄ·şÎñÆ÷»ñÈ¡ÅäÖÃ");
+                    _logger.LogInformation("æ­£åœ¨ä»é…ç½®ä¸­å¿ƒæœåŠ¡å™¨è·å–é…ç½®");
                     configData = await _client.GetConfigsAsync(cancellationToken);
                     _initialLoadFailed = false;
 
-                    // Èç¹ûÆôÓÃÁË»º´æ£¬Ôò½«ÅäÖÃ±£´æµ½»º´æ
+                    // å¦‚æœå¯ç”¨äº†ç¼“å­˜ï¼Œåˆ™å°†é…ç½®ä¿å­˜åˆ°ç¼“å­˜
                     if (_options.EnableLocalCache)
                     {
                         await _cacheService.SaveToCacheAsync(configData);
@@ -146,57 +159,56 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "´ÓÅäÖÃÖĞĞÄ·şÎñÆ÷»ñÈ¡ÅäÖÃÊ§°Ü£º{Message}", ex.Message);
+                    _logger.LogError(ex, "ä»é…ç½®ä¸­å¿ƒæœåŠ¡å™¨è·å–é…ç½®å¤±è´¥ï¼š{Message}", ex.Message);
                     _initialLoadFailed = true;
 
-                    // Èç¹ûÆôÓÃÁË»º´æ£¬ÔòÔÙ´Î³¢ÊÔ´Ó»º´æ¼ÓÔØ£¨¼´Ê¹Ö®Ç°ÉèÖÃÁË²»Ê¹ÓÃ»º´æ£©
+                    // å¦‚æœå¯ç”¨äº†ç¼“å­˜ï¼Œåˆ™å†æ¬¡å°è¯•ä»ç¼“å­˜åŠ è½½ï¼ˆå³ä½¿ä¹‹å‰è®¾ç½®äº†ä¸ä½¿ç”¨ç¼“å­˜ï¼‰
                     if (_options.EnableLocalCache && !useCache)
                     {
-                        _logger.LogInformation("³¢ÊÔ´Ó±¾µØ»º´æ¼ÓÔØÅäÖÃ");
+                        _logger.LogInformation("å°è¯•ä»æœ¬åœ°ç¼“å­˜åŠ è½½é…ç½®");
                         configData = await _cacheService.LoadFromCacheAsync();
 
                         if (configData == null)
                         {
-                            throw new InvalidOperationException("ÎŞ·¨´ÓÅäÖÃÖĞĞÄ·şÎñÆ÷»ñÈ¡ÅäÖÃ£¬±¾µØ»º´æÒ²²»¿ÉÓÃ", ex);
+                            _logger.LogError(ex, "æ— æ³•ä»é…ç½®ä¸­å¿ƒæœåŠ¡å™¨è·å–é…ç½®ï¼Œæœ¬åœ°ç¼“å­˜ä¹Ÿä¸å¯ç”¨");
+                            return;
                         }
-
-                        _logger.LogInformation("ÒÑ´Ó±¾µØ»º´æ¼ÓÔØÅäÖÃ£¨ÍøÂçÇëÇóÊ§°ÜµÄ»ØÍË»úÖÆ£©");
-                    }
-                    else
-                    {
-                        throw;
+                        else
+                        {
+                            _logger.LogInformation("å·²ä»æœ¬åœ°ç¼“å­˜åŠ è½½é…ç½®ï¼ˆç½‘ç»œè¯·æ±‚å¤±è´¥çš„å›é€€æœºåˆ¶ï¼‰");
+                        }
                     }
                 }
             }
 
-            // ½«ÅäÖÃÊı¾İ×ª»»Îª±âÆ½»¯µÄ¼üÖµ¶Ô
+            // å°†é…ç½®æ•°æ®è½¬æ¢ä¸ºæ‰å¹³åŒ–çš„é”®å€¼å¯¹
             var data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             FlattenConfigs(configData.Configs, string.Empty, data);
 
-            // ¸üĞÂÅäÖÃÊı¾İ
+            // æ›´æ–°é…ç½®æ•°æ®
             Data = data;
 
-            _logger.LogInformation("ÒÑ¼ÓÔØÓ¦ÓÃ {AppId} ÔÚ {Environment} »·¾³µÄÅäÖÃ",
+            _logger.LogInformation("å·²åŠ è½½åº”ç”¨ {AppId} åœ¨ {Environment} ç¯å¢ƒçš„é…ç½®",
                 _options.AppId, _options.Environment);
 
-            // ´¥·¢ÅäÖÃ±ä¸üÊÂ¼ş
+            // è§¦å‘é…ç½®å˜æ›´äº‹ä»¶
             OnReload();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "¼ÓÔØÅäÖÃÊ§°Ü£º{Message}", ex.Message);
+            _logger.LogError(ex, "åŠ è½½é…ç½®å¤±è´¥ï¼š{Message}", ex.Message);
             throw;
         }
     }
 
     /// <summary>
-    /// ¼ì²éÍøÂçÊÇ·ñ¿ÉÓÃ
+    /// æ£€æŸ¥ç½‘ç»œæ˜¯å¦å¯ç”¨
     /// </summary>
     private bool IsNetworkAvailable()
     {
         try
         {
-            // Ò»ÖÖ¼òµ¥µÄÍøÂç¿ÉÓÃĞÔ¼ì²é·½·¨
+            // ä¸€ç§ç®€å•çš„ç½‘ç»œå¯ç”¨æ€§æ£€æŸ¥æ–¹æ³•
             using var ping = new System.Net.NetworkInformation.Ping();
             var reply = ping.Send("8.8.8.8", 1000);
             return reply?.Status == System.Net.NetworkInformation.IPStatus.Success;
@@ -208,7 +220,7 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     }
 
     /// <summary>
-    /// ½«ÅäÖÃ×ª»»Îª±âÆ½»¯µÄ¼üÖµ¶Ô
+    /// å°†é…ç½®è½¬æ¢ä¸ºæ‰å¹³åŒ–çš„é”®å€¼å¯¹
     /// </summary>
     private void FlattenConfigs(
         Dictionary<string, object> configs,
@@ -221,19 +233,19 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
 
             if (kvp.Value is Dictionary<string, object> nestedDict)
             {
-                // µİ¹é´¦ÀíÇ¶Ì××Öµä
+                // é€’å½’å¤„ç†åµŒå¥—å­—å…¸
                 FlattenConfigs(nestedDict, key, data);
             }
             else if (kvp.Value != null)
             {
-                // Ìí¼Ó¼üÖµ¶Ô
+                // æ·»åŠ é”®å€¼å¯¹
                 data[key] = kvp.Value.ToString();
             }
         }
     }
 
     /// <summary>
-    /// ÅäÖÃ±ä¸ü´¦Àí³ÌĞò
+    /// é…ç½®å˜æ›´å¤„ç†ç¨‹åº
     /// </summary>
     private async Task OnConfigChangedAsync()
     {
@@ -241,7 +253,7 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     }
 
     /// <summary>
-    /// ÂÖÑ¯ÅäÖÃ±ä¸ü
+    /// è½®è¯¢é…ç½®å˜æ›´
     /// </summary>
     private async Task PollForChangesAsync()
     {
@@ -249,13 +261,13 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     }
 
     /// <summary>
-    /// ÖØĞÂ¼ÓÔØÅäÖÃ
+    /// é‡æ–°åŠ è½½é…ç½®
     /// </summary>
     private async Task ReloadConfigAsync()
     {
         if (!await _reloadLock.WaitAsync(0))
         {
-            return; // Èç¹ûÒÑ¾­ÓĞÒ»¸öÖØĞÂ¼ÓÔØ²Ù×÷ÔÚ½øĞĞÖĞ£¬ÔòÌø¹ı
+            return; // å¦‚æœå·²ç»æœ‰ä¸€ä¸ªé‡æ–°åŠ è½½æ“ä½œåœ¨è¿›è¡Œä¸­ï¼Œåˆ™è·³è¿‡
         }
 
         try
@@ -264,7 +276,7 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "ÖØĞÂ¼ÓÔØÅäÖÃÊ§°Ü£º{Message}", ex.Message);
+            _logger.LogError(ex, "é‡æ–°åŠ è½½é…ç½®å¤±è´¥ï¼š{Message}", ex.Message);
         }
         finally
         {
@@ -273,7 +285,7 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     }
 
     /// <summary>
-    /// ÊÍ·Å×ÊÔ´
+    /// é‡Šæ”¾èµ„æº
     /// </summary>
     public void Dispose()
     {

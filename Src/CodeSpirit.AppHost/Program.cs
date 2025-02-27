@@ -20,15 +20,17 @@ var seqService = builder.AddSeq("seq")
                  .WithHttpEndpoint(port: 61688, targetPort: 80, name: "seq-ui")
                  .WithEnvironment("ACCEPT_EULA", "Y");
 
-var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
-    .WithReference(seqService)
-    .WithReference(cache)
-    ;
-
 // 添加 ConfigCenter 服务
 var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
     .WithReference(seqService)
     .WithReference(cache)
+    ;
+
+var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
+    .WithReference(seqService)
+    .WithReference(cache)
+    .WithReference(configService)
+        .WaitFor(configService)
     ;
 
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")

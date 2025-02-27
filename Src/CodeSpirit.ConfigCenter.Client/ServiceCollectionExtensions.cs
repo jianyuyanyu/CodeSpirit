@@ -18,41 +18,43 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddConfigCenterClient(
         this IServiceCollection services,
-        Action<ConfigCenterClientOptions> configureOptions)
+        Action<ConfigCenterClientOptions> configureOptions = null)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configureOptions);
 
-        // 配置选项
-        services.Configure(configureOptions);
+        if (configureOptions!=null)
+        {
+            // 配置选项
+            services.Configure(configureOptions);
+        }
 
         // 注册HttpClient
         services.AddHttpClient<ConfigCenterClient>((serviceProvider, client) =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<ConfigCenterClientOptions>>().Value;
-            
+
             client.BaseAddress = new Uri(options.ServiceUrl);
             client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds);
-            
+
             client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
-            
+
             if (!string.IsNullOrEmpty(options.AppSecret))
             {
-                client.DefaultRequestHeaders.Authorization = 
+                client.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", options.AppSecret);
             }
         });
 
         // 注册SignalR客户端
         services.AddSingleton<SignalR.ConfigCenterHubClient>();
-        
+
         // 注册缓存服务
         services.AddSingleton<ConfigCacheService>();
 
         return services;
     }
-    
+
     /// <summary>
     /// 配置配置中心客户端
     /// </summary>
@@ -69,22 +71,23 @@ public static class ServiceCollectionExtensions
                 var _ = hubClient.ConnectAsync();
             }
         }
-        
+
         return app;
     }
-    
+
     /// <summary>
     /// 添加配置中心配置
     /// </summary>
     public static IHostBuilder ConfigureConfigCenterConfiguration(
         this IHostBuilder hostBuilder,
-        Action<HostBuilderContext, ConfigCenterClientOptions> configureOptions)
+        Action<HostBuilderContext, ConfigCenterClientOptions> configureOptions = null)
     {
         return hostBuilder.ConfigureAppConfiguration((context, builder) =>
         {
             var options = new ConfigCenterClientOptions();
-            configureOptions(context, options);
-            
+
+            configureOptions?.Invoke(context, options);
+
             builder.AddConfigCenter(opt =>
             {
                 opt.ServiceUrl = options.ServiceUrl;
@@ -103,4 +106,4 @@ public static class ServiceCollectionExtensions
             });
         });
     }
-} 
+}

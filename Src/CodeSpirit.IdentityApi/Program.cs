@@ -4,6 +4,8 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+builder.AddIdentityApiServices();
+
 // 添加配置中心配置
 builder.Host.ConfigureConfigCenterConfiguration((context, options) =>
 {
@@ -25,8 +27,6 @@ builder.Services.AddConfigCenterClient(options =>
     // 从配置中读取
     builder.Configuration.GetSection("ConfigCenter").Bind(options);
 });
-
-builder.AddIdentityApiServices();
 
 WebApplication app = builder.Build();
 await app.ConfigureAppAsync();

@@ -3,6 +3,7 @@ using CodeSpirit.ConfigCenter.Client.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.ConfigCenter.Client;
 
@@ -11,24 +12,11 @@ namespace CodeSpirit.ConfigCenter.Client;
 /// </summary>
 public class ConfigCenterConfigurationSource : IConfigurationSource
 {
-    private readonly ConfigCenterClient _client;
-    private readonly ConfigCenterHubClient _hubClient;
-    private readonly ConfigCacheService _cacheService;
-    private readonly IOptions<ConfigCenterClientOptions> _options;
-    private readonly ILogger<ConfigCenterConfigurationProvider> _logger;
+    private readonly IServiceProvider _serviceProvider;
 
-    public ConfigCenterConfigurationSource(
-        ConfigCenterClient client,
-        ConfigCenterHubClient hubClient,
-        ConfigCacheService cacheService,
-        IOptions<ConfigCenterClientOptions> options,
-        ILogger<ConfigCenterConfigurationProvider> logger)
+    public ConfigCenterConfigurationSource(IServiceProvider serviceProvider)
     {
-        _client = client;
-        _hubClient = hubClient;
-        _cacheService = cacheService;
-        _options = options;
-        _logger = logger;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -36,6 +24,12 @@ public class ConfigCenterConfigurationSource : IConfigurationSource
     /// </summary>
     public IConfigurationProvider Build(IConfigurationBuilder builder)
     {
-        return new ConfigCenterConfigurationProvider(_client, _hubClient, _cacheService, _options, _logger);
+        var client = _serviceProvider.GetRequiredService<ConfigCenterClient>();
+        var hubClient = _serviceProvider.GetRequiredService<SignalR.ConfigCenterHubClient>();
+        var cacheService = _serviceProvider.GetRequiredService<ConfigCacheService>();
+        var options = _serviceProvider.GetRequiredService<IOptions<ConfigCenterClientOptions>>();
+        var logger = _serviceProvider.GetRequiredService<ILogger<ConfigCenterConfigurationProvider>>();
+        
+        return new ConfigCenterConfigurationProvider(client, hubClient, cacheService, options, logger);
     }
 } 

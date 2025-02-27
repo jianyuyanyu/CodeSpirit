@@ -11,7 +11,7 @@
         //logo: webHost + '/logo.png',
         header: {
             type: 'service',
-            api: apiHost + '/api/identity/profile',
+            api: '/identity/api/identity/profile',
             silentPolling: false,
             className: 'flex w-full justify-end',
             body: [
@@ -219,13 +219,14 @@
                     ...api,
                     headers: {
                         ...api.headers,
-                        'Authorization': 'Bearer ' + token
+                        'Authorization': 'Bearer ' + token,
+                        'X-Forwarded-With': 'CodeSpirit'
                     }
                 };
             },
             responseAdaptor: function (api, payload, query, request, response) {
-                console.debug('payload', payload);
-                console.debug('response', response);
+                //console.debug('payload', payload);
+                //console.debug('response', response);
                 
                 // 处理错误响应
                 if (response.status === 403) {

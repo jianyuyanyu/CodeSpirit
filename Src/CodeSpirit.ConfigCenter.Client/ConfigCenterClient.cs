@@ -138,4 +138,17 @@ public class ConfigCenterClient
         public string Message { get; set; }
         public T Data { get; set; }
     }
+
+    /// <summary>
+    /// 更新应用密钥
+    /// </summary>
+    public void UpdateAppSecret(string secret)
+    {
+        // 更新 HttpClient 的认证头
+        if (!string.IsNullOrEmpty(secret))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = 
+                new AuthenticationHeaderValue("Bearer", secret);
+        }
+    }
 } 

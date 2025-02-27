@@ -9,12 +9,12 @@ namespace CodeSpirit.ConfigCenter.Services;
 /// </summary>
 public class SignalRConfigChangeNotifier : IConfigChangeNotifier
 {
-    private readonly IHubContext<ConfigChangeHub> _hubContext;
+    private readonly IHubContext<ConfigHub> _hubContext;
     private readonly ILogger<SignalRConfigChangeNotifier> _logger;
     private readonly Dictionary<string, Func<Task>> _callbacks;
 
     public SignalRConfigChangeNotifier(
-        IHubContext<ConfigChangeHub> hubContext,
+        IHubContext<ConfigHub> hubContext,
         ILogger<SignalRConfigChangeNotifier> logger)
     {
         _hubContext = hubContext;
@@ -24,8 +24,13 @@ public class SignalRConfigChangeNotifier : IConfigChangeNotifier
 
     public async Task NotifyConfigChangedAsync(string appId, string environment)
     {
-        var groupName = $"{appId}:{environment}";
-        await _hubContext.Clients.Group(groupName).SendAsync("ConfigChanged", appId, environment);
+        var groupName = GetAppConfigGroupName(appId, environment);
+        await _hubContext.Clients.Group(groupName).SendAsync("ConfigChanged", new 
+        {
+            AppId = appId,
+            Environment = environment,
+            Timestamp = DateTime.UtcNow
+        });
         
         if (_callbacks.TryGetValue(groupName, out var callback))
         {
@@ -37,7 +42,7 @@ public class SignalRConfigChangeNotifier : IConfigChangeNotifier
 
     public Task SubscribeAsync(string appId, string environment, Func<Task> callback)
     {
-        var groupName = $"{appId}:{environment}";
+        var groupName = GetAppConfigGroupName(appId, environment);
         _callbacks[groupName] = callback;
         _logger.LogInformation("Subscribed to config changes: {AppId}/{Environment}", appId, environment);
         return Task.CompletedTask;
@@ -45,9 +50,17 @@ public class SignalRConfigChangeNotifier : IConfigChangeNotifier
 
     public Task UnsubscribeAsync(string appId, string environment)
     {
-        var groupName = $"{appId}:{environment}";
+        var groupName = GetAppConfigGroupName(appId, environment);
         _callbacks.Remove(groupName);
         _logger.LogInformation("Unsubscribed from config changes: {AppId}/{Environment}", appId, environment);
         return Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// 获取应用配置组名称，保持与ConfigHub一致
+    /// </summary>
+    private string GetAppConfigGroupName(string appId, string environment)
+    {
+        return $"config:{appId}:{environment}";
     }
 } 

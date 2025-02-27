@@ -30,6 +30,7 @@ public static class ServiceCollectionExtensions
         // 注册核心服务
         services.AddSingleton<IConfigCacheService, MemoryCacheConfigService>();
         services.AddSingleton<IConfigChangeNotifier, SignalRConfigChangeNotifier>();
+        services.AddScoped<IConfigNotificationService, ConfigNotificationService>();
         services.AddScoped<ConfigSeederService>();
         return services;
     }
@@ -73,7 +74,7 @@ public static class ServiceCollectionExtensions
     public static async Task<WebApplication> ConfigureAppAsync(this WebApplication app)
     {
         // 配置 SignalR 路由
-        app.MapHub<ConfigChangeHub>("/configHub");
+        app.MapHub<ConfigCenterHub>("/config-hub");
 
         app.UseCors("AllowSpecificOriginsWithCredentials");
         app.UseAuthentication();

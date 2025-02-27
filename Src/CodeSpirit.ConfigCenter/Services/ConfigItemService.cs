@@ -21,6 +21,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     private readonly IRepository<ConfigItem> repository;
     private readonly IRepository<App> _appRepository;
     private readonly IConfigCacheService _cacheService;
+    private readonly IConfigNotificationService _notificationService;
     private readonly ILogger<ConfigItemService> logger;
 
     /// <summary>
@@ -30,6 +31,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         IRepository<ConfigItem> repository,
         IRepository<App> appRepository,
         IConfigCacheService cacheService,
+        IConfigNotificationService notificationService,
         IMapper mapper,
         ILogger<ConfigItemService> logger)
         : base(repository, mapper)
@@ -37,6 +39,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         this.repository = repository;
         _appRepository = appRepository;
         _cacheService = cacheService;
+        _notificationService = notificationService;
         this.logger = logger;
     }
 
@@ -141,10 +144,17 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
                 .And(x => x.IsEnabled)
                 .And(x => x.Status == ConfigStatus.Released);
 
-            // 获取配置列表
-            var configs = await repository.Find(predicate)
-                .Select(x => new { x.Key, x.Value })
-                .ToDictionaryAsync(x => x.Key, x => x.Value);
+            // 获取配置列表，包含值类型
+            var configItems = await repository.Find(predicate)
+                .Select(x => new { x.Key, x.Value, x.ValueType })
+                .ToListAsync();
+
+            // 转换值为对应的类型
+            var configs = new Dictionary<string, object>();
+            foreach (var item in configItems)
+            {
+                configs[item.Key] = ConvertValueByType(item.Value, item.ValueType);
+            }
 
             return new ConfigItemsExportDto
             {
@@ -157,6 +167,36 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         {
             logger.LogError(ex, "获取应用配置失败: {AppId}/{Environment}", appId, environment);
             throw new AppServiceException(500, "获取应用配置失败");
+        }
+    }
+
+    /// <summary>
+    /// 根据配置类型转换值
+    /// </summary>
+    private object ConvertValueByType(string value, ConfigValueType valueType)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        try
+        {
+            return valueType switch
+            {
+                ConfigValueType.Boolean => bool.Parse(value),
+                ConfigValueType.Int => int.Parse(value, CultureInfo.InvariantCulture),
+                ConfigValueType.Double => double.Parse(value, CultureInfo.InvariantCulture),
+                ConfigValueType.Json => JsonConvert.DeserializeObject(value),
+                ConfigValueType.Encrypted => value, // 加密值保持为字符串
+                ConfigValueType.String => value,
+                _ => value
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "转换配置值失败，保持原始字符串: {Value}, 类型: {ValueType}", value, valueType);
+            return value; // 转换失败时返回原始字符串
         }
     }
 
@@ -496,10 +536,10 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     {
         // 清除缓存
         await _cacheService.RemoveAsync($"config:{entity.AppId}:{entity.Environment}:{entity.Key}");
-        //if (app.AutoPublish)
-        //{
-        //    await PublishConfigAsync(config.AppId, config.Environment, "自动发布新配置", "system");
-        //}
+        
+        // 发送配置变更通知
+        await _notificationService.NotifyConfigChangedAsync(
+            entity.AppId, entity.Environment.ToString());
     }
 
     /// <summary>
@@ -509,6 +549,10 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     {
         // 清除缓存
         await _cacheService.RemoveAsync($"config:{entity.AppId}:{entity.Environment}:{entity.Key}");
+        
+        // 发送配置变更通知
+        await _notificationService.NotifyConfigChangedAsync(
+            entity.AppId, entity.Environment.ToString());
     }
 
     /// <summary>
@@ -518,6 +562,10 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     {
         // 清除缓存
         await _cacheService.RemoveAsync($"config:{entity.AppId}:{entity.Environment}:{entity.Key}");
+        
+        // 发送配置变更通知
+        await _notificationService.NotifyConfigChangedAsync(
+            entity.AppId, entity.Environment.ToString());
     }
 
     protected override string GetImportItemId(ConfigItemBatchImportDto importDto)

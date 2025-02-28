@@ -8,7 +8,7 @@ namespace CodeSpirit.IdentityApi.Services;
 /// <summary>
 /// 用户服务接口
 /// </summary>
-public interface IUserService : IBaseService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IScopedDependency
+public interface IUserService : IBaseCRUDIService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IScopedDependency
 {
     /// <summary>
     /// 获取用户列表（分页）

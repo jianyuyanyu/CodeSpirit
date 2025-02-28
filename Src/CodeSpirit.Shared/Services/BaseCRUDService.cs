@@ -15,17 +15,16 @@ namespace CodeSpirit.Shared.Services;
 /// <typeparam name="TCreateDto">创建DTO类型</typeparam>
 /// <typeparam name="TUpdateDto">更新DTO类型</typeparam>
 /// <typeparam name="TBatchImportDto">批量导入DTO类型</typeparam>
-public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, TBatchImportDto> : IBaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, TBatchImportDto> where TEntity : class
+public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDto> : IBaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDto> where TEntity : class
     where TDto : class
     where TKey : IEquatable<TKey>
     where TCreateDto : class
     where TUpdateDto : class
-    where TBatchImportDto : class
 {
     protected readonly IRepository<TEntity> Repository;
     protected readonly IMapper Mapper;
 
-    protected BaseService(IRepository<TEntity> repository, IMapper mapper)
+    protected BaseCRUDService(IRepository<TEntity> repository, IMapper mapper)
     {
         Repository = repository;
         Mapper = mapper;
@@ -135,46 +134,6 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     }
 
     /// <summary>
-    /// 批量导入
-    /// </summary>
-    public virtual async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<TBatchImportDto> importData)
-    {
-        ArgumentNullException.ThrowIfNull(importData);
-
-        int successCount = 0;
-        List<string> failedIds = [];
-        List<TEntity> validEntities = [];
-        IEnumerable<TBatchImportDto> items = await ValidateImportItems(importData);
-
-        foreach (TBatchImportDto item in items)
-        {
-            try
-            {
-                TEntity entity = Mapper.Map<TEntity>(item);
-                OnImportMapping(entity, item);
-                await OnImporting(entity);
-                validEntities.Add(entity);
-            }
-            catch (Exception)
-            {
-                failedIds.Add(GetImportItemId(item) ?? "null");
-            }
-        }
-
-        await Repository.ExecuteInTransactionAsync(async () =>
-        {
-            foreach (TEntity entity in validEntities)
-            {
-                await Repository.AddAsync(entity, false);
-                successCount++;
-            }
-            await Repository.SaveChangesAsync();
-        });
-
-        return (successCount, failedIds);
-    }
-
-    /// <summary>
     /// 批量删除
     /// </summary>
     public virtual async Task<(int successCount, List<TKey> failedIds)> BatchDeleteAsync(IEnumerable<TKey> ids)
@@ -223,11 +182,6 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     protected virtual Task ValidateUpdateDto(TKey id, TUpdateDto updateDto) => Task.CompletedTask;
 
     /// <summary>
-    /// 验证导入项
-    /// </summary>
-    protected virtual Task<IEnumerable<TBatchImportDto>> ValidateImportItems(IEnumerable<TBatchImportDto> importData) => (Task<IEnumerable<TBatchImportDto>>)Task.CompletedTask;
-
-    /// <summary>
     /// 获取要更新的实体
     /// </summary>
     protected virtual async Task<TEntity> GetEntityForUpdate(TKey id, TUpdateDto updateDto)
@@ -235,11 +189,6 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
         TEntity entity = await Repository.GetByIdAsync(id);
         return entity == null ? throw new AppServiceException(404, "实体不存在！") : entity;
     }
-
-    /// <summary>
-    /// 获取导入项的ID
-    /// </summary>
-    protected abstract string GetImportItemId(TBatchImportDto importDto);
 
     /// <summary>
     /// 创建前的处理
@@ -257,11 +206,6 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     protected virtual Task OnDeleting(TEntity entity) => Task.CompletedTask;
 
     /// <summary>
-    /// 导入前的处理
-    /// </summary>
-    protected virtual Task OnImporting(TEntity entity) => Task.CompletedTask;
-
-    /// <summary>
     /// 创建后的处理
     /// </summary>
     protected virtual Task OnCreated(TEntity entity, TCreateDto createDto) => Task.CompletedTask;
@@ -276,12 +220,5 @@ public abstract class BaseService<TEntity, TDto, TKey, TCreateDto, TUpdateDto, T
     /// </summary>
     protected virtual Task OnDeleted(TEntity entity) => Task.CompletedTask;
 
-    /// <summary>
-    /// 导入时的映射后处理
-    /// </summary>
-    /// <param name="entity">映射后的实体</param>
-    /// <param name="importDto">导入的DTO</param>
-    protected virtual Task OnImportMapping(TEntity entity, TBatchImportDto importDto) => Task.CompletedTask;
-
     #endregion
-}
+} 

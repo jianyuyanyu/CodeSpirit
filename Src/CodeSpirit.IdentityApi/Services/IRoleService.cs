@@ -8,7 +8,7 @@ namespace CodeSpirit.IdentityApi.Services;
 /// <summary>
 /// 角色服务接口
 /// </summary>
-public interface IRoleService : IBaseService<ApplicationRole, RoleDto, long, RoleCreateDto, RoleUpdateDto, RoleBatchImportItemDto>, IScopedDependency
+public interface IRoleService : IBaseCRUDIService<ApplicationRole, RoleDto, long, RoleCreateDto, RoleUpdateDto, RoleBatchImportItemDto>, IScopedDependency
 {
     /// <summary>
     /// 获取角色列表（分页）

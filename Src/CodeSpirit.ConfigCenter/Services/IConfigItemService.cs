@@ -9,7 +9,7 @@ namespace CodeSpirit.ConfigCenter.Services;
 /// <summary>
 /// 配置项管理服务接口
 /// </summary>
-public interface IConfigItemService : IBaseService<ConfigItem, ConfigItemDto, int, CreateConfigDto, UpdateConfigDto, ConfigItemBatchImportDto>, IScopedDependency
+public interface IConfigItemService : IBaseCRUDIService<ConfigItem, ConfigItemDto, int, CreateConfigDto, UpdateConfigDto, ConfigItemBatchImportDto>, IScopedDependency
 {
     /// <summary>
     /// 获取指定配置项

@@ -16,7 +16,7 @@ namespace CodeSpirit.ConfigCenter.Services;
 /// <summary>
 /// 配置项管理服务实现
 /// </summary>
-public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, CreateConfigDto, UpdateConfigDto, ConfigItemBatchImportDto>, IConfigItemService
+public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int, CreateConfigDto, UpdateConfigDto, ConfigItemBatchImportDto>, IConfigItemService
 {
     private readonly IRepository<ConfigItem> repository;
     private readonly IRepository<App> _appRepository;
@@ -207,8 +207,8 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
             var successCount = 0;
 
             // 获取现有配置
-            var existingConfigs = await repository.Find(x => 
-                x.AppId == updateDto.AppId && 
+            var existingConfigs = await repository.Find(x =>
+                x.AppId == updateDto.AppId &&
                 x.Environment.ToString() == updateDto.Environment)
                 .ToDictionaryAsync(x => x.Key);
 
@@ -224,7 +224,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
                     var validationResult = ValidateAndInferConfigValueType(value);
                     if (!validationResult.IsValid)
                     {
-                        logger.LogWarning("配置值格式无效: {AppId}/{Environment}/{Key}", 
+                        logger.LogWarning("配置值格式无效: {AppId}/{Environment}/{Key}",
                             updateDto.AppId, updateDto.Environment, key);
                         failedKeys.Add(key);
                         continue;
@@ -274,7 +274,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "更新配置失败: {AppId}/{Environment}/{Key}", 
+                    logger.LogError(ex, "更新配置失败: {AppId}/{Environment}/{Key}",
                         updateDto.AppId, updateDto.Environment, key);
                     failedKeys.Add(key);
                 }
@@ -285,7 +285,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "批量更新配置失败: {AppId}/{Environment}", 
+            logger.LogError(ex, "批量更新配置失败: {AppId}/{Environment}",
                 updateDto.AppId, updateDto.Environment);
             throw new AppServiceException(500, "批量更新配置失败");
         }
@@ -307,34 +307,39 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         var successCount = 0;
         var successfullyPublishedConfigs = new List<ConfigItem>();
 
+        // 获取所有匹配的配置项 - 使用一次查询获取所有数据
+        var distinctIds = publishDto.Ids.Distinct().ToList();
+        var configsToPublish = await repository.Find(x => distinctIds.Contains(x.Id)).ToListAsync();
+
+        // 找出缺失的配置ID
+        if (configsToPublish.Count != distinctIds.Count)
+        {
+            var foundIds = configsToPublish.Select(c => c.Id).ToHashSet();
+            var missingIds = distinctIds.Where(id => !foundIds.Contains(id)).ToList();
+            foreach (var id in missingIds)
+            {
+                failedIds.Add(id);
+                logger.LogWarning("未找到配置项: ID={Id}", id);
+            }
+        }
+
+        if (configsToPublish.Any(p => p.Status == ConfigStatus.Released))
+        {
+            throw new AppServiceException(200, "已发布的配置项无法再次发布！");
+        }
+
         try
         {
             // 使用事务确保操作的原子性
             await repository.ExecuteInTransactionAsync(async () =>
             {
-                // 获取所有匹配的配置项 - 使用一次查询获取所有数据
-                var distinctIds = publishDto.Ids.Distinct().ToList();
-                var configsToPublish = await repository.Find(x => distinctIds.Contains(x.Id)).ToListAsync();
-
-                // 找出缺失的配置ID
-                if (configsToPublish.Count != distinctIds.Count)
-                {
-                    var foundIds = configsToPublish.Select(c => c.Id).ToHashSet();
-                    var missingIds = distinctIds.Where(id => !foundIds.Contains(id)).ToList();
-                    foreach (var id in missingIds)
-                    {
-                        failedIds.Add(id);
-                        logger.LogWarning("未找到配置项: ID={Id}", id);
-                    }
-                }
-
                 // 批量更新配置项状态
                 foreach (var config in configsToPublish)
                 {
                     try
                     {
                         config.Status = ConfigStatus.Released;
-                        await repository.UpdateAsync(config, false); // 不立即保存，等待事务提交
+                        await repository.UpdateAsync(config);
                         successCount++;
                         successfullyPublishedConfigs.Add(config);
                     }
@@ -409,7 +414,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
 
         // 使用 AsSpan 避免不必要的字符串分配
         ReadOnlySpan<char> span = value.AsSpan().Trim();
-        
+
         if (span.Length == 0)
         {
             return new(true, ConfigValueType.String);
@@ -417,7 +422,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
 
         // 快速路径：检查第一个字符来预判类型
         char firstChar = span[0];
-        
+
         // 可能是数字或负数
         if (firstChar is '-' or '+' or >= '0' and <= '9')
         {
@@ -453,7 +458,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     {
         // 检查是否包含小数点或科学计数法标记
         bool containsDecimalPoint = span.Contains('.');
-        bool containsExponent = span.Contains("e", StringComparison.OrdinalIgnoreCase) || 
+        bool containsExponent = span.Contains("e", StringComparison.OrdinalIgnoreCase) ||
                               span.Contains("E", StringComparison.OrdinalIgnoreCase);
 
         if (!containsDecimalPoint && !containsExponent)
@@ -515,7 +520,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         }
 
         ReadOnlySpan<char> span = value.AsSpan().Trim();
-        
+
         return valueType switch
         {
             ConfigValueType.Boolean => IsBooleanValue(span),
@@ -561,7 +566,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     {
         // 清除缓存
         await _cacheService.RemoveAsync($"config:{entity.AppId}:{entity.Environment}:{entity.Key}");
-        
+
         // 发送配置变更通知
         await _notificationService.NotifyConfigChangedAsync(
             entity.AppId, entity.Environment.ToString());
@@ -579,7 +584,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     {
         // 清除缓存
         await _cacheService.RemoveAsync($"config:{entity.AppId}:{entity.Environment}:{entity.Key}");
-        
+
         // 发送配置变更通知
         await _notificationService.NotifyConfigChangedAsync(
             entity.AppId, entity.Environment.ToString());
@@ -592,7 +597,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     {
         // 清除缓存
         await _cacheService.RemoveAsync($"config:{entity.AppId}:{entity.Environment}:{entity.Key}");
-        
+
         // 发送配置变更通知
         await _notificationService.NotifyConfigChangedAsync(
             entity.AppId, entity.Environment.ToString());

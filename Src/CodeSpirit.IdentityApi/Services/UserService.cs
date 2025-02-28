@@ -11,7 +11,7 @@ using LinqKit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-public class UserService : BaseService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IUserService
+public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IUserService
 {
     private readonly IRepository<ApplicationUser> _userRepository;
     private readonly UserManager<ApplicationUser> _userManager;

@@ -12,7 +12,7 @@ namespace CodeSpirit.ConfigCenter.Services;
 /// <summary>
 /// 应用管理服务实现
 /// </summary>
-public class AppService : BaseService<App, AppDto, string, CreateAppDto, UpdateAppDto, AppBatchImportItemDto>, IAppService
+public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, UpdateAppDto, AppBatchImportItemDto>, IAppService
 {
     /// <summary>
     /// 初始化应用管理服务

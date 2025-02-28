@@ -16,28 +16,11 @@ public class ConfigPublishHistory : AuditableEntityBase<int>
     public required string AppId { get; set; }
 
     /// <summary>
-    /// 配置项ID
+    /// 环境
     /// </summary>
     [Required]
-    [StringLength(36)]
-    [DisplayName("配置项ID")]
-    public required string ConfigItemId { get; set; }
-
-    /// <summary>
-    /// 发布前的值
-    /// </summary>
-    [Required]
-    [StringLength(4000)]
-    [DisplayName("原始值")]
-    public required string OldValue { get; set; }
-
-    /// <summary>
-    /// 发布后的值
-    /// </summary>
-    [Required]
-    [StringLength(4000)]
-    [DisplayName("新值")]
-    public required string NewValue { get; set; }
+    [DisplayName("环境")]
+    public required string Environment { get; set; }
 
     /// <summary>
     /// 发布说明
@@ -59,7 +42,7 @@ public class ConfigPublishHistory : AuditableEntityBase<int>
     public App App { get; set; }
 
     /// <summary>
-    /// 配置项
+    /// 配置项发布历史记录集合
     /// </summary>
-    public ConfigItem ConfigItem { get; set; }
+    public ICollection<ConfigItemPublishHistory> ConfigItemPublishHistories { get; set; } = new List<ConfigItemPublishHistory>();
 } 

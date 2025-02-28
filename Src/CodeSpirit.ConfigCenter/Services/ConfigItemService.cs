@@ -22,6 +22,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     private readonly IRepository<App> _appRepository;
     private readonly IConfigCacheService _cacheService;
     private readonly IConfigNotificationService _notificationService;
+    private readonly IConfigPublishHistoryService _publishHistoryService;
     private readonly ILogger<ConfigItemService> logger;
 
     /// <summary>
@@ -32,6 +33,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         IRepository<App> appRepository,
         IConfigCacheService cacheService,
         IConfigNotificationService notificationService,
+        IConfigPublishHistoryService publishHistoryService,
         IMapper mapper,
         ILogger<ConfigItemService> logger)
         : base(repository, mapper)
@@ -40,6 +42,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         _appRepository = appRepository;
         _cacheService = cacheService;
         _notificationService = notificationService;
+        _publishHistoryService = publishHistoryService;
         this.logger = logger;
     }
 
@@ -295,57 +298,91 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
     /// <returns>发布结果</returns>
     public async Task<(int successCount, List<int> failedIds)> BatchPublishAsync(ConfigItemsBatchPublishDto publishDto)
     {
+        if (publishDto.Ids == null || !publishDto.Ids.Any())
+        {
+            throw new AppServiceException(400, "请选择要发布的配置项");
+        }
+
+        var failedIds = new List<int>();
+        var successCount = 0;
+        var successfullyPublishedConfigs = new List<ConfigItem>();
+
         try
         {
-            var failedIds = new List<int>();
-            var successCount = 0;
-
-            if (publishDto.Ids == null || !publishDto.Ids.Any())
+            // 使用事务确保操作的原子性
+            await repository.ExecuteInTransactionAsync(async () =>
             {
-                throw new AppServiceException(400, "请选择要发布的配置项");
-            }
+                // 获取所有匹配的配置项 - 使用一次查询获取所有数据
+                var distinctIds = publishDto.Ids.Distinct().ToList();
+                var configsToPublish = await repository.Find(x => distinctIds.Contains(x.Id)).ToListAsync();
 
-            // 获取所有匹配的配置项
-            var distinctIds = publishDto.Ids.Distinct().ToList();
-            var configsToPublish = await repository.Find(x => distinctIds.Contains(x.Id)).ToListAsync();
-
-            // 检查是否找到所有配置项
-            if (configsToPublish.Count != distinctIds.Count)
-            {
                 // 找出缺失的配置ID
-                var foundIds = configsToPublish.Select(c => c.Id).ToHashSet();
-                var missingIds = distinctIds.Where(id => !foundIds.Contains(id)).ToList();
-                foreach (var id in missingIds)
+                if (configsToPublish.Count != distinctIds.Count)
                 {
-                    failedIds.Add(id);
-                    logger.LogWarning("未找到配置项: ID={Id}", id);
+                    var foundIds = configsToPublish.Select(c => c.Id).ToHashSet();
+                    var missingIds = distinctIds.Where(id => !foundIds.Contains(id)).ToList();
+                    foreach (var id in missingIds)
+                    {
+                        failedIds.Add(id);
+                        logger.LogWarning("未找到配置项: ID={Id}", id);
+                    }
                 }
-            }
 
-            // 批量发布找到的配置项
-            foreach (var config in configsToPublish)
+                // 批量更新配置项状态
+                foreach (var config in configsToPublish)
+                {
+                    try
+                    {
+                        config.Status = ConfigStatus.Released;
+                        await repository.UpdateAsync(config, false); // 不立即保存，等待事务提交
+                        successCount++;
+                        successfullyPublishedConfigs.Add(config);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "发布配置失败: ID={Id}", config.Id);
+                        failedIds.Add(config.Id);
+                        // 不抛出异常，继续处理其他配置项
+                    }
+                }
+
+                // 如果有成功发布的配置项，则创建发布历史记录
+                if (successfullyPublishedConfigs.Any())
+                {
+                    try
+                    {
+                        // 获取发布的应用和环境信息（假设所有配置项属于同一应用和环境）
+                        var firstConfig = successfullyPublishedConfigs.First();
+                        string appId = firstConfig.AppId;
+                        string environment = firstConfig.Environment.ToString();
+
+                        // 创建发布历史记录（在同一事务中）
+                        await _publishHistoryService.CreatePublishHistoryAsync(
+                            appId,
+                            environment,
+                            publishDto.Description ?? "批量发布配置",
+                            successfullyPublishedConfigs);
+
+                        logger.LogInformation("创建发布历史记录成功: {AppId}/{Environment}, 共{Count}个配置项",
+                            appId, environment, successfullyPublishedConfigs.Count);
+                    }
+                    catch (Exception ex)
+                    {
+                        // 记录日志但不影响发布结果
+                        logger.LogError(ex, "创建发布历史记录失败");
+                    }
+                }
+
+                // 事务结束时自动保存更改，无需显式调用
+            });
+
+            // 事务完成后，清除缓存（缓存操作不应在事务中执行）
+            foreach (var config in successfullyPublishedConfigs)
             {
-                try
-                {
-                    // 更新配置项状态
-                    config.Status = ConfigStatus.Released;
-                    
-                    await repository.UpdateAsync(config);
-
-                    // 清除缓存
-                    string cacheKey = $"config:{config.AppId}:{config.Environment}:{config.Key}";
-                    await _cacheService.RemoveAsync(cacheKey);
-
-                    successCount++;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "发布配置失败: ID={Id}", config.Id);
-                    failedIds.Add(config.Id);
-                }
+                string cacheKey = $"config:{config.AppId}:{config.Environment}:{config.Key}";
+                await _cacheService.RemoveAsync(cacheKey);
             }
 
-            await repository.SaveChangesAsync();
             return (successCount, failedIds);
         }
         catch (Exception ex)

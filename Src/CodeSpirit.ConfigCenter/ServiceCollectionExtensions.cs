@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConfigChangeNotifier, SignalRConfigChangeNotifier>();
         services.AddScoped<IConfigNotificationService, ConfigNotificationService>();
         services.AddScoped<ConfigSeederService>();
+        services.AddScoped<IConfigPublishHistoryService, ConfigPublishHistoryService>();
         return services;
     }
 

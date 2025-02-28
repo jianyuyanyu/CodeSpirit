@@ -9,9 +9,14 @@ namespace CodeSpirit.ConfigCenter.Dtos.Config;
 public class ConfigItemsBatchPublishDto
 {
     /// <summary>
-    /// 要发布的配置项ID列表
+    /// 要发布的配置项ID集合
     /// </summary>
-    [Required(ErrorMessage = "ID列表不能为空")]
-    [MinLength(1, ErrorMessage = "至少需要一个ID")]
-    public List<int> Ids { get; set; } = new();
+    [Required]
+    public List<int> Ids { get; set; }
+
+    /// <summary>
+    /// 发布说明
+    /// </summary>
+    [StringLength(200)]
+    public string Description { get; set; }
 } 

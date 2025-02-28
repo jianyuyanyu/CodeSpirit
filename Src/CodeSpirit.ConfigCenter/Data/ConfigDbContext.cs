@@ -41,6 +41,11 @@ public class ConfigDbContext : AuditableDbContext
     public DbSet<ConfigPublishHistory> ConfigPublishHistorys { get; set; }
 
     /// <summary>
+    /// 配置项发布历史表
+    /// </summary>
+    public DbSet<ConfigItemPublishHistory> ConfigItemPublishHistorys { get; set; }
+
+    /// <summary>
     /// 配置实体关系和约束
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -50,6 +55,32 @@ public class ConfigDbContext : AuditableDbContext
             entity.HasIndex(e => e.Name).IsUnique();
             entity.Property(e => e.Id).HasMaxLength(36);
         });
+        
+        // 配置ConfigItemPublishHistory关系，避免循环级联
+        modelBuilder.Entity<ConfigItemPublishHistory>(entity =>
+        {
+            // 配置与ConfigItem的关系为限制级联删除
+            entity.HasOne(e => e.ConfigItem)
+                .WithMany()
+                .HasForeignKey(e => e.ConfigItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+                
+            // 配置与ConfigPublishHistory的关系
+            entity.HasOne(e => e.ConfigPublishHistory)
+                .WithMany(e => e.ConfigItemPublishHistories)
+                .HasForeignKey(e => e.ConfigPublishHistoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        
+        // 配置ConfigPublishHistory与App的关系
+        modelBuilder.Entity<ConfigPublishHistory>(entity =>
+        {
+            entity.HasOne(e => e.App)
+                .WithMany()
+                .HasForeignKey(e => e.AppId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        
         base.OnModelCreating(modelBuilder);
     }
 }

@@ -43,6 +43,35 @@ namespace CodeSpirit.ConfigCenter.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ConfigPublishHistorys",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AppId = table.Column<string>(type: "nvarchar(36)", maxLength: 36, nullable: false),
+                    Environment = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Version = table.Column<long>(type: "bigint", nullable: false),
+                    CreatedBy = table.Column<long>(type: "bigint", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<long>(type: "bigint", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    DeletedBy = table.Column<long>(type: "bigint", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ConfigPublishHistorys", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ConfigPublishHistorys_Apps_AppId",
+                        column: x => x.AppId,
+                        principalTable: "Apps",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Configs",
                 columns: table => new
                 {
@@ -54,10 +83,8 @@ namespace CodeSpirit.ConfigCenter.Migrations
                     Environment = table.Column<int>(type: "int", nullable: false),
                     Group = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
-                    OnlineStatus = table.Column<bool>(type: "bit", nullable: false),
                     ValueType = table.Column<int>(type: "int", nullable: false),
                     Version = table.Column<long>(type: "bigint", nullable: false),
-                    IsEnabled = table.Column<bool>(type: "bit", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     CreatedBy = table.Column<long>(type: "bigint", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -79,18 +106,16 @@ namespace CodeSpirit.ConfigCenter.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ConfigPublishHistorys",
+                name: "ConfigItemPublishHistorys",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    AppId = table.Column<string>(type: "nvarchar(36)", maxLength: 36, nullable: false),
-                    ConfigItemId = table.Column<string>(type: "nvarchar(36)", maxLength: 36, nullable: false),
+                    ConfigPublishHistoryId = table.Column<int>(type: "int", nullable: false),
+                    ConfigItemId = table.Column<int>(type: "int", nullable: false),
                     OldValue = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
                     NewValue = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     Version = table.Column<long>(type: "bigint", nullable: false),
-                    ConfigItemId1 = table.Column<int>(type: "int", nullable: true),
                     CreatedBy = table.Column<long>(type: "bigint", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedBy = table.Column<long>(type: "bigint", nullable: true),
@@ -101,18 +126,19 @@ namespace CodeSpirit.ConfigCenter.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ConfigPublishHistorys", x => x.Id);
+                    table.PrimaryKey("PK_ConfigItemPublishHistorys", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ConfigPublishHistorys_Apps_AppId",
-                        column: x => x.AppId,
-                        principalTable: "Apps",
+                        name: "FK_ConfigItemPublishHistorys_ConfigPublishHistorys_ConfigPublishHistoryId",
+                        column: x => x.ConfigPublishHistoryId,
+                        principalTable: "ConfigPublishHistorys",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_ConfigPublishHistorys_Configs_ConfigItemId1",
-                        column: x => x.ConfigItemId1,
+                        name: "FK_ConfigItemPublishHistorys_Configs_ConfigItemId",
+                        column: x => x.ConfigItemId,
                         principalTable: "Configs",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
@@ -127,14 +153,19 @@ namespace CodeSpirit.ConfigCenter.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_ConfigItemPublishHistorys_ConfigItemId",
+                table: "ConfigItemPublishHistorys",
+                column: "ConfigItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConfigItemPublishHistorys_ConfigPublishHistoryId",
+                table: "ConfigItemPublishHistorys",
+                column: "ConfigPublishHistoryId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ConfigPublishHistorys_AppId",
                 table: "ConfigPublishHistorys",
                 column: "AppId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ConfigPublishHistorys_ConfigItemId1",
-                table: "ConfigPublishHistorys",
-                column: "ConfigItemId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Configs_AppId",
@@ -145,6 +176,9 @@ namespace CodeSpirit.ConfigCenter.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "ConfigItemPublishHistorys");
+
             migrationBuilder.DropTable(
                 name: "ConfigPublishHistorys");
 

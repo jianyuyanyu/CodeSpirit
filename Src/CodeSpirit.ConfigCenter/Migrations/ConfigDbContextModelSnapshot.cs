@@ -161,7 +161,7 @@ namespace CodeSpirit.ConfigCenter.Migrations
                     b.ToTable("Configs");
                 });
 
-            modelBuilder.Entity("CodeSpirit.ConfigCenter.Models.ConfigPublishHistory", b =>
+            modelBuilder.Entity("CodeSpirit.ConfigCenter.Models.ConfigItemPublishHistory", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -169,17 +169,10 @@ namespace CodeSpirit.ConfigCenter.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AppId")
-                        .IsRequired()
-                        .HasMaxLength(36)
-                        .HasColumnType("nvarchar(36)");
+                    b.Property<int>("ConfigItemId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("ConfigItemId")
-                        .IsRequired()
-                        .HasMaxLength(36)
-                        .HasColumnType("nvarchar(36)");
-
-                    b.Property<int?>("ConfigItemId1")
+                    b.Property<int>("ConfigPublishHistoryId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -193,10 +186,6 @@ namespace CodeSpirit.ConfigCenter.Migrations
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -222,9 +211,61 @@ namespace CodeSpirit.ConfigCenter.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AppId");
+                    b.HasIndex("ConfigItemId");
 
-                    b.HasIndex("ConfigItemId1");
+                    b.HasIndex("ConfigPublishHistoryId");
+
+                    b.ToTable("ConfigItemPublishHistorys");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ConfigCenter.Models.ConfigPublishHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AppId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppId");
 
                     b.ToTable("ConfigPublishHistorys");
                 });
@@ -249,26 +290,44 @@ namespace CodeSpirit.ConfigCenter.Migrations
                     b.Navigation("App");
                 });
 
+            modelBuilder.Entity("CodeSpirit.ConfigCenter.Models.ConfigItemPublishHistory", b =>
+                {
+                    b.HasOne("CodeSpirit.ConfigCenter.Models.ConfigItem", "ConfigItem")
+                        .WithMany()
+                        .HasForeignKey("ConfigItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CodeSpirit.ConfigCenter.Models.ConfigPublishHistory", "ConfigPublishHistory")
+                        .WithMany("ConfigItemPublishHistories")
+                        .HasForeignKey("ConfigPublishHistoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ConfigItem");
+
+                    b.Navigation("ConfigPublishHistory");
+                });
+
             modelBuilder.Entity("CodeSpirit.ConfigCenter.Models.ConfigPublishHistory", b =>
                 {
                     b.HasOne("CodeSpirit.ConfigCenter.Models.App", "App")
                         .WithMany()
                         .HasForeignKey("AppId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("CodeSpirit.ConfigCenter.Models.ConfigItem", "ConfigItem")
-                        .WithMany()
-                        .HasForeignKey("ConfigItemId1");
-
                     b.Navigation("App");
-
-                    b.Navigation("ConfigItem");
                 });
 
             modelBuilder.Entity("CodeSpirit.ConfigCenter.Models.App", b =>
                 {
                     b.Navigation("ConfigItems");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ConfigCenter.Models.ConfigPublishHistory", b =>
+                {
+                    b.Navigation("ConfigItemPublishHistories");
                 });
 #pragma warning restore 612, 618
         }

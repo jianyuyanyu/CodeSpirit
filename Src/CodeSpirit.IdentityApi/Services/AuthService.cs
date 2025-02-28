@@ -23,6 +23,7 @@ namespace CodeSpirit.IdentityApi.Services
         private readonly string _secretKey;
         private readonly string _issuer;
         private readonly string _audience;
+        private readonly int _expirationMinutes;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
@@ -43,6 +44,12 @@ namespace CodeSpirit.IdentityApi.Services
             _secretKey = _configuration["Jwt:SecretKey"];
             _issuer = _configuration["Jwt:Issuer"];
             _audience = _configuration["Jwt:Audience"];
+            
+            // 令牌过期时间，默认60分钟
+            if (!int.TryParse(_configuration["Jwt:ExpirationMinutes"], out _expirationMinutes))
+            {
+                _expirationMinutes = 60; // 默认值为60分钟
+            }
         }
 
         /// <summary>
@@ -220,7 +227,7 @@ namespace CodeSpirit.IdentityApi.Services
                 issuer: _issuer,
                 audience: _audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(30),
+                expires: DateTime.Now.AddMinutes(_expirationMinutes),
                 signingCredentials: credentials
             );
 

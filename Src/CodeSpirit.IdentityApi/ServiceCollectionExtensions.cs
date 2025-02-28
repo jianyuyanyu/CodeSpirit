@@ -46,19 +46,44 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddIdentityServices(this IServiceCollection services)
     {
+        // 从配置中获取服务提供程序
+        var sp = services.BuildServiceProvider();
+        var configuration = sp.GetRequiredService<IConfiguration>();
+
+        // 获取密码和锁定相关设置
+        bool requireDigit = true;
+        bool requireLowercase = true;
+        bool requireNonAlphanumeric = false;
+        bool requireUppercase = true;
+        int requiredLength = 6;
+        int requiredUniqueChars = 1;
+        int defaultLockoutMinutes = 5;
+        int maxFailedAttempts = 5;
+
+        // 尝试从配置中读取密码设置
+        bool.TryParse(configuration["User:Password:RequireDigit"], out requireDigit);
+        bool.TryParse(configuration["User:Password:RequireLowercase"], out requireLowercase);
+        bool.TryParse(configuration["User:Password:RequireNonAlphanumeric"], out requireNonAlphanumeric);
+        bool.TryParse(configuration["User:Password:RequireUppercase"], out requireUppercase);
+        int.TryParse(configuration["User:Password:RequiredLength"], out requiredLength);
+
+        // 尝试从配置中读取锁定设置
+        int.TryParse(configuration["User:Lockout:DefaultLockoutMinutes"], out defaultLockoutMinutes);
+        int.TryParse(configuration["User:Lockout:MaxFailedAttempts"], out maxFailedAttempts);
+
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
         {
             // 密码设置
-            options.Password.RequireDigit = true;
-            options.Password.RequireLowercase = true;
-            options.Password.RequireNonAlphanumeric = false;
-            options.Password.RequireUppercase = true;
-            options.Password.RequiredLength = 6;
-            options.Password.RequiredUniqueChars = 1;
+            options.Password.RequireDigit = requireDigit;
+            options.Password.RequireLowercase = requireLowercase;
+            options.Password.RequireNonAlphanumeric = requireNonAlphanumeric;
+            options.Password.RequireUppercase = requireUppercase;
+            options.Password.RequiredLength = requiredLength;
+            options.Password.RequiredUniqueChars = requiredUniqueChars;
 
             // 锁定设置
-            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(defaultLockoutMinutes);
+            options.Lockout.MaxFailedAccessAttempts = maxFailedAttempts;
             options.Lockout.AllowedForNewUsers = true;
 
             // 用户设置

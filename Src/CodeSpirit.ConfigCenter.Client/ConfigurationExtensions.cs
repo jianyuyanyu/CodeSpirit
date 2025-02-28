@@ -17,28 +17,73 @@ public static class ConfigurationExtensions
     /// </summary>
     public static IConfigurationBuilder AddConfigCenter(
         this IConfigurationBuilder builder,
-        Action<ConfigCenterClientOptions> configureOptions)
+        Action<ConfigCenterClientOptions> configureOptions,
+        IServiceProvider? serviceProvider = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configureOptions);
 
-        // 创建一个专用的 ServiceCollection 来托管配置中心客户端服务
-        var services = new ServiceCollection();
-        
-        // 添加核心服务
-        services.AddLogging();
-        services.AddOptions();
-        services.Configure(configureOptions);
-        
-        // 注册客户端服务（使用扩展方法简化）
-        services.AddConfigCenterClient();
-        
-        // 构建服务提供程序
-        var serviceProvider = services.BuildServiceProvider();
+        // 如果没有提供 ServiceProvider，创建一个临时的并确保在应用程序结束时释放资源
+        var externalServiceProvider = serviceProvider != null;
+        if (serviceProvider == null)
+        {
+            var services = new ServiceCollection();
+            
+            // 添加核心服务
+            services.AddLogging();
+            services.AddOptions();
+            services.Configure(configureOptions);
+            
+            // 注册客户端服务
+            services.AddConfigCenterClient();
+            
+            // 构建服务提供程序
+            serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions 
+            { 
+                ValidateScopes = true,
+                ValidateOnBuild = true 
+            });
+        }
+        else
+        {
+            // 使用现有的服务提供程序，只配置选项
+            var services = new ServiceCollection();
+            services.Configure(configureOptions);
+            var tempProvider = services.BuildServiceProvider();
+            
+            // 将选项配置复制到主服务提供程序
+            var options = tempProvider.GetRequiredService<IOptions<ConfigCenterClientOptions>>().Value;
+            var optionsCache = serviceProvider.GetService<IOptionsMonitor<ConfigCenterClientOptions>>();
+            if (optionsCache == null)
+            {
+                // 如果主容器中没有注册客户端服务，则抛出异常
+                throw new InvalidOperationException(
+                    "配置中心客户端服务未在主应用程序中注册。请先调用 services.AddConfigCenterServices() 方法。");
+            }
+        }
         
         // 创建配置源并添加到配置构建器
-        var source = ActivatorUtilities.CreateInstance<ConfigCenterConfigurationSource>(serviceProvider);
+        var source = new ConfigCenterConfigurationSource(serviceProvider, !externalServiceProvider);
         return builder.Add(source);
+    }
+
+    /// <summary>
+    /// 在主应用程序中注册配置中心客户端服务
+    /// </summary>
+    public static IServiceCollection AddConfigCenterServices(
+        this IServiceCollection services,
+        Action<ConfigCenterClientOptions> configureOptions)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configureOptions);
+        
+        // 配置选项
+        services.Configure(configureOptions);
+        
+        // 注册客户端服务
+        services.AddConfigCenterClient();
+        
+        return services;
     }
 
     /// <summary>
@@ -46,9 +91,6 @@ public static class ConfigurationExtensions
     /// </summary>
     private static IServiceCollection AddConfigCenterClient(this IServiceCollection services)
     {
-        // 注册HttpClient
-        //services.AddHttpClient<ConfigCenterClient>();
-
         // 注册HttpClient
         services.AddHttpClient<ConfigCenterClient>((serviceProvider, client) =>
         {
@@ -76,4 +118,4 @@ public static class ConfigurationExtensions
         
         return services;
     }
-} 
+}

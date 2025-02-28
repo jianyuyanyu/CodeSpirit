@@ -35,7 +35,7 @@ public class ConfigItemDto
     [StringLength(100)]
     [DisplayName("配置键")]
     [TplColumn(template: "${key}")]
-    [Badge(VisibleOn = "!onlineStatus", Level = "warning", Text = "未发布")]
+    //[Badge(VisibleOn = "!onlineStatus", Level = "warning", Text = "未发布")]
     public required string Key { get; set; }
 
     /// <summary>
@@ -69,12 +69,6 @@ public class ConfigItemDto
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// 是否已发布上线
-    /// </summary>
-    [DisplayName("发布状态")]
-    public bool OnlineStatus { get; set; }
-
-    /// <summary>
     /// 配置值类型
     /// </summary>
     [Required]
@@ -86,12 +80,6 @@ public class ConfigItemDto
     /// </summary>
     [DisplayName("版本")]
     public long Version { get; set; }
-
-    /// <summary>
-    /// 是否启用
-    /// </summary>
-    [DisplayName("状态")]
-    public bool IsEnabled { get; set; }
 
     /// <summary>
     /// 配置状态

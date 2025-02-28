@@ -10,13 +10,15 @@ namespace CodeSpirit.ConfigCenter.Client;
 /// <summary>
 /// 配置中心配置源
 /// </summary>
-public class ConfigCenterConfigurationSource : IConfigurationSource
+public class ConfigCenterConfigurationSource : IConfigurationSource, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly bool _ownsServiceProvider;
 
-    public ConfigCenterConfigurationSource(IServiceProvider serviceProvider)
+    public ConfigCenterConfigurationSource(IServiceProvider serviceProvider, bool ownsServiceProvider)
     {
         _serviceProvider = serviceProvider;
+        _ownsServiceProvider = ownsServiceProvider;
     }
 
     /// <summary>
@@ -30,6 +32,14 @@ public class ConfigCenterConfigurationSource : IConfigurationSource
         var options = _serviceProvider.GetRequiredService<IOptions<ConfigCenterClientOptions>>();
         var logger = _serviceProvider.GetRequiredService<ILogger<ConfigCenterConfigurationProvider>>();
         
-        return new ConfigCenterConfigurationProvider(client, hubClient, cacheService, options, logger);
+        return new ConfigCenterConfigurationProvider(client, hubClient, cacheService, options, logger, _serviceProvider);
+    }
+
+    public void Dispose()
+    {
+        if (_ownsServiceProvider && _serviceProvider is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
     }
 } 

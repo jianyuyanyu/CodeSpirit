@@ -30,7 +30,8 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
         ConfigCenterHubClient hubClient,
         ConfigCacheService cacheService,
         IOptions<ConfigCenterClientOptions> options,
-        ILogger<ConfigCenterConfigurationProvider> logger)
+        ILogger<ConfigCenterConfigurationProvider> logger,
+        IServiceProvider serviceProvider)
     {
         _client = client;
         _hubClient = hubClient;
@@ -179,6 +180,11 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
                         }
                     }
                 }
+            }
+
+            if (configData == null)
+            {
+                return;
             }
 
             // 将配置数据转换为扁平化的键值对

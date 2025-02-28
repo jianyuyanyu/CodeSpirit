@@ -22,6 +22,7 @@ public static class Extensions
         builder.AddRedisDistributedCache(connectionName: "cache", (settings) =>
         {
             settings.DisableHealthChecks = true;
+            settings.DisableTracing = true;
         });
 
         builder.ConfigureOpenTelemetry();

@@ -164,6 +164,7 @@ public class AppsController : ApiControllerBase
                     ["body"] = new JObject
                     {
                         ["type"] = "form",
+                        ["title"] = "",
                         ["initApi"]="get:${ROOT_API}/api/config/ConfigItems/${id}/Development/collection",
                         ["api"] = "put:${ROOT_API}/api/config/ConfigItems/${id}/Development/collection",
                         ["body"] = new JArray
@@ -185,6 +186,7 @@ public class AppsController : ApiControllerBase
                     ["body"] = new JObject
                     {
                         ["type"] = "form",
+                        ["title"] = "",
                         ["initApi"]="get:${ROOT_API}/api/config/ConfigItems/${id}/Staging/collection",
                         ["api"] = "put:${ROOT_API}/api/config/ConfigItems/${id}/Staging/collection",
                         ["body"] = new JArray
@@ -206,6 +208,7 @@ public class AppsController : ApiControllerBase
                     ["body"] = new JObject
                     {
                         ["type"] = "form",
+                        ["title"] = "",
                         ["initApi"]="get:${ROOT_API}/api/config/ConfigItems/${id}/Production/collection",
                         ["api"] = "put:${ROOT_API}/api/config/ConfigItems/${id}/Production/collection",
                         ["body"] = new JArray

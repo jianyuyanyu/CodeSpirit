@@ -11,7 +11,7 @@ using System;
 /// </summary>
 public class ConfigDbContext : AuditableDbContext
 {
-    public ConfigDbContext(DbContextOptions options, IServiceProvider serviceProvider, ICurrentUser currentUser) : base(options, serviceProvider, currentUser)
+    public ConfigDbContext(DbContextOptions<ConfigDbContext> options, IServiceProvider serviceProvider, ICurrentUser currentUser) : base(options, serviceProvider, currentUser)
     {
     }
 

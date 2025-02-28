@@ -33,6 +33,24 @@ public class ConfigCenterClient
         // 设置请求头
         _httpClient.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json"));
+        
+        // 处理 SSL 证书验证问题（可通过配置控制）
+        if (_options.IgnoreSslCertificateErrors)
+        {
+            var handler = _httpClient.GetType()
+                .GetField("_handler", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?
+                .GetValue(_httpClient) as HttpClientHandler;
+            
+            if (handler != null)
+            {
+                handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+                _logger.LogWarning("SSL 证书验证已禁用，请勿在生产环境中使用此配置");
+            }
+            else
+            {
+                _logger.LogWarning("无法配置 SSL 证书验证回调，SSL 错误可能会持续");
+            }
+        }
     }
 
     /// <summary>
@@ -89,43 +107,94 @@ public class ConfigCenterClient
     /// </summary>
     public async Task<ConfigItemsExportDto> GetConfigsAsync(CancellationToken cancellationToken = default)
     {
-        try
+        int retryCount = 0;
+        int maxRetries = _options.MaxRetryAttempts ?? 3;
+        TimeSpan delay = TimeSpan.FromSeconds(_options.RetryDelaySeconds ?? 2);
+        
+        while (true)
         {
-            _logger.LogInformation("正在获取应用 {AppId} 在 {Environment} 环境的配置", 
-                _options.AppId, _options.Environment);
-            
-            // 添加身份验证头
-            if (!string.IsNullOrEmpty(_options.AppSecret))
+            try
             {
-                _httpClient.DefaultRequestHeaders.Authorization = 
-                    new AuthenticationHeaderValue("Bearer", _options.AppSecret);
+                _logger.LogInformation("正在获取应用 {AppId} 在 {Environment} 环境的配置{RetryInfo}", 
+                    _options.AppId, _options.Environment, retryCount > 0 ? $"（第 {retryCount} 次重试）" : "");
+                
+                // 添加身份验证头
+                if (!string.IsNullOrEmpty(_options.AppSecret))
+                {
+                    _httpClient.DefaultRequestHeaders.Authorization = 
+                        new AuthenticationHeaderValue("Bearer", _options.AppSecret);
+                }
+                
+                using var requestMessage = new HttpRequestMessage(HttpMethod.Get, 
+                    $"api/config/client/config/{_options.AppId}/{_options.Environment}");
+                    
+                // 使用 SendAsync 并启用 HttpCompletionOption.ResponseHeadersRead 以更好地处理连接问题
+                var response = await _httpClient.SendAsync(requestMessage, 
+                    HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                
+                _logger.LogDebug("收到配置中心响应，状态码：{StatusCode}", response.StatusCode);
+
+                if ((int)response.StatusCode == 503)
+                {
+                    _logger.LogWarning("收到服务不可用(503)响应。");
+                    _logger.LogInformation("当前请求URL: {BaseUrl}{Path}", _httpClient.BaseAddress,
+                        $"api/config/client/config/{_options.AppId}/{_options.Environment}");
+                }
+
+                response.EnsureSuccessStatusCode();
+                
+                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                var result = JsonConvert.DeserializeObject<ApiResponse<ConfigItemsExportDto>>(responseBody);
+                
+                if (result?.Data == null)
+                {
+                    _logger.LogError("获取应用配置失败：响应数据为空");
+                    throw new Exception("获取应用配置失败：响应数据为空");
+                }
+                
+                _logger.LogInformation("成功获取应用 {AppId} 在 {Environment} 环境的配置，包含 {Count} 个配置项", 
+                    _options.AppId, _options.Environment, result.Data.Configs?.Count ?? 0);
+                
+                return result.Data;
             }
-            
-            var response = await _httpClient.GetAsync(
-                $"/api/config/client/ConfigItems/{_options.AppId}/{_options.Environment}/collection", 
-                cancellationToken);
-            
-            response.EnsureSuccessStatusCode();
-            
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            var result = JsonConvert.DeserializeObject<ApiResponse<ConfigItemsExportDto>>(responseBody);
-            
-            if (result?.Data == null)
+            catch (Exception ex)
             {
-                _logger.LogError("获取应用配置失败：响应数据为空");
-                throw new Exception("获取应用配置失败：响应数据为空");
+                var shouldRetry = false;
+                var errorMessage = ex.Message;
+                
+                // 识别可以重试的错误类型
+                if (ex is HttpRequestException || ex is TaskCanceledException || ex is TimeoutException ||
+                    (ex.InnerException is IOException && ex.Message.Contains("unexpected EOF")))
+                {
+                    shouldRetry = retryCount < maxRetries;
+                }
+                
+                if (ex.InnerException != null)
+                {
+                    errorMessage += $" 内部错误: {ex.InnerException.Message}";
+                    
+                    // 提供SSL连接问题的详细说明
+                    if (ex.InnerException is System.Security.Authentication.AuthenticationException)
+                    {
+                        errorMessage += " - SSL连接验证失败。请检查服务器证书是否有效，或在开发环境中考虑设置IgnoreSslCertificateErrors=true";
+                    }
+                }
+                
+                if (shouldRetry)
+                {
+                    retryCount++;
+                    _logger.LogWarning(ex, "获取配置失败，将在 {Delay} 秒后进行第 {RetryCount}/{MaxRetries} 次重试: {Message}", 
+                        delay.TotalSeconds, retryCount, maxRetries, errorMessage);
+                    
+                    await Task.Delay(delay, cancellationToken);
+                    delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 2, 30)); // 指数退避策略
+                    continue;
+                }
+                
+                _logger.LogError(ex, "获取应用 {AppId} 在 {Environment} 环境的配置失败：{Message}", 
+                    _options.AppId, _options.Environment, errorMessage);
+                throw;
             }
-            
-            _logger.LogInformation("成功获取应用 {AppId} 在 {Environment} 环境的配置，包含 {Count} 个配置项", 
-                _options.AppId, _options.Environment, result.Data.Configs?.Count ?? 0);
-            
-            return result.Data;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取应用 {AppId} 在 {Environment} 环境的配置失败：{Message}", 
-                _options.AppId, _options.Environment, ex.Message);
-            throw;
         }
     }
     

@@ -55,16 +55,4 @@ public class ConfigItemQueryDto : QueryDtoBase
     /// </summary>
     [DisplayName("配置类型")]
     public ConfigValueType? ValueType { get; set; }
-
-    /// <summary>
-    /// 是否已发布上线
-    /// </summary>
-    [DisplayName("发布状态")]
-    public bool? OnlineStatus { get; set; }
-
-    /// <summary>
-    /// 是否启用
-    /// </summary>
-    [DisplayName("状态")]
-    public bool? IsEnabled { get; set; }
 }

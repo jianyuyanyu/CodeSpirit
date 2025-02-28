@@ -53,12 +53,6 @@ public class ConfigItem : AuditableEntityBase<int>
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// 是否已发布上线
-    /// </summary>
-    [DisplayName("发布状态")]
-    public bool OnlineStatus { get; set; }
-
-    /// <summary>
     /// 配置值类型（如：text/json/yaml等）
     /// </summary>
     [Required]
@@ -69,11 +63,6 @@ public class ConfigItem : AuditableEntityBase<int>
     /// 版本号
     /// </summary>
     public long Version { get; set; } = 1;
-
-    /// <summary>
-    /// 是否启用
-    /// </summary>
-    public bool IsEnabled { get; set; } = true;
 
     /// <summary>
     /// 配置状态

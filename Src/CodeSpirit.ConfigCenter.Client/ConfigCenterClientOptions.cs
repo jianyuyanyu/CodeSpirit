@@ -70,4 +70,8 @@ public class ConfigCenterClientOptions
     /// 当主配置源可用时，是否仍然优先使用缓存
     /// </summary>
     public bool PreferCache { get; set; } = false;
+
+    public bool IgnoreSslCertificateErrors { get; set; } = true;
+    public int? MaxRetryAttempts { get; set; }
+    public int? RetryDelaySeconds { get; set; }
 }

@@ -73,12 +73,6 @@ public class CreateConfigDto
     public ConfigValueType ValueType { get; set; } = ConfigValueType.String;
 
     /// <summary>
-    /// 是否启用
-    /// </summary>
-    [DisplayName("状态")]
-    public bool IsEnabled { get; set; } = true;
-
-    /// <summary>
     /// 配置状态
     /// </summary>
     [DisplayName("配置状态")]

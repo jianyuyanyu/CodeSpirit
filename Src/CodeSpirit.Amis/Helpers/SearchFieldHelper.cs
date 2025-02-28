@@ -152,7 +152,7 @@ namespace CodeSpirit.Amis.Helpers
                     }
                     else
                     {
-                        fields.Add(CreateDefaultSearchField(prop, param.Name));
+                        fields.Add(CreateDefaultSearchField(prop, param.Name.Contains("query", StringComparison.CurrentCultureIgnoreCase) ? null : param.Name));
                     }
                 }
             }

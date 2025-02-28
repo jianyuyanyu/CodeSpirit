@@ -46,22 +46,4 @@ public class UpdateConfigDto
     [Required]
     [DisplayName("配置类型")]
     public ConfigValueType ValueType { get; set; }
-
-    /// <summary>
-    /// 是否启用
-    /// </summary>
-    [DisplayName("状态")]
-    public bool IsEnabled { get; set; }
-
-    /// <summary>
-    /// 配置状态
-    /// </summary>
-    [DisplayName("配置状态")]
-    public ConfigStatus Status { get; set; }
-
-    /// <summary>
-    /// 是否已发布上线
-    /// </summary>
-    [DisplayName("发布状态")]
-    public bool OnlineStatus { get; set; }
 }

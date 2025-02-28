@@ -1,6 +1,7 @@
 using CodeSpirit.ConfigCenter.Dtos.Config;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.ConfigCenter.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
@@ -11,6 +12,7 @@ namespace CodeSpirit.ConfigCenter.Controllers.ClientApi;
 /// </summary>
 [Route("api/config/client/config")]
 [ApiController]
+[AllowAnonymous]
 public class ClientConfigController : ControllerBase
 {
     private readonly IConfigItemService _configItemService;

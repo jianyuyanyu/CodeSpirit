@@ -4,6 +4,7 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 
 var cache = builder.AddRedis("cache")
                    .WithLifetime(ContainerLifetime.Persistent)
+                   //.WithRedisInsight()
                    //.WithEndpoint(port: 61690, targetPort: 6137, name: "redis")
                    .WithRedisCommander((op) =>
                    {
@@ -23,12 +24,16 @@ var seqService = builder.AddSeq("seq")
 // 添加 ConfigCenter 服务
 var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
     .WithReference(seqService)
+        .WaitFor(seqService)
     .WithReference(cache)
+        .WaitFor(cache)
     ;
 
 var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
     .WithReference(seqService)
+        .WaitFor(seqService)
     .WithReference(cache)
+        .WaitFor(cache)
     .WithReference(configService)
         .WaitFor(configService)
     ;

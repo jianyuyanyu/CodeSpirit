@@ -111,14 +111,6 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
         {
             predicate = predicate.And(x => x.ValueType == queryDto.ValueType.Value);
         }
-        if (queryDto.OnlineStatus.HasValue)
-        {
-            predicate = predicate.And(x => x.OnlineStatus == queryDto.OnlineStatus.Value);
-        }
-        if (queryDto.IsEnabled.HasValue)
-        {
-            predicate = predicate.And(x => x.IsEnabled == queryDto.IsEnabled.Value);
-        }
 
         return await GetPagedListAsync(
            queryDto,
@@ -141,7 +133,6 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
             var predicate = PredicateBuilder.New<ConfigItem>()
                 .And(x => x.AppId == appId)
                 .And(x => x.Environment.ToString() == environment)
-                .And(x => x.IsEnabled)
                 .And(x => x.Status == ConfigStatus.Released);
 
             // 获取配置列表，包含值类型
@@ -242,7 +233,6 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
                         existingConfig.Value = value;
                         existingConfig.Version++;
                         existingConfig.Status = ConfigStatus.Editing;
-                        existingConfig.OnlineStatus = false;
                         // 如果现有配置类型是String，则可以根据值推断更新类型
                         if (existingConfig.ValueType == ConfigValueType.String)
                         {
@@ -267,8 +257,7 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
                             Environment = Enum.Parse<EnvironmentType>(updateDto.Environment),
                             ValueType = validationResult.ValueType,
                             Version = 1,
-                            Status = ConfigStatus.Editing,
-                            IsEnabled = true
+                            Status = ConfigStatus.Editing
                         };
 
                         await repository.AddAsync(newConfig);
@@ -340,7 +329,6 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
                 {
                     // 更新配置项状态
                     config.Status = ConfigStatus.Released;
-                    config.OnlineStatus = true;
                     
                     await repository.UpdateAsync(config);
 
@@ -542,6 +530,11 @@ public class ConfigItemService : BaseService<ConfigItem, ConfigItemDto, int, Cre
             entity.AppId, entity.Environment.ToString());
     }
 
+    protected override Task OnUpdating(ConfigItem entity, UpdateConfigDto updateDto)
+    {
+        entity.Status = ConfigStatus.Editing;
+        return base.OnUpdating(entity, updateDto);
+    }
     /// <summary>
     /// 更新实体后的处理
     /// </summary>

@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http.Extensions;
 using System.Net.Http.Headers;
+using System.Collections.Generic;
+using CodeSpirit.Web.Services;
 
 namespace CodeSpirit.Web.Middlewares
 {
@@ -9,15 +11,18 @@ namespace CodeSpirit.Web.Middlewares
         private readonly RequestDelegate _next;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<ProxyMiddleware> _logger;
+        private readonly IAggregatorService _aggregatorService;
 
         public ProxyMiddleware(
             RequestDelegate next,
             IHttpClientFactory httpClientFactory,
-            ILogger<ProxyMiddleware> logger)
+            ILogger<ProxyMiddleware> logger,
+            IAggregatorService aggregatorService)
         {
             _next = next ?? throw new ArgumentNullException(nameof(next));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _aggregatorService = aggregatorService ?? throw new ArgumentNullException(nameof(aggregatorService));
         }
 
         public async Task Invoke(HttpContext context)
@@ -192,12 +197,25 @@ namespace CodeSpirit.Web.Middlewares
             }
         }
 
-        private static async Task CopyResponseToContext(HttpContext context, HttpResponseMessage response, ILogger<ProxyMiddleware> logger)
+        private async Task CopyResponseToContext(HttpContext context, HttpResponseMessage response, ILogger<ProxyMiddleware> logger)
         {
             context.Response.StatusCode = (int)response.StatusCode;
 
+            // 检查是否需要进行聚合处理
+            bool needsAggregation = _aggregatorService.NeedsAggregation(response);
+            Dictionary<string, string> aggregationRules = [];
+            
+            if (needsAggregation)
+            {
+                aggregationRules = _aggregatorService.GetAggregationRules(response);
+            }
+
             foreach (var header in response.Headers)
             {
+                // 移除聚合相关的头信息，不传递给客户端
+                if (header.Key.StartsWith("X-Aggregate-", StringComparison.OrdinalIgnoreCase))
+                    continue;
+            
                 if (!header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
                 {
                     context.Response.Headers[header.Key] = header.Value.ToArray();
@@ -213,12 +231,37 @@ namespace CodeSpirit.Web.Middlewares
                 }
             }
 
-            // 使用流式传输而不是一次性读取
-            using (var responseStream = await response.Content.ReadAsStreamAsync())
+            // 检查内容类型是否为JSON，只对JSON内容进行聚合
+            bool isJsonContent = response.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true;
+
+            if (needsAggregation && isJsonContent && aggregationRules.Any())
             {
-                // 不设置ContentLength，使用分块传输
-                await responseStream.CopyToAsync(context.Response.Body);
-                await context.Response.Body.FlushAsync();
+                // 读取JSON内容
+                string jsonContent = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    // 使用聚合器服务处理JSON内容
+                    var aggregatedJson = await _aggregatorService.AggregateJsonContent(jsonContent, aggregationRules, context);
+                    
+                    // 写入修改后的JSON到响应
+                    await context.Response.WriteAsync(aggregatedJson);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "JSON聚合处理失败");
+                    // 如果JSON处理失败，回退到原始内容
+                    await context.Response.WriteAsync(jsonContent);
+                }
+            }
+            else
+            {
+                // 不需要聚合，使用流式传输
+                using (var responseStream = await response.Content.ReadAsStreamAsync())
+                {
+                    // 不设置ContentLength，使用分块传输
+                    await responseStream.CopyToAsync(context.Response.Body);
+                    await context.Response.Body.FlushAsync();
+                }
             }
         }
     }

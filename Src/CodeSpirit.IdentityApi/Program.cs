@@ -1,6 +1,4 @@
-using CodeSpirit.ConfigCenter.Client;
 using Microsoft.AspNetCore.HttpLogging;
-using System.Net.Http;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
@@ -43,10 +41,4 @@ await app.ConfigureAppAsync();
 
 // 启用配置中心客户端
 //app.UseConfigCenterClient();
-
-var httpClientFactory = app.Services.GetRequiredService<IHttpClientFactory>();
-var client = httpClientFactory.CreateClient("config");
-var response = await client.GetAsync("/api/config/client/config/identity/Development");
-string content = await response.Content.ReadAsStringAsync();
-Console.WriteLine(content);
 app.Run();

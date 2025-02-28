@@ -2,6 +2,7 @@ using CodeSpirit.Core;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
+using CodeSpirit.Web.Extensions;
 using CodeSpirit.Web.Middlewares;
 
 public class Program
@@ -34,6 +35,8 @@ public class Program
 
         builder.Services.AddCodeSpiritNavigation();
         builder.Services.ConfigureDefaultControllers();
+        // 添加代理相关服务，包括聚合器
+        builder.Services.AddProxyServices();
 
         WebApplication app = builder.Build();
 
@@ -60,6 +63,7 @@ public class Program
 
         // Add WebOptimizer middleware
         app.UseWebOptimizer();
+
         app.UseMiddleware<ProxyMiddleware>();
         
         await app.RunAsync();

@@ -3,7 +3,7 @@ using CodeSpirit.ConfigCenter.Dtos.Config;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.Core;
 
-namespace CodeSpirit.ConfigCenter.MapperProfiles;
+namespace CodeSpirit.ConfigCenter.Mappings;
 
 /// <summary>
 /// 配置发布历史映射配置
@@ -18,7 +18,8 @@ public class ConfigPublishHistoryProfile : Profile
         // 配置发布历史映射
         CreateMap<ConfigPublishHistory, ConfigPublishHistoryDto>()
             .ForMember(dest => dest.AppName, opt => opt.MapFrom(src => src.App != null ? src.App.Name : string.Empty))
-            .ForMember(dest => dest.Environment, opt => opt.MapFrom(src => src.Environment.ToString()));
+            .ForMember(dest => dest.Environment, opt => opt.MapFrom(src => src.Environment.ToString()))
+            ;
 
         // 配置项发布历史映射
         CreateMap<ConfigItemPublishHistory, ConfigItemPublishHistoryDto>()
@@ -35,4 +36,4 @@ public class ConfigPublishHistoryProfile : Profile
         // 添加 PageList 映射配置
         CreateMap<PageList<ConfigPublishHistory>, PageList<ConfigPublishHistoryDto>>();
     }
-} 
+}

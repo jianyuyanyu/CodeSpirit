@@ -149,6 +149,12 @@ public class AppsController : ApiControllerBase
         return SuccessResponse();
     }
 
+    [Operation("发布历史", "link", "/config/configPublishHistories?appId=${id}", null)]
+    public ActionResult<ApiResponse> ConfigPublishHistories()
+    {
+        return SuccessResponse();
+    }
+
     [Operation(label: "批量配置", actionType: "service")]
     [HttpGet("batch/settings")]
     public JObject CreateBatchConfigButton(string id)

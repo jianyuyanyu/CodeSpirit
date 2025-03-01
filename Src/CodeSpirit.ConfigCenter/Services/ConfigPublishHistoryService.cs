@@ -64,7 +64,7 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
         return await GetPagedListAsync(
             queryDto,
             predicate,
-            "App"
+            ["App", "ConfigItemPublishHistories"]
         );
     }
 
@@ -73,30 +73,18 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
     /// </summary>
     public async Task<ConfigPublishHistoryDto> GetPublishHistoryDetailAsync(int publishHistoryId)
     {
-        try
-        {
-            // 获取发布历史，包含所有配置项变更记录
-            var publishHistory = await _publishHistoryRepository.Find(h => h.Id == publishHistoryId)
-                .Include(h => h.ConfigItemPublishHistories)
-                .ThenInclude(h => h.ConfigItem)
-                .FirstOrDefaultAsync();
+        // 获取发布历史，包含所有配置项变更记录
+        var publishHistory = await _publishHistoryRepository.Find(h => h.Id == publishHistoryId)
+            .Include(h => h.ConfigItemPublishHistories)
+            .ThenInclude(h => h.ConfigItem)
+            .FirstOrDefaultAsync();
 
-            if (publishHistory == null)
-            {
-                throw new AppServiceException(404, "发布历史记录不存在");
-            }
+        if (publishHistory == null)
+        {
+            throw new AppServiceException(404, "发布历史记录不存在");
+        }
 
-            return Mapper.Map<ConfigPublishHistoryDto>(publishHistory);
-        }
-        catch (AppServiceException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取发布历史详情失败: {PublishHistoryId}", publishHistoryId);
-            throw new AppServiceException(500, "获取发布历史详情失败");
-        }
+        return Mapper.Map<ConfigPublishHistoryDto>(publishHistory);
     }
 
     /// <summary>

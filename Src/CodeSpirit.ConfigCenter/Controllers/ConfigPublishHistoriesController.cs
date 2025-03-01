@@ -14,7 +14,7 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 /// <summary>
 /// 配置发布历史控制器
 /// </summary>
-[DisplayName("配置发布历史")]
+[DisplayName("发布历史")]
 [Navigation(Icon = "fa-solid fa-clock-rotate-left")]
 public class ConfigPublishHistoriesController : ApiControllerBase
 {
@@ -44,25 +44,13 @@ public class ConfigPublishHistoriesController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<PageList<ConfigPublishHistoryDto>>>> GetPublishHistories(
         [FromQuery] ConfigPublishHistoryQueryDto queryDto)
     {
-        try
-        {
-            var histories = await _publishHistoryService.GetPublishHistoryListAsync(queryDto);
-            
-            // 创建DTO分页列表
-            var dtoItems = _mapper.Map<List<ConfigPublishHistoryDto>>(histories.Items);
-            var result = new PageList<ConfigPublishHistoryDto>(dtoItems, histories.Total);
-            
-            return SuccessResponse(result);
-        }
-        catch (AppServiceException ex)
-        {
-            return BadResponse<PageList<ConfigPublishHistoryDto>>(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取发布历史列表失败: {AppId}/{Environment}", queryDto.AppId, queryDto.Environment);
-            return BadResponse<PageList<ConfigPublishHistoryDto>>("获取发布历史列表失败");
-        }
+        var histories = await _publishHistoryService.GetPublishHistoryListAsync(queryDto);
+
+        // 创建DTO分页列表
+        var dtoItems = _mapper.Map<List<ConfigPublishHistoryDto>>(histories.Items);
+        var result = new PageList<ConfigPublishHistoryDto>(dtoItems, histories.Total);
+
+        return SuccessResponse(result);
     }
 
     /// <summary>
@@ -73,22 +61,8 @@ public class ConfigPublishHistoriesController : ApiControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<ConfigPublishHistoryDto>>> GetPublishHistoryDetail(int id)
     {
-        try
-        {
-            var history = await _publishHistoryService.GetPublishHistoryDetailAsync(id);
-            var historyDto = _mapper.Map<ConfigPublishHistoryDto>(history);
-            
-            return SuccessResponse(historyDto);
-        }
-        catch (AppServiceException ex)
-        {
-            return BadResponse<ConfigPublishHistoryDto>(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取发布历史详情失败: ID={Id}", id);
-            return BadResponse<ConfigPublishHistoryDto>("获取发布历史详情失败");
-        }
+        var history = await _publishHistoryService.GetPublishHistoryDetailAsync(id);
+        return SuccessResponse(history);
     }
 
     /// <summary>
@@ -100,27 +74,15 @@ public class ConfigPublishHistoriesController : ApiControllerBase
     [Operation("回滚", "ajax", null, "确定要回滚到此版本吗？")]
     public async Task<ActionResult<ApiResponse>> RollbackToHistory(int id)
     {
-        try
+        var (success, message) = await _publishHistoryService.RollbackToHistoryAsync(id);
+
+        if (success)
         {
-            var (success, message) = await _publishHistoryService.RollbackToHistoryAsync(id);
-            
-            if (success)
-            {
-                return SuccessResponse(message);
-            }
-            else
-            {
-                return BadResponse(message);
-            }
+            return SuccessResponse(message);
         }
-        catch (AppServiceException ex)
+        else
         {
-            return BadResponse(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "回滚发布历史失败: ID={Id}", id);
-            return BadResponse("回滚发布历史失败");
+            return BadResponse(message);
         }
     }
 } 

@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes.Columns;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -56,10 +57,4 @@ public class ConfigPublishHistoryDto
     /// </summary>
     [DisplayName("发布人")]
     public string CreatedBy { get; set; }
-
-    /// <summary>
-    /// 配置项发布历史列表
-    /// </summary>
-    [DisplayName("配置项变更")]
-    public List<ConfigItemPublishHistoryDto> ConfigItemPublishHistories { get; set; } = new();
 }

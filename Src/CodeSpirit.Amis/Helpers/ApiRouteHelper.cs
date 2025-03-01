@@ -147,6 +147,16 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>合并后的路由路径。</returns>
         private string CombineRoutes(string baseRoute, string template)
         {
+            // 移除路由模板中的数据类型定义
+            if (!string.IsNullOrEmpty(template))
+            {
+                template = System.Text.RegularExpressions.Regex.Replace(template, @"{\w+:[^}]+}", match =>
+                {
+                    var colonIndex = match.Value.IndexOf(':');
+                    return match.Value.Substring(0, colonIndex) + "}";
+                });
+            }
+
             template = template?.Replace("{", "${") ?? string.Empty; // 替换模板中的 {id} 占位符
             if (string.IsNullOrEmpty(template))
             {

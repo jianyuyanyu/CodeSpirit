@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using System.Reflection;
+using Microsoft.Extensions.Hosting;
 
 namespace CodeSpirit.Amis.Helpers
 {
@@ -14,12 +15,14 @@ namespace CodeSpirit.Amis.Helpers
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly AmisContext _amisContext;
         private readonly UtilityHelper _utilityHelper;
+        private readonly IWebHostEnvironment _environment;
 
-        public ApiRouteHelper(IHttpContextAccessor httpContextAccessor, AmisContext amisContext, UtilityHelper utilityHelper)
+        public ApiRouteHelper(IHttpContextAccessor httpContextAccessor, AmisContext amisContext, UtilityHelper utilityHelper, IWebHostEnvironment environment)
         {
             _httpContextAccessor = httpContextAccessor;
             _amisContext = amisContext;
             _utilityHelper = utilityHelper;
+            _environment = environment;
         }
 
         /// <summary>
@@ -131,6 +134,13 @@ namespace CodeSpirit.Amis.Helpers
 
             string host = request.Host.Value;
             string scheme = request.Scheme;
+            
+            // 在生产环境中强制使用HTTPS
+            if (string.Equals(scheme, "http", StringComparison.OrdinalIgnoreCase) && _environment.IsProduction())
+            {
+                scheme = "https";
+            }
+            
             var proxy_host = request.Headers["proxy-host"];
             if (!string.IsNullOrWhiteSpace(proxy_host))
             {

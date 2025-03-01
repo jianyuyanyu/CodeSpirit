@@ -1,6 +1,4 @@
 using AutoMapper;
-using CodeSpirit.Amis.Attributes.FormFields;
-using CodeSpirit.ConfigCenter.Constants;
 using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core.Attributes;
@@ -19,7 +17,6 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 public class AppsController : ApiControllerBase
 {
     private readonly IAppService _appService;
-    private readonly IMapper _mapper;
     private readonly ILogger<AppsController> _logger;
 
     /// <summary>
@@ -30,15 +27,12 @@ public class AppsController : ApiControllerBase
     /// <param name="logger">日志记录器</param>
     public AppsController(
         IAppService appService,
-        IMapper mapper,
         ILogger<AppsController> logger)
     {
         ArgumentNullException.ThrowIfNull(appService);
-        ArgumentNullException.ThrowIfNull(mapper);
         ArgumentNullException.ThrowIfNull(logger);
 
         _appService = appService;
-        _mapper = mapper;
         _logger = logger;
     }
 

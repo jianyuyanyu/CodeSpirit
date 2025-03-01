@@ -7,6 +7,8 @@ using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System.Globalization;
 
 namespace CodeSpirit.ConfigCenter.Services;
 
@@ -327,6 +329,105 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
         {
             _logger.LogError(ex, "回滚发布历史失败: {PublishHistoryId}", publishHistoryId);
             return (false, $"回滚失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取发布历史配置对比
+    /// </summary>
+    /// <param name="publishHistoryId">发布历史ID</param>
+    /// <returns>配置对比结果</returns>
+    public async Task<ConfigPublishHistoryCompareDto> GetPublishHistoryCompareAsync(int publishHistoryId)
+    {
+        // 获取发布历史，包含所有配置项变更记录
+        var publishHistory = await _publishHistoryRepository.Find(h => h.Id == publishHistoryId)
+            .Include(h => h.ConfigItemPublishHistories)
+            .ThenInclude(h => h.ConfigItem)
+            .FirstOrDefaultAsync();
+
+        if (publishHistory == null)
+        {
+            throw new AppServiceException(404, "发布历史记录不存在");
+        }
+
+        try
+        {
+            // 准备两个字典，分别存储旧配置和新配置
+            var oldConfigsDict = new Dictionary<string, object>();
+            var newConfigsDict = new Dictionary<string, object>();
+
+            // 遍历配置项变更历史
+            foreach (var configItemHistory in publishHistory.ConfigItemPublishHistories)
+            {
+                var configItem = configItemHistory.ConfigItem;
+                if (configItem == null)
+                {
+                    _logger.LogWarning("配置项不存在: {ConfigItemId}", configItemHistory.ConfigItemId);
+                    continue;
+                }
+
+                // 根据配置项的值类型，转换旧值和新值
+                object oldValue = ConvertConfigValue(configItemHistory.OldValue, configItem.ValueType);
+                object newValue = ConvertConfigValue(configItemHistory.NewValue, configItem.ValueType);
+
+                // 保存到对应字典
+                oldConfigsDict[configItem.Key] = oldValue;
+                newConfigsDict[configItem.Key] = newValue;
+            }
+
+            // 序列化为JSON字符串，使用格式化以便于阅读
+            var oldConfigsJson = JsonConvert.SerializeObject(oldConfigsDict, Formatting.Indented);
+            var newConfigsJson = JsonConvert.SerializeObject(newConfigsDict, Formatting.Indented);
+
+            // 创建并返回对比结果DTO
+            return new ConfigPublishHistoryCompareDto
+            {
+                Id = publishHistory.Id,
+                AppId = publishHistory.AppId,
+                Environment = publishHistory.Environment,
+                Description = publishHistory.Description,
+                Version = publishHistory.Version,
+                OldConfigsJson = oldConfigsJson,
+                NewConfigsJson = newConfigsJson
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取配置发布对比失败: {PublishHistoryId}", publishHistoryId);
+            throw new AppServiceException(500, "获取配置发布对比失败");
+        }
+    }
+
+    /// <summary>
+    /// 根据配置类型转换配置值
+    /// </summary>
+    /// <param name="value">配置原始值</param>
+    /// <param name="valueType">配置值类型</param>
+    /// <returns>转换后的值</returns>
+    private object ConvertConfigValue(string value, ConfigValueType valueType)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        try
+        {
+            return valueType switch
+            {
+                ConfigValueType.Boolean => bool.Parse(value),
+                ConfigValueType.Int => int.Parse(value, CultureInfo.InvariantCulture),
+                ConfigValueType.Double => double.Parse(value, CultureInfo.InvariantCulture),
+                ConfigValueType.Json => JsonConvert.DeserializeObject(value),
+                ConfigValueType.Encrypted => value, // 加密值保持为字符串
+                ConfigValueType.String => value,
+                _ => value
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "转换配置值失败，保持原始字符串: {Value}, 类型: {ValueType}", value, valueType);
+            return value; // 转换失败时返回原始字符串
         }
     }
 

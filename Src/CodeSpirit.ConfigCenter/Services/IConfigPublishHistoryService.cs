@@ -50,4 +50,11 @@ public interface IConfigPublishHistoryService :
     /// <param name="publishHistoryId">发布历史ID</param>
     /// <returns>回滚结果</returns>
     Task<(bool success, string message)> RollbackToHistoryAsync(int publishHistoryId);
+
+    /// <summary>
+    /// 获取发布历史配置对比
+    /// </summary>
+    /// <param name="publishHistoryId">发布历史ID</param>
+    /// <returns>配置对比结果</returns>
+    Task<ConfigPublishHistoryCompareDto> GetPublishHistoryCompareAsync(int publishHistoryId);
 } 

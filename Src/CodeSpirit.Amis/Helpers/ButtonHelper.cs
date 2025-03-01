@@ -1,4 +1,5 @@
-﻿using CodeSpirit.Amis.Form;
+﻿using CodeSpirit.Amis.Extensions;
+using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers.Dtos;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
@@ -267,6 +268,28 @@ namespace CodeSpirit.Amis.Helpers
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
                 return CreateServiceDialogButton(op.Label, route);
             }
+            else if (op.ActionType == "return-form")
+            {
+                string title = op.Label;
+                var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
+                JObject drawerBody = new()
+                {
+                    ["title"] = title,
+                    ["size"] = "lg",
+                    ["body"] = new JObject
+                    {
+                        ["type"] = "form",
+                        ["static"] = true,
+                        ["initApi"] = new JObject
+                        {
+                            ["url"] = route.ApiPath,
+                            ["method"] = route.HttpMethod
+                        },
+                        ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromProperties(method.ReturnParameter.ParameterType?.GetUnderlyingDataType().GetProperties()))
+                    }
+                };
+                return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+            }
 
             // 添加其他通用配置
             if (!string.IsNullOrEmpty(op.ConfirmText))
@@ -296,7 +319,7 @@ namespace CodeSpirit.Amis.Helpers
         public JObject CreateServiceDialogButton(string title, ApiRouteInfo route)
         {
             ArgumentNullException.ThrowIfNull(route);
-            
+
             JObject serviceBody = new()
             {
                 ["title"] = title,

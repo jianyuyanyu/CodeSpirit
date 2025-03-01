@@ -85,4 +85,17 @@ public class ConfigPublishHistoriesController : ApiControllerBase
             return BadResponse(message);
         }
     }
+
+    /// <summary>
+    /// 获取配置发布历史对比
+    /// </summary>
+    /// <param name="id">发布历史ID</param>
+    /// <returns>配置对比结果</returns>
+    [HttpGet("{id}/compare")]
+    [Operation(label: "发布对比", actionType: "return-form", null)]
+    public async Task<ActionResult<ApiResponse<ConfigPublishHistoryCompareDto>>> GetCompare(int id)
+    {
+        var result = await _publishHistoryService.GetPublishHistoryCompareAsync(id);
+        return SuccessResponse(result);
+    }
 } 

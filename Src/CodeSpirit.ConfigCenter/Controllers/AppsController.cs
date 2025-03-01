@@ -173,7 +173,7 @@ public class AppsController : ApiControllerBase
 
             tabsArray.Add(new JObject
             {
-                ["title"] = $"{displayName}（不含父级配置）",
+                ["title"] = $"{displayName}",
                 ["body"] = new JObject
                 {
                     ["type"] = "form",
@@ -187,7 +187,7 @@ public class AppsController : ApiControllerBase
                             ["type"] = "json-editor",
                             ["name"] = "configs",
                             ["language"] = "json",
-                            ["placeholder"] = "请输入JSON格式的配置",
+                            ["placeholder"] = "请输入JSON格式的配置。",
                             ["required"] = true
                         }
                     }

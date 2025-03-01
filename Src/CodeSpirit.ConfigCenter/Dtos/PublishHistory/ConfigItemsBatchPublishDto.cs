@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.ConfigCenter.Dtos.Config;
+namespace CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 
 /// <summary>
 /// 配置项批量发布请求DTO
@@ -19,4 +19,4 @@ public class ConfigItemsBatchPublishDto
     /// </summary>
     [StringLength(200)]
     public string Description { get; set; }
-} 
+}

@@ -1,6 +1,6 @@
 ﻿using CodeSpirit.ConfigCenter.Models.Enums;
 
-namespace CodeSpirit.ConfigCenter.Dtos.Config;
+namespace CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 
 /// <summary>
 /// 配置项发布历史DTO
@@ -60,4 +60,4 @@ public class ConfigItemPublishHistoryDto
     /// </summary>
     [DisplayName("值类型")]
     public ConfigValueType ValueType { get; set; }
-} 
+}

@@ -1,4 +1,4 @@
-using CodeSpirit.ConfigCenter.Dtos.Config;
+using CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Shared.Services;

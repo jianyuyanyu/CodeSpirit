@@ -1,5 +1,5 @@
 using AutoMapper;
-using CodeSpirit.ConfigCenter.Dtos.Config;
+using CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.Shared.Repositories;

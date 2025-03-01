@@ -1,5 +1,6 @@
 using CodeSpirit.ConfigCenter.Constants;
 using CodeSpirit.ConfigCenter.Dtos.Config;
+using CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;

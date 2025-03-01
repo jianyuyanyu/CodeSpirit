@@ -4,7 +4,7 @@ using CodeSpirit.Core.Dtos;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.ConfigCenter.Dtos.Config;
+namespace CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 
 /// <summary>
 /// 配置发布历史查询DTO
@@ -31,4 +31,4 @@ public class ConfigPublishHistoryQueryDto : QueryDtoBase
     /// </summary>
     [DisplayName("环境")]
     public EnvironmentType? Environment { get; set; }
-} 
+}

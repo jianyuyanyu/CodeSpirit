@@ -2,7 +2,7 @@ using CodeSpirit.Amis.Attributes.Columns;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.ConfigCenter.Dtos.Config;
+namespace CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 
 /// <summary>
 /// 配置发布历史DTO

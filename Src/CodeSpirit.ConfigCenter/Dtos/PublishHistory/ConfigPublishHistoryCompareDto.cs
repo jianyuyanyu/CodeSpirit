@@ -2,7 +2,7 @@ using CodeSpirit.Amis.Attributes.FormFields;
 using Newtonsoft.Json;
 using System.ComponentModel;
 
-namespace CodeSpirit.ConfigCenter.Dtos.Config;
+namespace CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 
 /// <summary>
 /// 配置发布对比结果DTO
@@ -51,6 +51,6 @@ public class ConfigPublishHistoryCompareDto
     /// </summary>
     [DisplayName("配置对比")]
     [Description("注意：左侧为旧配置，右侧为新的配置。")]
-    [AmisFormField(type: "diff-editor",AdditionalConfig = "{\"diffValue\":\"${oldConfigsJson}\",\"language\":\"json\"}")]
+    [AmisFormField(type: "diff-editor", AdditionalConfig = "{\"diffValue\":\"${oldConfigsJson}\",\"language\":\"json\"}")]
     public string NewConfigsJson { get; set; }
 }

@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.ConfigCenter.Dtos.Config;
+using CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.Shared.Repositories;
@@ -434,7 +435,7 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
                 {
                     try
                     {
-                        // 获取发布的应用和环境信息（假设所有配置项属于同一应用和环境）
+                        // 获取发布的应用和环境信息
                         var firstConfig = successfullyPublishedConfigs.First();
                         string appId = firstConfig.AppId;
                         string environment = firstConfig.Environment.ToString();

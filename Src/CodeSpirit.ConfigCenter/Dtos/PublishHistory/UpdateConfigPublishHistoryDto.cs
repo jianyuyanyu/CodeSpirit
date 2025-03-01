@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.ConfigCenter.Dtos.Config;
+namespace CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 
 /// <summary>
 /// 更新配置发布历史DTO
@@ -14,4 +14,4 @@ public class UpdateConfigPublishHistoryDto
     [StringLength(200)]
     [DisplayName("发布说明")]
     public string Description { get; set; }
-} 
+}

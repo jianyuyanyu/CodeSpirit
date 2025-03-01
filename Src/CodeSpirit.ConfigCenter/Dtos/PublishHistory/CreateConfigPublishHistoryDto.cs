@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.ConfigCenter.Dtos.Config;
+namespace CodeSpirit.ConfigCenter.Dtos.PublishHistory;
 
 /// <summary>
 /// 创建配置发布历史DTO
@@ -59,4 +59,4 @@ public class ConfigItemForPublishDto
     /// </summary>
     [Required]
     public int Version { get; set; }
-} 
+}

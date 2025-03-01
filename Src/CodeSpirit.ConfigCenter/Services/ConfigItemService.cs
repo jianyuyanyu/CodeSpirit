@@ -165,6 +165,84 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
     }
 
     /// <summary>
+    /// 获取应用在指定环境下的所有配置，包括从父级应用继承的配置
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <param name="environment">环境</param>
+    /// <returns>配置集合（包含继承的配置）</returns>
+    public async Task<ConfigItemsExportDto> GetAppConfigsWithInheritanceAsync(string appId, string environment)
+    {
+        try
+        {
+            // 获取应用信息，包括继承关系
+            var app = await _appRepository.Find(x => x.Id == appId)
+                .Include(x => x.InheritancedApp)
+                .FirstOrDefaultAsync();
+
+            if (app == null)
+            {
+                throw new AppServiceException(404, "应用不存在");
+            }
+
+            // 获取应用自身的配置
+            var predicate = PredicateBuilder.New<ConfigItem>()
+                .And(x => x.AppId == appId)
+                .And(x => x.Environment.ToString() == environment)
+                .And(x => x.Status == ConfigStatus.Released);
+
+            var configItems = await repository.Find(predicate)
+                .Select(x => new { x.Key, x.Value, x.ValueType })
+                .ToListAsync();
+
+            // 转换值为对应的类型并存储到字典中
+            var configs = new Dictionary<string, object>();
+            foreach (var item in configItems)
+            {
+                configs[item.Key] = ConvertValueByType(item.Value, item.ValueType);
+            }
+
+            // 如果应用有父级应用，则获取父级应用的配置并合并
+            if (!string.IsNullOrEmpty(app.InheritancedAppId))
+            {
+                try
+                {
+                    // 递归获取父级应用配置
+                    var parentConfigs = await GetAppConfigsAsync(app.InheritancedAppId, environment);
+                    if (parentConfigs?.Configs != null)
+                    {
+                        // 合并配置，子应用配置优先
+                        foreach (var kvp in parentConfigs.Configs)
+                        {
+                            if (!configs.ContainsKey(kvp.Key))
+                            {
+                                configs[kvp.Key] = kvp.Value;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // 记录获取父级配置失败，但继续处理当前应用配置
+                    logger.LogWarning(ex, "获取父级应用 {ParentAppId} 配置失败，将仅使用当前应用配置", app.InheritancedAppId);
+                }
+            }
+
+            return new ConfigItemsExportDto
+            {
+                AppId = appId,
+                Environment = environment,
+                Configs = configs,
+                IncludesInheritedConfig = !string.IsNullOrEmpty(app.InheritancedAppId)
+            };
+        }
+        catch (Exception ex) when (ex is not AppServiceException)
+        {
+            logger.LogError(ex, "获取应用配置（包含继承）失败: {AppId}/{Environment}", appId, environment);
+            throw new AppServiceException(500, "获取应用配置失败");
+        }
+    }
+
+    /// <summary>
     /// 根据配置类型转换值
     /// </summary>
     private object ConvertValueByType(string value, ConfigValueType valueType)

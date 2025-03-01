@@ -1,11 +1,14 @@
 using AutoMapper;
 using CodeSpirit.ConfigCenter.Dtos.App;
+using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using CodeSpirit.Core.Extensions;
+using CodeSpirit.ConfigCenter.Dtos.Config;
 
 namespace CodeSpirit.ConfigCenter.Controllers;
 
@@ -18,6 +21,7 @@ public class AppsController : ApiControllerBase
 {
     private readonly IAppService _appService;
     private readonly ILogger<AppsController> _logger;
+    private readonly IConfigItemService _configItemService;
 
     /// <summary>
     /// 初始化应用管理控制器
@@ -27,13 +31,15 @@ public class AppsController : ApiControllerBase
     /// <param name="logger">日志记录器</param>
     public AppsController(
         IAppService appService,
-        ILogger<AppsController> logger)
+        ILogger<AppsController> logger,
+        IConfigItemService configItemService)
     {
         ArgumentNullException.ThrowIfNull(appService);
         ArgumentNullException.ThrowIfNull(logger);
 
         _appService = appService;
         _logger = logger;
+        _configItemService = configItemService;
     }
 
     /// <summary>
@@ -149,84 +155,63 @@ public class AppsController : ApiControllerBase
         return SuccessResponse();
     }
 
+    /// <summary>
+    /// 获取批量配置表单定义
+    /// </summary>
+    /// <param name="id">应用ID</param>
+    /// <returns>表单配置JSON对象</returns>
     [Operation(label: "批量配置", actionType: "service")]
     [HttpGet("batch/settings")]
     public JObject CreateBatchConfigButton(string id)
     {
-        JObject tabs = new JObject
+        var tabsArray = new JArray();
+
+        foreach (EnvironmentType envType in Enum.GetValues<EnvironmentType>())
         {
-            ["type"] = "tabs",
-            ["tabs"] = new JArray
+            var envName = envType.ToString();
+            var displayName = envType.GetDisplayName() ?? envName;
+
+            tabsArray.Add(new JObject
             {
-                new JObject
+                ["title"] = $"{displayName}（不含父级配置）",
+                ["body"] = new JObject
                 {
-                    ["title"] = "开发环境",
-                    ["body"] = new JObject
+                    ["type"] = "form",
+                    ["title"] = "",
+                    ["initApi"] = $"get:${{ROOT_API}}/api/config/ConfigItems/${{id}}/{envName}/collection",
+                    ["api"] = $"put:${{ROOT_API}}/api/config/ConfigItems/${{id}}/{envName}/collection",
+                    ["body"] = new JArray
                     {
-                        ["type"] = "form",
-                        ["title"] = "",
-                        ["initApi"]="get:${ROOT_API}/api/config/ConfigItems/${id}/Development/collection",
-                        ["api"] = "put:${ROOT_API}/api/config/ConfigItems/${id}/Development/collection",
-                        ["body"] = new JArray
+                        new JObject
                         {
-                            new JObject
-                            {
-                                ["type"] = "json-editor",
-                                ["name"] = "configs",
-                                ["language"] = "json",
-                                ["placeholder"] = "请输入JSON格式的配置",
-                                ["required"] = true
-                            }
-                        }
-                    }
-                },
-                new JObject
-                {
-                    ["title"] = "预发布环境",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "form",
-                        ["title"] = "",
-                        ["initApi"]="get:${ROOT_API}/api/config/ConfigItems/${id}/Staging/collection",
-                        ["api"] = "put:${ROOT_API}/api/config/ConfigItems/${id}/Staging/collection",
-                        ["body"] = new JArray
-                        {
-                            new JObject
-                            {
-                                ["type"] = "json-editor",
-                                ["name"] = "configs",
-                                ["language"] = "json",
-                                ["placeholder"] = "请输入JSON格式的配置",
-                                ["required"] = true
-                            }
-                        }
-                    }
-                },
-                new JObject
-                {
-                    ["title"] = "生产环境",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "form",
-                        ["title"] = "",
-                        ["initApi"]="get:${ROOT_API}/api/config/ConfigItems/${id}/Production/collection",
-                        ["api"] = "put:${ROOT_API}/api/config/ConfigItems/${id}/Production/collection",
-                        ["body"] = new JArray
-                        {
-                            new JObject
-                            {
-                                ["type"] = "json-editor",
-                                ["name"] = "configs",
-                                ["language"] = "json",
-                                ["placeholder"] = "请输入JSON格式的配置",
-                                ["required"] = true
-                            }
+                            ["type"] = "json-editor",
+                            ["name"] = "configs",
+                            ["language"] = "json",
+                            ["placeholder"] = "请输入JSON格式的配置",
+                            ["required"] = true
                         }
                     }
                 }
-            }
-        };
+            });
+        }
 
-        return tabs;
+        return new JObject
+        {
+            ["type"] = "tabs",
+            ["tabs"] = tabsArray
+        };
+    }
+
+    /// <summary>
+    /// 总体配置查看
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    [HttpGet("{id}/view")]
+    [Operation(label: "配置查看", actionType: "return-form", null)]
+    public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetCompare(string id)
+    {
+        var result = await _configItemService.GetAppConfigsWithInheritanceAsync(id, environment: EnvironmentType.Development.ToString());
+        return SuccessResponse(result);
     }
 }

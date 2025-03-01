@@ -42,7 +42,7 @@ public class ClientConfigController : ControllerBase
             _logger.LogInformation("客户端API - 获取应用 {AppId} 在 {Environment} 环境的配置", 
                 appId, environment);
                 
-            ConfigItemsExportDto configs = await _configItemService.GetAppConfigsAsync(
+            ConfigItemsExportDto configs = await _configItemService.GetAppConfigsWithInheritanceAsync(
                 appId, environment);
                 
             return new ApiResponse<ConfigItemsExportDto>

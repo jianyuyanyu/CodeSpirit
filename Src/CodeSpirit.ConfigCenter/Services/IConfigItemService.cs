@@ -41,5 +41,19 @@ public interface IConfigItemService : IBaseCRUDIService<ConfigItem, ConfigItemDt
     /// <param name="updateDto">更新请求数据</param>
     /// <returns>更新结果</returns>
     Task<(int successCount, List<string> failedKeys)> UpdateConfigCollectionAsync(ConfigItemsUpdateDto updateDto);
+
+    /// <summary>
+    /// 批量发布配置项
+    /// </summary>
+    /// <param name="publishDto">批量发布请求数据</param>
+    /// <returns>发布结果，包含成功数量和失败的配置项ID列表</returns>
     Task<(int successCount, List<int> failedIds)> BatchPublishAsync(ConfigItemsBatchPublishDto publishDto);
-} 
+
+    /// <summary>
+    /// 获取应用在指定环境下的所有配置，包括从父级应用继承的配置
+    /// </summary>
+    /// <param name="appId">应用ID</param>
+    /// <param name="environment">环境</param>
+    /// <returns>配置集合（包含继承的配置）</returns>
+    Task<ConfigItemsExportDto> GetAppConfigsWithInheritanceAsync(string appId, string environment);
+}

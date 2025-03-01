@@ -8,7 +8,6 @@
         type: 'app',
         brandName: 'CodeSpirit',
         logo: webHost + '/favicon.ico',
-        //logo: webHost + '/logo.png',
         header: {
             type: 'service',
             api: '/identity/api/identity/profile',
@@ -83,7 +82,6 @@
                 }
             ]
         },
-        //api: 'options:'+apiHost + '/api/identity/amis/site'
         api: '/api/navigation/site'
     };
 
@@ -213,7 +211,6 @@
             },
             isCurrentUrl: isCurrentUrl,
             requestAdaptor: (api) => {
-                console.debug(api);
                 var token = localStorage.getItem('token');
                 return {
                     ...api,

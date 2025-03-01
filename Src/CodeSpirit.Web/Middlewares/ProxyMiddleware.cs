@@ -7,7 +7,6 @@ namespace CodeSpirit.Web.Middlewares
 {
     public class ProxyMiddleware
     {
-        private const string LOCALHOST = "localhost";
         private readonly RequestDelegate _next;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<ProxyMiddleware> _logger;
@@ -31,7 +30,7 @@ namespace CodeSpirit.Web.Middlewares
             {
                 var currentHost = context.Request.Host.Host;
 
-                _logger.LogInformation("收到请求 - Url: {Url}, 方法: {Method}, 来源: {Host}",
+                _logger.LogInformation("收到请求 - {Method}: {Url}, 来源: {Host}",
                     context.Request.GetEncodedUrl(), context.Request.Method, currentHost);
 
                 await HandleProxyRequest(context);

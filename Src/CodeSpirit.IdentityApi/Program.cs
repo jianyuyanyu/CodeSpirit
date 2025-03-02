@@ -1,9 +1,10 @@
+using CodeSpirit.ServiceDefaults;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpLogging;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-
 builder.AddIdentityApiServices();
 
 // 添加配置中心配置
@@ -37,6 +38,7 @@ builder.Services.AddHttpClient("config", client =>
     .AddServiceDiscovery();
 
 WebApplication app = builder.Build();
+
 await app.ConfigureAppAsync();
 
 // 启用配置中心客户端

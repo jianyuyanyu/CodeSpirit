@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using CodeSpirit.ConfigCenter.Client.Models;
+using CodeSpirit.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -196,16 +197,6 @@ public class ConfigCenterClient
                 throw;
             }
         }
-    }
-    
-    /// <summary>
-    /// API响应基类
-    /// </summary>
-    private class ApiResponse<T>
-    {
-        public int Code { get; set; }
-        public string Message { get; set; }
-        public T Data { get; set; }
     }
 
     /// <summary>

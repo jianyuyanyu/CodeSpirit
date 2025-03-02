@@ -27,6 +27,7 @@ var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config
         .WaitFor(seqService)
     .WithReference(cache)
         .WaitFor(cache)
+    //.PublishAsDockerFile()
     ;
 
 var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")

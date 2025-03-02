@@ -119,25 +119,25 @@ public class ConfigPublishHistoryService : BaseCRUDService<ConfigPublishHistory,
             // 获取配置项ID列表
             var configItemIds = createDto.ConfigItems.Select(c => c.Id).ToList();
 
-            // 批量获取现有配置项值
-            var existingItems = await _configItemRepository
-                .Find(ci => configItemIds.Contains(ci.Id))
-                .ToDictionaryAsync(ci => ci.Id, ci => ci.Value);
-
             // 创建配置项发布历史
             var historyList = new List<ConfigItemPublishHistory>();
             foreach (var configItem in createDto.ConfigItems)
             {
-                // 获取发布前的配置值
-                var previousValue = existingItems.TryGetValue(configItem.Id, out var value)
-                    ? value
-                    : string.Empty;
+                // 优先使用传入的原始值（如果有）
+                var oldValue = configItem.OldValue;
+                
+                // 如果没有传入原始值，则从数据库获取
+                if (string.IsNullOrEmpty(oldValue))
+                {
+                    var existingItem = await _configItemRepository.GetByIdAsync(configItem.Id);
+                    oldValue = existingItem?.Value ?? string.Empty;
+                }
 
                 var configItemHistory = new ConfigItemPublishHistory
                 {
                     ConfigPublishHistoryId = publishHistory.Id,
                     ConfigItemId = configItem.Id,
-                    OldValue = previousValue,
+                    OldValue = oldValue,
                     NewValue = configItem.Value,
                     Version = configItem.Version
                 };

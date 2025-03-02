@@ -35,28 +35,6 @@ public class CreateConfigPublishHistoryDto
     /// </summary>
     [Required]
     public List<ConfigItemForPublishDto> ConfigItems { get; set; } = new();
-}
 
-/// <summary>
-/// 用于发布的配置项信息
-/// </summary>
-public class ConfigItemForPublishDto
-{
-    /// <summary>
-    /// 配置项ID
-    /// </summary>
-    [Required]
-    public int Id { get; set; }
 
-    /// <summary>
-    /// 配置项值
-    /// </summary>
-    [Required]
-    public string Value { get; set; }
-
-    /// <summary>
-    /// 配置项版本
-    /// </summary>
-    [Required]
-    public int Version { get; set; }
 }

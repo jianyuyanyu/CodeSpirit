@@ -115,6 +115,10 @@ namespace CodeSpirit.Shared.Repositories
             {
                 query = orderBy(query);
             }
+            else if (typeof(IUpdateAuditable).IsAssignableFrom(typeof(TEntity)))
+            {
+                query = query.OrderByDescending(e => ((IUpdateAuditable)e).UpdatedAt);
+            }
 
             List<TEntity> items = await query
                 .Skip((pageIndex - 1) * pageSize)
@@ -149,9 +153,13 @@ namespace CodeSpirit.Shared.Repositories
 
             int totalCount = await query.CountAsync();
 
-            if (orderBy != null)
+            if (!string.IsNullOrEmpty(orderBy))
             {
                 query = query.ApplySorting(orderBy, orderDir);
+            }
+            else if (typeof(IUpdateAuditable).IsAssignableFrom(typeof(TEntity)))
+            {
+                query = query.OrderByDescending(e => ((IUpdateAuditable)e).UpdatedAt);
             }
 
             List<TEntity> items = await query
@@ -195,36 +203,6 @@ namespace CodeSpirit.Shared.Repositories
         public bool Exists(Expression<Func<TEntity, bool>> predicate)
         {
             return _dbSet.Any(predicate);
-        }
-
-        public Task<PageList<TEntity>> GetPagedAsync(int pageIndex, int pageSize, Expression<Func<TEntity, bool>> predicate = null, Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<PageList<TEntity>> GetPagedAsync(int pageIndex, int pageSize, Expression<Func<TEntity, bool>> predicate = null, string orderBy = null, string orderDir = null)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<TEntity> AddAsync(TEntity entity)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task UpdateAsync(TEntity entity)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task DeleteAsync(TEntity entity)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task DeleteAsync(object id)
-        {
-            throw new NotImplementedException();
         }
     }
 }

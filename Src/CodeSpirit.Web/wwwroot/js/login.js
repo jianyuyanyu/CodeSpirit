@@ -68,7 +68,7 @@
                                                     "body": {
                                                         "type": "form",
                                                         "title": "",
-                                                        "api": "${API_HOST}/api/identity/auth/login",
+                                                        "api": "/identity/api/identity/auth/login",
                                                         "submitText": "登录",
                                                         "trimValues": true,
                                                         "wrapWithPanel": false,
@@ -115,7 +115,7 @@
                                                     "title": "短信登录",
                                                     "body": {
                                                         "type": "form",
-                                                        "api": "/api/identity/auth/login",
+                                                        "api": "/identity/api/identity/auth/login",
                                                         "wrapWithPanel": false,
                                                         "body": [
                                                             {

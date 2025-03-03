@@ -25,12 +25,25 @@ public class ConfigCacheService
         _options = options.Value;
         _logger = logger;
         
-        // 确保缓存目录存在
-        var cacheDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "CodeSpirit",
-            "ConfigCenter",
-            _options.LocalCacheDirectory);
+        string cacheDirectory;
+
+        // 首先检查配置的绝对路径
+        if (!string.IsNullOrEmpty(_options.LocalCacheDirectory) && Path.IsPathRooted(_options.LocalCacheDirectory))
+        {
+            cacheDirectory = _options.LocalCacheDirectory;
+        }
+        // 检查环境变量
+        else if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CONFIG_CENTER_CACHE_DIR")))
+        {
+            cacheDirectory = Environment.GetEnvironmentVariable("CONFIG_CENTER_CACHE_DIR");
+        }
+        // 默认使用应用程序目录
+        else
+        {
+            cacheDirectory = Path.Combine(AppContext.BaseDirectory, "cache", _options.LocalCacheDirectory ?? "");
+        }
+
+        _logger.LogDebug("将使用缓存目录: {CacheDirectory}", cacheDirectory);
         
         if (!Directory.Exists(cacheDirectory))
         {
@@ -38,7 +51,7 @@ public class ConfigCacheService
         }
         
         // 缓存文件路径
-        var cacheFileName = GetCacheFileName(_options.AppId, _options.Environment);
+        var cacheFileName = $"config-{_options.AppId}-{_options.Environment}.json";
         _cacheFilePath = Path.Combine(cacheDirectory, cacheFileName);
         _cacheMetadataFilePath = Path.Combine(cacheDirectory, $"{cacheFileName}.metadata");
         
@@ -50,6 +63,8 @@ public class ConfigCacheService
     /// </summary>
     public async Task SaveToCacheAsync(ConfigItemsExportDto configData)
     {
+        ArgumentNullException.ThrowIfNull(configData);
+        
         try
         {
             var json = JsonConvert.SerializeObject(configData, Formatting.Indented);
@@ -71,11 +86,11 @@ public class ConfigCacheService
                 JsonConvert.SerializeObject(metadata, Formatting.Indented),
                 Encoding.UTF8);
             
-            _logger.LogInformation("已将配置保存到本地缓存: {CacheFilePath}", _cacheFilePath);
+            _logger.LogInformation("已将配置保存到本地缓存");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "保存配置到缓存时发生错误: {Message}", ex.Message);
+            _logger.LogError(ex, "保存配置到缓存时发生错误");
         }
     }
 
@@ -86,100 +101,71 @@ public class ConfigCacheService
     {
         try
         {
-            if (!CacheExists())
+            if (!File.Exists(_cacheFilePath) || !File.Exists(_cacheMetadataFilePath))
             {
-                _logger.LogWarning("缓存文件不存在: {CacheFilePath}", _cacheFilePath);
+                _logger.LogDebug("缓存文件不存在");
                 return null;
             }
             
-            if (!IsCacheValid())
+            // 读取元数据
+            var metadataJson = await File.ReadAllTextAsync(_cacheMetadataFilePath, Encoding.UTF8);
+            var metadata = JsonConvert.DeserializeObject<CacheMetadata>(metadataJson);
+            
+            // 检查缓存是否有效
+            if (!IsValidCache(metadata))
             {
-                _logger.LogWarning("缓存已过期或无效");
                 return null;
             }
             
-            var json = await File.ReadAllTextAsync(_cacheFilePath, Encoding.UTF8);
-            var configData = JsonConvert.DeserializeObject<ConfigItemsExportDto>(json);
+            // 验证缓存数据完整性
+            var dataJson = await File.ReadAllTextAsync(_cacheFilePath, Encoding.UTF8);
+            if (ComputeHash(dataJson) != metadata.ConfigDataHash)
+            {
+                _logger.LogWarning("缓存数据已被修改，哈希值不匹配");
+                return null;
+            }
             
-            _logger.LogInformation("已从本地缓存加载配置: {CacheFilePath}", _cacheFilePath);
+            var configData = JsonConvert.DeserializeObject<ConfigItemsExportDto>(dataJson);
             return configData;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "从缓存加载配置时发生错误: {Message}", ex.Message);
+            _logger.LogError(ex, "从缓存加载配置时发生错误");
             return null;
         }
     }
-
+    
     /// <summary>
-    /// 检查缓存是否存在
+    /// 检查缓存是否有效
     /// </summary>
-    public bool CacheExists()
+    private bool IsValidCache(CacheMetadata metadata)
     {
-        return File.Exists(_cacheFilePath) && File.Exists(_cacheMetadataFilePath);
-    }
-
-    /// <summary>
-    /// 验证缓存是否有效
-    /// </summary>
-    public bool IsCacheValid()
-    {
-        try
+        if (metadata == null || 
+            string.IsNullOrEmpty(metadata.AppId) || 
+            string.IsNullOrEmpty(metadata.Environment) ||
+            string.IsNullOrEmpty(metadata.ConfigDataHash))
         {
-            // 如果缓存文件不存在，则缓存无效
-            if (!CacheExists())
-            {
-                return false;
-            }
-            
-            // 读取元数据
-            var metadataJson = File.ReadAllText(_cacheMetadataFilePath, Encoding.UTF8);
-            var metadata = JsonConvert.DeserializeObject<CacheMetadata>(metadataJson);
-            
-            // 检查元数据是否完整
-            if (metadata == null || 
-                string.IsNullOrEmpty(metadata.AppId) || 
-                string.IsNullOrEmpty(metadata.Environment) ||
-                string.IsNullOrEmpty(metadata.ConfigDataHash))
-            {
-                _logger.LogWarning("缓存元数据不完整");
-                return false;
-            }
-            
-            // 检查缓存是否过期
-            var cacheAge = DateTime.UtcNow - metadata.CachedAt;
-            if (cacheAge.TotalMinutes > _options.CacheExpirationMinutes)
-            {
-                _logger.LogWarning("缓存已过期，缓存时间: {CachedAt}, 当前时间: {CurrentTime}, 有效期: {ExpirationMinutes}分钟",
-                    metadata.CachedAt, DateTime.UtcNow, _options.CacheExpirationMinutes);
-                return false;
-            }
-            
-            // 检查缓存的应用ID和环境是否与当前一致
-            if (metadata.AppId != _options.AppId || metadata.Environment != _options.Environment)
-            {
-                _logger.LogWarning("缓存的应用ID或环境与当前不一致. 缓存: {CachedAppId}/{CachedEnvironment}, 当前: {CurrentAppId}/{CurrentEnvironment}",
-                    metadata.AppId, metadata.Environment, _options.AppId, _options.Environment);
-                return false;
-            }
-            
-            // 验证缓存数据的完整性
-            var dataJson = File.ReadAllText(_cacheFilePath, Encoding.UTF8);
-            var actualHash = ComputeHash(dataJson);
-            
-            if (actualHash != metadata.ConfigDataHash)
-            {
-                _logger.LogWarning("缓存数据已被修改，哈希值不匹配");
-                return false;
-            }
-            
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "验证缓存时发生错误: {Message}", ex.Message);
+            _logger.LogWarning("缓存元数据不完整");
             return false;
         }
+        
+        // 检查缓存是否过期
+        var cacheAge = DateTime.UtcNow - metadata.CachedAt;
+        if (cacheAge.TotalMinutes > _options.CacheExpirationMinutes)
+        {
+            _logger.LogDebug("缓存已过期，缓存时间: {CachedAt}, 当前时间: {CurrentTime}",
+                metadata.CachedAt, DateTime.UtcNow);
+            return false;
+        }
+        
+        // 检查缓存的应用ID和环境是否与当前一致
+        if (metadata.AppId != _options.AppId || metadata.Environment != _options.Environment)
+        {
+            _logger.LogWarning("缓存的应用ID或环境与当前不一致");
+            return false;
+        }
+        
+        return true;
     }
 
     /// <summary>
@@ -190,14 +176,6 @@ public class ConfigCacheService
         using var sha256 = SHA256.Create();
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(data));
         return Convert.ToBase64String(hashBytes);
-    }
-
-    /// <summary>
-    /// 获取缓存文件名
-    /// </summary>
-    private string GetCacheFileName(string appId, string environment)
-    {
-        return $"config-{appId}-{environment}.json";
     }
     
     /// <summary>
@@ -217,11 +195,11 @@ public class ConfigCacheService
                 File.Delete(_cacheMetadataFilePath);
             }
             
-            _logger.LogInformation("已清除缓存: {CacheFilePath}", _cacheFilePath);
+            _logger.LogInformation("已清除缓存");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "清除缓存时发生错误: {Message}", ex.Message);
+            _logger.LogError(ex, "清除缓存时发生错误");
         }
     }
 }

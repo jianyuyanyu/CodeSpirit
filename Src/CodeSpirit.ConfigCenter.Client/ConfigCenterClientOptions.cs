@@ -1,77 +1,83 @@
 namespace CodeSpirit.ConfigCenter.Client;
 
 /// <summary>
-/// ÅäÖÃÖĞĞÄ¿Í»§¶ËÑ¡Ïî
+/// é…ç½®ä¸­å¿ƒå®¢æˆ·ç«¯é€‰é¡¹
 /// </summary>
 public class ConfigCenterClientOptions
 {
     /// <summary>
-    /// ÅäÖÃÖĞĞÄ·şÎñµØÖ·
+    /// é…ç½®ä¸­å¿ƒæœåŠ¡åœ°å€
     /// </summary>
     public string ServiceUrl { get; set; }
 
     /// <summary>
-    /// Ó¦ÓÃID
+    /// åº”ç”¨ID
     /// </summary>
     public string AppId { get; set; }
 
     /// <summary>
-    /// Ó¦ÓÃÃÜÔ¿
+    /// åº”ç”¨å¯†é’¥
     /// </summary>
     public string AppSecret { get; set; }
 
     /// <summary>
-    /// »·¾³Ãû³Æ
+    /// ç¯å¢ƒåç§°
     /// </summary>
     public string Environment { get; set; }
 
     /// <summary>
-    /// ÊÇ·ñ×Ô¶¯×¢²áÓ¦ÓÃ
-    /// </summary>
-    public bool AutoRegisterApp { get; set; } = false;
-
-    /// <summary>
-    /// Ó¦ÓÃÃû³Æ£¨½öÓÃÓÚ×Ô¶¯×¢²á£©
+    /// åº”ç”¨åç§°
     /// </summary>
     public string AppName { get; set; }
 
     /// <summary>
-    /// ÂÖÑ¯ÅäÖÃ¸üĞÂµÄÊ±¼ä¼ä¸ô£¨Ãë£©
+    /// è½®è¯¢é…ç½®æ›´æ–°çš„æ—¶é—´é—´éš”(ç§’)
     /// </summary>
     public int PollIntervalSeconds { get; set; } = 60;
 
     /// <summary>
-    /// ÊÇ·ñÊ¹ÓÃSignalRÊµÊ±¼àÌıÅäÖÃ±ä¸ü
+    /// æ˜¯å¦ä½¿ç”¨SignalRå®æ—¶æ¥æ”¶é…ç½®å˜æ›´
     /// </summary>
     public bool UseSignalR { get; set; } = true;
 
     /// <summary>
-    /// ÅäÖÃ»ñÈ¡³¬Ê±Ê±¼ä£¨Ãë£©
+    /// é…ç½®è·å–è¶…æ—¶æ—¶é—´(ç§’)
     /// </summary>
     public int RequestTimeoutSeconds { get; set; } = 10;
 
     /// <summary>
-    /// ÊÇ·ñÆôÓÃ±¾µØ»º´æ
+    /// æ˜¯å¦å¯ç”¨æœ¬åœ°ç¼“å­˜
     /// </summary>
     public bool EnableLocalCache { get; set; } = true;
 
     /// <summary>
-    /// ±¾µØ»º´æÄ¿Â¼
+    /// æœ¬åœ°ç¼“å­˜ç›®å½•
     /// </summary>
     public string LocalCacheDirectory { get; set; } = ".config-cache";
 
     /// <summary>
-    /// »º´æÎÄ¼şµÄ×î´óÓĞĞ§ÆÚ£¨·ÖÖÓ£©£¬³¬¹ı´ËÊ±¼ä½«ÊÓÎª»º´æ¹ıÆÚ
-    /// Ä¬ÈÏÎª1440·ÖÖÓ£¨24Ğ¡Ê±£©
+    /// ç¼“å­˜æ–‡ä»¶çš„æœ€å¤§æœ‰æ•ˆæœŸ(åˆ†é’Ÿ)ï¼Œè¶…è¿‡æ­¤æ—¶é—´å°†è§†ä¸ºè¿‡æœŸ
+    /// é»˜è®¤ä¸º1440åˆ†é’Ÿ(24å°æ—¶)
     /// </summary>
     public int CacheExpirationMinutes { get; set; } = 1440;
 
     /// <summary>
-    /// µ±Ö÷ÅäÖÃÔ´¿ÉÓÃÊ±£¬ÊÇ·ñÈÔÈ»ÓÅÏÈÊ¹ÓÃ»º´æ
+    /// å½“é…ç½®æ•°æ®æºä¸å¯ç”¨æ—¶ï¼Œæ˜¯å¦ä¼˜å…ˆä½¿ç”¨ç¼“å­˜
     /// </summary>
     public bool PreferCache { get; set; } = false;
 
-    public bool IgnoreSslCertificateErrors { get; set; } = true;
-    public int? MaxRetryAttempts { get; set; }
-    public int? RetryDelaySeconds { get; set; }
+    /// <summary>
+    /// æ˜¯å¦å¿½ç•¥SSLè¯ä¹¦é”™è¯¯
+    /// </summary>
+    public bool IgnoreSslCertificateErrors { get; set; } = false;
+
+    /// <summary>
+    /// æœ€å¤§é‡è¯•æ¬¡æ•°
+    /// </summary>
+    public int? MaxRetryAttempts { get; set; } = 3;
+
+    /// <summary>
+    /// é‡è¯•å»¶è¿Ÿæ—¶é—´(ç§’)
+    /// </summary>
+    public int? RetryDelaySeconds { get; set; } = 2;
 }

@@ -22,16 +22,13 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     private readonly CancellationTokenSource _cts = new();
     private readonly Timer _pollingTimer;
     private readonly SemaphoreSlim _reloadLock = new(1, 1);
-    private readonly ConcurrentDictionary<string, string> _configVersions = new();
-    private bool _initialLoadFailed = false;
 
     public ConfigCenterConfigurationProvider(
         ConfigCenterClient client,
         ConfigCenterHubClient hubClient,
         ConfigCacheService cacheService,
         IOptions<ConfigCenterClientOptions> options,
-        ILogger<ConfigCenterConfigurationProvider> logger,
-        IServiceProvider serviceProvider)
+        ILogger<ConfigCenterConfigurationProvider> logger)
     {
         _client = client;
         _hubClient = hubClient;
@@ -58,40 +55,10 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     /// </summary>
     public override void Load()
     {
-        //// 将应用注册逻辑与主要配置加载流程分离
-        //if (_options.AutoRegisterApp)
-        //{
-        //    try
-        //    {
-        //        var registrationResult = _client.RegisterAppAsync(_cts.Token).GetAwaiter().GetResult();
-        //        if (registrationResult.Success)
-        //        {
-        //            _logger.LogInformation("应用 {AppId} 自动注册成功", _options.AppId);
-        //            // 如果配置中没有设置 AppSecret，但注册成功时获取了新的密钥，则更新它
-        //            if (string.IsNullOrEmpty(_options.AppSecret) && !string.IsNullOrEmpty(registrationResult.Secret))
-        //            {
-        //                _logger.LogInformation("已获取新的应用密钥");
-        //                // 在这里不能直接修改 _options 中的值，因为它来自 IOptions<T>，是只读的
-        //                // 可以考虑使用其他方式存储获取到的密钥，如：
-        //                _client.UpdateAppSecret(registrationResult.Secret);
-        //            }
-        //        }
-        //        else
-        //        {
-        //            _logger.LogWarning("应用自动注册失败：{Message}", registrationResult.Message);
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "应用自动注册失败：{Message}", ex.Message);
-        //        // 注册失败不影响其他服务
-        //    }
-        //}
-
-        // 加载配置（即使应用注册失败也会执行）
+        // 加载配置
         LoadConfigAsync(_cts.Token).GetAwaiter().GetResult();
 
-        // 启动 SignalR 连接（与应用注册无关）
+        // 启动 SignalR 连接
         if (_options.UseSignalR)
         {
             _hubClient.ConnectAsync().ContinueWith(task =>
@@ -103,7 +70,7 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
             });
         }
 
-        // 启动轮询定时器（与应用注册无关）
+        // 启动轮询定时器
         if (_options.PollIntervalSeconds > 0)
         {
             _pollingTimer.Change(
@@ -119,41 +86,31 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     {
         try
         {
-            // 判断是否应该使用缓存
-            bool useCache = _options.EnableLocalCache && (
-                _options.PreferCache ||
-                _initialLoadFailed ||
-                !IsNetworkAvailable());
-
             ConfigItemsExportDto configData = null;
+            bool loadedFromCache = false;
 
-            if (useCache)
+            // 尝试从缓存加载
+            if (_options.EnableLocalCache)
             {
-                // 尝试从缓存加载配置
-                _logger.LogInformation("尝试从本地缓存加载配置");
+                _logger.LogDebug("尝试从本地缓存加载配置");
                 configData = await _cacheService.LoadFromCacheAsync();
-
                 if (configData != null)
                 {
+                    loadedFromCache = true;
                     _logger.LogInformation("已从本地缓存加载配置");
-                }
-                else
-                {
-                    _logger.LogWarning("本地缓存不可用或已过期");
                 }
             }
 
             // 如果缓存不可用或未启用缓存，则从服务器获取配置
-            if (configData == null)
+            if (configData == null && !_options.PreferCache)
             {
                 try
                 {
                     _logger.LogInformation("正在从配置中心服务器获取配置");
                     configData = await _client.GetConfigsAsync(cancellationToken);
-                    _initialLoadFailed = false;
 
                     // 如果启用了缓存，则将配置保存到缓存
-                    if (_options.EnableLocalCache)
+                    if (_options.EnableLocalCache && configData != null)
                     {
                         await _cacheService.SaveToCacheAsync(configData);
                     }
@@ -161,29 +118,22 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "从配置中心服务器获取配置失败：{Message}", ex.Message);
-                    _initialLoadFailed = true;
-
-                    // 如果启用了缓存，则再次尝试从缓存加载（即使之前设置了不使用缓存）
-                    if (_options.EnableLocalCache && !useCache)
+                    
+                    // 如果已经有缓存数据则使用
+                    if (configData != null)
                     {
-                        _logger.LogInformation("尝试从本地缓存加载配置");
-                        configData = await _cacheService.LoadFromCacheAsync();
-
-                        if (configData == null)
-                        {
-                            _logger.LogError(ex, "无法从配置中心服务器获取配置，本地缓存也不可用");
-                            return;
-                        }
-                        else
-                        {
-                            _logger.LogInformation("已从本地缓存加载配置（网络请求失败的回退机制）");
-                        }
+                        _logger.LogWarning("使用缓存数据作为回退方案");
+                    }
+                    else
+                    {
+                        throw; // 没有缓存数据且请求失败，向上抛出异常
                     }
                 }
             }
 
             if (configData == null)
             {
+                _logger.LogWarning("无法获取配置数据");
                 return;
             }
 
@@ -194,8 +144,8 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
             // 更新配置数据
             Data = data;
 
-            _logger.LogInformation("已加载应用 {AppId} 在 {Environment} 环境的配置",
-                _options.AppId, _options.Environment);
+            _logger.LogInformation("已加载应用 {AppId} 在 {Environment} 环境的配置{Source}",
+                _options.AppId, _options.Environment, loadedFromCache ? " (来自缓存)" : "");
 
             // 触发配置变更事件
             OnReload();
@@ -208,24 +158,6 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
     }
 
     /// <summary>
-    /// 检查网络是否可用
-    /// </summary>
-    private bool IsNetworkAvailable()
-    {
-        try
-        {
-            // 一种简单的网络可用性检查方法
-            using var ping = new System.Net.NetworkInformation.Ping();
-            var reply = ping.Send("8.8.8.8", 1000);
-            return reply?.Status == System.Net.NetworkInformation.IPStatus.Success;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    /// <summary>
     /// 将配置转换为扁平化的键值对
     /// </summary>
     private void FlattenConfigs(
@@ -233,6 +165,8 @@ public class ConfigCenterConfigurationProvider : ConfigurationProvider, IDisposa
         string prefix,
         Dictionary<string, string> data)
     {
+        if (configs == null) return;
+        
         foreach (var kvp in configs)
         {
             var key = string.IsNullOrEmpty(prefix) ? kvp.Key : $"{prefix}:{kvp.Key}";

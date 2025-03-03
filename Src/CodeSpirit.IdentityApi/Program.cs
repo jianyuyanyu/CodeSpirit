@@ -1,46 +1,23 @@
-using CodeSpirit.ServiceDefaults;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using CodeSpirit.ConfigCenter.Client;
 using Microsoft.AspNetCore.HttpLogging;
+using System.Text;
 
-Console.OutputEncoding = System.Text.Encoding.UTF8;
+Console.OutputEncoding = Encoding.UTF8;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.AddIdentityApiServices();
 
-// Ìí¼ÓÅäÖÃÖĞĞÄÅäÖÃ
-//builder.Host.ConfigureConfigCenterConfiguration((context, options) =>
-//{
-//    // ´Ó±¾µØÅäÖÃÖĞ¶ÁÈ¡ÅäÖÃÖĞĞÄÑ¡Ïî
-//    context.Configuration.GetSection("ConfigCenter").Bind(options);
+// æ·»åŠ é…ç½®ä¸­å¿ƒæœåŠ¡ï¼ˆé…ç½®æºå’Œå®¢æˆ·ç«¯ï¼‰
+builder.AddConfigCenter();
 
-//    // Ò²¿ÉÒÔÖ±½ÓÉèÖÃ
-//    options.ServiceUrl = "http://config";
-//    options.AppId = "identity";
-//    options.AppSecret = "your-app-secret";
-//    options.Environment = context.HostingEnvironment.EnvironmentName;
-//    options.AutoRegisterApp = true;
-//    options.AppName = "ÓÃ»§ÖĞĞÄ";
-//});
-
-// ÔÚ Program.cs ÖĞÆôÓÃÇëÇóÈÕÖ¾
+// åœ¨ Program.cs ä¸­å¯ç”¨è¯·æ±‚æ—¥å¿—
 builder.Services.AddHttpLogging(logging =>
     logging.LoggingFields = HttpLoggingFields.All);
-
-//// Ìí¼ÓÅäÖÃÖĞĞÄ¿Í»§¶Ë
-//builder.Services.AddConfigCenterClient(options =>
-//{
-//    // ´ÓÅäÖÃÖĞ¶ÁÈ¡
-//    builder.Configuration.GetSection("ConfigCenter").Bind(options);
-//});
-
-builder.Services.AddHttpClient("config", client =>
-    client.BaseAddress = new Uri("http://config"))
-    .AddServiceDiscovery();
 
 WebApplication app = builder.Build();
 
 await app.ConfigureAppAsync();
 
-// ÆôÓÃÅäÖÃÖĞĞÄ¿Í»§¶Ë
-//app.UseConfigCenterClient();
+// å¯ç”¨é…ç½®ä¸­å¿ƒå®¢æˆ·ç«¯
+app.UseConfigCenterClient();
 app.Run();

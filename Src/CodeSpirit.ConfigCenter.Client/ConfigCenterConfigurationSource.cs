@@ -32,7 +32,7 @@ public class ConfigCenterConfigurationSource : IConfigurationSource, IDisposable
         var options = _serviceProvider.GetRequiredService<IOptions<ConfigCenterClientOptions>>();
         var logger = _serviceProvider.GetRequiredService<ILogger<ConfigCenterConfigurationProvider>>();
         
-        return new ConfigCenterConfigurationProvider(client, hubClient, cacheService, options, logger, _serviceProvider);
+        return new ConfigCenterConfigurationProvider(client, hubClient, cacheService, options, logger);
     }
 
     public void Dispose()

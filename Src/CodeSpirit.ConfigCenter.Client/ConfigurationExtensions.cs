@@ -23,9 +23,9 @@ public static class ConfigurationExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configureOptions);
 
-        // 如果没有提供 ServiceProvider，创建一个临时的并确保在应用程序结束时释放资源
-        var externalServiceProvider = serviceProvider != null;
-        if (serviceProvider == null)
+        // 如果没有提供 ServiceProvider，创建一个临时的
+        var ownServiceProvider = serviceProvider == null;
+        if (ownServiceProvider)
         {
             var services = new ServiceCollection();
             
@@ -38,32 +38,18 @@ public static class ConfigurationExtensions
             services.AddConfigCenterClient();
             
             // 构建服务提供程序
-            serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions 
-            { 
-                ValidateScopes = true,
-                ValidateOnBuild = true 
-            });
+            serviceProvider = services.BuildServiceProvider();
         }
         else
         {
-            // 使用现有的服务提供程序，只配置选项
+            // 使用现有的服务提供程序，配置选项
             var services = new ServiceCollection();
             services.Configure(configureOptions);
-            var tempProvider = services.BuildServiceProvider();
-            
-            // 将选项配置复制到主服务提供程序
-            var options = tempProvider.GetRequiredService<IOptions<ConfigCenterClientOptions>>().Value;
-            var optionsCache = serviceProvider.GetService<IOptionsMonitor<ConfigCenterClientOptions>>();
-            if (optionsCache == null)
-            {
-                // 如果主容器中没有注册客户端服务，则抛出异常
-                throw new InvalidOperationException(
-                    "配置中心客户端服务未在主应用程序中注册。请先调用 services.AddConfigCenterServices() 方法。");
-            }
+            services.BuildServiceProvider();
         }
         
         // 创建配置源并添加到配置构建器
-        var source = new ConfigCenterConfigurationSource(serviceProvider, !externalServiceProvider);
+        var source = new ConfigCenterConfigurationSource(serviceProvider, ownServiceProvider);
         return builder.Add(source);
     }
 
@@ -98,17 +84,9 @@ public static class ConfigurationExtensions
 
             client.BaseAddress = new Uri(options.ServiceUrl);
             client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds);
-
             client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
-
-            if (!string.IsNullOrEmpty(options.AppSecret))
-            {
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", options.AppSecret);
-            }
         });
-
 
         // 注册SignalR客户端
         services.AddSingleton<SignalR.ConfigCenterHubClient>();

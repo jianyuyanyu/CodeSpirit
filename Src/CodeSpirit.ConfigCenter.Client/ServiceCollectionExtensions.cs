@@ -94,7 +94,6 @@ public static class ServiceCollectionExtensions
                 opt.AppId = options.AppId;
                 opt.AppSecret = options.AppSecret;
                 opt.Environment = options.Environment;
-                opt.AutoRegisterApp = options.AutoRegisterApp;
                 opt.AppName = options.AppName;
                 opt.PollIntervalSeconds = options.PollIntervalSeconds;
                 opt.UseSignalR = options.UseSignalR;

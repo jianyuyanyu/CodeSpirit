@@ -4,6 +4,7 @@ using CodeSpirit.ConfigCenter.Data;
 using CodeSpirit.ConfigCenter.Data.Seeders;
 using CodeSpirit.ConfigCenter.Hubs;
 using CodeSpirit.ConfigCenter.Services;
+using CodeSpirit.ConfigCenter.Services.Implementations;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
@@ -33,6 +34,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IConfigNotificationService, ConfigNotificationService>();
         services.AddScoped<ConfigSeederService>();
         services.AddScoped<IConfigPublishHistoryService, ConfigPublishHistoryService>();
+        
+        // 注册客户端跟踪服务
+        services.AddSingleton<IClientTrackingService, ClientTrackingService>();
+        
         return services;
     }
 
@@ -75,7 +80,7 @@ public static class ServiceCollectionExtensions
     public static async Task<WebApplication> ConfigureAppAsync(this WebApplication app)
     {
         // 配置 SignalR 路由
-        app.MapHub<ConfigCenterHub>("/config-hub");
+        app.MapHub<ConfigHub>("/config-hub");
 
         app.UseCors("AllowSpecificOriginsWithCredentials");
         app.UseAuthentication();

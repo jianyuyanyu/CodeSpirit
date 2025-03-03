@@ -2,6 +2,7 @@
 using Audit.WebApi;
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
+using CodeSpirit.ConfigCenter.Client;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;
@@ -211,6 +212,8 @@ public static class ServiceCollectionExtensions
         builder.Services.Configure<AuditConfig>(
             builder.Configuration.GetSection("Audit"));
 
+        // 添加配置中心服务（配置源和客户端）
+        builder.AddConfigCenter();
         return builder;
     }
 
@@ -247,6 +250,8 @@ public static class ServiceCollectionExtensions
         app.UseAmis();
         app.UseCodeSpiritAuthorization();
         await app.UseCodeSpiritNavigationAsync();
+        // 启用配置中心客户端
+        app.UseConfigCenterClient();
         return app;
     }
 }

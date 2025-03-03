@@ -156,25 +156,38 @@ namespace CodeSpirit.Amis.Helpers
             if (type == null)
                 return null;
 
-            if (type.IsGenericType)
+            // 首先处理 Task 和 ActionResult
+            Type unwrappedType = GetUnderlyingType(type) ?? type;
+            
+            // 递归提取数据类型
+            while (unwrappedType != null && unwrappedType.IsGenericType)
             {
-                Type genericDef = type.GetGenericTypeDefinition();
-                if (genericDef == typeof(ApiResponse<>))
+                Type genericTypeDef = unwrappedType.GetGenericTypeDefinition();
+                
+                // 处理 ApiResponse<T>
+                if (genericTypeDef == typeof(ApiResponse<>))
                 {
-                    Type innerType = type.GetGenericArguments()[0];
-                    if (innerType.IsGenericType && innerType.GetGenericTypeDefinition() == typeof(PageList<>))
-                    {
-                        return innerType.GetGenericArguments()[0];
-                    }
-                    return innerType;
+                    unwrappedType = unwrappedType.GetGenericArguments()[0];
+                    continue; // 继续处理内部类型
                 }
-                if (genericDef == typeof(PageList<>))
+                
+                // 处理各种集合类型
+                if (genericTypeDef == typeof(PageList<>) || 
+                    genericTypeDef == typeof(List<>) || 
+                    genericTypeDef == typeof(IEnumerable<>) ||
+                    genericTypeDef == typeof(IList<>) ||
+                    genericTypeDef == typeof(ICollection<>) ||
+                    genericTypeDef == typeof(IReadOnlyList<>) ||
+                    genericTypeDef == typeof(IReadOnlyCollection<>))
                 {
-                    return type.GetGenericArguments()[0];
+                    return unwrappedType.GetGenericArguments()[0];
                 }
+                
+                // 如果不是我们处理的特殊泛型类型，就直接返回
+                break;
             }
-
-            return type;
+            
+            return unwrappedType;
         }
 
         /// <summary>

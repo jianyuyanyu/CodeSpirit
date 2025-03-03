@@ -25,30 +25,8 @@ public class ConfigCacheService
         _options = options.Value;
         _logger = logger;
 
-        string cacheDirectory;
-
-        // 首先检查配置的绝对路径
-        if (!string.IsNullOrEmpty(_options.LocalCacheDirectory) && Path.IsPathRooted(_options.LocalCacheDirectory))
-        {
-            cacheDirectory = _options.LocalCacheDirectory;
-        }
-        // 检查环境变量
-        else if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CONFIG_CENTER_CACHE_DIR")))
-        {
-            cacheDirectory = Environment.GetEnvironmentVariable("CONFIG_CENTER_CACHE_DIR");
-        }
-        // 默认使用应用程序目录
-        else
-        {
-            cacheDirectory = Path.Combine(AppContext.BaseDirectory, _options.LocalCacheDirectory ?? "");
-        }
-
-        _logger.LogDebug("将使用缓存目录: {CacheDirectory}", cacheDirectory);
-
-        if (!Directory.Exists(cacheDirectory))
-        {
-            Directory.CreateDirectory(cacheDirectory);
-        }
+        string cacheDirectory = DetermineCacheDirectory();
+        EnsureCacheDirectoryExists(cacheDirectory);
 
         // 缓存文件路径
         var cacheFileName = $"config-{_options.AppId}-{_options.Environment}.json";
@@ -56,6 +34,115 @@ public class ConfigCacheService
         _cacheMetadataFilePath = Path.Combine(cacheDirectory, $"{cacheFileName}.metadata");
 
         _logger.LogDebug("配置缓存文件路径: {CacheFilePath}", _cacheFilePath);
+    }
+
+    /// <summary>
+    /// 确定缓存目录位置
+    /// </summary>
+    private string DetermineCacheDirectory()
+    {
+        // 优先级顺序：
+        // 1. 配置的绝对路径
+        // 2. 环境变量
+        // 3. 容器环境检测 - 使用/tmp或其他通常可写的路径
+        // 4. 应用程序目录
+
+        // 首先检查配置的绝对路径
+        if (!string.IsNullOrEmpty(_options.LocalCacheDirectory) && Path.IsPathRooted(_options.LocalCacheDirectory))
+        {
+            _logger.LogDebug("使用配置的绝对路径作为缓存目录: {CacheDirectory}", _options.LocalCacheDirectory);
+            return _options.LocalCacheDirectory;
+        }
+
+        // 检查环境变量
+        var envCacheDir = Environment.GetEnvironmentVariable("CONFIG_CENTER_CACHE_DIR");
+        if (!string.IsNullOrEmpty(envCacheDir))
+        {
+            _logger.LogDebug("使用环境变量指定的缓存目录: {CacheDirectory}", envCacheDir);
+            return envCacheDir;
+        }
+
+        // 检测容器环境
+        if (IsRunningInContainer())
+        {
+            var containerCacheDir = "/tmp/configcenter_cache";
+            _logger.LogDebug("检测到容器环境，使用 {CacheDirectory} 作为缓存目录", containerCacheDir);
+            return containerCacheDir;
+        }
+
+        // 默认使用应用程序目录
+        var defaultDir = Path.Combine(AppContext.BaseDirectory, _options.LocalCacheDirectory ?? "configcache");
+        _logger.LogDebug("使用默认应用程序目录作为缓存目录: {CacheDirectory}", defaultDir);
+        return defaultDir;
+    }
+
+    /// <summary>
+    /// 检测是否在容器环境中运行
+    /// </summary>
+    private bool IsRunningInContainer()
+    {
+        // 检查常见的容器环境变量
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")) || 
+            !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOCKER_CONTAINER")) ||
+            File.Exists("/.dockerenv") ||
+            File.Exists("/run/.containerenv"))
+        {
+            return true;
+        }
+        
+        // 检查cgroup信息以识别Docker容器
+        try
+        {
+            if (File.Exists("/proc/1/cgroup"))
+            {
+                var cgroupContent = File.ReadAllText("/proc/1/cgroup");
+                if (cgroupContent.Contains("docker") || cgroupContent.Contains("kubepods"))
+                {
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug("检查容器环境时发生异常：{Message}", ex.Message);
+        }
+        
+        return false;
+    }
+
+    /// <summary>
+    /// 确保缓存目录存在且可写
+    /// </summary>
+    private void EnsureCacheDirectoryExists(string directoryPath)
+    {
+        try
+        {
+            _logger.LogDebug("将使用缓存目录: {CacheDirectory}", directoryPath);
+            
+            if (!Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+                _logger.LogDebug("已创建缓存目录");
+            }
+            
+            // 验证目录可写
+            var testFile = Path.Combine(directoryPath, ".write_test");
+            File.WriteAllText(testFile, string.Empty);
+            File.Delete(testFile);
+            _logger.LogDebug("已验证缓存目录可写");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("没有权限访问缓存目录 {Directory}，将禁用本地缓存功能: {Message}", 
+                directoryPath, ex.Message);
+            throw new InvalidOperationException($"无法访问缓存目录 {directoryPath}，本地缓存将被禁用", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("创建缓存目录 {Directory} 时出错，将禁用本地缓存功能: {Message}",
+                directoryPath, ex.Message);
+            throw new InvalidOperationException($"无法创建缓存目录 {directoryPath}，本地缓存将被禁用", ex);
+        }
     }
 
     /// <summary>

@@ -3,43 +3,6 @@ using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.Web.Services
 {
-    /// <summary>
-    /// ## 使用示例
-    /// ### 后端返回
-    //// {
-    ////  "id": 123,
-    ////  "title": "测试文档",
-    ////  "createdBy": "10001",
-    ////  "updatedBy": "10002",
-    ////  "items": [
-    ////    {
-    ////      "itemId": 1,
-    ////      "createdBy": "10003"
-    ////    }
-    ////  ]
-    ////}
-    /// 
-    //// X-Aggregate-Keys: createdBy,updatedBy
-    //// X-Aggregate-Field-createdBy: userId=userName
-    //// X-Aggregate-Field-updatedBy: userId=userName
-    /// 
-    /// ### 处理后返回
-    //// {
-    ////  "id": 123,
-    ////  "title": "测试文档",
-    ////  "createdBy": "User-10001",
-    ////  "updatedBy": "User-10002",
-    ////  "items": [
-    ////    {
-    ////      "itemId": 1,
-    ////      "createdBy": "User-10003"
-    ////    }
-    ////  ]
-    //// }
-    /// 
-    /// 
-    /// 
-    /// </summary>
     public class JsonNetAggregatorService : IAggregatorService
     {
         private readonly ILogger<JsonNetAggregatorService> _logger;
@@ -54,6 +17,9 @@ namespace CodeSpirit.Web.Services
             return response.Headers.Contains("X-Aggregate-Keys");
         }
 
+        /// <summary>
+        /// 获取聚合规则
+        /// </summary>
         public Dictionary<string, string> GetAggregationRules(HttpResponseMessage response)
         {
             var aggregationRules = new Dictionary<string, string>();
@@ -65,14 +31,29 @@ namespace CodeSpirit.Web.Services
             _logger.LogInformation("需要聚合的字段: {AggregateKeys}", aggregateKeys);
 
             // 解析每个字段的聚合规则
-            foreach (var key in aggregateKeys.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            foreach (var rule in aggregateKeys.Split(',', StringSplitOptions.RemoveEmptyEntries))
             {
-                string headerName = $"X-Aggregate-Field-{key.Trim()}";
-                if (response.Headers.Contains(headerName))
+                var trimmedRule = rule.Trim();
+                if (!string.IsNullOrEmpty(trimmedRule))
                 {
-                    string rule = response.Headers.GetValues(headerName).FirstOrDefault() ?? string.Empty;
-                    aggregationRules[key.Trim()] = rule;
-                    _logger.LogInformation("字段 {Key} 的聚合规则: {Rule}", key, rule);
+                    // 规则的第一部分是字段路径，可能包含点号分隔的路径
+                    var fieldPath = trimmedRule;
+                    
+                    // 检查是否有 = 或 # 
+                    var equalsIndex = trimmedRule.IndexOf('=');
+                    var hashIndex = trimmedRule.IndexOf('#');
+                    
+                    if (equalsIndex > 0 || hashIndex > 0)
+                    {
+                        var firstSeparatorIndex = (equalsIndex > 0 && hashIndex > 0) 
+                            ? Math.Min(equalsIndex, hashIndex) 
+                            : Math.Max(equalsIndex, hashIndex);
+                        
+                        fieldPath = trimmedRule.Substring(0, firstSeparatorIndex).Trim();
+                    }
+                    
+                    aggregationRules[fieldPath] = trimmedRule;
+                    _logger.LogInformation("字段 {FieldPath} 的聚合规则: {Rule}", fieldPath, trimmedRule);
                 }
             }
 
@@ -113,108 +94,215 @@ namespace CodeSpirit.Web.Services
             }
         }
 
+        /// <summary>
+        /// 处理JSON对象中的聚合规则
+        /// </summary>
         private async Task ProcessJsonObject(JObject obj, Dictionary<string, string> aggregationRules, HttpContext context)
         {
-            // 存储需要替换的字段值
-            Dictionary<string, string> replacementValues = new Dictionary<string, string>();
-
-            // 首先收集所有需要聚合的字段的值
-            foreach (var fieldName in aggregationRules.Keys)
-            {
-                if (obj.TryGetValue(fieldName, out JToken value) && value.Type == JTokenType.String)
-                {
-                    string sourceValue = value.ToString();
-                    replacementValues[fieldName] = sourceValue;
-                }
-            }
-
-            // 然后处理聚合规则
+            // 处理每个聚合规则
             foreach (var rulePair in aggregationRules)
             {
-                string fieldName = rulePair.Key;
-                string rule = rulePair.Value;
+                string fieldPath = rulePair.Key;
+                string ruleSpec = rulePair.Value;
 
-                if (replacementValues.TryGetValue(fieldName, out string sourceValue) && !string.IsNullOrEmpty(sourceValue))
+                try
                 {
-                    try
+                    // 解析字段路径，处理嵌套路径情况
+                    var pathParts = fieldPath.Split('.');
+                    if (pathParts.Length == 1)
                     {
-                        // 规则格式：sourceField=targetField
-                        var ruleParts = rule.Split('=', 2);
-                        if (ruleParts.Length == 2)
-                        {
-                            string sourceField = ruleParts[0].Trim();
-                            string targetField = ruleParts[1].Trim();
-
-                            // 执行聚合逻辑
-                            string aggregatedValue = await GetAggregatedValue(sourceField, sourceValue, targetField, context);
-
-                            // 替换原始值
-                            obj[fieldName] = aggregatedValue;
-
-                            _logger.LogInformation("字段 {FieldName} 聚合结果: {SourceValue} => {AggregatedValue}",
-                                fieldName, sourceValue, aggregatedValue);
-                        }
+                        // 简单字段
+                        await ProcessSimpleField(obj, fieldPath, ruleSpec, context);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogError(ex, "处理聚合规则失败: {Rule}", rule);
+                        // 处理嵌套字段
+                        await ProcessNestedField(obj, pathParts, ruleSpec, context);
                     }
                 }
-            }
-
-            // 递归处理嵌套的JSON对象
-            foreach (var property in obj.Properties().ToList())
-            {
-                if (property.Value is JObject nestedObj)
+                catch (Exception ex)
                 {
-                    await ProcessJsonObject(nestedObj, aggregationRules, context);
-                }
-                else if (property.Value is JArray nestedArray)
-                {
-                    foreach (var item in nestedArray)
-                    {
-                        if (item is JObject nestedArrayObj)
-                        {
-                            await ProcessJsonObject(nestedArrayObj, aggregationRules, context);
-                        }
-                    }
+                    _logger.LogError(ex, "处理字段 {FieldPath} 的聚合规则失败: {Rule}", fieldPath, ruleSpec);
                 }
             }
         }
 
-        private async Task<string> GetAggregatedValue(string sourceField, string sourceValue, string targetField,
-            HttpContext context)
+        /// <summary>
+        /// 处理简单字段（非嵌套）的聚合
+        /// </summary>
+        private async Task ProcessSimpleField(JObject obj, string fieldName, string ruleSpec, HttpContext context)
         {
-            // 这里实现您的聚合逻辑
-            // 示例：如果规则是 userId=userName，可以根据userId查询用户名
-
-            // 简单示例实现
-            if (sourceField.Equals("userId", StringComparison.OrdinalIgnoreCase) &&
-                targetField.Equals("userName", StringComparison.OrdinalIgnoreCase))
+            if (obj.TryGetValue(fieldName, out JToken value) && value.Type == JTokenType.String)
             {
-                // 这里可以从数据库或用户服务获取用户名
-                // 示例代码仅作演示：
-                try
+                string sourceValue = value.ToString();
+                if (!string.IsNullOrEmpty(sourceValue))
                 {
-                    // 假设有一个用户服务
-                    // var userService = context.RequestServices.GetRequiredService<IUserService>();
-                    // var userName = await userService.GetUserNameById(sourceValue);
-                    // return userName ?? sourceValue;
-
-                    // 简单模拟返回
-                    return $"User-{sourceValue}";
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "聚合用户信息失败: {UserId}", sourceValue);
-                    return sourceValue; // 失败时返回原值
+                    string aggregatedValue = await ApplyAggregationRule(sourceValue, ruleSpec, context);
+                    obj[fieldName] = aggregatedValue;
+                    
+                    _logger.LogInformation("字段 {FieldName} 聚合结果: {SourceValue} => {AggregatedValue}",
+                        fieldName, sourceValue, aggregatedValue);
                 }
             }
+        }
 
-            // 处理其他聚合规则...
+        /// <summary>
+        /// 处理嵌套字段的聚合
+        /// </summary>
+        private async Task ProcessNestedField(JObject root, string[] pathParts, string ruleSpec, HttpContext context)
+        {
+            // 递归查找并处理嵌套字段
+            await ProcessNestedFieldRecursive(root, pathParts, 0, ruleSpec, context);
+        }
 
+        /// <summary>
+        /// 递归处理嵌套字段
+        /// </summary>
+        private async Task ProcessNestedFieldRecursive(JToken current, string[] pathParts, int depth, string ruleSpec, HttpContext context)
+        {
+            if (depth >= pathParts.Length)
+                return;
+
+            var currentPart = pathParts[depth];
+            var isLastPart = depth == pathParts.Length - 1;
+
+            if (current is JObject obj)
+            {
+                if (obj.TryGetValue(currentPart, out JToken childToken))
+                {
+                    if (isLastPart)
+                    {
+                        // 到达最终字段
+                        if (childToken.Type == JTokenType.String)
+                        {
+                            string sourceValue = childToken.ToString();
+                            if (!string.IsNullOrEmpty(sourceValue))
+                            {
+                                string aggregatedValue = await ApplyAggregationRule(sourceValue, ruleSpec, context);
+                                obj[currentPart] = aggregatedValue;
+                                
+                                _logger.LogInformation("字段 {FieldPath} 聚合结果: {SourceValue} => {AggregatedValue}",
+                                    string.Join(".", pathParts), sourceValue, aggregatedValue);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // 继续遍历下一级
+                        await ProcessNestedFieldRecursive(childToken, pathParts, depth + 1, ruleSpec, context);
+                    }
+                }
+            }
+            else if (current is JArray array)
+            {
+                // 对数组中的每个对象应用递归处理
+                foreach (var item in array)
+                {
+                    await ProcessNestedFieldRecursive(item, pathParts, depth, ruleSpec, context);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 应用聚合规则到字段值
+        /// </summary>
+        private async Task<string> ApplyAggregationRule(string sourceValue, string ruleSpec, HttpContext context)
+        {
+            // 解析规则结构: 字段路径[=数据源][#模板]
+            var dataSource = string.Empty;
+            var template = string.Empty;
+            
+            var equalsIndex = ruleSpec.IndexOf('=');
+            var hashIndex = ruleSpec.IndexOf('#');
+            
+            // 提取数据源部分
+            if (equalsIndex > 0)
+            {
+                var endIndex = hashIndex > equalsIndex ? hashIndex : ruleSpec.Length;
+                dataSource = ruleSpec.Substring(equalsIndex + 1, endIndex - equalsIndex - 1).Trim();
+            }
+            
+            // 提取模板部分
+            if (hashIndex > 0)
+            {
+                template = ruleSpec.Substring(hashIndex + 1).Trim();
+            }
+            
+            // 根据规则类型进行处理
+            if (string.IsNullOrEmpty(dataSource) && !string.IsNullOrEmpty(template))
+            {
+                // 静态替换: 字段#模板
+                return template.Replace("{value}", sourceValue);
+            }
+            else if (!string.IsNullOrEmpty(dataSource))
+            {
+                // 动态替换或补充: 字段=/path/{value}.响应字段[#模板]
+                var dataSourceResult = await FetchFromDataSource(dataSource, sourceValue, context);
+                
+                if (string.IsNullOrEmpty(template))
+                {
+                    // 动态替换: 字段=/path/{value}.响应字段
+                    return dataSourceResult ?? sourceValue;
+                }
+                else
+                {
+                    // 动态补充: 字段=/path/{value}.字段#模板
+                    return template
+                        .Replace("{value}", sourceValue)
+                        .Replace("{field}", dataSourceResult ?? string.Empty);
+                }
+            }
+            
             // 默认返回原值
             return sourceValue;
+        }
+
+        /// <summary>
+        /// 从数据源获取数据
+        /// </summary>
+        private async Task<string> FetchFromDataSource(string dataSource, string sourceValue, HttpContext context)
+        {
+            try
+            {
+                // 解析数据源: /path/{value}.响应字段
+                var pathEndIndex = dataSource.LastIndexOf('.');
+                if (pathEndIndex <= 0)
+                {
+                    _logger.LogError("无效的数据源格式: {DataSource}", dataSource);
+                    return null;
+                }
+                
+                var path = dataSource.Substring(0, pathEndIndex).Replace("{value}", sourceValue);
+                var fieldName = dataSource.Substring(pathEndIndex + 1);
+                
+                // 从 HttpContext 中获取 HttpClient
+                var httpClientFactory = context.RequestServices.GetRequiredService<IHttpClientFactory>();
+                var client = httpClientFactory.CreateClient("AggregationClient");
+                
+                // 发起请求
+                var response = await client.GetAsync(path);
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var jsonObj = JObject.Parse(content);
+                    
+                    // 提取指定字段
+                    if (jsonObj.TryGetValue(fieldName, out JToken value))
+                    {
+                        return value.ToString();
+                    }
+                }
+                else
+                {
+                    _logger.LogError("从数据源获取数据失败: {Status} {Path}", response.StatusCode, path);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "从数据源 {DataSource} 获取数据失败", dataSource);
+            }
+            
+            return null;
         }
     }
 }

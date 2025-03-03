@@ -230,7 +230,9 @@
                     return { msg: '您没有权限访问此页面，请联系管理员！' }
                 }
                 else if (response.status === 401) {
-                    window.location.href = '/login';
+                    // 获取当前路径作为重定向参数
+                    const currentPath = encodeURIComponent(window.location.hash || window.location.pathname);
+                    window.location.href = `/login?redirect=${currentPath}`;
                     return { msg: '登录过期！' };
                 }
 

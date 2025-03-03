@@ -105,6 +105,10 @@
                                                                     {
                                                                         "actionType": "custom",
                                                                         "script": "TokenManager.setToken(event.data.result.data.token);"
+                                                                    },
+                                                                    {
+                                                                        "actionType": "custom",
+                                                                        "script": "const urlParams = new URLSearchParams(window.location.search); const redirectUrl = urlParams.get('redirect'); if (redirectUrl) { window.location.href = decodeURIComponent(redirectUrl); } else { window.location.href = '/'; }"
                                                                     }
                                                                 ]
                                                             }

@@ -1,4 +1,5 @@
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Text;
@@ -54,7 +55,7 @@ namespace CodeSpirit.Aggregator.Services
         /// </summary>
         private string GetFieldPath(PropertyInfo property)
         {
-            var path = new List<string> { property.Name };
+            var path = new List<string> { property.Name.ToCamelCase() };
             var currentType = property.DeclaringType;
 
             // 处理嵌套属性
@@ -66,7 +67,7 @@ namespace CodeSpirit.Aggregator.Services
                 if (parentProperty == null)
                     break;
 
-                path.Insert(0, parentProperty.Name);
+                path.Insert(0, parentProperty.Name.ToCamelCase());
                 currentType = parentProperty.DeclaringType;
             }
 

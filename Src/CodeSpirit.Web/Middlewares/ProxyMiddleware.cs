@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http.Extensions;
 using System.Net.Http.Headers;
 using System.Collections.Generic;
-using CodeSpirit.Web.Services;
+using CodeSpirit.Aggregator.Services;
 
 namespace CodeSpirit.Web.Middlewares
 {

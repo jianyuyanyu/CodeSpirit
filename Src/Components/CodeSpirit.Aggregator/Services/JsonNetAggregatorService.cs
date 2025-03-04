@@ -1,7 +1,11 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Text;
 
-namespace CodeSpirit.Web.Services
+namespace CodeSpirit.Aggregator.Services
 {
     public class JsonNetAggregatorService : IAggregatorService
     {
@@ -28,6 +32,22 @@ namespace CodeSpirit.Web.Services
                 return aggregationRules;
 
             string aggregateKeys = response.Headers.GetValues("X-Aggregate-Keys").FirstOrDefault() ?? string.Empty;
+            
+            // 尝试解码Base64编码的头部值
+            try
+            {
+                if (IsBase64String(aggregateKeys))
+                {
+                    var bytes = Convert.FromBase64String(aggregateKeys);
+                    aggregateKeys = Encoding.UTF8.GetString(bytes);
+                    _logger.LogInformation("解码Base64编码的聚合规则: {DecodedKeys}", aggregateKeys);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "解码聚合规则失败，将使用原始值");
+            }
+
             _logger.LogInformation("需要聚合的字段: {AggregateKeys}", aggregateKeys);
 
             // 解析每个字段的聚合规则
@@ -45,7 +65,7 @@ namespace CodeSpirit.Web.Services
                     
                     if (equalsIndex > 0 || hashIndex > 0)
                     {
-                        var firstSeparatorIndex = (equalsIndex > 0 && hashIndex > 0) 
+                        var firstSeparatorIndex = equalsIndex > 0 && hashIndex > 0 
                             ? Math.Min(equalsIndex, hashIndex) 
                             : Math.Max(equalsIndex, hashIndex);
                         
@@ -58,6 +78,23 @@ namespace CodeSpirit.Web.Services
             }
 
             return aggregationRules;
+        }
+
+        /// <summary>
+        /// 检查字符串是否为Base64编码
+        /// </summary>
+        private bool IsBase64String(string base64)
+        {
+            if (string.IsNullOrEmpty(base64)) return false;
+            try
+            {
+                Convert.FromBase64String(base64);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public async Task<string> AggregateJsonContent(string jsonContent, Dictionary<string, string> aggregationRules, HttpContext context)

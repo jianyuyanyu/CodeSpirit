@@ -1,4 +1,5 @@
-using CodeSpirit.Web.Services;
+using CodeSpirit.Aggregator.Services;
+
 namespace CodeSpirit.Web.Extensions
 {
     public static class ServiceCollectionExtensions

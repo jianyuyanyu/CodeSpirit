@@ -20,6 +20,7 @@
 		<ProjectReference Include="..\CodeSpirit.Amis\CodeSpirit.Amis.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Authorization\CodeSpirit.Authorization.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />
+		<ProjectReference Include="..\Components\CodeSpirit.Aggregator\CodeSpirit.Aggregator.csproj" />
 	</ItemGroup>
 
 </Project>

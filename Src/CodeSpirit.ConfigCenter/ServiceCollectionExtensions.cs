@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System.Text;
-
+using CodeSpirit.Aggregator;
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddCustomServices(this IServiceCollection services)
@@ -89,6 +89,8 @@ public static class ServiceCollectionExtensions
         app.UseAmis();
         app.UseCodeSpiritAuthorization();
         await app.UseCodeSpiritNavigationAsync();
+
+        app.UseCodeSpiritAggregator();
 
         // 初始化数据库
         using (IServiceScope scope = app.Services.CreateScope())

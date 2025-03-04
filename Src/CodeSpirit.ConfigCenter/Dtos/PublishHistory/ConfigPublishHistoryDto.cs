@@ -1,4 +1,5 @@
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Core.Attributes;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -56,5 +57,6 @@ public class ConfigPublishHistoryDto
     /// 发布人
     /// </summary>
     [DisplayName("发布人")]
+    [AggregateField(dataSource: "/api/users/{value}.name", template: "用户: {field}")]
     public string CreatedBy { get; set; }
 }

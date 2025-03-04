@@ -13,6 +13,7 @@
     <ProjectReference Include="..\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />
     <ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
     <ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
+    <ProjectReference Include="..\Components\CodeSpirit.Aggregator\CodeSpirit.Aggregator.csproj" />
   </ItemGroup>
 
   <ItemGroup>

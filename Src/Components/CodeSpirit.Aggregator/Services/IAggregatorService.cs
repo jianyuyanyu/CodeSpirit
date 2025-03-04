@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace CodeSpirit.Web.Services
+namespace CodeSpirit.Aggregator.Services
 {
     public interface IAggregatorService
     {

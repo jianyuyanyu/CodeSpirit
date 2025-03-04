@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using CodeSpirit.Aggregator;
 
 public static class ServiceCollectionExtensions
 {
@@ -252,6 +253,8 @@ public static class ServiceCollectionExtensions
         await app.UseCodeSpiritNavigationAsync();
         // 启用配置中心客户端
         app.UseConfigCenterClient();
+
+        app.UseCodeSpiritAggregator();
         return app;
     }
 }

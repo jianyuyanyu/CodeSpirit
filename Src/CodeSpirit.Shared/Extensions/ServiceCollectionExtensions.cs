@@ -1,3 +1,4 @@
+using CodeSpirit.Aggregator;
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization;
 using CodeSpirit.Authorization.Extensions;
@@ -83,6 +84,8 @@ public static class ServiceCollectionExtensions
         //services.AddDependencyInjection(programType.Assembly);
 
         services.AddCodeSpiritNavigation();
+
+        services.AddCodeSpiritAggregator();
         return services;
     }
 

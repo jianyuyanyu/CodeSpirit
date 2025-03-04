@@ -175,10 +175,17 @@ namespace CodeSpirit.Aggregator.Services
                 if (!string.IsNullOrEmpty(sourceValue))
                 {
                     string aggregatedValue = await ApplyAggregationRule(sourceValue, ruleSpec, context);
-                    obj[fieldName] = aggregatedValue;
-                    
-                    _logger.LogInformation("字段 {FieldName} 聚合结果: {SourceValue} => {AggregatedValue}",
-                        fieldName, sourceValue, aggregatedValue);
+                    if (!string.IsNullOrEmpty(aggregatedValue))
+                    {
+                        obj[fieldName] = aggregatedValue;
+                        _logger.LogInformation("字段 {FieldName} 聚合结果: {SourceValue} => {AggregatedValue}",
+                            fieldName, sourceValue, aggregatedValue);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("字段 {FieldName} 聚合结果为空，保持原值: {SourceValue}",
+                            fieldName, sourceValue);
+                    }
                 }
             }
         }
@@ -245,53 +252,75 @@ namespace CodeSpirit.Aggregator.Services
         /// </summary>
         private async Task<string> ApplyAggregationRule(string sourceValue, string ruleSpec, HttpContext context)
         {
-            // 解析规则结构: 字段路径[=数据源][#模板]
-            var dataSource = string.Empty;
-            var template = string.Empty;
-            
-            var equalsIndex = ruleSpec.IndexOf('=');
-            var hashIndex = ruleSpec.IndexOf('#');
-            
-            // 提取数据源部分
-            if (equalsIndex > 0)
+            try
             {
-                var endIndex = hashIndex > equalsIndex ? hashIndex : ruleSpec.Length;
-                dataSource = ruleSpec.Substring(equalsIndex + 1, endIndex - equalsIndex - 1).Trim();
-            }
-            
-            // 提取模板部分
-            if (hashIndex > 0)
-            {
-                template = ruleSpec.Substring(hashIndex + 1).Trim();
-            }
-            
-            // 根据规则类型进行处理
-            if (string.IsNullOrEmpty(dataSource) && !string.IsNullOrEmpty(template))
-            {
-                // 静态替换: 字段#模板
-                return template.Replace("{value}", sourceValue);
-            }
-            else if (!string.IsNullOrEmpty(dataSource))
-            {
-                // 动态替换或补充: 字段=/path/{value}.响应字段[#模板]
-                var dataSourceResult = await FetchFromDataSource(dataSource, sourceValue, context);
+                // 解析规则结构: 字段路径[=数据源][#模板]
+                var dataSource = string.Empty;
+                var template = string.Empty;
                 
-                if (string.IsNullOrEmpty(template))
+                var equalsIndex = ruleSpec.IndexOf('=');
+                var hashIndex = ruleSpec.IndexOf('#');
+                
+                // 提取数据源部分
+                if (equalsIndex > 0)
                 {
-                    // 动态替换: 字段=/path/{value}.响应字段
-                    return dataSourceResult ?? sourceValue;
+                    var endIndex = hashIndex > equalsIndex ? hashIndex : ruleSpec.Length;
+                    dataSource = ruleSpec.Substring(equalsIndex + 1, endIndex - equalsIndex - 1).Trim();
                 }
-                else
+                
+                // 提取模板部分
+                if (hashIndex > 0)
                 {
-                    // 动态补充: 字段=/path/{value}.字段#模板
-                    return template
-                        .Replace("{value}", sourceValue)
-                        .Replace("{field}", dataSourceResult ?? string.Empty);
+                    template = ruleSpec.Substring(hashIndex + 1).Trim();
                 }
+                
+                _logger.LogInformation("应用聚合规则: 数据源={DataSource}, 模板={Template}", dataSource, template);
+                
+                // 根据规则类型进行处理
+                if (string.IsNullOrEmpty(dataSource) && !string.IsNullOrEmpty(template))
+                {
+                    // 静态替换: 字段#模板
+                    var result = template.Replace("{value}", sourceValue);
+                    _logger.LogInformation("静态替换结果: {Result}", result);
+                    return result;
+                }
+                else if (!string.IsNullOrEmpty(dataSource))
+                {
+                    // 动态替换或补充: 字段=/path/{value}.响应字段[#模板]
+                    var dataSourceResult = await FetchFromDataSource(dataSource, sourceValue, context);
+                    _logger.LogInformation("数据源结果: {Result}", dataSourceResult);
+                    
+                    if (string.IsNullOrEmpty(template))
+                    {
+                        // 动态替换: 字段=/path/{value}.响应字段
+                        if (string.IsNullOrEmpty(dataSourceResult))
+                        {
+                            _logger.LogWarning("数据源返回空值，使用原始值: {Value}", sourceValue);
+                            return sourceValue;
+                        }
+                        _logger.LogInformation("动态替换结果: {Result}", dataSourceResult);
+                        return dataSourceResult;
+                    }
+                    else
+                    {
+                        // 动态补充: 字段=/path/{value}.字段#模板
+                        var result = template
+                            .Replace("{value}", sourceValue)
+                            .Replace("{field}", dataSourceResult ?? string.Empty);
+                        _logger.LogInformation("动态补充结果: {Result}", result);
+                        return result;
+                    }
+                }
+                
+                // 默认返回原值
+                _logger.LogInformation("使用默认值: {Value}", sourceValue);
+                return sourceValue;
             }
-            
-            // 默认返回原值
-            return sourceValue;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "应用聚合规则失败: {Rule}", ruleSpec);
+                return sourceValue;
+            }
         }
 
         /// <summary>
@@ -310,7 +339,9 @@ namespace CodeSpirit.Aggregator.Services
                 }
                 
                 var path = dataSource.Substring(0, pathEndIndex).Replace("{value}", sourceValue);
-                var fieldName = dataSource.Substring(pathEndIndex + 1);
+                var fieldPath = dataSource.Substring(pathEndIndex + 1);
+                
+                _logger.LogInformation("从数据源获取数据: 路径={Path}, 字段路径={FieldPath}", path, fieldPath);
                 
                 // 从 HttpContext 中获取 HttpClient
                 var httpClientFactory = context.RequestServices.GetRequiredService<IHttpClientFactory>();
@@ -321,17 +352,60 @@ namespace CodeSpirit.Aggregator.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation("从数据源获取的响应: {Content}", content);
+                    
                     var jsonObj = JObject.Parse(content);
                     
-                    // 提取指定字段
-                    if (jsonObj.TryGetValue(fieldName, out JToken value))
+                    // 提取指定字段，支持嵌套属性路径
+                    var fieldParts = fieldPath.Split('.');
+                    JToken currentToken = jsonObj;
+                    
+                    _logger.LogInformation("开始处理嵌套字段路径: {FieldPath}, 字段部分: {FieldParts}", 
+                        fieldPath, string.Join(", ", fieldParts));
+                    
+                    foreach (var part in fieldParts)
                     {
-                        return value.ToString();
+                        if (currentToken is JObject obj)
+                        {
+                            _logger.LogInformation("当前处理字段部分: {Part}, 当前Token类型: {TokenType}, 当前Token内容: {TokenContent}", 
+                                part, currentToken.Type, currentToken.ToString());
+                            
+                            if (obj.TryGetValue(part, out JToken value))
+                            {
+                                currentToken = value;
+                                _logger.LogInformation("成功获取字段值: {Part} = {Value}, 类型: {TokenType}", 
+                                    part, value.ToString(), value.Type);
+                            }
+                            else
+                            {
+                                _logger.LogError("数据源响应中未找到字段 {FieldPath}: {Content}", fieldPath, content);
+                                return null;
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogError("无法访问嵌套字段 {FieldPath}: 父级不是对象类型, 当前Token类型: {TokenType}, 内容: {TokenContent}", 
+                                fieldPath, currentToken.Type, currentToken.ToString());
+                            return null;
+                        }
                     }
+                    
+                    if (currentToken.Type != JTokenType.String)
+                    {
+                        _logger.LogError("最终字段值不是字符串类型: {FieldPath}, 类型: {TokenType}, 内容: {TokenContent}", 
+                            fieldPath, currentToken.Type, currentToken.ToString());
+                        return null;
+                    }
+                    
+                    var result = currentToken.ToString();
+                    _logger.LogInformation("从数据源提取的字段值: {FieldPath} = {Value}", fieldPath, result);
+                    return result;
                 }
                 else
                 {
-                    _logger.LogError("从数据源获取数据失败: {Status} {Path}", response.StatusCode, path);
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("从数据源获取数据失败: {Status} {Path}, 响应内容: {Content}", 
+                        response.StatusCode, path, errorContent);
                 }
             }
             catch (Exception ex)

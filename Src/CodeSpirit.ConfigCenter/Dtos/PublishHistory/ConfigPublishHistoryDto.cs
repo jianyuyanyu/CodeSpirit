@@ -57,6 +57,6 @@ public class ConfigPublishHistoryDto
     /// 发布人
     /// </summary>
     [DisplayName("发布人")]
-    [AggregateField(dataSource: "/api/users/{value}.name", template: "用户: {field}")]
+    [AggregateField(dataSource: "/identity/api/identity/users/{value}.data.name", template: "用户: {field}")]
     public string CreatedBy { get; set; }
 }

@@ -149,7 +149,7 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             };
 
             _mockUserService.Setup(x => x.CreateAsync(createDto))
-                .ThrowsAsync(new BusinessException("用户名已存在"));
+                .ThrowsAsync(new AppServiceException(400, "用户名已存在"));
 
             // Act
             var result = await _controller.CreateUser(createDto);
@@ -175,7 +175,7 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             };
 
             _mockUserService.Setup(x => x.CreateAsync(createDto))
-                .ThrowsAsync(new ValidationException("邮箱格式不正确"));
+                .ThrowsAsync(new AppServiceException(400, "邮箱格式不正确"));
 
             // Act
             var result = await _controller.CreateUser(createDto);
@@ -313,4 +313,4 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             _mockUserService.Verify(x => x.SetActiveStatusAsync(userId, isActive), Times.Once);
         }
     }
-} 
+}

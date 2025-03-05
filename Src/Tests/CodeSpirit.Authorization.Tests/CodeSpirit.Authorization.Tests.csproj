@@ -20,8 +20,12 @@
 		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\..\Components\CodeSpirit.Aggregator\CodeSpirit.Aggregator.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.Authorization\CodeSpirit.Authorization.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Components.TestsBase\CodeSpirit.Components.TestsBase.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Xunit" />
 	</ItemGroup>
 
 </Project>

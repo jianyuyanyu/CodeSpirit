@@ -136,6 +136,18 @@ namespace CodeSpirit.Authorization
         /// <returns>true 表示有权限，false 表示无权限</returns>
         public bool HasPermission(string permissionName, ISet<string> userPermissions)
         {
+            // 检查权限名称是否为 null 或空
+            if (string.IsNullOrEmpty(permissionName))
+            {
+                return false;
+            }
+
+            // 检查用户权限集合是否为 null
+            if (userPermissions == null)
+            {
+                return false;
+            }
+
             //权限继承逻辑：
             //基于权限名称的层级结构（使用下划线分隔）
             //例如对于权限 "module_controller_action"：
@@ -154,6 +166,12 @@ namespace CodeSpirit.Authorization
             if (permissionParts.Length < 2)
             {
                 return false;
+            }
+
+            // 先检查模块级权限
+            if (userPermissions.Contains(permissionParts[0]))
+            {
+                return true;
             }
 
             // 从模块开始逐级查找父权限

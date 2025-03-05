@@ -17,10 +17,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\CodeSpirit.Amis\CodeSpirit.Amis.csproj" />
-		<ProjectReference Include="..\CodeSpirit.Authorization\CodeSpirit.Authorization.csproj" />
-		<ProjectReference Include="..\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />
 		<ProjectReference Include="..\Components\CodeSpirit.Aggregator\CodeSpirit.Aggregator.csproj" />
+		<ProjectReference Include="..\Components\CodeSpirit.Amis\CodeSpirit.Amis.csproj" />
+		<ProjectReference Include="..\Components\CodeSpirit.Authorization\CodeSpirit.Authorization.csproj" />
+		<ProjectReference Include="..\Components\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -19,8 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CodeSpirit.AppHost\CodeSpirit.AppHost.csproj" />
-    <ProjectReference Include="..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
+    <ProjectReference Include="..\..\CodeSpirit.AppHost\CodeSpirit.AppHost.csproj" />
+    <ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

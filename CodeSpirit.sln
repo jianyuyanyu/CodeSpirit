@@ -46,6 +46,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Components.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Authorization.Tests", "Src\Tests\CodeSpirit.Authorization.Tests\CodeSpirit.Authorization.Tests.csproj", "{FF1923CF-3851-4724-9EFC-52CC2C8E3D97}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiServices", "ApiServices", "{3F014F1E-8908-4DC0-9AD9-27E01C9C9118}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.IdentityApi.Tests", "Src\Tests\CodeSpirit.IdentityApi.Tests\CodeSpirit.IdentityApi.Tests.csproj", "{CBC26A49-50DB-42A3-9A60-3CF360DE23A3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -120,6 +124,10 @@ Global
 		{FF1923CF-3851-4724-9EFC-52CC2C8E3D97}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FF1923CF-3851-4724-9EFC-52CC2C8E3D97}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FF1923CF-3851-4724-9EFC-52CC2C8E3D97}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBC26A49-50DB-42A3-9A60-3CF360DE23A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBC26A49-50DB-42A3-9A60-3CF360DE23A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBC26A49-50DB-42A3-9A60-3CF360DE23A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBC26A49-50DB-42A3-9A60-3CF360DE23A3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -139,6 +147,8 @@ Global
 		{E9AA3C88-F320-411E-9CBB-75B0047F0F46} = {F8A99996-D181-441D-8912-7B30A4A3778D}
 		{CC49AB6C-7231-44EB-8C9E-3607F58E63BC} = {E9AA3C88-F320-411E-9CBB-75B0047F0F46}
 		{FF1923CF-3851-4724-9EFC-52CC2C8E3D97} = {E9AA3C88-F320-411E-9CBB-75B0047F0F46}
+		{3F014F1E-8908-4DC0-9AD9-27E01C9C9118} = {F8A99996-D181-441D-8912-7B30A4A3778D}
+		{CBC26A49-50DB-42A3-9A60-3CF360DE23A3} = {3F014F1E-8908-4DC0-9AD9-27E01C9C9118}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FA2D98D6-8906-4629-AE73-437BD9C6A177}

@@ -169,7 +169,7 @@ namespace CodeSpirit.Aggregator.Services
         /// </summary>
         private async Task ProcessSimpleField(JObject obj, string fieldName, string ruleSpec, HttpContext context)
         {
-            if (obj.TryGetValue(fieldName, out JToken value) && value.Type == JTokenType.String)
+            if (obj.TryGetValue(fieldName, out JToken value))
             {
                 string sourceValue = value.ToString();
                 if (!string.IsNullOrEmpty(sourceValue))

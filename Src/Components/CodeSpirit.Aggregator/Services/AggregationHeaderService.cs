@@ -6,7 +6,7 @@ using System.Text;
 
 namespace CodeSpirit.Aggregator.Services
 {
-    public class AggregationHeaderService
+    public class AggregationHeaderService : IAggregationHeaderService
     {
         private readonly ILogger<AggregationHeaderService> _logger;
 
@@ -21,20 +21,7 @@ namespace CodeSpirit.Aggregator.Services
         public string GenerateAggregationHeader(Type modelType)
         {
             var rules = new List<string>();
-            
-            // 获取所有带有 AggregateFieldAttribute 的属性
-            var properties = modelType.GetProperties()
-                .Where(p => p.GetCustomAttribute<AggregateFieldAttribute>() != null);
-
-            foreach (var property in properties)
-            {
-                var attribute = property.GetCustomAttribute<AggregateFieldAttribute>();
-                var fieldPath = GetFieldPath(property);
-                var rule = attribute.GetRuleString(fieldPath);
-                rules.Add(rule);
-                
-                _logger.LogInformation("发现聚合字段: {FieldPath}, 规则: {Rule}", fieldPath, rule);
-            }
+            CollectAggregationRules(modelType, string.Empty, rules);
 
             var headerValue = string.Join(",", rules);
             
@@ -51,27 +38,44 @@ namespace CodeSpirit.Aggregator.Services
         }
 
         /// <summary>
-        /// 获取字段的完整路径（包括嵌套属性）
+        /// 递归收集聚合规则
         /// </summary>
-        private string GetFieldPath(PropertyInfo property)
+        private void CollectAggregationRules(Type type, string parentPath, List<string> rules)
         {
-            var path = new List<string> { property.Name.ToCamelCase() };
-            var currentType = property.DeclaringType;
+            var properties = type.GetProperties()
+                .Where(p => p.GetCustomAttribute<AggregateFieldAttribute>() != null);
 
-            // 处理嵌套属性
-            while (currentType != null)
+            foreach (var property in properties)
             {
-                var parentProperty = currentType.GetProperties()
-                    .FirstOrDefault(p => p.PropertyType == currentType);
-                
-                if (parentProperty == null)
-                    break;
+                var attribute = property.GetCustomAttribute<AggregateFieldAttribute>();
+                var fieldPath = string.IsNullOrEmpty(parentPath) 
+                    ? property.Name.ToCamelCase() 
+                    : $"{parentPath}.{property.Name.ToCamelCase()}";
 
-                path.Insert(0, parentProperty.Name.ToCamelCase());
-                currentType = parentProperty.DeclaringType;
+                // 如果是复杂类型且没有数据源，则递归处理
+                if (IsComplexType(property.PropertyType) && string.IsNullOrEmpty(attribute.DataSource))
+                {
+                    CollectAggregationRules(property.PropertyType, fieldPath, rules);
+                }
+                else
+                {
+                    var rule = attribute.GetRuleString(fieldPath);
+                    rules.Add(rule);
+                    _logger.LogInformation("发现聚合字段: {FieldPath}, 规则: {Rule}", fieldPath, rule);
+                }
             }
+        }
 
-            return string.Join(".", path);
+        /// <summary>
+        /// 判断是否为复杂类型（非基本类型）
+        /// </summary>
+        private bool IsComplexType(Type type)
+        {
+            return !type.IsPrimitive 
+                && type != typeof(string) 
+                && type != typeof(decimal) 
+                && type != typeof(DateTime)
+                && type != typeof(Guid);
         }
     }
 } 

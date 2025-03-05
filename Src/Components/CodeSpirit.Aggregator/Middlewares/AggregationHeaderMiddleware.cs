@@ -13,12 +13,12 @@ namespace CodeSpirit.Aggregator.Middlewares
     public class AggregationHeaderMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly AggregationHeaderService _headerService;
+        private readonly IAggregationHeaderService _headerService;
         private readonly ILogger<AggregationHeaderMiddleware> _logger;
 
         public AggregationHeaderMiddleware(
             RequestDelegate next,
-            AggregationHeaderService headerService,
+            IAggregationHeaderService headerService,
             ILogger<AggregationHeaderMiddleware> logger)
         {
             _next = next ?? throw new ArgumentNullException(nameof(next));

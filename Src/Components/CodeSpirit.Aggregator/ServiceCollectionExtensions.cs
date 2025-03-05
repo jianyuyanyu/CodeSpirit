@@ -9,7 +9,7 @@ namespace CodeSpirit.Aggregator
     {
         public static IServiceCollection AddCodeSpiritAggregator(this IServiceCollection services)
         {
-            services.AddSingleton<AggregationHeaderService>();
+            services.AddSingleton<IAggregationHeaderService, AggregationHeaderService>();
             return services;
         }
 

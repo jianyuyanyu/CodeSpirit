@@ -314,4 +314,51 @@ public class AggregatorTests
         // Assert
         Assert.Equal("User-10004", resultObj.GetProperty("userId").GetString());
     }
+
+    /// <summary>
+    /// 测试长整型ID的聚合处理
+    /// 验证当输入为long类型的UserId时，是否能正确聚合为字符串类型
+    /// </summary>
+    [Fact]
+    public async Task LongTypeUserId_ShouldAggregateToString()
+    {
+        // Arrange
+        var input = new
+        {
+            id = 123,
+            userId = 100045678L // 使用long类型的UserId
+        };
+
+        var aggregateKeys = "userId=/user/{value}.data.name#User-{value}";
+        var mockResponse = new 
+        { 
+            data = new 
+            { 
+                name = "100045678" 
+            }
+        };
+
+        _httpMessageHandlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get && 
+                    req.RequestUri.ToString() == "http://test-api.example.com/user/100045678"),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = System.Net.HttpStatusCode.OK,
+                Content = new StringContent(JsonSerializer.Serialize(mockResponse))
+            });
+
+        var jsonContent = JsonSerializer.Serialize(input);
+
+        // Act
+        var result = await _aggregatorService.AggregateJsonContent(jsonContent, new Dictionary<string, string> { { "userId", aggregateKeys } }, _httpContextMock.Object);
+        var resultObj = JsonSerializer.Deserialize<JsonElement>(result);
+
+        // Assert
+        Assert.Equal("User-100045678", resultObj.GetProperty("userId").GetString());
+    }
 }

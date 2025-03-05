@@ -46,7 +46,7 @@ namespace CodeSpirit.Web.Middlewares
         private async Task HandleProxyRequest(HttpContext context)
         {
             var request = context.Request;
-            
+
             // Check if the request has the required header
             //if (!request.Headers.TryGetValue("X-Forwarded-With", out var forwardedWith) || 
             //    !forwardedWith.Equals("CodeSpirit"))
@@ -54,7 +54,7 @@ namespace CodeSpirit.Web.Middlewares
             //    await _next(context);
             //    return;
             //}
-            
+
             // Check if the request is for a static resource
             var staticFileExtensions = new[] { ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".map" };
             if (staticFileExtensions.Any(ext => request.Path.Value?.EndsWith(ext, StringComparison.OrdinalIgnoreCase) == true))
@@ -105,21 +105,21 @@ namespace CodeSpirit.Web.Middlewares
             {
                 // 确保请求体可以多次读取
                 request.EnableBuffering();
-                
+
                 // 读取请求体
                 var buffer = new byte[request.ContentLength.Value];
                 await request.Body.ReadAsync(buffer, 0, buffer.Length);
-                
+
                 // 重置流位置以便后续中间件可以再次读取
                 request.Body.Position = 0;
-                
+
                 // 添加到代理请求
                 proxyRequest.Content = new ByteArrayContent(buffer);
-                
+
                 // 如果有 Content-Type 头，也复制过来
                 if (request.ContentType != null)
                 {
-                    proxyRequest.Content.Headers.ContentType = 
+                    proxyRequest.Content.Headers.ContentType =
                         MediaTypeHeaderValue.Parse(request.ContentType);
                 }
             }
@@ -152,7 +152,7 @@ namespace CodeSpirit.Web.Middlewares
                 var client = _httpClientFactory.CreateClient();
                 // 设置请求超时时间
                 client.Timeout = TimeSpan.FromSeconds(30);
-                
+
                 using var response = await client.SendAsync(proxyRequest,
                     HttpCompletionOption.ResponseHeadersRead,
                     context.RequestAborted);
@@ -203,7 +203,7 @@ namespace CodeSpirit.Web.Middlewares
             // 检查是否需要进行聚合处理
             bool needsAggregation = _aggregatorService.NeedsAggregation(response);
             Dictionary<string, string> aggregationRules = [];
-            
+
             if (needsAggregation)
             {
                 aggregationRules = _aggregatorService.GetAggregationRules(response);
@@ -214,17 +214,18 @@ namespace CodeSpirit.Web.Middlewares
                 // 移除聚合相关的头信息，不传递给客户端
                 if (header.Key.StartsWith("X-Aggregate-", StringComparison.OrdinalIgnoreCase))
                     continue;
-            
+
                 if (!header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
                 {
                     context.Response.Headers[header.Key] = header.Value.ToArray();
                 }
             }
 
-            // 分别处理 Content Headers
+            // 分别处理 Content Headers，跳过 Content-Length 和 Transfer-Encoding
             foreach (var header in response.Content.Headers)
             {
-                if (!header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                if (!header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase) &&
+                    !header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
                 {
                     context.Response.Headers[header.Key] = header.Value.ToArray();
                 }
@@ -237,11 +238,12 @@ namespace CodeSpirit.Web.Middlewares
             {
                 // 读取JSON内容
                 string jsonContent = await response.Content.ReadAsStringAsync();
+                logger.LogInformation("jsonContent：{jsonContent}", jsonContent);
                 try
                 {
                     // 使用聚合器服务处理JSON内容
                     var aggregatedJson = await _aggregatorService.AggregateJsonContent(jsonContent, aggregationRules, context);
-                    
+
                     // 写入修改后的JSON到响应
                     await context.Response.WriteAsync(aggregatedJson);
                 }
@@ -257,7 +259,6 @@ namespace CodeSpirit.Web.Middlewares
                 // 不需要聚合，使用流式传输
                 using (var responseStream = await response.Content.ReadAsStreamAsync())
                 {
-                    // 不设置ContentLength，使用分块传输
                     await responseStream.CopyToAsync(context.Response.Body);
                     await context.Response.Body.FlushAsync();
                 }

@@ -77,24 +77,19 @@ namespace CodeSpirit.Aggregator.Middlewares
 
             // 获取返回类型
             var returnType = controllerActionDescriptor.MethodInfo.ReturnType;
-
-            // 处理 Task<T> 和 ActionResult<T> 类型
+            
+            // 提取实际的响应类型
             if (returnType.IsGenericType)
             {
-                Type genericDef = returnType.GetGenericTypeDefinition();
-                if (genericDef == typeof(ActionResult<>))
+                var genericDef = returnType.GetGenericTypeDefinition();
+                if (genericDef == typeof(Task<>))
                 {
                     returnType = returnType.GetGenericArguments()[0];
                 }
-                if (genericDef == typeof(Task<>))
+                if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(ActionResult<>))
                 {
-                    Type taskInnerType = returnType.GetGenericArguments()[0];
-                    if (taskInnerType.IsGenericType && taskInnerType.GetGenericTypeDefinition() == typeof(ActionResult<>))
-                    {
-                        returnType = taskInnerType.GetGenericArguments()[0];
-                    }
+                    returnType = returnType.GetGenericArguments()[0];
                 }
-                returnType = returnType.ExtractDataType();
             }
 
             return returnType;

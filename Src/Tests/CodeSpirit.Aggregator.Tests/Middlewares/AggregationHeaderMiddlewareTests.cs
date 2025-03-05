@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using System.Reflection;
 using System.Text;
+using System.ComponentModel;
+using CodeSpirit.Core.Attributes;
 using Xunit;
 
 namespace CodeSpirit.Aggregator.Tests.Middlewares
@@ -141,6 +143,81 @@ namespace CodeSpirit.Aggregator.Tests.Middlewares
         }
 
         /// <summary>
+        /// 测试场景：处理包含聚合字段的DTO响应
+        /// 验证点：
+        /// 1. 中间件能够正确处理包含聚合字段的DTO
+        /// 2. 确保生成正确的聚合头部信息
+        /// 3. 验证Base64编码的处理
+        /// </summary>
+        [Fact]
+        public async Task InvokeAsync_WithDtoResponse_ShouldAddEncodedHeader()
+        {
+            // Arrange
+            var responseBody = new MemoryStream();
+            _httpContext.Response.Body = responseBody;
+
+            // 创建一个特定的控制器方法用于DTO测试
+            var methodInfo = typeof(TestController)
+                .GetMethod(nameof(TestController.TestDtoAction))!;
+
+            var controllerActionDescriptor = new ControllerActionDescriptor
+            {
+                MethodInfo = methodInfo,
+                RouteValues = new Dictionary<string, string>
+                {
+                    { "controller", "Test" },
+                    { "action", "TestDtoAction" }
+                }
+            };
+
+            _httpContext.SetEndpoint(new Endpoint(
+                context => Task.CompletedTask,
+                new EndpointMetadataCollection(controllerActionDescriptor),
+                "Test DTO endpoint"
+            ));
+
+            // 模拟生成Base64编码的聚合头部
+            var headerContent = "createdBy=/identity/api/identity/users/{value}.data.name#用户: {field}";
+            var expectedHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(headerContent));
+            
+            _headerServiceMock
+                .Setup(x => x.GenerateAggregationHeader(It.IsAny<Type>()))
+                .Returns(expectedHeader)
+                .Verifiable();
+
+            var middleware = new AggregationHeaderMiddleware(
+                async (context) =>
+                {
+                    var response = new TestPublishHistoryDto { Id = 1, CreatedBy = "admin" };
+                    var json = System.Text.Json.JsonSerializer.Serialize(response);
+                    var bytes = Encoding.UTF8.GetBytes(json);
+                    await context.Response.Body.WriteAsync(bytes, 0, bytes.Length);
+                },
+                _headerServiceMock.Object,
+                _loggerMock.Object
+            );
+
+            // Act
+            await middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            _headerServiceMock.Verify(x => x.GenerateAggregationHeader(It.Is<Type>(t => 
+                t == typeof(ActionResult<TestPublishHistoryDto>) || 
+                t == typeof(TestPublishHistoryDto))), Times.Once);
+            Assert.Equal(expectedHeader, _httpContext.Response.Headers["X-Aggregate-Keys"]);
+            
+            // 验证响应内容
+            responseBody.Position = 0;
+            var responseContent = await new StreamReader(responseBody).ReadToEndAsync();
+            Assert.Contains("admin", responseContent);
+            
+            // 记录调试信息
+            _loggerMock.Object.LogInformation($"Expected header: {expectedHeader}");
+            _loggerMock.Object.LogInformation($"Actual header: {_httpContext.Response.Headers["X-Aggregate-Keys"]}");
+            _loggerMock.Object.LogInformation($"Response content: {responseContent}");
+        }
+
+        /// <summary>
         /// 辅助方法：创建用于测试的终结点
         /// 用于模拟包含特定返回类型的控制器操作终结点
         /// </summary>
@@ -174,6 +251,22 @@ namespace CodeSpirit.Aggregator.Tests.Middlewares
         private class TestController
         {
             public TestResponse TestAction() => new TestResponse();
+            
+            public ActionResult<TestPublishHistoryDto> TestDtoAction() => 
+                new TestPublishHistoryDto { Id = 1, CreatedBy = "admin" };
+        }
+
+        /// <summary>
+        /// 测试用的DTO类型
+        /// </summary>
+        private class TestPublishHistoryDto
+        {
+            [DisplayName("ID")]
+            public int Id { get; set; }
+
+            [DisplayName("发布人")]
+            [AggregateField(dataSource: "/identity/api/identity/users/{value}.data.name", template: "用户: {field}")]
+            public string CreatedBy { get; set; }
         }
     }
 } 

@@ -1,9 +1,13 @@
 using CodeSpirit.Aggregator.Services;
+using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using Xunit;
 
 namespace CodeSpirit.Aggregator.Tests.Services
 {
@@ -15,6 +19,7 @@ namespace CodeSpirit.Aggregator.Tests.Services
     /// 3. 动态数据补充
     /// 4. 嵌套属性的处理
     /// 5. 特殊字符处理
+    /// 6. DTO场景处理
     /// </summary>
     public class AggregationHeaderServiceTests
     {
@@ -136,6 +141,30 @@ namespace CodeSpirit.Aggregator.Tests.Services
             Assert.Contains("特殊字段#User-{value}", decodedString);
         }
 
+        /// <summary>
+        /// 测试目的：验证DTO类型的聚合头部生成
+        /// 验证点：
+        /// 1. 带有DisplayName的字段处理
+        /// 2. 复杂数据源路径处理
+        /// </summary>
+        [Fact]
+        public void GenerateAggregationHeader_WithDtoModel_ReturnsCorrectHeader()
+        {
+            // Arrange
+            var modelType = typeof(Task<ActionResult<ApiResponse<PageList<TestPublishHistoryDto>>>>);
+
+            // Act
+            var result = _service.GenerateAggregationHeader(modelType);
+            _loggerMock.Object.LogInformation($"Generated header: {result}");
+
+            // Assert
+            Assert.True(IsBase64String(result), "结果应该是Base64编码的");
+            var decodedString = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(result));
+            _loggerMock.Object.LogInformation($"Decoded header: {decodedString}");
+            
+            Assert.Contains("data.items.createdBy=/identity/api/identity/users/{value}.data.name#用户: {field}", decodedString);
+        }
+
         private bool IsBase64String(string base64)
         {
             if (string.IsNullOrWhiteSpace(base64)) return false;
@@ -206,6 +235,16 @@ namespace CodeSpirit.Aggregator.Tests.Services
 
             [AggregateField(template: "User-{value}")]
             public string 特殊字段 { get; set; }
+        }
+
+        private class TestPublishHistoryDto
+        {
+            [DisplayName("ID")]
+            public int Id { get; set; }
+
+            [DisplayName("发布人")]
+            [AggregateField(dataSource: "/identity/api/identity/users/{value}.data.name", template: "用户: {field}")]
+            public string CreatedBy { get; set; }
         }
     }
 } 

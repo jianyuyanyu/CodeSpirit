@@ -29,7 +29,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             // 初始化UserService
             _userService = new UserService(
                 UserRepository,
-                MockMapper.Object,
+                Mapper,
                 UserManager,
                 RoleManager,
                 MockUserServiceLogger.Object,
@@ -56,7 +56,10 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                     Email = "test@example.com",
                     IsActive = true,
                     Name = "Test User",
-                    LastLoginTime = DateTimeOffset.Now.AddDays(-1)
+                    LastLoginTime = DateTimeOffset.Now.AddDays(-1),
+                    SecurityStamp = Guid.NewGuid().ToString(),
+                    LockoutEnabled = true, // 启用锁定功能
+                    LockoutEnd = DateTimeOffset.Now.AddDays(1) // 锁定用户
                 },
                 new ApplicationUser
                 {
@@ -65,35 +68,35 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                     Email = "test2@example.com",
                     IsActive = true,
                     Name = "Test User 2",
-                    LastLoginTime = DateTimeOffset.Now.AddDays(-2)
+                    LastLoginTime = DateTimeOffset.Now.AddDays(-2),
+                    SecurityStamp = Guid.NewGuid().ToString()
                 }
             };
             
             SeedUsers(users.ToArray());
             
-            // 配置Mapper模拟
-            MockMapper.Setup(x => x.Map<UserDto>(It.IsAny<ApplicationUser>()))
-                .Returns<ApplicationUser>(user => new UserDto
-                {
-                    Id = user.Id,
-                    UserName = user.UserName,
-                    Email = user.Email,
-                    Name = user.Name,
-                    IsActive = user.IsActive,
-                    LastLoginTime = user.LastLoginTime
-                });
-                
-            // 不再模拟 UserManager，使用真实实现
+            // 使用真实映射，不再模拟Mapper
             
             // 为测试用户设置密码（使用真实的 UserManager）
             var passwordHasher = new PasswordHasher<ApplicationUser>();
-            var user1 = users[0];
-            user1.PasswordHash = passwordHasher.HashPassword(user1, "testpassword");
-            UserManager.UpdateAsync(user1).Wait();
             
-            var user2 = users[1];
-            user2.PasswordHash = passwordHasher.HashPassword(user2, "testpassword");
-            UserManager.UpdateAsync(user2).Wait();
+            foreach (var user in users)
+            {
+                var dbUser = UserManager.FindByIdAsync(user.Id.ToString()).Result;
+                dbUser.PasswordHash = passwordHasher.HashPassword(dbUser, "testpassword");
+                UserManager.UpdateAsync(dbUser).Wait();
+            }
+            
+            // 添加测试角色
+            if (!RoleManager.RoleExistsAsync("TestRole").Result)
+            {
+                var role = new ApplicationRole
+                {
+                    Name = "TestRole",
+                    Description = "Test Role Description"
+                };
+                RoleManager.CreateAsync(role).Wait();
+            }
         }
 
         /// <summary>
@@ -125,18 +128,16 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         {
             // Arrange
             Setup();
-            long userId = 1;
-            var roles = new List<string> { "Admin" };
+            var userId = 1L;
+            var roles = new List<string> { "TestRole" };
             
             // Act
             await _userService.AssignRolesAsync(userId, roles);
             
             // Assert
             var user = await UserManager.FindByIdAsync(userId.ToString());
-            Assert.NotNull(user);
-            
             var userRoles = await UserManager.GetRolesAsync(user);
-            Assert.Contains("Admin", userRoles);
+            Assert.Contains("TestRole", userRoles);
         }
 
         [Fact]
@@ -144,19 +145,14 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         {
             // Arrange
             Setup();
-            long userId = 1;
-            bool isActive = false;
+            var userId = 1L;
             
             // Act
-            await _userService.SetActiveStatusAsync(userId, isActive);
+            await _userService.SetActiveStatusAsync(userId, false);
             
             // Assert
             var user = await UserManager.FindByIdAsync(userId.ToString());
-            Assert.NotNull(user);
             Assert.False(user.IsActive);
-            
-            // 恢复原始状态
-            await _userService.SetActiveStatusAsync(userId, true);
         }
 
         [Fact]
@@ -164,19 +160,18 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         {
             // Arrange
             Setup();
-            long userId = 1;
+            var userId = 1L;
             
-            // 先锁定用户
+            // 确保用户被锁定
             var user = await UserManager.FindByIdAsync(userId.ToString());
-            await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.Now.AddDays(1));
+            Assert.NotNull(user.LockoutEnd); // 确认用户被锁定
             
             // Act
             await _userService.UnlockUserAsync(userId);
             
             // Assert
             user = await UserManager.FindByIdAsync(userId.ToString());
-            Assert.NotNull(user);
-            Assert.Null(user.LockoutEnd);
+            Assert.Null(user.LockoutEnd); // 确认锁定已解除
         }
 
         [Fact]

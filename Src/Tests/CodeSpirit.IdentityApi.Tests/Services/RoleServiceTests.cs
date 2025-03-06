@@ -21,10 +21,13 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             _mockCache = new Mock<IDistributedCache>();
             _mockIdGenerator = new Mock<IIdGenerator>();
             
+            // 设置ID生成器
+            _mockIdGenerator.Setup(x => x.NewId()).Returns(3L);
+            
             // 初始化RoleService
             _roleService = new RoleService(
                 RoleRepository,
-                MockMapper.Object,
+                Mapper,
                 _mockCache.Object,
                 MockRoleServiceLogger.Object,
                 _mockIdGenerator.Object
@@ -65,38 +68,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             
             SeedRoles(roles.ToArray());
             
-            // 配置Mapper模拟
-            MockMapper.Setup(x => x.Map<RoleDto>(It.IsAny<ApplicationRole>()))
-                .Returns<ApplicationRole>(role => new RoleDto
-                {
-                    Id = role.Id.ToString(),
-                    Name = role.Name,
-                    Description = role.Description,
-                    PermissionIds = role.RolePermission?.PermissionIds?.ToList() ?? new List<string>()
-                });
-            
-            MockMapper.Setup(x => x.Map<ApplicationRole>(It.IsAny<RoleCreateDto>()))
-                .Returns<RoleCreateDto>(dto => new ApplicationRole
-                {
-                    Id = 3,
-                    Name = dto.Name,
-                    Description = dto.Description,
-                    RolePermission = new RolePermission
-                    {
-                        PermissionIds = dto.PermissionAssignments.ToArray()
-                    }
-                });
-                
-            MockMapper.Setup(x => x.Map<List<RoleDto>>(It.IsAny<List<ApplicationRole>>()))
-                .Returns<List<ApplicationRole>>(roles => roles.Select(r => new RoleDto
-                {
-                    Id = r.Id.ToString(),
-                    Name = r.Name,
-                    Description = r.Description,
-                    PermissionIds = r.RolePermission?.PermissionIds?.ToList() ?? new List<string>()
-                }).ToList());
-                
-            // 不再模拟 RoleManager，使用真实实现
+            // 使用真实映射，不再模拟Mapper
         }
 
         /// <summary>

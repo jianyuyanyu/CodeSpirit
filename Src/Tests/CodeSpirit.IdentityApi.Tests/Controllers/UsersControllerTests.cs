@@ -151,11 +151,13 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             _mockUserService.Setup(x => x.CreateAsync(createDto))
                 .ThrowsAsync(new AppServiceException(400, "用户名已存在"));
 
-            // Act
-            var result = await _controller.CreateUser(createDto);
-
-            // Assert
-            AssertErrorResponse(result, 400, "用户名已存在");
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<AppServiceException>(
+                async () => await _controller.CreateUser(createDto)
+            );
+            
+            Assert.Equal(400, exception.Code);
+            Assert.Equal("用户名已存在", exception.Message);
         }
 
         /// <summary>
@@ -177,11 +179,13 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             _mockUserService.Setup(x => x.CreateAsync(createDto))
                 .ThrowsAsync(new AppServiceException(400, "邮箱格式不正确"));
 
-            // Act
-            var result = await _controller.CreateUser(createDto);
-
-            // Assert
-            AssertErrorResponse(result, 400, "邮箱格式不正确");
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<AppServiceException>(
+                async () => await _controller.CreateUser(createDto)
+            );
+            
+            Assert.Equal(400, exception.Code);
+            Assert.Equal("邮箱格式不正确", exception.Message);
         }
 
         /// <summary>

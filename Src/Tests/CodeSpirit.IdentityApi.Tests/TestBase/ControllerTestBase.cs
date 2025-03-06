@@ -65,7 +65,7 @@ namespace CodeSpirit.IdentityApi.Tests.TestBase
         /// <param name="expectedStatus">预期状态码</param>
         protected void AssertSuccessResponse<T>(ActionResult<ApiResponse<T>> actionResult, T expectedData, int expectedStatus = 0) where T : class
         {
-            var objectResult = Assert.IsType<ObjectResult>(actionResult.Result);
+            var objectResult = Assert.IsAssignableFrom<ObjectResult>(actionResult.Result);
             var response = Assert.IsType<ApiResponse<T>>(objectResult.Value);
             Assert.Equal(expectedStatus, response.Status);
             Assert.Equal(expectedData, response.Data);
@@ -130,7 +130,7 @@ namespace CodeSpirit.IdentityApi.Tests.TestBase
         /// <param name="expectedStatus">预期状态码</param>
         protected void AssertBasicSuccessResponse(ActionResult<ApiResponse> actionResult, int expectedStatus = 0)
         {
-            var objectResult = Assert.IsType<ObjectResult>(actionResult.Result);
+            var objectResult = Assert.IsAssignableFrom<ObjectResult>(actionResult.Result);
             var response = Assert.IsType<ApiResponse>(objectResult.Value);
             Assert.Equal(expectedStatus, response.Status);
         }

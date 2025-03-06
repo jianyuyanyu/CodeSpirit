@@ -53,7 +53,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 SignInManager, // 使用真实的 SignInManager
                 _mockLoginLogRepository.Object,
                 _mockConfiguration.Object,
-                MockMapper.Object,
+                Mapper,
                 MockHttpContextAccessor.Object
             );
             
@@ -99,13 +99,30 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 Name = "Test User",
                 NormalizedUserName = "TESTUSER",
                 NormalizedEmail = "TEST@EXAMPLE.COM",
-                EmailConfirmed = true
+                EmailConfirmed = true,
+                SecurityStamp = Guid.NewGuid().ToString()
             };
             
-            // 创建用户并设置密码
+            // 创建非活跃用户
+            var inactiveUser = new ApplicationUser
+            {
+                Id = 2,
+                UserName = "inactiveuser",
+                Email = "inactive@example.com",
+                IsActive = false,
+                Name = "Inactive User",
+                NormalizedUserName = "INACTIVEUSER",
+                NormalizedEmail = "INACTIVE@EXAMPLE.COM",
+                EmailConfirmed = true,
+                SecurityStamp = Guid.NewGuid().ToString()
+            };
+            
+            // 创建密码哈希
             var passwordHasher = new PasswordHasher<ApplicationUser>();
             testUser.PasswordHash = passwordHasher.HashPassword(testUser, "testpassword");
+            inactiveUser.PasswordHash = passwordHasher.HashPassword(inactiveUser, "testpassword");
             
+            // 保存用户
             if (UserManager.FindByNameAsync(testUser.UserName).Result == null)
             {
                 var result = UserManager.CreateAsync(testUser).Result;
@@ -118,21 +135,6 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 UserManager.AddToRoleAsync(testUser, roleName).Wait();
             }
             
-            // 添加一个非活跃用户
-            var inactiveUser = new ApplicationUser
-            {
-                Id = 2,
-                UserName = "inactiveuser",
-                Email = "inactive@example.com",
-                IsActive = false,
-                Name = "Inactive User",
-                NormalizedUserName = "INACTIVEUSER",
-                NormalizedEmail = "INACTIVE@EXAMPLE.COM",
-                EmailConfirmed = true
-            };
-            
-            inactiveUser.PasswordHash = passwordHasher.HashPassword(inactiveUser, "testpassword");
-            
             if (UserManager.FindByNameAsync(inactiveUser.UserName).Result == null)
             {
                 var result = UserManager.CreateAsync(inactiveUser).Result;
@@ -142,14 +144,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 }
             }
             
-            // 配置 Mapper 模拟
-            MockMapper.Setup(x => x.Map<UserDto>(It.IsAny<ApplicationUser>()))
-                .Returns<ApplicationUser>(user => new UserDto
-                {
-                    Id = user.Id,
-                    UserName = user.UserName,
-                    Email = user.Email
-                });
+            // 使用真实映射，不再模拟Mapper
         }
 
         /// <summary>

@@ -28,7 +28,8 @@ namespace CodeSpirit.IdentityApi.Tests.TestBase
         protected Mock<ILogger<RoleService>> MockRoleServiceLogger;
         protected Mock<ILogger<UserService>> MockUserServiceLogger;
         protected Mock<ILogger<AuthService>> MockAuthServiceLogger;
-        protected Mock<IMapper> MockMapper;
+        // 改用真实的Mapper，不再模拟
+        protected IMapper Mapper;
         protected Mock<IHttpContextAccessor> MockHttpContextAccessor;
         protected Mock<ICurrentUser> MockCurrentUser;
         protected Mock<IDataFilter> MockDataFilter;
@@ -66,7 +67,7 @@ namespace CodeSpirit.IdentityApi.Tests.TestBase
             MockRoleServiceLogger = new Mock<ILogger<RoleService>>();
             MockUserServiceLogger = new Mock<ILogger<UserService>>();
             MockAuthServiceLogger = new Mock<ILogger<AuthService>>();
-            MockMapper = new Mock<IMapper>();
+            // 不再模拟Mapper，将在SetupInMemoryDatabase中配置真实的Mapper
             MockHttpContextAccessor = new Mock<IHttpContextAccessor>();
             MockCurrentUser = new Mock<ICurrentUser>();
             MockDataFilter = new Mock<IDataFilter>();
@@ -109,11 +110,16 @@ namespace CodeSpirit.IdentityApi.Tests.TestBase
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
             
+            // 添加AutoMapper配置
+            services.AddAutoMapper(cfg => {
+                // 注册来自 IdentityApi 的所有 Profile
+                cfg.AddMaps(typeof(CodeSpirit.IdentityApi.MappingProfiles.RoleProfile).Assembly);
+            });
+            
             // 注册必要的服务
             services.AddSingleton(MockHttpContextAccessor.Object);
             services.AddSingleton(MockCurrentUser.Object);
             services.AddSingleton(MockDataFilter.Object);
-            services.AddSingleton(MockMapper.Object);
             
             // 添加日志工厂和 Identity 所需的日志服务
             services.AddLogging(builder => builder.AddDebug());
@@ -128,6 +134,9 @@ namespace CodeSpirit.IdentityApi.Tests.TestBase
             UserManager = ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             RoleManager = ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
             SignInManager = ServiceProvider.GetRequiredService<SignInManager<ApplicationUser>>();
+            
+            // 获取真实的 Mapper
+            Mapper = ServiceProvider.GetRequiredService<IMapper>();
         }
         
         /// <summary>

@@ -139,7 +139,7 @@ public class UserQueryDto : PagedRequest
 }
 ```
 
-![查询表单](..\Res\search.png)
+![查询表单](../Res/search.png)
 
 #### 创建用户DTO：
 
@@ -204,7 +204,7 @@ public class CreateUserDto
 }
 ```
 
-![创建表单](..\Res\Create.png)
+![创建表单](../Res/Create.png)
 
 #### 用户信息DTO（创建列的依据）：
 
@@ -264,7 +264,7 @@ public class UserDto
 }
 ```
 
-![列表](..\Res\list.png)
+![列表](../Res/list.png)
 
 ### 3. 定义服务接口
 
@@ -454,7 +454,7 @@ CodeSpirit框架会根据控制器和DTO的定义自动生成完整的用户管�
    
    CodeSpirit亦可以支持个性化表单，如：
    
-   ![个性化表单](..\Res\json-settings.png)
+   ![个性化表单](../Res/json-settings.png)
 
 ## 六、开发流程示例
 

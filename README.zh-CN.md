@@ -190,14 +190,12 @@ https://codespirit-app.xin-lai.com/
 
 ## 开发文档
 
-- Github：[xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit)
-- Gitee：[magicodes/CodeSpirit](https://gitee.com/magicodes/code-spirit)
+- Github：[xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit)**（定期推送）**
+- Gitee：[magicodes/CodeSpirit](https://gitee.com/magicodes/code-spirit)  **（优先推送）**
 
-[📘 完整开发文档](https://codespirit-docs.xin-lai.com/) | [💬 加入技术社区](https://codespirit-chat.xin-lai.com/)
+[📘 上手文档](./Docs/CodeSpirit（码灵）开发指南（初稿）.md) | [💬 加入技术社区（暂未开放，请关注公众号）](https://codespirit-chat.xin-lai.com/)
 
 1. [界面生成引擎](./Docs/CodeSpirit.Amis.md)
-2. [后端架构说明](./Docs/后端架构.md)
-3. CRUD开发（TODO）
 
 ![公众号](./Res/qrcode.jpg)
 

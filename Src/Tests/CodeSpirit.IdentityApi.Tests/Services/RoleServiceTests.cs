@@ -12,17 +12,14 @@ namespace CodeSpirit.IdentityApi.Tests.Services
     {
         private readonly RoleService _roleService;
         private readonly Mock<IDistributedCache> _mockCache;
-        private readonly Mock<IIdGenerator> _mockIdGenerator;
+        private readonly IIdGenerator _idGenerator;
 
         public RoleServiceTests()
             : base()
         {
             // 设置额外依赖
             _mockCache = new Mock<IDistributedCache>();
-            _mockIdGenerator = new Mock<IIdGenerator>();
-            
-            // 设置ID生成器
-            _mockIdGenerator.Setup(x => x.NewId()).Returns(3L);
+            _idGenerator = new SnowflakeIdGenerator();
             
             // 初始化RoleService
             _roleService = new RoleService(
@@ -30,7 +27,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 Mapper,
                 _mockCache.Object,
                 MockRoleServiceLogger.Object,
-                _mockIdGenerator.Object
+                _idGenerator
             );
             
             // 准备测试数据

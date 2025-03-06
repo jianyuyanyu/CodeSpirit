@@ -18,13 +18,13 @@ namespace CodeSpirit.IdentityApi.Tests.Services
     public class UserServiceTests : ServiceTestBase
     {
         private readonly UserService _userService;
-        private readonly Mock<IIdGenerator> _mockIdGenerator;
+        private readonly IIdGenerator _idGenerator;
 
         public UserServiceTests()
             : base()
         {
             // 设置额外依赖
-            _mockIdGenerator = new Mock<IIdGenerator>();
+            _idGenerator = new SnowflakeIdGenerator();
             
             // 初始化UserService
             _userService = new UserService(
@@ -34,7 +34,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 RoleManager,
                 MockUserServiceLogger.Object,
                 MockHttpContextAccessor.Object,
-                _mockIdGenerator.Object,
+                _idGenerator,
                 MockCurrentUser.Object
             );
             

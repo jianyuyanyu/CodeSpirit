@@ -50,7 +50,6 @@ public class ConfigPublishHistoryDto
     /// 发布时间
     /// </summary>
     [DisplayName("发布时间")]
-    [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
     public DateTime CreatedAt { get; set; }
 
     /// <summary>

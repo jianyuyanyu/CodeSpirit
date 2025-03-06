@@ -85,6 +85,14 @@ namespace CodeSpirit.IdentityApi.Services
                 return (false, ErrorMessages.InvalidCredentials, null, null);
             }
 
+            // 检查用户是否活跃
+            if (!user.IsActive)
+            {
+                loginLog.FailureReason = "用户账户未激活";
+                await _loginLogRepository.AddAsync(loginLog);
+                return (false, ErrorMessages.InactiveAccount, null, null);
+            }
+
             // 检查用户密码是否正确并处理结果
             SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
 
@@ -98,20 +106,28 @@ namespace CodeSpirit.IdentityApi.Services
         /// <returns>返回登录结果</returns>
         public async Task<(bool Success, string Message, string Token, UserDto UserInfo)> ImpersonateLoginAsync(string userName)
         {
-            // 使用Include确保加载所需的关联数据
-            ApplicationUser user = await _userManager.Users
-                .Include(u => u.UserRoles)
-                    .ThenInclude(ur => ur.Role)
-                        .ThenInclude(r => r.RolePermission)
-                .FirstOrDefaultAsync(u => u.UserName == userName);
-
-            LoginLog loginLog = CreateLoginLog(user);
-
-            // 如果用户不存在，记录登录日志并返回失败信息
+            // 使用 FindByNameAsync 查找用户，这是更符合 Identity 框架最佳实践的方法
+            ApplicationUser user = await _userManager.FindByNameAsync(userName);
+            
+            // 如果用户不存在，返回失败信息
             if (user == null)
             {
                 return (false, ErrorMessages.InvalidCredentials, null, null);
             }
+            
+            // 创建登录日志
+            LoginLog loginLog = CreateLoginLog(user);
+            
+            // 检查用户是否活跃
+            if (!user.IsActive)
+            {
+                loginLog.FailureReason = "用户账户未激活";
+                await _loginLogRepository.AddAsync(loginLog);
+                return (false, ErrorMessages.InactiveAccount, null, null);
+            }
+            
+            // 加载用户角色信息
+            await _userManager.GetRolesAsync(user);
 
             // 模拟登录：直接生成token
             return await HandleSuccessfulLoginAsync(user, loginLog);
@@ -243,5 +259,6 @@ namespace CodeSpirit.IdentityApi.Services
     {
         public const string InvalidCredentials = "用户名或密码不正确，请重新输入！";
         public const string AccountLocked = "账户被锁定，请稍后再试！";
+        public const string InactiveAccount = "账户未激活，请联系管理员！";
     }
 }

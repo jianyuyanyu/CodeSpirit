@@ -11,77 +11,105 @@ using AutoMapper;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using CodeSpirit.Core.IdGenerator;
+using CodeSpirit.IdentityApi.Tests.TestBase;
 
 namespace CodeSpirit.IdentityApi.Tests.Services
 {
-    public class UserServiceTests
+    public class UserServiceTests : ServiceTestBase
     {
-        private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
-        private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
-        private readonly Mock<IRepository<ApplicationUser>> _mockRepository;
-        private readonly Mock<IMapper> _mockMapper;
-        private readonly Mock<ILogger<UserService>> _mockLogger;
-        private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
-        private readonly Mock<IIdGenerator> _mockIdGenerator;
-        private readonly Mock<ICurrentUser> _mockCurrentUser;
         private readonly UserService _userService;
+        private readonly Mock<IIdGenerator> _mockIdGenerator;
 
         public UserServiceTests()
+            : base()
         {
-            // 设置UserManager Mock
-            var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
-            _mockUserManager = new Mock<UserManager<ApplicationUser>>(
-                userStoreMock.Object, null, null, null, null, null, null, null, null);
-
-            // 设置RoleManager Mock
-            var roleStoreMock = new Mock<IRoleStore<ApplicationRole>>();
-            _mockRoleManager = new Mock<RoleManager<ApplicationRole>>(
-                roleStoreMock.Object, null, null, null, null);
-
-            // 设置其他依赖项
-            _mockRepository = new Mock<IRepository<ApplicationUser>>();
-            _mockMapper = new Mock<IMapper>();
-            _mockLogger = new Mock<ILogger<UserService>>();
-            _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+            // 设置额外依赖
             _mockIdGenerator = new Mock<IIdGenerator>();
-            _mockCurrentUser = new Mock<ICurrentUser>();
-
+            
             // 初始化UserService
             _userService = new UserService(
-                _mockRepository.Object,
-                _mockMapper.Object,
-                _mockUserManager.Object,
-                _mockRoleManager.Object,
-                _mockLogger.Object,
-                _mockHttpContextAccessor.Object,
+                UserRepository,
+                MockMapper.Object,
+                UserManager,
+                RoleManager,
+                MockUserServiceLogger.Object,
+                MockHttpContextAccessor.Object,
                 _mockIdGenerator.Object,
-                _mockCurrentUser.Object
+                MockCurrentUser.Object
             );
+            
+            // 准备测试数据
+            SeedTestData();
+        }
+        
+        /// <summary>
+        /// 准备用户测试数据
+        /// </summary>
+        protected override void SeedTestData()
+        {
+            var users = new List<ApplicationUser>
+            {
+                new ApplicationUser
+                {
+                    Id = 1,
+                    UserName = "testuser",
+                    Email = "test@example.com",
+                    IsActive = true,
+                    Name = "Test User",
+                    LastLoginTime = DateTimeOffset.Now.AddDays(-1)
+                },
+                new ApplicationUser
+                {
+                    Id = 2,
+                    UserName = "testuser2",
+                    Email = "test2@example.com",
+                    IsActive = true,
+                    Name = "Test User 2",
+                    LastLoginTime = DateTimeOffset.Now.AddDays(-2)
+                }
+            };
+            
+            SeedUsers(users.ToArray());
+            
+            // 配置Mapper模拟
+            MockMapper.Setup(x => x.Map<UserDto>(It.IsAny<ApplicationUser>()))
+                .Returns<ApplicationUser>(user => new UserDto
+                {
+                    Id = user.Id,
+                    UserName = user.UserName,
+                    Email = user.Email,
+                    Name = user.Name,
+                    IsActive = user.IsActive,
+                    LastLoginTime = user.LastLoginTime
+                });
+                
+            // 不再模拟 UserManager，使用真实实现
+            
+            // 为测试用户设置密码（使用真实的 UserManager）
+            var passwordHasher = new PasswordHasher<ApplicationUser>();
+            var user1 = users[0];
+            user1.PasswordHash = passwordHasher.HashPassword(user1, "testpassword");
+            UserManager.UpdateAsync(user1).Wait();
+            
+            var user2 = users[1];
+            user2.PasswordHash = passwordHasher.HashPassword(user2, "testpassword");
+            UserManager.UpdateAsync(user2).Wait();
+        }
+
+        /// <summary>
+        /// 在每个测试方法执行前自动清理数据库上下文
+        /// </summary>
+        protected void Setup()
+        {
+            ClearDbContext();
         }
 
         [Fact]
         public async Task GetUsersAsync_ReturnsPagedList()
         {
             // Arrange
+            Setup();
             var queryDto = new UserQueryDto { Page = 1, PerPage = 10 };
-            var users = new List<ApplicationUser>
-            {
-                new ApplicationUser { Id = 1, UserName = "user1", Email = "user1@example.com" },
-                new ApplicationUser { Id = 2, UserName = "user2", Email = "user2@example.com" }
-            };
-
-            _mockRepository.Setup(x => x.CreateQuery())
-                .Returns(users.AsQueryable());
-
-            var userDtos = users.Select(u => new UserDto 
-            { 
-                Id = u.Id, 
-                UserName = u.UserName, 
-                Email = u.Email 
-            }).ToList();
-
-            _mockMapper.Setup(x => x.Map<List<UserDto>>(It.IsAny<List<ApplicationUser>>()))
-                .Returns(userDtos);
 
             // Act
             var result = await _userService.GetUsersAsync(queryDto);
@@ -96,82 +124,76 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         public async Task AssignRolesAsync_AddsRolesToUser()
         {
             // Arrange
+            Setup();
             long userId = 1;
-            var roles = new List<string> { "Admin", "User" };
-            var user = new ApplicationUser { Id = userId, UserName = "testuser" };
-
-            _mockUserManager.Setup(x => x.FindByIdAsync(userId.ToString()))
-                .ReturnsAsync(user);
-            _mockUserManager.Setup(x => x.AddToRolesAsync(user, roles))
-                .ReturnsAsync(IdentityResult.Success);
-
+            var roles = new List<string> { "Admin" };
+            
             // Act
             await _userService.AssignRolesAsync(userId, roles);
-
+            
             // Assert
-            _mockUserManager.Verify(x => x.AddToRolesAsync(user, roles), Times.Once);
+            var user = await UserManager.FindByIdAsync(userId.ToString());
+            Assert.NotNull(user);
+            
+            var userRoles = await UserManager.GetRolesAsync(user);
+            Assert.Contains("Admin", userRoles);
         }
 
         [Fact]
         public async Task SetActiveStatusAsync_UpdatesUserStatus()
         {
             // Arrange
+            Setup();
             long userId = 1;
-            var user = new ApplicationUser { Id = userId, UserName = "testuser" };
-
-            _mockUserManager.Setup(x => x.FindByIdAsync(userId.ToString()))
-                .ReturnsAsync(user);
-            _mockUserManager.Setup(x => x.UpdateAsync(user))
-                .ReturnsAsync(IdentityResult.Success);
-
+            bool isActive = false;
+            
             // Act
-            await _userService.SetActiveStatusAsync(userId, true);
-
+            await _userService.SetActiveStatusAsync(userId, isActive);
+            
             // Assert
-            Assert.True(user.IsActive);
-            _mockUserManager.Verify(x => x.UpdateAsync(user), Times.Once);
+            var user = await UserManager.FindByIdAsync(userId.ToString());
+            Assert.NotNull(user);
+            Assert.False(user.IsActive);
+            
+            // 恢复原始状态
+            await _userService.SetActiveStatusAsync(userId, true);
         }
 
         [Fact]
         public async Task UnlockUserAsync_UnlocksUser()
         {
             // Arrange
+            Setup();
             long userId = 1;
-            var user = new ApplicationUser { Id = userId, UserName = "testuser" };
-
-            _mockUserManager.Setup(x => x.FindByIdAsync(userId.ToString()))
-                .ReturnsAsync(user);
-            _mockUserManager.Setup(x => x.SetLockoutEndDateAsync(user, null))
-                .ReturnsAsync(IdentityResult.Success);
-
+            
+            // 先锁定用户
+            var user = await UserManager.FindByIdAsync(userId.ToString());
+            await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.Now.AddDays(1));
+            
             // Act
             await _userService.UnlockUserAsync(userId);
-
+            
             // Assert
-            _mockUserManager.Verify(x => x.SetLockoutEndDateAsync(user, null), Times.Once);
+            user = await UserManager.FindByIdAsync(userId.ToString());
+            Assert.NotNull(user);
+            Assert.Null(user.LockoutEnd);
         }
 
         [Fact]
         public async Task GetUsersByIdsAsync_ReturnsMatchingUsers()
         {
             // Arrange
+            Setup();
             var userIds = new List<long> { 1, 2 };
-            var users = new List<ApplicationUser>
-            {
-                new ApplicationUser { Id = 1, UserName = "user1" },
-                new ApplicationUser { Id = 2, UserName = "user2" }
-            };
-
-            _mockRepository.Setup(x => x.CreateQuery())
-                .Returns(users.AsQueryable());
-
+            
             // Act
-            var result = await _userService.GetUsersByIdsAsync(userIds);
-
+            var users = await _userService.GetUsersByIdsAsync(userIds);
+            
             // Assert
-            Assert.Equal(2, result.Count);
-            Assert.Equal(userIds[0], result[0].Id);
-            Assert.Equal(userIds[1], result[1].Id);
+            Assert.NotNull(users);
+            Assert.Equal(2, users.Count);
+            Assert.Contains(users, u => u.Id == 1);
+            Assert.Contains(users, u => u.Id == 2);
         }
     }
 } 

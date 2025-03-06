@@ -581,7 +581,7 @@ X-Aggregate-Keys: createdBy#User-{value}, updatedBy=/user/{value}.name, items.cr
     public string CreatedBy { get; set; }
 ```
 
-![聚合器](..\Res\image-20250306214112576.png)
+![聚合器](../Res/image-20250306214112576.png)
 
 3. **配置中心（内置）**
 

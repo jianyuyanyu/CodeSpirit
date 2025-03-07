@@ -7,19 +7,33 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Xunit;
 
 namespace CodeSpirit.Charts.Tests.Extensions
 {
-    [TestClass]
+    // 自定义测试控制器
+    internal class TestController : ControllerBase
+    {
+        public TestController(HttpContext httpContext)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = httpContext
+            };
+        }
+    }
+
     public class ChartExtensionsTests
     {
-        private ServiceCollection _services;
-        private ServiceProvider _serviceProvider;
+        private readonly ServiceCollection _services;
+        private readonly ServiceProvider _serviceProvider;
         
-        [TestInitialize]
-        public void Setup()
+        public ChartExtensionsTests()
         {
             _services = new ServiceCollection();
+            
+            // 添加日志服务
+            _services.AddLogging();
             
             // 添加模拟服务
             var mockDataAnalyzer = new Mock<IDataAnalyzer>();
@@ -52,90 +66,84 @@ namespace CodeSpirit.Charts.Tests.Extensions
             _serviceProvider = _services.BuildServiceProvider();
         }
         
-        [TestMethod]
+        [Fact]
         public void AddCodeSpiritCharts_ShouldRegisterAllRequiredServices()
         {
             // 安排
             var services = new ServiceCollection();
             
+            // 确保日志服务可用
+            services.AddLogging();
+            
             // 执行
-            services.AddCodeSpiritCharts();
+            CodeSpirit.Charts.Extensions.ChartExtensions.AddCodeSpiritCharts(services);
             var serviceProvider = services.BuildServiceProvider();
             
             // 断言
-            Assert.IsNotNull(serviceProvider.GetService<IDataAnalyzer>());
-            Assert.IsNotNull(serviceProvider.GetService<IChartRecommender>());
-            Assert.IsNotNull(serviceProvider.GetService<IEChartConfigGenerator>());
+            Assert.NotNull(serviceProvider.GetService<IDataAnalyzer>());
+            Assert.NotNull(serviceProvider.GetService<IChartRecommender>());
+            Assert.NotNull(serviceProvider.GetService<IEChartConfigGenerator>());
         }
         
-        [TestMethod]
+        [Fact]
         public void ChartResult_WithValidConfig_ShouldReturnJsonResult()
         {
             // 安排
-            var mockController = new Mock<ControllerBase>();
-            var mockHttpContext = new Mock<HttpContext>();
-            
-            mockHttpContext.Setup(c => c.RequestServices).Returns(_serviceProvider);
-            mockController.Setup(c => c.HttpContext).Returns(mockHttpContext.Object);
-            
-            var jsonResult = new JsonResult(new { success = true });
-            mockController.Setup(c => c.Json(It.IsAny<object>())).Returns(jsonResult);
+            var httpContext = new DefaultHttpContext
+            {
+                RequestServices = _serviceProvider
+            };
+            var controller = new TestController(httpContext);
             
             var config = new ChartConfig { Title = "测试图表" };
             var data = new { name = "测试数据" };
             
             // 执行
-            var result = mockController.Object.ChartResult(config, data);
+            var result = controller.ChartResult(config, data);
             
             // 断言
-            Assert.IsNotNull(result);
-            mockController.Verify(c => c.Json(It.IsAny<object>()), Times.Once);
+            Assert.NotNull(result);
+            Assert.IsType<JsonResult>(result);
         }
         
-        [TestMethod]
+        [Fact]
         public void AutoChartResult_ShouldUseRecommender_AndReturnJsonResult()
         {
             // 安排
-            var mockController = new Mock<ControllerBase>();
-            var mockHttpContext = new Mock<HttpContext>();
-            
-            mockHttpContext.Setup(c => c.RequestServices).Returns(_serviceProvider);
-            mockController.Setup(c => c.HttpContext).Returns(mockHttpContext.Object);
-            
-            var jsonResult = new JsonResult(new { success = true });
-            mockController.Setup(c => c.Json(It.IsAny<object>())).Returns(jsonResult);
+            var httpContext = new DefaultHttpContext
+            {
+                RequestServices = _serviceProvider
+            };
+            var controller = new TestController(httpContext);
             
             var data = new { name = "测试数据" };
             
             // 执行
-            var result = mockController.Object.AutoChartResult(data);
+            var result = controller.AutoChartResult(data);
             
             // 断言
-            Assert.IsNotNull(result);
-            mockController.Verify(c => c.Json(It.IsAny<object>()), Times.Once);
+            Assert.NotNull(result);
+            Assert.IsType<JsonResult>(result);
         }
         
-        [TestMethod]
+        [Fact]
         public void ChartRecommendations_ShouldReturnMultipleOptions_AsJsonResult()
         {
             // 安排
-            var mockController = new Mock<ControllerBase>();
-            var mockHttpContext = new Mock<HttpContext>();
-            
-            mockHttpContext.Setup(c => c.RequestServices).Returns(_serviceProvider);
-            mockController.Setup(c => c.HttpContext).Returns(mockHttpContext.Object);
-            
-            var jsonResult = new JsonResult(new { success = true });
-            mockController.Setup(c => c.Json(It.IsAny<object>())).Returns(jsonResult);
+            var httpContext = new DefaultHttpContext
+            {
+                RequestServices = _serviceProvider
+            };
+            var controller = new TestController(httpContext);
             
             var data = new { name = "测试数据" };
             
             // 执行
-            var result = mockController.Object.ChartRecommendations(data, 3);
+            var result = controller.ChartRecommendations(data, 3);
             
             // 断言
-            Assert.IsNotNull(result);
-            mockController.Verify(c => c.Json(It.IsAny<object>()), Times.Once);
+            Assert.NotNull(result);
+            Assert.IsType<JsonResult>(result);
         }
     }
 } 

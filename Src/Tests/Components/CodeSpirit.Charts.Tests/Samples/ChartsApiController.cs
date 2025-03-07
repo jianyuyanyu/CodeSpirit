@@ -4,7 +4,9 @@ using CodeSpirit.Charts.Analysis;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.Charts.Models;
 using CodeSpirit.Charts.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace CodeSpirit.Charts.Tests.Samples
 {
@@ -17,11 +19,19 @@ namespace CodeSpirit.Charts.Tests.Samples
     {
         private readonly IChartRecommender _recommender;
         private readonly IEChartConfigGenerator _echartGenerator;
+        private readonly IMemoryCache _memoryCache;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         
-        public ChartsApiController(IChartRecommender recommender, IEChartConfigGenerator echartGenerator)
+        public ChartsApiController(
+            IChartRecommender recommender, 
+            IEChartConfigGenerator echartGenerator,
+            IMemoryCache memoryCache,
+            IHttpContextAccessor httpContextAccessor)
         {
             _recommender = recommender;
             _echartGenerator = echartGenerator;
+            _memoryCache = memoryCache;
+            _httpContextAccessor = httpContextAccessor;
         }
         
         /// <summary>
@@ -187,20 +197,26 @@ namespace CodeSpirit.Charts.Tests.Samples
             };
             
             // 手动构建图表配置
-            var builder = new ChartConfigBuilder(_recommender, _echartGenerator);
-            
-            builder.SetTitle("自定义图表")
-                   .SetSubtitle("手动配置示例")
-                   .SetType(ChartType.Bar)
-                   .AddSeries("指标1", "bar")
-                   .AddSeries("指标2", "bar")
-                   .SetXAxis("category", "类别")
-                   .SetYAxis("value", "数值")
-                   .EnableToolbox()
-                   .SetLegend(new[] { "指标1", "指标2" }, "horizontal", "top");
-            
-            // 生成配置
-            var config = builder.Build();
+            var config = new ChartConfig
+            {
+                Title = "自定义图表",
+                Subtitle = "手动配置示例",
+                Type = ChartType.Bar,
+                XAxis = new AxisConfig { Type = "category", Name = "类别" },
+                YAxis = new AxisConfig { Type = "value", Name = "数值" },
+                Series = new List<SeriesConfig>
+                {
+                    new SeriesConfig { Name = "指标1", Type = "bar" },
+                    new SeriesConfig { Name = "指标2", Type = "bar" }
+                },
+                Legend = new LegendConfig 
+                { 
+                    Data = new List<string> { "指标1", "指标2" },
+                    Orient = "horizontal",
+                    Position = "top"
+                },
+                Toolbox = new ToolboxConfig { Show = true }
+            };
             
             // 返回图表配置和数据
             return this.ChartResult(config, data);

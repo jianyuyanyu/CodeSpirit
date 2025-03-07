@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using System.Text.Json;
 using Xunit;
+using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.Charts.Tests.Analysis
 {
@@ -122,12 +123,12 @@ namespace CodeSpirit.Charts.Tests.Analysis
                 { ""name"": ""Product B"", ""value"": 200 },
                 { ""name"": ""Product C"", ""value"": 300 }
             ]";
-            var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
+            var jsonArray = JArray.Parse(json);
 
             // 使用反射调用私有方法
             var methodInfo = typeof(DataAnalyzer).GetMethod("ExtractNumericValues", 
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var result = methodInfo.Invoke(_dataAnalyzer, new object[] { jsonElement, "value" }) as List<double>;
+            var result = methodInfo.Invoke(_dataAnalyzer, new object[] { jsonArray, "value" }) as List<double>;
 
             // 断言
             Assert.NotNull(result);

@@ -172,7 +172,7 @@ namespace CodeSpirit.Charts.Tests.Services
                 await _chartService.GetChartConfigAsync("non-existent-id"));
         }
 
-        [Chart("测试图表", "这是一个测试图表")]
+        [Chart("测试图表", "这是一个测试图表", AutoRefresh = true, RefreshInterval = 30)]
         [ChartType(ChartType.Line)]
         [ChartData(DimensionField = "month", MetricFields = new[] { "sales" })]
         private void TestMethod() 

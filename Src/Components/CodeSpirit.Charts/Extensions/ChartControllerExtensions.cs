@@ -3,6 +3,7 @@ using CodeSpirit.Charts.Analysis;
 using CodeSpirit.Charts.Models;
 using CodeSpirit.Charts.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.Charts.Extensions
 {
@@ -16,8 +17,11 @@ namespace CodeSpirit.Charts.Extensions
         /// </summary>
         public static IActionResult ChartResult(this ControllerBase controller, ChartConfig config, object data)
         {
+            ArgumentNullException.ThrowIfNull(controller);
+            ArgumentNullException.ThrowIfNull(config);
+            
             var serviceProvider = controller.HttpContext.RequestServices;
-            var echartGenerator = serviceProvider.GetService(typeof(IEChartConfigGenerator)) as IEChartConfigGenerator;
+            var echartGenerator = serviceProvider.GetService<IEChartConfigGenerator>();
             
             if (echartGenerator == null)
             {
@@ -25,7 +29,7 @@ namespace CodeSpirit.Charts.Extensions
             }
             
             var echartConfig = echartGenerator.GenerateCompleteEChartConfig(config, data);
-            return controller.Json(echartConfig);
+            return new JsonResult(echartConfig);
         }
         
         /// <summary>
@@ -33,9 +37,11 @@ namespace CodeSpirit.Charts.Extensions
         /// </summary>
         public static IActionResult AutoChartResult(this ControllerBase controller, object data, ChartType? preferredType = null)
         {
+            ArgumentNullException.ThrowIfNull(controller);
+            
             var serviceProvider = controller.HttpContext.RequestServices;
-            var recommender = serviceProvider.GetService(typeof(IChartRecommender)) as IChartRecommender;
-            var echartGenerator = serviceProvider.GetService(typeof(IEChartConfigGenerator)) as IEChartConfigGenerator;
+            var recommender = serviceProvider.GetService<IChartRecommender>();
+            var echartGenerator = serviceProvider.GetService<IEChartConfigGenerator>();
             
             if (recommender == null || echartGenerator == null)
             {
@@ -44,7 +50,7 @@ namespace CodeSpirit.Charts.Extensions
             
             var config = recommender.GenerateChartConfig(data, preferredType);
             var echartConfig = echartGenerator.GenerateCompleteEChartConfig(config, data);
-            return controller.Json(echartConfig);
+            return new JsonResult(echartConfig);
         }
         
         /// <summary>
@@ -52,9 +58,11 @@ namespace CodeSpirit.Charts.Extensions
         /// </summary>
         public static IActionResult ChartRecommendations(this ControllerBase controller, object data, int maxCount = 3)
         {
+            ArgumentNullException.ThrowIfNull(controller);
+            
             var serviceProvider = controller.HttpContext.RequestServices;
-            var recommender = serviceProvider.GetService(typeof(IChartRecommender)) as IChartRecommender;
-            var echartGenerator = serviceProvider.GetService(typeof(IEChartConfigGenerator)) as IEChartConfigGenerator;
+            var recommender = serviceProvider.GetService<IChartRecommender>();
+            var echartGenerator = serviceProvider.GetService<IEChartConfigGenerator>();
             
             if (recommender == null || echartGenerator == null)
             {
@@ -79,7 +87,7 @@ namespace CodeSpirit.Charts.Extensions
                 });
             }
             
-            return controller.Json(result);
+            return new JsonResult(result);
         }
     }
 } 

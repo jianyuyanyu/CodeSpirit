@@ -10,9 +10,19 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 using Xunit;
+using Microsoft.AspNetCore.Routing;
 
 namespace CodeSpirit.Charts.Tests
 {
+    // 自定义用于测试的Endpoint实现
+    internal class TestEndpoint : Endpoint
+    {
+        public TestEndpoint(EndpointMetadataCollection metadata)
+            : base(context => Task.CompletedTask, metadata, "TestEndpoint")
+        {
+        }
+    }
+
     public class ChartConfigBuilderTests
     {
         private readonly ChartConfigBuilder _chartConfigBuilder;
@@ -172,22 +182,20 @@ namespace CodeSpirit.Charts.Tests
 
         private Endpoint CreateEndpointWithChartAttribute()
         {
-            // 创建ControllerActionDescriptor Mock
-            var actionDescriptor = new Mock<ControllerActionDescriptor>();
-            actionDescriptor.Setup(x => x.ControllerName).Returns("Test");
-            actionDescriptor.Setup(x => x.ActionName).Returns("TestAction");
-            
-            // 使用带Chart特性的测试方法
+            // 创建ControllerActionDescriptor实例而不是Mock
             var methodInfo = GetType().GetMethod("TestMethod", BindingFlags.Instance | BindingFlags.NonPublic);
-            actionDescriptor.Setup(x => x.MethodInfo).Returns(methodInfo);
-
-            // 创建Endpoint的Metadata
-            var mockMetadata = new EndpointMetadataCollection(new object[] { actionDescriptor.Object });
+            var actionDescriptor = new ControllerActionDescriptor
+            {
+                MethodInfo = methodInfo,
+                ControllerName = "Test",
+                ActionName = "TestAction"
+            };
             
-            // 创建和返回Endpoint
-            var endpointMock = new Mock<Endpoint>(MockBehavior.Loose);
-            endpointMock.Setup(e => e.Metadata).Returns(mockMetadata);
-            return endpointMock.Object;
+            // 创建Endpoint的Metadata
+            var mockMetadata = new EndpointMetadataCollection(new object[] { actionDescriptor });
+            
+            // 创建和返回自定义Endpoint实现
+            return new TestEndpoint(mockMetadata);
         }
 
         [Chart("测试图表")]

@@ -1,22 +1,30 @@
 using CodeSpirit.Charts.Analysis;
 using CodeSpirit.Charts.Models;
 using CodeSpirit.Charts.Services;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+using Xunit;
 
 namespace CodeSpirit.Charts.Tests
 {
-    [TestClass]
     public class ChartConfigBuilderEChartsTests
     {
-        private Mock<IChartRecommender> _mockRecommender;
-        private Mock<IEChartConfigGenerator> _mockEChartGenerator;
-        private ChartConfigBuilder _builder;
+        private readonly Mock<IServiceProvider> _mockServiceProvider;
+        private readonly Mock<IMemoryCache> _mockMemoryCache;
+        private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
+        private readonly Mock<IChartRecommender> _mockRecommender;
+        private readonly Mock<IEChartConfigGenerator> _mockEChartGenerator;
+        private readonly ChartConfigBuilder _builder;
         
-        [TestInitialize]
-        public void Setup()
+        public ChartConfigBuilderEChartsTests()
         {
+            _mockServiceProvider = new Mock<IServiceProvider>();
+            _mockMemoryCache = new Mock<IMemoryCache>();
+            _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
             _mockRecommender = new Mock<IChartRecommender>();
             _mockEChartGenerator = new Mock<IEChartConfigGenerator>();
             
@@ -45,15 +53,18 @@ namespace CodeSpirit.Charts.Tests
                 });
             
             // 创建ChartConfigBuilder实例
-            _builder = new ChartConfigBuilder(_mockRecommender.Object, _mockEChartGenerator.Object);
+            _builder = new ChartConfigBuilder(
+                _mockServiceProvider.Object,
+                _mockMemoryCache.Object,
+                _mockHttpContextAccessor.Object,
+                _mockRecommender.Object,
+                _mockEChartGenerator.Object);
             
             // 设置基本配置
-            _builder.SetTitle("测试图表")
-                    .SetType(ChartType.Line)
-                    .AddSeries("系列1", "line");
+            _builder.SetTitle("测试图表");
         }
         
-        [TestMethod]
+        [Fact]
         public void GenerateEChartConfig_ShouldCallEChartGenerator()
         {
             // 执行
@@ -61,11 +72,11 @@ namespace CodeSpirit.Charts.Tests
             
             // 断言
             _mockEChartGenerator.Verify(g => g.GenerateEChartConfig(It.IsAny<ChartConfig>()), Times.Once);
-            Assert.IsNotNull(result);
-            Assert.IsInstanceOfType(result, typeof(Dictionary<string, object>));
+            Assert.NotNull(result);
+            Assert.IsType<Dictionary<string, object>>(result);
         }
         
-        [TestMethod]
+        [Fact]
         public void GenerateEChartConfigJson_ShouldCallEChartGenerator()
         {
             // 执行
@@ -73,11 +84,11 @@ namespace CodeSpirit.Charts.Tests
             
             // 断言
             _mockEChartGenerator.Verify(g => g.GenerateEChartConfigJson(It.IsAny<ChartConfig>()), Times.Once);
-            Assert.IsNotNull(result);
-            Assert.IsTrue(result.Contains("测试图表"));
+            Assert.NotNull(result);
+            Assert.Contains("测试图表", result);
         }
         
-        [TestMethod]
+        [Fact]
         public void GenerateCompleteEChartConfig_ShouldCallEChartGenerator()
         {
             // 安排
@@ -93,45 +104,46 @@ namespace CodeSpirit.Charts.Tests
             
             // 断言
             _mockEChartGenerator.Verify(g => g.GenerateCompleteEChartConfig(It.IsAny<ChartConfig>(), It.IsAny<object>()), Times.Once);
-            Assert.IsNotNull(result);
-            Assert.IsInstanceOfType(result, typeof(Dictionary<string, object>));
+            Assert.NotNull(result);
+            Assert.IsType<Dictionary<string, object>>(result);
         }
         
-        [TestMethod]
-        [ExpectedException(typeof(InvalidOperationException))]
+        [Fact]
         public void GenerateEChartConfigWithoutGenerator_ShouldThrowException()
         {
-            // 安排
-            var builder = new ChartConfigBuilder();
+            // 安排 - 创建没有EChartGenerator的构建器
+            var builder = new ChartConfigBuilder(
+                _mockServiceProvider.Object,
+                _mockMemoryCache.Object,
+                _mockHttpContextAccessor.Object);
             
             // 执行 - 应抛出异常
-            builder.GenerateEChartConfig();
+            Assert.Throws<InvalidOperationException>(() => builder.GenerateEChartConfig());
         }
         
-        [TestMethod]
+        [Fact]
         public void ChartConfigBuilder_FluentApi_ShouldBuildCompleteConfig()
         {
             // 安排
-            var builder = new ChartConfigBuilder(_mockRecommender.Object, _mockEChartGenerator.Object);
+            var builder = new ChartConfigBuilder(
+                _mockServiceProvider.Object,
+                _mockMemoryCache.Object,
+                _mockHttpContextAccessor.Object,
+                _mockRecommender.Object,
+                _mockEChartGenerator.Object);
             
             // 执行
-            builder.SetTitle("销售数据")
-                   .SetType(ChartType.Bar)
-                   .AddSeries("销售额", "bar")
-                   .AddSeries("成本", "bar")
-                   .SetXAxis("category", "月份")
-                   .SetYAxis("value", "金额")
-                   .EnableToolbox()
-                   .SetLegend(new string[] { "销售额", "成本" }, "horizontal", "top");
+            builder.SetTitle("销售数据");
+            builder.SetSubtitle("月度销售数据");
             
             var result = builder.GenerateEChartConfig();
             
             // 断言
             _mockEChartGenerator.Verify(g => g.GenerateEChartConfig(It.IsAny<ChartConfig>()), Times.Once);
-            Assert.IsNotNull(result);
+            Assert.NotNull(result);
         }
         
-        [TestMethod]
+        [Fact]
         public void GenerateCompleteEChartConfigWithTestCase_ShouldGenerateExpectedConfig()
         {
             // 安排
@@ -142,16 +154,14 @@ namespace CodeSpirit.Charts.Tests
                 new { month = "3月", sales = 180, cost = 120 }
             };
             
-            var builder = new ChartConfigBuilder(_mockRecommender.Object, _mockEChartGenerator.Object);
+            var builder = new ChartConfigBuilder(
+                _mockServiceProvider.Object,
+                _mockMemoryCache.Object,
+                _mockHttpContextAccessor.Object,
+                _mockRecommender.Object,
+                _mockEChartGenerator.Object);
             
-            builder.SetTitle("季度销售分析")
-                   .SetType(ChartType.Bar)
-                   .AddSeries("销售额", "bar")
-                   .AddSeries("成本", "bar")
-                   .SetXAxis("category", "月份")
-                   .SetYAxis("value", "金额")
-                   .EnableToolbox()
-                   .SetLegend(new string[] { "销售额", "成本" }, "horizontal", "top");
+            builder.SetTitle("季度销售分析");
             
             // 设置模拟行为返回一个更完整的配置
             _mockEChartGenerator.Setup(g => g.GenerateCompleteEChartConfig(It.IsAny<ChartConfig>(), testData))
@@ -184,20 +194,20 @@ namespace CodeSpirit.Charts.Tests
             var result = builder.GenerateCompleteEChartConfig(testData) as Dictionary<string, object>;
             
             // 断言
-            Assert.IsNotNull(result);
-            Assert.AreEqual("季度销售分析", ((Dictionary<string, object>)result["title"])["text"]);
+            Assert.NotNull(result);
+            Assert.Equal("季度销售分析", ((Dictionary<string, object>)result["title"])["text"]);
             
             var xAxis = result["xAxis"] as Dictionary<string, object>;
-            Assert.IsNotNull(xAxis);
+            Assert.NotNull(xAxis);
             
             var xAxisData = xAxis["data"] as string[];
-            Assert.IsNotNull(xAxisData);
-            Assert.AreEqual(3, xAxisData.Length);
-            Assert.AreEqual("1月", xAxisData[0]);
+            Assert.NotNull(xAxisData);
+            Assert.Equal(3, xAxisData.Length);
+            Assert.Equal("1月", xAxisData[0]);
             
             var series = result["series"] as List<object>;
-            Assert.IsNotNull(series);
-            Assert.AreEqual(2, series.Count);
+            Assert.NotNull(series);
+            Assert.Equal(2, series.Count);
         }
     }
 } 

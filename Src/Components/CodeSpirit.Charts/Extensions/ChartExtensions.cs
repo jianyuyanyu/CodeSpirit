@@ -1,6 +1,7 @@
 using CodeSpirit.Charts.Analysis;
 using CodeSpirit.Charts.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.Charts.Extensions
 {
@@ -27,11 +28,28 @@ namespace CodeSpirit.Charts.Extensions
             services.AddSingleton<IChartRecommender, ChartRecommender>();
             services.AddScoped<IChartService, ChartService>();
             services.AddSingleton<ChartConfigBuilder>();
+            services.AddSingleton<IEChartConfigGenerator, EChartConfigGenerator>();
             
             // 注册HTTP客户端，用于API数据源
             services.AddHttpClient();
             
+            // 确保日志服务可用
+            if (!services.Any(s => s.ServiceType == typeof(ILoggerFactory)))
+            {
+                services.AddLogging();
+            }
+            
             return services;
+        }
+        
+        /// <summary>
+        /// 添加CodeSpirit图表服务（兼容性方法）
+        /// </summary>
+        /// <param name="services">服务集合</param>
+        /// <returns>服务集合</returns>
+        public static IServiceCollection AddCodeSpiritCharts(this IServiceCollection services)
+        {
+            return services.AddCharts();
         }
     }
     

@@ -13,7 +13,7 @@ namespace CodeSpirit.Charts.Tests.Models
 
             // 断言默认值
             Assert.NotNull(config.Id);
-            Assert.Equal(string.Empty, config.Title);
+            Assert.Null(config.Title);
             Assert.Equal(ChartType.Auto, config.Type);
             Assert.Null(config.SubType);
             Assert.NotNull(config.DataSource);

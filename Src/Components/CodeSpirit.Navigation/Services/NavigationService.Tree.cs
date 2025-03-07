@@ -30,7 +30,7 @@ namespace CodeSpirit.Navigation
         /// </summary>
         /// <param name="moduleName">模块名称。</param>
         /// <returns>导航节点列表。</returns>
-        private List<NavigationNode> BuildModuleNavigationTree(string moduleName)
+        protected virtual List<NavigationNode> BuildModuleNavigationTree(string moduleName)
         {
             // 首先尝试从代码构建导航树
             var codeNavigation = BuildCodeBasedNavigation(moduleName);

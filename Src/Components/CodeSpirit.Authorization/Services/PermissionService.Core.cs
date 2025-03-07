@@ -148,6 +148,12 @@ namespace CodeSpirit.Authorization
                 return false;
             }
 
+            // 默认放通所有 default_ 开头的权限
+            if (permissionName.StartsWith("default_", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
             //权限继承逻辑：
             //基于权限名称的层级结构（使用下划线分隔）
             //例如对于权限 "module_controller_action"：

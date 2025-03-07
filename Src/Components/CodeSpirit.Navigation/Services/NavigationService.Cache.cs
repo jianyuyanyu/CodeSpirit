@@ -44,7 +44,7 @@ namespace CodeSpirit.Navigation
             _logger.LogInformation("Navigation tree initialization completed");
         }
 
-        private List<string> GetCurrentModules()
+        protected virtual List<string> GetCurrentModules()
         {
             return _actionProvider.ActionDescriptors.Items
                 .OfType<ControllerActionDescriptor>()
@@ -58,7 +58,7 @@ namespace CodeSpirit.Navigation
         /// <summary>
         /// 获取配置文件中定义的模块
         /// </summary>
-        private List<string> GetConfigModules()
+        protected virtual List<string> GetConfigModules()
         {
             var configSection = _configuration.GetSection(CONFIG_SECTION_KEY);
             if (!configSection.Exists())
@@ -129,6 +129,8 @@ namespace CodeSpirit.Navigation
                 moduleNames.Remove(moduleName);
                 await _cache.SetAsync(MODULE_NAMES_CACHE_KEY, moduleNames, _cacheOptions);
             }
+            
+            _logger.LogInformation($"Cleared navigation cache for module: {moduleName}");
         }
     }
 }

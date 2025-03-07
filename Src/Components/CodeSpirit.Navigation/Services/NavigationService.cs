@@ -6,9 +6,12 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using CodeSpirit.Core.Authorization;
 
 namespace CodeSpirit.Navigation
 {
@@ -49,25 +52,94 @@ namespace CodeSpirit.Navigation
         public async Task<List<NavigationNode>> GetNavigationTreeAsync()
         {
             var allModuleNodes = new List<NavigationNode>();
-            var moduleNames = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY);
-
-            if (moduleNames == null)
+            
+            try
             {
-                _logger.LogWarning("No navigation modules found in cache");
+                var moduleNames = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY);
+
+                if (moduleNames == null)
+                {
+                    _logger.LogWarning("No navigation modules found in cache");
+                    return allModuleNodes;
+                }
+
+                foreach (var moduleName in moduleNames)
+                {
+                    try
+                    {
+                        var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
+                        var moduleNodes = await _cache.GetAsync<List<NavigationNode>>(cacheKey);
+                        if (moduleNodes != null)
+                        {
+                            allModuleNodes.AddRange(moduleNodes);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // 优雅处理单个模块缓存异常，记录错误并继续处理下一个模块
+                        _logger.LogError(ex, $"Failed to retrieve navigation for module '{moduleName}'. This module will be skipped.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 优雅处理模块列表缓存异常
+                _logger.LogError(ex, "Failed to retrieve navigation module list. Navigation will be empty.");
                 return allModuleNodes;
             }
 
-            foreach (var moduleName in moduleNames)
+            // 根据权限过滤导航节点
+            allModuleNodes = FilterNodesByPermission(allModuleNodes);
+            
+            return allModuleNodes;
+        }
+        
+        /// <summary>
+        /// 根据用户权限过滤导航节点
+        /// </summary>
+        /// <param name="nodes">导航节点列表</param>
+        /// <returns>过滤后的导航节点列表</returns>
+        protected virtual List<NavigationNode> FilterNodesByPermission(List<NavigationNode> nodes)
+        {
+            if (nodes == null || !nodes.Any())
             {
-                var cacheKey = $"{CACHE_KEY_PREFIX}{moduleName}";
-                var moduleNodes = await _cache.GetAsync<List<NavigationNode>>(cacheKey);
-                if (moduleNodes != null)
+                return new List<NavigationNode>();
+            }
+            
+            var permissionService = GetServiceProvider()
+                .GetService<IHasPermissionService>();
+            
+            if (permissionService == null)
+            {
+                _logger.LogWarning("Permission service not available. Skipping permission filtering.");
+                return nodes;
+            }
+            
+            var filteredNodes = nodes
+                .Where(node => string.IsNullOrEmpty(node.Permission) || permissionService.HasPermission(node.Permission))
+                .ToList();
+                
+            // 递归处理子节点
+            foreach (var node in filteredNodes)
+            {
+                if (node.Children?.Any() == true)
                 {
-                    allModuleNodes.AddRange(moduleNodes);
+                    node.Children = FilterNodesByPermission(node.Children);
                 }
             }
-
-            return allModuleNodes;
+            
+            return filteredNodes;
+        }
+        
+        /// <summary>
+        /// 获取服务提供者
+        /// </summary>
+        /// <returns>服务提供者</returns>
+        protected virtual IServiceProvider GetServiceProvider()
+        {
+            var accessor = new HttpContextAccessor();
+            var httpContext = accessor.HttpContext;
+            return httpContext?.RequestServices ?? null;
         }
     }  
 }

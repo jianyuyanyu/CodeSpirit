@@ -438,5 +438,65 @@ namespace CodeSpirit.Authorization.Tests.Services
             // 由于默认实现是使用字符串直接比较，应该区分大小写
             Assert.False(result);
         }
+
+        /// <summary>
+        /// 测试 HasPermission 方法，当权限名以 default_ 开头时，应返回 true
+        /// </summary>
+        [Fact]
+        public void HasPermission_WhenPermissionStartsWithDefault_ReturnsTrue()
+        {
+            // Arrange
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            var mockCache = new Mock<IDistributedCache>();
+            var mockLogger = new Mock<ILogger<PermissionService>>();
+
+            var permissionService = new PermissionService(
+                mockServiceProvider.Object,
+                mockCache.Object,
+                mockLogger.Object);
+
+            // 测试各种 default_ 开头的权限名
+            var defaultPermissions = new[] 
+            { 
+                "default_clientApp_registerApp",
+                "default_clientApp",
+                "default_profile",
+                "default_profile_getProfile"
+            };
+            var emptyUserPermissions = new HashSet<string>();
+
+            // Act & Assert
+            foreach (var permission in defaultPermissions)
+            {
+                var result = permissionService.HasPermission(permission, emptyUserPermissions);
+                Assert.True(result, $"Permission '{permission}' should be allowed automatically");
+            }
+        }
+
+        /// <summary>
+        /// 测试 HasPermission 方法，当权限名以 DEFAULT_ 开头（大写）时，应返回 true
+        /// </summary>
+        [Fact]
+        public void HasPermission_WhenPermissionStartsWithDefaultUppercase_ReturnsTrue()
+        {
+            // Arrange
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            var mockCache = new Mock<IDistributedCache>();
+            var mockLogger = new Mock<ILogger<PermissionService>>();
+
+            var permissionService = new PermissionService(
+                mockServiceProvider.Object,
+                mockCache.Object,
+                mockLogger.Object);
+
+            var permissionName = "DEFAULT_profile_getProfile";
+            var emptyUserPermissions = new HashSet<string>();
+
+            // Act
+            var result = permissionService.HasPermission(permissionName, emptyUserPermissions);
+
+            // Assert
+            Assert.True(result, "Permission starting with 'DEFAULT_' (uppercase) should be allowed automatically");
+        }
     }
 }

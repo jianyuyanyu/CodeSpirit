@@ -19,6 +19,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using CodeSpirit.Aggregator;
+using CodeSpirit.Charts;
+using CodeSpirit.Charts.Extensions;
 
 public static class ServiceCollectionExtensions
 {
@@ -208,6 +210,9 @@ public static class ServiceCollectionExtensions
         builder.Services.AddIdentityServices();
         builder.Services.AddJwtAuthentication(builder.Configuration);
         builder.Services.ConfigureCustomControllers();
+        
+        // 注册Charts服务
+        builder.Services.AddChartServices();
 
         // 配置审计
         builder.Services.Configure<AuditConfig>(
@@ -256,5 +261,21 @@ public static class ServiceCollectionExtensions
 
         app.UseCodeSpiritAggregator();
         return app;
+    }
+
+    /// <summary>
+    /// 添加图表服务
+    /// </summary>
+    public static IServiceCollection AddChartServices(this IServiceCollection services)
+    {
+        // 注册CodeSpirit.Charts服务
+        services.AddCharts(options =>
+        {
+            options.DefaultTheme = "light";
+            options.EnableAI = true;
+            options.CacheMinutes = 30;
+        });
+        
+        return services;
     }
 }

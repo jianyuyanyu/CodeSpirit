@@ -227,12 +227,62 @@ namespace CodeSpirit.Charts.Services
         /// <summary>
         /// 分析数据自动生成图表
         /// </summary>
-        public async Task<ChartConfig> AnalyzeAndGenerateChartAsync(object data)
+        /// <param name="data">数据对象</param>
+        /// <param name="methodInfo">可选的方法信息，用于获取图表特性</param>
+        /// <returns>图表配置</returns>
+        public async Task<ChartConfig> AnalyzeAndGenerateChartAsync(object data, MethodInfo? methodInfo = null)
         {
             try
             {
                 _logger.LogInformation("开始分析数据并生成图表");
+                
+                // 先根据数据创建基础配置
                 var config = _chartRecommender.GenerateChartConfig(data);
+                
+                // 如果提供了方法信息，则从方法特性中读取图表配置
+                if (methodInfo != null)
+                {
+                    // 获取Chart特性
+                    var chartAttr = methodInfo.GetCustomAttribute<ChartAttribute>();
+                    if (chartAttr != null)
+                    {
+                        // 使用Chart特性中的标题替换自动生成的标题
+                        if (!string.IsNullOrEmpty(chartAttr.Title))
+                        {
+                            config.Title = chartAttr.Title;
+                        }
+                        
+                        // 其他属性也可以从特性中获取
+                        config.AutoRefresh = chartAttr.AutoRefresh;
+                        config.RefreshInterval = chartAttr.RefreshInterval;
+                        config.Theme = chartAttr.Theme;
+                        
+                        // 添加工具箱配置
+                        if (chartAttr.ShowToolbox)
+                        {
+                            config.Toolbox = new ToolboxConfig
+                            {
+                                Features = new Dictionary<string, bool>
+                                {
+                                    { "saveAsImage", chartAttr.EnableExport },
+                                    { "dataView", true },
+                                    { "restore", true },
+                                    { "dataZoom", true },
+                                    { "magicType", true }
+                                }
+                            };
+                        }
+                    }
+                    
+                    // 获取图表类型特性
+                    var chartTypeAttr = methodInfo.GetCustomAttribute<ChartTypeAttribute>();
+                    if (chartTypeAttr != null)
+                    {
+                        config.Type = chartTypeAttr.Type;
+                        config.SubType = chartTypeAttr.SubType;
+                    }
+                }
+                
                 _logger.LogInformation("成功分析数据并生成图表，类型: {ChartType}", config.Type);
                 return config;
             }

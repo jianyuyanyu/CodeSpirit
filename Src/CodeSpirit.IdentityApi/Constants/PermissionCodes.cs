@@ -5,6 +5,6 @@ namespace CodeSpirit.IdentityApi.Constants
     /// </summary>
     public static class PermissionCodes
     {
-        public const string UserStatistics = "user_statistics";
+        
     }
 } 

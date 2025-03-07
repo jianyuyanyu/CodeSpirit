@@ -47,8 +47,9 @@ namespace CodeSpirit.Charts.Services
         /// 分析数据自动生成图表
         /// </summary>
         /// <param name="data">数据对象</param>
+        /// <param name="methodInfo">可选的方法信息，用于获取图表特性</param>
         /// <returns>图表配置</returns>
-        Task<ChartConfig> AnalyzeAndGenerateChartAsync(object data);
+        Task<ChartConfig> AnalyzeAndGenerateChartAsync(object data, MethodInfo? methodInfo = null);
         
         /// <summary>
         /// 保存图表配置

@@ -1,0 +1,10 @@
+global using System.ComponentModel;
+global using System.ComponentModel.DataAnnotations;
+global using System.Reflection;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.Extensions.Logging;
+global using Newtonsoft.Json;
+global using Newtonsoft.Json.Linq;
+global using CodeSpirit.Core;
+global using CodeSpirit.Shared;
+global using CodeSpirit.Shared.Data; 

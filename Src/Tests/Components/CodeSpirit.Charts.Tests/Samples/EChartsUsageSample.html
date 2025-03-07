@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>ECharts 示例</title>
+    <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 引入 jQuery -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <style>
+        .chart-container {
+            height: 400px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        
+        .chart-controls {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        
+        .chart-type-option {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 200px;
+            text-align: center;
+        }
+        
+        .chart-type-option:hover {
+            background-color: #eee;
+        }
+        
+        .chart-type-option.selected {
+            background-color: #e6f7ff;
+            border-color: #1890ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CodeSpirit.Charts ECharts 示例</h1>
+        
+        <div class="chart-controls">
+            <h3>选择数据</h3>
+            <select id="dataSelector">
+                <option value="sales">销售数据</option>
+                <option value="performance">性能指标</option>
+                <option value="distribution">地区分布</option>
+            </select>
+            
+            <button id="fetchChartBtn">获取推荐图表</button>
+        </div>
+        
+        <div id="recommendationContainer" style="display: none;">
+            <h3>推荐图表类型</h3>
+            <div id="chartTypeOptions"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div id="mainChart" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+    
+    <script>
+        $(document).ready(function() {
+            // 初始化ECharts实例
+            var chartDom = document.getElementById('mainChart');
+            var myChart = echarts.init(chartDom);
+            
+            // 示例数据
+            var datasets = {
+                sales: [
+                    { month: '1月', sales: 120, cost: 80, profit: 40 },
+                    { month: '2月', sales: 132, cost: 90, profit: 42 },
+                    { month: '3月', sales: 101, cost: 70, profit: 31 },
+                    { month: '4月', sales: 134, cost: 85, profit: 49 },
+                    { month: '5月', sales: 90, cost: 65, profit: 25 },
+                    { month: '6月', sales: 230, cost: 150, profit: 80 },
+                    { month: '7月', sales: 210, cost: 140, profit: 70 }
+                ],
+                performance: [
+                    { metric: 'CPU使用率', current: 45, threshold: 80, historical: 60 },
+                    { metric: '内存使用率', current: 65, threshold: 75, historical: 70 },
+                    { metric: '磁盘IO', current: 30, threshold: 60, historical: 45 },
+                    { metric: '网络流量', current: 80, threshold: 90, historical: 75 },
+                    { metric: '响应时间', current: 120, threshold: 200, historical: 150 }
+                ],
+                distribution: [
+                    { region: '华东', sales: 4300, customers: 1200, stores: 35 },
+                    { region: '华南', sales: 3200, customers: 900, stores: 28 },
+                    { region: '华北', sales: 5100, customers: 1500, stores: 40 },
+                    { region: '西南', sales: 2800, customers: 800, stores: 25 },
+                    { region: '西北', sales: 1800, customers: 500, stores: 15 },
+                    { region: '东北', sales: 2300, customers: 600, stores: 20 }
+                ]
+            };
+            
+            // 模拟从服务器获取ECharts配置
+            function fetchChartConfig(dataType, chartType) {
+                // 在实际应用中，这里会调用API
+                // 例如：return $.ajax({ url: '/api/charts', data: { dataType, chartType } });
+                
+                // 这里我们模拟API响应
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        // 模拟从后端返回的ECharts配置
+                        var config;
+                        
+                        if (dataType === 'sales') {
+                            if (chartType === 'bar') {
+                                config = {
+                                    title: {
+                                        text: '月度销售数据',
+                                        subtext: '销售、成本与利润对比'
+                                    },
+                                    tooltip: {
+                                        trigger: 'axis'
+                                    },
+                                    legend: {
+                                        data: ['销售额', '成本', '利润']
+                                    },
+                                    toolbox: {
+                                        show: true,
+                                        feature: {
+                                            dataView: { show: true },
+                                            magicType: { show: true, type: ['line', 'bar', 'stack'] },
+                                            restore: { show: true },
+                                            saveAsImage: { show: true }
+                                        }
+                                    },
+                                    xAxis: {
+                                        type: 'category',
+                                        data: datasets.sales.map(item => item.month)
+                                    },
+                                    yAxis: {
+                                        type: 'value'
+                                    },
+                                    series: [
+                                        {
+                                            name: '销售额',
+                                            type: 'bar',
+                                            data: datasets.sales.map(item => item.sales)
+                                        },
+                                        {
+                                            name: '成本',
+                                            type: 'bar',
+                                            data: datasets.sales.map(item => item.cost)
+                                        },
+                                        {
+                                            name: '利润',
+                                            type: 'bar',
+                                            data: datasets.sales.map(item => item.profit)
+                                        }
+                                    ]
+                                };
+                            } else if (chartType === 'line') {
+                                config = {
+                                    title: {
+                                        text: '月度销售趋势',
+                                        subtext: '销售、成本与利润'
+                                    },
+                                    tooltip: {
+                                        trigger: 'axis'
+                                    },
+                                    legend: {
+                                        data: ['销售额', '成本', '利润']
+                                    },
+                                    toolbox: {
+                                        show: true,
+                                        feature: {
+                                            dataView: { show: true },
+                                            magicType: { show: true, type: ['line', 'bar', 'stack'] },
+                                            restore: { show: true },
+                                            saveAsImage: { show: true }
+                                        }
+                                    },
+                                    xAxis: {
+                                        type: 'category',
+                                        data: datasets.sales.map(item => item.month)
+                                    },
+                                    yAxis: {
+                                        type: 'value'
+                                    },
+                                    series: [
+                                        {
+                                            name: '销售额',
+                                            type: 'line',
+                                            data: datasets.sales.map(item => item.sales)
+                                        },
+                                        {
+                                            name: '成本',
+                                            type: 'line',
+                                            data: datasets.sales.map(item => item.cost)
+                                        },
+                                        {
+                                            name: '利润',
+                                            type: 'line',
+                                            data: datasets.sales.map(item => item.profit)
+                                        }
+                                    ]
+                                };
+                            } else if (chartType === 'pie') {
+                                config = {
+                                    title: {
+                                        text: '销售额分布',
+                                        subtext: '各月份销售占比'
+                                    },
+                                    tooltip: {
+                                        trigger: 'item',
+                                        formatter: '{a} <br/>{b}: {c} ({d}%)'
+                                    },
+                                    legend: {
+                                        orient: 'vertical',
+                                        left: 'right',
+                                        data: datasets.sales.map(item => item.month)
+                                    },
+                                    series: [
+                                        {
+                                            name: '销售额',
+                                            type: 'pie',
+                                            radius: '55%',
+                                            center: ['50%', '60%'],
+                                            data: datasets.sales.map(item => ({
+                                                name: item.month,
+                                                value: item.sales
+                                            })),
+                                            emphasis: {
+                                                itemStyle: {
+                                                    shadowBlur: 10,
+                                                    shadowOffsetX: 0,
+                                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                                }
+                                            }
+                                        }
+                                    ]
+                                };
+                            }
+                        } else if (dataType === 'performance') {
+                            if (chartType === 'bar') {
+                                config = {
+                                    title: {
+                                        text: '性能指标对比',
+                                        subtext: '当前值与历史值对比'
+                                    },
+                                    tooltip: {
+                                        trigger: 'axis'
+                                    },
+                                    legend: {
+                                        data: ['当前值', '历史平均', '阈值']
+                                    },
+                                    toolbox: {
+                                        show: true,
+                                        feature: {
+                                            dataView: { show: true },
+                                            magicType: { show: true, type: ['line', 'bar'] },
+                                            restore: { show: true },
+                                            saveAsImage: { show: true }
+                                        }
+                                    },
+                                    xAxis: {
+                                        type: 'category',
+                                        data: datasets.performance.map(item => item.metric)
+                                    },
+                                    yAxis: {
+                                        type: 'value'
+                                    },
+                                    series: [
+                                        {
+                                            name: '当前值',
+                                            type: 'bar',
+                                            data: datasets.performance.map(item => item.current)
+                                        },
+                                        {
+                                            name: '历史平均',
+                                            type: 'bar',
+                                            data: datasets.performance.map(item => item.historical)
+                                        },
+                                        {
+                                            name: '阈值',
+                                            type: 'line',
+                                            data: datasets.performance.map(item => item.threshold)
+                                        }
+                                    ]
+                                };
+                            } else if (chartType === 'radar') {
+                                config = {
+                                    title: {
+                                        text: '性能雷达图'
+                                    },
+                                    tooltip: {},
+                                    legend: {
+                                        data: ['当前值', '历史平均']
+                                    },
+                                    radar: {
+                                        indicator: datasets.performance.map(item => ({
+                                            name: item.metric,
+                                            max: Math.max(item.threshold * 1.2, 100)
+                                        }))
+                                    },
+                                    series: [
+                                        {
+                                            name: '性能指标',
+                                            type: 'radar',
+                                            data: [
+                                                {
+                                                    value: datasets.performance.map(item => item.current),
+                                                    name: '当前值'
+                                                },
+                                                {
+                                                    value: datasets.performance.map(item => item.historical),
+                                                    name: '历史平均'
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                };
+                            }
+                        } else if (dataType === 'distribution') {
+                            if (chartType === 'pie') {
+                                config = {
+                                    title: {
+                                        text: '区域销售分布',
+                                        subtext: '按地区统计'
+                                    },
+                                    tooltip: {
+                                        trigger: 'item',
+                                        formatter: '{a} <br/>{b}: {c} ({d}%)'
+                                    },
+                                    legend: {
+                                        orient: 'vertical',
+                                        left: 'right',
+                                        data: datasets.distribution.map(item => item.region)
+                                    },
+                                    series: [
+                                        {
+                                            name: '销售额',
+                                            type: 'pie',
+                                            radius: '55%',
+                                            center: ['50%', '60%'],
+                                            data: datasets.distribution.map(item => ({
+                                                name: item.region,
+                                                value: item.sales
+                                            })),
+                                            emphasis: {
+                                                itemStyle: {
+                                                    shadowBlur: 10,
+                                                    shadowOffsetX: 0,
+                                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                                }
+                                            }
+                                        }
+                                    ]
+                                };
+                            } else if (chartType === 'bar') {
+                                config = {
+                                    title: {
+                                        text: '区域分布统计',
+                                        subtext: '销售额、客户数和门店数'
+                                    },
+                                    tooltip: {
+                                        trigger: 'axis',
+                                        axisPointer: {
+                                            type: 'shadow'
+                                        }
+                                    },
+                                    legend: {
+                                        data: ['销售额', '客户数', '门店数']
+                                    },
+                                    grid: {
+                                        left: '3%',
+                                        right: '4%',
+                                        bottom: '3%',
+                                        containLabel: true
+                                    },
+                                    xAxis: {
+                                        type: 'value'
+                                    },
+                                    yAxis: {
+                                        type: 'category',
+                                        data: datasets.distribution.map(item => item.region)
+                                    },
+                                    series: [
+                                        {
+                                            name: '销售额',
+                                            type: 'bar',
+                                            stack: 'total',
+                                            label: {
+                                                show: true
+                                            },
+                                            emphasis: {
+                                                focus: 'series'
+                                            },
+                                            data: datasets.distribution.map(item => item.sales)
+                                        },
+                                        {
+                                            name: '客户数',
+                                            type: 'bar',
+                                            stack: 'total',
+                                            label: {
+                                                show: true
+                                            },
+                                            emphasis: {
+                                                focus: 'series'
+                                            },
+                                            data: datasets.distribution.map(item => item.customers)
+                                        },
+                                        {
+                                            name: '门店数',
+                                            type: 'bar',
+                                            stack: 'total',
+                                            label: {
+                                                show: true
+                                            },
+                                            emphasis: {
+                                                focus: 'series'
+                                            },
+                                            data: datasets.distribution.map(item => item.stores)
+                                        }
+                                    ]
+                                };
+                            }
+                        }
+                        
+                        resolve(config);
+                    }, 500);
+                });
+            }
+            
+            // 模拟从服务器获取推荐的图表类型
+            function fetchRecommendedChartTypes(dataType) {
+                // 在实际应用中，这里会调用API
+                // 例如：return $.ajax({ url: '/api/charts/recommend', data: { dataType } });
+                
+                // 这里我们模拟API响应
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        var recommendations;
+                        
+                        if (dataType === 'sales') {
+                            recommendations = [
+                                { type: 'line', score: 0.9, name: '折线图' },
+                                { type: 'bar', score: 0.8, name: '柱状图' },
+                                { type: 'pie', score: 0.5, name: '饼图' }
+                            ];
+                        } else if (dataType === 'performance') {
+                            recommendations = [
+                                { type: 'radar', score: 0.9, name: '雷达图' },
+                                { type: 'bar', score: 0.7, name: '柱状图' },
+                                { type: 'line', score: 0.6, name: '折线图' }
+                            ];
+                        } else if (dataType === 'distribution') {
+                            recommendations = [
+                                { type: 'pie', score: 0.9, name: '饼图' },
+                                { type: 'bar', score: 0.8, name: '柱状图' },
+                                { type: 'map', score: 0.7, name: '地图' }
+                            ];
+                        }
+                        
+                        resolve(recommendations);
+                    }, 500);
+                });
+            }
+            
+            // 获取推荐图表并显示选项
+            $('#fetchChartBtn').click(function() {
+                var dataType = $('#dataSelector').val();
+                
+                // 显示加载状态
+                $('#chartTypeOptions').html('<p>加载中...</p>');
+                $('#recommendationContainer').show();
+                
+                // 获取推荐图表类型
+                fetchRecommendedChartTypes(dataType).then(recommendations => {
+                    var optionsHtml = '';
+                    
+                    // 创建图表类型选项
+                    recommendations.forEach(rec => {
+                        optionsHtml += `
+                            <div class="chart-type-option" data-type="${rec.type}">
+                                <h4>${rec.name}</h4>
+                                <p>推荐度: ${(rec.score * 100).toFixed(0)}%</p>
+                            </div>
+                        `;
+                    });
+                    
+                    $('#chartTypeOptions').html(optionsHtml);
+                    
+                    // 选择第一个推荐的图表类型并显示
+                    if (recommendations.length > 0) {
+                        var firstType = recommendations[0].type;
+                        $(`.chart-type-option[data-type="${firstType}"]`).addClass('selected');
+                        
+                        fetchChartConfig(dataType, firstType).then(config => {
+                            myChart.setOption(config);
+                        });
+                    }
+                    
+                    // 为图表类型选项添加点击事件
+                    $('.chart-type-option').click(function() {
+                        $('.chart-type-option').removeClass('selected');
+                        $(this).addClass('selected');
+                        
+                        var chartType = $(this).data('type');
+                        fetchChartConfig(dataType, chartType).then(config => {
+                            myChart.setOption(config, true);
+                        });
+                    });
+                });
+            });
+            
+            // 初始显示销售数据的柱状图
+            fetchChartConfig('sales', 'bar').then(config => {
+                myChart.setOption(config);
+            });
+            
+            // 窗口大小改变时，调整图表大小
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+        });
+    </script>
+</body>
+</html> 

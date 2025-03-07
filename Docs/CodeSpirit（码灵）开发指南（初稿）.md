@@ -22,6 +22,7 @@ Src/
 │   ├── CodeSpirit.Amis/                  # UI生成引擎
 │   ├── CodeSpirit.Authorization/         # 权限组件
 │   └── CodeSpirit.Navigation/            # 导航组件
+│   └── CodeSpirit.Charts/             # 智能图表组件
 ├── CodeSpirit.AppHost/                   # Aspire应用宿主
 ├── CodeSpirit.Core/                      # 核心定义
 ├── CodeSpirit.ServiceDefaults/           # 服务默认配置
@@ -754,6 +755,47 @@ CodeSpirit框架提供了轻量级配置中心，支持动态更新、多环境�
 12. **请求代理**
 
 13. **智能图表（VNext）**
+
+── CodeSpirit.Charts/             # 智能图表组件
+    ├── Attributes/                # 特性定义
+    │   ├── ChartAttribute.cs      # 基础图表特性
+    │   ├── ChartTypeAttribute.cs  # 图表类型特性
+    │   ├── ChartDataAttribute.cs  # 数据源特性
+    │   └── ...
+    ├── Analysis/                  # 数据分析引擎
+    │   ├── DataAnalyzer.cs        # 数据分析器
+    │   ├── ChartRecommender.cs    # 图表推荐器
+    │   └── ...
+    ├── Models/                    # 数据模型
+    │   ├── ChartConfig.cs         # 图表配置
+    │   ├── ChartDataSource.cs     # 图表数据源
+    │   └── ...
+    ├── Services/                  # 服务实现
+    │   ├── IChartService.cs       # 图表服务接口
+    │   ├── ChartService.cs        # 图表服务实现
+    │   └── ...
+    ├── Helpers/                   # 辅助类
+    │   ├── ChartHelper.cs         # 图表帮助类
+    │   └── ...
+    ├── Extensions/                # 扩展方法
+    │   ├── ChartExtensions.cs     # 图表扩展方法
+    │   └── ...
+    ├── CodeSpirit.Charts.csproj   # 项目文件
+    └── ChartConfigBuilder.cs      # 图表配置构建器
+
+```csharp
+[HttpGet("monthly-sales")]
+[Chart(Title = "月度销售趋势")]
+[ChartType(ChartType.Line)]
+[ChartData(DimensionField = "month", MetricFields = new[] { "sales", "profit" })]
+public async Task<ActionResult<ApiResponse<List<MonthlySalesDto>>>> GetMonthlySales()
+{
+    var data = await _salesService.GetMonthlySalesAsync();
+    return SuccessResponse(data);
+}
+```
+
+
 
 14. **移动端表单（VNext）**
 

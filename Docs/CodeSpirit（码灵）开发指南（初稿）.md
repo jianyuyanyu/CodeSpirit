@@ -754,48 +754,31 @@ CodeSpirit框架提供了轻量级配置中心，支持动态更新、多环境�
 
 12. **请求代理**
 
-13. **智能图表（VNext）**
-
-── CodeSpirit.Charts/             # 智能图表组件
-    ├── Attributes/                # 特性定义
-    │   ├── ChartAttribute.cs      # 基础图表特性
-    │   ├── ChartTypeAttribute.cs  # 图表类型特性
-    │   ├── ChartDataAttribute.cs  # 数据源特性
-    │   └── ...
-    ├── Analysis/                  # 数据分析引擎
-    │   ├── DataAnalyzer.cs        # 数据分析器
-    │   ├── ChartRecommender.cs    # 图表推荐器
-    │   └── ...
-    ├── Models/                    # 数据模型
-    │   ├── ChartConfig.cs         # 图表配置
-    │   ├── ChartDataSource.cs     # 图表数据源
-    │   └── ...
-    ├── Services/                  # 服务实现
-    │   ├── IChartService.cs       # 图表服务接口
-    │   ├── ChartService.cs        # 图表服务实现
-    │   └── ...
-    ├── Helpers/                   # 辅助类
-    │   ├── ChartHelper.cs         # 图表帮助类
-    │   └── ...
-    ├── Extensions/                # 扩展方法
-    │   ├── ChartExtensions.cs     # 图表扩展方法
-    │   └── ...
-    ├── CodeSpirit.Charts.csproj   # 项目文件
-    └── ChartConfigBuilder.cs      # 图表配置构建器
+13. **智能图表**
 
 ```csharp
-[HttpGet("monthly-sales")]
-[Chart(Title = "月度销售趋势")]
+/// <summary>
+/// 获取用户增长趋势图的配置
+/// </summary>
+/// <param name="dateRange">日期范围</param>
+/// <returns>图表配置</returns>
+[HttpGet("usergrowth")]
+[Display(Name = "用户增长趋势")]
+[Chart("用户增长趋势", "展示用户随时间的增长趋势")]
 [ChartType(ChartType.Line)]
-[ChartData(DimensionField = "month", MetricFields = new[] { "sales", "profit" })]
-public async Task<ActionResult<ApiResponse<List<MonthlySalesDto>>>> GetMonthlySales()
+[ChartData(dimensionField: "Date", metricFields: new[] { "UserCount" })]
+public async Task<IActionResult> GetUserGrowthStatisticsAsync([FromQuery] DateTime[] dateRange)
 {
-    var data = await _salesService.GetMonthlySalesAsync();
-    return SuccessResponse(data);
+    DateTimeOffset startDate = dateRange?.Length > 0 ? dateRange[0] : DateTimeOffset.Now.AddMonths(-1);
+    DateTimeOffset endDate = dateRange?.Length > 1 ? dateRange[1] : DateTimeOffset.Now.AddDays(1);
+
+    // 获取数据
+    var dailyGrowth = await _userService.GetUserGrowthAsync(startDate, endDate);
+    return this.AutoChartResult(dailyGrowth);
 }
 ```
 
-
+![智能图表](../Res/image-20250308144252197.png)
 
 14. **移动端表单（VNext）**
 

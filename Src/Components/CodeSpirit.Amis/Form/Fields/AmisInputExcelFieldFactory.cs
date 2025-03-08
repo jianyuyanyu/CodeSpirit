@@ -32,6 +32,7 @@ namespace CodeSpirit.Amis.Form.Fields
                             ["name"] = field["name"],
                             ["showIndex"] = true,
                             ["addable"] = true,
+                            ["perPage"] = 10,
                             ["editable"] = true,
                             ["copyable"] = true,
                             ["removable"] = true,

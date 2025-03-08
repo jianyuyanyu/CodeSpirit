@@ -85,41 +85,5 @@ namespace CodeSpirit.IdentityApi.Controllers
 
             return Ok(chartSettings);
         }
-
-        /// <summary>
-        /// 获取用户增长与活跃用户的综合统计图表
-        /// </summary>
-        /// <param name="dateRange">日期范围</param>
-        /// <returns>图表配置</returns>
-        [HttpGet("usergrowth-and-active-users")]
-        [Display(Name = "用户增长与活跃用户统计")]
-        [Chart("用户增长与活跃用户统计", "比较用户增长趋势与活跃用户数量")]
-        [ChartType(ChartType.Line)]
-        public async Task<ActionResult> GetUserGrowthAndActiveUsersStatisticsAsync([FromQuery] DateTime[] dateRange)
-        {
-            DateTimeOffset startDate = dateRange?.Length > 0 ? dateRange[0] : DateTimeOffset.Now.AddMonths(-1);
-            DateTimeOffset endDate = dateRange?.Length > 1 ? dateRange[1] : DateTimeOffset.Now.AddDays(1);
-
-            // 获取数据
-            var userGrowth = await _userService.GetUserGrowthAsync(startDate, endDate);
-            var activeUsers = await _userService.GetActiveUsersAsync(startDate, endDate);
-
-            // 组合数据
-            var combinedData = new
-            {
-                Dates = activeUsers.Select(g => g.Date.ToString("yyyy-MM-dd")).ToList(),
-                UserGrowth = userGrowth.Select(g => g.UserCount).ToList(),
-                ActiveUsers = activeUsers.Select(g => g.ActiveUserCount).ToList()
-            };
-
-            // 获取当前方法的方法信息
-            var methodInfo = typeof(UserStatisticsController).GetMethod(nameof(GetUserGrowthAndActiveUsersStatisticsAsync));
-
-            // 使用图表服务自动生成配置，传递数据和方法信息
-            var config = await _chartService.AnalyzeAndGenerateChartAsync(combinedData, methodInfo);
-            var chartSettings = _eChartConfigGenerator.GenerateCompleteEChartConfig(config, combinedData);
-
-            return Ok(chartSettings);
-        }
     }
 }

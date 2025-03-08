@@ -625,10 +625,6 @@ namespace CodeSpirit.Charts.Analysis
             if (features.IsTimeSeries && config.XAxis != null)
             {
                 config.XAxis.Type = "time";
-                config.XAxis.AxisLabel = new Dictionary<string, object>
-                {
-                    ["formatter"] = "{value}"
-                };
             }
             
             // 如果有异常值，可以调整Y轴范围

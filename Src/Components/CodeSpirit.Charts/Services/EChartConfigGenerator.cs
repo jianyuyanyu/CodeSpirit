@@ -94,25 +94,33 @@ namespace CodeSpirit.Charts.Services
                 // 设置X轴
                 if (config.XAxis != null && NeedsAxis(config.Type))
                 {
-                    echartConfig["xAxis"] = new Dictionary<string, object>
+                    var xAxisType = config.XAxis.Type ?? "category";
+                    var xAxisConfig = new Dictionary<string, object>
                     {
-                        ["type"] = config.XAxis.Type ?? "category",
-                        ["name"] = config.XAxis.Name ?? string.Empty,
-                        ["data"] = new object[0] // 数据将在生成完整配置时填充
+                        ["type"] = xAxisType,
+                        ["name"] = config.XAxis.Name ?? string.Empty
                     };
+                    
+                    // 只有在非time类型轴才设置初始data属性
+                    if (xAxisType != "time")
+                    {
+                        xAxisConfig["data"] = new object[0]; // 数据将在生成完整配置时填充
+                    }
                     
                     if (config.XAxis.AxisLabel != null)
                     {
-                        ((Dictionary<string, object>)echartConfig["xAxis"])["axisLabel"] = config.XAxis.AxisLabel;
+                        xAxisConfig["axisLabel"] = config.XAxis.AxisLabel;
                     }
                     
                     if (config.XAxis.ExtraOptions != null)
                     {
                         foreach (var option in config.XAxis.ExtraOptions)
                         {
-                            ((Dictionary<string, object>)echartConfig["xAxis"])[option.Key] = option.Value;
+                            xAxisConfig[option.Key] = option.Value;
                         }
                     }
+                    
+                    echartConfig["xAxis"] = xAxisConfig;
                 }
                 
                 // 设置Y轴
@@ -165,6 +173,11 @@ namespace CodeSpirit.Charts.Services
                     if (seriesConfig.ItemStyle != null)
                     {
                         seriesItem["itemStyle"] = seriesConfig.ItemStyle;
+                    }
+                    
+                    if (seriesConfig.Encode != null)
+                    {
+                        seriesItem["encode"] = seriesConfig.Encode;
                     }
                     
                     if (seriesConfig.ExtraOptions != null)
@@ -245,6 +258,29 @@ namespace CodeSpirit.Charts.Services
                 if (dataArray.Count == 0)
                 {
                     return echartConfig;
+                }
+                
+                // 记录轴类型与数据结构的匹配情况
+                if (config.XAxis != null && echartConfig.ContainsKey("xAxis"))
+                {
+                    var xAxisType = config.XAxis.Type ?? "category";
+                    _logger.LogInformation($"X轴配置的类型为: {xAxisType}");
+                    
+                    if (structure.DimensionFields.Count > 0)
+                    {
+                        var xField = structure.DimensionFields[0];
+                        var fieldType = structure.FieldTypes.ContainsKey(xField) ? structure.FieldTypes[xField].Name : "未知";
+                        _logger.LogInformation($"维度字段 '{xField}' 的数据类型为: {fieldType}");
+                        
+                        // 检查轴类型与数据类型是否匹配
+                        if ((xAxisType == "time" && fieldType != "DateTime" && fieldType != "String") ||
+                            ((xAxisType == "value" || xAxisType == "log") && 
+                             fieldType != "Int32" && fieldType != "Int64" && fieldType != "Double" && 
+                             fieldType != "Decimal" && fieldType != "Single"))
+                        {
+                            _logger.LogWarning($"X轴类型 '{xAxisType}' 与数据字段类型 '{fieldType}' 可能不匹配，这可能导致图表渲染异常");
+                        }
+                    }
                 }
                 
                 // 处理不同类型图表的数据
@@ -426,15 +462,31 @@ namespace CodeSpirit.Charts.Services
             // 确定X轴字段
             var xField = structure.DimensionFields[0];
             
+            // 获取X轴配置
+            var xAxisConfig = echartConfig.ContainsKey("xAxis") ? echartConfig["xAxis"] as Dictionary<string, object> : null;
+            var axisType = xAxisConfig?.ContainsKey("type") == true ? xAxisConfig["type"].ToString() : "category";
+            
             // 提取X轴数据
-            var xAxisData = dataArray.Select(item => item[xField]?.ToString()).Where(x => x != null).ToList();
-            if (echartConfig.ContainsKey("xAxis"))
+            var xAxisData = dataArray.Select(item => item[xField]?.ToObject<object>()).ToList();
+            
+            // 验证X轴数据是否符合指定的轴类型
+            if (xAxisConfig != null)
             {
-                ((Dictionary<string, object>)echartConfig["xAxis"])["data"] = xAxisData;
+                var (isValid, errorMessage) = ValidateAxisData(axisType, xAxisData);
+                if (!isValid)
+                {
+                    _logger.LogWarning(errorMessage);
+                }
+                
+                // 对于类目轴，设置数据到X轴配置中
+                if (axisType == "category")
+                {
+                    xAxisConfig["data"] = xAxisData.Where(x => x != null).ToList();
+                }
             }
             
             // 处理系列数据
-            if (echartConfig.ContainsKey("series") && echartConfig["series"] is List<Dictionary<string, object>> series)
+            if (echartConfig.ContainsKey("series") && echartConfig["series"] is List<Dictionary<string, object>> series && series.Count > 0)
             {
                 for (int i = 0; i < Math.Min(series.Count, structure.MetricFields.Count); i++)
                 {
@@ -442,17 +494,137 @@ namespace CodeSpirit.Charts.Services
                     var metricField = structure.MetricFields[i];
                     
                     // 提取系列数据
-                    var seriesData = dataArray.Select(item => 
+                    var seriesData = new List<object>();
+                    
+                    // 如果是时间轴，使用[时间,值]格式构建数据
+                    if (axisType == "time")
                     {
-                        if (item.TryGetValue(metricField, out var value))
+                        // 获取正确的字段名称，优先使用encode中的配置
+                        string xFieldName = xField;
+                        string yFieldName = metricField;
+                        
+                        // 检查SeriesConfig中的Encode设置
+                        if (i < config.Series.Count && config.Series[i].Encode != null)
                         {
-                            return value.Type == JTokenType.Null ? null : value.ToObject<object>();
+                            if (config.Series[i].Encode.ContainsKey("x"))
+                            {
+                                xFieldName = config.Series[i].Encode["x"];
+                            }
+                            
+                            if (config.Series[i].Encode.ContainsKey("y"))
+                            {
+                                yFieldName = config.Series[i].Encode["y"];
+                            }
+                            
+                            // 确保series中也有encode配置
+                            if (!seriesItem.ContainsKey("encode"))
+                            {
+                                seriesItem["encode"] = config.Series[i].Encode;
+                            }
                         }
-                        return null;
-                    }).ToList();
+                        // 如果series中有encode配置，使用encode中的字段名
+                        else if (seriesItem.ContainsKey("encode") && seriesItem["encode"] is Dictionary<string, string> encode)
+                        {
+                            if (encode.ContainsKey("x"))
+                            {
+                                xFieldName = encode["x"];
+                            }
+                            
+                            if (encode.ContainsKey("y"))
+                            {
+                                yFieldName = encode["y"];
+                            }
+                        }
+                        
+                        // 对于时间轴，我们使用[时间,值]的格式
+                        foreach (var item in dataArray)
+                        {
+                            // 尝试使用配置的字段名
+                            if (item.TryGetValue(xFieldName, out var xValue) && item.TryGetValue(yFieldName, out var yValue))
+                            {
+                                // 如果x值或y值为null，跳过这个数据点
+                                if (xValue.Type == JTokenType.Null || yValue.Type == JTokenType.Null)
+                                    continue;
+                                
+                                var xObj = xValue.ToObject<object>();
+                                var yObj = yValue.ToObject<object>();
+                                
+                                // 确保y值是数值类型
+                                if (yObj != null && (yObj is int || yObj is long || yObj is float || yObj is double || yObj is decimal))
+                                {
+                                    seriesData.Add(new object[] { xObj, yObj });
+                                }
+                                else
+                                {
+                                    _logger.LogWarning($"跳过非数值类型的数据点: {yObj}");
+                                }
+                            }
+                        }
+                        
+                        // 如果没有有效数据点，尝试使用测试数据中的日期和值
+                        if (seriesData.Count == 0 && config.DataSource?.StaticData != null)
+                        {
+                            try
+                            {
+                                // 尝试从StaticData中提取数据
+                                var staticData = config.DataSource.StaticData;
+                                var staticDataType = staticData.GetType();
+                                
+                                if (staticDataType.IsArray)
+                                {
+                                    var array = (Array)staticData;
+                                    
+                                    foreach (var item in array)
+                                    {
+                                        var itemType = item.GetType();
+                                        var dateProperty = itemType.GetProperty(xFieldName);
+                                        var valueProperty = itemType.GetProperty(yFieldName);
+                                        
+                                        if (dateProperty != null && valueProperty != null)
+                                        {
+                                            var date = dateProperty.GetValue(item);
+                                            var value = valueProperty.GetValue(item);
+                                            
+                                            if (date != null && value != null)
+                                            {
+                                                seriesData.Add(new object[] { date, value });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "从StaticData提取数据失败");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // 对于非时间轴图表，使用原来的方式
+                        seriesData = dataArray.Select(item => 
+                        {
+                            if (item.TryGetValue(metricField, out var value))
+                            {
+                                return value.Type == JTokenType.Null ? null : value.ToObject<object>();
+                            }
+                            return null;
+                        }).ToList();
+                    }
                     
                     seriesItem["data"] = seriesData;
-                    seriesItem["name"] = metricField;
+                    
+                    // 确保保留encode配置 - 从SeriesConfig中获取
+                    if (i < config.Series.Count && config.Series[i].Encode != null)
+                    {
+                        seriesItem["encode"] = config.Series[i].Encode;
+                    }
+                    
+                    // 只有在未设置名称或名称为空时才使用metricField作为系列名称
+                    if (!seriesItem.ContainsKey("name") || string.IsNullOrEmpty(seriesItem["name"]?.ToString()))
+                    {
+                        seriesItem["name"] = metricField;
+                    }
                 }
             }
         }
@@ -734,6 +906,94 @@ namespace CodeSpirit.Charts.Services
         {
             // 默认使用柱状图处理方式
             ProcessAxisChartData(echartConfig, dataArray, structure, config);
+        }
+        
+        #endregion
+
+        #region 私有方法
+        
+        /// <summary>
+        /// 验证坐标轴数据是否符合指定的轴类型
+        /// </summary>
+        /// <param name="axisType">轴类型(category, value, time, log)</param>
+        /// <param name="data">要验证的数据</param>
+        /// <returns>验证结果，包括是否有效和错误消息</returns>
+        public (bool IsValid, string? ErrorMessage) ValidateAxisData(string axisType, IEnumerable<object?> data)
+        {
+            if (data == null || !data.Any())
+            {
+                return (true, null); // 空数据被视为有效，因为可能在后期填充
+            }
+            
+            switch (axisType.ToLower())
+            {
+                case "category":
+                    // 类目轴：任何数据类型都可以，通常是字符串
+                    return (true, null);
+                    
+                case "value":
+                    // 数值轴：应该是数值类型
+                    foreach (var item in data)
+                    {
+                        if (item != null && !(item is int || item is long || item is float || item is double || item is decimal))
+                        {
+                            return (false, $"数值轴(value)要求数据必须是数值类型，但发现了非数值数据: {item}");
+                        }
+                    }
+                    return (true, null);
+                    
+                case "time":
+                    // 时间轴：可以是DateTime对象或可以解析为日期时间的字符串
+                    foreach (var item in data)
+                    {
+                        if (item == null) continue;
+                        
+                        if (item is DateTime) continue;
+                        
+                        if (item is string strValue)
+                        {
+                            if (!DateTime.TryParse(strValue, out _))
+                            {
+                                return (false, $"时间轴(time)要求数据必须是日期时间格式，但发现了无法解析为日期的字符串: {strValue}");
+                            }
+                        }
+                        else
+                        {
+                            return (false, $"时间轴(time)要求数据必须是日期时间格式，但发现了非日期时间类型的数据: {item}");
+                        }
+                    }
+                    return (true, null);
+                    
+                case "log":
+                    // 对数轴：应该是正数值
+                    foreach (var item in data)
+                    {
+                        if (item == null) continue;
+                        
+                        bool isValidValue = false;
+                        double numValue = 0;
+                        
+                        if (item is int intValue) { numValue = intValue; isValidValue = true; }
+                        else if (item is long longValue) { numValue = longValue; isValidValue = true; }
+                        else if (item is float floatValue) { numValue = floatValue; isValidValue = true; }
+                        else if (item is double doubleValue) { numValue = doubleValue; isValidValue = true; }
+                        else if (item is decimal decimalValue) { numValue = (double)decimalValue; isValidValue = true; }
+                        
+                        if (!isValidValue)
+                        {
+                            return (false, $"对数轴(log)要求数据必须是数值类型，但发现了非数值数据: {item}");
+                        }
+                        
+                        if (numValue <= 0)
+                        {
+                            return (false, $"对数轴(log)要求数据必须是正数，但发现了非正数值: {numValue}");
+                        }
+                    }
+                    return (true, null);
+                    
+                default:
+                    return (false, $"不支持的坐标轴类型: {axisType}，支持的类型有：category, value, time, log");
+            }
         }
         
         #endregion

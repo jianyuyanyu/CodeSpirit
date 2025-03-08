@@ -247,6 +247,11 @@ namespace CodeSpirit.Charts.Models
         /// 附加选项
         /// </summary>
         public Dictionary<string, object>? ExtraOptions { get; set; }
+        
+        /// <summary>
+        /// 数据编码映射，用于指定数据和视觉通道的映射关系
+        /// </summary>
+        public Dictionary<string, string>? Encode { get; set; }
     }
 
     /// <summary>

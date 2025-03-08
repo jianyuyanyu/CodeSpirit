@@ -137,5 +137,112 @@ namespace CodeSpirit.Charts.Tests.Analysis
             Assert.Equal(200, result[1]);
             Assert.Equal(300, result[2]);
         }
+
+        [Fact]
+        public void AnalyzeDataStructure_WithUserGrowthData_ReturnsCorrectStructure()
+        {
+            // 准备测试数据 - 用户增长统计数据
+            var dailyGrowth = new[]
+            {
+                new { Date = new DateTime(2025, 3, 4), UserCount = 119 },
+                new { Date = new DateTime(2025, 3, 5), UserCount = 367 }
+            };
+
+            // 执行测试
+            var result = _dataAnalyzer.AnalyzeDataStructure(dailyGrowth);
+
+            // 断言
+            Assert.NotNull(result);
+            Assert.Equal(2, result.RowCount);
+            Assert.Contains("Date", result.DimensionFields);
+            Assert.Contains("UserCount", result.MetricFields);
+            Assert.Equal(typeof(DateTime), result.FieldTypes["Date"]);
+            Assert.Equal(typeof(long), result.FieldTypes["UserCount"]);
+        }
+
+        [Fact]
+        public void ExtractDataFeatures_WithUserGrowthData_DetectsGrowthTrend()
+        {
+            // 准备测试数据 - 模拟连续几天的用户增长
+            var dailyGrowth = new[]
+            {
+                new { Date = new DateTime(2025, 3, 1), UserCount = 100 },
+                new { Date = new DateTime(2025, 3, 2), UserCount = 150 },
+                new { Date = new DateTime(2025, 3, 3), UserCount = 210 },
+                new { Date = new DateTime(2025, 3, 4), UserCount = 280 },
+                new { Date = new DateTime(2025, 3, 5), UserCount = 367 }
+            };
+
+            // 执行测试
+            var result = _dataAnalyzer.ExtractDataFeatures(dailyGrowth);
+
+            // 断言
+            Assert.NotNull(result);
+            Assert.True(result.IsTimeSeries);  // 应该检测到这是时间序列数据
+            Assert.True(result.HasTrend);      // 应该检测到上升趋势
+            Assert.True(result.MetricStatistics.ContainsKey("UserCount"));
+            
+            var stats = result.MetricStatistics["UserCount"];
+            Assert.Equal(100, stats.Min);
+            Assert.Equal(367, stats.Max);
+            Assert.True(stats.Average > 200);  // 平均值应该在这个范围
+        }
+
+        [Fact]
+        public void DetectCorrelations_WithActiveUsersAndGrowth_DetectsCorrelation()
+        {
+            // 准备测试数据 - 用户增长和活跃用户数
+            var userData = new[]
+            {
+                new { Date = new DateTime(2025, 3, 1), UserCount = 100, ActiveUserCount = 80 },
+                new { Date = new DateTime(2025, 3, 2), UserCount = 150, ActiveUserCount = 100 },
+                new { Date = new DateTime(2025, 3, 3), UserCount = 210, ActiveUserCount = 130 },
+                new { Date = new DateTime(2025, 3, 4), UserCount = 280, ActiveUserCount = 190 },
+                new { Date = new DateTime(2025, 3, 5), UserCount = 367, ActiveUserCount = 240 }
+            };
+
+            // 执行测试
+            var result = _dataAnalyzer.DetectCorrelations(userData);
+
+            // 断言
+            Assert.NotNull(result);
+            Assert.NotEmpty(result);
+            
+            // 查找 UserCount 和 ActiveUserCount 之间的相关性
+            var correlation = result.FirstOrDefault(c => 
+                (c.Field1 == "UserCount" && c.Field2 == "ActiveUserCount") ||
+                (c.Field1 == "ActiveUserCount" && c.Field2 == "UserCount"));
+            
+            Assert.NotNull(correlation);
+            Assert.True(correlation.Coefficient > 0.8); // 应该有很强的正相关性
+            Assert.Contains("强", correlation.Strength); // 中文描述应该包含"强"字
+        }
+
+        [Fact]
+        public void IdentifyPatterns_WithUserGrowthData_DetectsGrowthPattern()
+        {
+            // 准备测试数据 - 用户增长数据，呈指数增长趋势
+            var dailyGrowth = new[]
+            {
+                new { Date = new DateTime(2025, 3, 1), UserCount = 100 },
+                new { Date = new DateTime(2025, 3, 2), UserCount = 150 },
+                new { Date = new DateTime(2025, 3, 3), UserCount = 210 },
+                new { Date = new DateTime(2025, 3, 4), UserCount = 280 },
+                new { Date = new DateTime(2025, 3, 5), UserCount = 367 }
+            };
+
+            // 执行测试
+            var result = _dataAnalyzer.IdentifyPatterns(dailyGrowth);
+
+            // 断言
+            Assert.NotNull(result);
+            Assert.NotEmpty(result);
+            
+            // 应该至少有一个趋势模式
+            var trendPattern = result.FirstOrDefault(p => p.Type.Contains("趋势") || p.Type.Contains("Trend"));
+            Assert.NotNull(trendPattern);
+            Assert.Contains("UserCount", trendPattern.RelatedFields);
+            Assert.True(trendPattern.Confidence > 0.7); // 应该有很高的可信度
+        }
     }
 } 

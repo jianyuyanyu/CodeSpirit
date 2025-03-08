@@ -28,5 +28,13 @@ namespace CodeSpirit.Charts.Services
         /// <param name="data">图表数据</param>
         /// <returns>ECharts配置对象</returns>
         object GenerateCompleteEChartConfig(ChartConfig config, object data);
+        
+        /// <summary>
+        /// 验证坐标轴数据是否符合指定的轴类型
+        /// </summary>
+        /// <param name="axisType">轴类型(category, value, time, log)</param>
+        /// <param name="data">要验证的数据</param>
+        /// <returns>包含验证结果和错误消息的元组</returns>
+        (bool IsValid, string? ErrorMessage) ValidateAxisData(string axisType, IEnumerable<object?> data);
     }
 } 

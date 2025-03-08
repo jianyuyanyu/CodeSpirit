@@ -13,12 +13,10 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Src/CodeSpirit.ConfigCenter/CodeSpirit.ConfigCenter.csproj", "Src/CodeSpirit.ConfigCenter/"]
-COPY ["Src/CodeSpirit.Shared/CodeSpirit.Shared.csproj", "Src/CodeSpirit.Shared/"]
-COPY ["Src/Components/CodeSpirit.Aggregator/CodeSpirit.Aggregator.csproj", "Src/Components/CodeSpirit.Aggregator/"]
+COPY ["Src/CodeSpirit.Amis/CodeSpirit.Amis.csproj", "Src/CodeSpirit.Amis/"]
 COPY ["Src/CodeSpirit.Core/CodeSpirit.Core.csproj", "Src/CodeSpirit.Core/"]
-COPY ["Src/Components/CodeSpirit.Amis/CodeSpirit.Amis.csproj", "Src/Components/CodeSpirit.Amis/"]
-COPY ["Src/Components/CodeSpirit.Authorization/CodeSpirit.Authorization.csproj", "Src/Components/CodeSpirit.Authorization/"]
-COPY ["Src/Components/CodeSpirit.Navigation/CodeSpirit.Navigation.csproj", "Src/Components/CodeSpirit.Navigation/"]
+COPY ["Src/CodeSpirit.Authorization/CodeSpirit.Authorization.csproj", "Src/CodeSpirit.Authorization/"]
+COPY ["Src/CodeSpirit.Shared/CodeSpirit.Shared.csproj", "Src/CodeSpirit.Shared/"]
 COPY ["Src/CodeSpirit.ServiceDefaults/CodeSpirit.ServiceDefaults.csproj", "Src/CodeSpirit.ServiceDefaults/"]
 RUN dotnet restore "./Src/CodeSpirit.ConfigCenter/CodeSpirit.ConfigCenter.csproj"
 COPY . .

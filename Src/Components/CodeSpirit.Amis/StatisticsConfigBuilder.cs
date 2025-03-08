@@ -152,7 +152,10 @@ namespace CodeSpirit.Amis
                 ["type"] = "grid",
                 ["columns"] = new JArray(
                     statisticsMethods.Select(method => CreateChartColumn(controllerType, routePrefix, method))
-                )
+                ),
+                ["gap"] = "20px", // 添加水平和垂直方向的间隔
+                ["marginTop"] = "10px", // 顶部外边距
+                ["marginBottom"] = "20px" // 底部外边距
             };
         }
 
@@ -163,8 +166,20 @@ namespace CodeSpirit.Amis
         {
             return new JObject
             {
-                ["md"] = 12 / Math.Min(2, 2), // 固定2列
-                ["body"] = GenerateChartConfig(controllerType, routePrefix, method.Name, new { height = 300 })
+                ["md"] = 6, // 等同于 12 / Math.Min(2, 2)
+                ["body"] = new JObject
+                {
+                    ["type"] = "card",
+                    ["className"] = "statistics-chart-card",
+                    ["bodyClassName"] = "statistics-chart-body",
+                    ["headerClassName"] = "statistics-chart-header",
+                    ["body"] = GenerateChartConfig(controllerType, routePrefix, method.Name, new { height = 300 }),
+                    ["style"] = new JObject
+                    {
+                        ["borderRadius"] = "5px",
+                        ["boxShadow"] = "0 2px 10px 0 rgba(0,0,0,0.1)"
+                    }
+                }
             };
         }
 
@@ -190,7 +205,9 @@ namespace CodeSpirit.Amis
                 },
                 ["title"] = displayName,
                 ["name"] = chartId,
-                ["id"] = chartId
+                ["id"] = chartId,
+                ["loadingConfig"] = new JObject { ["show"] = true, ["height"] = 300 },
+                ["colorScheme"] = "category10" // 可选配色方案：category10, accent, dark2, paired, pastel1, pastel2, set1, set2, set3
             };
 
             AddAdditionalProperties(config, additionalProps);

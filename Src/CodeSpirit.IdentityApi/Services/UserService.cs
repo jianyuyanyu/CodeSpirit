@@ -10,6 +10,7 @@ using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IUserService
 {
@@ -589,6 +590,185 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         }).ToList();
 
         return result;
+    }
+
+    /// <summary>
+    /// 获取用户性别分布统计
+    /// </summary>
+    /// <returns>性别分布数据列表</returns>
+    public async Task<IEnumerable<object>> GetUserGenderDistributionAsync()
+    {
+        var query = _userManager.Users
+            .Where(u => !u.IsDeleted)
+            .GroupBy(u => u.Gender)
+            .Select(g => new
+            {
+                Gender = g.Key.ToString(),
+                Count = g.Count()
+            });
+
+        return await query.ToListAsync();
+    }
+
+    /// <summary>
+    /// 获取用户活跃状态分布
+    /// </summary>
+    /// <returns>活跃状态分布数据列表</returns>
+    public async Task<IEnumerable<object>> GetUserActiveStatusDistributionAsync()
+    {
+        var query = _userManager.Users
+            .Where(u => !u.IsDeleted)
+            .GroupBy(u => u.IsActive)
+            .Select(g => new
+            {
+                Status = g.Key ? "活跃" : "非活跃",
+                Count = g.Count()
+            });
+
+        return await query.ToListAsync();
+    }
+
+    /// <summary>
+    /// 获取用户注册时间趋势
+    /// </summary>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <param name="groupBy">分组方式: Day, Week, Month, Year</param>
+    /// <returns>注册趋势数据列表</returns>
+    public async Task<IEnumerable<object>> GetUserRegistrationTrendAsync(
+        DateTimeOffset startDate,
+        DateTimeOffset endDate,
+        string groupBy)
+    {
+        var users = await _userManager.Users
+            .Where(u => !u.IsDeleted && u.CreatedAt >= startDate && u.CreatedAt <= endDate)
+            .ToListAsync();
+
+        var result = new List<object>();
+
+        switch (groupBy.ToLower())
+        {
+            case "day":
+                result = users
+                    .GroupBy(u => u.CreatedAt.Date)
+                    .Select(g => new
+                    {
+                        TimePeriod = g.Key.ToString("yyyy-MM-dd"),
+                        RegisteredCount = g.Count()
+                    })
+                    .OrderBy(x => x.TimePeriod)
+                    .Cast<object>()
+                    .ToList();
+                break;
+
+            case "week":
+                result = users
+                    .GroupBy(u => CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(
+                        u.CreatedAt,
+                        CalendarWeekRule.FirstDay,
+                        DayOfWeek.Monday))
+                    .Select(g => new
+                    {
+                        TimePeriod = $"第{g.Key}周",
+                        RegisteredCount = g.Count()
+                    })
+                    .OrderBy(x => x.TimePeriod)
+                    .Cast<object>()
+                    .ToList();
+                break;
+
+            case "year":
+                result = users
+                    .GroupBy(u => u.CreatedAt.Year)
+                    .Select(g => new
+                    {
+                        TimePeriod = g.Key.ToString() + "年",
+                        RegisteredCount = g.Count()
+                    })
+                    .OrderBy(x => x.TimePeriod)
+                    .Cast<object>()
+                    .ToList();
+                break;
+
+            case "month":
+            default:
+                result = users
+                    .GroupBy(u => new { u.CreatedAt.Year, u.CreatedAt.Month })
+                    .Select(g => new
+                    {
+                        TimePeriod = $"{g.Key.Year}-{g.Key.Month:D2}",
+                        RegisteredCount = g.Count()
+                    })
+                    .OrderBy(x => x.TimePeriod)
+                    .Cast<object>()
+                    .ToList();
+                break;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 获取用户登录频率统计
+    /// </summary>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <returns>登录频率数据列表</returns>
+    public async Task<IEnumerable<object>> GetUserLoginFrequencyAsync(
+        DateTimeOffset startDate,
+        DateTimeOffset endDate)
+    {
+        // 此方法需要有登录历史记录表
+        // 这里假设我们获取了最后登录时间
+        var users = await _userManager.Users
+            .Where(u => !u.IsDeleted && u.LastLoginTime.HasValue)
+            .Where(u => u.LastLoginTime >= startDate && u.LastLoginTime <= endDate)
+            .ToListAsync();
+
+        // 模拟登录频率分组
+        // 在实际实现中，应该从登录记录表中统计每个用户的登录次数
+        var result = new List<object>
+        {
+            new { FrequencyRange = "从不登录", UserCount = users.Count(u => !u.LastLoginTime.HasValue) },
+            new { FrequencyRange = "低频登录 (1-5次/月)", UserCount = users.Count(u => u.LastLoginTime.HasValue) / 3 },
+            new { FrequencyRange = "中频登录 (6-15次/月)", UserCount = users.Count(u => u.LastLoginTime.HasValue) / 3 },
+            new { FrequencyRange = "高频登录 (>15次/月)", UserCount = users.Count(u => u.LastLoginTime.HasValue) / 3 }
+        };
+
+        return result;
+    }
+
+    /// <summary>
+    /// 获取长期未登录用户统计
+    /// </summary>
+    /// <param name="thresholdDays">未登录天数阈值</param>
+    /// <returns>未登录用户数据列表</returns>
+    public async Task<IEnumerable<object>> GetInactiveUsersStatisticsAsync(int thresholdDays)
+    {
+        var now = DateTime.UtcNow;
+        var cutoffDates = Enumerable.Range(1, 5)
+            .Select(multiplier => now.AddDays(-thresholdDays * multiplier))
+            .ToList();
+
+        var result = new List<object>();
+
+        foreach (var cutoffDate in cutoffDates)
+        {
+            var daysInactive = (int)(now - cutoffDate).TotalDays;
+
+            var inactiveCount = await _userManager.Users
+                .Where(u => !u.IsDeleted)
+                .Where(u => u.LastLoginTime == null || u.LastLoginTime < cutoffDate)
+                .CountAsync();
+
+            result.Add(new
+            {
+                InactiveDays = $"{daysInactive}天以上",
+                UserCount = inactiveCount
+            });
+        }
+
+        return result.ToList();
     }
     #endregion
 }

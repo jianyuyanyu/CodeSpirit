@@ -127,16 +127,21 @@ CodeSpirit（码灵）是一款革命性的全栈低代码开发框架，通过�
                 schema = new
                 {
                     type = "page",
+                    //body = new
+                    //{
+                    //    type = "markdown",
+                    //    value = MarkdownContent,
+                    //    options = new
+                    //    {
+                    //        html = true,
+                    //        linkify = true,
+                    //        breaks = false
+                    //    }
+                    //}
                     body = new
                     {
-                        type = "markdown",
-                        value = MarkdownContent,
-                        options = new
-                        {
-                            html = true,
-                            linkify = true,
-                            breaks = false
-                        }
+                        type = "service",
+                        schemaApi = "options:/identity/api/identity/userStatistics?amis=&_replace=1",
                     }
                 }
             };

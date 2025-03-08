@@ -52,7 +52,8 @@ namespace CodeSpirit.Charts.Services
                     {
                         ["data"] = config.Legend.Data ?? new List<string>(),
                         ["orient"] = config.Legend.Orient ?? "horizontal",
-                        ["left"] = config.Legend.Position ?? "center"
+                        ["left"] = config.Legend.Position ?? "center",
+                        ["top"] = "bottom"
                     };
                 }
                 
@@ -64,13 +65,12 @@ namespace CodeSpirit.Charts.Services
                         ["show"] = true,
                         ["feature"] = new Dictionary<string, object>
                         {
-                            ["dataZoom"] = new Dictionary<string, bool> { ["show"] = true },
                             ["dataView"] = new Dictionary<string, bool> { ["show"] = true },
-                            ["magicType"] = new Dictionary<string, object>
-                            {
-                                ["show"] = true,
-                                ["type"] = new[] { "line", "bar", "stack" }
-                            },
+                            //["magicType"] = new Dictionary<string, object>
+                            //{
+                            //    ["show"] = true,
+                            //    ["type"] = new[] { "line", "bar", "stack" }
+                            //},
                             ["restore"] = new Dictionary<string, bool> { ["show"] = true },
                             ["saveAsImage"] = new Dictionary<string, bool> { ["show"] = true }
                         }

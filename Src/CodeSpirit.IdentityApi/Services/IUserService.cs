@@ -64,4 +64,9 @@ public interface IUserService : IBaseCRUDIService<ApplicationUser, UserDto, long
     /// 获取活跃用户统计
     /// </summary>
     Task<List<ActiveUserDto>> GetActiveUsersAsync(DateTimeOffset startDate, DateTimeOffset endDate);
+    Task<IEnumerable<object>> GetInactiveUsersStatisticsAsync(int thresholdDays);
+    Task<IEnumerable<object>> GetUserLoginFrequencyAsync(DateTimeOffset startDate, DateTimeOffset endDate);
+    Task<IEnumerable<object>> GetUserRegistrationTrendAsync(DateTimeOffset startDate, DateTimeOffset endDate, string groupBy);
+    Task<IEnumerable<object>> GetUserActiveStatusDistributionAsync();
+    Task<IEnumerable<object>> GetUserGenderDistributionAsync();
 }

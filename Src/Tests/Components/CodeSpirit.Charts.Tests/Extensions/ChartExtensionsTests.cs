@@ -35,32 +35,21 @@ namespace CodeSpirit.Charts.Tests.Extensions
             // 添加日志服务
             _services.AddLogging();
             
-            // 添加模拟服务
-            var mockDataAnalyzer = new Mock<IDataAnalyzer>();
-            var mockChartRecommender = new Mock<IChartRecommender>();
+            // 使用真实的数据分析器和图表推荐器实现
+            _services.AddSingleton<IDataAnalyzer, DataAnalyzer>();
+            _services.AddSingleton<IChartRecommender, ChartRecommender>();
+            
+            // 只保留EChartGenerator的模拟实现
             var mockEChartGenerator = new Mock<IEChartConfigGenerator>();
             
-            // 配置模拟服务的基本行为
+            // 配置模拟服务的基本行为 - 修改标题为"用户增长趋势"
             mockEChartGenerator.Setup(g => g.GenerateCompleteEChartConfig(It.IsAny<ChartConfig>(), It.IsAny<object>()))
-                .Returns(new Dictionary<string, object>
+                .Returns((ChartConfig config, object data) => new Dictionary<string, object>
                 {
-                    ["title"] = new Dictionary<string, string> { ["text"] = "测试图表" }
+                    ["title"] = new Dictionary<string, string> { ["text"] = config.Title ?? "用户增长趋势" }
                 });
             
-            mockChartRecommender.Setup(r => r.GenerateChartConfig(It.IsAny<object>(), It.IsAny<ChartType?>()))
-                .Returns(new ChartConfig { Title = "推荐图表" });
-            
-            mockChartRecommender.Setup(r => r.RecommendChartTypes(It.IsAny<object>(), It.IsAny<int>()))
-                .Returns(new Dictionary<ChartType, double>
-                {
-                    { ChartType.Bar, 0.8 },
-                    { ChartType.Line, 0.6 },
-                    { ChartType.Pie, 0.4 }
-                });
-            
-            // 注册模拟服务
-            _services.AddSingleton(mockDataAnalyzer.Object);
-            _services.AddSingleton(mockChartRecommender.Object);
+            // 注册服务
             _services.AddSingleton(mockEChartGenerator.Object);
             
             _serviceProvider = _services.BuildServiceProvider();
@@ -95,7 +84,7 @@ namespace CodeSpirit.Charts.Tests.Extensions
             };
             var controller = new TestController(httpContext);
             
-            var config = new ChartConfig { Title = "测试图表" };
+            var config = new ChartConfig { Title = "用户增长趋势" };
             var data = new { name = "测试数据" };
             
             // 执行
@@ -104,6 +93,12 @@ namespace CodeSpirit.Charts.Tests.Extensions
             // 断言
             Assert.NotNull(result);
             Assert.IsType<JsonResult>(result);
+            
+            // 验证标题是否正确
+            var jsonResult = result as JsonResult;
+            var resultDict = jsonResult.Value as Dictionary<string, object>;
+            var titleDict = resultDict["title"] as Dictionary<string, string>;
+            Assert.Equal("用户增长趋势", titleDict["text"]);
         }
         
         [Fact]

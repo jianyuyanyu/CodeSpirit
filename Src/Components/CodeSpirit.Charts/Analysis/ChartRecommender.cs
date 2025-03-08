@@ -324,10 +324,13 @@ namespace CodeSpirit.Charts.Analysis
             var structure = _dataAnalyzer.AnalyzeDataStructure(data);
             var features = _dataAnalyzer.ExtractDataFeatures(data);
             
+            // 推断一个更合适的图表标题，基于数据结构
+            string inferredTitle = InferChartTitle(structure, chartType);
+            
             var config = new ChartConfig
             {
                 Type = chartType,
-                Title = "数据分析图表"
+                Title = inferredTitle
             };
             
             // 设置数据源
@@ -344,6 +347,55 @@ namespace CodeSpirit.Charts.Analysis
             OptimizeChartConfig(config, data);
             
             return config;
+        }
+        
+        /// <summary>
+        /// 根据数据结构和图表类型推断图表标题
+        /// </summary>
+        /// <param name="structure">数据结构信息</param>
+        /// <param name="chartType">图表类型</param>
+        /// <returns>推断的图表标题</returns>
+        private string InferChartTitle(DataStructureInfo structure, ChartType chartType)
+        {
+            // 默认标题
+            string title = "数据分析";
+            
+            // 如果有指标字段，使用第一个指标字段名称作为标题的一部分
+            if (structure.MetricFields.Count > 0)
+            {
+                string metricName = structure.MetricFields[0];
+                // 将驼峰命名或下划线命名转换为更易读的形式
+                metricName = System.Text.RegularExpressions.Regex.Replace(metricName, "([a-z])([A-Z])", "$1 $2");
+                metricName = metricName.Replace("_", " ");
+                
+                // 根据图表类型构建标题
+                switch (chartType)
+                {
+                    case ChartType.Line:
+                        title = $"{metricName}趋势";
+                        break;
+                    case ChartType.Bar:
+                        title = $"{metricName}对比";
+                        break;
+                    case ChartType.Pie:
+                        title = $"{metricName}分布";
+                        break;
+                    case ChartType.Scatter:
+                        title = $"{metricName}分散点";
+                        break;
+                    case ChartType.Radar:
+                        title = $"{metricName}雷达图";
+                        break;
+                    case ChartType.Heatmap:
+                        title = $"{metricName}热力图";
+                        break;
+                    default:
+                        title = $"{metricName}分析";
+                        break;
+                }
+            }
+            
+            return title;
         }
         
         /// <summary>

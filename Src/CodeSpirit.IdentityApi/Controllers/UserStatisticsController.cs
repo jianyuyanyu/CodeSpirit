@@ -1,5 +1,6 @@
 ﻿using CodeSpirit.Charts;
 using CodeSpirit.Charts.Attributes;
+using CodeSpirit.Charts.Extensions;
 using CodeSpirit.Charts.Models;
 using CodeSpirit.Charts.Services;
 using CodeSpirit.Core.Attributes;
@@ -40,22 +41,14 @@ namespace CodeSpirit.IdentityApi.Controllers
         [Chart("用户增长趋势", "展示用户随时间的增长趋势")]
         [ChartType(ChartType.Line)]
         [ChartData(dimensionField: "Date", metricFields: new[] { "UserCount" })]
-        public async Task<ActionResult> GetUserGrowthStatisticsAsync([FromQuery] DateTime[] dateRange)
+        public async Task<IActionResult> GetUserGrowthStatisticsAsync([FromQuery] DateTime[] dateRange)
         {
             DateTimeOffset startDate = dateRange?.Length > 0 ? dateRange[0] : DateTimeOffset.Now.AddMonths(-1);
             DateTimeOffset endDate = dateRange?.Length > 1 ? dateRange[1] : DateTimeOffset.Now.AddDays(1);
 
             // 获取数据
             var dailyGrowth = await _userService.GetUserGrowthAsync(startDate, endDate);
-
-            // 获取当前方法的方法信息
-            var methodInfo = typeof(UserStatisticsController).GetMethod(nameof(GetUserGrowthStatisticsAsync));
-
-            // 使用图表服务自动生成配置，传递数据和方法信息
-            var config = await _chartService.AnalyzeAndGenerateChartAsync(dailyGrowth, methodInfo);
-            var chartSettings = _eChartConfigGenerator.GenerateCompleteEChartConfig(config, dailyGrowth);
-
-            return Ok(chartSettings);
+            return this.AutoChartResult(dailyGrowth);
         }
 
         /// <summary>
@@ -68,22 +61,14 @@ namespace CodeSpirit.IdentityApi.Controllers
         [Chart("活跃用户统计", "展示活跃用户数量随时间的变化")]
         [ChartType(ChartType.Bar)]
         [ChartData(dimensionField: "Date", metricFields: new[] { "ActiveUserCount" })]
-        public async Task<ActionResult> GetActiveUsersStatisticsAsync([FromQuery] DateTime[] dateRange)
+        public async Task<IActionResult> GetActiveUsersStatisticsAsync([FromQuery] DateTime[] dateRange)
         {
             DateTimeOffset startDate = dateRange?.Length > 0 ? dateRange[0] : DateTimeOffset.Now.AddMonths(-1);
             DateTimeOffset endDate = dateRange?.Length > 1 ? dateRange[1] : DateTimeOffset.Now.AddDays(1);
 
             // 获取数据
             var activeUsers = await _userService.GetActiveUsersAsync(startDate, endDate);
-
-            // 获取当前方法的方法信息
-            var methodInfo = typeof(UserStatisticsController).GetMethod(nameof(GetActiveUsersStatisticsAsync));
-
-            // 使用图表服务自动生成配置，传递数据和方法信息
-            var config = await _chartService.AnalyzeAndGenerateChartAsync(activeUsers, methodInfo);
-            var chartSettings = _eChartConfigGenerator.GenerateCompleteEChartConfig(config, activeUsers);
-
-            return Ok(chartSettings);
+            return this.AutoChartResult(activeUsers);
         }
     }
 }

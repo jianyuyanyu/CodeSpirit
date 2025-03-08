@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using System.Net.Http;
 using System.Reflection;
 using Xunit;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.Charts.Tests.Services
 {
@@ -341,6 +342,51 @@ namespace CodeSpirit.Charts.Tests.Services
             Assert.Equal(ChartType.Line, result.Type);
             Assert.True(result.AutoRefresh);
             Assert.Equal(30, result.RefreshInterval);
+        }
+
+        [Fact]
+        public async Task AutoChartResult_ShouldUseChartAttributeTitleFromMethodWithReflection()
+        {
+            // 创建模拟的TestController，模拟UserStatisticsController的行为
+            var controller = CreateTestControllerWithChartAttributeMethod();
+            
+            // 准备测试数据
+            var testData = new[]
+            {
+                new { Date = DateTime.Now.AddDays(-3), UserCount = 100 },
+                new { Date = DateTime.Now.AddDays(-2), UserCount = 120 },
+                new { Date = DateTime.Now.AddDays(-1), UserCount = 140 }
+            };
+            
+            // 获取方法信息
+            var methodInfo = controller.GetType()
+                .GetMethod("TestUserGrowthStatisticsMethod", BindingFlags.Instance | BindingFlags.Public);
+            
+            // 分析并生成图表配置
+            var config = await _chartService.AnalyzeAndGenerateChartAsync(testData, methodInfo);
+            
+            // 断言 - 确认使用了方法上Chart特性中的标题
+            Assert.NotNull(config);
+            Assert.Equal("用户增长趋势", config.Title);
+            Assert.Equal(ChartType.Line, config.Type);
+        }
+        
+        // 创建模拟控制器
+        private TestController CreateTestControllerWithChartAttributeMethod()
+        {
+            return new TestController();
+        }
+        
+        // 模拟UserStatisticsController的测试控制器类
+        public class TestController
+        {
+            [Chart("用户增长趋势", "展示用户随时间的增长趋势")]
+            [ChartType(ChartType.Line)]
+            [ChartData(dimensionField: "Date", metricFields: new[] { "UserCount" })]
+            public IActionResult TestUserGrowthStatisticsMethod()
+            {
+                return null;
+            }
         }
 
         [Chart("测试图表", "这是一个测试图表", AutoRefresh = true, RefreshInterval = 30)]

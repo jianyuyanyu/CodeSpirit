@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Messaging.Models;
 using CodeSpirit.Messaging.Services;
@@ -6,48 +7,58 @@ using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 
-namespace CodeSpirit.MessagingApi.Controllers;
+namespace CodeSpirit.MessagingApi.Controllers.Default;
 
 /// <summary>
 /// 聊天控制器
 /// </summary>
 [DisplayName("聊天")]
 [Module("default")]
-public class ChatController : ApiControllerBase
+[Route("api/messaging/chat/my")]
+public class MyChatController : ApiControllerBase
 {
     private readonly IChatService _chatService;
-    private readonly ILogger<ChatController> _logger;
+    private readonly ILogger<MyChatController> _logger;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化聊天控制器
     /// </summary>
-    public ChatController(
+    public MyChatController(
         IChatService chatService,
-        ILogger<ChatController> logger)
+        ILogger<MyChatController> logger,
+        ICurrentUser currentUser)
     {
         ArgumentNullException.ThrowIfNull(chatService);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(currentUser);
 
         _chatService = chatService;
         _logger = logger;
+        _currentUser = currentUser;
     }
 
     /// <summary>
-    /// 获取用户所有会话
+    /// 获取当前用户所有会话
     /// </summary>
-    /// <param name="userId">用户ID</param>
     /// <returns>会话列表</returns>
-    [HttpGet("user/{userId}/conversations")]
-    public async Task<IActionResult> GetUserConversations(string userId)
+    [HttpGet("conversations")]
+    public async Task<IActionResult> GetMyConversations()
     {
         try
         {
+            if (!_currentUser.IsAuthenticated || _currentUser.Id == null)
+            {
+                return Unauthorized(new { message = "未登录或登录已过期" });
+            }
+
+            var userId = _currentUser.Id.ToString();
             var conversations = await _chatService.GetUserConversationsAsync(userId);
             return Ok(conversations);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取用户会话失败: {UserId}", userId);
+            _logger.LogError(ex, "获取当前用户会话失败");
             return BadRequest(new { message = "获取用户会话失败" });
         }
     }
@@ -107,19 +118,27 @@ public class ChatController : ApiControllerBase
     }
 
     /// <summary>
-    /// 创建新会话
+    /// 创建新会话（使用当前用户作为创建者）
     /// </summary>
     /// <param name="request">创建会话请求</param>
     /// <returns>创建的会话</returns>
     [HttpPost("conversations")]
-    public async Task<IActionResult> CreateConversation([FromBody] CreateConversationRequest request)
+    public async Task<IActionResult> CreateMyConversation([FromBody] CreateMyConversationRequest request)
     {
         try
         {
+            if (!_currentUser.IsAuthenticated || _currentUser.Id == null)
+            {
+                return Unauthorized(new { message = "未登录或登录已过期" });
+            }
+
+            var userId = _currentUser.Id.ToString();
+            var userName = _currentUser.UserName;
+
             var conversation = await _chatService.CreateConversationAsync(
                 request.Title,
-                request.CreatorId,
-                request.CreatorName,
+                userId,
+                userName,
                 request.ParticipantIds);
 
             return CreatedAtAction(nameof(GetConversation), new { conversationId = conversation.Id }, conversation);
@@ -132,21 +151,29 @@ public class ChatController : ApiControllerBase
     }
 
     /// <summary>
-    /// 发送消息
+    /// 当前用户发送消息
     /// </summary>
     /// <param name="conversationId">会话ID</param>
     /// <param name="request">发送消息请求</param>
     /// <returns>发送的消息</returns>
     [HttpPost("conversations/{conversationId}/messages")]
-    public async Task<IActionResult> SendMessage(Guid conversationId, [FromBody] SendMessageRequest request)
+    public async Task<IActionResult> SendMyMessage(Guid conversationId, [FromBody] SendMyMessageRequest request)
     {
         try
         {
+            if (!_currentUser.IsAuthenticated || _currentUser.Id == null)
+            {
+                return Unauthorized(new { message = "未登录或登录已过期" });
+            }
+
+            var userId = _currentUser.Id.ToString();
+            var userName = _currentUser.UserName;
+
             var message = await _chatService.SendMessageAsync(
                 conversationId,
                 request.Content,
-                request.SenderId,
-                request.SenderName);
+                userId,
+                userName);
 
             return Ok(message);
         }
@@ -214,16 +241,21 @@ public class ChatController : ApiControllerBase
     }
 
     /// <summary>
-    /// 标记会话为已读
+    /// 标记当前用户的会话为已读
     /// </summary>
     /// <param name="conversationId">会话ID</param>
-    /// <param name="userId">用户ID</param>
     /// <returns>操作结果</returns>
     [HttpPost("conversations/{conversationId}/read")]
-    public async Task<IActionResult> MarkConversationAsRead(Guid conversationId, [FromBody] string userId)
+    public async Task<IActionResult> MarkMyConversationAsRead(Guid conversationId)
     {
         try
         {
+            if (!_currentUser.IsAuthenticated || _currentUser.Id == null)
+            {
+                return Unauthorized(new { message = "未登录或登录已过期" });
+            }
+
+            var userId = _currentUser.Id.ToString();
             var result = await _chatService.MarkConversationAsReadAsync(conversationId, userId);
             if (!result)
             {
@@ -234,26 +266,34 @@ public class ChatController : ApiControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "标记会话为已读失败: {ConversationId}, {UserId}", conversationId, userId);
+            _logger.LogError(ex, "标记会话为已读失败: {ConversationId}", conversationId);
             return BadRequest(new { message = "标记会话为已读失败" });
         }
     }
 
     /// <summary>
-    /// 获取或创建私聊会话
+    /// 当前用户创建私聊会话
     /// </summary>
     /// <param name="request">私聊会话请求</param>
     /// <returns>会话详情</returns>
-    [HttpPost("private")]
-    public async Task<IActionResult> GetOrCreatePrivateConversation([FromBody] PrivateConversationRequest request)
+    [HttpPost("my/private")]
+    public async Task<IActionResult> GetOrCreateMyPrivateConversation([FromBody] MyPrivateConversationRequest request)
     {
         try
         {
+            if (!_currentUser.IsAuthenticated || _currentUser.Id == null)
+            {
+                return Unauthorized(new { message = "未登录或登录已过期" });
+            }
+
+            var userId = _currentUser.Id.ToString();
+            var userName = _currentUser.UserName;
+
             var conversation = await _chatService.GetOrCreatePrivateConversationAsync(
-                request.UserId1,
-                request.UserName1,
-                request.UserId2,
-                request.UserName2);
+                userId,
+                userName,
+                request.OtherUserId,
+                request.OtherUserName);
 
             return Ok(conversation);
         }
@@ -263,6 +303,49 @@ public class ChatController : ApiControllerBase
             return BadRequest(new { message = "获取或创建私聊会话失败" });
         }
     }
+}
+
+/// <summary>
+/// 创建当前用户的对话请求
+/// </summary>
+public class CreateMyConversationRequest
+{
+    /// <summary>
+    /// 对话标题
+    /// </summary>
+    public string Title { get; set; }
+
+    /// <summary>
+    /// 参与者ID列表
+    /// </summary>
+    public List<string> ParticipantIds { get; set; } = new();
+}
+
+/// <summary>
+/// 当前用户发送消息请求
+/// </summary>
+public class SendMyMessageRequest
+{
+    /// <summary>
+    /// 消息内容
+    /// </summary>
+    public string Content { get; set; }
+}
+
+/// <summary>
+/// 当前用户私聊对话请求
+/// </summary>
+public class MyPrivateConversationRequest
+{
+    /// <summary>
+    /// 对方用户ID
+    /// </summary>
+    public string OtherUserId { get; set; }
+
+    /// <summary>
+    /// 对方用户名称
+    /// </summary>
+    public string OtherUserName { get; set; }
 }
 
 /// <summary>

@@ -1,46 +1,57 @@
+using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Messaging.Models;
 using CodeSpirit.Messaging.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CodeSpirit.MessagingApi.Controllers;
+namespace CodeSpirit.MessagingApi.Controllers.Default;
 
 /// <summary>
 /// 消息控制器
 /// </summary>
 [DisplayName("消息")]
 [Module("default")]
-public class MessagesController : ApiControllerBase
+[Route("api/messaging/messages/my")]
+public class MyMessagesController : ApiControllerBase
 {
     private readonly IMessageService _messageService;
-    private readonly ILogger<MessagesController> _logger;
+    private readonly ILogger<MyMessagesController> _logger;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化消息控制器
     /// </summary>
-    public MessagesController(
+    public MyMessagesController(
         IMessageService messageService,
-        ILogger<MessagesController> logger)
+        ILogger<MyMessagesController> logger,
+        ICurrentUser currentUser)
     {
         ArgumentNullException.ThrowIfNull(messageService);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(currentUser);
 
         _messageService = messageService;
         _logger = logger;
+        _currentUser = currentUser;
     }
 
     /// <summary>
-    /// 获取用户消息列表
+    /// 获取当前用户的消息列表
     /// </summary>
-    /// <param name="userId">用户ID</param>
     /// <param name="pageNumber">页码</param>
     /// <param name="pageSize">每页大小</param>
     /// <returns>消息列表及分页信息</returns>
-    [HttpGet("user/{userId}")]
-    public async Task<IActionResult> GetUserMessages(string userId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+    [HttpGet("")]
+    public async Task<IActionResult> GetMyMessages([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
     {
         try
         {
+            if (!_currentUser.IsAuthenticated || _currentUser.Id == null)
+            {
+                return Unauthorized(new { message = "未登录或登录已过期" });
+            }
+
+            var userId = _currentUser.Id.ToString();
             var (messages, totalCount) = await _messageService.GetUserMessagesAsync(userId, pageNumber, pageSize);
 
             return Ok(new
@@ -54,42 +65,74 @@ public class MessagesController : ApiControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取用户消息失败: {UserId}", userId);
+            _logger.LogError(ex, "获取当前用户消息失败");
             return BadRequest(new { message = "获取用户消息失败" });
         }
     }
 
     /// <summary>
-    /// 获取用户未读消息数量
+    /// 获取用户消息列表
     /// </summary>
     /// <param name="userId">用户ID</param>
+    /// <param name="pageNumber">页码</param>
+    /// <param name="pageSize">每页大小</param>
+    /// <returns>消息列表及分页信息</returns>
+    [HttpGet("list")]
+    public async Task<IActionResult> GetUserMessages([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+    {
+        var (messages, totalCount) = await _messageService.GetUserMessagesAsync(_currentUser.Id?.ToString(), pageNumber, pageSize);
+
+        return Ok(new
+        {
+            Messages = messages,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+        });
+    }
+
+    /// <summary>
+    /// 获取当前用户未读消息数量
+    /// </summary>
     /// <returns>未读消息数量</returns>
-    [HttpGet("user/{userId}/unread/count")]
-    public async Task<IActionResult> GetUnreadCount(string userId)
+    [HttpGet("unread/count")]
+    public async Task<IActionResult> GetMyUnreadCount()
     {
         try
         {
+            if (!_currentUser.IsAuthenticated || _currentUser.Id == null)
+            {
+                return Unauthorized(new { message = "未登录或登录已过期" });
+            }
+
+            var userId = _currentUser.Id.ToString();
             var count = await _messageService.GetUnreadMessageCountAsync(userId);
             return Ok(new { UnreadCount = count });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取未读消息数量失败: {UserId}", userId);
+            _logger.LogError(ex, "获取当前用户未读消息数量失败");
             return BadRequest(new { message = "获取未读消息数量失败" });
         }
     }
 
     /// <summary>
-    /// 标记消息为已读
+    /// 标记当前用户的消息为已读
     /// </summary>
     /// <param name="messageId">消息ID</param>
-    /// <param name="userId">用户ID</param>
     /// <returns>操作结果</returns>
     [HttpPost("{messageId}/read")]
-    public async Task<IActionResult> MarkAsRead(Guid messageId, [FromBody] string userId)
+    public async Task<IActionResult> MarkMyMessageAsRead(Guid messageId)
     {
         try
         {
+            if (!_currentUser.IsAuthenticated || _currentUser.Id == null)
+            {
+                return Unauthorized(new { message = "未登录或登录已过期" });
+            }
+
+            var userId = _currentUser.Id.ToString();
             var result = await _messageService.MarkAsReadAsync(messageId, userId);
             if (!result)
             {
@@ -100,21 +143,21 @@ public class MessagesController : ApiControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "标记消息已读失败: {MessageId}, {UserId}", messageId, userId);
+            _logger.LogError(ex, "标记当前用户消息已读失败: {MessageId}", messageId);
             return BadRequest(new { message = "标记消息已读失败" });
         }
     }
 
     /// <summary>
-    /// 标记所有消息为已读
+    /// 标记当前用户所有消息为已读
     /// </summary>
-    /// <param name="userId">用户ID</param>
     /// <returns>操作结果</returns>
-    [HttpPost("user/{userId}/read/all")]
-    public async Task<IActionResult> MarkAllAsRead(string userId)
+    [HttpPost("read/all")]
+    public async Task<IActionResult> MarkAllMyMessagesAsRead()
     {
         try
         {
+            var userId = _currentUser.Id.ToString();
             var result = await _messageService.MarkAllAsReadAsync(userId);
             if (!result)
             {
@@ -125,7 +168,7 @@ public class MessagesController : ApiControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "标记所有消息已读失败: {UserId}", userId);
+            _logger.LogError(ex, "标记当前用户所有消息已读失败");
             return BadRequest(new { message = "标记所有消息已读失败" });
         }
     }
@@ -180,16 +223,21 @@ public class MessagesController : ApiControllerBase
     }
 
     /// <summary>
-    /// 删除消息
+    /// 删除当前用户的消息
     /// </summary>
     /// <param name="messageId">消息ID</param>
-    /// <param name="userId">用户ID</param>
     /// <returns>操作结果</returns>
     [HttpDelete("{messageId}")]
-    public async Task<IActionResult> DeleteMessage(Guid messageId, [FromQuery] string userId)
+    public async Task<IActionResult> DeleteMyMessage(Guid messageId)
     {
         try
         {
+            if (!_currentUser.IsAuthenticated || _currentUser.Id == null)
+            {
+                return Unauthorized(new { message = "未登录或登录已过期" });
+            }
+
+            var userId = _currentUser.Id.ToString();
             var result = await _messageService.DeleteMessageAsync(messageId, userId);
             if (!result)
             {
@@ -200,7 +248,7 @@ public class MessagesController : ApiControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "删除消息失败: {MessageId}, {UserId}", messageId, userId);
+            _logger.LogError(ex, "删除当前用户消息失败: {MessageId}", messageId);
             return BadRequest(new { message = "删除消息失败" });
         }
     }

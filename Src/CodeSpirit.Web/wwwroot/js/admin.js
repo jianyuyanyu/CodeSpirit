@@ -124,7 +124,7 @@
                             actions: [
                                 {
                                     actionType: 'ajax',
-                                    api: '/messaging/api/messages/user/${user.id}/unread/count',
+                                    api: '/messaging/api/messaging/messages/my/unread/count',
                                     messages: {
                                         success: '',
                                         failed: '加载通知失败'
@@ -137,7 +137,7 @@
                                                 size: 'md',
                                                 body: {
                                                     type: 'service',
-                                                    api: '/messaging/api/messages/user/${user.id}',
+                                                    api: '/messaging/api/messaging/messages/my/list',
                                                     body: [
                                                         {
                                                             type: 'list',
@@ -151,27 +151,21 @@
                                                                         icon: 'fa fa-times',
                                                                         tooltip: '删除通知',
                                                                         actionType: 'ajax',
-                                                                        api: 'DELETE:/messaging/api/messages/${id}?userId=${user.id}'
+                                                                        api: 'DELETE:/messaging/api/messaging/messages/my/${id}'
                                                                     },
                                                                     {
                                                                         type: 'button',
                                                                         icon: 'fa fa-check',
                                                                         tooltip: '标记为已读',
                                                                         actionType: 'ajax',
-                                                                        api: 'POST:/messaging/api/messages/${id}/read',
-                                                                        data: {
-                                                                            userId: '${userId}'
-                                                                        }
+                                                                        api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
                                                                     }
                                                                 ]
                                                             },
                                                             placeholder: '暂无通知',
                                                             itemAction: {
                                                                 actionType: 'ajax',
-                                                                api: 'POST:/messaging/api/messages/${id}/read',
-                                                                data: {
-                                                                    userId: '${user.id}'
-                                                                }
+                                                                api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
                                                             },
                                                             footer: [
                                                                 {
@@ -180,7 +174,7 @@
                                                                     level: 'primary',
                                                                     size: 'sm',
                                                                     actionType: 'ajax',
-                                                                    api: 'POST:/messaging/api/messages/user/${user.id}/read/all',
+                                                                    api: 'POST:/messaging/api/messaging/messages/my/read/all',
                                                                     reload: 'window'
                                                                 }
                                                             ]
@@ -482,14 +476,14 @@
     };
 
     // 自动获取未读通知数
-    window.fetchUnreadNotificationCount = function (userId) {
-        // 如果没有传入userId，从全局数据获取
-        userId = userId || window.GlobalData.get('user.id');
-
-        if (!userId) return;
-
+    window.fetchUnreadNotificationCount = function () {
+        var token = localStorage.getItem('token');                
         // 发起AJAX请求获取未读消息数
-        fetch(`/messaging/api/messages/user/${userId}/unread/count`)
+        fetch(`/messaging/api/messaging/messages/my/unread/count`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
             .then(response => {
                 console.debug(response);
                 if (!response.ok) {
@@ -499,11 +493,11 @@
             })
             .then(data => {
                 console.debug(data);
-                const count = data.count || 0;
+                const count = data.count || data.unreadCount || 0;
                 window.updateNotificationCount(count);
             })
             .catch(error => {
-                console.error('获取未读通知数失败:', error);
+                console.error('获取未读消息数失败:', error);
             });
     };
 

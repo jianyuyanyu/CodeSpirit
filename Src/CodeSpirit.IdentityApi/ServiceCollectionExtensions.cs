@@ -2,7 +2,6 @@
 using Audit.WebApi;
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
-using CodeSpirit.ConfigCenter.Client;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;
@@ -21,6 +20,7 @@ using System.Text;
 using CodeSpirit.Aggregator;
 using CodeSpirit.Charts;
 using CodeSpirit.Charts.Extensions;
+using CodeSpirit.ConfigCenter.Client;
 
 public static class ServiceCollectionExtensions
 {

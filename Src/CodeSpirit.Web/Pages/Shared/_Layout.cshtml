@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="~/sdk/antd.css" asp-append-version="true" />
     <link rel="stylesheet" asp-append-version="true" href="~/sdk/helper.css" />
     <link rel="stylesheet" asp-append-version="true" href="~/sdk/iconfont.css" />
+    <link rel="stylesheet" href="~/css/chat.css" asp-append-version="true" />
 
     <!-- 全局变量配置 -->
     <script>
@@ -27,10 +28,14 @@
     <script asp-append-version="true" src="~/js/history.js"></script>
     <script asp-append-version="true" src="~/js/tokenManager.js"></script>
     @RenderSection("Head", required: false)  <!-- 可选的 Razor section -->
-    
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    @RenderBody()  <!-- 页面主体内容 -->
+    <div class="page-container">
+        @RenderBody()  <!-- 页面主体内容 -->
+    </div>
     @await RenderSectionAsync("Scripts", required: false)
+    <script src="_framework/blazor.server.js"></script>
+    <script src="~/js/chat.js" asp-append-version="true"></script>
 </body>
 </html>

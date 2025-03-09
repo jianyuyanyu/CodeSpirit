@@ -1,0 +1,296 @@
+@using CodeSpirit.Messaging.Models
+@using CodeSpirit.Web.Services
+@inject NavigationManager NavigationManager
+@inject IHttpClientFactory httpClientFactory
+@inject IJwtAuthService AuthService
+
+<div class="notification-container">
+    <div class="notification-header">
+        <h2>我的通知</h2>
+        @if (Messages?.Any() == true)
+        {
+            <button class="mark-all-read-btn" @onclick="MarkAllAsRead">全部标为已读</button>
+        }
+    </div>
+    
+    <div class="notification-list">
+        @if (Loading)
+        {
+            <div class="loading">加载中...</div>
+        }
+        else if (Messages == null || !Messages.Any())
+        {
+            <div class="empty-state">
+                <p>暂无通知</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var message in Messages)
+            {
+                <div class="notification-item @(message.IsRead ? "" : "unread")" @onclick="() => MarkAsRead(message.Id)">
+                    <div class="notification-icon">
+                        <i class="@(message.Type == MessageType.SystemNotification ? "icon-system" : "icon-message")"></i>
+                    </div>
+                    <div class="notification-content">
+                        <div class="notification-title">@message.Title</div>
+                        <div class="notification-text">@message.Content</div>
+                        <div class="notification-time">@message.CreatedAt.ToString("yyyy-MM-dd HH:mm")</div>
+                    </div>
+                    @if (!message.IsRead)
+                    {
+                        <div class="unread-indicator"></div>
+                    }
+                </div>
+            }
+            
+            @if (HasMoreMessages)
+            {
+                <div class="load-more">
+                    <button class="load-more-btn" @onclick="LoadMoreMessages">加载更多</button>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<Message> Messages { get; set; }
+    private bool Loading { get; set; } = true;
+    private int CurrentPage { get; set; } = 1;
+    private int PageSize { get; set; } = 10;
+    private int TotalCount { get; set; }
+    private bool HasMoreMessages => Messages != null && Messages.Count < TotalCount;
+    private string _userId;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // 获取当前用户ID
+        _userId = await AuthService.GetUserIdAsync();
+        
+        if (!string.IsNullOrEmpty(_userId))
+        {
+            await LoadMessages();
+        }
+        else
+        {
+            Loading = false;
+        }
+    }
+    
+    private async Task LoadMessages()
+    {
+        try
+        {
+            Loading = true;
+            var client = httpClientFactory.CreateClient("Messaging");
+            var response = await client.GetFromJsonAsync<MessageResponse>($"api/messages/user/{_userId}?pageNumber={CurrentPage}&pageSize={PageSize}");
+            
+            if (Messages == null)
+            {
+                Messages = response.Messages;
+            }
+            else
+            {
+                Messages.AddRange(response.Messages);
+            }
+            
+            TotalCount = response.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading messages: {ex.Message}");
+        }
+        finally
+        {
+            Loading = false;
+        }
+    }
+    
+    private async Task LoadMoreMessages()
+    {
+        CurrentPage++;
+        await LoadMessages();
+    }
+    
+    private async Task MarkAsRead(Guid messageId)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("Messaging");
+            var response = await client.PostAsJsonAsync($"api/messages/{messageId}/read", _userId);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var message = Messages.FirstOrDefault(m => m.Id == messageId);
+                if (message != null)
+                {
+                    message.IsRead = true;
+                    message.ReadAt = DateTime.Now;
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error marking message as read: {ex.Message}");
+        }
+    }
+    
+    private async Task MarkAllAsRead()
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("Messaging");
+            var response = await client.PostAsync($"api/messages/user/{_userId}/read/all", null);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                foreach (var message in Messages)
+                {
+                    message.IsRead = true;
+                    message.ReadAt = DateTime.Now;
+                }
+                
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error marking all messages as read: {ex.Message}");
+        }
+    }
+    
+    private class MessageResponse
+    {
+        public List<Message> Messages { get; set; }
+        public int TotalCount { get; set; }
+        public int PageNumber { get; set; }
+        public int PageSize { get; set; }
+        public int TotalPages { get; set; }
+    }
+}
+
+<style>
+    .notification-container {
+        max-width: 800px;
+        margin: 20px auto;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    
+    .notification-header {
+        padding: 15px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .notification-header h2 {
+        margin: 0;
+        font-size: 18px;
+    }
+    
+    .mark-all-read-btn {
+        background-color: #1890ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 12px;
+        cursor: pointer;
+    }
+    
+    .notification-list {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    .notification-item {
+        display: flex;
+        padding: 15px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        position: relative;
+    }
+    
+    .notification-item:hover {
+        background-color: #f9f9f9;
+    }
+    
+    .notification-item.unread {
+        background-color: #e6f7ff;
+    }
+    
+    .notification-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        flex-shrink: 0;
+    }
+    
+    .notification-icon i {
+        font-size: 20px;
+        color: #1890ff;
+    }
+    
+    .notification-content {
+        flex: 1;
+    }
+    
+    .notification-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .notification-text {
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .notification-time {
+        font-size: 12px;
+        color: #888;
+    }
+    
+    .unread-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #1890ff;
+        position: absolute;
+        top: 15px;
+        right: 15px;
+    }
+    
+    .loading, .empty-state {
+        padding: 20px;
+        text-align: center;
+        color: #888;
+    }
+    
+    .load-more {
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .load-more-btn {
+        background-color: #f5f5f5;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        padding: 8px 16px;
+        cursor: pointer;
+    }
+    
+    .load-more-btn:hover {
+        background-color: #e6e6e6;
+    }
+</style> 

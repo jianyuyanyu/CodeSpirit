@@ -1,0 +1,8 @@
+@page "/chat"
+@model CodeSpirit.Web.Pages.ChatModel
+@{
+    ViewData["Title"] = "聊天";
+}
+
+<component type="typeof(CodeSpirit.Web.Components.Shared.MainNav)" render-mode="ServerPrerendered" param-CurrentPath="@Request.Path.Value" />
+<component type="typeof(CodeSpirit.Web.Components.Chat.ChatApp)" render-mode="Server" /> 

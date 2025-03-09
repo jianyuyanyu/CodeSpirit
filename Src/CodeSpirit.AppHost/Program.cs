@@ -39,6 +39,16 @@ var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("ident
         .WaitFor(configService)
     ;
 
+// 添加消息服务
+var messagingService = builder.AddProject<Projects.CodeSpirit_MessagingApi>("messaging")
+    .WithReference(seqService)
+        .WaitFor(seqService)
+    .WithReference(cache)
+        .WaitFor(cache)
+    .WithReference(configService)
+        .WaitFor(configService)
+    ;
+
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     .WithReference(cache)
@@ -49,6 +59,8 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
         .WaitFor(identityService)
     .WithReference(configService)
         .WaitFor(configService)
+    .WithReference(messagingService)
+        .WaitFor(messagingService)
     ;
 
 builder.Build().Run();

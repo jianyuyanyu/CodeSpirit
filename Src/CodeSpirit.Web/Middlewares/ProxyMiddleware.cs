@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Http.Extensions;
 using System.Net.Http.Headers;
 using System.Collections.Generic;
 using CodeSpirit.Aggregator.Services;
@@ -55,8 +55,46 @@ namespace CodeSpirit.Web.Middlewares
             //    return;
             //}
 
+            // Skip proxy for local web project requests
+            if (IsLocalWebProjectRequest(request))
+            {
+                _logger.LogInformation("本地Web项目请求，跳过代理 - 路径: {Path}", request.Path);
+                await _next(context);
+                return;
+            }
+
+            // Handle WebSocket requests (particularly for SignalR hubs) - skip proxying entirely
+            if (context.WebSockets.IsWebSocketRequest || 
+                request.Headers.ContainsKey("Upgrade") && request.Headers["Upgrade"] == "websocket")
+            {
+                _logger.LogInformation("WebSocket请求，跳过代理 - 路径: {Path}", request.Path);
+                await _next(context);
+                return;
+            }
+
+            // Special check for SignalR hub connections
+            if (request.Path.StartsWithSegments("/chathub", StringComparison.OrdinalIgnoreCase) ||
+                request.Path.StartsWithSegments("/hub", StringComparison.OrdinalIgnoreCase) ||
+                request.Path.StartsWithSegments("/signalr", StringComparison.OrdinalIgnoreCase) ||
+                request.Path.StartsWithSegments("/_blazor", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation("SignalR请求，跳过代理 - 路径: {Path}", request.Path);
+                await _next(context);
+                return;
+            }
+
+            // Skip proxy for all web project resources and requests
+            // Check if it's a web project resource - paths that should not be proxied
+            var webProjectPaths = new[] { "/css/", "/js/", "/images/", "/fonts/", "/lib/", "/assets/", "/Pages/" };
+            if (webProjectPaths.Any(p => request.Path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase)))
+            {
+                _logger.LogInformation("Web项目资源，跳过代理 - 路径: {Path}", request.Path);
+                await _next(context);
+                return;
+            }
+            
             // Check if the request is for a static resource
-            var staticFileExtensions = new[] { ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".map" };
+            var staticFileExtensions = new[] { ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".map", ".woff", ".woff2", ".ttf", ".eot", ".html", ".htm" };
             if (staticFileExtensions.Any(ext => request.Path.Value?.EndsWith(ext, StringComparison.OrdinalIgnoreCase) == true))
             {
                 _logger.LogInformation("请求为静态资源，跳过代理 - 路径: {Path}", request.Path);
@@ -73,7 +111,7 @@ namespace CodeSpirit.Web.Middlewares
             //}
 
             var pathSegments = request.Path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (pathSegments == null || pathSegments.Length < 2)
+            if (pathSegments == null || pathSegments.Length < 3)
             {
                 await _next(context);
                 return;
@@ -81,8 +119,16 @@ namespace CodeSpirit.Web.Middlewares
 
             var serviceName = pathSegments[0];
 
-            if (serviceName == "api")
+            // 扩展不代理的本地路径列表
+            // 增加Pages目录下的所有页面路由
+            if (serviceName == "api" || serviceName == "_blazor" || 
+                serviceName == "swagger" || serviceName == "health" || 
+                serviceName == "signalr" || serviceName == "hubs" ||
+                serviceName == "Login" || serviceName == "Index" ||
+                serviceName == "Chat" || serviceName == "Notifications" ||
+                serviceName == "Impersonate" || serviceName == "Shared")
             {
+                _logger.LogInformation("Web项目路径，跳过代理 - 路径: {Path}", request.Path);
                 await _next(context);
                 return;
             }
@@ -263,6 +309,43 @@ namespace CodeSpirit.Web.Middlewares
                     await context.Response.Body.FlushAsync();
                 }
             }
+        }
+
+        /// <summary>
+        /// 判断请求是否为本地Web项目的请求
+        /// </summary>
+        /// <param name="request">HTTP请求</param>
+        /// <returns>如果是本地Web项目请求则返回true</returns>
+        private bool IsLocalWebProjectRequest(HttpRequest request)
+        {
+            // 所有Razor Pages页面名称
+            var razorPages = new[] { 
+                "Login", "Index", "Chat", "Notifications", "Impersonate", 
+                "Error", "Privacy", "Account", "Profile", "Settings", "Dashboard" 
+            };
+
+            // 获取第一个路径段
+            var path = request.Path.Value ?? string.Empty;
+            var firstSegment = path.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+
+            // 检查是否是Razor Page请求（页面名称作为第一个路径段）
+            if (razorPages.Any(page => firstSegment.Equals(page, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            // 检查请求接受类型是否为HTML（通常浏览器请求页面时会包含text/html）
+            if (request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase))
+            {
+                // 本地页面请求通常小于3个路径段且不是API请求
+                var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (segments.Length < 3 && !path.Contains("/api/", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

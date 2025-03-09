@@ -4,6 +4,88 @@
     // 使用 HashHistory
     const history = History.createHashHistory();
 
+    // 全局数据对象，用于存储用户信息和其他共享数据
+    window.globalData = {
+        user: {
+            id: null,
+            name: '',
+            avatar: '',
+            roles: []
+        },
+        notifications: {
+            count: 0,
+            hasUnread: false,
+            items: []
+        },
+        // 可以添加其他全局数据
+        settings: {},
+        permissions: []
+    };
+
+    // 全局数据辅助函数
+    window.GlobalData = {
+        // 获取数据
+        get: function (path, defaultValue) {
+            const keys = path.split('.');
+            let current = window.globalData;
+
+            for (let i = 0; i < keys.length; i++) {
+                if (current === undefined || current === null) {
+                    return defaultValue;
+                }
+                current = current[keys[i]];
+            }
+
+            return current !== undefined ? current : defaultValue;
+        },
+
+        // 设置数据
+        set: function (path, value) {
+            const keys = path.split('.');
+            let current = window.globalData;
+
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (current[keys[i]] === undefined) {
+                    current[keys[i]] = {};
+                }
+                current = current[keys[i]];
+            }
+
+            current[keys[keys.length - 1]] = value;
+            return value;
+        },
+
+        // 将全局数据同步到amis上下文
+        syncToAmis: function (amisInstance, selectedPaths) {
+            if (!amisInstance) return;
+
+            const data = {};
+            if (selectedPaths && Array.isArray(selectedPaths)) {
+                selectedPaths.forEach(path => {
+                    const keys = path.split('.');
+                    let current = data;
+                    let source = window.globalData;
+
+                    for (let i = 0; i < keys.length - 1; i++) {
+                        if (source[keys[i]] === undefined) break;
+
+                        if (current[keys[i]] === undefined) {
+                            current[keys[i]] = {};
+                        }
+                        current = current[keys[i]];
+                        source = source[keys[i]];
+                    }
+
+                    current[keys[keys.length - 1]] = source[keys[keys.length - 1]];
+                });
+            } else {
+                Object.assign(data, window.globalData);
+            }
+
+            amisInstance.updateProps({ data });
+        }
+    };
+
     const app = {
         type: 'app',
         brandName: 'CodeSpirit',
@@ -13,21 +95,138 @@
             api: '/identity/api/identity/profile',
             silentPolling: false,
             className: 'flex w-full justify-end',
+            onEvent: {
+                fetchInited: {
+                    actions: [
+                        {
+                            actionType: "custom",
+                            script: `
+                        window.fetchUnreadNotificationCount();
+                        
+                        // 设置定时任务，每分钟更新一次未读通知数
+                        window.notificationTimer = setInterval(function() {
+                            window.fetchUnreadNotificationCount();
+                        }, 60000);
+                      `
+                        }
+                    ]
+                }
+            },
             body: [
                 {
+                    type: 'button',
+                    icon: 'fa fa-bell',
+                    className: 'mr-3 notification-btn',
+                    tooltip: '通知',
+                    level: 'link',
+                    onEvent: {
+                        click: {
+                            actions: [
+                                {
+                                    actionType: 'ajax',
+                                    api: '/messaging/api/messages/user/${user.id}/unread/count',
+                                    messages: {
+                                        success: '',
+                                        failed: '加载通知失败'
+                                    },
+                                    success: {
+                                        actions: [
+                                            {
+                                                actionType: 'dialog',
+                                                title: '我的通知',
+                                                size: 'md',
+                                                body: {
+                                                    type: 'service',
+                                                    api: '/messaging/api/messages/user/${user.id}',
+                                                    body: [
+                                                        {
+                                                            type: 'list',
+                                                            source: '$rows',
+                                                            listItem: {
+                                                                title: '${title}',
+                                                                description: '${content}',
+                                                                actions: [
+                                                                    {
+                                                                        type: 'button',
+                                                                        icon: 'fa fa-times',
+                                                                        tooltip: '删除通知',
+                                                                        actionType: 'ajax',
+                                                                        api: 'DELETE:/messaging/api/messages/${id}?userId=${user.id}'
+                                                                    },
+                                                                    {
+                                                                        type: 'button',
+                                                                        icon: 'fa fa-check',
+                                                                        tooltip: '标记为已读',
+                                                                        actionType: 'ajax',
+                                                                        api: 'POST:/messaging/api/messages/${id}/read',
+                                                                        data: {
+                                                                            userId: '${userId}'
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            },
+                                                            placeholder: '暂无通知',
+                                                            itemAction: {
+                                                                actionType: 'ajax',
+                                                                api: 'POST:/messaging/api/messages/${id}/read',
+                                                                data: {
+                                                                    userId: '${user.id}'
+                                                                }
+                                                            },
+                                                            footer: [
+                                                                {
+                                                                    type: 'button',
+                                                                    label: '全部标记为已读',
+                                                                    level: 'primary',
+                                                                    size: 'sm',
+                                                                    actionType: 'ajax',
+                                                                    api: 'POST:/messaging/api/messages/user/${user.id}/read/all',
+                                                                    reload: 'window'
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        badge: {
+                            mode: 'ribbon',
+                            text: '${notifications.count}',
+                            position: 'top-right',
+                            visibleOn: 'this.hasNotifications',
+                            level: 'danger'
+                        }
+                    }
+                },
+
+                {
+                    type: 'button',
+                    icon: 'fa fa-comments',
+                    tooltip: '聊天',
+                    level: 'link',
+                    className: 'mr-3 chat-btn',
+                    actionType: 'url',
+                    url: '/chat'
+                },
+
+                {
                     type: 'avatar',
-                    src: '${avatar}',
-                    text: '${name}',
+                    src: '${user.avatar}',
+                    text: '${user.name}',
                     icon: 'fa fa-user',
                     className: 'mr-2',
                     size: 30,
-                    onError: function() {
+                    onError: function () {
                         return true;
                     }
                 },
                 {
                     type: 'dropdown-button',
-                    label: '${name}',
+                    label: '${user.name}',
                     align: 'right',
                     className: 'ml-2',
                     buttons: [
@@ -41,7 +240,7 @@
                                 size: 'md',
                                 body: {
                                     type: 'form',
-                                    api: apiHost + '/api/identity/profile',
+                                    api: '/identity/api/identity/profile',
                                     controls: [
                                         {
                                             type: 'image',
@@ -59,7 +258,7 @@
                                             label: '用户名'
                                         },
                                         {
-                                            type: 'static', 
+                                            type: 'static',
                                             name: 'email',
                                             label: '邮箱'
                                         }
@@ -74,7 +273,7 @@
                             level: 'danger',
                             actionType: 'ajax',
                             confirmText: '确认要退出登录？',
-                            api: apiHost + '/api/identity/auth/logout',
+                            api: '/identity/api/identity/auth/logout',
                             reload: 'none',
                             redirect: '/login'
                         }
@@ -182,7 +381,7 @@
                     return;
                 }
 
-                if (to.startsWith('/impersonate') || to.startsWith('/login')) {
+                if (to.startsWith('/impersonate') || to.startsWith('/login') || to.startsWith('/notifications') || to.startsWith('/chat')) {
                     window.location.href = to;
                     return;
                 }
@@ -224,7 +423,7 @@
             responseAdaptor: function (api, payload, query, request, response) {
                 //console.debug('payload', payload);
                 //console.debug('response', response);
-                
+
                 // 处理错误响应
                 if (response.status === 403) {
                     return { msg: '您没有权限访问此页面，请联系管理员！' }
@@ -236,14 +435,21 @@
                     return { msg: '登录过期！' };
                 }
 
-                //// 如果是获取用户信息的接口,将数据注入到全局
-                //if (api.url === apiHost + '/api/identity/profile') {
-                //    amisInstance.updateProps({
-                //        data: {
-                //            ...payload.data // 将用户信息数据注入到全局
-                //        }
-                //    });
-                //}
+                // 如果是获取用户信息的接口,将数据注入到全局
+                if (api.url.includes('/identity/api/identity/profile')) {
+                    // 更新全局数据对象
+                    if (payload.status === 0 && payload.data) {
+                        window.GlobalData.set('user.id', payload.data.id || null);
+                        window.GlobalData.set('user.name', payload.data.name || payload.data.userName || '');
+                        window.GlobalData.set('user.avatar', payload.data.avatar || '');
+                        window.GlobalData.set('user.roles', payload.data.roles || []);
+
+                        // 同时注入到amis全局上下文，使所有组件都能访问
+                        window.GlobalData.syncToAmis(amisInstance);
+
+                        console.debug('Global user data updated:', window.globalData.user);
+                    }
+                }
 
                 return payload;
             },
@@ -256,4 +462,77 @@
             location: state.location || state
         });
     });
+
+    // 导出全局函数用于更新通知
+    window.updateNotificationCount = function (count) {
+        // 更新全局数据
+        window.GlobalData.set('notifications.count', count);
+        window.GlobalData.set('notifications.hasUnread', count > 0);
+
+        // 这样更新后，所有绑定到这些变量的组件都会自动更新
+        amisInstance.updateProps({
+            data: {
+                notifications: {
+                    count: count,
+                    hasUnread: count > 0
+                }
+            }
+        });
+
+    };
+
+    // 自动获取未读通知数
+    window.fetchUnreadNotificationCount = function (userId) {
+        // 如果没有传入userId，从全局数据获取
+        userId = userId || window.GlobalData.get('user.id');
+
+        if (!userId) return;
+
+        // 发起AJAX请求获取未读消息数
+        fetch(`/messaging/api/messages/user/${userId}/unread/count`)
+            .then(response => {
+                console.debug(response);
+                if (!response.ok) {
+                    console.error('获取未读消息数失败:', response);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.debug(data);
+                const count = data.count || 0;
+                window.updateNotificationCount(count);
+            })
+            .catch(error => {
+                console.error('获取未读通知数失败:', error);
+            });
+    };
+
+    // 导出全局函数用于显示新聊天消息通知
+    window.showChatNotification = function (message, sender, conversationId) {
+        // 创建通知toast
+        amis.toast.info(
+            `<div class="chat-notification">
+                <div class="sender">${sender}</div>
+                <div class="message">${message}</div>
+                <div class="action">点击查看</div>
+            </div>`,
+            {
+                position: 'top-right',
+                closeButton: true,
+                showIcon: true,
+                timeout: 8000,
+                onClose: () => { /* 可以添加回调 */ }
+            }
+        ).then(toastObj => {
+            // 点击通知时打开对应的聊天窗口
+            const notificationEl = document.querySelector('.chat-notification');
+            if (notificationEl) {
+                notificationEl.addEventListener('click', () => {
+                    window.location.href = `/chat-app?conversation=${conversationId}`;
+                    toastObj.close();
+                });
+            }
+        });
+    };
+
 })();

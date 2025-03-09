@@ -1,9 +1,13 @@
+using CodeSpirit.Authorization;
 using CodeSpirit.Core;
+using CodeSpirit.Messaging.Extensions;
+using CodeSpirit.Messaging.Hubs;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Web.Extensions;
 using CodeSpirit.Web.Middlewares;
+using Microsoft.AspNetCore.Components;
 
 public class Program
 {
@@ -15,8 +19,25 @@ public class Program
         builder.AddServiceDefaults("webfrontend");
         //builder.AddRedisOutputCache("cache");
 
+        // Add messaging service client
+        builder.Services.AddHttpClient("Messaging", client =>
+        {
+            client.BaseAddress = new Uri("http://messaging");
+        });
+
         // Add services to the container.
         builder.Services.AddRazorPages();
+        builder.Services.AddServerSideBlazor();
+
+        // Add HttpClient for Blazor components
+        builder.Services.AddHttpClient();
+        builder.Services.AddScoped<HttpClient>(sp =>
+        {
+            var navigationManager = sp.GetRequiredService<NavigationManager>();
+            var httpClient = new HttpClient();
+            httpClient.BaseAddress = new Uri(navigationManager.BaseUri);
+            return httpClient;
+        });
 
         // Add WebOptimizer
         builder.Services.AddWebOptimizer(pipeline =>
@@ -32,6 +53,14 @@ public class Program
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddMemoryCache();
         builder.Services.AddCorsPolicy();
+        builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+        
+        // 添加应用程序自定义服务
+        builder.Services.AddApplicationServices();
+
+        // 添加消息模块服务
+        builder.Services.AddMessagingServices(builder.Configuration);
+        builder.Services.AddRealtimeChat();
 
         builder.Services.AddCodeSpiritNavigation();
         builder.Services.ConfigureDefaultControllers();
@@ -55,6 +84,8 @@ public class Program
         //app.UseOutputCache();
 
         app.MapRazorPages();
+        app.MapBlazorHub();
+        app.MapHub<ChatHub>("/chathub");
 
         app.UseCors("AllowSpecificOriginsWithCredentials");
         app.MapDefaultEndpoints();
@@ -65,7 +96,7 @@ public class Program
         app.UseWebOptimizer();
 
         app.UseMiddleware<ProxyMiddleware>();
-        
+
         await app.RunAsync();
     }
 }

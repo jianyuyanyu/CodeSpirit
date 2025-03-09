@@ -1,0 +1,148 @@
+@using CodeSpirit.Messaging.Models
+@using CodeSpirit.Web.Services
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager NavigationManager
+@inject IHttpClientFactory httpClientFactory
+@inject IJwtAuthService AuthService
+@implements IAsyncDisposable
+
+<div class="notification-badge @(UnreadCount > 0 ? "has-notifications" : "")" @onclick="NavigateToMessages">
+    <i class="icon-bell"></i>
+    @if (UnreadCount > 0)
+    {
+        <span class="badge">@(UnreadCount > 99 ? "99+" : UnreadCount.ToString())</span>
+    }
+</div>
+
+@code {
+    private HubConnection hubConnection;
+    private int UnreadCount { get; set; }
+    private string _userId;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // 获取当前用户ID
+        _userId = await AuthService.GetUserIdAsync();
+        
+        if (string.IsNullOrEmpty(_userId))
+        {
+            // 未认证用户无需继续初始化
+            return;
+        }
+        
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<Message>("ReceiveMessage", (message) =>
+        {
+            if (message.RecipientId == _userId && !message.IsRead)
+            {
+                UnreadCount++;
+                StateHasChanged();
+            }
+        });
+
+        hubConnection.On<string, Guid>("MessageRead", (userId, conversationId) =>
+        {
+            if (userId == _userId)
+            {
+                // 刷新未读消息数
+                GetUnreadCount();
+            }
+        });
+
+        try
+        {
+            await hubConnection.StartAsync();
+            await GetUnreadCount();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error starting hub connection: {ex.Message}");
+        }
+    }
+
+    private async Task GetUnreadCount()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_userId))
+                return;
+                
+            var client = httpClientFactory.CreateClient("Messaging");
+            var response = await client.GetAsync($"api/messages/user/{_userId}/unread/count");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<UnreadCountResponse>();
+                UnreadCount = result.Count;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting unread count: {ex.Message}");
+        }
+    }
+
+    private void NavigateToMessages()
+    {
+        NavigationManager.NavigateTo("/chat");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+        {
+            try
+            {
+                await hubConnection.DisposeAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error disposing hub connection: {ex.Message}");
+            }
+        }
+    }
+
+    private class UnreadCountResponse
+    {
+        public int Count { get; set; }
+    }
+}
+
+<style>
+    .notification-badge {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+        padding: 8px;
+    }
+
+    .notification-badge i {
+        font-size: 20px;
+        color: #888;
+    }
+
+    .notification-badge.has-notifications i {
+        color: #1890ff;
+    }
+
+    .badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background-color: #ff4d4f;
+        color: white;
+        border-radius: 10px;
+        min-width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        padding: 0 5px;
+    }
+</style> 

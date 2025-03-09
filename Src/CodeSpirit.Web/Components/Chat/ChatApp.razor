@@ -1,0 +1,737 @@
+@page "/chat-app"
+@using CodeSpirit.Core
+@using CodeSpirit.Messaging.Models
+@using CodeSpirit.Web.Services
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.JSInterop
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IJwtAuthService AuthService
+@implements IAsyncDisposable
+
+<div class="chat-container">
+    <div class="chat-sidebar">
+        <div class="user-info">
+            <div class="avatar">@_username?.Substring(0, 1).ToUpper()</div>
+            <div class="username">@_username</div>
+        </div>
+        
+        <div class="conversation-list">
+            <div class="list-header">
+                <h3>对话列表</h3>
+                <button class="new-chat-btn" @onclick="ShowNewChatDialog">
+                    <i class="icon-plus"></i>
+                </button>
+            </div>
+            
+            @if (Conversations == null)
+            {
+                <div class="loading">加载中...</div>
+            }
+            else if (!Conversations.Any())
+            {
+                <div class="empty-state">
+                    <p>暂无对话</p>
+                    <button class="start-chat-btn" @onclick="ShowNewChatDialog">开始聊天</button>
+                </div>
+            }
+            else
+            {
+                @foreach (var conversation in Conversations)
+                {
+                    <div class="conversation-item @(SelectedConversation?.Id == conversation.Id ? "active" : "")"
+                         @onclick="() => SelectConversation(conversation)">
+                        <div class="conversation-avatar">
+                            @conversation.Title?.Substring(0, 1).ToUpper()
+                        </div>
+                        <div class="conversation-info">
+                            <div class="conversation-title">@conversation.Title</div>
+                            <div class="conversation-preview">
+                                @(conversation.Messages.Any() ? 
+                                    (conversation.Messages.OrderByDescending(m => m.CreatedAt).First().Content.Length > 20 ? 
+                                        conversation.Messages.OrderByDescending(m => m.CreatedAt).First().Content.Substring(0, 20) + "..." : 
+                                        conversation.Messages.OrderByDescending(m => m.CreatedAt).First().Content) : 
+                                    "无消息")
+                            </div>
+                        </div>
+                        @if (GetUnreadCount(conversation) > 0)
+                        {
+                            <div class="unread-badge">@GetUnreadCount(conversation)</div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+    
+    <div class="chat-main">
+        @if (SelectedConversation == null)
+        {
+            <div class="empty-chat">
+                <div class="empty-chat-content">
+                    <h2>选择一个对话或开始新的对话</h2>
+                    <button class="start-chat-btn" @onclick="ShowNewChatDialog">开始新的对话</button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="chat-header">
+                <h2>@SelectedConversation.Title</h2>
+                <div class="chat-actions">
+                    <button class="action-btn" @onclick="ShowParticipantsDialog">
+                        <i class="icon-users"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="chat-messages" @ref="messagesContainer">
+                @if (Messages == null)
+                {
+                    <div class="loading">加载消息中...</div>
+                }
+                else if (!Messages.Any())
+                {
+                    <div class="empty-messages">
+                        <p>暂无消息</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var message in Messages)
+                    {
+                        <div class="message @(message.SenderId == _userId ? "message-sent" : "message-received")">
+                            <div class="message-avatar">
+                                @message.SenderName?.Substring(0, 1).ToUpper()
+                            </div>
+                            <div class="message-content">
+                                <div class="message-sender">@message.SenderName</div>
+                                <div class="message-text">@message.Content</div>
+                                <div class="message-time">@message.CreatedAt.ToString("yyyy-MM-dd HH:mm")</div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+            
+            <div class="chat-input">
+                <textarea 
+                    @bind="NewMessage" 
+                    @bind:event="oninput" 
+                    @onkeydown="HandleKeyDown"
+                    placeholder="输入消息..." 
+                    rows="3"></textarea>
+                <button class="send-btn" @onclick="SendMessage" disabled="@string.IsNullOrWhiteSpace(NewMessage)">
+                    <i class="icon-send"></i>
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@if (ShowNewChat)
+{
+    <div class="modal-overlay">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>新建对话</h3>
+                <button class="close-btn" @onclick="() => ShowNewChat = false">
+                    <i class="icon-close"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="chat-title">对话标题</label>
+                    <input id="chat-title" type="text" @bind="NewChatTitle" placeholder="输入对话标题" />
+                </div>
+                <div class="form-group">
+                    <label for="participants">参与者</label>
+                    <select id="participants" multiple @bind="SelectedParticipants">
+                        @foreach (var user in AvailableUsers)
+                        {
+                            <option value="@user.UserId">@user.UserName</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" @onclick="() => ShowNewChat = false">取消</button>
+                <button class="create-btn" @onclick="CreateNewChat" disabled="@(string.IsNullOrWhiteSpace(NewChatTitle) || !SelectedParticipants.Any())">
+                    创建
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowParticipants)
+{
+    <div class="modal-overlay">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>对话参与者</h3>
+                <button class="close-btn" @onclick="() => ShowParticipants = false">
+                    <i class="icon-close"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="participants-list">
+                    @foreach (var participant in SelectedConversation.Participants.Where(p => !p.HasLeft))
+                    {
+                        <div class="participant-item">
+                            <div class="participant-avatar">
+                                @participant.UserName?.Substring(0, 1).ToUpper()
+                            </div>
+                            <div class="participant-name">@participant.UserName</div>
+                            @if (participant.UserId != _userId)
+                            {
+                                <button class="remove-btn" @onclick="() => RemoveParticipant(participant.UserId)">
+                                    <i class="icon-remove"></i>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="add-participant">
+                    <h4>添加新参与者</h4>
+                    <div class="form-group">
+                        <select @bind="NewParticipantId">
+                            <option value="">选择用户</option>
+                            @foreach (var user in AvailableUsers.Where(u => !SelectedConversation.Participants.Any(p => p.UserId == u.UserId && !p.HasLeft)))
+                            {
+                                <option value="@user.UserId">@user.UserName</option>
+                            }
+                        </select>
+                        <button class="add-btn" @onclick="AddParticipant" disabled="@string.IsNullOrEmpty(NewParticipantId)">
+                            添加
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="close-btn" @onclick="() => ShowParticipants = false">关闭</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private HubConnection hubConnection;
+    private ElementReference messagesContainer;
+    private List<Conversation> Conversations { get; set; }
+    private Conversation SelectedConversation { get; set; }
+    private List<Message> Messages { get; set; }
+    private string NewMessage { get; set; }
+    private bool ShowNewChat { get; set; }
+    private bool ShowParticipants { get; set; }
+    private string NewChatTitle { get; set; }
+    private List<string> SelectedParticipants { get; set; } = new();
+    private string NewParticipantId { get; set; }
+    private string _userId;
+    private string _username;
+    private Dictionary<string, bool> _welcomeMessageShown = new();
+    
+    // 模拟可用用户列表，实际应从用户服务获取
+    private List<UserInfo> AvailableUsers { get; set; } = new List<UserInfo>
+    {
+        new UserInfo { UserId = "user2", UserName = "李四" },
+        new UserInfo { UserId = "user3", UserName = "王五" },
+        new UserInfo { UserId = "user4", UserName = "赵六" },
+        new UserInfo { UserId = "user5", UserName = "钱七" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 初始化数据结构，避免空引用
+        Conversations = new List<Conversation>();
+        Messages = new List<Message>();
+        
+        // 获取用户信息
+        _userId = await AuthService.GetUserIdAsync();
+        _username = await AuthService.GetUsernameAsync();
+        
+        if (string.IsNullOrEmpty(_userId))
+        {
+            // 未登录用户跳转到登录页
+            NavigationManager.NavigateTo("/login", forceLoad: false);
+            return;
+        }
+        
+        // 在服务器预渲染时不要尝试建立WebSocket连接
+        if (!_isPrerendering)
+        {
+            await InitializeSignalRConnection();
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try 
+            {
+                // 不再需要以模块形式加载JS文件
+                // _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                //    "import", "./js/chat.js");
+                
+                // 客户端渲染后初始化SignalR
+                if (hubConnection == null)
+                {
+                    await InitializeSignalRConnection();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"初始化失败: {ex.Message}");
+            }
+        }
+    }
+    
+    private async Task InitializeSignalRConnection()
+    {
+        try
+        {
+            // 初始化 HubConnection
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            // 注册所有事件处理程序
+            RegisterHubHandlers();
+            
+            // 开始连接
+            await hubConnection.StartAsync();
+            
+            // 连接成功后加载对话
+            if (hubConnection.State == HubConnectionState.Connected)
+            {
+                await LoadConversations();
+                
+                // 显示初始系统欢迎消息 - 如果没有选择任何对话，这个消息不会显示
+                // 但当用户选择对话时，ShowWelcomeMessage方法会处理显示对话特定的欢迎消息
+                // 使用InvokeAsync确保方法在UI线程上异步执行
+                InvokeAsync(ShowInitialWelcomeToast);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"初始化SignalR连接时出错: {ex.Message}");
+            // 如果在初始预渲染期间发生错误，不要在控制台中记录错误以避免泄露信息
+        }
+    }
+    
+    // 添加一个标志指示是否在预渲染
+    private bool _isPrerendering => 
+        NavigationManager.Uri.EndsWith("/chat") && HttpContextAccessor?.HttpContext?.Response.HasStarted == false;
+
+    // 添加显示欢迎消息的方法
+    private void ShowWelcomeMessage()
+    {
+        if (SelectedConversation == null || Messages == null)
+            return;
+        
+        // 检查是否已经为当前对话显示过欢迎消息
+        if (_welcomeMessageShown.TryGetValue(SelectedConversation.Id.ToString(), out bool shown) && shown)
+            return;
+            
+        // 创建一个系统欢迎消息
+        var welcomeMessage = new Message
+        {
+            Id = Guid.NewGuid(),
+            Content = $"欢迎加入 \"{SelectedConversation.Title}\" 对话！",
+            SenderId = "system",
+            SenderName = "系统消息",
+            Type = MessageType.SystemNotification,
+            CreatedAt = DateTime.Now
+        };
+
+        // 将欢迎消息添加到消息列表
+        Messages.Add(welcomeMessage);
+        
+        // 标记已为此对话显示欢迎消息
+        _welcomeMessageShown[SelectedConversation.Id.ToString()] = true;
+        
+        StateHasChanged();
+        
+        // 滚动到底部显示欢迎消息
+        InvokeAsync(() => ScrollToBottom());
+    }
+
+    private void RegisterHubHandlers()
+    {
+        hubConnection.On<Message>("ReceiveMessage", (message) =>
+        {
+            if (SelectedConversation != null && message.SenderId != _userId)
+            {
+                Messages.Add(message);
+                StateHasChanged();
+                InvokeAsync(() => ScrollToBottom());
+            }
+            
+            // 无论是否当前对话，都显示通知（除非消息是自己发送的）
+            if (message.SenderId != _userId)
+            {
+                // 显示全局通知
+                InvokeAsync(async () => {
+                    try 
+                    {
+                        // 使用admin.js中定义的通知函数
+                        var conversationId = SelectedConversation?.Id.ToString() ?? string.Empty;
+                        await JSRuntime.InvokeVoidAsync(
+                            "showChatNotification", 
+                            message.Content, 
+                            message.SenderName, 
+                            conversationId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"显示通知失败: {ex.Message}");
+                    }
+                });
+            }
+        });
+
+        hubConnection.On<List<Message>, int>("ReceiveHistory", (messages, totalCount) =>
+        {
+            Messages = messages;
+            StateHasChanged();
+            InvokeAsync(() => ScrollToBottom());
+            
+            // 消息历史记录加载后显示欢迎消息
+            InvokeAsync(ShowWelcomeMessage);
+        });
+
+        hubConnection.On<List<Conversation>>("ReceiveConversations", (conversations) =>
+        {
+            Conversations = conversations;
+            StateHasChanged();
+        });
+
+        hubConnection.On<Conversation>("ConversationCreated", (conversation) =>
+        {
+            Conversations.Add(conversation);
+            SelectedConversation = conversation;
+            Messages = new List<Message>();
+            
+            // 确保为新创建的对话显示欢迎消息
+            if (_welcomeMessageShown.ContainsKey(conversation.Id.ToString()))
+            {
+                _welcomeMessageShown[conversation.Id.ToString()] = false;
+            }
+            
+            StateHasChanged();
+        });
+
+        hubConnection.On<Conversation>("NewConversation", (conversation) =>
+        {
+            Conversations.Add(conversation);
+            
+            // 确保为新加入的对话显示欢迎消息
+            if (_welcomeMessageShown.ContainsKey(conversation.Id.ToString()))
+            {
+                _welcomeMessageShown[conversation.Id.ToString()] = false;
+            }
+            
+            StateHasChanged();
+        });
+
+        hubConnection.On<string>("Error", (errorMessage) =>
+        {
+            // 处理错误
+            Console.WriteLine($"Error: {errorMessage}");
+        });
+    }
+
+    private async Task LoadConversations()
+    {
+        try
+        {
+            if (hubConnection?.State == HubConnectionState.Connected)
+            {
+                await hubConnection.SendAsync("GetUserConversations", _userId);
+                
+                // 加载完会话后，更新未读消息计数
+                await UpdateUnreadMessageCount();
+            }
+            else
+            {
+                Console.Error.WriteLine("无法加载对话，SignalR连接未建立");
+                // 这里可以添加重试逻辑或通知用户
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"加载对话时出错: {ex.Message}");
+        }
+    }
+    
+    // 更新未读消息数量，用于顶部导航栏显示
+    private async Task UpdateUnreadMessageCount()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_userId))
+                return;
+                
+            // 调用全局的fetchUnreadNotificationCount函数获取未读消息数
+            await JSRuntime.InvokeVoidAsync("fetchUnreadNotificationCount", _userId);
+            
+            // 以下注释掉的代码是之前的本地计算未读消息的方式，现在改为调用API
+            /*
+            if (Conversations == null)
+                return;
+                
+            int totalUnread = 0;
+            
+            // 计算所有会话中的未读消息总数
+            foreach (var conversation in Conversations)
+            {
+                totalUnread += GetUnreadCount(conversation);
+            }
+            
+            // 更新通知图标上的未读消息数量
+            await JSRuntime.InvokeVoidAsync("updateNotificationCount", totalUnread);
+            */
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"更新未读消息计数失败: {ex.Message}");
+        }
+    }
+
+    private async Task SelectConversation(Conversation conversation)
+    {
+        SelectedConversation = conversation;
+        Messages = null;
+        
+        try
+        {
+            if (hubConnection?.State == HubConnectionState.Connected)
+            {
+                await hubConnection.SendAsync("JoinConversation", conversation.Id);
+                await hubConnection.SendAsync("GetMessageHistory", conversation.Id);
+                
+                // ReceiveHistory事件处理程序将显示欢迎消息
+            }
+            else
+            {
+                Console.Error.WriteLine("无法选择对话，SignalR连接未建立");
+                // 尝试重新连接
+                await TryReconnectAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"选择对话时出错: {ex.Message}");
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(NewMessage))
+            return;
+
+        if (SelectedConversation == null)
+            return;
+
+        try
+        {
+            if (hubConnection?.State == HubConnectionState.Connected)
+            {
+                var message = new Message
+                {
+                    Id = Guid.NewGuid(),
+                    Content = NewMessage,
+                    SenderId = _userId,
+                    SenderName = _username,
+                    Type = MessageType.UserMessage,
+                    CreatedAt = DateTime.Now
+                };
+
+                await hubConnection.SendAsync("SendMessage", message, SelectedConversation.Id);
+                NewMessage = string.Empty;
+            }
+            else
+            {
+                Console.Error.WriteLine("无法发送消息，SignalR连接未建立");
+                // 尝试重新连接
+                await TryReconnectAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"发送消息时出错: {ex.Message}");
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private void ShowNewChatDialog()
+    {
+        NewChatTitle = string.Empty;
+        SelectedParticipants = new List<string>();
+        ShowNewChat = true;
+    }
+
+    private async Task CreateNewChat()
+    {
+        if (string.IsNullOrWhiteSpace(NewChatTitle) || !SelectedParticipants.Any())
+            return;
+
+        try
+        {
+            if (hubConnection?.State == HubConnectionState.Connected)
+            {
+                // 添加当前用户到参与者列表
+                var participants = new List<string>(SelectedParticipants)
+                {
+                    _userId
+                };
+
+                await hubConnection.SendAsync("CreateConversation", NewChatTitle, participants);
+                
+                // 重置表单
+                NewChatTitle = string.Empty;
+                SelectedParticipants.Clear();
+                ShowNewChat = false;
+            }
+            else
+            {
+                Console.Error.WriteLine("无法创建新对话，SignalR连接未建立");
+                // 尝试重新连接
+                await TryReconnectAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"创建新对话时出错: {ex.Message}");
+        }
+    }
+
+    private void ShowParticipantsDialog()
+    {
+        if (SelectedConversation == null)
+            return;
+
+        NewParticipantId = string.Empty;
+        ShowParticipants = true;
+    }
+
+    private async Task AddParticipant()
+    {
+        if (string.IsNullOrEmpty(NewParticipantId) || SelectedConversation == null)
+            return;
+
+        var user = AvailableUsers.FirstOrDefault(u => u.UserId == NewParticipantId);
+        if (user == null)
+            return;
+
+        if (hubConnection.State == HubConnectionState.Connected)
+        {
+            await hubConnection.SendAsync("AddUserToConversation", SelectedConversation.Id, user.UserId, user.UserName);
+            NewParticipantId = string.Empty;
+        }
+    }
+
+    private async Task RemoveParticipant(string userId)
+    {
+        if (string.IsNullOrEmpty(userId) || SelectedConversation == null)
+            return;
+
+        if (hubConnection.State == HubConnectionState.Connected)
+        {
+            await hubConnection.SendAsync("RemoveUserFromConversation", SelectedConversation.Id, userId);
+        }
+    }
+
+    private int GetUnreadCount(Conversation conversation)
+    {
+        // 实际应用中应从服务器获取未读消息数
+        return conversation.Messages.Count(m => !m.IsRead && m.RecipientId == _userId);
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try 
+        {
+            await Task.Delay(50); // 等待DOM更新
+            if (messagesContainer.Context != null)
+            {
+                // 使用全局函数而非模块函数
+                await JSRuntime.InvokeVoidAsync("scrollToBottom", messagesContainer);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"滚动到底部失败: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+        
+        // 不再需要释放JS模块
+    }
+
+    // 添加一个重连方法
+    private async Task TryReconnectAsync()
+    {
+        try
+        {
+            if (hubConnection?.State != HubConnectionState.Connected)
+            {
+                await hubConnection.StartAsync();
+                if (hubConnection.State == HubConnectionState.Connected)
+                {
+                    // 重新加载数据
+                    await LoadConversations();
+                    if (SelectedConversation != null)
+                    {
+                        await hubConnection.SendAsync("JoinConversation", SelectedConversation.Id);
+                        await hubConnection.SendAsync("GetMessageHistory", SelectedConversation.Id);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"尝试重连失败: {ex.Message}");
+        }
+    }
+
+    // 显示用户首次连接时的欢迎提示消息
+    private async Task ShowInitialWelcomeToast()
+    {
+        try 
+        {
+            // 等待一小段时间，确保JS已加载
+            await Task.Delay(100);
+            
+            // 使用全局函数而非模块函数
+            await JSRuntime.InvokeVoidAsync("showToast", $"欢迎回来，{_username}！", "系统消息");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"显示欢迎通知失败: {ex.Message}");
+        }
+    }
+
+    private class UserInfo
+    {
+        public string UserId { get; set; }
+        public string UserName { get; set; }
+    }
+} 

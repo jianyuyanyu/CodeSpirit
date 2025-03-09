@@ -12,8 +12,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CodeSpirit.ConfigCenter\CodeSpirit.ConfigCenter.csproj" />
     <ProjectReference Include="..\CodeSpirit.IdentityApi\CodeSpirit.IdentityApi.csproj" />
+    <ProjectReference Include="..\CodeSpirit.Messaging\CodeSpirit.Messaging.csproj" />
+    <ProjectReference Include="..\CodeSpirit.MessagingApi\CodeSpirit.MessagingApi.csproj" />
     <ProjectReference Include="..\CodeSpirit.Web\CodeSpirit.Web.csproj" />
   </ItemGroup>
 

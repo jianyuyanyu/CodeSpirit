@@ -1,0 +1,8 @@
+@page "/notifications"
+@model CodeSpirit.Web.Pages.NotificationsModel
+@{
+    ViewData["Title"] = "通知";
+}
+
+<component type="typeof(CodeSpirit.Web.Components.Shared.MainNav)" render-mode="ServerPrerendered" param-CurrentPath="@Request.Path.Value" />
+<component type="typeof(CodeSpirit.Web.Components.Chat.NotificationList)" render-mode="ServerPrerendered"/> 

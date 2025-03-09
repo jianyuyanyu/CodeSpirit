@@ -1,0 +1,240 @@
+@using CodeSpirit.Core
+@using CodeSpirit.Web.Components.Chat
+@using CodeSpirit.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+@inject NavigationManager NavigationManager
+@inject IJwtAuthService AuthService
+
+<nav class="main-nav">
+    <div class="nav-logo">
+        <a href="/">CodeSpirit</a>
+    </div>
+    
+    <div class="nav-links">
+        <a href="/" class="nav-link">首页</a>
+        <a href="/chat" class="nav-link @(IsActive("/chat") ? "active" : "")">聊天</a>
+        <a href="/notifications" class="nav-link @(IsActive("/notifications") ? "active" : "")">通知</a>
+        <!-- 其他导航链接 -->
+    </div>
+    
+    @if (_isAuthenticated)
+    {
+        <div class="nav-actions">
+            <NotificationBadge />
+            <div class="user-dropdown">
+                <div class="user-info">
+                    <div class="avatar">@(_username?.Substring(0, 1).ToUpper() ?? "U")</div>
+                    <span class="username">@_username</span>
+                </div>
+                <div class="dropdown-menu">
+                    <a href="/profile">个人资料</a>
+                    <a href="/settings">设置</a>
+                    <a href="javascript:void(0)" @onclick="LogoutAsync">退出登录</a>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="nav-actions">
+            <a href="/login" class="login-btn">登录</a>
+            <a href="/register" class="register-btn">注册</a>
+        </div>
+    }
+</nav>
+
+@code {
+    [Parameter]
+    public object CurrentPath { get; set; }
+    
+    private bool _isAuthenticated;
+    private string _userId;
+    private string _username;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // 使用AuthService检查用户是否已认证
+                _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+                
+                if (_isAuthenticated)
+                {
+                    // 获取用户信息
+                    _userId = await AuthService.GetUserIdAsync();
+                    _username = await AuthService.GetUsernameAsync();
+                    StateHasChanged();
+                }
+                else
+                {
+                    // 仅在需要认证的页面路径下重定向
+                    var currentPathString = CurrentPath?.ToString() ?? string.Empty;
+                    if (RequiresAuth(currentPathString))
+                    {
+                        // 添加重定向参数，便于登录后返回
+                        var returnUrl = Uri.EscapeDataString(currentPathString);
+                        NavigationManager.NavigateTo($"/login?redirect={returnUrl}", forceLoad: false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking authentication: {ex.Message}");
+                // 忽略JS交互异常，这可能发生在服务器端预渲染中
+            }
+        }
+        
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+    }
+    
+    private bool RequiresAuth(string path)
+    {
+        // 配置需要认证的路径
+        return path.StartsWith("/chat") || 
+               path.StartsWith("/profile") || 
+               path.StartsWith("/settings");
+    }
+    
+    private bool IsActive(string path)
+    {
+        var currentPathString = CurrentPath?.ToString() ?? string.Empty;
+        return currentPathString.StartsWith(path);
+    }
+}
+
+<style>
+    .main-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px;
+        height: 60px;
+        background-color: #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .nav-logo a {
+        font-size: 20px;
+        font-weight: bold;
+        color: #1890ff;
+        text-decoration: none;
+    }
+    
+    .nav-links {
+        display: flex;
+    }
+    
+    .nav-link {
+        padding: 0 15px;
+        color: #333;
+        text-decoration: none;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s;
+    }
+    
+    .nav-link:hover {
+        color: #1890ff;
+    }
+    
+    .nav-link.active {
+        color: #1890ff;
+        border-bottom-color: #1890ff;
+    }
+    
+    .nav-actions {
+        display: flex;
+        align-items: center;
+    }
+    
+    .user-dropdown {
+        position: relative;
+        margin-left: 15px;
+    }
+    
+    .user-info {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+    }
+    
+    .avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #1890ff;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 8px;
+    }
+    
+    .username {
+        font-weight: bold;
+    }
+    
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background-color: #fff;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        padding: 8px 0;
+        min-width: 120px;
+        display: none;
+    }
+    
+    .user-dropdown:hover .dropdown-menu {
+        display: block;
+    }
+    
+    .dropdown-menu a {
+        display: block;
+        padding: 8px 16px;
+        color: #333;
+        text-decoration: none;
+    }
+    
+    .dropdown-menu a:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .login-btn, .register-btn {
+        padding: 6px 16px;
+        margin-left: 10px;
+        border-radius: 4px;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+    
+    .login-btn {
+        color: #1890ff;
+        border: 1px solid #1890ff;
+    }
+    
+    .login-btn:hover {
+        background-color: rgba(24, 144, 255, 0.1);
+    }
+    
+    .register-btn {
+        background-color: #1890ff;
+        color: white;
+    }
+    
+    .register-btn:hover {
+        background-color: #40a9ff;
+    }
+</style> 

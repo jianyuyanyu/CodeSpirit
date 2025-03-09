@@ -8,3 +8,73 @@
 .antd-Form-item {
     padding-bottom: 5px;
 }
+
+/* 顶部栏通知和聊天图标样式 */
+.notification-btn,
+.chat-btn {
+    font-size: 18px !important;
+    color: #666 !important;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.notification-btn:hover,
+.chat-btn:hover {
+    color: #1890ff !important;
+}
+
+/* 通知徽章样式 */
+.cxd-Badge {
+    background-color: #f5222d !important;
+    color: white !important;
+    font-size: 12px !important;
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 8px;
+    padding: 0 4px;
+}
+
+/* 聊天通知样式 */
+.chat-notification {
+    cursor: pointer;
+    padding: 5px 0;
+}
+
+.chat-notification .sender {
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.chat-notification .message {
+    color: #666;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+}
+
+.chat-notification .action {
+    font-size: 12px;
+    color: #1890ff;
+    text-align: right;
+}
+
+.chat-notification:hover .action {
+    text-decoration: underline;
+}
+
+/* 修复Amis在移动设备上的响应式问题 */
+@media (max-width: 768px) {
+    .notification-btn,
+    .chat-btn {
+        padding: 0 5px;
+    }
+}

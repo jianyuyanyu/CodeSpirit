@@ -71,16 +71,16 @@ public class MyMessagesController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取用户消息列表
+    /// 获取用户未读消息列表
     /// </summary>
     /// <param name="userId">用户ID</param>
     /// <param name="pageNumber">页码</param>
     /// <param name="pageSize">每页大小</param>
     /// <returns>消息列表及分页信息</returns>
     [HttpGet("list")]
-    public async Task<IActionResult> GetUserMessages([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetUserUnreadMessages([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
     {
-        var (messages, totalCount) = await _messageService.GetUserMessagesAsync(_currentUser.Id?.ToString(), pageNumber, pageSize);
+        var (messages, totalCount) = await _messageService.GetUnreadMessagesAsync(_currentUser.Id?.ToString(), pageNumber, pageSize);
 
         return Ok(new
         {

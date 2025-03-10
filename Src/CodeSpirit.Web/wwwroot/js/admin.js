@@ -123,7 +123,7 @@
                         mode: 'text',
                         text: '${notifications.count}',
                         position: 'top-left',
-                        //visibleOn: 'this.notifications.count>0',
+                        visibleOn: 'this.notifications.hasUnread',
                         level: 'danger'
                     },
                     actionType: 'dialog',
@@ -142,7 +142,7 @@
                                     source: '${items}',
                                     listItem: {
                                         title: '${title}',
-                                        description: '${content}',
+                                        desc: '<span class=\"text-base\">${content}</span>',
                                         actions: [
                                             {
                                                 type: 'button',
@@ -162,10 +162,10 @@
                                         ]
                                     },
                                     placeholder: '暂无通知',
-                                    itemAction: {
-                                        actionType: 'ajax',
-                                        api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
-                                    },
+                                    //itemAction: {
+                                    //    actionType: 'ajax',
+                                    //    api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
+                                    //},
                                     footer: [
                                         {
                                             type: 'button',
@@ -181,86 +181,7 @@
                             ]
                         }
                     },
-                    //onEvent: {
-                    //    click: {
-                    //        actions: [
-                    //            {
-                    //                actionType: 'dialog',
-                    //                title: '我的通知',
-                    //                size: 'md',
-                    //                body: {
-                    //                    type: 'page',
-                    //                    //bodyClassName: 'p-0',
-                    //                    initApi: {
-                    //                        url: '/messaging/api/messaging/messages/my/list',
-                    //                        method: 'GET',
-                    //                        headers: {
-                    //                            'Authorization': 'Bearer ${token}',
-                    //                            'Content-Type': 'application/json'
-                    //                        },
-                    //                        adaptor: function(payload) {
-                    //                            console.log("通知列表API返回:", payload);
-                    //                            return {
-                    //                                status: 0,
-                    //                                msg: '',
-                    //                                data: {
-                    //                                    items: payload.items || []
-                    //                                }
-                    //                            };
-                    //                        }
-                    //                    },
-                    //                    data: {
-                    //                        token: localStorage.getItem('token') || ''
-                    //                    },
-                    //                    body: [
-                    //                        {
-                    //                            type: 'list',
-                    //                            source: '${items}',
-                    //                            listItem: {
-                    //                                title: '${title}',
-                    //                                description: '${content}',
-                    //                                actions: [
-                    //                                    {
-                    //                                        type: 'button',
-                    //                                        icon: 'fa fa-times',
-                    //                                        tooltip: '删除通知',
-                    //                                        actionType: 'ajax',
-                    //                                        api: 'DELETE:/messaging/api/messaging/messages/my/${id}'
-                    //                                    },
-                    //                                    {
-                    //                                        type: 'button',
-                    //                                        icon: 'fa fa-check',
-                    //                                        tooltip: '标记为已读',
-                    //                                        actionType: 'ajax',
-                    //                                        api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
-                    //                                    }
-                    //                                ]
-                    //                            },
-                    //                            placeholder: '暂无通知',
-                    //                            itemAction: {
-                    //                                actionType: 'ajax',
-                    //                                api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
-                    //                            },
-                    //                            footer: [
-                    //                                {
-                    //                                    type: 'button',
-                    //                                    label: '全部标记为已读',
-                    //                                    level: 'primary',
-                    //                                    size: 'sm',
-                    //                                    actionType: 'ajax',
-                    //                                    api: 'POST:/messaging/api/messaging/messages/my/read/all',
-                    //                                    reload: 'window'
-                    //                                }
-                    //                            ]
-                    //                        }
-                    //                    ]
-                    //                }
-                    //            }
-                    //        ]
-                    //    }
-                    ////}
                 },
-
                 {
                     type: 'button',
                     icon: 'fa fa-comments',
@@ -270,7 +191,6 @@
                     actionType: 'url',
                     url: '/chat'
                 },
-
                 {
                     type: 'avatar',
                     src: '${user.avatar}',
@@ -479,8 +399,6 @@
                 };
             },
             responseAdaptor: function (api, payload, query, request, response) {
-                //console.debug('payload', payload);
-                //console.debug('response', response);
 
                 // 处理错误响应
                 if (response.status === 403) {
@@ -514,6 +432,15 @@
             theme: 'antd'
         }
     );
+
+    amisInstance.updateProps({
+        data: {
+            notifications: {
+                count: 0,
+                hasUnread: false
+            }
+        }
+    });
 
     history.listen(state => {
         amisInstance.updateProps({

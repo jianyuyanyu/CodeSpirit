@@ -27,6 +27,13 @@ public class MessageService : IMessageService
     }
 
     /// <inheritdoc />
+    public async Task<(List<Message> Messages, int TotalCount)> GetUnreadMessagesAsync(string userId, int pageNumber = 1, int pageSize = 20)
+    {
+        ArgumentNullException.ThrowIfNull(userId);
+        return await _messageRepository.GetUnreadMessagesAsync(userId, pageNumber, pageSize);
+    }
+
+    /// <inheritdoc />
     public async Task<int> GetUnreadMessageCountAsync(string userId)
     {
         ArgumentNullException.ThrowIfNull(userId);

@@ -110,4 +110,5 @@ public interface IMessageService
     /// <param name="messageId">消息ID</param>
     /// <returns>消息详情</returns>
     Task<Message?> GetMessageByIdAsync(Guid messageId);
+    Task<(List<Message> Messages, int TotalCount)> GetUnreadMessagesAsync(string userId, int pageNumber = 1, int pageSize = 20);
 } 

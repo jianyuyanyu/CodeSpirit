@@ -84,7 +84,7 @@
         {
             Loading = true;
             var client = httpClientFactory.CreateClient("Messaging");
-            var response = await client.GetFromJsonAsync<MessageResponse>($"api/messages/user/{_userId}?pageNumber={CurrentPage}&pageSize={PageSize}");
+            var response = await client.GetFromJsonAsync<MessageResponse>($"api/messaging/messages/my/list?pageNumber={CurrentPage}&pageSize={PageSize}");
             
             if (Messages == null)
             {

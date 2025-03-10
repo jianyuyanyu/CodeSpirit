@@ -368,4 +368,37 @@ public class MessageRepository(MessagingDbContext dbContext) : IMessageRepositor
             return false;
         }
     }
+
+    /// <summary>
+    /// 获取用户未读消息列表
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="pageNumber">页码，从1开始</param>
+    /// <param name="pageSize">每页记录数</param>
+    /// <returns>未读消息列表和总记录数</returns>
+    public async Task<(List<Message> Messages, int TotalCount)> GetUnreadMessagesAsync(string userId, int pageNumber = 1, int pageSize = 20)
+    {
+        ArgumentNullException.ThrowIfNull(userId);
+
+        // 查询系统消息和发送给该用户的特定消息，包括发送给所有人的消息
+        var query = _dbContext.Messages
+            .Where(m => (m.RecipientId == userId || m.RecipientId == "all"));
+            
+        // 查询未读消息：
+        // 1. 对于系统消息，检查是否在用户已读记录中
+        // 2. 对于用户特定消息或发送给所有人的消息，检查是否已读
+        query = query.Where(m => !_dbContext.UserMessageReads.Any(r => r.MessageId == m.Id && r.UserId == userId));
+
+        // 计算总记录数
+        int totalCount = await query.CountAsync();
+
+        // 分页并获取数据
+        var messages = await query
+            .OrderByDescending(m => m.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (messages, totalCount);
+    }
 } 

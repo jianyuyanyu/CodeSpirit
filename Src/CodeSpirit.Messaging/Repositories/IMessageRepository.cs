@@ -100,4 +100,5 @@ public interface IMessageRepository
     /// <param name="userId">用户ID</param>
     /// <returns>操作是否成功</returns>
     Task<bool> BatchMarkAsReadAsync(List<Guid> messageIds, string userId);
+    Task<(List<Message> Messages, int TotalCount)> GetUnreadMessagesAsync(string userId, int pageNumber = 1, int pageSize = 20);
 } 

@@ -84,7 +84,7 @@ public class MyMessagesController : ApiControllerBase
 
         return Ok(new
         {
-            Messages = messages,
+            Items = messages,
             TotalCount = totalCount,
             PageNumber = pageNumber,
             PageSize = pageSize,

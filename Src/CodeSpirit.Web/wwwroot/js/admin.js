@@ -119,82 +119,146 @@
                     className: 'mr-3 notification-btn',
                     tooltip: '通知',
                     level: 'link',
-                    onEvent: {
-                        click: {
-                            actions: [
+                    badge: {
+                        mode: 'text',
+                        text: '${notifications.count}',
+                        position: 'top-left',
+                        //visibleOn: 'this.notifications.count>0',
+                        level: 'danger'
+                    },
+                    actionType: 'dialog',
+                    dialog: {
+                        title: '我的通知',
+                        size: 'md',
+                        body: {
+                            type: 'service',
+                            api: {
+                                url: '/messaging/api/messaging/messages/my/list',
+                                method: 'GET'
+                            },
+                            body: [
                                 {
-                                    actionType: 'ajax',
-                                    api: '/messaging/api/messaging/messages/my/unread/count',
-                                    messages: {
-                                        success: '',
-                                        failed: '加载通知失败'
-                                    },
-                                    success: {
+                                    type: 'list',
+                                    source: '${items}',
+                                    listItem: {
+                                        title: '${title}',
+                                        description: '${content}',
                                         actions: [
                                             {
-                                                actionType: 'dialog',
-                                                title: '我的通知',
-                                                size: 'md',
-                                                body: {
-                                                    type: 'service',
-                                                    api: '/messaging/api/messaging/messages/my/list',
-                                                    body: [
-                                                        {
-                                                            type: 'list',
-                                                            source: '$rows',
-                                                            listItem: {
-                                                                title: '${title}',
-                                                                description: '${content}',
-                                                                actions: [
-                                                                    {
-                                                                        type: 'button',
-                                                                        icon: 'fa fa-times',
-                                                                        tooltip: '删除通知',
-                                                                        actionType: 'ajax',
-                                                                        api: 'DELETE:/messaging/api/messaging/messages/my/${id}'
-                                                                    },
-                                                                    {
-                                                                        type: 'button',
-                                                                        icon: 'fa fa-check',
-                                                                        tooltip: '标记为已读',
-                                                                        actionType: 'ajax',
-                                                                        api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
-                                                                    }
-                                                                ]
-                                                            },
-                                                            placeholder: '暂无通知',
-                                                            itemAction: {
-                                                                actionType: 'ajax',
-                                                                api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
-                                                            },
-                                                            footer: [
-                                                                {
-                                                                    type: 'button',
-                                                                    label: '全部标记为已读',
-                                                                    level: 'primary',
-                                                                    size: 'sm',
-                                                                    actionType: 'ajax',
-                                                                    api: 'POST:/messaging/api/messaging/messages/my/read/all',
-                                                                    reload: 'window'
-                                                                }
-                                                            ]
-                                                        }
-                                                    ]
-                                                }
+                                                type: 'button',
+                                                icon: 'fa fa-times',
+                                                tooltip: '删除通知',
+                                                actionType: 'ajax',
+                                                api: 'DELETE:/messaging/api/messaging/messages/my/${id}',
+                                                confirmText: '确定要删除该通知吗？'
+                                            },
+                                            {
+                                                type: 'button',
+                                                icon: 'fa fa-check',
+                                                tooltip: '标记为已读',
+                                                actionType: 'ajax',
+                                                api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
                                             }
                                         ]
-                                    }
+                                    },
+                                    placeholder: '暂无通知',
+                                    itemAction: {
+                                        actionType: 'ajax',
+                                        api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
+                                    },
+                                    footer: [
+                                        {
+                                            type: 'button',
+                                            label: '全部标记为已读',
+                                            level: 'primary',
+                                            size: 'sm',
+                                            actionType: 'ajax',
+                                            api: 'POST:/messaging/api/messaging/messages/my/read/all',
+                                            reload: 'window'
+                                        }
+                                    ]
                                 }
                             ]
-                        },
-                        badge: {
-                            mode: 'ribbon',
-                            text: '${notifications.count}',
-                            position: 'top-right',
-                            visibleOn: 'this.hasNotifications',
-                            level: 'danger'
                         }
-                    }
+                    },
+                    //onEvent: {
+                    //    click: {
+                    //        actions: [
+                    //            {
+                    //                actionType: 'dialog',
+                    //                title: '我的通知',
+                    //                size: 'md',
+                    //                body: {
+                    //                    type: 'page',
+                    //                    //bodyClassName: 'p-0',
+                    //                    initApi: {
+                    //                        url: '/messaging/api/messaging/messages/my/list',
+                    //                        method: 'GET',
+                    //                        headers: {
+                    //                            'Authorization': 'Bearer ${token}',
+                    //                            'Content-Type': 'application/json'
+                    //                        },
+                    //                        adaptor: function(payload) {
+                    //                            console.log("通知列表API返回:", payload);
+                    //                            return {
+                    //                                status: 0,
+                    //                                msg: '',
+                    //                                data: {
+                    //                                    items: payload.items || []
+                    //                                }
+                    //                            };
+                    //                        }
+                    //                    },
+                    //                    data: {
+                    //                        token: localStorage.getItem('token') || ''
+                    //                    },
+                    //                    body: [
+                    //                        {
+                    //                            type: 'list',
+                    //                            source: '${items}',
+                    //                            listItem: {
+                    //                                title: '${title}',
+                    //                                description: '${content}',
+                    //                                actions: [
+                    //                                    {
+                    //                                        type: 'button',
+                    //                                        icon: 'fa fa-times',
+                    //                                        tooltip: '删除通知',
+                    //                                        actionType: 'ajax',
+                    //                                        api: 'DELETE:/messaging/api/messaging/messages/my/${id}'
+                    //                                    },
+                    //                                    {
+                    //                                        type: 'button',
+                    //                                        icon: 'fa fa-check',
+                    //                                        tooltip: '标记为已读',
+                    //                                        actionType: 'ajax',
+                    //                                        api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
+                    //                                    }
+                    //                                ]
+                    //                            },
+                    //                            placeholder: '暂无通知',
+                    //                            itemAction: {
+                    //                                actionType: 'ajax',
+                    //                                api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
+                    //                            },
+                    //                            footer: [
+                    //                                {
+                    //                                    type: 'button',
+                    //                                    label: '全部标记为已读',
+                    //                                    level: 'primary',
+                    //                                    size: 'sm',
+                    //                                    actionType: 'ajax',
+                    //                                    api: 'POST:/messaging/api/messaging/messages/my/read/all',
+                    //                                    reload: 'window'
+                    //                                }
+                    //                            ]
+                    //                        }
+                    //                    ]
+                    //                }
+                    //            }
+                    //        ]
+                    //    }
+                    ////}
                 },
 
                 {

@@ -13,7 +13,6 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Src/CodeSpirit.Web/CodeSpirit.Web.csproj", "Src/CodeSpirit.Web/"]
-COPY ["Src/CodeSpirit.MessagingApi/CodeSpirit.MessagingApi.csproj", "Src/CodeSpirit.MessagingApi/"]
 COPY ["Src/CodeSpirit.Messaging/CodeSpirit.Messaging.csproj", "Src/CodeSpirit.Messaging/"]
 COPY ["Src/CodeSpirit.ServiceDefaults/CodeSpirit.ServiceDefaults.csproj", "Src/CodeSpirit.ServiceDefaults/"]
 COPY ["Src/CodeSpirit.Shared/CodeSpirit.Shared.csproj", "Src/CodeSpirit.Shared/"]

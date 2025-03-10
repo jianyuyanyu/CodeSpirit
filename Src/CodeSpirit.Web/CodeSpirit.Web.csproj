@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CodeSpirit.MessagingApi\CodeSpirit.MessagingApi.csproj" />
+    <ProjectReference Include="..\CodeSpirit.Messaging\CodeSpirit.Messaging.csproj" />
     <ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
     <ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Aggregator\CodeSpirit.Aggregator.csproj" />

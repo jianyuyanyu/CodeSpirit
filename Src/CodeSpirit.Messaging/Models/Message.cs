@@ -41,17 +41,7 @@ public class Message
     public string RecipientId { get; set; }
 
     /// <summary>
-    /// 是否已读
-    /// </summary>
-    public bool IsRead { get; set; }
-
-    /// <summary>
     /// 创建时间
     /// </summary>
     public DateTime CreatedAt { get; set; }
-
-    /// <summary>
-    /// 读取时间
-    /// </summary>
-    public DateTime? ReadAt { get; set; }
 } 

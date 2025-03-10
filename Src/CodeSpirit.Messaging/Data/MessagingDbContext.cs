@@ -32,6 +32,11 @@ public class MessagingDbContext : DbContext
     public DbSet<ConversationParticipant> ConversationParticipants { get; set; }
     
     /// <summary>
+    /// 用户消息已读状态集合
+    /// </summary>
+    public DbSet<UserMessageRead> UserMessageReads { get; set; }
+    
+    /// <summary>
     /// 模型创建配置
     /// </summary>
     /// <param name="modelBuilder">模型构建器</param>
@@ -79,6 +84,17 @@ public class MessagingDbContext : DbContext
             entity.Property(e => e.UserId).HasMaxLength(100).IsRequired();
             entity.Property(e => e.UserName).HasMaxLength(100).IsRequired();
             entity.Property(e => e.JoinedAt).HasDefaultValueSql("GETDATE()");
+        });
+        
+        // 配置用户消息已读状态实体
+        modelBuilder.Entity<UserMessageRead>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.MessageId });
+            entity.Property(e => e.UserId).HasMaxLength(100).IsRequired();
+            entity.HasOne(e => e.Message)
+                .WithMany()
+                .HasForeignKey(e => e.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 } 

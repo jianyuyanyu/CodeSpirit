@@ -1,3 +1,5 @@
+using CodeSpirit.Amis;
+using CodeSpirit.Messaging;
 using CodeSpirit.Messaging.Data;
 using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
@@ -8,7 +10,6 @@ using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using CodeSpirit.Amis;
 
 /// <summary>
 /// 消息系统服务扩展类
@@ -30,7 +31,7 @@ public static class ServiceCollectionExtensions
         // 从已有MessagingServices中迁移 - 保持原有功能
         services.AddMessagingServices(configuration);
         services.AddRealtimeChat();
-        
+
         // 添加AutoMapper
         services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
@@ -76,10 +77,10 @@ public static class ServiceCollectionExtensions
         builder.Services.AddDatabase(builder.Configuration);
         builder.Services.AddSystemServices(builder.Configuration, typeof(Program), builder.Environment);
         builder.Services.AddCustomServices(builder.Configuration);
-        
+
         // 添加 JWT 认证
         builder.Services.AddJwtAuthentication(builder.Configuration);
-        
+
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddOpenApi();
@@ -122,29 +123,16 @@ public static class ServiceCollectionExtensions
 
         app.UseHttpsRedirection();
         app.UseCors("AllowSpecificOriginsWithCredentials");
-        
+
         // 添加身份验证中间件
         app.UseAuthentication();
         app.UseAuthorization();
-        
+
         app.MapControllers();
         app.UseAmis();
         app.MapHub<ChatHub>("/chathub");
 
-        // 应用迁移
-        try
-        {
-            using (var scope = app.Services.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<MessagingDbContext>();
-                await dbContext.Database.MigrateAsync();
-                Console.WriteLine("数据库迁移应用成功！");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"应用迁移时发生错误: {ex.Message}");
-        }
+        await app.Services.MigrateAndSeedMessagingDatabaseAsync();
 
         // Map default endpoints if available
         try

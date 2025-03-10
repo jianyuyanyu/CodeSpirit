@@ -1,7 +1,5 @@
-using CodeSpirit.Messaging.Data;
 using CodeSpirit.Messaging.Models;
 using CodeSpirit.Messaging.Repositories;
-using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.Messaging.Services;
 
@@ -11,17 +9,14 @@ namespace CodeSpirit.Messaging.Services;
 public class MessageService : IMessageService
 {
     private readonly IMessageRepository _messageRepository;
-    private readonly MessagingDbContext _dbContext;
     
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="messageRepository">消息仓储</param>
-    /// <param name="dbContext">数据库上下文</param>
-    public MessageService(IMessageRepository messageRepository, MessagingDbContext dbContext)
+    public MessageService(IMessageRepository messageRepository)
     {
         _messageRepository = messageRepository;
-        _dbContext = dbContext;
     }
 
     /// <inheritdoc />
@@ -96,9 +91,7 @@ public class MessageService : IMessageService
         return await _messageRepository.DeleteMessageAsync(messageId, userId);
     }
 
-    /// <summary>
-    /// 获取消息分页列表
-    /// </summary>
+    /// <inheritdoc />
     public async Task<(List<Message> Messages, int TotalCount)> GetMessagesAsync(
         MessageType? type = null,
         string? title = null,
@@ -111,126 +104,39 @@ public class MessageService : IMessageService
         int pageNumber = 1,
         int pageSize = 20)
     {
-        var query = _dbContext.Messages.AsQueryable();
-
-        // 应用过滤条件
-        if (type.HasValue)
-        {
-            query = query.Where(m => m.Type == type.Value);
-        }
-
-        if (!string.IsNullOrEmpty(title))
-        {
-            query = query.Where(m => m.Title.Contains(title));
-        }
-
-        if (!string.IsNullOrEmpty(senderId))
-        {
-            query = query.Where(m => m.SenderId == senderId);
-        }
-
-        if (!string.IsNullOrEmpty(senderName))
-        {
-            query = query.Where(m => m.SenderName.Contains(senderName));
-        }
-
-        if (!string.IsNullOrEmpty(recipientId))
-        {
-            query = query.Where(m => m.RecipientId == recipientId);
-        }
-
-        if (isRead.HasValue)
-        {
-            query = query.Where(m => m.IsRead == isRead.Value);
-        }
-
-        if (startDate.HasValue)
-        {
-            query = query.Where(m => m.CreatedAt >= startDate.Value);
-        }
-
-        if (endDate.HasValue)
-        {
-            query = query.Where(m => m.CreatedAt <= endDate.Value.AddDays(1).AddSeconds(-1));
-        }
-
-        // 计算总数
-        int totalCount = await query.CountAsync();
-
-        // 分页并排序
-        var messages = await query
-            .OrderByDescending(m => m.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        return (messages, totalCount);
+        return await _messageRepository.GetMessagesAsync(
+            type, title, senderId, senderName, recipientId, isRead, 
+            startDate, endDate, pageNumber, pageSize);
     }
 
-    /// <summary>
-    /// 批量删除消息
-    /// </summary>
+    /// <inheritdoc />
     public async Task<bool> BatchDeleteMessagesAsync(List<Guid> messageIds)
     {
-        try
-        {
-            var messages = await _dbContext.Messages
-                .Where(m => messageIds.Contains(m.Id))
-                .ToListAsync();
-
-            if (!messages.Any())
-            {
-                return false;
-            }
-
-            _dbContext.Messages.RemoveRange(messages);
-            await _dbContext.SaveChangesAsync();
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
+        return await _messageRepository.BatchDeleteMessagesAsync(messageIds);
     }
 
-    /// <summary>
-    /// 批量标记消息为已读
-    /// </summary>
+    /// <inheritdoc />
     public async Task<bool> BatchMarkAsReadAsync(List<Guid> messageIds)
     {
-        try
-        {
-            var messages = await _dbContext.Messages
-                .Where(m => messageIds.Contains(m.Id) && !m.IsRead)
-                .ToListAsync();
-
-            if (!messages.Any())
-            {
-                return true; // 没有需要标记的消息，视为成功
-            }
-
-            var now = DateTime.Now;
-            foreach (var message in messages)
-            {
-                message.IsRead = true;
-                message.ReadAt = now;
-            }
-
-            await _dbContext.SaveChangesAsync();
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
+        // 获取当前用户ID - 这里应该使用实际的用户认证逻辑
+        string currentUserId = GetCurrentUserId();
+        return await _messageRepository.BatchMarkAsReadAsync(messageIds, currentUserId);
     }
 
     /// <summary>
-    /// 获取消息详情
+    /// 获取当前登录用户ID
     /// </summary>
+    /// <returns>当前用户ID</returns>
+    private string GetCurrentUserId()
+    {
+        // 实际项目中，应该从 HttpContext 或其他认证上下文中获取当前用户ID
+        // 这里临时返回一个默认值
+        return "system";
+    }
+
+    /// <inheritdoc />
     public async Task<Message?> GetMessageByIdAsync(Guid messageId)
     {
-        return await _dbContext.Messages
-            .FirstOrDefaultAsync(m => m.Id == messageId);
+        return await _messageRepository.GetMessageByIdAsync(messageId);
     }
 } 

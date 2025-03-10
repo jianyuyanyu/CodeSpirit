@@ -21,12 +21,6 @@ public class MessageDto
     public MessageType Type { get; set; }
 
     /// <summary>
-    /// 消息类型名称
-    /// </summary>
-    [DisplayName("消息类型")]
-    public string TypeName => Type.ToString();
-
-    /// <summary>
     /// 消息标题
     /// </summary>
     [DisplayName("标题")]

@@ -655,8 +655,10 @@
 
     private int GetUnreadCount(Conversation conversation)
     {
+        // 由于Message类不再有IsRead属性，该属性已被移动到UserMessageRead类
         // 实际应用中应从服务器获取未读消息数
-        return conversation.Messages.Count(m => !m.IsRead && m.RecipientId == _userId);
+        // 临时返回0，应改为调用消息服务API获取
+        return 0;
     }
 
     private async Task ScrollToBottom()

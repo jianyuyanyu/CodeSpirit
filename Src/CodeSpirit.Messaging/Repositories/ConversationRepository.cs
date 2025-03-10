@@ -144,7 +144,6 @@ public class ConversationRepository(MessagingDbContext dbContext) : IConversatio
 
         message.Id = Guid.NewGuid();
         message.CreatedAt = DateTime.UtcNow;
-        message.IsRead = false;
         message.Type = MessageType.UserMessage;
 
         // 设置外键
@@ -190,10 +189,99 @@ public class ConversationRepository(MessagingDbContext dbContext) : IConversatio
             return 0;
         }
 
-        return await _dbContext.Messages
-            .CountAsync(m => 
-                EF.Property<Guid>(m, "ConversationId") == conversationId && 
-                !m.IsRead && 
-                m.RecipientId == userId);
+        // 获取对话的所有消息
+        var conversationMessageIds = await _dbContext.Messages
+            .Where(m => EF.Property<Guid>(m, "ConversationId") == conversationId && m.RecipientId == userId)
+            .Select(m => m.Id)
+            .ToListAsync();
+
+        // 查询用户已读消息
+        var readMessageIds = await _dbContext.UserMessageReads
+            .Where(r => r.UserId == userId && r.IsRead && conversationMessageIds.Contains(r.MessageId))
+            .Select(r => r.MessageId)
+            .ToListAsync();
+
+        // 未读消息数 = 总消息数 - 已读消息数
+        return conversationMessageIds.Count - readMessageIds.Count;
+    }
+
+    /// <inheritdoc />
+    public async Task<(List<Conversation> Conversations, int TotalCount)> GetConversationsAsync(
+        string? title = null,
+        string? participantId = null,
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        int pageNumber = 1,
+        int pageSize = 20)
+    {
+        var query = _dbContext.Conversations
+            .Include(c => c.Participants)
+            .Include(c => c.Messages)
+            .AsQueryable();
+
+        // 应用过滤条件
+        if (!string.IsNullOrEmpty(title))
+        {
+            query = query.Where(c => c.Title.Contains(title));
+        }
+
+        if (!string.IsNullOrEmpty(participantId))
+        {
+            query = query.Where(c => c.Participants.Any(p => p.UserId == participantId));
+        }
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(c => c.CreatedAt >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            query = query.Where(c => c.CreatedAt <= endDate.Value.AddDays(1).AddSeconds(-1));
+        }
+
+        // 计算总数
+        int totalCount = await query.CountAsync();
+
+        // 分页并排序
+        var conversations = await query
+            .OrderByDescending(c => c.LastActivityAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (conversations, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> BatchDeleteConversationsAsync(List<Guid> conversationIds)
+    {
+        try
+        {
+            var conversations = await _dbContext.Conversations
+                .Include(c => c.Messages)
+                .Include(c => c.Participants)
+                .Where(c => conversationIds.Contains(c.Id))
+                .ToListAsync();
+
+            if (conversations.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (var conversation in conversations)
+            {
+                _dbContext.Messages.RemoveRange(conversation.Messages);
+                _dbContext.ConversationParticipants.RemoveRange(conversation.Participants);
+            }
+
+            _dbContext.Conversations.RemoveRange(conversations);
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 } 

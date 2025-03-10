@@ -1,10 +1,12 @@
 using CodeSpirit.Messaging.Data;
+using CodeSpirit.Messaging.Data.Seeders;
 using CodeSpirit.Messaging.Hubs;
 using CodeSpirit.Messaging.Repositories;
 using CodeSpirit.Messaging.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.Messaging.Extensions;
 
@@ -37,6 +39,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IChatService, ChatService>();
 
+        // 注册数据种子服务
+        services.AddScoped<MessageSeeder>();
+        services.AddScoped<ConversationSeeder>();
+
         // 添加控制器
         services.AddControllers();
 
@@ -54,5 +60,38 @@ public static class ServiceCollectionExtensions
         services.AddSignalR();
 
         return services;
+    }
+
+    /// <summary>
+    /// 迁移数据库并初始化数据
+    /// </summary>
+    /// <param name="serviceProvider">服务提供者</param>
+    public static async Task MigrateAndSeedMessagingDatabaseAsync(this IServiceProvider serviceProvider)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var services = scope.ServiceProvider;
+        var logger = services.GetRequiredService<ILogger<MessagingDbContext>>();
+        
+        try
+        {
+            // 执行迁移
+            var dbContext = services.GetRequiredService<MessagingDbContext>();
+            await dbContext.Database.MigrateAsync();
+            logger.LogInformation("消息数据库迁移完成");
+            
+            // 初始化种子数据
+            var messageSeeder = services.GetRequiredService<MessageSeeder>();
+            await messageSeeder.SeedSystemNotificationsAsync();
+            
+            var conversationSeeder = services.GetRequiredService<ConversationSeeder>();
+            await conversationSeeder.SeedSampleConversationsAsync();
+            
+            logger.LogInformation("消息数据初始化完成");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "消息数据库迁移或初始化失败: {Message}", ex.Message);
+            throw;
+        }
     }
 } 

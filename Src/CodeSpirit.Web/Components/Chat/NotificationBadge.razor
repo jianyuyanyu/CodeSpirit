@@ -37,7 +37,7 @@
 
         hubConnection.On<Message>("ReceiveMessage", (message) =>
         {
-            if (message.RecipientId == _userId && !message.IsRead)
+            if (message.RecipientId == _userId)
             {
                 UnreadCount++;
                 StateHasChanged();

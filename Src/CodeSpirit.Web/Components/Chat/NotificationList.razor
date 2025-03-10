@@ -30,12 +30,12 @@
             {
                 <div class="notification-item @(message.IsRead ? "" : "unread")" @onclick="() => MarkAsRead(message.Id)">
                     <div class="notification-icon">
-                        <i class="@(message.Type == MessageType.SystemNotification ? "icon-system" : "icon-message")"></i>
+                        <i class="@(message.Message.Type == MessageType.SystemNotification ? "icon-system" : "icon-message")"></i>
                     </div>
                     <div class="notification-content">
-                        <div class="notification-title">@message.Title</div>
-                        <div class="notification-text">@message.Content</div>
-                        <div class="notification-time">@message.CreatedAt.ToString("yyyy-MM-dd HH:mm")</div>
+                        <div class="notification-title">@message.Message.Title</div>
+                        <div class="notification-text">@message.Message.Content</div>
+                        <div class="notification-time">@message.Message.CreatedAt.ToString("yyyy-MM-dd HH:mm")</div>
                     </div>
                     @if (!message.IsRead)
                     {
@@ -55,7 +55,7 @@
 </div>
 
 @code {
-    private List<Message> Messages { get; set; }
+    private List<MessageViewModel> Messages { get; set; }
     private bool Loading { get; set; } = true;
     private int CurrentPage { get; set; } = 1;
     private int PageSize { get; set; } = 10;
@@ -88,11 +88,21 @@
             
             if (Messages == null)
             {
-                Messages = response.Messages;
+                Messages = response.Messages.Select(m => new MessageViewModel 
+                { 
+                    Message = m, 
+                    IsRead = false, // 从API获取的消息未读状态应由后端提供，这里暂时设置为false 
+                    ReadAt = null 
+                }).ToList();
             }
             else
             {
-                Messages.AddRange(response.Messages);
+                Messages.AddRange(response.Messages.Select(m => new MessageViewModel 
+                { 
+                    Message = m, 
+                    IsRead = false, 
+                    ReadAt = null 
+                }));
             }
             
             TotalCount = response.TotalCount;
@@ -159,6 +169,18 @@
         {
             Console.WriteLine($"Error marking all messages as read: {ex.Message}");
         }
+    }
+    
+    // 消息视图模型，包装原始消息并添加已读状态
+    private class MessageViewModel
+    {
+        public Message Message { get; set; }
+        
+        public Guid Id => Message.Id;
+        
+        public bool IsRead { get; set; }
+        
+        public DateTime? ReadAt { get; set; }
     }
     
     private class MessageResponse

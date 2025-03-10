@@ -71,6 +71,10 @@ public static class ServiceCollectionExtensions
         builder.Services.AddDatabase(builder.Configuration);
         builder.Services.AddSystemServices(builder.Configuration, typeof(Program), builder.Environment);
         builder.Services.AddCustomServices(builder.Configuration);
+        
+        // 添加 JWT 认证
+        builder.Services.AddJwtAuthentication(builder.Configuration);
+        
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddOpenApi();
@@ -113,7 +117,11 @@ public static class ServiceCollectionExtensions
 
         app.UseHttpsRedirection();
         app.UseCors("AllowSpecificOriginsWithCredentials");
+        
+        // 添加身份验证中间件
+        app.UseAuthentication();
         app.UseAuthorization();
+        
         app.MapControllers();
         app.MapHub<ChatHub>("/chathub");
 

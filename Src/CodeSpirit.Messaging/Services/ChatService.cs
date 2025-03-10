@@ -1,14 +1,26 @@
 using CodeSpirit.Messaging.Models;
 using CodeSpirit.Messaging.Repositories;
+using CodeSpirit.Messaging.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.Messaging.Services;
 
 /// <summary>
 /// 聊天服务实现
 /// </summary>
-public class ChatService(IConversationRepository conversationRepository) : IChatService
+public class ChatService : IChatService
 {
-    private readonly IConversationRepository _conversationRepository = conversationRepository;
+    private readonly IConversationRepository _conversationRepository;
+    private readonly MessagingDbContext _dbContext;
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    public ChatService(IConversationRepository conversationRepository, MessagingDbContext dbContext)
+    {
+        _conversationRepository = conversationRepository;
+        _dbContext = dbContext;
+    }
 
     /// <inheritdoc />
     public async Task<List<Conversation>> GetUserConversationsAsync(string userId)
@@ -190,5 +202,89 @@ public class ChatService(IConversationRepository conversationRepository) : IChat
             userId1, 
             userName1, 
             new List<string> { userId2 });
+    }
+
+    /// <summary>
+    /// 获取所有对话
+    /// </summary>
+    public async Task<(List<Conversation> Conversations, int TotalCount)> GetConversationsAsync(
+        string? title = null,
+        string? participantId = null,
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        int pageNumber = 1,
+        int pageSize = 20)
+    {
+        var query = _dbContext.Conversations
+            .Include(c => c.Participants)
+            .Include(c => c.Messages)
+            .AsQueryable();
+
+        // 应用过滤条件
+        if (!string.IsNullOrEmpty(title))
+        {
+            query = query.Where(c => c.Title.Contains(title));
+        }
+
+        if (!string.IsNullOrEmpty(participantId))
+        {
+            query = query.Where(c => c.Participants.Any(p => p.UserId == participantId));
+        }
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(c => c.CreatedAt >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            query = query.Where(c => c.CreatedAt <= endDate.Value.AddDays(1).AddSeconds(-1));
+        }
+
+        // 计算总数
+        int totalCount = await query.CountAsync();
+
+        // 分页并排序
+        var conversations = await query
+            .OrderByDescending(c => c.LastActivityAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (conversations, totalCount);
+    }
+
+    /// <summary>
+    /// 批量删除对话
+    /// </summary>
+    public async Task<bool> BatchDeleteConversationsAsync(List<Guid> conversationIds)
+    {
+        try
+        {
+            var conversations = await _dbContext.Conversations
+                .Include(c => c.Messages)
+                .Include(c => c.Participants)
+                .Where(c => conversationIds.Contains(c.Id))
+                .ToListAsync();
+
+            if (conversations.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (var conversation in conversations)
+            {
+                _dbContext.Messages.RemoveRange(conversation.Messages);
+                _dbContext.ConversationParticipants.RemoveRange(conversation.Participants);
+            }
+
+            _dbContext.Conversations.RemoveRange(conversations);
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 } 

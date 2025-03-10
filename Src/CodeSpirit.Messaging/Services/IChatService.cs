@@ -92,4 +92,29 @@ public interface IChatService
     /// <param name="userName2">用户2 名称</param>
     /// <returns>对话实体</returns>
     Task<Conversation> GetOrCreatePrivateConversationAsync(string userId1, string userName1, string userId2, string userName2);
+    
+    /// <summary>
+    /// 获取所有对话
+    /// </summary>
+    /// <param name="title">标题（模糊查询）</param>
+    /// <param name="participantId">参与者ID</param>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <param name="pageNumber">页码</param>
+    /// <param name="pageSize">每页大小</param>
+    /// <returns>对话分页列表</returns>
+    Task<(List<Conversation> Conversations, int TotalCount)> GetConversationsAsync(
+        string? title = null,
+        string? participantId = null,
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        int pageNumber = 1,
+        int pageSize = 20);
+    
+    /// <summary>
+    /// 批量删除对话
+    /// </summary>
+    /// <param name="conversationIds">对话ID列表</param>
+    /// <returns>是否成功</returns>
+    Task<bool> BatchDeleteConversationsAsync(List<Guid> conversationIds);
 } 

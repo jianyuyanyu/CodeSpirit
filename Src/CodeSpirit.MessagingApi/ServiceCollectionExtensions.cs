@@ -2,11 +2,13 @@ using CodeSpirit.Messaging.Data;
 using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
 using CodeSpirit.Messaging.Services;
+using CodeSpirit.MessagingApi.Mappings;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using CodeSpirit.Amis;
 
 /// <summary>
 /// 消息系统服务扩展类
@@ -28,6 +30,9 @@ public static class ServiceCollectionExtensions
         // 从已有MessagingServices中迁移 - 保持原有功能
         services.AddMessagingServices(configuration);
         services.AddRealtimeChat();
+        
+        // 添加AutoMapper
+        services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
         return services;
     }
@@ -123,6 +128,7 @@ public static class ServiceCollectionExtensions
         app.UseAuthorization();
         
         app.MapControllers();
+        app.UseAmis();
         app.MapHub<ChatHub>("/chathub");
 
         // 应用迁移

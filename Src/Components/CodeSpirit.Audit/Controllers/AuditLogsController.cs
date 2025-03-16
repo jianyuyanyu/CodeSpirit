@@ -1,6 +1,6 @@
 using CodeSpirit.Audit.Helpers;
 using CodeSpirit.Audit.Models;
-using CodeSpirit.Audit.Services;
+using CodeSpirit.Audit.Services.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 

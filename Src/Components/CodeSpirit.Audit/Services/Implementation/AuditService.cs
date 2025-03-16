@@ -1,3 +1,4 @@
+using CodeSpirit.Audit.Services.Dtos;
 using Nest;
 
 namespace CodeSpirit.Audit.Services.Implementation;

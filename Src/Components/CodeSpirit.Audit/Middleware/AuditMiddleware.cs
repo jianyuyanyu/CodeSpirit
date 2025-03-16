@@ -113,7 +113,7 @@ public class AuditMiddleware
     /// <summary>
     /// 处理请求
     /// </summary>
-    public async Task InvokeAsync(HttpContext context, IAuditService auditService, IGeoLocationService geoLocationService)
+    public async Task InvokeAsync(HttpContext context, IAuditService auditService)
     {
         // 检查是否启用审计
         if (!_options.Enabled)
@@ -132,51 +132,6 @@ public class AuditMiddleware
         
         // 开始计时
         var stopwatch = Stopwatch.StartNew();
-        
-        // 获取控制器和方法信息
-        var endpoint = context.GetEndpoint();
-        AuditControllerActionDescriptor controllerActionDescriptor = null;
-        
-        if (endpoint != null)
-        {
-            // 尝试从Endpoint获取控制器和操作信息
-            controllerActionDescriptor = ExtractControllerActionDescriptorFromEndpoint(endpoint);
-            
-            // 如果无法从Endpoint获取，则退回到路由数据方法
-            if (controllerActionDescriptor == null)
-            {
-                // 从路由数据中提取控制器和操作信息
-                var routeData = context.GetRouteData();
-                if (routeData != null && 
-                    routeData.Values.TryGetValue("controller", out var controllerName) && 
-                    routeData.Values.TryGetValue("action", out var actionName))
-                {
-                    var controllerStr = controllerName?.ToString();
-                    var actionStr = actionName?.ToString();
-                    
-                    if (!string.IsNullOrEmpty(controllerStr) && !string.IsNullOrEmpty(actionStr))
-                    {
-                        // 尝试获取控制器类型
-                        var controllerType = FindControllerType(controllerStr);
-                        if (controllerType != null)
-                        {
-                            // 尝试获取操作方法
-                            var methodInfo = FindActionMethod(controllerType, actionStr);
-                            if (methodInfo != null)
-                            {
-                                controllerActionDescriptor = new AuditControllerActionDescriptor
-                                {
-                                    ControllerName = controllerStr,
-                                    ActionName = actionStr,
-                                    ControllerTypeInfo = controllerType.GetTypeInfo(),
-                                    MethodInfo = methodInfo
-                                };
-                            }
-                        }
-                    }
-                }
-            }
-        }
         
         // 保存原始请求体
         var originalRequestBody = await GetRequestBodyAsync(context);
@@ -236,12 +191,86 @@ public class AuditMiddleware
                 return;
             }
             
+            // 获取控制器和方法信息
+            var endpoint = context.GetEndpoint();
+            AuditControllerActionDescriptor controllerActionDescriptor = null;
+            
+            _logger.LogInformation("开始提取控制器和操作信息 - Endpoint: {Endpoint}", endpoint?.DisplayName ?? "null");
+            
+            if (endpoint != null)
+            {
+                // 尝试从Endpoint获取控制器和操作信息
+                controllerActionDescriptor = ExtractControllerActionDescriptorFromEndpoint(endpoint);
+                
+                _logger.LogInformation("从Endpoint提取控制器和操作信息 - 结果: {Result}", 
+                    controllerActionDescriptor != null ? "成功" : "失败");
+                
+                // 如果无法从Endpoint获取，则退回到路由数据方法
+                if (controllerActionDescriptor == null)
+                {
+                    // 从路由数据中提取控制器和操作信息
+                    var routeData = context.GetRouteData();
+                    _logger.LogInformation("尝试从路由数据提取 - 路由数据: {RouteData}", 
+                        routeData != null ? "存在" : "不存在");
+                    
+                    if (routeData != null && 
+                        routeData.Values.TryGetValue("controller", out var controllerName) && 
+                        routeData.Values.TryGetValue("action", out var actionName))
+                    {
+                        var controllerStr = controllerName?.ToString();
+                        var actionStr = actionName?.ToString();
+                        
+                        _logger.LogInformation("从路由数据提取到控制器和操作 - 控制器: {Controller}, 操作: {Action}", 
+                            controllerStr, actionStr);
+                        
+                        if (!string.IsNullOrEmpty(controllerStr) && !string.IsNullOrEmpty(actionStr))
+                        {
+                            // 尝试获取控制器类型
+                            var controllerType = FindControllerType(controllerStr);
+                            _logger.LogInformation("查找控制器类型 - 结果: {Result}", 
+                                controllerType != null ? "成功" : "失败");
+                            
+                            if (controllerType != null)
+                            {
+                                // 尝试获取操作方法
+                                var methodInfo = FindActionMethod(controllerType, actionStr);
+                                _logger.LogInformation("查找操作方法 - 结果: {Result}", 
+                                    methodInfo != null ? "成功" : "失败");
+                                
+                                if (methodInfo != null)
+                                {
+                                    controllerActionDescriptor = new AuditControllerActionDescriptor
+                                    {
+                                        ControllerName = controllerStr,
+                                        ActionName = actionStr,
+                                        ControllerTypeInfo = controllerType.GetTypeInfo(),
+                                        MethodInfo = methodInfo
+                                    };
+                                    
+                                    _logger.LogInformation("成功创建控制器操作描述符");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            _logger.LogInformation("控制器操作描述符提取结果: {Result}", 
+                controllerActionDescriptor != null ? 
+                    $"成功 - 控制器: {controllerActionDescriptor.ControllerName}, 操作: {controllerActionDescriptor.ActionName}" : 
+                    "失败 - 未能提取控制器和操作信息");
+            
             // 提取控制器和方法信息
             if (controllerActionDescriptor != null)
             {
                 var controllerType = controllerActionDescriptor.ControllerTypeInfo;
                 var actionMethodInfo = controllerActionDescriptor.MethodInfo;
                 
+                _logger.LogInformation("提取到控制器和方法信息 - 控制器: {Controller}, 操作: {Action}", 
+                    controllerActionDescriptor.ControllerName, 
+                    controllerActionDescriptor.ActionName);
+                
+                auditLog.StatusCode = context.Response.StatusCode;
                 auditLog.ControllerName = controllerActionDescriptor.ControllerName;
                 auditLog.ActionName = controllerActionDescriptor.ActionName;
                 auditLog.ServiceName = controllerType.Assembly.GetName().Name;
@@ -256,14 +285,47 @@ public class AuditMiddleware
                     // 优先使用方法上的审计特性
                     var auditAttr = methodAuditAttr ?? controllerAuditAttr;
                     
+                    _logger.LogInformation("找到审计特性 - 描述: {Description}, 操作类型: {OperationType}", 
+                        auditAttr.Description, auditAttr.OperationType);
+                    
+                    // 设置审计信息
                     auditLog.Description = auditAttr.Description;
-                    auditLog.OperationType = auditAttr.OperationType.ToString();
+                    auditLog.OperationName = auditAttr.Description;
+                    
+                    // 保存原始的控制器和操作名称用于调试
+                    auditLog.AdditionalData["OriginalController"] = controllerActionDescriptor.ControllerName;
+                    auditLog.AdditionalData["OriginalAction"] = controllerActionDescriptor.ActionName;
+
+                    // 确保正确设置操作类型 - 修复操作类型设置问题
+                    var operationType = auditAttr.OperationType;
+                    string operationTypeString = operationType.ToString();
+                    _logger.LogInformation("设置操作类型 - 控制器: {Controller}, 操作: {Action}, 枚举值: {EnumValue}, 字符串值: {StringValue}", 
+                        controllerActionDescriptor.ControllerName, 
+                        controllerActionDescriptor.ActionName,
+                        (int)operationType, operationTypeString);
+                    
+                    // 直接设置操作类型字符串
+                    auditLog.OperationType = operationTypeString;
+                    
+                    _logger.LogDebug("从特性获取操作类型: {OperationType}, 枚举值: {EnumValue}, 转换后: {ConvertedValue}, 设置后的值: {SetValue}", 
+                        operationType, (int)operationType, operationTypeString, auditLog.OperationType);
+                    
+                    // 强制确保OperationType不为空
+                    if (string.IsNullOrEmpty(auditLog.OperationType))
+                    {
+                        _logger.LogWarning("操作类型字符串转换后为空，强制使用枚举值名称");
+                        auditLog.OperationType = Enum.GetName(typeof(AuditOperationType), operationType) ?? "Action";
+                    }
+
+                    // 记录OperationName和Description以便调试
+                    _logger.LogInformation("设置审计信息 - Description: {Description}, OperationName: {OperationName}",
+                        auditLog.Description, auditLog.OperationName);
                     
                     // 获取控制器上的DisplayName特性
                     var displayNameAttr = controllerType.GetCustomAttribute<DisplayNameAttribute>();
                     if (displayNameAttr != null)
                     {
-                        auditLog.DisplayName = displayNameAttr.DisplayName;
+                        auditLog.OperationName = displayNameAttr.DisplayName;
                     }
                     
                     // 从路由数据中提取实体ID
@@ -317,7 +379,7 @@ public class AuditMiddleware
                     var displayNameAttr = controllerType.GetCustomAttribute<DisplayNameAttribute>();
                     if (displayNameAttr != null)
                     {
-                        auditLog.DisplayName = displayNameAttr.DisplayName;
+                        auditLog.OperationName = displayNameAttr.DisplayName;
                     }
                 }
             }
@@ -355,19 +417,26 @@ public class AuditMiddleware
     }
     
     /// <summary>
-    /// 从Endpoint提取控制器行为描述符
+    /// 从Endpoint提取控制器和操作信息
     /// </summary>
     private AuditControllerActionDescriptor ExtractControllerActionDescriptorFromEndpoint(Endpoint endpoint)
     {
         if (endpoint == null)
         {
+            _logger.LogInformation("Endpoint为null，无法提取控制器和操作信息");
             return null;
         }
             
         // 检查是否为控制器端点
         var mvcDescriptor = endpoint.Metadata.GetMetadata<MvcControllerActionDescriptor>();
+        _logger.LogInformation("尝试获取MvcControllerActionDescriptor - 结果: {Result}", 
+            mvcDescriptor != null ? "成功" : "失败");
+            
         if (mvcDescriptor != null)
         {
+            _logger.LogInformation("从MvcControllerActionDescriptor获取信息 - 控制器: {Controller}, 操作: {Action}", 
+                mvcDescriptor.ControllerName, mvcDescriptor.ActionName);
+                
             // 转换为自定义AuditControllerActionDescriptor
             return new AuditControllerActionDescriptor
             {
@@ -382,11 +451,21 @@ public class AuditMiddleware
         var routeNameMetadata = endpoint.Metadata.GetMetadata<RouteNameMetadata>();
         var displayNameMetadata = endpoint.Metadata.GetMetadata<EndpointNameMetadata>();
         
+        _logger.LogInformation("尝试获取其他元数据 - RouteNameMetadata: {RouteNameMetadata}, EndpointNameMetadata: {EndpointNameMetadata}", 
+            routeNameMetadata != null ? "存在" : "不存在", 
+            displayNameMetadata != null ? "存在" : "不存在");
+        
         // 尝试从路由模板提取控制器和操作
         var routeEndpoint = endpoint as RouteEndpoint;
+        _logger.LogInformation("检查是否为RouteEndpoint - 结果: {Result}", 
+            routeEndpoint != null ? "是" : "否");
+            
         if (routeEndpoint != null)
         {
             var routePattern = routeEndpoint.RoutePattern;
+            _logger.LogInformation("路由模式 - 原始文本: {RawText}, 路径段数量: {SegmentCount}", 
+                routePattern.RawText, routePattern.PathSegments.Count);
+                
             if (routePattern.PathSegments.Count > 1)
             {
                 // 尝试提取控制器和操作名称
@@ -395,27 +474,42 @@ public class AuditMiddleware
                 string actionName = null;
                 
                 // 从路由值中提取控制器和操作名称
-                var routeValues = routeEndpoint.RoutePattern.RequiredValues;
+                var routeValues = routePattern.RequiredValues;
+                _logger.LogInformation("路由必需值数量: {Count}", routeValues.Count);
+                
+                foreach (var kvp in routeValues)
+                {
+                    _logger.LogInformation("路由值 - 键: {Key}, 值: {Value}", kvp.Key, kvp.Value);
+                }
                 
                 if (routeValues.TryGetValue("controller", out var controllerValue))
                 {
                     controllerName = controllerValue?.ToString();
+                    _logger.LogInformation("从路由值获取控制器名称: {Controller}", controllerName);
                 }
                 
                 if (routeValues.TryGetValue("action", out var actionValue))
                 {
                     actionName = actionValue?.ToString();
+                    _logger.LogInformation("从路由值获取操作名称: {Action}", actionName);
                 }
                 
                 if (!string.IsNullOrEmpty(controllerName) && !string.IsNullOrEmpty(actionName))
                 {
                     // 使用提取的控制器和操作名称获取详细信息
                     var controllerType = FindControllerType(controllerName);
+                    _logger.LogInformation("查找控制器类型 - 结果: {Result}", 
+                        controllerType != null ? "成功" : "失败");
+                        
                     if (controllerType != null)
                     {
                         var methodInfo = FindActionMethod(controllerType, actionName);
+                        _logger.LogInformation("查找操作方法 - 结果: {Result}", 
+                            methodInfo != null ? "成功" : "失败");
+                            
                         if (methodInfo != null)
                         {
+                            _logger.LogInformation("成功创建AuditControllerActionDescriptor");
                             return new AuditControllerActionDescriptor
                             {
                                 ControllerName = controllerName,
@@ -429,6 +523,7 @@ public class AuditMiddleware
             }
         }
         
+        _logger.LogInformation("未能从Endpoint提取控制器和操作信息");
         return null;
     }
 
@@ -507,25 +602,37 @@ public class AuditMiddleware
     }
     
     /// <summary>
-    /// 判断是否跳过审计
+    /// 检查是否需要跳过审计
     /// </summary>
     private bool ShouldSkipAudit(HttpContext context)
     {
+        // 检查请求路径是否在排除列表中
         var requestPath = context.Request.Path.Value;
         
-        // 检查是否为健康检查请求
-        if (!_options.LogHealthChecks && requestPath.Contains("/healthz", StringComparison.OrdinalIgnoreCase))
+        // 检查是否为静态文件或其他需要排除的路径
+        foreach (var excludePath in _options.ExcludedPathPrefixes)
         {
+            if (requestPath.StartsWith(excludePath, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogDebug("跳过审计 - 路径在排除列表中: {Path}", requestPath);
+                return true;
+            }
+        }
+        
+        // 检查是否为健康检查或其他系统路径
+        if (requestPath.Contains("/health", StringComparison.OrdinalIgnoreCase) ||
+            requestPath.Contains("/metrics", StringComparison.OrdinalIgnoreCase) ||
+            requestPath.Contains("/swagger", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogDebug("跳过审计 - 系统路径: {Path}", requestPath);
             return true;
         }
         
-        // 检查排除路径
-        foreach (var excludedPrefix in _options.ExcludedPathPrefixes)
+        // 检查是否为NoAudit控制器
+        if (requestPath.Contains("/NoAudit", StringComparison.OrdinalIgnoreCase))
         {
-            if (requestPath.StartsWith(excludedPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+            _logger.LogInformation("跳过审计 - NoAudit控制器: {Path}", requestPath);
+            return true;
         }
         
         return false;
@@ -890,11 +997,14 @@ public class AuditMiddleware
     {
         try
         {
-            // 推断操作类型
-            auditLog.OperationType = InferOperationTypeFromHttpMethod(
-                context.Request.Method,
-                actionDescriptor.ActionName,
-                _options.OperationInference);
+            // 推断操作类型 - 只有在尚未设置操作类型时才进行推断
+            if (string.IsNullOrEmpty(auditLog.OperationType))
+            {
+                auditLog.OperationType = InferOperationTypeFromHttpMethod(
+                    context.Request.Method,
+                    actionDescriptor.ActionName,
+                    _options.OperationInference);
+            }
             
             // 推断实体名称（如果尚未设置）
             if (string.IsNullOrEmpty(auditLog.EntityName))

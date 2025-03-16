@@ -108,7 +108,7 @@ public class ElasticsearchService : IElasticsearchService
                         .Text(t => t.Name(n => n.ServiceName).Fields(f => f.Keyword(k => k.Name("keyword"))))
                         .Text(t => t.Name(n => n.ControllerName).Fields(f => f.Keyword(k => k.Name("keyword"))))
                         .Text(t => t.Name(n => n.ActionName).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.DisplayName).Fields(f => f.Keyword(k => k.Name("keyword"))))
+                        .Text(t => t.Name(n => n.OperationName).Fields(f => f.Keyword(k => k.Name("keyword"))))
                         .Text(t => t.Name(n => n.OperationType).Fields(f => f.Keyword(k => k.Name("keyword"))))
                         .Text(t => t.Name(n => n.Description))
                         .Text(t => t.Name(n => n.RequestPath).Fields(f => f.Keyword(k => k.Name("keyword"))))

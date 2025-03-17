@@ -37,7 +37,7 @@ public class Question : LongKeyAuditableEntityBase
     /// 正确答案
     /// </summary>
     [Required]
-    [StringLength(1000)]
+    [StringLength(4000)]
     public string CorrectAnswer { get; set; } = string.Empty;
     
     /// <summary>

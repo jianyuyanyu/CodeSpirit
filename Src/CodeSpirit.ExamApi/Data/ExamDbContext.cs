@@ -4,6 +4,7 @@ using CodeSpirit.Shared.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using CodeSpirit.Core;
+using CodeSpirit.ExamApi.Data.Seeds;
 
 namespace CodeSpirit.ExamApi.Data;
 
@@ -124,7 +125,7 @@ public class ExamDbContext : AuditableDbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Content).IsRequired().HasMaxLength(2000);
             entity.Property(e => e.Options).IsRequired().HasMaxLength(2000);
-            entity.Property(e => e.CorrectAnswer).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.CorrectAnswer).IsRequired().HasMaxLength(4000);
             entity.Property(e => e.Analysis).HasMaxLength(2000);
             entity.Property(e => e.KnowledgePoints).HasMaxLength(500);
             entity.Property(e => e.Tags).HasMaxLength(500);
@@ -333,5 +334,13 @@ public class ExamDbContext : AuditableDbContext
             // 确保题目序号在考试记录中唯一
             entity.HasIndex(e => new { e.ExamRecordId, e.OrderNumber }).IsUnique();
         });
+    }
+
+    /// <summary>
+    /// 初始化数据库
+    /// </summary>
+    public async Task InitializeDatabaseAsync()
+    {
+        await ExamDbContextSeed.SeedAsync(this);
     }
 }

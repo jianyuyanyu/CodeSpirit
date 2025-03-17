@@ -1,3 +1,4 @@
+using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
@@ -23,7 +24,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddExamApiServices(builder.Configuration);
 
         // 使用共享项目中的JWT认证扩展方法
-        builder.Services.AddJwtAuthentication(builder.Configuration);
+        //builder.Services.AddJwtAuthentication(builder.Configuration);
 
         builder.Services.ConfigureDefaultControllers();
 
@@ -38,7 +39,6 @@ public static class ServiceCollectionExtensions
     /// <returns>服务集合</returns>
     public static IServiceCollection AddExamApiServices(this IServiceCollection services, IConfiguration configuration)
     {
-
         // 添加 DbContext 基类的解析
         services.AddScoped<DbContext>(provider =>
             provider.GetRequiredService<ExamDbContext>());
@@ -49,7 +49,6 @@ public static class ServiceCollectionExtensions
         // 添加API控制器
         services.AddControllers();
         
-
         string connectionString = configuration.GetConnectionString("exam-api");
         Console.WriteLine($"Connection string: {connectionString}");
 
@@ -60,22 +59,6 @@ public static class ServiceCollectionExtensions
 
         // 添加AutoMapper
         services.AddAutoMapper(typeof(ServiceCollectionExtensions).Assembly);
-        
-        // 添加身份验证
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = configuration["Jwt:Issuer"],
-                    ValidAudience = configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured")))
-                };
-            });
         
         // 添加授权
         services.AddAuthorization();
@@ -104,11 +87,31 @@ public static class ServiceCollectionExtensions
     /// <returns>应用程序</returns>
     public static WebApplication UseExamApiServices(this WebApplication app)
     {
-        app.UseHttpsRedirection();
+        app.UseCors("AllowSpecificOriginsWithCredentials");
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
-        
+
+        // 初始化数据库
+        using (var scope = app.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            try
+            {
+                var context = services.GetRequiredService<ExamDbContext>();
+                // 确保数据库已创建
+                context.Database.EnsureCreated();
+                // 初始化数据
+                context.InitializeDatabaseAsync().Wait();
+            }
+            catch (Exception ex)
+            {
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "初始化数据库时发生错误。");
+                throw;
+            }
+        }
+
         return app;
     }
 }

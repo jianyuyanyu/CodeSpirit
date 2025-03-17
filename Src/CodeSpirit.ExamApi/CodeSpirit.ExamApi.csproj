@@ -26,7 +26,6 @@
 		<ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
-		<ProjectReference Include="..\Components\CodeSpirit.Amis\CodeSpirit.Amis.csproj" />
 	</ItemGroup>
 
 </Project>

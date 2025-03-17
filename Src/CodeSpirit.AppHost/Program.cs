@@ -49,6 +49,15 @@ var messagingService = builder.AddProject<Projects.CodeSpirit_MessagingApi>("mes
         .WaitFor(configService)
     ;
 
+var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
+    .WithReference(seqService)
+        .WaitFor(seqService)
+    .WithReference(cache)
+        .WaitFor(cache)
+    .WithReference(configService)
+        .WaitFor(configService)
+    ;
+
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     .WithReference(cache)
@@ -61,6 +70,8 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
         .WaitFor(configService)
     .WithReference(messagingService)
         .WaitFor(messagingService)
+    .WithReference(examService)
+        .WaitFor(examService)
     ;
 
 builder.Build().Run();

@@ -43,7 +43,7 @@ public abstract class BaseCRUDIService<TEntity, TDto, TKey, TCreateDto, TUpdateD
             try
             {
                 TEntity entity = Mapper.Map<TEntity>(item);
-                OnImportMapping(entity, item);
+                await OnImportMapping(entity, item);
                 await OnImporting(entity);
                 validEntities.Add(entity);
             }

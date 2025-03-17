@@ -8,6 +8,6 @@ builder.AddExam();
 
 var app = builder.Build();
 
-app.UseExamApiServices();
+app.UseExamApiServicesAsync();
 
 app.Run();

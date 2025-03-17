@@ -1,3 +1,5 @@
+using CodeSpirit.ExamApi.Dtos.Question;
+
 /// <summary>
 /// 题目服务接口
 /// </summary>
@@ -43,4 +45,7 @@ public interface IQuestionService
     /// <param name="questionId">题目ID</param>
     /// <returns>题目版本列表</returns>
     Task<List<QuestionVersionDto>> GetQuestionVersionsAsync(long questionId);
+
+    Task<(int successCount, List<long> failedIds)> BatchDeleteAsync(IEnumerable<long> ids);
+    Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<QuestionBatchImportItemDto> importData);
 } 

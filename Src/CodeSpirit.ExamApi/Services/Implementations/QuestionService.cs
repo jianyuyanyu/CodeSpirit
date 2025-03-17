@@ -1,20 +1,23 @@
 using AutoMapper;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 /// <summary>
 /// 题目服务实现
 /// </summary>
-public class QuestionService : BaseCRUDService<Question, QuestionDto, long, CreateQuestionDto, UpdateQuestionDto>, IQuestionService
+public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, CreateQuestionDto, UpdateQuestionDto, QuestionBatchImportItemDto>, IQuestionService
 {
     private readonly IRepository<Question> _repository;
     private readonly IRepository<QuestionCategory> _categoryRepository;
     private readonly IRepository<QuestionVersion> _versionRepository;
     private readonly IMapper _mapper;
+    private readonly ILogger<QuestionService> _logger;
     private string? _changeReason;
 
     /// <summary>
@@ -24,13 +27,15 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, long, Crea
         IRepository<Question> repository, 
         IRepository<QuestionCategory> categoryRepository,
         IRepository<QuestionVersion> versionRepository,
-        IMapper mapper)
+        IMapper mapper,
+        ILogger<QuestionService> logger)
         : base(repository, mapper)
     {
         _repository = repository;
         _categoryRepository = categoryRepository;
         _versionRepository = versionRepository;
         _mapper = mapper;
+        _logger = logger;
     }
 
     /// <summary>
@@ -106,7 +111,33 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, long, Crea
     /// </summary>
     public async Task DeleteQuestionAsync(long id)
     {
-        await DeleteAsync(id);
+        // 检查题目是否存在
+        var question = await _repository
+            .Find(q => q.Id == id)
+            .Include(q => q.ExamPaperQuestions)
+            .FirstOrDefaultAsync();
+
+        if (question == null)
+        {
+            throw new AppServiceException(404, "题目不存在！");
+        }
+
+        // 检查题目是否被试卷引用
+        if (question.IsReferenced)
+        {
+            throw new AppServiceException(400, "该题目已被试卷引用，无法删除！");
+        }
+
+        try
+        {
+            await _repository.DeleteAsync(question);
+            await _repository.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "删除题目失败: {Id}", id);
+            throw new AppServiceException(500, "删除题目失败！");
+        }
     }
 
     /// <summary>
@@ -293,5 +324,136 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, long, Crea
             default:
                 throw new AppServiceException(400, "不支持的题目类型！");
         }
+    }
+
+    /// <summary>
+    /// 批量导入题目
+    /// </summary>
+    public override async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<QuestionBatchImportItemDto> importData)
+    {
+        ArgumentNullException.ThrowIfNull(importData);
+
+        var successCount = 0;
+        var failedIds = new List<string>();
+        var importList = importData.ToList();
+
+        // 预先检查所有题目的内容是否重复
+        var contents = importList.Select(x => x.Content).ToList();
+        var existingContents = await _repository
+            .Find(q => contents.Contains(q.Content))
+            .Select(q => q.Content)
+            .ToListAsync();
+
+        if (existingContents.Any())
+        {
+            return (0, existingContents.Select(c => $"重复的题目内容: {c}").ToList());
+        }
+
+        foreach (var item in importList)
+        {
+            try
+            {
+                // 解析题目类型
+                if (!Enum.TryParse<QuestionType>(item.QuestionType, out var questionType))
+                {
+                    failedIds.Add($"{item.Content}(无效的题目类型)");
+                    continue;
+                }
+
+                // 解析难度等级
+                if (!Enum.IsDefined(typeof(QuestionDifficulty), item.DifficultyLevel))
+                {
+                    failedIds.Add($"{item.Content}(无效的难度等级)");
+                    continue;
+                }
+
+                // 创建题目实体
+                var question = new Question
+                {
+                    Content = item.Content,
+                    Type = questionType,
+                    Difficulty = (QuestionDifficulty)item.DifficultyLevel,
+                    CorrectAnswer = item.Answer,
+                    Analysis = item.Analysis,
+                    Version = 1
+                };
+
+                // 处理标签
+                if (item.Tags?.Any() == true)
+                {
+                    question.Tags = JsonSerializer.Serialize(item.Tags);
+                }
+
+                try
+                {
+                    // 验证选项和答案
+                    ValidateOptionsAndAnswer(questionType, new List<string>(), item.Answer);
+                }
+                catch (AppServiceException ex)
+                {
+                    failedIds.Add($"{item.Content}({ex.Message})");
+                    continue;
+                }
+
+                // 添加到数据库
+                await _repository.AddAsync(question);
+                await _repository.SaveChangesAsync();
+
+                successCount++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "导入题目失败: {Content}", item.Content);
+                failedIds.Add($"{item.Content}(导入失败)");
+            }
+        }
+
+        return (successCount, failedIds);
+    }
+
+    /// <summary>
+    /// 批量删除题目
+    /// </summary>
+    public override async Task<(int successCount, List<long> failedIds)> BatchDeleteAsync(IEnumerable<long> ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+
+        var successCount = 0;
+        var failedIds = new List<long>();
+        var idList = ids.ToList();
+
+        // 检查是否有题目被试卷引用
+        var referencedQuestions = await _repository
+            .Find(q => idList.Contains(q.Id))
+            .Include(q => q.ExamPaperQuestions)
+            .Where(q => q.IsReferenced)
+            .Select(q => q.Id)
+            .ToListAsync();
+
+        if (referencedQuestions.Any())
+        {
+            return (0, referencedQuestions);
+        }
+
+        foreach (var id in idList)
+        {
+            try
+            {
+                await DeleteQuestionAsync(id);
+                successCount++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "删除题目失败: {Id}", id);
+                failedIds.Add(id);
+            }
+        }
+
+        return (successCount, failedIds);
+    }
+
+    protected override string GetImportItemId(QuestionBatchImportItemDto importDto)
+    {
+        return importDto.Content;
     }
 } 

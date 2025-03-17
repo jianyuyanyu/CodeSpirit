@@ -114,6 +114,20 @@ public class ExamDbContext : AuditableDbContext
         ConfigureQuestionEntities(modelBuilder);
         ConfigureStudentEntities(modelBuilder);
         ConfigureExamEntities(modelBuilder);
+
+        // 配置题目和试卷题目的关系
+        modelBuilder.Entity<Question>()
+            .HasMany(q => q.ExamPaperQuestions)
+            .WithOne(epq => epq.Question)
+            .HasForeignKey(epq => epq.QuestionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 配置试卷和试卷题目的关系
+        modelBuilder.Entity<ExamPaper>()
+            .HasMany(ep => ep.ExamPaperQuestions)
+            .WithOne(epq => epq.ExamPaper)
+            .HasForeignKey(epq => epq.ExamPaperId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 
     private void ConfigureQuestionEntities(ModelBuilder modelBuilder)

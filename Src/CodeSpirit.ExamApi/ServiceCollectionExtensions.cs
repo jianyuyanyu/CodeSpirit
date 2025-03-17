@@ -1,4 +1,8 @@
+using CodeSpirit.Aggregator;
+using CodeSpirit.Amis;
+using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.ExamApi.Data;
+using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
@@ -85,12 +89,17 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="app">应用程序构建器</param>
     /// <returns>应用程序</returns>
-    public static WebApplication UseExamApiServices(this WebApplication app)
+    public static async Task<WebApplication> UseExamApiServicesAsync(this WebApplication app)
     {
         app.UseCors("AllowSpecificOriginsWithCredentials");
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+        app.UseAmis();
+        app.UseCodeSpiritAuthorization();
+        await app.UseCodeSpiritNavigationAsync();
+
+        app.UseCodeSpiritAggregator();
 
         // 初始化数据库
         using (var scope = app.Services.CreateScope())

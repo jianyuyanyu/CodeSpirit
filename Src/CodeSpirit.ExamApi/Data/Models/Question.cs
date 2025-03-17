@@ -1,5 +1,6 @@
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CodeSpirit.ExamApi.Data.Models;
 
@@ -91,4 +92,15 @@ public class Question : LongKeyAuditableEntityBase
     /// </summary>
     [StringLength(500)]
     public string? Tags { get; set; }
+
+    /// <summary>
+    /// 试卷题目关联
+    /// </summary>
+    public ICollection<ExamPaperQuestion> ExamPaperQuestions { get; set; } = [];
+
+    /// <summary>
+    /// 是否被试卷引用（计算属性）
+    /// </summary>
+    [NotMapped]
+    public bool IsReferenced => ExamPaperQuestions.Any();
 }

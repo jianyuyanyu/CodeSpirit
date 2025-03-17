@@ -6,31 +6,31 @@
 erDiagram
     %% 实体定义
     Question {
-        int id PK
+        long id PK
     }
     QuestionVersion {
-        int version_id PK
+        long version_id PK
     }
     QuestionCategory {
-        int category_id PK
+        long category_id PK
     }
     ExamPaper {
         long paper_id PK
     }
     ExamSetting {
-        int setting_id PK
+        long setting_id PK
     }
     Student {
-        int student_id PK
+        long student_id PK
     }
     StudentGroup {
-        int group_id PK
+        long group_id PK
     }
     ExamRecord {
-        int record_id PK
+        long record_id PK
     }
     ExamAnswerRecord {
-        int answer_id PK
+        long answer_id PK
     }
 
     %% 关系定义

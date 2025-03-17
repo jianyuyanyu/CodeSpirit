@@ -6,12 +6,12 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 错题记录实体
 /// </summary>
-public class WrongQuestion : AuditableEntityBase<int>
+public class WrongQuestion : LongKeyAuditableEntityBase
 {
     /// <summary>
     /// 考生ID
     /// </summary>
-    public int StudentId { get; set; }
+    public long StudentId { get; set; }
     
     /// <summary>
     /// 考生
@@ -21,7 +21,7 @@ public class WrongQuestion : AuditableEntityBase<int>
     /// <summary>
     /// 题目ID
     /// </summary>
-    public int QuestionId { get; set; }
+    public long QuestionId { get; set; }
     
     /// <summary>
     /// 题目

@@ -1,21 +1,17 @@
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Shared.Entities;
 
 namespace CodeSpirit.ExamApi.Data.Models;
 
 /// <summary>
 /// 练习记录实体
 /// </summary>
-public class PracticeRecord
-{
-    /// <summary>
-    /// 记录ID
-    /// </summary>
-    public int Id { get; set; }
-    
+public class PracticeRecord : LongKeyAuditableEntityBase
+{    
     /// <summary>
     /// 考生ID
     /// </summary>
-    public int StudentId { get; set; }
+    public long StudentId { get; set; }
     
     /// <summary>
     /// 考生
@@ -25,7 +21,7 @@ public class PracticeRecord
     /// <summary>
     /// 题目ID
     /// </summary>
-    public int QuestionId { get; set; }
+    public long QuestionId { get; set; }
     
     /// <summary>
     /// 题目
@@ -61,5 +57,5 @@ public class PracticeRecord
     /// <summary>
     /// 模拟考试ID（如果是模拟考试的练习）
     /// </summary>
-    public int? MockExamId { get; set; }
+    public long? MockExamId { get; set; }
 }

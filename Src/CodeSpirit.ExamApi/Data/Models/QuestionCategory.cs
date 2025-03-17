@@ -6,7 +6,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 题目分类
 /// </summary>
-public class QuestionCategory : AuditableEntityBase<int>
+public class QuestionCategory : LongKeyAuditableEntityBase
 {
     /// <summary>
     /// 分类名称
@@ -21,7 +21,7 @@ public class QuestionCategory : AuditableEntityBase<int>
     /// <summary>
     /// 父分类ID
     /// </summary>
-    public int? ParentId { get; set; }
+    public long? ParentId { get; set; }
 
     /// <summary>
     /// 父分类

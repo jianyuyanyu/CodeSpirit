@@ -6,7 +6,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 考生分组实体
 /// </summary>
-public class StudentGroup: AuditableEntityBase<int>
+public class StudentGroup: LongKeyAuditableEntityBase
 {    
     /// <summary>
     /// 分组名称

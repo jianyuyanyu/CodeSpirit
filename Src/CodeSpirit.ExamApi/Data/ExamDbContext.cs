@@ -246,6 +246,27 @@ public class ExamDbContext : AuditableDbContext
             entity.HasIndex(e => new { e.ExamPaperId, e.OrderNumber }).IsUnique();
         });
         
+        // 配置试卷实体
+        modelBuilder.Entity<ExamPaper>(entity =>
+        {
+            entity.ToTable("ExamPapers");
+            entity.HasKey(e => e.Id);
+            
+            // 配置 decimal 类型的精度
+            entity.Property(e => e.AverageScore).HasPrecision(10, 2);
+            entity.Property(e => e.PassRate).HasPrecision(5, 2);
+        });
+
+        // 配置题目实体
+        modelBuilder.Entity<Question>(entity =>
+        {
+            entity.ToTable("Questions");
+            entity.HasKey(e => e.Id);
+            
+            // 配置 decimal 类型的精度
+            entity.Property(e => e.CorrectRate).HasPrecision(5, 2);
+        });
+        
         // 配置考试设置关系
         modelBuilder.Entity<ExamSetting>(entity =>
         {

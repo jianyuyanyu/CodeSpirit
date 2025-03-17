@@ -6,7 +6,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 试卷题目关联实体
 /// </summary>
-public class ExamPaperQuestion : AuditableEntityBase<int>
+public class ExamPaperQuestion : LongKeyAuditableEntityBase
 {
     /// <summary>
     /// 试卷ID
@@ -23,7 +23,7 @@ public class ExamPaperQuestion : AuditableEntityBase<int>
     /// 题目ID
     /// </summary>
     [Required]
-    public int QuestionId { get; set; }
+    public long QuestionId { get; set; }
 
     /// <summary>
     /// 题目
@@ -34,7 +34,7 @@ public class ExamPaperQuestion : AuditableEntityBase<int>
     /// 题目版本ID
     /// </summary>
     [Required]
-    public int QuestionVersionId { get; set; }
+    public long QuestionVersionId { get; set; }
 
     /// <summary>
     /// 题目版本

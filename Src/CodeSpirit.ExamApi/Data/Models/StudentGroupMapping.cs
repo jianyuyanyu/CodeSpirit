@@ -6,13 +6,13 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 学生-分组映射关系
 /// </summary>
-public class StudentGroupMapping : AuditableEntityBase<int>
+public class StudentGroupMapping : LongKeyAuditableEntityBase
 {
     /// <summary>
     /// 学生ID
     /// </summary>
     [Required]
-    public int StudentId { get; set; }
+    public long StudentId { get; set; }
 
     /// <summary>
     /// 学生
@@ -23,7 +23,7 @@ public class StudentGroupMapping : AuditableEntityBase<int>
     /// 分组ID
     /// </summary>
     [Required]
-    public int StudentGroupId { get; set; }
+    public long StudentGroupId { get; set; }
 
     /// <summary>
     /// 分组

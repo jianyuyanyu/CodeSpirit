@@ -6,7 +6,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 考试设置实体
 /// </summary>
-public class ExamSetting : AuditableEntityBase<int>
+public class ExamSetting : LongKeyAuditableEntityBase
 {    
     /// <summary>
     /// 考试名称
@@ -22,7 +22,7 @@ public class ExamSetting : AuditableEntityBase<int>
     /// <summary>
     /// 试卷ID
     /// </summary>
-    public int ExamPaperId { get; set; }
+    public long ExamPaperId { get; set; }
     
     /// <summary>
     /// 试卷

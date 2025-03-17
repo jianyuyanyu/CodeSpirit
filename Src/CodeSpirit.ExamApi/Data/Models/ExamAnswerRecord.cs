@@ -6,13 +6,13 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 考试答题记录实体
 /// </summary>
-public class ExamAnswerRecord : AuditableEntityBase<int>
+public class ExamAnswerRecord : LongKeyAuditableEntityBase
 {
     /// <summary>
     /// 考试记录ID
     /// </summary>
     [Required]
-    public int ExamRecordId { get; set; }
+    public long ExamRecordId { get; set; }
 
     /// <summary>
     /// 考试记录
@@ -23,7 +23,7 @@ public class ExamAnswerRecord : AuditableEntityBase<int>
     /// 题目ID
     /// </summary>
     [Required]
-    public int QuestionId { get; set; }
+    public long QuestionId { get; set; }
 
     /// <summary>
     /// 题目
@@ -34,7 +34,7 @@ public class ExamAnswerRecord : AuditableEntityBase<int>
     /// 题目版本ID
     /// </summary>
     [Required]
-    public int QuestionVersionId { get; set; }
+    public long QuestionVersionId { get; set; }
 
     /// <summary>
     /// 题目版本

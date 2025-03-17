@@ -6,7 +6,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 考生实体
 /// </summary>
-public class Student : AuditableEntityBase<int>
+public class Student : LongKeyAuditableEntityBase
 {    
     /// <summary>
     /// 用户ID（关联到身份系统）

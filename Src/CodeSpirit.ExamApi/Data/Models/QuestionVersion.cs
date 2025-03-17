@@ -6,13 +6,13 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 题目版本实体
 /// </summary>
-public class QuestionVersion : AuditableEntityBase<int>
+public class QuestionVersion : LongKeyAuditableEntityBase
 {
     /// <summary>
     /// 题目ID
     /// </summary>
     [Required]
-    public int QuestionId { get; set; }
+    public long QuestionId { get; set; }
 
     /// <summary>
     /// 题目

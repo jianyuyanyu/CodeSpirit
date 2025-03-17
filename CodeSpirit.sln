@@ -64,6 +64,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Audit", "Src\Com
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Audit.Tests", "Src\Tests\Components\CodeSpirit.Audit.Tests\CodeSpirit.Audit.Tests.csproj", "{F62D31D6-E072-1168-1DCC-D2DB745D1A0A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.ExamApi", "Src\CodeSpirit.ExamApi\CodeSpirit.ExamApi.csproj", "{504BC8F1-53BD-477F-3E2F-AB83B42DBD29}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -166,6 +168,10 @@ Global
 		{F62D31D6-E072-1168-1DCC-D2DB745D1A0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F62D31D6-E072-1168-1DCC-D2DB745D1A0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F62D31D6-E072-1168-1DCC-D2DB745D1A0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{504BC8F1-53BD-477F-3E2F-AB83B42DBD29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{504BC8F1-53BD-477F-3E2F-AB83B42DBD29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{504BC8F1-53BD-477F-3E2F-AB83B42DBD29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{504BC8F1-53BD-477F-3E2F-AB83B42DBD29}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -194,6 +200,7 @@ Global
 		{8C254243-7541-4AC5-9611-9FFA7FC78964} = {C0A44597-58B2-491A-A1DE-8947710D0035}
 		{E3D9801B-D557-8E96-A27F-C72FAC869931} = {28E19F6A-7ADD-4941-9E72-EFA73162E871}
 		{F62D31D6-E072-1168-1DCC-D2DB745D1A0A} = {E9AA3C88-F320-411E-9CBB-75B0047F0F46}
+		{504BC8F1-53BD-477F-3E2F-AB83B42DBD29} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FA2D98D6-8906-4629-AE73-437BD9C6A177}

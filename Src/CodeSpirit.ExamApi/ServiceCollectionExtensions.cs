@@ -91,16 +91,8 @@ public static class ServiceCollectionExtensions
         //services.AddScoped<IExamSettingRepository, ExamSettingRepository>();
         //services.AddScoped<IExamRecordRepository, ExamRecordRepository>();
         
-        //// 注册服务
-        //services.AddScoped<IQuestionService, QuestionService>();
-        //services.AddScoped<IQuestionCategoryService, QuestionCategoryService>();
-        //services.AddScoped<IStudentService, StudentService>();
-        //services.AddScoped<IStudentGroupService, StudentGroupService>();
-        //services.AddScoped<IPracticeService, PracticeService>();
-        //services.AddScoped<IWrongQuestionService, WrongQuestionService>();
-        //services.AddScoped<IExamPaperService, ExamPaperService>();
-        //services.AddScoped<IExamSettingService, ExamSettingService>();
-        //services.AddScoped<IExamService, ExamService>();
+        // 注册服务
+        services.AddScoped<IQuestionService, QuestionService>();
         
         return services;
     }

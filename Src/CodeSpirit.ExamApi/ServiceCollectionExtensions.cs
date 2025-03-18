@@ -30,7 +30,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddExamApiServices(builder.Configuration);
 
         // 使用共享项目中的JWT认证扩展方法
-        //builder.Services.AddJwtAuthentication(builder.Configuration);
+        builder.Services.AddJwtAuthentication(builder.Configuration);
 
         builder.Services.ConfigureDefaultControllers();
 

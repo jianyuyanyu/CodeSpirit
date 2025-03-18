@@ -1,5 +1,6 @@
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.ExamApi.Data.Models;
 
 /// <summary>
@@ -14,28 +15,29 @@ public class QuestionDto
 
     [DisplayName("题目内容")]
     public string Content { get; set; } = string.Empty;
-    
+
     [DisplayName("题目类型")]
     public QuestionType Type { get; set; }
-    
+
     [DisplayName("难度")]
     public QuestionDifficulty Difficulty { get; set; }
-    
+
     [DisplayName("选项")]
-    [AmisColumn(Type = "json")]
+    [AmisColumn(Type = "json", Hidden = true)]
     public List<string> Options { get; set; } = [];
-    
+
     [DisplayName("正确答案")]
-    [AmisColumn(Copyable = true)]
+    [AmisColumn(Copyable = true, Hidden = true)]
     public string CorrectAnswer { get; set; } = string.Empty;
-    
+
     [DisplayName("解析")]
+    [AmisColumn(Copyable = true, Hidden = true)]
     public string? Analysis { get; set; }
-    
+
     [DisplayName("知识点")]
-    [AmisColumn(Type = "json")]
+    [AmisColumn(Type = "json", Hidden = true)]
     public List<string>? KnowledgePoints { get; set; }
-    
+
     [DisplayName("分类")]
     public string CategoryName { get; set; } = string.Empty;
 
@@ -56,7 +58,7 @@ public class QuestionDto
     public decimal CorrectRate { get; set; }
 
     [DisplayName("标签")]
-    [AmisColumn(Type = "json")]
+    [EachColumn(ItemTemplate = "<span class='label label-info mr-1'>${item}</span>")]
     public List<string>? Tags { get; set; }
 
     [DisplayName("更新时间")]
@@ -64,5 +66,6 @@ public class QuestionDto
     public DateTime? UpdatedAt { get; set; }
 
     [DisplayName("更新人")]
+    [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "{field}")]
     public string? UpdatedBy { get; set; }
-} 
+}

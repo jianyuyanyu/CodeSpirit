@@ -363,6 +363,54 @@ namespace CodeSpirit.Amis.Column
                 }
             }
 
+            // 处理 Each 列
+            EachColumnAttribute eachAttr = prop.GetCustomAttribute<EachColumnAttribute>();
+            if (eachAttr != null)
+            {
+                column["type"] = "each";
+                
+                // 设置数据源，如果没有指定则使用当前字段的值
+                if (!string.IsNullOrEmpty(eachAttr.Source))
+                {
+                    column["source"] = eachAttr.Source;
+                }
+                else
+                {
+                    column["source"] = $"${fieldName}";
+                }
+                
+                // 设置循环项变量名
+                if (!string.IsNullOrEmpty(eachAttr.ItemVariable))
+                {
+                    column["itemVariable"] = eachAttr.ItemVariable;
+                }
+                
+                // 设置索引变量名
+                if (!string.IsNullOrEmpty(eachAttr.IndexVariable))
+                {
+                    column["indexVariable"] = eachAttr.IndexVariable;
+                }
+                
+                // 设置每项的渲染模板
+                if (!string.IsNullOrEmpty(eachAttr.ItemTemplate))
+                {
+                    column["items"] = new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = eachAttr.ItemTemplate
+                    };
+                }
+                else
+                {
+                    // 默认显示为文本
+                    column["items"] = new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = "${" + eachAttr.ItemVariable + "}"
+                    };
+                }
+            }
+
             return column;
         }
 

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel;
 
 namespace CodeSpirit.ExamApi.Dtos.Question;
 
@@ -10,41 +11,51 @@ public class QuestionBatchImportItemDto
     /// <summary>
     /// 题目标题
     /// </summary>
-    [Required]
-    [MaxLength(200)]
+    [Required(ErrorMessage = "题目标题不能为空")]
+    [MaxLength(200, ErrorMessage = "题目标题最多200字符")]
+    [DisplayName("题目标题")]
     public string Title { get; set; } = null!;
 
     /// <summary>
     /// 题目内容
     /// </summary>
-    [Required]
+    [Required(ErrorMessage = "题目内容不能为空")]
+    [StringLength(2000, ErrorMessage = "题目内容最多2000字符")]
+    [DisplayName("题目内容")]
     public string Content { get; set; } = null!;
 
     /// <summary>
     /// 题目类型
     /// </summary>
-    [Required]
+    [Required(ErrorMessage = "请选择题目类型")]
+    [DisplayName("题目类型")]
     public string QuestionType { get; set; } = null!;
 
     /// <summary>
     /// 难度等级
     /// </summary>
-    [Required]
+    [Required(ErrorMessage = "请选择题目难度")]
+    [DisplayName("难度")]
     public int DifficultyLevel { get; set; }
 
     /// <summary>
     /// 标签列表
     /// </summary>
+    [DisplayName("标签")]
     public List<string>? Tags { get; set; }
 
     /// <summary>
     /// 答案
     /// </summary>
-    [Required]
+    [Required(ErrorMessage = "请填写正确答案")]
+    [StringLength(1000, ErrorMessage = "正确答案最多1000字符")]
+    [DisplayName("正确答案")]
     public string Answer { get; set; } = null!;
 
     /// <summary>
     /// 解析说明
     /// </summary>
+    [StringLength(2000, ErrorMessage = "解析最多2000字符")]
+    [DisplayName("解析")]
     public string? Analysis { get; set; }
 } 

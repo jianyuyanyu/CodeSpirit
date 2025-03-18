@@ -25,7 +25,7 @@ public class CreateUserDto
     [DataType(DataType.ImageUrl)]
     [AmisInputImageField(
         Label = "头像",
-        Receiver = "${API_HOST}/api/identity/upload/avatar",
+        Receiver = "${ROOT_API}/api/identity/upload/avatar",
         Accept = "image/png,image/jpeg",
         MaxSize = 1048576, // 1MB
         Multiple = false,
@@ -40,7 +40,7 @@ public class CreateUserDto
 
     [DisplayName("分配角色")]
     [AmisSelectField(
-            Source = "${API_HOST}/api/identity/Roles",
+            Source = "${ROOT_API}/api/identity/Roles",
             ValueField = "name",
             LabelField = "name",
             Multiple = true,

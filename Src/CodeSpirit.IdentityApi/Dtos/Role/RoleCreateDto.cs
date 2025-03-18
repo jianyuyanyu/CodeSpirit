@@ -18,7 +18,7 @@ namespace CodeSpirit.IdentityApi.Dtos.Role
         // 权限ID列表
         [DisplayName("权限")]
         [AmisInputTreeField(
-        DataSource = "${API_HOST}/api/identity/permissions/tree",
+        DataSource = "${ROOT_API}/api/identity/permissions/tree",
         LabelField = "label",
         ValueField = "id",
         Multiple = true,

@@ -64,7 +64,7 @@ public class CreateQuestionDto
     /// </summary>
     [DisplayName("知识点")]
     [AmisTransferField(
-        Source = "${API_ROOT}/api/exam/KnowledgePoints",
+        Source = "${ROOT_API}/api/exam/KnowledgePoints",
         Searchable = true,
         Multiple = true
     )]
@@ -76,7 +76,7 @@ public class CreateQuestionDto
     [Required(ErrorMessage = "请选择题目分类")]
     [DisplayName("分类")]
     [AmisSelectField(
-        Source = "${API_ROOT}/api/exam/Categories",
+        Source = "${ROOT_API}/api/exam/Categories",
         ValueField = "id",
         LabelField = "name",
         Searchable = true
@@ -96,7 +96,7 @@ public class CreateQuestionDto
     /// </summary>
     [DisplayName("标签")]
     [AmisTransferField(
-        Source = "${API_ROOT}/api/exam/Tags",
+        Source = "${ROOT_API}/api/exam/Tags",
         Searchable = true,
         Multiple = true
     )]

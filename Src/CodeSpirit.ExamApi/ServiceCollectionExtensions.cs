@@ -89,6 +89,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExamPaperService, ExamPaperService>();
         services.AddScoped<IExamRecordService, ExamRecordService>();
         services.AddScoped<IExamStatisticsService, ExamStatisticsService>();
+        services.AddScoped<IQuestionCategoryService, QuestionCategoryService>();
 
         return services;
     }

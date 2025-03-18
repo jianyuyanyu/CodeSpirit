@@ -30,7 +30,7 @@ public class CreateStudentGroupDto
     /// </summary>
     [DisplayName("考生")]
     [AmisTransferField(
-        Source = "${API_ROOT}/api/exam/Students",
+        Source = "${ROOT_API}/api/exam/Students",
         //SearchField = "name,studentNumber",
         ValueField = "id",
         LabelField = "name",

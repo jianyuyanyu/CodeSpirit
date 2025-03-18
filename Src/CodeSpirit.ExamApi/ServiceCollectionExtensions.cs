@@ -1,6 +1,7 @@
 using CodeSpirit.Aggregator;
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
+using CodeSpirit.Charts.Extensions;
 using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.ExamApi.Services.Interfaces;
@@ -11,6 +12,8 @@ using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System.Text;
 
@@ -69,16 +72,43 @@ public static class ServiceCollectionExtensions
         // 添加授权
         services.AddAuthorization();
         
+        // 注册Charts服务 - 即使Redis不可用，Chart服务也应该可以使用
+        try
+        {
+            services.AddChartServices();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"警告: 注册Charts服务时出错: {ex.Message}，但应用程序将继续启动");
+        }
+        
         // 注册服务
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<IStudentGroupService, StudentGroupService>();
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IExamPaperService, ExamPaperService>();
         services.AddScoped<IExamRecordService, ExamRecordService>();
+        services.AddScoped<IExamStatisticsService, ExamStatisticsService>();
 
         return services;
     }
-    
+
+    /// <summary>
+    /// 添加图表服务
+    /// </summary>
+    public static IServiceCollection AddChartServices(this IServiceCollection services)
+    {
+        // 注册CodeSpirit.Charts服务
+        services.AddCharts(options =>
+        {
+            options.DefaultTheme = "light";
+            options.EnableAI = true;
+            options.CacheMinutes = 30;
+        });
+
+        return services;
+    }
+
     /// <summary>
     /// 配置考试系统API服务中间件
     /// </summary>
@@ -106,7 +136,7 @@ public static class ServiceCollectionExtensions
                 // 确保数据库已创建
                 context.Database.EnsureCreated();
                 // 初始化数据
-                context.InitializeDatabaseAsync().Wait();
+                await context.InitializeDatabaseAsync();
             }
             catch (Exception ex)
             {

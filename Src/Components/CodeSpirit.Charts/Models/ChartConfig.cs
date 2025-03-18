@@ -126,6 +126,9 @@ namespace CodeSpirit.Charts.Models
 
         [Description("关系图")]
         Graph,
+        
+        [Description("卡片")]
+        Card,
 
         [Description("自动推荐")]
         Auto

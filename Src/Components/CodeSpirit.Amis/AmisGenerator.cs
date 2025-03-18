@@ -35,14 +35,15 @@ namespace CodeSpirit.Amis
             CachingHelper cachingHelper,
             ControllerHelper controllerHelper,
             CrudHelper crudHelper,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            ApiRouteHelper apiRouteHelper)
         {
             _amisContext = amisContext;
             _cachingHelper = cachingHelper;
             _controllerHelper = controllerHelper;
             _crudHelper = crudHelper;
             _serviceProvider = serviceProvider;
-            _statisticsBuilder = new StatisticsConfigBuilder(_controllerHelper);
+            _statisticsBuilder = new StatisticsConfigBuilder(_controllerHelper, apiRouteHelper);
         }
 
         /// <summary>

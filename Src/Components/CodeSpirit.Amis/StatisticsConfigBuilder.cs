@@ -11,14 +11,16 @@ namespace CodeSpirit.Amis
     public class StatisticsConfigBuilder
     {
         private readonly ControllerHelper _controllerHelper;
+        private readonly ApiRouteHelper _apiRouteHelper;
 
         /// <summary>
         /// 初始化统计图表配置生成器的新实例。
         /// </summary>
         /// <param name="controllerHelper">控制器帮助类</param>
-        public StatisticsConfigBuilder(ControllerHelper controllerHelper)
+        public StatisticsConfigBuilder(ControllerHelper controllerHelper, ApiRouteHelper apiRouteHelper)
         {
             _controllerHelper = controllerHelper;
+            _apiRouteHelper = apiRouteHelper;
         }
 
         /// <summary>
@@ -30,7 +32,7 @@ namespace CodeSpirit.Amis
         {
             var routePrefix = _controllerHelper.GetControllerRoutePrefix(controllerType);
             var displayName = _controllerHelper.GetControllerDisplayName(controllerType);
-            
+
             var statisticsMethods = GetStatisticsMethods(controllerType);
             if (!statisticsMethods.Any()) return null;
 
@@ -38,7 +40,11 @@ namespace CodeSpirit.Amis
             {
                 ["type"] = "page",
                 ["title"] = displayName,
-                ["body"] = GenerateStatisticsBody(controllerType, routePrefix, statisticsMethods)
+                ["body"] = GenerateStatisticsBody(controllerType, routePrefix, statisticsMethods),
+                ["data"] = new JObject()
+                {
+                    ["ROOT_API"] = _apiRouteHelper.GetRootApi()
+                }
             };
         }
 
@@ -56,7 +62,7 @@ namespace CodeSpirit.Amis
         /// </summary>
         private bool IsStatisticsMethod(MethodInfo method)
         {
-            return HasHttpGetAttribute(method) && 
+            return HasHttpGetAttribute(method) &&
                    (HasStatisticsAttribute(method) || IsStatisticsMethodByName(method));
         }
 
@@ -200,7 +206,7 @@ namespace CodeSpirit.Amis
                 ["type"] = "chart",
                 ["api"] = new JObject
                 {
-                    ["url"] = $"${{API_HOST}}/{routePrefix}/{route}?dateRange=${{dateRange}}",
+                    ["url"] = $"${{ROOT_API}}/{routePrefix}/{route}?dateRange=${{dateRange}}",
                     ["method"] = "get"
                 },
                 ["title"] = displayName,
@@ -227,4 +233,4 @@ namespace CodeSpirit.Amis
             }
         }
     }
-} 
+}

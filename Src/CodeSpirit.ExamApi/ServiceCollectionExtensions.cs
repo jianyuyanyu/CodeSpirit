@@ -73,6 +73,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<IStudentGroupService, StudentGroupService>();
         services.AddScoped<IStudentService, StudentService>();
+        services.AddScoped<IExamPaperService, ExamPaperService>();
 
         return services;
     }

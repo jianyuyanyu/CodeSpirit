@@ -65,24 +65,14 @@ public static class ServiceCollectionExtensions
 
         // 添加AutoMapper
         services.AddAutoMapper(typeof(ServiceCollectionExtensions).Assembly);
-        
+
         // 添加授权
         services.AddAuthorization();
-        
-        //// 注册仓储
-        //services.AddScoped<IQuestionRepository, QuestionRepository>();
-        //services.AddScoped<IQuestionCategoryRepository, QuestionCategoryRepository>();
-        //services.AddScoped<IStudentRepository, StudentRepository>();
-        //services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
-        //services.AddScoped<IPracticeRecordRepository, PracticeRecordRepository>();
-        //services.AddScoped<IWrongQuestionRepository, WrongQuestionRepository>();
-        //services.AddScoped<IExamPaperRepository, ExamPaperRepository>();
-        //services.AddScoped<IExamSettingRepository, ExamSettingRepository>();
-        //services.AddScoped<IExamRecordRepository, ExamRecordRepository>();
         
         // 注册服务
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<IStudentGroupService, StudentGroupService>();
+        services.AddScoped<IStudentService, StudentService>();
 
         return services;
     }

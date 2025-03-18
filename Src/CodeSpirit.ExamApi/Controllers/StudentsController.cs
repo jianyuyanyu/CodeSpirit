@@ -1,0 +1,195 @@
+using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Dtos;
+using CodeSpirit.ExamApi.Dtos.Student;
+using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.Shared.Dtos.Common;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CodeSpirit.ExamApi.Controllers;
+
+/// <summary>
+/// 考生管理控制器
+/// </summary>
+[DisplayName("考生管理")]
+[Navigation(Icon = "fa-solid fa-user-graduate")]
+public class StudentsController : ApiControllerBase
+{
+    private readonly IStudentService _studentService;
+    private readonly ILogger<StudentsController> _logger;
+    
+    /// <summary>
+    /// 初始化考生管理控制器
+    /// </summary>
+    /// <param name="studentService">考生服务</param>
+    /// <param name="logger">日志记录器</param>
+    public StudentsController(
+        IStudentService studentService,
+        ILogger<StudentsController> logger)
+    {
+        ArgumentNullException.ThrowIfNull(studentService);
+        ArgumentNullException.ThrowIfNull(logger);
+        
+        _studentService = studentService;
+        _logger = logger;
+    }
+    
+    /// <summary>
+    /// 获取考生列表
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>考生列表分页结果</returns>
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<PageList<StudentDto>>>> GetStudents([FromQuery] StudentQueryDto queryDto)
+    {
+        var result = await _studentService.GetStudentsAsync(queryDto);
+        return SuccessResponse(result);
+    }
+    
+    /// <summary>
+    /// 获取考生详情
+    /// </summary>
+    /// <param name="id">考生ID</param>
+    /// <returns>考生详情</returns>
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ApiResponse<StudentDto>>> GetStudent(long id)
+    {
+        if (id <= 0) return BadRequest("无效的ID");
+        
+        var result = await _studentService.GetAsync(id);
+        return SuccessResponse(result);
+    }
+    
+    /// <summary>
+    /// 创建考生
+    /// </summary>
+    /// <param name="createDto">创建考生信息</param>
+    /// <returns>创建结果</returns>
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<StudentDto>>> CreateStudent([FromBody] CreateStudentDto createDto)
+    {
+        ArgumentNullException.ThrowIfNull(createDto);
+        
+        var result = await _studentService.CreateAsync(createDto);
+        return SuccessResponse(result);
+    }
+    
+    /// <summary>
+    /// 更新考生信息
+    /// </summary>
+    /// <param name="id">考生ID</param>
+    /// <param name="updateDto">更新信息</param>
+    /// <returns>更新结果</returns>
+    [HttpPut("{id}")]
+    public async Task<ActionResult<ApiResponse>> UpdateStudent(long id, [FromBody] UpdateStudentDto updateDto)
+    {
+        await _studentService.UpdateAsync(id, updateDto);
+        return SuccessResponse();
+    }
+    
+    /// <summary>
+    /// 删除考生
+    /// </summary>
+    /// <param name="id">考生ID</param>
+    /// <returns>删除结果</returns>
+    [HttpDelete("{id}")]
+    [Operation("删除", "ajax", null, "确定要删除此考生吗？")]
+    public async Task<ActionResult<ApiResponse>> DeleteStudent(long id)
+    {
+        await _studentService.DeleteAsync(id);
+        return SuccessResponse();
+    }
+    
+    /// <summary>
+    /// 批量导入考生
+    /// </summary>
+    /// <param name="importDto">考生信息导入数据</param>
+    /// <returns>导入结果</returns>
+    [HttpPost("batch/import")]
+    public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<StudentBatchImportDto> importDto)
+    {
+        ArgumentNullException.ThrowIfNull(importDto);
+        
+        var result = await _studentService.BatchImportAsync(importDto.ImportData);
+        return result.failedIds.Any()
+            ? SuccessResponse($"成功导入 {result.successCount} 个考生，但以下考生导入失败: {string.Join(", ", result.failedIds)}")
+            : SuccessResponse($"成功导入 {result.successCount} 个考生！");
+    }
+    
+    /// <summary>
+    /// 批量删除考生
+    /// </summary>
+    /// <param name="request">批量删除请求数据</param>
+    /// <returns>删除结果</returns>
+    [HttpPost("batch/delete")]
+    [Operation("批量删除", "ajax", null, "确定要批量删除选中的考生吗？", isBulkOperation: true)]
+    public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        
+        (int successCount, List<long> failedIds) = await _studentService.BatchDeleteAsync(request.Ids);
+        
+        return failedIds.Any()
+            ? SuccessResponse($"成功删除 {successCount} 个考生，但以下考生删除失败: {string.Join(", ", failedIds)}")
+            : SuccessResponse($"成功删除 {successCount} 个考生！");
+    }
+    
+    /// <summary>
+    /// 添加考生到分组
+    /// </summary>
+    /// <param name="studentId">考生ID</param>
+    /// <param name="request">分组ID列表</param>
+    /// <returns>操作结果</returns>
+    [HttpPost("{studentId}/groups")]
+    [Operation("添加到分组", "ajax", null, "确定要将该考生添加到选定分组吗？")]
+    public async Task<ActionResult<ApiResponse>> AddStudentToGroups(long studentId, [FromBody] BatchOperationDto<long> request)
+    {
+        if (studentId <= 0) return BadRequest("无效的考生ID");
+        ArgumentNullException.ThrowIfNull(request);
+        
+        await _studentService.AddStudentToGroupsAsync(studentId, request.Ids);
+        return SuccessResponse("成功将考生添加到所选分组");
+    }
+    
+    /// <summary>
+    /// 从分组移除考生
+    /// </summary>
+    /// <param name="studentId">考生ID</param>
+    /// <param name="request">分组ID列表</param>
+    /// <returns>操作结果</returns>
+    [HttpDelete("{studentId}/groups")]
+    [Operation("从分组移除", "ajax", null, "确定要将该考生从选定分组中移除吗？")]
+    public async Task<ActionResult<ApiResponse>> RemoveStudentFromGroups(long studentId, [FromBody] BatchOperationDto<long> request)
+    {
+        if (studentId <= 0) return BadRequest("无效的考生ID");
+        ArgumentNullException.ThrowIfNull(request);
+        
+        await _studentService.RemoveStudentFromGroupsAsync(studentId, request.Ids);
+        return SuccessResponse("成功从所选分组移除考生");
+    }
+    
+    /// <summary>
+    /// 通过学号查询考生
+    /// </summary>
+    /// <param name="studentNumber">学号</param>
+    /// <returns>考生信息</returns>
+    [HttpGet("by-student-number/{studentNumber}")]
+    public async Task<ActionResult<ApiResponse<StudentDto>>> GetByStudentNumber(string studentNumber)
+    {
+        if (string.IsNullOrEmpty(studentNumber)) return BadRequest("学号不能为空");
+        
+        var result = await _studentService.GetByStudentNumberAsync(studentNumber);
+        return SuccessResponse(result);
+    }
+    
+    /// <summary>
+    /// 通过用户ID查询考生
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>考生信息</returns>
+    [HttpGet("by-user-id/{userId}")]
+    public async Task<ActionResult<ApiResponse<StudentDto>>> GetByUserId(long userId)
+    {
+        var result = await _studentService.GetByUserIdAsync(userId);
+        return SuccessResponse(result);
+    }
+} 

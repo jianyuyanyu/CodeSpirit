@@ -1,6 +1,6 @@
 using AutoMapper;
-using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.Core;
+using CodeSpirit.ExamApi.Data.Models;
 using System.Text.Json;
 
 /// <summary>
@@ -31,4 +31,4 @@ public class QuestionProfile : Profile
         // 添加 PageList 映射配置
         CreateMap<PageList<Question>, PageList<QuestionDto>>();
     }
-} 
+}

@@ -90,6 +90,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExamRecordService, ExamRecordService>();
         services.AddScoped<IExamStatisticsService, ExamStatisticsService>();
         services.AddScoped<IQuestionCategoryService, QuestionCategoryService>();
+        services.AddScoped<IWrongQuestionService, WrongQuestionService>();
+        services.AddScoped<IQuestionVersionService, QuestionVersionService>();
 
         return services;
     }

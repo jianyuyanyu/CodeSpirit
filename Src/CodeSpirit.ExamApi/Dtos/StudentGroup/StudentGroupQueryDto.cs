@@ -8,9 +8,4 @@ namespace CodeSpirit.ExamApi.Dtos.StudentGroup;
 /// </summary>
 public class StudentGroupQueryDto : QueryDtoBase
 {
-    /// <summary>
-    /// 关键词（用于搜索名称和描述）
-    /// </summary>
-    [DisplayName("关键词")]
-    public string? Keywords { get; set; }
 } 

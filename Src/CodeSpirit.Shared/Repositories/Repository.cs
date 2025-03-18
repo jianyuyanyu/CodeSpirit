@@ -218,5 +218,20 @@ namespace CodeSpirit.Shared.Repositories
         {
             return _dbSet.Any(predicate);
         }
+
+        /// <summary>
+        /// 批量更新实体
+        /// </summary>
+        /// <param name="entities">要更新的实体集合</param>
+        /// <returns>异步任务</returns>
+        public async Task UpdateRangeAsync(IEnumerable<TEntity> entities)
+        {
+            foreach (var entity in entities)
+            {                
+                _context.Entry(entity).State = EntityState.Modified;
+            }
+            
+            await _context.SaveChangesAsync();
+        }
     }
 }

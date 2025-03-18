@@ -493,12 +493,6 @@ public class CreateExamPaperQuestionDto
 public class ExamPaperQueryDto : QueryDtoBase
 {
     /// <summary>
-    /// 关键词
-    /// </summary>
-    [DisplayName("关键词")]
-    public string? Keywords { get; set; }
-    
-    /// <summary>
     /// 试卷类型
     /// </summary>
     [DisplayName("试卷类型")]

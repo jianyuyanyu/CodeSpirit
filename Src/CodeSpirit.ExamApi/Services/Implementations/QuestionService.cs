@@ -113,7 +113,8 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
     {
         // 检查题目是否存在
         var question = await _repository
-            .Find(q => q.Id == id)
+            .CreateQuery()
+            .Where(q => q.Id == id)
             .Include(q => q.ExamPaperQuestions)
             .FirstOrDefaultAsync();
 
@@ -146,7 +147,8 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
     public async Task<List<QuestionVersionDto>> GetQuestionVersionsAsync(long questionId)
     {
         var versions = await _versionRepository
-            .Find(v => v.QuestionId == questionId)
+            .CreateQuery()
+            .Where(v => v.QuestionId == questionId)
             .OrderByDescending(v => v.Version)
             .ToListAsync();
 
@@ -166,9 +168,8 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         }
 
         // 检查题目是否重复
-        var existingQuestion = await _repository.Find(q => 
-            q.Content == createDto.Content && 
-            q.Type == createDto.Type)
+        var existingQuestion = await _repository.CreateQuery()
+            .Where(q => q.Content == createDto.Content && q.Type == createDto.Type)
             .FirstOrDefaultAsync();
 
         if (existingQuestion != null)
@@ -193,10 +194,8 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         }
 
         // 检查题目是否重复（排除自身）
-        var existingQuestion = await _repository.Find(q => 
-            q.Id != id && 
-            q.Content == updateDto.Content && 
-            q.Type == updateDto.Type)
+        var existingQuestion = await _repository.CreateQuery()
+            .Where(q => q.Id != id && q.Content == updateDto.Content && q.Type == updateDto.Type)
             .FirstOrDefaultAsync();
 
         if (existingQuestion != null)
@@ -340,7 +339,8 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         // 预先检查所有题目的内容是否重复
         var contents = importList.Select(x => x.Content).ToList();
         var existingContents = await _repository
-            .Find(q => contents.Contains(q.Content))
+            .CreateQuery()
+            .Where(q => contents.Contains(q.Content))
             .Select(q => q.Content)
             .ToListAsync();
 
@@ -424,7 +424,8 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
 
         // 检查是否有题目被试卷引用
         var referencedQuestions = await _repository
-            .Find(q => idList.Contains(q.Id))
+            .CreateQuery()
+            .Where(q => idList.Contains(q.Id))
             .Include(q => q.ExamPaperQuestions)
             .Where(q => q.IsReferenced)
             .Select(q => q.Id)

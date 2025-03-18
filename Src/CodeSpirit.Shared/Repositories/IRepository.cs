@@ -36,5 +36,12 @@ namespace CodeSpirit.Shared.Repositories
         /// <param name="saveChanges">是否立即保存更改</param>
         /// <returns>添加的实体集合</returns>
         Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities, bool saveChanges = true);
+
+        /// <summary>
+        /// 批量更新实体
+        /// </summary>
+        /// <param name="entities">要更新的实体集合</param>
+        /// <returns>异步任务</returns>
+        Task UpdateRangeAsync(IEnumerable<TEntity> entities);
     }
 }

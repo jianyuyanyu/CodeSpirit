@@ -169,7 +169,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: api/Users/batch/delete
         [HttpPost("batch/delete")]
         [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
-        public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchDeleteDto<long> request)
+        public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
         {
             var (successCount, failedIds) = await _userService.BatchDeleteAsync(request.Ids);
 

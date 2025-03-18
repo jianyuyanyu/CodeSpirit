@@ -4,10 +4,10 @@ using System.ComponentModel.DataAnnotations;
 namespace CodeSpirit.Core.Dtos
 {
     /// <summary>
-    /// 批量删除请求DTO
+    /// 批量操作请求DTO
     /// </summary>
     /// <typeparam name="T">ID的类型，通常是string、int或Guid等</typeparam>
-    public class BatchDeleteDto<T>
+    public class BatchOperationDto<T>
     {
         /// <summary>
         /// 要删除的ID列表

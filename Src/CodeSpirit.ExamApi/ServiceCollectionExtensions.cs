@@ -2,6 +2,8 @@ using CodeSpirit.Aggregator;
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.ExamApi.Data;
+using CodeSpirit.ExamApi.Services.Implementations;
+using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
@@ -80,7 +82,8 @@ public static class ServiceCollectionExtensions
         
         // 注册服务
         services.AddScoped<IQuestionService, QuestionService>();
-        
+        services.AddScoped<IStudentGroupService, StudentGroupService>();
+
         return services;
     }
     

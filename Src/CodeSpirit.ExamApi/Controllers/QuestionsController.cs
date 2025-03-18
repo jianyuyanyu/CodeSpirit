@@ -116,7 +116,7 @@ public class QuestionsController : ApiControllerBase
     /// <returns>删除结果</returns>
     [HttpPost("batch/delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的题目吗？", isBulkOperation: true)]
-    public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchDeleteDto<long> request)
+    public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);
 

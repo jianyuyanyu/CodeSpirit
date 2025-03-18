@@ -28,5 +28,13 @@ namespace CodeSpirit.Shared.Repositories
         bool Exists(Expression<Func<TEntity, bool>> predicate);
         Task<PageList<TEntity>> GetPagedAsync(int pageIndex, int pageSize, Expression<Func<TEntity, bool>> predicate = null, string orderBy = null, string orderDir = null, params string[] includes);
         Task<int> SaveChangesAsync();
+
+        /// <summary>
+        /// 批量添加实体
+        /// </summary>
+        /// <param name="entities">实体集合</param>
+        /// <param name="saveChanges">是否立即保存更改</param>
+        /// <returns>添加的实体集合</returns>
+        Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities, bool saveChanges = true);
     }
 }

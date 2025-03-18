@@ -38,6 +38,20 @@ namespace CodeSpirit.Shared.Repositories
             return entity;
         }
 
+        /// <summary>
+        /// 批量添加实体
+        /// </summary>
+        public async Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities, bool saveChanges = true)
+        {
+            var entitiesList = entities.ToList();
+            await _dbSet.AddRangeAsync(entitiesList);
+            if (saveChanges)
+            {
+                await SaveChangesAsync();
+            }
+            return entitiesList;
+        }
+        
         public async Task UpdateAsync(TEntity entity, bool saveChanges = true)
         {
             _dbSet.Update(entity);

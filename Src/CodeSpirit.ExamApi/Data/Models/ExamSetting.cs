@@ -50,11 +50,6 @@ public class ExamSetting : LongKeyAuditableEntityBase
     public int AllowedAttempts { get; set; } = 1;
     
     /// <summary>
-    /// 考试状态
-    /// </summary>
-    public ExamStatus Status { get; set; } = ExamStatus.NotStarted;
-    
-    /// <summary>
     /// 是否启用题目乱序
     /// </summary>
     public bool EnableRandomQuestionOrder { get; set; }

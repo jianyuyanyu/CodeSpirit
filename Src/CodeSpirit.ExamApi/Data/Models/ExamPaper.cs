@@ -85,4 +85,5 @@ public class ExamPaper: LongKeyAuditableEntityBase
     /// </summary>
     [Range(0, 100)]
     public decimal PassRate { get; set; } = 0;
+    public ExamPaperStatus Status { get; set; }
 }

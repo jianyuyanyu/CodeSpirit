@@ -25,6 +25,9 @@ public static class ExamDbContextSeed
         await SeedQuestionCategoriesAsync(context);
         await SeedStudentGroupsAsync(context);
         await SeedQuestionsAsync(context);
+        await SeedStudentsAsync(context);
+        await SeedExamPapersAsync(context);
+        await SeedExamSettingsAsync(context);
 
         // 保存所有更改
         await context.SaveChangesAsync();
@@ -243,6 +246,203 @@ public static class ExamDbContextSeed
         }).ToList();
 
         await context.QuestionVersions.AddRangeAsync(questionVersions);
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// 初始化考生数据
+    /// </summary>
+    private static async Task SeedStudentsAsync(ExamDbContext context)
+    {
+        if (await context.Students.AnyAsync())
+        {
+            return;
+        }
+
+        var groups = await context.StudentGroups.ToListAsync();
+        if (!groups.Any())
+        {
+            return;
+        }
+
+        var students = new List<Student>
+        {
+            new()
+            {
+                Name = "张三",
+                PhoneNumber = "13800138001",
+                StudentNumber = "STU001",
+                IsActive = true
+            },
+            new()
+            {
+                Name = "李四",
+                PhoneNumber = "13800138002",
+                StudentNumber = "STU002",
+                IsActive = true
+            },
+            new()
+            {
+                Name = "王五",
+                PhoneNumber = "13800138003",
+                StudentNumber = "STU003",
+                IsActive = true
+            }
+        };
+
+        await context.Students.AddRangeAsync(students);
+        await context.SaveChangesAsync();
+
+        // 添加学生分组映射
+        var studentGroupMappings = new List<StudentGroupMapping>();
+        foreach (var student in students)
+        {
+            var group = student.Name switch
+            {
+                "张三" => groups.First(g => g.Name == "初级开发组"),
+                "李四" => groups.First(g => g.Name == "中级开发组"),
+                "王五" => groups.First(g => g.Name == "高级开发组"),
+                _ => groups.First()
+            };
+
+            studentGroupMappings.Add(new StudentGroupMapping
+            {
+                Student = student,
+                StudentGroup = group
+            });
+        }
+
+        await context.StudentGroupMappings.AddRangeAsync(studentGroupMappings);
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// 初始化试卷数据
+    /// </summary>
+    private static async Task SeedExamPapersAsync(ExamDbContext context)
+    {
+        if (await context.ExamPapers.AnyAsync())
+        {
+            return;
+        }
+
+        var questions = await context.Questions.Include(q => q.Category).ToListAsync();
+        if (!questions.Any())
+        {
+            return;
+        }
+
+        var examPapers = new List<ExamPaper>
+        {
+            new()
+            {
+                Name = "初级开发工程师认证考试",
+                Description = "适用于1-2年工作经验的开发人员",
+                TotalScore = 100,
+                PassScore = 60,
+                Duration = 90,
+                Status = ExamPaperStatus.Published,
+                AverageScore = 0,
+                PassRate = 0
+            },
+            new()
+            {
+                Name = "中级开发工程师认证考试",
+                Description = "适用于3-5年工作经验的开发人员",
+                TotalScore = 100,
+                PassScore = 70,
+                Duration = 120,
+                Status = ExamPaperStatus.Published,
+                AverageScore = 0,
+                PassRate = 0
+            },
+            new()
+            {
+                Name = "高级开发工程师认证考试",
+                Description = "适用于5年以上工作经验的开发人员",
+                TotalScore = 100,
+                PassScore = 80,
+                Duration = 150,
+                Status = ExamPaperStatus.Published,
+                AverageScore = 0,
+                PassRate = 0
+            }
+        };
+
+        await context.ExamPapers.AddRangeAsync(examPapers);
+        await context.SaveChangesAsync();
+
+        // 为每份试卷添加题目
+        var examPaperQuestions = new List<ExamPaperQuestion>();
+        foreach (var paper in examPapers)
+        {
+            var difficulty = paper.Name.Contains("初级") ? QuestionDifficulty.Easy
+                         : paper.Name.Contains("中级") ? QuestionDifficulty.Medium
+                         : QuestionDifficulty.Hard;
+
+            var paperQuestions = questions
+                .Where(q => q.Difficulty == difficulty)
+                .OrderBy(q => Guid.NewGuid())
+                .Take(10)
+                .Select((q, index) => new ExamPaperQuestion
+                {
+                    ExamPaper = paper,
+                    Question = q,
+                    QuestionVersion = context.QuestionVersions
+                        .First(qv => qv.QuestionId == q.Id && qv.Version == 1),
+                    OrderNumber = index + 1,
+                    Score = 10,
+                    IsRequired = true
+                });
+
+            examPaperQuestions.AddRange(paperQuestions);
+        }
+
+        await context.ExamPaperQuestions.AddRangeAsync(examPaperQuestions);
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// 初始化考试设置数据
+    /// </summary>
+    private static async Task SeedExamSettingsAsync(ExamDbContext context)
+    {
+        if (await context.ExamSettings.AnyAsync())
+        {
+            return;
+        }
+
+        var examPapers = await context.ExamPapers.ToListAsync();
+        var studentGroups = await context.StudentGroups.ToListAsync();
+        if (!examPapers.Any() || !studentGroups.Any())
+        {
+            return;
+        }
+
+        var examSettings = new List<ExamSetting>();
+        foreach (var paper in examPapers)
+        {
+            var group = paper.Name.Contains("初级") ? studentGroups.First(g => g.Name == "初级开发组")
+                     : paper.Name.Contains("中级") ? studentGroups.First(g => g.Name == "中级开发组")
+                     : studentGroups.First(g => g.Name == "高级开发组");
+
+            examSettings.Add(new ExamSetting
+            {
+                Name = $"{group.Name}{DateTime.Now.Year}年度认证考试",
+                Description = $"面向{group.Name}的年度认证考试",
+                ExamPaper = paper,
+                StartTime = DateTime.Now.AddDays(7),
+                EndTime = DateTime.Now.AddDays(14),
+                Duration = paper.Duration,
+                AllowedAttempts = 2,
+                EnableRandomQuestionOrder = true,
+                EnableRandomOptionOrder = true,
+                AllowedScreenSwitchCount = 0,
+                StudentGroups = new List<StudentGroup> { group }
+            });
+        }
+
+        await context.ExamSettings.AddRangeAsync(examSettings);
         await context.SaveChangesAsync();
     }
 }

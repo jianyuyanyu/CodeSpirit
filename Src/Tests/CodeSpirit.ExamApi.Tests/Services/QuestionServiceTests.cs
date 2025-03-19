@@ -60,11 +60,16 @@ namespace CodeSpirit.ExamApi.Tests.Services
         public async Task ImportFromTextAsync_EmptyText_ThrowsException()
         {
             // Arrange
-            string emptyText = "";
+            var input = new QuestionImportFromTextDto
+            {
+                Text = "",
+                CategoryId = 1,
+                QuestionDifficulty = QuestionDifficulty.Medium
+            };
             
             // Act & Assert
             var exception = await Assert.ThrowsAsync<AppServiceException>(() => 
-                _questionService.ImportFromTextAsync(emptyText, 1, QuestionDifficulty.Medium));
+                _questionService.ImportFromTextAsync(input));
             
             Assert.Equal(400, exception.Code);
             Assert.Equal("试卷文本内容不能为空！", exception.Message);
@@ -74,16 +79,20 @@ namespace CodeSpirit.ExamApi.Tests.Services
         public async Task ImportFromTextAsync_CategoryNotFound_ThrowsException()
         {
             // Arrange
-            string testText = "测试文本";
-            long invalidCategoryId = 999;
+            var input = new QuestionImportFromTextDto
+            {
+                Text = "测试文本",
+                CategoryId = 999,
+                QuestionDifficulty = QuestionDifficulty.Medium
+            };
             
             // 设置分类不存在
-            _mockCategoryRepository.Setup(repo => repo.GetByIdAsync(It.Is<long>(id => id == invalidCategoryId)))
+            _mockCategoryRepository.Setup(repo => repo.GetByIdAsync(It.Is<long>(id => id == 999)))
                 .ReturnsAsync((QuestionCategory)null);
             
             // Act & Assert
             var exception = await Assert.ThrowsAsync<AppServiceException>(() => 
-                _questionService.ImportFromTextAsync(testText, invalidCategoryId, QuestionDifficulty.Medium));
+                _questionService.ImportFromTextAsync(input));
             
             Assert.Equal(400, exception.Code);
             Assert.Equal("所选分类不存在！", exception.Message);
@@ -100,6 +109,13 @@ A、Microsoft
 B、Netscape
 C、ISO
 D、IBM";
+            
+            var input = new QuestionImportFromTextDto
+            {
+                Text = questionContent,
+                CategoryId = 1,
+                QuestionDifficulty = QuestionDifficulty.Medium
+            };
             
             // 创建有效的分类对象
             var category = new QuestionCategory { Id = 1, Name = "测试分类" };
@@ -121,7 +137,7 @@ D、IBM";
                 .ReturnsAsync(1);
             
             // Act
-            var result = await _questionService.ImportFromTextAsync(questionContent, 1, QuestionDifficulty.Medium);
+            var result = await _questionService.ImportFromTextAsync(input);
             
             // Assert
             Assert.Equal(1, result.successCount);
@@ -140,6 +156,13 @@ D、IBM";
 二、判断题（每空1分，共计20分）
 1. 平邮包裹的到货周期较长，顾客通常要7 - 15天才能收到购买的商品, 但是提供了网上查询物流进程的服务。（  ）";
             
+            var input = new QuestionImportFromTextDto
+            {
+                Text = questionContent,
+                CategoryId = 1,
+                QuestionDifficulty = QuestionDifficulty.Medium
+            };
+            
             // 创建有效的分类对象
             var category = new QuestionCategory { Id = 1, Name = "测试分类" };
             
@@ -160,7 +183,7 @@ D、IBM";
                 .ReturnsAsync(1);
             
             // Act
-            var result = await _questionService.ImportFromTextAsync(questionContent, 1, QuestionDifficulty.Medium);
+            var result = await _questionService.ImportFromTextAsync(input);
             
             // Assert
             Assert.Equal(1, result.successCount);
@@ -182,6 +205,13 @@ A、Microsoft
 B、Netscape
 C、ISO
 D、IBM";
+            
+            var input = new QuestionImportFromTextDto
+            {
+                Text = questionContent,
+                CategoryId = 1,
+                QuestionDifficulty = QuestionDifficulty.Medium
+            };
             
             // 创建有效的分类对象
             var category = new QuestionCategory { Id = 1, Name = "测试分类" };
@@ -205,7 +235,7 @@ D、IBM";
                 .Returns(mockQueryable);
             
             // Act
-            var result = await _questionService.ImportFromTextAsync(questionContent, 1, QuestionDifficulty.Medium);
+            var result = await _questionService.ImportFromTextAsync(input);
             
             // Assert
             Assert.Equal(0, result.successCount);
@@ -236,6 +266,13 @@ D、规范网络伦理的规约体系
 1. 平邮包裹的到货周期较长，顾客通常要7 - 15天才能收到购买的商品, 但是提供了网上查询物流进程的服务。（  ）
 2. 目前网店大多数都是使用淘宝、易趣、拍拍等第三方平台开启，自己制作电子商务站点技术量较大，且前期投入巨大。（  ）";
             
+            var input = new QuestionImportFromTextDto
+            {
+                Text = examContent,
+                CategoryId = 1,
+                QuestionDifficulty = QuestionDifficulty.Medium
+            };
+            
             // 创建有效的分类对象
             var category = new QuestionCategory { Id = 1, Name = "测试分类" };
             
@@ -256,7 +293,7 @@ D、规范网络伦理的规约体系
                 .ReturnsAsync(4);
             
             // Act
-            var result = await _questionService.ImportFromTextAsync(examContent, 1, QuestionDifficulty.Medium);
+            var result = await _questionService.ImportFromTextAsync(input);
             
             // Assert
             Assert.Equal(4, result.successCount); // 2个单选题 + 2个判断题

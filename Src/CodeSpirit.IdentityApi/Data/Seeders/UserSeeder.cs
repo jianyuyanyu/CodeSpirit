@@ -2,7 +2,7 @@
 using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
 namespace CodeSpirit.IdentityApi.Data.Seeders;
-public class UserSeeder: IScopedDependency
+public class UserSeeder : IScopedDependency
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UserSeeder> _logger;
@@ -32,7 +32,7 @@ public class UserSeeder: IScopedDependency
         {
             adminUser = new ApplicationUser
             {
-                Id = _idGenerator.NewId(),
+                Id = -1,
                 UserName = "admin",
                 Email = "admin@example.com",
                 EmailConfirmed = true,
@@ -201,20 +201,20 @@ public class UserSeeder: IScopedDependency
         // 身份证号码格式：6位地区码 + 8位出生日期 + 3位顺序码 + 1位校验码
         string[] areaCodes = { "110000", "310000", "440100", "510100", "330100" }; // 示例地区码
         string areaCode = areaCodes[random.Next(areaCodes.Length)];
-        
+
         // 生成1970-2000年之间的随机出生日期
         DateTime startDate = new(1970, 1, 1);
         DateTime endDate = new(2000, 12, 31);
         DateTime birthDate = startDate.AddDays(random.Next((endDate - startDate).Days));
         string birthDateStr = birthDate.ToString("yyyyMMdd");
-        
+
         // 生成3位顺序码
         string sequenceCode = random.Next(100, 999).ToString();
-        
+
         // 简化版的校验码生成（实际的校验码计算更复杂）
         string[] checkCodes = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "X" };
         string checkCode = checkCodes[random.Next(checkCodes.Length)];
-        
+
         return $"{areaCode}{birthDateStr}{sequenceCode}{checkCode}";
     }
 }

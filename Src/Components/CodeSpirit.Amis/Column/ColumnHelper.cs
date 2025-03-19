@@ -121,6 +121,21 @@ namespace CodeSpirit.Amis.Column
                 ["type"] = GetColumnType(prop)
             };
 
+            // 处理 Tags 列 - 检查是显式的TagsColumnAttribute还是要自动应用
+            TagsColumnAttribute tagsAttr = prop.GetCustomAttribute<TagsColumnAttribute>();
+            bool isTagsField = prop.Name.Equals("Tags", StringComparison.OrdinalIgnoreCase);
+            bool isStringArrayType = IsStringArrayProperty(prop);
+            
+            // 如果有TagsColumnAttribute特性或者是符合自动应用条件的属性
+            if (tagsAttr != null || (isTagsField && isStringArrayType))
+            {
+                // 如果是自动应用的标签列，使用默认配置创建TagsColumnAttribute
+                tagsAttr ??= new TagsColumnAttribute();
+                
+                // 应用标签列配置
+                return CreateTagsColumn(column, fieldName, tagsAttr);
+            }
+
             AmisColumnAttribute columnAttr = (AmisColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(AmisColumnAttribute));
             if (columnAttr != null)
             {
@@ -639,6 +654,76 @@ namespace CodeSpirit.Amis.Column
                     ["buttons"] = buttons,
                     ["fixed"] = "right"
                 };
+        }
+
+        /// <summary>
+        /// 判断属性是否为字符串数组类型
+        /// </summary>
+        /// <param name="prop">属性的信息</param>
+        /// <returns>如果是字符串数组类型则返回true，否则返回false</returns>
+        private bool IsStringArrayProperty(PropertyInfo prop)
+        {
+            Type type = prop.PropertyType;
+            
+            // 检查是否为普通数组类型
+            if (type.IsArray && type.GetElementType() == typeof(string))
+            {
+                return true;
+            }
+            
+            // 检查是否为泛型集合类型（如List<string>、IEnumerable<string>等）
+            if (type.IsGenericType)
+            {
+                Type genericTypeDef = type.GetGenericTypeDefinition();
+                
+                if (genericTypeDef == typeof(List<>) || 
+                    genericTypeDef == typeof(IList<>) ||
+                    genericTypeDef == typeof(ICollection<>) ||
+                    genericTypeDef == typeof(IEnumerable<>))
+                {
+                    Type[] genericArgs = type.GetGenericArguments();
+                    return genericArgs.Length == 1 && genericArgs[0] == typeof(string);
+                }
+            }
+            
+            return false;
+        }
+
+        // 处理 Tags 列的逻辑现在移到这个公共方法
+        private JObject CreateTagsColumn(JObject column, string fieldName, TagsColumnAttribute tagsAttr)
+        {
+            column["type"] = "each";
+            column["source"] = $"${fieldName}";
+            
+            // 构建标签模板
+            string tagTemplate = $"<span class='{tagsAttr.CssClass} {tagsAttr.CssClass}-{tagsAttr.Color} {tagsAttr.ExtraClass}'>${{item}}</span>";
+            
+            JObject items = new JObject
+            {
+                ["type"] = "tpl",
+                ["tpl"] = tagTemplate
+            };
+            
+            column["items"] = items;
+            
+            // 添加最大显示数量配置
+            if (tagsAttr.MaxTags > 0)
+            {
+                column["maxLength"] = tagsAttr.MaxTags;
+                column["overflowConfig"] = new JObject
+                {
+                    ["maxLength"] = tagsAttr.MaxTags,
+                    ["overflowText"] = tagsAttr.OverflowTemplate
+                };
+            }
+            
+            // 添加占位符配置
+            if (tagsAttr.ShowPlaceholder)
+            {
+                column["placeholder"] = tagsAttr.Placeholder;
+            }
+            
+            return column;
         }
     }
 }

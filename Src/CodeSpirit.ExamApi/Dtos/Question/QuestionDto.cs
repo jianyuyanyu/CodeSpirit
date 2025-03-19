@@ -58,7 +58,7 @@ public class QuestionDto
     public decimal CorrectRate { get; set; }
 
     [DisplayName("标签")]
-    [EachColumn(ItemTemplate = "<span class='label label-info mr-1'>${item}</span>")]
+    [TagsColumn(Color = "info")]
     public List<string>? Tags { get; set; }
 
     [DisplayName("更新时间")]

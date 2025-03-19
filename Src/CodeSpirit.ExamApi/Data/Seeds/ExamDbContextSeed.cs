@@ -28,6 +28,8 @@ public static class ExamDbContextSeed
         await SeedStudentsAsync(context);
         await SeedExamPapersAsync(context);
         await SeedExamSettingsAsync(context);
+        await SeedWrongQuestionsAsync(context);
+        await SeedExamRecordsAsync(context);
 
         // 保存所有更改
         await context.SaveChangesAsync();
@@ -443,6 +445,260 @@ public static class ExamDbContextSeed
         }
 
         await context.ExamSettings.AddRangeAsync(examSettings);
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// 初始化错题数据
+    /// </summary>
+    private static async Task SeedWrongQuestionsAsync(ExamDbContext context)
+    {
+        if (await context.Set<WrongQuestion>().AnyAsync())
+        {
+            return;
+        }
+
+        var students = await context.Students.ToListAsync();
+        var questions = await context.Questions.ToListAsync();
+        if (!students.Any() || !questions.Any())
+        {
+            return;
+        }
+
+        var wrongQuestions = new List<WrongQuestion>();
+        
+        // 张三的错题
+        var zhangsan = students.First(s => s.Name == "张三");
+        var easyQuestions = questions.Where(q => q.Difficulty == QuestionDifficulty.Easy).ToList();
+        
+        if (easyQuestions.Count >= 2)
+        {
+            wrongQuestions.Add(new WrongQuestion
+            {
+                StudentId = zhangsan.Id,
+                QuestionId = easyQuestions[0].Id,
+                WrongCount = 2,
+                LastWrongAnswer = "1", // 假设错误选择了第二个选项
+                LastWrongTime = DateTime.UtcNow.AddDays(-5),
+                Tags = "重点复习",
+                Notes = "需要复习相关概念，下次不能再错"
+            });
+            
+            wrongQuestions.Add(new WrongQuestion
+            {
+                StudentId = zhangsan.Id,
+                QuestionId = easyQuestions[1].Id,
+                WrongCount = 1,
+                LastWrongAnswer = "2", // 假设错误选择了第三个选项
+                LastWrongTime = DateTime.UtcNow.AddDays(-3),
+                Tags = "不确定"
+            });
+        }
+        
+        // 李四的错题
+        var lisi = students.First(s => s.Name == "李四");
+        var mediumQuestions = questions.Where(q => q.Difficulty == QuestionDifficulty.Medium).ToList();
+        
+        if (mediumQuestions.Count >= 2)
+        {
+            wrongQuestions.Add(new WrongQuestion
+            {
+                StudentId = lisi.Id,
+                QuestionId = mediumQuestions[0].Id,
+                WrongCount = 3,
+                LastWrongAnswer = "0", // 假设错误选择了第一个选项
+                LastWrongTime = DateTime.UtcNow.AddDays(-10),
+                Tags = "难点",
+                Notes = "这个概念比较复杂，需要多次复习"
+            });
+        }
+        
+        // 王五的错题
+        var wangwu = students.First(s => s.Name == "王五");
+        var hardQuestions = questions.Where(q => q.Difficulty == QuestionDifficulty.Hard).ToList();
+        
+        if (hardQuestions.Count >= 1)
+        {
+            wrongQuestions.Add(new WrongQuestion
+            {
+                StudentId = wangwu.Id,
+                QuestionId = hardQuestions[0].Id,
+                WrongCount = 1,
+                LastWrongAnswer = "0,1", // 假设是多选题，错误选择了前两个选项
+                LastWrongTime = DateTime.UtcNow.AddDays(-1),
+                Tags = "易错点"
+            });
+        }
+
+        await context.AddRangeAsync(wrongQuestions);
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// 初始化考试记录数据
+    /// </summary>
+    private static async Task SeedExamRecordsAsync(ExamDbContext context)
+    {
+        if (await context.ExamRecords.AnyAsync())
+        {
+            return;
+        }
+
+        var examSettings = await context.ExamSettings
+            .Include(e => e.ExamPaper)
+            .ThenInclude(p => p.ExamPaperQuestions)
+            .ThenInclude(q => q.QuestionVersion)
+            .ToListAsync();
+            
+        var students = await context.Students.ToListAsync();
+        
+        if (!examSettings.Any() || !students.Any())
+        {
+            return;
+        }
+
+        var examRecords = new List<ExamRecord>();
+        var answerRecords = new List<ExamAnswerRecord>();
+        
+        // 为每个学生创建一条考试记录
+        foreach (var student in students)
+        {
+            // 根据学生名称选择合适的考试设置
+            var examSetting = student.Name switch
+            {
+                "张三" => examSettings.FirstOrDefault(e => e.Name.Contains("初级")),
+                "李四" => examSettings.FirstOrDefault(e => e.Name.Contains("中级")),
+                "王五" => examSettings.FirstOrDefault(e => e.Name.Contains("高级")),
+                _ => examSettings.FirstOrDefault()
+            };
+
+            if (examSetting == null)
+            {
+                continue;
+            }
+
+            var startTime = DateTime.UtcNow.AddDays(-2);
+            var submitTime = startTime.AddMinutes(examSetting.Duration * 0.8); // 假设用了80%的时间完成考试
+            
+            // 确定考试状态和成绩
+            var status = ExamRecordStatus.Graded;
+            var paperQuestions = examSetting.ExamPaper.ExamPaperQuestions.ToList();
+            double totalScore = 0;
+            double correctRate = student.Name switch
+            {
+                "张三" => 0.7, // 70%正确率
+                "李四" => 0.8, // 80%正确率
+                "王五" => 0.9, // 90%正确率
+                _ => 0.75
+            };
+            
+            var record = new ExamRecord
+            {
+                ExamSettingId = examSetting.Id,
+                StudentId = student.Id,
+                AttemptNumber = 1,
+                StartTime = startTime,
+                SubmitTime = submitTime,
+                Status = status,
+                IpAddress = "127.0.0.1",
+                DeviceInfo = "{\"os\":\"Windows 10\",\"device\":\"Desktop\",\"screen\":\"1920x1080\"}",
+                BrowserInfo = "Chrome 91.0.4472.124",
+                ScreenSwitchCount = 0,
+                Duration = (int)(submitTime - startTime).TotalMinutes,
+                GradedTime = submitTime.AddHours(2),
+                GraderId = "system"
+            };
+            
+            examRecords.Add(record);
+            
+            // 创建答题记录
+            foreach (var paperQuestion in paperQuestions)
+            {
+                var isCorrect = Random.Shared.NextDouble() < correctRate;
+                var questionScore = isCorrect ? paperQuestion.Score : 0;
+                totalScore += questionScore;
+                
+                // 构造答案 - 简化处理，对于单选题假设选择了第一个选项
+                string answer = paperQuestion.QuestionVersion.CorrectAnswer;
+                if (!isCorrect)
+                {
+                    // 如果答错，随机生成一个错误答案
+                    if (paperQuestion.QuestionVersion.CorrectAnswer.Contains(","))
+                    {
+                        // 多选题情况，随机少选或多选一个选项
+                        var options = paperQuestion.QuestionVersion.CorrectAnswer.Split(',').ToList();
+                        if (Random.Shared.Next(2) == 0 && options.Count > 1)
+                        {
+                            // 少选一个
+                            options.RemoveAt(Random.Shared.Next(options.Count));
+                        }
+                        else
+                        {
+                            // 多选一个错误选项
+                            var maxOption = 4; // 假设有4个选项
+                            var wrongOption = Random.Shared.Next(maxOption).ToString();
+                            if (!options.Contains(wrongOption))
+                            {
+                                options.Add(wrongOption);
+                            }
+                        }
+                        answer = string.Join(",", options.OrderBy(o => o));
+                    }
+                    else
+                    {
+                        // 单选题情况，选择一个错误选项
+                        var correctOption = int.Parse(paperQuestion.QuestionVersion.CorrectAnswer);
+                        var maxOption = 4; // 假设有4个选项
+                        var wrongOptions = Enumerable.Range(0, maxOption).Where(o => o != correctOption).ToList();
+                        answer = wrongOptions[Random.Shared.Next(wrongOptions.Count)].ToString();
+                    }
+                }
+                
+                var answerRecord = new ExamAnswerRecord
+                {
+                    ExamRecordId = 0, // 稍后设置
+                    QuestionId = paperQuestion.QuestionId,
+                    QuestionVersionId = paperQuestion.QuestionVersionId,
+                    OrderNumber = paperQuestion.OrderNumber,
+                    Answer = answer,
+                    IsMarked = Random.Shared.Next(10) < 2, // 20%的概率被标记
+                    IsCorrect = isCorrect,
+                    Score = questionScore,
+                    StartTime = startTime.AddMinutes(Random.Shared.Next((int)(examSetting.Duration * 0.8))),
+                    SubmitTime = submitTime.AddMinutes(-Random.Shared.Next(10)),
+                    Duration = Random.Shared.Next(60, 300), // 1-5分钟随机答题时间
+                    GradedTime = submitTime.AddHours(2),
+                    GraderId = "system"
+                };
+                
+                answerRecords.Add(answerRecord);
+            }
+            
+            // 设置考试总分和通过状态
+            record.Score = totalScore;
+            record.IsPassed = totalScore >= examSetting.ExamPaper.PassScore;
+            
+            // 如果不及格，添加评语
+            if (!record.IsPassed)
+            {
+                record.Comments = "需要加强基础知识学习，重点关注错题";
+            }
+        }
+        
+        // 保存考试记录
+        await context.ExamRecords.AddRangeAsync(examRecords);
+        await context.SaveChangesAsync();
+        
+        // 更新答题记录中的考试记录ID并保存
+        foreach (var record in examRecords)
+        {
+            foreach (var answer in answerRecords.Where(a => a.ExamRecordId == 0 && a.OrderNumber <= record.ExamSetting.ExamPaper.ExamPaperQuestions.Count))
+            {
+                answer.ExamRecordId = record.Id;
+            }
+        }
+        
+        await context.ExamAnswerRecords.AddRangeAsync(answerRecords);
         await context.SaveChangesAsync();
     }
 }

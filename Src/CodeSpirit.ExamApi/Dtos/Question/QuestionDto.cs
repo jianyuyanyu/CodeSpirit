@@ -1,5 +1,6 @@
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.ExamApi.Data.Models;
 
@@ -24,6 +25,7 @@ public class QuestionDto
 
     [DisplayName("选项")]
     [AmisColumn(Type = "json", Hidden = true)]
+    [AmisFormField(Type = "json")]
     public List<string> Options { get; set; } = [];
 
     [DisplayName("正确答案")]
@@ -36,6 +38,7 @@ public class QuestionDto
 
     [DisplayName("知识点")]
     [AmisColumn(Type = "json", Hidden = true)]
+    [AmisFormField(Type = "json")]
     public List<string>? KnowledgePoints { get; set; }
 
     [DisplayName("分类")]

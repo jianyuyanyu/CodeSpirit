@@ -1,4 +1,5 @@
 using AutoMapper;
+using CodeSpirit.Core.Extensions;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.Shared.Repositories;
@@ -379,7 +380,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
                 };
 
                 // 处理标签
-                if (item.Tags?.Any() == true)
+                if (!item.Tags.IsNullOrWhiteSpace())
                 {
                     question.Tags = JsonSerializer.Serialize(item.Tags);
                 }

@@ -28,5 +28,8 @@ public class QuestionCategoryProfile : Profile
         CreateMap<QuestionCategory, QuestionCategoryDto>()
             .ForMember(dest => dest.ParentName, opt => opt.MapFrom(src => src.Parent != null ? src.Parent.Name : null))
             .ForMember(dest => dest.QuestionCount, opt => opt.MapFrom(src => src.Questions.Count));
+            
+        // 树形结构映射
+        CreateMap<QuestionCategory, QuestionCategoryTreeDto>();
     }
 } 

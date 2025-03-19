@@ -21,6 +21,8 @@ namespace CodeSpirit.Amis.Form.Fields
             return field;
         }
 
+        public abstract bool CanHandle(Type attributeType);
+
         /// <summary>
         /// 创建 AMIS 字段配置，基于 AmisFieldAttribute。
         /// </summary>

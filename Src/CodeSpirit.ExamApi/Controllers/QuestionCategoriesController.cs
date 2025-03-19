@@ -57,6 +57,17 @@ public class QuestionCategoriesController : ApiControllerBase
     }
 
     /// <summary>
+    /// 获取题目分类树形结构
+    /// </summary>
+    /// <returns>树形结构的题目分类列表</returns>
+    [HttpGet("tree")]
+    public async Task<ActionResult<ApiResponse<List<QuestionCategoryTreeDto>>>> GetCategoryTree()
+    {
+        List<QuestionCategoryTreeDto> categoryTree = await _questionCategoryService.GetCategoryTreeAsync();
+        return SuccessResponse(categoryTree);
+    }
+
+    /// <summary>
     /// 获取题目分类详情
     /// </summary>
     /// <param name="id">题目分类ID</param>

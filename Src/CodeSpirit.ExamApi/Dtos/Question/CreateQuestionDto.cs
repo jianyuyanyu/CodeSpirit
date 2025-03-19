@@ -35,10 +35,11 @@ public class CreateQuestionDto
     [Required(ErrorMessage = "请添加题目选项")]
     [DisplayName("选项")]
     [AmisArrayField(
-        Items = "{ \"type\":\"input-text\", \"required\":true, \"maxLength\":500 }",
+        Items = "{ \"type\":\"input-text\", \"required\":true }",
         Addable = true,
         Removable = true,
-        Draggable = true
+        Draggable = true,
+        MaxLength = 10
     )]
     public List<string> Options { get; set; } = [];
 
@@ -62,23 +63,22 @@ public class CreateQuestionDto
     /// 知识点
     /// </summary>
     [DisplayName("知识点")]
-    [AmisTransferField(
-        Source = "${ROOT_API}/api/exam/KnowledgePoints",
-        Searchable = true,
-        Multiple = true
-    )]
-    public List<string>? KnowledgePoints { get; set; }
+    public string? KnowledgePoints { get; set; }
 
     /// <summary>
     /// 分类ID
     /// </summary>
     [Required(ErrorMessage = "请选择题目分类")]
     [DisplayName("分类")]
-    [AmisSelectField(
-        Source = "${ROOT_API}/api/exam/Categories",
-        ValueField = "id",
+    [AmisInputTreeField(
+        DataSource = "${ROOT_API}/api/exam/QuestionCategories/tree",
         LabelField = "name",
-        Searchable = true
+        ValueField = "id",
+        Multiple = false,
+        JoinValues = false,
+        ExtractValue = true,
+        Required = true,
+        Placeholder = "请选择题目分类"
     )]
     public long CategoryId { get; set; }
 
@@ -94,10 +94,12 @@ public class CreateQuestionDto
     /// 标签
     /// </summary>
     [DisplayName("标签")]
-    [AmisTransferField(
-        Source = "${ROOT_API}/api/exam/Tags",
-        Searchable = true,
-        Multiple = true
+    [AmisArrayField(
+        Items = "{ \"type\":\"input-text\" }",
+        Addable = true,
+        Removable = true,
+        Draggable = true,
+        MaxLength = 5
     )]
     public List<string>? Tags { get; set; }
 }

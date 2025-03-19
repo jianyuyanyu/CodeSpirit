@@ -65,6 +65,44 @@ public class QuestionCategoryService : BaseCRUDService<QuestionCategory, Questio
     }
 
     /// <summary>
+    /// 获取分类树形结构
+    /// </summary>
+    public async Task<List<QuestionCategoryTreeDto>> GetCategoryTreeAsync()
+    {
+        // 获取所有分类
+        var categories = await Repository.CreateQuery()
+            .Include(c => c.Parent)
+            .ToListAsync();
+
+        // 构建分类树
+        var categoryDtos = Mapper.Map<List<QuestionCategoryTreeDto>>(categories);
+        
+        // 根节点列表
+        var rootCategories = categoryDtos.Where(c => c.ParentId == null).ToList();
+        
+        // 递归构建树结构
+        foreach (var rootCategory in rootCategories)
+        {
+            BuildCategoryTree(rootCategory, categoryDtos);
+        }
+        
+        return rootCategories;
+    }
+    
+    /// <summary>
+    /// 递归构建分类树
+    /// </summary>
+    private void BuildCategoryTree(QuestionCategoryTreeDto parent, List<QuestionCategoryTreeDto> allCategories)
+    {
+        parent.Children = allCategories.Where(c => c.ParentId == parent.Id).ToList();
+        
+        foreach (var child in parent.Children)
+        {
+            BuildCategoryTree(child, allCategories);
+        }
+    }
+
+    /// <summary>
     /// 验证创建DTO
     /// </summary>
     protected override async Task ValidateCreateDto(CreateQuestionCategoryDto createDto)

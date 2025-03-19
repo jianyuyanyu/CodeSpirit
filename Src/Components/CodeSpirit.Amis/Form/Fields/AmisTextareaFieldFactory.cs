@@ -1,6 +1,7 @@
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Reflection;
 
 namespace CodeSpirit.Amis.Form.Fields
@@ -10,6 +11,16 @@ namespace CodeSpirit.Amis.Form.Fields
     /// </summary>
     public class AmisTextareaFieldFactory : AmisFieldAttributeFactoryBase
     {
+        /// <summary>
+        /// 判断是否能处理指定类型的特性
+        /// </summary>
+        /// <param name="attributeType">特性类型</param>
+        /// <returns>是否能处理</returns>
+        public override bool CanHandle(Type attributeType)
+        {
+            return typeof(AmisTextareaFieldAttribute).IsAssignableFrom(attributeType);
+        }
+
         public override JObject CreateField(ICustomAttributeProvider member, UtilityHelper utilityHelper)
         {
             (JObject field, AmisTextareaFieldAttribute attr) = CreateField<AmisTextareaFieldAttribute>(member, utilityHelper);

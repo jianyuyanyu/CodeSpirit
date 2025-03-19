@@ -7,11 +7,25 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using System;
 
 namespace CodeSpirit.Amis.Form.Fields
 {
+    /// <summary>
+    /// AMIS Excel上传字段工厂类
+    /// </summary>
     public class AmisInputExcelFieldFactory : AmisFieldAttributeFactoryBase
     {
+        /// <summary>
+        /// 判断是否能处理指定类型的特性
+        /// </summary>
+        /// <param name="attributeType">特性类型</param>
+        /// <returns>是否能处理</returns>
+        public override bool CanHandle(Type attributeType)
+        {
+            return typeof(AmisInputExcelFieldAttribute).IsAssignableFrom(attributeType);
+        }
+
         public override JObject CreateField(ICustomAttributeProvider member, UtilityHelper utilityHelper)
         {
             var (field, attr) = CreateField<AmisInputExcelFieldAttribute>(member, utilityHelper);

@@ -19,4 +19,9 @@ public interface IQuestionCategoryService : IBaseCRUDService<QuestionCategory, Q
     /// 获取所有题目分类（用于树形选择）
     /// </summary>
     Task<List<QuestionCategoryDto>> GetAllCategoriesAsync();
+
+    /// <summary>
+    /// 获取分类树
+    /// </summary>
+    Task<List<QuestionCategoryTreeDto>> GetCategoryTreeAsync();
 } 

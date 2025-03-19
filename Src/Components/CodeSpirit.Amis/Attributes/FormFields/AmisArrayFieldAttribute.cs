@@ -1,5 +1,3 @@
-using Newtonsoft.Json.Linq;
-
 namespace CodeSpirit.Amis.Attributes.FormFields
 {
     /// <summary>

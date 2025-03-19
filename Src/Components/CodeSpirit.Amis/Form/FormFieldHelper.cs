@@ -120,9 +120,62 @@ namespace CodeSpirit.Amis.Form
         /// </summary>
         private JObject CreateFieldUsingFactories(ICustomAttributeProvider member)
         {
-            return _fieldFactories
-                .Select(factory => factory.CreateField(member, _utilityHelper))
-                .FirstOrDefault(field => field != null);
+            try
+            {
+                // 获取成员上的所有特性
+                var attributes = GetCustomAttributes(member);
+                if (!attributes.Any())
+                {
+                    return null;
+                }
+
+                // 查找匹配的工厂
+                foreach (var attr in attributes)
+                {
+                    foreach (var factory in _fieldFactories)
+                    {
+                        if (factory.CanHandle(attr.GetType()))
+                        {
+                            var field = factory.CreateField(member, _utilityHelper);
+                            if (field != null)
+                            {
+                                return field;
+                            }
+                        }
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                // 异常处理
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 获取成员上的所有自定义特性
+        /// </summary>
+        private IEnumerable<Attribute> GetCustomAttributes(ICustomAttributeProvider member)
+        {
+            try
+            {
+                if (member is MemberInfo memberInfo)
+                {
+                    return Attribute.GetCustomAttributes(memberInfo, true);
+                }
+                else if (member is ParameterInfo parameterInfo)
+                {
+                    return Attribute.GetCustomAttributes(parameterInfo, true);
+                }
+                
+                return member.GetCustomAttributes(true).Cast<Attribute>();
+            }
+            catch
+            {
+                return Enumerable.Empty<Attribute>();
+            }
         }
 
         /// <summary>

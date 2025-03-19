@@ -2,6 +2,7 @@
 
 using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Reflection;
 
 namespace CodeSpirit.Amis.Form
@@ -15,5 +16,12 @@ namespace CodeSpirit.Amis.Form
         /// <param name="utilityHelper">实用工具类。</param>
         /// <returns>如果成功创建则返回字段配置，否则返回 null。</returns>
         JObject CreateField(ICustomAttributeProvider member, UtilityHelper utilityHelper);
+
+        /// <summary>
+        /// 判断是否能处理指定类型的特性
+        /// </summary>
+        /// <param name="attributeType">特性类型</param>
+        /// <returns>是否能处理</returns>
+        bool CanHandle(Type attributeType);
     }
 }

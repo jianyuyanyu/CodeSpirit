@@ -13,11 +13,19 @@ public class StudentQueryDto : QueryDtoBase
     /// 学生组ID
     /// </summary>
     [DisplayName("所属分组")]
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/exam/StudentGroups",
+        ValueField = "id",
+        LabelField = "name",
+        Searchable = true,
+        Multiple = false,
+        Clearable = true
+    )]
     public long? StudentGroupId { get; set; }
     
     /// <summary>
     /// 是否激活
     /// </summary>
-    [DisplayName("状态")]
+    [DisplayName("是否激活")]
     public bool? IsActive { get; set; }
 } 

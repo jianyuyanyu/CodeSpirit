@@ -1,3 +1,5 @@
+using CodeSpirit.Amis.Attributes.FormFields;
+
 namespace CodeSpirit.ExamApi.Dtos.Student;
 
 /// <summary>
@@ -47,5 +49,12 @@ public class CreateStudentDto
     /// 学生组ID列表
     /// </summary>
     [DisplayName("所属分组")]
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/exam/StudentGroups",
+        ValueField = "id",
+        LabelField = "name",
+        Searchable = true,
+        Multiple = true
+    )]
     public List<long> StudentGroupIds { get; set; } = new List<long>();
 } 

@@ -92,6 +92,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IQuestionCategoryService, QuestionCategoryService>();
         services.AddScoped<IWrongQuestionService, WrongQuestionService>();
         services.AddScoped<IQuestionVersionService, QuestionVersionService>();
+        services.AddScoped<IPracticeRecordService, PracticeRecordService>();
 
         return services;
     }
@@ -145,7 +146,6 @@ public static class ServiceCollectionExtensions
             {
                 var logger = services.GetRequiredService<ILogger<Program>>();
                 logger.LogError(ex, "初始化数据库时发生错误。");
-                throw;
             }
         }
 

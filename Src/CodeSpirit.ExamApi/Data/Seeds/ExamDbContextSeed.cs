@@ -30,6 +30,7 @@ public static class ExamDbContextSeed
         await SeedExamSettingsAsync(context);
         await SeedWrongQuestionsAsync(context);
         await SeedExamRecordsAsync(context);
+        await SeedPracticeRecordsAsync(context);
 
         // 保存所有更改
         await context.SaveChangesAsync();
@@ -692,13 +693,143 @@ public static class ExamDbContextSeed
         // 更新答题记录中的考试记录ID并保存
         foreach (var record in examRecords)
         {
-            foreach (var answer in answerRecords.Where(a => a.ExamRecordId == 0 && a.OrderNumber <= record.ExamSetting.ExamPaper.ExamPaperQuestions.Count))
+            // 获取该考试记录对应的答题记录
+            var recordAnswers = new List<ExamAnswerRecord>();
+            foreach (var paperQuestion in record.ExamSetting.ExamPaper.ExamPaperQuestions.OrderBy(q => q.OrderNumber))
             {
-                answer.ExamRecordId = record.Id;
+                // 找到与当前题目匹配的答题记录（尚未分配考试记录ID的）
+                var answer = answerRecords.FirstOrDefault(a => 
+                    a.ExamRecordId == 0 && 
+                    a.QuestionId == paperQuestion.QuestionId && 
+                    a.OrderNumber == paperQuestion.OrderNumber);
+                    
+                if (answer != null)
+                {
+                    answer.ExamRecordId = record.Id;
+                    recordAnswers.Add(answer);
+                    // 从未分配列表中移除，避免重复分配
+                    answerRecords.Remove(answer);
+                }
+            }
+            
+            // 为每个考试记录批量添加对应的答题记录
+            if (recordAnswers.Any())
+            {
+                await context.ExamAnswerRecords.AddRangeAsync(recordAnswers);
+                await context.SaveChangesAsync();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 初始化练习记录数据
+    /// </summary>
+    private static async Task SeedPracticeRecordsAsync(ExamDbContext context)
+    {
+        if (await context.PracticeRecords.AnyAsync())
+        {
+            return;
+        }
+
+        var students = await context.Students.ToListAsync();
+        var questions = await context.Questions.Include(q => q.Category).ToListAsync();
+        if (!students.Any() || !questions.Any())
+        {
+            return;
+        }
+
+        var practiceRecords = new List<PracticeRecord>();
+        var random = new Random();
+        
+        // 为每个学生创建练习记录
+        foreach (var student in students)
+        {
+            // 为学生随机选择5-10个题目进行练习
+            var studentQuestions = questions
+                .OrderBy(q => random.Next())
+                .Take(random.Next(5, 11))
+                .ToList();
+                
+            foreach (var question in studentQuestions)
+            {
+                // 决定是自由练习还是模拟考试
+                var practiceType = random.Next(3) < 2 ? PracticeType.FreePractice : PracticeType.MockExam;
+                
+                // 随机生成练习时间(过去30天内)
+                var practiceTime = DateTime.UtcNow.AddDays(-random.Next(1, 31))
+                    .AddHours(-random.Next(0, 24))
+                    .AddMinutes(-random.Next(0, 60));
+                    
+                // 随机决定是否答对
+                var isCorrect = random.Next(2) == 1;
+                
+                // 构造答案
+                string answer;
+                if (isCorrect)
+                {
+                    // 正确答案
+                    answer = question.CorrectAnswer;
+                }
+                else
+                {
+                    // 生成错误答案
+                    if (question.Type == QuestionType.SingleChoice)
+                    {
+                        // 单选题
+                        var correctOption = int.Parse(question.CorrectAnswer);
+                        var options = new List<int> { 0, 1, 2, 3 };
+                        options.Remove(correctOption);
+                        answer = options[random.Next(options.Count)].ToString();
+                    }
+                    else if (question.Type == QuestionType.MultipleChoice)
+                    {
+                        // 多选题
+                        var correctOptions = question.CorrectAnswer.Split(',').Select(int.Parse).ToList();
+                        var allOptions = new List<int> { 0, 1, 2, 3 };
+                        var wrongOptions = allOptions.Except(correctOptions).ToList();
+                        
+                        if (random.Next(2) == 0 && correctOptions.Count > 1)
+                        {
+                            // 少选一个选项
+                            var reducedCorrectOptions = correctOptions.ToList();
+                            reducedCorrectOptions.RemoveAt(random.Next(reducedCorrectOptions.Count));
+                            answer = string.Join(",", reducedCorrectOptions.OrderBy(o => o));
+                        }
+                        else
+                        {
+                            // 多选一个错误选项
+                            var extendedCorrectOptions = correctOptions.ToList();
+                            extendedCorrectOptions.Add(wrongOptions[random.Next(wrongOptions.Count)]);
+                            answer = string.Join(",", extendedCorrectOptions.OrderBy(o => o));
+                        }
+                    }
+                    else
+                    {
+                        // 判断题
+                        answer = question.CorrectAnswer == "1" ? "0" : "1";
+                    }
+                }
+                
+                // 随机生成练习耗时(10秒到5分钟)
+                var timeSpent = random.Next(10, 301);
+                
+                var practiceRecord = new PracticeRecord
+                {
+                    StudentId = student.Id,
+                    QuestionId = question.Id,
+                    PracticeType = practiceType,
+                    Answer = answer,
+                    IsCorrect = isCorrect,
+                    TimeSpent = timeSpent,
+                    PracticeTime = practiceTime,
+                    MockExamId = practiceType == PracticeType.MockExam ? (long?)1 : null
+                };
+                
+                practiceRecords.Add(practiceRecord);
             }
         }
         
-        await context.ExamAnswerRecords.AddRangeAsync(answerRecords);
+        await context.PracticeRecords.AddRangeAsync(practiceRecords);
         await context.SaveChangesAsync();
     }
 }

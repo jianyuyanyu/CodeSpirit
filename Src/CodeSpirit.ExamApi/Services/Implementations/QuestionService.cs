@@ -24,7 +24,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
     /// 构造函数
     /// </summary>
     public QuestionService(
-        IRepository<Question> repository, 
+        IRepository<Question> repository,
         IRepository<QuestionCategory> categoryRepository,
         IRepository<QuestionVersion> versionRepository,
         IMapper mapper,
@@ -67,12 +67,12 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
 
         if (!string.IsNullOrEmpty(queryDto.KnowledgePoint))
         {
-            predicate = predicate.And(x => x.KnowledgePoints.Contains(queryDto.KnowledgePoint));
+            predicate = predicate.And(x => x.KnowledgePoints != null && x.KnowledgePoints.Contains(queryDto.KnowledgePoint));
         }
 
         if (!string.IsNullOrEmpty(queryDto.Tag))
         {
-            predicate = predicate.And(x => x.Tags.Contains(queryDto.Tag));
+            predicate = predicate.And(x => x.Tags != null && x.Tags.Contains(queryDto.Tag));
         }
 
         return await GetPagedListAsync(
@@ -217,12 +217,12 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         {
             entity.KnowledgePoints = JsonSerializer.Serialize(createDto.KnowledgePoints);
         }
-        
+
         if (createDto.Tags?.Any() == true)
         {
             entity.Tags = JsonSerializer.Serialize(createDto.Tags);
         }
-        
+
         // 设置初始版本
         entity.Version = 1;
     }
@@ -240,7 +240,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         {
             entity.KnowledgePoints = JsonSerializer.Serialize(updateDto.KnowledgePoints);
         }
-        
+
         if (updateDto.Tags?.Any() == true)
         {
             entity.Tags = JsonSerializer.Serialize(updateDto.Tags);
@@ -269,7 +269,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
 
         await _versionRepository.AddAsync(version);
         await _versionRepository.SaveChangesAsync();
-        
+
         // 增加版本号
         entity.Version++;
         await _repository.UpdateAsync(entity);
@@ -457,4 +457,4 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
     {
         return importDto.Content;
     }
-} 
+}

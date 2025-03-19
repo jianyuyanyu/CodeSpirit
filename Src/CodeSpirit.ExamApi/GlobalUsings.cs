@@ -1,7 +1,9 @@
-global using CodeSpirit.ExamApi;
-global using CodeSpirit.ExamApi.Data;
 global using CodeSpirit.Core;
-global using CodeSpirit.Core.Authorization;
-global using System.ComponentModel.DataAnnotations;
-global using CodeSpirit.Core.DependencyInjection;
+global using CodeSpirit.Shared.Extensions;
+global using CodeSpirit.ExamApi.Data;
+global using CodeSpirit.ExamApi.Services.Implementations;
+global using CodeSpirit.ExamApi.Services.Interfaces;
+global using Microsoft.EntityFrameworkCore;
 global using System.ComponentModel;
+global using CodeSpirit.Amis.Attributes;
+global using System.ComponentModel.DataAnnotations;

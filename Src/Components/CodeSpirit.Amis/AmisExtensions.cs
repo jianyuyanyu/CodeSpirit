@@ -10,6 +10,9 @@ using System.Reflection;
 
 namespace CodeSpirit.Amis
 {
+    /// <summary>
+    /// Amis扩展方法
+    /// </summary>
     public static class AmisExtensions
     {
         public static IServiceCollection AddAmisServices(this IServiceCollection services, IConfiguration configuration, Assembly apiAssembly = null)
@@ -32,6 +35,7 @@ namespace CodeSpirit.Amis
             services.AddTransient<IAmisFieldFactory, AmisInputImageFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisSelectFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisInputTreeFieldFactory>();
+            services.AddTransient<IAmisFieldFactory, AmisTreeSelectFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisInputExcelFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisFieldAttributeFactory>();
             services.AddTransient<IAmisFieldFactory, AmisTextareaFieldFactory>();
@@ -53,5 +57,4 @@ namespace CodeSpirit.Amis
             return builder.UseMiddleware<AmisMiddleware>();
         }
     }
-
 }

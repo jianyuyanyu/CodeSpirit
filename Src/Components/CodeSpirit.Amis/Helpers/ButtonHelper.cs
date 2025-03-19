@@ -193,7 +193,7 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         // 获取自定义操作按钮
-        public List<JObject> GetCustomOperationsButtons(bool isBulkOperation = false)
+        public List<JObject> GetCustomOperationsButtons<TOperation>(bool isBulkOperation = false, bool isHeader = false) where TOperation : OperationAttribute
         {
             List<JObject> buttons = [];
             // 获取当前类型的所有方法
@@ -202,7 +202,12 @@ namespace CodeSpirit.Amis.Helpers
             // 查找带有 [Operation] 特性的所有方法
             foreach (MethodInfo method in methods)
             {
-                OperationAttribute op = method.GetCustomAttribute<OperationAttribute>();
+                TOperation op = method.GetCustomAttribute<TOperation>(inherit: false);
+                if (op != null && !isHeader && op is HeaderOperationAttribute)
+                {
+                    continue;
+                }
+
                 if (op != null && op.IsBulkOperation == isBulkOperation)
                 {
                     // 为每个操作方法创建按钮
@@ -223,7 +228,13 @@ namespace CodeSpirit.Amis.Helpers
         // 获取批量操作按钮
         public List<JObject> GetBulkOperationButtons()
         {
-            return GetCustomOperationsButtons(true);
+            return GetCustomOperationsButtons<OperationAttribute>(true);
+        }
+
+        // 获取顶部操作按钮
+        public List<JObject> GetHeaderOperationButtons()
+        {
+            return GetCustomOperationsButtons<HeaderOperationAttribute>(isBulkOperation: false, isHeader: true);
         }
 
         // 创建自定义操作按钮
@@ -262,12 +273,36 @@ namespace CodeSpirit.Amis.Helpers
 
                 button["api"] = api;
             }
+            //输入表单
+            else if (op.ActionType == "form")
+            {
+                string title = op.Label;
+                var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
+                JObject drawerBody = new()
+                {
+                    ["title"] = title,
+                    ["size"] = "lg",
+                    ["body"] = new JObject
+                    {
+                        ["type"] = "form",
+                        ["api"] = new JObject
+                        {
+                            ["url"] = route.ApiPath,
+                            ["method"] = route.HttpMethod
+                        },
+                        ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(method.GetParameters()))
+                    }
+                };
+                return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+            }
+            //动态表单
             else if (op.ActionType == "service")
             {
                 // 对于 service 类型，创建一个 service 弹窗
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
                 return CreateServiceDialogButton(op.Label, route);
             }
+            //出参表单
             else if (op.ActionType == "return-form")
             {
                 string title = op.Label;

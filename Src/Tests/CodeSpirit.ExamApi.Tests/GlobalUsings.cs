@@ -1,0 +1,9 @@
+global using Xunit;
+global using Moq;
+global using System.Threading.Tasks;
+global using Microsoft.Extensions.Logging;
+global using Microsoft.EntityFrameworkCore;
+global using CodeSpirit.Core;
+global using CodeSpirit.ExamApi.Data.Models;
+global using CodeSpirit.ExamApi.Dtos.Question;
+global using CodeSpirit.Shared.Repositories; 

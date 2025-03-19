@@ -637,7 +637,7 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 添加自定义操作按钮
-            List<JObject> customButtons = buttonHelper.GetCustomOperationsButtons();
+            List<JObject> customButtons = buttonHelper.GetCustomOperationsButtons<OperationAttribute>();
             foreach (JObject btn in customButtons)
             {
                 buttons.Add(btn);

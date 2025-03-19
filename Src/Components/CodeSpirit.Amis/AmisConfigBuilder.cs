@@ -210,6 +210,16 @@ namespace CodeSpirit.Amis
             {
                 buttons.Add(_buttonHelper.CreateHeaderButton("导入", _amisContext.ApiRoutes.Import, _amisContext.Actions.Import?.GetParameters(), size: "lg"));
             }
+
+            //添加自定义顶部按钮
+            var headerCustomButtons = _buttonHelper.GetHeaderOperationButtons();
+            if (headerCustomButtons!=null && headerCustomButtons.Any())
+            {
+                foreach (var button in headerCustomButtons)
+                {
+                    buttons.Add(button);
+                }
+            }
             return buttons;
         }
 

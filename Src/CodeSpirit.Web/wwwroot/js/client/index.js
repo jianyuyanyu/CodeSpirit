@@ -331,56 +331,216 @@
             }
         ],
         css: {
+            ':root': {
+                '--primary-color': '#3f51b5',
+                '--secondary-color': '#ff4081',
+                '--text-color': '#333',
+                '--light-bg': '#f5f7fa',
+                '--border-radius': '8px',
+                '--box-shadow': '0 4px 12px rgba(0,0,0,0.08)'
+            },
+            'body': {
+                'font-family': '"Segoe UI", "Microsoft YaHei", sans-serif',
+                'color': 'var(--text-color)',
+                'background-color': '#f9fafc'
+            },
             '.client-header': {
                 'background-color': '#fff',
-                'box-shadow': '0 2px 4px rgba(0,0,0,0.1)',
-                'padding': '10px 20px'
+                'box-shadow': '0 2px 10px rgba(0,0,0,0.06)',
+                'padding': '12px 24px',
+                'position': 'sticky',
+                'top': '0',
+                'z-index': '100'
             },
             '.client-logo': {
                 'display': 'flex',
                 'align-items': 'center'
             },
             '.client-logo img': {
-                'height': '32px',
-                'margin-right': '10px'
+                'height': '38px',
+                'margin-right': '12px',
+                'transition': 'transform 0.3s ease'
+            },
+            '.client-logo:hover img': {
+                'transform': 'scale(1.05)'
             },
             '.client-logo span': {
-                'font-size': '18px',
-                'font-weight': 'bold'
+                'font-size': '20px',
+                'font-weight': 'bold',
+                'color': 'var(--primary-color)',
+                'letter-spacing': '0.5px'
             },
             '.client-welcome-section': {
-                'padding': '20px',
-                'background-color': '#f8f9fa',
-                'border-radius': '8px',
-                'margin': '20px'
+                'padding': '30px',
+                'background': 'linear-gradient(135deg, #fff, var(--light-bg))',
+                'border-radius': 'var(--border-radius)',
+                'margin': '30px 25px 20px',
+                'box-shadow': 'var(--box-shadow)',
+                'border-left': '4px solid var(--primary-color)'
+            },
+            '.welcome-message h2': {
+                'margin-bottom': '10px',
+                'color': 'var(--primary-color)',
+                'font-size': '24px'
+            },
+            '.welcome-message p': {
+                'color': '#666',
+                'font-size': '16px'
             },
             '.section-title': {
-                'margin-bottom': '15px',
-                'padding-left': '20px'
+                'margin-bottom': '20px',
+                'padding-left': '25px',
+                'font-size': '20px',
+                'font-weight': '600',
+                'color': 'var(--primary-color)',
+                'position': 'relative',
+                'line-height': '1.5',
+                'display': 'flex',
+                'align-items': 'center'
+            },
+            '.section-title:before': {
+                'content': '""',
+                'position': 'absolute',
+                'left': '0',
+                'height': '18px',
+                'width': '4px',
+                'background-color': 'var(--primary-color)',
+                'border-radius': '2px'
             },
             '.exam-list-section, .exam-history-section': {
-                'padding': '10px',
-                'margin': '0 20px'
+                'padding': '15px',
+                'margin': '0 25px 25px',
+                'background-color': '#fff',
+                'border-radius': 'var(--border-radius)',
+                'box-shadow': 'var(--box-shadow)'
             },
             '.exam-card': {
                 'height': '100%',
-                'transition': 'all 0.3s',
-                'margin-bottom': '15px'
+                'transition': 'all 0.3s ease',
+                'margin-bottom': '20px',
+                'border': '1px solid #eaeaea',
+                'border-radius': 'var(--border-radius)',
+                'overflow': 'hidden'
             },
             '.exam-card:hover': {
                 'transform': 'translateY(-5px)',
-                'box-shadow': '0 5px 15px rgba(0,0,0,0.1)'
+                'box-shadow': '0 8px 20px rgba(0,0,0,0.12)'
+            },
+            '.exam-card .cxd-Card-header': {
+                'background-color': 'var(--light-bg)',
+                'border-bottom': '1px solid #eaeaea'
+            },
+            '.exam-card .cxd-Card-title': {
+                'font-weight': '600',
+                'color': 'var(--primary-color)'
+            },
+            '.exam-card .cxd-Card-body': {
+                'padding': '16px'
+            },
+            '.exam-card .cxd-Card-actions': {
+                'background-color': '#f8fafd',
+                'padding': '10px 16px'
+            },
+            '.exam-card .cxd-Card-actions .cxd-Button--primary, .cxd-Button--primary': {
+                'background-color': 'var(--primary-color) !important',
+                'border-color': 'var(--primary-color) !important',
+                'padding': '6px 16px !important',
+                'font-weight': '500 !important',
+                'letter-spacing': '0.5px !important',
+                'box-shadow': '0 2px 6px rgba(63, 81, 181, 0.25) !important',
+                'transition': 'all 0.3s ease !important'
+            },
+            '.exam-card .cxd-Card-actions .cxd-Button--primary:hover, .cxd-Button--primary:hover': {
+                'background-color': '#303f9f !important',
+                'border-color': '#303f9f !important',
+                'box-shadow': '0 4px 12px rgba(63, 81, 181, 0.4) !important',
+                'transform': 'translateY(-2px) !important'
+            },
+            '.exam-card .cxd-Card-actions .cxd-Button--primary:active, .cxd-Button--primary:active': {
+                'transform': 'translateY(0) !important',
+                'box-shadow': '0 2px 4px rgba(63, 81, 181, 0.3) !important'
+            },
+            '.exam-card .cxd-Card-actions .cxd-Button--primary, .exam-card .cxd-Button--primary': {
+                'position': 'relative !important',
+                'overflow': 'hidden !important'
+            },
+            '.exam-card .cxd-Card-actions .cxd-Button--primary:before, .exam-card .cxd-Button--primary:before': {
+                'content': '""',
+                'position': 'absolute',
+                'top': '0',
+                'left': '-100%',
+                'width': '100%',
+                'height': '100%',
+                'background': 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                'transition': 'all 0.6s ease',
+                'z-index': '1'
+            },
+            '.exam-card .cxd-Card-actions .cxd-Button--primary:hover:before, .exam-card .cxd-Button--primary:hover:before': {
+                'left': '100%'
+            },
+            '.cxd-Button--primary span': {
+                'position': 'relative',
+                'z-index': '2'
+            },
+            '.cxd-Button--info': {
+                'background-color': '#03a9f4',
+                'border-color': '#03a9f4'
+            },
+            '.cxd-Table': {
+                'border-radius': 'var(--border-radius)',
+                'overflow': 'hidden',
+                'box-shadow': '0 0 0 1px rgba(0,0,0,0.05)'
+            },
+            '.cxd-Table-headCell': {
+                'background-color': 'var(--light-bg)',
+                'font-weight': '600'
+            },
+            '.label': {
+                'padding': '3px 8px',
+                'border-radius': '12px',
+                'font-size': '12px',
+                'display': 'inline-block'
+            },
+            '.label-success': {
+                'background-color': '#e8f5e9',
+                'color': '#2e7d32'
+            },
+            '.label-info': {
+                'background-color': '#e3f2fd',
+                'color': '#1565c0'
+            },
+            '.label-danger': {
+                'background-color': '#ffebee',
+                'color': '#c62828'
+            },
+            '.user-info': {
+                'display': 'flex',
+                'align-items': 'center'
+            },
+            '.user-info .cxd-Avatar': {
+                'border': '2px solid rgba(63, 81, 181, 0.2)'
+            },
+            '.cxd-Divider': {
+                'margin': '10px 25px',
+                'background-color': '#eaeaea'
             },
             '@media (max-width: 768px)': {
                 '.client-header': {
-                    'padding': '10px'
+                    'padding': '10px 15px'
                 },
                 '.exam-list-section, .exam-history-section, .client-welcome-section': {
-                    'margin': '10px',
-                    'padding': '10px'
+                    'margin': '15px',
+                    'padding': '15px'
                 },
                 '.client-logo span': {
-                    'font-size': '16px'
+                    'font-size': '18px'
+                },
+                '.welcome-message h2': {
+                    'font-size': '20px'
+                },
+                '.section-title': {
+                    'font-size': '18px',
+                    'padding-left': '20px'
                 }
             }
         }

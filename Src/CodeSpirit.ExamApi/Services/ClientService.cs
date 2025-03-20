@@ -1,3 +1,4 @@
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Controllers;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.Client;
@@ -13,16 +14,18 @@ public class ClientService : IClientService
 {
     private readonly ExamDbContext _context;
     private readonly ILogger<ClientService> _logger;
+    private readonly IIdGenerator _idGenerator;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="context">数据库上下文</param>
     /// <param name="logger">日志记录器</param>
-    public ClientService(ExamDbContext context, ILogger<ClientService> logger)
+    public ClientService(ExamDbContext context, ILogger<ClientService> logger, IIdGenerator idGenerator)
     {
         _context = context;
         _logger = logger;
+        _idGenerator = idGenerator;
     }
 
     /// <summary>
@@ -60,7 +63,7 @@ public class ClientService : IClientService
                     // 检查是否已参加并获取成绩
                     HasResult = _context.ExamRecords.Any(r =>
                         r.ExamSettingId == e.Id &&
-                        r.StudentId == r.StudentId &&
+                        r.StudentId == userId &&
                         r.Status == ExamRecordStatus.Graded)
                 })
                 .ToListAsync();
@@ -178,9 +181,19 @@ public class ClientService : IClientService
                 throw new UnauthorizedAccessException("无权参加此考试");
             }
 
+            // 获取学生实体
+            var student = await _context.Students
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到学生信息");
+            }
+
             // 检查考试次数
             var attemptCount = await _context.ExamRecords
-                .CountAsync(r => r.ExamSettingId == examId && r.StudentId == userId);
+                .CountAsync(r => r.ExamSettingId == examId && r.StudentId == student.Id);
 
             if (attemptCount >= examSetting.AllowedAttempts)
             {
@@ -190,8 +203,9 @@ public class ClientService : IClientService
             // 创建考试记录
             var examRecord = new ExamRecord
             {
+                Id = _idGenerator.NewId(),
                 ExamSettingId = examId,
-                StudentId = userId,
+                StudentId = student.Id,
                 AttemptNumber = attemptCount + 1,
                 StartTime = now,
                 Status = ExamRecordStatus.InProgress,

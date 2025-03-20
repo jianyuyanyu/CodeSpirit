@@ -337,12 +337,7 @@ namespace CodeSpirit.Web.Middlewares
             // 检查请求接受类型是否为HTML（通常浏览器请求页面时会包含text/html）
             if (request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase))
             {
-                // 本地页面请求通常小于3个路径段且不是API请求
-                var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                if (segments.Length < 3 && !path.Contains("/api/", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
+                return true;
             }
 
             return false;

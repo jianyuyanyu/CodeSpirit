@@ -21,7 +21,8 @@
             duration: 0,
             startTime: null,
             endTime: null,
-            totalScore: 0
+            totalScore: 0,
+            recordId: null
         },
         timer: {
             displayText: '加载中...',
@@ -190,19 +191,39 @@
     
     // 保存答案
     function saveAnswer(questionId, answer) {
+        // 确保答案格式正确
+        let processedAnswer = answer;
+        
+        // 如果不是字符串或数组，则转换为字符串
+        if (answer !== null && answer !== undefined && typeof answer !== 'string' && !Array.isArray(answer)) {
+            processedAnswer = String(answer);
+        }
+        
+        // 如果是数组但包含非字符串元素，规范化数组
+        if (Array.isArray(processedAnswer)) {
+            processedAnswer = processedAnswer.map(item => {
+                if (item !== null && item !== undefined && typeof item !== 'string') {
+                    return String(item);
+                }
+                return item;
+            });
+        }
+        
         // 查找已有答案
         const existingIndex = examAnswers.findIndex(a => a.questionId === questionId);
         
         if (existingIndex >= 0) {
             // 更新已有答案
-            examAnswers[existingIndex].answer = answer;
+            examAnswers[existingIndex].answer = processedAnswer;
         } else {
             // 添加新答案
             examAnswers.push({
                 questionId: questionId,
-                answer: answer
+                answer: processedAnswer
             });
         }
+        
+        console.log(`保存题目 ${questionId} 的答案:`, processedAnswer);
     }
     
     // 提交考试
@@ -216,6 +237,18 @@
             questionId: a.questionId,
             answer: a.answer
         }));
+
+        console.debug(answers);
+        
+        // 从全局数据获取recordId
+        const recordId = window.globalData.exam.recordId;
+        
+        // 检查recordId是否有效
+        if (!recordId) {
+            console.error("提交失败: recordId为空");
+            alert("提交失败：无法获取考试记录ID，请刷新页面重试");
+            return;
+        }
         
         // 提交考试
         fetch(`/exam/api/exam/client/${recordId}/submit`, {
@@ -344,6 +377,7 @@
                                     window.GlobalData.set('exam.startTime', event.data.startTime || null);
                                     window.GlobalData.set('exam.endTime', event.data.endTime || null);
                                     window.GlobalData.set('exam.totalScore', event.data.totalScore || 0);
+                                    window.GlobalData.set('exam.recordId', event.data.recordId || null);
                                     
                                     // 启动计时器
                                     try {
@@ -375,12 +409,12 @@
                                 items: [
                                     {
                                         type: 'tpl',
-                                        tpl: '开始时间：${startTime|date:YYYY-MM-DD HH:mm:ss}',
+                                        tpl: '开始时间：${startTime}',
                                         className: 'exam-info-item'
                                     },
                                     {
                                         type: 'tpl',
-                                        tpl: '结束时间：${endTime|date:YYYY-MM-DD HH:mm:ss}',
+                                        tpl: '结束时间：${endTime}',
                                         className: 'exam-info-item'
                                     },
                                     {
@@ -403,7 +437,7 @@
                                 schemaApi: `get:/exam/api/exam/client/${examId}/amis`,
                                 className: 'question-container',
                                 onEvent: {
-                                    fetchInited: {
+                                    fetchSchemaInited: {
                                         actions: [
                                             {
                                                 actionType: "custom",
@@ -428,26 +462,14 @@
                                         label: '提交试卷',
                                         level: 'primary',
                                         size: 'lg',
+                                        confirmTitle: '确认提交',
+                                        confirmText: '确定要提交试卷吗？提交后将无法修改答案。',
                                         onEvent: {
                                             click: {
                                                 actions: [
                                                     {
-                                                        actionType: 'confirm',
-                                                        componentId: 'submitConfirm',
-                                                        dialog: {
-                                                            title: '确认提交',
-                                                            body: '确定要提交试卷吗？提交后将无法修改答案。',
-                                                            onEvent: {
-                                                                confirm: {
-                                                                    actions: [
-                                                                        {
-                                                                            actionType: 'custom',
-                                                                            script: 'submitExam();'
-                                                                        }
-                                                                    ]
-                                                                }
-                                                            }
-                                                        }
+                                                        actionType: 'custom',
+                                                        script: 'submitExam();',
                                                     }
                                                 ]
                                             }
@@ -649,36 +671,140 @@
                 'border-radius': 'var(--border-radius)',
                 'background-color': '#fff',
                 'box-shadow': '0 2px 8px rgba(0,0,0,0.04)',
-                'transition': 'all 0.3s ease'
+                'transition': 'all 0.3s ease',
+                'position': 'relative'
             },
             '.question-item:hover': {
                 'box-shadow': '0 5px 15px rgba(0,0,0,0.08)',
                 'transform': 'translateY(-2px)'
             },
+            '.question-item::before': {
+                'content': 'attr(data-question-index)',
+                'position': 'absolute',
+                'top': '-12px',
+                'left': '20px',
+                'display': 'flex',
+                'align-items': 'center',
+                'justify-content': 'center',
+                'width': '30px',
+                'height': '30px',
+                'background-color': 'var(--primary-color)',
+                'color': 'white',
+                'border-radius': '50%',
+                'font-weight': 'bold',
+                'box-shadow': '0 2px 5px rgba(0,0,0,0.2)',
+                'z-index': '1'
+            },
             '.question-label': {
                 'font-size': '16px',
                 'font-weight': '500',
-                'margin-bottom': '15px',
+                'margin-bottom': '20px',
                 'display': 'block',
-                'padding-left': '10px',
-                'border-left': '4px solid var(--primary-color)'
+                'padding-left': '15px',
+                'border-left': '4px solid var(--primary-color)',
+                'line-height': '1.5'
+            },
+            '.question-type-tag': {
+                'display': 'inline-block',
+                'padding': '2px 8px',
+                'border-radius': '12px',
+                'background-color': 'rgba(63, 81, 181, 0.1)',
+                'color': 'var(--primary-color)',
+                'font-size': '12px',
+                'margin-right': '10px',
+                'font-weight': 'bold'
+            },
+            '.question-score': {
+                'display': 'inline-block',
+                'padding': '2px 8px',
+                'border-radius': '12px',
+                'background-color': 'rgba(76, 175, 80, 0.1)',
+                'color': 'var(--success-color)',
+                'font-size': '12px',
+                'float': 'right',
+                'font-weight': 'bold'
+            },
+            '.question-content': {
+                'margin-bottom': '15px',
+                'padding-bottom': '15px',
+                'border-bottom': '1px dashed #eaeaea'
             },
             // 选项样式
             '.am-RadioControl-group, .am-CheckboxControl-group': {
-                'padding': '5px 0'
+                'padding': '10px 0',
+                'display': 'flex',
+                'flex-direction': 'column',
+                'gap': '12px'
             },
             '.am-RadioControl, .am-CheckboxControl': {
-                'margin-bottom': '10px',
-                'padding': '8px 12px',
+                'margin-bottom': '0',
+                'padding': '12px 16px',
                 'border-radius': 'var(--border-radius)',
-                'transition': 'all 0.2s ease'
+                'transition': 'all 0.3s ease',
+                'border': '1px solid #e8e8e8',
+                'background-color': '#fff',
+                'box-shadow': '0 1px 3px rgba(0,0,0,0.02)',
+                'position': 'relative',
+                'overflow': 'hidden',
+                'cursor': 'pointer'
             },
             '.am-RadioControl:hover, .am-CheckboxControl:hover': {
-                'background-color': '#f5f7fa'
+                'background-color': '#f9f9ff',
+                'border-color': '#d0d5ff',
+                'box-shadow': '0 3px 6px rgba(0,0,0,0.05)',
+                'transform': 'translateY(-1px)'
+            },
+            '.enhanced-options .am-RadioControl, .enhanced-options .am-CheckboxControl': {
+                'margin-bottom': '8px',
+                'border-left': '3px solid transparent'
+            },
+            '.question-container .am-RadioControl, .question-container .am-CheckboxControl': {
+                'border': '1px solid #e0e0e0',
+                'border-radius': '8px',
+                'margin-bottom': '10px',
+                'transition': 'all 0.2s ease-in-out'
             },
             '.am-RadioControl-input:checked + .am-RadioControl-icon, .am-CheckboxControl-input:checked + .am-CheckboxControl-icon': {
                 'background-color': 'var(--primary-color)',
                 'border-color': 'var(--primary-color)'
+            },
+            '.am-RadioControl.is-checked, .am-CheckboxControl.is-checked': {
+                'background-color': 'rgba(63, 81, 181, 0.05)',
+                'border-left': '3px solid var(--primary-color)',
+                'padding-left': '14px',
+                'font-weight': '500'
+            },
+            '.am-RadioControl-label, .am-CheckboxControl-label': {
+                'font-size': '15px',
+                'line-height': '1.5',
+                'padding-left': '5px'
+            },
+            // 选项字母标记
+            '.option-label': {
+                'display': 'inline-block',
+                'width': '26px',
+                'height': '26px',
+                'line-height': '26px',
+                'text-align': 'center',
+                'background-color': '#f0f0f0',
+                'color': '#333',
+                'border-radius': '50%',
+                'margin-right': '10px',
+                'font-weight': 'bold',
+                'font-size': '14px',
+                'box-shadow': '0 2px 4px rgba(0,0,0,0.1)'
+            },
+            '.is-checked .option-label': {
+                'background-color': 'var(--primary-color)',
+                'color': 'white',
+                'box-shadow': '0 2px 4px rgba(63, 81, 181, 0.3)'
+            },
+            '.enhanced-options .am-RadioControl-label, .enhanced-options .am-CheckboxControl-label': {
+                'font-size': '15px',
+                'line-height': '1.6',
+                'font-family': '"PingFang SC", "Microsoft YaHei", sans-serif',
+                'display': 'flex',
+                'align-items': 'center'
             },
             // 操作按钮样式
             '.exam-actions': {
@@ -741,6 +867,15 @@
                 '.exam-title': {
                     'font-size': '20px'
                 }
+            },
+            // 新增样式
+            '.enhanced-options': {
+                'border': '1px solid #eaeaea',
+                'border-radius': 'var(--border-radius)',
+                'padding': '10px 15px',
+                'margin-top': '10px',
+                'background-color': '#fafafa',
+                'box-shadow': '0 1px 3px rgba(0,0,0,0.03)'
             }
         }
     };

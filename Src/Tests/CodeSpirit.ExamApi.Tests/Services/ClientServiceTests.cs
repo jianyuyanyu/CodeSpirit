@@ -30,7 +30,8 @@ namespace CodeSpirit.ExamApi.Tests.Services
             // 初始化ClientService
             _clientService = new ClientService(
                 DbContext,
-                _mockLogger.Object
+                _mockLogger.Object,
+                _idGenerator
             );
 
             // 准备测试数据

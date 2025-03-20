@@ -282,7 +282,7 @@ public class ClientService : IClientService
 
             if (examRecord == null)
             {
-                throw new ArgumentException("考试记录不存在", nameof(recordId));
+                throw new AppServiceException(400, "考试记录不存在");
             }
 
             // 加载试卷题目

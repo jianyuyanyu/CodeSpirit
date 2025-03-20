@@ -81,6 +81,10 @@ public class IndexController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> SubmitExam(long id, [FromBody] List<ClientExamAnswerDto> answers)
     {
         var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
+        if (currentUserId == 0)
+        {
+            return Unauthorized();
+        }
         await _clientService.SubmitExamAsync(id, currentUserId, answers);
         return SuccessResponse();
     }
@@ -210,7 +214,7 @@ public class IndexController : ApiControllerBase
                                 new JObject
                                 {
                                     ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer({question.Id}, event.data.value.join(','));"
+                                    ["script"] = $"saveAnswer({question.Id}, event.data.value);"
                                 }
                             }
                         }
@@ -298,7 +302,8 @@ public class IndexController : ApiControllerBase
             ["type"] = "form",
             ["title"] = "",
             ["id"] = "examForm",
-            ["body"] = formItems
+            ["body"] = formItems,
+            ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
         };
         
         return Ok(amisConfig);

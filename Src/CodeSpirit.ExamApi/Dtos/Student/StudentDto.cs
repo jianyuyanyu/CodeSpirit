@@ -38,12 +38,12 @@ public class StudentDto
     /// <summary>
     /// 是否激活
     /// </summary>
-    [DisplayName("状态")]
+    [DisplayName("是否激活")]
     public bool IsActive { get; set; }
 
     /// <summary>
     /// 创建时间
     /// </summary>
     [DisplayName("创建时间")]
-    public DateTime CreationTime { get; set; }
+    public DateTime CreatedAt { get; set; }
 } 

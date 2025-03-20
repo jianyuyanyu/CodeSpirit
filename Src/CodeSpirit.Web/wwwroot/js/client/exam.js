@@ -383,7 +383,7 @@
                             },
                             {
                                 type: 'service',
-                                api: `/exam/api/exam/client/${examId}/amis`,
+                                schemaApi: `/exam/api/exam/client/${examId}/amis`,
                                 className: 'question-container',
                                 onEvent: {
                                     fetchInited: {

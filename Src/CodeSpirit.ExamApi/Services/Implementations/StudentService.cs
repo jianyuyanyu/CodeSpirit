@@ -6,6 +6,7 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
@@ -261,4 +262,29 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             .Find(x => x.StudentId == studentId && groupIds.Contains(x.StudentGroupId))
             .ExecuteDeleteAsync();
     }
+
+    //public override async Task<StudentDto> CreateAsync(CreateStudentDto createDto)
+    //{
+
+    //    // 学生组
+    //    if (createDto.StudentGroupIds?.Any() == true)
+    //    {
+
+    //        // 验证学生组是否存在
+    //        var groups = await _studentGroupRepository.CreateQuery().Where(x => createDto.StudentGroupIds.Contains(x.Id)).Select(x => x.Id).ToListAsync();
+    //        if(groups.Count != createDto.StudentGroupIds.Count)
+    //        {
+    //            throw new AppServiceException(400, "部分学生组不存在！");
+    //        } 
+    //        var mappings = groups
+    //            .Select(groupId => new StudentGroupMapping
+    //            {
+    //                StudentId = studentId,
+    //                StudentGroupId = groupId
+    //            })
+    //            .ToList();
+
+    //    }
+
+    //}
 } 

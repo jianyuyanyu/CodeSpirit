@@ -67,8 +67,6 @@ public class StudentsController : ApiControllerBase
     [HttpPost]
     public async Task<ActionResult<ApiResponse<StudentDto>>> CreateStudent([FromBody] CreateStudentDto createDto)
     {
-        ArgumentNullException.ThrowIfNull(createDto);
-        
         var result = await _studentService.CreateAsync(createDto);
         return SuccessResponse(result);
     }

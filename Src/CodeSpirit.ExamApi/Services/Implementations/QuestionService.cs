@@ -1,7 +1,9 @@
 using AutoMapper;
 using CodeSpirit.Core.Extensions;
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.Question;
+using CodeSpirit.ExamApi.Services.TextParsers;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
@@ -20,6 +22,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
     private readonly IRepository<QuestionVersion> _versionRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<QuestionService> _logger;
+    private readonly IIdGenerator _idGenerator;
     private string? _changeReason;
 
     /// <summary>
@@ -30,7 +33,8 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         IRepository<QuestionCategory> categoryRepository,
         IRepository<QuestionVersion> versionRepository,
         IMapper mapper,
-        ILogger<QuestionService> logger)
+        ILogger<QuestionService> logger,
+        IIdGenerator idGenerator)
         : base(repository, mapper)
     {
         _repository = repository;
@@ -38,6 +42,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         _versionRepository = versionRepository;
         _mapper = mapper;
         _logger = logger;
+        _idGenerator = idGenerator;
     }
 
     /// <summary>
@@ -461,108 +466,8 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
     }
     
     /// <summary>
-    /// 解析单选题
-    /// </summary>
-    private List<(string Content, List<string> Options, string CorrectAnswer)> ParseSingleChoiceQuestions(string text)
-    {
-        var result = new List<(string Content, List<string> Options, string CorrectAnswer)>();
-        
-        // 尝试提取单选题部分
-        var singleChoiceSection = Regex.Match(text, @"单项选择题.*?(?=判断题|$)", RegexOptions.Singleline);
-        string sectionText = singleChoiceSection.Success ? singleChoiceSection.Value : text;
-        
-        // 检查是否包含特定的测试数据
-        if (text.Contains("江西新余康展高级技工学校") && text.Contains("SSL协议") && text.Contains("电子商务隐私权"))
-        {
-            // 添加特定的测试场景中的单选题
-            result.Add((
-                "1. SSL协议最早是由()提出的。", 
-                new List<string> { "Microsoft", "Netscape", "ISO", "IBM" },
-                "Netscape"
-            ));
-            result.Add((
-                "2. 以下不属于电子商务隐私权保护对策的是()。", 
-                new List<string> { 
-                    "提高消费者的隐私权保护意识", 
-                    "逐步完善消费者隐私权的科技保护手段", 
-                    "设立消费者隐私保护的法律", 
-                    "规范网络伦理的规约体系" 
-                },
-                "规范网络伦理的规约体系"
-            ));
-            return result;
-        }
-        
-        // 更精确的单选题匹配模式
-        var singleChoicePattern = @"(\d+)[、\.]\s*([^A-D\n]*?)(?:\(\))?[^\n]*\s*\nA[、\.]\s*([^\n]*)\s*\nB[、\.]\s*([^\n]*)\s*\nC[、\.]\s*([^\n]*)\s*\nD[、\.]\s*([^\n]*)(?=\s*\n\d|$)";
-        var matches = Regex.Matches(sectionText, singleChoicePattern, RegexOptions.Singleline);
-        
-        foreach (Match match in matches)
-        {
-            if (match.Groups.Count >= 7)
-            {
-                var questionNumber = match.Groups[1].Value.Trim();
-                var content = match.Groups[2].Value.Trim();
-                var optionA = match.Groups[3].Value.Trim();
-                var optionB = match.Groups[4].Value.Trim();
-                var optionC = match.Groups[5].Value.Trim();
-                var optionD = match.Groups[6].Value.Trim();
-                
-                // 临时默认答案为A，实际应用中应提供正确答案
-                var correctAnswer = optionA;
-                
-                result.Add((
-                    $"{questionNumber}. {content}", 
-                    new List<string> { optionA, optionB, optionC, optionD },
-                    correctAnswer
-                ));
-            }
-        }
-        
-        return result;
-    }
-    
-    /// <summary>
-    /// 解析判断题
-    /// </summary>
-    private List<(string Content, string CorrectAnswer)> ParseTrueFalseQuestions(string text)
-    {
-        var result = new List<(string Content, string CorrectAnswer)>();
-        
-        // 尝试提取判断题部分
-        var trueFalseSection = Regex.Match(text, @"判断题.*?$", RegexOptions.Singleline);
-        string sectionText = trueFalseSection.Success ? trueFalseSection.Value : "";
-        
-        if (string.IsNullOrEmpty(sectionText))
-            return result;
-        
-        // 更精确的判断题匹配模式，支持多种格式
-        var trueFalsePattern = @"(\d+)[\s\.、]+(.*?)(?:[\(（][\s]*[\)）]|$)";
-        var matches = Regex.Matches(sectionText, trueFalsePattern, RegexOptions.Singleline);
-        
-        foreach (Match match in matches)
-        {
-            if (match.Groups.Count >= 3)
-            {
-                var questionNumber = match.Groups[1].Value.Trim();
-                var content = match.Groups[2].Value.Trim();
-                
-                // 临时默认答案为True，实际应用中应提供正确答案
-                var correctAnswer = "True";
-                
-                result.Add(($"{questionNumber}. {content}", correctAnswer));
-            }
-        }
-        
-        return result;
-    }
-
-    /// <summary>
     /// 文本识别导入题目
     /// </summary>
-    /// <param name="text">试卷文本内容</param>
-    /// <param name="categoryId">题目分类ID</param>
-    /// <param name="difficulty">题目难度</param>
     /// <returns>导入结果</returns>
     public async Task<(int successCount, List<string> failedItems)> ImportFromTextAsync(QuestionImportFromTextDto input)
     {
@@ -583,112 +488,82 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         
         try
         {
-            // 解析单选题
-            var singleChoiceQuestions = ParseSingleChoiceQuestions(input.Text);
-            foreach (var questionData in singleChoiceQuestions)
+            // 使用题目解析器解析文本
+            var loggerFactory = new LoggerFactory();
+            var parserLogger = loggerFactory.CreateLogger<QuestionTextParser>();
+            var parser = new QuestionTextParser(parserLogger);
+            var parsedQuestions = parser.Parse(input.Text);
+            
+            if (!parsedQuestions.Any())
             {
-                try
-                {
-                    // 检查题目是否重复 - 使用Find代替Where+FirstOrDefaultAsync
-                    var existingQuestion = _repository.Find(q => q.Content == questionData.Content && q.Type == QuestionType.SingleChoice)
-                        .FirstOrDefault();
-                    
-                    if (existingQuestion != null)
-                    {
-                        failedItems.Add($"单选题「{questionData.Content}」已存在");
-                        continue;
-                    }
-                    
-                    var options = questionData.Options;
-                    var correctAnswer = questionData.CorrectAnswer;
-                    
-                    // 确保选项和答案格式正确
-                    try
-                    {
-                        ValidateOptionsAndAnswer(QuestionType.SingleChoice, options, correctAnswer);
-                    }
-                    catch (AppServiceException ex)
-                    {
-                        failedItems.Add($"单选题「{questionData.Content}」验证失败：{ex.Message}");
-                        continue;
-                    }
-                    
-                    var question = new Question
-                    {
-                        Content = questionData.Content,
-                        Options = options,
-                        CorrectAnswer = correctAnswer,
-                        Type = QuestionType.SingleChoice,
-                        Difficulty = input.QuestionDifficulty,
-                        CategoryId = input.CategoryId,
-                        Version = 1,
-                        DefaultScore = 1
-                    };
-                    
-                    await _repository.AddAsync(question);
-                    successCount++;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "导入单选题失败: {Content}", questionData.Content);
-                    failedItems.Add($"单选题「{questionData.Content}」导入失败：{ex.Message}");
-                }
+                throw new AppServiceException(400, "未能从文本中解析出任何题目，请检查文本格式！");
             }
             
-            // 解析判断题
-            var trueFalseQuestions = ParseTrueFalseQuestions(input.Text);
-            foreach (var questionData in trueFalseQuestions)
+            foreach (var questionData in parsedQuestions)
             {
                 try
                 {
-                    // 检查题目是否重复 - 使用Find代替Where+FirstOrDefaultAsync
-                    var existingQuestion = _repository.Find(q => q.Content == questionData.Content && q.Type == QuestionType.TrueFalse)
+                    // 检查题目是否重复
+                    var existingQuestion = _repository.Find(q => 
+                        q.Content == questionData.Content && 
+                        q.Type == questionData.Type)
                         .FirstOrDefault();
                     
                     if (existingQuestion != null)
                     {
-                        failedItems.Add($"判断题「{questionData.Content}」已存在");
+                        string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                        failedItems.Add($"{typeStr}「{questionData.Content}」已存在");
                         continue;
                     }
-                    
-                    // 判断题的选项是固定的 True/False
-                    var tfOptions = new List<string> { "True", "False" };
-                    var correctAnswer = questionData.CorrectAnswer;
                     
                     // 确保选项和答案格式正确
                     try
                     {
-                        ValidateOptionsAndAnswer(QuestionType.TrueFalse, tfOptions, correctAnswer);
+                        ValidateOptionsAndAnswer(questionData.Type, questionData.Options, questionData.CorrectAnswer);
                     }
                     catch (AppServiceException ex)
                     {
-                        failedItems.Add($"判断题「{questionData.Content}」验证失败：{ex.Message}");
+                        string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                        failedItems.Add($"{typeStr}「{questionData.Content}」验证失败：{ex.Message}");
                         continue;
                     }
                     
                     var question = new Question
                     {
+                        Id = _idGenerator.NewId(),
                         Content = questionData.Content,
-                        Options = tfOptions,
-                        CorrectAnswer = correctAnswer,
-                        Type = QuestionType.TrueFalse,
+                        Options = questionData.Options,
+                        CorrectAnswer = questionData.CorrectAnswer,
+                        Type = questionData.Type,
                         Difficulty = input.QuestionDifficulty,
                         CategoryId = input.CategoryId,
                         Version = 1,
-                        DefaultScore = 1
+                        DefaultScore = questionData.Score,
+                        Analysis = questionData.Analysis
                     };
+                    
+                    // 处理标签
+                    if (questionData.Tags?.Any() == true)
+                    {
+                        question.Tags = JsonSerializer.Serialize(questionData.Tags);
+                    }
                     
                     await _repository.AddAsync(question);
                     successCount++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "导入判断题失败: {Content}", questionData.Content);
-                    failedItems.Add($"判断题「{questionData.Content}」导入失败：{ex.Message}");
+                    string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                    _logger.LogError(ex, "导入{Type}失败: {Content}", typeStr, questionData.Content);
+                    failedItems.Add($"{typeStr}「{questionData.Content}」导入失败：{ex.Message}");
                 }
             }
             
             await _repository.SaveChangesAsync();
+        }
+        catch (AppServiceException ex)
+        {
+            throw; // 已包含错误信息的异常直接抛出
         }
         catch (Exception ex)
         {

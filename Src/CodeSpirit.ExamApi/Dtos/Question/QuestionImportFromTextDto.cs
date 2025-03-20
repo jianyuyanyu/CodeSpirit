@@ -28,6 +28,7 @@ namespace CodeSpirit.ExamApi.Dtos.Question
         /// </summary>
         [DisplayName("Word格式文本")]
         [AmisFormField(type: "editor",AdditionalConfig = "{\"language\":\"markdown\"}")]
-        public string? Text { get; set; }
+        [Required]
+        public required string Text { get; set; }
     }
 }

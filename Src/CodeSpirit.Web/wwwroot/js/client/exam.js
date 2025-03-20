@@ -267,7 +267,7 @@
         body: [
             {
                 type: 'service',
-                initApi: '/identity/api/identity/profile',
+                api: '/identity/api/identity/profile',
                 className: 'client-header',
                 body: [
                     {
@@ -279,6 +279,18 @@
                                 type: 'tpl',
                                 tpl: '<div class="logo"><img src="/logo.png" /><span>考试系统</span></div>',
                                 className: 'client-logo'
+                            },
+                            {
+                                type: 'flex',
+                                justify: 'flex-end',
+                                alignItems: 'center',
+                                className: 'user-info-container',
+                                items: [
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="user-info">欢迎您，${name}</div>'
+                                    }
+                                ]
                             },
                             {
                                 type: 'flex',
@@ -301,7 +313,6 @@
                             {
                                 actionType: "custom",
                                 script: `
-                                    alert("fetchSuccess事件已触发");
                                     console.log("fetchSuccess事件已触发", event.data);
                                     window.GlobalData.set('user.id', event.data.id || null);
                                     window.GlobalData.set('user.name', event.data.name || event.data.userName || '');
@@ -348,8 +359,14 @@
                 body: [
                     {
                         type: 'panel',
-                        title: '${name}',
+                        header: {
+                            type: 'tpl',
+                            tpl: '<div style="font-size: 24px; font-weight: bold; color: var(--primary-color); text-align: center;">${name}</div>',
+                            className: 'exam-title'
+                        },
+                        headerClassName: 'exam-panel-header',
                         bodyClassName: 'exam-info-panel',
+                        className: 'exam-panel',
                         body: [
                             {
                                 type: 'flex',
@@ -383,7 +400,7 @@
                             },
                             {
                                 type: 'service',
-                                schemaApi: `/exam/api/exam/client/${examId}/amis`,
+                                schemaApi: `get:/exam/api/exam/client/${examId}/amis`,
                                 className: 'question-container',
                                 onEvent: {
                                     fetchInited: {
@@ -462,74 +479,267 @@
             }
         ],
         css: {
+            // 全局样式
+            ':root': {
+                '--primary-color': '#3f51b5',
+                '--success-color': '#4caf50',
+                '--warning-color': '#ff9800',
+                '--danger-color': '#f44336',
+                '--border-radius': '8px',
+                '--box-shadow': '0 4px 12px rgba(0,0,0,0.1)'
+            },
+            'body': {
+                'background-color': '#f5f7fa',
+                'font-family': '"PingFang SC", "Microsoft YaHei", sans-serif',
+                'color': '#333'
+            },
+            // 头部导航样式
             '.client-header': {
                 'background-color': '#fff',
-                'box-shadow': '0 2px 4px rgba(0,0,0,0.1)',
-                'padding': '10px 20px'
+                'box-shadow': 'var(--box-shadow)',
+                'padding': '12px 24px',
+                'position': 'sticky',
+                'top': '0',
+                'z-index': '100',
+                'border-bottom': '1px solid #eaeaea'
             },
             '.client-logo': {
                 'display': 'flex',
                 'align-items': 'center'
             },
             '.client-logo img': {
-                'height': '32px',
-                'margin-right': '10px'
+                'height': '36px',
+                'margin-right': '12px',
+                'transition': 'transform 0.3s ease'
+            },
+            '.client-logo img:hover': {
+                'transform': 'scale(1.05)'
             },
             '.client-logo span': {
-                'font-size': '18px',
-                'font-weight': 'bold'
+                'font-size': '20px',
+                'font-weight': 'bold',
+                'color': 'var(--primary-color)',
+                'letter-spacing': '0.5px'
             },
-            '.exam-timer-container': {
+            // 用户信息样式
+            '.user-info-container': {
+                'margin-right': '20px'
+            },
+            '.user-info': {
+                'font-size': '16px',
+                'font-weight': '500',
+                'color': '#333',
+                'background-color': '#f9f9f9',
                 'padding': '8px 16px',
-                'background-color': '#f8f9fa',
-                'border-radius': '4px'
+                'border-radius': 'var(--border-radius)',
+                'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
+                'transition': 'all 0.3s ease'
+            },
+            '.user-info:hover': {
+                'background-color': '#f0f2f5'
+            },
+            // 计时器样式
+            '.exam-timer-container': {
+                'padding': '10px 18px',
+                'background-color': '#fff',
+                'border-radius': 'var(--border-radius)',
+                'box-shadow': '0 2px 8px rgba(0,0,0,0.08)',
+                'border': '1px solid #f0f0f0',
+                'transition': 'all 0.3s ease'
             },
             '.exam-timer': {
-                'color': 'var(--danger)',
-                'font-size': '18px',
-                'font-weight': 'bold'
+                'color': 'var(--danger-color)',
+                'font-size': '20px',
+                'font-weight': 'bold',
+                'font-family': 'Consolas, monospace',
+                'display': 'flex',
+                'align-items': 'center'
             },
+            '.exam-timer::before': {
+                'content': '""',
+                'display': 'inline-block',
+                'width': '12px',
+                'height': '12px',
+                'background-color': 'var(--danger-color)',
+                'border-radius': '50%',
+                'margin-right': '10px',
+                'animation': 'pulse 1s infinite'
+            },
+            '@keyframes pulse': {
+                '0%': {
+                    'opacity': '0.6',
+                    'transform': 'scale(0.9)'
+                },
+                '50%': {
+                    'opacity': '1',
+                    'transform': 'scale(1.1)'
+                },
+                '100%': {
+                    'opacity': '0.6',
+                    'transform': 'scale(0.9)'
+                }
+            },
+            // 考试容器样式
             '.exam-container': {
-                'margin': '0 auto',
-                'max-width': '1000px'
+                'margin': '20px auto',
+                'max-width': '1100px',
+                'padding': '0 20px'
+            },
+            // 面板样式
+            '.am-Panel': {
+                'border-radius': 'var(--border-radius)',
+                'overflow': 'hidden',
+                'box-shadow': 'var(--box-shadow)',
+                'border': 'none'
+            },
+            '.am-Panel-heading': {
+                'background-color': '#fff',
+                'border-bottom': '1px solid #eaeaea',
+                'padding': '15px 20px',
+                'text-align': 'center'
+            },
+            '.am-Panel-body': {
+                'padding': '20px'
+            },
+            // panel标题样式
+            '.exam-panel-header': {
+                'background-color': '#fff',
+                'border-bottom': '1px solid #eaeaea',
+                'padding': '15px 20px',
+                'text-align': 'center',
+                'background-image': 'linear-gradient(to right, rgba(63, 81, 181, 0.1), rgba(63, 81, 181, 0.05), rgba(63, 81, 181, 0))'
+            },
+            '.exam-panel-header .am-Panel-title, .exam-panel-header .exam-title': {
+                'font-size': '24px !important',
+                'font-weight': 'bold !important',
+                'color': 'var(--primary-color) !important',
+                'text-shadow': '0 1px 2px rgba(0,0,0,0.1) !important',
+                'letter-spacing': '1px !important'
+            },
+            // 考试信息样式
+            '.exam-info-panel': {
+                'background-color': '#fff',
+                'padding': '15px'
             },
             '.exam-info': {
                 'margin-bottom': '20px',
-                'flex-wrap': 'wrap'
+                'flex-wrap': 'wrap',
+                'background-color': '#f9f9f9',
+                'padding': '15px',
+                'border-radius': 'var(--border-radius)'
             },
             '.exam-info-item': {
                 'margin-right': '20px',
-                'margin-bottom': '10px'
+                'margin-bottom': '10px',
+                'padding': '8px 15px',
+                'background-color': '#fff',
+                'border-radius': 'var(--border-radius)',
+                'box-shadow': '0 2px 5px rgba(0,0,0,0.05)',
+                'border-left': '3px solid var(--primary-color)',
+                'font-weight': '500'
+            },
+            // 题目样式
+            '.question-container': {
+                'margin-top': '20px'
             },
             '.question-item': {
                 'margin-bottom': '30px',
-                'padding': '15px',
+                'padding': '20px',
                 'border': '1px solid #e8e8e8',
-                'border-radius': '8px',
-                'background-color': '#fafafa'
+                'border-radius': 'var(--border-radius)',
+                'background-color': '#fff',
+                'box-shadow': '0 2px 8px rgba(0,0,0,0.04)',
+                'transition': 'all 0.3s ease'
+            },
+            '.question-item:hover': {
+                'box-shadow': '0 5px 15px rgba(0,0,0,0.08)',
+                'transform': 'translateY(-2px)'
             },
             '.question-label': {
                 'font-size': '16px',
                 'font-weight': '500',
-                'margin-bottom': '10px',
-                'display': 'block'
+                'margin-bottom': '15px',
+                'display': 'block',
+                'padding-left': '10px',
+                'border-left': '4px solid var(--primary-color)'
             },
+            // 选项样式
+            '.am-RadioControl-group, .am-CheckboxControl-group': {
+                'padding': '5px 0'
+            },
+            '.am-RadioControl, .am-CheckboxControl': {
+                'margin-bottom': '10px',
+                'padding': '8px 12px',
+                'border-radius': 'var(--border-radius)',
+                'transition': 'all 0.2s ease'
+            },
+            '.am-RadioControl:hover, .am-CheckboxControl:hover': {
+                'background-color': '#f5f7fa'
+            },
+            '.am-RadioControl-input:checked + .am-RadioControl-icon, .am-CheckboxControl-input:checked + .am-CheckboxControl-icon': {
+                'background-color': 'var(--primary-color)',
+                'border-color': 'var(--primary-color)'
+            },
+            // 操作按钮样式
             '.exam-actions': {
                 'margin-top': '30px',
                 'margin-bottom': '20px'
             },
+            '.am-Button--primary': {
+                'background-color': 'var(--primary-color)',
+                'border-color': 'var(--primary-color)',
+                'padding': '10px 24px',
+                'font-size': '16px',
+                'border-radius': 'var(--border-radius)',
+                'transition': 'all 0.3s ease'
+            },
+            '.am-Button--primary:hover': {
+                'background-color': '#303f9f',
+                'transform': 'translateY(-2px)',
+                'box-shadow': '0 5px 15px rgba(63, 81, 181, 0.3)'
+            },
+            '.am-Button--link': {
+                'color': '#666',
+                'font-size': '16px',
+                'transition': 'all 0.3s ease'
+            },
+            '.am-Button--link:hover': {
+                'color': 'var(--danger-color)',
+                'text-decoration': 'none'
+            },
+            // 分割线样式
+            '.am-Divider': {
+                'margin': '20px 0',
+                'background-color': '#eaeaea'
+            },
+            // 响应式样式
             '@media (max-width: 768px)': {
                 '.exam-container': {
                     'padding': '10px'
                 },
                 '.question-label': {
-                    'font-size': '14px'
+                    'font-size': '15px'
                 },
                 '.client-header': {
-                    'padding': '10px'
+                    'padding': '10px 15px',
+                    'flex-direction': 'column'
                 },
                 '.client-logo span': {
+                    'font-size': '18px'
+                },
+                '.exam-timer': {
                     'font-size': '16px'
+                },
+                '.exam-info-item': {
+                    'width': '100%',
+                    'margin-right': '0'
+                },
+                '.user-info-container': {
+                    'margin-right': '0',
+                    'margin-bottom': '10px'
+                },
+                '.exam-title': {
+                    'font-size': '20px'
                 }
             }
         }

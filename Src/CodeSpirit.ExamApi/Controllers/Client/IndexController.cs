@@ -220,72 +220,38 @@ public class IndexController : ApiControllerBase
                     break;
                 
                 case "TrueFalse":
-                    // 判断是否为长文本
-                    bool isLongContent = question.Content.Contains("\n") || question.Content.Length > 100;
+                    // 创建判断题选项（统一使用radios组件）
+                    var tfOptions = new JArray
+                    {
+                        new JObject { ["label"] = "正确", ["value"] = "True" },
+                        new JObject { ["label"] = "错误", ["value"] = "False" }
+                    };
                     
-                    if (isLongContent)
+                    var tfObj = new JObject
                     {
-                        var tfLongObj = new JObject
+                        ["type"] = "radios",
+                        ["name"] = $"question_{question.Id}",
+                        ["options"] = tfOptions,
+                        ["mode"] = "horizontal",
+                        ["required"] = question.IsRequired
+                    };
+                    
+                    var tfEvent = new JObject
+                    {
+                        ["change"] = new JObject
                         {
-                            ["type"] = "textarea",
-                            ["name"] = $"question_{question.Id}",
-                            ["placeholder"] = "请输入答案",
-                            ["minRows"] = 5,
-                            ["maxRows"] = 10,
-                            ["required"] = question.IsRequired
-                        };
-                        
-                        var tfLongEvent = new JObject
-                        {
-                            ["change"] = new JObject
+                            ["actions"] = new JArray
                             {
-                                ["actions"] = new JArray
+                                new JObject
                                 {
-                                    new JObject
-                                    {
-                                        ["actionType"] = "custom",
-                                        ["script"] = $"saveAnswer({question.Id}, event.data.value);"
-                                    }
+                                    ["actionType"] = "custom",
+                                    ["script"] = $"saveAnswer({question.Id}, event.data.value);"
                                 }
                             }
-                        };
-                        tfLongObj["onEvent"] = tfLongEvent;
-                        formItems.Add(tfLongObj);
-                    }
-                    else
-                    {
-                        var tfOptions = new JArray
-                        {
-                            new JObject { ["label"] = "正确", ["value"] = "True" },
-                            new JObject { ["label"] = "错误", ["value"] = "False" }
-                        };
-                        
-                        var tfObj = new JObject
-                        {
-                            ["type"] = "radios",
-                            ["name"] = $"question_{question.Id}",
-                            ["options"] = tfOptions,
-                            ["mode"] = "horizontal",
-                            ["required"] = question.IsRequired
-                        };
-                        
-                        var tfEvent = new JObject
-                        {
-                            ["change"] = new JObject
-                            {
-                                ["actions"] = new JArray
-                                {
-                                    new JObject
-                                    {
-                                        ["actionType"] = "custom",
-                                        ["script"] = $"saveAnswer({question.Id}, event.data.value);"
-                                    }
-                                }
-                            }
-                        };
-                        tfObj["onEvent"] = tfEvent;
-                        formItems.Add(tfObj);
-                    }
+                        }
+                    };
+                    tfObj["onEvent"] = tfEvent;
+                    formItems.Add(tfObj);
                     break;
                 
                 default:

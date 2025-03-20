@@ -48,4 +48,12 @@ public interface IClientService
     /// <param name="userId">用户ID</param>
     /// <returns>考试结果</returns>
     Task<ClientExamResultDto> GetExamResultAsync(long recordId, long userId);
+
+    /// <summary>
+    /// 获取考试基本信息
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>考试基本信息</returns>
+    Task<ClientExamBasicInfoDto> GetExamBasicInfoAsync(long examId, long userId);
 } 

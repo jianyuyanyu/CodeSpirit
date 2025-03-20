@@ -1,0 +1,57 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace CodeSpirit.ExamApi.Dtos.Client;
+
+/// <summary>
+/// 考试基本信息DTO
+/// </summary>
+public class ClientExamBasicInfoDto
+{
+    /// <summary>
+    /// 考试ID
+    /// </summary>
+    [DisplayName("考试ID")]
+    public long Id { get; set; }
+    
+    /// <summary>
+    /// 考试名称
+    /// </summary>
+    [DisplayName("考试名称")]
+    public string Name { get; set; }
+    
+    /// <summary>
+    /// 考试描述
+    /// </summary>
+    [DisplayName("考试描述")]
+    public string Description { get; set; }
+    
+    /// <summary>
+    /// 考试时长(分钟)
+    /// </summary>
+    [DisplayName("考试时长")]
+    public int Duration { get; set; }
+    
+    /// <summary>
+    /// 开始时间
+    /// </summary>
+    [DisplayName("开始时间")]
+    public DateTime StartTime { get; set; }
+    
+    /// <summary>
+    /// 结束时间
+    /// </summary>
+    [DisplayName("结束时间")]
+    public DateTime EndTime { get; set; }
+    
+    /// <summary>
+    /// 总分
+    /// </summary>
+    [DisplayName("总分")]
+    public double TotalScore { get; set; }
+    
+    /// <summary>
+    /// 考试记录ID
+    /// </summary>
+    [DisplayName("考试记录ID")]
+    public long? RecordId { get; set; }
+} 

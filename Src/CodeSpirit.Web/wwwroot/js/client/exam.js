@@ -145,6 +145,19 @@
                 console.log("清除之前的计时器");
             }
             
+            // 确保amisInstance已初始化
+            if (!window.amisInstance) {
+                console.warn("计时器启动时amisInstance未初始化，将在5秒后重试");
+                setTimeout(() => {
+                    if (window.amisInstance) {
+                        console.log("重试成功，amisInstance已初始化");
+                        updateTimerDisplay();
+                    } else {
+                        console.error("重试失败，amisInstance仍未初始化");
+                    }
+                }, 5000);
+            }
+            
             // 更新计时器显示
             updateTimerDisplay();
             
@@ -152,7 +165,7 @@
             console.log("正在启动计时器间隔");
             examTimerInterval = setInterval(() => {
                 remainingTime--;
-                
+                console.log("剩余时间", remainingTime);
                 if (remainingTime <= 0) {
                     console.log("考试时间结束，准备自动提交");
                     clearInterval(examTimerInterval);
@@ -185,7 +198,56 @@
 
         // 同步到amis上下文
         if (window.amisInstance) {
-            window.GlobalData.syncToAmis(window.amisInstance, ['timer']);
+            // 直接更新数据而不是通过syncToAmis函数
+            try {
+                // 创建计时器数据对象
+                const timerData = {
+                    displayText: displayText,
+                    hours: hours,
+                    minutes: minutes,
+                    seconds: seconds,
+                    remainingSeconds: remainingTime
+                };
+                
+                // 防御性编程：检查props和data是否存在
+                window.amisInstance.updateProps({
+                    data: {
+                        timer: timerData
+                    }
+                });
+                
+                // 触发重新渲染
+                if (typeof window.amisInstance.forceUpdate === 'function') {
+                    window.amisInstance.forceUpdate();
+                }
+                
+                // 更新DOM，强制显示最新时间
+                const timerElements = document.querySelectorAll('.exam-timer');
+                if (timerElements && timerElements.length > 0) {
+                    timerElements.forEach(el => {
+                        el.innerHTML = `剩余时间：${displayText}`;
+                    });
+                }
+            } catch (e) {
+                console.error("更新计时器显示时出错", e);
+                
+                // 出错时直接更新DOM作为后备方案
+                const timerElements = document.querySelectorAll('.exam-timer');
+                if (timerElements && timerElements.length > 0) {
+                    timerElements.forEach(el => {
+                        el.innerHTML = `剩余时间：${displayText}`;
+                    });
+                }
+            }
+        } else {
+            console.warn("amisInstance未初始化，无法更新计时器显示");
+            // 尝试直接更新DOM
+            const timerElements = document.querySelectorAll('.exam-timer');
+            if (timerElements && timerElements.length > 0) {
+                timerElements.forEach(el => {
+                    el.innerHTML = `剩余时间：${displayText}`;
+                });
+            }
         }
     }
     
@@ -360,7 +422,7 @@
             },
             {
                 type: 'service',
-                api: `/exam/api/exam/client/${examId}`,
+                api: `/exam/api/exam/client/${examId}/basic`,
                 className: 'exam-container',
                 onEvent: {
                     fetchInited: {
@@ -955,6 +1017,7 @@
         }
     );
 
+    // 立即设置全局amis实例以确保计时器可以使用
     window.amisInstance = amisInstance;
 
     history.listen(state => {

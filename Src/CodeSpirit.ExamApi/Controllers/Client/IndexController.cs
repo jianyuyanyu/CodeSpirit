@@ -308,4 +308,22 @@ public class IndexController : ApiControllerBase
         
         return Ok(amisConfig);
     }
+
+    /// <summary>
+    /// 获取考试基本信息
+    /// </summary>
+    /// <param name="id">考试ID</param>
+    /// <returns>考试基本信息</returns>
+    [HttpGet("{id}/basic")]
+    public async Task<ActionResult<ApiResponse<ClientExamBasicInfoDto>>> GetExamBasicInfo(long id)
+    {
+        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
+        if (currentUserId == 0)
+        {
+            return Unauthorized();
+        }
+        
+        var result = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
+        return SuccessResponse(result);
+    }
 }

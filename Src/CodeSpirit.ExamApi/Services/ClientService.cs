@@ -58,8 +58,13 @@ public class ClientService : IClientService
                     EndTime = e.EndTime,
                     Duration = e.Duration,
                     TotalScore = e.ExamPaper.TotalScore,
-                    Status = e.StartTime <= now && e.EndTime >= now ? "进行中" :
-                             (e.StartTime > now ? "未开始" : "已结束"),
+                    Status = _context.ExamRecords.Any(r => 
+                        r.ExamSettingId == e.Id && 
+                        r.StudentId == userId && 
+                        (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted)) 
+                        ? "已完成" 
+                        : (e.StartTime <= now && e.EndTime >= now ? "进行中" : 
+                           (e.StartTime > now ? "未开始" : "已结束")),
                     // 检查是否已参加并获取成绩
                     HasResult = _context.ExamRecords.Any(r =>
                         r.ExamSettingId == e.Id &&
@@ -470,5 +475,88 @@ public class ClientService : IClientService
         }
 
         await _context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// 获取考试基本信息
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>考试基本信息</returns>
+    public async Task<ClientExamBasicInfoDto> GetExamBasicInfoAsync(long examId, long userId)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                throw new ArgumentException("考试不存在", nameof(examId));
+            }
+
+            // 检查考试时间
+            var now = DateTime.Now;
+            if (examSetting.StartTime > now || examSetting.EndTime < now)
+            {
+                throw new InvalidOperationException("不在考试时间范围内");
+            }
+
+            // 检查是否有权限参加考试
+            var studentGroups = await _context.StudentGroupMappings
+                .Include(m => m.Student)
+                .Where(m => m.Student.UserId == userId)
+                .Select(m => m.StudentGroupId)
+                .ToListAsync();
+
+            var hasPermission = !examSetting.StudentGroups.Any() ||
+                                examSetting.StudentGroups.Any(g => studentGroups.Contains(g.Id));
+
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("无权参加此考试");
+            }
+
+            // 获取学生实体
+            var student = await _context.Students
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到学生信息");
+            }
+
+            // 查找进行中的考试记录
+            var existingRecord = await _context.ExamRecords
+                .Where(r => r.ExamSettingId == examId && r.StudentId == student.Id && r.Status == ExamRecordStatus.InProgress)
+                .OrderByDescending(r => r.StartTime)
+                .FirstOrDefaultAsync();
+
+            // 组装考试基本信息
+            var examBasicInfo = new ClientExamBasicInfoDto
+            {
+                Id = examSetting.Id,
+                Name = examSetting.Name,
+                Description = examSetting.Description,
+                Duration = examSetting.Duration,
+                StartTime = existingRecord?.StartTime ?? now,
+                EndTime = examSetting.EndTime,
+                TotalScore = examSetting.ExamPaper.TotalScore,
+                RecordId = existingRecord?.Id
+            };
+
+            return examBasicInfo;
+        }
+        catch (Exception ex) when (
+            ex is not ArgumentException &&
+            ex is not InvalidOperationException &&
+            ex is not UnauthorizedAccessException)
+        {
+            _logger.LogError(ex, "获取考试基本信息时发生错误");
+            throw;
+        }
     }
 }

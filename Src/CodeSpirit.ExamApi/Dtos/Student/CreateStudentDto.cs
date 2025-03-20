@@ -37,14 +37,8 @@ public class CreateStudentDto
     [StringLength(20, ErrorMessage = "手机号码长度不能超过20个字符")]
     [Phone(ErrorMessage = "手机号码格式不正确")]
     [DisplayName("手机号码")]
-    public string PhoneNumber { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 是否激活
-    /// </summary>
-    [DisplayName("是否激活")]
-    public bool IsActive { get; set; } = true;
-
+    [DataType(DataType.PhoneNumber)]
+    public string PhoneNumber { get; set; } = string.Empty; 
     /// <summary>
     /// 学生组ID列表
     /// </summary>

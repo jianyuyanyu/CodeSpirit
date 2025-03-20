@@ -34,10 +34,20 @@ public class UpdateStudentDto
     [Phone(ErrorMessage = "手机号码格式不正确")]
     [DisplayName("手机号码")]
     public string PhoneNumber { get; set; } = string.Empty;
-
     /// <summary>
-    /// 是否激活
+    /// 学生组ID列表
     /// </summary>
-    [DisplayName("是否激活")]
-    public bool IsActive { get; set; }
+    [DisplayName("所属分组")]
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/exam/StudentGroups",
+        ValueField = "id",
+        LabelField = "name",
+                    Multiple = true,
+            JoinValues = false,
+            ExtractValue = true,
+            Searchable = true,
+            Clearable = true,
+            Placeholder = "请选择学生组"
+    )]
+    public List<long> StudentGroupIds { get; set; } = new List<long>();
 } 

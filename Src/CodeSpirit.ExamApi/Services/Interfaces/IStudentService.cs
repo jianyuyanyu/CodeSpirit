@@ -15,15 +15,6 @@ public interface IStudentService : IBaseCRUDIService<Student, StudentDto, long, 
     /// </summary>
     Task<PageList<StudentDto>> GetStudentsAsync(StudentQueryDto queryDto);
     
-    /// <summary>
-    /// 添加学生到分组
-    /// </summary>
-    Task AddStudentToGroupsAsync(long studentId, List<long> groupIds);
-    
-    /// <summary>
-    /// 从分组移除学生
-    /// </summary>
-    Task RemoveStudentFromGroupsAsync(long studentId, List<long> groupIds);
     
     /// <summary>
     /// 通过学号查找学生

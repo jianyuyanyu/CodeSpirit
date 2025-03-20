@@ -1,3 +1,5 @@
+using CodeSpirit.Amis.Attributes.Columns;
+
 namespace CodeSpirit.ExamApi.Dtos.Student;
 
 /// <summary>
@@ -39,6 +41,7 @@ public class StudentDto
     /// 是否激活
     /// </summary>
     [DisplayName("是否激活")]
+    [AmisColumn(QuickEdit = false)]
     public bool IsActive { get; set; }
 
     /// <summary>
@@ -46,4 +49,16 @@ public class StudentDto
     /// </summary>
     [DisplayName("创建时间")]
     public DateTime CreatedAt { get; set; }
-} 
+    /// <summary>
+    /// 分组列表
+    /// </summary>
+    [DisplayName("分组列表")]
+    public List<string> StudentGroups { get; set; }
+
+    /// <summary>
+    /// 分组ID列表
+    /// </summary>
+    [IgnoreColumn]
+    public List<long> StudentGroupIds { get; set; } = new List<long>();
+
+}

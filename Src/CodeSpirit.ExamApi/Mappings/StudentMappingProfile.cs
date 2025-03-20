@@ -12,14 +12,22 @@ public class StudentMappingProfile : Profile
     /// </summary>
     public StudentMappingProfile()
     {
-        /// 使用扩展方法自动配置所有映射
-        this.ConfigureBaseCRUDIMappings<
-            Student,             // 实体
-            StudentDto,          // DTO
-            long,                // 主键类型
-            CreateStudentDto,    // 创建DTO
-            UpdateStudentDto,    // 更新DTO
-            StudentBatchImportDto // 批量导入DTO
-        >();
+        CreateMap<Student, StudentDto>()
+            .ForMember(dest => dest.StudentGroups, opt => opt.MapFrom(src =>
+                src.StudentGroups != null ?
+                src.StudentGroups.Select(x => x.StudentGroup.Name).ToList() :
+                new List<string>()))
+            .ForMember(dest => dest.StudentGroupIds, opt => opt.MapFrom(src =>
+                src.StudentGroups != null ?
+                src.StudentGroups.Select(x => x.StudentGroup.Id).ToList() :
+                new List<long>()));
+
+        CreateMap<CreateStudentDto, Student>()
+            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
+
+        CreateMap<UpdateStudentDto, Student>();
+
+        CreateMap<PageList<Student>, PageList<StudentDto>>();
     }
+
 }

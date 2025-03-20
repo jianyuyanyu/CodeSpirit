@@ -6,10 +6,13 @@ using CodeSpirit.ExamApi.Dtos.Student;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using Humanizer;
 using LinqKit;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
@@ -19,6 +22,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// </summary>
 public class StudentService : BaseCRUDIService<Student, StudentDto, long, CreateStudentDto, UpdateStudentDto, StudentBatchImportDto>, IStudentService
 {
+    private readonly IRepository<Student> _repository;
     private readonly IRepository<StudentGroupMapping> _mappingRepository;
     private readonly IRepository<StudentGroup> _studentGroupRepository;
     private readonly ILogger<StudentService> _logger;
@@ -36,6 +40,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         IIdGenerator idGenerator)
         : base(repository, mapper)
     {
+        _repository = repository;
         _mappingRepository = mappingRepository;
         _studentGroupRepository = studentGroupRepository;
         _logger = logger;
@@ -66,10 +71,27 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             predicate = predicate.And(x => x.StudentGroups.Any(sg => sg.StudentGroupId == queryDto.StudentGroupId.Value));
         }
 
-        return await GetPagedListAsync(
-            queryDto,
-            predicate
-        );
+        // 修改查询
+        var query = _repository.CreateQuery()
+            .Include(x => x.StudentGroups)
+                .ThenInclude(x => x.StudentGroup)
+            .Where(predicate);
+
+        // 执行分页查询
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((queryDto.Page - 1) * queryDto.PerPage)
+            .Take(queryDto.PerPage)
+            .ToListAsync();
+
+        // 映射结果
+        var mappedItems = Mapper.Map<List<StudentDto>>(items);
+
+        return new PageList<StudentDto>
+        {
+            Total = totalCount,
+            Items = mappedItems
+        };
     }
 
     /// <summary>
@@ -185,7 +207,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     {
         if (createDto.StudentGroupIds.Any())
         {
-            await AddStudentToGroupsAsync(entity.Id, createDto.StudentGroupIds);
+            await SaveStudentToGroupsAsync(entity, createDto.StudentGroupIds);
         }
     }
 
@@ -214,15 +236,10 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     }
 
     /// <summary>
-    /// 添加学生到分组
+    /// 保存学生到分组
     /// </summary>
-    public async Task AddStudentToGroupsAsync(long studentId, List<long> groupIds)
-    {
-        var student = await Repository.GetByIdAsync(studentId);
-        if (student == null)
-        {
-            throw new AppServiceException(404, "学生不存在！");
-        }
+    public async Task SaveStudentToGroupsAsync(Student entity, List<long> groupIds)
+    { 
 
         // 验证学生组是否存在
         var groups = await _studentGroupRepository
@@ -230,71 +247,54 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             .ToListAsync();
 
         if (groups.Count != groupIds.Count)
-        {
             throw new AppServiceException(400, "部分学生组不存在！");
-        }
 
-        // 获取已存在的映射
-        var existingMappings = await _mappingRepository
-            .Find(x => x.StudentId == studentId && groupIds.Contains(x.StudentGroupId))
-            .Select(x => x.StudentGroupId)
-            .ToListAsync();
-
+        var mappings = await _mappingRepository.CreateQuery().AsNoTracking().Where(x=>x.StudentId == entity.Id).ToListAsync();
+        if (mappings.Any())
+            await _mappingRepository.DeleteRangeAsync(mappings);
         // 创建新的映射
         var newMappings = groupIds
-            .Except(existingMappings)
             .Select(groupId => new StudentGroupMapping
             {
-                StudentId = studentId,
+                 Id = _idGenerator.NewId(),
+                StudentId = entity.Id,
                 StudentGroupId = groupId
             })
             .ToList();
 
-        if (newMappings.Any())
-        {
-            await _mappingRepository.AddRangeAsync(newMappings);
-            await _mappingRepository.SaveChangesAsync();
-        }
+        await _mappingRepository.AddRangeAsync(newMappings);
+        await _mappingRepository.SaveChangesAsync();
     }
-
-    /// <summary>
-    /// 从分组移除学生
-    /// </summary>
-    public async Task RemoveStudentFromGroupsAsync(long studentId, List<long> groupIds)
+    protected override async Task<Student> GetEntityForUpdate(long id, UpdateStudentDto updateDto)
     {
-        var student = await Repository.GetByIdAsync(studentId);
-        if (student == null)
+        return await _repository.CreateQuery().Include(x => x.StudentGroups).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+    }
+    protected override async Task OnUpdating(Student entity, UpdateStudentDto updateDto)
+    {
+        // 检查学号是否已存在
+        var existsStudentNumber = await Repository
+            .Find(x => x.StudentNumber == updateDto.StudentNumber && x.Id != entity.Id)
+            .AnyAsync();
+        if (existsStudentNumber)
         {
-            throw new AppServiceException(404, "学生不存在！");
+            throw new AppServiceException(400, "学号/工号已存在！");
         }
 
-        await _mappingRepository
-            .Find(x => x.StudentId == studentId && groupIds.Contains(x.StudentGroupId))
-            .ExecuteDeleteAsync();
+
+        var entityGroups = entity.StudentGroups?.Select(x => x.StudentGroupId).ToList();
+        if(entityGroups == null)
+            entityGroups = new List<long>();
+        if (entityGroups.Except(updateDto.StudentGroupIds).Any())
+        {
+            entity.StudentGroups = null;
+            await SaveStudentToGroupsAsync(entity, updateDto.StudentGroupIds);
+
+        }
+        else if (updateDto.StudentGroupIds.Except(entityGroups).Any())
+        {
+            entity.StudentGroups = null;
+            await SaveStudentToGroupsAsync(entity, updateDto.StudentGroupIds);
+
+        } 
     }
-
-    //public override async Task<StudentDto> CreateAsync(CreateStudentDto createDto)
-    //{
-
-    //    // 学生组
-    //    if (createDto.StudentGroupIds?.Any() == true)
-    //    {
-
-    //        // 验证学生组是否存在
-    //        var groups = await _studentGroupRepository.CreateQuery().Where(x => createDto.StudentGroupIds.Contains(x.Id)).Select(x => x.Id).ToListAsync();
-    //        if(groups.Count != createDto.StudentGroupIds.Count)
-    //        {
-    //            throw new AppServiceException(400, "部分学生组不存在！");
-    //        } 
-    //        var mappings = groups
-    //            .Select(groupId => new StudentGroupMapping
-    //            {
-    //                StudentId = studentId,
-    //                StudentGroupId = groupId
-    //            })
-    //            .ToList();
-
-    //    }
-
-    //}
 } 

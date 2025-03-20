@@ -43,5 +43,13 @@ namespace CodeSpirit.Shared.Repositories
         /// <param name="entities">要更新的实体集合</param>
         /// <returns>异步任务</returns>
         Task UpdateRangeAsync(IEnumerable<TEntity> entities);
+
+        /// <summary>
+        /// 批量删除实体
+        /// </summary>
+        /// <param name="entities">要更新的实体集合</param>
+        /// <returns>异步任务</returns>
+        Task DeleteRangeAsync(IEnumerable<TEntity> entities);
+
     }
 }

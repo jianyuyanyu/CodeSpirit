@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.Student;
 using CodeSpirit.ExamApi.Services.Interfaces;
@@ -21,6 +22,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     private readonly IRepository<StudentGroupMapping> _mappingRepository;
     private readonly IRepository<StudentGroup> _studentGroupRepository;
     private readonly ILogger<StudentService> _logger;
+    private readonly IIdGenerator _idGenerator;
 
     /// <summary>
     /// 构造函数
@@ -30,12 +32,14 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         IRepository<StudentGroupMapping> mappingRepository,
         IRepository<StudentGroup> studentGroupRepository,
         IMapper mapper,
-        ILogger<StudentService> logger)
+        ILogger<StudentService> logger,
+        IIdGenerator idGenerator)
         : base(repository, mapper)
     {
         _mappingRepository = mappingRepository;
         _studentGroupRepository = studentGroupRepository;
         _logger = logger;
+        _idGenerator = idGenerator;
     }
 
     /// <summary>
@@ -166,6 +170,12 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
                 throw new AppServiceException(400, "部分学生组不存在！");
             }
         }
+    }
+
+    protected override Task OnCreating(Student entity, CreateStudentDto createDto)
+    {
+        entity.Id = _idGenerator.NewId();
+        return base.OnCreating(entity, createDto);
     }
 
     /// <summary>

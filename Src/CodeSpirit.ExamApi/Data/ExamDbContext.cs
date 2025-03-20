@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Seeds;
+using CodeSpirit.Core.IdGenerator;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.ExamApi.Data;
 
@@ -13,6 +15,8 @@ namespace CodeSpirit.ExamApi.Data;
 /// </summary>
 public class ExamDbContext : AuditableDbContext
 {
+    private readonly IServiceProvider _serviceProvider;
+    
     /// <summary>
     /// 构造函数
     /// </summary>
@@ -24,6 +28,7 @@ public class ExamDbContext : AuditableDbContext
         IServiceProvider serviceProvider,
         ICurrentUser currentUser) : base(options, serviceProvider, currentUser)
     {
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -110,6 +115,15 @@ public class ExamDbContext : AuditableDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // 禁用所有long类型的实体ID的自增
+        foreach (var entity in modelBuilder.Model.GetEntityTypes()
+            .Where(e => e.ClrType.BaseType != null && 
+                (e.ClrType.BaseType.Name.Contains("LongKeyAuditableEntityBase") || 
+                 e.ClrType.BaseType.Name.Contains("AuditableEntityBase<long>"))))
+        {
+            modelBuilder.Entity(entity.ClrType).Property("Id").ValueGeneratedNever();
+        }
 
         ConfigureQuestionEntities(modelBuilder);
         ConfigureStudentEntities(modelBuilder);
@@ -355,6 +369,8 @@ public class ExamDbContext : AuditableDbContext
     /// </summary>
     public async Task InitializeDatabaseAsync()
     {
-        await ExamDbContextSeed.SeedAsync(this);
+        using var scope = _serviceProvider.CreateScope();
+        IIdGenerator idGenerator = scope.ServiceProvider.GetRequiredService<IIdGenerator>();
+        await ExamDbContextSeed.SeedAsync(this, idGenerator);
     }
 }

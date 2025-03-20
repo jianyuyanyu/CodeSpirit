@@ -50,7 +50,7 @@ public class ExamAnswerRecord : LongKeyAuditableEntityBase
     /// <summary>
     /// 考生答案
     /// </summary>
-    [StringLength(2000)]
+    [StringLength(4000)]
     public string? Answer { get; set; }
 
     /// <summary>

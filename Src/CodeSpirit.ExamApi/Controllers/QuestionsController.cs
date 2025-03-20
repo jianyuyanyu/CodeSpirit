@@ -143,4 +143,15 @@ public class QuestionsController : ApiControllerBase
             ? SuccessResponse($"成功导入 {successCount} 个题目，但以下题目导入失败: {string.Join(", ", failedQuestions)}")
             : SuccessResponse($"成功导入 {successCount} 个题目！");
     }
+
+    [HttpPost("batch/import-from-text")]
+    [HeaderOperation("从文本导入", "form")]
+    public async Task<ActionResult<ApiResponse>> BatchImportFromText([FromBody]QuestionImportFromTextDto input)
+    {
+        (int successCount, List<string> failedQuestions) = await _questionService.ImportFromTextAsync(input);
+
+        return failedQuestions.Any()
+            ? SuccessResponse($"成功导入 {successCount} 个题目，但以下题目导入失败: {string.Join(", ", failedQuestions)}")
+            : SuccessResponse($"成功导入 {successCount} 个题目！");
+    }
 } 

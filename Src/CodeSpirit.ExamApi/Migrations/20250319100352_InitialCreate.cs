@@ -15,8 +15,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "ExamPapers",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     Type = table.Column<int>(type: "int", nullable: false),
@@ -29,6 +28,7 @@ namespace CodeSpirit.ExamApi.Migrations
                     UsageCount = table.Column<int>(type: "int", nullable: false),
                     AverageScore = table.Column<decimal>(type: "decimal(10,2)", precision: 10, scale: 2, nullable: false),
                     PassRate = table.Column<decimal>(type: "decimal(5,2)", precision: 5, scale: 2, nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
                     CreatedBy = table.Column<long>(type: "bigint", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedBy = table.Column<long>(type: "bigint", nullable: true),
@@ -46,8 +46,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "QuestionCategories",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     ParentId = table.Column<long>(type: "bigint", nullable: true),
@@ -73,8 +72,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "StudentGroups",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     CreatedBy = table.Column<long>(type: "bigint", nullable: false),
@@ -94,11 +92,12 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "Students",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     UserId = table.Column<long>(type: "bigint", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     StudentNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
                     CreatedBy = table.Column<long>(type: "bigint", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedBy = table.Column<long>(type: "bigint", nullable: true),
@@ -116,8 +115,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "ExamSettings",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ExamPaperId = table.Column<long>(type: "bigint", nullable: false),
@@ -125,7 +123,6 @@ namespace CodeSpirit.ExamApi.Migrations
                     EndTime = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Duration = table.Column<int>(type: "int", nullable: false),
                     AllowedAttempts = table.Column<int>(type: "int", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
                     EnableRandomQuestionOrder = table.Column<bool>(type: "bit", nullable: false),
                     EnableRandomOptionOrder = table.Column<bool>(type: "bit", nullable: false),
                     AllowedScreenSwitchCount = table.Column<int>(type: "int", nullable: false),
@@ -152,13 +149,12 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "Questions",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     Content = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
                     Type = table.Column<int>(type: "int", nullable: false),
                     Difficulty = table.Column<int>(type: "int", nullable: false),
                     Options = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
-                    CorrectAnswer = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    CorrectAnswer = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
                     Analysis = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     KnowledgePoints = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     CategoryId = table.Column<long>(type: "bigint", nullable: false),
@@ -190,8 +186,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "StudentGroupMappings",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     StudentId = table.Column<long>(type: "bigint", nullable: false),
                     StudentGroupId = table.Column<long>(type: "bigint", nullable: false),
                     CreatedBy = table.Column<long>(type: "bigint", nullable: false),
@@ -223,8 +218,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "ExamRecords",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     ExamSettingId = table.Column<long>(type: "bigint", nullable: false),
                     StudentId = table.Column<long>(type: "bigint", nullable: false),
                     AttemptNumber = table.Column<int>(type: "int", nullable: false),
@@ -296,8 +290,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "PracticeRecords",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     StudentId = table.Column<long>(type: "bigint", nullable: false),
                     QuestionId = table.Column<long>(type: "bigint", nullable: false),
                     PracticeType = table.Column<int>(type: "int", nullable: false),
@@ -335,13 +328,12 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "QuestionVersions",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     QuestionId = table.Column<long>(type: "bigint", nullable: false),
                     Version = table.Column<int>(type: "int", nullable: false),
                     Content = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
                     Options = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
-                    CorrectAnswer = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    CorrectAnswer = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: false),
                     Analysis = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     KnowledgePoints = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     DefaultScore = table.Column<int>(type: "int", nullable: false),
@@ -370,8 +362,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "WrongQuestions",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     StudentId = table.Column<long>(type: "bigint", nullable: false),
                     QuestionId = table.Column<long>(type: "bigint", nullable: false),
                     WrongCount = table.Column<int>(type: "int", nullable: false),
@@ -408,8 +399,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "ExamAnswerRecords",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     ExamRecordId = table.Column<long>(type: "bigint", nullable: false),
                     QuestionId = table.Column<long>(type: "bigint", nullable: false),
                     QuestionVersionId = table.Column<long>(type: "bigint", nullable: false),
@@ -459,8 +449,7 @@ namespace CodeSpirit.ExamApi.Migrations
                 name: "ExamPaperQuestions",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     ExamPaperId = table.Column<long>(type: "bigint", nullable: false),
                     QuestionId = table.Column<long>(type: "bigint", nullable: false),
                     QuestionVersionId = table.Column<long>(type: "bigint", nullable: false),
@@ -483,7 +472,7 @@ namespace CodeSpirit.ExamApi.Migrations
                         column: x => x.ExamPaperId,
                         principalTable: "ExamPapers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_ExamPaperQuestions_QuestionVersions_QuestionVersionId",
                         column: x => x.QuestionVersionId,

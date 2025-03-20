@@ -1,14 +1,14 @@
 ﻿using CodeSpirit.Amis.Controllers;
 using CodeSpirit.Authorization;
 using CodeSpirit.Core.Attributes;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CodeSpirit.ConfigCenter.Controllers
+namespace CodeSpirit.ExamApi.Controllers.Client
 {
     [ApiController]
-    //[Authorize(policy: "DynamicPermissions")]
-    [Route("api/config/[controller]")]
-    [Module("config", "配置中心", Icon = "fa-solid fa-sliders")]
+    [Authorize(policy: "DynamicPermissions")]
+    [Module("default", displayName: "默认")]
     public abstract class ApiControllerBase : AmisApiControllerBase
     {
         /// <summary>

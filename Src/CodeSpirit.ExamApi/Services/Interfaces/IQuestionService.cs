@@ -1,4 +1,5 @@
 using CodeSpirit.ExamApi.Dtos.Question;
+using CodeSpirit.ExamApi.Data.Models;
 
 /// <summary>
 /// 题目服务接口
@@ -48,4 +49,10 @@ public interface IQuestionService
 
     Task<(int successCount, List<long> failedIds)> BatchDeleteAsync(IEnumerable<long> ids);
     Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<QuestionBatchImportItemDto> importData);
+    
+    /// <summary>
+    /// 文本识别导入题目
+    /// </summary>
+    /// <returns>导入结果，包含成功数量和失败项</returns>
+    Task<(int successCount, List<string> failedItems)> ImportFromTextAsync(QuestionImportFromTextDto input);
 } 

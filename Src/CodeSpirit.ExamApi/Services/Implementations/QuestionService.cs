@@ -1,13 +1,16 @@
 using AutoMapper;
 using CodeSpirit.Core.Extensions;
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.Question;
+using CodeSpirit.ExamApi.Services.TextParsers;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 /// <summary>
 /// 题目服务实现
@@ -19,6 +22,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
     private readonly IRepository<QuestionVersion> _versionRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<QuestionService> _logger;
+    private readonly IIdGenerator _idGenerator;
     private string? _changeReason;
 
     /// <summary>
@@ -29,7 +33,8 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         IRepository<QuestionCategory> categoryRepository,
         IRepository<QuestionVersion> versionRepository,
         IMapper mapper,
-        ILogger<QuestionService> logger)
+        ILogger<QuestionService> logger,
+        IIdGenerator idGenerator)
         : base(repository, mapper)
     {
         _repository = repository;
@@ -37,6 +42,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         _versionRepository = versionRepository;
         _mapper = mapper;
         _logger = logger;
+        _idGenerator = idGenerator;
     }
 
     /// <summary>
@@ -457,5 +463,114 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
     protected override string GetImportItemId(QuestionBatchImportItemDto importDto)
     {
         return importDto.Content;
+    }
+    
+    /// <summary>
+    /// 文本识别导入题目
+    /// </summary>
+    /// <returns>导入结果</returns>
+    public async Task<(int successCount, List<string> failedItems)> ImportFromTextAsync(QuestionImportFromTextDto input)
+    {
+        if (string.IsNullOrWhiteSpace(input.Text))
+        {
+            throw new AppServiceException(400, "试卷文本内容不能为空！");
+        }
+        
+        // 验证分类是否存在
+        var category = await _categoryRepository.GetByIdAsync(input.CategoryId);
+        if (category == null)
+        {
+            throw new AppServiceException(400, "所选分类不存在！");
+        }
+        
+        var successCount = 0;
+        var failedItems = new List<string>();
+        
+        try
+        {
+            // 使用题目解析器解析文本
+            var loggerFactory = new LoggerFactory();
+            var parserLogger = loggerFactory.CreateLogger<QuestionTextParser>();
+            var parser = new QuestionTextParser(parserLogger);
+            var parsedQuestions = parser.Parse(input.Text);
+            
+            if (!parsedQuestions.Any())
+            {
+                throw new AppServiceException(400, "未能从文本中解析出任何题目，请检查文本格式！");
+            }
+            
+            foreach (var questionData in parsedQuestions)
+            {
+                try
+                {
+                    // 检查题目是否重复
+                    var existingQuestion = _repository.Find(q => 
+                        q.Content == questionData.Content && 
+                        q.Type == questionData.Type)
+                        .FirstOrDefault();
+                    
+                    if (existingQuestion != null)
+                    {
+                        string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                        failedItems.Add($"{typeStr}「{questionData.Content}」已存在");
+                        continue;
+                    }
+                    
+                    // 确保选项和答案格式正确
+                    try
+                    {
+                        ValidateOptionsAndAnswer(questionData.Type, questionData.Options, questionData.CorrectAnswer);
+                    }
+                    catch (AppServiceException ex)
+                    {
+                        string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                        failedItems.Add($"{typeStr}「{questionData.Content}」验证失败：{ex.Message}");
+                        continue;
+                    }
+                    
+                    var question = new Question
+                    {
+                        Id = _idGenerator.NewId(),
+                        Content = questionData.Content,
+                        Options = questionData.Options,
+                        CorrectAnswer = questionData.CorrectAnswer,
+                        Type = questionData.Type,
+                        Difficulty = input.QuestionDifficulty,
+                        CategoryId = input.CategoryId,
+                        Version = 1,
+                        DefaultScore = questionData.Score,
+                        Analysis = questionData.Analysis
+                    };
+                    
+                    // 处理标签
+                    if (questionData.Tags?.Any() == true)
+                    {
+                        question.Tags = JsonSerializer.Serialize(questionData.Tags);
+                    }
+                    
+                    await _repository.AddAsync(question);
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                    _logger.LogError(ex, "导入{Type}失败: {Content}", typeStr, questionData.Content);
+                    failedItems.Add($"{typeStr}「{questionData.Content}」导入失败：{ex.Message}");
+                }
+            }
+            
+            await _repository.SaveChangesAsync();
+        }
+        catch (AppServiceException ex)
+        {
+            throw; // 已包含错误信息的异常直接抛出
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "导入试卷失败");
+            throw new AppServiceException(500, $"导入试卷失败：{ex.Message}");
+        }
+        
+        return (successCount, failedItems);
     }
 }

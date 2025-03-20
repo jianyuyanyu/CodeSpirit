@@ -16,6 +16,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System.Text;
+using CodeSpirit.ExamApi.Services;
 
 namespace CodeSpirit.ExamApi;
 
@@ -93,6 +94,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IWrongQuestionService, WrongQuestionService>();
         services.AddScoped<IQuestionVersionService, QuestionVersionService>();
         services.AddScoped<IPracticeRecordService, PracticeRecordService>();
+        services.AddScoped<IClientService, ClientService>();
 
         return services;
     }
@@ -137,8 +139,8 @@ public static class ServiceCollectionExtensions
             try
             {
                 var context = services.GetRequiredService<ExamDbContext>();
-                // 确保数据库已创建
-                context.Database.EnsureCreated();
+                // 使用迁移而不是EnsureCreated
+                await context.Database.MigrateAsync();
                 // 初始化数据
                 await context.InitializeDatabaseAsync();
             }

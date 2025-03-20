@@ -1,3 +1,4 @@
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -13,24 +14,29 @@ public static class ExamDbContextSeed
     /// 初始化数据库
     /// </summary>
     /// <param name="context">数据库上下文</param>
-    public static async Task SeedAsync(ExamDbContext context)
+    /// <param name="idGenerator">ID生成器</param>
+    public static async Task SeedAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(idGenerator);
         context.UserId = -1;
 
         // 确保数据库已创建
         await context.Database.EnsureCreatedAsync();
 
         // 初始化基础数据
-        await SeedQuestionCategoriesAsync(context);
-        await SeedStudentGroupsAsync(context);
-        await SeedQuestionsAsync(context);
-        await SeedStudentsAsync(context);
-        await SeedExamPapersAsync(context);
-        await SeedExamSettingsAsync(context);
-        await SeedWrongQuestionsAsync(context);
-        await SeedExamRecordsAsync(context);
-        await SeedPracticeRecordsAsync(context);
+        await SeedQuestionCategoriesAsync(context, idGenerator);
+        await SeedStudentGroupsAsync(context, idGenerator);
+        await SeedQuestionsAsync(context, idGenerator);
+        await SeedStudentsAsync(context, idGenerator);
+        await SeedExamPapersAsync(context, idGenerator);
+        await SeedExamSettingsAsync(context, idGenerator);
+        await SeedWrongQuestionsAsync(context, idGenerator);
+        await SeedExamRecordsAsync(context, idGenerator);
+        await SeedPracticeRecordsAsync(context, idGenerator);
+        
+        // 为ID为-1的用户初始化考试数据
+        await SeedTestUserDataAsync(context, idGenerator);
 
         // 保存所有更改
         await context.SaveChangesAsync();
@@ -39,7 +45,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化问题分类
     /// </summary>
-    private static async Task SeedQuestionCategoriesAsync(ExamDbContext context)
+    private static async Task SeedQuestionCategoriesAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         if (await context.QuestionCategories.AnyAsync())
         {
@@ -50,26 +56,31 @@ public static class ExamDbContextSeed
         {
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "编程基础",
                 Description = "包含基本的编程概念和语法知识"
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "数据结构",
                 Description = "包含常见数据结构的概念和应用"
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "算法",
                 Description = "包含基础和高级算法题目"
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "系统设计",
                 Description = "包含架构设计和系统设计相关题目"
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "数据库",
                 Description = "包含数据库原理和SQL相关题目"
             }
@@ -82,7 +93,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化学生分组
     /// </summary>
-    private static async Task SeedStudentGroupsAsync(ExamDbContext context)
+    private static async Task SeedStudentGroupsAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         if (await context.StudentGroups.AnyAsync())
         {
@@ -93,16 +104,19 @@ public static class ExamDbContextSeed
         {
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "初级开发组",
                 Description = "适合1-2年工作经验的开发人员"
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "中级开发组",
                 Description = "适合3-5年工作经验的开发人员"
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "高级开发组",
                 Description = "适合5年以上工作经验的开发人员"
             }
@@ -115,7 +129,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化题目数据
     /// </summary>
-    private static async Task SeedQuestionsAsync(ExamDbContext context)
+    private static async Task SeedQuestionsAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         if (await context.Questions.AnyAsync())
         {
@@ -136,6 +150,7 @@ public static class ExamDbContextSeed
             // 编程基础题目
             new()
             {
+                Id = idGenerator.NewId(),
                 Category = categoryDict["编程基础"],
                 Type = QuestionType.SingleChoice,
                 Difficulty = QuestionDifficulty.Easy,
@@ -157,6 +172,7 @@ public static class ExamDbContextSeed
             // 数据结构题目
             new()
             {
+                Id = idGenerator.NewId(),
                 Category = categoryDict["数据结构"],
                 Type = QuestionType.SingleChoice,
                 Difficulty = QuestionDifficulty.Medium,
@@ -178,6 +194,7 @@ public static class ExamDbContextSeed
             // 算法题目
             new()
             {
+                Id = idGenerator.NewId(),
                 Category = categoryDict["算法"],
                 Type = QuestionType.MultipleChoice,
                 Difficulty = QuestionDifficulty.Hard,
@@ -199,12 +216,13 @@ public static class ExamDbContextSeed
             // 系统设计题目
             new()
             {
+                Id = idGenerator.NewId(),
                 Category = categoryDict["系统设计"],
-                Type = QuestionType.SingleChoice,
+                Type = QuestionType.TrueFalse,
                 Difficulty = QuestionDifficulty.Hard,
                 Content = "请设计一个高并发的缓存系统，要求：\n1. 支持LRU淘汰策略\n2. 支持过期时间设置\n3. 支持并发访问\n请给出关键代码的实现。",
                 Options = new List<string>(),
-                CorrectAnswer = "public class ConcurrentCache<TKey, TValue>\n{\n    private readonly ConcurrentDictionary<TKey, CacheItem<TValue>> _cache;\n    private readonly ReaderWriterLockSlim _lock;\n    private readonly LinkedList<TKey> _lruList;\n    private readonly int _capacity;\n\n    public ConcurrentCache(int capacity)\n    {\n        _cache = new ConcurrentDictionary<TKey, CacheItem<TValue>>();\n        _lock = new ReaderWriterLockSlim();\n        _lruList = new LinkedList<TKey>();\n        _capacity = capacity;\n    }\n\n    public void Set(TKey key, TValue value, TimeSpan? expiry = null)\n    {\n        var item = new CacheItem<TValue>(value, expiry);\n        _lock.EnterWriteLock();\n        try\n        {\n            if (_cache.Count >= _capacity)\n            {\n                RemoveLeastUsed();\n            }\n            _cache[key] = item;\n            UpdateLRU(key);\n        }\n        finally\n        {\n            _lock.ExitWriteLock();\n        }\n    }\n\n    public bool TryGet(TKey key, out TValue value)\n    {\n        value = default;\n        _lock.EnterUpgradeableReadLock();\n        try\n        {\n            if (_cache.TryGetValue(key, out var item) && !item.IsExpired)\n            {\n                _lock.EnterWriteLock();\n                try\n                {\n                    UpdateLRU(key);\n                }\n                finally\n                {\n                    _lock.ExitWriteLock();\n                }\n                value = item.Value;\n                return true;\n            }\n            return false;\n        }\n        finally\n        {\n            _lock.ExitUpgradeableReadLock();\n        }\n    }\n\n    private void UpdateLRU(TKey key)\n    {\n        _lruList.Remove(key);\n        _lruList.AddFirst(key);\n    }\n\n    private void RemoveLeastUsed()\n    {\n        var key = _lruList.Last.Value;\n        _lruList.RemoveLast();\n        _cache.TryRemove(key, out _);\n    }\n}\n\nprivate class CacheItem<T>\n{\n    public T Value { get; }\n    public DateTime? ExpiryTime { get; }\n\n    public bool IsExpired => ExpiryTime.HasValue && DateTime.UtcNow >= ExpiryTime.Value;\n\n    public CacheItem(T value, TimeSpan? expiry = null)\n    {\n        Value = value;\n        ExpiryTime = expiry.HasValue ? DateTime.UtcNow.Add(expiry.Value) : null;\n    }\n}",
+                CorrectAnswer = "true",
                 Analysis = "这个实现使用了以下关键技术点：\n1. 使用ConcurrentDictionary保证基本的线程安全\n2. 使用ReaderWriterLockSlim实现细粒度的锁控制\n3. 使用LinkedList实现LRU功能\n4. 使用CacheItem封装值和过期时间\n5. 实现了Set和TryGet方法，保证了线程安全和功能完整性",
                 KnowledgePoints = JsonSerializer.Serialize(new[] { "并发编程", "缓存设计", "数据结构", "线程安全" }),
                 Tags = JsonSerializer.Serialize(new[] { "系统设计", "高并发", "缓存" }),
@@ -214,6 +232,7 @@ public static class ExamDbContextSeed
             // 数据库题目
             new()
             {
+                Id = idGenerator.NewId(),
                 Category = categoryDict["数据库"],
                 Type = QuestionType.SingleChoice,
                 Difficulty = QuestionDifficulty.Medium,
@@ -238,6 +257,7 @@ public static class ExamDbContextSeed
         // 为每个题目创建初始版本
         var questionVersions = questions.Select(q => new QuestionVersion
         {
+            Id = idGenerator.NewId(),
             Question = q,
             Version = 1,
             Content = q.Content,
@@ -255,7 +275,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化考生数据
     /// </summary>
-    private static async Task SeedStudentsAsync(ExamDbContext context)
+    private static async Task SeedStudentsAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         if (await context.Students.AnyAsync())
         {
@@ -272,6 +292,7 @@ public static class ExamDbContextSeed
         {
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "张三",
                 PhoneNumber = "13800138001",
                 StudentNumber = "STU001",
@@ -279,6 +300,7 @@ public static class ExamDbContextSeed
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "李四",
                 PhoneNumber = "13800138002",
                 StudentNumber = "STU002",
@@ -286,6 +308,7 @@ public static class ExamDbContextSeed
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "王五",
                 PhoneNumber = "13800138003",
                 StudentNumber = "STU003",
@@ -310,6 +333,7 @@ public static class ExamDbContextSeed
 
             studentGroupMappings.Add(new StudentGroupMapping
             {
+                Id = idGenerator.NewId(),
                 Student = student,
                 StudentGroup = group
             });
@@ -322,7 +346,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化试卷数据
     /// </summary>
-    private static async Task SeedExamPapersAsync(ExamDbContext context)
+    private static async Task SeedExamPapersAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         if (await context.ExamPapers.AnyAsync())
         {
@@ -339,6 +363,7 @@ public static class ExamDbContextSeed
         {
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "初级开发工程师认证考试",
                 Description = "适用于1-2年工作经验的开发人员",
                 TotalScore = 100,
@@ -350,6 +375,7 @@ public static class ExamDbContextSeed
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "中级开发工程师认证考试",
                 Description = "适用于3-5年工作经验的开发人员",
                 TotalScore = 100,
@@ -361,6 +387,7 @@ public static class ExamDbContextSeed
             },
             new()
             {
+                Id = idGenerator.NewId(),
                 Name = "高级开发工程师认证考试",
                 Description = "适用于5年以上工作经验的开发人员",
                 TotalScore = 100,
@@ -389,6 +416,7 @@ public static class ExamDbContextSeed
                 .Take(10)
                 .Select((q, index) => new ExamPaperQuestion
                 {
+                    Id = idGenerator.NewId(),
                     ExamPaper = paper,
                     Question = q,
                     QuestionVersion = context.QuestionVersions
@@ -408,7 +436,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化考试设置数据
     /// </summary>
-    private static async Task SeedExamSettingsAsync(ExamDbContext context)
+    private static async Task SeedExamSettingsAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         if (await context.ExamSettings.AnyAsync())
         {
@@ -431,6 +459,7 @@ public static class ExamDbContextSeed
 
             examSettings.Add(new ExamSetting
             {
+                Id = idGenerator.NewId(),
                 Name = $"{group.Name}{DateTime.Now.Year}年度认证考试",
                 Description = $"面向{group.Name}的年度认证考试",
                 ExamPaper = paper,
@@ -452,7 +481,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化错题数据
     /// </summary>
-    private static async Task SeedWrongQuestionsAsync(ExamDbContext context)
+    private static async Task SeedWrongQuestionsAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         if (await context.Set<WrongQuestion>().AnyAsync())
         {
@@ -476,6 +505,7 @@ public static class ExamDbContextSeed
         {
             wrongQuestions.Add(new WrongQuestion
             {
+                Id = idGenerator.NewId(),
                 StudentId = zhangsan.Id,
                 QuestionId = easyQuestions[0].Id,
                 WrongCount = 2,
@@ -487,6 +517,7 @@ public static class ExamDbContextSeed
             
             wrongQuestions.Add(new WrongQuestion
             {
+                Id = idGenerator.NewId(),
                 StudentId = zhangsan.Id,
                 QuestionId = easyQuestions[1].Id,
                 WrongCount = 1,
@@ -504,6 +535,7 @@ public static class ExamDbContextSeed
         {
             wrongQuestions.Add(new WrongQuestion
             {
+                Id = idGenerator.NewId(),
                 StudentId = lisi.Id,
                 QuestionId = mediumQuestions[0].Id,
                 WrongCount = 3,
@@ -522,6 +554,7 @@ public static class ExamDbContextSeed
         {
             wrongQuestions.Add(new WrongQuestion
             {
+                Id = idGenerator.NewId(),
                 StudentId = wangwu.Id,
                 QuestionId = hardQuestions[0].Id,
                 WrongCount = 1,
@@ -538,7 +571,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化考试记录数据
     /// </summary>
-    private static async Task SeedExamRecordsAsync(ExamDbContext context)
+    private static async Task SeedExamRecordsAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         if (await context.ExamRecords.AnyAsync())
         {
@@ -595,6 +628,7 @@ public static class ExamDbContextSeed
             
             var record = new ExamRecord
             {
+                Id = idGenerator.NewId(),
                 ExamSettingId = examSetting.Id,
                 StudentId = student.Id,
                 AttemptNumber = 1,
@@ -619,44 +653,101 @@ public static class ExamDbContextSeed
                 var questionScore = isCorrect ? paperQuestion.Score : 0;
                 totalScore += questionScore;
                 
-                // 构造答案 - 简化处理，对于单选题假设选择了第一个选项
-                string answer = paperQuestion.QuestionVersion.CorrectAnswer;
-                if (!isCorrect)
+                // 构造答案
+                string answer;
+                if (isCorrect)
                 {
-                    // 如果答错，随机生成一个错误答案
-                    if (paperQuestion.QuestionVersion.CorrectAnswer.Contains(","))
+                    // 获取正确答案，但检查长度避免数据库截断
+                    answer = paperQuestion.QuestionVersion.CorrectAnswer;
+                    // 对于系统设计等复杂题目，答案可能很长，需要截断处理
+                    if (answer.Length > 1000)
                     {
-                        // 多选题情况，随机少选或多选一个选项
-                        var options = paperQuestion.QuestionVersion.CorrectAnswer.Split(',').ToList();
-                        if (Random.Shared.Next(2) == 0 && options.Count > 1)
+                        answer = answer.Substring(0, 1000) + "...（答案过长，已截断）";
+                    }
+                }
+                else
+                {
+                    // 构造错误答案（根据题型简单处理）
+                    if (paperQuestion.Question.Type == QuestionType.SingleChoice)
+                    {
+                        // 单选题：随机选一个不同于正确答案的选项
+                        var correctAnswer = paperQuestion.QuestionVersion.CorrectAnswer;
+                        // 检查是否是复杂题目（例如代码示例的正确答案）
+                        if (correctAnswer.Length > 100)
                         {
-                            // 少选一个
-                            options.RemoveAt(Random.Shared.Next(options.Count));
+                            // 对于复杂题目，简单返回一个固定错误答案
+                            answer = "错误答案示例";
                         }
                         else
                         {
-                            // 多选一个错误选项
-                            var maxOption = 4; // 假设有4个选项
-                            var wrongOption = Random.Shared.Next(maxOption).ToString();
-                            if (!options.Contains(wrongOption))
+                            var correctOption = int.Parse(correctAnswer);
+                            var wrongOptions = Enumerable.Range(0, 4) // 假设有4个选项
+                                .Where(i => i != correctOption)
+                                .ToArray();
+                                
+                            if (wrongOptions.Length > 0)
                             {
-                                options.Add(wrongOption);
+                                answer = wrongOptions[Random.Shared.Next(wrongOptions.Length)].ToString();
+                            }
+                            else
+                            {
+                                answer = "0"; // 默认选第一个
                             }
                         }
-                        answer = string.Join(",", options.OrderBy(o => o));
+                    }
+                    else if (paperQuestion.Question.Type == QuestionType.MultipleChoice)
+                    {
+                        // 多选题：随机选择几个选项，确保与正确答案不同
+                        var correctAnswer = paperQuestion.QuestionVersion.CorrectAnswer;
+                        // 检查是否是复杂题目
+                        if (correctAnswer.Length > 100)
+                        {
+                            // 对于复杂题目，简单返回一个固定错误答案
+                            answer = "0,1"; // 简单返回前两个选项
+                        }
+                        else
+                        {
+                            var correctAnswers = correctAnswer.Split(',')
+                                .Select(int.Parse).ToList();
+                            var allOptions = Enumerable.Range(0, 4).ToList(); // 假设有4个选项
+                            var wrongAnswers = new List<int>();
+                            
+                            // 随机选择1-3个选项
+                            var selectCount = Random.Shared.Next(1, 4);
+                            while (wrongAnswers.Count < selectCount)
+                            {
+                                var option = Random.Shared.Next(4);
+                                if (!wrongAnswers.Contains(option) && 
+                                    (wrongAnswers.Count > 0 || !correctAnswers.Contains(option)))
+                                {
+                                    wrongAnswers.Add(option);
+                                }
+                            }
+                            
+                            answer = string.Join(",", wrongAnswers.OrderBy(x => x));
+                        }
+                    }
+                    else if (paperQuestion.Question.Type == QuestionType.TrueFalse)
+                    {
+                        // 判断题：选择与正确答案相反的选项
+                        answer = paperQuestion.QuestionVersion.CorrectAnswer == "0" ? "1" : "0";
                     }
                     else
                     {
-                        // 单选题情况，选择一个错误选项
-                        var correctOption = int.Parse(paperQuestion.QuestionVersion.CorrectAnswer);
-                        var maxOption = 4; // 假设有4个选项
-                        var wrongOptions = Enumerable.Range(0, maxOption).Where(o => o != correctOption).ToList();
-                        answer = wrongOptions[Random.Shared.Next(wrongOptions.Count)].ToString();
+                        // 主观题：随机生成简短文本
+                        answer = "这是一个示例答案，与正确答案不同。";
                     }
+                }
+                
+                // 最终检查答案长度，确保不超过数据库字段限制（假设为2000字符）
+                if (answer.Length > 1800)
+                {
+                    answer = answer.Substring(0, 1800) + "...（答案过长，已截断）";
                 }
                 
                 var answerRecord = new ExamAnswerRecord
                 {
+                    Id = idGenerator.NewId(),
                     ExamRecordId = 0, // 稍后设置
                     QuestionId = paperQuestion.QuestionId,
                     QuestionVersionId = paperQuestion.QuestionVersionId,
@@ -724,7 +815,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化练习记录数据
     /// </summary>
-    private static async Task SeedPracticeRecordsAsync(ExamDbContext context)
+    private static async Task SeedPracticeRecordsAsync(ExamDbContext context, IIdGenerator idGenerator)
     {
         if (await context.PracticeRecords.AnyAsync())
         {
@@ -815,6 +906,7 @@ public static class ExamDbContextSeed
                 
                 var practiceRecord = new PracticeRecord
                 {
+                    Id = idGenerator.NewId(),
                     StudentId = student.Id,
                     QuestionId = question.Id,
                     PracticeType = practiceType,
@@ -830,6 +922,330 @@ public static class ExamDbContextSeed
         }
         
         await context.PracticeRecords.AddRangeAsync(practiceRecords);
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// 为测试用户（ID为-1）初始化考试数据
+    /// </summary>
+    /// <param name="context">数据库上下文</param>
+    /// <param name="idGenerator">ID生成器</param>
+    private static async Task SeedTestUserDataAsync(ExamDbContext context, IIdGenerator idGenerator)
+    {
+        const long userId = -1;
+        
+        // 1. 检查是否已有数据
+        var hasGroupMapping = await context.StudentGroupMappings
+            .AnyAsync(m => m.StudentId == userId);
+            
+        if (hasGroupMapping)
+        {
+            return; // 用户组映射已存在，无需重复初始化
+        }
+        
+        // 1.1 检查并创建ID为-1的学生记录
+        var testStudent = await context.Students.FindAsync(userId);
+        if (testStudent == null)
+        {
+            testStudent = new Student
+            {
+                Id = userId,
+                UserId = userId, // 设置UserId
+                Name = "Admin（测试用户）",
+                StudentNumber = "TEST001",
+                PhoneNumber = "13800000000",
+                IsActive = true,
+                CreatedBy = -1,
+                CreatedAt = DateTime.Now,
+                IsDeleted = false
+            };
+            
+            context.Students.Add(testStudent);
+            await context.SaveChangesAsync();            
+        }
+        
+        // 2. 获取所有学生组
+        var studentGroups = await context.StudentGroups.ToListAsync();
+        if (!studentGroups.Any())
+        {
+            return; // 没有可用的学生组，无法初始化用户数据
+        }
+        
+        // 3. 为用户ID为-1添加所有学生组映射，使其可以参加所有考试
+        var groupMappings = new List<StudentGroupMapping>();
+        foreach (var group in studentGroups)
+        {
+            groupMappings.Add(new StudentGroupMapping
+            {
+                Id = idGenerator.NewId(),
+                StudentId = testStudent.Id,
+                StudentGroupId = group.Id
+            });
+        }
+        
+        await context.StudentGroupMappings.AddRangeAsync(groupMappings);
+        await context.SaveChangesAsync();
+        
+        // 4. 获取所有考试设置
+        var examSettings = await context.ExamSettings
+            .Include(e => e.ExamPaper)
+            .ThenInclude(p => p.ExamPaperQuestions)
+            .ThenInclude(q => q.QuestionVersion)
+            .ToListAsync();
+            
+        if (!examSettings.Any())
+        {
+            return; // 没有可用的考试设置，无法初始化历史考试记录
+        }
+        
+        // 5. 创建考试记录（包括进行中、已提交和已评分的状态）
+        var examRecords = new List<ExamRecord>();
+        var random = new Random();
+        
+        // 5.1 创建一条进行中的考试记录
+        var inProgressExam = examSettings.FirstOrDefault();
+        if (inProgressExam != null)
+        {
+            var inProgressRecord = new ExamRecord
+            {
+                Id = idGenerator.NewId(),
+                ExamSettingId = inProgressExam.Id,
+                StudentId = testStudent.Id, // 使用实际的学生ID
+                AttemptNumber = 1,
+                StartTime = DateTime.Now.AddMinutes(-15),
+                Status = ExamRecordStatus.InProgress,
+                IpAddress = "127.0.0.1",
+                DeviceInfo = "Mozilla/5.0 (Demo Client)",
+                ScreenSwitchCount = 0
+            };
+            
+            examRecords.Add(inProgressRecord);
+        }
+        
+        // 5.2 创建已提交但未评分的考试记录
+        var submittedExam = examSettings.Skip(1).FirstOrDefault();
+        if (submittedExam != null)
+        {
+            var startTime = DateTime.Now.AddDays(-1);
+            var endTime = startTime.AddMinutes(submittedExam.Duration / 2); // 用一半的时间完成考试
+            
+            var submittedRecord = new ExamRecord
+            {
+                Id = idGenerator.NewId(),
+                ExamSettingId = submittedExam.Id,
+                StudentId = testStudent.Id, // 使用实际的学生ID
+                AttemptNumber = 1,
+                StartTime = startTime,
+                SubmitTime = endTime,
+                Duration = (int)Math.Ceiling((endTime - startTime).TotalMinutes),
+                Status = ExamRecordStatus.Submitted,
+                IpAddress = "127.0.0.1",
+                DeviceInfo = "Mozilla/5.0 (Demo Client)",
+                ScreenSwitchCount = 0
+            };
+            
+            examRecords.Add(submittedRecord);
+        }
+        
+        // 5.3 创建3条已评分的考试记录（通过和不通过的情况）
+        for (int i = 0; i < Math.Min(3, examSettings.Count); i++)
+        {
+            var examSetting = examSettings[i % examSettings.Count];
+            var startTime = DateTime.Now.AddDays(-5 - i * 2); // 间隔几天
+            var endTime = startTime.AddMinutes(examSetting.Duration - random.Next(10, 30)); // 提前完成
+            
+            // 随机决定是否通过考试
+            var isPassed = random.Next(2) == 1;
+            var score = isPassed ? 
+                examSetting.ExamPaper.PassScore + random.Next(1, 21) : // 通过：及格分 + 1-20分
+                Math.Max(0, examSetting.ExamPaper.PassScore - random.Next(1, 16)); // 未通过：及格分 - 1-15分
+            
+            var gradedRecord = new ExamRecord
+            {
+                Id = idGenerator.NewId(),
+                ExamSettingId = examSetting.Id,
+                StudentId = testStudent.Id, // 使用实际的学生ID
+                AttemptNumber = 1,
+                StartTime = startTime,
+                SubmitTime = endTime,
+                Duration = (int)Math.Ceiling((endTime - startTime).TotalMinutes),
+                Status = ExamRecordStatus.Graded,
+                Score = score,
+                IsPassed = isPassed,
+                IpAddress = "127.0.0.1",
+                DeviceInfo = "Mozilla/5.0 (Demo Client)",
+                ScreenSwitchCount = 0,
+                GradedTime = endTime.AddHours(2), // 2小时后评分
+                Comments = isPassed ? "考试通过，继续保持" : "考试未通过，请继续努力"
+            };
+            
+            examRecords.Add(gradedRecord);
+        }
+        
+        // 保存所有考试记录
+        await context.ExamRecords.AddRangeAsync(examRecords);
+        await context.SaveChangesAsync();
+        
+        // 6. 为已评分和已提交的考试记录添加答题记录
+        var answerRecords = new List<ExamAnswerRecord>();
+        
+        foreach (var record in examRecords.Where(r => r.Status != ExamRecordStatus.InProgress))
+        {
+            // 重新加载考试设置和试卷信息
+            await context.Entry(record)
+                .Reference(r => r.ExamSetting)
+                .LoadAsync();
+                
+            await context.Entry(record.ExamSetting)
+                .Reference(s => s.ExamPaper)
+                .LoadAsync();
+                
+            await context.Entry(record.ExamSetting.ExamPaper)
+                .Collection(p => p.ExamPaperQuestions)
+                .LoadAsync();
+            
+            foreach (var paperQuestion in record.ExamSetting.ExamPaper.ExamPaperQuestions)
+            {
+                // 加载题目版本
+                await context.Entry(paperQuestion)
+                    .Reference(q => q.QuestionVersion)
+                    .LoadAsync();
+                    
+                await context.Entry(paperQuestion)
+                    .Reference(q => q.Question)
+                    .LoadAsync();
+                
+                // 决定答案是否正确（已评分的根据得分情况，已提交的随机）
+                var isCorrect = false;
+                if (record.Status == ExamRecordStatus.Graded)
+                {
+                    // 根据总分决定每道题的正确率
+                    var correctProbability = record.Score / record.ExamSetting.ExamPaper.TotalScore;
+                    isCorrect = random.NextDouble() < correctProbability;
+                }
+                else
+                {
+                    // 已提交未评分的随机决定
+                    isCorrect = random.Next(2) == 1;
+                }
+                
+                // 构造答案
+                string answer;
+                if (isCorrect)
+                {
+                    // 获取正确答案，但检查长度避免数据库截断
+                    answer = paperQuestion.QuestionVersion.CorrectAnswer;
+                    // 对于系统设计等复杂题目，答案可能很长，需要截断处理
+                    if (answer.Length > 1000)
+                    {
+                        answer = answer.Substring(0, 1000) + "...（答案过长，已截断）";
+                    }
+                }
+                else
+                {
+                    // 构造错误答案（根据题型简单处理）
+                    if (paperQuestion.Question.Type == QuestionType.SingleChoice)
+                    {
+                        // 单选题：随机选一个不同于正确答案的选项
+                        var correctAnswer = paperQuestion.QuestionVersion.CorrectAnswer;
+                        // 检查是否是复杂题目（例如代码示例的正确答案）
+                        if (correctAnswer.Length > 100)
+                        {
+                            // 对于复杂题目，简单返回一个固定错误答案
+                            answer = "错误答案示例";
+                        }
+                        else
+                        {
+                            var correctOption = int.Parse(correctAnswer);
+                            var wrongOptions = Enumerable.Range(0, 4) // 假设有4个选项
+                                .Where(i => i != correctOption)
+                                .ToArray();
+                                
+                            if (wrongOptions.Length > 0)
+                            {
+                                answer = wrongOptions[random.Next(wrongOptions.Length)].ToString();
+                            }
+                            else
+                            {
+                                answer = "0"; // 默认选第一个
+                            }
+                        }
+                    }
+                    else if (paperQuestion.Question.Type == QuestionType.MultipleChoice)
+                    {
+                        // 多选题：随机选择几个选项，确保与正确答案不同
+                        var correctAnswer = paperQuestion.QuestionVersion.CorrectAnswer;
+                        // 检查是否是复杂题目
+                        if (correctAnswer.Length > 100)
+                        {
+                            // 对于复杂题目，简单返回一个固定错误答案
+                            answer = "0,1"; // 简单返回前两个选项
+                        }
+                        else
+                        {
+                            var correctAnswers = correctAnswer.Split(',')
+                                .Select(int.Parse).ToList();
+                            var allOptions = Enumerable.Range(0, 4).ToList(); // 假设有4个选项
+                            var wrongAnswers = new List<int>();
+                            
+                            // 随机选择1-3个选项
+                            var selectCount = random.Next(1, 4);
+                            while (wrongAnswers.Count < selectCount)
+                            {
+                                var option = random.Next(4);
+                                if (!wrongAnswers.Contains(option) && 
+                                    (wrongAnswers.Count > 0 || !correctAnswers.Contains(option)))
+                                {
+                                    wrongAnswers.Add(option);
+                                }
+                            }
+                            
+                            answer = string.Join(",", wrongAnswers.OrderBy(x => x));
+                        }
+                    }
+                    else if (paperQuestion.Question.Type == QuestionType.TrueFalse)
+                    {
+                        // 判断题：选择与正确答案相反的选项
+                        answer = paperQuestion.QuestionVersion.CorrectAnswer == "0" ? "1" : "0";
+                    }
+                    else
+                    {
+                        // 主观题：随机生成简短文本
+                        answer = "这是一个示例答案，与正确答案不同。";
+                    }
+                }
+                
+                // 最终检查答案长度，确保不超过数据库字段限制（假设为2000字符）
+                if (answer.Length > 1800)
+                {
+                    answer = answer.Substring(0, 1800) + "...（答案过长，已截断）";
+                }
+                
+                // 创建答题记录
+                var answerRecord = new ExamAnswerRecord
+                {
+                    Id = idGenerator.NewId(),
+                    ExamRecordId = record.Id,
+                    QuestionId = paperQuestion.QuestionId,
+                    QuestionVersionId = paperQuestion.QuestionVersionId,
+                    OrderNumber = paperQuestion.OrderNumber,
+                    Answer = answer,
+                    IsCorrect = isCorrect
+                };
+                
+                // 如果是已评分的，添加得分
+                if (record.Status == ExamRecordStatus.Graded)
+                {
+                    answerRecord.Score = isCorrect ? paperQuestion.Score : 0;
+                    answerRecord.GradedTime = record.GradedTime;
+                }
+                
+                answerRecords.Add(answerRecord);
+            }
+        }
+        
+        // 保存所有答题记录
+        await context.ExamAnswerRecords.AddRangeAsync(answerRecords);
         await context.SaveChangesAsync();
     }
 }

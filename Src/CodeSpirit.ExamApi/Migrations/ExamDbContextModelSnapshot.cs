@@ -25,10 +25,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamAnswerRecord", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Answer")
                         .HasMaxLength(2000)
@@ -110,10 +107,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamPaper", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<decimal>("AverageScore")
                         .HasPrecision(10, 2)
@@ -189,10 +183,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamPaperQuestion", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -248,10 +239,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamRecord", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<int>("AttemptNumber")
                         .HasColumnType("int");
@@ -346,10 +334,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.ExamSetting", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<int>("AllowedAttempts")
                         .HasColumnType("int");
@@ -413,10 +398,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.PracticeRecord", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Answer")
                         .IsRequired()
@@ -476,10 +458,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.Question", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Analysis")
                         .HasMaxLength(2000)
@@ -561,10 +540,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.QuestionCategory", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -609,10 +585,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.QuestionVersion", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Analysis")
                         .HasMaxLength(2000)
@@ -686,10 +659,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.Student", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -741,10 +711,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.StudentGroup", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -784,10 +751,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.StudentGroupMapping", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -828,10 +792,7 @@ namespace CodeSpirit.ExamApi.Migrations
             modelBuilder.Entity("CodeSpirit.ExamApi.Data.Models.WrongQuestion", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");

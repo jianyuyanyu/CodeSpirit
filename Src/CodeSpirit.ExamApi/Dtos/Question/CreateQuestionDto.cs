@@ -1,5 +1,7 @@
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ExamApi.Data.Models;
+using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// 创建题目DTO
@@ -12,7 +14,7 @@ public class CreateQuestionDto
     [Required(ErrorMessage = "题目内容不能为空")]
     [StringLength(2000, ErrorMessage = "题目内容最多2000字符")]
     [DisplayName("题目内容")]
-    [AmisTextareaField(MaxLength = 2000, ShowCounter = true)]
+    [AmisTextareaField(MaxLength = 2000, ShowCounter = true, Required = true)]
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
@@ -70,15 +72,13 @@ public class CreateQuestionDto
     /// </summary>
     [Required(ErrorMessage = "请选择题目分类")]
     [DisplayName("分类")]
-    [AmisInputTreeField(
+    [AmisTreeSelectField(
         DataSource = "${ROOT_API}/api/exam/QuestionCategories/tree",
-        LabelField = "name",
-        ValueField = "id",
         Multiple = false,
-        JoinValues = false,
-        ExtractValue = true,
-        Required = true,
-        Placeholder = "请选择题目分类"
+        Cascade = true,
+        ShowOutline = true,
+        LabelField = "name",
+        ValueField = "id"
     )]
     public long CategoryId { get; set; }
 

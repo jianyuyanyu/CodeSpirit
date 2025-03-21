@@ -13,6 +13,6 @@ public class UpdateQuestionDto : CreateQuestionDto
     [Required(ErrorMessage = "请填写修改原因")]
     [StringLength(500, ErrorMessage = "修改原因最多500字符")]
     [DisplayName("修改原因")]
-    [AmisTextareaField(MaxLength = 500, ShowCounter = true)]
+    [AmisTextareaField(MaxLength = 500, ShowCounter = true, Required = true)]
     public string ChangeReason { get; set; } = string.Empty;
 } 

@@ -33,7 +33,6 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 UserManager,
                 RoleManager,
                 MockUserServiceLogger.Object,
-                MockHttpContextAccessor.Object,
                 _idGenerator,
                 MockCurrentUser.Object
             );

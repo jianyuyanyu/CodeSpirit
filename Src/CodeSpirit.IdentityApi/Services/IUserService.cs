@@ -69,4 +69,17 @@ public interface IUserService : IBaseCRUDIService<ApplicationUser, UserDto, long
     Task<IEnumerable<object>> GetUserRegistrationTrendAsync(DateTimeOffset startDate, DateTimeOffset endDate, string groupBy);
     Task<IEnumerable<object>> GetUserActiveStatusDistributionAsync();
     Task<IEnumerable<object>> GetUserGenderDistributionAsync();
+
+    /// <summary>
+    /// 高级用户创建方法，支持指定密码及创建者等信息
+    /// </summary>
+    /// <param name="createDto">用户创建数据传输对象</param>
+    /// <param name="password">指定的用户密码，如为null则自动生成随机密码</param>
+    /// <param name="creatorId">创建者ID</param>
+    /// <param name="creatorName">创建者名称</param>
+    /// <returns>创建的用户数据传输对象</returns>
+    Task<UserDto> CreateAdvancedUserAsync(
+        CreateUserDto createDto, 
+        string password = null, 
+        long? creatorId = null);
 }

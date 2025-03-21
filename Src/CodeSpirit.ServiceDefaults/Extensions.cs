@@ -28,6 +28,10 @@ public static class Extensions
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();
 
+        builder.AddRabbitMQClient(
+            "rabbitmq",
+            static settings => settings.DisableHealthChecks = true);
+
         //if (builder.Environment.IsProduction())
         //{
         //    //k8s

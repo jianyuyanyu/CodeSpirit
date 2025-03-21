@@ -9,6 +9,8 @@ using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
+using CodeSpirit.Shared.EventBus.Extensions;
+using CodeSpirit.Shared.EventBus.Events;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -72,6 +74,9 @@ public static class ServiceCollectionExtensions
 
         // 添加授权
         services.AddAuthorization();
+
+        // 注册事件总线
+        services.AddEventBus();
         
         // 注册Charts服务 - 即使Redis不可用，Chart服务也应该可以使用
         try

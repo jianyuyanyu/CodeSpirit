@@ -18,7 +18,6 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly ILogger<UserService> _logger;
-    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IIdGenerator _idGenerator;
     private readonly ICurrentUser _currentUser;
 
@@ -28,7 +27,6 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         ILogger<UserService> logger,
-        IHttpContextAccessor httpContextAccessor,
         IIdGenerator idGenerator,
         ICurrentUser currentUser)
         : base(userRepository, mapper)
@@ -37,7 +35,6 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         _userManager = userManager;
         _roleManager = roleManager;
         _logger = logger;
-        _httpContextAccessor = httpContextAccessor;
         _idGenerator = idGenerator;
         _currentUser = currentUser;
     }
@@ -771,4 +768,79 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         return result.ToList();
     }
     #endregion
+
+    /// <summary>
+    /// 高级用户创建方法，支持指定密码及创建者等信息
+    /// </summary>
+    /// <param name="createDto">用户创建数据传输对象</param>
+    /// <param name="password">指定的用户密码，如为null则自动生成随机密码</param>
+    /// <param name="creatorId">创建者ID</param>
+    /// <param name="sendPasswordEmail">是否发送密码邮件</param>
+    /// <returns>创建的用户数据传输对象</returns>
+    public async Task<UserDto> CreateAdvancedUserAsync(
+        CreateUserDto createDto, 
+        string password = null, 
+        long? creatorId = null)
+    {
+        // 验证用户名和邮箱
+        await ValidateCreateDto(createDto);
+        
+        // 创建用户实体
+        var user = Mapper.Map<ApplicationUser>(createDto);
+        user.Id = _idGenerator.NewId();
+        
+        // 记录创建者信息
+        if (creatorId.HasValue)
+        {
+            user.CreatedBy = creatorId.Value;
+        }
+        else if (_currentUser != null && _currentUser.Id > 0)
+        {
+            // 如果没有指定创建者ID，使用当前用户ID
+            user.CreatedBy = _currentUser.Id.Value;
+        }
+        
+        // 使用指定密码或生成随机密码
+        string newPassword = password ?? PasswordGenerator.GenerateRandomPassword(12);
+        
+        // 创建用户
+        var result = await _userManager.CreateAsync(user, newPassword);
+        if (!result.Succeeded)
+        {
+            throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+
+        // 分配角色
+        if (createDto.Roles?.Any() == true)
+        {
+            // 验证角色是否存在
+            var validRoles = new List<string>();
+            foreach (var role in createDto.Roles)
+            {
+                if (await _roleManager.RoleExistsAsync(role))
+                {
+                    validRoles.Add(role);
+                }
+            }
+
+            if (validRoles.Any())
+            {
+                result = await _userManager.AddToRolesAsync(user, validRoles);
+                if (!result.Succeeded)
+                {
+                    // 如果角色分配失败，删除已创建的用户
+                    await _userManager.DeleteAsync(user);
+                    throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+                }
+            }
+        }
+
+        // 重新获取包含角色信息的用户
+        var createdUser = await _userManager.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.Id == user.Id);
+
+        return Mapper.Map<UserDto>(createdUser);
+    }
 }

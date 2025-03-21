@@ -1,3 +1,4 @@
+using Aspire.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
@@ -21,6 +22,18 @@ var seqService = builder.AddSeq("seq")
                  .WithHttpEndpoint(port: 61688, targetPort: 80, name: "seq-ui")
                  .WithEnvironment("ACCEPT_EULA", "Y");
 
+// 添加 RabbitMQ 服务的用户名和密码参数
+var rabbitmqUser = builder.AddParameter("rabbitmq-username", "admin");
+var rabbitmqPass = builder.AddParameter("rabbitmq-password", "Password123", secret: true);
+
+// 添加 RabbitMQ 服务
+var rabbitmqService = builder.AddRabbitMQ("rabbitmq", rabbitmqUser, rabbitmqPass)
+                     .WithManagementPlugin()
+                     .WithLifetime(ContainerLifetime.Persistent)
+                     //.WithEndpoint(port: 5672, name: "rabbitmq")
+                     //.WithHttpEndpoint(port: 20000, targetPort: 15672, name: "rabbitmq-management")
+                    ;
+
 // 添加 ConfigCenter 服务
 var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
     .WithReference(seqService)
@@ -37,6 +50,8 @@ var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("ident
         .WaitFor(cache)
     .WithReference(configService)
         .WaitFor(configService)
+    .WithReference(rabbitmqService)
+        .WaitFor(rabbitmqService)
     ;
 
 // 添加消息服务
@@ -56,6 +71,8 @@ var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
         .WaitFor(cache)
     .WithReference(configService)
         .WaitFor(configService)
+    .WithReference(rabbitmqService)
+        .WaitFor(rabbitmqService)
     ;
 
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")

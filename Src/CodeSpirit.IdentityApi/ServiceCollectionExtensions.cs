@@ -1,15 +1,22 @@
 ﻿using Audit.Core;
 using Audit.WebApi;
+using CodeSpirit.Aggregator;
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
+using CodeSpirit.Charts;
+using CodeSpirit.Charts.Extensions;
+using CodeSpirit.ConfigCenter.Client;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Data.Seeders;
+using CodeSpirit.IdentityApi.EventHandlers;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
+using CodeSpirit.Shared.EventBus.Events;
+using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -17,10 +24,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using CodeSpirit.Aggregator;
-using CodeSpirit.Charts;
-using CodeSpirit.Charts.Extensions;
-using CodeSpirit.ConfigCenter.Client;
 
 public static class ServiceCollectionExtensions
 {
@@ -220,6 +223,13 @@ public static class ServiceCollectionExtensions
 
         // 添加配置中心服务（配置源和客户端）
         builder.AddConfigCenter();
+
+        // 注册事件总线
+        builder.Services.AddEventBus();
+
+        // 注册事件处理器
+        builder.Services.AddEventHandler<UserCreatedEvent, UserCreatedEventHandler>();
+
         return builder;
     }
 

@@ -6,6 +6,8 @@ using CodeSpirit.ExamApi.Dtos.Student;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.EventBus.Interfaces;
+using CodeSpirit.Shared.EventBus.Events;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,6 +24,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     private readonly IRepository<StudentGroup> _studentGroupRepository;
     private readonly ILogger<StudentService> _logger;
     private readonly IIdGenerator _idGenerator;
+    private readonly IEventBus _eventBus;
 
     /// <summary>
     /// 构造函数
@@ -32,13 +35,15 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         IRepository<StudentGroup> studentGroupRepository,
         IMapper mapper,
         ILogger<StudentService> logger,
-        IIdGenerator idGenerator)
+        IIdGenerator idGenerator,
+        IEventBus eventBus)
         : base(repository, mapper)
     {
         _mappingRepository = mappingRepository;
         _studentGroupRepository = studentGroupRepository;
         _logger = logger;
         _idGenerator = idGenerator;
+        _eventBus = eventBus;
     }
 
     /// <summary>
@@ -182,9 +187,47 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     /// </summary>
     protected override async Task OnCreated(Student entity, CreateStudentDto createDto)
     {
+        // 处理学生分组
         if (createDto.StudentGroupIds.Any())
         {
             await AddStudentToGroupsAsync(entity.Id, createDto.StudentGroupIds);
+        }
+        
+        // 发布用户创建事件
+        await PublishUserCreatedEventAsync(entity);
+    }
+
+    protected override async Task OnUpdated(Student entity)
+    {
+        await base.OnUpdated(entity);
+        // 发布用户创建事件
+        await PublishUserCreatedEventAsync(entity);
+    }
+
+    /// <summary>
+    /// 发布用户创建事件
+    /// </summary>
+    private async Task PublishUserCreatedEventAsync(Student student)
+    {
+        try
+        {
+            var @event = new UserCreatedEvent
+            {
+                UserId = student.UserId,
+                UserName = student.PhoneNumber,
+                //IdNo
+                Name = student.Name,
+                PhoneNumber = student.PhoneNumber,
+                Email = $"{student.StudentNumber}@example.com", // 默认邮箱
+                IsActive = student.IsActive
+            };
+            
+            await _eventBus.PublishAsync(@event);
+            _logger.LogInformation("已发布用户创建事件: {@UserId}", student.UserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "发布用户创建事件失败: {@UserId}", student.UserId);
         }
     }
 
@@ -271,4 +314,5 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             .Find(x => x.StudentId == studentId && groupIds.Contains(x.StudentGroupId))
             .ExecuteDeleteAsync();
     }
+
 } 

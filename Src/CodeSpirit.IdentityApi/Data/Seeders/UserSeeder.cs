@@ -1,6 +1,7 @@
 ﻿using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 namespace CodeSpirit.IdentityApi.Data.Seeders;
 public class UserSeeder : IScopedDependency
 {
@@ -26,6 +27,10 @@ public class UserSeeder : IScopedDependency
 
     public async Task SeedAdminUserAsync()
     {
+        if (await _userManager.Users.AnyAsync())
+        {
+            return;
+        }
         ApplicationUser adminUser = await _userManager.FindByNameAsync("admin");
 
         if (adminUser == null)
@@ -103,6 +108,11 @@ public class UserSeeder : IScopedDependency
 
     public async Task SeedRandomUsersAsync(int userCount, RoleManager<ApplicationRole> roleManager)
     {
+        if (await _userManager.Users.AnyAsync())
+        {
+            return;
+        }
+
         Random random = new();
         Gender[] genderValues = Enum.GetValues(typeof(Gender)).Cast<Gender>().ToArray();
 

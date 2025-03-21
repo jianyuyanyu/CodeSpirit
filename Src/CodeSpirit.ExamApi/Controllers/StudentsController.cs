@@ -67,8 +67,6 @@ public class StudentsController : ApiControllerBase
     [HttpPost]
     public async Task<ActionResult<ApiResponse<StudentDto>>> CreateStudent([FromBody] CreateStudentDto createDto)
     {
-        ArgumentNullException.ThrowIfNull(createDto);
-        
         var result = await _studentService.CreateAsync(createDto);
         return SuccessResponse(result);
     }
@@ -133,39 +131,6 @@ public class StudentsController : ApiControllerBase
             : SuccessResponse($"成功删除 {successCount} 个考生！");
     }
     
-    /// <summary>
-    /// 添加考生到分组
-    /// </summary>
-    /// <param name="studentId">考生ID</param>
-    /// <param name="request">分组ID列表</param>
-    /// <returns>操作结果</returns>
-    [HttpPost("{studentId}/groups")]
-    [Operation("添加到分组", "ajax", null, "确定要将该考生添加到选定分组吗？")]
-    public async Task<ActionResult<ApiResponse>> AddStudentToGroups(long studentId, [FromBody] BatchOperationDto<long> request)
-    {
-        if (studentId <= 0) return BadRequest("无效的考生ID");
-        ArgumentNullException.ThrowIfNull(request);
-        
-        await _studentService.AddStudentToGroupsAsync(studentId, request.Ids);
-        return SuccessResponse("成功将考生添加到所选分组");
-    }
-    
-    /// <summary>
-    /// 从分组移除考生
-    /// </summary>
-    /// <param name="studentId">考生ID</param>
-    /// <param name="request">分组ID列表</param>
-    /// <returns>操作结果</returns>
-    [HttpDelete("{studentId}/groups")]
-    [Operation("从分组移除", "ajax", null, "确定要将该考生从选定分组中移除吗？")]
-    public async Task<ActionResult<ApiResponse>> RemoveStudentFromGroups(long studentId, [FromBody] BatchOperationDto<long> request)
-    {
-        if (studentId <= 0) return BadRequest("无效的考生ID");
-        ArgumentNullException.ThrowIfNull(request);
-        
-        await _studentService.RemoveStudentFromGroupsAsync(studentId, request.Ids);
-        return SuccessResponse("成功从所选分组移除考生");
-    }
     
     /// <summary>
     /// 通过学号查询考生

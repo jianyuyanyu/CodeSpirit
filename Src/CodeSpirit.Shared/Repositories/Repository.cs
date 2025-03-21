@@ -233,5 +233,29 @@ namespace CodeSpirit.Shared.Repositories
             
             await _context.SaveChangesAsync();
         }
+
+        public async Task DeleteRangeAsync(IEnumerable<TEntity> entities)
+        {
+            var updates = new List<TEntity>();
+            var deleteds = new List<TEntity>();
+
+            foreach (var entity in entities)
+            {
+                if (entity is ISoftDeleteAuditable softDeleteEntity)
+                {
+                    softDeleteEntity.IsDeleted = true;
+                    updates.Add(entity);
+                }
+                else
+                    deleteds.Add(entity);
+            } 
+            if(updates.Any())
+                _context.UpdateRange(updates);
+            if (deleteds.Any())
+                _context.RemoveRange(deleteds);
+
+            await _context.SaveChangesAsync();
+
+        }
     }
 }

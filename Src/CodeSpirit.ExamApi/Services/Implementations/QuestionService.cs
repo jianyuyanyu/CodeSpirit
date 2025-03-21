@@ -220,14 +220,14 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
     protected override async Task OnCreating(Question entity, CreateQuestionDto createDto)
     {
         // 处理JSON序列化
-        if (createDto.KnowledgePoints?.Any() == true)
-        {
-            entity.KnowledgePoints = JsonSerializer.Serialize(createDto.KnowledgePoints);
-        }
-
         if (createDto.Tags?.Any() == true)
         {
             entity.Tags = JsonSerializer.Serialize(createDto.Tags);
+        }
+
+        if (entity.Id == default)
+        {
+            entity.Id = _idGenerator.NewId();
         }
 
         // 设置初始版本
@@ -243,11 +243,6 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         _changeReason = updateDto.ChangeReason;
 
         // 处理 JSON 序列化
-        if (updateDto.KnowledgePoints?.Any() == true)
-        {
-            entity.KnowledgePoints = JsonSerializer.Serialize(updateDto.KnowledgePoints);
-        }
-
         if (updateDto.Tags?.Any() == true)
         {
             entity.Tags = JsonSerializer.Serialize(updateDto.Tags);
@@ -262,6 +257,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
         // 创建版本记录
         var version = new QuestionVersion
         {
+            Id = _idGenerator.NewId(),
             QuestionId = entity.Id,
             Version = entity.Version,
             Content = entity.Content,
@@ -434,7 +430,7 @@ public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, Cre
             .CreateQuery()
             .Where(q => idList.Contains(q.Id))
             .Include(q => q.ExamPaperQuestions)
-            .Where(q => q.IsReferenced)
+            .Where(q => q.ExamPaperQuestions.Any())
             .Select(q => q.Id)
             .ToListAsync();
 

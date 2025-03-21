@@ -17,10 +17,10 @@ public class QuestionVersionProfile : Profile
     {
         // 配置基本CRUD映射
         this.ConfigureBaseCRUDIMappings<
-            QuestionVersion, 
-            QuestionVersionDto, 
-            long, 
-            CreateQuestionVersionDto, 
+            QuestionVersion,
+            QuestionVersionDto,
+            long,
+            CreateQuestionVersionDto,
             UpdateQuestionVersionDto,
             CreateQuestionVersionDto>();
 

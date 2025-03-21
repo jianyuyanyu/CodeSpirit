@@ -61,4 +61,21 @@ public class Student : LongKeyAuditableEntityBase, IIsActive
     /// 是否激活
     /// </summary>
     public bool IsActive { get; set; }
+    /// <summary>
+    /// 身份证号码
+    /// </summary>
+    [MaxLength(18)]
+    public string IdNo { get; set; }
+    /// <summary>
+    /// 性别
+    /// </summary>
+    [MaxLength(1)]
+    public Gender Gender { get; set; }
+
+    /// <summary>
+    /// 准考证
+    /// </summary>
+    [MaxLength(20)]
+    public string AdmissionTicket { get; set; }
+
 }

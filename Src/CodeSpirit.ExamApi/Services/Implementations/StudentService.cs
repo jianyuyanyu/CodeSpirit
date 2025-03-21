@@ -59,6 +59,8 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             predicate = predicate.Or(x => x.Name.Contains(queryDto.Keywords));
             predicate = predicate.Or(x => x.StudentNumber.Contains(queryDto.Keywords));
             predicate = predicate.Or(x => x.PhoneNumber.Contains(queryDto.Keywords));
+            predicate = predicate.Or(x => x.IdNo.Contains(queryDto.Keywords));
+            predicate = predicate.Or(x => x.AdmissionTicket.Contains(queryDto.Keywords));
         }
 
         if (queryDto.IsActive.HasValue)
@@ -179,7 +181,21 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         {
             throw new AppServiceException(400, "该用户ID已关联学生！");
         }
-        
+        var existsIdNo = await Repository
+            .Find(x => x.IdNo == createDto.IdNo)
+            .AnyAsync();
+        if (existsIdNo)
+        {
+            throw new AppServiceException(400, "该身份证已存在！");
+        }
+        var existsAdmissionTicket = await Repository
+            .Find(x => x.AdmissionTicket == createDto.AdmissionTicket)
+            .AnyAsync();
+        if (existsAdmissionTicket)
+        {
+            throw new AppServiceException(400, "该准考证已存在！");
+        }
+
         // 验证学生组是否存在
         if (createDto.StudentGroupIds.Any())
         {
@@ -218,22 +234,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     {
         return importDto.StudentNumber;
     }
-
-    /// <summary>
-    /// 验证导入项
-    /// </summary>
-    protected override async Task<IEnumerable<StudentBatchImportDto>> ValidateImportItems(IEnumerable<StudentBatchImportDto> importData)
-    {
-        var items = importData.ToList();
-        
-        // 检查学号是否重复
-        var existingStudentNumbers = await Repository
-            .Find(s => items.Select(i => i.StudentNumber).Contains(s.StudentNumber))
-            .Select(s => s.StudentNumber)
-            .ToListAsync();
-            
-        return items.Where(i => !existingStudentNumbers.Contains(i.StudentNumber));
-    }
+     
 
     /// <summary>
     /// 保存学生到分组
@@ -281,6 +282,20 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         }
 
 
+        var existsIdNo = await Repository
+            .Find(x => x.IdNo == updateDto.IdNo && x.Id != entity.Id)
+            .AnyAsync();
+        if (existsIdNo)
+        {
+            throw new AppServiceException(400, "该身份证已存在！");
+        }
+        var existsAdmissionTicket = await Repository
+            .Find(x => x.AdmissionTicket == updateDto.AdmissionTicket && x.Id != entity.Id)
+            .AnyAsync();
+        if (existsAdmissionTicket)
+        {
+            throw new AppServiceException(400, "该准考证已存在！");
+        }
         var entityGroups = entity.StudentGroups?.Select(x => x.StudentGroupId).ToList();
         if(entityGroups == null)
             entityGroups = new List<long>();
@@ -297,4 +312,62 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
 
         } 
     }
+    public override async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<StudentBatchImportDto> importData)
+    {
+        ArgumentNullException.ThrowIfNull(importData);
+
+        var successCount = 0; 
+        var importList = importData.ToList();
+        var inserts = new List<Student>();
+        var failedItems = new List<string>();
+
+        var checkDatas = await Repository.CreateQuery().Where(x => importList.Select(x => x.StudentNumber).Contains(x.StudentNumber) 
+        || importList.Select(x => x.IdNo).Contains(x.IdNo) 
+        || importList.Select(x => x.AdmissionTicket).Contains(x.AdmissionTicket))
+            .Select(x => new { x.StudentNumber, x.IdNo, x.AdmissionTicket }).ToListAsync();
+
+        foreach (var item in importList)
+        {
+            if (checkDatas.Any()) {
+                if (checkDatas.Any(x => x.IdNo == item.IdNo))
+                {
+                    failedItems.Add($"{item.IdNo}「传入的身份证'{item.IdNo}'已存在");
+                    continue;
+                }
+                if (checkDatas.Any(x => x.AdmissionTicket == item.AdmissionTicket))
+                {
+                    failedItems.Add($"{item.AdmissionTicket}「传入的准考证'{item.AdmissionTicket}'已存在");
+                    continue;
+                }
+                if (checkDatas.Any(x => x.StudentNumber == item.StudentNumber))
+                {
+                    failedItems.Add($"{item.StudentNumber}「传入的学工号'{item.StudentNumber}'已存在");
+                    continue;
+                }
+            }
+             
+            var genderType = Gender.Unknown;
+            switch (item.Gender)
+            {
+                case "男":
+                    genderType = Gender.Male;
+                    break;
+                case "女":
+                    genderType = Gender.Female;
+                    break;
+                default:
+                    break;
+            }
+            var entity = Mapper.Map<Student>(item);
+            entity.Gender = genderType;
+            entity.Id = _idGenerator.NewId();
+            inserts.Add(entity);    
+
+                successCount++;
+ 
+        }
+        await Repository.AddRangeAsync(inserts); 
+        return (successCount, failedItems);
+    }
+
 } 

@@ -26,6 +26,9 @@ public class StudentMappingProfile : Profile
             .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
 
         CreateMap<UpdateStudentDto, Student>();
+        CreateMap<StudentBatchImportDto , Student>()
+            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+            .ForMember(dest => dest.Gender, opt => opt.Ignore());
 
         CreateMap<PageList<Student>, PageList<StudentDto>>();
     }

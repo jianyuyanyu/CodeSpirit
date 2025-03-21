@@ -1,4 +1,6 @@
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.ExamApi.Data.Models;
+using Humanizer.Localisation;
 
 namespace CodeSpirit.ExamApi.Dtos.Student;
 
@@ -21,11 +23,31 @@ public class CreateStudentDto
     [StringLength(50, ErrorMessage = "姓名长度不能超过50个字符")]
     [DisplayName("姓名")]
     public string Name { get; set; } = string.Empty;
+    /// <summary>
+    /// 身份证号码
+    /// </summary>
+    [Required(ErrorMessage = "身份证号码不能为空")]
+    [MaxLength(18)]
+    [DisplayName("身份证")]
+    [RegularExpression(@"^(\d{15}(|\d{2}[0-9Xx])$|\d{17}([0-9Xx]))$", ErrorMessageResourceName = "InvalidIdCardNumber", ErrorMessageResourceType = typeof(Resources))]
+    public string IdNo { get; set; } = string.Empty;
+    /// <summary>
+    /// 性别
+    /// </summary>
+    [DisplayName("性别")]
+    public Gender  Gender { get; set; }
 
+    /// <summary>
+    /// 准考证
+    /// </summary>
+    //[Required(ErrorMessage = "准考证不能为空")]
+    [StringLength(20, ErrorMessage = "准考证长度不能超过20个字符")]
+    [DisplayName("准考证")]
+    public string AdmissionTicket { get; set; } = string.Empty;
     /// <summary>
     /// 学生学号/工号
     /// </summary>
-    [Required(ErrorMessage = "学号/工号不能为空")]
+    //[Required(ErrorMessage = "学号/工号不能为空")]
     [StringLength(50, ErrorMessage = "学号/工号长度不能超过50个字符")]
     [DisplayName("学号/工号")]
     public string StudentNumber { get; set; } = string.Empty;

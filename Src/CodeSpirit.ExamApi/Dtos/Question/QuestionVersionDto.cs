@@ -43,7 +43,7 @@ public class QuestionVersionDto
     /// </summary>
     [DisplayName("知识点")]
     [AmisColumn(Type = "json")]
-    public List<string>? KnowledgePoints { get; set; }
+    public string? KnowledgePoints { get; set; }
 
     /// <summary>
     /// 题目分值

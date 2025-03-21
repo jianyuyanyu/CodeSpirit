@@ -102,7 +102,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="id">题目ID</param>
     /// <returns>题目历史版本列表</returns>
     [HttpGet("{id:long}/versions")]
-    [Operation("历史版本", "link", "/questions/${id}/versions", null)]
+    [Operation("历史版本", "link", "/exam/questionVersions?questionId=${id}", null)]
     public async Task<ActionResult<ApiResponse<List<QuestionVersionDto>>>> GetQuestionVersions(long id)
     {
         var versions = await _questionService.GetQuestionVersionsAsync(id);

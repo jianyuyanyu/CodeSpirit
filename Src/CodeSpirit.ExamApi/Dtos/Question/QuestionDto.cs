@@ -39,7 +39,7 @@ public class QuestionDto
     [DisplayName("知识点")]
     [AmisColumn(Type = "json", Hidden = true)]
     [AmisFormField(Type = "json")]
-    public List<string>? KnowledgePoints { get; set; }
+    public string? KnowledgePoints { get; set; }
 
     [DisplayName("分类")]
     public string CategoryName { get; set; } = string.Empty;

@@ -177,15 +177,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         {
             throw new AppServiceException(400, "学号/工号已存在！");
         }
-        
-        // 检查用户ID是否已存在
-        var existsUserId = await Repository
-            .Find(x => x.UserId == createDto.UserId)
-            .AnyAsync();
-        if (existsUserId)
-        {
-            throw new AppServiceException(400, "该用户ID已关联学生！");
-        }
+
         var existsIdNo = await Repository
             .Find(x => x.IdNo == createDto.IdNo)
             .AnyAsync();
@@ -207,7 +199,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             var existingGroupCount = await _studentGroupRepository
                 .Find(x => createDto.StudentGroupIds.Contains(x.Id))
                 .CountAsync();
-                
+
             if (existingGroupCount != createDto.StudentGroupIds.Count)
             {
                 throw new AppServiceException(400, "部分学生组不存在！");
@@ -218,6 +210,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     protected override Task OnCreating(Student entity, CreateStudentDto createDto)
     {
         entity.Id = _idGenerator.NewId();
+        entity.UserId = entity.Id;
         return base.OnCreating(entity, createDto);
     }
 
@@ -231,7 +224,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         {
             await SaveStudentToGroupsAsync(entity, createDto.StudentGroupIds);
         }
-        
+
         // 发布用户创建事件
         await PublishUserCreatedEventAsync(entity);
     }
@@ -260,7 +253,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
                 Email = $"{student.StudentNumber}@example.com", // 默认邮箱
                 IsActive = student.IsActive
             };
-            
+
             await _eventBus.PublishAsync(@event);
             _logger.LogInformation("已发布用户创建事件: {@UserId}", student.UserId);
         }
@@ -277,13 +270,13 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     {
         return importDto.StudentNumber;
     }
-     
+
 
     /// <summary>
     /// 保存学生到分组
     /// </summary>
     public async Task SaveStudentToGroupsAsync(Student entity, List<long> groupIds)
-    { 
+    {
 
         // 验证学生组是否存在
         var groups = await _studentGroupRepository
@@ -293,14 +286,14 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         if (groups.Count != groupIds.Count)
             throw new AppServiceException(400, "部分学生组不存在！");
 
-        var mappings = await _mappingRepository.CreateQuery().AsNoTracking().Where(x=>x.StudentId == entity.Id).ToListAsync();
+        var mappings = await _mappingRepository.CreateQuery().AsNoTracking().Where(x => x.StudentId == entity.Id).ToListAsync();
         if (mappings.Any())
             await _mappingRepository.DeleteRangeAsync(mappings);
         // 创建新的映射
         var newMappings = groupIds
             .Select(groupId => new StudentGroupMapping
             {
-                 Id = _idGenerator.NewId(),
+                Id = _idGenerator.NewId(),
                 StudentId = entity.Id,
                 StudentGroupId = groupId
             })
@@ -340,7 +333,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             throw new AppServiceException(400, "该准考证已存在！");
         }
         var entityGroups = entity.StudentGroups?.Select(x => x.StudentGroupId).ToList();
-        if(entityGroups == null)
+        if (entityGroups == null)
             entityGroups = new List<long>();
         if (entityGroups.Except(updateDto.StudentGroupIds).Any())
         {
@@ -353,25 +346,26 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             entity.StudentGroups = null;
             await SaveStudentToGroupsAsync(entity, updateDto.StudentGroupIds);
 
-        } 
+        }
     }
     public override async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<StudentBatchImportDto> importData)
     {
         ArgumentNullException.ThrowIfNull(importData);
 
-        var successCount = 0; 
+        var successCount = 0;
         var importList = importData.ToList();
         var inserts = new List<Student>();
         var failedItems = new List<string>();
 
-        var checkDatas = await Repository.CreateQuery().Where(x => importList.Select(x => x.StudentNumber).Contains(x.StudentNumber) 
-        || importList.Select(x => x.IdNo).Contains(x.IdNo) 
+        var checkDatas = await Repository.CreateQuery().Where(x => importList.Select(x => x.StudentNumber).Contains(x.StudentNumber)
+        || importList.Select(x => x.IdNo).Contains(x.IdNo)
         || importList.Select(x => x.AdmissionTicket).Contains(x.AdmissionTicket))
             .Select(x => new { x.StudentNumber, x.IdNo, x.AdmissionTicket }).ToListAsync();
 
         foreach (var item in importList)
         {
-            if (checkDatas.Any()) {
+            if (checkDatas.Any())
+            {
                 if (checkDatas.Any(x => x.IdNo == item.IdNo))
                 {
                     failedItems.Add($"{item.IdNo}「传入的身份证'{item.IdNo}'已存在");
@@ -388,7 +382,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
                     continue;
                 }
             }
-             
+
             var genderType = Gender.Unknown;
             switch (item.Gender)
             {
@@ -404,13 +398,13 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             var entity = Mapper.Map<Student>(item);
             entity.Gender = genderType;
             entity.Id = _idGenerator.NewId();
-            inserts.Add(entity);    
+            entity.UserId = entity.Id;
+            inserts.Add(entity);
+            successCount++;
 
-                successCount++;
- 
         }
-        await Repository.AddRangeAsync(inserts); 
+        await Repository.AddRangeAsync(inserts);
         return (successCount, failedItems);
     }
 
-} 
+}

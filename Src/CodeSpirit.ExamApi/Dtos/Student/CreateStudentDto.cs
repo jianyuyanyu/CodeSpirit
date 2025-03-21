@@ -10,13 +10,6 @@ namespace CodeSpirit.ExamApi.Dtos.Student;
 public class CreateStudentDto
 {
     /// <summary>
-    /// 用户ID（关联到身份系统）
-    /// </summary>
-    [Required(ErrorMessage = "用户ID不能为空")]
-    [DisplayName("用户ID")]
-    public long UserId { get; set; }
-
-    /// <summary>
     /// 学生姓名
     /// </summary>
     [Required(ErrorMessage = "姓名不能为空")]

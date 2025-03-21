@@ -293,25 +293,37 @@ public static class ExamDbContextSeed
             new()
             {
                 Id = idGenerator.NewId(),
+                UserId = idGenerator.NewId(),
                 Name = "张三",
                 PhoneNumber = "13800138001",
                 StudentNumber = "STU001",
+                AdmissionTicket = "20210001",
+                Gender = Gender.Male,
+                IdNo = "110101199001011234",
                 IsActive = true
             },
             new()
             {
                 Id = idGenerator.NewId(),
+                UserId = idGenerator.NewId(),
                 Name = "李四",
                 PhoneNumber = "13800138002",
                 StudentNumber = "STU002",
+                AdmissionTicket = "20210002",
+                Gender = Gender.Male,
+                IdNo = "110101199001011235",
                 IsActive = true
             },
             new()
             {
                 Id = idGenerator.NewId(),
+                UserId = idGenerator.NewId(),
                 Name = "王五",
                 PhoneNumber = "13800138003",
                 StudentNumber = "STU003",
+                IdNo = "110101199001011236",
+                AdmissionTicket = "20210003",
+                Gender = Gender.Male,
                 IsActive = true
             }
         };
@@ -954,6 +966,9 @@ public static class ExamDbContextSeed
                 Name = "Admin（测试用户）",
                 StudentNumber = "TEST001",
                 PhoneNumber = "13800000000",
+                AdmissionTicket = "000001",
+                IdNo = "4202132322",
+                Gender = Gender.Unknown,
                 IsActive = true,
                 CreatedBy = -1,
                 CreatedAt = DateTime.Now,

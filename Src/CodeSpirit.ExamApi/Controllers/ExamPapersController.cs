@@ -135,7 +135,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="createDto">随机试卷生成DTO</param>
     /// <returns>生成的试卷</returns>
     [HttpPost("generate-random")]
-    [Operation("生成随机试卷", "ajax", null, "确定要生成随机试卷吗？")]
+    [HeaderOperation("生成随机试卷", "form")]
     public async Task<ActionResult<ApiResponse<ExamPaperDto>>> GenerateRandomExamPaper(GenerateRandomExamPaperDto createDto)
     {
         var result = await _examPaperService.GenerateRandomExamPaperAsync(createDto);

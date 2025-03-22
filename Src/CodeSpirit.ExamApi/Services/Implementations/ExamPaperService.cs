@@ -349,7 +349,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             {
                 QuestionTypeRules = createDto.QuestionTypeRules,
                 DifficultyRules = createDto.DifficultyRules,
-                KnowledgePointRules = createDto.KnowledgePointRules,
+                //KnowledgePointRules = createDto.KnowledgePointRules,
                 CategoryIds = createDto.CategoryIds
             };
             examPaper.RandomRules = JsonSerializer.Serialize(randomRules);
@@ -386,20 +386,20 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     }
                 }
 
-                // 应用知识点过滤
-                if (createDto.KnowledgePointRules != null && createDto.KnowledgePointRules.Any())
-                {
-                    var knowledgePoints = createDto.KnowledgePointRules
-                        .Where(r => r.Percentage > 0)
-                        .Select(r => r.KnowledgePoint)
-                        .ToList();
+                //// 应用知识点过滤
+                //if (createDto.KnowledgePointRules != null && createDto.KnowledgePointRules.Any())
+                //{
+                //    var knowledgePoints = createDto.KnowledgePointRules
+                //        .Where(r => r.Percentage > 0)
+                //        .Select(r => r.KnowledgePoint)
+                //        .ToList();
                     
-                    if (knowledgePoints.Any())
-                    {
-                        questionQuery = questionQuery.Where(q => 
-                            knowledgePoints.Any(kp => q.KnowledgePoints != null && q.KnowledgePoints.Contains(kp)));
-                    }
-                }
+                //    if (knowledgePoints.Any())
+                //    {
+                //        questionQuery = questionQuery.Where(q => 
+                //            knowledgePoints.Any(kp => q.KnowledgePoints != null && q.KnowledgePoints.Contains(kp)));
+                //    }
+                //}
 
                 // 随机选择题目
                 var randomQuestions = await questionQuery

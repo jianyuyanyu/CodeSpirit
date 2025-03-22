@@ -1,5 +1,6 @@
 ﻿using CodeSpirit.Amis.Column;
 using CodeSpirit.Amis.Form;
+using CodeSpirit.Amis.Form.Factories;
 using CodeSpirit.Amis.Form.Fields;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Middleware;
@@ -42,6 +43,7 @@ namespace CodeSpirit.Amis
             services.AddTransient<IAmisFieldFactory, AmisNumberFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisTransferFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisArrayFieldFactory>();
+            services.AddTransient<IAmisFieldFactory, AmisTableFieldFactory>();
 
             // 注册 AmisGenerator，并传递可选的 apiAssembly
             services.AddScoped<AmisGenerator>();

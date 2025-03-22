@@ -2,6 +2,7 @@ using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;

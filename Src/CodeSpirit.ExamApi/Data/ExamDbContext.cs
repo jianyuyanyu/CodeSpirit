@@ -370,7 +370,6 @@ public class ExamDbContext : AuditableDbContext
     public async Task InitializeDatabaseAsync()
     {
         using var scope = _serviceProvider.CreateScope();
-        IIdGenerator idGenerator = scope.ServiceProvider.GetRequiredService<IIdGenerator>();
-        await ExamDbContextSeed.SeedAsync(this, idGenerator);
+        await ExamDbContextSeed.SeedAsync(this);
     }
 }

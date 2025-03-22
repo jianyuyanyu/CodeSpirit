@@ -15,28 +15,27 @@ public static class ExamDbContextSeed
     /// </summary>
     /// <param name="context">数据库上下文</param>
     /// <param name="idGenerator">ID生成器</param>
-    public static async Task SeedAsync(ExamDbContext context, IIdGenerator idGenerator)
+    public static async Task SeedAsync(ExamDbContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(idGenerator);
         context.UserId = -1;
 
         // 确保数据库已创建
-        await context.Database.EnsureCreatedAsync();
+        await context.Database.MigrateAsync();
 
         // 初始化基础数据
-        await SeedQuestionCategoriesAsync(context, idGenerator);
-        await SeedStudentGroupsAsync(context, idGenerator);
-        await SeedQuestionsAsync(context, idGenerator);
-        await SeedStudentsAsync(context, idGenerator);
-        await SeedExamPapersAsync(context, idGenerator);
-        await SeedExamSettingsAsync(context, idGenerator);
-        await SeedWrongQuestionsAsync(context, idGenerator);
-        await SeedExamRecordsAsync(context, idGenerator);
-        await SeedPracticeRecordsAsync(context, idGenerator);
+        await SeedQuestionCategoriesAsync(context);
+        await SeedStudentGroupsAsync(context);
+        await SeedQuestionsAsync(context);
+        await SeedStudentsAsync(context);
+        await SeedExamPapersAsync(context);
+        await SeedExamSettingsAsync(context);
+        await SeedWrongQuestionsAsync(context);
+        await SeedExamRecordsAsync(context);
+        await SeedPracticeRecordsAsync(context);
         
         // 为ID为-1的用户初始化考试数据
-        await SeedTestUserDataAsync(context, idGenerator);
+        await SeedTestUserDataAsync(context);
 
         // 保存所有更改
         await context.SaveChangesAsync();
@@ -45,7 +44,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化问题分类
     /// </summary>
-    private static async Task SeedQuestionCategoriesAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedQuestionCategoriesAsync(ExamDbContext context)
     {
         if (await context.QuestionCategories.AnyAsync())
         {
@@ -54,46 +53,27 @@ public static class ExamDbContextSeed
 
         var categories = new List<QuestionCategory>
         {
-            new()
-            {
-                Id = idGenerator.NewId(),
-                Name = "编程基础",
-                Description = "包含基本的编程概念和语法知识"
-            },
-            new()
-            {
-                Id = idGenerator.NewId(),
-                Name = "数据结构",
-                Description = "包含常见数据结构的概念和应用"
-            },
-            new()
-            {
-                Id = idGenerator.NewId(),
-                Name = "算法",
-                Description = "包含基础和高级算法题目"
-            },
-            new()
-            {
-                Id = idGenerator.NewId(),
-                Name = "系统设计",
-                Description = "包含架构设计和系统设计相关题目"
-            },
-            new()
-            {
-                Id = idGenerator.NewId(),
-                Name = "数据库",
-                Description = "包含数据库原理和SQL相关题目"
-            }
+            new QuestionCategory { Name = "编程语言", Description = "包括C#、Java、Python等编程语言相关题目" },
+            new QuestionCategory { Name = "数据库", Description = "SQL、关系型数据库和NoSQL数据库相关题目" },
+            new QuestionCategory { Name = "Web开发", Description = "HTML、CSS、JavaScript及相关框架的题目" },
+            new QuestionCategory { Name = "算法与数据结构", Description = "各类算法和数据结构相关题目" },
+            new QuestionCategory { Name = "系统设计", Description = "架构设计、设计模式相关题目" },
+            new QuestionCategory { Name = "DevOps", Description = "CI/CD、容器化、云计算相关题目" },
+            new QuestionCategory { Name = "信息安全", Description = "网络安全、加密、安全协议相关题目" },
+            new QuestionCategory { Name = "操作系统", Description = "Windows、Linux等操作系统相关题目" },
+            new QuestionCategory { Name = "人工智能", Description = "机器学习、深度学习相关题目" },
+            new QuestionCategory { Name = "移动开发", Description = "Android、iOS等移动平台开发相关题目" }
         };
 
-        await context.QuestionCategories.AddRangeAsync(categories);
+        // 使用DbContext的AddRangeAsync而不是DbSet的AddRangeAsync
+        await context.AddRangeAsync(categories);
         await context.SaveChangesAsync();
     }
 
     /// <summary>
     /// 初始化学生分组
     /// </summary>
-    private static async Task SeedStudentGroupsAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedStudentGroupsAsync(ExamDbContext context)
     {
         if (await context.StudentGroups.AnyAsync())
         {
@@ -104,32 +84,30 @@ public static class ExamDbContextSeed
         {
             new()
             {
-                Id = idGenerator.NewId(),
                 Name = "初级开发组",
                 Description = "适合1-2年工作经验的开发人员"
             },
             new()
             {
-                Id = idGenerator.NewId(),
                 Name = "中级开发组",
                 Description = "适合3-5年工作经验的开发人员"
             },
             new()
             {
-                Id = idGenerator.NewId(),
                 Name = "高级开发组",
                 Description = "适合5年以上工作经验的开发人员"
             }
         };
 
-        await context.StudentGroups.AddRangeAsync(groups);
+        // 直接使用DbContext的AddRangeAsync，它会自动设置ID
+        await context.AddRangeAsync(groups);
         await context.SaveChangesAsync();
     }
 
     /// <summary>
     /// 初始化题目数据
     /// </summary>
-    private static async Task SeedQuestionsAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedQuestionsAsync(ExamDbContext context)
     {
         if (await context.Questions.AnyAsync())
         {
@@ -150,8 +128,7 @@ public static class ExamDbContextSeed
             // 编程基础题目
             new()
             {
-                Id = idGenerator.NewId(),
-                Category = categoryDict["编程基础"],
+                Category = categoryDict["编程语言"],
                 Type = QuestionType.SingleChoice,
                 Difficulty = QuestionDifficulty.Easy,
                 Content = "以下关于值类型和引用类型的说法，哪个是正确的？",
@@ -172,8 +149,7 @@ public static class ExamDbContextSeed
             // 数据结构题目
             new()
             {
-                Id = idGenerator.NewId(),
-                Category = categoryDict["数据结构"],
+                Category = categoryDict["算法与数据结构"],
                 Type = QuestionType.SingleChoice,
                 Difficulty = QuestionDifficulty.Medium,
                 Content = "在一个包含n个元素的平衡二叉搜索树中，查找一个元素的时间复杂度是多少？",
@@ -194,8 +170,7 @@ public static class ExamDbContextSeed
             // 算法题目
             new()
             {
-                Id = idGenerator.NewId(),
-                Category = categoryDict["算法"],
+                Category = categoryDict["算法与数据结构"],
                 Type = QuestionType.MultipleChoice,
                 Difficulty = QuestionDifficulty.Hard,
                 Content = "以下哪些排序算法的平均时间复杂度是O(n log n)？",
@@ -216,7 +191,6 @@ public static class ExamDbContextSeed
             // 系统设计题目
             new()
             {
-                Id = idGenerator.NewId(),
                 Category = categoryDict["系统设计"],
                 Type = QuestionType.TrueFalse,
                 Difficulty = QuestionDifficulty.Hard,
@@ -232,7 +206,6 @@ public static class ExamDbContextSeed
             // 数据库题目
             new()
             {
-                Id = idGenerator.NewId(),
                 Category = categoryDict["数据库"],
                 Type = QuestionType.SingleChoice,
                 Difficulty = QuestionDifficulty.Medium,
@@ -252,12 +225,12 @@ public static class ExamDbContextSeed
             }
         };
 
-        await context.Questions.AddRangeAsync(questions);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(questions);
 
         // 为每个题目创建初始版本
         var questionVersions = questions.Select(q => new QuestionVersion
         {
-            Id = idGenerator.NewId(),
             Question = q,
             Version = 1,
             Content = q.Content,
@@ -268,15 +241,17 @@ public static class ExamDbContextSeed
             Tags = q.Tags
         }).ToList();
 
-        await context.QuestionVersions.AddRangeAsync(questionVersions);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(questionVersions);
         await context.SaveChangesAsync();
     }
 
     /// <summary>
     /// 初始化考生数据
     /// </summary>
-    private static async Task SeedStudentsAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedStudentsAsync(ExamDbContext context)
     {
+        IIdGenerator idGenerator = new SnowflakeIdGenerator();
         if (await context.Students.AnyAsync())
         {
             return;
@@ -292,7 +267,6 @@ public static class ExamDbContextSeed
         {
             new()
             {
-                Id = idGenerator.NewId(),
                 UserId = idGenerator.NewId(),
                 Name = "张三",
                 PhoneNumber = "13800138001",
@@ -328,7 +302,8 @@ public static class ExamDbContextSeed
             }
         };
 
-        await context.Students.AddRangeAsync(students);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(students);
         await context.SaveChangesAsync();
 
         // 添加学生分组映射
@@ -345,20 +320,20 @@ public static class ExamDbContextSeed
 
             studentGroupMappings.Add(new StudentGroupMapping
             {
-                Id = idGenerator.NewId(),
                 Student = student,
                 StudentGroup = group
             });
         }
 
-        await context.StudentGroupMappings.AddRangeAsync(studentGroupMappings);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(studentGroupMappings);
         await context.SaveChangesAsync();
     }
 
     /// <summary>
     /// 初始化试卷数据
     /// </summary>
-    private static async Task SeedExamPapersAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedExamPapersAsync(ExamDbContext context)
     {
         if (await context.ExamPapers.AnyAsync())
         {
@@ -375,7 +350,6 @@ public static class ExamDbContextSeed
         {
             new()
             {
-                Id = idGenerator.NewId(),
                 Name = "初级开发工程师认证考试",
                 Description = "适用于1-2年工作经验的开发人员",
                 TotalScore = 100,
@@ -387,7 +361,6 @@ public static class ExamDbContextSeed
             },
             new()
             {
-                Id = idGenerator.NewId(),
                 Name = "中级开发工程师认证考试",
                 Description = "适用于3-5年工作经验的开发人员",
                 TotalScore = 100,
@@ -399,7 +372,6 @@ public static class ExamDbContextSeed
             },
             new()
             {
-                Id = idGenerator.NewId(),
                 Name = "高级开发工程师认证考试",
                 Description = "适用于5年以上工作经验的开发人员",
                 TotalScore = 100,
@@ -411,7 +383,8 @@ public static class ExamDbContextSeed
             }
         };
 
-        await context.ExamPapers.AddRangeAsync(examPapers);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(examPapers);
         await context.SaveChangesAsync();
 
         // 为每份试卷添加题目
@@ -428,7 +401,6 @@ public static class ExamDbContextSeed
                 .Take(10)
                 .Select((q, index) => new ExamPaperQuestion
                 {
-                    Id = idGenerator.NewId(),
                     ExamPaper = paper,
                     Question = q,
                     QuestionVersion = context.QuestionVersions
@@ -441,14 +413,15 @@ public static class ExamDbContextSeed
             examPaperQuestions.AddRange(paperQuestions);
         }
 
-        await context.ExamPaperQuestions.AddRangeAsync(examPaperQuestions);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(examPaperQuestions);
         await context.SaveChangesAsync();
     }
 
     /// <summary>
     /// 初始化考试设置数据
     /// </summary>
-    private static async Task SeedExamSettingsAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedExamSettingsAsync(ExamDbContext context)
     {
         if (await context.ExamSettings.AnyAsync())
         {
@@ -471,7 +444,6 @@ public static class ExamDbContextSeed
 
             examSettings.Add(new ExamSetting
             {
-                Id = idGenerator.NewId(),
                 Name = $"{group.Name}{DateTime.Now.Year}年度认证考试",
                 Description = $"面向{group.Name}的年度认证考试",
                 ExamPaper = paper,
@@ -486,14 +458,15 @@ public static class ExamDbContextSeed
             });
         }
 
-        await context.ExamSettings.AddRangeAsync(examSettings);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(examSettings);
         await context.SaveChangesAsync();
     }
 
     /// <summary>
     /// 初始化错题数据
     /// </summary>
-    private static async Task SeedWrongQuestionsAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedWrongQuestionsAsync(ExamDbContext context)
     {
         if (await context.Set<WrongQuestion>().AnyAsync())
         {
@@ -517,7 +490,6 @@ public static class ExamDbContextSeed
         {
             wrongQuestions.Add(new WrongQuestion
             {
-                Id = idGenerator.NewId(),
                 StudentId = zhangsan.Id,
                 QuestionId = easyQuestions[0].Id,
                 WrongCount = 2,
@@ -529,7 +501,6 @@ public static class ExamDbContextSeed
             
             wrongQuestions.Add(new WrongQuestion
             {
-                Id = idGenerator.NewId(),
                 StudentId = zhangsan.Id,
                 QuestionId = easyQuestions[1].Id,
                 WrongCount = 1,
@@ -547,7 +518,6 @@ public static class ExamDbContextSeed
         {
             wrongQuestions.Add(new WrongQuestion
             {
-                Id = idGenerator.NewId(),
                 StudentId = lisi.Id,
                 QuestionId = mediumQuestions[0].Id,
                 WrongCount = 3,
@@ -566,7 +536,6 @@ public static class ExamDbContextSeed
         {
             wrongQuestions.Add(new WrongQuestion
             {
-                Id = idGenerator.NewId(),
                 StudentId = wangwu.Id,
                 QuestionId = hardQuestions[0].Id,
                 WrongCount = 1,
@@ -576,6 +545,7 @@ public static class ExamDbContextSeed
             });
         }
 
+        // 使用DbContext的AddRangeAsync方法
         await context.AddRangeAsync(wrongQuestions);
         await context.SaveChangesAsync();
     }
@@ -583,7 +553,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化考试记录数据
     /// </summary>
-    private static async Task SeedExamRecordsAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedExamRecordsAsync(ExamDbContext context)
     {
         if (await context.ExamRecords.AnyAsync())
         {
@@ -640,7 +610,6 @@ public static class ExamDbContextSeed
             
             var record = new ExamRecord
             {
-                Id = idGenerator.NewId(),
                 ExamSettingId = examSetting.Id,
                 StudentId = student.Id,
                 AttemptNumber = 1,
@@ -759,7 +728,6 @@ public static class ExamDbContextSeed
                 
                 var answerRecord = new ExamAnswerRecord
                 {
-                    Id = idGenerator.NewId(),
                     ExamRecordId = 0, // 稍后设置
                     QuestionId = paperQuestion.QuestionId,
                     QuestionVersionId = paperQuestion.QuestionVersionId,
@@ -789,8 +757,8 @@ public static class ExamDbContextSeed
             }
         }
         
-        // 保存考试记录
-        await context.ExamRecords.AddRangeAsync(examRecords);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(examRecords);
         await context.SaveChangesAsync();
         
         // 更新答题记录中的考试记录ID并保存
@@ -818,7 +786,8 @@ public static class ExamDbContextSeed
             // 为每个考试记录批量添加对应的答题记录
             if (recordAnswers.Any())
             {
-                await context.ExamAnswerRecords.AddRangeAsync(recordAnswers);
+                // 使用DbContext的AddRangeAsync方法
+                await context.AddRangeAsync(recordAnswers);
                 await context.SaveChangesAsync();
             }
         }
@@ -827,7 +796,7 @@ public static class ExamDbContextSeed
     /// <summary>
     /// 初始化练习记录数据
     /// </summary>
-    private static async Task SeedPracticeRecordsAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedPracticeRecordsAsync(ExamDbContext context)
     {
         if (await context.PracticeRecords.AnyAsync())
         {
@@ -918,7 +887,6 @@ public static class ExamDbContextSeed
                 
                 var practiceRecord = new PracticeRecord
                 {
-                    Id = idGenerator.NewId(),
                     StudentId = student.Id,
                     QuestionId = question.Id,
                     PracticeType = practiceType,
@@ -933,7 +901,8 @@ public static class ExamDbContextSeed
             }
         }
         
-        await context.PracticeRecords.AddRangeAsync(practiceRecords);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(practiceRecords);
         await context.SaveChangesAsync();
     }
 
@@ -942,7 +911,7 @@ public static class ExamDbContextSeed
     /// </summary>
     /// <param name="context">数据库上下文</param>
     /// <param name="idGenerator">ID生成器</param>
-    private static async Task SeedTestUserDataAsync(ExamDbContext context, IIdGenerator idGenerator)
+    private static async Task SeedTestUserDataAsync(ExamDbContext context)
     {
         const long userId = -1;
         
@@ -992,13 +961,13 @@ public static class ExamDbContextSeed
         {
             groupMappings.Add(new StudentGroupMapping
             {
-                Id = idGenerator.NewId(),
                 StudentId = testStudent.Id,
                 StudentGroupId = group.Id
             });
         }
         
-        await context.StudentGroupMappings.AddRangeAsync(groupMappings);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(groupMappings);
         await context.SaveChangesAsync();
         
         // 4. 获取所有考试设置
@@ -1023,7 +992,6 @@ public static class ExamDbContextSeed
         {
             var inProgressRecord = new ExamRecord
             {
-                Id = idGenerator.NewId(),
                 ExamSettingId = inProgressExam.Id,
                 StudentId = testStudent.Id, // 使用实际的学生ID
                 AttemptNumber = 1,
@@ -1046,7 +1014,6 @@ public static class ExamDbContextSeed
             
             var submittedRecord = new ExamRecord
             {
-                Id = idGenerator.NewId(),
                 ExamSettingId = submittedExam.Id,
                 StudentId = testStudent.Id, // 使用实际的学生ID
                 AttemptNumber = 1,
@@ -1077,7 +1044,6 @@ public static class ExamDbContextSeed
             
             var gradedRecord = new ExamRecord
             {
-                Id = idGenerator.NewId(),
                 ExamSettingId = examSetting.Id,
                 StudentId = testStudent.Id, // 使用实际的学生ID
                 AttemptNumber = 1,
@@ -1097,8 +1063,8 @@ public static class ExamDbContextSeed
             examRecords.Add(gradedRecord);
         }
         
-        // 保存所有考试记录
-        await context.ExamRecords.AddRangeAsync(examRecords);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(examRecords);
         await context.SaveChangesAsync();
         
         // 6. 为已评分和已提交的考试记录添加答题记录
@@ -1239,7 +1205,6 @@ public static class ExamDbContextSeed
                 // 创建答题记录
                 var answerRecord = new ExamAnswerRecord
                 {
-                    Id = idGenerator.NewId(),
                     ExamRecordId = record.Id,
                     QuestionId = paperQuestion.QuestionId,
                     QuestionVersionId = paperQuestion.QuestionVersionId,
@@ -1259,8 +1224,8 @@ public static class ExamDbContextSeed
             }
         }
         
-        // 保存所有答题记录
-        await context.ExamAnswerRecords.AddRangeAsync(answerRecords);
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(answerRecords);
         await context.SaveChangesAsync();
     }
 }

@@ -7,566 +7,556 @@ using CodeSpirit.ExamApi.Services.TextParsers;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 /// <summary>
 /// 题目服务实现
 /// </summary>
-public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, CreateQuestionDto, UpdateQuestionDto, QuestionBatchImportItemDto>, IQuestionService
+namespace CodeSpirit.ExamApi.Services.Implementations
 {
-    private readonly IRepository<Question> _repository;
-    private readonly IRepository<QuestionCategory> _categoryRepository;
-    private readonly IRepository<QuestionVersion> _versionRepository;
-    private readonly IMapper _mapper;
-    private readonly ILogger<QuestionService> _logger;
-    private readonly IIdGenerator _idGenerator;
-    private string? _changeReason;
-
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    public QuestionService(
-        IRepository<Question> repository,
-        IRepository<QuestionCategory> categoryRepository,
-        IRepository<QuestionVersion> versionRepository,
-        IMapper mapper,
-        ILogger<QuestionService> logger,
-        IIdGenerator idGenerator)
-        : base(repository, mapper)
+    public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, CreateQuestionDto, UpdateQuestionDto, QuestionBatchImportItemDto>, IQuestionService
     {
-        _repository = repository;
-        _categoryRepository = categoryRepository;
-        _versionRepository = versionRepository;
-        _mapper = mapper;
-        _logger = logger;
-        _idGenerator = idGenerator;
-    }
+        private readonly IRepository<Question> _repository;
+        private readonly IRepository<QuestionCategory> _categoryRepository;
+        private readonly IRepository<QuestionVersion> _versionRepository;
+        private readonly IMapper _mapper;
+        private readonly ILogger<QuestionService> _logger;
+        private string? _changeReason;
 
-    /// <summary>
-    /// 获取题目分页列表
-    /// </summary>
-    public async Task<PageList<QuestionDto>> GetQuestionsAsync(QuestionQueryDto queryDto)
-    {
-        ExpressionStarter<Question> predicate = PredicateBuilder.New<Question>(true);
-
-        if (!string.IsNullOrEmpty(queryDto.Keywords))
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        public QuestionService(
+            IRepository<Question> repository,
+            IRepository<QuestionCategory> categoryRepository,
+            IRepository<QuestionVersion> versionRepository,
+            IMapper mapper,
+            ILogger<QuestionService> logger)
+            : base(repository, mapper)
         {
-            predicate = predicate.And(x => x.Content.Contains(queryDto.Keywords));
+            _repository = repository;
+            _categoryRepository = categoryRepository;
+            _versionRepository = versionRepository;
+            _mapper = mapper;
+            _logger = logger;
         }
 
-        if (queryDto.Type.HasValue)
+        /// <summary>
+        /// 获取题目分页列表
+        /// </summary>
+        public async Task<PageList<QuestionDto>> GetQuestionsAsync(QuestionQueryDto queryDto)
         {
-            predicate = predicate.And(x => x.Type == queryDto.Type.Value);
+            ExpressionStarter<Question> predicate = PredicateBuilder.New<Question>(true);
+
+            if (!string.IsNullOrEmpty(queryDto.Keywords))
+            {
+                predicate = predicate.And(x => x.Content.Contains(queryDto.Keywords));
+            }
+
+            if (queryDto.Type.HasValue)
+            {
+                predicate = predicate.And(x => x.Type == queryDto.Type.Value);
+            }
+
+            if (queryDto.Difficulty.HasValue)
+            {
+                predicate = predicate.And(x => x.Difficulty == queryDto.Difficulty.Value);
+            }
+
+            if (queryDto.CategoryId.HasValue)
+            {
+                predicate = predicate.And(x => x.CategoryId == queryDto.CategoryId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(queryDto.KnowledgePoint))
+            {
+                predicate = predicate.And(x => x.KnowledgePoints != null && x.KnowledgePoints.Contains(queryDto.KnowledgePoint));
+            }
+
+            if (!string.IsNullOrEmpty(queryDto.Tag))
+            {
+                predicate = predicate.And(x => x.Tags != null && x.Tags.Contains(queryDto.Tag));
+            }
+
+            return await GetPagedListAsync(
+                queryDto,
+                predicate,
+                "Category"
+            );
         }
 
-        if (queryDto.Difficulty.HasValue)
+        /// <summary>
+        /// 获取题目详情
+        /// </summary>
+        public async Task<QuestionDto> GetQuestionAsync(long id)
         {
-            predicate = predicate.And(x => x.Difficulty == queryDto.Difficulty.Value);
+            return await GetAsync(id);
         }
 
-        if (queryDto.CategoryId.HasValue)
+        /// <summary>
+        /// 创建题目
+        /// </summary>
+        public async Task<QuestionDto> CreateQuestionAsync(CreateQuestionDto createDto)
         {
-            predicate = predicate.And(x => x.CategoryId == queryDto.CategoryId.Value);
+            return await CreateAsync(createDto);
         }
 
-        if (!string.IsNullOrEmpty(queryDto.KnowledgePoint))
+        /// <summary>
+        /// 更新题目
+        /// </summary>
+        public async Task UpdateQuestionAsync(long id, UpdateQuestionDto updateDto)
         {
-            predicate = predicate.And(x => x.KnowledgePoints != null && x.KnowledgePoints.Contains(queryDto.KnowledgePoint));
+            await UpdateAsync(id, updateDto);
         }
 
-        if (!string.IsNullOrEmpty(queryDto.Tag))
+        /// <summary>
+        /// 删除题目
+        /// </summary>
+        public async Task DeleteQuestionAsync(long id)
         {
-            predicate = predicate.And(x => x.Tags != null && x.Tags.Contains(queryDto.Tag));
-        }
+            // 检查题目是否存在
+            var question = await _repository
+                .CreateQuery()
+                .Where(q => q.Id == id)
+                .Include(q => q.ExamPaperQuestions)
+                .FirstOrDefaultAsync();
 
-        return await GetPagedListAsync(
-            queryDto,
-            predicate,
-            "Category"
-        );
-    }
+            if (question == null)
+            {
+                throw new AppServiceException(404, "题目不存在！");
+            }
 
-    /// <summary>
-    /// 获取题目详情
-    /// </summary>
-    public async Task<QuestionDto> GetQuestionAsync(long id)
-    {
-        return await GetAsync(id);
-    }
+            // 检查题目是否被试卷引用
+            if (question.IsReferenced)
+            {
+                throw new AppServiceException(400, "该题目已被试卷引用，无法删除！");
+            }
 
-    /// <summary>
-    /// 创建题目
-    /// </summary>
-    public async Task<QuestionDto> CreateQuestionAsync(CreateQuestionDto createDto)
-    {
-        return await CreateAsync(createDto);
-    }
-
-    /// <summary>
-    /// 更新题目
-    /// </summary>
-    public async Task UpdateQuestionAsync(long id, UpdateQuestionDto updateDto)
-    {
-        await UpdateAsync(id, updateDto);
-    }
-
-    /// <summary>
-    /// 删除题目
-    /// </summary>
-    public async Task DeleteQuestionAsync(long id)
-    {
-        // 检查题目是否存在
-        var question = await _repository
-            .CreateQuery()
-            .Where(q => q.Id == id)
-            .Include(q => q.ExamPaperQuestions)
-            .FirstOrDefaultAsync();
-
-        if (question == null)
-        {
-            throw new AppServiceException(404, "题目不存在！");
-        }
-
-        // 检查题目是否被试卷引用
-        if (question.IsReferenced)
-        {
-            throw new AppServiceException(400, "该题目已被试卷引用，无法删除！");
-        }
-
-        try
-        {
-            await _repository.DeleteAsync(question);
-            await _repository.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "删除题目失败: {Id}", id);
-            throw new AppServiceException(500, "删除题目失败！");
-        }
-    }
-
-    /// <summary>
-    /// 获取题目历史版本
-    /// </summary>
-    public async Task<List<QuestionVersionDto>> GetQuestionVersionsAsync(long questionId)
-    {
-        var versions = await _versionRepository
-            .CreateQuery()
-            .Where(v => v.QuestionId == questionId)
-            .OrderByDescending(v => v.Version)
-            .ToListAsync();
-
-        return _mapper.Map<List<QuestionVersionDto>>(versions);
-    }
-
-    /// <summary>
-    /// 验证创建DTO
-    /// </summary>
-    protected override async Task ValidateCreateDto(CreateQuestionDto createDto)
-    {
-        // 验证分类是否存在
-        var category = await _categoryRepository.GetByIdAsync(createDto.CategoryId);
-        if (category == null)
-        {
-            throw new AppServiceException(400, "所选分类不存在！");
-        }
-
-        // 检查题目是否重复
-        var existingQuestion = await _repository.CreateQuery()
-            .Where(q => q.Content == createDto.Content && q.Type == createDto.Type)
-            .FirstOrDefaultAsync();
-
-        if (existingQuestion != null)
-        {
-            throw new AppServiceException(400, "该题目已存在！");
-        }
-
-        // 根据题目类型验证选项和答案
-        ValidateOptionsAndAnswer(createDto.Type, createDto.Options, createDto.CorrectAnswer);
-    }
-
-    /// <summary>
-    /// 验证更新DTO
-    /// </summary>
-    protected override async Task ValidateUpdateDto(long id, UpdateQuestionDto updateDto)
-    {
-        // 验证分类是否存在
-        var category = await _categoryRepository.GetByIdAsync(updateDto.CategoryId);
-        if (category == null)
-        {
-            throw new AppServiceException(400, "所选分类不存在！");
-        }
-
-        // 检查题目是否重复（排除自身）
-        var existingQuestion = await _repository.CreateQuery()
-            .Where(q => q.Id != id && q.Content == updateDto.Content && q.Type == updateDto.Type)
-            .FirstOrDefaultAsync();
-
-        if (existingQuestion != null)
-        {
-            throw new AppServiceException(400, "该题目已存在！");
-        }
-
-        // 根据题目类型验证选项和答案
-        ValidateOptionsAndAnswer(updateDto.Type, updateDto.Options, updateDto.CorrectAnswer);
-    }
-
-    /// <summary>
-    /// 创建实体前的处理
-    /// </summary>
-    protected override async Task OnCreating(Question entity, CreateQuestionDto createDto)
-    {
-        // 处理JSON序列化
-        if (createDto.Tags?.Any() == true)
-        {
-            entity.Tags = JsonSerializer.Serialize(createDto.Tags);
-        }
-
-        if (entity.Id == default)
-        {
-            entity.Id = _idGenerator.NewId();
-        }
-
-        // 设置初始版本
-        entity.Version = 1;
-    }
-
-    /// <summary>
-    /// 更新实体前的处理
-    /// </summary>
-    protected override async Task OnUpdating(Question entity, UpdateQuestionDto updateDto)
-    {
-        // 保存修改原因，供 OnUpdated 使用
-        _changeReason = updateDto.ChangeReason;
-
-        // 处理 JSON 序列化
-        if (updateDto.Tags?.Any() == true)
-        {
-            entity.Tags = JsonSerializer.Serialize(updateDto.Tags);
-        }
-    }
-
-    /// <summary>
-    /// 更新实体后的处理
-    /// </summary>
-    protected override async Task OnUpdated(Question entity)
-    {
-        // 创建版本记录
-        var version = new QuestionVersion
-        {
-            Id = _idGenerator.NewId(),
-            QuestionId = entity.Id,
-            Version = entity.Version,
-            Content = entity.Content,
-            Options = entity.Options,
-            CorrectAnswer = entity.CorrectAnswer,
-            Analysis = entity.Analysis,
-            KnowledgePoints = entity.KnowledgePoints,
-            DefaultScore = entity.DefaultScore,
-            Tags = entity.Tags,
-            ChangeReason = _changeReason
-        };
-
-        await _versionRepository.AddAsync(version);
-        await _versionRepository.SaveChangesAsync();
-
-        // 增加版本号
-        entity.Version++;
-        await _repository.UpdateAsync(entity);
-        await _repository.SaveChangesAsync();
-
-        // 清除修改原因
-        _changeReason = null;
-    }
-
-    /// <summary>
-    /// 验证选项和答案
-    /// </summary>
-    private void ValidateOptionsAndAnswer(QuestionType type, List<string> options, string correctAnswer)
-    {
-        if (!options.Any())
-        {
-            throw new AppServiceException(400, "题目必须包含选项！");
-        }
-
-        switch (type)
-        {
-            case QuestionType.SingleChoice:
-                if (!options.Contains(correctAnswer))
-                {
-                    throw new AppServiceException(400, "正确答案必须是选项之一！");
-                }
-                break;
-
-            case QuestionType.MultipleChoice:
-                try
-                {
-                    var answers = JsonSerializer.Deserialize<List<string>>(correctAnswer);
-                    if (answers == null || !answers.Any() || !answers.All(a => options.Contains(a)))
-                    {
-                        throw new AppServiceException(400, "所有正确答案必须是选项之一！");
-                    }
-                }
-                catch (JsonException)
-                {
-                    throw new AppServiceException(400, "多选题答案格式无效！");
-                }
-                break;
-
-            case QuestionType.TrueFalse:
-                if (!new[] { "True", "False" }.Contains(correctAnswer))
-                {
-                    throw new AppServiceException(400, "判断题答案必须是True或False！");
-                }
-                break;
-
-            default:
-                throw new AppServiceException(400, "不支持的题目类型！");
-        }
-    }
-
-    /// <summary>
-    /// 批量导入题目
-    /// </summary>
-    public override async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<QuestionBatchImportItemDto> importData)
-    {
-        ArgumentNullException.ThrowIfNull(importData);
-
-        var successCount = 0;
-        var failedIds = new List<string>();
-        var importList = importData.ToList();
-
-        // 预先检查所有题目的内容是否重复
-        var contents = importList.Select(x => x.Content).ToList();
-        var existingContents = await _repository
-            .CreateQuery()
-            .Where(q => contents.Contains(q.Content))
-            .Select(q => q.Content)
-            .ToListAsync();
-
-        if (existingContents.Any())
-        {
-            return (0, existingContents.Select(c => $"重复的题目内容: {c}").ToList());
-        }
-
-        foreach (var item in importList)
-        {
             try
             {
-                // 解析题目类型
-                if (!Enum.TryParse<QuestionType>(item.QuestionType, out var questionType))
-                {
-                    failedIds.Add($"{item.Content}(无效的题目类型)");
-                    continue;
-                }
-
-                // 解析难度等级
-                if (!Enum.IsDefined(typeof(QuestionDifficulty), item.DifficultyLevel))
-                {
-                    failedIds.Add($"{item.Content}(无效的难度等级)");
-                    continue;
-                }
-
-                // 创建题目实体
-                var question = new Question
-                {
-                    Content = item.Content,
-                    Type = questionType,
-                    Difficulty = (QuestionDifficulty)item.DifficultyLevel,
-                    CorrectAnswer = item.Answer,
-                    Analysis = item.Analysis,
-                    Version = 1
-                };
-
-                // 处理标签
-                if (!item.Tags.IsNullOrWhiteSpace())
-                {
-                    question.Tags = JsonSerializer.Serialize(item.Tags);
-                }
-
-                try
-                {
-                    // 验证选项和答案
-                    ValidateOptionsAndAnswer(questionType, new List<string>(), item.Answer);
-                }
-                catch (AppServiceException ex)
-                {
-                    failedIds.Add($"{item.Content}({ex.Message})");
-                    continue;
-                }
-
-                // 添加到数据库
-                await _repository.AddAsync(question);
+                await _repository.DeleteAsync(question);
                 await _repository.SaveChangesAsync();
-
-                successCount++;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "导入题目失败: {Content}", item.Content);
-                failedIds.Add($"{item.Content}(导入失败)");
-            }
-        }
-
-        return (successCount, failedIds);
-    }
-
-    /// <summary>
-    /// 批量删除题目
-    /// </summary>
-    public override async Task<(int successCount, List<long> failedIds)> BatchDeleteAsync(IEnumerable<long> ids)
-    {
-        ArgumentNullException.ThrowIfNull(ids);
-
-        var successCount = 0;
-        var failedIds = new List<long>();
-        var idList = ids.ToList();
-
-        // 检查是否有题目被试卷引用
-        var referencedQuestions = await _repository
-            .CreateQuery()
-            .Where(q => idList.Contains(q.Id))
-            .Include(q => q.ExamPaperQuestions)
-            .Where(q => q.ExamPaperQuestions.Any())
-            .Select(q => q.Id)
-            .ToListAsync();
-
-        if (referencedQuestions.Any())
-        {
-            return (0, referencedQuestions);
-        }
-
-        foreach (var id in idList)
-        {
-            try
-            {
-                await DeleteQuestionAsync(id);
-                successCount++;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "删除题目失败: {Id}", id);
-                failedIds.Add(id);
+                throw new AppServiceException(500, "删除题目失败！");
             }
         }
 
-        return (successCount, failedIds);
-    }
+        /// <summary>
+        /// 获取题目历史版本
+        /// </summary>
+        public async Task<List<QuestionVersionDto>> GetQuestionVersionsAsync(long questionId)
+        {
+            var versions = await _versionRepository
+                .CreateQuery()
+                .Where(v => v.QuestionId == questionId)
+                .OrderByDescending(v => v.Version)
+                .ToListAsync();
 
-    protected override string GetImportItemId(QuestionBatchImportItemDto importDto)
-    {
-        return importDto.Content;
-    }
-    
-    /// <summary>
-    /// 文本识别导入题目
-    /// </summary>
-    /// <returns>导入结果</returns>
-    public async Task<(int successCount, List<string> failedItems)> ImportFromTextAsync(QuestionImportFromTextDto input)
-    {
-        if (string.IsNullOrWhiteSpace(input.Text))
-        {
-            throw new AppServiceException(400, "试卷文本内容不能为空！");
+            return _mapper.Map<List<QuestionVersionDto>>(versions);
         }
-        
-        // 验证分类是否存在
-        var category = await _categoryRepository.GetByIdAsync(input.CategoryId);
-        if (category == null)
+
+        /// <summary>
+        /// 验证创建DTO
+        /// </summary>
+        protected override async Task ValidateCreateDto(CreateQuestionDto createDto)
         {
-            throw new AppServiceException(400, "所选分类不存在！");
-        }
-        
-        var successCount = 0;
-        var failedItems = new List<string>();
-        
-        try
-        {
-            // 使用题目解析器解析文本
-            var loggerFactory = new LoggerFactory();
-            var parserLogger = loggerFactory.CreateLogger<QuestionTextParser>();
-            var parser = new QuestionTextParser(parserLogger);
-            var parsedQuestions = parser.Parse(input.Text);
-            
-            if (!parsedQuestions.Any())
+            // 验证分类是否存在
+            var category = await _categoryRepository.GetByIdAsync(createDto.CategoryId);
+            if (category == null)
             {
-                throw new AppServiceException(400, "未能从文本中解析出任何题目，请检查文本格式！");
+                throw new AppServiceException(400, "所选分类不存在！");
             }
-            
-            foreach (var questionData in parsedQuestions)
+
+            // 检查题目是否重复
+            var existingQuestion = await _repository.CreateQuery()
+                .Where(q => q.Content == createDto.Content && q.Type == createDto.Type)
+                .FirstOrDefaultAsync();
+
+            if (existingQuestion != null)
+            {
+                throw new AppServiceException(400, "该题目已存在！");
+            }
+
+            // 根据题目类型验证选项和答案
+            ValidateOptionsAndAnswer(createDto.Type, createDto.Options, createDto.CorrectAnswer);
+        }
+
+        /// <summary>
+        /// 验证更新DTO
+        /// </summary>
+        protected override async Task ValidateUpdateDto(long id, UpdateQuestionDto updateDto)
+        {
+            // 验证分类是否存在
+            var category = await _categoryRepository.GetByIdAsync(updateDto.CategoryId);
+            if (category == null)
+            {
+                throw new AppServiceException(400, "所选分类不存在！");
+            }
+
+            // 检查题目是否重复（排除自身）
+            var existingQuestion = await _repository.CreateQuery()
+                .Where(q => q.Id != id && q.Content == updateDto.Content && q.Type == updateDto.Type)
+                .FirstOrDefaultAsync();
+
+            if (existingQuestion != null)
+            {
+                throw new AppServiceException(400, "该题目已存在！");
+            }
+
+            // 根据题目类型验证选项和答案
+            ValidateOptionsAndAnswer(updateDto.Type, updateDto.Options, updateDto.CorrectAnswer);
+        }
+
+        /// <summary>
+        /// 创建实体前的处理
+        /// </summary>
+        protected override async Task OnCreating(Question entity, CreateQuestionDto createDto)
+        {
+            // 处理JSON序列化
+            if (createDto.Tags?.Any() == true)
+            {
+                entity.Tags = JsonSerializer.Serialize(createDto.Tags);
+            }
+
+            // 设置初始版本
+            entity.Version = 1;
+        }
+
+        /// <summary>
+        /// 更新实体前的处理
+        /// </summary>
+        protected override async Task OnUpdating(Question entity, UpdateQuestionDto updateDto)
+        {
+            // 保存修改原因，供 OnUpdated 使用
+            _changeReason = updateDto.ChangeReason;
+
+            // 处理 JSON 序列化
+            if (updateDto.Tags?.Any() == true)
+            {
+                entity.Tags = JsonSerializer.Serialize(updateDto.Tags);
+            }
+        }
+
+        /// <summary>
+        /// 更新实体后的处理
+        /// </summary>
+        protected override async Task OnUpdated(Question entity)
+        {
+            // 创建版本记录
+            var version = new QuestionVersion
+            {
+                QuestionId = entity.Id,
+                Version = entity.Version,
+                Content = entity.Content,
+                Options = entity.Options,
+                CorrectAnswer = entity.CorrectAnswer,
+                Analysis = entity.Analysis,
+                KnowledgePoints = entity.KnowledgePoints,
+                DefaultScore = entity.DefaultScore,
+                Tags = entity.Tags,
+                ChangeReason = _changeReason
+            };
+
+            await _versionRepository.AddAsync(version);
+            await _versionRepository.SaveChangesAsync();
+
+            // 增加版本号
+            entity.Version++;
+            await _repository.UpdateAsync(entity);
+            await _repository.SaveChangesAsync();
+
+            // 清除修改原因
+            _changeReason = null;
+        }
+
+        /// <summary>
+        /// 验证选项和答案
+        /// </summary>
+        private void ValidateOptionsAndAnswer(QuestionType type, List<string> options, string correctAnswer)
+        {
+            if (!options.Any())
+            {
+                throw new AppServiceException(400, "题目必须包含选项！");
+            }
+
+            switch (type)
+            {
+                case QuestionType.SingleChoice:
+                    if (!options.Contains(correctAnswer))
+                    {
+                        throw new AppServiceException(400, "正确答案必须是选项之一！");
+                    }
+                    break;
+
+                case QuestionType.MultipleChoice:
+                    try
+                    {
+                        var answers = JsonSerializer.Deserialize<List<string>>(correctAnswer);
+                        if (answers == null || !answers.Any() || !answers.All(a => options.Contains(a)))
+                        {
+                            throw new AppServiceException(400, "所有正确答案必须是选项之一！");
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        throw new AppServiceException(400, "多选题答案格式无效！");
+                    }
+                    break;
+
+                case QuestionType.TrueFalse:
+                    if (!new[] { "True", "False" }.Contains(correctAnswer))
+                    {
+                        throw new AppServiceException(400, "判断题答案必须是True或False！");
+                    }
+                    break;
+
+                default:
+                    throw new AppServiceException(400, "不支持的题目类型！");
+            }
+        }
+
+        /// <summary>
+        /// 批量导入题目
+        /// </summary>
+        public override async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<QuestionBatchImportItemDto> importData)
+        {
+            ArgumentNullException.ThrowIfNull(importData);
+
+            var successCount = 0;
+            var failedIds = new List<string>();
+            var importList = importData.ToList();
+
+            // 预先检查所有题目的内容是否重复
+            var contents = importList.Select(x => x.Content).ToList();
+            var existingContents = await _repository
+                .CreateQuery()
+                .Where(q => contents.Contains(q.Content))
+                .Select(q => q.Content)
+                .ToListAsync();
+
+            if (existingContents.Any())
+            {
+                return (0, existingContents.Select(c => $"重复的题目内容: {c}").ToList());
+            }
+
+            foreach (var item in importList)
             {
                 try
                 {
-                    // 检查题目是否重复
-                    var existingQuestion = _repository.Find(q => 
-                        q.Content == questionData.Content && 
-                        q.Type == questionData.Type)
-                        .FirstOrDefault();
-                    
-                    if (existingQuestion != null)
+                    // 解析题目类型
+                    if (!Enum.TryParse<QuestionType>(item.QuestionType, out var questionType))
                     {
-                        string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
-                        failedItems.Add($"{typeStr}「{questionData.Content}」已存在");
+                        failedIds.Add($"{item.Content}(无效的题目类型)");
                         continue;
                     }
-                    
-                    // 确保选项和答案格式正确
+
+                    // 解析难度等级
+                    if (!Enum.IsDefined(typeof(QuestionDifficulty), item.DifficultyLevel))
+                    {
+                        failedIds.Add($"{item.Content}(无效的难度等级)");
+                        continue;
+                    }
+
+                    // 创建题目实体
+                    var question = new Question
+                    {
+                        Content = item.Content,
+                        Type = questionType,
+                        Difficulty = (QuestionDifficulty)item.DifficultyLevel,
+                        CorrectAnswer = item.Answer,
+                        Analysis = item.Analysis,
+                        Version = 1
+                    };
+
+                    // 处理标签
+                    if (!item.Tags.IsNullOrWhiteSpace())
+                    {
+                        question.Tags = JsonSerializer.Serialize(item.Tags);
+                    }
+
                     try
                     {
-                        ValidateOptionsAndAnswer(questionData.Type, questionData.Options, questionData.CorrectAnswer);
+                        // 验证选项和答案
+                        ValidateOptionsAndAnswer(questionType, new List<string>(), item.Answer);
                     }
                     catch (AppServiceException ex)
                     {
-                        string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
-                        failedItems.Add($"{typeStr}「{questionData.Content}」验证失败：{ex.Message}");
+                        failedIds.Add($"{item.Content}({ex.Message})");
                         continue;
                     }
-                    
-                    var question = new Question
-                    {
-                        Id = _idGenerator.NewId(),
-                        Content = questionData.Content,
-                        Options = questionData.Options,
-                        CorrectAnswer = questionData.CorrectAnswer,
-                        Type = questionData.Type,
-                        Difficulty = input.QuestionDifficulty,
-                        CategoryId = input.CategoryId,
-                        Version = 1,
-                        DefaultScore = questionData.Score,
-                        Analysis = questionData.Analysis
-                    };
-                    
-                    // 处理标签
-                    if (questionData.Tags?.Any() == true)
-                    {
-                        question.Tags = JsonSerializer.Serialize(questionData.Tags);
-                    }
-                    
+
+                    // 添加到数据库
                     await _repository.AddAsync(question);
+                    await _repository.SaveChangesAsync();
+
                     successCount++;
                 }
                 catch (Exception ex)
                 {
-                    string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
-                    _logger.LogError(ex, "导入{Type}失败: {Content}", typeStr, questionData.Content);
-                    failedItems.Add($"{typeStr}「{questionData.Content}」导入失败：{ex.Message}");
+                    _logger.LogError(ex, "导入题目失败: {Content}", item.Content);
+                    failedIds.Add($"{item.Content}(导入失败)");
                 }
             }
-            
-            await _repository.SaveChangesAsync();
+
+            return (successCount, failedIds);
         }
-        catch (AppServiceException ex)
+
+        /// <summary>
+        /// 批量删除题目
+        /// </summary>
+        public override async Task<(int successCount, List<long> failedIds)> BatchDeleteAsync(IEnumerable<long> ids)
         {
-            throw; // 已包含错误信息的异常直接抛出
+            ArgumentNullException.ThrowIfNull(ids);
+
+            var successCount = 0;
+            var failedIds = new List<long>();
+            var idList = ids.ToList();
+
+            // 检查是否有题目被试卷引用
+            var referencedQuestions = await _repository
+                .CreateQuery()
+                .Where(q => idList.Contains(q.Id))
+                .Include(q => q.ExamPaperQuestions)
+                .Where(q => q.ExamPaperQuestions.Any())
+                .Select(q => q.Id)
+                .ToListAsync();
+
+            if (referencedQuestions.Any())
+            {
+                return (0, referencedQuestions);
+            }
+
+            foreach (var id in idList)
+            {
+                try
+                {
+                    await DeleteQuestionAsync(id);
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "删除题目失败: {Id}", id);
+                    failedIds.Add(id);
+                }
+            }
+
+            return (successCount, failedIds);
         }
-        catch (Exception ex)
+
+        protected override string GetImportItemId(QuestionBatchImportItemDto importDto)
         {
-            _logger.LogError(ex, "导入试卷失败");
-            throw new AppServiceException(500, $"导入试卷失败：{ex.Message}");
+            return importDto.Content;
         }
-        
-        return (successCount, failedItems);
+
+        /// <summary>
+        /// 文本识别导入题目
+        /// </summary>
+        /// <returns>导入结果</returns>
+        public async Task<(int successCount, List<string> failedItems)> ImportFromTextAsync(QuestionImportFromTextDto input)
+        {
+            if (string.IsNullOrWhiteSpace(input.Text))
+            {
+                throw new AppServiceException(400, "试卷文本内容不能为空！");
+            }
+
+            // 验证分类是否存在
+            var category = await _categoryRepository.GetByIdAsync(input.CategoryId);
+            if (category == null)
+            {
+                throw new AppServiceException(400, "所选分类不存在！");
+            }
+
+            var successCount = 0;
+            var failedItems = new List<string>();
+
+            try
+            {
+                // 使用题目解析器解析文本
+                var loggerFactory = new LoggerFactory();
+                var parserLogger = loggerFactory.CreateLogger<QuestionTextParser>();
+                var parser = new QuestionTextParser(parserLogger);
+                var parsedQuestions = parser.Parse(input.Text);
+
+                if (!parsedQuestions.Any())
+                {
+                    throw new AppServiceException(400, "未能从文本中解析出任何题目，请检查文本格式！");
+                }
+
+                foreach (var questionData in parsedQuestions)
+                {
+                    try
+                    {
+                        // 检查题目是否重复
+                        var existingQuestion = _repository.Find(q =>
+                            q.Content == questionData.Content &&
+                            q.Type == questionData.Type)
+                            .FirstOrDefault();
+
+                        if (existingQuestion != null)
+                        {
+                            string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                            failedItems.Add($"{typeStr}「{questionData.Content}」已存在");
+                            continue;
+                        }
+
+                        // 确保选项和答案格式正确
+                        try
+                        {
+                            ValidateOptionsAndAnswer(questionData.Type, questionData.Options, questionData.CorrectAnswer);
+                        }
+                        catch (AppServiceException ex)
+                        {
+                            string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                            failedItems.Add($"{typeStr}「{questionData.Content}」验证失败：{ex.Message}");
+                            continue;
+                        }
+
+                        var question = new Question
+                        {
+                            Content = questionData.Content,
+                            Options = questionData.Options,
+                            CorrectAnswer = questionData.CorrectAnswer,
+                            Type = questionData.Type,
+                            Difficulty = input.QuestionDifficulty,
+                            CategoryId = input.CategoryId,
+                            Version = 1,
+                            DefaultScore = questionData.Score,
+                            Analysis = questionData.Analysis
+                        };
+
+                        // 处理标签
+                        if (questionData.Tags?.Any() == true)
+                        {
+                            question.Tags = JsonSerializer.Serialize(questionData.Tags);
+                        }
+
+                        await _repository.AddAsync(question);
+                        successCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                        _logger.LogError(ex, "导入{Type}失败: {Content}", typeStr, questionData.Content);
+                        failedItems.Add($"{typeStr}「{questionData.Content}」导入失败：{ex.Message}");
+                    }
+                }
+
+                await _repository.SaveChangesAsync();
+            }
+            catch (AppServiceException ex)
+            {
+                throw; // 已包含错误信息的异常直接抛出
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "导入试卷失败");
+                throw new AppServiceException(500, $"导入试卷失败：{ex.Message}");
+            }
+
+            return (successCount, failedItems);
+        }
     }
 }

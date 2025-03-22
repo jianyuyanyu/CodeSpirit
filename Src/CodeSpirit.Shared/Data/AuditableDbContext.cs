@@ -1,4 +1,5 @@
 using CodeSpirit.Core;
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.Shared.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -19,6 +20,7 @@ namespace CodeSpirit.Shared.Data
         private readonly IServiceProvider _serviceProvider;
         private readonly ChangeTracker _changeTracker;
         private readonly ICurrentUser _currentUser;
+        private IIdGenerator _idGenerator;
 
         /// <summary>
         /// 是否启用软删除过滤器
@@ -65,6 +67,7 @@ namespace CodeSpirit.Shared.Data
         public override int SaveChanges()
         {
             SetAuditFields();
+            SetLongIdFields();
             return base.SaveChanges();
         }
 
@@ -74,6 +77,7 @@ namespace CodeSpirit.Shared.Data
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SetAuditFields();
+            SetLongIdFields();
             return base.SaveChangesAsync(cancellationToken);
         }
 
@@ -124,6 +128,166 @@ namespace CodeSpirit.Shared.Data
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// 设置长整型ID字段
+        /// 对于主键为long类型且值为默认值(0)的实体，自动使用IIdGenerator生成新的ID
+        /// </summary>
+        protected virtual void SetLongIdFields()
+        {
+            // 按需获取IIdGenerator
+            _idGenerator ??= _serviceProvider.GetService<IIdGenerator>();
+            if (_idGenerator == null)
+            {
+                return;
+            }
+
+            foreach (EntityEntry entry in _changeTracker.Entries().Where(e => e.State == EntityState.Added))
+            {
+                var entity = entry.Entity;
+                SetLongIdForEntity(entity, entry);
+            }
+        }
+
+        /// <summary>
+        /// 为单个实体设置长整型ID
+        /// </summary>
+        /// <param name="entity">要设置ID的实体</param>
+        /// <param name="entry">实体的EntityEntry，如果为null则从属性直接判断</param>
+        protected virtual void SetLongIdForEntity(object entity, EntityEntry entry = null)
+        {
+            if (entity == null)
+            {
+                return;
+            }
+
+            // 按需获取IIdGenerator
+            _idGenerator ??= _serviceProvider.GetService<IIdGenerator>();
+            if (_idGenerator == null)
+            {
+                return;
+            }
+
+            var entityType = entity.GetType();
+                
+            // 获取主键属性
+            var keyProperty = entityType.GetProperty("Id");
+            if (keyProperty == null || keyProperty.PropertyType != typeof(long))
+            {
+                return;
+            }
+                
+            // 获取当前ID值
+            var currentId = (long)keyProperty.GetValue(entity);
+                
+            // 如果已经有值，则跳过
+            if (currentId != default)
+            {
+                return;
+            }
+                
+            // 检查属性是否配置为自增
+            var efProperty = entry?.Metadata.FindProperty("Id");
+            if (entry != null && efProperty?.ValueGenerated == ValueGenerated.OnAdd)
+            {
+                // 属性配置为自增，跳过手动ID生成
+                return;
+            }
+
+            // 如果没有EntityEntry，则尝试通过Model获取属性配置
+            if (entry == null)
+            {
+                var entityEntry = Model.FindEntityType(entityType);
+                if (entityEntry != null)
+                {
+                    var property = entityEntry.FindProperty("Id");
+                    if (property?.ValueGenerated == ValueGenerated.OnAdd)
+                    {
+                        // 属性配置为自增，跳过手动ID生成
+                        return;
+                    }
+                }
+            }
+                
+            // 使用ID生成器生成新ID
+            keyProperty.SetValue(entity, _idGenerator.NewId());
+        }
+
+        /// <summary>
+        /// 为多个实体设置长整型ID
+        /// </summary>
+        /// <param name="entities">要设置ID的实体集合</param>
+        protected virtual void SetLongIdForEntities(IEnumerable<object> entities)
+        {
+            if (entities == null)
+            {
+                return;
+            }
+
+            foreach (var entity in entities)
+            {
+                SetLongIdForEntity(entity);
+            }
+        }
+
+        /// <summary>
+        /// 重写AddRange方法，在添加前设置ID
+        /// </summary>
+        /// <param name="entities">要添加的实体集合</param>
+        public override void AddRange(params object[] entities)
+        {
+            SetLongIdForEntities(entities);
+            base.AddRange(entities);
+        }
+
+        /// <summary>
+        /// 重写AddRange方法，在添加前设置ID
+        /// </summary>
+        /// <param name="entities">要添加的实体集合</param>
+        public override void AddRange(IEnumerable<object> entities)
+        {
+            SetLongIdForEntities(entities);
+            base.AddRange(entities);
+        }
+
+        /// <summary>
+        /// 重写AddRangeAsync方法，在添加前设置ID
+        /// </summary>
+        /// <param name="entities">要添加的实体集合</param>
+        /// <returns>表示异步操作的任务</returns>
+        public override Task AddRangeAsync(params object[] entities)
+        {
+            SetLongIdForEntities(entities);
+            return base.AddRangeAsync(entities);
+        }
+
+        /// <summary>
+        /// 重写AddRangeAsync方法，在添加前设置ID
+        /// </summary>
+        /// <param name="entities">要添加的实体集合</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        public override Task AddRangeAsync(IEnumerable<object> entities, CancellationToken cancellationToken = default)
+        {
+            SetLongIdForEntities(entities);
+            return base.AddRangeAsync(entities, cancellationToken);
+        }
+
+        /// <summary>
+        /// 添加实体到数据集前处理ID
+        /// </summary>
+        /// <typeparam name="TEntity">实体类型</typeparam>
+        /// <param name="entities">实体集合</param>
+        public virtual void OnAddRangeToDbSet<TEntity>(IEnumerable<TEntity> entities) where TEntity : class
+        {
+            if (entities == null)
+            {
+                return;
+            }
+            
+            // 预先设置实体的ID
+            SetLongIdForEntities(entities);
         }
 
         /// <summary>
@@ -249,7 +413,11 @@ namespace CodeSpirit.Shared.Data
         /// </summary>
         private void ChangeTracker_Tracking(object sender, EntityTrackingEventArgs e)
         {
-            // 可以在这里添加实体跟踪的日志记录
+            // 当实体被跟踪时，立即为新添加的实体生成ID
+            if (e.Entry.State == EntityState.Added)
+            {
+                SetLongIdForEntity(e.Entry.Entity, e.Entry);
+            }
         }
 
         /// <summary>

@@ -41,7 +41,8 @@ public class CreateQuestionDto
         Addable = true,
         Removable = true,
         Draggable = true,
-        MaxLength = 10
+        MaxLength = 10,
+        VisibleOn = "type != 3"
     )]
     public List<string> Options { get; set; } = [];
 

@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Data.Models;
 
@@ -17,11 +18,20 @@ public class QuestionQueryDto : QueryDtoBase
     /// </summary>
     [DisplayName("难度")]
     public QuestionDifficulty? Difficulty { get; set; }
-    
+
     /// <summary>
     /// 分类ID
     /// </summary>
     [DisplayName("分类")]
+    [AmisTreeSelectField(
+        DataSource = "${ROOT_API}/api/exam/QuestionCategories/tree",
+        Multiple = false,
+        Cascade = true,
+        ShowOutline = true,
+        LabelField = "name",
+        ValueField = "id",
+        Required = false
+    )]
     public long? CategoryId { get; set; }
 
     /// <summary>

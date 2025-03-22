@@ -213,7 +213,7 @@ namespace CodeSpirit.Amis
 
             //添加自定义顶部按钮
             var headerCustomButtons = _buttonHelper.GetHeaderOperationButtons();
-            if (headerCustomButtons!=null && headerCustomButtons.Any())
+            if (headerCustomButtons != null && headerCustomButtons.Any())
             {
                 foreach (var button in headerCustomButtons)
                 {
@@ -230,11 +230,24 @@ namespace CodeSpirit.Amis
         {
             return new JObject
             {
-                ["title"] = "筛选",  // 筛选标题
-                ["body"] = new JObject
+                ["title"] = "筛选",
+                ["mode"] = "horizontal",
+                ["columnCount"] = 4, // 一行最多显示4列
+                ["autoFocus"] = false,
+                ["body"] = new JArray(searchFields),
+                ["actions"] = new JArray  // 添加操作按钮
                 {
-                    ["type"] = "group",  // 筛选类型为组合
-                    ["body"] = new JArray(searchFields)  // 添加搜索字段
+                    new JObject
+                    {
+                        ["type"] = "submit",
+                        ["label"] = "搜索",
+                        ["level"] = "primary"
+                    },
+                    new JObject
+                    {
+                        ["type"] = "reset",
+                        ["label"] = "重置"
+                    }
                 }
             };
         }

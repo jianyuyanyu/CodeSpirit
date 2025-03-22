@@ -14,6 +14,13 @@ public interface IQuestionService
     Task<PageList<QuestionDto>> GetQuestionsAsync(QuestionQueryDto queryDto);
 
     /// <summary>
+    /// 获取题目选项列表
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns></returns>
+    Task<List<QuestionSelectListDto>> GetQuestionSelectListAsync(QuestionSelectListQueryDto queryDto);
+
+    /// <summary>
     /// 获取题目详情
     /// </summary>
     /// <param name="id">题目ID</param>

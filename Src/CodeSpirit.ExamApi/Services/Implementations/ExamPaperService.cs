@@ -125,32 +125,34 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             examPaper.UsageCount = 0;
             examPaper.AverageScore = 0;
             examPaper.PassRate = 0;
-            
+
+            var lastVersionQuestions = await _questionVersionRepository.CreateQuery().Include(s => s.Question)
+                .Where(s => createDto.QuestionIds.Select(i => long.Parse(i)).ToList().Contains(s.QuestionId))
+                .GroupBy(s => s.QuestionId)
+                .Select(g => g.OrderByDescending(s => s.Version).First())
+                .ToListAsync();
+
+            var questions = lastVersionQuestions.Select(s => s.Question).ToList();
+
             // 计算难度系数
-            if (createDto.Questions != null && createDto.Questions.Any())
+            if (questions != null && questions.Count != 0)
             {
-                var questionIds = createDto.Questions.Select(q => q.QuestionId).ToList();
-                var questions = await _questionRepository
-                    .Find(q => questionIds.Contains(q.Id))
-                    .ToListAsync();
-                
-                if (questions.Any())
-                {
-                    // 根据题目难度计算试卷难度系数
-                    examPaper.DifficultyLevel = CalculateDifficultyLevel(questions);
-                }
+                // 根据题目难度计算试卷难度系数
+                examPaper.DifficultyLevel = CalculateDifficultyLevel(questions);
             }
             
             await _examPaperRepository.AddAsync(examPaper);
             
             // 添加试卷题目
-            if (createDto.Questions != null && createDto.Questions.Any())
+            if (lastVersionQuestions != null && lastVersionQuestions.Count != 0)
             {
                 var examPaperQuestions = new List<ExamPaperQuestion>();
-                foreach (var questionDto in createDto.Questions)
+                var order = 1;
+                foreach (var questionDto in lastVersionQuestions)
                 {
                     var examPaperQuestion = _mapper.Map<ExamPaperQuestion>(questionDto);
                     examPaperQuestion.ExamPaperId = examPaper.Id;
+                    examPaperQuestion.OrderNumber = order++;
                     examPaperQuestions.Add(examPaperQuestion);
                 }
                 

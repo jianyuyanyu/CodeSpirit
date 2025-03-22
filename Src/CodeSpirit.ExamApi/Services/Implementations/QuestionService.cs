@@ -89,6 +89,30 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         }
 
         /// <summary>
+        /// 获取选择题选项列表
+        /// </summary>
+        /// <param name="queryDto"></param>
+        /// <returns></returns>
+        public async Task<List<QuestionSelectListDto>> GetQuestionSelectListAsync(QuestionSelectListQueryDto queryDto)
+        {
+            var query = _repository.CreateQuery();
+            if (queryDto.CategoryIds != null && queryDto.CategoryIds.Any())
+                query = query.Where(s => queryDto.CategoryIds.Contains(s.CategoryId));
+
+            if (queryDto.Difficulty.HasValue)
+                query = query.Where(s => s.Difficulty == queryDto.Difficulty.Value);
+
+            if (queryDto.Type.HasValue)
+                query = query.Where(s => s.Type == queryDto.Type.Value);
+
+            return await query.Select(s => new QuestionSelectListDto()
+            {
+                Id = s.Id,
+                Content = s.Content
+            }).ToListAsync();
+        }
+
+        /// <summary>
         /// 获取题目详情
         /// </summary>
         public async Task<QuestionDto> GetQuestionAsync(long id)

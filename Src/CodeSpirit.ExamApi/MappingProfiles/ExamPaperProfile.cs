@@ -34,5 +34,13 @@ public class ExamPaperProfile : Profile
 
         // 创建试卷题目映射
         CreateMap<CreateExamPaperQuestionDto, ExamPaperQuestion>();
+
+        // 题目版本映射考题
+        CreateMap<QuestionVersion, ExamPaperQuestion>()
+            .ForMember(dest => dest.QuestionId, opt => opt.MapFrom(src => src.QuestionId))
+            .ForMember(dest => dest.QuestionVersionId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Score, opt => opt.MapFrom(src => src.DefaultScore))
+            .ForMember(dest => dest.QuestionVersion, opt => opt.Ignore())
+            ;
     }
 } 

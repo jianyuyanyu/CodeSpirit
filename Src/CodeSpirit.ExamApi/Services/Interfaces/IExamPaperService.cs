@@ -37,4 +37,5 @@ public interface IExamPaperService : IBaseCRUDService<ExamPaper, ExamPaperDto, l
     /// <param name="id">源试卷ID</param>
     /// <returns>复制后的试卷</returns>
     Task<ExamPaperDto> CopyExamPaperAsync(long id);
+    Task<PageList<ExamPaperDto>> GetExamPapersAsync(ExamPaperQueryDto queryDto);
 } 

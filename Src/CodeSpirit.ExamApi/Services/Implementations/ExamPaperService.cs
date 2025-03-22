@@ -83,7 +83,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         /// <summary>
         /// 获取分页列表
         /// </summary>
-        public async Task<PageList<ExamPaperDto>> GetPagedListAsync(ExamPaperQueryDto queryDto)
+        public async Task<PageList<ExamPaperDto>> GetExamPapersAsync(ExamPaperQueryDto queryDto)
         {
             var predicate = GetExamPaperQueryPredicate(queryDto);
             return await base.GetPagedListAsync(queryDto, predicate);

@@ -32,7 +32,7 @@ public class ExamPapersController : ApiControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PageList<ExamPaperDto>>>> GetExamPapers([FromQuery] ExamPaperQueryDto queryDto)
     {
-        var result = await _examPaperService.GetPagedListAsync(queryDto);
+        var result = await _examPaperService.GetExamPapersAsync(queryDto);
         return SuccessResponse(result);
     }
 

@@ -23,6 +23,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         private readonly ILogger<QuestionService> _logger;
         private string? _changeReason;
         private QuestionTextParserV2 _questionTextParserV2;
+        private readonly IIdGenerator _idGenerator;
 
         /// <summary>
         /// 构造函数
@@ -33,7 +34,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             IRepository<QuestionVersion> versionRepository,
             IMapper mapper,
             ILogger<QuestionService> logger,
-            QuestionTextParserV2 questionTextParserV2)
+            QuestionTextParserV2 questionTextParserV2,
+            IIdGenerator idGenerator)
             : base(repository, mapper)
         {
             _repository = repository;
@@ -42,6 +44,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             _mapper = mapper;
             _logger = logger;
             _questionTextParserV2 = questionTextParserV2;
+            _idGenerator = idGenerator;
         }
 
         /// <summary>
@@ -252,6 +255,28 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             entity.Version = 1;
         }
 
+        protected override async Task OnCreated(Question entity, CreateQuestionDto createDto)
+        {
+            // 创建初始版本记录
+            var version = new QuestionVersion
+            {
+                QuestionId = entity.Id,
+                Version = entity.Version,
+                Content = entity.Content,
+                Options = entity.Options,
+                CorrectAnswer = entity.CorrectAnswer,
+                Analysis = entity.Analysis,
+                KnowledgePoints = entity.KnowledgePoints,
+                DefaultScore = entity.DefaultScore,
+                Tags = entity.Tags,
+                ChangeReason = "初始创建"
+            };
+
+            await _versionRepository.AddAsync(version);
+            await _versionRepository.SaveChangesAsync();
+            await base.OnCreated(entity, createDto);
+        }
+
         /// <summary>
         /// 更新实体前的处理
         /// </summary>
@@ -390,6 +415,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     // 创建题目实体
                     var question = new Question
                     {
+                        Id = _idGenerator.NewId(), //提前生成Id，方便后续版本记录使用
                         Content = item.Content,
                         Type = questionType,
                         Difficulty = (QuestionDifficulty)item.DifficultyLevel,
@@ -403,6 +429,21 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     {
                         question.Tags = JsonSerializer.Serialize(item.Tags);
                     }
+
+                    // 创建初始版本记录
+                    var version = new QuestionVersion
+                    {
+                        QuestionId = question.Id,
+                        Version = question.Version,
+                        Content = question.Content,
+                        Options = question.Options,
+                        CorrectAnswer = question.CorrectAnswer,
+                        Analysis = question.Analysis,
+                        KnowledgePoints = question.KnowledgePoints,
+                        DefaultScore = question.DefaultScore,
+                        Tags = question.Tags,
+                        ChangeReason = "初始创建"
+                    };
 
                     try
                     {
@@ -418,6 +459,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     // 添加到数据库
                     await _repository.AddAsync(question);
                     await _repository.SaveChangesAsync();
+                    await _versionRepository.AddAsync(version);
+                    await _versionRepository.SaveChangesAsync();
 
                     successCount++;
                 }
@@ -556,8 +599,23 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                         {
                             question.Tags = JsonSerializer.Serialize(questionData.Tags);
                         }
+                        // 创建初始版本记录
+                        var version = new QuestionVersion
+                        {
+                            QuestionId = question.Id,
+                            Version = question.Version,
+                            Content = question.Content,
+                            Options = question.Options,
+                            CorrectAnswer = question.CorrectAnswer,
+                            Analysis = question.Analysis,
+                            KnowledgePoints = question.KnowledgePoints,
+                            DefaultScore = question.DefaultScore,
+                            Tags = question.Tags,
+                            ChangeReason = "初始创建"
+                        };
 
                         await _repository.AddAsync(question);
+                        await _versionRepository.AddAsync(version);
                         successCount++;
                     }
                     catch (Exception ex)
@@ -569,6 +627,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 }
 
                 await _repository.SaveChangesAsync();
+                await _versionRepository.SaveChangesAsync();
             }
             catch (AppServiceException ex)
             {

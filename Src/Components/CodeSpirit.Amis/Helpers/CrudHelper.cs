@@ -101,7 +101,20 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>匹配的第一个方法，如果没有找到则返回 null。</returns>
         private MethodInfo FindListMethod(IEnumerable<MethodInfo> methods)
         {
-            // 首先查找显式命名为GetList或List的方法
+            // 首先查找 Get+控制器名称 的方法（如 GetQuestions）
+            var controllerName = methods.FirstOrDefault()?.DeclaringType?.Name.Replace("Controller", "");
+            if (!string.IsNullOrEmpty(controllerName))
+            {
+                var getControllerNameMethod = methods.FirstOrDefault(m => 
+                    m.Name.Equals($"Get{controllerName}", StringComparison.OrdinalIgnoreCase));
+                
+                if (getControllerNameMethod != null)
+                {
+                    return getControllerNameMethod;
+                }
+            }
+
+            // 其次查找显式命名为GetList或List的方法
             var explicitListMethod = methods.FirstOrDefault(m => 
                 m.Name.EndsWith("List", StringComparison.OrdinalIgnoreCase) || 
                 m.Name.StartsWith("List", StringComparison.OrdinalIgnoreCase));
@@ -111,18 +124,16 @@ namespace CodeSpirit.Amis.Helpers
                 return explicitListMethod;
             }
             
-            // 然后查找Get前缀的无ID参数方法或接受查询条件对象的方法
+            // 最后查找Get前缀的无ID参数方法或接受查询条件对象的方法
             return methods.FirstOrDefault(m => 
             {
                 if (m.Name.StartsWith("Get", StringComparison.OrdinalIgnoreCase))
                 {
                     var parameters = m.GetParameters();
-                    // 无参数的Get方法通常是列表
                     if (parameters.Length == 0)
                     {
                         return true;
                     }
-                    // 或者参数是查询条件对象（通常包含Query或Filter字样）
                     if (parameters.Length == 1)
                     {
                         var paramName = parameters[0].Name?.ToLower();

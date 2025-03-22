@@ -1,9 +1,11 @@
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.StudentGroup;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq.Expressions;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -41,7 +43,13 @@ public class StudentGroupsController : ApiControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PageList<StudentGroupDto>>>> GetStudentGroups([FromQuery] StudentGroupQueryDto queryDto)
     {
-        PageList<StudentGroupDto> groups = await _studentGroupService.GetPagedListAsync(queryDto);
+        Expression<Func<StudentGroup, bool>> predicate = null;
+        if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
+        {
+            predicate = x => x.Name.Contains(queryDto.Keywords) || x.Description.Contains(queryDto.Keywords);
+        }
+
+        PageList<StudentGroupDto> groups = await _studentGroupService.GetPagedListAsync(queryDto, predicate);
         return SuccessResponse(groups);
     }
 

@@ -18,5 +18,7 @@ public class StudentGroupProfile : Profile
 
         // 添加 PageList 映射配置
         CreateMap<PageList<StudentGroup>, PageList<StudentGroupDto>>();
+
+        CreateMap<StudentGroupBatchImportDto, StudentGroup>();
     }
 }

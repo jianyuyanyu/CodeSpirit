@@ -2,6 +2,7 @@ using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json.Linq;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace CodeSpirit.Amis.Form.Factories
@@ -66,19 +67,124 @@ namespace CodeSpirit.Amis.Form.Factories
 
         private JObject GetQuickEditConfig(PropertyInfo prop, UtilityHelper utilityHelper)
         {
-            // 根据属性类型返回适当的编辑器配置
-            if (prop.PropertyType.IsEnum)
+            var type = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+
+            // 处理枚举类型
+            if (type.IsEnum)
             {
                 return new JObject
                 {
                     ["type"] = "select",
-                    ["options"] = JArray.FromObject(prop.PropertyType.GetEnumOptions())
+                    ["options"] = JArray.FromObject(type.GetEnumOptions())
                 };
             }
 
+            // 处理数值类型
+            if (type == typeof(int) || type == typeof(long))
+            {
+                var config = new JObject
+                {
+                    ["type"] = "input-number",
+                    ["precision"] = 0  // 整数不需要小数位
+                };
+
+                // 获取Range特性的限制
+                var rangeAttr = prop.GetCustomAttribute<RangeAttribute>();
+                if (rangeAttr != null)
+                {
+                    config["min"] = Convert.ToInt64(rangeAttr.Minimum);
+                    config["max"] = Convert.ToInt64(rangeAttr.Maximum);
+                }
+
+                return config;
+            }
+
+            // 处理浮点数类型
+            if (type == typeof(float) || type == typeof(double) || type == typeof(decimal))
+            {
+                var config = new JObject
+                {
+                    ["type"] = "input-number",
+                    ["precision"] = 2  // 默认保留2位小数
+                };
+
+                // 获取Range特性的限制
+                var rangeAttr = prop.GetCustomAttribute<RangeAttribute>();
+                if (rangeAttr != null)
+                {
+                    config["min"] = Convert.ToDouble(rangeAttr.Minimum);
+                    config["max"] = Convert.ToDouble(rangeAttr.Maximum);
+                }
+
+                return config;
+            }
+
+            // 处理布尔类型
+            if (type == typeof(bool))
+            {
+                return new JObject
+                {
+                    ["type"] = "switch"
+                };
+            }
+
+            // 处理日期时间类型
+            if (type == typeof(DateTime))
+            {
+                return new JObject
+                {
+                    ["type"] = "input-datetime"
+                };
+            }
+
+            // 处理日期类型
+            if (type == typeof(DateOnly))
+            {
+                return new JObject
+                {
+                    ["type"] = "input-date"
+                };
+            }
+
+            // 处理时间类型
+            if (type == typeof(TimeOnly))
+            {
+                return new JObject
+                {
+                    ["type"] = "input-time"
+                };
+            }
+
+            // 获取字符串相关的验证特性
+            if (type == typeof(string))
+            {
+                var config = new JObject
+                {
+                    ["type"] = "input-text"
+                };
+
+                // 处理最大长度限制
+                var maxLengthAttr = prop.GetCustomAttribute<StringLengthAttribute>();
+                if (maxLengthAttr != null)
+                {
+                    config["maxLength"] = maxLengthAttr.MaximumLength;
+                }
+
+                // 处理必填验证
+                var requiredAttr = prop.GetCustomAttribute<RequiredAttribute>();
+                if (requiredAttr != null)
+                {
+                    config["required"] = true;
+                    config["requiredErrorMsg"] = requiredAttr.ErrorMessage;
+                }
+
+                return config;
+            }
+
+            // 默认使用文本输入
             return new JObject
             {
-                ["type"] = "input-text"  // 默认使用文本输入
+                ["type"] = "input-text"
             };
         }
     }

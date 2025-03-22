@@ -91,9 +91,9 @@ public static class ServiceCollectionExtensions
 
         // 注册服务
         // 注册具体的解析器
-        services.AddScoped<IQuestionParser, SingleChoiceQuestionParser>();
-        services.AddScoped<IQuestionParser, MultipleChoiceQuestionParser>();
-        services.AddScoped<IQuestionParser, TrueFalseQuestionParser>();
+        services.AddScoped<SingleChoiceQuestionParser>();
+        services.AddScoped<MultipleChoiceQuestionParser>();
+        services.AddScoped<TrueFalseQuestionParser>();
 
         // 注册主解析器
         services.AddScoped<QuestionTextParserV2>();

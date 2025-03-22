@@ -1,6 +1,5 @@
+using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.ExamApi.Data.Models;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamPaper;
 
@@ -56,6 +55,7 @@ public class ExamPaperDto
     /// 随机试卷规则
     /// </summary>
     [DisplayName("随机试卷规则")]
+    [AmisColumn(Type = "json")]
     public string? RandomRules { get; set; }
     
     /// <summary>

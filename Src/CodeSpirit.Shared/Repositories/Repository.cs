@@ -44,7 +44,7 @@ namespace CodeSpirit.Shared.Repositories
         public async Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities, bool saveChanges = true)
         {
             var entitiesList = entities.ToList();
-            await _dbSet.AddRangeAsync(entitiesList);
+            await _context.AddRangeAsync(entitiesList);
             if (saveChanges)
             {
                 await SaveChangesAsync();

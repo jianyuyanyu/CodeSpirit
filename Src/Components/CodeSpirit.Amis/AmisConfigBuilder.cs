@@ -184,7 +184,10 @@ namespace CodeSpirit.Amis
             JArray buttons = ["bulkActions"];
             if (_amisContext.ApiRoutes.Create != null && _amisContext.Actions.Create != null)
             {
-                buttons.Add(_buttonHelper.CreateHeaderButton("新增", _amisContext.ApiRoutes.Create, _amisContext.Actions.Create?.GetParameters()));
+                if (_amisContext.Actions.Create.GetCustomAttribute<HeaderOperationAttribute>() == null)
+                {
+                    buttons.Add(_buttonHelper.CreateHeaderButton("新增", _amisContext.ApiRoutes.Create, _amisContext.Actions.Create?.GetParameters()));
+                }
             }
             buttons.Add(new JObject()
             {

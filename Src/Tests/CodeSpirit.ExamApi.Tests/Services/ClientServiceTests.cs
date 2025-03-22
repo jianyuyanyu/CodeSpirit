@@ -69,6 +69,9 @@ namespace CodeSpirit.ExamApi.Tests.Services
                 Name = "Admin（测试用户）",
                 StudentNumber = "TEST001",
                 PhoneNumber = "13800000000",
+                AdmissionTicket = "000001",
+                IdNo = "4202132322",
+                Gender = Gender.Unknown,
                 IsActive = true
             };
 
@@ -175,10 +178,9 @@ namespace CodeSpirit.ExamApi.Tests.Services
                 StudentId = -1, // 测试用户
                 AttemptNumber = 1,
                 StartTime = now.AddDays(-2),
-                SubmitTime = now.AddDays(-2).AddHours(1),
-                Status = ExamRecordStatus.Graded,
-                Score = 80,
-                IsPassed = true,
+                Status = ExamRecordStatus.InProgress, // 修改为进行中状态
+                Score = 0, // 进行中的考试没有分数
+                IsPassed = false, // 进行中的考试未通过
                 Duration = 60
             };
 

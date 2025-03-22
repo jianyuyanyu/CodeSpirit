@@ -3,22 +3,23 @@ using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.ExamApi.Data;
+using CodeSpirit.ExamApi.Services;
 using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.ExamApi.Services.TextParsers;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
+using CodeSpirit.Shared.EventBus.Events;
+using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
-using CodeSpirit.Shared.EventBus.Extensions;
-using CodeSpirit.Shared.EventBus.Events;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System.Text;
-using CodeSpirit.ExamApi.Services;
 
 namespace CodeSpirit.ExamApi;
 
@@ -87,8 +88,16 @@ public static class ServiceCollectionExtensions
         {
             Console.WriteLine($"警告: 注册Charts服务时出错: {ex.Message}，但应用程序将继续启动");
         }
-        
+
         // 注册服务
+        // 注册具体的解析器
+        services.AddScoped<IQuestionParser, SingleChoiceQuestionParser>();
+        services.AddScoped<IQuestionParser, MultipleChoiceQuestionParser>();
+        services.AddScoped<IQuestionParser, TrueFalseQuestionParser>();
+
+        // 注册主解析器
+        services.AddScoped<QuestionTextParserV2>();
+
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<IStudentGroupService, StudentGroupService>();
         services.AddScoped<IStudentService, StudentService>();

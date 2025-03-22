@@ -22,6 +22,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         private readonly IMapper _mapper;
         private readonly ILogger<QuestionService> _logger;
         private string? _changeReason;
+        private QuestionTextParserV2 _questionTextParserV2;
 
         /// <summary>
         /// 构造函数
@@ -31,7 +32,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             IRepository<QuestionCategory> categoryRepository,
             IRepository<QuestionVersion> versionRepository,
             IMapper mapper,
-            ILogger<QuestionService> logger)
+            ILogger<QuestionService> logger,
+            QuestionTextParserV2 questionTextParserV2)
             : base(repository, mapper)
         {
             _repository = repository;
@@ -39,6 +41,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             _versionRepository = versionRepository;
             _mapper = mapper;
             _logger = logger;
+            _questionTextParserV2 = questionTextParserV2;
         }
 
         /// <summary>
@@ -475,10 +478,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             try
             {
                 // 使用题目解析器解析文本
-                var loggerFactory = new LoggerFactory();
-                var parserLogger = loggerFactory.CreateLogger<QuestionTextParser>();
-                var parser = new QuestionTextParser(parserLogger);
-                var parsedQuestions = parser.Parse(input.Text);
+                var parsedQuestions = _questionTextParserV2.Parse(input.Text);
 
                 if (!parsedQuestions.Any())
                 {

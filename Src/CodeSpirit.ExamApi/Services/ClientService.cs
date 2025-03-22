@@ -61,15 +61,20 @@ public class ClientService : IClientService
                     Status = _context.ExamRecords.Any(r => 
                         r.ExamSettingId == e.Id && 
                         r.StudentId == userId && 
-                        (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted)) 
-                        ? "已完成" 
-                        : (e.StartTime <= now && e.EndTime >= now ? "进行中" : 
-                           (e.StartTime > now ? "未开始" : "已结束")),
+                        r.Status == ExamRecordStatus.InProgress) 
+                        ? "进行中" 
+                        : (_context.ExamRecords.Any(r => 
+                            r.ExamSettingId == e.Id && 
+                            r.StudentId == userId && 
+                            (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
+                            ? "已完成"
+                            : (e.StartTime <= now && e.EndTime >= now ? "进行中" : 
+                               (e.StartTime > now ? "未开始" : "已结束"))),
                     // 检查是否已参加并获取成绩
                     HasResult = _context.ExamRecords.Any(r =>
                         r.ExamSettingId == e.Id &&
                         r.StudentId == userId &&
-                        r.Status == ExamRecordStatus.Graded)
+                        (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
                 })
                 .ToListAsync();
 

@@ -127,26 +127,26 @@ public class QuestionsController : ApiControllerBase
             : SuccessResponse($"成功删除 {successCount} 个题目！");
     }
 
-    /// <summary>
-    /// 批量导入题目
-    /// </summary>
-    /// <param name="importDto">导入数据</param>
-    /// <returns>导入结果</returns>
-    [HttpPost("batch/import")]
-    public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<QuestionBatchImportItemDto> importDto)
-    {
-        ArgumentNullException.ThrowIfNull(importDto);
+    ///// <summary>
+    ///// 批量导入题目
+    ///// </summary>
+    ///// <param name="importDto">导入数据</param>
+    ///// <returns>导入结果</returns>
+    //[HttpPost("batch/import")]
+    //public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<QuestionBatchImportItemDto> importDto)
+    //{
+    //    ArgumentNullException.ThrowIfNull(importDto);
 
-        (int successCount, List<string> failedQuestions) = await _questionService.BatchImportAsync(importDto.ImportData);
+    //    (int successCount, List<string> failedQuestions) = await _questionService.BatchImportAsync(importDto.ImportData);
 
-        return failedQuestions.Any()
-            ? SuccessResponse($"成功导入 {successCount} 个题目，但以下题目导入失败: {string.Join(", ", failedQuestions)}")
-            : SuccessResponse($"成功导入 {successCount} 个题目！");
-    }
+    //    return failedQuestions.Any()
+    //        ? SuccessResponse($"成功导入 {successCount} 个题目，但以下题目导入失败: {string.Join(", ", failedQuestions)}")
+    //        : SuccessResponse($"成功导入 {successCount} 个题目！");
+    //}
 
-    [HttpPost("batch/import-from-text")]
+    [HttpPost("batch/Parser-from-text")]
     [HeaderOperation("从文本导入", "form")]
-    public async Task<ActionResult<ApiResponse>> BatchImportFromText([FromBody]QuestionImportFromTextDto input)
+    public async Task<ActionResult<ApiResponse>> BatchParserFromText([FromBody]QuestionImportFromTextDto input)
     {
         (int successCount, List<string> failedQuestions) = await _questionService.ImportFromTextAsync(input);
 

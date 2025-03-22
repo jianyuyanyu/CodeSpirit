@@ -89,7 +89,9 @@ public class GenerateRandomExamPaperDto
         Cascade = true,
         ShowOutline = true,
         LabelField = "name",
-        ValueField = "id"
+        ValueField = "id",
+        JoinValues = false,
+        ExtractValue = true
     )]
     public List<long> CategoryIds { get; set; }
 }

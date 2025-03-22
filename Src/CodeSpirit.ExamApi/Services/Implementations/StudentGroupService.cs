@@ -168,6 +168,16 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
         return items.Where(i => !existingNames.Contains(i.Name));
     }
 
+    protected override Task OnImporting(StudentGroup entity)
+    {
+        base.OnImporting(entity);
+
+        if(entity.Id == default)
+            entity.Id = _idGenerator.NewId();
+
+        return Task.CompletedTask;
+    }
+
     /// <summary>
     /// 添加考生到分组
     /// </summary>

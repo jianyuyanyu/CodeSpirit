@@ -357,6 +357,25 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         var inserts = new List<Student>();
         var failedItems = new List<string>();
 
+        var studentNumberRepetition = importList.GroupBy(x => x.StudentNumber).Select(s => new { studentNumber = s.Key, count = s.Count() });
+        if (studentNumberRepetition.Any(x => x.count > 1))
+        {
+            var error = string.Join(",", studentNumberRepetition.Where(x => x.count > 1).Select(x => x.studentNumber));
+            failedItems.Add($"导入数据中出现重复的学号：{error}");
+        }
+        var idNoRepetition = importList.GroupBy(x => x.IdNo).Select(s => new { idNo = s.Key, count = s.Count() });
+        if (idNoRepetition.Any(x => x.count > 1))
+        {
+            var error = string.Join(",", idNoRepetition.Where(x => x.count > 1).Select(x => x.idNo));
+            failedItems.Add($"导入数据中出现重复的身份证：{error}");
+        }
+        var admissionTicketRepetition = importList.GroupBy(x => x.AdmissionTicket).Select(s => new { admissionTicket = s.Key, count = s.Count() });
+        if (admissionTicketRepetition.Any(x => x.count > 1))
+        {
+            var error = string.Join(",", admissionTicketRepetition.Where(x => x.count > 1).Select(x => x.admissionTicket));
+            failedItems.Add($"导入数据中出现重复的准考证：{error}");
+        }
+
         var checkDatas = await Repository.CreateQuery().Where(x => importList.Select(x => x.StudentNumber).Contains(x.StudentNumber)
         || importList.Select(x => x.IdNo).Contains(x.IdNo)
         || importList.Select(x => x.AdmissionTicket).Contains(x.AdmissionTicket))

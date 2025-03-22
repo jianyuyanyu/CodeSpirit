@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -14,6 +15,7 @@ public class StudentGroupBatchImportDto
     [Required(ErrorMessage = "分组名称不能为空")]
     [StringLength(100, ErrorMessage = "分组名称最大长度为100")]
     [DisplayName("分组名称")]
+    [JsonProperty("分组名称")]
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
@@ -21,5 +23,6 @@ public class StudentGroupBatchImportDto
     /// </summary>
     [StringLength(500, ErrorMessage = "分组描述最大长度为500")]
     [DisplayName("描述")]
+    [JsonProperty("描述")]
     public string? Description { get; set; }
 } 

@@ -45,6 +45,18 @@ public class QuestionsController : ApiControllerBase
     }
 
     /// <summary>
+    /// 获取题目选择列表
+    /// </summary>
+    /// <param name="queryDto"></param>
+    /// <returns></returns>
+    [HttpGet("select-list")]
+    public async Task<ActionResult<ApiResponse<List<QuestionSelectListDto>>>> GetSelectList([FromQuery] QuestionSelectListQueryDto queryDto)
+    {
+        List<QuestionSelectListDto> questions = await _questionService.GetQuestionSelectListAsync(queryDto);
+        return SuccessResponse(questions);
+    }
+
+    /// <summary>
     /// 获取题目详情
     /// </summary>
     /// <param name="id">题目ID</param>

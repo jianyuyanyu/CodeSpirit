@@ -1,4 +1,5 @@
-﻿using CodeSpirit.ExamApi.Data.Models;
+﻿using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.ExamApi.Data.Models;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamPaper;
 
@@ -28,6 +29,7 @@ public class CreateExamPaperDto
     /// </summary>
     [DisplayName("试卷类型")]
     [Required(ErrorMessage = "试卷类型不能为空")]
+    [AmisFormField(VisibleOn = "false")]
     public ExamPaperType Type { get; set; } = ExamPaperType.Fixed;
     
     /// <summary>
@@ -53,15 +55,19 @@ public class CreateExamPaperDto
     public int Duration { get; set; } = 120;
     
     /// <summary>
-    /// 随机试卷规则
-    /// </summary>
-    [DisplayName("随机试卷规则")]
-    [StringLength(2000, ErrorMessage = "随机规则不能超过2000个字符")]
-    public string? RandomRules { get; set; }
-    
-    /// <summary>
     /// 题目列表
     /// </summary>
-    [DisplayName("题目列表")]
-    public List<CreateExamPaperQuestionDto>? Questions { get; set; }
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/exam/Questions/select-list",
+        ValueField = "id",
+        LabelField = "content",
+        Multiple = true,
+        JoinValues = false,
+        ExtractValue = true,
+        Searchable = true,
+        Clearable = true,
+        Required = true,
+        Placeholder = "请选择题目"
+    )]
+    public List<string> QuestionIds { get; set; }
 }

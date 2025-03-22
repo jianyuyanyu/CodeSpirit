@@ -58,6 +58,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="createDto">创建试卷DTO</param>
     /// <returns>创建的试卷</returns>
     [HttpPost]
+    [HeaderOperation("生成固定试卷", "form")]
     public async Task<ActionResult<ApiResponse<ExamPaperDto>>> CreateExamPaper(CreateExamPaperDto createDto)
     {
         var result = await _examPaperService.CreateAsync(createDto);

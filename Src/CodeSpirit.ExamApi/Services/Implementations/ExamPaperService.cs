@@ -53,7 +53,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
             if (!string.IsNullOrEmpty(queryDto.Keywords))
             {
-                predicate = predicate.And(x => x.Name.Contains(queryDto.Keywords) || 
+                predicate = predicate.And(x => x.Name.Contains(queryDto.Keywords) ||
                                           (x.Description != null && x.Description.Contains(queryDto.Keywords)));
             }
 
@@ -110,7 +110,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             var examPaperDto = _mapper.Map<ExamPaperDto>(examPaper);
             examPaperDto.Questions = _mapper.Map<List<ExamPaperQuestionDto>>(
                 examPaper.ExamPaperQuestions.OrderBy(q => q.OrderNumber).ToList());
-            
+
             return examPaperDto;
         }
 
@@ -140,9 +140,9 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 // 根据题目难度计算试卷难度系数
                 examPaper.DifficultyLevel = CalculateDifficultyLevel(questions);
             }
-            
+
             await _examPaperRepository.AddAsync(examPaper);
-            
+
             // 添加试卷题目
             if (lastVersionQuestions != null && lastVersionQuestions.Count != 0)
             {
@@ -155,10 +155,10 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     examPaperQuestion.OrderNumber = order++;
                     examPaperQuestions.Add(examPaperQuestion);
                 }
-                
+
                 await _examPaperQuestionRepository.AddRangeAsync(examPaperQuestions);
             }
-            
+
             return await GetAsync(examPaper.Id);
         }
 
@@ -185,7 +185,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
             // 更新基本信息
             _mapper.Map(updateDto, examPaper);
-            
+
             // 更新题目列表
             if (updateDto.Questions != null)
             {
@@ -196,7 +196,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     {
                         await _examPaperQuestionRepository.DeleteAsync(question);
                     }
-                    
+
                     // 添加新题目
                     var examPaperQuestions = new List<ExamPaperQuestion>();
                     foreach (var questionDto in updateDto.Questions)
@@ -205,22 +205,22 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                         examPaperQuestion.ExamPaperId = examPaper.Id;
                         examPaperQuestions.Add(examPaperQuestion);
                     }
-                    
+
                     await _examPaperQuestionRepository.AddRangeAsync(examPaperQuestions, false);
                 });
-                
+
                 // 计算难度系数
                 var questionIds = updateDto.Questions.Select(q => q.QuestionId).ToList();
                 var questions = await _questionRepository
                     .Find(q => questionIds.Contains(q.Id))
                     .ToListAsync();
-                
+
                 if (questions.Any())
                 {
                     examPaper.DifficultyLevel = CalculateDifficultyLevel(questions);
                 }
             }
-            
+
             await _examPaperRepository.UpdateAsync(examPaper);
         }
 
@@ -252,7 +252,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 {
                     await _examPaperQuestionRepository.DeleteAsync(question);
                 }
-                
+
                 // 删除试卷
                 await _examPaperRepository.DeleteAsync(examPaper);
             });
@@ -318,151 +318,149 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         public async Task<ExamPaperDto> GenerateRandomExamPaperAsync(GenerateRandomExamPaperDto createDto)
         {
             // 验证参数
-            if (createDto.QuestionTypeRules == null || !createDto.QuestionTypeRules.Any())
+            await ValidateRandomExamPaperRules(createDto);
+
+            ExamPaper? examPaper = null;
+            // 使用事务包装整个过程
+            await _examPaperRepository.ExecuteInTransactionAsync(async () =>
             {
-                throw new AppServiceException(400, "题型规则不能为空");
+                // 创建试卷基本信息
+                examPaper = new ExamPaper
+                {
+                    Name = createDto.Name,
+                    Description = createDto.Description,
+                    Type = ExamPaperType.Random,
+                    TotalScore = createDto.TotalScore,
+                    PassScore = createDto.PassScore,
+                    Duration = createDto.Duration,
+                    Status = ExamPaperStatus.Draft,
+                    Version = 1,
+                    UsageCount = 0,
+                    AverageScore = 0,
+                    PassRate = 0
+                };
+
+                // 保存随机规则
+                var randomRules = new
+                {
+                    QuestionTypeRules = createDto.QuestionTypeRules,
+                    DifficultyRules = createDto.DifficultyRules,
+                    CategoryIds = createDto.CategoryIds
+                };
+                examPaper.RandomRules = JsonSerializer.Serialize(randomRules);
+
+                await _examPaperRepository.AddAsync(examPaper);
+
+                // 根据规则选择题目
+                var examPaperQuestions = await GenerateQuestionsBasedOnRules(examPaper.Id, createDto);
+
+                // 添加试卷题目并计算难度
+                if (examPaperQuestions.Any())
+                {
+                    await _examPaperQuestionRepository.AddRangeAsync(examPaperQuestions);
+                    await UpdateExamPaperDifficulty(examPaper, examPaperQuestions);
+                }
+            });
+            return await GetAsync(examPaper.Id);
+        }
+
+        private async Task ValidateRandomExamPaperRules(GenerateRandomExamPaperDto createDto)
+        {
+            // 预先检查题库是否有足够的题目
+            foreach (var typeRule in createDto.QuestionTypeRules)
+            {
+                var availableCount = await _questionRepository
+                    .Find(q => q.Type == typeRule.QuestionType)
+                    .CountAsync();
+
+                if (availableCount < typeRule.Count)
+                {
+                    throw new AppServiceException(400,
+                        $"题库中类型为{typeRule.QuestionType}的题目不足，需要{typeRule.Count}题，实际只有{availableCount}题");
+                }
             }
+        }
 
-            // 计算总分，确保与规则一致
-            var totalScoreFromRules = createDto.QuestionTypeRules.Sum(r => r.Count * r.ScorePerQuestion);
-            if (totalScoreFromRules != createDto.TotalScore)
-            {
-                throw new AppServiceException(400, "题型规则的总分与设置的总分不一致");
-            }
-
-            // 创建随机试卷基本信息
-            var examPaper = new ExamPaper
-            {
-                Name = createDto.Name,
-                Description = createDto.Description,
-                Type = ExamPaperType.Random,
-                TotalScore = createDto.TotalScore,
-                PassScore = createDto.PassScore,
-                Duration = createDto.Duration,
-                Status = ExamPaperStatus.Draft,
-                Version = 1,
-                UsageCount = 0,
-                AverageScore = 0,
-                PassRate = 0
-            };
-
-            // 保存随机规则
-            var randomRules = new
-            {
-                QuestionTypeRules = createDto.QuestionTypeRules,
-                DifficultyRules = createDto.DifficultyRules,
-                //KnowledgePointRules = createDto.KnowledgePointRules,
-                CategoryIds = createDto.CategoryIds
-            };
-            examPaper.RandomRules = JsonSerializer.Serialize(randomRules);
-
-            // 创建试卷
-            await _examPaperRepository.AddAsync(examPaper);
-
-            // 根据规则随机选择题目
+        private async Task<List<ExamPaperQuestion>> GenerateQuestionsBasedOnRules(long examPaperId, GenerateRandomExamPaperDto createDto)
+        {
             var examPaperQuestions = new List<ExamPaperQuestion>();
             var orderNumber = 1;
 
             foreach (var typeRule in createDto.QuestionTypeRules)
             {
-                // 构建查询
-                var questionQuery = _questionRepository.Find(q => q.Type == typeRule.QuestionType);
+                // 按难度比例选择题目
+                var questions = await SelectQuestionsByDifficulty(typeRule, createDto.DifficultyRules);
 
-                // 应用分类过滤
-                if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
+                foreach (var question in questions)
                 {
-                    questionQuery = questionQuery.Where(q => createDto.CategoryIds.Contains(q.CategoryId));
-                }
-
-                // 应用难度过滤
-                if (createDto.DifficultyRules != null && createDto.DifficultyRules.Any())
-                {
-                    var difficulties = createDto.DifficultyRules
-                        .Where(r => r.Percentage > 0)
-                        .Select(r => r.Difficulty)
-                        .ToList();
-                    
-                    if (difficulties.Any())
+                    var latestVersion = await GetLatestQuestionVersion(question.Id);
+                    if (latestVersion != null)
                     {
-                        questionQuery = questionQuery.Where(q => difficulties.Contains(q.Difficulty));
+                        examPaperQuestions.Add(new ExamPaperQuestion
+                        {
+                            ExamPaperId = examPaperId,
+                            QuestionId = question.Id,
+                            QuestionVersionId = latestVersion.Id,
+                            OrderNumber = orderNumber++,
+                            Score = typeRule.ScorePerQuestion,
+                            IsRequired = true
+                        });
                     }
                 }
+            }
 
-                //// 应用知识点过滤
-                //if (createDto.KnowledgePointRules != null && createDto.KnowledgePointRules.Any())
-                //{
-                //    var knowledgePoints = createDto.KnowledgePointRules
-                //        .Where(r => r.Percentage > 0)
-                //        .Select(r => r.KnowledgePoint)
-                //        .ToList();
-                    
-                //    if (knowledgePoints.Any())
-                //    {
-                //        questionQuery = questionQuery.Where(q => 
-                //            knowledgePoints.Any(kp => q.KnowledgePoints != null && q.KnowledgePoints.Contains(kp)));
-                //    }
-                //}
+            return examPaperQuestions;
+        }
 
-                // 随机选择题目
-                var randomQuestions = await questionQuery
+        private async Task<List<Question>> SelectQuestionsByDifficulty(
+            QuestionTypeRule typeRule,
+            List<DifficultyRule> difficultyRules)
+        {
+            var questions = new List<Question>();
+            
+            // 如果没有难度规则，则随机选择指定数量的题目
+            if (difficultyRules == null || !difficultyRules.Any())
+            {
+                var randomQuestions = await _questionRepository
+                    .Find(q => q.Type == typeRule.QuestionType)
                     .OrderBy(q => Guid.NewGuid())
                     .Take(typeRule.Count)
                     .ToListAsync();
-
-                // 如果题目不足
-                if (randomQuestions.Count < typeRule.Count)
-                {
-                    _logger.LogWarning("随机试卷生成时题目不足，需要{0}题，实际只有{1}题", typeRule.Count, randomQuestions.Count);
-                    throw new AppServiceException(400, $"类型为{typeRule.QuestionType}的题目不足，需要{typeRule.Count}题，实际只有{randomQuestions.Count}题");
-                }
-
-                // 获取题目的最新版本
-                foreach (var question in randomQuestions)
-                {
-                    var latestVersion = await _questionVersionRepository
-                        .Find(v => v.QuestionId == question.Id)
-                        .OrderByDescending(v => v.Version)
-                        .FirstOrDefaultAsync();
-
-                    if (latestVersion == null)
-                    {
-                        _logger.LogWarning("题目{0}没有版本信息", question.Id);
-                        continue;
-                    }
-
-                    var examPaperQuestion = new ExamPaperQuestion
-                    {
-                        ExamPaperId = examPaper.Id,
-                        QuestionId = question.Id,
-                        QuestionVersionId = latestVersion.Id,
-                        OrderNumber = orderNumber++,
-                        Score = typeRule.ScorePerQuestion,
-                        IsRequired = true
-                    };
-
-                    examPaperQuestions.Add(examPaperQuestion);
-                }
+                    
+                questions.AddRange(randomQuestions);
+                return questions;
             }
 
-            // 添加试卷题目
-            if (examPaperQuestions.Any())
+            // 如果有难度规则，按难度比例选择题目
+            foreach (var difficultyRule in difficultyRules.Where(r => r.Percentage > 0))
             {
-                await _examPaperQuestionRepository.AddRangeAsync(examPaperQuestions);
-
-                // 计算难度系数
-                var questionIds = examPaperQuestions.Select(q => q.QuestionId).ToList();
-                var questions = await _questionRepository
-                    .Find(q => questionIds.Contains(q.Id))
+                var count = (int)Math.Ceiling(typeRule.Count * difficultyRule.Percentage / 100.0);
+                var difficultyQuestions = await _questionRepository
+                    .Find(q => q.Type == typeRule.QuestionType &&
+                              q.Difficulty == difficultyRule.Difficulty)
+                    .OrderBy(q => Guid.NewGuid())
+                    .Take(count)
                     .ToListAsync();
-                
-                if (questions.Any())
-                {
-                    examPaper.DifficultyLevel = CalculateDifficultyLevel(questions);
-                    await _examPaperRepository.UpdateAsync(examPaper);
-                }
+                    
+                questions.AddRange(difficultyQuestions);
             }
-
-            return await GetAsync(examPaper.Id);
+            
+            // 如果按难度规则选择的题目数量不足，则补充随机题目
+            if (questions.Count < typeRule.Count)
+            {
+                var remainingCount = typeRule.Count - questions.Count;
+                var existingQuestionIds = questions.Select(q => q.Id).ToList();
+                
+                var additionalQuestions = await _questionRepository
+                    .Find(q => q.Type == typeRule.QuestionType && !existingQuestionIds.Contains(q.Id))
+                    .OrderBy(q => Guid.NewGuid())
+                    .Take(remainingCount)
+                    .ToListAsync();
+                    
+                questions.AddRange(additionalQuestions);
+            }
+            
+            return questions;
         }
 
         /// <summary>
@@ -546,5 +544,35 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
             return Math.Min(100, Math.Max(0, difficultyLevel));
         }
+
+        /// <summary>
+        /// 更新试卷难度
+        /// </summary>
+        private async Task UpdateExamPaperDifficulty(ExamPaper examPaper, List<ExamPaperQuestion> examPaperQuestions)
+        {
+            var questionIds = examPaperQuestions.Select(q => q.QuestionId).ToList();
+            var questions = await _questionRepository
+                .Find(q => questionIds.Contains(q.Id))
+                .ToListAsync();
+
+            if (questions.Any())
+            {
+                examPaper.DifficultyLevel = CalculateDifficultyLevel(questions);
+                await _examPaperRepository.UpdateAsync(examPaper);
+            }
+        }
+
+        /// <summary>
+        /// 获取题目的最新版本
+        /// </summary>
+        /// <param name="questionId">题目ID</param>
+        /// <returns>最新版本的题目</returns>
+        private async Task<QuestionVersion> GetLatestQuestionVersion(long questionId)
+        {
+            return await _questionVersionRepository
+                .Find(v => v.QuestionId == questionId)
+                .OrderByDescending(v => v.Version)
+                .FirstOrDefaultAsync();
+        }
     }
-} 
+}

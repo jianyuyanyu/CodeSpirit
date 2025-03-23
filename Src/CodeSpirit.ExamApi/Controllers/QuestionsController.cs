@@ -163,7 +163,7 @@ public class QuestionsController : ApiControllerBase
         (int successCount, List<string> failedQuestions) = await _questionService.ImportFromTextAsync(input);
 
         return failedQuestions.Any()
-            ? SuccessResponse($"成功导入 {successCount} 个题目，但以下题目导入失败: \n{string.Join(", \n", failedQuestions)}")
+            ? SuccessResponse($"{successCount} 个题目导入成功，{failedQuestions.Count} 个题目导入失败: \n{string.Join(", \n", failedQuestions)}")
             : SuccessResponse($"成功导入 {successCount} 个题目！");
     }
 } 

@@ -394,82 +394,74 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 return (0, existingContents.Select(c => $"重复的题目内容: {c}").ToList());
             }
 
-            foreach (var item in importList)
+            // 使用事务包装所有数据库操作
+            await _repository.ExecuteInTransactionAsync(async () =>
             {
-                try
+                foreach (var item in importList)
                 {
-                    // 解析题目类型
-                    if (!Enum.TryParse<QuestionType>(item.QuestionType, out var questionType))
-                    {
-                        failedIds.Add($"{item.Content}(无效的题目类型)");
-                        continue;
-                    }
-
-                    // 解析难度等级
-                    if (!Enum.IsDefined(typeof(QuestionDifficulty), item.DifficultyLevel))
-                    {
-                        failedIds.Add($"{item.Content}(无效的难度等级)");
-                        continue;
-                    }
-
-                    // 创建题目实体
-                    var question = new Question
-                    {
-                        Id = _idGenerator.NewId(), //提前生成Id，方便后续版本记录使用
-                        Content = item.Content,
-                        Type = questionType,
-                        Difficulty = (QuestionDifficulty)item.DifficultyLevel,
-                        CorrectAnswer = item.Answer,
-                        Analysis = item.Analysis,
-                        Version = 1
-                    };
-
-                    // 处理标签
-                    if (!item.Tags.IsNullOrWhiteSpace())
-                    {
-                        question.Tags = JsonSerializer.Serialize(item.Tags);
-                    }
-
-                    // 创建初始版本记录
-                    var version = new QuestionVersion
-                    {
-                        QuestionId = question.Id,
-                        Version = question.Version,
-                        Content = question.Content,
-                        Options = question.Options,
-                        CorrectAnswer = question.CorrectAnswer,
-                        Analysis = question.Analysis,
-                        KnowledgePoints = question.KnowledgePoints,
-                        DefaultScore = question.DefaultScore,
-                        Tags = question.Tags,
-                        ChangeReason = "初始创建"
-                    };
-
                     try
                     {
-                        // 验证选项和答案
-                        ValidateOptionsAndAnswer(questionType, new List<string>(), item.Answer);
+                        // 解析题目类型
+                        if (!Enum.TryParse<QuestionType>(item.QuestionType, out var questionType))
+                        {
+                            failedIds.Add($"{item.Content}(无效的题目类型)");
+                            continue;
+                        }
+
+                        // 解析难度等级
+                        if (!Enum.IsDefined(typeof(QuestionDifficulty), item.DifficultyLevel))
+                        {
+                            failedIds.Add($"{item.Content}(无效的难度等级)");
+                            continue;
+                        }
+
+                        // 创建题目实体
+                        var question = new Question
+                        {
+                            Id = _idGenerator.NewId(),
+                            Content = item.Content,
+                            Type = questionType,
+                            Difficulty = (QuestionDifficulty)item.DifficultyLevel,
+                            CorrectAnswer = item.Answer,
+                            Analysis = item.Analysis,
+                            Version = 1
+                        };
+
+                        if (!item.Tags.IsNullOrWhiteSpace())
+                        {
+                            question.Tags = JsonSerializer.Serialize(item.Tags);
+                        }
+
+                        var version = new QuestionVersion
+                        {
+                            QuestionId = question.Id,
+                            Version = question.Version,
+                            Content = question.Content,
+                            Options = question.Options,
+                            CorrectAnswer = question.CorrectAnswer,
+                            Analysis = question.Analysis,
+                            KnowledgePoints = question.KnowledgePoints,
+                            DefaultScore = question.DefaultScore,
+                            Tags = question.Tags,
+                            ChangeReason = "初始创建"
+                        };
+
+                        // 添加到数据库（不立即保存）
+                        await _repository.AddAsync(question, false);
+                        await _versionRepository.AddAsync(version, false);
+                        successCount++;
                     }
-                    catch (AppServiceException ex)
+                    catch (Exception ex)
                     {
-                        failedIds.Add($"{item.Content}({ex.Message})");
-                        continue;
+                        _logger.LogError(ex, "导入题目失败: {Content}", item.Content);
+                        failedIds.Add($"{item.Content}(导入失败)");
                     }
-
-                    // 添加到数据库
-                    await _repository.AddAsync(question);
-                    await _repository.SaveChangesAsync();
-                    await _versionRepository.AddAsync(version);
-                    await _versionRepository.SaveChangesAsync();
-
-                    successCount++;
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "导入题目失败: {Content}", item.Content);
-                    failedIds.Add($"{item.Content}(导入失败)");
-                }
-            }
+
+                // 在事务结束时统一保存所有更改
+                await _repository.SaveChangesAsync();
+                await _versionRepository.SaveChangesAsync();
+            });
 
             return (successCount, failedIds);
         }
@@ -542,9 +534,9 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             var successCount = 0;
             var failedItems = new List<string>();
 
-            try
+            // 使用事务包装所有数据库操作
+            await _repository.ExecuteInTransactionAsync(async () =>
             {
-                // 使用题目解析器解析文本
                 var parsedQuestions = _questionTextParserV2.Parse(input.Text);
 
                 if (!parsedQuestions.Any())
@@ -583,6 +575,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
                         var question = new Question
                         {
+                            Id = _idGenerator.NewId(),
                             Content = questionData.Content,
                             Options = questionData.Options,
                             CorrectAnswer = questionData.CorrectAnswer,
@@ -602,6 +595,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                         // 创建初始版本记录
                         var version = new QuestionVersion
                         {
+                            Id = _idGenerator.NewId(),
                             QuestionId = question.Id,
                             Version = question.Version,
                             Content = question.Content,
@@ -614,8 +608,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                             ChangeReason = "初始创建"
                         };
 
-                        await _repository.AddAsync(question);
-                        await _versionRepository.AddAsync(version);
+                        await _repository.AddAsync(question, false);
+                        await _versionRepository.AddAsync(version, false);
                         successCount++;
                     }
                     catch (Exception ex)
@@ -626,18 +620,10 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     }
                 }
 
+                // 在事务结束时统一保存所有更改
                 await _repository.SaveChangesAsync();
                 await _versionRepository.SaveChangesAsync();
-            }
-            catch (AppServiceException ex)
-            {
-                throw; // 已包含错误信息的异常直接抛出
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "导入试卷失败");
-                throw new AppServiceException(500, $"导入试卷失败：{ex.Message}");
-            }
+            });
 
             return (successCount, failedItems);
         }

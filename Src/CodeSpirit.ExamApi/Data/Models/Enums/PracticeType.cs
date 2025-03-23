@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.ExamApi.Data.Models;
+namespace CodeSpirit.ExamApi.Data.Models.Enums;
 
 /// <summary>
 /// 练习类型

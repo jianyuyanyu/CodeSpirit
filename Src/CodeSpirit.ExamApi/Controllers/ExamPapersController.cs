@@ -1,9 +1,8 @@
-using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Dtos;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
-using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -153,6 +152,22 @@ public class ExamPapersController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<ExamPaperDto>>> CopyExamPaper(long id)
     {
         var result = await _examPaperService.CopyExamPaperAsync(id);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 获取试卷下拉列表
+    /// </summary>
+    /// <returns>试卷下拉列表</returns>
+    [HttpGet("select-published")]
+    public async Task<ActionResult<ApiResponse<List<OptionDto<long>>>>> GetSelectList()
+    {
+        var papers = await _examPaperService.GetAllExamPapersByStatusAsync(ExamPaperStatus.Published);
+        var result = papers.Select(p => new OptionDto<long>
+        {
+            Id = p.Id,
+            Name = p.Name
+        }).ToList();
         return SuccessResponse(result);
     }
 } 

@@ -1,5 +1,6 @@
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -446,7 +447,7 @@ public static class ExamDbContextSeed
             {
                 Name = $"{group.Name}{DateTime.Now.Year}年度认证考试",
                 Description = $"面向{group.Name}的年度认证考试",
-                ExamPaper = paper,
+                ExamPaperId = paper.Id,
                 StartTime = DateTime.Now.AddDays(-7),
                 EndTime = DateTime.Now.AddDays(14),
                 Duration = paper.Duration,
@@ -454,7 +455,11 @@ public static class ExamDbContextSeed
                 EnableRandomQuestionOrder = true,
                 EnableRandomOptionOrder = true,
                 AllowedScreenSwitchCount = 0,
-                StudentGroups = new List<StudentGroup> { group }
+                Status = ExamSettingStatus.Draft,
+                StudentGroups = studentGroups.Select(x => new ExamSettingStudentGroup
+                {
+                    StudentGroup = x
+                }).ToList()
             });
         }
 

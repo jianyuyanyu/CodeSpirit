@@ -169,6 +169,16 @@ public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDt
         return (successCount, failedIds);
     }
 
+    /// <summary>
+    /// 获取所有实体
+    /// </summary>
+    /// <returns>所有实体的DTO列表</returns>
+    public virtual async Task<IEnumerable<TDto>> GetAllAsync()
+    {
+        var entities = await Repository.GetAllAsync();
+        return Mapper.Map<IEnumerable<TDto>>(entities);
+    }
+
     #region Protected Virtual Methods for Override
 
     /// <summary>

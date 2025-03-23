@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;

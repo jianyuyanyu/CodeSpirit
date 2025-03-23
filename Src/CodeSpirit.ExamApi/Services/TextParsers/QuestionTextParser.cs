@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Services.TextParsers;
 

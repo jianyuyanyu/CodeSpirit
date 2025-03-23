@@ -1,6 +1,7 @@
 using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
 
 namespace CodeSpirit.ExamApi.MappingProfiles;

@@ -1,4 +1,4 @@
-using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Services.TextParsers;
 using Microsoft.Extensions.Logging;
 using Moq;

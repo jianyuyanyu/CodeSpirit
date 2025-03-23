@@ -1,16 +1,7 @@
 using CodeSpirit.Core.IdGenerator;
-using CodeSpirit.ExamApi.Data.Models;
-using CodeSpirit.ExamApi.Data.Seeds;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Services;
 using CodeSpirit.ExamApi.Tests.TestBase;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace CodeSpirit.ExamApi.Tests.Services
 {
@@ -134,7 +125,10 @@ namespace CodeSpirit.ExamApi.Tests.Services
                 AllowedAttempts = 2,
                 EnableRandomQuestionOrder = true,
                 EnableRandomOptionOrder = true,
-                StudentGroups = new List<StudentGroup> { studentGroup1 }
+                StudentGroups = new List<ExamSettingStudentGroup> 
+                { 
+                    new ExamSettingStudentGroup { StudentGroup = studentGroup1 }
+                }
             };
 
             var examSetting2 = new ExamSetting
@@ -149,7 +143,10 @@ namespace CodeSpirit.ExamApi.Tests.Services
                 AllowedAttempts = 2,
                 EnableRandomQuestionOrder = true,
                 EnableRandomOptionOrder = true,
-                StudentGroups = new List<StudentGroup> { studentGroup2 }
+                StudentGroups = new List<ExamSettingStudentGroup> 
+                { 
+                    new ExamSettingStudentGroup { StudentGroup = studentGroup2 }
+                }
             };
 
             var examSetting3 = new ExamSetting
@@ -164,7 +161,7 @@ namespace CodeSpirit.ExamApi.Tests.Services
                 AllowedAttempts = 3,
                 EnableRandomQuestionOrder = false,
                 EnableRandomOptionOrder = false,
-                StudentGroups = new List<StudentGroup>() // 空列表表示所有学生组都可以参加
+                StudentGroups = new List<ExamSettingStudentGroup>() // 空列表表示所有学生组都可以参加
             };
 
             DbContext.ExamSettings.AddRange(examSetting1, examSetting2, examSetting3);

@@ -167,4 +167,15 @@ public class StudentGroupsController : ApiControllerBase
         await _studentGroupService.RemoveStudentsFromGroupAsync(id, request.Ids);
         return SuccessResponse("成功从分组移除考生！");
     }
-} 
+
+    /// <summary>
+    /// 获取学生组下拉选择列表
+    /// </summary>
+    /// <returns>学生组列表</returns>
+    [HttpGet("select")]
+    public async Task<ActionResult<ApiResponse<List<OptionDto<long>>>>> GetStudentGroupsForSelect()
+    {
+        var groups = await _studentGroupService.GetAllActiveGroupsAsync();
+        return SuccessResponse(groups.Select(p => new OptionDto<long>() { Id = p.Id, Name = p.Name }).ToList());
+    }
+}

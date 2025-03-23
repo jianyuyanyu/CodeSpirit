@@ -109,6 +109,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IQuestionVersionService, QuestionVersionService>();
         services.AddScoped<IPracticeRecordService, PracticeRecordService>();
         services.AddScoped<IClientService, ClientService>();
+        services.AddScoped<IExamSettingService, ExamSettingService>();
 
         return services;
     }

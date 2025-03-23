@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using Xunit;
 using Moq;
 using Microsoft.Extensions.Logging;
-using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Services.TextParsers;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Tests.Services.TextParsers
 {

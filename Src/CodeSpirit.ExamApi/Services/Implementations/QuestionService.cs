@@ -2,6 +2,7 @@ using AutoMapper;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.ExamApi.Services.TextParsers;
 using CodeSpirit.Shared.Repositories;

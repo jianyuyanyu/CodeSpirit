@@ -19,4 +19,9 @@ public interface IStudentGroupService : IBaseCRUDIService<StudentGroup, StudentG
     /// 从分组移除考生
     /// </summary>
     Task RemoveStudentsFromGroupAsync(long groupId, List<long> studentIds);
+
+    /// <summary>
+    /// 获取所有未删除的学生组
+    /// </summary>
+    Task<List<StudentGroupDto>> GetAllActiveGroupsAsync();
 } 

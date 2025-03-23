@@ -1,6 +1,6 @@
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Dtos;
-using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 
 /// <summary>
 /// 题目查询DTO

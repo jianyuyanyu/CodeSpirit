@@ -2,7 +2,7 @@ using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Attributes;
-using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 
 /// <summary>
 /// 题目DTO

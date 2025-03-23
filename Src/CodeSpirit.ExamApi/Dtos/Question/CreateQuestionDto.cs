@@ -1,5 +1,5 @@
 using CodeSpirit.Amis.Attributes.FormFields;
-using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 

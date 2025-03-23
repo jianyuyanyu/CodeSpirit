@@ -1,3 +1,4 @@
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
 
@@ -7,21 +8,24 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// 考试设置实体
 /// </summary>
 public class ExamSetting : LongKeyAuditableEntityBase
-{    
+{
     /// <summary>
     /// 考试名称
     /// </summary>
     [Required]
+    [StringLength(100)]
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
     /// 考试描述
     /// </summary>
+    [StringLength(500)]
     public string? Description { get; set; }
     
     /// <summary>
     /// 试卷ID
     /// </summary>
+    [Required]
     public long ExamPaperId { get; set; }
     
     /// <summary>
@@ -32,21 +36,27 @@ public class ExamSetting : LongKeyAuditableEntityBase
     /// <summary>
     /// 开始时间
     /// </summary>
+    [Required]
     public DateTime StartTime { get; set; }
     
     /// <summary>
     /// 结束时间
     /// </summary>
+    [Required]
     public DateTime EndTime { get; set; }
     
     /// <summary>
     /// 考试时长（分钟）
     /// </summary>
+    [Required]
+    [Range(1, 1440)]
     public int Duration { get; set; }
     
     /// <summary>
     /// 允许考试次数
     /// </summary>
+    [Required]
+    [Range(1, 10)]
     public int AllowedAttempts { get; set; } = 1;
     
     /// <summary>
@@ -62,15 +72,22 @@ public class ExamSetting : LongKeyAuditableEntityBase
     /// <summary>
     /// 允许切屏次数
     /// </summary>
+    [Range(0, 10)]
     public int AllowedScreenSwitchCount { get; set; } = 0;
+    
+    /// <summary>
+    /// 考试状态
+    /// </summary>
+    [Required]
+    public ExamSettingStatus Status { get; set; } = ExamSettingStatus.Draft;
     
     /// <summary>
     /// 参加考试的学生分组
     /// </summary>
-    public ICollection<StudentGroup> StudentGroups { get; set; } = new List<StudentGroup>();
+    public ICollection<ExamSettingStudentGroup> StudentGroups { get; set; } = [];
     
     /// <summary>
     /// 考试记录
     /// </summary>
-    public ICollection<ExamRecord> ExamRecords { get; set; } = new List<ExamRecord>();
+    public ICollection<ExamRecord> ExamRecords { get; set; } = [];
 }

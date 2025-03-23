@@ -1,6 +1,7 @@
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Controllers;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;

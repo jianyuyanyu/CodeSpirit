@@ -237,4 +237,13 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
             .Find(x => x.StudentGroupId == groupId && studentIds.Contains(x.StudentId))
             .ExecuteDeleteAsync();
     }
+
+    /// <summary>
+    /// 获取所有未删除的学生组
+    /// </summary>
+    public async Task<List<StudentGroupDto>> GetAllActiveGroupsAsync()
+    {
+        var entities = await Repository.GetAllAsync();
+        return Mapper.Map<List<StudentGroupDto>>(entities.Where(x => !x.IsDeleted));
+    }
 } 

@@ -2,6 +2,7 @@ using CodeSpirit.Charts.Analysis;
 using CodeSpirit.Charts.Services;
 using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

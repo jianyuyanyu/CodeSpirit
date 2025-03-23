@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.ExamApi.Services.TextParsers;

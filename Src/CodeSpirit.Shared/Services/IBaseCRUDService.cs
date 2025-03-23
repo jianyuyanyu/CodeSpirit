@@ -18,5 +18,6 @@ namespace CodeSpirit.Shared.Services
         Task<PageList<TDto>> GetPagedListAsync(int page, int perPage, Expression<Func<TEntity, bool>> predicate = null, string orderBy = null, string orderDir = null, params string[] includes);
         Task<PageList<TDto>> GetPagedListAsync<TQueryDto>(TQueryDto queryDto, Expression<Func<TEntity, bool>> predicate = null, params string[] includes) where TQueryDto : QueryDtoBase;
         Task UpdateAsync(TKey id, TUpdateDto updateDto);
+        Task<IEnumerable<TDto>> GetAllAsync();
     }
 } 

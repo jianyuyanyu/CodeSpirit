@@ -91,6 +91,11 @@ public class ExamDbContext : AuditableDbContext
     /// 考试设置
     /// </summary>
     public DbSet<ExamSetting> ExamSettings => Set<ExamSetting>();
+
+    /// <summary>
+    /// 考试设置-学生分组关联
+    /// </summary>
+    public DbSet<ExamSettingStudentGroup> ExamSettingStudentGroups => Set<ExamSettingStudentGroup>();
     
     /// <summary>
     /// 考试记录
@@ -305,6 +310,29 @@ public class ExamDbContext : AuditableDbContext
             entity.HasOne(es => es.ExamPaper)
                 .WithMany()
                 .HasForeignKey(es => es.ExamPaperId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 配置与学生分组的多对多关系
+            entity.HasMany(es => es.StudentGroups)
+                .WithOne(esg => esg.ExamSetting)
+                .HasForeignKey(esg => esg.ExamSettingId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 配置考试设置-学生分组关联实体
+        modelBuilder.Entity<ExamSettingStudentGroup>(entity =>
+        {
+            entity.ToTable("ExamSettingStudentGroups");
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(esg => esg.ExamSetting)
+                .WithMany(es => es.StudentGroups)
+                .HasForeignKey(esg => esg.ExamSettingId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(esg => esg.StudentGroup)
+                .WithMany()
+                .HasForeignKey(esg => esg.StudentGroupId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
         

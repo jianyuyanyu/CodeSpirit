@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Core.Dtos;
-using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Dtos.PracticeRecord;
 

@@ -1,5 +1,6 @@
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.Shared.Services;
 
@@ -38,4 +39,5 @@ public interface IExamPaperService : IBaseCRUDService<ExamPaper, ExamPaperDto, l
     /// <returns>复制后的试卷</returns>
     Task<ExamPaperDto> CopyExamPaperAsync(long id);
     Task<PageList<ExamPaperDto>> GetExamPapersAsync(ExamPaperQueryDto queryDto);
+    Task<IEnumerable<ExamPaperDto>> GetAllExamPapersByStatusAsync(ExamPaperStatus examPaperStatus = ExamPaperStatus.Published);
 } 

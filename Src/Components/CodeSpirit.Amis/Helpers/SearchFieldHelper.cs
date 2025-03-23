@@ -198,7 +198,7 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             // 处理日期类型
-            if (fieldType == "date" || fieldType == "input-date-range")
+            if (fieldType == "input-date" || fieldType == "input-date-range")
             {
                 field["format"] = "YYYY-MM-DD";
             }
@@ -226,7 +226,7 @@ namespace CodeSpirit.Amis.Helpers
             return type.IsEnum || _utilityHelper.IsNullableEnum(type)
                 ? "select"
                 : type == typeof(DateTime) || type == typeof(DateTime?)
-                ? "date"
+                ? "input-date"
                 : type == typeof(DateTime[]) ? "input-date-range" : "input-text";
         }
     }

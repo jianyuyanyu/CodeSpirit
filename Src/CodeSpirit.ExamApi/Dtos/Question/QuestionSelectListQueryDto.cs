@@ -1,4 +1,4 @@
-﻿using CodeSpirit.ExamApi.Data.Models;
+﻿using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Dtos.Question
 {

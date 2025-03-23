@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Entities;
 
 namespace CodeSpirit.ExamApi.Data.Models;

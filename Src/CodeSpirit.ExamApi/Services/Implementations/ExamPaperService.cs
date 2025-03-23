@@ -1,6 +1,7 @@
 using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
@@ -364,6 +365,15 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             return await GetAsync(examPaper.Id);
         }
 
+        public async Task<IEnumerable<ExamPaperDto>> GetAllExamPapersByStatusAsync(ExamPaperStatus examPaperStatus = ExamPaperStatus.Published)
+        {
+            var entities = await Repository.CreateQuery()
+                .Where(p => p.Status == examPaperStatus)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+            return Mapper.Map<IEnumerable<ExamPaperDto>>(entities);
+        }
+
         private async Task ValidateRandomExamPaperRules(GenerateRandomExamPaperDto createDto)
         {
             // 预先检查题库是否有足够的题目
@@ -417,7 +427,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             List<DifficultyRule> difficultyRules)
         {
             var questions = new List<Question>();
-            
+
             // 如果没有难度规则，则随机选择指定数量的题目
             if (difficultyRules == null || !difficultyRules.Any())
             {
@@ -426,7 +436,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     .OrderBy(q => Guid.NewGuid())
                     .Take(typeRule.Count)
                     .ToListAsync();
-                    
+
                 questions.AddRange(randomQuestions);
                 return questions;
             }
@@ -441,25 +451,25 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     .OrderBy(q => Guid.NewGuid())
                     .Take(count)
                     .ToListAsync();
-                    
+
                 questions.AddRange(difficultyQuestions);
             }
-            
+
             // 如果按难度规则选择的题目数量不足，则补充随机题目
             if (questions.Count < typeRule.Count)
             {
                 var remainingCount = typeRule.Count - questions.Count;
                 var existingQuestionIds = questions.Select(q => q.Id).ToList();
-                
+
                 var additionalQuestions = await _questionRepository
                     .Find(q => q.Type == typeRule.QuestionType && !existingQuestionIds.Contains(q.Id))
                     .OrderBy(q => Guid.NewGuid())
                     .Take(remainingCount)
                     .ToListAsync();
-                    
+
                 questions.AddRange(additionalQuestions);
             }
-            
+
             return questions;
         }
 

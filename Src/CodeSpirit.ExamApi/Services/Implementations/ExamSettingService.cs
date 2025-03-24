@@ -269,11 +269,11 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             throw new AppServiceException(400, "试卷未发布，不能发布考试设置");
         }
 
-        // 检查时间设置
-        if (examSetting.StartTime <= DateTime.Now)
-        {
-            throw new AppServiceException(400, "考试开始时间必须大于当前时间");
-        }
+        //// 检查时间设置
+        //if (examSetting.StartTime <= DateTime.Now)
+        //{
+        //    throw new AppServiceException(400, "考试开始时间必须大于当前时间");
+        //}
 
         if (examSetting.EndTime <= examSetting.StartTime)
         {

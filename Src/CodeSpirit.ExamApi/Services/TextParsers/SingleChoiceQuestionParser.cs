@@ -13,7 +13,7 @@ namespace CodeSpirit.ExamApi.Services.TextParsers;
 public class SingleChoiceQuestionParser : BaseQuestionParser
 {
     private static readonly Regex OptionPattern = new(@"^[A-Z][、.．]\s*(.+)$", RegexOptions.Compiled);
-    private static readonly Regex AnswerPattern = new(@"[\(（]([A-Z])[\)）]|(?<=\d[、.．]\s*.*)[A-Z](?=\s*$)", RegexOptions.Compiled);
+    private static readonly Regex AnswerPattern = new(@"[\(（]\s*([A-Z])\s*[\)）]|(?<=\d[、.．]\s*.*)[A-Z](?=\s*$)", RegexOptions.Compiled);
     private static readonly Regex ScorePattern = new(@"\[(\d+)分\]", RegexOptions.Compiled);
 
     public SingleChoiceQuestionParser(ILogger<SingleChoiceQuestionParser> logger) : base(logger)

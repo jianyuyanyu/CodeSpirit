@@ -95,9 +95,8 @@ public abstract class BaseQuestionParser : IQuestionParser
     {
         // 移除分数标记
         content = Regex.Replace(content, @"\[\d+分\]", "");
-        // 移除答案标记
-        content = Regex.Replace(content, @"\([A-Z]\)", "");
-        content = Regex.Replace(content, @"（[A-Z]）", "");
+        // 移除答案标记（包含空格的情况）
+        content = Regex.Replace(content, @"[\(（]\s*[A-Z]\s*[\)）]", "");
         // 移除序号
         content = Regex.Replace(content, @"^\d+[、\.\s]+", "");
         return content.Trim();

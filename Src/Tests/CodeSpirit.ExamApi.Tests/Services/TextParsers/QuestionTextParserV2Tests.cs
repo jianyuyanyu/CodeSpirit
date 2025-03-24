@@ -565,4 +565,34 @@ D、MongoDB
         Assert.Single(result);
         Assert.Equal(QuestionDifficulty.Medium, result[0].Difficulty); // 无效难度应返回中等
     }
+
+
+    [Fact]
+    public void Parse_QuestionWithSpacesInBrackets_ReturnsCorrectResult()
+    {
+        // Arrange
+        var text = @"一、单项选择题（每题1分）
+1、勤劳节俭的现代意义在于（  A   ）。
+A、勤劳节俭是促进经济和社会发展的重要手段
+B、勤劳是现代市场经济需要的，而节俭则不宜提倡
+C、节俭阻碍消费，因而会阻碍市场经济的发展
+D、勤劳节俭只有利于节省资源，但与提高生产力无关
+【解析】勤劳节俭是促进经济和社会发展的重要手段。
+【标签】勤劳节俭、经济发展";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        var question = result[0];
+        Assert.Equal(QuestionType.SingleChoice, question.Type);
+        Assert.Equal("勤劳节俭的现代意义在于。", question.Content);
+        Assert.Equal("勤劳节俭是促进经济和社会发展的重要手段", question.CorrectAnswer);
+        Assert.Equal(4, question.Options.Count);
+        Assert.Equal("勤劳节俭是促进经济和社会发展的重要手段。", question.Analysis);
+        Assert.Equal(2, question.Tags.Count);
+        Assert.Contains("勤劳节俭", question.Tags);
+        Assert.Contains("经济发展", question.Tags);
+    }
 } 

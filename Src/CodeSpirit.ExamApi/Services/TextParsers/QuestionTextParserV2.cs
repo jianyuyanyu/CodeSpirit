@@ -119,6 +119,13 @@ namespace CodeSpirit.ExamApi.Services.TextParsers
                 var firstLine = lines[0];
                 QuestionParseResult result = null;
 
+                // 检查所有行是否包含选项标记
+                bool hasOptions = lines.Any(line => 
+                    line.Contains("A、") || line.Contains("A.") ||
+                    line.Contains("B、") || line.Contains("B.") ||
+                    line.Contains("C、") || line.Contains("C.") ||
+                    line.Contains("D、") || line.Contains("D."));
+
                 // 尝试使用多选题解析器
                 if (_multipleChoiceParser.CanParse(firstLine))
                 {
@@ -129,7 +136,7 @@ namespace CodeSpirit.ExamApi.Services.TextParsers
                     }
                 }
                 // 尝试使用单选题解析器
-                else if (_singleChoiceParser.CanParse(firstLine))
+                else if (_singleChoiceParser.CanParse(firstLine) || hasOptions)
                 {
                     result = _singleChoiceParser.Parse(lines);
                     if (result.Score == 0)
@@ -138,7 +145,7 @@ namespace CodeSpirit.ExamApi.Services.TextParsers
                     }
                 }
                 // 尝试使用判断题解析器
-                else if (_trueFalseParser.CanParse(firstLine))
+                else if (_trueFalseParser.CanParse(firstLine) && !hasOptions)
                 {
                     result = _trueFalseParser.Parse(lines);
                     if (result.Score == 0)

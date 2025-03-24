@@ -29,13 +29,33 @@ public class TrueFalseQuestionParser : BaseQuestionParser
         if (!Regex.IsMatch(line, @"^\d+[、\.\s]"))
             return false;
 
+        // 检查是否包含选项标记（如果包含选项标记，则不是判断题）
+        if (line.Contains("A、") || line.Contains("A.") ||
+            line.Contains("B、") || line.Contains("B.") ||
+            line.Contains("C、") || line.Contains("C.") ||
+            line.Contains("D、") || line.Contains("D."))
+        {
+            return false;
+        }
+
         // 构建答案匹配模式
         var answerPattern = string.Join("|", TrueMarks.Concat(FalseMarks).Select(Regex.Escape));
         // 检查是否包含判断题答案标记，支持带括号和不带括号的形式
-        return Regex.IsMatch(line, $@"[\(（]?\s*({answerPattern})\s*[\)）]?", RegexOptions.IgnoreCase) ||
-               line.Contains("对") || line.Contains("错") ||
-               line.Contains("√") || line.Contains("×") ||
-               line.Contains("✓") || line.Contains("✗");
+        var hasTrueFalseAnswer = Regex.IsMatch(line, $@"[\(（]?\s*({answerPattern})\s*[\)）]?", RegexOptions.IgnoreCase) ||
+                                line.Contains("对") || line.Contains("错") ||
+                                line.Contains("√") || line.Contains("×") ||
+                                line.Contains("✓") || line.Contains("✗");
+
+        // 如果包含选项标记，则不是判断题
+        if (hasTrueFalseAnswer && !line.Contains("A、") && !line.Contains("A.") &&
+            !line.Contains("B、") && !line.Contains("B.") &&
+            !line.Contains("C、") && !line.Contains("C.") &&
+            !line.Contains("D、") && !line.Contains("D."))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     public override QuestionParseResult Parse(IEnumerable<string> lines)

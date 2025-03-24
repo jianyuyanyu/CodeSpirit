@@ -625,7 +625,10 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 await _repository.SaveChangesAsync();
                 await _versionRepository.SaveChangesAsync();
             });
-
+            if (failedItems.Any())
+            {
+                _logger.LogInformation($"{failedItems.Count} 个题目导入失败: \n{string.Join(", \n", failedItems)}");
+            }
             return (successCount, failedItems);
         }
     }

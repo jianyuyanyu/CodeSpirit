@@ -32,7 +32,9 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
         // 检查是否包含选项标记或答案标记
         return AnswerPattern.IsMatch(line) || 
                line.Contains("A、") || line.Contains("A.") ||
-               line.Contains("B、") || line.Contains("B.");
+               line.Contains("B、") || line.Contains("B.") ||
+               line.Contains("C、") || line.Contains("C.") ||
+               line.Contains("D、") || line.Contains("D.");
     }
 
     public override QuestionParseResult Parse(IEnumerable<string> lines)
@@ -48,14 +50,15 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
         {
             // 解析题目内容和分数
             var firstLine = lineList[0];
-            result.Content = CleanContent(firstLine);
+            var contentLines = new List<string>();
+            var currentContent = CleanContent(firstLine);
 
             // 提取分数
             var scoreMatch = ScorePattern.Match(firstLine);
             if (scoreMatch.Success)
             {
                 result.Score = int.Parse(scoreMatch.Groups[1].Value);
-                result.Content = ScorePattern.Replace(result.Content, "").Trim();
+                currentContent = ScorePattern.Replace(currentContent, "").Trim();
             }
 
             // 提取答案（如果有）
@@ -63,16 +66,37 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
             if (answerMatch.Success)
             {
                 result.CorrectAnswer = answerMatch.Groups[1].Value;
-                result.Content = Regex.Replace(result.Content, @"\s*[A-Z]\s*$", "").Trim(); // 移除末尾的答案
+                currentContent = Regex.Replace(currentContent, @"\s*[A-Z]\s*$", "").Trim(); // 移除末尾的答案
             }
+
+            // 收集所有内容行，直到遇到选项标记
+            contentLines.Add(currentContent);
+            var optionStartIndex = 1;
+            for (var i = 1; i < lineList.Count; i++)
+            {
+                var line = lineList[i];
+                if (line.StartsWith("A、") || line.StartsWith("A.") ||
+                    line.StartsWith("B、") || line.StartsWith("B.") ||
+                    line.StartsWith("C、") || line.StartsWith("C.") ||
+                    line.StartsWith("D、") || line.StartsWith("D."))
+                {
+                    optionStartIndex = i;
+                    break;
+                }
+                contentLines.Add(line);
+            }
+
+            // 合并所有内容行
+            result.Content = string.Join("\r\n", contentLines);
 
             // 解析选项
             var options = new Dictionary<string, string>();
             var currentOption = "";
             var currentOptionMark = "";
             
-            foreach (var line in lineList.Skip(1))
+            for (var i = optionStartIndex; i < lineList.Count; i++)
             {
+                var line = lineList[i];
                 if (line.StartsWith("【解析】") || line.StartsWith("【标签】"))
                     break;
 
@@ -90,6 +114,7 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
                 {
                     currentOption += " " + line;
                 }
+
             }
 
             if (!string.IsNullOrWhiteSpace(currentOption))
@@ -126,4 +151,4 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
             throw;
         }
     }
-} 
+}

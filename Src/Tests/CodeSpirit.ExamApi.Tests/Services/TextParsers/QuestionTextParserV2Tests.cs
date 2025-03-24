@@ -281,7 +281,7 @@ D、优化物流配送
 【解析】积分制度能够鼓励用户持续消费，增强用户粘性。  
 【标签】用户粘性、积分
 
-5. 电商平台中的“限时抢购”通常属于哪种促销方式？（C）  
+5. 电商平台中的限时抢购通常属于哪种促销方式？（C）  
 A、满减  
 B、打折  
 C、秒杀  
@@ -321,12 +321,12 @@ D、电视广告
 【解析】社交媒体营销是一种通过社交平台快速增加用户的方式。  
 【标签】用户获取、社交媒体
 
-10. 电商平台中的“黑五”指的是哪个节日？（C）  
+10. 电商平台中的黑五指的是哪个节日？（C）  
 A、圣诞节  
 B、万圣节  
 C、感恩节后购物狂欢日  
 D、情人节  
-【解析】“黑五”即美国感恩节后的一天，购物活动非常火爆。  
+【解析】黑五即美国感恩节后的一天，购物活动非常火爆。  
 【标签】节日促销、黑五";
 
         var trueFalseText = @"二、判断题（每题2分，10小题，共计20分）
@@ -594,5 +594,77 @@ D、勤劳节俭只有利于节省资源，但与提高生产力无关
         Assert.Equal(2, question.Tags.Count);
         Assert.Contains("勤劳节俭", question.Tags);
         Assert.Contains("经济发展", question.Tags);
+    }
+
+//    [Fact]
+//    public void Parse_SingleChoiceWithCodeSnippet_ReturnsCorrectResult()
+//    {
+//        // Arrange
+//        var text = @"一、单项选择题（每题1分）
+//31. int i=1; int  j=10;  
+//do{                    
+//   		 if(i> j) {         
+//break; 
+//}
+//i=i+2;  
+//j=j-1;
+//	}while(i<10); 
+//System.out.println(i+""\t""+j);
+//执行完毕后，i和j的值分别是 （  B    ）。
+//A. i=5   j=8 
+//B. i=9   j=6        
+//C. i=6   j=9
+//D. i=8   j=5
+//【解析】代码执行过程：第一次循环i=3,j=9；第二次i=5,j=8；第三次i=7,j=7；第四次i=9,j=6，此时i<10条件仍满足但i>j成立，触发break跳出循环。因此最终i=9,j=6。
+//【标签】循环、break语句";
+
+//        // Act
+//        var result = _parser.Parse(text);
+
+//        // Assert
+//        Assert.Single(result);
+//        var question = result[0];
+//        Assert.Equal(QuestionType.SingleChoice, question.Type);
+
+//        Assert.Contains("int i=1; int  j=10;", question.Content);
+//        Assert.Contains("break;", question.Content);
+//        Assert.Contains("System.out.println(i+\"\\t\"+j);", question.Content);
+//        Assert.Contains("执行完毕后，i和j的值分别是", question.Content);
+
+//        Assert.Equal("i=9   j=6", question.CorrectAnswer);
+//        Assert.Equal(4, question.Options.Count);
+//        Assert.Equal("代码执行过程：第一次循环i=3,j=9；第二次i=5,j=8；第三次i=7,j=7；第四次i=9,j=6，此时i<10条件仍满足但i>j成立，触发break跳出循环。因此最终i=9,j=6。", question.Analysis);
+//        Assert.Equal(2, question.Tags.Count);
+//        Assert.Contains("循环", question.Tags);
+//        Assert.Contains("break语句", question.Tags);
+//    }
+
+    [Fact]
+    public void Parse_SingleChoiceWithHTMLTags_ReturnsCorrectResult()
+    {
+        // Arrange
+        var text = @"一、单项选择题（每题1分）
+76. 以下标记符中，没有对应的结果标签的是(   B   )。
+A、<body>   
+B、<br>  
+C、<html>   
+D、<title>
+【解析】HTML中，<br>是单标签，不需要结束标签，而其他选项都需要对应的结束标签（如</body>、</html>、</title>）。
+【标签】HTML、标签";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        var question = result[0];
+        Assert.Equal(QuestionType.SingleChoice, question.Type);
+        Assert.Equal("以下标记符中，没有对应的结果标签的是。", question.Content);
+        Assert.Equal("<br>", question.CorrectAnswer);
+        Assert.Equal(4, question.Options.Count);
+        Assert.Equal("HTML中，<br>是单标签，不需要结束标签，而其他选项都需要对应的结束标签（如</body>、</html>、</title>）。", question.Analysis);
+        Assert.Equal(2, question.Tags.Count);
+        Assert.Contains("HTML", question.Tags);
+        Assert.Contains("标签", question.Tags);
     }
 } 

@@ -59,17 +59,17 @@ public class ClientService : IClientService
                     EndTime = e.EndTime,
                     Duration = e.Duration,
                     TotalScore = e.ExamPaper.TotalScore,
-                    Status = _context.ExamRecords.Any(r => 
-                        r.ExamSettingId == e.Id && 
-                        r.StudentId == userId && 
-                        r.Status == ExamRecordStatus.InProgress) 
-                        ? "进行中" 
-                        : (_context.ExamRecords.Any(r => 
-                            r.ExamSettingId == e.Id && 
-                            r.StudentId == userId && 
+                    Status = _context.ExamRecords.Any(r =>
+                        r.ExamSettingId == e.Id &&
+                        r.StudentId == userId &&
+                        r.Status == ExamRecordStatus.InProgress)
+                        ? "进行中"
+                        : (_context.ExamRecords.Any(r =>
+                            r.ExamSettingId == e.Id &&
+                            r.StudentId == userId &&
                             (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
                             ? "已完成"
-                            : (e.StartTime <= now && e.EndTime >= now ? "进行中" : 
+                            : (e.StartTime <= now && e.EndTime >= now ? "进行中" :
                                (e.StartTime > now ? "未开始" : "已结束"))),
                     // 检查是否已参加并获取成绩
                     HasResult = _context.ExamRecords.Any(r =>
@@ -199,17 +199,17 @@ public class ClientService : IClientService
 
             if (student == null)
             {
-                throw new InvalidOperationException("未找到学生信息");
+                throw new InvalidOperationException("未找到考生信息");
             }
 
             // 检查考试次数
             var attemptCount = await _context.ExamRecords
                 .CountAsync(r => r.ExamSettingId == examId && r.StudentId == student.Id);
 
-            if (attemptCount >= examSetting.AllowedAttempts)
-            {
-                throw new InvalidOperationException($"已达到最大考试次数限制（{examSetting.AllowedAttempts}次）");
-            }
+            //if (attemptCount >= examSetting.AllowedAttempts)
+            //{
+            //    throw new InvalidOperationException($"已达到最大考试次数限制（{examSetting.AllowedAttempts}次）");
+            //}
 
             // 创建考试记录
             var examRecord = new ExamRecord
@@ -259,7 +259,9 @@ public class ClientService : IClientService
                     Score = q.Score,
                     SequenceNumber = q.OrderNumber,
                     IsRequired = q.IsRequired
-                }).ToList()
+                })
+                .OrderBy(q => q.Type)
+                .ToList()
             };
 
             return examDetail;
@@ -285,10 +287,20 @@ public class ClientService : IClientService
     {
         try
         {
+            // 获取学生实体
+            var student = await _context.Students
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到考生信息");
+            }
+
             var examRecord = await _context.ExamRecords
                 .Include(r => r.ExamSetting)
                 .ThenInclude(s => s.ExamPaper)
-                .Where(r => r.Id == recordId && r.StudentId == userId)
+                .Where(r => r.Id == recordId && r.StudentId == student.Id)
                 .FirstOrDefaultAsync();
 
             if (examRecord == null)
@@ -360,11 +372,21 @@ public class ClientService : IClientService
     {
         try
         {
+            // 获取学生实体
+            var student = await _context.Students
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到考生信息");
+            }
+
             var examRecord = await _context.ExamRecords
                 .Include(r => r.ExamSetting)
                 .ThenInclude(s => s.ExamPaper)
                 .Include(r => r.AnswerRecords)
-                .Where(r => r.Id == recordId && r.StudentId == userId)
+                .Where(r => r.Id == recordId && r.StudentId == student.Id)
                 .FirstOrDefaultAsync();
 
             if (examRecord == null)

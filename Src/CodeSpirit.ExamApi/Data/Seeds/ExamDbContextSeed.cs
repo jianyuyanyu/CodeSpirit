@@ -32,11 +32,11 @@ public static class ExamDbContextSeed
         await SeedExamPapersAsync(context);
         await SeedExamSettingsAsync(context);
         await SeedWrongQuestionsAsync(context);
-        await SeedExamRecordsAsync(context);
-        await SeedPracticeRecordsAsync(context);
+        //await SeedExamRecordsAsync(context);
+        //await SeedPracticeRecordsAsync(context);
         
         // 为ID为-1的用户初始化考试数据
-        await SeedTestUserDataAsync(context);
+        //await SeedTestUserDataAsync(context);
 
         // 保存所有更改
         await context.SaveChangesAsync();
@@ -436,6 +436,7 @@ public static class ExamDbContextSeed
             return;
         }
 
+        IIdGenerator idGenerator = new SnowflakeIdGenerator();
         var examSettings = new List<ExamSetting>();
         foreach (var paper in examPapers)
         {
@@ -458,6 +459,7 @@ public static class ExamDbContextSeed
                 Status = ExamSettingStatus.Draft,
                 StudentGroups = studentGroups.Select(x => new ExamSettingStudentGroup
                 {
+                    Id = idGenerator.NewId(),
                     StudentGroup = x
                 }).ToList()
             });

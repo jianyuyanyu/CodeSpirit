@@ -5,6 +5,7 @@ using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using CodeSpirit.ExamApi.Services.Graders;
 
 namespace CodeSpirit.ExamApi.Services;
 
@@ -211,22 +212,15 @@ public class ClientService : IClientService
             //    throw new InvalidOperationException($"已达到最大考试次数限制（{examSetting.AllowedAttempts}次）");
             //}
 
-            // 创建考试记录
-            var examRecord = new ExamRecord
-            {
-                Id = _idGenerator.NewId(),
-                ExamSettingId = examId,
-                StudentId = student.Id,
-                AttemptNumber = attemptCount + 1,
-                StartTime = now,
-                Status = ExamRecordStatus.InProgress,
-                IpAddress = userIp,
-                DeviceInfo = deviceInfo
-            };
-
-            _context.ExamRecords.Add(examRecord);
-            await _context.SaveChangesAsync();
-
+            // 查找进行中的考试记录
+            var examRecord = await _context.ExamRecords
+                .Where(r => r.ExamSettingId == examId && r.StudentId == student.Id && r.Status == ExamRecordStatus.InProgress)
+                .OrderByDescending(r => r.StartTime)
+                .FirstOrDefaultAsync();
+            if (examRecord == null) {
+                throw new InvalidOperationException("考试记录不存在！");
+            }
+            
             // 处理题目乱序
             var questions = examSetting.ExamPaper.ExamPaperQuestions.ToList();
             if (examSetting.EnableRandomQuestionOrder)
@@ -449,8 +443,6 @@ public class ClientService : IClientService
     // 客观题自动评分
     private async Task AutoGradeObjectiveQuestions(ExamRecord examRecord)
     {
-        var objectiveQuestionTypes = new[] { QuestionType.SingleChoice, QuestionType.MultipleChoice, QuestionType.TrueFalse };
-
         // 加载所有答案记录
         var answerRecords = await _context.ExamAnswerRecords
             .Where(a => a.ExamRecordId == examRecord.Id)
@@ -468,37 +460,16 @@ public class ClientService : IClientService
                 .LoadAsync();
         }
 
-        // 筛选客观题
-        var objectiveAnswers = answerRecords
-            .Where(a => a.Question != null && objectiveQuestionTypes.Contains(a.Question.Type))
-            .ToList();
+        // 使用评分器进行评分
+        var grader = new ObjectiveQuestionGrader();
+        var result = grader.Grade(answerRecords, examRecord.ExamSetting.ExamPaper.PassScore);
 
-        double totalScore = 0;
-
-        foreach (var answer in objectiveAnswers)
+        // 如果全部为客观题，更新考试记录状态
+        if (result.IsAllObjective)
         {
-            if (string.Equals(answer.Answer, answer.QuestionVersion.CorrectAnswer, StringComparison.OrdinalIgnoreCase))
-            {
-                answer.IsCorrect = true;
-                answer.Score = Convert.ToInt32(answer.QuestionVersion.DefaultScore);
-                totalScore += answer.Score ?? 0;
-            }
-            else
-            {
-                answer.IsCorrect = false;
-                answer.Score = 0;
-            }
-        }
-
-        // 检查是否全部为客观题，如果是则可以完成评分
-        var subjectiveAnswersCount = answerRecords
-            .Count(a => a.Question != null && !objectiveQuestionTypes.Contains(a.Question.Type));
-
-        if (subjectiveAnswersCount == 0)
-        {
-            examRecord.Score = totalScore;
+            examRecord.Score = result.TotalScore;
             examRecord.Status = ExamRecordStatus.Graded;
-            examRecord.IsPassed = totalScore >= examRecord.ExamSetting.ExamPaper.PassScore;
+            examRecord.IsPassed = result.TotalScore >= examRecord.ExamSetting.ExamPaper.PassScore;
             examRecord.GradedTime = DateTime.Now;
         }
 
@@ -584,6 +555,76 @@ public class ClientService : IClientService
             ex is not UnauthorizedAccessException)
         {
             _logger.LogError(ex, "获取考试基本信息时发生错误");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 创建考试记录
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <param name="userIp">用户IP</param>
+    /// <param name="deviceInfo">设备信息</param>
+    /// <returns>考试记录ID</returns>
+    public async Task<ExamRecord> CreateExamRecordAsync(long examId, long userId, string userIp, string deviceInfo)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                throw new ArgumentException("考试不存在", nameof(examId));
+            }
+
+            // 检查考试时间
+            var now = DateTime.Now;
+            if (examSetting.StartTime > now || examSetting.EndTime < now)
+            {
+                throw new InvalidOperationException("不在考试时间范围内");
+            }
+
+            // 获取学生实体
+            var student = await _context.Students
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到考生信息");
+            }
+
+            // 检查考试次数
+            var attemptCount = await _context.ExamRecords
+                .CountAsync(r => r.ExamSettingId == examId && r.StudentId == student.Id);
+
+            // 创建考试记录
+            var examRecord = new ExamRecord
+            {
+                Id = _idGenerator.NewId(),
+                ExamSettingId = examId,
+                StudentId = student.Id,
+                AttemptNumber = attemptCount + 1,
+                StartTime = now,
+                Status = ExamRecordStatus.InProgress,
+                IpAddress = userIp,
+                DeviceInfo = deviceInfo
+            };
+
+            _context.ExamRecords.Add(examRecord);
+            await _context.SaveChangesAsync();
+
+            return examRecord;
+        }
+        catch (Exception ex) when (
+            ex is not ArgumentException &&
+            ex is not InvalidOperationException)
+        {
+            _logger.LogError(ex, "创建考试记录时发生错误");
             throw;
         }
     }

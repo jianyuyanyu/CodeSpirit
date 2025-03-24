@@ -1,4 +1,5 @@
 using CodeSpirit.Core;
+using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.Client;
 
 namespace CodeSpirit.ExamApi.Services.Interfaces;
@@ -56,4 +57,5 @@ public interface IClientService
     /// <param name="userId">用户ID</param>
     /// <returns>考试基本信息</returns>
     Task<ClientExamBasicInfoDto> GetExamBasicInfoAsync(long examId, long userId);
+    Task<ExamRecord> CreateExamRecordAsync(long examId, long userId, string userIp, string deviceInfo);
 } 

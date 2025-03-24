@@ -249,9 +249,16 @@
                                             type: 'button',
                                             label: '开始考试',
                                             level: 'primary',
-                                            actionType: 'link',
-                                            link: '/client/exam/${id}',
-                                            visibleOn: "status === '进行中'"
+                                            actionType: 'ajax',
+                                            api: {
+                                                url: '/exam/api/exam/client/${id}/start',
+                                                method: 'post',
+                                                messages: {
+                                                    success: '开始考试...'
+                                                }
+                                            },
+                                            visibleOn: "status === '进行中'",
+                                            redirect: '/client/exam/${id}'
                                         },
                                         {
                                             type: 'button',

@@ -115,22 +115,22 @@ public class IndexController : ApiControllerBase
         {
             return Unauthorized();
         }
-        
+
         var userIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "未知";
         var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
-        
+
         // 获取考试详情
         var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
-        
+
         // 使用JObject/JArray构建表单
         var formItems = new JArray();
-        
+
         // 为每个题目创建对应的表单组件
         for (int i = 0; i < examDetail.Questions.Count; i++)
         {
             var question = examDetail.Questions[i];
             int index = i + 1;
-            
+
             // 问题标题
             var titleObj = new JObject
             {
@@ -139,7 +139,7 @@ public class IndexController : ApiControllerBase
                 ["inline"] = false
             };
             formItems.Add(titleObj);
-            
+
             // 根据题目类型添加不同的表单控件
             switch (question.Type)
             {
@@ -155,7 +155,7 @@ public class IndexController : ApiControllerBase
                             ["value"] = ((char)('A' + idx)).ToString()
                         });
                     }
-                    
+
                     var singleChoiceObj = new JObject
                     {
                         ["type"] = "radios",
@@ -164,7 +164,7 @@ public class IndexController : ApiControllerBase
                         ["mode"] = "horizontal",
                         ["required"] = question.IsRequired
                     };
-                    
+
                     var singleChoiceEvent = new JObject
                     {
                         ["change"] = new JObject
@@ -182,7 +182,7 @@ public class IndexController : ApiControllerBase
                     singleChoiceObj["onEvent"] = singleChoiceEvent;
                     formItems.Add(singleChoiceObj);
                     break;
-                
+
                 case "MultipleChoice":
                     // 解析选项
                     var multiOptions = new JArray();
@@ -195,7 +195,7 @@ public class IndexController : ApiControllerBase
                             ["value"] = ((char)('A' + idx)).ToString()
                         });
                     }
-                    
+
                     var multiChoiceObj = new JObject
                     {
                         ["type"] = "checkboxes",
@@ -204,7 +204,7 @@ public class IndexController : ApiControllerBase
                         ["mode"] = "horizontal",
                         ["required"] = question.IsRequired
                     };
-                    
+
                     var multiChoiceEvent = new JObject
                     {
                         ["change"] = new JObject
@@ -222,7 +222,7 @@ public class IndexController : ApiControllerBase
                     multiChoiceObj["onEvent"] = multiChoiceEvent;
                     formItems.Add(multiChoiceObj);
                     break;
-                
+
                 case "TrueFalse":
                     // 创建判断题选项（统一使用radios组件）
                     var tfOptions = new JArray
@@ -230,7 +230,7 @@ public class IndexController : ApiControllerBase
                         new JObject { ["label"] = "正确", ["value"] = "True" },
                         new JObject { ["label"] = "错误", ["value"] = "False" }
                     };
-                    
+
                     var tfObj = new JObject
                     {
                         ["type"] = "radios",
@@ -239,7 +239,7 @@ public class IndexController : ApiControllerBase
                         ["mode"] = "horizontal",
                         ["required"] = question.IsRequired
                     };
-                    
+
                     var tfEvent = new JObject
                     {
                         ["change"] = new JObject
@@ -257,7 +257,7 @@ public class IndexController : ApiControllerBase
                     tfObj["onEvent"] = tfEvent;
                     formItems.Add(tfObj);
                     break;
-                
+
                 default:
                     // 简答题和其他题型
                     var textareaObj = new JObject
@@ -269,7 +269,7 @@ public class IndexController : ApiControllerBase
                         ["maxRows"] = 6,
                         ["required"] = question.IsRequired
                     };
-                    
+
                     var textareaEvent = new JObject
                     {
                         ["change"] = new JObject
@@ -288,14 +288,14 @@ public class IndexController : ApiControllerBase
                     formItems.Add(textareaObj);
                     break;
             }
-            
+
             // 如果不是最后一个题目，添加分隔线
             if (i < examDetail.Questions.Count - 1)
             {
                 formItems.Add(new JObject { ["type"] = "divider" });
             }
         }
-        
+
         // 构建Amis配置对象
         var amisConfig = new JObject
         {
@@ -305,7 +305,7 @@ public class IndexController : ApiControllerBase
             ["body"] = formItems,
             ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
         };
-        
+
         return Ok(amisConfig);
     }
 
@@ -322,8 +322,32 @@ public class IndexController : ApiControllerBase
         {
             return Unauthorized();
         }
-        
+
         var result = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
         return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 创建考试记录
+    /// </summary>
+    /// <param name="id">考试ID</param>
+    /// <returns>考试记录ID</returns>
+    [HttpPost("{id}/start")]
+    public async Task<ActionResult<object>> StartExam(long id)
+    {
+        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
+        if (currentUserId == 0)
+        {
+            return Unauthorized();
+        }
+
+        var userIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "未知";
+        var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
+
+        var record = await _clientService.CreateExamRecordAsync(id, currentUserId, userIp, deviceInfo);
+        return new
+        {
+            id = record.ExamSettingId
+        };
     }
 }

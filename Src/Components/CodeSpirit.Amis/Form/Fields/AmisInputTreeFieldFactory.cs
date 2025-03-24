@@ -31,6 +31,9 @@ namespace CodeSpirit.Amis.Form.Fields
                 field["multiple"] = attr.Multiple;
                 field["joinValues"] = attr.JoinValues;
                 field["extractValue"] = attr.ExtractValue;
+                field["deferApi"] = attr.DeferApi;
+                field["expand"] = attr.Expand;
+                field["showIcon"] = attr.ShowIcon;
             }
             return field;
         }

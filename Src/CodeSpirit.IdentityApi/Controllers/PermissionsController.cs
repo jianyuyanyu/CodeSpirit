@@ -37,19 +37,98 @@ namespace CodeSpirit.IdentityApi.Controllers
             return SuccessResponse(listData);
         }
 
-        // 新增的 GET: api/Permissions/Tree 端点
         /// <summary>
-        /// 获取权限树结构，供前端（如 AMIS InputTree）使用。
+        /// 获取权限树(根节点)
         /// </summary>
-        /// <returns>权限树的 JSON 结构。</returns>
-        [HttpGet("Tree")]
-        public ActionResult<List<PermissionTreeDto>> GetPermissionTree()
+        /// <returns>权限树列表</returns>
+        [HttpGet("tree")]
+        public ActionResult<ApiResponse<List<PermissionTreeDto>>> GetPermissionTree()
         {
-            List<PermissionNode> permissions = _permissionService.GetPermissionTree();
+            var permissions = _permissionService.GetPermissionTree();
 
-            List<PermissionTreeDto> tree = _mapper.Map<List<PermissionTreeDto>>(permissions);
+            var treeNodes = permissions.Where(p => p.Name != "default").Select(p => new PermissionTreeDto
+            {
+                Id = p.Name,
+                Label = p.DisplayName,
+                Value = p.Name,
+                Defer = p.Children.Any(),
+                Icon = "fa fa-folder"
+            }).ToList();
 
-            return Ok(tree);
+            return SuccessResponse(treeNodes);
+        }
+
+        /// <summary>
+        /// 获取指定权限的子权限
+        /// </summary>
+        /// <param name="id">父权限标识</param>
+        /// <returns>子权限树节点</returns>
+        [HttpGet("tree/{id}")]
+        public ActionResult<ApiResponse<PermissionTreeDeferDto>> GetPermissionChildren(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                return BadRequest("无效的权限标识");
+            }
+
+            var allPermissions = _permissionService.GetPermissionTree();
+            var node = FindNode(allPermissions, id);
+            if (node == null)
+            {
+                return NotFound("未找到指定权限");
+            }
+
+            var result = node.Children.Select(c => new PermissionTreeDto
+            {
+                Id = c.Name,
+                Label = c.DisplayName,
+                Value = c.Name,
+                Defer = c.Children.Any(),
+                Icon = GetMethodIcon(c.RequestMethod)
+            }).ToList();
+
+            return SuccessResponse(new PermissionTreeDeferDto { Options = result });
+        }
+
+        /// <summary>
+        /// 在权限树中查找指定节点
+        /// </summary>
+        private PermissionNode FindNode(List<PermissionNode> nodes, string id)
+        {
+            foreach (var node in nodes)
+            {
+                if (node.Name == id)
+                {
+                    return node;
+                }
+
+                if (node.Children?.Any() == true)
+                {
+                    var found = FindNode(node.Children, id);
+                    if (found != null)
+                    {
+                        return found;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 根据HTTP方法获取对应的图标
+        /// </summary>
+        private string GetMethodIcon(string method)
+        {
+            return method?.ToUpper() switch
+            {
+                "GET" => "fa fa-eye",           // 查看操作
+                "POST" => "fa fa-plus",         // 新增操作
+                "PUT" => "fa fa-edit",          // 编辑操作
+                "DELETE" => "fa fa-trash",      // 删除操作
+                _ => "fa fa-circle"             // 默认图标
+            };
         }
     }
 }
+

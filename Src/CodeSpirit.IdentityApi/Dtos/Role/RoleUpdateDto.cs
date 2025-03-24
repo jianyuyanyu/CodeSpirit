@@ -18,14 +18,17 @@ namespace CodeSpirit.IdentityApi.Dtos.Role
         // 权限ID列表
         [DisplayName("权限")]
         [AmisInputTreeField(
-        DataSource = "${ROOT_API}/api/identity/permissions/tree",
-        LabelField = "label",
-        ValueField = "id",
-        Multiple = true,
-        JoinValues = false,
-        ExtractValue = true,
-        Required = true,
-        Placeholder = "请选择权限"
+            DataSource = "${ROOT_API}/api/identity/permissions/tree",
+            DeferApi = "${ROOT_API}/api/identity/permissions/tree/${id}",
+            LabelField = "label",
+            ValueField = "id",
+            Multiple = true,
+            JoinValues = false,
+            ExtractValue = true,
+            Required = true,
+            Placeholder = "请选择权限",
+            ShowIcon = true,
+            Expand = 1
         )]
         public List<string> PermissionIds { get; set; }
     }

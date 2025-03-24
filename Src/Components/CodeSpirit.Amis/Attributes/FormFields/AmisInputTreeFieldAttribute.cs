@@ -27,6 +27,13 @@
         public bool Multiple { get; set; }
         public bool JoinValues { get; set; }
         public bool ExtractValue { get; set; }
+        public string DeferApi { get; set; }
+        public bool ShowIcon { get; set; }
+
+        /// <summary>
+        /// 展开指定层级
+        /// </summary>
+        public int Expand { get; set; }
 
         /// <summary>
         /// 初始化 <see cref="AmisInputTreeFieldAttribute"/> 的新实例。

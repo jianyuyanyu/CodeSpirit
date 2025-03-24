@@ -47,9 +47,10 @@ public class ClientService : IClientService
             // 获取可参加的考试
             var now = DateTime.Now;
             var availableExams = await _context.ExamSettings
+                .Include(e => e.StudentGroups)
                 .Include(e => e.ExamPaper)
                 .Where(e => e.StartTime <= now && e.EndTime >= now)
-                .Where(e => e.StudentGroups.Any(g => studentGroups.Contains(g.Id)) || !e.StudentGroups.Any())
+                .Where(e => e.StudentGroups.Any() == false || e.StudentGroups.Any(g => studentGroups.Contains(g.StudentGroupId)))
                 .Select(e => new ClientExamDto
                 {
                     Id = e.Id,

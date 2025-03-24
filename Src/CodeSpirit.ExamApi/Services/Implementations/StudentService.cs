@@ -16,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Linq.Expressions;
+using CodeSpirit.Core.Extensions;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -246,12 +247,13 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             var @event = new UserCreatedEvent
             {
                 UserId = student.UserId,
-                UserName = student.PhoneNumber,
+                UserName = student.IdNo,
                 //IdNo
                 Name = student.Name,
                 PhoneNumber = student.PhoneNumber,
-                Email = $"{student.StudentNumber}@example.com", // 默认邮箱
-                IsActive = student.IsActive
+                Email = $"{student.IdNo}@example.com", // 默认邮箱
+                IsActive = student.IsActive,
+                IdNo = student.IdNo
             };
 
             await _eventBus.PublishAsync(@event);
@@ -268,7 +270,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     /// </summary>
     protected override string GetImportItemId(StudentBatchImportDto importDto)
     {
-        return importDto.StudentNumber;
+        return importDto.IdNo;
     }
 
 
@@ -354,22 +356,21 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
 
         var successCount = 0;
         var importList = importData.ToList();
-        var inserts = new List<Student>();
         var failedItems = new List<string>();
 
-        var studentNumberRepetition = importList.GroupBy(x => x.StudentNumber).Select(s => new { studentNumber = s.Key, count = s.Count() });
+        var studentNumberRepetition = importList.Where(s => !s.StudentNumber.IsNullOrWhiteSpace()).GroupBy(x => x.StudentNumber).Select(s => new { studentNumber = s.Key, count = s.Count() });
         if (studentNumberRepetition.Any(x => x.count > 1))
         {
             var error = string.Join(",", studentNumberRepetition.Where(x => x.count > 1).Select(x => x.studentNumber));
             failedItems.Add($"导入数据中出现重复的学号：{error}");
         }
-        var idNoRepetition = importList.GroupBy(x => x.IdNo).Select(s => new { idNo = s.Key, count = s.Count() });
+        var idNoRepetition = importList.Where(s => !s.IdNo.IsNullOrWhiteSpace()).GroupBy(x => x.IdNo).Select(s => new { idNo = s.Key, count = s.Count() });
         if (idNoRepetition.Any(x => x.count > 1))
         {
             var error = string.Join(",", idNoRepetition.Where(x => x.count > 1).Select(x => x.idNo));
             failedItems.Add($"导入数据中出现重复的身份证：{error}");
         }
-        var admissionTicketRepetition = importList.GroupBy(x => x.AdmissionTicket).Select(s => new { admissionTicket = s.Key, count = s.Count() });
+        var admissionTicketRepetition = importList.Where(s => !s.AdmissionTicket.IsNullOrWhiteSpace()).GroupBy(x => x.AdmissionTicket).Select(s => new { admissionTicket = s.Key, count = s.Count() });
         if (admissionTicketRepetition.Any(x => x.count > 1))
         {
             var error = string.Join(",", admissionTicketRepetition.Where(x => x.count > 1).Select(x => x.admissionTicket));
@@ -385,17 +386,17 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         {
             if (checkDatas.Any())
             {
-                if (checkDatas.Any(x => x.IdNo == item.IdNo))
+                if (!item.IdNo.IsNullOrWhiteSpace() && checkDatas.Any(x => x.IdNo == item.IdNo))
                 {
                     failedItems.Add($"{item.IdNo}「传入的身份证'{item.IdNo}'已存在");
                     continue;
                 }
-                if (checkDatas.Any(x => x.AdmissionTicket == item.AdmissionTicket))
+                if (!item.AdmissionTicket.IsNullOrWhiteSpace() && checkDatas.Any(x => x.AdmissionTicket == item.AdmissionTicket))
                 {
                     failedItems.Add($"{item.AdmissionTicket}「传入的准考证'{item.AdmissionTicket}'已存在");
                     continue;
                 }
-                if (checkDatas.Any(x => x.StudentNumber == item.StudentNumber))
+                if (!item.StudentNumber.IsNullOrWhiteSpace() && checkDatas.Any(x => x.StudentNumber == item.StudentNumber))
                 {
                     failedItems.Add($"{item.StudentNumber}「传入的学工号'{item.StudentNumber}'已存在");
                     continue;
@@ -418,11 +419,12 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             entity.Gender = genderType;
             entity.Id = _idGenerator.NewId();
             entity.UserId = entity.Id;
-            inserts.Add(entity);
             successCount++;
 
+            await Repository.AddAsync(entity);
+            await PublishUserCreatedEventAsync(entity);
         }
-        await Repository.AddRangeAsync(inserts);
+
         return (successCount, failedItems);
     }
 

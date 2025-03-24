@@ -667,4 +667,33 @@ D、<title>
         Assert.Contains("HTML", question.Tags);
         Assert.Contains("标签", question.Tags);
     }
+
+    [Fact]
+    public void Parse_SingleChoiceWithFileExtension_ReturnsCorrectResult()
+    {
+        // Arrange
+        var text = @"一、单项选择题（每题1分）
+51. 在C# WinForms程序中，创建一个窗体的后缀名为（   A  ）。 
+A、.cs
+B、.aspx
+C、.xml
+D、.form
+【解析】在C# WinForms应用程序中，窗体文件使用.cs后缀，这是C#源代码文件的标准扩展名。
+【标签】WinForms、文件扩展名";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        var question = result[0];
+        Assert.Equal(QuestionType.SingleChoice, question.Type);
+        Assert.Equal("在C# WinForms程序中，创建一个窗体的后缀名为。", question.Content);
+        Assert.Equal(".cs", question.CorrectAnswer);
+        Assert.Equal(4, question.Options.Count);
+        Assert.Equal("在C# WinForms应用程序中，窗体文件使用.cs后缀，这是C#源代码文件的标准扩展名。", question.Analysis);
+        Assert.Equal(2, question.Tags.Count);
+        Assert.Contains("WinForms", question.Tags);
+        Assert.Contains("文件扩展名", question.Tags);
+    }
 } 

@@ -12,14 +12,6 @@ namespace CodeSpirit.ExamApi.Dtos.Student;
 public class StudentBatchImportDto
 {
     /// <summary>
-    /// UserId
-    /// </summary>
-    [Required(ErrorMessage = "UserId不能为空")]
-    [DisplayName("UserId")]
-    [JsonProperty("UserId")]
-    public long UserId { get; set; }
-
-    /// <summary>
     /// 学生姓名
     /// </summary>
     [Required(ErrorMessage = "姓名不能为空")]
@@ -60,7 +52,7 @@ public class StudentBatchImportDto
     /// <summary>
     /// 准考证
     /// </summary>
-    [Required(ErrorMessage = "准考证不能为空")]
+    //[Required(ErrorMessage = "准考证不能为空")]
     [StringLength(20, ErrorMessage = "准考证长度不能超过20个字符")]
     [DisplayName("准考证")]
     [JsonProperty("准考证")]

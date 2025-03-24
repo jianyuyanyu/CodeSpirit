@@ -776,18 +776,20 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     /// <param name="password">指定的用户密码，如为null则自动生成随机密码</param>
     /// <param name="creatorId">创建者ID</param>
     /// <param name="sendPasswordEmail">是否发送密码邮件</param>
+    /// <param name="userId"> userId不为空时,将userId作为新创建的用户的Id,否则将自动生成Id</param>
     /// <returns>创建的用户数据传输对象</returns>
     public async Task<UserDto> CreateAdvancedUserAsync(
-        CreateUserDto createDto, 
-        string password = null, 
-        long? creatorId = null)
+        CreateUserDto createDto,
+        string password = null,
+        long? creatorId = null,
+        long? userId = null)
     {
         // 验证用户名和邮箱
         await ValidateCreateDto(createDto);
         
         // 创建用户实体
         var user = Mapper.Map<ApplicationUser>(createDto);
-        user.Id = _idGenerator.NewId();
+        user.Id = userId.HasValue && userId.Value != default ? userId.Value : _idGenerator.NewId();
         
         // 记录创建者信息
         if (creatorId.HasValue)

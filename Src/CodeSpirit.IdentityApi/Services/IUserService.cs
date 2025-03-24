@@ -76,10 +76,12 @@ public interface IUserService : IBaseCRUDIService<ApplicationUser, UserDto, long
     /// <param name="createDto">用户创建数据传输对象</param>
     /// <param name="password">指定的用户密码，如为null则自动生成随机密码</param>
     /// <param name="creatorId">创建者ID</param>
+    /// <param name="userId"> userId不为空时,将userId作为新创建的用户的Id,否则将自动生成Id</param>
     /// <param name="creatorName">创建者名称</param>
     /// <returns>创建的用户数据传输对象</returns>
     Task<UserDto> CreateAdvancedUserAsync(
         CreateUserDto createDto, 
         string password = null, 
-        long? creatorId = null);
+        long? creatorId = null,
+        long? userId = null);
 }

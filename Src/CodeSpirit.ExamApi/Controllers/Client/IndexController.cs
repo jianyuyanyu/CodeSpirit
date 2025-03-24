@@ -152,7 +152,7 @@ public class IndexController : ApiControllerBase
                         singleOptions.Add(new JObject
                         {
                             ["label"] = options[idx],
-                            ["value"] = ((char)('A' + idx)).ToString()
+                            ["value"] = options[idx]
                         });
                     }
 
@@ -174,7 +174,7 @@ public class IndexController : ApiControllerBase
                                 new JObject
                                 {
                                     ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer({question.Id}, event.data.value);"
+                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
                                 }
                             }
                         }
@@ -192,7 +192,7 @@ public class IndexController : ApiControllerBase
                         multiOptions.Add(new JObject
                         {
                             ["label"] = multiChoiceOptions[idx],
-                            ["value"] = ((char)('A' + idx)).ToString()
+                            ["value"] = multiChoiceOptions[idx],
                         });
                     }
 
@@ -214,7 +214,7 @@ public class IndexController : ApiControllerBase
                                 new JObject
                                 {
                                     ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer({question.Id}, event.data.value);"
+                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
                                 }
                             }
                         }
@@ -249,7 +249,7 @@ public class IndexController : ApiControllerBase
                                 new JObject
                                 {
                                     ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer({question.Id}, event.data.value);"
+                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
                                 }
                             }
                         }
@@ -279,7 +279,7 @@ public class IndexController : ApiControllerBase
                                 new JObject
                                 {
                                     ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer({question.Id}, event.data.value);"
+                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
                                 }
                             }
                         }

@@ -251,43 +251,328 @@
         }
     }
     
-    // 保存答案
-    function saveAnswer(questionId, answer) {
-        // 确保答案格式正确
-        let processedAnswer = answer;
-        
-        // 如果不是字符串或数组，则转换为字符串
-        if (answer !== null && answer !== undefined && typeof answer !== 'string' && !Array.isArray(answer)) {
-            processedAnswer = String(answer);
-        }
-        
-        // 如果是数组但包含非字符串元素，规范化数组
-        if (Array.isArray(processedAnswer)) {
-            processedAnswer = processedAnswer.map(item => {
-                if (item !== null && item !== undefined && typeof item !== 'string') {
-                    return String(item);
+    // 修改初始化函数，确保在页面加载时正确加载答案
+    function initializeAnswersFromStorage() {
+        try {
+            // 检查全局数据对象是否存在
+            if (!window.globalData) {
+                console.warn('[初始化答案] 全局数据对象未初始化，将在3秒后重试');
+                setTimeout(initializeAnswersFromStorage, 3000);
+                return;
+            }
+
+            // 防御性获取用户ID和考试ID
+            const userId = window.globalData?.user?.id;
+            const examId = window.globalData?.exam?.id;
+            
+            console.log('[初始化答案] 当前用户ID:', userId);
+            console.log('[初始化答案] 当前考试ID:', examId);
+            
+            if (!userId || !examId) {
+                console.warn('[初始化答案] 用户ID或考试ID未就绪，将在3秒后重试');
+                setTimeout(initializeAnswersFromStorage, 3000);
+                return;
+            }
+            
+            const storageKey = `exam_${userId}_${examId}_answers`;
+            console.log(`[初始化答案] 尝试从存储密钥加载: ${storageKey}`);
+            
+            try {
+                const savedAnswers = localStorage.getItem(storageKey);
+                
+                if (!savedAnswers) {
+                    console.log('[初始化答案] 本地存储中没有找到已保存的答案，初始化空数组');
+                    examAnswers = [];
+                    return;
                 }
-                return item;
-            });
+                
+                const parsedAnswers = JSON.parse(savedAnswers);
+                
+                if (!Array.isArray(parsedAnswers)) {
+                    console.error('[初始化答案] 存储的答案不是数组格式');
+                    examAnswers = [];
+                    return;
+                }
+                
+                console.log('[初始化答案] 从本地存储加载已保存的答案');
+                examAnswers = parsedAnswers;
+                console.log('[初始化答案] 成功加载已保存答案：', examAnswers);
+                
+                // 同步到amis实例
+                if (window.amisInstance) {
+                    try {
+                        const answersMap = {};
+                        examAnswers.forEach(answer => {
+                            if (answer && answer.questionId) {
+                                answersMap[`question_${answer.questionId}`] = answer.answer;
+                            }
+                        });
+                        
+                        window.amisInstance.updateProps({
+                            data: {
+                                ...(window.amisInstance.props?.data || {}),
+                                ...answersMap
+                            }
+                        });
+                        console.log('[初始化答案] 已同步答案到amis实例');
+                    } catch (amisError) {
+                        console.error('[初始化答案] 同步到amis实例失败：', amisError);
+                    }
+                }
+                
+                // 检查备份存储
+                try {
+                    const backupKey = `exam_${userId}_${examId}_answers_backup`;
+                    const backupAnswers = sessionStorage.getItem(backupKey);
+                    if (backupAnswers) {
+                        const parsedBackupAnswers = JSON.parse(backupAnswers);
+                        if (Array.isArray(parsedBackupAnswers) && parsedBackupAnswers.length > examAnswers.length) {
+                            console.log('[初始化答案] 从备份存储发现更多答案，使用备份数据');
+                            examAnswers = parsedBackupAnswers;
+                            // 再次同步到amis实例
+                            if (window.amisInstance) {
+                                const backupAnswersMap = {};
+                                examAnswers.forEach(answer => {
+                                    if (answer && answer.questionId) {
+                                        backupAnswersMap[`question_${answer.questionId}`] = answer.answer;
+                                    }
+                                });
+                                window.amisInstance.updateProps({
+                                    data: {
+                                        ...(window.amisInstance.props?.data || {}),
+                                        ...backupAnswersMap
+                                    }
+                                });
+                            }
+                        }
+                    }
+                } catch (backupError) {
+                    console.error('[初始化答案] 检查备份存储失败：', backupError);
+                }
+                
+            } catch (parseError) {
+                console.error('[初始化答案] 解析存储的答案失败：', parseError);
+                examAnswers = [];
+            }
+        } catch (error) {
+            console.error('[初始化答案] 初始化答案时发生错误：', error);
+            // 设置默认值
+            examAnswers = [];
         }
-        
-        // 查找已有答案
-        const existingIndex = examAnswers.findIndex(a => a.questionId === questionId);
-        
-        if (existingIndex >= 0) {
-            // 更新已有答案
-            examAnswers[existingIndex].answer = processedAnswer;
-        } else {
-            // 添加新答案
-            examAnswers.push({
-                questionId: questionId,
-                answer: processedAnswer
-            });
-        }
-        
-        console.log(`保存题目 ${questionId} 的答案:`, processedAnswer);
     }
-    
+
+    // 修改保存答案函数的部分代码
+    function saveAnswer(questionId, answer) {
+        try {
+            console.log(`[保存答案] 开始保存题目 ${questionId} 的答案:`, answer);
+            
+            // 获取用户ID和考试ID
+            const userId = window.globalData.user.id;
+            const examId = window.globalData.exam.id;
+            
+            if (!userId) {
+                console.error('[保存答案] 错误：未找到用户ID');
+                return;
+            }
+            
+            if (!examId) {
+                console.error('[保存答案] 错误：未找到考试ID');
+                return;
+            }
+            
+            // 生成存储密钥
+            const storageKey = `exam_${userId}_${examId}_answers`;
+            console.log(`[保存答案] 使用存储密钥: ${storageKey}`);
+            
+            // 参数验证
+            if (!questionId) {
+                console.error('[保存答案] 错误：questionId 不能为空');
+                return;
+            }
+            
+            // 确保examAnswers是数组
+            if (!Array.isArray(examAnswers)) {
+                console.warn('[保存答案] examAnswers不是数组，正在初始化');
+                examAnswers = [];
+                // 尝试从存储中恢复
+                initializeAnswersFromStorage();
+            }
+            
+            // 确保答案格式正确
+            let processedAnswer = answer;
+            
+            // 处理 null 或 undefined 答案
+            if (answer === null || answer === undefined) {
+                console.warn(`[保存答案] 题目 ${questionId} 的答案为空，将设置为空字符串`);
+                processedAnswer = '';
+            }
+            
+            // 如果不是字符串或数组，则转换为字符串
+            if (typeof answer !== 'string' && !Array.isArray(answer)) {
+                console.log(`[保存答案] 题目 ${questionId} 的答案类型为 ${typeof answer}，转换为字符串`);
+                processedAnswer = String(answer);
+            }
+            
+            // 如果是数组但包含非字符串元素，规范化数组
+            if (Array.isArray(processedAnswer)) {
+                console.log(`[保存答案] 处理题目 ${questionId} 的数组答案`);
+                processedAnswer = processedAnswer.map(item => {
+                    if (item === null || item === undefined) {
+                        return '';
+                    }
+                    if (typeof item !== 'string') {
+                        return String(item);
+                    }
+                    return item;
+                });
+            }
+            
+            // 查找已有答案
+            const existingIndex = examAnswers.findIndex(a => a.questionId === questionId);
+            console.log(`[保存答案] 查找结果：${existingIndex >= 0 ? '找到已有答案' : '未找到已有答案'}`);
+            
+            // 准备要保存的答案对象
+            const answerObject = {
+                questionId: questionId,
+                answer: processedAnswer,
+                timestamp: new Date().toISOString()
+            };
+            
+            // 在保存前验证答案对象
+            if (!answerObject.questionId || answerObject.answer === undefined) {
+                console.error('[保存答案] 错误：答案对象无效', answerObject);
+                return;
+            }
+            
+            if (existingIndex >= 0) {
+                // 更新已有答案
+                console.log(`[保存答案] 更新题目 ${questionId} 的已有答案`);
+                examAnswers[existingIndex] = answerObject;
+            } else {
+                // 添加新答案
+                console.log(`[保存答案] 添加题目 ${questionId} 的新答案`);
+                examAnswers.push(answerObject);
+            }
+            
+            // 验证更新后的答案列表
+            console.log(`[保存答案] 更新后的答案列表长度: ${examAnswers.length}`);
+            console.log('[保存答案] 更新后的完整答案列表:', JSON.parse(JSON.stringify(examAnswers)));
+            
+            // 保存到本地存储
+            try {
+                const serializedAnswers = JSON.stringify(examAnswers);
+                
+                // 在保存前验证序列化的数据
+                if (serializedAnswers === '[]' || serializedAnswers === '{}') {
+                    console.error('[保存答案] 错误：序列化后的答案为空');
+                    return;
+                }
+                
+                localStorage.setItem(storageKey, serializedAnswers);
+                
+                // 验证保存是否成功
+                const savedData = localStorage.getItem(storageKey);
+                const parsedSavedData = JSON.parse(savedData);
+                console.log(`[保存答案] 本地存储验证 - 保存的答案数量: ${parsedSavedData.length}`);
+                
+                if (parsedSavedData.length !== examAnswers.length) {
+                    console.error('[保存答案] 警告：保存的答案数量与当前答案数量不匹配');
+                }
+                
+                console.log(`[保存答案] 成功保存到本地存储，键名：${storageKey}`);
+            } catch (storageError) {
+                console.error('[保存答案] 保存到本地存储失败：', storageError);
+                // 尝试使用备用存储方案
+                try {
+                    const backupKey = `exam_${userId}_${examId}_answers_backup`;
+                    sessionStorage.setItem(backupKey, JSON.stringify(examAnswers));
+                    console.log('[保存答案] 已保存到会话存储作为备份');
+                } catch (backupError) {
+                    console.error('[保存答案] 备份存储也失败了：', backupError);
+                }
+            }
+            
+            // 修改同步到amis实例的部分
+            if (window.amisInstance) {
+                try {
+                    // 创建更新数据对象
+                    const updateData = {
+                        [`question_${questionId}`]: processedAnswer
+                    };
+                    
+                    // 获取当前的props数据
+                    const currentData = window.amisInstance.props?.data || {};
+                    
+                    // 合并数据
+                    const newData = {
+                        ...currentData,
+                        ...updateData
+                    };
+                    
+                    // 更新props
+                    window.amisInstance.updateProps({
+                        data: newData
+                    });
+                    
+                    console.log('[保存答案] 已同步到amis实例:', updateData);
+                } catch (amisError) {
+                    console.error('[保存答案] 同步到amis实例失败:', amisError);
+                    // 同步失败不影响保存过程继续
+                }
+            }
+            
+            console.log(`[保存答案] 题目 ${questionId} 的答案保存完成`);
+            
+        } catch (error) {
+            console.error('[保存答案] 保存过程中发生错误：', error);
+            // 尝试进行错误恢复
+            try {
+                const userId = window.globalData?.user?.id;
+                const examId = window.globalData?.exam?.id;
+                
+                if (!userId || !examId) {
+                    console.error('[保存答案] 恢复失败：未找到用户ID或考试ID');
+                    return;
+                }
+                
+                const storageKey = `exam_${userId}_${examId}_answers`;
+                const savedAnswers = localStorage.getItem(storageKey);
+                if (savedAnswers) {
+                    console.log('[保存答案] 从本地存储恢复答案');
+                    const parsedAnswers = JSON.parse(savedAnswers);
+                    if (Array.isArray(parsedAnswers) && parsedAnswers.length > 0) {
+                        examAnswers = parsedAnswers;
+                        console.log('[保存答案] 成功恢复答案');
+                        
+                        // 尝试重新同步到amis实例
+                        if (window.amisInstance) {
+                            try {
+                                const answersMap = {};
+                                examAnswers.forEach(answer => {
+                                    if (answer && answer.questionId) {
+                                        answersMap[`question_${answer.questionId}`] = answer.answer;
+                                    }
+                                });
+                                
+                                window.amisInstance.updateProps({
+                                    data: {
+                                        ...(window.amisInstance.props?.data || {}),
+                                        ...answersMap
+                                    }
+                                });
+                                console.log('[保存答案] 已重新同步所有答案到amis实例');
+                            } catch (syncError) {
+                                console.error('[保存答案] 重新同步到amis实例失败:', syncError);
+                            }
+                        }
+                    }
+                }
+            } catch (recoveryError) {
+                console.error('[保存答案] 恢复答案失败：', recoveryError);
+            }
+        }
+    }
+
     // 提交考试
     function submitExam(isAutoSubmit = false) {
         if (isAutoSubmit) {
@@ -948,6 +1233,7 @@
     window.startExamTimer = startExamTimer;
     window.updateTimerDisplay = updateTimerDisplay;
     window.saveAnswer = saveAnswer;
+    window.initializeAnswersFromStorage = initializeAnswersFromStorage;
 
     // 初始化amis
     let amisInstance = amis.embed(
@@ -1024,5 +1310,23 @@
         amisInstance.updateProps({
             location: state.location || state
         });
+    });
+
+    // 在考试页面加载完成后初始化答案
+    document.addEventListener('DOMContentLoaded', initializeAnswersFromStorage);
+
+    // 添加页面卸载时的保存机制
+    window.addEventListener('beforeunload', function() {
+        try {
+            const userId = window.globalData.user.id;
+            const examId = window.globalData.exam.id;
+            if (userId && examId && Array.isArray(examAnswers) && examAnswers.length > 0) {
+                const storageKey = `exam_${userId}_${examId}_answers`;
+                localStorage.setItem(storageKey, JSON.stringify(examAnswers));
+                console.log('[页面卸载] 已保存答案到本地存储');
+            }
+        } catch (error) {
+            console.error('[页面卸载] 保存答案失败：', error);
+        }
     });
 })(); 

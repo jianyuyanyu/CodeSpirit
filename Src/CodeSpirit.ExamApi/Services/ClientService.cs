@@ -281,73 +281,84 @@ public class ClientService : IClientService
     {
         try
         {
-            // 获取学生实体
-            var student = await _context.Students
-                .Where(s => s.UserId == userId)
-                .FirstOrDefaultAsync();
-
-            if (student == null)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                throw new InvalidOperationException("未找到考生信息");
-            }
+                // 获取学生实体
+                var student = await _context.Students
+                    .Where(s => s.UserId == userId)
+                    .FirstOrDefaultAsync();
 
-            var examRecord = await _context.ExamRecords
-                .Include(r => r.ExamSetting)
-                .ThenInclude(s => s.ExamPaper)
-                .Where(r => r.Id == recordId && r.StudentId == student.Id)
-                .FirstOrDefaultAsync();
-
-            if (examRecord == null)
-            {
-                throw new AppServiceException(400, "考试记录不存在");
-            }
-
-            // 加载试卷题目
-            await _context.Entry(examRecord.ExamSetting.ExamPaper)
-                .Collection(p => p.ExamPaperQuestions)
-                .LoadAsync();
-
-            if (examRecord.Status != ExamRecordStatus.InProgress)
-            {
-                throw new InvalidOperationException("考试已提交，不能重复提交");
-            }
-
-            var now = DateTime.Now;
-            examRecord.SubmitTime = now;
-            examRecord.Status = ExamRecordStatus.Submitted;
-            examRecord.Duration = (int)Math.Ceiling((now - examRecord.StartTime).TotalMinutes);
-
-            // 添加答案记录
-            foreach (var answer in answers)
-            {
-                // 查找题目版本
-                var examPaperQuestion = examRecord.ExamSetting.ExamPaper.ExamPaperQuestions
-                    .FirstOrDefault(q => q.Id == answer.QuestionId);
-
-                if (examPaperQuestion == null)
+                if (student == null)
                 {
-                    continue;
+                    throw new InvalidOperationException("未找到考生信息");
                 }
 
-                var answerRecord = new ExamAnswerRecord
+                var examRecord = await _context.ExamRecords
+                    .Include(r => r.ExamSetting)
+                    .ThenInclude(s => s.ExamPaper)
+                    .Where(r => r.Id == recordId && r.StudentId == student.Id)
+                    .FirstOrDefaultAsync();
+
+                if (examRecord == null)
                 {
-                    ExamRecordId = recordId,
-                    QuestionId = examPaperQuestion.QuestionId,
-                    QuestionVersionId = examPaperQuestion.QuestionVersionId,
-                    OrderNumber = examPaperQuestion.OrderNumber,
-                    Answer = answer.Answer,
-                    IsCorrect = false // 先默认为错误，后续评分时更新
-                };
+                    throw new AppServiceException(400, "考试记录不存在");
+                }
 
-                _context.ExamAnswerRecords.Add(answerRecord);
+                // 加载试卷题目
+                await _context.Entry(examRecord.ExamSetting.ExamPaper)
+                    .Collection(p => p.ExamPaperQuestions)
+                    .LoadAsync();
+
+                if (examRecord.Status != ExamRecordStatus.InProgress)
+                {
+                    throw new InvalidOperationException("考试已提交，不能重复提交");
+                }
+
+                var now = DateTime.UtcNow;
+                examRecord.SubmitTime = now;
+                examRecord.Status = ExamRecordStatus.Submitted;
+                examRecord.Duration = (int)Math.Ceiling((now - examRecord.StartTime).TotalMinutes);
+
+                // 添加答案记录
+                foreach (var answer in answers)
+                {
+                    // 查找题目版本
+                    var examPaperQuestion = examRecord.ExamSetting.ExamPaper.ExamPaperQuestions
+                        .FirstOrDefault(q => q.Id == answer.QuestionId);
+
+                    if (examPaperQuestion == null)
+                    {
+                        continue;
+                    }
+
+                    var answerRecord = new ExamAnswerRecord
+                    {
+                        Id = _idGenerator.NewId(),
+                        ExamRecordId = recordId,
+                        QuestionId = examPaperQuestion.QuestionId,
+                        QuestionVersionId = examPaperQuestion.QuestionVersionId,
+                        OrderNumber = examPaperQuestion.OrderNumber,
+                        Answer = answer.Answer,
+                        IsCorrect = false // 先默认为错误，后续评分时更新
+                    };
+
+                    _context.ExamAnswerRecords.Add(answerRecord);
+                }
+
+                await _context.SaveChangesAsync();
+
+                // 如果是客观题，可以自动评分
+                await AutoGradeObjectiveQuestions(examRecord);
+
+                await transaction.CommitAsync();
+                return true;
             }
-
-            await _context.SaveChangesAsync();
-
-            // 如果是客观题，可以自动评分
-            await AutoGradeObjectiveQuestions(examRecord);
-
-            return true;
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
         catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
         {

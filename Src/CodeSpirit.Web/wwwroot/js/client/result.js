@@ -129,7 +129,7 @@
                                             bodyClassName: 'question-result-body',
                                             title: {
                                                 type: 'tpl',
-                                                tpl: '<div class="question-result-title"><span class="question-index">${$index + 1}.</span> <span class="question-content">${content}</span><span class="question-score">${obtainedScore || 0}/${score}分</span></div>'
+                                                tpl: '<div class="question-result-title"><span class="question-index">${index + 1}.</span> <span class="question-content">${content}</span><span class="question-score">${obtainedScore || 0}/${score}分</span></div>'
                                             },
                                             body: [
                                                 {

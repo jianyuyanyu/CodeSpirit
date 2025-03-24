@@ -581,7 +581,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                             Options = questionData.Options,
                             CorrectAnswer = questionData.CorrectAnswer,
                             Type = questionData.Type,
-                            Difficulty = input.QuestionDifficulty,
+                            Difficulty = questionData.Difficulty,
                             CategoryId = input.CategoryId,
                             Version = 1,
                             DefaultScore = questionData.Score,

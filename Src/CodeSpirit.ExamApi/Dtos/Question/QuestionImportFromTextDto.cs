@@ -5,9 +5,6 @@ namespace CodeSpirit.ExamApi.Dtos.Question
 {
     public class QuestionImportFromTextDto
     {
-        [DisplayName("难度（TODO：从正文解析）")]
-        public QuestionDifficulty QuestionDifficulty { get; set; }
-
         /// <summary>
         /// 分类ID
         /// </summary>
@@ -33,11 +30,13 @@ A、Microsoft
 B、Netscape
 C、ISO
 D、IBM
+【难度】困难
 【解析】SSL协议是由Netscape公司提出的，用于在互联网上提供安全通信。
 【标签】SSL、安全通信
 
 二、判断题（每空1分，共计20分）
 1. 平邮包裹的到货周期较长，顾客通常要7 - 15天才能收到购买的商品, 但是提供了网上查询物流进程的服务。（ 对 ）
+【难度】困难
 【解析】平邮包裹确实有网上查询物流进程的服务。
 【标签】平邮、商品
 ", AdditionalConfig = "{\"language\":\"markdown\",\"size\":\"xl\"}")]

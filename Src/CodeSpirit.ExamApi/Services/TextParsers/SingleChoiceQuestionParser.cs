@@ -115,6 +115,8 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
             // 解析解析和标签
             result.Analysis = ExtractAnalysis(lineList);
             result.Tags = ExtractTags(lineList);
+            // 添加难度解析
+            result.Difficulty = ExtractDifficulty(lineList);
 
             return result;
         }

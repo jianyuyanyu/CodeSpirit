@@ -433,4 +433,136 @@ D、情人节
             Assert.Equal(expectedSingleChoiceAnswers[i], singleChoiceResult[i].CorrectAnswer);
         }
     }
+
+    [Fact]
+    public void Parse_QuestionsWithDifficulty_ReturnsCorrectResults()
+    {
+        // Arrange
+        var text = @"一、单项选择题（每题1分）
+1、SSL协议最早是由(B)提出的。
+A、Microsoft
+B、Netscape
+C、ISO
+D、IBM
+【难度】简单
+【解析】SSL协议是由Netscape公司提出的，用于在互联网上提供安全通信。
+【标签】SSL、安全通信
+
+2、以下关于HTTPS的说法正确的是(C)？
+A、HTTPS不需要证书
+B、HTTPS不加密传输
+C、HTTPS是安全的HTTP协议
+D、HTTPS不能用于网页浏览
+【难度】中等
+【解析】HTTPS是安全的HTTP协议，需要证书且加密传输。
+【标签】HTTPS、安全协议
+
+3、以下哪个不是对称加密算法(D)？
+A、DES
+B、3DES
+C、AES
+D、RSA
+【难度】困难
+【解析】RSA是非对称加密算法，其他都是对称加密算法。
+【标签】加密算法、RSA";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Equal(3, result.Count);
+
+        // 验证第一题（简单难度）
+        var question1 = result[0];
+        Assert.Equal(QuestionType.SingleChoice, question1.Type);
+        Assert.Equal(QuestionDifficulty.Easy, question1.Difficulty);
+        Assert.Equal("SSL协议最早是由提出的。", question1.Content);
+
+        // 验证第二题（中等难度）
+        var question2 = result[1];
+        Assert.Equal(QuestionType.SingleChoice, question2.Type);
+        Assert.Equal(QuestionDifficulty.Medium, question2.Difficulty);
+        Assert.Equal("以下关于HTTPS的说法正确的是？", question2.Content);
+
+        // 验证第三题（困难难度）
+        var question3 = result[2];
+        Assert.Equal(QuestionType.SingleChoice, question3.Type);
+        Assert.Equal(QuestionDifficulty.Hard, question3.Difficulty);
+        Assert.Equal("以下哪个不是对称加密算法？", question3.Content);
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithMixedDifficultyFormats_ReturnsCorrectResults()
+    {
+        // Arrange
+        var text = @"一、判断题（每题1分）
+1. 对称加密算法的加密密钥和解密密钥是相同的。（对）
+【难度】：简单
+【解析】这是对称加密算法的基本特征。
+【标签】加密算法、对称加密
+
+2. RSA算法的安全性基于大数分解的困难性。（对）
+【难度】:困难
+【解析】RSA算法的安全性确实基于大数分解的困难性。
+【标签】RSA、密码学
+
+3. HTTPS协议中使用的是对称加密。（错）
+【难度】中等
+【解析】HTTPS使用混合加密系统，既有对称加密也有非对称加密。
+【标签】HTTPS、加密";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Equal(3, result.Count);
+
+        // 验证不同格式的难度标记都能正确解析
+        Assert.Equal(QuestionDifficulty.Easy, result[0].Difficulty);
+        Assert.Equal(QuestionDifficulty.Hard, result[1].Difficulty);
+        Assert.Equal(QuestionDifficulty.Medium, result[2].Difficulty);
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithoutDifficulty_ReturnsMediumDifficulty()
+    {
+        // Arrange
+        var text = @"一、多选题（每题2分）
+1、以下哪些是常见的Web安全威胁(ABC)？
+A、SQL注入
+B、跨站脚本攻击
+C、跨站请求伪造
+D、合法访问
+【解析】SQL注入、XSS和CSRF都是常见的Web安全威胁。
+【标签】Web安全、安全威胁";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal(QuestionDifficulty.Medium, result[0].Difficulty); // 默认难度应为中等
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithInvalidDifficulty_ReturnsMediumDifficulty()
+    {
+        // Arrange
+        var text = @"一、单选题（每题1分）
+1、以下哪个是Web服务器软件(A)？
+A、Apache
+B、MySQL
+C、Redis
+D、MongoDB
+【难度】特别难
+【解析】Apache是最流行的Web服务器软件之一。
+【标签】Web服务器、Apache";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal(QuestionDifficulty.Medium, result[0].Difficulty); // 无效难度应返回中等
+    }
 } 

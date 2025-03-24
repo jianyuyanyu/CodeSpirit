@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.ExamApi.Services.TextParsers;
@@ -113,5 +114,37 @@ public abstract class BaseQuestionParser : IQuestionParser
         // 移除括号
         mark = mark.Replace("(", "").Replace(")", "");
         return mark.Trim();
+    }
+
+    /// <summary>
+    /// 提取难度信息
+    /// </summary>
+    protected virtual QuestionDifficulty ExtractDifficulty(IEnumerable<string> lines)
+    {
+        var difficultyLine = lines.FirstOrDefault(l => l.Trim().StartsWith("【难度】"));
+        if (difficultyLine != null)
+        {
+            var difficultyText = difficultyLine.Trim();
+            // 移除开头的【难度】标记
+            if (difficultyText.StartsWith("【难度】"))
+            {
+                difficultyText = difficultyText.Substring("【难度】".Length);
+            }
+            // 移除可能存在的其他标记
+            difficultyText = Regex.Replace(difficultyText, @"^[\s:：]+", "").Trim();
+
+            // 根据文本匹配难度级别
+            return difficultyText switch
+            {
+                "简单" => QuestionDifficulty.Easy,
+                "容易" => QuestionDifficulty.Easy,
+                "中等" => QuestionDifficulty.Medium,
+                "一般" => QuestionDifficulty.Medium,
+                "困难" => QuestionDifficulty.Hard,
+                "难" => QuestionDifficulty.Hard,
+                _ => QuestionDifficulty.Medium // 默认为中等难度
+            };
+        }
+        return QuestionDifficulty.Medium; // 如果未指定难度，默认为中等难度
     }
 } 

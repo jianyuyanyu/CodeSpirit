@@ -127,7 +127,11 @@ namespace CodeSpirit.ExamApi.Tests.Services
                 EnableRandomOptionOrder = true,
                 StudentGroups = new List<ExamSettingStudentGroup> 
                 { 
-                    new ExamSettingStudentGroup { StudentGroup = studentGroup1 }
+                    new ExamSettingStudentGroup 
+                    { 
+                        Id = 1,
+                        StudentGroupId = 1
+                    }
                 }
             };
 
@@ -145,7 +149,11 @@ namespace CodeSpirit.ExamApi.Tests.Services
                 EnableRandomOptionOrder = true,
                 StudentGroups = new List<ExamSettingStudentGroup> 
                 { 
-                    new ExamSettingStudentGroup { StudentGroup = studentGroup2 }
+                    new ExamSettingStudentGroup 
+                    { 
+                        Id = 2,
+                        StudentGroupId = 2
+                    }
                 }
             };
 

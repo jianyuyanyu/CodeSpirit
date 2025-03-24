@@ -41,4 +41,9 @@ public class QuestionParseResult
     /// 标签（JSON格式存储）
     /// </summary>
     public List<string>? Tags { get; set; }
+
+    /// <summary>
+    /// 难度
+    /// </summary>
+    public QuestionDifficulty Difficulty { get; set; } = QuestionDifficulty.Medium;
 }

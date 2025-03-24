@@ -7,6 +7,7 @@ using CodeSpirit.Shared.EventBus.Interfaces;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.Extensions.Logging;
+using CodeSpirit.Core.Extensions;
 
 namespace CodeSpirit.IdentityApi.EventHandlers;
 
@@ -58,7 +59,7 @@ public class UserCreatedEventHandler : IEventHandler<UserCreatedEvent>
             {
                 // 创建新用户
                 _logger.LogInformation("用户创建事件：创建新用户, 姓名: {@Name}", @event.Name);
-
+                _logger.LogError("用户创建事件：创建新用户, 姓名: {Name}", @event.Name);
                 var createUserDto = new CreateUserDto
                 {
                     UserName = @event.UserName,
@@ -67,8 +68,8 @@ public class UserCreatedEventHandler : IEventHandler<UserCreatedEvent>
                     Email = @event.Email,
                     IdNo = @event.IdNo,
                 };
-
-                await _userService.CreateAdvancedUserAsync(createUserDto, "123456", -1);
+                var pwd = @event.IdNo.@IsNullOrWhiteSpace() || @event.IdNo.Length < 6 ? "123456" : @event.IdNo[^6..];
+                await _userService.CreateAdvancedUserAsync(createUserDto, pwd.ToUpper(), -1, @event.UserId);
             }
         }
         catch (Exception ex)

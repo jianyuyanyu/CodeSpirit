@@ -69,5 +69,6 @@ public class CreateExamPaperDto
         Required = true,
         Placeholder = "请选择题目"
     )]
+    [DisplayName("题目列表")]
     public List<string> QuestionIds { get; set; }
 }

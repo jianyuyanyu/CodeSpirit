@@ -5,12 +5,12 @@ using CodeSpirit.Shared.Extensions;
 /// <summary>
 /// 学生映射配置
 /// </summary>
-public class StudentMappingProfile : Profile
+public class StudentProfile : Profile
 {
     /// <summary>
     /// 构造函数
     /// </summary>
-    public StudentMappingProfile()
+    public StudentProfile()
     {
         CreateMap<Student, StudentDto>()
             .ForMember(dest => dest.StudentGroups, opt => opt.MapFrom(src =>

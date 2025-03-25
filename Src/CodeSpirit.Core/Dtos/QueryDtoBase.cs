@@ -1,4 +1,4 @@
-﻿// 文件路径: Controllers/Dtos/UserQueryDto.cs
+// 文件路径: Controllers/Dtos/UserQueryDto.cs
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 

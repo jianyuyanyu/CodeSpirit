@@ -89,101 +89,6 @@
     var app = {
         type: 'page',
         title: '考试系统',
-        header: {
-            type: 'service',
-            api: '/identity/api/identity/profile',
-            className: 'client-header',
-            body: [
-                {
-                    type: 'flex',
-                    justify: 'space-between',
-                    className: 'w-full',
-                    items: [
-                        {
-                            type: 'tpl',
-                            tpl: '<div class="logo"><img src="/logo.png" /><span>考试系统</span></div>',
-                            className: 'client-logo'
-                        },
-                        {
-                            type: 'flex',
-                            justify: 'flex-end',
-                            alignItems: 'center',
-                            className: 'user-info',
-                            items: [
-                                {
-                                    type: 'avatar',
-                                    src: '${user.avatar}',
-                                    text: '${user.name}',
-                                    icon: 'fa fa-user',
-                                    className: 'mr-2',
-                                    size: 30
-                                },
-                                {
-                                    type: 'dropdown-button',
-                                    label: '${user.name}',
-                                    align: 'right',
-                                    className: 'ml-2',
-                                    buttons: [
-                                        {
-                                            type: 'button',
-                                            label: '个人信息',
-                                            icon: 'fa fa-address-card',
-                                            actionType: 'dialog',
-                                            dialog: {
-                                                title: '个人信息',
-                                                size: 'md',
-                                                body: {
-                                                    type: 'form',
-                                                    api: '/identity/api/identity/profile',
-                                                    controls: [
-                                                        {
-                                                            type: 'image',
-                                                            name: 'avatar',
-                                                            label: '头像',
-                                                            thumbMode: 'cover',
-                                                            thumbRatio: '1:1',
-                                                            width: 100,
-                                                            height: 100,
-                                                            className: 'rounded-full'
-                                                        },
-                                                        {
-                                                            type: 'static',
-                                                            name: 'userName',
-                                                            label: '用户名'
-                                                        },
-                                                        {
-                                                            type: 'static',
-                                                            name: 'email',
-                                                            label: '邮箱'
-                                                        },
-                                                        {
-                                                            type: 'static',
-                                                            name: 'phoneNumber',
-                                                            label: '手机号'
-                                                        }
-                                                    ]
-                                                }
-                                            }
-                                        },
-                                        {
-                                            type: 'button',
-                                            label: '退出登录',
-                                            icon: 'fa fa-sign-out',
-                                            level: 'danger',
-                                            actionType: 'ajax',
-                                            confirmText: '确认要退出登录？',
-                                            api: '/identity/api/identity/auth/logout',
-                                            reload: 'none',
-                                            redirect: '/client/login'
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
         body: [
             {
                 type: 'service',
@@ -194,6 +99,17 @@
                         type: 'tpl',
                         tpl: '<h2>欢迎您，${user.name}</h2><p>今天是 ${now|date:YYYY-MM-DD}，祝您考试顺利！</p>',
                         className: 'welcome-message'
+                    },
+                    {
+                        type: 'button',
+                        label: '退出登录',
+                        icon: 'fa fa-sign-out',
+                        level: 'danger',
+                        actionType: 'ajax',
+                        confirmText: '确认要退出登录？',
+                        api: '/identity/api/identity/auth/logout',
+                        reload: 'none',
+                        redirect: '/client/login'
                     }
                 ],
                 data: {

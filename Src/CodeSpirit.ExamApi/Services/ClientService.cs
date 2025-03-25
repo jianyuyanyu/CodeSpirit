@@ -39,6 +39,15 @@ public class ClientService : IClientService
     {
         try
         {
+            var student = await _context.Students
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到考生信息");
+            }
+
             // 查询当前用户所属的学生组
             var studentGroups = await _context.StudentGroupMappings.Include(p => p.Student)
                 .Where(m => m.Student.UserId == userId)
@@ -63,12 +72,12 @@ public class ClientService : IClientService
                     TotalScore = e.ExamPaper.TotalScore,
                     Status = _context.ExamRecords.Any(r =>
                         r.ExamSettingId == e.Id &&
-                        r.StudentId == userId &&
+                        r.StudentId == student.Id &&
                         r.Status == ExamRecordStatus.InProgress)
                         ? "进行中"
                         : (_context.ExamRecords.Any(r =>
                             r.ExamSettingId == e.Id &&
-                            r.StudentId == userId &&
+                            r.StudentId == student.Id &&
                             (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
                             ? "已完成"
                             : (e.StartTime <= now && e.EndTime >= now ? "进行中" :
@@ -76,7 +85,7 @@ public class ClientService : IClientService
                     // 检查是否已参加并获取成绩
                     HasResult = _context.ExamRecords.Any(r =>
                         r.ExamSettingId == e.Id &&
-                        r.StudentId == userId &&
+                        r.StudentId == student.Id &&
                         (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
                 })
                 .ToListAsync();

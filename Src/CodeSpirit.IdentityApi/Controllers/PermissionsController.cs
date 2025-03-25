@@ -126,7 +126,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 "POST" => "fa fa-plus",         // 新增操作
                 "PUT" => "fa fa-edit",          // 编辑操作
                 "DELETE" => "fa fa-trash",      // 删除操作
-                _ => "fa fa-circle"             // 默认图标
+                _ => "fa fa-cog"                // 默认图标使用齿轮图标
             };
         }
     }

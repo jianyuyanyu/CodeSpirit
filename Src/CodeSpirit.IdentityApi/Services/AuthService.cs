@@ -243,7 +243,7 @@ namespace CodeSpirit.IdentityApi.Services
                 issuer: _issuer,
                 audience: _audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(_expirationMinutes),
+                expires: DateTime.Now.AddMinutes(180),
                 signingCredentials: credentials
             );
 

@@ -6,9 +6,6 @@ trigger:
     include:
       - 'k8s/*'
 
-pool:
-  vmImage: 'ubuntu-latest'
-
 variables:
   k8sNamespace: 'code-spirit'
   kubernetesServiceConnection: 'dapr-k8s-CodeSpirit'  # 需要在 Azure DevOps 中配置

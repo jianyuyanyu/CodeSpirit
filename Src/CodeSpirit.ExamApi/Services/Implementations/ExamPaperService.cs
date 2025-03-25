@@ -377,7 +377,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         private async Task ValidateRandomExamPaperRules(GenerateRandomExamPaperDto createDto)
         {
             // 总分与各题型分数之和必须相等
-            if (createDto.TotalScore!= createDto.QuestionTypeRules.Sum(r => r.ScorePerQuestion & r.Count))
+            if (createDto.TotalScore!= createDto.QuestionTypeRules.Sum(r => r.ScorePerQuestion * r.Count))
             {
                 throw new AppServiceException(400, "总分与各题型分数之和必须相等");
             }

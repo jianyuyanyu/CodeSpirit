@@ -171,25 +171,19 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     protected override async Task ValidateCreateDto(CreateStudentDto createDto)
     {
         // 检查学号是否已存在
-        var existsStudentNumber = await Repository
-            .Find(x => x.StudentNumber == createDto.StudentNumber)
-            .AnyAsync();
-        if (existsStudentNumber)
+        var existsStudentNumber = Repository.Find(x => !createDto.StudentNumber.IsNullOrWhiteSpace() && x.StudentNumber == createDto.StudentNumber);
+        if (!createDto.StudentNumber.IsNullOrWhiteSpace() && await existsStudentNumber.AnyAsync())
         {
             throw new AppServiceException(400, "学号/工号已存在！");
         }
 
-        var existsIdNo = await Repository
-            .Find(x => x.IdNo == createDto.IdNo)
-            .AnyAsync();
-        if (existsIdNo)
+        var existsIdNo = Repository.Find(x => !createDto.IdNo.IsNullOrWhiteSpace() && x.IdNo == createDto.IdNo);
+        if (!createDto.IdNo.IsNullOrWhiteSpace() && await existsIdNo.AnyAsync())
         {
             throw new AppServiceException(400, "该身份证已存在！");
         }
-        var existsAdmissionTicket = await Repository
-            .Find(x => x.AdmissionTicket == createDto.AdmissionTicket)
-            .AnyAsync();
-        if (existsAdmissionTicket)
+        var existsAdmissionTicket = Repository.Find(x => !createDto.AdmissionTicket.IsNullOrWhiteSpace() && x.AdmissionTicket == createDto.AdmissionTicket);
+        if (!createDto.AdmissionTicket.IsNullOrWhiteSpace() && await existsAdmissionTicket.AnyAsync())
         {
             throw new AppServiceException(400, "该准考证已存在！");
         }
@@ -311,27 +305,21 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     protected override async Task OnUpdating(Student entity, UpdateStudentDto updateDto)
     {
         // 检查学号是否已存在
-        var existsStudentNumber = await Repository
-            .Find(x => x.StudentNumber == updateDto.StudentNumber && x.Id != entity.Id)
-            .AnyAsync();
-        if (existsStudentNumber)
+        var existsStudentNumberQueryable = Repository.Find(x => x.StudentNumber == updateDto.StudentNumber && x.Id != entity.Id);
+        if (!updateDto.StudentNumber.IsNullOrWhiteSpace() && await existsStudentNumberQueryable.AnyAsync())
         {
             throw new AppServiceException(400, "学号/工号已存在！");
         }
-
-
-        var existsIdNo = await Repository
-            .Find(x => x.IdNo == updateDto.IdNo && x.Id != entity.Id)
-            .AnyAsync();
-        if (existsIdNo)
+        
+        var existsIdNo = Repository.Find(x => x.IdNo == updateDto.IdNo && x.Id != entity.Id);
+        if (!updateDto.IdNo.IsNullOrWhiteSpace() && await existsIdNo.AnyAsync())
         {
             throw new AppServiceException(400, "该身份证已存在！");
         }
-        var existsAdmissionTicket = await Repository
-            .Find(x => x.AdmissionTicket == updateDto.AdmissionTicket && x.Id != entity.Id)
-            .AnyAsync();
-        if (existsAdmissionTicket)
-        {
+
+        var existsAdmissionTicket = Repository.Find(x => x.AdmissionTicket == updateDto.AdmissionTicket && x.Id != entity.Id);
+        if (!updateDto.AdmissionTicket.IsNullOrWhiteSpace() && await existsAdmissionTicket.AnyAsync())
+        { 
             throw new AppServiceException(400, "该准考证已存在！");
         }
         var entityGroups = entity.StudentGroups?.Select(x => x.StudentGroupId).ToList();

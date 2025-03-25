@@ -91,7 +91,7 @@ public class UpdateExamSettingDto
     [DisplayName("允许切屏次数")]
     [Range(0, 10, ErrorMessage = "允许切屏次数必须在0-10次之间")]
     public int AllowedScreenSwitchCount { get; set; }
-    
+
     /// <summary>
     /// 参加考试的学生分组ID列表
     /// </summary>
@@ -108,5 +108,5 @@ public class UpdateExamSettingDto
         Clearable = true,
         Placeholder = "请选择参加考试的学生分组"
     )]
-    public List<long> StudentGroupIds { get; set; } = [];
+    public List<long> StudentGroupIds { get; set; } = new List<long>();
 } 

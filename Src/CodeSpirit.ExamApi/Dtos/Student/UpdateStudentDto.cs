@@ -58,12 +58,12 @@ public class UpdateStudentDto
         Source = "${ROOT_API}/api/exam/StudentGroups",
         ValueField = "id",
         LabelField = "name",
-                    Multiple = true,
-            JoinValues = false,
-            ExtractValue = true,
-            Searchable = true,
-            Clearable = true,
-            Placeholder = "请选择学生组"
+        Multiple = true,
+        JoinValues = false,
+        ExtractValue = true,
+        Searchable = true,
+        Clearable = true,
+        Placeholder = "请选择学生组"
     )]
     public List<long> StudentGroupIds { get; set; } = new List<long>();
 } 

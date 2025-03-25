@@ -30,7 +30,11 @@ public class ExamSettingProfile : Profile
 
         CreateMap<ExamSetting, ExamSettingDto>()
             .ForMember(dest => dest.ExamPaperName, opt => opt.MapFrom(src => src.ExamPaper.Name))
-            .ForMember(dest => dest.StudentGroups, opt => opt.MapFrom(src => src.StudentGroups.Select(x => x.StudentGroup)));
+            .ForMember(dest => dest.StudentGroups, opt => opt.MapFrom(src => src.StudentGroups.Select(x => x.StudentGroup)))
+            .ForMember(dest => dest.StudentGroupIds, opt => opt.MapFrom(src =>
+                src.StudentGroups != null ?
+                src.StudentGroups.Select(x => x.StudentGroup.Id).ToList() :
+                new List<long>()));
 
         CreateMap<CreateExamSettingDto, ExamSetting>();
         CreateMap<UpdateExamSettingDto, ExamSetting>();

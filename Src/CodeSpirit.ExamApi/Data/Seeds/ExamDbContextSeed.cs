@@ -15,28 +15,31 @@ public static class ExamDbContextSeed
     /// 初始化数据库
     /// </summary>
     /// <param name="context">数据库上下文</param>
-    /// <param name="idGenerator">ID生成器</param>
-    public static async Task SeedAsync(ExamDbContext context)
+    /// <param name="isDevelopment">是否是开发环境</param>
+    public static async Task SeedAsync(ExamDbContext context, bool isDevelopment)
     {
         ArgumentNullException.ThrowIfNull(context);
         context.UserId = -1;
 
         // 确保数据库已创建
         await context.Database.MigrateAsync();
-
-        // 初始化基础数据
-        await SeedQuestionCategoriesAsync(context);
-        await SeedStudentGroupsAsync(context);
-        await SeedQuestionsAsync(context);
-        await SeedStudentsAsync(context);
-        await SeedExamPapersAsync(context);
-        await SeedExamSettingsAsync(context);
-        await SeedWrongQuestionsAsync(context);
-        //await SeedExamRecordsAsync(context);
-        //await SeedPracticeRecordsAsync(context);
         
-        // 为ID为-1的用户初始化考试数据
-        //await SeedTestUserDataAsync(context);
+        if (isDevelopment)
+        {
+            // 初始化基础数据
+            await SeedQuestionCategoriesAsync(context);
+            await SeedStudentGroupsAsync(context);
+            await SeedQuestionsAsync(context);
+            await SeedStudentsAsync(context);
+            await SeedExamPapersAsync(context);
+            await SeedExamSettingsAsync(context);
+            await SeedWrongQuestionsAsync(context);
+            //await SeedExamRecordsAsync(context);
+            //await SeedPracticeRecordsAsync(context);
+
+            // 为ID为-1的用户初始化考试数据
+            //await SeedTestUserDataAsync(context);
+        }
 
         // 保存所有更改
         await context.SaveChangesAsync();

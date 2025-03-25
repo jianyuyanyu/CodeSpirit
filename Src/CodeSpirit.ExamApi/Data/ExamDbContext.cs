@@ -7,6 +7,7 @@ using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Seeds;
 using CodeSpirit.Core.IdGenerator;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 
 namespace CodeSpirit.ExamApi.Data;
 
@@ -398,6 +399,7 @@ public class ExamDbContext : AuditableDbContext
     public async Task InitializeDatabaseAsync()
     {
         using var scope = _serviceProvider.CreateScope();
-        await ExamDbContextSeed.SeedAsync(this);
+        var hostEnvironment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+        await ExamDbContextSeed.SeedAsync(this, hostEnvironment.IsDevelopment());
     }
 }

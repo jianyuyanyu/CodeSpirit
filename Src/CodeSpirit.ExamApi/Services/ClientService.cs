@@ -112,6 +112,9 @@ public class ClientService : IClientService
                 .Where(s => s.UserId == userId)
                 .FirstOrDefaultAsync();
 
+            if (student == null)
+                return new List<ClientExamHistoryDto>();
+
             var examHistory = await _context.ExamRecords
                 .Include(r => r.ExamSetting)
                 .ThenInclude(s => s.ExamPaper)

@@ -32,6 +32,9 @@ erDiagram
     ExamAnswerRecord {
         long answer_id PK
     }
+    ExamSettingStudentGroup {
+        long id PK
+    }
 
     %% 关系定义
     Question ||--o{ QuestionVersion : "版本"
@@ -48,6 +51,8 @@ erDiagram
     Student ||--o{ WrongQuestion : "错题"
     ExamSetting ||--o{ ExamRecord : "生成"
     ExamRecord ||--o{ ExamAnswerRecord : "包含"
+    ExamSetting ||--o{ ExamSettingStudentGroup : "关联"
+    StudentGroup ||--o{ ExamSettingStudentGroup : "关联"
 ```
 
 ## 2. 核心实体说明
@@ -149,6 +154,14 @@ erDiagram
   - `EndTime`: 结束时间
   - `AllowedTimes`: 允许考试次数
   - `AntiCheatingRules`: 反作弊规则
+
+#### ExamSettingStudentGroup（考试设置与考生分组映射）
+- 设计目的：
+  - 实现考试设置和考生分组的多对多关系
+  - 指定哪些分组可以参加特定的考试
+- 核心字段：
+  - `ExamSettingId`: 考试设置ID
+  - `StudentGroupId`: 考生分组ID
 
 #### ExamRecord（考试记录）
 - 核心字段：
@@ -269,6 +282,10 @@ CREATE INDEX IX_ExamAnswerRecords_QuestionVersionId ON ExamAnswerRecords(Questio
 -- Student 索引
 CREATE UNIQUE INDEX IX_Students_StudentNumber ON Students(StudentNumber);
 CREATE INDEX IX_Students_Name ON Students(Name);
+
+-- ExamSettingStudentGroup 索引
+CREATE INDEX IX_ExamSettingStudentGroups_ExamSettingId ON ExamSettingStudentGroups(ExamSettingId);
+CREATE INDEX IX_ExamSettingStudentGroups_StudentGroupId ON ExamSettingStudentGroups(StudentGroupId);
 ```
 
 ## 5. 注意事项

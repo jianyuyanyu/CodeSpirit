@@ -331,7 +331,7 @@ public class ClientService : IClientService
                 var now = DateTime.UtcNow;
                 examRecord.SubmitTime = now;
                 examRecord.Status = ExamRecordStatus.Submitted;
-                examRecord.Duration = (int)Math.Ceiling((now - examRecord.StartTime).TotalMinutes);
+                examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
 
                 // 添加答案记录
                 foreach (var answer in answers)

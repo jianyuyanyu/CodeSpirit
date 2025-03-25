@@ -99,6 +99,12 @@ public class ExamSettingDto
     public List<StudentGroupDto> StudentGroups { get; set; } = [];
 
     /// <summary>
+    /// 分组ID列表
+    /// </summary>
+    [IgnoreColumn]
+    public List<long> StudentGroupIds { get; set; } = new List<long>();
+
+    /// <summary>
     /// 创建时间
     /// </summary>
     [DisplayName("创建时间")]

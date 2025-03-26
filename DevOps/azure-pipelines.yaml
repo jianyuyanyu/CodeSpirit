@@ -1,0 +1,51 @@
+trigger:
+  branches:
+    include:
+      - master
+  paths:
+    include:
+      - 'k8s/*'
+
+variables:
+  k8sNamespace: 'code-spirit'
+  kubernetesServiceConnection: 'dapr-k8s-CodeSpirit'  # 需要在 Azure DevOps 中配置
+
+stages:
+- stage: Deploy
+  displayName: '部署到 Kubernetes'
+  jobs:
+  - job: ApplyK8sConfigs
+    displayName: '应用 K8s 配置'
+    steps:
+    - task: Bash@3
+      displayName: '替换命名空间变量'
+      inputs:
+        targetType: 'inline'
+        script: |
+          for file in k8s/*.yaml; do
+            sed -i "s/namespace: code-spirit/namespace: $(k8sNamespace)/g" "$file"
+          done
+
+    - task: KubernetesManifest@0
+      inputs:
+        action: 'deploy'
+        namespace: '$(k8sNamespace)'
+        manifests: |
+          k8s/appsettings-configmap.yaml
+          k8s/config.yaml
+          k8s/identity.yaml
+          k8s/exam.yaml
+          k8s/messaging.yaml
+          k8s/aspire-dashboard.yaml
+          k8s/rabbitmq.yaml
+          k8s/seq.yaml
+          k8s/redis.yaml
+        kubernetesServiceConnection: '$(kubernetesServiceConnection)'
+
+    - task: KubernetesManifest@0
+      inputs:
+        action: 'promote'
+        namespace: '$(k8sNamespace)'
+        manifests: |
+          k8s/*.yaml
+        kubernetesServiceConnection: '$(kubernetesServiceConnection)' 

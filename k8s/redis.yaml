@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: code-spirit
+  labels:
+    k8s-app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: redis
+  template:
+    metadata:
+      labels:
+        k8s-app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 256Mi
+      imagePullSecrets:
+      - name: tcloud
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: code-spirit
+  labels:
+    k8s-app: redis
+spec:
+  type: NodePort
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    k8s-app: redis

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messaging
+  namespace: code-spirit
+  labels:
+    k8s-app: messaging
+    qcloud-app: messaging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: messaging
+      qcloud-app: messaging
+  template:
+    metadata:
+      labels:
+        k8s-app: messaging
+        qcloud-app: messaging
+    spec:
+      containers:
+      - name: messaging
+        image: ccr.ccs.tencentyun.com/codespirit/messaging-api:master
+        resources:
+          requests:
+            cpu: 10m
+            memory: 256Mi
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/appsettings.json
+          subPath: appsettings.json
+      volumes:
+      - name: config-volume
+        configMap:
+          name: messaging-appsettings
+      imagePullSecrets:
+      - name: tcloud
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging
+  namespace: code-spirit
+  labels:
+    k8s-app: messaging
+    qcloud-app: messaging
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    k8s-app: messaging
+    qcloud-app: messaging

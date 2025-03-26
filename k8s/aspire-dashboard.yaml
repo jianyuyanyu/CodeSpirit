@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aspire-dashboard
+  namespace: code-spirit
+  labels:
+    k8s-app: aspire-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: aspire-dashboard
+  template:
+    metadata:
+      labels:
+        k8s-app: aspire-dashboard
+    spec:
+      containers:
+      - name: aspire-dashboard
+        image: mcr.microsoft.com/dotnet/aspire-dashboard:9.0
+        env:
+        - name: DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS
+          value: "true"
+        - name: DASHBOARD__TELEMETRYLIMITS__MAXLOGCOUNT
+          value: "10000"
+        - name: DASHBOARD__TELEMETRYLIMITS__MAXTRACECOUNT
+          value: "10000"
+        - name: DASHBOARD__TELEMETRYLIMITS__MAXMETRICSCOUNT
+          value: "10000"
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aspire-dashboard
+  namespace: code-spirit
+  labels:
+    k8s-app: aspire-dashboard
+spec:
+  type: NodePort
+  ports:
+  - port: 18888
+    targetPort: 18888
+  - port: 18890
+    targetPort: 18890
+  - port: 18889
+    targetPort: 18889
+  selector:
+    k8s-app: aspire-dashboard

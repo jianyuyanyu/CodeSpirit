@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http.Extensions;
 using System.Net.Http.Headers;
 using System.Collections.Generic;
 using CodeSpirit.Aggregator.Services;
+using System.Text;
 
 namespace CodeSpirit.Web.Middlewares
 {
@@ -255,6 +256,19 @@ namespace CodeSpirit.Web.Middlewares
                 aggregationRules = _aggregatorService.GetAggregationRules(response);
             }
 
+            // 获取和设置 Content-Type，确保包含正确的字符集
+            var contentType = response.Content.Headers.ContentType;
+            if (contentType != null)
+            {
+                // 如果没有指定 charset，并且是文本或 JSON 内容，则默认添加 UTF-8 字符集
+                if (string.IsNullOrEmpty(contentType.CharSet) &&
+                    (contentType.MediaType?.Contains("text", StringComparison.OrdinalIgnoreCase) == true ||
+                     contentType.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true))
+                {
+                    contentType.CharSet = "utf-8";
+                }
+            }
+
             foreach (var header in response.Headers)
             {
                 // 移除聚合相关的头信息，不传递给客户端
@@ -277,32 +291,35 @@ namespace CodeSpirit.Web.Middlewares
                 }
             }
 
-            // 检查内容类型是否为JSON，只对JSON内容进行聚合
-            bool isJsonContent = response.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true;
+            // 检查内容类型是否为JSON或文本，以决定如何处理
+            bool isJsonContent = contentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true;
+            bool isTextContent = contentType?.MediaType?.Contains("text", StringComparison.OrdinalIgnoreCase) == true;
 
             if (needsAggregation && isJsonContent && aggregationRules.Any())
             {
-                // 读取JSON内容
+                // 使用聚合器处理 JSON 内容（保持现有逻辑）
                 string jsonContent = await response.Content.ReadAsStringAsync();
                 logger.LogInformation("jsonContent：{jsonContent}", jsonContent);
                 try
                 {
-                    // 使用聚合器服务处理JSON内容
                     var aggregatedJson = await _aggregatorService.AggregateJsonContent(jsonContent, aggregationRules, context);
-
-                    // 写入修改后的JSON到响应
-                    await context.Response.WriteAsync(aggregatedJson);
+                    await context.Response.WriteAsync(aggregatedJson, Encoding.UTF8);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "JSON聚合处理失败");
-                    // 如果JSON处理失败，回退到原始内容
-                    await context.Response.WriteAsync(jsonContent);
+                    await context.Response.WriteAsync(jsonContent, Encoding.UTF8);
                 }
+            }
+            else if (isJsonContent || isTextContent)
+            {
+                // 对所有 JSON 或文本内容使用字符串方式处理，确保编码正确
+                string content = await response.Content.ReadAsStringAsync();
+                await context.Response.WriteAsync(content, Encoding.UTF8);
             }
             else
             {
-                // 不需要聚合，使用流式传输
+                // 对二进制内容使用流式传输
                 using (var responseStream = await response.Content.ReadAsStreamAsync())
                 {
                     await responseStream.CopyToAsync(context.Response.Body);

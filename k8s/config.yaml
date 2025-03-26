@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config
+  namespace: code-spirit
+  labels:
+    k8s-app: config
+    qcloud-app: config
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: config
+      qcloud-app: config
+  template:
+    metadata:
+      labels:
+        k8s-app: config
+        qcloud-app: config
+    spec:
+      containers:
+      - name: config
+        image: ccr.ccs.tencentyun.com/codespirit/config-api:master-36089
+        resources:
+          requests:
+            cpu: 10m
+            memory: 256Mi
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/appsettings.json
+          subPath: appsettings.json
+      volumes:
+      - name: config-volume
+        configMap:
+          name: config-appsettings
+      imagePullSecrets:
+      - name: tcloud
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config
+  namespace: code-spirit
+  labels:
+    k8s-app: config
+    qcloud-app: config
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    k8s-app: config
+    qcloud-app: config

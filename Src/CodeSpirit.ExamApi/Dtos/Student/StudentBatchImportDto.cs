@@ -29,8 +29,8 @@ public class StudentBatchImportDto
     /// <summary>
     /// 手机号码
     /// </summary>
-    [Required(ErrorMessage = "手机号码不能为空")]
-    [Phone(ErrorMessage = "手机号码格式不正确")]
+    //[Required(ErrorMessage = "手机号码不能为空")]
+    //[Phone(ErrorMessage = "手机号码格式不正确")]
     [DisplayName("手机号码")]
     [JsonProperty("手机号码")]
     public string PhoneNumber { get; set; } = string.Empty;

@@ -12,6 +12,7 @@ namespace CodeSpirit.Web.Middlewares
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<ProxyMiddleware> _logger;
         private readonly IAggregatorService _aggregatorService;
+        private const int MaxRequestBodySize = 100 * 1024 * 1024; // 例如限制为100MB
 
         public ProxyMiddleware(
             RequestDelegate next,
@@ -150,7 +151,13 @@ namespace CodeSpirit.Web.Middlewares
             // 复制请求体
             if (request.ContentLength > 0)
             {
-                // 确保请求体可以多次读取
+                if (request.ContentLength > MaxRequestBodySize)
+                {
+                    context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+                    await context.Response.WriteAsync("请求体太大");
+                    return;
+                }
+                
                 request.EnableBuffering();
 
                 // 读取请求体

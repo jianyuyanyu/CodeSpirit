@@ -24,7 +24,7 @@ public class StudentBatchImportDto
     /// </summary>
     [DisplayName("学号（工号）")]
     [JsonProperty("学号（工号）")]
-    public string StudentNumber { get; set; } = string.Empty;
+    public string? StudentNumber { get; set; } = string.Empty;
 
     /// <summary>
     /// 手机号码
@@ -33,7 +33,7 @@ public class StudentBatchImportDto
     //[Phone(ErrorMessage = "手机号码格式不正确")]
     [DisplayName("手机号码")]
     [JsonProperty("手机号码")]
-    public string PhoneNumber { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; } = string.Empty;
 
     /// <summary>
     /// 身份证号码
@@ -56,6 +56,6 @@ public class StudentBatchImportDto
     [StringLength(20, ErrorMessage = "准考证长度不能超过20个字符")]
     [DisplayName("准考证")]
     [JsonProperty("准考证")]
-    public string AdmissionTicket { get; set; } = string.Empty;
+    public string? AdmissionTicket { get; set; } = string.Empty;
 
 }

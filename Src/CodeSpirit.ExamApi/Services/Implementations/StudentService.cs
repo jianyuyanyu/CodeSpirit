@@ -17,6 +17,8 @@ using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Linq.Expressions;
 using CodeSpirit.Core.Extensions;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -346,6 +348,8 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         var importList = importData.ToList();
         var failedItems = new List<string>();
 
+        importData.ForEach(s => s.IdNo = s.IdNo.Trim());
+
         var studentNumberRepetition = importList.Where(s => !s.StudentNumber.IsNullOrWhiteSpace()).GroupBy(x => x.StudentNumber).Select(s => new { studentNumber = s.Key, count = s.Count() });
         if (studentNumberRepetition.Any(x => x.count > 1))
         {
@@ -374,6 +378,12 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         {
             if (checkDatas.Any())
             {
+                if (!item.PhoneNumber.IsNullOrWhiteSpace() && !Regex.IsMatch(item.PhoneNumber, @"1(3[0-9]|4[57]|5[0-35-9]|7[01235678]|8[0-9]|6[0-9]|9[0-9])\d{8}"))
+                {
+                    failedItems.Add($"{item.PhoneNumber}「传入的手机号'{item.PhoneNumber}'格式不正确");
+                    continue;
+                }
+
                 if (!item.IdNo.IsNullOrWhiteSpace() && checkDatas.Any(x => x.IdNo == item.IdNo))
                 {
                     failedItems.Add($"{item.IdNo}「传入的身份证'{item.IdNo}'已存在");

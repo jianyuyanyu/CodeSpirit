@@ -10,19 +10,21 @@ public class UserSeeder : IScopedDependency
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IIdGenerator _idGenerator;
-
+    private readonly IHostEnvironment _hostEnvironment;
     public UserSeeder(
         IServiceProvider serviceProvider,
         ILogger<UserSeeder> logger,
         RoleManager<ApplicationRole> roleManager,
         UserManager<ApplicationUser> userManager,
-        IIdGenerator idGenerator)
+        IIdGenerator idGenerator,
+        IHostEnvironment hostEnvironment)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _roleManager = roleManager;
         _userManager = userManager;
         _idGenerator = idGenerator;
+        _hostEnvironment = hostEnvironment;
     }
 
     public async Task SeedAdminUserAsync()
@@ -108,6 +110,11 @@ public class UserSeeder : IScopedDependency
 
     public async Task SeedRandomUsersAsync(int userCount, RoleManager<ApplicationRole> roleManager)
     {
+        if (!_hostEnvironment.IsDevelopment())
+        {
+            return;
+        }
+
         if (await _userManager.Users.AnyAsync())
         {
             return;

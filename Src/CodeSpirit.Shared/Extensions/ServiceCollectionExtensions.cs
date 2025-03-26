@@ -32,7 +32,7 @@ public static class ServiceCollectionExtensions
         {
             options.UseSqlServer(connectionString);
 
-            // ½öÔÚ¿ª·¢»·¾³ÏÂÆôÓÃÃô¸ĞÊı¾İÈÕÖ¾ºÍ¿ØÖÆÌ¨ÈÕÖ¾
+            // ä»…åœ¨å¼€å‘ç¯å¢ƒä¸‹å¯ç”¨æ•æ„Ÿæ•°æ®æ—¥å¿—å’Œæ§åˆ¶å°æ—¥å¿—
             if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
             {
                 options.EnableSensitiveDataLogging()
@@ -58,29 +58,29 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddSystemServices(this IServiceCollection services, ConfigurationManager configuration, Type programType, IWebHostEnvironment webHostEnvironment)
     {
-        // Ìí¼Ó HttpContextAccessor ºÍÄÚ´æ»º´æ
+        // æ·»åŠ  HttpContextAccessor å’Œå†…å­˜ç¼“å­˜
         services.AddHttpContextAccessor();
         services.AddMemoryCache();
 
-        // ×¢²á AutoMapper
+        // æ³¨å†Œ AutoMapper
         services.AddAutoMapper(programType);
 
-        // ×¢²áÈ¨ÏŞ·şÎñ
+        // æ³¨å†Œæƒé™æœåŠ¡
         services.AddScoped<ICurrentUser, CurrentUser>();
 
-        // ×¢²áÑ©»¨IDÉú³ÉÆ÷·şÎñ
+        // æ³¨å†Œé›ªèŠ±IDç”Ÿæˆå™¨æœåŠ¡
         services.AddSingleton<IIdGenerator, SnowflakeIdGenerator>();
 
-        //// ×¢²á Repositories ºÍ Handlers
+        //// æ³¨å†Œ Repositories å’Œ Handlers
         //services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddDataFilters();
         services.AddCodeSpiritAuthorization();
 
         services.AddCorsPolicy();
 
-        //×¢²á AMIS ·şÎñ
+        //æ³¨å†Œ AMIS æœåŠ¡
         services.AddAmisServices(configuration, apiAssembly: programType.Assembly);
-        // Ìí¼Ó·şÎñ×¢²á£¬È·±£°üº¬ÁËËùÓĞ·şÎñËùÔÚµÄ³ÌĞò¼¯
+        // æ·»åŠ æœåŠ¡æ³¨å†Œï¼Œç¡®ä¿åŒ…å«äº†æ‰€æœ‰æœåŠ¡æ‰€åœ¨çš„ç¨‹åºé›†
         //services.AddDependencyInjection(programType.Assembly);
 
         services.AddCodeSpiritNavigation();
@@ -91,7 +91,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddCorsPolicy(this IServiceCollection services)
     {
-        //TODO:Í¨¹ıÅäÖÃÎÄ¼şÅäÖÃ¿çÓò
+        //TODO:é€šè¿‡é…ç½®æ–‡ä»¶é…ç½®è·¨åŸŸ
         services.AddCors(options =>
         {
             options.AddPolicy("AllowSpecificOriginsWithCredentials",
@@ -113,7 +113,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddControllers(options =>
         {
-            // È«¾Ö×¢²á ValidateModelAttribute
+            // å…¨å±€æ³¨å†Œ ValidateModelAttribute
             options.Filters.Add<ValidateModelAttribute>();
             options.Filters.Add<HttpResponseExceptionFilter>();
             options.ModelBinderProviders.Insert(0, new DateRangeModelBinderProvider());
@@ -122,24 +122,24 @@ public static class ServiceCollectionExtensions
         })
         .AddNewtonsoftJson(options =>
         {
-            // ¿ÉÑ¡£ºÔÚ´Ë´¦ÅäÖÃ Newtonsoft.Json µÄÉèÖÃ
+            // å¯é€‰ï¼šåœ¨æ­¤å¤„é…ç½® Newtonsoft.Json çš„è®¾ç½®
             options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
             options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
 
-            // Ìí¼ÓÈÕÆÚÊ±¼ä×ª»»Æ÷
+            // æ·»åŠ æ—¥æœŸæ—¶é—´è½¬æ¢å™¨
             options.SerializerSettings.Converters.Add(new UTCToLocalDateTimeConverter());
 
-            // Ìí¼ÓÃ¶¾Ù×ª×Ö·û´®µÄ×ª»»Æ÷£¨ÒÑÄ¬ÈÏ¿ªÆôÃ¶¾ÙÓ³Éä£¬²»Ó¦¿ªÆô£©
+            // æ·»åŠ æšä¸¾è½¬å­—ç¬¦ä¸²çš„è½¬æ¢å™¨ï¼ˆå·²é»˜è®¤å¼€å¯æšä¸¾æ˜ å°„ï¼Œä¸åº”å¼€å¯ï¼‰
             //options.SerializerSettings.Converters.Add(new StringEnumConverter());
 
-            // Ìí¼Ó³¤ÕûĞÍ×ª×Ö·û´®µÄ×ª»»Æ÷
+            // æ·»åŠ é•¿æ•´å‹è½¬å­—ç¬¦ä¸²çš„è½¬æ¢å™¨
             options.SerializerSettings.Converters.Add(new LongToStringConverter());
         })
         .ConfigureApiBehaviorOptions(options =>
         {
             options.InvalidModelStateResponseFactory = context =>
             {
-                // ÌáÈ¡ÑéÖ¤´íÎó
+                // æå–éªŒè¯é”™è¯¯
                 Dictionary<string, string> errors = context.ModelState
                     .Where(ms => ms.Value.Errors.Count > 0)
                     .ToDictionary(
@@ -147,10 +147,10 @@ public static class ServiceCollectionExtensions
                         kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).FirstOrDefault()
                     );
 
-                // ¹¹½¨ Amis ÆÚÍûµÄÏìÓ¦¸ñÊ½
+                // æ„å»º Amis æœŸæœ›çš„å“åº”æ ¼å¼
                 var amisResponse = new
                 {
-                    msg = "ÑéÖ¤´íÎó£¬Çë¼ì²éÊäÈëÏî£¡",
+                    msg = "éªŒè¯é”™è¯¯ï¼Œè¯·æ£€æŸ¥è¾“å…¥é¡¹ï¼",
                     status = 422,
                     errors,
                 };

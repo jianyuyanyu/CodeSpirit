@@ -222,7 +222,7 @@ public static class ServiceCollectionExtensions
             builder.Configuration.GetSection("Audit"));
 
         // 添加配置中心服务（配置源和客户端）
-        builder.AddConfigCenter();
+        //builder.AddConfigCenter();
 
         // 注册事件总线
         builder.Services.AddEventBus();
@@ -267,7 +267,7 @@ public static class ServiceCollectionExtensions
         app.UseCodeSpiritAuthorization();
         await app.UseCodeSpiritNavigationAsync();
         // 启用配置中心客户端
-        app.UseConfigCenterClient();
+        //app.UseConfigCenterClient();
 
         app.UseCodeSpiritAggregator();
         return app;

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using Microsoft.Extensions.Hosting;
 
 namespace CodeSpirit.Messaging.Data.Seeders
 {
@@ -14,7 +15,7 @@ namespace CodeSpirit.Messaging.Data.Seeders
     {
         private readonly ILogger<ConversationSeeder> _logger;
         private readonly MessagingDbContext _dbContext;
-
+        public readonly IHostEnvironment _hostEnvironment;
         /// <summary>
         /// 构造函数
         /// </summary>
@@ -22,10 +23,12 @@ namespace CodeSpirit.Messaging.Data.Seeders
         /// <param name="dbContext">数据库上下文</param>
         public ConversationSeeder(
             ILogger<ConversationSeeder> logger,
-            MessagingDbContext dbContext)
+            MessagingDbContext dbContext,
+            IHostEnvironment hostEnvironment)
         {
             _logger = logger;
             _dbContext = dbContext;
+            _hostEnvironment = hostEnvironment;
         }
 
         /// <summary>
@@ -35,6 +38,12 @@ namespace CodeSpirit.Messaging.Data.Seeders
         {
             try
             {
+                // 检查 非开发环境不创建种子数据
+                if (!_hostEnvironment.IsDevelopment())
+                {
+                    return;
+                }
+
                 // 检查是否已经有数据
                 if (_dbContext.Conversations.Any())
                 {

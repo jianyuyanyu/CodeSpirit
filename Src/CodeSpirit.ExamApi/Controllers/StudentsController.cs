@@ -157,4 +157,22 @@ public class StudentsController : ApiControllerBase
         var result = await _studentService.GetByUserIdAsync(userId);
         return SuccessResponse(result);
     }
+    
+    /// <summary>
+    /// 批量分配考生到考生组
+    /// </summary>
+    /// <param name="request">批量分配请求数据</param>
+    /// <returns>分配结果</returns>
+    [HttpPost("batch/assign-groups")]
+    [Operation("批量分配考生组", "form", null, "确定要将选中的考生分配到指定考生组吗？", isBulkOperation: true)]
+    public async Task<ActionResult<ApiResponse>> BatchAssignGroups([FromBody] BatchAssignGroupsDto request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        
+        (int successCount, List<long> failedIds) = await _studentService.BatchAssignGroupsAsync(request.Ids, request.GroupIds);
+        
+        return failedIds.Any()
+            ? SuccessResponse($"成功分配 {successCount} 个考生到考生组，但以下考生分配失败: {string.Join(", ", failedIds)}")
+            : SuccessResponse($"成功分配 {successCount} 个考生到考生组！");
+    }
 } 

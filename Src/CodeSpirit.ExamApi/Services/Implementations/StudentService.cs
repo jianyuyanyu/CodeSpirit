@@ -426,4 +426,83 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         return (successCount, failedItems);
     }
 
+    /// <summary>
+    /// 批量分配考生到考生组
+    /// </summary>
+    public async Task<(int successCount, List<long> failedIds)> BatchAssignGroupsAsync(List<long> studentIds, List<long> groupIds)
+    {
+        // 验证考生组是否存在
+        var groups = await _studentGroupRepository
+            .Find(x => groupIds.Contains(x.Id))
+            .ToListAsync();
+
+        if (groups.Count != groupIds.Count)
+        {
+            throw new AppServiceException(400, "部分考生组不存在！");
+        }
+
+        // 验证考生是否存在
+        var students = await _repository
+            .Find(x => studentIds.Contains(x.Id))
+            .ToListAsync();
+
+        if (!students.Any())
+        {
+            throw new AppServiceException(400, "未找到指定的考生！");
+        }
+
+        var failedIds = new List<long>();
+        var successCount = 0;
+
+        // 获取已存在的映射关系
+        var existingMappings = await _mappingRepository
+            .Find(x => groupIds.Contains(x.StudentGroupId) && studentIds.Contains(x.StudentId))
+            .Select(x => new { x.StudentId, x.StudentGroupId })
+            .ToListAsync();
+
+        // 创建新的映射关系
+        var newMappings = new List<StudentGroupMapping>();
+        foreach (var studentId in studentIds)
+        {
+            try
+            {
+                if (!students.Any(s => s.Id == studentId))
+                {
+                    failedIds.Add(studentId);
+                    continue;
+                }
+
+                foreach (var groupId in groupIds)
+                {
+                    // 检查映射是否已存在
+                    if (!existingMappings.Any(m => m.StudentId == studentId && m.StudentGroupId == groupId))
+                    {
+                        newMappings.Add(new StudentGroupMapping
+                        {
+                            StudentId = studentId,
+                            StudentGroupId = groupId
+                        });
+                    }
+                }
+
+                if (!failedIds.Contains(studentId))
+                {
+                    successCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "为考生 {StudentId} 分配考生组时发生错误", studentId);
+                failedIds.Add(studentId);
+            }
+        }
+
+        if (newMappings.Any())
+        {
+            await _mappingRepository.AddRangeAsync(newMappings);
+            await _mappingRepository.SaveChangesAsync();
+        }
+
+        return (successCount, failedIds);
+    }
 }

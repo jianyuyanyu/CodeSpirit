@@ -63,7 +63,7 @@ public class UpdateStudentDto
         ExtractValue = true,
         Searchable = true,
         Clearable = true,
-        Placeholder = "请选择学生组"
+        Placeholder = "请选择考生组"
     )]
     public List<long> StudentGroupIds { get; set; } = new List<long>();
 } 

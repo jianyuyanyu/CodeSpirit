@@ -14,6 +14,6 @@ namespace CodeSpirit.Core.Dtos
         /// </summary>
         [Required(ErrorMessage = "ID列表不能为空")]
         [MinLength(1, ErrorMessage = "至少需要一个ID")]
-        public List<T> Ids { get; set; } = new();
+        public virtual List<T> Ids { get; set; } = new();
     }
 }

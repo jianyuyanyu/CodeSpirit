@@ -28,7 +28,7 @@ public class CreateStudentDto
     /// 性别
     /// </summary>
     [DisplayName("性别")]
-    public Gender  Gender { get; set; }
+    public Gender Gender { get; set; }
 
     /// <summary>
     /// 准考证
@@ -53,7 +53,7 @@ public class CreateStudentDto
     [Phone(ErrorMessage = "手机号码格式不正确")]
     [DisplayName("手机号码")]
     [DataType(DataType.PhoneNumber)]
-    public string PhoneNumber { get; set; } = string.Empty; 
+    public string PhoneNumber { get; set; } = string.Empty;
     /// <summary>
     /// 学生组ID列表
     /// </summary>
@@ -62,12 +62,12 @@ public class CreateStudentDto
         Source = "${ROOT_API}/api/exam/StudentGroups",
         ValueField = "id",
         LabelField = "name",
-                    Multiple = true,
-            JoinValues = false,
-            ExtractValue = true,
-            Searchable = true,
-            Clearable = true,
-            Placeholder = "请选择学生组"
+        Multiple = true,
+        JoinValues = false,
+        ExtractValue = true,
+        Searchable = true,
+        Clearable = true,
+        Placeholder = "请选择考生组"
     )]
     public List<long> StudentGroupIds { get; set; } = new List<long>();
-} 
+}

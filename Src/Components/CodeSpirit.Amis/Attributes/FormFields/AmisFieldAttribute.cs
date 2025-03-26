@@ -28,6 +28,10 @@
 
         public string VisibleOn { get; set; }
 
+        public bool Hidden {  get; set; }
+
+        public string Value { get; set; }
+
         /// <summary>
         /// 自定义表单字段的其他配置，以 JSON 字符串形式提供。
         /// </summary>

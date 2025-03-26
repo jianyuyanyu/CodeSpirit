@@ -50,6 +50,16 @@ namespace CodeSpirit.Amis.Form.Fields
                 ["visibleOn"] = fieldAttr.VisibleOn
             };
 
+            if (fieldAttr.Hidden)
+            {
+                field["hidden"] = fieldAttr.Hidden;
+            }
+
+            if (!string.IsNullOrEmpty(fieldAttr.Value))
+            {
+                field["value"] = fieldAttr.Value;
+            }
+
             // 处理额外的自定义配置
             utilityHelper.HandleAdditionalConfig(fieldAttr.AdditionalConfig, field);
 

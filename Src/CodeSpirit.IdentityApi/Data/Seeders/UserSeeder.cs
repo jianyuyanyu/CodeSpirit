@@ -48,7 +48,7 @@ public class UserSeeder : IScopedDependency
                 Gender = Gender.Unknown
             };
 
-            IdentityResult result = await _userManager.CreateAsync(adminUser, "Admin@123");
+            IdentityResult result = await _userManager.CreateAsync(adminUser, "123@Admin");
             if (result.Succeeded)
             {
                 _logger.LogInformation("管理员用户创建成功。");

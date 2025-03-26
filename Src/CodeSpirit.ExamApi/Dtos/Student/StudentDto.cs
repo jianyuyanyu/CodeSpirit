@@ -18,6 +18,7 @@ public class StudentDto
     /// 用户ID（关联到身份系统）
     /// </summary>
     [DisplayName("用户ID")]
+    [IgnoreColumn]
     public long UserId { get; set; }
 
     /// <summary>

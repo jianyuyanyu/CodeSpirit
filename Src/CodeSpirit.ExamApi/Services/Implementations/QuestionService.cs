@@ -4,7 +4,7 @@ using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Question;
-using CodeSpirit.ExamApi.Services.TextParsers;
+using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;

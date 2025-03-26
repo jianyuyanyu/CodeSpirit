@@ -6,7 +6,7 @@ using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Services;
 using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.ExamApi.Services.Interfaces;
-using CodeSpirit.ExamApi.Services.TextParsers;
+using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.EventBus.Events;

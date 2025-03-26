@@ -1,5 +1,5 @@
 using CodeSpirit.ExamApi.Data.Models.Enums;
-using CodeSpirit.ExamApi.Services.TextParsers;
+using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -596,48 +596,48 @@ D、勤劳节俭只有利于节省资源，但与提高生产力无关
         Assert.Contains("经济发展", question.Tags);
     }
 
-//    [Fact]
-//    public void Parse_SingleChoiceWithCodeSnippet_ReturnsCorrectResult()
-//    {
-//        // Arrange
-//        var text = @"一、单项选择题（每题1分）
-//31. int i=1; int  j=10;  
-//do{                    
-//   		 if(i> j) {         
-//break; 
-//}
-//i=i+2;  
-//j=j-1;
-//	}while(i<10); 
-//System.out.println(i+""\t""+j);
-//执行完毕后，i和j的值分别是 （  B    ）。
-//A. i=5   j=8 
-//B. i=9   j=6        
-//C. i=6   j=9
-//D. i=8   j=5
-//【解析】代码执行过程：第一次循环i=3,j=9；第二次i=5,j=8；第三次i=7,j=7；第四次i=9,j=6，此时i<10条件仍满足但i>j成立，触发break跳出循环。因此最终i=9,j=6。
-//【标签】循环、break语句";
+    [Fact]
+    public void Parse_SingleChoiceWithCodeSnippet_ReturnsCorrectResult()
+    {
+        // Arrange
+        var text = @"一、单项选择题（每题1分）
+31. int i=1; int  j=10;  
+do{                    
+   		 if(i> j) {         
+break; 
+}
+i=i+2;  
+j=j-1;
+	}while(i<10); 
+System.out.println(i+""\t""+j);
+执行完毕后，i和j的值分别是 （  B    ）。
+A. i=5   j=8 
+B. i=9   j=6        
+C. i=6   j=9
+D. i=8   j=5
+【解析】代码执行过程：第一次循环i=3,j=9；第二次i=5,j=8；第三次i=7,j=7；第四次i=9,j=6，此时i<10条件仍满足但i>j成立，触发break跳出循环。因此最终i=9,j=6。
+【标签】循环、break语句";
 
-//        // Act
-//        var result = _parser.Parse(text);
+        // Act
+        var result = _parser.Parse(text);
 
-//        // Assert
-//        Assert.Single(result);
-//        var question = result[0];
-//        Assert.Equal(QuestionType.SingleChoice, question.Type);
+        // Assert
+        Assert.Single(result);
+        var question = result[0];
+        Assert.Equal(QuestionType.SingleChoice, question.Type);
 
-//        Assert.Contains("int i=1; int  j=10;", question.Content);
-//        Assert.Contains("break;", question.Content);
-//        Assert.Contains("System.out.println(i+\"\\t\"+j);", question.Content);
-//        Assert.Contains("执行完毕后，i和j的值分别是", question.Content);
+        Assert.Contains("int i=1; int  j=10;", question.Content);
+        Assert.Contains("break;", question.Content);
+        Assert.Contains("System.out.println(i+\"\\t\"+j);", question.Content);
+        Assert.Contains("执行完毕后，i和j的值分别是", question.Content);
 
-//        Assert.Equal("i=9   j=6", question.CorrectAnswer);
-//        Assert.Equal(4, question.Options.Count);
-//        Assert.Equal("代码执行过程：第一次循环i=3,j=9；第二次i=5,j=8；第三次i=7,j=7；第四次i=9,j=6，此时i<10条件仍满足但i>j成立，触发break跳出循环。因此最终i=9,j=6。", question.Analysis);
-//        Assert.Equal(2, question.Tags.Count);
-//        Assert.Contains("循环", question.Tags);
-//        Assert.Contains("break语句", question.Tags);
-//    }
+        Assert.Equal("i=9   j=6", question.CorrectAnswer);
+        Assert.Equal(4, question.Options.Count);
+        Assert.Equal("代码执行过程：第一次循环i=3,j=9；第二次i=5,j=8；第三次i=7,j=7；第四次i=9,j=6，此时i<10条件仍满足但i>j成立，触发break跳出循环。因此最终i=9,j=6。", question.Analysis);
+        Assert.Equal(2, question.Tags.Count);
+        Assert.Contains("循环", question.Tags);
+        Assert.Contains("break语句", question.Tags);
+    }
 
     [Fact]
     public void Parse_SingleChoiceWithHTMLTags_ReturnsCorrectResult()

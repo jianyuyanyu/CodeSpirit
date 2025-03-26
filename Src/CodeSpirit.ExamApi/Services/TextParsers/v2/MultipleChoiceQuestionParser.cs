@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using Microsoft.Extensions.Logging;
 
-namespace CodeSpirit.ExamApi.Services.TextParsers;
+namespace CodeSpirit.ExamApi.Services.TextParsers.v2;
 
 /// <summary>
 /// 多选题解析器

@@ -1,7 +1,8 @@
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Core.Attributes;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.ExamApi.Dtos.StudentGroup;
 
@@ -44,5 +45,6 @@ public class StudentGroupDto
     /// 更新人
     /// </summary>
     [DisplayName("更新人")]
+    [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "{field}")]
     public string? UpdatedBy { get; set; }
 } 

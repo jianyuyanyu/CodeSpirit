@@ -24,4 +24,5 @@ public interface IStudentGroupService : IBaseCRUDIService<StudentGroup, StudentG
     /// 获取所有未删除的学生组
     /// </summary>
     Task<List<StudentGroupDto>> GetAllActiveGroupsAsync();
+    Task<PageList<StudentGroupDto>> GetStudentGroupsAsync(StudentGroupQueryDto queryDto);
 } 

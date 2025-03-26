@@ -43,13 +43,7 @@ public class StudentGroupsController : ApiControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PageList<StudentGroupDto>>>> GetStudentGroups([FromQuery] StudentGroupQueryDto queryDto)
     {
-        Expression<Func<StudentGroup, bool>> predicate = null;
-        if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
-        {
-            predicate = x => x.Name.Contains(queryDto.Keywords) || x.Description.Contains(queryDto.Keywords);
-        }
-
-        PageList<StudentGroupDto> groups = await _studentGroupService.GetPagedListAsync(queryDto, predicate);
+        PageList<StudentGroupDto> groups = await _studentGroupService.GetStudentGroupsAsync(queryDto);
         return SuccessResponse(groups);
     }
 

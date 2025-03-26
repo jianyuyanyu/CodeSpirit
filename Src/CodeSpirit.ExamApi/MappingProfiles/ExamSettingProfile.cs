@@ -25,8 +25,6 @@ public class ExamSettingProfile : Profile
             UpdateExamSettingDto,
             CreateExamSettingDto>();
 
-        // 学生分组映射
-        CreateMap<StudentGroup, StudentGroupDto>();
 
         CreateMap<ExamSetting, ExamSettingDto>()
             .ForMember(dest => dest.ExamPaperName, opt => opt.MapFrom(src => src.ExamPaper.Name))

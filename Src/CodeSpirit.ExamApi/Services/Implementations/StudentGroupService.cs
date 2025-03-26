@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.StudentGroup;
@@ -51,12 +52,13 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
         if (!string.IsNullOrEmpty(queryDto.Keywords))
         {
             predicate = predicate.Or(x => x.Name.Contains(queryDto.Keywords));
-            predicate = predicate.Or(x => x.Description !=null && x.Description.Contains(queryDto.Keywords));
+            predicate = predicate.Or(x => x.Description != null && x.Description.Contains(queryDto.Keywords));
         }
 
         return await GetPagedListAsync(
             queryDto,
-            predicate
+            predicate,
+            includes: ["Students"]
         );
     }
 
@@ -158,13 +160,13 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
     protected override async Task<IEnumerable<StudentGroupBatchImportDto>> ValidateImportItems(IEnumerable<StudentGroupBatchImportDto> importData)
     {
         var items = importData.ToList();
-        
+
         // 检查名称是否重复
         var existingNames = await Repository
             .Find(g => items.Select(i => i.Name).Contains(g.Name))
             .Select(g => g.Name)
             .ToListAsync();
-            
+
         return items.Where(i => !existingNames.Contains(i.Name));
     }
 
@@ -172,7 +174,7 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
     {
         base.OnImporting(entity);
 
-        if(entity.Id == default)
+        if (entity.Id == default)
             entity.Id = _idGenerator.NewId();
 
         return Task.CompletedTask;
@@ -246,4 +248,4 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
         var entities = await Repository.GetAllAsync();
         return Mapper.Map<List<StudentGroupDto>>(entities.Where(x => !x.IsDeleted));
     }
-} 
+}

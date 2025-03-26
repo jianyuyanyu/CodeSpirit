@@ -270,7 +270,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         }
 
         //// 检查时间设置
-        //if (examSetting.StartTime <= DateTime.Now)
+        //if (examSetting.StartTime <= DateTime.UtcNow)
         //{
         //    throw new AppServiceException(400, "考试开始时间必须大于当前时间");
         //}

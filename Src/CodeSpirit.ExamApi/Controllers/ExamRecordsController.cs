@@ -13,7 +13,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 public class ExamRecordsController : ApiControllerBase
 {
     private readonly IExamRecordService _examRecordService;
-    
+
     /// <summary>
     /// 构造函数
     /// </summary>
@@ -22,7 +22,7 @@ public class ExamRecordsController : ApiControllerBase
     {
         _examRecordService = examRecordService;
     }
-    
+
     /// <summary>
     /// 获取考试记录列表
     /// </summary>
@@ -31,10 +31,10 @@ public class ExamRecordsController : ApiControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PageList<ExamRecordDto>>>> GetExamRecords([FromQuery] ExamRecordQueryDto queryDto)
     {
-        var records = await _examRecordService.GetPagedListAsync(queryDto);
+        var records = await _examRecordService.GetPagedListAsync(queryDto, includes: ["ExamSetting", "Student"]);
         return SuccessResponse(records);
     }
-    
+
     /// <summary>
     /// 获取考试记录详情
     /// </summary>
@@ -46,7 +46,7 @@ public class ExamRecordsController : ApiControllerBase
         var record = await _examRecordService.GetExamRecordDetailAsync(id);
         return SuccessResponse(record);
     }
-    
+
     /// <summary>
     /// 开始考试
     /// </summary>
@@ -58,7 +58,7 @@ public class ExamRecordsController : ApiControllerBase
         var record = await _examRecordService.StartExamAsync(startExamDto);
         return SuccessResponse(record);
     }
-    
+
     /// <summary>
     /// 提交答案
     /// </summary>
@@ -70,7 +70,7 @@ public class ExamRecordsController : ApiControllerBase
         await _examRecordService.SubmitAnswerAsync(submitAnswerDto);
         return SuccessResponse();
     }
-    
+
     /// <summary>
     /// 完成考试
     /// </summary>
@@ -82,7 +82,7 @@ public class ExamRecordsController : ApiControllerBase
         var result = await _examRecordService.FinishExamAsync(finishExamDto);
         return SuccessResponse(result);
     }
-    
+
     /// <summary>
     /// 记录切屏事件
     /// </summary>
@@ -94,7 +94,7 @@ public class ExamRecordsController : ApiControllerBase
         await _examRecordService.RecordScreenSwitchAsync(recordId);
         return SuccessResponse();
     }
-    
+
     /// <summary>
     /// 获取考试统计信息
     /// </summary>
@@ -107,7 +107,7 @@ public class ExamRecordsController : ApiControllerBase
         var statistics = await _examRecordService.GetExamStatisticsAsync(examSettingId);
         return SuccessResponse(statistics);
     }
-    
+
     /// <summary>
     /// 获取错题列表
     /// </summary>
@@ -120,4 +120,4 @@ public class ExamRecordsController : ApiControllerBase
         var wrongQuestions = await _examRecordService.GetWrongQuestionsAsync(queryDto);
         return SuccessResponse(wrongQuestions);
     }
-} 
+}

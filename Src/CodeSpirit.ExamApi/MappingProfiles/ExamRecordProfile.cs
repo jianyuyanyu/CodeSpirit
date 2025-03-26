@@ -20,7 +20,7 @@ public class ExamRecordProfile : Profile
             
         // 从 StartExamDto 到 ExamRecord 的映射
         CreateMap<StartExamDto, ExamRecord>()
-            .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => DateTime.Now))
+            .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => DateTime.UtcNow))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => ExamRecordStatus.InProgress))
             .ForMember(dest => dest.ScreenSwitchCount, opt => opt.MapFrom(src => 0))
             .ForMember(dest => dest.CheatingSuspicionLevel, opt => opt.MapFrom(src => 0));

@@ -37,13 +37,13 @@ public class ExamRecordQueryDto : QueryDtoBase
     /// 开始时间范围
     /// </summary>
     [DisplayName("开始时间")]
-    public DateTime[] StartTimeRange { get; set; }
+    public DateTime[]? StartTimeRange { get; set; }
     
     /// <summary>
     /// 提交时间范围
     /// </summary>
     [DisplayName("提交时间")]
-    public DateTime[] SubmitTimeRange { get; set; }
+    public DateTime[]? SubmitTimeRange { get; set; }
     
     /// <summary>
     /// 作弊嫌疑等级(最小值)

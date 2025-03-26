@@ -60,7 +60,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         }
         
         // 检查考试是否在有效时间内
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         if (now < examSetting.StartTime || now > examSetting.EndTime)
         {
             throw new BusinessException("不在考试时间范围内");
@@ -85,7 +85,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         // 创建考试记录
         var examRecord = Mapper.Map<ExamRecord>(startExamDto);
         examRecord.AttemptNumber = attemptNumber;
-        examRecord.StartTime = DateTime.Now;
+        examRecord.StartTime = DateTime.UtcNow;
         
         // 保存考试记录
         await Repository.AddAsync(examRecord);
@@ -170,7 +170,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             answerRecord.StartTime = submitAnswerDto.StartTime;
         }
         
-        answerRecord.SubmitTime = submitAnswerDto.SubmitTime ?? DateTime.Now;
+        answerRecord.SubmitTime = submitAnswerDto.SubmitTime ?? DateTime.UtcNow;
         
         if (answerRecord.StartTime.HasValue && answerRecord.SubmitTime.HasValue)
         {
@@ -214,7 +214,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         
         // 更新考试记录状态
         examRecord.Status = ExamRecordStatus.Submitted;
-        examRecord.SubmitTime = finishExamDto.SubmitTime ?? DateTime.Now;
+        examRecord.SubmitTime = finishExamDto.SubmitTime ?? DateTime.UtcNow;
         
         if (examRecord.StartTime != null && examRecord.SubmitTime != null)
         {

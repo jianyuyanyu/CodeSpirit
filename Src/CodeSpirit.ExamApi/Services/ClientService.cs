@@ -55,7 +55,7 @@ public class ClientService : IClientService
                 .ToListAsync();
 
             // 获取可参加的考试
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var availableExams = await _context.ExamSettings
                 .Include(e => e.StudentGroups)
                 .Include(e => e.ExamPaper)
@@ -185,7 +185,7 @@ public class ClientService : IClientService
             }
 
             // 检查考试时间
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             if (examSetting.StartTime > now || examSetting.EndTime < now)
             {
                 throw new InvalidOperationException("不在考试时间范围内");
@@ -494,7 +494,7 @@ public class ClientService : IClientService
             examRecord.Score = result.TotalScore;
             examRecord.Status = ExamRecordStatus.Graded;
             examRecord.IsPassed = result.TotalScore >= examRecord.ExamSetting.ExamPaper.PassScore;
-            examRecord.GradedTime = DateTime.Now;
+            examRecord.GradedTime = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();
@@ -521,7 +521,7 @@ public class ClientService : IClientService
             }
 
             // 检查考试时间
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             if (examSetting.StartTime > now || examSetting.EndTime < now)
             {
                 throw new InvalidOperationException("不在考试时间范围内");
@@ -606,7 +606,7 @@ public class ClientService : IClientService
             }
 
             // 检查考试时间
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             if (examSetting.StartTime > now || examSetting.EndTime < now)
             {
                 throw new InvalidOperationException("不在考试时间范围内");

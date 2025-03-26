@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamRecord;
@@ -19,6 +20,7 @@ public class ExamRecordDto
     /// 考试设置ID
     /// </summary>
     [DisplayName("考试设置ID")]
+    [IgnoreColumn]
     public long ExamSettingId { get; set; }
     
     /// <summary>
@@ -31,6 +33,7 @@ public class ExamRecordDto
     /// 考生ID
     /// </summary>
     [DisplayName("考生ID")]
+    [IgnoreColumn]
     public long StudentId { get; set; }
     
     /// <summary>

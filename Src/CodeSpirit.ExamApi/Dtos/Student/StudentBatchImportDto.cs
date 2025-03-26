@@ -22,8 +22,8 @@ public class StudentBatchImportDto
     /// <summary>
     /// 学生学号/工号
     /// </summary>
-    [DisplayName("学号/工号")]
-    [JsonProperty("学号/工号")]
+    [DisplayName("学号（工号）")]
+    [JsonProperty("学号（工号）")]
     public string StudentNumber { get; set; } = string.Empty;
 
     /// <summary>

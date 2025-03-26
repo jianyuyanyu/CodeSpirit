@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rabbitmq
-  namespace: code-spirit
+  namespace: code-spirit-release
   labels:
     k8s-app: rabbitmq
 spec:
@@ -32,7 +32,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: rabbitmq
-  namespace: code-spirit
+  namespace: code-spirit-release
   labels:
     k8s-app: rabbitmq
 spec:

@@ -17,8 +17,8 @@ data:
       },
       "Jwt": {
         "SecretKey": "ECBF8FA013844D77AE041A6800D7FF8F",
-        "Issuer": "codespirit.com",
-        "Audience": "CodeSpirit"
+        "Issuer": "eschool.com",
+        "Audience": "ESchool"
       },
       "Aspire": {
         "Seq": {

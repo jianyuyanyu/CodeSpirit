@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: aspire-dashboard
-  namespace: code-spirit
+  namespace: code-spirit-release
   labels:
     k8s-app: aspire-dashboard
 spec:
@@ -38,17 +38,20 @@ apiVersion: v1
 kind: Service
 metadata:
   name: aspire-dashboard
-  namespace: code-spirit
+  namespace: code-spirit-release
   labels:
     k8s-app: aspire-dashboard
 spec:
   type: NodePort
   ports:
-  - port: 18888
+  - name: dashboard-ui
+    port: 18888
     targetPort: 18888
-  - port: 18890
+  - name: dashboard-api
+    port: 18890
     targetPort: 18890
-  - port: 18889
+  - name: dashboard-metrics
+    port: 18889
     targetPort: 18889
   selector:
     k8s-app: aspire-dashboard

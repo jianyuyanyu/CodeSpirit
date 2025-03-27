@@ -9,6 +9,7 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
 using System.Text.Json;
+using System.Net;
 
 /// <summary>
 /// 题目服务实现
@@ -246,6 +247,17 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         /// </summary>
         protected override async Task OnCreating(Question entity, CreateQuestionDto createDto)
         {
+            // HTML编码处理
+            entity.Content = WebUtility.HtmlEncode(createDto.Content);
+            entity.CorrectAnswer = WebUtility.HtmlEncode(createDto.CorrectAnswer);
+            entity.Analysis = createDto.Analysis != null ? WebUtility.HtmlEncode(createDto.Analysis) : null;
+            
+            // 对选项列表进行HTML编码处理
+            if (entity.Options != null && entity.Options.Any())
+            {
+                entity.Options = entity.Options.Select(o => WebUtility.HtmlEncode(o)).ToList();
+            }
+            
             // 处理JSON序列化
             if (createDto.Tags?.Any() == true)
             {
@@ -284,8 +296,19 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         protected override async Task OnUpdating(Question entity, UpdateQuestionDto updateDto)
         {
             // 保存修改原因，供 OnUpdated 使用
-            _changeReason = updateDto.ChangeReason;
+            _changeReason = updateDto.ChangeReason != null ? WebUtility.HtmlEncode(updateDto.ChangeReason) : null;
 
+            // HTML编码处理
+            entity.Content = WebUtility.HtmlEncode(updateDto.Content);
+            entity.CorrectAnswer = WebUtility.HtmlEncode(updateDto.CorrectAnswer);
+            entity.Analysis = updateDto.Analysis != null ? WebUtility.HtmlEncode(updateDto.Analysis) : null;
+            
+            // 对选项列表进行HTML编码处理
+            if (updateDto.Options != null && updateDto.Options.Any())
+            {
+                entity.Options = updateDto.Options.Select(o => WebUtility.HtmlEncode(o)).ToList();
+            }
+            
             // 处理 JSON 序列化
             if (updateDto.Tags?.Any() == true)
             {
@@ -332,7 +355,10 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         {
             if (!options.Any())
             {
-                throw new AppServiceException(400, "题目必须包含选项！");
+                if (type != QuestionType.TrueFalse)
+                {
+                    throw new AppServiceException(400, "题目必须包含选项！");
+                }
             }
 
             switch (type)
@@ -420,11 +446,11 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                         var question = new Question
                         {
                             Id = _idGenerator.NewId(),
-                            Content = item.Content,
+                            Content = WebUtility.HtmlEncode(item.Content),
                             Type = questionType,
                             Difficulty = (QuestionDifficulty)item.DifficultyLevel,
-                            CorrectAnswer = item.Answer,
-                            Analysis = item.Analysis,
+                            CorrectAnswer = WebUtility.HtmlEncode(item.Answer),
+                            Analysis = item.Analysis != null ? WebUtility.HtmlEncode(item.Analysis) : null,
                             Version = 1
                         };
 
@@ -577,15 +603,15 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                         var question = new Question
                         {
                             Id = _idGenerator.NewId(),
-                            Content = questionData.Content,
-                            Options = questionData.Options,
-                            CorrectAnswer = questionData.CorrectAnswer,
+                            Content = WebUtility.HtmlEncode(questionData.Content),
+                            Options = questionData.Options?.Select(o => WebUtility.HtmlEncode(o)).ToList() ?? new List<string>(),
+                            CorrectAnswer = WebUtility.HtmlEncode(questionData.CorrectAnswer),
                             Type = questionData.Type,
                             Difficulty = questionData.Difficulty,
                             CategoryId = input.CategoryId,
                             Version = 1,
                             DefaultScore = questionData.Score,
-                            Analysis = questionData.Analysis
+                            Analysis = questionData.Analysis != null ? WebUtility.HtmlEncode(questionData.Analysis) : null
                         };
 
                         // 处理标签

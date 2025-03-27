@@ -14,7 +14,7 @@ public class CreateQuestionDto
     [Required(ErrorMessage = "题目内容不能为空")]
     [StringLength(2000, ErrorMessage = "题目内容最多2000字符")]
     [DisplayName("题目内容")]
-    [AmisTextareaField(MaxLength = 2000, ShowCounter = true, Required = true)]
+    [AmisFormField(type: "editor", AdditionalConfig = "{\"language\":\"markdown\",\"size\":\"xl\"}", Required = true)]
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
@@ -52,6 +52,7 @@ public class CreateQuestionDto
     [Required(ErrorMessage = "请填写正确答案")]
     [StringLength(1000)]
     [DisplayName("正确答案")]
+    [Description("多选题请用逗号分隔，判断题答案必须是True或False。")]
     public string CorrectAnswer { get; set; } = string.Empty;
 
     /// <summary>

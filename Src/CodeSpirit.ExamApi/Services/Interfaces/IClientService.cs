@@ -64,6 +64,7 @@ public interface IClientService
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
     /// <param name="userId">用户ID</param>
+    /// <param name="userIp">用户IP地址</param>
     /// <returns>操作结果</returns>
-    Task<bool> RecordScreenSwitchAsync(long recordId, long userId);
+    Task<bool> RecordScreenSwitchAsync(long recordId, long userId, string userIp);
 } 

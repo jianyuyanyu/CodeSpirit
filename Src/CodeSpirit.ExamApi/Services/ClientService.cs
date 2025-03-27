@@ -660,8 +660,9 @@ public class ClientService : IClientService
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
     /// <param name="userId">用户ID</param>
+    /// <param name="userIp">用户IP地址</param>
     /// <returns>是否成功</returns>
-    public async Task<bool> RecordScreenSwitchAsync(long recordId, long userId)
+    public async Task<bool> RecordScreenSwitchAsync(long recordId, long userId, string userIp)
     {
         try
         {
@@ -690,6 +691,29 @@ public class ClientService : IClientService
             if (examRecord.Status != ExamRecordStatus.InProgress)
             {
                 throw new InvalidOperationException("考试已结束，无法记录切屏");
+            }
+
+            // 更新IP地址（如果提供了新的IP且不同于原IP）
+            if (!string.IsNullOrEmpty(userIp) && examRecord.IpAddress != userIp)
+            {
+                examRecord.IpAddress = userIp;
+                
+                // 如果IP变更，可能是作弊行为，记录
+                var cheatingSuspicionRecord = string.IsNullOrEmpty(examRecord.CheatingSuspicionRecord)
+                    ? new List<string>()
+                    : System.Text.Json.JsonSerializer.Deserialize<List<string>>(examRecord.CheatingSuspicionRecord);
+                    
+                if (cheatingSuspicionRecord == null)
+                {
+                    cheatingSuspicionRecord = new List<string>();
+                }
+                
+                cheatingSuspicionRecord.Add($"IP变更（{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}）：从 {examRecord.IpAddress} 变更为 {userIp}");
+                
+                examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
+                
+                // 增加作弊嫌疑等级
+                examRecord.CheatingSuspicionLevel = Math.Min(100, examRecord.CheatingSuspicionLevel + 20);
             }
 
             // 增加切屏次数

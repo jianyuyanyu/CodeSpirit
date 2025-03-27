@@ -7,6 +7,8 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using LinqKit;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -35,6 +37,89 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         _examSettingRepository = examSettingRepository;
         _studentRepository = studentRepository;
         _questionVersionRepository = questionVersionRepository;
+    }
+    
+    /// <summary>
+    /// 获取考试记录分页列表
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="predicate">额外查询条件</param>
+    /// <param name="includes">关联实体</param>
+    /// <returns>考试记录分页列表</returns>
+    public override async Task<PageList<ExamRecordDto>> GetPagedListAsync<TQueryDto>(
+        TQueryDto queryDto, 
+        Expression<Func<ExamRecord, bool>> predicate = null,
+        params string[] includes)
+    {
+        if (queryDto is ExamRecordQueryDto examRecordQueryDto)
+        {
+            var predicateBuilder = PredicateBuilder.New<ExamRecord>(true);
+            
+            // 合并传入的查询条件
+            if (predicate != null)
+            {
+                predicateBuilder = predicateBuilder.And(predicate);
+            }
+            
+            // 按考试设置ID筛选
+            if (examRecordQueryDto.ExamSettingId.HasValue)
+            {
+                predicateBuilder = predicateBuilder.And(x => x.ExamSettingId == examRecordQueryDto.ExamSettingId.Value);
+            }
+            
+            // 按学生姓名筛选
+            if (!string.IsNullOrWhiteSpace(examRecordQueryDto.StudentName))
+            {
+                predicateBuilder = predicateBuilder.And(x => x.Student.Name.Contains(examRecordQueryDto.StudentName));
+            }
+            
+            // 按考试状态筛选
+            if (examRecordQueryDto.Status.HasValue)
+            {
+                predicateBuilder = predicateBuilder.And(x => x.Status == examRecordQueryDto.Status.Value);
+            }
+            
+            // 按是否通过筛选
+            if (examRecordQueryDto.IsPassed.HasValue)
+            {
+                predicateBuilder = predicateBuilder.And(x => x.IsPassed == examRecordQueryDto.IsPassed.Value);
+            }
+            
+            // 按开始时间范围筛选
+            if (examRecordQueryDto.StartTimeRange != null && examRecordQueryDto.StartTimeRange.Length == 2)
+            {
+                DateTime startFrom = examRecordQueryDto.StartTimeRange[0];
+                DateTime startTo = examRecordQueryDto.StartTimeRange[1].AddDays(1).AddSeconds(-1); // 结束时间设为当天的23:59:59
+                
+                predicateBuilder = predicateBuilder.And(x => x.StartTime >= startFrom && x.StartTime <= startTo);
+            }
+            
+            // 按提交时间范围筛选
+            if (examRecordQueryDto.SubmitTimeRange != null && examRecordQueryDto.SubmitTimeRange.Length == 2)
+            {
+                DateTime submitFrom = examRecordQueryDto.SubmitTimeRange[0];
+                DateTime submitTo = examRecordQueryDto.SubmitTimeRange[1].AddDays(1).AddSeconds(-1); // 结束时间设为当天的23:59:59
+                
+                predicateBuilder = predicateBuilder.And(x => x.SubmitTime >= submitFrom && x.SubmitTime <= submitTo);
+            }
+            
+            // 按作弊嫌疑等级最小值筛选
+            if (examRecordQueryDto.MinCheatingSuspicionLevel.HasValue)
+            {
+                predicateBuilder = predicateBuilder.And(x => x.CheatingSuspicionLevel >= examRecordQueryDto.MinCheatingSuspicionLevel.Value);
+            }
+            
+            // 必须包含Student表关联，以支持姓名搜索
+            var includesList = includes.ToList();
+            if (!includesList.Contains("Student"))
+            {
+                includesList.Add("Student");
+            }
+            
+            return await base.GetPagedListAsync(queryDto, predicateBuilder, includesList.ToArray());
+        }
+        
+        return await base.GetPagedListAsync(queryDto, predicate, includes);
     }
     
     /// <summary>

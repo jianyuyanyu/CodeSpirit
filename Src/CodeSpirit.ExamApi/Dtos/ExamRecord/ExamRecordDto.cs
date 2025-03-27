@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamRecord;
@@ -65,13 +66,7 @@ public class ExamRecordDto
     /// </summary>
     [DisplayName("状态")]
     public ExamRecordStatus Status { get; set; }
-    
-    /// <summary>
-    /// 状态名称
-    /// </summary>
-    [DisplayName("状态")]
-    public string StatusName => Status.ToString();
-    
+        
     /// <summary>
     /// 得分
     /// </summary>
@@ -83,7 +78,11 @@ public class ExamRecordDto
     /// </summary>
     [DisplayName("是否通过")]
     public bool IsPassed { get; set; }
-    
+
+    [DisplayName("设备信息")]
+    [IgnoreColumn]
+    public string? DeviceInfo { get; set; }
+
     /// <summary>
     /// 切屏次数
     /// </summary>
@@ -101,7 +100,12 @@ public class ExamRecordDto
     /// </summary>
     [DisplayName("作弊嫌疑等级")]
     public int CheatingSuspicionLevel { get; set; }
-    
+
+    [IgnoreColumn]
+    [DisplayName("作弊嫌疑记录")]
+    [AmisFormField(type: "json")]
+    public string? CheatingSuspicionRecord { get; set; }
+
     /// <summary>
     /// 考试时长（分钟）
     /// </summary>
@@ -119,4 +123,5 @@ public class ExamRecordDto
     /// </summary>
     [DisplayName("创建时间")]
     public DateTime CreatedAt { get; set; }
+
 } 

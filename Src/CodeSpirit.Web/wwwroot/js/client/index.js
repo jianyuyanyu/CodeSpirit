@@ -145,11 +145,11 @@
                                     body: [
                                         {
                                             type: 'tpl',
-                                            tpl: '<div><span class="text-muted">开始时间：</span>${startTime|date:YYYY-MM-DD HH:mm}</div>'
+                                            tpl: '<div><span class="text-muted">开始时间：</span>${startTime}</div>'
                                         },
                                         {
                                             type: 'tpl',
-                                            tpl: '<div><span class="text-muted">结束时间：</span>${endTime|date:YYYY-MM-DD HH:mm}</div>'
+                                            tpl: '<div><span class="text-muted">结束时间：</span>${endTime}</div>'
                                         },
                                         {
                                             type: 'tpl',

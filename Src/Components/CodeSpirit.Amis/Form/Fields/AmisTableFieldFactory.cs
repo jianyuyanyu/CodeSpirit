@@ -2,7 +2,11 @@ using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Linq;
 using System.Reflection;
 
 namespace CodeSpirit.Amis.Form.Factories
@@ -31,9 +35,18 @@ namespace CodeSpirit.Amis.Form.Factories
                 ["addable"] = attr.Addable,
                 ["removable"] = attr.Removable,
                 ["draggable"] = attr.Draggable,
-                ["addButtonText"] = attr.AddButtonText
+                ["addButtonText"] = attr.AddButtonText,
+                ["showIndex"] = attr.ShowIndex,
+                ["editOnAdd"] = attr.EditOnAdd,
+                ["confirmMode"] = attr.ConfirmMode,
+                ["editable"] = attr.Editable,
+                ["copyable"] = attr.Copyable
             };
 
+            if (attr.Perpage != default)
+            {
+                field["perPage"] = attr.Perpage;
+            }
             // 获取集合元素类型
             var elementType = prop.PropertyType.GetGenericArguments().FirstOrDefault();
             if (elementType != null)
@@ -49,7 +62,7 @@ namespace CodeSpirit.Amis.Form.Factories
         private List<JObject> GenerateColumns(Type elementType, UtilityHelper utilityHelper)
         {
             var columns = new List<JObject>();
-            
+
             foreach (var prop in elementType.GetProperties())
             {
                 var column = new JObject
@@ -58,7 +71,45 @@ namespace CodeSpirit.Amis.Form.Factories
                     ["label"] = prop.GetDisplayName(),
                     ["quickEdit"] = GetQuickEditConfig(prop, utilityHelper)
                 };
+
+                // 针对枚举类型添加映射
+                var enumType = prop.PropertyType;
+                var isNullableEnum = Nullable.GetUnderlyingType(enumType)?.IsEnum == true;
                 
+                if (enumType.IsEnum || isNullableEnum)
+                {
+                    // 如果是可空枚举，获取其基础枚举类型
+                    if (isNullableEnum)
+                    {
+                        enumType = Nullable.GetUnderlyingType(enumType);
+                    }
+                    
+                    // 添加映射类型
+                    column["type"] = "mapping";
+                    
+                    // 创建枚举映射
+                    var mapping = new JObject();
+                    foreach (var enumValue in Enum.GetValues(enumType))
+                    {
+                        // 获取枚举的实际值（根据基础类型动态转换）
+                        var underlyingType = Enum.GetUnderlyingType(enumType);
+                        string value = Convert.ChangeType(enumValue, underlyingType, System.Globalization.CultureInfo.InvariantCulture).ToString();
+                        
+                        // 获取枚举的显示名称
+                        string label = enumType.GetEnumDisplayName(enumValue);
+                        mapping[value] = label;
+                    }
+                    
+                    // 如果是可空枚举，添加空值映射
+                    if (isNullableEnum)
+                    {
+                        mapping[""] = ""; // 可以自定义空值的显示文本
+                    }
+                    
+                    // 设置映射
+                    column["map"] = mapping;
+                }
+
                 columns.Add(column);
             }
 
@@ -188,4 +239,4 @@ namespace CodeSpirit.Amis.Form.Factories
             };
         }
     }
-} 
+}

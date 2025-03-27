@@ -4,6 +4,10 @@ using CodeSpirit.ExamApi.Dtos.ExamSetting;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
+using CodeSpirit.ExamApi.Data.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -50,6 +54,35 @@ public class ExamSettingsController : ApiControllerBase
             return NotFound("考试设置不存在");
         }
         return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 获取已发布考试列表用于选择
+    /// </summary>
+    /// <returns>已发布考试列表</returns>
+    [HttpGet("select-published")]
+    public async Task<ActionResult<ApiResponse<List<OptionDto<long>>>>> GetPublishedExamSettingsForSelect()
+    {
+        // 创建查询对象，只筛选已发布状态的考试
+        var queryDto = new ExamSettingQueryDto
+        {
+            Page = 1,
+            PerPage = int.MaxValue // 获取所有已发布考试
+        };
+        
+        var result = await _examSettingService.GetExamSettingsAsync(queryDto);
+        
+        // 筛选已发布状态的考试，并转换为OptionDto格式
+        var publishedExams = result.Items
+            .Where(e => e.Status == ExamSettingStatus.Published)
+            .Select(e => new OptionDto<long>
+            {
+                Id = e.Id,
+                Name = e.Name
+            })
+            .ToList();
+        
+        return SuccessResponse(publishedExams);
     }
 
     /// <summary>

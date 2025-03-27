@@ -50,7 +50,7 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("题型分布规则")]
     [Required(ErrorMessage = "题型分布规则不能为空")]
-    [AmisTableField(Addable = true, Removable = true, Draggable = true)]
+    [AmisTableField(Addable = true, Removable = true, Draggable = true, Editable = true)]
     public List<QuestionTypeRule> QuestionTypeRules { get; set; } = [];
 
     /// <summary>

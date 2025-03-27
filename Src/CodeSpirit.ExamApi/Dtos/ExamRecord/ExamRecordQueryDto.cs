@@ -1,6 +1,7 @@
-using System.ComponentModel;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Data.Models.Enums;
+using System.ComponentModel;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamRecord;
 
@@ -12,15 +13,26 @@ public class ExamRecordQueryDto : QueryDtoBase
     /// <summary>
     /// 考试设置ID
     /// </summary>
-    [DisplayName("考试设置ID")]
+    [DisplayName("考试")]
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/exam/ExamSettings/select-published",
+        ValueField = "id",
+        LabelField = "name",
+        Multiple = false,
+        JoinValues = false,
+        ExtractValue = true,
+        Searchable = true,
+        Clearable = true,
+        Placeholder = "请选择考试"
+    )]
     public long? ExamSettingId { get; set; }
     
     /// <summary>
-    /// 考生ID
+    /// 学生姓名
     /// </summary>
-    [DisplayName("考生ID")]
-    public long? StudentId { get; set; }
-    
+    [DisplayName("考生姓名")]
+    public string? StudentName { get; set; }
+        
     /// <summary>
     /// 考试状态
     /// </summary>

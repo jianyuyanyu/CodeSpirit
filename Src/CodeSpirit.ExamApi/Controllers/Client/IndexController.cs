@@ -341,7 +341,7 @@ public class IndexController : ApiControllerBase
             return Unauthorized();
         }
 
-        var userIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "未知";
+        var userIp = GetClientIpAddress() ?? "未知";
         var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
 
         var record = await _clientService.CreateExamRecordAsync(id, currentUserId, userIp, deviceInfo);
@@ -349,6 +349,56 @@ public class IndexController : ApiControllerBase
         {
             id = record.ExamSettingId
         };
+    }
+
+    /// <summary>
+    /// 获取客户端真实IP地址
+    /// </summary>
+    /// <returns>客户端IP地址</returns>
+    private string GetClientIpAddress()
+    {
+        try
+        {
+            // 按优先级尝试获取IP地址
+            string ip = null;
+            
+            // 1. 尝试从X-Forwarded-For获取
+            if (HttpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedIps))
+            {
+                var ips = forwardedIps.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
+                if (ips.Length > 0)
+                {
+                    // 通常第一个是客户端真实IP
+                    ip = ips[0]?.Trim();
+                }
+            }
+            
+            // 2. 尝试从X-Real-IP获取
+            if (string.IsNullOrEmpty(ip) && HttpContext.Request.Headers.TryGetValue("X-Real-IP", out var realIp))
+            {
+                ip = realIp.ToString().Trim();
+            }
+            
+            // 3. 使用HttpContext.Connection.RemoteIpAddress
+            if (string.IsNullOrEmpty(ip) && HttpContext.Connection.RemoteIpAddress != null)
+            {
+                ip = HttpContext.Connection.RemoteIpAddress.ToString();
+            }
+            
+            // 验证IP地址有效性（简单验证）
+            if (!string.IsNullOrEmpty(ip) && (ip.Contains('.') || ip.Contains(':')))
+            {
+                return ip;
+            }
+            
+            return "未知";
+        }
+        catch (Exception ex)
+        {
+            // 记录异常但不中断流程
+            _logger.LogError(ex, "获取客户端IP地址时发生异常");
+            return "未知";
+        }
     }
 
     /// <summary>
@@ -365,7 +415,8 @@ public class IndexController : ApiControllerBase
             return Unauthorized();
         }
         
-        await _clientService.RecordScreenSwitchAsync(id, currentUserId);
+        var userIp = GetClientIpAddress() ?? "未知";
+        await _clientService.RecordScreenSwitchAsync(id, currentUserId, userIp);
         return SuccessResponse();
     }
 }

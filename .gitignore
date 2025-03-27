@@ -362,5 +362,6 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /.cursor/rules
-/Src/CodeSpirit.ExamApi/publish.Dockerfile
-/Src/CodeSpirit.ExamApi/publish.ps1
+
+publish.Dockerfile
+publish.ps1

@@ -14,6 +14,7 @@ namespace CodeSpirit.Amis.Helpers
     {
         private readonly IHasPermissionService _permissionService;
         private readonly UtilityHelper _utilityHelper;
+        private readonly FormFieldHelper _formFieldHelper;
         private readonly IEnumerable<IAmisFieldFactory> _fieldFactories;
 
         /// <summary>
@@ -33,10 +34,12 @@ namespace CodeSpirit.Amis.Helpers
         public SearchFieldHelper(
             IHasPermissionService permissionService,
             UtilityHelper utilityHelper,
+            FormFieldHelper formFieldHelper,
             IEnumerable<IAmisFieldFactory> fieldFactories)
         {
             _permissionService = permissionService;
             _utilityHelper = utilityHelper;
+            _formFieldHelper = formFieldHelper;
             _fieldFactories = fieldFactories?.ToList() ?? throw new ArgumentNullException(nameof(fieldFactories));
         }
 
@@ -120,7 +123,7 @@ namespace CodeSpirit.Amis.Helpers
 
             if (_utilityHelper.IsSimpleType(param.ParameterType))
             {
-                JObject factoryField = CreateFieldUsingFactories(param);
+                JObject factoryField = _formFieldHelper.CreateFieldUsingFactories(param);
                 if (factoryField != null)
                 {
                     fields.Add(factoryField);
@@ -145,7 +148,7 @@ namespace CodeSpirit.Amis.Helpers
                         continue;
                     }
 
-                    JObject factoryField = CreateFieldUsingFactories(prop);
+                    JObject factoryField = _formFieldHelper.CreateFieldUsingFactories(prop);
                     if (factoryField != null)
                     {
                         fields.Add(factoryField);
@@ -158,13 +161,6 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             return fields;
-        }
-
-        private JObject CreateFieldUsingFactories(ICustomAttributeProvider member)
-        {
-            return _fieldFactories
-                .Select(factory => factory.CreateField(member, _utilityHelper))
-                .FirstOrDefault(field => field != null);
         }
 
         private JObject CreateDefaultSearchField(ICustomAttributeProvider member, string parentName = null)
@@ -195,6 +191,14 @@ namespace CodeSpirit.Amis.Helpers
                 {
                     field["options"] = memberType.GetEnumOptions();
                 }
+                else if (memberType == typeof(bool) || memberType == typeof(bool?))
+                {
+                    field["options"] = new JArray
+                    {
+                        new JObject { ["label"] = "是", ["value"] = true },
+                        new JObject { ["label"] = "否", ["value"] = false }
+                    };
+                }
             }
 
             // 处理日期类型
@@ -220,7 +224,7 @@ namespace CodeSpirit.Amis.Helpers
 
             if (type == typeof(bool) || type == typeof(bool?))
             {
-                return "switch";
+                return "select";
             }
 
             return type.IsEnum || _utilityHelper.IsNullableEnum(type)

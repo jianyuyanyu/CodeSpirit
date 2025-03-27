@@ -118,7 +118,7 @@ namespace CodeSpirit.Amis.Form
         /// <summary>
         /// 使用注册的字段工厂创建字段配置
         /// </summary>
-        private JObject CreateFieldUsingFactories(ICustomAttributeProvider member)
+        internal JObject CreateFieldUsingFactories(ICustomAttributeProvider member)
         {
             try
             {

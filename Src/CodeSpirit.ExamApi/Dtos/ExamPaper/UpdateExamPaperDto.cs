@@ -42,17 +42,4 @@ public class UpdateExamPaperDto
     [DisplayName("时长（分钟）")]
     [Range(1, 1440, ErrorMessage = "考试时长必须在1-1440分钟之间")]
     public int Duration { get; set; }
-    
-    /// <summary>
-    /// 随机试卷规则
-    /// </summary>
-    [DisplayName("随机试卷规则")]
-    [StringLength(2000, ErrorMessage = "随机规则不能超过2000个字符")]
-    public string? RandomRules { get; set; }
-    
-    /// <summary>
-    /// 题目列表
-    /// </summary>
-    [DisplayName("题目列表")]
-    public List<CreateExamPaperQuestionDto>? Questions { get; set; }
 }

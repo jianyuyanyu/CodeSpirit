@@ -707,8 +707,9 @@ public class ClientService : IClientService
                 {
                     cheatingSuspicionRecord = new List<string>();
                 }
-                
-                cheatingSuspicionRecord.Add($"IP变更（{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}）：从 {examRecord.IpAddress} 变更为 {userIp}");
+
+                //这里记录当前时间及IP变更信息
+                cheatingSuspicionRecord.Add($"IP变更（{DateTime.Now:yyyy-MM-dd HH:mm:ss}）：从 {examRecord.IpAddress} 变更为 {userIp}");
                 
                 examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
                 
@@ -742,8 +743,9 @@ public class ClientService : IClientService
                 {
                     cheatingSuspicionRecord = new List<string>();
                 }
-                
-                cheatingSuspicionRecord.Add($"切屏超限（{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}）：累计切屏 {examRecord.ScreenSwitchCount} 次，超过限制 {exceedCount} 次");
+
+                //这里记录当前时间及切屏超限信息
+                cheatingSuspicionRecord.Add($"切屏超限（{DateTime.Now:yyyy-MM-dd HH:mm:ss}）：累计切屏 {examRecord.ScreenSwitchCount} 次，超过限制 {exceedCount} 次");
                 
                 examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
             }

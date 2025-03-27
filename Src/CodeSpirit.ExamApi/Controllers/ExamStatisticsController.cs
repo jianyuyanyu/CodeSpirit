@@ -47,7 +47,6 @@ public class ExamStatisticsController : ApiControllerBase
     [HttpGet("score-statistics")]
     [Display(Name = "考试成绩统计")]
     [Chart("考试成绩统计", "展示考试成绩的各项统计指标")]
-    [ChartType(ChartType.Card)]
     public async Task<IActionResult> GetScoreStatisticsAsync(
         [FromQuery] long? examSettingId,
         [FromQuery] DateTime[] dateRange)
@@ -69,7 +68,6 @@ public class ExamStatisticsController : ApiControllerBase
     [HttpGet("pass-rate")]
     [Display(Name = "及格率分析")]
     [Chart("及格率分析", "展示考试及格率随时间的变化趋势")]
-    [ChartType(ChartType.Line)]
     [ChartData(dimensionField: "TimePeriod", metricFields: new[] { "PassRate" })]
     public async Task<IActionResult> GetPassRateAnalysisAsync(
         [FromQuery] long? examSettingId,
@@ -93,7 +91,6 @@ public class ExamStatisticsController : ApiControllerBase
     [HttpGet("score-distribution")]
     [Display(Name = "分数段分布")]
     [Chart("分数段分布", "展示考试成绩在不同分数段的分布情况")]
-    [ChartType(ChartType.Bar)]
     [ChartData(dimensionField: "ScoreRange", metricFields: new[] { "Count" })]
     public async Task<IActionResult> GetScoreDistributionAsync(
         [FromQuery] long? examSettingId,
@@ -117,7 +114,6 @@ public class ExamStatisticsController : ApiControllerBase
     [HttpGet("question-correct-rate")]
     [Display(Name = "题目正确率分析")]
     [Chart("题目正确率分析", "展示题目的正确率排名")]
-    [ChartType(ChartType.Bar)]
     [ChartData(dimensionField: "QuestionTitle", metricFields: new[] { "CorrectRate" })]
     public async Task<IActionResult> GetQuestionCorrectRateAsync(
         [FromQuery] long? examSettingId,
@@ -138,7 +134,6 @@ public class ExamStatisticsController : ApiControllerBase
     [HttpGet("wrong-question-analysis")]
     [Display(Name = "错题分析")]
     [Chart("错题分析", "展示错题频率排名")]
-    [ChartType(ChartType.Bar)]
     [ChartData(dimensionField: "QuestionTitle", metricFields: new[] { "WrongCount" })]
     public async Task<IActionResult> GetWrongQuestionAnalysisAsync(
         [FromQuery] long? examSettingId,

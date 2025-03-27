@@ -96,7 +96,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="id">试卷ID</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}/publish")]
-    [Operation("发布", "ajax", null, "确定要发布此试卷吗？")]
+    [Operation("发布", "ajax", null, "确定要发布此试卷吗？", visibleOn: "status == 1")]
     public async Task<ActionResult<ApiResponse>> PublishExamPaper(long id)
     {
         await _examPaperService.PublishExamPaperAsync(id);
@@ -109,7 +109,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="id">试卷ID</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}/unpublish")]
-    [Operation("取消发布", "ajax", null, "确定要取消发布此试卷吗？")]
+    [Operation("取消发布", "ajax", null, "确定要取消发布此试卷吗？", visibleOn: "status == 2")]
     public async Task<ActionResult<ApiResponse>> UnpublishExamPaper(long id)
     {
         await _examPaperService.UnpublishExamPaperAsync(id);

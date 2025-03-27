@@ -189,41 +189,6 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             // 更新基本信息
             _mapper.Map(updateDto, examPaper);
 
-            // 更新题目列表
-            if (updateDto.Questions != null)
-            {
-                // 删除原有题目
-                await _examPaperQuestionRepository.ExecuteInTransactionAsync(async () =>
-                {
-                    foreach (var question in examPaper.ExamPaperQuestions)
-                    {
-                        await _examPaperQuestionRepository.DeleteAsync(question);
-                    }
-
-                    // 添加新题目
-                    var examPaperQuestions = new List<ExamPaperQuestion>();
-                    foreach (var questionDto in updateDto.Questions)
-                    {
-                        var examPaperQuestion = _mapper.Map<ExamPaperQuestion>(questionDto);
-                        examPaperQuestion.ExamPaperId = examPaper.Id;
-                        examPaperQuestions.Add(examPaperQuestion);
-                    }
-
-                    await _examPaperQuestionRepository.AddRangeAsync(examPaperQuestions, false);
-                });
-
-                // 计算难度系数
-                var questionIds = updateDto.Questions.Select(q => q.QuestionId).ToList();
-                var questions = await _questionRepository
-                    .Find(q => questionIds.Contains(q.Id))
-                    .ToListAsync();
-
-                if (questions.Any())
-                {
-                    examPaper.DifficultyLevel = CalculateDifficultyLevel(questions);
-                }
-            }
-
             await _examPaperRepository.UpdateAsync(examPaper);
         }
 

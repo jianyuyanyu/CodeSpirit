@@ -128,7 +128,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <param name="id">考试设置ID</param>
     /// <returns>发布结果</returns>
     [HttpPost("{id}/publish")]
-    [Operation("发布", "ajax", null, "确定要发布此试卷吗？")]
+    [Operation("发布", "ajax", null, "确定要发布此试卷吗？",visibleOn: "status == 0")]
     public async Task<ActionResult<ApiResponse>> PublishExamSetting(long id)
     {
         await _examSettingService.PublishExamSettingAsync(id);
@@ -141,7 +141,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <param name="id">考试设置ID</param>
     /// <returns>取消发布结果</returns>
     [HttpPost("{id}/unpublish")]
-    [Operation("取消发布", "ajax", null, "确定要取消发布此试卷吗？")]
+    [Operation("取消发布", "ajax", null, "确定要取消发布此试卷吗？", visibleOn: "status == 1")]
     public async Task<ActionResult<ApiResponse>> UnpublishExamSetting(long id)
     {
         await _examSettingService.UnpublishExamSettingAsync(id);

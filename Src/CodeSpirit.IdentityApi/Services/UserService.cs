@@ -845,4 +845,79 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
 
         return Mapper.Map<UserDto>(createdUser);
     }
+
+    /// <summary>
+    /// 根据用户名查询用户
+    /// </summary>
+    /// <param name="userName">用户名</param>
+    /// <returns>用户信息</returns>
+    public async Task<UserDto> GetUserByUserNameAsync(string userName)
+    {
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            throw new AppServiceException(400, "用户名不能为空！");
+        }
+
+        var user = await _userManager.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.UserName == userName);
+
+        if (user == null)
+        {
+            return null;
+        }
+
+        return Mapper.Map<UserDto>(user);
+    }
+
+    /// <summary>
+    /// 根据手机号查询用户
+    /// </summary>
+    /// <param name="phoneNumber">手机号</param>
+    /// <returns>用户信息</returns>
+    public async Task<UserDto> GetUserByPhoneNumberAsync(string phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            throw new AppServiceException(400, "手机号不能为空！");
+        }
+        
+        var user = await _userManager.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
+        
+        if (user == null)
+        {
+            return null;
+        }
+        
+        return Mapper.Map<UserDto>(user);
+    }
+
+    /// <summary>
+    /// 根据身份证号码查询用户
+    /// </summary>
+    /// <param name="idNo">身份证号码</param>
+    /// <returns>用户信息</returns>
+    public async Task<UserDto> GetUserByIdNoAsync(string idNo)
+    {
+        if (string.IsNullOrWhiteSpace(idNo))
+        {
+            throw new AppServiceException(400, "身份证号码不能为空！");
+        }
+        
+        var user = await _userManager.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.IdNo == idNo);
+        
+        if (user == null)
+        {
+            return null;
+        }
+        
+        return Mapper.Map<UserDto>(user);
+    }
 }

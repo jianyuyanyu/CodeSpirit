@@ -7,6 +7,10 @@
     // 获取考试ID
     const examId = window.location.pathname.split('/').pop();
     window.enableAMISDebug = true;
+    
+    // 创建全局切屏计数变量
+    window.screenSwitchCount = 0;
+    
     // 全局数据对象，用于存储用户信息和考试数据
     window.globalData = {
         user: {
@@ -22,7 +26,9 @@
             startTime: null,
             endTime: null,
             totalScore: 0,
-            recordId: null
+            recordId: null,
+            screenSwitchCount: 0,         // 添加切屏次数属性
+            allowedScreenSwitchCount: 0   // 添加允许切屏次数属性
         },
         timer: {
             displayText: '加载中...',
@@ -31,6 +37,246 @@
             seconds: 0,
             remainingSeconds: 0
         }
+    };
+
+    // 改进显示警告的函数，使用正确的AMIS API
+    window.showScreenSwitchWarning = function(message) {
+        try {
+            console.log("[切屏警告] 尝试显示AMIS警告弹窗");
+            
+            // 默认消息
+            const warningMessage = message || "警告：系统已记录您的切屏行为！频繁切屏可能会被判定为作弊行为。";
+        
+            
+            // 尝试方法4：添加一个自定义通知
+            const createCustomNotification = function() {
+                // 创建通知DOM元素
+                const notification = document.createElement('div');
+                notification.className = 'custom-notification warning';
+                notification.innerHTML = `
+                    <div class="notification-title">切屏警告</div>
+                    <div class="notification-body">${warningMessage}</div>
+                `;
+                
+                // 添加样式
+                notification.style.position = 'fixed';
+                notification.style.top = '20px';
+                notification.style.right = '20px';
+                notification.style.backgroundColor = '#ffebee';
+                notification.style.color = '#f44336';
+                notification.style.padding = '15px';
+                notification.style.borderRadius = '4px';
+                notification.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+                notification.style.zIndex = '9999';
+                notification.style.maxWidth = '300px';
+                notification.style.animation = 'fadeIn 0.3s ease';
+                
+                // 添加到页面
+                document.body.appendChild(notification);
+                
+                // 5秒后自动移除
+                setTimeout(() => {
+                    notification.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => {
+                        if (document.body.contains(notification)) {
+                            document.body.removeChild(notification);
+                        }
+                    }, 300);
+                }, 5000);
+                
+                return true;
+            };
+            
+            // 添加必要的CSS动画
+            const addAnimationStyles = function() {
+                if (!document.getElementById('custom-notification-styles')) {
+                    const style = document.createElement('style');
+                    style.id = 'custom-notification-styles';
+                    style.innerHTML = `
+                        @keyframes fadeIn {
+                            from { opacity: 0; transform: translateY(-20px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+                        @keyframes fadeOut {
+                            from { opacity: 1; transform: translateY(0); }
+                            to { opacity: 0; transform: translateY(-20px); }
+                        }
+                        .custom-notification {
+                            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+                        }
+                        .custom-notification .notification-title {
+                            font-weight: bold;
+                            margin-bottom: 5px;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+            };
+            
+            // 尝试自定义通知
+            addAnimationStyles();
+            createCustomNotification();
+            console.log("[切屏警告] 使用自定义通知方式显示警告");
+            return true;
+            
+        } catch (error) {
+            console.error("[切屏警告] 显示AMIS警告时出错:", error);
+            
+            // 最后的后备方案：使用原生alert (不推荐，会触发新的切屏事件)
+            // alert(message || "警告：系统已记录您的切屏行为！频繁切屏可能会被判定为作弊行为。");
+            return false;
+        }
+    };
+    
+    // 修改recordScreenSwitch函数，使用AMIS弹框代替alert
+    window.recordScreenSwitch = function() {
+        try {
+            console.log("[切屏检测] 检测到切屏行为");
+            
+            // 获取记录ID - 从全局变量获取
+            const recordId = window.globalData.exam.recordId;
+            if (!recordId) {
+                console.error("[切屏检测] 无法获取考试记录ID");
+                
+                // 使用AMIS弹框显示警告
+                window.showScreenSwitchWarning("警告：系统检测到切屏行为！请勿频繁切换窗口。");
+                return;
+            }
+            
+            // 获取允许的切屏次数
+            const allowedCount = window.globalData.exam.allowedScreenSwitchCount || 0;
+            
+            // 更新计数(使用全局变量)
+            window.screenSwitchCount++;
+            // 同步到globalData
+            window.globalData.exam.screenSwitchCount = window.screenSwitchCount;
+            console.log("[切屏检测] 当前切屏次数:", window.screenSwitchCount);
+            
+            // 显示警告信息，根据切屏次数和允许次数调整内容
+            if (allowedCount > 0) {
+                if (window.screenSwitchCount > allowedCount) {
+                    // 超过允许次数
+                    window.showScreenSwitchWarning(`严重警告：您已超出允许的切屏次数(${allowedCount}次)！此行为已被记录为作弊嫌疑。`);
+                } else {
+                    // 未超过允许次数
+                    window.showScreenSwitchWarning(`警告：系统已记录您的切屏行为！您已切屏 ${window.screenSwitchCount} 次，允许切屏 ${allowedCount} 次。`);
+                }
+            } else {
+                // 没有明确的允许次数
+                window.showScreenSwitchWarning();
+            }
+            
+            // 直接更新DOM显示
+            const switchCountElements = document.querySelectorAll('.screen-switch-value');
+            if (switchCountElements && switchCountElements.length > 0) {
+                switchCountElements.forEach(el => {
+                    el.textContent = window.screenSwitchCount.toString();
+                });
+            }
+            
+            // 发送切屏记录到服务器
+            fetch(`/exam/api/exam/client/${recordId}/screen-switch`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'X-Forwarded-With': 'CodeSpirit'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 0) {
+                    console.log("[切屏检测] 切屏记录已成功发送到服务器");
+                    
+                    // 如果服务器返回了更新后的切屏次数，更新本地计数
+                    if (data.data && typeof data.data.screenSwitchCount === 'number') {
+                        window.screenSwitchCount = data.data.screenSwitchCount;
+                        window.globalData.exam.screenSwitchCount = data.data.screenSwitchCount;
+                        
+                        // 更新DOM显示
+                        const elements = document.querySelectorAll('.screen-switch-value');
+                        if (elements && elements.length > 0) {
+                            elements.forEach(el => {
+                                el.textContent = window.screenSwitchCount.toString();
+                            });
+                        }
+                    }
+                } else {
+                    console.error("[切屏检测] 记录切屏失败:", data.msg);
+                }
+            })
+            .catch(error => {
+                console.error("[切屏检测] 发送切屏记录时出错:", error);
+            });
+        } catch (error) {
+            console.error("[切屏检测] 记录切屏过程中发生错误:", error);
+        }
+    };
+    
+    // 更新切屏检测初始化函数，但保留现有功能
+    window.setupScreenSwitchDetection = function() {
+        console.log("[切屏检测] 正在设置切屏检测...");
+        
+        try {
+            // 检查是否已有记录ID
+            if (!window.globalData.exam.recordId) {
+                console.warn("[切屏检测] 记录ID未设置，将在3秒后重试");
+                setTimeout(window.setupScreenSwitchDetection, 3000);
+                return;
+            }
+            
+            // 移除可能存在的旧事件监听器
+            document.removeEventListener('visibilitychange', window.handleVisibilityChange);
+            window.removeEventListener('blur', window.handleWindowBlur);
+            
+            // 添加事件监听
+            document.addEventListener('visibilitychange', window.handleVisibilityChange);
+            window.addEventListener('blur', window.handleWindowBlur);
+            
+            // 初始化切屏次数显示
+            window.screenSwitchCount = window.globalData.exam.screenSwitchCount || 0;
+            
+            // 更新DOM显示
+            const switchCountElements = document.querySelectorAll('.screen-switch-value');
+            if (switchCountElements && switchCountElements.length > 0) {
+                switchCountElements.forEach(el => {
+                    el.textContent = window.screenSwitchCount.toString();
+                });
+            }
+            
+            // 更新允许切屏次数显示
+            const allowedSwitchElements = document.querySelectorAll('.allowed-switch-value');
+            if (allowedSwitchElements && allowedSwitchElements.length > 0) {
+                const allowedCount = window.globalData.exam.allowedScreenSwitchCount || 0;
+                allowedSwitchElements.forEach(el => {
+                    el.textContent = allowedCount.toString();
+                });
+            }
+            
+            // 如果有允许的切屏次数，显示初始提示
+            const allowedCount = window.globalData.exam.allowedScreenSwitchCount || 0;
+            if (allowedCount > 0) {
+                // 5秒后显示切屏限制提示
+                setTimeout(() => {
+                    window.showScreenSwitchWarning(`本次考试允许切屏 ${allowedCount} 次，超过将被记录为作弊嫌疑。当前已切屏 ${window.screenSwitchCount} 次。`);
+                }, 5000);
+            }
+            
+            console.log("[切屏检测] 切屏检测已成功启用");
+        } catch (error) {
+            console.error("[切屏检测] 设置切屏检测时发生错误:", error);
+        }
+    };
+    
+    // 事件处理函数
+    window.handleVisibilityChange = function() {
+        if (document.visibilityState === 'hidden') {
+            window.recordScreenSwitch();
+        }
+    };
+    
+    window.handleWindowBlur = function() {
+        window.recordScreenSwitch();
     };
 
     // 全局数据辅助函数
@@ -683,6 +929,18 @@
                                         tpl: '<div class="exam-timer">剩余时间：${timer.displayText}</div>'
                                     }
                                 ]
+                            },
+                            {
+                                type: 'flex',
+                                justify: 'flex-end',
+                                alignItems: 'center',
+                                className: 'screen-switch-counter',
+                                items: [
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="screen-switch-count">切屏次数：<span class="screen-switch-value">0</span>/<span class="allowed-switch-value">${allowedScreenSwitchCount || "?"}</span></div>'
+                                    }
+                                ]
                             }
                         ]
                     }
@@ -693,12 +951,11 @@
                             {
                                 actionType: "custom",
                                 script: `
-                                    console.log("fetchSuccess事件已触发", event.data);
-                                    window.GlobalData.set('user.id', event.data.id || null);
-                                    window.GlobalData.set('user.name', event.data.name || event.data.userName || '');
-                                    window.GlobalData.set('user.avatar', event.data.avatar || '');
-                                    window.GlobalData.set('user.roles', event.data.roles || []);
-                                    window.GlobalData.syncToAmis(window.amisInstance);
+                                    console.log("用户数据加载成功", event.data);
+                                    window.globalData.user.id = event.data.id || null;
+                                    window.globalData.user.name = event.data.name || event.data.userName || '';
+                                    window.globalData.user.avatar = event.data.avatar || '';
+                                    window.globalData.user.roles = event.data.roles || [];
                                 `
                             }
                         ]
@@ -715,22 +972,71 @@
                             {
                                 actionType: "custom",
                                 script: `
-                                    console.log("考试数据加载成功", event.data); 
-                                    recordId = event.data.recordId; 
-                                    
-                                    // 更新全局考试数据
-                                    window.GlobalData.set('exam.name', event.data.name || '');
-                                    window.GlobalData.set('exam.duration', event.data.duration || 0);
-                                    window.GlobalData.set('exam.startTime', event.data.startTime || null);
-                                    window.GlobalData.set('exam.endTime', event.data.endTime || null);
-                                    window.GlobalData.set('exam.totalScore', event.data.totalScore || 0);
-                                    window.GlobalData.set('exam.recordId', event.data.recordId || null);
-                                    
-                                    // 启动计时器
                                     try {
-                                        startExamTimer(event.data.duration, event.data.startTime);
+                                        console.log("考试数据加载成功", event.data); 
+                                        
+                                        // 从API响应中获取记录ID
+                                        recordId = event.data.recordId;
+                                        
+                                        // 更新全局考试数据
+                                        window.globalData.exam.name = event.data.name || '';
+                                        window.globalData.exam.duration = event.data.duration || 0;
+                                        window.globalData.exam.startTime = event.data.startTime || null;
+                                        window.globalData.exam.endTime = event.data.endTime || null;
+                                        window.globalData.exam.totalScore = event.data.totalScore || 0;
+                                        window.globalData.exam.recordId = event.data.recordId || null;
+                                        
+                                        // 更新切屏相关数据
+                                        window.globalData.exam.screenSwitchCount = event.data.screenSwitchCount || 0;
+                                        window.globalData.exam.allowedScreenSwitchCount = event.data.allowedScreenSwitchCount || 0;
+                                        
+                                        // 从API同步切屏次数到全局变量
+                                        window.screenSwitchCount = event.data.screenSwitchCount || 0;
+                                        
+                                        // 更新UI显示
+                                        const switchCountElements = document.querySelectorAll('.screen-switch-value');
+                                        if (switchCountElements && switchCountElements.length > 0) {
+                                            switchCountElements.forEach(el => {
+                                                el.textContent = window.screenSwitchCount.toString();
+                                            });
+                                        }
+                                        
+                                        // 更新允许切屏次数显示
+                                        const allowedSwitchElements = document.querySelectorAll('.allowed-switch-value');
+                                        if (allowedSwitchElements && allowedSwitchElements.length > 0) {
+                                            allowedSwitchElements.forEach(el => {
+                                                el.textContent = window.globalData.exam.allowedScreenSwitchCount.toString();
+                                            });
+                                        }
+                                        
+                                        // 显示调试信息
+                                        console.log("全局数据已更新:", {
+                                            exam: window.globalData.exam,
+                                            recordId: window.globalData.exam.recordId,
+                                            screenSwitch: {
+                                                count: window.globalData.exam.screenSwitchCount,
+                                                allowed: window.globalData.exam.allowedScreenSwitchCount
+                                            }
+                                        });
+                                        
+                                        // 启动计时器
+                                        try {
+                                            startExamTimer(event.data.duration, event.data.startTime);
+                                        } catch (error) {
+                                            console.error("调用计时器函数失败", error);
+                                        }
+                                        
+                                        // 在考试数据加载后初始化切屏检测（延迟执行确保数据已加载）
+                                        setTimeout(function() {
+                                            console.log("延迟执行切屏检测初始化");
+                                            if (typeof window.setupScreenSwitchDetection === 'function') {
+                                                window.setupScreenSwitchDetection();
+                                            } else {
+                                                console.error("切屏检测函数未定义");
+                                            }
+                                        }, 2000);
                                     } catch (error) {
-                                        console.error("调用计时器函数失败", error);
+                                        console.error("处理考试数据时出错:", error);
                                     }
                                 `
                             }
@@ -1223,6 +1529,38 @@
                 'margin-top': '10px',
                 'background-color': '#fafafa',
                 'box-shadow': '0 1px 3px rgba(0,0,0,0.03)'
+            },
+            '.screen-switch-counter': {
+                'margin-left': '20px'
+            },
+            '.screen-switch-count': {
+                'font-size': '14px',
+                'font-weight': '500',
+                'color': '#f44336',
+                'background-color': 'rgba(244, 67, 54, 0.1)',
+                'padding': '6px 12px',
+                'border-radius': 'var(--border-radius)',
+                'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
+                'transition': 'all 0.3s ease',
+                'display': 'flex',
+                'align-items': 'center'
+            },
+            '.screen-switch-count::before': {
+                'content': '""',
+                'display': 'inline-block',
+                'width': '8px',
+                'height': '8px',
+                'background-color': '#f44336',
+                'border-radius': '50%',
+                'margin-right': '6px'
+            },
+            '.screen-switch-value': {
+                'font-weight': 'bold',
+                'margin-left': '4px'
+            },
+            '.allowed-switch-value': {
+                'font-weight': 'normal',
+                'opacity': '0.8'
             }
         }
     };
@@ -1248,7 +1586,8 @@
                     minutes: 0,
                     seconds: 0,
                     remainingSeconds: 0
-                }
+                },
+                name: ''
             },
             locale: 'zh-CN',
             context: {
@@ -1313,7 +1652,10 @@
     });
 
     // 在考试页面加载完成后初始化答案
-    document.addEventListener('DOMContentLoaded', initializeAnswersFromStorage);
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeAnswersFromStorage();
+        // 不在这里初始化切屏检测
+    });
 
     // 添加页面卸载时的保存机制
     window.addEventListener('beforeunload', function() {
@@ -1329,4 +1671,18 @@
             console.error('[页面卸载] 保存答案失败：', error);
         }
     });
+
+    // 添加这个函数来打印全局数据状态
+    function debugGlobalData() {
+        console.log("全局数据状态:", {
+            user: window.globalData.user,
+            exam: window.globalData.exam,
+            recordId: window.globalData.exam?.recordId
+        });
+    }
+
+    // 定期输出全局数据状态，仅用于调试
+    if (window.location.href.includes('/client/exam/')) {
+        setInterval(debugGlobalData, 5000);
+    }
 })(); 

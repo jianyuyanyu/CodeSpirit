@@ -54,4 +54,22 @@ public class ClientExamBasicInfoDto
     /// </summary>
     [DisplayName("考试记录ID")]
     public long? RecordId { get; set; }
+    
+    /// <summary>
+    /// 允许切屏次数
+    /// </summary>
+    [DisplayName("允许切屏次数")]
+    public int AllowedScreenSwitchCount { get; set; }
+    
+    /// <summary>
+    /// 当前切屏次数
+    /// </summary>
+    [DisplayName("当前切屏次数")]
+    public int ScreenSwitchCount { get; set; }
+    
+    /// <summary>
+    /// 是否启用切屏检测
+    /// </summary>
+    [DisplayName("是否启用切屏检测")]
+    public bool EnableScreenSwitchDetection => AllowedScreenSwitchCount >= 0;
 } 

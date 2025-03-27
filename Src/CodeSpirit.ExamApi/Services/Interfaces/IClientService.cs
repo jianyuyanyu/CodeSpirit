@@ -58,4 +58,12 @@ public interface IClientService
     /// <returns>考试基本信息</returns>
     Task<ClientExamBasicInfoDto> GetExamBasicInfoAsync(long examId, long userId);
     Task<ExamRecord> CreateExamRecordAsync(long examId, long userId, string userIp, string deviceInfo);
+
+    /// <summary>
+    /// 记录切屏事件
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>操作结果</returns>
+    Task<bool> RecordScreenSwitchAsync(long recordId, long userId);
 } 

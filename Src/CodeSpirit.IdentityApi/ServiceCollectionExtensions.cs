@@ -228,7 +228,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddEventBus();
 
         // 注册事件处理器
-        builder.Services.AddEventHandler<UserCreatedEvent, UserCreatedEventHandler>();
+        builder.Services.AddEventHandler<UserCreatedOrUpdatedEvent, UserCreatedOrUpdatedEventHandler>();
 
         return builder;
     }

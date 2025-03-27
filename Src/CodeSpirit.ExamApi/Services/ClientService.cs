@@ -568,7 +568,9 @@ public class ClientService : IClientService
                 StartTime = existingRecord?.StartTime ?? now,
                 EndTime = examSetting.EndTime,
                 TotalScore = examSetting.ExamPaper.TotalScore,
-                RecordId = existingRecord?.Id
+                RecordId = existingRecord?.Id,
+                AllowedScreenSwitchCount = examSetting.AllowedScreenSwitchCount,
+                ScreenSwitchCount = existingRecord?.ScreenSwitchCount ?? 0
             };
 
             return examBasicInfo;
@@ -649,6 +651,89 @@ public class ClientService : IClientService
             ex is not InvalidOperationException)
         {
             _logger.LogError(ex, "创建考试记录时发生错误");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 记录切屏事件
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>是否成功</returns>
+    public async Task<bool> RecordScreenSwitchAsync(long recordId, long userId)
+    {
+        try
+        {
+            // 获取学生实体
+            var student = await _context.Students
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到考生信息");
+            }
+
+            // 获取考试记录
+            var examRecord = await _context.ExamRecords
+                .Include(r => r.ExamSetting)
+                .Where(r => r.Id == recordId && r.StudentId == student.Id)
+                .FirstOrDefaultAsync();
+
+            if (examRecord == null)
+            {
+                throw new ArgumentException("考试记录不存在", nameof(recordId));
+            }
+
+            // 检查考试状态
+            if (examRecord.Status != ExamRecordStatus.InProgress)
+            {
+                throw new InvalidOperationException("考试已结束，无法记录切屏");
+            }
+
+            // 增加切屏次数
+            examRecord.ScreenSwitchCount += 1;
+            
+            // 更新作弊嫌疑等级
+            int maxAllowedSwitches = examRecord.ExamSetting.AllowedScreenSwitchCount;
+            if (maxAllowedSwitches > 0 && examRecord.ScreenSwitchCount > maxAllowedSwitches)
+            {
+                // 超过允许的切屏次数，提高作弊嫌疑等级
+                int exceedCount = examRecord.ScreenSwitchCount - maxAllowedSwitches;
+                int suspicionIncrease = 10 * exceedCount; // 每超过一次增加10点嫌疑
+                
+                examRecord.CheatingSuspicionLevel += suspicionIncrease;
+                if (examRecord.CheatingSuspicionLevel > 100)
+                {
+                    examRecord.CheatingSuspicionLevel = 100; // 最大不超过100
+                }
+                
+                // 记录作弊嫌疑记录
+                var cheatingSuspicionRecord = string.IsNullOrEmpty(examRecord.CheatingSuspicionRecord)
+                    ? new List<string>()
+                    : System.Text.Json.JsonSerializer.Deserialize<List<string>>(examRecord.CheatingSuspicionRecord);
+                    
+                if (cheatingSuspicionRecord == null)
+                {
+                    cheatingSuspicionRecord = new List<string>();
+                }
+                
+                cheatingSuspicionRecord.Add($"切屏超限（{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}）：累计切屏 {examRecord.ScreenSwitchCount} 次，超过限制 {exceedCount} 次");
+                
+                examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
+            }
+
+            // 保存更改
+            await _context.SaveChangesAsync();
+            
+            _logger.LogInformation($"考试ID {recordId} 切屏记录更新，当前切屏次数: {examRecord.ScreenSwitchCount}");
+            
+            return true;
+        }
+        catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
+        {
+            _logger.LogError(ex, $"记录切屏事件时发生错误（考试记录ID: {recordId}）");
             throw;
         }
     }

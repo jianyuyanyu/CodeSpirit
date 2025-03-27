@@ -240,7 +240,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     {
         try
         {
-            var @event = new UserCreatedEvent
+            var @event = new UserCreatedOrUpdatedEvent
             {
                 UserId = student.UserId,
                 UserName = student.IdNo,

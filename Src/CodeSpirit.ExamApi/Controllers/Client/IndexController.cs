@@ -350,4 +350,22 @@ public class IndexController : ApiControllerBase
             id = record.ExamSettingId
         };
     }
+
+    /// <summary>
+    /// 记录切屏事件
+    /// </summary>
+    /// <param name="id">考试记录ID</param>
+    /// <returns>操作结果</returns>
+    [HttpPost("{id}/screen-switch")]
+    public async Task<ActionResult<ApiResponse>> RecordScreenSwitch(long id)
+    {
+        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
+        if (currentUserId == 0)
+        {
+            return Unauthorized();
+        }
+        
+        await _clientService.RecordScreenSwitchAsync(id, currentUserId);
+        return SuccessResponse();
+    }
 }

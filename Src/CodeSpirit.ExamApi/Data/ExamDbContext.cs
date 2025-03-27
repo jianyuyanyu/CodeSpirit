@@ -148,6 +148,7 @@ public class ExamDbContext : AuditableDbContext
             .WithOne(epq => epq.ExamPaper)
             .HasForeignKey(epq => epq.ExamPaperId)
             .OnDelete(DeleteBehavior.Cascade);
+
     }
 
     private void ConfigureQuestionEntities(ModelBuilder modelBuilder)

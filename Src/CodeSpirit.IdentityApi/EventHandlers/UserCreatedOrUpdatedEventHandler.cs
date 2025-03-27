@@ -14,17 +14,17 @@ namespace CodeSpirit.IdentityApi.EventHandlers;
 /// <summary>
 /// 用户创建事件处理器
 /// </summary>
-public class UserCreatedEventHandler : IEventHandler<UserCreatedEvent>
+public class UserCreatedOrUpdatedEventHandler : IEventHandler<UserCreatedOrUpdatedEvent>
 {
     private readonly IUserService _userService;
-    private readonly ILogger<UserCreatedEventHandler> _logger;
+    private readonly ILogger<UserCreatedOrUpdatedEventHandler> _logger;
 
     /// <summary>
     /// 构造函数
     /// </summary>
-    public UserCreatedEventHandler(
+    public UserCreatedOrUpdatedEventHandler(
         IUserService userService,
-        ILogger<UserCreatedEventHandler> logger)
+        ILogger<UserCreatedOrUpdatedEventHandler> logger)
     {
         _userService = userService;
         _logger = logger;
@@ -33,33 +33,39 @@ public class UserCreatedEventHandler : IEventHandler<UserCreatedEvent>
     /// <summary>
     /// 处理用户创建事件
     /// </summary>
-    public async Task HandleAsync(UserCreatedEvent @event)
+    public async Task HandleAsync(UserCreatedOrUpdatedEvent @event)
     {
         try
         {
             // 查询用户是否存在
-            var existingUser = await _userService.GetAsync(@event.UserId);
+            var existingUser = await _userService.GetUserByUserNameAsync(@event.IdNo);
 
             if (existingUser != null)
             {
                 // 更新已存在的用户信息
-                _logger.LogInformation("用户创建事件：更新用户信息, 用户ID: {@UserId}", @event.UserId);
+                _logger.LogInformation("用户更新事件：更新用户信息, 用户ID: {@UserId}", @event.UserId);
 
-                var updateUserDto = new UpdateUserDto
+                if (@event.UserId != existingUser.Id)
                 {
-                    Name = @event.Name,
-                    PhoneNumber = @event.PhoneNumber,
-                    IdNo = @event.IdNo,
-                    IsActive = @event.IsActive
-                };
+                    _logger.LogWarning("用户更新事件：用户ID不匹配, 用户ID: {@UserId}", @event.UserId);
+                }
+                else
+                {
+                    var updateUserDto = new UpdateUserDto
+                    {
+                        Name = @event.Name,
+                        PhoneNumber = @event.PhoneNumber,
+                        IdNo = @event.IdNo,
+                        IsActive = @event.IsActive
+                    };
 
-                await _userService.UpdateAsync(@event.UserId, updateUserDto);
+                    await _userService.UpdateAsync(@event.UserId, updateUserDto);
+                }
             }
             else
             {
                 // 创建新用户
                 _logger.LogInformation("用户创建事件：创建新用户, 姓名: {@Name}", @event.Name);
-                _logger.LogError("用户创建事件：创建新用户, 姓名: {Name}", @event.Name);
                 var createUserDto = new CreateUserDto
                 {
                     UserName = @event.UserName,

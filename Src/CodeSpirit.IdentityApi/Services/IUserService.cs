@@ -84,4 +84,25 @@ public interface IUserService : IBaseCRUDIService<ApplicationUser, UserDto, long
         string password = null, 
         long? creatorId = null,
         long? userId = null);
+
+    /// <summary>
+    /// 根据用户名查询用户
+    /// </summary>
+    /// <param name="userName">用户名</param>
+    /// <returns>用户信息</returns>
+    Task<UserDto> GetUserByUserNameAsync(string userName);
+
+    /// <summary>
+    /// 根据手机号查询用户
+    /// </summary>
+    /// <param name="phoneNumber">手机号</param>
+    /// <returns>用户信息</returns>
+    Task<UserDto> GetUserByPhoneNumberAsync(string phoneNumber);
+
+    /// <summary>
+    /// 根据身份证号码查询用户
+    /// </summary>
+    /// <param name="idNo">身份证号码</param>
+    /// <returns>用户信息</returns>
+    Task<UserDto> GetUserByIdNoAsync(string idNo);
 }

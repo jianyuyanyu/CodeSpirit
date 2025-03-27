@@ -3,7 +3,7 @@ namespace CodeSpirit.Shared.EventBus.Events;
 /// <summary>
 /// 用户创建事件
 /// </summary>
-public class UserCreatedEvent
+public class UserCreatedOrUpdatedEvent
 {
     /// <summary>
     /// 用户ID

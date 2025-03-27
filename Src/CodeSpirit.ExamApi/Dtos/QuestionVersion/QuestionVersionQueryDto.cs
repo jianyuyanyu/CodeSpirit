@@ -18,6 +18,7 @@ public class QuestionVersionQueryDto : QueryDtoBase
         ValueField = "id",
         LabelField = "content",
         Searchable = true,
+        Clearable = true,
         Multiple = false
     )]
     public long? QuestionId { get; set; }

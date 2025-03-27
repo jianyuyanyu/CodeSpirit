@@ -30,7 +30,8 @@ public class QuestionQueryDto : QueryDtoBase
         ShowOutline = true,
         LabelField = "name",
         ValueField = "id",
-        Required = false
+        Required = false,
+        Clearable = true
     )]
     public long? CategoryId { get; set; }
 

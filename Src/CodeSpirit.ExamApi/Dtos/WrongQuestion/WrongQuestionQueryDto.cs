@@ -18,7 +18,8 @@ public class WrongQuestionQueryDto : QueryDtoBase
         ValueField = "id",
         LabelField = "name",
         Searchable = true,
-        Multiple = false
+        Multiple = false,
+        Clearable = true
     )]
     public long? StudentId { get; set; }
     

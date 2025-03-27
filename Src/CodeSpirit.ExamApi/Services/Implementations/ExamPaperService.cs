@@ -1,9 +1,11 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Extensions;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.Shared.Extensions.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
@@ -346,7 +348,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 {
                     QuestionTypeRules = createDto.QuestionTypeRules,
                     DifficultyRules = createDto.DifficultyRules,
-                    CategoryIds = createDto.CategoryIds
+                    CategoryIds = createDto.CategoryIds,
+                    Tags = createDto.Tags
                 };
                 examPaper.RandomRules = JsonSerializer.Serialize(randomRules);
 
@@ -385,14 +388,40 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             // 预先检查题库是否有足够的题目
             foreach (var typeRule in createDto.QuestionTypeRules)
             {
-                var availableCount = await _questionRepository
-                    .Find(q => q.Type == typeRule.QuestionType)
-                    .CountAsync();
+                var query = _questionRepository.Find(q => q.Type == typeRule.QuestionType);
+                
+                // 如果指定了分类ID，则添加分类条件
+                if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
+                {
+                    query = query.Where(q => createDto.CategoryIds.Contains(q.CategoryId));
+                }
+                
+                // 如果指定了标签，则添加标签条件
+                if (createDto.Tags != null && createDto.Tags.Any())
+                {
+                    query = query.Where(q => q.Tags != null && createDto.Tags.All(tag => q.Tags.Contains(tag)));
+                }
+                
+                var availableCount = await query.CountAsync();
 
                 if (availableCount < typeRule.Count)
                 {
+                    var filterMessage = new List<string>();
+                    
+                    if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
+                    {
+                        filterMessage.Add("指定的分类");
+                    }
+                    
+                    if (createDto.Tags != null && createDto.Tags.Any())
+                    {
+                        filterMessage.Add("指定的标签");
+                    }
+                    
+                    var filterText = filterMessage.Any() ? $"在{string.Join("和", filterMessage)}中，" : "";
+                    
                     throw new AppServiceException(400,
-                        $"题库中类型为{typeRule.QuestionType}的题目不足，需要{typeRule.Count}题，实际只有{availableCount}题");
+                        $"{filterText}题库中类型为{typeRule.QuestionType}的题目不足，需要{typeRule.Count}题，实际只有{availableCount}题");
                 }
             }
         }
@@ -404,8 +433,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
             foreach (var typeRule in createDto.QuestionTypeRules)
             {
-                // 按难度比例选择题目
-                var questions = await SelectQuestionsByDifficulty(typeRule, createDto.DifficultyRules);
+                // 按难度比例选择题目，并考虑标签筛选
+                var questions = await SelectQuestionsByDifficulty(typeRule, createDto.DifficultyRules, createDto.CategoryIds, createDto.Tags);
 
                 foreach (var question in questions)
                 {
@@ -430,15 +459,31 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
         private async Task<List<Question>> SelectQuestionsByDifficulty(
             QuestionTypeRule typeRule,
-            List<DifficultyRule> difficultyRules)
+            List<DifficultyRule> difficultyRules,
+            List<long> categoryIds = null,
+            List<string> tags = null)
         {
             var questions = new List<Question>();
+
+            // 基础查询条件：题目类型
+            var baseQuery = _questionRepository.Find(q => q.Type == typeRule.QuestionType);
+            
+            // 如果指定了分类ID，则添加分类条件
+            if (categoryIds != null && categoryIds.Any())
+            {
+                baseQuery = baseQuery.Where(q => categoryIds.Contains(q.CategoryId));
+            }
+            
+            // 如果指定了标签，则添加标签条件
+            if (tags != null && tags.Any())
+            {
+                baseQuery = baseQuery.Where(q => q.Tags != null && tags.All(tag => q.Tags.Contains(tag)));
+            }
 
             // 如果没有难度规则，则随机选择指定数量的题目
             if (difficultyRules == null || !difficultyRules.Any())
             {
-                var randomQuestions = await _questionRepository
-                    .Find(q => q.Type == typeRule.QuestionType)
+                var randomQuestions = await baseQuery
                     .OrderBy(q => Guid.NewGuid())
                     .Take(typeRule.Count)
                     .ToListAsync();
@@ -451,9 +496,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             foreach (var difficultyRule in difficultyRules.Where(r => r.Percentage > 0))
             {
                 var count = (int)Math.Ceiling(typeRule.Count * difficultyRule.Percentage / 100.0);
-                var difficultyQuestions = await _questionRepository
-                    .Find(q => q.Type == typeRule.QuestionType &&
-                              q.Difficulty == difficultyRule.Difficulty)
+                var difficultyQuestions = await baseQuery
+                    .Where(q => q.Difficulty == difficultyRule.Difficulty)
                     .OrderBy(q => Guid.NewGuid())
                     .Take(count)
                     .ToListAsync();
@@ -467,8 +511,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 var remainingCount = typeRule.Count - questions.Count;
                 var existingQuestionIds = questions.Select(q => q.Id).ToList();
 
-                var additionalQuestions = await _questionRepository
-                    .Find(q => q.Type == typeRule.QuestionType && !existingQuestionIds.Contains(q.Id))
+                var additionalQuestions = await baseQuery
+                    .Where(q => !existingQuestionIds.Contains(q.Id))
                     .OrderBy(q => Guid.NewGuid())
                     .Take(remainingCount)
                     .ToListAsync();

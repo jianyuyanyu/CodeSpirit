@@ -82,12 +82,13 @@ public class GenerateRandomExamPaperDto
     /// <summary>
     /// 分类ID限制
     /// </summary>
-    [DisplayName("分类ID限制")]
+    [DisplayName("题目分类限制")]
     [AmisTreeSelectField(
         DataSource = "${ROOT_API}/api/exam/QuestionCategories/tree",
         Multiple = true,
         Cascade = true,
         ShowOutline = true,
+        Required = true,
         LabelField = "name",
         ValueField = "id",
         JoinValues = false,

@@ -159,7 +159,7 @@ namespace CodeSpirit.Amis.Form
             }
 
             return type.IsDateType()
-                ? "datetime"
+                ? "input-date"
                 : type switch
                 {
                     Type t when t == typeof(string) => "input-text",

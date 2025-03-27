@@ -1,5 +1,6 @@
-using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ExamApi.Data.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.ExamApi.Dtos.PracticeRecord;
 
@@ -54,6 +55,7 @@ public class PracticeRecordBatchImportDto
     /// 练习时间
     /// </summary>
     [DisplayName("练习时间")]
+    [AmisDatetimeField(Utc = true)]
     public DateTime PracticeTime { get; set; } = DateTime.UtcNow;
     
     /// <summary>

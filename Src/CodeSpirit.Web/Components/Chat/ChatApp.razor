@@ -244,6 +244,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // 避免在预渲染时设置过多状态
+        if (_isPrerendering)
+        {
+            return;
+        }
+        
         // 初始化数据结构，避免空引用
         Conversations = new List<Conversation>();
         Messages = new List<Message>();
@@ -258,29 +264,24 @@
             NavigationManager.NavigateTo("/login", forceLoad: false);
             return;
         }
-        
-        // 在服务器预渲染时不要尝试建立WebSocket连接
-        if (!_isPrerendering)
-        {
-            await InitializeSignalRConnection();
-        }
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            if (_isPrerendering)
+            {
+                return;
+            }
+            
             try 
             {
-                // 不再需要以模块形式加载JS文件
-                // _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
-                //    "import", "./js/chat.js");
+                // 清理DOM中的无效属性
+                await JSRuntime.InvokeVoidAsync("cleanupInvalidAttributes");
                 
-                // 客户端渲染后初始化SignalR
-                if (hubConnection == null)
-                {
-                    await InitializeSignalRConnection();
-                }
+                // 客户端初始化时连接 SignalR
+                await InitializeSignalRConnection();
             }
             catch (Exception ex)
             {
@@ -310,22 +311,24 @@
             {
                 await LoadConversations();
                 
-                // 显示初始系统欢迎消息 - 如果没有选择任何对话，这个消息不会显示
-                // 但当用户选择对话时，ShowWelcomeMessage方法会处理显示对话特定的欢迎消息
                 // 使用InvokeAsync确保方法在UI线程上异步执行
-                InvokeAsync(ShowInitialWelcomeToast);
+                // 延迟显示欢迎消息，确保UI和JS完全初始化
+                await InvokeAsync(async () => {
+                    await Task.Delay(500);
+                    await ShowInitialWelcomeToast();
+                });
             }
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"初始化SignalR连接时出错: {ex.Message}");
-            // 如果在初始预渲染期间发生错误，不要在控制台中记录错误以避免泄露信息
         }
     }
     
     // 添加一个标志指示是否在预渲染
     private bool _isPrerendering => 
-        NavigationManager.Uri.EndsWith("/chat") && HttpContextAccessor?.HttpContext?.Response.HasStarted == false;
+        HttpContextAccessor?.HttpContext != null &&
+        !HttpContextAccessor.HttpContext.Response.HasStarted;
 
     // 添加显示欢迎消息的方法
     private void ShowWelcomeMessage()
@@ -360,27 +363,44 @@
         InvokeAsync(() => ScrollToBottom());
     }
 
+    // 修改显示欢迎消息的方法，添加错误处理
+    private async Task ShowInitialWelcomeToast()
+    {
+        try 
+        {
+            // 等待一小段时间，确保JS已加载
+            await Task.Delay(300);
+            
+            // 调用 JS 方法显示欢迎消息
+            await JSRuntime.InvokeVoidAsync("showToast", $"欢迎回来，{_username}！", "系统消息");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"显示欢迎通知失败: {ex.Message}");
+        }
+    }
+
     private void RegisterHubHandlers()
     {
-        hubConnection.On<Message>("ReceiveMessage", (message) =>
+        hubConnection.On<Message>("ReceiveMessage", async (message) =>
         {
-            if (SelectedConversation != null && message.SenderId != _userId)
-            {
-                Messages.Add(message);
-                StateHasChanged();
-                InvokeAsync(() => ScrollToBottom());
-            }
-            
-            // 无论是否当前对话，都显示通知（除非消息是自己发送的）
-            if (message.SenderId != _userId)
-            {
-                // 显示全局通知
-                InvokeAsync(async () => {
+            // 使用 InvokeAsync 在 UI 线程上更新状态
+            await InvokeAsync(() => {
+                if (SelectedConversation != null && message.SenderId != _userId)
+                {
+                    Messages.Add(message);
+                    StateHasChanged();
+                    _ = ScrollToBottom();
+                }
+                
+                // 无论是否当前对话，都显示通知（除非消息是自己发送的）
+                if (message.SenderId != _userId)
+                {
                     try 
                     {
                         // 使用admin.js中定义的通知函数
                         var conversationId = SelectedConversation?.Id.ToString() ?? string.Empty;
-                        await JSRuntime.InvokeVoidAsync(
+                        JSRuntime.InvokeVoidAsync(
                             "showChatNotification", 
                             message.Content, 
                             message.SenderName, 
@@ -390,52 +410,64 @@
                     {
                         Console.Error.WriteLine($"显示通知失败: {ex.Message}");
                     }
-                });
-            }
+                }
+            });
         });
 
-        hubConnection.On<List<Message>, int>("ReceiveHistory", (messages, totalCount) =>
+        hubConnection.On<List<Message>, int>("ReceiveHistory", async (messages, totalCount) =>
         {
-            Messages = messages;
-            StateHasChanged();
-            InvokeAsync(() => ScrollToBottom());
-            
-            // 消息历史记录加载后显示欢迎消息
-            InvokeAsync(ShowWelcomeMessage);
+            // 使用 InvokeAsync 在 UI 线程上更新状态
+            await InvokeAsync(() => {
+                Messages = messages;
+                StateHasChanged();
+                _ = ScrollToBottom();
+                
+                // 消息历史记录加载后显示欢迎消息
+                ShowWelcomeMessage();
+            });
         });
 
-        hubConnection.On<List<Conversation>>("ReceiveConversations", (conversations) =>
+        hubConnection.On<List<Conversation>>("ReceiveConversations", async (conversations) =>
         {
-            Conversations = conversations;
-            StateHasChanged();
+            // 使用 InvokeAsync 在 UI 线程上更新状态
+            await InvokeAsync(() => {
+                Conversations = conversations;
+                StateHasChanged();
+            });
         });
 
-        hubConnection.On<Conversation>("ConversationCreated", (conversation) =>
+        hubConnection.On<Conversation>("ConversationCreated", async (conversation) =>
         {
-            Conversations.Add(conversation);
-            SelectedConversation = conversation;
-            Messages = new List<Message>();
-            
-            // 确保为新创建的对话显示欢迎消息
-            if (_welcomeMessageShown.ContainsKey(conversation.Id.ToString()))
-            {
-                _welcomeMessageShown[conversation.Id.ToString()] = false;
-            }
-            
-            StateHasChanged();
+            // 使用 InvokeAsync 在 UI 线程上更新状态
+            await InvokeAsync(() => {
+                Conversations.Add(conversation);
+                SelectedConversation = conversation;
+                Messages = new List<Message>();
+                
+                // 确保为新创建的对话显示欢迎消息
+                if (_welcomeMessageShown.ContainsKey(conversation.Id.ToString()))
+                {
+                    _welcomeMessageShown[conversation.Id.ToString()] = false;
+                }
+                
+                StateHasChanged();
+            });
         });
 
-        hubConnection.On<Conversation>("NewConversation", (conversation) =>
+        hubConnection.On<Conversation>("NewConversation", async (conversation) =>
         {
-            Conversations.Add(conversation);
-            
-            // 确保为新加入的对话显示欢迎消息
-            if (_welcomeMessageShown.ContainsKey(conversation.Id.ToString()))
-            {
-                _welcomeMessageShown[conversation.Id.ToString()] = false;
-            }
-            
-            StateHasChanged();
+            // 使用 InvokeAsync 在 UI 线程上更新状态
+            await InvokeAsync(() => {
+                Conversations.Add(conversation);
+                
+                // 确保为新加入的对话显示欢迎消息
+                if (_welcomeMessageShown.ContainsKey(conversation.Id.ToString()))
+                {
+                    _welcomeMessageShown[conversation.Id.ToString()] = false;
+                }
+                
+                StateHasChanged();
+            });
         });
 
         hubConnection.On<string>("Error", (errorMessage) =>
@@ -476,29 +508,13 @@
             if (string.IsNullOrEmpty(_userId))
                 return;
                 
-            // 调用全局的fetchUnreadNotificationCount函数获取未读消息数
+            // 调用 JS 方法更新未读消息数
             await JSRuntime.InvokeVoidAsync("fetchUnreadNotificationCount", _userId);
-            
-            // 以下注释掉的代码是之前的本地计算未读消息的方式，现在改为调用API
-            /*
-            if (Conversations == null)
-                return;
-                
-            int totalUnread = 0;
-            
-            // 计算所有会话中的未读消息总数
-            foreach (var conversation in Conversations)
-            {
-                totalUnread += GetUnreadCount(conversation);
-            }
-            
-            // 更新通知图标上的未读消息数量
-            await JSRuntime.InvokeVoidAsync("updateNotificationCount", totalUnread);
-            */
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"更新未读消息计数失败: {ex.Message}");
+            // 捕获所有异常
         }
     }
 
@@ -577,9 +593,17 @@
 
     private void ShowNewChatDialog()
     {
-        NewChatTitle = string.Empty;
-        SelectedParticipants = new List<string>();
-        ShowNewChat = true;
+        try
+        {
+            NewChatTitle = string.Empty;
+            SelectedParticipants = new List<string>();
+            ShowNewChat = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"显示新对话对话框失败: {ex.Message}");
+        }
     }
 
     private async Task CreateNewChat()
@@ -597,7 +621,8 @@
                     _userId
                 };
 
-                await hubConnection.SendAsync("CreateConversation", NewChatTitle, participants);
+                // 修改调用，包含所有必要的参数
+                await hubConnection.SendAsync("CreateConversation", NewChatTitle, _userId, _username, participants);
                 
                 // 重置表单
                 NewChatTitle = string.Empty;
@@ -624,6 +649,7 @@
 
         NewParticipantId = string.Empty;
         ShowParticipants = true;
+        StateHasChanged();
     }
 
     private async Task AddParticipant()
@@ -668,13 +694,13 @@
             await Task.Delay(50); // 等待DOM更新
             if (messagesContainer.Context != null)
             {
-                // 使用全局函数而非模块函数
                 await JSRuntime.InvokeVoidAsync("scrollToBottom", messagesContainer);
             }
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"滚动到底部失败: {ex.Message}");
+            // 捕获异常，避免中断电路
         }
     }
 
@@ -711,23 +737,6 @@
         catch (Exception ex)
         {
             Console.Error.WriteLine($"尝试重连失败: {ex.Message}");
-        }
-    }
-
-    // 显示用户首次连接时的欢迎提示消息
-    private async Task ShowInitialWelcomeToast()
-    {
-        try 
-        {
-            // 等待一小段时间，确保JS已加载
-            await Task.Delay(100);
-            
-            // 使用全局函数而非模块函数
-            await JSRuntime.InvokeVoidAsync("showToast", $"欢迎回来，{_username}！", "系统消息");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"显示欢迎通知失败: {ex.Message}");
         }
     }
 

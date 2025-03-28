@@ -1,5 +1,6 @@
-using System.ComponentModel;
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Core.Attributes;
+using System.ComponentModel;
 
 namespace CodeSpirit.ExamApi.Dtos.QuestionVersion;
 
@@ -85,5 +86,6 @@ public class QuestionVersionDto
     /// 创建人
     /// </summary>
     [DisplayName("创建人")]
+    [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "{field}")]
     public string? CreatedBy { get; set; }
 } 

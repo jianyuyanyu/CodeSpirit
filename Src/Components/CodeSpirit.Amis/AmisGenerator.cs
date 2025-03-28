@@ -118,7 +118,7 @@ namespace CodeSpirit.Amis
             _amisContext.Actions = _crudHelper.HasCrudActions(controllerType);
 
             // 生成新的配置
-            AmisConfigBuilder amisConfigBuilder = _serviceProvider.GetRequiredService<AmisConfigBuilder>();
+            AmisCRUDConfigBuilder amisConfigBuilder = _serviceProvider.GetRequiredService<AmisCRUDConfigBuilder>();
             JObject crudConfig = amisConfigBuilder.GenerateAmisCrudConfig();
 
             // 如果生成成功，则缓存配置

@@ -48,7 +48,7 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Operation("删除角色", "ajax", null, "确定要删除此角色吗？", "permissionIds.length == 0")]
+    [Operation("删除", "ajax", null, "确定要删除此角色吗？", "permissionIds.length == 0")]
     public async Task<ActionResult<ApiResponse>> Delete(long id)
     {
         await _roleService.DeleteAsync(id);

@@ -29,7 +29,6 @@ public class WrongQuestionProfile : Profile
             .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student.Name))
             .ForMember(dest => dest.QuestionContent, opt => opt.MapFrom(src => src.Question.Content))
             .ForMember(dest => dest.QuestionType, opt => opt.MapFrom(src => src.Question.Type))
-            .ForMember(dest => dest.QuestionTypeName, opt => opt.MapFrom(src => src.Question.Type.ToString()))
             .ForMember(dest => dest.CorrectAnswer, opt => opt.MapFrom(src => src.Question.CorrectAnswer));
     }
 } 

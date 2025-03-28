@@ -1,7 +1,9 @@
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Core.Attributes;
+using CodeSpirit.ExamApi.Data.Models.Enums;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.ExamApi.Dtos.WrongQuestion;
 
@@ -19,6 +21,7 @@ public class WrongQuestionDto
     /// 考生ID
     /// </summary>
     [DisplayName("考生ID")]
+    [AmisColumn(Hidden = true)]
     public long StudentId { get; set; }
     
     /// <summary>
@@ -31,6 +34,7 @@ public class WrongQuestionDto
     /// 题目ID
     /// </summary>
     [DisplayName("题目ID")]
+    [AmisColumn(Hidden = true)]
     public long QuestionId { get; set; }
     
     /// <summary>
@@ -43,14 +47,8 @@ public class WrongQuestionDto
     /// 题目类型
     /// </summary>
     [DisplayName("题目类型")]
-    public int QuestionType { get; set; }
-    
-    /// <summary>
-    /// 题目类型名称
-    /// </summary>
-    [DisplayName("题目类型")]
-    public string QuestionTypeName { get; set; } = string.Empty;
-    
+    public QuestionType QuestionType { get; set; }
+        
     /// <summary>
     /// 错误次数
     /// </summary>
@@ -99,5 +97,6 @@ public class WrongQuestionDto
     /// 更新人
     /// </summary>
     [DisplayName("更新人")]
+    [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "{field}")]
     public string? UpdatedBy { get; set; }
 } 

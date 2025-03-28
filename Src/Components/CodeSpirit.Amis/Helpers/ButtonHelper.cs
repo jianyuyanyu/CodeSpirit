@@ -33,6 +33,8 @@ namespace CodeSpirit.Amis.Helpers
                 ["actionType"] = actionType
             };
 
+            CreateIcon(label, button);
+
             if (dialogOrDrawer != null)
             {
                 button["dialog"] = dialogOrDrawer;
@@ -59,6 +61,110 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             return button;
+        }
+
+        /// <summary>
+        /// 创建图标
+        /// </summary>
+        /// <param name="label"></param>
+        /// <param name="button"></param>
+        private static void CreateIcon(string label, JObject button)
+        {
+            // 根据按钮文字和操作类型添加对应图标
+            string icon = label switch
+            {
+                // 基础操作
+                "新增" or "添加" => "fa fa-plus",
+                "编辑" or "修改" => "fa fa-edit",
+                "删除" or "移除" => "fa fa-trash",
+                "查看" or "详情" => "fa fa-eye",
+                "导入" => "fa fa-upload",
+                "导出" or "导出全部" => "fa fa-download",
+                "关闭" => "fa fa-times",
+
+                // 状态操作
+                "解锁" => "fa fa-unlock",
+                "锁定" => "fa fa-lock",
+                "启用" => "fa fa-check-circle",
+                "禁用" => "fa fa-ban",
+                "激活" => "fa fa-check",
+                "冻结" => "fa fa-snowflake-o",
+                "审核" or "审批" => "fa fa-gavel",
+                "驳回" => "fa fa-times-circle",
+
+                // 账户相关
+                "重置密码" => "fa fa-key",
+                "修改密码" => "fa fa-lock",
+                "登录" => "fa fa-sign-in",
+                "退出" or "注销" => "fa fa-sign-out",
+
+                // 数据操作
+                "刷新" => "fa fa-refresh",
+                "保存" => "fa fa-save",
+                "搜索" or "查询" => "fa fa-search",
+                "清空" or "清除" => "fa fa-eraser",
+                "复制" => "fa fa-copy",
+                "打印" => "fa fa-print",
+                "下载" => "fa fa-download",
+
+                // 流程操作
+                "提交" => "fa fa-check",
+                "确定" => "fa fa-check",
+                "取消" => "fa fa-times",
+                "返回" => "fa fa-arrow-left",
+                "下一步" => "fa fa-arrow-right",
+                "上一步" => "fa fa-arrow-left",
+
+                // 配置操作
+                "设置" or "配置" => "fa fa-cog",
+                "权限" => "fa fa-shield",
+                "分配" or "分派" => "fa fa-share-square",
+                "排序" => "fa fa-sort",
+                "置顶" => "fa fa-arrow-up",
+
+                // 文件操作
+                "上传" => "fa fa-upload",
+                "预览" => "fa fa-eye",
+                "附件" => "fa fa-paperclip",
+
+                // 消息操作
+                "发送" => "fa fa-paper-plane",
+                "通知" => "fa fa-bell",
+                "消息" => "fa fa-envelope",
+
+                // 其他常用操作
+                "同步" => "fa fa-sync",
+                "统计" => "fa fa-chart-bar",
+                "更多" => "fa fa-ellipsis-h",
+                "帮助" => "fa fa-question-circle",
+                "收藏" => "fa fa-star",
+                "点赞" => "fa fa-thumbs-up",
+
+                // 新增的批量操作
+                "批量删除" => "fa fa-trash-o",
+                "导出当前页" => "fa fa-file-export",
+                "模拟登录" => "fa fa-user-secret",
+                "发布" => "fa fa-cloud-upload",
+                "取消发布" => "fa fa-cloud-download",
+                "历史版本" => "fa fa-history",
+                "版本记录" => "fa fa-clock-o",
+                "批量导出" => "fa fa-files-o",
+                "批量启用" => "fa fa-check-circle-o",
+                "批量禁用" => "fa fa-ban",
+                "批量审核" => "fa fa-gavel",
+                "批量通过" => "fa fa-thumbs-up",
+                "批量驳回" => "fa fa-thumbs-down",
+                "发送通知" => "fa fa-bullhorn",
+                "版本对比" => "fa fa-code-fork",
+                "回滚版本" => "fa fa-undo",
+
+                _ => null // 其他情况不设置图标
+            };
+
+            if (icon != null)
+            {
+                button["icon"] = icon;
+            }
         }
 
         // 创建"新增"按钮
@@ -246,6 +352,16 @@ namespace CodeSpirit.Amis.Helpers
                 ["label"] = op.Label,
                 ["actionType"] = op.ActionType
             };
+
+            // 优先使用自定义图标，如果没有则使用默认图标映射
+            if (!string.IsNullOrEmpty(op.Icon))
+            {
+                button["icon"] = op.Icon;
+            }
+            else
+            {
+                CreateIcon(op.Label, button);
+            }
 
             // 处理不同的操作类型
             if (op.ActionType == "link")

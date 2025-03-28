@@ -11,7 +11,7 @@ namespace CodeSpirit.Amis
     /// <summary>
     /// 负责生成 AMIS CRUD 配置的构建器。
     /// </summary>
-    public class AmisConfigBuilder
+    public class AmisCRUDConfigBuilder
     {
         // 依赖注入的助手类
         private readonly ApiRouteHelper _apiRouteHelper;
@@ -25,16 +25,16 @@ namespace CodeSpirit.Amis
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
-        public AmisConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
+        public AmisCRUDConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
                                  SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
             _buttonHelper = buttonHelper;
             _searchFieldHelper = searchFieldHelper;
-            this._amisContext = amisContext;
-            this._utilityHelper = utilityHelper;
-            this._amisApiHelper = amisApiHelper;
+            _amisContext = amisContext;
+            _utilityHelper = utilityHelper;
+            _amisApiHelper = amisApiHelper;
         }
 
         /// <summary>

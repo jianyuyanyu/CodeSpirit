@@ -43,7 +43,7 @@ public class Program
         builder.Services.AddWebOptimizer(pipeline =>
         {
             // Minify and bundle JavaScript files
-            pipeline.MinifyJsFiles("/sdk/sdk.js", "/js/*.js");
+            pipeline.MinifyJsFiles("/sdk/sdk.js", "/js/*.js", "/js/**/*.js");
 
             // Minify CSS files
             pipeline.MinifyCssFiles("/sdk/antd.css", "/sdk/helper.css", "/sdk/iconfont.css", "/css/*.css");

@@ -1,7 +1,6 @@
 ﻿@page
 @{
     ViewData["Title"] = "考试系统";
-    var (settings, resourceBase) = Html.InitializeResources();
 }
 @section Head
 {
@@ -10,5 +9,5 @@
 <div id="root" class="app-wrapper"></div>
 
 @section Scripts {
-    <script src="@resourceBase/js/client/index.js" asp-append-version="true"></script>
+    <resource path="js/client/index.js" type="js" />
 }

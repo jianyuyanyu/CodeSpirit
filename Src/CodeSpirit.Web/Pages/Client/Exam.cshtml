@@ -2,7 +2,6 @@
 @model CodeSpirit.Web.Pages.Client.ExamModel
 @{
     ViewData["Title"] = "考试";
-    var (settings, resourceBase) = Html.InitializeResources();
 }
 @section Head
 {
@@ -11,5 +10,5 @@
 <div id="root" class="app-wrapper"></div>
 
 @section Scripts {
-    <script src="@resourceBase/js/client/exam.js" asp-append-version="true"></script>
+    <resource path="js/client/exam.js" type="js" />
 } 

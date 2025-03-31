@@ -1,14 +1,13 @@
 ﻿@page
 @{
     ViewData["Title"] = "后台";
-    var (settings, resourceBase) = Html.InitializeResources();
 }
 @section Head
 {
-    <link rel="stylesheet" href="@resourceBase/css/admin.css" asp-append-version="true" />
+    <resource path="css/admin.css" type="css" />
 }
 <div id="root" class="app-wrapper"></div>
 
 @section Scripts {
-    <script src="@resourceBase/js/admin.js" asp-append-version="true"></script>
+    <resource path="js/admin.js" type="js" />
 }

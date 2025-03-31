@@ -1,0 +1,22 @@
+@using CodeSpirit.Web.Helpers
+@using CodeSpirit.Web.Options
+@model (string Path, string Type)
+@{
+    var (settings, _) = Html.InitializeResources();
+    var cdnEnabled = settings.EnableCdn;
+    var resourceUrl = Html.GetResourceUrl(Model.Path);
+    var type = Model.Type.ToLower();
+}
+
+@if (type == "css") 
+{
+    <link rel="stylesheet" href="@resourceUrl" @(cdnEnabled ? "" : "asp-append-version=\"true\"") />
+}
+else if (type == "js") 
+{
+    <script src="@resourceUrl" @(cdnEnabled ? "" : "asp-append-version=\"true\"")></script>
+}
+else 
+{
+    @resourceUrl
+} 

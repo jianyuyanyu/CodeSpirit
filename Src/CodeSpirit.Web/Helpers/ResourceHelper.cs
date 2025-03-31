@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Options;
 using CodeSpirit.Web.Options;
+using System;
 
 namespace CodeSpirit.Web.Helpers
 {
@@ -44,6 +45,32 @@ namespace CodeSpirit.Web.Helpers
         public static (SiteSettings Settings, string ResourceBase) InitializeResources(this IHtmlHelper html)
         {
             return html.GetSiteConfig();
+        }
+        
+        /// <summary>
+        /// 生成资源URL，根据是否启用CDN选择合适的URL生成策略
+        /// </summary>
+        /// <param name="html">HTML辅助类</param>
+        /// <param name="path">资源路径</param>
+        /// <returns>完整的资源URL</returns>
+        public static string GetResourceUrl(this IHtmlHelper html, string path)
+        {
+            var (settings, resourceBase) = html.GetSiteConfig();
+            
+            // 移除路径开头的斜杠，确保路径格式正确
+            if (path.StartsWith("/"))
+                path = path.Substring(1);
+                
+            // 如果启用了CDN，需要手动添加版本号
+            if (settings.EnableCdn)
+            {
+                // 使用时间戳作为版本号，这样在应用重启时会自动更新
+                var timestamp = DateTime.UtcNow.ToString("yyyyMMddHH");
+                return $"{resourceBase}/{path}?v={timestamp}";
+            }
+            
+            // 对于本地资源，需在Razor页面中使用asp-append-version="true"
+            return $"/{path}";
         }
     }
 } 

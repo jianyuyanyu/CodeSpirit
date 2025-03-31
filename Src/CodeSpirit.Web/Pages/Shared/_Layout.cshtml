@@ -3,8 +3,7 @@
 @inject IOptions<SiteSettings> SiteOptions
 @{
     var cdnEnabled = SiteOptions.Value.EnableCdn;
-    var cdnUrl = SiteOptions.Value.CdnUrl;
-    var resourceBase = cdnEnabled ? cdnUrl : "";
+    var resourceBase = cdnEnabled ? SiteOptions.Value.CdnUrl : "";
 }
 
 <!DOCTYPE html>
@@ -17,10 +16,10 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
 
     <!-- 样式表 -->
-    <link rel="stylesheet" href="@resourceBase/sdk/antd.css" asp-append-version="true" />
-    <link rel="stylesheet" href="@resourceBase/sdk/helper.css" asp-append-version="true" />
-    <link rel="stylesheet" href="@resourceBase/sdk/iconfont.css" asp-append-version="true" />
-    <link rel="stylesheet" href="@resourceBase/css/chat.css" asp-append-version="true" />
+    <resource path="sdk/antd.css" type="css" />
+    <resource path="sdk/helper.css" type="css" />
+    <resource path="sdk/iconfont.css" type="css" />
+    <resource path="css/chat.css" type="css" />
 
     <!-- 全局变量配置 -->
     <script>
@@ -35,17 +34,18 @@
         window.siteSettings = {
             siteName: '@Html.Raw(SiteOptions.Value.SiteName)',
             topSiteName: '@Html.Raw(SiteOptions.Value.TopSiteName)',
+            clientAppName: '@Html.Raw(SiteOptions.Value.TopSiteName) | @Html.Raw(SiteOptions.Value.SiteName)',
             logoUrl: '@SiteOptions.Value.LogoUrl',
             cdnEnabled: @(cdnEnabled ? "true" : "false"),
-            cdnUrl: '@cdnUrl',
+            cdnUrl: '@SiteOptions.Value.CdnUrl',
             resourceBase: '@resourceBase'
         };
     </script>
 
     <!-- 脚本 -->
-    <script src="@resourceBase/sdk/sdk.js" asp-append-version="true"></script>
-    <script src="@resourceBase/js/history.js" asp-append-version="true"></script>
-    <script src="@resourceBase/js/tokenManager.js" asp-append-version="true"></script>
+    <resource path="sdk/sdk.js" type="js" />
+    <resource path="js/history.js" type="js" />
+    <resource path="js/tokenManager.js" type="js" />
     @RenderSection("Head", required: false)  <!-- 可选的 Razor section -->
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -55,6 +55,6 @@
     </div>
     @await RenderSectionAsync("Scripts", required: false)
     <script src="_framework/blazor.server.js"></script>
-    <script src="@resourceBase/js/chat.js" asp-append-version="true"></script>
+    <resource path="js/chat.js" type="js" />
 </body>
 </html>

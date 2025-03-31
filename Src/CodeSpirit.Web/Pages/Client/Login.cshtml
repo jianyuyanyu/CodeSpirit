@@ -1,7 +1,6 @@
 ﻿@page
 @{
     ViewData["Title"] = "登录";
-    var (settings, resourceBase) = Html.InitializeResources();
 }
 @section Head
 {
@@ -9,5 +8,5 @@
 <div id="root" class="app-wrapper"></div>
 
 @section Scripts {
-    <script src="@resourceBase/js/client/login.js" asp-append-version="true"></script>
+    <resource path="js/client/login.js" type="js" />
 }

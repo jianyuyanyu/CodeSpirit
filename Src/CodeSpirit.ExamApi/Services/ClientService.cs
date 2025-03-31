@@ -230,16 +230,33 @@ public class ClientService : IClientService
                 .Where(r => r.ExamSettingId == examId && r.StudentId == student.Id && r.Status == ExamRecordStatus.InProgress)
                 .OrderByDescending(r => r.StartTime)
                 .FirstOrDefaultAsync();
-            if (examRecord == null) {
+            if (examRecord == null)
+            {
                 throw new InvalidOperationException("考试记录不存在！");
             }
-            
+
             // 处理题目乱序
             var questions = examSetting.ExamPaper.ExamPaperQuestions.ToList();
             if (examSetting.EnableRandomQuestionOrder)
             {
                 Random rnd = new Random();
                 questions = questions.OrderBy(q => rnd.Next()).ToList();
+            }
+
+            // 处理选项乱序
+            if (examSetting.EnableRandomOptionOrder)
+            {
+                var randomGenerator = new Random();
+                foreach (var question in questions)
+                {
+                    // 只对单选题和多选题进行选项乱序处理
+                    if (question.Question.Type == QuestionType.SingleChoice ||
+                        question.Question.Type == QuestionType.MultipleChoice)
+                    {
+                        var options = question.QuestionVersion.Options.OrderBy(o => randomGenerator.Next()).ToList();
+                        question.QuestionVersion.Options = options;
+                    }
+                }
             }
 
             // 组装考试详情
@@ -267,8 +284,8 @@ public class ClientService : IClientService
                     SequenceNumber = q.OrderNumber,
                     IsRequired = q.IsRequired
                 })
-                .OrderBy(q => q.Type)
-                .ToList()
+    .OrderBy(q => q.Type)
+    .ToList()
             };
 
             return examDetail;
@@ -697,12 +714,12 @@ public class ClientService : IClientService
             if (!string.IsNullOrEmpty(userIp) && examRecord.IpAddress != userIp)
             {
                 examRecord.IpAddress = userIp;
-                
+
                 // 如果IP变更，可能是作弊行为，记录
                 var cheatingSuspicionRecord = string.IsNullOrEmpty(examRecord.CheatingSuspicionRecord)
                     ? new List<string>()
                     : System.Text.Json.JsonSerializer.Deserialize<List<string>>(examRecord.CheatingSuspicionRecord);
-                    
+
                 if (cheatingSuspicionRecord == null)
                 {
                     cheatingSuspicionRecord = new List<string>();
@@ -710,16 +727,16 @@ public class ClientService : IClientService
 
                 //这里记录当前时间及IP变更信息
                 cheatingSuspicionRecord.Add($"IP变更（{DateTime.Now:yyyy-MM-dd HH:mm:ss}）：从 {examRecord.IpAddress} 变更为 {userIp}");
-                
+
                 examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
-                
+
                 // 增加作弊嫌疑等级
                 examRecord.CheatingSuspicionLevel = Math.Min(100, examRecord.CheatingSuspicionLevel + 20);
             }
 
             // 增加切屏次数
             examRecord.ScreenSwitchCount += 1;
-            
+
             // 更新作弊嫌疑等级
             int maxAllowedSwitches = examRecord.ExamSetting.AllowedScreenSwitchCount;
             if (maxAllowedSwitches > 0 && examRecord.ScreenSwitchCount > maxAllowedSwitches)
@@ -727,18 +744,18 @@ public class ClientService : IClientService
                 // 超过允许的切屏次数，提高作弊嫌疑等级
                 int exceedCount = examRecord.ScreenSwitchCount - maxAllowedSwitches;
                 int suspicionIncrease = 10 * exceedCount; // 每超过一次增加10点嫌疑
-                
+
                 examRecord.CheatingSuspicionLevel += suspicionIncrease;
                 if (examRecord.CheatingSuspicionLevel > 100)
                 {
                     examRecord.CheatingSuspicionLevel = 100; // 最大不超过100
                 }
-                
+
                 // 记录作弊嫌疑记录
                 var cheatingSuspicionRecord = string.IsNullOrEmpty(examRecord.CheatingSuspicionRecord)
                     ? new List<string>()
                     : System.Text.Json.JsonSerializer.Deserialize<List<string>>(examRecord.CheatingSuspicionRecord);
-                    
+
                 if (cheatingSuspicionRecord == null)
                 {
                     cheatingSuspicionRecord = new List<string>();
@@ -746,15 +763,15 @@ public class ClientService : IClientService
 
                 //这里记录当前时间及切屏超限信息
                 cheatingSuspicionRecord.Add($"切屏超限（{DateTime.Now:yyyy-MM-dd HH:mm:ss}）：累计切屏 {examRecord.ScreenSwitchCount} 次，超过限制 {exceedCount} 次");
-                
+
                 examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
             }
 
             // 保存更改
             await _context.SaveChangesAsync();
-            
+
             _logger.LogInformation($"考试ID {recordId} 切屏记录更新，当前切屏次数: {examRecord.ScreenSwitchCount}");
-            
+
             return true;
         }
         catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)

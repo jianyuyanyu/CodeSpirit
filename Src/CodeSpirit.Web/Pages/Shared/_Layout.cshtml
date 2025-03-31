@@ -29,6 +29,7 @@
         // 站点配置
         window.siteSettings = {
             siteName: '@Html.Raw(SiteOptions.Value.SiteName)',
+            topSiteName: '@Html.Raw(SiteOptions.Value.SiteName.Split('|')[0])',
             logoUrl: '@SiteOptions.Value.LogoUrl'
         };
     </script>

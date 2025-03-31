@@ -26,7 +26,7 @@
                                 "<div class='login-label'>Welcome</div>" +
                                 "<div class='transverse'></div>" +
                                 "<div class='login-label' style='margin-bottom: 10px;'>欢迎进入</div>" +
-                                "<div class='login-label'>"+ (window.siteSettings ? window.siteSettings.siteName : 'CodeSpirit') +"</div>" +
+                                "<div class='login-label'>" + (window.siteSettings ? window.siteSettings.topSiteName : 'CodeSpirit') +"</div>" +
                                 "<div class='transverse'></div>" +
                                 "<div class='login-label-x'>Welcome to "+ (window.siteSettings ? window.siteSettings.siteName : 'CodeSpirit') +"</div>" +
                                 "<div class='carousel'>" +

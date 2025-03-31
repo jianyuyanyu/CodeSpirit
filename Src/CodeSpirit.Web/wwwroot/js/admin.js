@@ -88,8 +88,8 @@
 
     const app = {
         type: 'app',
-        brandName: 'CodeSpirit',
-        logo: webHost + '/favicon.ico',
+        brandName: window.siteSettings ? window.siteSettings.siteName : 'CodeSpirit',
+        logo: window.siteSettings ? (window.siteSettings.logoUrl) : (webHost + '/favicon.ico'),
         header: {
             type: 'service',
             api: '/identity/api/identity/profile',

@@ -1,8 +1,12 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.Extensions.Options
+@using CodeSpirit.Web.Options
+@inject IOptions<SiteSettings> SiteOptions
+
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <title>@ViewData["Title"] - CodeSpirit App</title>
+    <title>@ViewData["Title"] - @SiteOptions.Value.SiteName</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
@@ -21,6 +25,12 @@
         window.webHost = '@(isDevelopment ? "https://localhost:7120" : "https://codespirit-app.xin-lai.com")';
         window.apiHost = '@(isDevelopment ? "https://localhost:17134" : "https://codespirit-api.xin-lai.com")';
         window.aspire_dashboard = '@(isDevelopment ? "https://localhost:17109" : "https://codespirit-api.xin-lai.com")';
+        
+        // 站点配置
+        window.siteSettings = {
+            siteName: '@Html.Raw(SiteOptions.Value.SiteName)',
+            logoUrl: '@SiteOptions.Value.LogoUrl'
+        };
     </script>
 
     <!-- 脚本 -->

@@ -88,7 +88,7 @@
 
     var app = {
         type: 'page',
-        title: '考试系统',
+        title: window.siteSettings ? window.siteSettings.siteName : '考试系统',
         body: [
             {
                 type: 'service',

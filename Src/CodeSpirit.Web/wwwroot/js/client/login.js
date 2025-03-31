@@ -31,7 +31,7 @@
                     "body": [
                         {
                             "type": "tpl",
-                            "tpl": "<div class='client-logo text-center'><img src='/logo.png' /><h2>考试系统</h2><p class='login-subtitle'>用户登录</p></div>",
+                            "tpl": "<div class='client-logo text-center'><img src='"+ (window.siteSettings ? window.siteSettings.logoUrl : '/logo.png') +"' /><h2>"+ (window.siteSettings ? window.siteSettings.siteName : '考试系统') +"</h2><p class='login-subtitle'>用户登录</p></div>",
                             "className": "mb-4"
                         },
                         {
@@ -114,7 +114,7 @@
                         },
                         {
                             "type": "tpl",
-                            "tpl": "<div class='text-center mt-3 login-footer'>© 2025 考试系统 版权所有</div>"
+                            "tpl": "<div class='text-center mt-3 login-footer'>© 2025 "+ (window.siteSettings ? window.siteSettings.siteName : '考试系统') +" 版权所有</div>"
                         }
                     ]
                 }

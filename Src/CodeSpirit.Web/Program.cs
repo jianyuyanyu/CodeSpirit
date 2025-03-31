@@ -7,6 +7,7 @@ using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Web.Extensions;
 using CodeSpirit.Web.Middlewares;
+using CodeSpirit.Web.Options;
 using Microsoft.AspNetCore.Components;
 
 public class Program
@@ -28,6 +29,9 @@ public class Program
         // Add services to the container.
         builder.Services.AddRazorPages();
         builder.Services.AddServerSideBlazor();
+
+        // 注册站点配置选项
+        builder.Services.Configure<SiteSettings>(builder.Configuration.GetSection("SiteSettings"));
 
         // Add HttpClient for Blazor components
         builder.Services.AddHttpClient();

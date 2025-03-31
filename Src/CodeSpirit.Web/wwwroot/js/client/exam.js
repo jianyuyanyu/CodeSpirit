@@ -889,7 +889,7 @@
     // 用新的配置替换整个examPage对象
     const examPage = {
         type: 'page',
-        title: '',
+        title: window.siteSettings ? window.siteSettings.siteName : '考试系统',
         body: [
             {
                 type: 'service',
@@ -903,7 +903,7 @@
                         items: [
                             {
                                 type: 'tpl',
-                                tpl: '<div class="logo"><img src="/logo.png" /><span>考试系统</span></div>',
+                                tpl: '<div class="logo"><img src="'+ (window.siteSettings ? window.siteSettings.logoUrl : '/logo.png') +'" /><span>'+ (window.siteSettings ? window.siteSettings.siteName : '考试系统') +'</span></div>',
                                 className: 'client-logo'
                             },
                             {

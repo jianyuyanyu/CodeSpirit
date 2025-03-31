@@ -43,16 +43,6 @@ public class Program
             return httpClient;
         });
 
-        // Add WebOptimizer
-        builder.Services.AddWebOptimizer(pipeline =>
-        {
-            // Minify and bundle JavaScript files
-            pipeline.MinifyJsFiles("/sdk/sdk.js", "/js/*.js", "/js/**/*.js");
-
-            // Minify CSS files
-            pipeline.MinifyCssFiles("/sdk/antd.css", "/sdk/helper.css", "/sdk/iconfont.css", "/css/*.css");
-        });
-
         // 添加 HttpContextAccessor 和内存缓存
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddMemoryCache();
@@ -95,9 +85,6 @@ public class Program
         app.MapDefaultEndpoints();
         await app.UseCodeSpiritNavigationAsync();
         app.MapControllers();
-
-        // Add WebOptimizer middleware
-        app.UseWebOptimizer();
 
         app.UseMiddleware<ProxyMiddleware>();
 

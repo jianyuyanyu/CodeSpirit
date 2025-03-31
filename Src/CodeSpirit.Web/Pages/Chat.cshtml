@@ -2,7 +2,8 @@
 @model CodeSpirit.Web.Pages.ChatModel
 @{
     ViewData["Title"] = "聊天";
+    var (settings, resourceBase) = Html.InitializeResources();
 }
 
 <component type="typeof(CodeSpirit.Web.Components.Shared.MainNav)" render-mode="ServerPrerendered" param-CurrentPath="@Request.Path.Value" />
-<component type="typeof(CodeSpirit.Web.Components.Chat.ChatApp)" render-mode="Server" /> 
+<component type="typeof(CodeSpirit.Web.Components.Chat.ChatApp)" render-mode="ServerPrerendered" /> 

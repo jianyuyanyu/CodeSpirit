@@ -1,13 +1,14 @@
 ﻿@page
 @{
     ViewData["Title"] = "登录";
+    var (settings, resourceBase) = Html.InitializeResources();
 }
 @section Head
 {
-    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+    <link rel="stylesheet" href="@resourceBase/css/login.css" asp-append-version="true" />
 }
 <div id="root" class="app-wrapper"></div>
 
 @section Scripts {
-    <script src="~/js/login.js" asp-append-version="true"></script>
+    <script src="@resourceBase/js/login.js" asp-append-version="true"></script>
 }

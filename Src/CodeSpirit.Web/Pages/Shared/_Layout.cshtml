@@ -1,21 +1,26 @@
 ﻿@using Microsoft.Extensions.Options
 @using CodeSpirit.Web.Options
 @inject IOptions<SiteSettings> SiteOptions
+@{
+    var cdnEnabled = SiteOptions.Value.EnableCdn;
+    var cdnUrl = SiteOptions.Value.CdnUrl;
+    var resourceBase = cdnEnabled ? cdnUrl : "";
+}
 
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <title>@ViewData["Title"] - @SiteOptions.Value.SiteName</title>
+    <title>@ViewData["Title"] - @Html.Raw(SiteOptions.Value.SiteName)</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
 
     <!-- 样式表 -->
-    <link rel="stylesheet" href="~/sdk/antd.css" asp-append-version="true" />
-    <link rel="stylesheet" asp-append-version="true" href="~/sdk/helper.css" />
-    <link rel="stylesheet" asp-append-version="true" href="~/sdk/iconfont.css" />
-    <link rel="stylesheet" href="~/css/chat.css" asp-append-version="true" />
+    <link rel="stylesheet" href="@resourceBase/sdk/antd.css" asp-append-version="true" />
+    <link rel="stylesheet" href="@resourceBase/sdk/helper.css" asp-append-version="true" />
+    <link rel="stylesheet" href="@resourceBase/sdk/iconfont.css" asp-append-version="true" />
+    <link rel="stylesheet" href="@resourceBase/css/chat.css" asp-append-version="true" />
 
     <!-- 全局变量配置 -->
     <script>
@@ -29,15 +34,18 @@
         // 站点配置
         window.siteSettings = {
             siteName: '@Html.Raw(SiteOptions.Value.SiteName)',
-            topSiteName: '@Html.Raw(SiteOptions.Value.SiteName.Split('|')[0])',
-            logoUrl: '@SiteOptions.Value.LogoUrl'
+            topSiteName: '@Html.Raw(SiteOptions.Value.TopSiteName)',
+            logoUrl: '@SiteOptions.Value.LogoUrl',
+            cdnEnabled: @(cdnEnabled ? "true" : "false"),
+            cdnUrl: '@cdnUrl',
+            resourceBase: '@resourceBase'
         };
     </script>
 
     <!-- 脚本 -->
-    <script asp-append-version="true" src="~/sdk/sdk.js"></script>
-    <script asp-append-version="true" src="~/js/history.js"></script>
-    <script asp-append-version="true" src="~/js/tokenManager.js"></script>
+    <script src="@resourceBase/sdk/sdk.js" asp-append-version="true"></script>
+    <script src="@resourceBase/js/history.js" asp-append-version="true"></script>
+    <script src="@resourceBase/js/tokenManager.js" asp-append-version="true"></script>
     @RenderSection("Head", required: false)  <!-- 可选的 Razor section -->
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -47,6 +55,6 @@
     </div>
     @await RenderSectionAsync("Scripts", required: false)
     <script src="_framework/blazor.server.js"></script>
-    <script src="~/js/chat.js" asp-append-version="true"></script>
+    <script src="@resourceBase/js/chat.js" asp-append-version="true"></script>
 </body>
 </html>

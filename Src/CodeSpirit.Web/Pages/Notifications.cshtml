@@ -2,6 +2,7 @@
 @model CodeSpirit.Web.Pages.NotificationsModel
 @{
     ViewData["Title"] = "通知";
+    var (settings, resourceBase) = Html.InitializeResources();
 }
 
 <component type="typeof(CodeSpirit.Web.Components.Shared.MainNav)" render-mode="ServerPrerendered" param-CurrentPath="@Request.Path.Value" />

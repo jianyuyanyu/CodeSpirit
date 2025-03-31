@@ -22,7 +22,7 @@
                     "type": "container",
                     "className": "client-login-container",
                     "style": {
-                        "maxWidth": "420px",
+                        "maxWidth": "450px",
                         "width": "100%",
                         "margin": "20px auto",
                         "position": "relative",

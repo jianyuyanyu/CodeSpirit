@@ -68,6 +68,12 @@ public class ClientExamBasicInfoDto
     public int ScreenSwitchCount { get; set; }
     
     /// <summary>
+    /// 提交后是否可以查看考试结果
+    /// </summary>
+    [DisplayName("提交后是否可以查看考试结果")]
+    public bool EnableViewResult { get; set; }
+    
+    /// <summary>
     /// 是否启用切屏检测
     /// </summary>
     [DisplayName("是否启用切屏检测")]

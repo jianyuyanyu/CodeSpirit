@@ -76,17 +76,20 @@ public class IndexController : ApiControllerBase
     /// </summary>
     /// <param name="id">考试记录ID</param>
     /// <param name="answers">考试答案</param>
-    /// <returns>操作结果</returns>
+    /// <returns>操作结果，包含是否可以查看结果</returns>
     [HttpPost("{id}/submit")]
-    public async Task<ActionResult<ApiResponse>> SubmitExam(long id, [FromBody] List<ClientExamAnswerDto> answers)
+    public async Task<IActionResult> SubmitExam(long id, [FromBody] List<ClientExamAnswerDto> answers)
     {
         var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
         if (currentUserId == 0)
         {
             return Unauthorized();
         }
-        await _clientService.SubmitExamAsync(id, currentUserId, answers);
-        return SuccessResponse();
+        
+        var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId, answers);
+        
+        // 返回提交结果和是否允许查看结果
+        return Ok(new ApiResponse<dynamic>(0, "操作成功！", new { success, enableViewResult }));
     }
 
     /// <summary>

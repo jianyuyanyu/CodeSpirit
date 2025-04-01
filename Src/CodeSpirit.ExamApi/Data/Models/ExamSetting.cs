@@ -76,6 +76,11 @@ public class ExamSetting : LongKeyAuditableEntityBase
     public int AllowedScreenSwitchCount { get; set; } = 0;
     
     /// <summary>
+    /// 提交后是否可以查看考试结果
+    /// </summary>
+    public bool EnableViewResult { get; set; } = false;
+    
+    /// <summary>
     /// 考试状态
     /// </summary>
     [Required]

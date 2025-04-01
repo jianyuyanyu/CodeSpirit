@@ -39,8 +39,8 @@ public interface IClientService
     /// <param name="recordId">考试记录ID</param>
     /// <param name="userId">用户ID</param>
     /// <param name="answers">答案列表</param>
-    /// <returns>是否提交成功</returns>
-    Task<bool> SubmitExamAsync(long recordId, long userId, List<ClientExamAnswerDto> answers);
+    /// <returns>提交结果，包含是否成功和是否可查看结果</returns>
+    Task<(bool Success, bool EnableViewResult)> SubmitExamAsync(long recordId, long userId, List<ClientExamAnswerDto> answers);
     
     /// <summary>
     /// 获取考试结果

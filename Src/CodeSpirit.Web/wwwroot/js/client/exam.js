@@ -861,8 +861,15 @@
                     clearInterval(examTimerInterval);
                 }
                 
-                // 跳转到结果页面
-                window.location.href = `/client/exam/result/${recordId}`;
+                // 根据后端返回的enableViewResult决定是否跳转到结果页面
+                if (data.data && data.data.enableViewResult) {
+                    // 允许查看结果，跳转到结果页面
+                    window.location.href = `/client/exam/result/${recordId}`;
+                } else {
+                    // 不允许查看结果，显示提交成功页面
+                    alert("考试提交成功！");
+                    window.location.href = "/client/index";
+                }
             } else {
                 alert(data.msg || "提交失败，请重试");
             }

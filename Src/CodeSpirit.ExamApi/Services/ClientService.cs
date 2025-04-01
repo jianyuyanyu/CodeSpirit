@@ -306,8 +306,8 @@ public class ClientService : IClientService
     /// <param name="recordId">考试记录ID</param>
     /// <param name="userId">用户ID</param>
     /// <param name="answers">答案列表</param>
-    /// <returns>是否提交成功</returns>
-    public async Task<bool> SubmitExamAsync(long recordId, long userId, List<ClientExamAnswerDto> answers)
+    /// <returns>带有提交结果的对象，包含是否可以查看结果</returns>
+    public async Task<(bool Success, bool EnableViewResult)> SubmitExamAsync(long recordId, long userId, List<ClientExamAnswerDto> answers)
     {
         try
         {
@@ -382,7 +382,9 @@ public class ClientService : IClientService
                 await AutoGradeObjectiveQuestions(examRecord);
 
                 await transaction.CommitAsync();
-                return true;
+                
+                // 返回提交成功状态和是否可以查看结果的设置
+                return (true, examRecord.ExamSetting.EnableViewResult);
             }
             catch
             {
@@ -587,7 +589,8 @@ public class ClientService : IClientService
                 TotalScore = examSetting.ExamPaper.TotalScore,
                 RecordId = existingRecord?.Id,
                 AllowedScreenSwitchCount = examSetting.AllowedScreenSwitchCount,
-                ScreenSwitchCount = existingRecord?.ScreenSwitchCount ?? 0
+                ScreenSwitchCount = existingRecord?.ScreenSwitchCount ?? 0,
+                EnableViewResult = examSetting.EnableViewResult
             };
 
             return examBasicInfo;

@@ -95,6 +95,12 @@ public class CreateExamSettingDto
     public int AllowedScreenSwitchCount { get; set; } = 0;
 
     /// <summary>
+    /// 提交后是否可以查看考试结果
+    /// </summary>
+    [DisplayName("提交后是否可以查看考试结果")]
+    public bool EnableViewResult { get; set; } = false;
+
+    /// <summary>
     /// 参加考试的学生分组ID列表
     /// </summary>
     [DisplayName("参加考试的学生分组")]

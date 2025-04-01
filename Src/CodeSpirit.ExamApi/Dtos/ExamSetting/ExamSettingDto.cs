@@ -86,6 +86,12 @@ public class ExamSettingDto
     public int AllowedScreenSwitchCount { get; set; }
 
     /// <summary>
+    /// 提交后是否可以查看考试结果
+    /// </summary>
+    [DisplayName("提交后是否可以查看考试结果")]
+    public bool EnableViewResult { get; set; }
+
+    /// <summary>
     /// 考试状态
     /// </summary>
     [DisplayName("考试状态")]

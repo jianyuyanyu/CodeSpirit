@@ -43,7 +43,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>登录结果</returns>
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] LoginModel model)
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> Login([FromBody] LoginModel model)
         {
             try
             {
@@ -59,7 +59,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 var result = await _authService.LoginAsync(loginDto);
                 if (!result.Success)
                 {
-                    return BadRequest(new ApiResponse(400, result.Message));
+                    return BadResponse<AuthTokenResponse>(result.Message);
                 }
 
                 var response = new AuthTokenResponse
@@ -68,12 +68,12 @@ namespace CodeSpirit.IdentityApi.Controllers
                     RefreshToken = result.RefreshToken,
                     User = result.UserInfo
                 };
-                return Ok(new ApiResponse<AuthTokenResponse>(200, "登录成功", response));
+                return SuccessResponse(response, msg: "登录成功");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "登录异常");
-                return BadRequest(new ApiResponse(400, "登录失败，请检查登录名或密码！"));
+                return BadResponse<AuthTokenResponse>("登录失败，请检查登录名或密码！");
             }
         }
 
@@ -84,19 +84,19 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>新的令牌信息</returns>
         [HttpPost("refresh-token")]
         [AllowAnonymous]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
         {
             try
             {
                 if (refreshTokenDto == null || string.IsNullOrEmpty(refreshTokenDto.Token) || string.IsNullOrEmpty(refreshTokenDto.RefreshToken))
                 {
-                    return BadRequest(new ApiResponse(400, "访问令牌和刷新令牌不能为空"));
+                    return BadResponse<AuthTokenResponse>("访问令牌和刷新令牌不能为空");
                 }
 
                 var result = await _authService.RefreshTokenAsync(refreshTokenDto.Token, refreshTokenDto.RefreshToken);
                 if (!result.Success)
                 {
-                    return BadRequest(new ApiResponse(400, result.Message));
+                    return BadResponse<AuthTokenResponse>(result.Message);
                 }
 
                 var response = new AuthTokenResponse
@@ -105,12 +105,12 @@ namespace CodeSpirit.IdentityApi.Controllers
                     RefreshToken = result.RefreshToken,
                     User = result.UserInfo
                 };
-                return Ok(new ApiResponse<AuthTokenResponse>(200, "令牌刷新成功", response));
+                return SuccessResponse(response, msg: "令牌刷新成功");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "刷新令牌异常");
-                return BadRequest(new ApiResponse(400, "刷新令牌失败: " + ex.Message));
+                return BadResponse<AuthTokenResponse>("刷新令牌失败: " + ex.Message);
             }
         }
 
@@ -120,10 +120,10 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>登出结果</returns>
         [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout()
+        public async Task<ActionResult<ApiResponse>> Logout()
         {
             await _signInManager.SignOutAsync();
-            return Ok(new ApiResponse(200, "退出登录成功!"));
+            return SuccessResponse("退出登录成功!");
         }
     }
 }

@@ -426,6 +426,12 @@ namespace CodeSpirit.Amis.Column
                 }
             }
 
+            // 如果任何时候列的类型被设置为switch，并且不存在QuickSave方法，则设置disabled为true
+            if (column["type"]?.ToString() == "switch" && amisContext.Actions.QuickSave == null)
+            {
+                column["disabled"] = true;
+            }
+
             return column;
         }
 

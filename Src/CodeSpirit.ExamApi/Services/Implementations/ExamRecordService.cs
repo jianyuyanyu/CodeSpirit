@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using LinqKit;
 using CodeSpirit.Core;
+using CodeSpirit.ExamApi.Dtos.Client;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -523,6 +524,33 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         }
         
         return Mapper.Map<ExamRecordDto>(examRecord);
+    }
+    /// <summary>
+    /// 获取答题预览要素
+    /// </summary>
+    /// <param name="recordId"></param>
+    /// <returns></returns>
+    /// <exception cref="NotImplementedException"></exception>
+
+    public async Task<AnswerPreviewDto> GetAnswerPreviewAsync(long recordId)
+    {
+        var examRecord = await Repository.CreateQuery()
+            .Include(r => r.ExamSetting)
+            .Include(r => r.AnswerRecords)
+            .Where(r => r.Id == recordId)
+            .Select(x => new AnswerPreviewDto {
+                ExamPaperId = x.ExamSetting.ExamPaperId,
+                Answers = x.AnswerRecords == null? new List<ClientExamAnswerDto>() : x.AnswerRecords.Select(x => new ClientExamAnswerDto {
+                    QuestionId = x.QuestionId,
+                    Answer = x.Answer
+                }).ToList()
+            }).FirstOrDefaultAsync();
+        if (examRecord == null)
+        {
+            throw new BusinessException("考试记录不存在");
+        }
+
+        return examRecord;
     }
 }
 

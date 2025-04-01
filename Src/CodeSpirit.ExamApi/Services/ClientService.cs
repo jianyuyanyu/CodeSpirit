@@ -644,6 +644,20 @@ public class ClientService : IClientService
                 throw new InvalidOperationException("未找到考生信息");
             }
 
+            // 查找是否已存在未完成的考试记录
+            var existingRecord = await _context.ExamRecords
+                .Where(r => r.ExamSettingId == examId && 
+                       r.StudentId == student.Id && 
+                       r.Status == ExamRecordStatus.InProgress)
+                .FirstOrDefaultAsync();
+                
+            // 如果存在进行中的考试记录，直接返回
+            if (existingRecord != null)
+            {
+                _logger.LogInformation($"用户 {userId} 已有进行中的考试记录(ID: {existingRecord.Id})，直接返回现有记录");
+                return existingRecord;
+            }
+
             // 检查考试次数
             var attemptCount = await _context.ExamRecords
                 .CountAsync(r => r.ExamSettingId == examId && r.StudentId == student.Id);

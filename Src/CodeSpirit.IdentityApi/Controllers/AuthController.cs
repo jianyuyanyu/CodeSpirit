@@ -6,47 +6,118 @@ using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
+    /// <summary>
+    /// 授权控制器，处理用户登录、令牌刷新和登出功能
+    /// </summary>
     [AllowAnonymous]
     public class AuthController : ApiControllerBase
     {
         private readonly IAuthService _authService;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService, SignInManager<ApplicationUser> signInManager)
+        /// <summary>
+        /// 初始化授权控制器
+        /// </summary>
+        /// <param name="authService">授权服务</param>
+        /// <param name="signInManager">登录管理器</param>
+        /// <param name="logger">日志记录器</param>
+        public AuthController(
+            IAuthService authService,
+            SignInManager<ApplicationUser> signInManager,
+            ILogger<AuthController> logger)
         {
             _authService = authService;
             _signInManager = signInManager;
+            _logger = logger;
         }
 
         /// <summary>
-        /// 用户登录方法。
+        /// 用户登录接口
         /// </summary>
-        /// <param name="model">登录模型，包含用户名和密码。</param>
-        /// <returns>登录结果。</returns>
+        /// <param name="model">登录模型</param>
+        /// <returns>登录结果</returns>
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<ActionResult<ApiResponse<LoginResult>>> Login([FromBody] LoginModel model)
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> Login([FromBody] LoginModel model)
         {
-            (bool success, string message, string token, UserDto user) = await _authService.LoginAsync(model.UserName, model.Password);
-            if (success)
+            try
             {
-                LoginResult result = new()
+                // 在服务器端获取客户端信息
+                var loginDto = new LoginDto
                 {
-                    Token = token,
+                    UserName = model.UserName,
+                    Password = model.Password,
+                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent = HttpContext.Request.Headers["User-Agent"].ToString()
                 };
-                return SuccessResponse(result, msg: "登录成功！");
+
+                var result = await _authService.LoginAsync(loginDto);
+                if (!result.Success)
+                {
+                    return BadResponse<AuthTokenResponse>(result.Message);
+                }
+
+                return SuccessResponse(new AuthTokenResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    User = result.UserInfo
+                }, msg: "登录成功！");
             }
-            return BadResponse<LoginResult>(message);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "登录异常");
+                return BadResponse<AuthTokenResponse>("登录失败，请检查登录名或密码！");
+            }
         }
 
         /// <summary>
-        /// 退出登录
+        /// 刷新访问令牌
         /// </summary>
-        /// <returns></returns>
+        /// <param name="refreshTokenDto">包含访问令牌和刷新令牌的请求对象</param>
+        /// <returns>新的令牌信息</returns>
+        [HttpPost("refresh-token")]
+        [AllowAnonymous]
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
+        {
+            try
+            {
+                if (refreshTokenDto == null || string.IsNullOrEmpty(refreshTokenDto.Token) || string.IsNullOrEmpty(refreshTokenDto.RefreshToken))
+                {
+                    return BadResponse<AuthTokenResponse>("访问令牌和刷新令牌不能为空");
+                }
+
+                var result = await _authService.RefreshTokenAsync(refreshTokenDto.Token, refreshTokenDto.RefreshToken);
+                if (!result.Success)
+                {
+                    return BadResponse<AuthTokenResponse>(result.Message);
+                }
+
+                return SuccessResponse(new AuthTokenResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    User = result.UserInfo
+                }, msg: "令牌刷新成功");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "刷新令牌异常");
+                return BadResponse<AuthTokenResponse>("刷新令牌失败: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 用户登出接口
+        /// </summary>
+        /// <returns>登出结果</returns>
         [HttpPost("logout")]
+        [Authorize]
         public async Task<ActionResult<ApiResponse>> Logout()
         {
             await _signInManager.SignOutAsync();

@@ -1,13 +1,14 @@
 ﻿// Services/AuthService.cs
 using AutoMapper;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Dtos.Auth;
+using CodeSpirit.IdentityApi.Jwt;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
+using System.Security.Cryptography;
 
 namespace CodeSpirit.IdentityApi.Services
 {
@@ -15,52 +16,38 @@ namespace CodeSpirit.IdentityApi.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly IRepository<LoginLog> _loginLogRepository;
-        private readonly IConfiguration _configuration;
+        private readonly IRepository<RefreshToken> _refreshTokenRepository;
+        private readonly ILoginLogRepository _loginLogRepository;
         private readonly IMapper _mapper;
-        private readonly IHttpContextAccessor _httpContextAccessor;  // 引入 IHttpContextAccessor
-
-        private readonly string _secretKey;
-        private readonly string _issuer;
-        private readonly string _audience;
-        private readonly int _expirationMinutes;
+        private readonly IConfiguration _configuration;
+        private readonly IJwtTokenHandler _jwtHandler;
+        private readonly ILogger<AuthService> _logger;
+        private readonly int _refreshTokenExpirationDays;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            IRepository<LoginLog> loginLogRepository,
-            IConfiguration configuration,
             IMapper mapper,
-            IHttpContextAccessor httpContextAccessor) // 通过依赖注入获取 IHttpContextAccessor
+            IConfiguration configuration,
+            IRepository<RefreshToken> refreshTokenRepository,
+            ILoginLogRepository loginLogRepository,
+            IJwtTokenHandler jwtHandler,
+            ILogger<AuthService> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
-            _loginLogRepository = loginLogRepository;
-            _configuration = configuration;
             _mapper = mapper;
-            _httpContextAccessor = httpContextAccessor;  // 初始化 IHttpContextAccessor
+            _configuration = configuration;
+            _refreshTokenRepository = refreshTokenRepository;
+            _loginLogRepository = loginLogRepository;
+            _jwtHandler = jwtHandler;
+            _logger = logger;
 
-            // 配置常量初始化
-            _secretKey = _configuration["Jwt:SecretKey"];
-            _issuer = _configuration["Jwt:Issuer"];
-            _audience = _configuration["Jwt:Audience"];
-            
-            // 令牌过期时间，默认60分钟
-            if (!int.TryParse(_configuration["Jwt:ExpirationMinutes"], out _expirationMinutes))
+            // 刷新令牌过期时间，默认7天
+            if (!int.TryParse(_configuration["Jwt:RefreshTokenExpirationDays"], out _refreshTokenExpirationDays))
             {
-                _expirationMinutes = 60; // 默认值为60分钟
+                _refreshTokenExpirationDays = 7; // 默认值为7天
             }
-        }
-
-        /// <summary>
-        /// 获取客户端的 IP 地址
-        /// </summary>
-        /// <returns>返回客户端的 IP 地址，如果无法获取则返回空字符串</returns>
-        private string GetClientIpAddress()
-        {
-            // 从请求头中获取代理服务器（如果有的话）设置的客户端 IP 地址
-            string remoteIpAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
-            return remoteIpAddress ?? "NotAvailable"; // 如果为空，返回默认值
         }
 
         /// <summary>
@@ -69,34 +56,258 @@ namespace CodeSpirit.IdentityApi.Services
         /// <param name="userName">用户名</param>
         /// <param name="password">密码</param>
         /// <returns>返回一个包含登录成功与否、信息和JWT Token的元组</returns>
-        public async Task<(bool Success, string Message, string Token, UserDto UserInfo)> LoginAsync(string userName, string password)
+        public async Task<AuthResultDto> LoginAsync(LoginDto input)
         {
-            // 使用Include确保加载所需的关联数据
-            ApplicationUser user = await _userManager.Users
-                .Include(u => u.UserRoles)
-                    .ThenInclude(ur => ur.Role)
-                        .ThenInclude(r => r.RolePermission)
-                .FirstOrDefaultAsync(u => u.UserName == userName);
-            LoginLog loginLog = CreateLoginLog(user);
-
-            // 如果用户不存在，记录登录日志并返回失败信息
-            if (user == null)
+            try
             {
-                return (false, ErrorMessages.InvalidCredentials, null, null);
+                var user = await _userManager.FindByNameAsync(input.UserName);
+                if (user == null)
+                {
+                    await LogLoginAsync(input, null, false, "用户不存在！");
+                    return AuthResultDto.CreateFailure("用户名或密码不正确！");
+                }
+
+                if (!user.IsActive)
+                {
+                    await LogLoginAsync(input, user.Id, false, "账号已被禁用！");
+                    return AuthResultDto.CreateFailure("账号已被禁用！");
+                }
+
+                var result = await _signInManager.CheckPasswordSignInAsync(user, input.Password, true);
+                var loginLog = new LoginLog
+                {
+                    UserId = user.Id,
+                    UserName = input.UserName,
+                    LoginTime = DateTime.UtcNow,
+                    IPAddress = input.IpAddress,
+                    IsSuccess = result.Succeeded
+                };
+
+                if (result.Succeeded)
+                {
+                    // 更新最后登录时间
+                    user.LastLoginTime = DateTimeOffset.UtcNow;
+                    await _userManager.UpdateAsync(user);
+
+                    // 生成令牌
+                    var token = await _jwtHandler.GenerateTokenAsync(user);
+
+                    // 从JWT中获取jwtId
+                    var tokenHandler = new JwtSecurityTokenHandler();
+                    var jwtToken = tokenHandler.ReadJwtToken(token);
+                    var jwtId = jwtToken.Id;
+
+                    // 生成刷新令牌
+                    var refreshToken = await GenerateRefreshTokenAsync(user.Id, jwtId);
+
+                    // 记录登录日志
+                    loginLog.IsSuccess = true;
+                    await _loginLogRepository.AddAsync(loginLog);
+
+                    // 准备用户信息
+                    var userDto = _mapper.Map<UserDto>(user);
+
+                    // 返回成功结果
+                    return AuthResultDto.CreateSuccess(token, refreshToken, userDto);
+                }
+                else
+                {
+                    // 记录失败原因
+                    string failReason = "密码错误！";
+                    if (result.IsLockedOut)
+                    {
+                        failReason = "账号已被锁定！";
+                    }
+                    else if (result.IsNotAllowed)
+                    {
+                        failReason = "账号未被授权！";
+                    }
+
+                    loginLog.FailureReason = failReason;
+                    await _loginLogRepository.AddAsync(loginLog);
+
+                    return AuthResultDto.CreateFailure(failReason == "密码错误！" ? "登录名或密码不正确！" : failReason);
+                }
             }
-
-            // 检查用户是否活跃
-            if (!user.IsActive)
+            catch (Exception ex)
             {
-                loginLog.FailureReason = "用户账户未激活";
+                _logger.LogError(ex, "登录过程发生异常");
+                await LogLoginAsync(input, null, false, "系统异常：" + ex.Message);
+                return AuthResultDto.CreateFailure("登录失败：系统异常");
+            }
+        }
+
+        public async Task<bool> LogoutAsync(long userId)
+        {
+            // 可以在这里实现额外的登出逻辑，如撤销令牌等
+            return true;
+        }
+
+        public async Task<AuthResultDto> RefreshTokenAsync(string accessToken, string refreshToken)
+        {
+            try
+            {
+                // 验证访问令牌是否有效（即使过期也可以验证）
+                ClaimsPrincipal principal = null;
+                try
+                {
+                    // 忽略过期验证，只检查令牌格式和签名
+                    principal = _jwtHandler.ValidateTokenWithoutLifetime(accessToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "令牌验证失败: {accessToken}", accessToken);
+                    return AuthResultDto.CreateFailure("无效的访问令牌");
+                }
+
+                if (principal == null)
+                {
+                    return AuthResultDto.CreateFailure("无效的访问令牌");
+                }
+
+                // 获取用户ID和jwtId
+                var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
+                var jwtIdClaim = principal.FindFirst("jti");
+
+                if (userIdClaim == null || jwtIdClaim == null || !long.TryParse(userIdClaim.Value, out var userId))
+                {
+                    return AuthResultDto.CreateFailure("无效的访问令牌");
+                }
+
+                // 获取刷新令牌
+                var storedRefreshToken = await _refreshTokenRepository.CreateQuery()
+                    .FirstOrDefaultAsync(r => r.Token == refreshToken && r.UserId == userId && r.JwtId == jwtIdClaim.Value);
+
+                // 验证刷新令牌
+                if (storedRefreshToken == null)
+                {
+                    return AuthResultDto.CreateFailure("刷新令牌不存在");
+                }
+
+                if (storedRefreshToken.ExpiryTime < DateTime.UtcNow)
+                {
+                    return AuthResultDto.CreateFailure("刷新令牌已过期");
+                }
+
+                if (storedRefreshToken.IsUsed)
+                {
+                    return AuthResultDto.CreateFailure("刷新令牌已被使用");
+                }
+
+                if (storedRefreshToken.IsRevoked)
+                {
+                    return AuthResultDto.CreateFailure("刷新令牌已被撤销");
+                }
+
+                // 标记当前刷新令牌为已使用
+                storedRefreshToken.IsUsed = true;
+                await _refreshTokenRepository.UpdateAsync(storedRefreshToken);
+
+                // 获取用户
+                var user = await _userManager.FindByIdAsync(userId.ToString());
+                if (user == null)
+                {
+                    return AuthResultDto.CreateFailure("用户不存在");
+                }
+
+                // 生成新的访问令牌
+                var newToken = await _jwtHandler.GenerateTokenAsync(user);
+
+                // 从新JWT中获取jwtId
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var newJwtToken = tokenHandler.ReadJwtToken(newToken);
+                var newJwtId = newJwtToken.Id;
+
+                // 生成新的刷新令牌
+                var newRefreshToken = await GenerateRefreshTokenAsync(userId, newJwtId);
+
+                // 准备用户信息
+                var userDto = _mapper.Map<UserDto>(user);
+
+                // 返回成功结果
+                return AuthResultDto.CreateSuccess(newToken, newRefreshToken, userDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "刷新令牌过程发生异常");
+                return AuthResultDto.CreateFailure("刷新令牌失败：系统异常");
+            }
+        }
+
+        public async Task LogLoginAsync(LoginDto input, long? userId, bool isSuccess, string failReason = null)
+        {
+            try
+            {
+                var loginLog = new LoginLog
+                {
+                    UserId = userId,
+                    UserName = input.UserName,
+                    LoginTime = DateTime.UtcNow,
+                    IPAddress = input.IpAddress,
+                    IsSuccess = isSuccess,
+                    FailureReason = failReason
+                };
+
                 await _loginLogRepository.AddAsync(loginLog);
-                return (false, ErrorMessages.InactiveAccount, null, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "记录登录日志过程发生异常");
+            }
+        }
+
+        /// <summary>
+        /// 生成刷新令牌
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="jwtId">JWT令牌ID</param>
+        /// <returns>刷新令牌字符串</returns>
+        private async Task<string> GenerateRefreshTokenAsync(long userId, string jwtId)
+        {
+            // 生成随机令牌
+            var randomNumber = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            string refreshToken = Convert.ToBase64String(randomNumber);
+
+            // 创建刷新令牌实体
+            var refreshTokenEntity = new RefreshToken
+            {
+                UserId = userId,
+                Token = refreshToken,
+                JwtId = jwtId,
+                IsUsed = false,
+                IsRevoked = false,
+                CreatedTime = DateTime.UtcNow,
+                ExpiryTime = DateTime.UtcNow.AddDays(_refreshTokenExpirationDays)
+            };
+
+            // 保存到数据库
+            await _refreshTokenRepository.AddAsync(refreshTokenEntity);
+
+            return refreshToken;
+        }
+
+        /// <summary>
+        /// 撤销刷新令牌
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="refreshToken">刷新令牌</param>
+        /// <returns>撤销结果</returns>
+        public async Task<bool> RevokeRefreshTokenAsync(long userId, string refreshToken)
+        {
+            var storedRefreshToken = await _refreshTokenRepository.CreateQuery()
+                .FirstOrDefaultAsync(r => r.Token == refreshToken && r.UserId == userId);
+
+            if (storedRefreshToken == null)
+            {
+                return false;
             }
 
-            // 检查用户密码是否正确并处理结果
-            SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+            storedRefreshToken.IsRevoked = true;
+            await _refreshTokenRepository.UpdateAsync(storedRefreshToken);
 
-            return result.Succeeded ? await HandleSuccessfulLoginAsync(user, loginLog) : await HandleFailedLoginAsync(result, loginLog);
+            return true;
         }
 
         /// <summary>
@@ -106,149 +317,36 @@ namespace CodeSpirit.IdentityApi.Services
         /// <returns>返回登录结果</returns>
         public async Task<(bool Success, string Message, string Token, UserDto UserInfo)> ImpersonateLoginAsync(string userName)
         {
-            // 使用 FindByNameAsync 查找用户，这是更符合 Identity 框架最佳实践的方法
-            ApplicationUser user = await _userManager.FindByNameAsync(userName);
-            
-            // 如果用户不存在，返回失败信息
-            if (user == null)
+            try
             {
-                return (false, ErrorMessages.InvalidCredentials, null, null);
-            }
-            
-            // 创建登录日志
-            LoginLog loginLog = CreateLoginLog(user);
-            
-            // 检查用户是否活跃
-            if (!user.IsActive)
-            {
-                loginLog.FailureReason = "用户账户未激活";
-                await _loginLogRepository.AddAsync(loginLog);
-                return (false, ErrorMessages.InactiveAccount, null, null);
-            }
-            
-            // 加载用户角色信息
-            await _userManager.GetRolesAsync(user);
+                // 查找用户
+                var user = await _userManager.FindByNameAsync(userName);
 
-            // 模拟登录：直接生成token
-            return await HandleSuccessfulLoginAsync(user, loginLog);
-        }
-
-        /// <summary>
-        /// 创建登录日志，记录登录尝试
-        /// </summary>
-        /// <param name="user">用户对象</param>
-        /// <param name="userName">用户名</param>
-        /// <returns>返回登录日志对象</returns>
-        private LoginLog CreateLoginLog(ApplicationUser user)
-        {
-            return new LoginLog
-            {
-                UserId = user?.Id,
-                UserName = user?.UserName,
-                LoginTime = DateTime.UtcNow,
-                IPAddress = GetClientIpAddress(),  // 从 HTTP 上下文中获取客户端 IP 地址
-                IsSuccess = false,
-                FailureReason = null
-            };
-        }
-
-        /// <summary>
-        /// 处理登录成功的逻辑，记录日志并生成JWT Token
-        /// </summary>
-        /// <param name="user">登录的用户</param>
-        /// <param name="loginLog">登录日志</param>
-        /// <returns>返回一个包含登录成功、消息、JWT Token以及用户信息的元组</returns>
-        private async Task<(bool Success, string Message, string Token, UserDto UserInfo)> HandleSuccessfulLoginAsync(ApplicationUser user, LoginLog loginLog)
-        {
-            // 更新最后登录时间
-            user.LastLoginTime = DateTimeOffset.UtcNow;
-            await _userManager.UpdateAsync(user);
-
-            // 登录成功，更新日志并保存
-            loginLog.IsSuccess = true;
-            await _loginLogRepository.AddAsync(loginLog);
-
-            // 生成JWT Token
-            string token = GenerateJwtToken(user);
-
-            // 将用户对象映射到DTO对象
-            UserDto userDto = _mapper.Map<UserDto>(user);
-
-            return (true, "登录成功", token, userDto);
-        }
-
-        /// <summary>
-        /// 处理登录失败的逻辑，记录失败原因并返回失败消息
-        /// </summary>
-        /// <param name="result">登录结果</param>
-        /// <param name="loginLog">登录日志</param>
-        /// <returns>返回一个包含登录失败、消息、JWT Token和用户信息的元组</returns>
-        private async Task<(bool Success, string Message, string Token, UserDto UserInfo)> HandleFailedLoginAsync(SignInResult result, LoginLog loginLog)
-        {
-            // 记录失败原因
-            loginLog.FailureReason = result.IsLockedOut ? "账户被锁定" : "密码不正确";
-            await _loginLogRepository.AddAsync(loginLog);
-
-            // 更新访问失败次数已经由 SignInManager 在 CheckPasswordSignInAsync 中自动处理
-            // 因为我们在调用时设置了 lockoutOnFailure: true
-
-            return result.IsLockedOut
-                ? (false, ErrorMessages.AccountLocked, null, null)
-                : (false, ErrorMessages.InvalidCredentials, null, null);
-        }
-
-        /// <summary>
-        /// 生成JWT Token
-        /// </summary>
-        /// <param name="user">用户对象</param>
-        /// <returns>返回生成的JWT Token字符串</returns>
-        private string GenerateJwtToken(ApplicationUser user)
-        {
-            // 构建JWT声明
-            List<Claim> claims =
-            [
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),// JWT ID
-                new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
-            ];
-
-            // 添加角色声明
-            if (user.UserRoles != null)
-            {
-                foreach (ApplicationUserRole role in user.UserRoles.Where(ur => ur.Role != null))
+                // 如果用户不存在，返回失败信息
+                if (user == null)
                 {
-                    claims.Add(new Claim(ClaimTypes.Role, role.Role.Name));
+                    return (false, "用户不存在", null, null);
                 }
+
+                // 检查用户是否活跃
+                if (!user.IsActive)
+                {
+                    return (false, "账号已被禁用", null, null);
+                }
+
+                // 生成token
+                var token = await _jwtHandler.GenerateTokenAsync(user);
+
+                // 将用户对象映射到DTO对象
+                var userDto = _mapper.Map<UserDto>(user);
+
+                return (true, "模拟登录成功", token, userDto);
             }
-
-            // 添加权限声明
-            IEnumerable<string> allPermissions = user.UserRoles?
-                .Where(ur => ur.Role?.RolePermission != null)
-                .SelectMany(ur => ur.Role.RolePermission.PermissionIds ?? Array.Empty<string>())
-                .Distinct() ?? Enumerable.Empty<string>();
-
-            foreach (string permission in allPermissions)
+            catch (Exception ex)
             {
-                claims.Add(new Claim("permissions", permission));
+                _logger.LogError(ex, "模拟登录过程发生异常");
+                return (false, "模拟登录失败：系统异常", null, null);
             }
-
-            // 创建加密密钥和签名凭证
-            SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(_secretKey));
-            SigningCredentials credentials = new(key, SecurityAlgorithms.HmacSha256);
-
-            // 生成JWT Token
-            JwtSecurityToken token = new(
-                issuer: _issuer,
-                audience: _audience,
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(180),
-                signingCredentials: credentials
-            );
-
-            // 返回JWT Token字符串
-            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 
@@ -260,5 +358,7 @@ namespace CodeSpirit.IdentityApi.Services
         public const string InvalidCredentials = "用户名或密码不正确，请重新输入！";
         public const string AccountLocked = "账户被锁定，请稍后再试！";
         public const string InactiveAccount = "账户未激活，请联系管理员！";
+        public const string InvalidToken = "无效的令牌！";
+        public const string RefreshTokenExpired = "刷新令牌已过期！";
     }
 }

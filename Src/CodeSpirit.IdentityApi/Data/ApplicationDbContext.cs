@@ -30,6 +30,11 @@ namespace CodeSpirit.IdentityApi.Data
         /// </summary>
         public DbSet<LoginLog> LoginLogs { get; set; }
 
+        /// <summary>
+        /// 刷新令牌实体集。
+        /// </summary>
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+
         private readonly IServiceProvider serviceProvider;
         private readonly ILogger<ApplicationDbContext> logger;
         private readonly ChangeTracker changeTracker;
@@ -149,6 +154,35 @@ namespace CodeSpirit.IdentityApi.Data
                 // 添加复合索引
                 entity.HasIndex(l => new { l.UserId, l.LoginTime })
                       .HasDatabaseName("IX_LoginLogs_UserId_LoginTime");
+            });
+
+            // 配置 RefreshToken 的索引和关系
+            builder.Entity<RefreshToken>(entity =>
+            {
+                // 主键设置
+                entity.HasKey(r => r.Id);
+                
+                // 设置与用户的关系
+                entity.HasOne(r => r.User)
+                      .WithMany()
+                      .HasForeignKey(r => r.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                
+                // 索引 Token，提高根据令牌查询的性能
+                entity.HasIndex(r => r.Token)
+                      .HasDatabaseName("IX_RefreshTokens_Token");
+                
+                // 索引 UserId，提高按用户查询的性能
+                entity.HasIndex(r => r.UserId)
+                      .HasDatabaseName("IX_RefreshTokens_UserId");
+                
+                // 索引 ExpiryTime，便于清理过期令牌
+                entity.HasIndex(r => r.ExpiryTime)
+                      .HasDatabaseName("IX_RefreshTokens_ExpiryTime");
+                
+                // 复合索引，提高按用户+令牌查询的性能
+                entity.HasIndex(r => new { r.UserId, r.Token })
+                      .HasDatabaseName("IX_RefreshTokens_UserId_Token");
             });
 
             ConfigureGlobalFiltersOnModelCreating(builder);

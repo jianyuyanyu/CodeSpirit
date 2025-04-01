@@ -69,7 +69,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <param name="version">版本号</param>
     /// <returns>题目版本详情</returns>
     [HttpGet("questions/{questionId:long}/versions/{version:int}")]
-    public async Task<ActionResult<ApiResponse<QuestionVersionDto>>> GetQuestionVersion(long questionId, int version)
+    public async Task<ActionResult<ApiResponse<QuestionVersionDto>>> GetQuestionVersionByVersion(long questionId, int version)
     {
         if (questionId <= 0)
         {
@@ -91,7 +91,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <param name="id">题目版本ID</param>
     /// <returns>题目版本详细信息</returns>
     [HttpGet("{id:long}")]
-    public async Task<ActionResult<ApiResponse<QuestionVersionDto>>> GetQuestionVersionById(long id)
+    public async Task<ActionResult<ApiResponse<QuestionVersionDto>>> GetQuestionDetail(long id)
     {
         QuestionVersionDto questionVersion = await _questionVersionService.GetAsync(id);
         return SuccessResponse(questionVersion);

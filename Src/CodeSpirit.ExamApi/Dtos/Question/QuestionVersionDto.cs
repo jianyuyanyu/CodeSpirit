@@ -1,6 +1,7 @@
-using System.ComponentModel;
 using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
+using System.ComponentModel;
 
 /// <summary>
 /// 题目版本DTO
@@ -75,5 +76,6 @@ public class QuestionVersionDto
     /// 修改人
     /// </summary>
     [DisplayName("修改人")]
+    [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "{field}")]
     public string CreatedBy { get; set; } = string.Empty;
 } 

@@ -174,7 +174,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="id">题目ID</param>
     /// <returns>题目预览的Amis配置</returns>
     [HttpGet("{id:long}/preview")]
-    [Operation("预览", "ajax", null, null)]
+    [Operation(label: "预览", actionType: "service")]
     public async Task<ActionResult<ApiResponse<JObject>>> PreviewQuestion(long id)
     {
         var question = await _questionService.GetQuestionAsync(id);

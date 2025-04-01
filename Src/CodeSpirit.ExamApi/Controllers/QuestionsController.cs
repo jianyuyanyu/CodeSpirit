@@ -219,7 +219,7 @@ public class QuestionsController : ApiControllerBase
         var titleObj = new JObject
         {
             ["type"] = "tpl",
-            ["tpl"] = $"<div class=\"question-label\">1. {question.Content} <span style=\"color:#999\">（{question.DefaultScore}分）</span></div>",
+            ["tpl"] = $"<div class=\"question-label\"><pre>1. {question.Content} </pre><span style=\"color:#999\">（{question.DefaultScore}分）</span></div>",
             ["inline"] = false
         };
         formItems.Add(titleObj);

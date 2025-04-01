@@ -138,7 +138,7 @@ public class IndexController : ApiControllerBase
             var titleObj = new JObject
             {
                 ["type"] = "tpl",
-                ["tpl"] = $"<div class=\"question-label\">{index}. {question.Content} <span style=\"color:#999\">（{question.Score}分）</span></div>",
+                ["tpl"] = $"<div class=\"question-label\"><pre>{index}. {question.Content} </pre><span style=\"color:#999\">（{question.Score}分）</span></div>",
                 ["inline"] = false
             };
             formItems.Add(titleObj);

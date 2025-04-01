@@ -58,4 +58,10 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     /// <param name="recordId">考试记录ID</param>
     /// <returns>考试记录详情</returns>
     Task<ExamRecordDto> GetExamRecordDetailAsync(long recordId);
+    /// <summary>
+    /// 获取答题预览要素
+    /// </summary>
+    /// <param name="recordId"></param>
+    /// <returns></returns>
+    Task<AnswerPreviewDto> GetAnswerPreviewAsync(long recordId);
 } 

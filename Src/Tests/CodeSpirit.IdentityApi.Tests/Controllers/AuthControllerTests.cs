@@ -109,9 +109,9 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             var result = await _controller.Login(loginModel);
 
             // Assert
-            var badResult = Assert.IsType<ActionResult<ApiResponse<AuthTokenResponse>>>(result);
+            var badResult = Assert.IsType<BadRequestObjectResult>(result);
             var response = Assert.IsType<ApiResponse>(badResult.Value);
-            Assert.Equal(1, response.Status);
+            Assert.Equal(400, response.Status);
             // 不验证具体错误消息，只确保是失败状态
             Assert.False(string.IsNullOrEmpty(response.Msg));
         }

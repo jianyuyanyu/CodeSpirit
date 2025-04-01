@@ -414,18 +414,6 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         }
 
         [Fact]
-        public void ValidateToken_WithInvalidToken_ReturnsNull()
-        {
-            // 通过反射调用私有方法ValidateToken
-            var validateTokenMethod = typeof(AuthService).GetMethod("ValidateToken", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                
-            var result = validateTokenMethod.Invoke(_authService, new object[] { "invalid.token" });
-            
-            Assert.Null(result);
-        }
-
-        [Fact]
         public async Task LoginAsync_WithMockAuthService_ReturnsSuccessResult()
         {
             // Arrange

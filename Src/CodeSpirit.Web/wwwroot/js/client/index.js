@@ -222,14 +222,14 @@
                                 label: '考试时间',
                                 type: 'datetime'
                             },
-                            {
-                                name: 'score',
-                                label: '得分'
-                            },
-                            {
-                                name: 'totalScore',
-                                label: '总分'
-                            },
+                            //{
+                            //    name: 'score',
+                            //    label: '得分'
+                            //},
+                            //{
+                            //    name: 'totalScore',
+                            //    label: '总分'
+                            //},
                             {
                                 name: 'status',
                                 label: '状态',

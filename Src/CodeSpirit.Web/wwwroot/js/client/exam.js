@@ -41,9 +41,7 @@
 
     // 改进显示警告的函数，使用正确的AMIS API
     window.showScreenSwitchWarning = function(message) {
-        try {
-            console.log("[切屏警告] 尝试显示AMIS警告弹窗");
-            
+        try {            
             // 默认消息
             const warningMessage = message || "警告：系统已记录您的切屏行为！频繁切屏可能会被判定为作弊行为。";
         
@@ -822,7 +820,7 @@
     // 提交考试
     function submitExam(isAutoSubmit = false) {
         if (isAutoSubmit) {
-            alert("考试时间已结束，系统将自动提交您的答卷！");
+            window.showScreenSwitchWarning("考试时间已结束，系统将自动提交您的答卷！");
         }
         
         // 转换为后端需要的格式

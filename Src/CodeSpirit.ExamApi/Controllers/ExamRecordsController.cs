@@ -120,7 +120,7 @@ public class ExamRecordsController : ApiControllerBase
         {
             var question = examPaper.Questions[i];
             int index = i + 1;
-            var answer = preview.Answers.FirstOrDefault(x => x.QuestionId == question.qu)?.Answer;
+            var answer = preview.Answers.FirstOrDefault(x => x.QuestionId == question.QuestionId)?.Answer;
 
             // 问题标题
             var titleObj = new JObject

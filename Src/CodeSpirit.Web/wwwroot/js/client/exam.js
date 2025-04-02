@@ -376,11 +376,46 @@
                 console.log("使用当前时间作为备用", examStartTime);
             }
             
+            // 计算考试结束时间
             const examEndTimeByDuration = new Date(examStartTime.getTime() + duration * 60 * 1000);
             console.log("计算出的结束时间", examEndTimeByDuration);
             
-            // 设置剩余时间（分钟转为秒）
-            remainingTime = duration * 60;
+            // 获取当前时间
+            const currentTime = new Date();
+            console.log("当前时间", currentTime);
+            
+            // 计算剩余时间（秒）
+            let secondsRemaining = Math.floor((examEndTimeByDuration.getTime() - currentTime.getTime()) / 1000);
+            
+            // 如果剩余时间小于0，可能是考试已经结束
+            if (secondsRemaining <= 0) {
+                console.log("考试时间已结束或即将结束");
+                secondsRemaining = 0;
+                
+                // 更新剩余时间为0
+                remainingTime = 0;
+                
+                // 更新显示
+                updateTimerDisplay();
+                
+                // 延迟一点时间后自动提交考试
+                setTimeout(() => {
+                    console.log("考试时间已结束，准备自动提交");
+                    
+                    // 显示警告提示
+                    window.showScreenSwitchWarning("考试时间已结束，系统将自动提交您的答卷!");
+                    
+                    // 延迟3秒后自动提交，给用户一点时间看到提示
+                    setTimeout(() => {
+                        submitExam(true); // 自动提交
+                    }, 3000);
+                }, 500);
+                
+                return;
+            }
+            
+            // 设置剩余时间
+            remainingTime = secondsRemaining;
             console.log("设置剩余时间(秒)", remainingTime);
             
             // 清除之前的计时器
@@ -427,71 +462,87 @@
     
     // 更新计时器显示
     function updateTimerDisplay() {
-        const hours = Math.floor(remainingTime / 3600);
-        const minutes = Math.floor((remainingTime % 3600) / 60);
-        const seconds = remainingTime % 60;
-        
-        const displayText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        
-        // 更新全局数据
-        window.GlobalData.set('timer.displayText', displayText);
-        window.GlobalData.set('timer.hours', hours);
-        window.GlobalData.set('timer.minutes', minutes);
-        window.GlobalData.set('timer.seconds', seconds);
-        window.GlobalData.set('timer.remainingSeconds', remainingTime);
-
-        // 同步到amis上下文
-        if (window.amisInstance) {
-            // 直接更新数据而不是通过syncToAmis函数
-            try {
-                // 创建计时器数据对象
-                const timerData = {
-                    displayText: displayText,
-                    hours: hours,
-                    minutes: minutes,
-                    seconds: seconds,
-                    remainingSeconds: remainingTime
-                };
-                
-                // 防御性编程：检查props和data是否存在
-                window.amisInstance.updateProps({
-                    data: {
-                        timer: timerData
+        try {
+            // 防御性编程：确保remainingTime是有效值
+            if (isNaN(remainingTime) || remainingTime === undefined) {
+                console.warn("更新计时器时发现remainingTime无效:", remainingTime);
+                remainingTime = 0;
+            }
+            
+            // 确保remainingTime不为负数
+            remainingTime = Math.max(0, remainingTime);
+            
+            const hours = Math.floor(remainingTime / 3600);
+            const minutes = Math.floor((remainingTime % 3600) / 60);
+            const seconds = remainingTime % 60;
+            
+            const displayText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            console.log("[计时器] 更新显示:", displayText, "剩余秒数:", remainingTime);
+            
+            // 更新全局数据
+            window.GlobalData.set('timer.displayText', displayText);
+            window.GlobalData.set('timer.hours', hours);
+            window.GlobalData.set('timer.minutes', minutes);
+            window.GlobalData.set('timer.seconds', seconds);
+            window.GlobalData.set('timer.remainingSeconds', remainingTime);
+    
+            // 同步到amis上下文
+            if (window.amisInstance) {
+                // 直接更新数据而不是通过syncToAmis函数
+                try {
+                    // 创建计时器数据对象
+                    const timerData = {
+                        displayText: displayText,
+                        hours: hours,
+                        minutes: minutes,
+                        seconds: seconds,
+                        remainingSeconds: remainingTime
+                    };
+                    
+                    // 防御性编程：检查props和data是否存在
+                    window.amisInstance.updateProps({
+                        data: {
+                            timer: timerData
+                        }
+                    });
+                    
+                    // 触发重新渲染
+                    if (typeof window.amisInstance.forceUpdate === 'function') {
+                        window.amisInstance.forceUpdate();
                     }
-                });
-                
-                // 触发重新渲染
-                if (typeof window.amisInstance.forceUpdate === 'function') {
-                    window.amisInstance.forceUpdate();
+                    
+                    // 更新DOM，强制显示最新时间
+                    updateTimerDOMDisplay(displayText);
+                } catch (e) {
+                    console.error("更新计时器显示时出错", e);
+                    // 出错时直接更新DOM作为后备方案
+                    updateTimerDOMDisplay(displayText);
                 }
-                
-                // 更新DOM，强制显示最新时间
-                const timerElements = document.querySelectorAll('.exam-timer');
-                if (timerElements && timerElements.length > 0) {
-                    timerElements.forEach(el => {
-                        el.innerHTML = `剩余时间：${displayText}`;
-                    });
-                }
+            } else {
+                console.warn("amisInstance未初始化，使用DOM方式更新计时器显示");
+                // 尝试直接更新DOM
+                updateTimerDOMDisplay(displayText);
+            }
+        } catch (error) {
+            console.error("更新计时器显示时发生错误:", error);
+            // 尝试最基本的DOM更新
+            try {
+                const displayText = "00:00:00";
+                updateTimerDOMDisplay(displayText);
             } catch (e) {
-                console.error("更新计时器显示时出错", e);
-                
-                // 出错时直接更新DOM作为后备方案
-                const timerElements = document.querySelectorAll('.exam-timer');
-                if (timerElements && timerElements.length > 0) {
-                    timerElements.forEach(el => {
-                        el.innerHTML = `剩余时间：${displayText}`;
-                    });
-                }
+                console.error("更新计时器DOM时发生致命错误:", e);
             }
-        } else {
-            console.warn("amisInstance未初始化，无法更新计时器显示");
-            // 尝试直接更新DOM
-            const timerElements = document.querySelectorAll('.exam-timer');
-            if (timerElements && timerElements.length > 0) {
-                timerElements.forEach(el => {
-                    el.innerHTML = `剩余时间：${displayText}`;
-                });
-            }
+        }
+    }
+    
+    // 辅助函数：更新计时器DOM显示
+    function updateTimerDOMDisplay(displayText) {
+        const timerElements = document.querySelectorAll('.exam-timer');
+        if (timerElements && timerElements.length > 0) {
+            timerElements.forEach(el => {
+                el.innerHTML = `剩余时间：${displayText}`;
+            });
         }
     }
     
@@ -894,7 +945,7 @@
     // 用新的配置替换整个examPage对象
     const examPage = {
         type: 'page',
-        title: window.siteSettings ? window.siteSettings.clientAppName : '考试系统',
+        // title: window.siteSettings ? window.siteSettings.clientAppName : '考试系统',
         body: [
             {
                 type: 'service',
@@ -904,7 +955,7 @@
                     {
                         type: 'flex',
                         justify: 'space-between',
-                        className: 'w-full',
+                        className: 'w-full header-container',
                         items: [
                             {
                                 type: 'tpl',
@@ -920,30 +971,6 @@
                                     {
                                         type: 'tpl',
                                         tpl: '<div class="user-info">欢迎您，${name}</div>'
-                                    }
-                                ]
-                            },
-                            {
-                                type: 'flex',
-                                justify: 'flex-end',
-                                alignItems: 'center',
-                                className: 'exam-timer-container',
-                                items: [
-                                    {
-                                        type: 'tpl',
-                                        tpl: '<div class="exam-timer">剩余时间：${timer.displayText}</div>'
-                                    }
-                                ]
-                            },
-                            {
-                                type: 'flex',
-                                justify: 'flex-end',
-                                alignItems: 'center',
-                                className: 'screen-switch-counter',
-                                items: [
-                                    {
-                                        type: 'tpl',
-                                        tpl: '<div class="screen-switch-count">切屏次数：<span class="screen-switch-value">0</span>/<span class="allowed-switch-value">${allowedScreenSwitchCount || "?"}</span></div>'
                                     }
                                 ]
                             }
@@ -966,6 +993,37 @@
                         ]
                     }
                 }
+            },
+            {
+                type: 'flex',
+                justify: 'space-between',
+                className: 'w-full header-status-container',
+                items: [
+                    {
+                        type: 'flex',
+                        justify: 'flex-start',
+                        alignItems: 'center',
+                        className: 'exam-timer-container',
+                        items: [
+                            {
+                                type: 'tpl',
+                                tpl: '<div class="exam-timer">剩余时间：${timer.displayText}</div>'
+                            }
+                        ]
+                    },
+                    {
+                        type: 'flex',
+                        justify: 'flex-end',
+                        alignItems: 'center',
+                        className: 'screen-switch-counter',
+                        items: [
+                            {
+                                type: 'tpl',
+                                tpl: '<div class="screen-switch-count">切屏次数：<span class="screen-switch-value">0</span>/<span class="allowed-switch-value">${allowedScreenSwitchCount || "?"}</span></div>'
+                            }
+                        ]
+                    }
+                ]
             },
             {
                 type: 'service',
@@ -1026,7 +1084,22 @@
                                         
                                         // 启动计时器
                                         try {
-                                            startExamTimer(event.data.duration, event.data.startTime);
+                                            // 获取服务器返回的开始时间和考试时长
+                                            const serverStartTime = event.data.startTime;
+                                            const examDuration = event.data.duration;
+                                            
+                                            if (!serverStartTime) {
+                                                console.error("服务器未返回有效的开始时间，无法启动计时器");
+                                                return;
+                                            }
+                                            
+                                            console.log("从服务器获取的考试信息:", {
+                                                startTime: serverStartTime,
+                                                duration: examDuration + "分钟"
+                                            });
+                                            
+                                            // 调用计时器函数，传递考试时长和开始时间
+                                            startExamTimer(examDuration, serverStartTime);
                                         } catch (error) {
                                             console.error("调用计时器函数失败", error);
                                         }
@@ -1183,6 +1256,15 @@
                 'z-index': '100',
                 'border-bottom': '1px solid #eaeaea'
             },
+            '.header-container': {
+                'margin-bottom': '10px'
+            },
+            '.header-status-container': {
+                'padding': '5px 0',
+                'background-color': 'rgba(245, 247, 250, 0.8)',
+                'border-radius': 'var(--border-radius)',
+                'flex-wrap': 'wrap'
+            },
             '.client-logo': {
                 'display': 'flex',
                 'align-items': 'center'
@@ -1225,7 +1307,9 @@
                 'border-radius': 'var(--border-radius)',
                 'box-shadow': '0 2px 8px rgba(0,0,0,0.08)',
                 'border': '1px solid #f0f0f0',
-                'transition': 'all 0.3s ease'
+                'transition': 'all 0.3s ease',
+                'min-width': '180px',
+                'text-align': 'center'
             },
             '.exam-timer': {
                 'color': 'var(--danger-color)',
@@ -1233,7 +1317,8 @@
                 'font-weight': 'bold',
                 'font-family': 'Consolas, monospace',
                 'display': 'flex',
-                'align-items': 'center'
+                'align-items': 'center',
+                'justify-content': 'center'
             },
             '.exam-timer::before': {
                 'content': '""',
@@ -1306,7 +1391,9 @@
                 'flex-wrap': 'wrap',
                 'background-color': '#f9f9f9',
                 'padding': '15px',
-                'border-radius': 'var(--border-radius)'
+                'border-radius': 'var(--border-radius)',
+                'gap': '10px',
+                'justify-content': 'center'
             },
             '.exam-info-item': {
                 'margin-right': '20px',
@@ -1316,7 +1403,9 @@
                 'border-radius': 'var(--border-radius)',
                 'box-shadow': '0 2px 5px rgba(0,0,0,0.05)',
                 'border-left': '3px solid var(--primary-color)',
-                'font-weight': '500'
+                'font-weight': '500',
+                'min-width': '160px',
+                'text-align': 'center'
             },
             // 题目样式
             '.question-container': {
@@ -1499,17 +1588,77 @@
             // 响应式样式
             '@media (max-width: 768px)': {
                 '.exam-container': {
+                    'padding': '10px',
+                    'margin': '10px auto'
+                },
+                '.exam-panel': {
+                    'margin-top': '0'
+                },
+                '.exam-info-panel': {
                     'padding': '10px'
                 },
+                '.exam-info': {
+                    'padding': '10px',
+                    'flex-direction': 'column'
+                },
                 '.question-label': {
-                    'font-size': '15px'
+                    'font-size': '15px',
+                    'padding-left': '10px',
+                    'line-height': '1.4',
+                    'margin-bottom': '15px'
+                },
+                '.question-content': {
+                    'padding-bottom': '10px',
+                    'margin-bottom': '10px'
+                },
+                '.question-item': {
+                    'padding': '15px',
+                    'margin-bottom': '20px',
+                    'box-shadow': '0 1px 5px rgba(0,0,0,0.03)'
+                },
+                '.question-type-tag, .question-score': {
+                    'font-size': '11px',
+                    'padding': '1px 6px'
+                },
+                '.am-RadioControl, .am-CheckboxControl': {
+                    'padding': '8px 12px',
+                    'margin-bottom': '8px'
+                },
+                '.am-RadioControl-label, .am-CheckboxControl-label': {
+                    'font-size': '14px',
+                    'line-height': '1.4'
+                },
+                '.option-label': {
+                    'width': '22px',
+                    'height': '22px',
+                    'line-height': '22px',
+                    'font-size': '12px',
+                    'margin-right': '8px'
+                },
+                '.am-Button--primary, .am-Button--link': {
+                    'font-size': '14px',
+                    'padding': '8px 16px'
+                },
+                '.exam-actions': {
+                    'margin-top': '20px',
+                    'flex-wrap': 'wrap',
+                    'gap': '10px'
                 },
                 '.client-header': {
-                    'padding': '10px 15px',
-                    'flex-direction': 'column'
+                    'padding': '10px 15px'
+                },
+                '.header-container, .header-status-container': {
+                    'flex-direction': 'column',
+                    'align-items': 'center',
+                    'gap': '10px'
                 },
                 '.client-logo span': {
                     'font-size': '18px'
+                },
+                '.exam-timer-container, .screen-switch-counter': {
+                    'width': '100%',
+                    'justify-content': 'center',
+                    'margin': '5px 0'
                 },
                 '.exam-timer': {
                     'font-size': '16px'
@@ -1520,10 +1669,16 @@
                 },
                 '.user-info-container': {
                     'margin-right': '0',
-                    'margin-bottom': '10px'
+                    'margin-bottom': '5px',
+                    'width': '100%',
+                    'justify-content': 'center'
                 },
                 '.exam-title': {
                     'font-size': '20px'
+                },
+                '.screen-switch-count': {
+                    'font-size': '13px',
+                    'padding': '5px 10px'
                 }
             },
             // 新增样式
@@ -1536,7 +1691,8 @@
                 'box-shadow': '0 1px 3px rgba(0,0,0,0.03)'
             },
             '.screen-switch-counter': {
-                'margin-left': '20px'
+                'margin-left': '0',
+                'min-width': '180px'
             },
             '.screen-switch-count': {
                 'font-size': '14px',
@@ -1548,7 +1704,9 @@
                 'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
                 'transition': 'all 0.3s ease',
                 'display': 'flex',
-                'align-items': 'center'
+                'align-items': 'center',
+                'justify-content': 'center',
+                'text-align': 'center'
             },
             '.screen-switch-count::before': {
                 'content': '""',
@@ -1658,8 +1816,21 @@
 
     // 在考试页面加载完成后初始化答案
     document.addEventListener('DOMContentLoaded', function() {
+        console.log("[页面加载] 文档已加载完成");
+        
+        // 初始化答案
         initializeAnswersFromStorage();
-        // 不在这里初始化切屏检测
+        
+        // 尝试初始化计时器
+        if (window.globalData && window.globalData.exam) {
+            const { startTime, duration } = window.globalData.exam;
+            if (startTime && duration) {
+                console.log("[页面加载] 从全局数据初始化计时器", { startTime, duration });
+                // 这里不直接调用startExamTimer，因为API加载完成后会自动调用
+            }
+        } else {
+            console.log("[页面加载] 全局考试数据尚未准备好，将等待API加载");
+        }
     });
 
     // 添加页面卸载时的保存机制

@@ -1,95 +1,393 @@
 ﻿(function () {
     let amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
-    // 使用 HashHistory
     const history = History.createHashHistory();
 
-    // 全局数据对象，用于存储用户信息和其他共享数据
+    // 简化后的日志函数
+    window.log = function(message, level = 'log') {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString() + '.' + now.getMilliseconds().toString().padStart(3, '0');
+        const logMessage = `[${timeStr}] ${message}`;
+        console[level](logMessage);
+        return logMessage;
+    };
+    
+    // 全局数据存储
     window.globalData = {
-        user: {
-            id: null,
-            name: '',
-            avatar: '',
-            roles: []
-        },
-        notifications: {
-            count: 0,
-            hasUnread: false,
-            items: []
-        },
-        // 可以添加其他全局数据
+        user: { id: null, name: '', avatar: '', roles: [] },
+        notifications: { count: 0, hasUnread: false, items: [] },
+        countdowns: { items: {}, hasCountdown: false },
         settings: {},
         permissions: []
     };
 
-    // 全局数据辅助函数
+    // 简化的全局数据访问方法
     window.GlobalData = {
-        // 获取数据
         get: function (path, defaultValue) {
             const keys = path.split('.');
             let current = window.globalData;
-
             for (let i = 0; i < keys.length; i++) {
-                if (current === undefined || current === null) {
-                    return defaultValue;
-                }
+                if (current === undefined || current === null) return defaultValue;
                 current = current[keys[i]];
             }
-
             return current !== undefined ? current : defaultValue;
         },
-
-        // 设置数据
         set: function (path, value) {
             const keys = path.split('.');
             let current = window.globalData;
-
             for (let i = 0; i < keys.length - 1; i++) {
-                if (current[keys[i]] === undefined) {
-                    current[keys[i]] = {};
-                }
+                if (current[keys[i]] === undefined) current[keys[i]] = {};
                 current = current[keys[i]];
             }
-
             current[keys[keys.length - 1]] = value;
             return value;
         },
-
-        // 将全局数据同步到amis上下文
         syncToAmis: function (amisInstance, selectedPaths) {
             if (!amisInstance) return;
-
             const data = {};
             if (selectedPaths && Array.isArray(selectedPaths)) {
                 selectedPaths.forEach(path => {
                     const keys = path.split('.');
                     let current = data;
                     let source = window.globalData;
-
                     for (let i = 0; i < keys.length - 1; i++) {
                         if (source[keys[i]] === undefined) break;
-
-                        if (current[keys[i]] === undefined) {
-                            current[keys[i]] = {};
-                        }
+                        if (current[keys[i]] === undefined) current[keys[i]] = {};
                         current = current[keys[i]];
                         source = source[keys[i]];
                     }
-
                     current[keys[keys.length - 1]] = source[keys[keys.length - 1]];
                 });
             } else {
                 Object.assign(data, window.globalData);
             }
-
             amisInstance.updateProps({ data });
         }
     };
 
+    // 整合的时间和状态函数
+    window.examUtils = {
+        formatCountdown: function(startTimeStr) {
+            try {
+                const startTime = new Date(startTimeStr).getTime();
+                const now = new Date().getTime();
+                const diffSeconds = Math.floor((startTime - now) / 1000);
+                
+                if (diffSeconds <= 0) return '考试即将开始';
+                
+                const hours = Math.floor(diffSeconds / 3600);
+                const minutes = Math.floor((diffSeconds % 3600) / 60);
+                const seconds = diffSeconds % 60;
+                
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } catch (e) {
+                return '--:--:--';
+            }
+        },
+        isComingSoon: function(startTimeStr) {
+            try {
+                const startTime = new Date(startTimeStr).getTime();
+                const now = new Date().getTime();
+                const diffMs = startTime - now;
+                return diffMs > 0 && diffMs <= 30 * 60 * 1000; // 30分钟内
+            } catch (e) {
+                return false;
+            }
+        },
+        isUrgent: function(startTimeStr) {
+            try {
+                const startTime = new Date(startTimeStr).getTime();
+                const now = new Date().getTime();
+                const diffMs = startTime - now;
+                return diffMs > 0 && diffMs <= 5 * 60 * 1000; // 5分钟内
+            } catch (e) {
+                return false;
+            }
+        },
+        processExamData: function(exam) {
+            if (!exam) return {};
+            
+            try {
+                const startTime = new Date(exam.startTime).getTime();
+                const now = new Date().getTime();
+                const diffMs = startTime - now;
+                
+                // 设置基本数据
+                const result = {
+                    ...exam,
+                    isComingSoon: false,
+                    isUrgent: false,
+                    countdownText: '--',
+                    comingSoonLabel: '',
+                    countdownContainerClass: '',
+                    countdownTextClass: ''
+                };
+                
+                // 处理未开始考试的倒计时
+                if (exam.status === '未开始' && startTime > now) {
+                    const diffSeconds = Math.floor(diffMs / 1000);
+                    const hours = Math.floor(diffSeconds / 3600);
+                    const minutes = Math.floor((diffSeconds % 3600) / 60);
+                    const seconds = diffSeconds % 60;
+                    
+                    result.countdownText = diffSeconds <= 0 ? 
+                        '考试即将开始' : 
+                        `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    // 计算状态
+                    result.isComingSoon = diffMs > 0 && diffMs <= 30 * 60 * 1000;
+                    result.isUrgent = diffMs > 0 && diffMs <= 5 * 60 * 1000;
+                    
+                    // 设置样式和标签
+                    result.countdownContainerClass = result.isComingSoon ? 'countdown-pre-start' : '';
+                    result.countdownTextClass = result.isUrgent ? 'countdown-urgent' : '';
+                    result.comingSoonLabel = result.isComingSoon ? '<span class="label label-coming-soon">即将开始</span>' : '';
+                }
+                
+                return result;
+            } catch (e) {
+                return exam || {};
+            }
+        }
+    };
+
+    // 简化的DOM相关函数
+    window.countdownUI = {
+        // 更新倒计时显示
+        updateDisplay: function(examId, remainingSeconds) {
+            try {
+                const countdownElements = document.querySelectorAll(`.countdown-container[data-exam-id="${examId}"] .countdown-text`);
+                if (!countdownElements || countdownElements.length === 0) return;
+                
+                // 配置值
+                let config = {
+                    text: '',
+                    containerClass: '',
+                    textClass: '',
+                    borderColor: '',
+                    bgColor: ''
+                };
+                
+                if (remainingSeconds <= 0) {
+                    config = {
+                        text: '考试即将开始',
+                        containerClass: 'countdown-pre-start',
+                        textClass: 'countdown-ended',
+                        borderColor: '#4caf50',
+                        bgColor: 'rgba(76, 175, 80, 0.05)'
+                    };
+                } else {
+                    // 格式化时间
+                    const hours = Math.floor(remainingSeconds / 3600);
+                    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                    const seconds = remainingSeconds % 60;
+                    config.text = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    if (remainingSeconds <= 60) {
+                        // 一分钟内
+                        config.containerClass = 'countdown-pre-start urgent';
+                        config.textClass = 'countdown-urgent';
+                        config.borderColor = '#f44336';
+                        config.bgColor = 'rgba(244, 67, 54, 0.05)';
+                    } else if (remainingSeconds <= 300) {
+                        // 五分钟内
+                        config.containerClass = 'countdown-pre-start';
+                        config.textClass = 'countdown-urgent';
+                        config.borderColor = '#ff9800';
+                        config.bgColor = 'rgba(255, 152, 0, 0.05)';
+                    } else if (remainingSeconds <= 1800) {
+                        // 30分钟内
+                        config.containerClass = 'countdown-pre-start';
+                        config.textClass = '';
+                        config.borderColor = '#03a9f4';
+                        config.bgColor = 'rgba(3, 169, 244, 0.05)';
+                    } else {
+                        // 超过30分钟
+                        config.containerClass = '';
+                        config.textClass = '';
+                        config.borderColor = '#03a9f4';
+                        config.bgColor = '';
+                    }
+                }
+                
+                // 更新DOM显示
+                countdownElements.forEach(el => {
+                    el.textContent = config.text;
+                    el.className = `countdown-text ${config.textClass}`.trim();
+                    
+                    el.classList.add('countdown-updated');
+                    setTimeout(() => el.classList.remove('countdown-updated'), 500);
+                    
+                    const container = el.closest('.countdown-container');
+                    if (container) {
+                        container.className = `countdown-container ${config.containerClass}`.trim();
+                        container.style.borderLeftColor = config.borderColor;
+                        container.style.backgroundColor = config.bgColor;
+                    }
+                });
+            } catch (error) {
+                console.error('更新倒计时显示时出错:', error);
+            }
+        },
+        
+        // 刷新考试列表
+        refreshExamList: function() {
+            try {
+                const examListService = document.querySelector('.exam-list-section');
+                if (examListService) {
+                    examListService.dispatchEvent(new CustomEvent('reload'));
+                }
+            } catch (error) {
+                console.error('刷新考试列表时出错:', error);
+            }
+        }
+    };
+    
+    // 倒计时管理
+    window.countdownManager = {
+        // 启动倒计时计时器
+        startTimer: function() {
+            // 清除旧计时器
+            if (window.countdownInterval) {
+                clearInterval(window.countdownInterval);
+                window.countdownInterval = null;
+            }
+            
+            // 立即尝试更新
+            setTimeout(() => this.initializeDisplays(), 0);
+            
+            // 创建新计时器
+            window.countdownInterval = setInterval(() => {
+                try {
+                    const countdownItems = window.globalData.countdowns.items;
+                    let hasActiveCountdown = false;
+                    const now = new Date().getTime();
+                    
+                    // 更新每个倒计时
+                    Object.keys(countdownItems).forEach(examId => {
+                        const item = countdownItems[examId];
+                        const remaining = Math.floor((item.targetTime - now) / 1000);
+                        
+                        if (remaining > 0) {
+                            item.remaining = remaining;
+                            hasActiveCountdown = true;
+                            window.countdownUI.updateDisplay(examId, remaining);
+                        } else {
+                            item.remaining = 0;
+                            window.countdownUI.updateDisplay(examId, 0);
+                            // 倒计时结束后刷新列表
+                            setTimeout(() => window.countdownUI.refreshExamList(), 3000);
+                        }
+                    });
+                    
+                    // 如果没有活跃的倒计时，清除计时器
+                    if (!hasActiveCountdown) {
+                        clearInterval(window.countdownInterval);
+                        window.countdownInterval = null;
+                        window.globalData.countdowns.hasCountdown = false;
+                    }
+                } catch (error) {
+                    console.error('更新倒计时时出错:', error);
+                }
+            }, 1000);
+        },
+        
+        // 初始化倒计时显示
+        initializeDisplays: function() {
+            try {
+                if (!window.globalData.countdowns.hasCountdown) return;
+                
+                const now = new Date().getTime();
+                const countdownItems = window.globalData.countdowns.items;
+                let updateAttempts = 0;
+                
+                // 递归尝试更新
+                const attemptUpdate = function() {
+                    updateAttempts++;
+                    let foundElements = false;
+                    
+                    Object.keys(countdownItems).forEach(examId => {
+                        const item = countdownItems[examId];
+                        const remaining = Math.floor((item.targetTime - now) / 1000);
+                        
+                        const countdownElements = document.querySelectorAll(`.countdown-container[data-exam-id="${examId}"] .countdown-text`);
+                        
+                        if (countdownElements && countdownElements.length > 0) {
+                            foundElements = true;
+                            if (remaining > 0) {
+                                window.countdownUI.updateDisplay(examId, remaining);
+                            }
+                        }
+                    });
+                    
+                    // 最多尝试5次
+                    if (!foundElements && updateAttempts < 5) {
+                        setTimeout(attemptUpdate, 100);
+                    }
+                };
+                
+                attemptUpdate();
+            } catch (error) {
+                console.error('初始化倒计时显示时出错:', error);
+            }
+        },
+        
+        // 处理倒计时数据
+        processCountdownData: function(items) {
+            try {
+                if (!Array.isArray(items)) return;
+                
+                const processedItems = items.map(exam => window.examUtils.processExamData(exam));
+                const countdownItems = {};
+                let hasCountdown = false;
+                
+                processedItems.forEach(exam => {
+                    // 只为未开始的考试设置倒计时
+                    if (exam.status === '未开始' && exam.startTime) {
+                        const startTime = new Date(exam.startTime).getTime();
+                        const now = new Date().getTime();
+                        
+                        if (startTime > now) {
+                            countdownItems[exam.id] = {
+                                targetTime: startTime,
+                                remaining: Math.floor((startTime - now) / 1000),
+                                examName: exam.name,
+                                isPreStart: (startTime - now) <= 30 * 60 * 1000
+                            };
+                            hasCountdown = true;
+                        }
+                    }
+                });
+                
+                // 更新全局倒计时数据
+                window.globalData.countdowns.items = countdownItems;
+                window.globalData.countdowns.hasCountdown = hasCountdown;
+                
+                // 如果有倒计时，启动计时器
+                if (hasCountdown && !window.countdownInterval) {
+                    this.startTimer();
+                }
+            } catch (error) {
+                console.error('处理倒计时数据时出错:', error);
+            }
+        }
+    };
+
+    // 已简化的初始化函数
+    window.onAmisInitialized = function() {
+        window.amisInitialized = true;
+        
+        if (window.globalData.countdowns.hasCountdown && !window.countdownInterval) {
+            window.countdownManager.startTimer();
+        }
+    };
+
+    // 应用配置
     var app = {
         type: 'page',
         title: window.siteSettings ? window.siteSettings.clientAppName : '考试系统',
         body: [
+            // 欢迎部分
             {
                 type: 'service',
                 api: '/identity/api/identity/profile',
@@ -112,17 +410,16 @@
                         redirect: '/client/login'
                     }
                 ],
-                data: {
-                    now: new Date()
-                }
+                data: { now: new Date() }
             },
-            {
-                type: 'divider'
-            },
+            { type: 'divider' },
+            
+            // 考试列表部分
             {
                 type: 'service',
                 api: '/exam/api/exam/client/available',
                 className: 'exam-list-section',
+                interval: 5000, // 每5秒自动刷新
                 body: [
                     {
                         type: 'tpl',
@@ -143,21 +440,14 @@
                                         avatarText: '考试'
                                     },
                                     body: [
-                                        {
-                                            type: 'tpl',
-                                            tpl: '<div><span class="text-muted">开始时间：</span>${startTime}</div>'
-                                        },
-                                        {
-                                            type: 'tpl',
-                                            tpl: '<div><span class="text-muted">结束时间：</span>${endTime}</div>'
-                                        },
-                                        {
-                                            type: 'tpl',
-                                            tpl: '<div><span class="text-muted">总分：</span>${totalScore}分</div>'
-                                        },
-                                        {
-                                            type: 'tpl',
-                                            tpl: '<div><span class="text-muted">状态：</span><span class="label label-${status === \'进行中\' ? \'success\' : (status === \'未开始\' ? \'info\' : \'danger\')}">${status}</span></div>'
+                                        { type: 'tpl', tpl: '<div><span class="text-muted">开始时间：</span>${startTime}</div>' },
+                                        { type: 'tpl', tpl: '<div><span class="text-muted">结束时间：</span>${endTime}</div>' },
+                                        { type: 'tpl', tpl: '<div><span class="text-muted">总分：</span>${totalScore}分</div>' },
+                                        { type: 'tpl', tpl: '<div><span class="text-muted">状态：</span><span class="label label-${status === \'进行中\' ? \'success\' : (status === \'未开始\' ? \'info\' : \'danger\')}">${status}</span>${comingSoonLabel|raw}</div>' },
+                                        { 
+                                            type: 'tpl', 
+                                            tpl: '<div class="countdown-container ${countdownContainerClass}" data-exam-id="${id}"><span class="text-muted">倒计时：</span><span class="countdown-text ${countdownTextClass}">${countdownText}</span></div>',
+                                            visibleOn: "status === '未开始'"
                                         }
                                     ],
                                     actions: [
@@ -169,9 +459,7 @@
                                             api: {
                                                 url: '/exam/api/exam/client/${id}/start',
                                                 method: 'post',
-                                                messages: {
-                                                    success: '开始考试...'
-                                                }
+                                                messages: { success: '开始考试...' }
                                             },
                                             visibleOn: "status === '进行中'",
                                             redirect: '/client/exam/${id}'
@@ -194,11 +482,55 @@
                             }
                         ]
                     }
-                ]
+                ],
+                onEvent: {
+                    fetchInited: {
+                        actions: [
+                            {
+                                actionType: "custom",
+                                script: `
+                                    try {
+                                        if (event.data && Array.isArray(event.data.items)) {
+                                            window.countdownManager.processCountdownData(event.data.items);
+                                        }
+                                    } catch (error) {
+                                        console.error('处理倒计时数据时出错:', error);
+                                    }
+                                `
+                            }
+                        ]
+                    },
+                    mounted: {
+                        actions: [
+                            {
+                                actionType: "custom",
+                                script: `
+                                    try {
+                                        // 触发应用初始化
+                                        setTimeout(() => {
+                                            if (typeof window.onAmisInitialized === 'function') {
+                                                window.onAmisInitialized();
+                                            }
+                                            
+                                            // 初始化倒计时显示
+                                            setTimeout(() => {
+                                                if (typeof window.countdownManager.initializeDisplays === 'function') {
+                                                    window.countdownManager.initializeDisplays();
+                                                }
+                                            }, 50);
+                                        }, 10);
+                                    } catch (error) {
+                                        console.error('挂载后初始化倒计时显示时出错:', error);
+                                    }
+                                `
+                            }
+                        ]
+                    }
+                }
             },
-            {
-                type: 'divider'
-            },
+            { type: 'divider' },
+            
+            // 历史考试记录部分
             {
                 type: 'service',
                 api: '/exam/api/exam/client/history',
@@ -213,28 +545,9 @@
                         type: 'table',
                         source: '${items}',
                         columns: [
-                            {
-                                name: 'name',
-                                label: '考试名称'
-                            },
-                            {
-                                name: 'startTime',
-                                label: '考试时间',
-                                type: 'datetime'
-                            },
-                            //{
-                            //    name: 'score',
-                            //    label: '得分'
-                            //},
-                            //{
-                            //    name: 'totalScore',
-                            //    label: '总分'
-                            //},
-                            {
-                                name: 'status',
-                                label: '状态',
-                                type: 'status'
-                            },
+                            { name: 'name', label: '考试名称' },
+                            { name: 'startTime', label: '考试时间', type: 'datetime' },
+                            { name: 'status', label: '状态', type: 'status' },
                             {
                                 type: 'operation',
                                 label: '操作',
@@ -253,57 +566,33 @@
                 ]
             }
         ],
+        // 简化CSS
         css: {
             ':root': {
-                '--primary-color': '#3f51b5',
-                '--secondary-color': '#ff4081',
-                '--text-color': '#333',
+                '--primary': '#3f51b5',
+                '--secondary': '#ff4081',
+                '--text': '#333',
                 '--light-bg': '#f5f7fa',
-                '--border-radius': '8px',
-                '--box-shadow': '0 4px 12px rgba(0,0,0,0.08)'
+                '--radius': '8px',
+                '--shadow': '0 4px 12px rgba(0,0,0,0.08)'
             },
             'body': {
                 'font-family': '"Segoe UI", "Microsoft YaHei", sans-serif',
-                'color': 'var(--text-color)',
+                'color': 'var(--text)',
                 'background-color': '#f9fafc'
             },
-            '.client-header': {
-                'background-color': '#fff',
-                'box-shadow': '0 2px 10px rgba(0,0,0,0.06)',
-                'padding': '12px 24px',
-                'position': 'sticky',
-                'top': '0',
-                'z-index': '100'
-            },
-            '.client-logo': {
-                'display': 'flex',
-                'align-items': 'center'
-            },
-            '.client-logo img': {
-                'height': '38px',
-                'margin-right': '12px',
-                'transition': 'transform 0.3s ease'
-            },
-            '.client-logo:hover img': {
-                'transform': 'scale(1.05)'
-            },
-            '.client-logo span': {
-                'font-size': '20px',
-                'font-weight': 'bold',
-                'color': 'var(--primary-color)',
-                'letter-spacing': '0.5px'
-            },
+            // 区域样式
             '.client-welcome-section': {
                 'padding': '30px',
                 'background': 'linear-gradient(135deg, #fff, var(--light-bg))',
-                'border-radius': 'var(--border-radius)',
+                'border-radius': 'var(--radius)',
                 'margin': '30px 25px 20px',
-                'box-shadow': 'var(--box-shadow)',
-                'border-left': '4px solid var(--primary-color)'
+                'box-shadow': 'var(--shadow)',
+                'border-left': '4px solid var(--primary)'
             },
             '.welcome-message h2': {
                 'margin-bottom': '10px',
-                'color': 'var(--primary-color)',
+                'color': 'var(--primary)',
                 'font-size': '24px'
             },
             '.welcome-message p': {
@@ -315,7 +604,7 @@
                 'padding-left': '25px',
                 'font-size': '20px',
                 'font-weight': '600',
-                'color': 'var(--primary-color)',
+                'color': 'var(--primary)',
                 'position': 'relative',
                 'line-height': '1.5',
                 'display': 'flex',
@@ -327,22 +616,23 @@
                 'left': '0',
                 'height': '18px',
                 'width': '4px',
-                'background-color': 'var(--primary-color)',
+                'background-color': 'var(--primary)',
                 'border-radius': '2px'
             },
             '.exam-list-section, .exam-history-section': {
                 'padding': '15px',
                 'margin': '0 25px 25px',
                 'background-color': '#fff',
-                'border-radius': 'var(--border-radius)',
-                'box-shadow': 'var(--box-shadow)'
+                'border-radius': 'var(--radius)',
+                'box-shadow': 'var(--shadow)'
             },
+            // 考试卡片样式
             '.exam-card': {
                 'height': '100%',
                 'transition': 'all 0.3s ease',
                 'margin-bottom': '20px',
                 'border': '1px solid #eaeaea',
-                'border-radius': 'var(--border-radius)',
+                'border-radius': 'var(--radius)',
                 'overflow': 'hidden'
             },
             '.exam-card:hover': {
@@ -355,112 +645,120 @@
             },
             '.exam-card .cxd-Card-title': {
                 'font-weight': '600',
-                'color': 'var(--primary-color)'
+                'color': 'var(--primary)'
             },
-            '.exam-card .cxd-Card-body': {
-                'padding': '16px'
+            // 按钮样式
+            '.cxd-Button--primary': {
+                'background-color': 'var(--primary)',
+                'border-color': 'var(--primary)',
+                'box-shadow': '0 2px 6px rgba(63, 81, 181, 0.25)',
+                'transition': 'all 0.3s ease'
             },
-            '.exam-card .cxd-Card-actions': {
-                'background-color': '#f8fafd',
-                'padding': '10px 16px'
-            },
-            '.exam-card .cxd-Card-actions .cxd-Button--primary, .cxd-Button--primary': {
-                'background-color': 'var(--primary-color) !important',
-                'border-color': 'var(--primary-color) !important',
-                'padding': '6px 16px !important',
-                'font-weight': '500 !important',
-                'letter-spacing': '0.5px !important',
-                'box-shadow': '0 2px 6px rgba(63, 81, 181, 0.25) !important',
-                'transition': 'all 0.3s ease !important'
-            },
-            '.exam-card .cxd-Card-actions .cxd-Button--primary:hover, .cxd-Button--primary:hover': {
-                'background-color': '#303f9f !important',
-                'border-color': '#303f9f !important',
-                'box-shadow': '0 4px 12px rgba(63, 81, 181, 0.4) !important',
-                'transform': 'translateY(-2px) !important'
-            },
-            '.exam-card .cxd-Card-actions .cxd-Button--primary:active, .cxd-Button--primary:active': {
-                'transform': 'translateY(0) !important',
-                'box-shadow': '0 2px 4px rgba(63, 81, 181, 0.3) !important'
-            },
-            '.exam-card .cxd-Card-actions .cxd-Button--primary, .exam-card .cxd-Button--primary': {
-                'position': 'relative !important',
-                'overflow': 'hidden !important'
-            },
-            '.exam-card .cxd-Card-actions .cxd-Button--primary:before, .exam-card .cxd-Button--primary:before': {
-                'content': '""',
-                'position': 'absolute',
-                'top': '0',
-                'left': '-100%',
-                'width': '100%',
-                'height': '100%',
-                'background': 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-                'transition': 'all 0.6s ease',
-                'z-index': '1'
-            },
-            '.exam-card .cxd-Card-actions .cxd-Button--primary:hover:before, .exam-card .cxd-Button--primary:hover:before': {
-                'left': '100%'
-            },
-            '.cxd-Button--primary span': {
-                'position': 'relative',
-                'z-index': '2'
+            '.cxd-Button--primary:hover': {
+                'background-color': '#303f9f',
+                'transform': 'translateY(-2px)',
+                'box-shadow': '0 4px 12px rgba(63, 81, 181, 0.4)'
             },
             '.cxd-Button--info': {
                 'background-color': '#03a9f4',
                 'border-color': '#03a9f4'
             },
-            '.cxd-Table': {
-                'border-radius': 'var(--border-radius)',
-                'overflow': 'hidden',
-                'box-shadow': '0 0 0 1px rgba(0,0,0,0.05)'
-            },
-            '.cxd-Table-headCell': {
-                'background-color': 'var(--light-bg)',
-                'font-weight': '600'
-            },
+            // 标签样式
             '.label': {
                 'padding': '3px 8px',
                 'border-radius': '12px',
                 'font-size': '12px',
                 'display': 'inline-block'
             },
-            '.label-success': {
-                'background-color': '#e8f5e9',
-                'color': '#2e7d32'
+            '.label-success': { 'background-color': '#e8f5e9', 'color': '#2e7d32' },
+            '.label-info': { 'background-color': '#e3f2fd', 'color': '#1565c0' },
+            '.label-danger': { 'background-color': '#ffebee', 'color': '#c62828' },
+            '.label-coming-soon': {
+                'background-color': '#e1f5fe',
+                'color': '#0288d1',
+                'margin-left': '5px',
+                'animation': 'pulse 1.5s infinite',
+                'border': '1px solid #b3e5fc'
             },
-            '.label-info': {
-                'background-color': '#e3f2fd',
-                'color': '#1565c0'
-            },
-            '.label-danger': {
-                'background-color': '#ffebee',
-                'color': '#c62828'
-            },
-            '.user-info': {
+            // 倒计时样式
+            '.countdown-container': {
+                'margin-top': '10px',
+                'padding': '8px 12px',
+                'background-color': '#f8f9fa',
+                'border-radius': '6px',
+                'border-left': '3px solid #03a9f4',
                 'display': 'flex',
-                'align-items': 'center'
+                'align-items': 'center',
+                'transition': 'all 0.3s ease'
             },
-            '.user-info .cxd-Avatar': {
-                'border': '2px solid rgba(63, 81, 181, 0.2)'
+            '.countdown-text': {
+                'font-family': 'Consolas, monospace',
+                'font-weight': 'bold',
+                'color': '#03a9f4',
+                'margin-left': '5px',
+                'transition': 'all 0.3s ease',
+                'letter-spacing': '0.5px'
             },
-            '.cxd-Divider': {
-                'margin': '10px 25px',
-                'background-color': '#eaeaea'
+            '.countdown-urgent': {
+                'color': '#f44336',
+                'animation': 'pulse 1s infinite',
+                'text-shadow': '0 0 5px rgba(244, 67, 54, 0.3)'
             },
-            '@media (max-width: 768px)': {
-                '.client-header': {
-                    'padding': '10px 15px'
+            '.countdown-ended': {
+                'color': '#4caf50',
+                'font-weight': 'bold',
+                'animation': 'none'
+            },
+            '.countdown-updated': {
+                'animation': 'highlight 0.5s ease-out'
+            },
+            '.countdown-pre-start': {
+                'background-color': 'rgba(3, 169, 244, 0.1)',
+                'box-shadow': '0 2px 5px rgba(0,0,0,0.05)',
+                'transform': 'scale(1.02)'
+            },
+            '.countdown-container:hover': {
+                'background-color': '#e9f7fe',
+                'transform': 'translateY(-2px)',
+                'box-shadow': '0 3px 6px rgba(0,0,0,0.08)'
+            },
+            '.countdown-container::before': {
+                'content': '""',
+                'display': 'inline-block',
+                'width': '8px',
+                'height': '8px',
+                'background-color': '#03a9f4',
+                'border-radius': '50%',
+                'margin-right': '6px',
+                'animation': 'pulse 1.5s infinite',
+                'opacity': '0.7'
+            },
+            '.countdown-container.urgent::before': {
+                'background-color': '#f44336'
+            },
+            // 动画
+            '@keyframes pulse': {
+                '0%': { 'opacity': '0.7' },
+                '50%': { 'opacity': '1' },
+                '100%': { 'opacity': '0.7' }
+            },
+            '@keyframes highlight': {
+                '0%': {
+                    'transform': 'scale(1.2)',
+                    'text-shadow': '0 0 8px rgba(3, 169, 244, 0.8)'
                 },
+                '100%': {
+                    'transform': 'scale(1)',
+                    'text-shadow': 'none'
+                }
+            },
+            // 响应式样式
+            '@media (max-width: 768px)': {
                 '.exam-list-section, .exam-history-section, .client-welcome-section': {
                     'margin': '15px',
                     'padding': '15px'
                 },
-                '.client-logo span': {
-                    'font-size': '18px'
-                },
-                '.welcome-message h2': {
-                    'font-size': '20px'
-                },
+                '.welcome-message h2': { 'font-size': '20px' },
                 '.section-title': {
                     'font-size': '18px',
                     'padding-left': '20px'
@@ -469,14 +767,13 @@
         }
     };
 
+    // 简化AMIS实例初始化
     let amisInstance = amis.embed(
         '#root',
         app,
         {
             location: history.location,
-            data: {
-                date: new Date()
-            },
+            data: { date: new Date() },
             context: {
                 API_HOST: apiHost,
                 WEB_HOST: webHost,
@@ -486,7 +783,7 @@
         },
         {
             requestAdaptor: (api) => {
-                var token = localStorage.getItem('token');
+                const token = localStorage.getItem('token');
                 return {
                     ...api,
                     headers: {
@@ -497,7 +794,6 @@
                 };
             },
             responseAdaptor: function (api, payload, query, request, response) {
-
                 // 处理错误响应
                 if (response.status === 403) {
                     return { msg: '您没有权限访问此页面，请联系管理员！' }
@@ -507,19 +803,14 @@
                     return { msg: '登录过期！' };
                 }
 
-                // 如果是获取用户信息的接口,将数据注入到全局
+                // 处理用户信息
                 if (api.url.includes('/identity/api/identity/profile')) {
-                    // 更新全局数据对象
                     if (payload.status === 0 && payload.data) {
                         window.GlobalData.set('user.id', payload.data.id || null);
                         window.GlobalData.set('user.name', payload.data.name || payload.data.userName || '');
                         window.GlobalData.set('user.avatar', payload.data.avatar || '');
                         window.GlobalData.set('user.roles', payload.data.roles || []);
-
-                        // 同时注入到amis全局上下文，使所有组件都能访问
                         window.GlobalData.syncToAmis(amisInstance);
-
-                        console.debug('Global user data updated:', window.globalData.user);
                     }
                 }
 
@@ -529,6 +820,7 @@
         }
     );
 
+    // 设置通知数据初始值
     amisInstance.updateProps({
         data: {
             notifications: {
@@ -538,6 +830,7 @@
         }
     });
 
+    // 路由监听
     history.listen(state => {
         amisInstance.updateProps({
             location: state.location || state

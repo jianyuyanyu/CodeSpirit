@@ -56,10 +56,18 @@ public class ClientService : IClientService
 
             // 获取可参加的考试
             var now = DateTime.UtcNow;
+            // 定义预展示时间，开考前半小时（30分钟）可见
+            var previewTime = now.AddMinutes(30);
+            
             var availableExams = await _context.ExamSettings
                 .Include(e => e.StudentGroups)
                 .Include(e => e.ExamPaper)
-                .Where(e => e.StartTime <= now && e.EndTime >= now)
+                .Where(e => e.Status == ExamSettingStatus.Published)
+                .Where(e => 
+                    // 正在进行中的考试或即将开始的考试（开考前半小时）
+                    ((e.StartTime <= now && e.EndTime >= now) || 
+                     (e.StartTime > now && e.StartTime <= previewTime))
+                )
                 .Where(e => e.StudentGroups.Any() == false || e.StudentGroups.Any(g => studentGroups.Contains(g.StudentGroupId)))
                 .Select(e => new ClientExamDto
                 {

@@ -487,6 +487,28 @@
             window.GlobalData.set('timer.seconds', seconds);
             window.GlobalData.set('timer.remainingSeconds', remainingTime);
     
+            // 检测是否在特殊时间段内，设置相应样式类
+            let timerClassName = "exam-timer";
+            let timerStyles = {};
+            
+            if (remainingTime <= 300) { // 5分钟内
+                timerClassName += " countdown-urgent";
+                timerStyles = {
+                    color: '#f44336',
+                    fontWeight: 'bold',
+                    animation: 'pulse 1s infinite',
+                    textShadow: '0 0 5px rgba(244, 67, 54, 0.3)'
+                };
+            } else if (remainingTime <= 1800) { // 30分钟内
+                timerClassName += " countdown-warn";
+                timerStyles = {
+                    color: '#ff9800',
+                    fontWeight: 'bold',
+                    animation: 'pulse 1.5s infinite',
+                    textShadow: '0 0 3px rgba(255, 152, 0, 0.3)'
+                };
+            }
+            
             // 同步到amis上下文
             if (window.amisInstance) {
                 // 直接更新数据而不是通过syncToAmis函数
@@ -513,23 +535,23 @@
                     }
                     
                     // 更新DOM，强制显示最新时间
-                    updateTimerDOMDisplay(displayText);
+                    updateTimerDOMDisplay(displayText, timerClassName, timerStyles);
                 } catch (e) {
                     console.error("更新计时器显示时出错", e);
                     // 出错时直接更新DOM作为后备方案
-                    updateTimerDOMDisplay(displayText);
+                    updateTimerDOMDisplay(displayText, timerClassName, timerStyles);
                 }
             } else {
                 console.warn("amisInstance未初始化，使用DOM方式更新计时器显示");
                 // 尝试直接更新DOM
-                updateTimerDOMDisplay(displayText);
+                updateTimerDOMDisplay(displayText, timerClassName, timerStyles);
             }
         } catch (error) {
             console.error("更新计时器显示时发生错误:", error);
             // 尝试最基本的DOM更新
             try {
                 const displayText = "00:00:00";
-                updateTimerDOMDisplay(displayText);
+                updateTimerDOMDisplay(displayText, "exam-timer", {});
             } catch (e) {
                 console.error("更新计时器DOM时发生致命错误:", e);
             }
@@ -537,11 +559,19 @@
     }
     
     // 辅助函数：更新计时器DOM显示
-    function updateTimerDOMDisplay(displayText) {
+    function updateTimerDOMDisplay(displayText, className, styles) {
         const timerElements = document.querySelectorAll('.exam-timer');
         if (timerElements && timerElements.length > 0) {
             timerElements.forEach(el => {
                 el.innerHTML = `剩余时间：${displayText}`;
+                el.className = className || "exam-timer"; // 应用适当的类名
+                
+                // 应用内联样式
+                if (styles && typeof styles === 'object') {
+                    Object.keys(styles).forEach(key => {
+                        el.style[key] = styles[key];
+                    });
+                }
             });
         }
     }
@@ -994,6 +1024,77 @@
                     }
                 }
             },
+            // 添加考生信息组件
+            {
+                type: 'service',
+                api: '/exam/api/exam/client/profile',
+                className: 'student-profile-section',
+                data: {
+                    name: '',
+                    studentNumber: '',
+                    idNo: '',
+                    gender: '',
+                    admissionTicket: '',
+                    phoneNumber: '',
+                    studentGroups: []
+                },
+                body: [
+                    {
+                        type: 'card',
+                        className: 'student-info-card',
+                        bodyClassName: 'student-info-body',
+                        body: [
+                            {
+                                type: 'flex',
+                                justify: 'space-between',
+                                alignItems: 'center',
+                                items: [
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div><i class="fa fa-user"></i> <span class="text-muted">考生：</span><strong>${name}</strong></div>',
+                                        className: 'student-info-item student-name'
+                                    },
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div><i class="fa fa-id-card"></i> <span class="text-muted">学号：</span>${studentNumber}</div>',
+                                        className: 'student-info-item'
+                                    },
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div><i class="fa fa-venus-mars"></i> <span class="text-muted">性别：</span>${gender}</div>',
+                                        className: 'student-info-item'
+                                    },
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div><i class="fa fa-ticket"></i> <span class="text-muted">准考证号：</span>${admissionTicket || "未设置"}</div>',
+                                        className: 'student-info-item'
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                onEvent: {
+                    fetchInited: {
+                        actions: [
+                            {
+                                actionType: "custom",
+                                script: `
+                                    try {
+                                        if (event.data) {
+                                            // 保存到全局数据
+                                            window.globalData.profile = event.data;
+                                            console.log("考生信息数据:", event.data);
+                                        }
+                                    } catch (error) {
+                                        console.error('处理考生信息数据时出错:', error);
+                                    }
+                                `
+                            }
+                        ]
+                    }
+                }
+            },
             {
                 type: 'flex',
                 justify: 'space-between',
@@ -1330,6 +1431,22 @@
                 'margin-right': '10px',
                 'animation': 'pulse 1s infinite'
             },
+            '.countdown-urgent': {
+                'color': '#f44336 !important',
+                'text-shadow': '0 0 5px rgba(244, 67, 54, 0.3)'
+            },
+            '.countdown-urgent::before': {
+                'background-color': '#f44336',
+                'animation': 'pulse 0.8s infinite'
+            },
+            '.countdown-warn': {
+                'color': '#ff9800 !important',
+                'text-shadow': '0 0 3px rgba(255, 152, 0, 0.3)'
+            },
+            '.countdown-warn::before': {
+                'background-color': '#ff9800',
+                'animation': 'pulse 1.2s infinite'
+            },
             '@keyframes pulse': {
                 '0%': {
                     'opacity': '0.6',
@@ -1342,6 +1459,16 @@
                 '100%': {
                     'opacity': '0.6',
                     'transform': 'scale(0.9)'
+                }
+            },
+            '@keyframes highlight': {
+                '0%': {
+                    'transform': 'scale(1.1)',
+                    'text-shadow': '0 0 8px rgba(244, 67, 54, 0.8)'
+                },
+                '100%': {
+                    'transform': 'scale(1)',
+                    'text-shadow': 'none'
                 }
             },
             // 考试容器样式
@@ -1679,6 +1806,19 @@
                 '.screen-switch-count': {
                     'font-size': '13px',
                     'padding': '5px 10px'
+                },
+                '.student-info-card': {
+                    'margin-bottom': '5px'
+                },
+                '.student-info-body > .am-Flex': {
+                    'flex-wrap': 'wrap',
+                    'gap': '5px',
+                    'justify-content': 'flex-start'
+                },
+                '.student-info-item': {
+                    'margin-right': '10px',
+                    'margin-bottom': '5px',
+                    'font-size': '12px'
                 }
             },
             // 新增样式
@@ -1724,6 +1864,42 @@
             '.allowed-switch-value': {
                 'font-weight': 'normal',
                 'opacity': '0.8'
+            },
+            // 考生信息样式
+            '.student-profile-section': {
+                'margin': '0 0 10px 0',
+                'padding': '0'
+            },
+            '.student-info-card': {
+                'background': 'linear-gradient(to right, rgba(63, 81, 181, 0.05), rgba(255, 255, 255, 0.8))',
+                'border': 'none',
+                'border-radius': 'var(--border-radius)',
+                'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
+                'margin-bottom': '10px'
+            },
+            '.student-info-body': {
+                'padding': '8px 15px'
+            },
+            '.student-info-item': {
+                'font-size': '14px',
+                'margin-right': '15px',
+                'white-space': 'nowrap'
+            },
+            '.student-info-item i': {
+                'color': 'var(--primary-color)',
+                'margin-right': '4px',
+                'font-size': '14px'
+            },
+            '.student-name': {
+                'font-weight': '500'
+            },
+            '.student-groups': {
+                'display': 'inline-block',
+                'background-color': 'rgba(63, 81, 181, 0.1)',
+                'color': 'var(--primary-color)',
+                'border-radius': '12px',
+                'padding': '0 8px',
+                'font-size': '12px'
             }
         }
     };
@@ -1847,18 +2023,4 @@
             console.error('[页面卸载] 保存答案失败：', error);
         }
     });
-
-    // 添加这个函数来打印全局数据状态
-    function debugGlobalData() {
-        console.log("全局数据状态:", {
-            user: window.globalData.user,
-            exam: window.globalData.exam,
-            recordId: window.globalData.exam?.recordId
-        });
-    }
-
-    // 定期输出全局数据状态，仅用于调试
-    if (window.location.href.includes('/client/exam/')) {
-        setInterval(debugGlobalData, 5000);
-    }
 })(); 

@@ -18,7 +18,8 @@
         notifications: { count: 0, hasUnread: false, items: [] },
         countdowns: { items: {}, hasCountdown: false },
         settings: {},
-        permissions: []
+        permissions: [],
+        profile: { name: '', studentNumber: '', idNo: '', gender: '', admissionTicket: '' }
     };
 
     // 简化的全局数据访问方法
@@ -414,6 +415,67 @@
             },
             { type: 'divider' },
             
+            // 考生个人信息部分 - 移至此处（在考试列表之前）
+            {
+                type: 'service',
+                api: '/exam/api/exam/client/profile',
+                className: 'student-profile-section',
+                data: {
+                    name: '',
+                    studentNumber: '',
+                    idNo: '',
+                    gender: '',
+                    admissionTicket: '',
+                    phoneNumber: '',
+                    studentGroups: []
+                },
+                body: [
+                    {
+                        type: 'tpl',
+                        tpl: '<h3>考生信息</h3>',
+                        className: 'section-title'
+                    },
+                    {
+                        type: 'card',
+                        header: {
+                            title: '个人信息',
+                            subTitle: '考生基本资料',
+                            avatarText: '信息'
+                        },
+                        body: [
+                            { type: 'tpl', tpl: '<div><span class="text-muted">姓名：</span>${name}</div>' },
+                            { type: 'tpl', tpl: '<div><span class="text-muted">学号：</span>${studentNumber}</div>' },
+                            { type: 'tpl', tpl: '<div><span class="text-muted">身份证号：</span>${idNo || "未设置"}</div>' },
+                            { type: 'tpl', tpl: '<div><span class="text-muted">性别：</span>${gender}</div>' },
+                            { type: 'tpl', tpl: '<div><span class="text-muted">准考证号：</span>${admissionTicket || "未设置"}</div>' },
+                            { type: 'tpl', tpl: '<div><span class="text-muted">手机号码：</span>${phoneNumber}</div>' }
+                        ],
+                        className: 'profile-card'
+                    }
+                ],
+                onEvent: {
+                    fetchInited: {
+                        actions: [
+                            {
+                                actionType: "custom",
+                                script: `
+                                    try {
+                                        if (event.data) {
+                                            // 保存到全局数据
+                                            window.globalData.profile = event.data;
+                                            console.log("考生信息数据:", event.data);
+                                        }
+                                    } catch (error) {
+                                        console.error('处理考生信息数据时出错:', error);
+                                    }
+                                `
+                            }
+                        ]
+                    }
+                }
+            },
+            { type: 'divider' },
+            
             // 考试列表部分
             {
                 type: 'service',
@@ -548,18 +610,18 @@
                             { name: 'name', label: '考试名称' },
                             { name: 'startTime', label: '考试时间', type: 'datetime' },
                             { name: 'status', label: '状态', type: 'status' },
-                            {
-                                type: 'operation',
-                                label: '操作',
-                                buttons: [
-                                    {
-                                        label: '查看详情',
-                                        type: 'button',
-                                        actionType: 'link',
-                                        link: '/client/exam/result/${id}'
-                                    }
-                                ]
-                            }
+                            // {
+                            //     type: 'operation',
+                            //     label: '操作',
+                            //     buttons: [
+                            //         {
+                            //             label: '查看详情',
+                            //             type: 'button',
+                            //             actionType: 'link',
+                            //             link: '/client/exam/result/${id}'
+                            //         }
+                            //     ]
+                            // }
                         ],
                         placeholder: '没有历史考试记录'
                     }
@@ -619,12 +681,77 @@
                 'background-color': 'var(--primary)',
                 'border-radius': '2px'
             },
-            '.exam-list-section, .exam-history-section': {
+            '.exam-list-section, .exam-history-section, .student-profile-section': {
                 'padding': '15px',
                 'margin': '0 25px 25px',
                 'background-color': '#fff',
                 'border-radius': 'var(--radius)',
                 'box-shadow': 'var(--shadow)'
+            },
+            // 考生信息美化
+            '.profile-card': {
+                'border': 'none',
+                'box-shadow': 'none',
+                'margin-bottom': '0'
+            },
+            '.profile-card .cxd-Card-header': {
+                'background-color': 'transparent',
+                'border-bottom': 'none',
+                'padding-left': '0'
+            },
+            '.profile-card .cxd-Card-title': {
+                'font-weight': '600',
+                'color': 'var(--primary)',
+                'font-size': '18px'
+            },
+            '.profile-card .cxd-Card-body': {
+                'padding': '5px 15px 15px'
+            },
+            '.info-item': {
+                'margin': '10px 0',
+                'padding': '8px 15px',
+                'border-radius': 'var(--radius)',
+                'background-color': 'rgba(63, 81, 181, 0.05)',
+                'transition': 'all 0.3s ease'
+            },
+            '.info-item:hover': {
+                'background-color': 'rgba(63, 81, 181, 0.1)',
+                'transform': 'translateY(-2px)',
+                'box-shadow': '0 2px 6px rgba(0,0,0,0.05)'
+            },
+            '.info-label': {
+                'color': '#666',
+                'font-weight': '500',
+                'margin-right': '8px',
+                'min-width': '100px',
+                'display': 'inline-block'
+            },
+            '.info-value': {
+                'font-weight': '600',
+                'color': '#333'
+            },
+            '.groups-item': {
+                'margin-top': '15px',
+                'background-color': 'rgba(3, 169, 244, 0.05)',
+                'border-left': '3px solid #03a9f4'
+            },
+            '.groups-value': {
+                'display': 'flex',
+                'flex-wrap': 'wrap',
+                'gap': '5px'
+            },
+            '.group-tag': {
+                'background-color': '#e3f2fd',
+                'color': '#1565c0',
+                'padding': '3px 8px',
+                'border-radius': '12px',
+                'font-size': '12px',
+                'display': 'inline-block',
+                'border': '1px solid #bbdefb'
+            },
+            '.no-group': {
+                'color': '#999',
+                'font-style': 'italic'
             },
             // 考试卡片样式
             '.exam-card': {
@@ -754,7 +881,7 @@
             },
             // 响应式样式
             '@media (max-width: 768px)': {
-                '.exam-list-section, .exam-history-section, .client-welcome-section': {
+                '.exam-list-section, .exam-history-section, .client-welcome-section, .student-profile-section': {
                     'margin': '15px',
                     'padding': '15px'
                 },
@@ -762,6 +889,9 @@
                 '.section-title': {
                     'font-size': '18px',
                     'padding-left': '20px'
+                },
+                '.info-label': {
+                    'min-width': '80px'
                 }
             }
         }

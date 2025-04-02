@@ -1,6 +1,8 @@
 using CodeSpirit.ExamApi.Dtos.Client;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.ExamApi.Dtos.Student;
 
 namespace CodeSpirit.ExamApi.Controllers.Client;
 
@@ -14,17 +16,25 @@ public class IndexController : ApiControllerBase
     private readonly IClientService _clientService;
     private readonly ILogger<IndexController> _logger;
     private readonly ICurrentUser currentUser;
+    private readonly IStudentService _studentService;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="clientService">客户端服务</param>
     /// <param name="logger">日志服务</param>
-    public IndexController(IClientService clientService, ILogger<IndexController> logger, ICurrentUser currentUser)
+    /// <param name="currentUser">当前用户</param>
+    /// <param name="studentService">考生服务</param>
+    public IndexController(
+        IClientService clientService, 
+        ILogger<IndexController> logger, 
+        ICurrentUser currentUser, 
+        IStudentService studentService)
     {
         _clientService = clientService;
         _logger = logger;
         this.currentUser = currentUser;
+        _studentService = studentService;
     }
 
     /// <summary>
@@ -421,5 +431,22 @@ public class IndexController : ApiControllerBase
         var userIp = GetClientIpAddress() ?? "未知";
         await _clientService.RecordScreenSwitchAsync(id, currentUserId, userIp);
         return SuccessResponse();
+    }
+    
+    /// <summary>
+    /// 获取考生个人信息
+    /// </summary>
+    /// <returns>考生个人信息</returns>
+    [HttpGet("profile")]
+    public async Task<ActionResult<ApiResponse<ClientProfileDto>>> GetProfile()
+    {
+        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
+        if (currentUserId == 0)
+        {
+            return Unauthorized();
+        }
+        
+        var result = await _clientService.GetStudentProfileAsync(currentUserId);
+        return SuccessResponse(result);
     }
 }

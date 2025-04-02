@@ -57,14 +57,30 @@ public interface IClientService
     /// <param name="userId">用户ID</param>
     /// <returns>考试基本信息</returns>
     Task<ClientExamBasicInfoDto> GetExamBasicInfoAsync(long examId, long userId);
+    
+    /// <summary>
+    /// 创建考试记录
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <param name="userIp">用户IP地址</param>
+    /// <param name="deviceInfo">设备信息</param>
+    /// <returns>考试记录</returns>
     Task<ExamRecord> CreateExamRecordAsync(long examId, long userId, string userIp, string deviceInfo);
-
+    
     /// <summary>
     /// 记录切屏事件
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
     /// <param name="userId">用户ID</param>
     /// <param name="userIp">用户IP地址</param>
-    /// <returns>操作结果</returns>
-    Task<bool> RecordScreenSwitchAsync(long recordId, long userId, string userIp);
+    /// <returns>任务完成状态</returns>
+    Task RecordScreenSwitchAsync(long recordId, long userId, string userIp);
+    
+    /// <summary>
+    /// 获取考生个人信息
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>考生个人信息</returns>
+    Task<ClientProfileDto> GetStudentProfileAsync(long userId);
 } 

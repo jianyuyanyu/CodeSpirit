@@ -703,8 +703,7 @@ public class ClientService : IClientService
     /// <param name="recordId">考试记录ID</param>
     /// <param name="userId">用户ID</param>
     /// <param name="userIp">用户IP地址</param>
-    /// <returns>是否成功</returns>
-    public async Task<bool> RecordScreenSwitchAsync(long recordId, long userId, string userIp)
+    public async Task RecordScreenSwitchAsync(long recordId, long userId, string userIp)
     {
         try
         {
@@ -796,13 +795,61 @@ public class ClientService : IClientService
             await _context.SaveChangesAsync();
 
             _logger.LogInformation($"考试ID {recordId} 切屏记录更新，当前切屏次数: {examRecord.ScreenSwitchCount}");
-
-            return true;
         }
         catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
         {
             _logger.LogError(ex, $"记录切屏事件时发生错误（考试记录ID: {recordId}）");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取考生个人信息
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>考生个人信息</returns>
+    public async Task<ClientProfileDto> GetStudentProfileAsync(long userId)
+    {
+        try
+        {
+            var student = await _context.Students
+                .Include(s => s.StudentGroups)
+                    .ThenInclude(sg => sg.StudentGroup)
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                throw new AppServiceException(404, "未找到考生信息");
+            }
+
+            // 将性别枚举转换为字符串
+            string genderText = student.Gender switch
+            {
+                Gender.Male => "男",
+                Gender.Female => "女",
+                _ => "未知"
+            };
+
+            return new ClientProfileDto
+            {
+                Id = student.Id,
+                UserId = student.UserId,
+                Name = student.Name,
+                StudentNumber = student.StudentNumber,
+                IdNo = student.IdNo ?? string.Empty,
+                Gender = genderText,
+                AdmissionTicket = student.AdmissionTicket ?? string.Empty,
+                PhoneNumber = student.PhoneNumber,
+                StudentGroups = student.StudentGroups
+                    .Select(sg => sg.StudentGroup.Name)
+                    .ToList()
+            };
+        }
+        catch (Exception ex) when (ex is not AppServiceException)
+        {
+            _logger.LogError(ex, "获取考生个人信息时发生错误");
+            throw new AppServiceException(500, "获取考生信息失败");
         }
     }
 }

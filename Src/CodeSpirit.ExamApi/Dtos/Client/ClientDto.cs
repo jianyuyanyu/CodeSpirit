@@ -417,4 +417,65 @@ public class ClientExamAnswerResultDto
     /// </summary>
     [DisplayName("获得分数")]
     public double? ObtainedScore { get; set; }
+}
+
+/// <summary>
+/// 考生个人信息DTO
+/// </summary>
+[DisplayName("考生个人信息")]
+public class ClientProfileDto
+{
+    /// <summary>
+    /// 考生ID
+    /// </summary>
+    [DisplayName("考生ID")]
+    public long Id { get; set; }
+
+    /// <summary>
+    /// 用户ID
+    /// </summary>
+    [DisplayName("用户ID")]
+    public long UserId { get; set; }
+    
+    /// <summary>
+    /// 姓名
+    /// </summary>
+    [DisplayName("姓名")]
+    public string Name { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 学号
+    /// </summary>
+    [DisplayName("学号")]
+    public string StudentNumber { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 身份证号码
+    /// </summary>
+    [DisplayName("身份证号码")]
+    public string IdNo { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 性别
+    /// </summary>
+    [DisplayName("性别")]
+    public string Gender { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 准考证号
+    /// </summary>
+    [DisplayName("准考证号")]
+    public string AdmissionTicket { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 手机号码
+    /// </summary>
+    [DisplayName("手机号码")]
+    public string PhoneNumber { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 所属考生组
+    /// </summary>
+    [DisplayName("所属考生组")]
+    public List<string> StudentGroups { get; set; } = new List<string>();
 } 

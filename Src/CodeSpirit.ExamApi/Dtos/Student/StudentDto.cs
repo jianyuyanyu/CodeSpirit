@@ -30,6 +30,7 @@ public class StudentDto
     /// 身份证号码
     /// </summary>
     [DisplayName("身份证号码")]
+    [AmisColumn(Copyable = true)]
 
     public string IdNo { get; set; }
     /// <summary>
@@ -42,17 +43,20 @@ public class StudentDto
     /// 准考证
     /// </summary>
     [DisplayName("准考证")]
+    [AmisColumn(Copyable = true)]
     public string AdmissionTicket { get; set; }
     /// <summary>
     /// 学生学号/工号
     /// </summary>
     [DisplayName("学号/工号")]
+    [AmisColumn(Copyable = true)]
     public string StudentNumber { get; set; } = string.Empty;
 
     /// <summary>
     /// 手机号码
     /// </summary>
     [DisplayName("手机号码")]
+    [AmisColumn(Copyable = true)]
     public string PhoneNumber { get; set; } = string.Empty;
 
     /// <summary>

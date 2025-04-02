@@ -492,13 +492,16 @@
             let timerStyles = {};
             
             if (remainingTime <= 300) { // 5分钟内
-                timerClassName += " countdown-urgent";
+                timerClassName += " countdown-urgent countdown-final";
                 timerStyles = {
                     color: '#f44336',
                     fontWeight: 'bold',
-                    animation: 'pulse 1s infinite',
-                    textShadow: '0 0 5px rgba(244, 67, 54, 0.3)'
+                    animation: 'pulse-scale 1s infinite',
+                    textShadow: '0 0 5px rgba(244, 67, 54, 0.5)'
                 };
+                
+                // 处理最后5分钟的特效
+                handleFinalCountdown(remainingTime);
             } else if (remainingTime <= 1800) { // 30分钟内
                 timerClassName += " countdown-warn";
                 timerStyles = {
@@ -556,6 +559,99 @@
                 console.error("更新计时器DOM时发生致命错误:", e);
             }
         }
+    }
+    
+    // 处理最后5分钟倒计时的特效
+    function handleFinalCountdown(remainingSeconds) {
+        try {
+            // 标记整个页面进入最后倒计时状态
+            document.body.classList.add('final-countdown-active');
+            
+            // 更新计时器容器的样式
+            const timerContainer = document.querySelector('.exam-timer-container');
+            if (timerContainer) {
+                timerContainer.classList.add('final-countdown');
+                
+                // 根据剩余时间设置不同程度的紧急样式
+                if (remainingSeconds <= 60) { // 最后1分钟
+                    timerContainer.classList.add('extremely-urgent');
+                } else if (remainingSeconds <= 180) { // 最后3分钟
+                    timerContainer.classList.add('very-urgent');
+                } else {
+                    timerContainer.classList.add('urgent');
+                }
+            }
+            
+            // 特殊事件触发时机
+            const triggerPoints = [300, 240, 180, 120, 60, 30, 10];
+            
+            // 检查是否需要触发提示
+            if (triggerPoints.includes(remainingSeconds)) {
+                showFinalCountdownAlert(remainingSeconds);
+            }
+            
+        } catch (error) {
+            console.error("[最后倒计时] 处理特效时出错:", error);
+        }
+    }
+    
+    // 显示最后倒计时提醒
+    function showFinalCountdownAlert(remainingSeconds) {
+        let message = '';
+        let duration = 3000; // 默认显示3秒
+        
+        // 根据不同的时间节点设置不同的消息
+        if (remainingSeconds === 300) {
+            message = '注意：考试仅剩最后5分钟！';
+            duration = 5000;
+        } else if (remainingSeconds === 240) {
+            message = '考试即将结束，请检查您的答案！';
+        } else if (remainingSeconds === 180) {
+            message = '仅剩3分钟，请加快完成！';
+        } else if (remainingSeconds === 120) {
+            message = '仅剩2分钟，请准备提交！';
+            duration = 4000;
+        } else if (remainingSeconds === 60) {
+            message = '最后1分钟！请确保保存所有答案！';
+            duration = 5000;
+        } else if (remainingSeconds === 30) {
+            message = '30秒！即将自动提交！';
+        } else if (remainingSeconds === 10) {
+            message = '10秒！系统即将自动提交您的答卷！';
+            duration = 5000;
+        }
+        
+        // 创建并显示提示元素
+        const alertElement = document.createElement('div');
+        alertElement.className = 'final-countdown-alert';
+        alertElement.innerHTML = `
+            <div class="alert-content">
+                <div class="alert-icon"><i class="fa fa-clock-o"></i></div>
+                <div class="alert-message">${message}</div>
+                <div class="alert-timer">${Math.floor(remainingSeconds / 60)}:${(remainingSeconds % 60).toString().padStart(2, '0')}</div>
+            </div>
+        `;
+        
+        // 添加到页面
+        document.body.appendChild(alertElement);
+        
+        // 添加动画类
+        setTimeout(() => {
+            alertElement.classList.add('show');
+        }, 10);
+        
+        // 设置自动关闭
+        setTimeout(() => {
+            alertElement.classList.remove('show');
+            alertElement.classList.add('hide');
+            
+            // 动画结束后移除元素
+            setTimeout(() => {
+                if (document.body.contains(alertElement)) {
+                    document.body.removeChild(alertElement);
+                }
+            }, 500);
+        }, duration);
     }
     
     // 辅助函数：更新计时器DOM显示
@@ -904,6 +1000,11 @@
             window.showScreenSwitchWarning("考试时间已结束，系统将自动提交您的答卷！");
         }
         
+        // 在提交前重新计算一次高度，确保页面布局正确
+        if (typeof updateFixedHeaderHeight === 'function') {
+            updateFixedHeaderHeight();
+        }
+        
         // 转换为后端需要的格式
         const answers = examAnswers.map(a => ({
             questionId: a.questionId,
@@ -977,154 +1078,160 @@
         type: 'page',
         // title: window.siteSettings ? window.siteSettings.clientAppName : '考试系统',
         body: [
+            // 头部固定区域开始
             {
-                type: 'service',
-                api: '/identity/api/identity/profile',
-                className: 'client-header',
+                type: 'container',
+                className: 'fixed-header-container',
                 body: [
                     {
-                        type: 'flex',
-                        justify: 'space-between',
-                        className: 'w-full header-container',
-                        items: [
-                            {
-                                type: 'tpl',
-                                tpl: '<div class="logo"><img src="' + (window.siteSettings ? window.siteSettings.logoUrl : '/logo.png') + '" /><span>' + (window.siteSettings ? window.siteSettings.clientAppName : '考试系统') +'</span></div>',
-                                className: 'client-logo'
-                            },
-                            {
-                                type: 'flex',
-                                justify: 'flex-end',
-                                alignItems: 'center',
-                                className: 'user-info-container',
-                                items: [
-                                    {
-                                        type: 'tpl',
-                                        tpl: '<div class="user-info">欢迎您，${name}</div>'
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ],
-                onEvent: {
-                    fetchInited: {
-                        actions: [
-                            {
-                                actionType: "custom",
-                                script: `
-                                    console.log("用户数据加载成功", event.data);
-                                    window.globalData.user.id = event.data.id || null;
-                                    window.globalData.user.name = event.data.name || event.data.userName || '';
-                                    window.globalData.user.avatar = event.data.avatar || '';
-                                    window.globalData.user.roles = event.data.roles || [];
-                                `
-                            }
-                        ]
-                    }
-                }
-            },
-            // 添加考生信息组件
-            {
-                type: 'service',
-                api: '/exam/api/exam/client/profile',
-                className: 'student-profile-section',
-                data: {
-                    name: '',
-                    studentNumber: '',
-                    idNo: '',
-                    gender: '',
-                    admissionTicket: '',
-                    phoneNumber: '',
-                    studentGroups: []
-                },
-                body: [
-                    {
-                        type: 'card',
-                        className: 'student-info-card',
-                        bodyClassName: 'student-info-body',
+                        type: 'service',
+                        api: '/identity/api/identity/profile',
+                        className: 'client-header',
                         body: [
                             {
                                 type: 'flex',
                                 justify: 'space-between',
-                                alignItems: 'center',
+                                className: 'w-full header-container',
                                 items: [
                                     {
                                         type: 'tpl',
-                                        tpl: '<div><i class="fa fa-user"></i> <span class="text-muted">考生：</span><strong>${name}</strong></div>',
-                                        className: 'student-info-item student-name'
+                                        tpl: '<div class="logo"><img src="' + (window.siteSettings ? window.siteSettings.logoUrl : '/logo.png') + '" /><span>' + (window.siteSettings ? window.siteSettings.clientAppName : '考试系统') +'</span></div>',
+                                        className: 'client-logo'
                                     },
                                     {
-                                        type: 'tpl',
-                                        tpl: '<div><i class="fa fa-id-card"></i> <span class="text-muted">学号：</span>${studentNumber}</div>',
-                                        className: 'student-info-item'
-                                    },
+                                        type: 'flex',
+                                        justify: 'flex-end',
+                                        alignItems: 'center',
+                                        className: 'user-info-container',
+                                        items: [
+                                            {
+                                                type: 'tpl',
+                                                tpl: '<div class="user-info">欢迎您，${name}</div>'
+                                            },
+                                            {
+                                                type: 'tpl',
+                                                tpl: '<div class="screen-switch-icon" title="当前切屏次数/允许次数"><i class="fa fa-desktop"></i> <span class="screen-switch-value">0</span>/<span class="allowed-switch-value">${allowedScreenSwitchCount || "?"}</span></div>'
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        onEvent: {
+                            fetchInited: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `
+                                            console.log("用户数据加载成功", event.data);
+                                            window.globalData.user.id = event.data.id || null;
+                                            window.globalData.user.name = event.data.name || event.data.userName || '';
+                                            window.globalData.user.avatar = event.data.avatar || '';
+                                            window.globalData.user.roles = event.data.roles || [];
+                                        `
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    // 添加考生信息组件
+                    {
+                        type: 'service',
+                        api: '/exam/api/exam/client/profile',
+                        className: 'student-profile-section',
+                        data: {
+                            name: '',
+                            studentNumber: '',
+                            idNo: '',
+                            gender: '',
+                            admissionTicket: '',
+                            phoneNumber: '',
+                            studentGroups: []
+                        },
+                        body: [
+                            {
+                                type: 'card',
+                                className: 'student-info-card',
+                                bodyClassName: 'student-info-body',
+                                body: [
+                                    {
+                                        type: 'flex',
+                                        justify: 'space-between',
+                                        alignItems: 'center',
+                                        items: [
+                                            {
+                                                type: 'tpl',
+                                                tpl: '<div><i class="fa fa-user"></i> <span class="text-muted">考生：</span><strong>${name}</strong></div>',
+                                                className: 'student-info-item student-name'
+                                            },
+                                            {
+                                                type: 'tpl',
+                                                tpl: '<div><i class="fa fa-id-card"></i> <span class="text-muted">身份证：</span>${idNo}</div>',
+                                                className: 'student-info-item'
+                                            },
+                                            {
+                                                type: 'tpl',
+                                                tpl: '<div><i class="fa fa-venus-mars"></i> <span class="text-muted">性别：</span>${gender}</div>',
+                                                className: 'student-info-item'
+                                            },
+                                            {
+                                                type: 'tpl',
+                                                tpl: '<div><i class="fa fa-ticket"></i> <span class="text-muted">准考证号：</span>${admissionTicket || "未设置"}</div>',
+                                                className: 'student-info-item'
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        onEvent: {
+                            fetchInited: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `
+                                            try {
+                                                if (event.data) {
+                                                    // 保存到全局数据
+                                                    window.globalData.profile = event.data;
+                                                    console.log("考生信息数据:", event.data);
+                                                }
+                                            } catch (error) {
+                                                console.error('处理考生信息数据时出错:', error);
+                                            }
+                                        `
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        type: 'flex',
+                        justify: 'space-between',
+                        className: 'w-full header-status-container',
+                        items: [
+                            {
+                                type: 'flex',
+                                justify: 'center',
+                                alignItems: 'center',
+                                className: 'exam-timer-container',
+                                items: [
                                     {
                                         type: 'tpl',
-                                        tpl: '<div><i class="fa fa-venus-mars"></i> <span class="text-muted">性别：</span>${gender}</div>',
-                                        className: 'student-info-item'
-                                    },
-                                    {
-                                        type: 'tpl',
-                                        tpl: '<div><i class="fa fa-ticket"></i> <span class="text-muted">准考证号：</span>${admissionTicket || "未设置"}</div>',
-                                        className: 'student-info-item'
+                                        tpl: '<div class="exam-timer">剩余时间：${timer.displayText}</div>'
                                     }
                                 ]
                             }
                         ]
                     }
-                ],
-                onEvent: {
-                    fetchInited: {
-                        actions: [
-                            {
-                                actionType: "custom",
-                                script: `
-                                    try {
-                                        if (event.data) {
-                                            // 保存到全局数据
-                                            window.globalData.profile = event.data;
-                                            console.log("考生信息数据:", event.data);
-                                        }
-                                    } catch (error) {
-                                        console.error('处理考生信息数据时出错:', error);
-                                    }
-                                `
-                            }
-                        ]
-                    }
-                }
-            },
-            {
-                type: 'flex',
-                justify: 'space-between',
-                className: 'w-full header-status-container',
-                items: [
-                    {
-                        type: 'flex',
-                        justify: 'flex-start',
-                        alignItems: 'center',
-                        className: 'exam-timer-container',
-                        items: [
-                            {
-                                type: 'tpl',
-                                tpl: '<div class="exam-timer">剩余时间：${timer.displayText}</div>'
-                            }
-                        ]
-                    },
-                    {
-                        type: 'flex',
-                        justify: 'flex-end',
-                        alignItems: 'center',
-                        className: 'screen-switch-counter',
-                        items: [
-                            {
-                                type: 'tpl',
-                                tpl: '<div class="screen-switch-count">切屏次数：<span class="screen-switch-value">0</span>/<span class="allowed-switch-value">${allowedScreenSwitchCount || "?"}</span></div>'
-                            }
-                        ]
-                    }
                 ]
+            },
+            // 头部固定区域结束
+            // 添加空白填充区域，防止内容被固定头部遮挡
+            {
+                type: 'tpl',
+                tpl: '<div class="fixed-header-spacer"></div>',
+                className: 'fixed-header-spacer'
             },
             {
                 type: 'service',
@@ -1340,21 +1447,64 @@
                 '--warning-color': '#ff9800',
                 '--danger-color': '#f44336',
                 '--border-radius': '8px',
-                '--box-shadow': '0 4px 12px rgba(0,0,0,0.1)'
+                '--box-shadow': '0 4px 12px rgba(0,0,0,0.1)',
+                '--fixed-header-height': 'auto', // 动态计算高度
+                '--header-transition': 'all 0.3s ease', // 添加过渡效果
+                '--urgent-color': '#f44336',
+                '--very-urgent-color': '#d50000',
+                '--extremely-urgent-color': '#b71c1c'
             },
             'body': {
                 'background-color': '#f5f7fa',
                 'font-family': '"PingFang SC", "Microsoft YaHei", sans-serif',
-                'color': '#333'
+                'color': '#333',
+                'padding-top': '0' // 将由spacer控制
+            },
+            // 固定头部容器
+            '.fixed-header-container': {
+                'position': 'fixed',
+                'top': '0',
+                'left': '0',
+                'right': '0',
+                'z-index': '1000',
+                'background-color': '#fff',
+                'box-shadow': '0 2px 8px rgba(0,0,0,0.15)',
+                'width': '100%',
+                'transition': 'var(--header-transition)'
+            },
+            // 压缩模式下的头部样式
+            '.compact-header .client-header': {
+                'padding': '4px 16px'
+            },
+            '.compact-header .student-profile-section': {
+                'transform': 'scale(0.95)',
+                'transform-origin': 'center top',
+                'margin': '0'
+            },
+            '.compact-header .student-info-card': {
+                'margin-bottom': '5px'
+            },
+            '.compact-header .student-info-body': {
+                'padding': '4px 15px'
+            },
+            '.compact-header .header-status-container': {
+                'padding': '2px 0',
+                'margin-top': '0'
+            },
+            '.compact-header .exam-timer-container, .compact-header .screen-switch-counter': {
+                'transform': 'scale(0.95)',
+                'transform-origin': 'center center'
+            },
+            '.fixed-header-spacer': {
+                'height': 'calc(var(--fixed-header-height) + 10px)', // 动态高度 + 额外空间
+                'content': '""',
+                'display': 'block',
+                'transition': 'var(--header-transition)'
             },
             // 头部导航样式
             '.client-header': {
                 'background-color': '#fff',
-                'box-shadow': 'var(--box-shadow)',
-                'padding': '12px 24px',
-                'position': 'sticky',
-                'top': '0',
-                'z-index': '100',
+                'padding': '8px 16px',
                 'border-bottom': '1px solid #eaeaea'
             },
             '.header-container': {
@@ -1396,10 +1546,39 @@
                 'padding': '8px 16px',
                 'border-radius': 'var(--border-radius)',
                 'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
-                'transition': 'all 0.3s ease'
+                'transition': 'all 0.3s ease',
+                'margin-right': '10px'
             },
             '.user-info:hover': {
                 'background-color': '#f0f2f5'
+            },
+            '.screen-switch-icon': {
+                'font-size': '14px',
+                'font-weight': '500',
+                'color': '#f44336',
+                'background-color': 'rgba(244, 67, 54, 0.1)',
+                'padding': '8px 12px',
+                'border-radius': 'var(--border-radius)',
+                'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
+                'transition': 'all 0.3s ease',
+                'display': 'flex',
+                'align-items': 'center',
+                'cursor': 'help'
+            },
+            '.screen-switch-icon i': {
+                'margin-right': '5px',
+                'font-size': '14px'
+            },
+            '.screen-switch-icon:hover': {
+                'background-color': 'rgba(244, 67, 54, 0.15)',
+                'transform': 'translateY(-2px)',
+                'box-shadow': '0 3px 6px rgba(0,0,0,0.1)'
+            },
+            '.screen-switch-value': {
+                'font-weight': 'bold'
+            },
+            '.allowed-switch-value': {
+                'opacity': '0.8'
             },
             // 计时器样式
             '.exam-timer-container': {
@@ -1410,7 +1589,8 @@
                 'border': '1px solid #f0f0f0',
                 'transition': 'all 0.3s ease',
                 'min-width': '180px',
-                'text-align': 'center'
+                'text-align': 'center',
+                'margin': '0 auto' // 居中显示
             },
             '.exam-timer': {
                 'color': 'var(--danger-color)',
@@ -1439,6 +1619,10 @@
                 'background-color': '#f44336',
                 'animation': 'pulse 0.8s infinite'
             },
+            '.countdown-final': {
+                'font-size': '110% !important',
+                'letter-spacing': '1px'
+            },
             '.countdown-warn': {
                 'color': '#ff9800 !important',
                 'text-shadow': '0 0 3px rgba(255, 152, 0, 0.3)'
@@ -1446,6 +1630,87 @@
             '.countdown-warn::before': {
                 'background-color': '#ff9800',
                 'animation': 'pulse 1.2s infinite'
+            },
+            // 最后5分钟倒计时样式
+            '.final-countdown': {
+                'background-color': 'rgba(244, 67, 54, 0.08)',
+                'border': '2px solid var(--urgent-color)',
+                'box-shadow': '0 0 15px rgba(244, 67, 54, 0.2)',
+                'transform': 'scale(1.02)',
+                'animation': 'pulse-shadow 2s infinite'
+            },
+            '.final-countdown.urgent': {
+                'background-color': 'rgba(244, 67, 54, 0.1)'
+            },
+            '.final-countdown.very-urgent': {
+                'background-color': 'rgba(213, 0, 0, 0.15)',
+                'border-color': 'var(--very-urgent-color)',
+                'box-shadow': '0 0 20px rgba(213, 0, 0, 0.25)',
+                'animation': 'pulse-shadow 1.5s infinite'
+            },
+            '.final-countdown.extremely-urgent': {
+                'background-color': 'rgba(183, 28, 28, 0.2)',
+                'border-color': 'var(--extremely-urgent-color)',
+                'box-shadow': '0 0 25px rgba(183, 28, 28, 0.3)',
+                'animation': 'pulse-shadow 1s infinite'
+            },
+            // 最后倒计时全局样式
+            '.final-countdown-active .fixed-header-container': {
+                'border-bottom': '2px solid var(--urgent-color)'
+            },
+            // 倒计时提示框
+            '.final-countdown-alert': {
+                'position': 'fixed',
+                'top': '50%',
+                'left': '50%',
+                'transform': 'translate(-50%, -50%) scale(0.9)',
+                'background-color': 'rgba(0, 0, 0, 0.85)',
+                'color': 'white',
+                'padding': '20px 30px',
+                'border-radius': '12px',
+                'box-shadow': '0 5px 30px rgba(0, 0, 0, 0.5)',
+                'z-index': '10000',
+                'text-align': 'center',
+                'min-width': '300px',
+                'max-width': '80%',
+                'opacity': '0',
+                'transition': 'all 0.4s ease',
+                'pointer-events': 'none'
+            },
+            '.final-countdown-alert.show': {
+                'opacity': '1',
+                'transform': 'translate(-50%, -50%) scale(1)'
+            },
+            '.final-countdown-alert.hide': {
+                'opacity': '0',
+                'transform': 'translate(-50%, -60%) scale(0.9)'
+            },
+            '.alert-content': {
+                'display': 'flex',
+                'flex-direction': 'column',
+                'align-items': 'center',
+                'gap': '10px'
+            },
+            '.alert-icon': {
+                'font-size': '40px',
+                'color': 'var(--urgent-color)',
+                'margin-bottom': '10px',
+                'animation': 'pulse 1s infinite'
+            },
+            '.alert-message': {
+                'font-size': '18px',
+                'font-weight': 'bold',
+                'margin-bottom': '5px'
+            },
+            '.alert-timer': {
+                'font-size': '26px',
+                'font-family': 'Consolas, monospace',
+                'font-weight': 'bold',
+                'color': 'var(--urgent-color)',
+                'background-color': 'rgba(255, 255, 255, 0.15)',
+                'padding': '5px 15px',
+                'border-radius': '20px',
+                'margin-top': '5px'
             },
             '@keyframes pulse': {
                 '0%': {
@@ -1459,6 +1724,28 @@
                 '100%': {
                     'opacity': '0.6',
                     'transform': 'scale(0.9)'
+                }
+            },
+            '@keyframes pulse-scale': {
+                '0%': {
+                    'transform': 'scale(1)'
+                },
+                '50%': {
+                    'transform': 'scale(1.05)'
+                },
+                '100%': {
+                    'transform': 'scale(1)'
+                }
+            },
+            '@keyframes pulse-shadow': {
+                '0%': {
+                    'box-shadow': '0 0 10px rgba(244, 67, 54, 0.2)'
+                },
+                '50%': {
+                    'box-shadow': '0 0 20px rgba(244, 67, 54, 0.5)'
+                },
+                '100%': {
+                    'box-shadow': '0 0 10px rgba(244, 67, 54, 0.2)'
                 }
             },
             '@keyframes highlight': {
@@ -1718,6 +2005,12 @@
                     'padding': '10px',
                     'margin': '10px auto'
                 },
+                '.fixed-header-container': {
+                    'position': 'fixed' // 确保在移动设备上也是固定的
+                },
+                '.fixed-header-spacer': {
+                    'height': 'calc(var(--fixed-header-height) + 15px)' // 移动设备上增加一点空间
+                },
                 '.exam-panel': {
                     'margin-top': '0'
                 },
@@ -1774,18 +2067,33 @@
                 '.client-header': {
                     'padding': '10px 15px'
                 },
-                '.header-container, .header-status-container': {
-                    'flex-direction': 'column',
-                    'align-items': 'center',
+                '.user-info': {
+                    'padding': '6px 10px',
+                    'font-size': '14px',
+                    'margin-right': '5px'
+                },
+                '.screen-switch-icon': {
+                    'padding': '6px 8px',
+                    'font-size': '12px'
+                },
+                '.screen-switch-icon i': {
+                    'font-size': '12px'
+                },
+                '.header-container': {
+                    'align-items': 'center'
+                },
+                '.header-status-container': {
+                    'flex-direction': 'row',
+                    'justify-content': 'center',
                     'gap': '10px'
                 },
                 '.client-logo span': {
                     'font-size': '18px'
                 },
-                '.exam-timer-container, .screen-switch-counter': {
+                '.exam-timer-container': {
                     'width': '100%',
                     'justify-content': 'center',
-                    'margin': '5px 0'
+                    'margin': '5px auto'
                 },
                 '.exam-timer': {
                     'font-size': '16px'
@@ -1796,16 +2104,12 @@
                 },
                 '.user-info-container': {
                     'margin-right': '0',
-                    'margin-bottom': '5px',
-                    'width': '100%',
-                    'justify-content': 'center'
+                    'margin-bottom': '0',
+                    'display': 'flex',
+                    'align-items': 'center'
                 },
                 '.exam-title': {
                     'font-size': '20px'
-                },
-                '.screen-switch-count': {
-                    'font-size': '13px',
-                    'padding': '5px 10px'
                 },
                 '.student-info-card': {
                     'margin-bottom': '5px'
@@ -1819,6 +2123,16 @@
                     'margin-right': '10px',
                     'margin-bottom': '5px',
                     'font-size': '12px'
+                },
+                '.final-countdown-alert': {
+                    'min-width': '280px',
+                    'padding': '15px 20px'
+                },
+                '.alert-message': {
+                    'font-size': '16px'
+                },
+                '.alert-timer': {
+                    'font-size': '22px'
                 }
             },
             // 新增样式
@@ -2007,7 +2321,68 @@
         } else {
             console.log("[页面加载] 全局考试数据尚未准备好，将等待API加载");
         }
+        
+        // 计算并设置固定头部高度
+        setTimeout(updateFixedHeaderHeight, 500);
+        // 窗口大小改变时重新计算
+        window.addEventListener('resize', updateFixedHeaderHeight);
+        
+        // 设置滚动事件处理
+        setupScrollHandler();
     });
+    
+    // 更新固定头部高度的函数
+    function updateFixedHeaderHeight() {
+        try {
+            const fixedHeaderContainer = document.querySelector('.fixed-header-container');
+            if (fixedHeaderContainer) {
+                const height = fixedHeaderContainer.offsetHeight;
+                document.documentElement.style.setProperty('--fixed-header-height', height + 'px');
+                console.log("[固定头部] 高度已更新:", height + 'px');
+                
+                // 更新spacer高度
+                const spacer = document.querySelector('.fixed-header-spacer');
+                if (spacer) {
+                    spacer.style.height = (height + 10) + 'px';
+                    console.log("[固定头部] spacer高度已更新:", (height + 10) + 'px');
+                }
+            }
+        } catch (error) {
+            console.error("[固定头部] 更新高度时出错:", error);
+        }
+    }
+    
+    // 监听滚动事件，压缩头部
+    function setupScrollHandler() {
+        let lastScrollTop = 0;
+        const scrollThreshold = 50; // 滚动超过50px时压缩头部
+        
+        window.addEventListener('scroll', function() {
+            try {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const fixedHeader = document.querySelector('.fixed-header-container');
+                
+                if (fixedHeader) {
+                    if (scrollTop > scrollThreshold) {
+                        // 向下滚动超过阈值，添加压缩样式
+                        fixedHeader.classList.add('compact-header');
+                    } else {
+                        // 滚动回顶部附近，恢复正常样式
+                        fixedHeader.classList.remove('compact-header');
+                    }
+                    
+                    // 滚动方向变化时，更新布局
+                    if (Math.abs(scrollTop - lastScrollTop) > 10) {
+                        setTimeout(updateFixedHeaderHeight, 150); // 在过渡完成后更新高度
+                    }
+                }
+                
+                lastScrollTop = scrollTop;
+            } catch (error) {
+                console.error("[滚动处理] 错误:", error);
+            }
+        }, { passive: true });
+    }
 
     // 添加页面卸载时的保存机制
     window.addEventListener('beforeunload', function() {

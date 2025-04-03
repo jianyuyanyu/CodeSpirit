@@ -1413,24 +1413,25 @@
                                                 ]
                                             }
                                         }
-                                    },
-                                    {
-                                        type: 'button',
-                                        label: '取消考试',
-                                        level: 'link',
-                                        size: 'lg',
-                                        className: 'ml-3',
-                                        onEvent: {
-                                            click: {
-                                                actions: [
-                                                    {
-                                                        actionType: 'custom',
-                                                        script: 'cancelExam();'
-                                                    }
-                                                ]
-                                            }
-                                        }
                                     }
+                                    //,
+                                    //{
+                                    //    type: 'button',
+                                    //    label: '取消考试',
+                                    //    level: 'link',
+                                    //    size: 'lg',
+                                    //    className: 'ml-3',
+                                    //    onEvent: {
+                                    //        click: {
+                                    //            actions: [
+                                    //                {
+                                    //                    actionType: 'custom',
+                                    //                    script: 'cancelExam();'
+                                    //                }
+                                    //            ]
+                                    //        }
+                                    //    }
+                                    //}
                                 ]
                             }
                         ],

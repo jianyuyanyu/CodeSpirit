@@ -22,6 +22,11 @@ public class OperationAttribute : Attribute
     /// </summary>
     public bool IsBulkOperation { get; set; }
 
+    /// <summary>
+    /// 数据映射配置
+    /// </summary>
+    public string Data { get; set; }
+
     public OperationAttribute(string label, string actionType = "ajax", string api = null, string confirmText = null, string visibleOn = null, bool isBulkOperation = false)
     {
         Label = label;

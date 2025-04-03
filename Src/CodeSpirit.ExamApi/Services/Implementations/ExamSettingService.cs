@@ -322,14 +322,6 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     {
         try
         {
-            var student = await _context.Students
-                .FirstOrDefaultAsync(s => s.Id == studentId);
-
-            if (student == null)
-            {
-                throw new InvalidOperationException("未找到考生信息");
-            }
-
             // 查询当前用户所属的学生组
             var studentGroups = await _context.StudentGroupMappings
                 .Where(m => m.StudentId == studentId)

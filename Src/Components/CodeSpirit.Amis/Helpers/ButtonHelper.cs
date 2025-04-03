@@ -1,6 +1,7 @@
 ﻿using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers.Dtos;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
@@ -401,6 +402,7 @@ namespace CodeSpirit.Amis.Helpers
                     ["body"] = new JObject
                     {
                         ["type"] = "form",
+                        ["data"] = !string.IsNullOrEmpty(op.Data) ? JsonConvert.DeserializeObject<JObject>(op.Data) : null,
                         ["api"] = new JObject
                         {
                             ["url"] = route.ApiPath,
@@ -430,6 +432,7 @@ namespace CodeSpirit.Amis.Helpers
                     ["body"] = new JObject
                     {
                         ["type"] = "form",
+                        ["data"] = !string.IsNullOrEmpty(op.Data) ? JsonConvert.DeserializeObject<JObject>(op.Data) : null,
                         ["static"] = true,
                         ["initApi"] = new JObject
                         {

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.ExamApi.Dtos.Student;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace CodeSpirit.ExamApi.Controllers.Client;
 
@@ -15,8 +17,10 @@ public class IndexController : ApiControllerBase
 {
     private readonly IClientService _clientService;
     private readonly ILogger<IndexController> _logger;
-    private readonly ICurrentUser currentUser;
+    private readonly ICurrentUser _currentUser;
     private readonly IStudentService _studentService;
+    private readonly IDistributedCache _distributedCache;
+    private const string CLIENT_IP_HEADER = "X-Client-IP";
 
     /// <summary>
     /// 构造函数
@@ -25,16 +29,38 @@ public class IndexController : ApiControllerBase
     /// <param name="logger">日志服务</param>
     /// <param name="currentUser">当前用户</param>
     /// <param name="studentService">考生服务</param>
+    /// <param name="distributedCache">分布式缓存服务</param>
     public IndexController(
         IClientService clientService, 
         ILogger<IndexController> logger, 
         ICurrentUser currentUser, 
-        IStudentService studentService)
+        IStudentService studentService,
+        IDistributedCache distributedCache)
     {
         _clientService = clientService;
         _logger = logger;
-        this.currentUser = currentUser;
+        _currentUser = currentUser;
         _studentService = studentService;
+        _distributedCache = distributedCache;
+    }
+
+    /// <summary>
+    /// 获取当前用户ID
+    /// </summary>
+    /// <returns>当前用户ID，若未登录则返回0</returns>
+    protected long GetCurrentUserId()
+    {
+        return _currentUser.Id.HasValue ? _currentUser.Id.Value : 0;
+    }
+
+    /// <summary>
+    /// 验证当前用户是否已登录
+    /// </summary>
+    /// <returns>若用户已登录返回true，否则返回false</returns>
+    private bool EnsureUserLoggedIn()
+    {
+        var userId = GetCurrentUserId();
+        return userId > 0;
     }
 
     /// <summary>
@@ -44,7 +70,7 @@ public class IndexController : ApiControllerBase
     [HttpGet("available")]
     public async Task<ActionResult<ApiResponse<List<ClientExamDto>>>> GetAvailableExams()
     {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
+        var currentUserId = GetCurrentUserId();
         var result = await _clientService.GetAvailableExamsAsync(currentUserId);
         return SuccessResponse(result);
     }
@@ -56,28 +82,8 @@ public class IndexController : ApiControllerBase
     [HttpGet("history")]
     public async Task<ActionResult<ApiResponse<List<ClientExamHistoryDto>>>> GetExamHistory()
     {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
+        var currentUserId = GetCurrentUserId();
         var result = await _clientService.GetExamHistoryAsync(currentUserId);
-        return SuccessResponse(result);
-    }
-
-    /// <summary>
-    /// 获取考试详情
-    /// </summary>
-    /// <param name="id">考试ID</param>
-    /// <returns>考试详情</returns>
-    [HttpGet("{id}")]
-    public async Task<ActionResult<ApiResponse<ClientExamDetailDto>>> GetExamDetail(long id)
-    {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
-        if (currentUserId == 0)
-        {
-            return Unauthorized();
-        }
-        var userIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "未知";
-        var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
-
-        var result = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
         return SuccessResponse(result);
     }
 
@@ -90,16 +96,29 @@ public class IndexController : ApiControllerBase
     [HttpPost("{id}/submit")]
     public async Task<IActionResult> SubmitExam(long id, [FromBody] List<ClientExamAnswerDto> answers)
     {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
-        if (currentUserId == 0)
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
         {
-            return Unauthorized();
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
         
-        var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId, answers);
-        
-        // 返回提交结果和是否允许查看结果
-        return Ok(new ApiResponse<dynamic>(0, "操作成功！", new { success, enableViewResult }));
+        try
+        {
+            var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId, answers);
+            
+            // 返回提交结果和是否允许查看结果
+            return Ok(new ApiResponse<dynamic>(0, "提交成功！", new { success, enableViewResult }));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "提交考试答案时发生业务逻辑错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "提交考试答案时发生未处理错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
+            return StatusCode(500, new ApiResponse(-1, "提交答案失败，请稍后重试"));
+        }
     }
 
     /// <summary>
@@ -110,9 +129,27 @@ public class IndexController : ApiControllerBase
     [HttpGet("result/{id}")]
     public async Task<ActionResult<ApiResponse<ClientExamResultDto>>> GetExamResult(long id)
     {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
-        var result = await _clientService.GetExamResultAsync(id, currentUserId);
-        return SuccessResponse(result);
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
+        {
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
+        }
+        
+        try
+        {
+            var result = await _clientService.GetExamResultAsync(id, currentUserId);
+            return SuccessResponse(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "获取考试结果时发生业务逻辑错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试结果时发生未处理错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
+            return StatusCode(500, new ApiResponse(-1, "获取考试结果失败，请稍后重试"));
+        }
     }
 
     /// <summary>
@@ -123,203 +160,216 @@ public class IndexController : ApiControllerBase
     [HttpGet("{id}/amis")]
     public async Task<IActionResult> GetExamAmisConfig(long id)
     {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
-        if (currentUserId == 0)
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
         {
-            return Unauthorized();
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
 
-        var userIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "未知";
+        var userIp = GetClientIpAddress();
         var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
 
-        // 获取考试详情
-        var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
-
-        // 使用JObject/JArray构建表单
-        var formItems = new JArray();
-
-        // 为每个题目创建对应的表单组件
-        for (int i = 0; i < examDetail.Questions.Count; i++)
+        try
         {
-            var question = examDetail.Questions[i];
-            int index = i + 1;
+            // 获取考试详情
+            var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
 
-            // 问题标题
-            var titleObj = new JObject
+            // 使用JObject/JArray构建表单
+            var formItems = new JArray();
+
+            // 为每个题目创建对应的表单组件
+            for (int i = 0; i < examDetail.Questions.Count; i++)
             {
-                ["type"] = "tpl",
-                ["tpl"] = $"<div class=\"question-label\"><pre>{index}. {question.Content} </pre><span style=\"color:#999\">（{question.Score}分）</span></div>",
-                ["inline"] = false
+                var question = examDetail.Questions[i];
+                int index = i + 1;
+
+                // 问题标题
+                var titleObj = new JObject
+                {
+                    ["type"] = "tpl",
+                    ["tpl"] = $"<div class=\"question-label\"><pre>{index}. {question.Content} </pre><span style=\"color:#999\">（{question.Score}分）</span></div>",
+                    ["inline"] = false
+                };
+                formItems.Add(titleObj);
+
+                // 根据题目类型添加不同的表单控件
+                switch (question.Type)
+                {
+                    case "SingleChoice":
+                        // 解析选项
+                        var singleOptions = new JArray();
+                        var options = question.Options.Split(',');
+                        for (int idx = 0; idx < options.Length; idx++)
+                        {
+                            singleOptions.Add(new JObject
+                            {
+                                ["label"] = options[idx],
+                                ["value"] = options[idx]
+                            });
+                        }
+
+                        var singleChoiceObj = new JObject
+                        {
+                            ["type"] = "radios",
+                            ["name"] = $"question_{question.Id}",
+                            ["options"] = singleOptions,
+                            ["mode"] = "horizontal",
+                            ["required"] = question.IsRequired
+                        };
+
+                        var singleChoiceEvent = new JObject
+                        {
+                            ["change"] = new JObject
+                            {
+                                ["actions"] = new JArray
+                                {
+                                    new JObject
+                                    {
+                                        ["actionType"] = "custom",
+                                        ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
+                                    }
+                                }
+                            }
+                        };
+                        singleChoiceObj["onEvent"] = singleChoiceEvent;
+                        formItems.Add(singleChoiceObj);
+                        break;
+
+                    case "MultipleChoice":
+                        // 解析选项
+                        var multiOptions = new JArray();
+                        var multiChoiceOptions = question.Options.Split(',');
+                        for (int idx = 0; idx < multiChoiceOptions.Length; idx++)
+                        {
+                            multiOptions.Add(new JObject
+                            {
+                                ["label"] = multiChoiceOptions[idx],
+                                ["value"] = multiChoiceOptions[idx],
+                            });
+                        }
+
+                        var multiChoiceObj = new JObject
+                        {
+                            ["type"] = "checkboxes",
+                            ["name"] = $"question_{question.Id}",
+                            ["options"] = multiOptions,
+                            ["mode"] = "horizontal",
+                            ["required"] = question.IsRequired
+                        };
+
+                        var multiChoiceEvent = new JObject
+                        {
+                            ["change"] = new JObject
+                            {
+                                ["actions"] = new JArray
+                                {
+                                    new JObject
+                                    {
+                                        ["actionType"] = "custom",
+                                        ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
+                                    }
+                                }
+                            }
+                        };
+                        multiChoiceObj["onEvent"] = multiChoiceEvent;
+                        formItems.Add(multiChoiceObj);
+                        break;
+
+                    case "TrueFalse":
+                        // 创建判断题选项（统一使用radios组件）
+                        var tfOptions = new JArray
+                        {
+                            new JObject { ["label"] = "正确", ["value"] = "True" },
+                            new JObject { ["label"] = "错误", ["value"] = "False" }
+                        };
+
+                        var tfObj = new JObject
+                        {
+                            ["type"] = "radios",
+                            ["name"] = $"question_{question.Id}",
+                            ["options"] = tfOptions,
+                            ["mode"] = "horizontal",
+                            ["required"] = question.IsRequired
+                        };
+
+                        var tfEvent = new JObject
+                        {
+                            ["change"] = new JObject
+                            {
+                                ["actions"] = new JArray
+                                {
+                                    new JObject
+                                    {
+                                        ["actionType"] = "custom",
+                                        ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
+                                    }
+                                }
+                            }
+                        };
+                        tfObj["onEvent"] = tfEvent;
+                        formItems.Add(tfObj);
+                        break;
+
+                    default:
+                        // 简答题和其他题型
+                        var textareaObj = new JObject
+                        {
+                            ["type"] = "textarea",
+                            ["name"] = $"question_{question.Id}",
+                            ["placeholder"] = "请输入答案",
+                            ["minRows"] = 3,
+                            ["maxRows"] = 6,
+                            ["required"] = question.IsRequired
+                        };
+
+                        var textareaEvent = new JObject
+                        {
+                            ["change"] = new JObject
+                            {
+                                ["actions"] = new JArray
+                                {
+                                    new JObject
+                                    {
+                                        ["actionType"] = "custom",
+                                        ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
+                                    }
+                                }
+                            }
+                        };
+                        textareaObj["onEvent"] = textareaEvent;
+                        formItems.Add(textareaObj);
+                        break;
+                }
+
+                // 如果不是最后一个题目，添加分隔线
+                if (i < examDetail.Questions.Count - 1)
+                {
+                    formItems.Add(new JObject { ["type"] = "divider" });
+                }
+            }
+
+            // 构建Amis配置对象
+            var amisConfig = new JObject
+            {
+                ["type"] = "form",
+                ["title"] = "",
+                ["id"] = "examForm",
+                ["body"] = formItems,
+                ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
             };
-            formItems.Add(titleObj);
 
-            // 根据题目类型添加不同的表单控件
-            switch (question.Type)
-            {
-                case "SingleChoice":
-                    // 解析选项
-                    var singleOptions = new JArray();
-                    var options = question.Options.Split(',');
-                    for (int idx = 0; idx < options.Length; idx++)
-                    {
-                        singleOptions.Add(new JObject
-                        {
-                            ["label"] = options[idx],
-                            ["value"] = options[idx]
-                        });
-                    }
-
-                    var singleChoiceObj = new JObject
-                    {
-                        ["type"] = "radios",
-                        ["name"] = $"question_{question.Id}",
-                        ["options"] = singleOptions,
-                        ["mode"] = "horizontal",
-                        ["required"] = question.IsRequired
-                    };
-
-                    var singleChoiceEvent = new JObject
-                    {
-                        ["change"] = new JObject
-                        {
-                            ["actions"] = new JArray
-                            {
-                                new JObject
-                                {
-                                    ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                }
-                            }
-                        }
-                    };
-                    singleChoiceObj["onEvent"] = singleChoiceEvent;
-                    formItems.Add(singleChoiceObj);
-                    break;
-
-                case "MultipleChoice":
-                    // 解析选项
-                    var multiOptions = new JArray();
-                    var multiChoiceOptions = question.Options.Split(',');
-                    for (int idx = 0; idx < multiChoiceOptions.Length; idx++)
-                    {
-                        multiOptions.Add(new JObject
-                        {
-                            ["label"] = multiChoiceOptions[idx],
-                            ["value"] = multiChoiceOptions[idx],
-                        });
-                    }
-
-                    var multiChoiceObj = new JObject
-                    {
-                        ["type"] = "checkboxes",
-                        ["name"] = $"question_{question.Id}",
-                        ["options"] = multiOptions,
-                        ["mode"] = "horizontal",
-                        ["required"] = question.IsRequired
-                    };
-
-                    var multiChoiceEvent = new JObject
-                    {
-                        ["change"] = new JObject
-                        {
-                            ["actions"] = new JArray
-                            {
-                                new JObject
-                                {
-                                    ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                }
-                            }
-                        }
-                    };
-                    multiChoiceObj["onEvent"] = multiChoiceEvent;
-                    formItems.Add(multiChoiceObj);
-                    break;
-
-                case "TrueFalse":
-                    // 创建判断题选项（统一使用radios组件）
-                    var tfOptions = new JArray
-                    {
-                        new JObject { ["label"] = "正确", ["value"] = "True" },
-                        new JObject { ["label"] = "错误", ["value"] = "False" }
-                    };
-
-                    var tfObj = new JObject
-                    {
-                        ["type"] = "radios",
-                        ["name"] = $"question_{question.Id}",
-                        ["options"] = tfOptions,
-                        ["mode"] = "horizontal",
-                        ["required"] = question.IsRequired
-                    };
-
-                    var tfEvent = new JObject
-                    {
-                        ["change"] = new JObject
-                        {
-                            ["actions"] = new JArray
-                            {
-                                new JObject
-                                {
-                                    ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                }
-                            }
-                        }
-                    };
-                    tfObj["onEvent"] = tfEvent;
-                    formItems.Add(tfObj);
-                    break;
-
-                default:
-                    // 简答题和其他题型
-                    var textareaObj = new JObject
-                    {
-                        ["type"] = "textarea",
-                        ["name"] = $"question_{question.Id}",
-                        ["placeholder"] = "请输入答案",
-                        ["minRows"] = 3,
-                        ["maxRows"] = 6,
-                        ["required"] = question.IsRequired
-                    };
-
-                    var textareaEvent = new JObject
-                    {
-                        ["change"] = new JObject
-                        {
-                            ["actions"] = new JArray
-                            {
-                                new JObject
-                                {
-                                    ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                }
-                            }
-                        }
-                    };
-                    textareaObj["onEvent"] = textareaEvent;
-                    formItems.Add(textareaObj);
-                    break;
-            }
-
-            // 如果不是最后一个题目，添加分隔线
-            if (i < examDetail.Questions.Count - 1)
-            {
-                formItems.Add(new JObject { ["type"] = "divider" });
-            }
+            return Ok(amisConfig);
         }
-
-        // 构建Amis配置对象
-        var amisConfig = new JObject
+        catch (InvalidOperationException ex)
         {
-            ["type"] = "form",
-            ["title"] = "",
-            ["id"] = "examForm",
-            ["body"] = formItems,
-            ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
-        };
-
-        return Ok(amisConfig);
+            _logger.LogWarning(ex, "获取考试AMIS配置时发生业务逻辑错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试AMIS配置时发生未处理错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
+            return StatusCode(500, new ApiResponse(-1, "获取考试配置失败，请稍后重试"));
+        }
     }
 
     /// <summary>
@@ -330,14 +380,27 @@ public class IndexController : ApiControllerBase
     [HttpGet("{id}/basic")]
     public async Task<ActionResult<ApiResponse<ClientExamBasicInfoDto>>> GetExamBasicInfo(long id)
     {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
-        if (currentUserId == 0)
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
         {
-            return Unauthorized();
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
 
-        var result = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
-        return SuccessResponse(result);
+        try
+        {
+            var result = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
+            return SuccessResponse(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "获取考试基本信息时发生业务逻辑错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试基本信息时发生未处理错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
+            return StatusCode(500, new ApiResponse(-1, "获取考试基本信息失败，请稍后重试"));
+        }
     }
 
     /// <summary>
@@ -348,20 +411,30 @@ public class IndexController : ApiControllerBase
     [HttpPost("{id}/start")]
     public async Task<ActionResult<object>> StartExam(long id)
     {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
-        if (currentUserId == 0)
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
         {
-            return Unauthorized();
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
 
-        var userIp = GetClientIpAddress() ?? "未知";
+        var userIp = GetClientIpAddress();
         var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
 
-        var record = await _clientService.CreateExamRecordAsync(id, currentUserId, userIp, deviceInfo);
-        return new
+        try
         {
-            id = record.ExamSettingId
-        };
+            var record = await _clientService.CreateExamRecordAsync(id, currentUserId, userIp, deviceInfo);
+            return new { id = record.ExamSettingId };
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "创建考试记录时发生业务逻辑错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "创建考试记录时发生未处理错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
+            return StatusCode(500, new ApiResponse(-1, "创建考试记录失败，请稍后重试"));
+        }
     }
 
     /// <summary>
@@ -372,36 +445,33 @@ public class IndexController : ApiControllerBase
     {
         try
         {
-            // 按优先级尝试获取IP地址
-            string ip = null;
+            // 优化IP获取逻辑，提高性能
+            if (HttpContext.Request.Headers.TryGetValue(CLIENT_IP_HEADER, out var clientIp) && !string.IsNullOrEmpty(clientIp))
+            {
+                return clientIp.ToString().Trim();
+            }
             
-            // 1. 尝试从X-Forwarded-For获取
+            // 按优先级尝试获取IP地址
             if (HttpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedIps))
             {
                 var ips = forwardedIps.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
                 if (ips.Length > 0)
                 {
                     // 通常第一个是客户端真实IP
-                    ip = ips[0]?.Trim();
+                    return ips[0]?.Trim() ?? "未知";
                 }
             }
             
-            // 2. 尝试从X-Real-IP获取
-            if (string.IsNullOrEmpty(ip) && HttpContext.Request.Headers.TryGetValue("X-Real-IP", out var realIp))
+            // 尝试从X-Real-IP获取
+            if (HttpContext.Request.Headers.TryGetValue("X-Real-IP", out var realIp))
             {
-                ip = realIp.ToString().Trim();
+                return realIp.ToString().Trim();
             }
             
-            // 3. 使用HttpContext.Connection.RemoteIpAddress
-            if (string.IsNullOrEmpty(ip) && HttpContext.Connection.RemoteIpAddress != null)
+            // 使用HttpContext.Connection.RemoteIpAddress
+            if (HttpContext.Connection.RemoteIpAddress != null)
             {
-                ip = HttpContext.Connection.RemoteIpAddress.ToString();
-            }
-            
-            // 验证IP地址有效性（简单验证）
-            if (!string.IsNullOrEmpty(ip) && (ip.Contains('.') || ip.Contains(':')))
-            {
-                return ip;
+                return HttpContext.Connection.RemoteIpAddress.ToString();
             }
             
             return "未知";
@@ -422,15 +492,31 @@ public class IndexController : ApiControllerBase
     [HttpPost("{id}/screen-switch")]
     public async Task<ActionResult<ApiResponse>> RecordScreenSwitch(long id)
     {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
-        if (currentUserId == 0)
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
         {
-            return Unauthorized();
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
         
-        var userIp = GetClientIpAddress() ?? "未知";
-        await _clientService.RecordScreenSwitchAsync(id, currentUserId, userIp);
-        return SuccessResponse();
+        try
+        {
+            var userIp = GetClientIpAddress();
+            
+            // 直接调用服务记录切屏，不使用缓存
+            await _clientService.RecordScreenSwitchAsync(id, currentUserId, userIp);
+            return SuccessResponse();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "记录切屏事件时发生业务逻辑错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "记录切屏事件时发生未处理错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
+            // 返回成功而不是错误，避免影响用户体验
+            return SuccessResponse();
+        }
     }
     
     /// <summary>
@@ -440,13 +526,26 @@ public class IndexController : ApiControllerBase
     [HttpGet("profile")]
     public async Task<ActionResult<ApiResponse<ClientProfileDto>>> GetProfile()
     {
-        var currentUserId = currentUser.Id.HasValue ? currentUser.Id.Value : 0;
-        if (currentUserId == 0)
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
         {
-            return Unauthorized();
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
         
-        var result = await _clientService.GetStudentProfileAsync(currentUserId);
-        return SuccessResponse(result);
+        try
+        {
+            var result = await _clientService.GetStudentProfileAsync(currentUserId);
+            return SuccessResponse(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "获取考生个人信息时发生业务逻辑错误，用户 {UserId}", currentUserId);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考生个人信息时发生未处理错误，用户 {UserId}", currentUserId);
+            return StatusCode(500, new ApiResponse(-1, "获取考生信息失败，请稍后重试"));
+        }
     }
 }

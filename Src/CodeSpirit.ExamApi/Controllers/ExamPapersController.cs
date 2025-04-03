@@ -1,9 +1,10 @@
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.ExamApi.Controllers.Client;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
+using CodeSpirit.ExamApi.Dtos.ExamSetting;
 using Microsoft.AspNetCore.Mvc;
-using CodeSpirit.ExamApi.Controllers.Client;
 using Newtonsoft.Json.Linq;
 
 namespace CodeSpirit.ExamApi.Controllers;
@@ -16,13 +17,15 @@ namespace CodeSpirit.ExamApi.Controllers;
 public class ExamPapersController : ApiControllerBase
 {
     private readonly IExamPaperService _examPaperService;
+    private readonly IExamSettingService _examSettingService;
 
     /// <summary>
     /// 构造函数
     /// </summary>
-    public ExamPapersController(IExamPaperService examPaperService)
+    public ExamPapersController(IExamPaperService examPaperService, IExamSettingService examSettingService)
     {
         _examPaperService = examPaperService;
+        _examSettingService = examSettingService;
     }
 
     /// <summary>
@@ -201,6 +204,19 @@ public class ExamPapersController : ApiControllerBase
         };
 
         return SuccessResponse(panelConfig);
+    }
+
+    /// <summary>
+    /// 创建考试设置
+    /// </summary>
+    /// <param name="createDto">创建考试设置DTO</param>
+    /// <returns>创建结果</returns>
+    [HttpPost("create-examSetting")]
+    [Operation("创建考试", "form", visibleOn: "status === 2", Redirect = "/exam/examSettings", Data = "{\"examPaperId\":\"${id}\"}")]
+    public async Task<ActionResult<ApiResponse<ExamSettingDto>>> CreateExamSetting([FromBody] CreateExamSettingDto createDto)
+    {
+        var result = await _examSettingService.CreateAsync(createDto);
+        return SuccessResponse(result);
     }
 
     /// <summary>

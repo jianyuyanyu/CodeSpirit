@@ -83,4 +83,5 @@ public interface IClientService
     /// <param name="userId">用户ID</param>
     /// <returns>考生个人信息</returns>
     Task<ClientProfileDto> GetStudentProfileAsync(long userId);
+    
 } 

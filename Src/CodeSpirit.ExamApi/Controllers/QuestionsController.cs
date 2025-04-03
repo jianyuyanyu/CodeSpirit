@@ -46,6 +46,28 @@ public class QuestionsController : ApiControllerBase
     }
 
     /// <summary>
+    /// 导出题目列表
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>导出的题目列表</returns>
+    [HttpGet("Export")]
+    public async Task<ActionResult<ApiResponse<PageList<QuestionDto>>>> Export([FromQuery] QuestionQueryDto queryDto)
+    {
+        // 设置导出时的分页参数
+        const int MaxExportLimit = 10000; // 最大导出数量限制
+        queryDto.PerPage = MaxExportLimit;
+        queryDto.Page = 1;
+        
+        // 获取题目数据
+        PageList<QuestionDto> questions = await _questionService.GetQuestionsAsync(queryDto);
+        
+        // 如果数据为空则返回错误信息
+        return questions.Items.Count == 0 
+            ? BadResponse<PageList<QuestionDto>>("没有数据可供导出") 
+            : SuccessResponse(questions);
+    }
+
+    /// <summary>
     /// 获取题目选择列表
     /// </summary>
     /// <param name="queryDto"></param>

@@ -46,6 +46,28 @@ public class StudentsController : ApiControllerBase
     }
     
     /// <summary>
+    /// 导出考生列表
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>导出的考生列表</returns>
+    [HttpGet("Export")]
+    public async Task<ActionResult<ApiResponse<PageList<StudentDto>>>> Export([FromQuery] StudentQueryDto queryDto)
+    {
+        // 设置导出时的分页参数
+        const int MaxExportLimit = 10000; // 最大导出数量限制
+        queryDto.PerPage = MaxExportLimit;
+        queryDto.Page = 1;
+        
+        // 获取考生数据
+        var result = await _studentService.GetStudentsAsync(queryDto);
+        
+        // 如果数据为空则返回错误信息
+        return result.Items.Count == 0 
+            ? BadResponse<PageList<StudentDto>>("没有数据可供导出") 
+            : SuccessResponse(result);
+    }
+    
+    /// <summary>
     /// 获取考生详情
     /// </summary>
     /// <param name="id">考生ID</param>

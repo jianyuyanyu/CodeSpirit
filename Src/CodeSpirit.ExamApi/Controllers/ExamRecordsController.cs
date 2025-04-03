@@ -40,6 +40,28 @@ public class ExamRecordsController : ApiControllerBase
     }
 
     /// <summary>
+    /// 导出考试记录列表
+    /// </summary>
+    /// <param name="queryDto">查询参数</param>
+    /// <returns>导出的考试记录列表</returns>
+    [HttpGet("Export")]
+    public async Task<ActionResult<ApiResponse<PageList<ExamRecordDto>>>> Export([FromQuery] ExamRecordQueryDto queryDto)
+    {
+        // 设置导出时的分页参数
+        const int MaxExportLimit = 10000; // 最大导出数量限制
+        queryDto.PerPage = MaxExportLimit;
+        queryDto.Page = 1;
+        
+        // 获取考试记录数据
+        var records = await _examRecordService.GetPagedListAsync(queryDto, includes: ["ExamSetting", "Student"]);
+        
+        // 如果数据为空则返回错误信息
+        return records.Items.Count == 0 
+            ? BadResponse<PageList<ExamRecordDto>>("没有数据可供导出") 
+            : SuccessResponse(records);
+    }
+
+    /// <summary>
     /// 获取考试记录详情
     /// </summary>
     /// <param name="id">考试记录ID</param>

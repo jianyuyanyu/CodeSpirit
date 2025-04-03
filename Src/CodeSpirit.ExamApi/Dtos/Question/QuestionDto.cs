@@ -24,20 +24,20 @@ public class QuestionDto
     public QuestionDifficulty Difficulty { get; set; }
 
     [DisplayName("选项")]
-    [AmisColumn(Type = "json", Hidden = true)]
+    [AmisColumn(Type = "json")]
     [AmisFormField(Type = "json")]
     public List<string> Options { get; set; } = [];
 
     [DisplayName("正确答案")]
-    [AmisColumn(Copyable = true, Hidden = true)]
+    [AmisColumn(Copyable = true)]
     public string CorrectAnswer { get; set; } = string.Empty;
 
     [DisplayName("解析")]
-    [AmisColumn(Copyable = true, Hidden = true)]
+    [AmisColumn(Copyable = true, Toggled = false)]
     public string? Analysis { get; set; }
 
     [DisplayName("知识点")]
-    [AmisColumn(Type = "json", Hidden = true)]
+    [AmisColumn(Type = "json", Toggled = false)]
     [AmisFormField(Type = "json")]
     public string? KnowledgePoints { get; set; }
 

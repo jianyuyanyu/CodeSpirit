@@ -381,6 +381,33 @@
         if (window.globalData.countdowns.hasCountdown && !window.countdownInterval) {
             window.countdownManager.startTimer();
         }
+        
+        // 检测触摸设备并适配
+        if ('ontouchstart' in document.documentElement) {
+            document.body.classList.add('touch-device');
+            
+            // 为触摸设备添加活跃状态样式
+            document.querySelectorAll('.info-item, .exam-info-item').forEach(item => {
+                item.addEventListener('touchstart', function() {
+                    this.classList.add('touch-active');
+                }, {passive: true});
+                
+                item.addEventListener('touchend', function() {
+                    this.classList.remove('touch-active');
+                }, {passive: true});
+            });
+        }
+        
+        // 监听窗口大小变化
+        const checkWindowSize = function() {
+            const isMobile = window.innerWidth <= 768;
+            const isSmallMobile = window.innerWidth <= 576;
+            document.body.classList.toggle('mobile-view', isMobile);
+            document.body.classList.toggle('small-mobile-view', isSmallMobile);
+        };
+        
+        window.addEventListener('resize', checkWindowSize);
+        checkWindowSize(); // 初始检查
     };
 
     // 应用配置
@@ -396,7 +423,7 @@
                 body: [
                     {
                         type: 'tpl',
-                        tpl: '<h2>欢迎您，${user.name}</h2><p>今天是 ${now|date:YYYY-MM-DD}，祝您考试顺利！</p>',
+                        tpl: '<h2><i class="fa fa-graduation-cap welcome-icon"></i> 欢迎您，${user.name}</h2><p><i class="fa fa-calendar welcome-icon"></i> 今天是 ${now|date:YYYY-MM-DD}，祝您考试顺利！</p>',
                         className: 'welcome-message'
                     },
                     {
@@ -432,7 +459,7 @@
                 body: [
                     {
                         type: 'tpl',
-                        tpl: '<h3>考生信息</h3>',
+                        tpl: '<h3><i class="fa fa-user-circle section-icon"></i> 考生信息</h3>',
                         className: 'section-title'
                     },
                     {
@@ -443,12 +470,56 @@
                             avatarText: '信息'
                         },
                         body: [
-                            { type: 'tpl', tpl: '<div><span class="text-muted">姓名：</span>${name}</div>' },
-                            { type: 'tpl', tpl: '<div><span class="text-muted">学号：</span>${studentNumber}</div>' },
-                            { type: 'tpl', tpl: '<div><span class="text-muted">身份证号：</span>${idNo || "未设置"}</div>' },
-                            { type: 'tpl', tpl: '<div><span class="text-muted">性别：</span>${gender}</div>' },
-                            { type: 'tpl', tpl: '<div><span class="text-muted">准考证号：</span>${admissionTicket || "未设置"}</div>' },
-                            { type: 'tpl', tpl: '<div><span class="text-muted">手机号码：</span>${phoneNumber}</div>' }
+                            {
+                                type: 'flex',
+                                justify: 'flex-start',
+                                alignItems: 'stretch',
+                                items: [
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="info-item"><i class="fa fa-user info-icon"></i><span class="info-label">姓名</span><span class="info-value">${name}</span></div>',
+                                        className: 'flex-info-item',
+                                        columnClassName: 'w-sm-12 w-md-4'
+                                    },
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="info-item"><i class="fa fa-id-card-o info-icon"></i><span class="info-label">学号</span><span class="info-value">${studentNumber}</span></div>',
+                                        className: 'flex-info-item',
+                                        columnClassName: 'w-sm-12 w-md-4'
+                                    },
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="info-item"><i class="fa fa-venus-mars info-icon"></i><span class="info-label">性别</span><span class="info-value">${gender}</span></div>',
+                                        className: 'flex-info-item',
+                                        columnClassName: 'w-sm-12 w-md-4'
+                                    }
+                                ]
+                            },
+                            {
+                                type: 'flex',
+                                justify: 'flex-start',
+                                alignItems: 'stretch',
+                                items: [
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="info-item"><i class="fa fa-id-card info-icon"></i><span class="info-label">身份证号</span><span class="info-value">${idNo || "<span class=\'text-muted\'>未设置</span>"}</span></div>',
+                                        className: 'flex-info-item',
+                                        columnClassName: 'w-sm-12 w-md-4'
+                                    },
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="info-item"><i class="fa fa-ticket info-icon"></i><span class="info-label">准考证号</span><span class="info-value">${admissionTicket || "<span class=\'text-muted\'>未设置</span>"}</span></div>',
+                                        className: 'flex-info-item',
+                                        columnClassName: 'w-sm-12 w-md-4'
+                                    },
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="info-item"><i class="fa fa-phone info-icon"></i><span class="info-label">手机号码</span><span class="info-value">${phoneNumber || "<span class=\'text-muted\'>未设置</span>"}</span></div>',
+                                        className: 'flex-info-item',
+                                        columnClassName: 'w-sm-12 w-md-4'
+                                    }
+                                ]
+                            }
                         ],
                         className: 'profile-card'
                     }
@@ -485,7 +556,7 @@
                 body: [
                     {
                         type: 'tpl',
-                        tpl: '<h3>可参加的考试</h3>',
+                        tpl: '<h3><i class="fa fa-list-alt section-icon"></i> 可参加的考试</h3>',
                         className: 'section-title'
                     },
                     {
@@ -502,13 +573,47 @@
                                         avatarText: '考试'
                                     },
                                     body: [
-                                        { type: 'tpl', tpl: '<div><span class="text-muted">开始时间：</span>${startTime}</div>' },
-                                        { type: 'tpl', tpl: '<div><span class="text-muted">结束时间：</span>${endTime}</div>' },
-                                        { type: 'tpl', tpl: '<div><span class="text-muted">总分：</span>${totalScore}分</div>' },
-                                        { type: 'tpl', tpl: '<div><span class="text-muted">状态：</span><span class="label label-${status === \'进行中\' ? \'success\' : (status === \'未开始\' ? \'info\' : \'danger\')}">${status}</span>${comingSoonLabel|raw}</div>' },
+                                        {
+                                            type: 'flex',
+                                            justify: 'flex-start',
+                                            alignItems: 'stretch',
+                                            items: [
+                                                {
+                                                    type: 'tpl',
+                                                    tpl: '<div class="exam-info-item"><i class="fa fa-calendar-check-o exam-icon"></i><span class="exam-info-label">开始时间</span><span class="exam-info-value">${startTime}</span></div>',
+                                                    className: 'flex-info-item',
+                                                    columnClassName: 'w-sm-12 w-md-6'
+                                                },
+                                                {
+                                                    type: 'tpl',
+                                                    tpl: '<div class="exam-info-item"><i class="fa fa-calendar-times-o exam-icon"></i><span class="exam-info-label">结束时间</span><span class="exam-info-value">${endTime}</span></div>',
+                                                    className: 'flex-info-item',
+                                                    columnClassName: 'w-sm-12 w-md-6'
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            type: 'flex',
+                                            justify: 'flex-start',
+                                            alignItems: 'stretch',
+                                            items: [
+                                                {
+                                                    type: 'tpl',
+                                                    tpl: '<div class="exam-info-item"><i class="fa fa-graduation-cap exam-icon"></i><span class="exam-info-label">总分</span><span class="exam-info-value">${totalScore}分</span></div>',
+                                                    className: 'flex-info-item',
+                                                    columnClassName: 'w-sm-12 w-md-6'
+                                                },
+                                                {
+                                                    type: 'tpl',
+                                                    tpl: '<div class="exam-info-item"><i class="fa fa-info-circle exam-icon"></i><span class="exam-info-label">状态</span><span class="exam-info-value"><span class="label label-${status === \'进行中\' ? \'success\' : (status === \'未开始\' ? \'info\' : \'danger\')}">${status}</span>${comingSoonLabel|raw}</span></div>',
+                                                    className: 'flex-info-item',
+                                                    columnClassName: 'w-sm-12 w-md-6'
+                                                }
+                                            ]
+                                        },
                                         { 
                                             type: 'tpl', 
-                                            tpl: '<div class="countdown-container ${countdownContainerClass}" data-exam-id="${id}"><span class="text-muted">倒计时：</span><span class="countdown-text ${countdownTextClass}">${countdownText}</span></div>',
+                                            tpl: '<div class="countdown-container ${countdownContainerClass}" data-exam-id="${id}"><i class="fa fa-clock-o exam-icon"></i><span class="exam-info-label">倒计时</span><span class="countdown-text ${countdownTextClass}">${countdownText}</span></div>',
                                             visibleOn: "status === '未开始'"
                                         }
                                     ],
@@ -600,7 +705,7 @@
                 body: [
                     {
                         type: 'tpl',
-                        tpl: '<h3>历史考试记录</h3>',
+                        tpl: '<h3><i class="fa fa-history section-icon"></i> 历史考试记录</h3>',
                         className: 'section-title'
                     },
                     {
@@ -643,12 +748,25 @@
                 'color': 'var(--text)',
                 'background-color': '#f9fafc'
             },
+            'body.mobile-view': {
+                'font-size': '14px'
+            },
+            'body.small-mobile-view': {
+                'font-size': '13px'
+            },
+            'body.touch-device .cxd-Button': {
+                'padding': '7px 12px' // 增大触摸区域
+            },
+            '.touch-active': {
+                'background-color': 'rgba(63, 81, 181, 0.15) !important',
+                'transform': 'scale(0.98) !important'
+            },
             // 区域样式
             '.client-welcome-section': {
-                'padding': '30px',
+                'padding': '20px',
                 'background': 'linear-gradient(135deg, #fff, var(--light-bg))',
                 'border-radius': 'var(--radius)',
-                'margin': '30px 25px 20px',
+                'margin': '20px 25px 15px',
                 'box-shadow': 'var(--shadow)',
                 'border-left': '4px solid var(--primary)'
             },
@@ -661,10 +779,15 @@
                 'color': '#666',
                 'font-size': '16px'
             },
+            '.welcome-icon': {
+                'color': 'var(--primary)',
+                'margin-right': '8px',
+                'width': '22px',
+                'text-align': 'center'
+            },
             '.section-title': {
-                'margin-bottom': '20px',
                 'padding-left': '25px',
-                'font-size': '20px',
+                'font-size': '18px',
                 'font-weight': '600',
                 'color': 'var(--primary)',
                 'position': 'relative',
@@ -672,18 +795,12 @@
                 'display': 'flex',
                 'align-items': 'center'
             },
-            '.section-title:before': {
-                'content': '""',
-                'position': 'absolute',
-                'left': '0',
-                'height': '18px',
-                'width': '4px',
-                'background-color': 'var(--primary)',
-                'border-radius': '2px'
+            '.cxd-Divider': {
+                'margin': '10px 0'
             },
             '.exam-list-section, .exam-history-section, .student-profile-section': {
-                'padding': '15px',
-                'margin': '0 25px 25px',
+                'padding': '12px',
+                'margin': '0 25px 15px',
                 'background-color': '#fff',
                 'border-radius': 'var(--radius)',
                 'box-shadow': 'var(--shadow)'
@@ -707,26 +824,29 @@
             '.profile-card .cxd-Card-body': {
                 'padding': '5px 15px 15px'
             },
-            '.info-item': {
-                'margin': '10px 0',
-                'padding': '8px 15px',
+            '.info-item, .exam-info-item': {
+                'margin': '5px 0',
+                'padding': '8px 12px',
                 'border-radius': 'var(--radius)',
-                'background-color': 'rgba(63, 81, 181, 0.05)',
-                'transition': 'all 0.3s ease'
+                'background-color': 'rgba(63, 81, 181, 0.03)',
+                'transition': 'all 0.3s ease',
+                'display': 'flex',
+                'align-items': 'center',
+                'height': '100%'
             },
-            '.info-item:hover': {
-                'background-color': 'rgba(63, 81, 181, 0.1)',
+            '.info-item:hover, .exam-info-item:hover': {
+                'background-color': 'rgba(63, 81, 181, 0.07)',
                 'transform': 'translateY(-2px)',
                 'box-shadow': '0 2px 6px rgba(0,0,0,0.05)'
             },
-            '.info-label': {
+            '.info-label, .exam-info-label': {
                 'color': '#666',
                 'font-weight': '500',
                 'margin-right': '8px',
-                'min-width': '100px',
+                'min-width': '60px',
                 'display': 'inline-block'
             },
-            '.info-value': {
+            '.info-value, .exam-info-value': {
                 'font-weight': '600',
                 'color': '#333'
             },
@@ -816,7 +936,8 @@
                 'border-left': '3px solid #03a9f4',
                 'display': 'flex',
                 'align-items': 'center',
-                'transition': 'all 0.3s ease'
+                'transition': 'all 0.3s ease',
+                'height': '100%'
             },
             '.countdown-text': {
                 'font-family': 'Consolas, monospace',
@@ -879,19 +1000,161 @@
                     'text-shadow': 'none'
                 }
             },
+            // 基本样式
+            '.info-icon, .exam-icon': {
+                'margin-right': '10px',
+                'width': '20px',
+                'text-align': 'center',
+                'color': 'var(--primary)'
+            },
+            '.info-item, .exam-info-item': {
+                'height': '100%',
+                'display': 'flex',
+                'align-items': 'center',
+                'margin': '0',
+                'padding': '10px 15px',
+                'border-radius': 'var(--radius)',
+                'background-color': 'rgba(63, 81, 181, 0.05)',
+                'transition': 'all 0.3s ease'
+            },
+            '.info-item:hover, .exam-info-item:hover': {
+                'background-color': 'rgba(63, 81, 181, 0.1)',
+                'transform': 'translateY(-2px)',
+                'box-shadow': '0 2px 6px rgba(0,0,0,0.05)'
+            },
+            '.info-label, .exam-info-label': {
+                'color': '#666',
+                'font-weight': '500',
+                'margin-right': '8px',
+                'min-width': '60px',
+                'display': 'inline-block'
+            },
+            '.info-value, .exam-info-value': {
+                'font-weight': '600',
+                'color': '#333'
+            },
+            '.groups-item': {
+                'margin-top': '15px',
+                'background-color': 'rgba(3, 169, 244, 0.05)',
+                'border-left': '3px solid #03a9f4'
+            },
+            '.section-title:before': {
+                'content': '""',
+                'position': 'absolute',
+                'left': '0',
+                'height': '16px',
+                'width': '4px',
+                'background-color': 'var(--primary)',
+                'border-radius': '2px'
+            },
+            '.section-icon': {
+                'color': 'var(--primary)',
+                'margin-right': '8px',
+                'width': '24px',
+                'text-align': 'center'
+            },
+            '.flex-info-item': {
+                'padding': '0 5px',
+                'margin-bottom': '10px',
+                'flex': '1',
+                'min-width': '0'
+            },
             // 响应式样式
             '@media (max-width: 768px)': {
                 '.exam-list-section, .exam-history-section, .client-welcome-section, .student-profile-section': {
                     'margin': '15px',
-                    'padding': '15px'
+                    'padding': '12px'
                 },
                 '.welcome-message h2': { 'font-size': '20px' },
+                '.welcome-message p': { 'font-size': '14px' },
                 '.section-title': {
-                    'font-size': '18px',
-                    'padding-left': '20px'
+                    'font-size': '16px',
+                    'padding-left': '20px',
+                    'margin-bottom': '10px'
                 },
-                '.info-label': {
-                    'min-width': '80px'
+                '.info-label, .exam-info-label': {
+                    'min-width': '55px'
+                },
+                '.w-sm-12': {
+                    'width': '100% !important'
+                },
+                '.flex-info-item': {
+                    'padding': '0 0 8px 0'
+                },
+                '.info-item, .exam-info-item': {
+                    'padding': '8px 10px'
+                },
+                '.profile-card .cxd-Card-body': {
+                    'padding': '5px 10px 10px'
+                },
+                '.exam-card': {
+                    'margin-bottom': '12px'
+                },
+                '.cxd-Divider': {
+                    'margin': '8px 0'
+                }
+            },
+            '@media (max-width: 576px)': {
+                '.exam-list-section, .exam-history-section, .client-welcome-section, .student-profile-section': {
+                    'margin': '10px',
+                    'padding': '10px'
+                },
+                '.info-icon, .exam-icon': {
+                    'margin-right': '5px',
+                    'font-size': '14px'
+                },
+                '.info-label, .exam-info-label': {
+                    'min-width': '45px',
+                    'font-size': '13px'
+                },
+                '.info-value, .exam-info-value': {
+                    'font-size': '13px'
+                },
+                '.welcome-message h2': { 'font-size': '18px' },
+                '.welcome-message p': { 'font-size': '13px' },
+                '.section-icon': {
+                    'margin-right': '5px',
+                    'font-size': '14px'
+                },
+                '.countdown-text': {
+                    'font-size': '13px'
+                },
+                '.countdown-container': {
+                    'padding': '6px 8px'
+                }
+            },
+            '@media (max-width: 370px)': {
+                '.info-label, .exam-info-label': {
+                    'min-width': '40px',
+                    'font-size': '12px'
+                },
+                '.info-value, .exam-info-value': {
+                    'font-size': '12px'
+                },
+                '.info-icon, .exam-icon': {
+                    'margin-right': '4px',
+                    'font-size': '12px'
+                },
+                '.countdown-text': {
+                    'font-size': '12px'
+                },
+                '.section-title': {
+                    'font-size': '15px'
+                },
+                '.section-icon': {
+                    'font-size': '13px'
+                },
+                '.cxd-Button': {
+                    'font-size': '12px',
+                    'padding': '4px 6px'
+                }
+            },
+            '@media (hover: none) and (pointer: coarse)': {
+                '.info-item:active, .exam-info-item:active': {
+                    'background-color': 'rgba(63, 81, 181, 0.15)'
+                },
+                '.cxd-Button--primary:active': {
+                    'transform': 'translateY(1px)'
                 }
             }
         }

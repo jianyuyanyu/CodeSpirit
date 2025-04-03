@@ -1,6 +1,7 @@
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.ExamSetting;
+using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.Shared.Services;
 
 namespace CodeSpirit.ExamApi.Services.Interfaces;
@@ -37,4 +38,28 @@ public interface IExamSettingService : IBaseCRUDService<ExamSetting, ExamSetting
     /// <param name="id">考试设置ID</param>
     /// <returns>操作结果</returns>
     Task UnpublishExamSettingAsync(long id);
+    
+    /// <summary>
+    /// 获取用户可参加的考试列表
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>可参加的考试列表</returns>
+    Task<List<ClientExamDto>> GetAvailableExamsForClientAsync(long studentId);
+    
+    /// <summary>
+    /// 获取考试详情（客户端视图）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>考试详情</returns>
+    Task<ClientExamDetailDto> GetExamDetailForClientAsync(long examId, long recordId);
+    
+    /// <summary>
+    /// 获取考试基本信息（客户端视图）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>考试基本信息</returns>
+    Task<ClientExamBasicInfoDto> GetExamBasicInfoForClientAsync(long examId, long studentId, long? recordId = null);
 } 

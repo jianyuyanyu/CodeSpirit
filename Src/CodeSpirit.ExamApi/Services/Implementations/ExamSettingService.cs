@@ -1,15 +1,11 @@
 using AutoMapper;
-using CodeSpirit.Core;
-using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
+using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Dtos.ExamSetting;
-using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -24,6 +20,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     private readonly IRepository<ExamSettingStudentGroup> _examSettingStudentGroupRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<ExamSettingService> _logger;
+    private readonly ExamDbContext _context;
 
     /// <summary>
     /// 构造函数
@@ -34,7 +31,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         IRepository<StudentGroup> studentGroupRepository,
         IRepository<ExamSettingStudentGroup> examSettingStudentGroupRepository,
         IMapper mapper,
-        ILogger<ExamSettingService> logger)
+        ILogger<ExamSettingService> logger,
+        ExamDbContext context)
         : base(repository, mapper)
     {
         _repository = repository;
@@ -43,6 +41,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         _examSettingStudentGroupRepository = examSettingStudentGroupRepository;
         _mapper = mapper;
         _logger = logger;
+        _context = context;
     }
 
     /// <summary>
@@ -312,5 +311,274 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
 
         examSetting.Status = ExamSettingStatus.Draft;
         await _repository.UpdateAsync(examSetting);
+    }
+
+    /// <summary>
+    /// 获取用户可参加的考试列表
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>可参加的考试列表</returns>
+    public async Task<List<ClientExamDto>> GetAvailableExamsForClientAsync(long studentId)
+    {
+        try
+        {
+            var student = await _context.Students
+                .FirstOrDefaultAsync(s => s.Id == studentId);
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到考生信息");
+            }
+
+            // 查询当前用户所属的学生组
+            var studentGroups = await _context.StudentGroupMappings
+                .Where(m => m.StudentId == studentId)
+                .Select(m => m.StudentGroupId)
+                .ToListAsync();
+
+            // 获取可参加的考试
+            var now = DateTime.UtcNow;
+            // 定义预展示时间，开考前半小时（30分钟）可见
+            var previewTime = now.AddMinutes(30);
+            
+            var availableExams = await _context.ExamSettings
+                .Include(e => e.StudentGroups)
+                .Include(e => e.ExamPaper)
+                .Where(e => e.Status == ExamSettingStatus.Published)
+                .Where(e => 
+                    // 正在进行中的考试或即将开始的考试（开考前半小时）
+                    ((e.StartTime <= now && e.EndTime >= now) || 
+                     (e.StartTime > now && e.StartTime <= previewTime))
+                )
+                .Where(e => e.StudentGroups.Any() == false || e.StudentGroups.Any(g => studentGroups.Contains(g.StudentGroupId)))
+                .Select(e => new ClientExamDto
+                {
+                    Id = e.Id,
+                    Name = e.Name,
+                    Description = e.Description,
+                    StartTime = e.StartTime,
+                    EndTime = e.EndTime,
+                    Duration = e.Duration,
+                    TotalScore = e.ExamPaper.TotalScore,
+                    Status = _context.ExamRecords.Any(r =>
+                        r.ExamSettingId == e.Id &&
+                        r.StudentId == studentId &&
+                        r.Status == ExamRecordStatus.InProgress)
+                        ? "进行中"
+                        : (_context.ExamRecords.Any(r =>
+                            r.ExamSettingId == e.Id &&
+                            r.StudentId == studentId &&
+                            (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
+                            ? "已完成"
+                            : (e.StartTime <= now && e.EndTime >= now ? "进行中" :
+                               (e.StartTime > now ? "未开始" : "已结束"))),
+                    // 检查是否已参加并获取成绩
+                    HasResult = _context.ExamRecords.Any(r =>
+                        r.ExamSettingId == e.Id &&
+                        r.StudentId == studentId &&
+                        (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
+                })
+                .ToListAsync();
+
+            return availableExams;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取可参加的考试列表时发生错误");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取考试详情（客户端视图）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>考试详情</returns>
+    public async Task<ClientExamDetailDto> GetExamDetailForClientAsync(long examId, long recordId)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                throw new ArgumentException("考试不存在", nameof(examId));
+            }
+
+            // 加载试卷题目
+            await _context.Entry(examSetting.ExamPaper)
+                .Collection(p => p.ExamPaperQuestions)
+                .LoadAsync();
+
+            // 获取考试记录
+            var examRecord = await _context.ExamRecords
+                .Where(r => r.Id == recordId)
+                .FirstOrDefaultAsync();
+
+            if (examRecord == null)
+            {
+                throw new InvalidOperationException("考试记录不存在");
+            }
+
+            // 预先加载ExamPaperQuestions的关联对象
+            foreach (var question in examSetting.ExamPaper.ExamPaperQuestions)
+            {
+                await _context.Entry(question)
+                    .Reference(q => q.Question)
+                    .LoadAsync();
+
+                await _context.Entry(question)
+                    .Reference(q => q.QuestionVersion)
+                    .LoadAsync();
+            }
+
+            // 处理题目乱序
+            var questions = examSetting.ExamPaper.ExamPaperQuestions.ToList();
+            if (examSetting.EnableRandomQuestionOrder)
+            {
+                Random rnd = new Random();
+                questions = questions.OrderBy(q => rnd.Next()).ToList();
+            }
+
+            // 处理选项乱序
+            if (examSetting.EnableRandomOptionOrder)
+            {
+                var randomGenerator = new Random();
+                foreach (var question in questions)
+                {
+                    // 只对单选题和多选题进行选项乱序处理
+                    if (question.Question.Type == QuestionType.SingleChoice ||
+                        question.Question.Type == QuestionType.MultipleChoice)
+                    {
+                        var options = question.QuestionVersion.Options.OrderBy(o => randomGenerator.Next()).ToList();
+                        question.QuestionVersion.Options = options;
+                    }
+                }
+            }
+
+            // 组装考试详情
+            var examDetail = new ClientExamDetailDto
+            {
+                Id = examSetting.Id,
+                RecordId = examRecord.Id,
+                Name = examSetting.Name,
+                Description = examSetting.Description,
+                Duration = examSetting.Duration,
+                StartTime = examRecord.StartTime,
+                EndTime = examSetting.EndTime,
+                TotalScore = examSetting.ExamPaper.TotalScore,
+                AttemptNumber = examRecord.AttemptNumber,
+                AllowedAttempts = examSetting.AllowedAttempts,
+                Questions = questions.Select(q => new ClientExamQuestionDto
+                {
+                    Id = q.Id,
+                    QuestionId = q.QuestionId,
+                    QuestionVersionId = q.QuestionVersionId,
+                    Content = q.QuestionVersion.Content,
+                    Type = q.Question.Type.ToString(),
+                    Options = string.Join(",", q.QuestionVersion.Options),
+                    Score = q.Score,
+                    SequenceNumber = q.OrderNumber,
+                    IsRequired = q.IsRequired
+                })
+                .OrderBy(q => q.Type)
+                .ToList()
+            };
+
+            return examDetail;
+        }
+        catch (Exception ex) when (
+            ex is not ArgumentException &&
+            ex is not InvalidOperationException)
+        {
+            _logger.LogError(ex, "获取考试详情时发生错误");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取考试基本信息（客户端视图）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>考试基本信息</returns>
+    public async Task<ClientExamBasicInfoDto> GetExamBasicInfoForClientAsync(long examId, long studentId, long? recordId = null)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                throw new ArgumentException("考试不存在", nameof(examId));
+            }
+
+            // 检查考试时间
+            var now = DateTime.UtcNow;
+            if (examSetting.StartTime > now || examSetting.EndTime < now)
+            {
+                throw new InvalidOperationException("不在考试时间范围内");
+            }
+
+            // 检查是否有权限参加考试
+            var studentGroups = await _context.StudentGroupMappings
+                .Where(m => m.StudentId == studentId)
+                .Select(m => m.StudentGroupId)
+                .ToListAsync();
+
+            var hasPermission = !examSetting.StudentGroups.Any() ||
+                                examSetting.StudentGroups.Any(g => studentGroups.Contains(g.Id));
+
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("无权参加此考试");
+            }
+
+            // 查找进行中的考试记录
+            var existingRecord = recordId.HasValue
+                ? await _context.ExamRecords
+                    .Where(r => r.Id == recordId.Value)
+                    .FirstOrDefaultAsync()
+                : await _context.ExamRecords
+                    .Where(r => r.ExamSettingId == examId && 
+                          r.StudentId == studentId && 
+                          r.Status == ExamRecordStatus.InProgress)
+                    .OrderByDescending(r => r.StartTime)
+                    .FirstOrDefaultAsync();
+
+            // 组装考试基本信息
+            var examBasicInfo = new ClientExamBasicInfoDto
+            {
+                Id = examSetting.Id,
+                Name = examSetting.Name,
+                Description = examSetting.Description,
+                Duration = examSetting.Duration,
+                StartTime = existingRecord?.StartTime ?? now,
+                EndTime = examSetting.EndTime,
+                TotalScore = examSetting.ExamPaper.TotalScore,
+                RecordId = existingRecord?.Id,
+                AllowedScreenSwitchCount = examSetting.AllowedScreenSwitchCount,
+                ScreenSwitchCount = existingRecord?.ScreenSwitchCount ?? 0,
+                EnableViewResult = examSetting.EnableViewResult
+            };
+
+            return examBasicInfo;
+        }
+        catch (Exception ex) when (
+            ex is not ArgumentException &&
+            ex is not InvalidOperationException &&
+            ex is not UnauthorizedAccessException)
+        {
+            _logger.LogError(ex, "获取考试基本信息时发生错误");
+            throw;
+        }
     }
 } 

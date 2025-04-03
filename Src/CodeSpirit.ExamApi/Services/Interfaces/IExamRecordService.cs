@@ -1,6 +1,7 @@
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
+using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.Shared.Services;
 
 namespace CodeSpirit.ExamApi.Services.Interfaces;
@@ -64,4 +65,47 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     /// <param name="recordId"></param>
     /// <returns></returns>
     Task<AnswerPreviewDto> GetAnswerPreviewAsync(long recordId);
+    
+    /// <summary>
+    /// 创建考试记录
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="userIp">用户IP</param>
+    /// <param name="deviceInfo">设备信息</param>
+    /// <returns>考试记录</returns>
+    Task<ExamRecord> CreateExamRecordAsync(long examId, long studentId, string userIp, string deviceInfo);
+    
+    /// <summary>
+    /// 记录切屏事件
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="userIp">用户IP地址</param>
+    /// <returns>任务完成状态</returns>
+    Task RecordScreenSwitchForClientAsync(long recordId, long studentId, string userIp);
+    
+    /// <summary>
+    /// 提交考试答案
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="answers">答案列表</param>
+    /// <returns>提交结果，包含是否成功和是否可查看结果</returns>
+    Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto> answers);
+    
+    /// <summary>
+    /// 获取用户的考试历史记录
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>历史考试记录</returns>
+    Task<List<ClientExamHistoryDto>> GetExamHistoryForClientAsync(long studentId);
+    
+    /// <summary>
+    /// 获取考试结果（客户端视图）
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>考试结果</returns>
+    Task<ClientExamResultDto> GetExamResultForClientAsync(long recordId, long studentId);
 } 

@@ -10,6 +10,7 @@ using System.Linq.Expressions;
 using LinqKit;
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Dtos.Client;
+using CodeSpirit.Shared.Extensions;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -453,7 +454,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         int totalCount = await query.CountAsync();
         
         var pagedItems = await query
-            .OrderByDynamic(orderBy, orderDir == "desc")
+            .ApplySorting(orderBy, orderDir)
             .Skip((queryDto.Page - 1) * queryDto.PerPage)
             .Take(queryDto.PerPage)
             .ToListAsync();
@@ -552,42 +553,415 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
 
         return examRecord;
     }
-}
 
-/// <summary>
-/// 查询扩展方法
-/// </summary>
-public static class QueryableExtensions
-{
     /// <summary>
-    /// 动态排序扩展方法
+    /// 创建考试记录
     /// </summary>
-    public static IQueryable<T> OrderByDynamic<T>(this IQueryable<T> query, string propertyName, bool isDescending)
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="userIp">用户IP</param>
+    /// <param name="deviceInfo">设备信息</param>
+    /// <returns>考试记录</returns>
+    public async Task<ExamRecord> CreateExamRecordAsync(long examId, long studentId, string userIp, string deviceInfo)
     {
-        if (string.IsNullOrEmpty(propertyName))
+        try
         {
-            return query;
+            var examSetting = await _examSettingRepository.CreateQuery()
+                .Include(e => e.ExamPaper)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                throw new ArgumentException("考试不存在", nameof(examId));
+            }
+
+            // 检查考试时间
+            var now = DateTime.UtcNow;
+            if (examSetting.StartTime > now || examSetting.EndTime < now)
+            {
+                throw new InvalidOperationException("不在考试时间范围内");
+            }
+
+            // 获取学生实体
+            var student = await _studentRepository.GetByIdAsync(studentId);
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到考生信息");
+            }
+
+            // 查找是否已存在未完成的考试记录
+            var existingRecord = await Repository.CreateQuery()
+                .Where(r => r.ExamSettingId == examId && 
+                        r.StudentId == studentId && 
+                        r.Status == ExamRecordStatus.InProgress)
+                .FirstOrDefaultAsync();
+                
+            // 如果存在进行中的考试记录，直接返回
+            if (existingRecord != null)
+            {
+                return existingRecord;
+            }
+
+            // 检查考试次数
+            var attemptCount = await Repository.CreateQuery()
+                .CountAsync(r => r.ExamSettingId == examId && r.StudentId == studentId);
+
+            // 创建考试记录
+            var examRecord = new ExamRecord
+            {
+                ExamSettingId = examId,
+                StudentId = studentId,
+                AttemptNumber = attemptCount + 1,
+                StartTime = now,
+                Status = ExamRecordStatus.InProgress,
+                IpAddress = userIp,
+                DeviceInfo = deviceInfo
+            };
+
+            await Repository.AddAsync(examRecord);
+            return examRecord;
         }
-        
-        var parameter = Expression.Parameter(typeof(T), "x");
-        
-        // 处理嵌套属性，如"ExamRecord.StartTime"
-        Expression property = parameter;
-        foreach (var member in propertyName.Split('.'))
+        catch (Exception ex) when (
+            ex is not ArgumentException &&
+            ex is not InvalidOperationException)
         {
-            property = Expression.PropertyOrField(property, member);
+            throw;
         }
-        
-        var lambda = Expression.Lambda(property, parameter);
-        var methodName = isDescending ? "OrderByDescending" : "OrderBy";
-        
-        var methodCallExpression = Expression.Call(
-            typeof(Queryable),
-            methodName,
-            new[] { typeof(T), property.Type },
-            query.Expression,
-            Expression.Quote(lambda));
-            
-        return query.Provider.CreateQuery<T>(methodCallExpression);
     }
-} 
+
+    /// <summary>
+    /// 记录切屏事件
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="userIp">用户IP地址</param>
+    /// <returns>任务完成状态</returns>
+    public async Task RecordScreenSwitchForClientAsync(long recordId, long studentId, string userIp)
+    {
+        try
+        {
+            // 获取考试记录
+            var examRecord = await Repository.CreateQuery()
+                .Include(r => r.ExamSetting)
+                .Where(r => r.Id == recordId && r.StudentId == studentId)
+                .FirstOrDefaultAsync();
+
+            if (examRecord == null)
+            {
+                throw new ArgumentException("考试记录不存在", nameof(recordId));
+            }
+
+            // 检查考试状态
+            if (examRecord.Status != ExamRecordStatus.InProgress)
+            {
+                throw new InvalidOperationException("考试已结束，无法记录切屏");
+            }
+
+            // 更新IP地址（如果提供了新的IP且不同于原IP）
+            if (!string.IsNullOrEmpty(userIp) && examRecord.IpAddress != userIp)
+            {
+                examRecord.IpAddress = userIp;
+
+                // 如果IP变更，可能是作弊行为，记录
+                var cheatingSuspicionRecord = string.IsNullOrEmpty(examRecord.CheatingSuspicionRecord)
+                    ? new List<string>()
+                    : System.Text.Json.JsonSerializer.Deserialize<List<string>>(examRecord.CheatingSuspicionRecord);
+
+                if (cheatingSuspicionRecord == null)
+                {
+                    cheatingSuspicionRecord = new List<string>();
+                }
+
+                //这里记录当前时间及IP变更信息
+                cheatingSuspicionRecord.Add($"IP变更（{DateTime.Now:yyyy-MM-dd HH:mm:ss}）：从 {examRecord.IpAddress} 变更为 {userIp}");
+
+                examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
+
+                // 增加作弊嫌疑等级
+                examRecord.CheatingSuspicionLevel = Math.Min(100, examRecord.CheatingSuspicionLevel + 20);
+            }
+
+            // 增加切屏次数
+            examRecord.ScreenSwitchCount += 1;
+
+            // 更新作弊嫌疑等级
+            int maxAllowedSwitches = examRecord.ExamSetting.AllowedScreenSwitchCount;
+            if (maxAllowedSwitches > 0 && examRecord.ScreenSwitchCount > maxAllowedSwitches)
+            {
+                // 超过允许的切屏次数，提高作弊嫌疑等级
+                int exceedCount = examRecord.ScreenSwitchCount - maxAllowedSwitches;
+                int suspicionIncrease = 10 * exceedCount; // 每超过一次增加10点嫌疑
+
+                examRecord.CheatingSuspicionLevel += suspicionIncrease;
+                if (examRecord.CheatingSuspicionLevel > 100)
+                {
+                    examRecord.CheatingSuspicionLevel = 100; // 最大不超过100
+                }
+
+                // 记录作弊嫌疑记录
+                var cheatingSuspicionRecord = string.IsNullOrEmpty(examRecord.CheatingSuspicionRecord)
+                    ? new List<string>()
+                    : System.Text.Json.JsonSerializer.Deserialize<List<string>>(examRecord.CheatingSuspicionRecord);
+
+                if (cheatingSuspicionRecord == null)
+                {
+                    cheatingSuspicionRecord = new List<string>();
+                }
+
+                //这里记录当前时间及切屏超限信息
+                cheatingSuspicionRecord.Add($"切屏超限（{DateTime.Now:yyyy-MM-dd HH:mm:ss}）：累计切屏 {examRecord.ScreenSwitchCount} 次，超过限制 {exceedCount} 次");
+
+                examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
+            }
+
+            // 保存更改
+            await Repository.UpdateAsync(examRecord);
+        }
+        catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
+        {
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 提交考试答案
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="answers">答案列表</param>
+    /// <returns>提交结果，包含是否成功和是否可查看结果</returns>
+    public async Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto> answers)
+    {
+        try
+        {
+            // 获取考试记录
+            var examRecord = await Repository.CreateQuery()
+                .Include(r => r.ExamSetting)
+                .ThenInclude(s => s.ExamPaper)
+                .Where(r => r.Id == recordId && r.StudentId == studentId)
+                .FirstOrDefaultAsync();
+
+            if (examRecord == null)
+            {
+                throw new AppServiceException(400, "考试记录不存在");
+            }
+
+            // 加载试卷题目
+            var examPaper = await _examSettingRepository.CreateQuery()
+                .Include(es => es.ExamPaper)
+                .ThenInclude(ep => ep.ExamPaperQuestions)
+                .FirstOrDefaultAsync(es => es.Id == examRecord.ExamSettingId);
+
+            if (examRecord.Status != ExamRecordStatus.InProgress)
+            {
+                throw new InvalidOperationException("考试已提交，不能重复提交");
+            }
+
+            var now = DateTime.UtcNow;
+            examRecord.SubmitTime = now;
+            examRecord.Status = ExamRecordStatus.Submitted;
+            examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
+
+            // 添加答案记录
+            foreach (var answer in answers)
+            {
+                // 查找题目版本
+                var examPaperQuestion = examPaper.ExamPaper.ExamPaperQuestions
+                    .FirstOrDefault(q => q.Id == answer.QuestionId);
+
+                if (examPaperQuestion == null)
+                {
+                    continue;
+                }
+
+                var answerRecord = new ExamAnswerRecord
+                {
+                    ExamRecordId = recordId,
+                    QuestionId = examPaperQuestion.QuestionId,
+                    QuestionVersionId = examPaperQuestion.QuestionVersionId,
+                    OrderNumber = examPaperQuestion.OrderNumber,
+                    Answer = answer.Answer,
+                    IsCorrect = false // 先默认为错误，后续评分时更新
+                };
+
+                await _answerRecordRepository.AddAsync(answerRecord);
+            }
+
+            // 更新考试记录
+            await Repository.UpdateAsync(examRecord);
+
+            // 如果是客观题，可以自动评分
+            await AutoGradeObjectiveQuestions(examRecord);
+
+            // 返回提交成功状态和是否可以查看结果的设置
+            return (true, examRecord.ExamSetting.EnableViewResult);
+        }
+        catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
+        {
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取用户的考试历史记录
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>历史考试记录</returns>
+    public async Task<List<ClientExamHistoryDto>> GetExamHistoryForClientAsync(long studentId)
+    {
+        try
+        {
+            var examHistory = await Repository.CreateQuery()
+                .Include(r => r.ExamSetting)
+                .ThenInclude(s => s.ExamPaper)
+                .Where(r => r.StudentId == studentId)
+                .Where(r => r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted)
+                .OrderByDescending(r => r.StartTime)
+                .Select(r => new ClientExamHistoryDto
+                {
+                    Id = r.Id,
+                    ExamId = r.ExamSettingId,
+                    Name = r.ExamSetting.Name,
+                    StartTime = r.StartTime,
+                    SubmitTime = r.SubmitTime,
+                    Duration = r.Duration ?? r.ExamSetting.Duration,
+                    Score = r.Score,
+                    TotalScore = r.ExamSetting.ExamPaper.TotalScore,
+                    IsPassed = r.IsPassed,
+                    Status = r.Status.ToString()
+                })
+                .ToListAsync();
+
+            return examHistory;
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取考试结果（客户端视图）
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>考试结果</returns>
+    public async Task<ClientExamResultDto> GetExamResultForClientAsync(long recordId, long studentId)
+    {
+        try
+        {
+            var examRecord = await Repository.CreateQuery()
+                .Include(r => r.ExamSetting)
+                .ThenInclude(s => s.ExamPaper)
+                .Include(r => r.AnswerRecords)
+                .Where(r => r.Id == recordId && r.StudentId == studentId)
+                .FirstOrDefaultAsync();
+
+            if (examRecord == null)
+            {
+                throw new ArgumentException("考试记录不存在", nameof(recordId));
+            }
+
+            if (examRecord.Status == ExamRecordStatus.InProgress)
+            {
+                throw new InvalidOperationException("考试尚未提交，无法查看结果");
+            }
+
+            // 加载答案记录的题目关系
+            var answerRecords = await _answerRecordRepository.CreateQuery()
+                .Include(a => a.Question)
+                .Include(a => a.QuestionVersion)
+                .Where(a => a.ExamRecordId == recordId)
+                .ToListAsync();
+
+            var result = new ClientExamResultDto
+            {
+                Id = examRecord.Id,
+                ExamId = examRecord.ExamSettingId,
+                Name = examRecord.ExamSetting.Name,
+                StartTime = examRecord.StartTime,
+                SubmitTime = examRecord.SubmitTime,
+                Duration = examRecord.Duration ?? 0,
+                Score = examRecord.Score,
+                TotalScore = examRecord.ExamSetting.ExamPaper.TotalScore,
+                IsPassed = examRecord.IsPassed,
+                Status = examRecord.Status.ToString(),
+                Comments = examRecord.Comments,
+                Answers = answerRecords.Select(a => new ClientExamAnswerResultDto
+                {
+                    QuestionId = a.QuestionId,
+                    Content = a.QuestionVersion.Content,
+                    Type = a.Question.Type.ToString(),
+                    Score = Convert.ToInt32(a.QuestionVersion.DefaultScore),
+                    UserAnswer = a.Question.Type == QuestionType.TrueFalse ? 
+                        ConvertTrueFalseAnswer(a.Answer) : 
+                        a.Answer,
+                    CorrectAnswer = a.Question.Type == QuestionType.TrueFalse ? 
+                        ConvertTrueFalseAnswer(a.QuestionVersion.CorrectAnswer) : 
+                        a.QuestionVersion.CorrectAnswer,
+                    IsCorrect = a.IsCorrect ?? false,
+                    ObtainedScore = a.Score ?? 0
+                }).ToList()
+            };
+
+            return result;
+        }
+        catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
+        {
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 将判断题的True/False答案转换为"对"/"错"
+    /// </summary>
+    /// <param name="answer">原始答案</param>
+    /// <returns>转换后的答案</returns>
+    private string ConvertTrueFalseAnswer(string answer)
+    {
+        if (string.IsNullOrEmpty(answer))
+        {
+            return string.Empty;
+        }
+        
+        return answer.Equals("True", StringComparison.OrdinalIgnoreCase) ? "对" : "错";
+    }
+
+    // 客观题自动评分
+    private async Task AutoGradeObjectiveQuestions(ExamRecord examRecord)
+    {
+        // 加载所有答案记录
+        var answerRecords = await _answerRecordRepository.CreateQuery()
+            .Where(a => a.ExamRecordId == examRecord.Id)
+            .ToListAsync();
+
+        // 加载所有答案关联的题目和题目版本
+        foreach (var answer in answerRecords)
+        {
+            answer.Question = await _questionVersionRepository.CreateQuery()
+                .Include(qv => qv.Question)
+                .Where(qv => qv.Id == answer.QuestionVersionId)
+                .Select(qv => qv.Question)
+                .FirstOrDefaultAsync();
+
+            answer.QuestionVersion = await _questionVersionRepository.GetByIdAsync(answer.QuestionVersionId);
+        }
+
+        // 使用评分器进行评分
+        var grader = new Graders.ObjectiveQuestionGrader();
+        var result = grader.Grade(answerRecords, examRecord.ExamSetting.ExamPaper.PassScore);
+
+        // 如果全部为客观题，更新考试记录状态
+        if (result.IsAllObjective)
+        {
+            examRecord.Score = result.TotalScore;
+            examRecord.Status = ExamRecordStatus.Graded;
+            examRecord.IsPassed = result.TotalScore >= examRecord.ExamSetting.ExamPaper.PassScore;
+            examRecord.GradedTime = DateTime.UtcNow;
+            
+            await Repository.UpdateAsync(examRecord);
+        }
+    }
+}

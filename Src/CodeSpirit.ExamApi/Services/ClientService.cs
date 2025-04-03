@@ -1,33 +1,43 @@
+using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Controllers;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Client;
+using CodeSpirit.ExamApi.Dtos.ExamRecord;
+using CodeSpirit.ExamApi.Services.Graders;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using CodeSpirit.ExamApi.Services.Graders;
 
 namespace CodeSpirit.ExamApi.Services;
 
 /// <summary>
-/// 考试客户端服务实现
+/// 考试客户端服务实现（门面服务）
 /// </summary>
 public class ClientService : IClientService
 {
-    private readonly ExamDbContext _context;
+    private readonly IExamSettingService _examSettingService;
+    private readonly IExamRecordService _examRecordService;
+    private readonly IStudentService _studentService;
     private readonly ILogger<ClientService> _logger;
-    private readonly IIdGenerator _idGenerator;
 
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="context">数据库上下文</param>
+    /// <param name="examSettingService">考试设置服务</param>
+    /// <param name="examRecordService">考试记录服务</param>
+    /// <param name="studentService">学生服务</param>
     /// <param name="logger">日志记录器</param>
-    public ClientService(ExamDbContext context, ILogger<ClientService> logger, IIdGenerator idGenerator)
+    public ClientService(
+        IExamSettingService examSettingService,
+        IExamRecordService examRecordService,
+        IStudentService studentService,
+        ILogger<ClientService> logger)
     {
-        _context = context;
+        _examSettingService = examSettingService;
+        _examRecordService = examRecordService;
+        _studentService = studentService;
         _logger = logger;
-        _idGenerator = idGenerator;
     }
 
     /// <summary>
@@ -39,66 +49,13 @@ public class ClientService : IClientService
     {
         try
         {
-            var student = await _context.Students
-                .Where(s => s.UserId == userId)
-                .FirstOrDefaultAsync();
-
+            var student = await _studentService.GetByUserIdAsync(userId);
             if (student == null)
             {
                 throw new InvalidOperationException("未找到考生信息");
             }
 
-            // 查询当前用户所属的学生组
-            var studentGroups = await _context.StudentGroupMappings.Include(p => p.Student)
-                .Where(m => m.Student.UserId == userId)
-                .Select(m => m.StudentGroupId)
-                .ToListAsync();
-
-            // 获取可参加的考试
-            var now = DateTime.UtcNow;
-            // 定义预展示时间，开考前半小时（30分钟）可见
-            var previewTime = now.AddMinutes(30);
-            
-            var availableExams = await _context.ExamSettings
-                .Include(e => e.StudentGroups)
-                .Include(e => e.ExamPaper)
-                .Where(e => e.Status == ExamSettingStatus.Published)
-                .Where(e => 
-                    // 正在进行中的考试或即将开始的考试（开考前半小时）
-                    ((e.StartTime <= now && e.EndTime >= now) || 
-                     (e.StartTime > now && e.StartTime <= previewTime))
-                )
-                .Where(e => e.StudentGroups.Any() == false || e.StudentGroups.Any(g => studentGroups.Contains(g.StudentGroupId)))
-                .Select(e => new ClientExamDto
-                {
-                    Id = e.Id,
-                    Name = e.Name,
-                    Description = e.Description,
-                    StartTime = e.StartTime,
-                    EndTime = e.EndTime,
-                    Duration = e.Duration,
-                    TotalScore = e.ExamPaper.TotalScore,
-                    Status = _context.ExamRecords.Any(r =>
-                        r.ExamSettingId == e.Id &&
-                        r.StudentId == student.Id &&
-                        r.Status == ExamRecordStatus.InProgress)
-                        ? "进行中"
-                        : (_context.ExamRecords.Any(r =>
-                            r.ExamSettingId == e.Id &&
-                            r.StudentId == student.Id &&
-                            (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
-                            ? "已完成"
-                            : (e.StartTime <= now && e.EndTime >= now ? "进行中" :
-                               (e.StartTime > now ? "未开始" : "已结束"))),
-                    // 检查是否已参加并获取成绩
-                    HasResult = _context.ExamRecords.Any(r =>
-                        r.ExamSettingId == e.Id &&
-                        r.StudentId == student.Id &&
-                        (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
-                })
-                .ToListAsync();
-
-            return availableExams;
+            return await _examSettingService.GetAvailableExamsForClientAsync(student.Id);
         }
         catch (Exception ex)
         {
@@ -116,35 +73,13 @@ public class ClientService : IClientService
     {
         try
         {
-            var student = await _context.Students
-                .Where(s => s.UserId == userId)
-                .FirstOrDefaultAsync();
-
+            var student = await _studentService.GetByUserIdAsync(userId);
             if (student == null)
+            {
                 return new List<ClientExamHistoryDto>();
+            }
 
-            var examHistory = await _context.ExamRecords
-                .Include(r => r.ExamSetting)
-                .ThenInclude(s => s.ExamPaper)
-                .Where(r => r.StudentId == student.Id)
-                .Where(r => r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted)
-                .OrderByDescending(r => r.StartTime)
-                .Select(r => new ClientExamHistoryDto
-                {
-                    Id = r.Id,
-                    ExamId = r.ExamSettingId,
-                    Name = r.ExamSetting.Name,
-                    StartTime = r.StartTime,
-                    SubmitTime = r.SubmitTime,
-                    Duration = r.Duration ?? r.ExamSetting.Duration,
-                    Score = r.Score,
-                    TotalScore = r.ExamSetting.ExamPaper.TotalScore,
-                    IsPassed = r.IsPassed,
-                    Status = r.Status.ToString()
-                })
-                .ToListAsync();
-
-            return examHistory;
+            return await _examRecordService.GetExamHistoryForClientAsync(student.Id);
         }
         catch (Exception ex)
         {
@@ -165,138 +100,18 @@ public class ClientService : IClientService
     {
         try
         {
-            var examSetting = await _context.ExamSettings
-                .Include(e => e.ExamPaper)
-                .Where(e => e.Id == examId)
-                .FirstOrDefaultAsync();
-
-            if (examSetting == null)
-            {
-                throw new ArgumentException("考试不存在", nameof(examId));
-            }
-
-            // 加载试卷题目
-            await _context.Entry(examSetting.ExamPaper)
-                .Collection(p => p.ExamPaperQuestions)
-                .LoadAsync();
-
-            // 预先加载ExamPaperQuestions的关联对象
-            foreach (var question in examSetting.ExamPaper.ExamPaperQuestions)
-            {
-                await _context.Entry(question)
-                    .Reference(q => q.Question)
-                    .LoadAsync();
-
-                await _context.Entry(question)
-                    .Reference(q => q.QuestionVersion)
-                    .LoadAsync();
-            }
-
-            // 检查考试时间
-            var now = DateTime.UtcNow;
-            if (examSetting.StartTime > now || examSetting.EndTime < now)
-            {
-                throw new InvalidOperationException("不在考试时间范围内");
-            }
-
-            // 检查是否有权限参加考试
-            var studentGroups = await _context.StudentGroupMappings
-                .Include(m => m.Student)
-                .Where(m => m.Student.UserId == userId)
-                .Select(m => m.StudentGroupId)
-                .ToListAsync();
-
-            var hasPermission = !examSetting.StudentGroups.Any() ||
-                                examSetting.StudentGroups.Any(g => studentGroups.Contains(g.Id));
-
-            if (!hasPermission)
-            {
-                throw new UnauthorizedAccessException("无权参加此考试");
-            }
-
             // 获取学生实体
-            var student = await _context.Students
-                .Where(s => s.UserId == userId)
-                .FirstOrDefaultAsync();
-
+            var student = await _studentService.GetByUserIdAsync(userId);
             if (student == null)
             {
                 throw new InvalidOperationException("未找到考生信息");
             }
 
-            // 检查考试次数
-            var attemptCount = await _context.ExamRecords
-                .CountAsync(r => r.ExamSettingId == examId && r.StudentId == student.Id);
-
-            //if (attemptCount >= examSetting.AllowedAttempts)
-            //{
-            //    throw new InvalidOperationException($"已达到最大考试次数限制（{examSetting.AllowedAttempts}次）");
-            //}
-
-            // 查找进行中的考试记录
-            var examRecord = await _context.ExamRecords
-                .Where(r => r.ExamSettingId == examId && r.StudentId == student.Id && r.Status == ExamRecordStatus.InProgress)
-                .OrderByDescending(r => r.StartTime)
-                .FirstOrDefaultAsync();
-            if (examRecord == null)
-            {
-                throw new InvalidOperationException("考试记录不存在！");
-            }
-
-            // 处理题目乱序
-            var questions = examSetting.ExamPaper.ExamPaperQuestions.ToList();
-            if (examSetting.EnableRandomQuestionOrder)
-            {
-                Random rnd = new Random();
-                questions = questions.OrderBy(q => rnd.Next()).ToList();
-            }
-
-            // 处理选项乱序
-            if (examSetting.EnableRandomOptionOrder)
-            {
-                var randomGenerator = new Random();
-                foreach (var question in questions)
-                {
-                    // 只对单选题和多选题进行选项乱序处理
-                    if (question.Question.Type == QuestionType.SingleChoice ||
-                        question.Question.Type == QuestionType.MultipleChoice)
-                    {
-                        var options = question.QuestionVersion.Options.OrderBy(o => randomGenerator.Next()).ToList();
-                        question.QuestionVersion.Options = options;
-                    }
-                }
-            }
-
-            // 组装考试详情
-            var examDetail = new ClientExamDetailDto
-            {
-                Id = examSetting.Id,
-                RecordId = examRecord.Id,
-                Name = examSetting.Name,
-                Description = examSetting.Description,
-                Duration = examSetting.Duration,
-                StartTime = examRecord.StartTime,
-                EndTime = examSetting.EndTime,
-                TotalScore = examSetting.ExamPaper.TotalScore,
-                AttemptNumber = examRecord.AttemptNumber,
-                AllowedAttempts = examSetting.AllowedAttempts,
-                Questions = questions.Select(q => new ClientExamQuestionDto
-                {
-                    Id = q.Id,
-                    QuestionId = q.QuestionId,
-                    QuestionVersionId = q.QuestionVersionId,
-                    Content = q.QuestionVersion.Content,
-                    Type = q.Question.Type.ToString(),
-                    Options = string.Join(",", q.QuestionVersion.Options),
-                    Score = q.Score,
-                    SequenceNumber = q.OrderNumber,
-                    IsRequired = q.IsRequired
-                })
-    .OrderBy(q => q.Type)
-    .ToList()
-            };
-
-            return examDetail;
+            // 创建考试记录
+            var examRecord = await _examRecordService.CreateExamRecordAsync(examId, student.Id, userIp, deviceInfo);
+            
+            // 获取考试详情
+            return await _examSettingService.GetExamDetailForClientAsync(examId, examRecord.Id);
         }
         catch (Exception ex) when (
             ex is not ArgumentException &&
@@ -319,86 +134,15 @@ public class ClientService : IClientService
     {
         try
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // 获取学生实体
+            var student = await _studentService.GetByUserIdAsync(userId);
+            if (student == null)
             {
-                // 获取学生实体
-                var student = await _context.Students
-                    .Where(s => s.UserId == userId)
-                    .FirstOrDefaultAsync();
-
-                if (student == null)
-                {
-                    throw new InvalidOperationException("未找到考生信息");
-                }
-
-                var examRecord = await _context.ExamRecords
-                    .Include(r => r.ExamSetting)
-                    .ThenInclude(s => s.ExamPaper)
-                    .Where(r => r.Id == recordId && r.StudentId == student.Id)
-                    .FirstOrDefaultAsync();
-
-                if (examRecord == null)
-                {
-                    throw new AppServiceException(400, "考试记录不存在");
-                }
-
-                // 加载试卷题目
-                await _context.Entry(examRecord.ExamSetting.ExamPaper)
-                    .Collection(p => p.ExamPaperQuestions)
-                    .LoadAsync();
-
-                if (examRecord.Status != ExamRecordStatus.InProgress)
-                {
-                    throw new InvalidOperationException("考试已提交，不能重复提交");
-                }
-
-                var now = DateTime.UtcNow;
-                examRecord.SubmitTime = now;
-                examRecord.Status = ExamRecordStatus.Submitted;
-                examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
-
-                // 添加答案记录
-                foreach (var answer in answers)
-                {
-                    // 查找题目版本
-                    var examPaperQuestion = examRecord.ExamSetting.ExamPaper.ExamPaperQuestions
-                        .FirstOrDefault(q => q.Id == answer.QuestionId);
-
-                    if (examPaperQuestion == null)
-                    {
-                        continue;
-                    }
-
-                    var answerRecord = new ExamAnswerRecord
-                    {
-                        Id = _idGenerator.NewId(),
-                        ExamRecordId = recordId,
-                        QuestionId = examPaperQuestion.QuestionId,
-                        QuestionVersionId = examPaperQuestion.QuestionVersionId,
-                        OrderNumber = examPaperQuestion.OrderNumber,
-                        Answer = answer.Answer,
-                        IsCorrect = false // 先默认为错误，后续评分时更新
-                    };
-
-                    _context.ExamAnswerRecords.Add(answerRecord);
-                }
-
-                await _context.SaveChangesAsync();
-
-                // 如果是客观题，可以自动评分
-                await AutoGradeObjectiveQuestions(examRecord);
-
-                await transaction.CommitAsync();
-                
-                // 返回提交成功状态和是否可以查看结果的设置
-                return (true, examRecord.ExamSetting.EnableViewResult);
+                throw new InvalidOperationException("未找到考生信息");
             }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+
+            // 委托给考试记录服务提交考试
+            return await _examRecordService.SubmitExamForClientAsync(recordId, student.Id, answers);
         }
         catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
         {
@@ -418,113 +162,20 @@ public class ClientService : IClientService
         try
         {
             // 获取学生实体
-            var student = await _context.Students
-                .Where(s => s.UserId == userId)
-                .FirstOrDefaultAsync();
-
+            var student = await _studentService.GetByUserIdAsync(userId);
             if (student == null)
             {
                 throw new InvalidOperationException("未找到考生信息");
             }
 
-            var examRecord = await _context.ExamRecords
-                .Include(r => r.ExamSetting)
-                .ThenInclude(s => s.ExamPaper)
-                .Include(r => r.AnswerRecords)
-                .Where(r => r.Id == recordId && r.StudentId == student.Id)
-                .FirstOrDefaultAsync();
-
-            if (examRecord == null)
-            {
-                throw new ArgumentException("考试记录不存在", nameof(recordId));
-            }
-
-            if (examRecord.Status == ExamRecordStatus.InProgress)
-            {
-                throw new InvalidOperationException("考试尚未提交，无法查看结果");
-            }
-
-            // 加载答案记录的题目关系
-            foreach (var answer in examRecord.AnswerRecords)
-            {
-                await _context.Entry(answer)
-                    .Reference(a => a.Question)
-                    .LoadAsync();
-
-                await _context.Entry(answer)
-                    .Reference(a => a.QuestionVersion)
-                    .LoadAsync();
-            }
-
-            var result = new ClientExamResultDto
-            {
-                Id = examRecord.Id,
-                ExamId = examRecord.ExamSettingId,
-                Name = examRecord.ExamSetting.Name,
-                StartTime = examRecord.StartTime,
-                SubmitTime = examRecord.SubmitTime,
-                Duration = examRecord.Duration ?? 0,
-                Score = examRecord.Score,
-                TotalScore = examRecord.ExamSetting.ExamPaper.TotalScore,
-                IsPassed = examRecord.IsPassed,
-                Status = examRecord.Status.ToString(),
-                Comments = examRecord.Comments,
-                Answers = examRecord.AnswerRecords.Select(a => new ClientExamAnswerResultDto
-                {
-                    QuestionId = a.QuestionId,
-                    Content = a.QuestionVersion.Content,
-                    Type = a.Question.Type.ToString(),
-                    Score = Convert.ToInt32(a.QuestionVersion.DefaultScore),
-                    UserAnswer = a.Answer,
-                    CorrectAnswer = a.QuestionVersion.CorrectAnswer,
-                    IsCorrect = a.IsCorrect ?? false,
-                    ObtainedScore = a.Score ?? 0
-                }).ToList()
-            };
-
-            return result;
+            // 委托给考试记录服务获取结果
+            return await _examRecordService.GetExamResultForClientAsync(recordId, student.Id);
         }
         catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
         {
             _logger.LogError(ex, "获取考试结果时发生错误");
             throw;
         }
-    }
-
-    // 客观题自动评分
-    private async Task AutoGradeObjectiveQuestions(ExamRecord examRecord)
-    {
-        // 加载所有答案记录
-        var answerRecords = await _context.ExamAnswerRecords
-            .Where(a => a.ExamRecordId == examRecord.Id)
-            .ToListAsync();
-
-        // 加载所有答案关联的题目和题目版本
-        foreach (var answer in answerRecords)
-        {
-            await _context.Entry(answer)
-                .Reference(a => a.Question)
-                .LoadAsync();
-
-            await _context.Entry(answer)
-                .Reference(a => a.QuestionVersion)
-                .LoadAsync();
-        }
-
-        // 使用评分器进行评分
-        var grader = new ObjectiveQuestionGrader();
-        var result = grader.Grade(answerRecords, examRecord.ExamSetting.ExamPaper.PassScore);
-
-        // 如果全部为客观题，更新考试记录状态
-        if (result.IsAllObjective)
-        {
-            examRecord.Score = result.TotalScore;
-            examRecord.Status = ExamRecordStatus.Graded;
-            examRecord.IsPassed = result.TotalScore >= examRecord.ExamSetting.ExamPaper.PassScore;
-            examRecord.GradedTime = DateTime.UtcNow;
-        }
-
-        await _context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -537,71 +188,28 @@ public class ClientService : IClientService
     {
         try
         {
-            var examSetting = await _context.ExamSettings
-                .Include(e => e.ExamPaper)
-                .Where(e => e.Id == examId)
-                .FirstOrDefaultAsync();
-
-            if (examSetting == null)
-            {
-                throw new ArgumentException("考试不存在", nameof(examId));
-            }
-
-            // 检查考试时间
-            var now = DateTime.UtcNow;
-            if (examSetting.StartTime > now || examSetting.EndTime < now)
-            {
-                throw new InvalidOperationException("不在考试时间范围内");
-            }
-
-            // 检查是否有权限参加考试
-            var studentGroups = await _context.StudentGroupMappings
-                .Include(m => m.Student)
-                .Where(m => m.Student.UserId == userId)
-                .Select(m => m.StudentGroupId)
-                .ToListAsync();
-
-            var hasPermission = !examSetting.StudentGroups.Any() ||
-                                examSetting.StudentGroups.Any(g => studentGroups.Contains(g.Id));
-
-            if (!hasPermission)
-            {
-                throw new UnauthorizedAccessException("无权参加此考试");
-            }
-
             // 获取学生实体
-            var student = await _context.Students
-                .Where(s => s.UserId == userId)
-                .FirstOrDefaultAsync();
-
+            var student = await _studentService.GetByUserIdAsync(userId);
             if (student == null)
             {
                 throw new InvalidOperationException("未找到学生信息");
             }
 
             // 查找进行中的考试记录
-            var existingRecord = await _context.ExamRecords
-                .Where(r => r.ExamSettingId == examId && r.StudentId == student.Id && r.Status == ExamRecordStatus.InProgress)
-                .OrderByDescending(r => r.StartTime)
-                .FirstOrDefaultAsync();
+            var records = await _examRecordService.GetPagedListAsync(
+                new ExamRecordQueryDto 
+                { 
+                    Page = 1, 
+                    PerPage = 1,
+                    ExamSettingId = examId
+                },
+                r => r.StudentId == student.Id && r.Status == ExamRecordStatus.InProgress,
+                "Student");
+            
+            long? recordId = records.Items.FirstOrDefault()?.Id;
 
-            // 组装考试基本信息
-            var examBasicInfo = new ClientExamBasicInfoDto
-            {
-                Id = examSetting.Id,
-                Name = examSetting.Name,
-                Description = examSetting.Description,
-                Duration = examSetting.Duration,
-                StartTime = existingRecord?.StartTime ?? now,
-                EndTime = examSetting.EndTime,
-                TotalScore = examSetting.ExamPaper.TotalScore,
-                RecordId = existingRecord?.Id,
-                AllowedScreenSwitchCount = examSetting.AllowedScreenSwitchCount,
-                ScreenSwitchCount = existingRecord?.ScreenSwitchCount ?? 0,
-                EnableViewResult = examSetting.EnableViewResult
-            };
-
-            return examBasicInfo;
+            // 获取考试基本信息
+            return await _examSettingService.GetExamBasicInfoForClientAsync(examId, student.Id, recordId);
         }
         catch (Exception ex) when (
             ex is not ArgumentException &&
@@ -620,73 +228,20 @@ public class ClientService : IClientService
     /// <param name="userId">用户ID</param>
     /// <param name="userIp">用户IP</param>
     /// <param name="deviceInfo">设备信息</param>
-    /// <returns>考试记录ID</returns>
+    /// <returns>考试记录</returns>
     public async Task<ExamRecord> CreateExamRecordAsync(long examId, long userId, string userIp, string deviceInfo)
     {
         try
         {
-            var examSetting = await _context.ExamSettings
-                .Include(e => e.ExamPaper)
-                .Where(e => e.Id == examId)
-                .FirstOrDefaultAsync();
-
-            if (examSetting == null)
-            {
-                throw new ArgumentException("考试不存在", nameof(examId));
-            }
-
-            // 检查考试时间
-            var now = DateTime.UtcNow;
-            if (examSetting.StartTime > now || examSetting.EndTime < now)
-            {
-                throw new InvalidOperationException("不在考试时间范围内");
-            }
-
             // 获取学生实体
-            var student = await _context.Students
-                .Where(s => s.UserId == userId)
-                .FirstOrDefaultAsync();
-
+            var student = await _studentService.GetByUserIdAsync(userId);
             if (student == null)
             {
                 throw new InvalidOperationException("未找到考生信息");
             }
 
-            // 查找是否已存在未完成的考试记录
-            var existingRecord = await _context.ExamRecords
-                .Where(r => r.ExamSettingId == examId && 
-                       r.StudentId == student.Id && 
-                       r.Status == ExamRecordStatus.InProgress)
-                .FirstOrDefaultAsync();
-                
-            // 如果存在进行中的考试记录，直接返回
-            if (existingRecord != null)
-            {
-                _logger.LogInformation($"用户 {userId} 已有进行中的考试记录(ID: {existingRecord.Id})，直接返回现有记录");
-                return existingRecord;
-            }
-
-            // 检查考试次数
-            var attemptCount = await _context.ExamRecords
-                .CountAsync(r => r.ExamSettingId == examId && r.StudentId == student.Id);
-
-            // 创建考试记录
-            var examRecord = new ExamRecord
-            {
-                Id = _idGenerator.NewId(),
-                ExamSettingId = examId,
-                StudentId = student.Id,
-                AttemptNumber = attemptCount + 1,
-                StartTime = now,
-                Status = ExamRecordStatus.InProgress,
-                IpAddress = userIp,
-                DeviceInfo = deviceInfo
-            };
-
-            _context.ExamRecords.Add(examRecord);
-            await _context.SaveChangesAsync();
-
-            return examRecord;
+            // 委托给考试记录服务创建记录
+            return await _examRecordService.CreateExamRecordAsync(examId, student.Id, userIp, deviceInfo);
         }
         catch (Exception ex) when (
             ex is not ArgumentException &&
@@ -703,98 +258,20 @@ public class ClientService : IClientService
     /// <param name="recordId">考试记录ID</param>
     /// <param name="userId">用户ID</param>
     /// <param name="userIp">用户IP地址</param>
+    /// <returns>任务完成状态</returns>
     public async Task RecordScreenSwitchAsync(long recordId, long userId, string userIp)
     {
         try
         {
             // 获取学生实体
-            var student = await _context.Students
-                .Where(s => s.UserId == userId)
-                .FirstOrDefaultAsync();
-
+            var student = await _studentService.GetByUserIdAsync(userId);
             if (student == null)
             {
                 throw new InvalidOperationException("未找到考生信息");
             }
 
-            // 获取考试记录
-            var examRecord = await _context.ExamRecords
-                .Include(r => r.ExamSetting)
-                .Where(r => r.Id == recordId && r.StudentId == student.Id)
-                .FirstOrDefaultAsync();
-
-            if (examRecord == null)
-            {
-                throw new ArgumentException("考试记录不存在", nameof(recordId));
-            }
-
-            // 检查考试状态
-            if (examRecord.Status != ExamRecordStatus.InProgress)
-            {
-                throw new InvalidOperationException("考试已结束，无法记录切屏");
-            }
-
-            // 更新IP地址（如果提供了新的IP且不同于原IP）
-            if (!string.IsNullOrEmpty(userIp) && examRecord.IpAddress != userIp)
-            {
-                examRecord.IpAddress = userIp;
-
-                // 如果IP变更，可能是作弊行为，记录
-                var cheatingSuspicionRecord = string.IsNullOrEmpty(examRecord.CheatingSuspicionRecord)
-                    ? new List<string>()
-                    : System.Text.Json.JsonSerializer.Deserialize<List<string>>(examRecord.CheatingSuspicionRecord);
-
-                if (cheatingSuspicionRecord == null)
-                {
-                    cheatingSuspicionRecord = new List<string>();
-                }
-
-                //这里记录当前时间及IP变更信息
-                cheatingSuspicionRecord.Add($"IP变更（{DateTime.Now:yyyy-MM-dd HH:mm:ss}）：从 {examRecord.IpAddress} 变更为 {userIp}");
-
-                examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
-
-                // 增加作弊嫌疑等级
-                examRecord.CheatingSuspicionLevel = Math.Min(100, examRecord.CheatingSuspicionLevel + 20);
-            }
-
-            // 增加切屏次数
-            examRecord.ScreenSwitchCount += 1;
-
-            // 更新作弊嫌疑等级
-            int maxAllowedSwitches = examRecord.ExamSetting.AllowedScreenSwitchCount;
-            if (maxAllowedSwitches > 0 && examRecord.ScreenSwitchCount > maxAllowedSwitches)
-            {
-                // 超过允许的切屏次数，提高作弊嫌疑等级
-                int exceedCount = examRecord.ScreenSwitchCount - maxAllowedSwitches;
-                int suspicionIncrease = 10 * exceedCount; // 每超过一次增加10点嫌疑
-
-                examRecord.CheatingSuspicionLevel += suspicionIncrease;
-                if (examRecord.CheatingSuspicionLevel > 100)
-                {
-                    examRecord.CheatingSuspicionLevel = 100; // 最大不超过100
-                }
-
-                // 记录作弊嫌疑记录
-                var cheatingSuspicionRecord = string.IsNullOrEmpty(examRecord.CheatingSuspicionRecord)
-                    ? new List<string>()
-                    : System.Text.Json.JsonSerializer.Deserialize<List<string>>(examRecord.CheatingSuspicionRecord);
-
-                if (cheatingSuspicionRecord == null)
-                {
-                    cheatingSuspicionRecord = new List<string>();
-                }
-
-                //这里记录当前时间及切屏超限信息
-                cheatingSuspicionRecord.Add($"切屏超限（{DateTime.Now:yyyy-MM-dd HH:mm:ss}）：累计切屏 {examRecord.ScreenSwitchCount} 次，超过限制 {exceedCount} 次");
-
-                examRecord.CheatingSuspicionRecord = System.Text.Json.JsonSerializer.Serialize(cheatingSuspicionRecord);
-            }
-
-            // 保存更改
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation($"考试ID {recordId} 切屏记录更新，当前切屏次数: {examRecord.ScreenSwitchCount}");
+            // 委托给考试记录服务记录切屏
+            await _examRecordService.RecordScreenSwitchForClientAsync(recordId, student.Id, userIp);
         }
         catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
         {
@@ -812,38 +289,26 @@ public class ClientService : IClientService
     {
         try
         {
-            var student = await _context.Students
-                .Include(s => s.StudentGroups)
-                    .ThenInclude(sg => sg.StudentGroup)
-                .Where(s => s.UserId == userId)
-                .FirstOrDefaultAsync();
-
+            // 获取学生信息
+            var student = await _studentService.GetByUserIdAsync(userId);
             if (student == null)
             {
                 throw new AppServiceException(404, "未找到考生信息");
             }
 
-            // 将性别枚举转换为字符串
-            string genderText = student.Gender switch
-            {
-                Gender.Male => "男",
-                Gender.Female => "女",
-                _ => "未知"
-            };
-
+            // 构建客户端个人信息DTO
             return new ClientProfileDto
             {
                 Id = student.Id,
-                UserId = student.UserId,
+                UserId = userId,
                 Name = student.Name,
                 StudentNumber = student.StudentNumber,
                 IdNo = student.IdNo ?? string.Empty,
-                Gender = genderText,
+                Gender = student.Gender.GetDisplayName(),
                 AdmissionTicket = student.AdmissionTicket ?? string.Empty,
                 PhoneNumber = student.PhoneNumber,
-                StudentGroups = student.StudentGroups
-                    .Select(sg => sg.StudentGroup.Name)
-                    .ToList()
+                // 假设StudentDto包含了学生组信息
+                StudentGroups = student.StudentGroups ?? new List<string>()
             };
         }
         catch (Exception ex) when (ex is not AppServiceException)

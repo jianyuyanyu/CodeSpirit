@@ -56,25 +56,14 @@
                     <div class="notification-body">${warningMessage}</div>
                 `;
                 
-                // 添加样式
-                notification.style.position = 'fixed';
-                notification.style.top = '20px';
-                notification.style.right = '20px';
-                notification.style.backgroundColor = '#ffebee';
-                notification.style.color = '#f44336';
-                notification.style.padding = '15px';
-                notification.style.borderRadius = '4px';
-                notification.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-                notification.style.zIndex = '9999';
-                notification.style.maxWidth = '300px';
-                notification.style.animation = 'fadeIn 0.3s ease';
+                // 不再需要添加内联样式，使用CSS类
                 
                 // 添加到页面
                 document.body.appendChild(notification);
                 
                 // 5秒后自动移除
                 setTimeout(() => {
-                    notification.style.animation = 'fadeOut 0.3s ease';
+                    notification.classList.add('fade-out');
                     setTimeout(() => {
                         if (document.body.contains(notification)) {
                             document.body.removeChild(notification);
@@ -85,34 +74,6 @@
                 return true;
             };
             
-            // 添加必要的CSS动画
-            const addAnimationStyles = function() {
-                if (!document.getElementById('custom-notification-styles')) {
-                    const style = document.createElement('style');
-                    style.id = 'custom-notification-styles';
-                    style.innerHTML = `
-                        @keyframes fadeIn {
-                            from { opacity: 0; transform: translateY(-20px); }
-                            to { opacity: 1; transform: translateY(0); }
-                        }
-                        @keyframes fadeOut {
-                            from { opacity: 1; transform: translateY(0); }
-                            to { opacity: 0; transform: translateY(-20px); }
-                        }
-                        .custom-notification {
-                            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-                        }
-                        .custom-notification .notification-title {
-                            font-weight: bold;
-                            margin-bottom: 5px;
-                        }
-                    `;
-                    document.head.appendChild(style);
-                }
-            };
-            
-            // 尝试自定义通知
-            addAnimationStyles();
             createCustomNotification();
             console.log("[切屏警告] 使用自定义通知方式显示警告");
             return true;
@@ -489,27 +450,14 @@
     
             // 检测是否在特殊时间段内，设置相应样式类
             let timerClassName = "exam-timer";
-            let timerStyles = {};
             
             if (remainingTime <= 300) { // 5分钟内
                 timerClassName += " countdown-urgent countdown-final";
-                timerStyles = {
-                    color: '#f44336',
-                    fontWeight: 'bold',
-                    animation: 'pulse-scale 1s infinite',
-                    textShadow: '0 0 5px rgba(244, 67, 54, 0.5)'
-                };
                 
                 // 处理最后5分钟的特效
                 handleFinalCountdown(remainingTime);
             } else if (remainingTime <= 1800) { // 30分钟内
                 timerClassName += " countdown-warn";
-                timerStyles = {
-                    color: '#ff9800',
-                    fontWeight: 'bold',
-                    animation: 'pulse 1.5s infinite',
-                    textShadow: '0 0 3px rgba(255, 152, 0, 0.3)'
-                };
             }
             
             // 同步到amis上下文
@@ -538,23 +486,23 @@
                     }
                     
                     // 更新DOM，强制显示最新时间
-                    updateTimerDOMDisplay(displayText, timerClassName, timerStyles);
+                    updateTimerDOMDisplay(displayText, timerClassName);
                 } catch (e) {
                     console.error("更新计时器显示时出错", e);
                     // 出错时直接更新DOM作为后备方案
-                    updateTimerDOMDisplay(displayText, timerClassName, timerStyles);
+                    updateTimerDOMDisplay(displayText, timerClassName);
                 }
             } else {
                 console.warn("amisInstance未初始化，使用DOM方式更新计时器显示");
                 // 尝试直接更新DOM
-                updateTimerDOMDisplay(displayText, timerClassName, timerStyles);
+                updateTimerDOMDisplay(displayText, timerClassName);
             }
         } catch (error) {
             console.error("更新计时器显示时发生错误:", error);
             // 尝试最基本的DOM更新
             try {
                 const displayText = "00:00:00";
-                updateTimerDOMDisplay(displayText, "exam-timer", {});
+                updateTimerDOMDisplay(displayText, "exam-timer");
             } catch (e) {
                 console.error("更新计时器DOM时发生致命错误:", e);
             }
@@ -595,79 +543,13 @@
         }
     }
     
-    // 显示最后倒计时提醒
-    function showFinalCountdownAlert(remainingSeconds) {
-        let message = '';
-        let duration = 3000; // 默认显示3秒
-        
-        // 根据不同的时间节点设置不同的消息
-        if (remainingSeconds === 300) {
-            message = '注意：考试仅剩最后5分钟！';
-            duration = 5000;
-        } else if (remainingSeconds === 240) {
-            message = '考试即将结束，请检查您的答案！';
-        } else if (remainingSeconds === 180) {
-            message = '仅剩3分钟，请加快完成！';
-        } else if (remainingSeconds === 120) {
-            message = '仅剩2分钟，请准备提交！';
-            duration = 4000;
-        } else if (remainingSeconds === 60) {
-            message = '最后1分钟！请确保保存所有答案！';
-            duration = 5000;
-        } else if (remainingSeconds === 30) {
-            message = '30秒！即将自动提交！';
-        } else if (remainingSeconds === 10) {
-            message = '10秒！系统即将自动提交您的答卷！';
-            duration = 5000;
-        }
-        
-        // 创建并显示提示元素
-        const alertElement = document.createElement('div');
-        alertElement.className = 'final-countdown-alert';
-        alertElement.innerHTML = `
-            <div class="alert-content">
-                <div class="alert-icon"><i class="fa fa-clock-o"></i></div>
-                <div class="alert-message">${message}</div>
-                <div class="alert-timer">${Math.floor(remainingSeconds / 60)}:${(remainingSeconds % 60).toString().padStart(2, '0')}</div>
-            </div>
-        `;
-        
-        // 添加到页面
-        document.body.appendChild(alertElement);
-        
-        // 添加动画类
-        setTimeout(() => {
-            alertElement.classList.add('show');
-        }, 10);
-        
-        // 设置自动关闭
-        setTimeout(() => {
-            alertElement.classList.remove('show');
-            alertElement.classList.add('hide');
-            
-            // 动画结束后移除元素
-            setTimeout(() => {
-                if (document.body.contains(alertElement)) {
-                    document.body.removeChild(alertElement);
-                }
-            }, 500);
-        }, duration);
-    }
-    
     // 辅助函数：更新计时器DOM显示
-    function updateTimerDOMDisplay(displayText, className, styles) {
+    function updateTimerDOMDisplay(displayText, className) {
         const timerElements = document.querySelectorAll('.exam-timer');
         if (timerElements && timerElements.length > 0) {
             timerElements.forEach(el => {
                 el.innerHTML = `剩余时间：${displayText}`;
                 el.className = className || "exam-timer"; // 应用适当的类名
-                
-                // 应用内联样式
-                if (styles && typeof styles === 'object') {
-                    Object.keys(styles).forEach(key => {
-                        el.style[key] = styles[key];
-                    });
-                }
             });
         }
     }
@@ -1104,10 +986,10 @@
                                         alignItems: 'center',
                                         className: 'user-info-container',
                                         items: [
-                                            {
-                                                type: 'tpl',
-                                                tpl: '<div class="user-info">欢迎您，${name}</div>'
-                                            },
+                                            //{
+                                            //    type: 'tpl',
+                                            //    tpl: '<div class="user-info">欢迎您，${name}</div>'
+                                            //},
                                             {
                                                 type: 'tpl',
                                                 tpl: '<div class="screen-switch-icon" title="当前切屏次数/允许次数"><i class="fa fa-desktop"></i> <span class="screen-switch-value">0</span>/<span class="allowed-switch-value">${allowedScreenSwitchCount || "?"}</span></div>'
@@ -1441,781 +1323,7 @@
             }
         ],
         css: {
-            // 全局样式
-            ':root': {
-                '--primary-color': '#3f51b5',
-                '--success-color': '#4caf50',
-                '--warning-color': '#ff9800',
-                '--danger-color': '#f44336',
-                '--border-radius': '8px',
-                '--box-shadow': '0 4px 12px rgba(0,0,0,0.1)',
-                '--fixed-header-height': 'auto', // 动态计算高度
-                '--header-transition': 'all 0.3s ease', // 添加过渡效果
-                '--urgent-color': '#f44336',
-                '--very-urgent-color': '#d50000',
-                '--extremely-urgent-color': '#b71c1c'
-            },
-            'body': {
-                'background-color': '#f5f7fa',
-                'font-family': '"PingFang SC", "Microsoft YaHei", sans-serif',
-                'color': '#333',
-                'padding-top': '0' // 将由spacer控制
-            },
-            // 固定头部容器
-            '.fixed-header-container': {
-                'position': 'fixed',
-                'top': '0',
-                'left': '0',
-                'right': '0',
-                'z-index': '1000',
-                'background-color': '#fff',
-                'box-shadow': '0 2px 8px rgba(0,0,0,0.15)',
-                'width': '100%',
-                'transition': 'var(--header-transition)'
-            },
-            // 压缩模式下的头部样式
-            '.compact-header .client-header': {
-                'padding': '4px 16px'
-            },
-            '.compact-header .student-profile-section': {
-                'transform': 'scale(0.95)',
-                'transform-origin': 'center top',
-                'margin': '0'
-            },
-            '.compact-header .student-info-card': {
-                'margin-bottom': '5px'
-            },
-            '.compact-header .student-info-body': {
-                'padding': '4px 15px'
-            },
-            '.compact-header .header-status-container': {
-                'padding': '2px 0',
-                'margin-top': '0'
-            },
-            '.compact-header .exam-timer-container, .compact-header .screen-switch-counter': {
-                'transform': 'scale(0.95)',
-                'transform-origin': 'center center'
-            },
-            '.fixed-header-spacer': {
-                'height': 'calc(var(--fixed-header-height) + 10px)', // 动态高度 + 额外空间
-                'content': '""',
-                'display': 'block',
-                'transition': 'var(--header-transition)'
-            },
-            // 头部导航样式
-            '.client-header': {
-                'background-color': '#fff',
-                'padding': '8px 16px',
-                'border-bottom': '1px solid #eaeaea'
-            },
-            '.header-container': {
-                'margin-bottom': '10px'
-            },
-            '.header-status-container': {
-                'padding': '5px 0',
-                'background-color': 'rgba(245, 247, 250, 0.8)',
-                'border-radius': 'var(--border-radius)',
-                'flex-wrap': 'wrap'
-            },
-            '.client-logo': {
-                'display': 'flex',
-                'align-items': 'center'
-            },
-            '.client-logo img': {
-                'height': '36px',
-                'margin-right': '12px',
-                'transition': 'transform 0.3s ease'
-            },
-            '.client-logo img:hover': {
-                'transform': 'scale(1.05)'
-            },
-            '.client-logo span': {
-                'font-size': '20px',
-                'font-weight': 'bold',
-                'color': 'var(--primary-color)',
-                'letter-spacing': '0.5px'
-            },
-            // 用户信息样式
-            '.user-info-container': {
-                'margin-right': '20px'
-            },
-            '.user-info': {
-                'font-size': '16px',
-                'font-weight': '500',
-                'color': '#333',
-                'background-color': '#f9f9f9',
-                'padding': '8px 16px',
-                'border-radius': 'var(--border-radius)',
-                'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
-                'transition': 'all 0.3s ease',
-                'margin-right': '10px'
-            },
-            '.user-info:hover': {
-                'background-color': '#f0f2f5'
-            },
-            '.screen-switch-icon': {
-                'font-size': '14px',
-                'font-weight': '500',
-                'color': '#f44336',
-                'background-color': 'rgba(244, 67, 54, 0.1)',
-                'padding': '8px 12px',
-                'border-radius': 'var(--border-radius)',
-                'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
-                'transition': 'all 0.3s ease',
-                'display': 'flex',
-                'align-items': 'center',
-                'cursor': 'help'
-            },
-            '.screen-switch-icon i': {
-                'margin-right': '5px',
-                'font-size': '14px'
-            },
-            '.screen-switch-icon:hover': {
-                'background-color': 'rgba(244, 67, 54, 0.15)',
-                'transform': 'translateY(-2px)',
-                'box-shadow': '0 3px 6px rgba(0,0,0,0.1)'
-            },
-            '.screen-switch-value': {
-                'font-weight': 'bold'
-            },
-            '.allowed-switch-value': {
-                'opacity': '0.8'
-            },
-            // 计时器样式
-            '.exam-timer-container': {
-                'padding': '10px 18px',
-                'background-color': '#fff',
-                'border-radius': 'var(--border-radius)',
-                'box-shadow': '0 2px 8px rgba(0,0,0,0.08)',
-                'border': '1px solid #f0f0f0',
-                'transition': 'all 0.3s ease',
-                'min-width': '180px',
-                'text-align': 'center',
-                'margin': '0 auto' // 居中显示
-            },
-            '.exam-timer': {
-                'color': 'var(--danger-color)',
-                'font-size': '20px',
-                'font-weight': 'bold',
-                'font-family': 'Consolas, monospace',
-                'display': 'flex',
-                'align-items': 'center',
-                'justify-content': 'center'
-            },
-            '.exam-timer::before': {
-                'content': '""',
-                'display': 'inline-block',
-                'width': '12px',
-                'height': '12px',
-                'background-color': 'var(--danger-color)',
-                'border-radius': '50%',
-                'margin-right': '10px',
-                'animation': 'pulse 1s infinite'
-            },
-            '.countdown-urgent': {
-                'color': '#f44336 !important',
-                'text-shadow': '0 0 5px rgba(244, 67, 54, 0.3)'
-            },
-            '.countdown-urgent::before': {
-                'background-color': '#f44336',
-                'animation': 'pulse 0.8s infinite'
-            },
-            '.countdown-final': {
-                'font-size': '110% !important',
-                'letter-spacing': '1px'
-            },
-            '.countdown-warn': {
-                'color': '#ff9800 !important',
-                'text-shadow': '0 0 3px rgba(255, 152, 0, 0.3)'
-            },
-            '.countdown-warn::before': {
-                'background-color': '#ff9800',
-                'animation': 'pulse 1.2s infinite'
-            },
-            // 最后5分钟倒计时样式
-            '.final-countdown': {
-                'background-color': 'rgba(244, 67, 54, 0.08)',
-                'border': '2px solid var(--urgent-color)',
-                'box-shadow': '0 0 15px rgba(244, 67, 54, 0.2)',
-                'transform': 'scale(1.02)',
-                'animation': 'pulse-shadow 2s infinite'
-            },
-            '.final-countdown.urgent': {
-                'background-color': 'rgba(244, 67, 54, 0.1)'
-            },
-            '.final-countdown.very-urgent': {
-                'background-color': 'rgba(213, 0, 0, 0.15)',
-                'border-color': 'var(--very-urgent-color)',
-                'box-shadow': '0 0 20px rgba(213, 0, 0, 0.25)',
-                'animation': 'pulse-shadow 1.5s infinite'
-            },
-            '.final-countdown.extremely-urgent': {
-                'background-color': 'rgba(183, 28, 28, 0.2)',
-                'border-color': 'var(--extremely-urgent-color)',
-                'box-shadow': '0 0 25px rgba(183, 28, 28, 0.3)',
-                'animation': 'pulse-shadow 1s infinite'
-            },
-            // 最后倒计时全局样式
-            '.final-countdown-active .fixed-header-container': {
-                'border-bottom': '2px solid var(--urgent-color)'
-            },
-            // 倒计时提示框
-            '.final-countdown-alert': {
-                'position': 'fixed',
-                'top': '50%',
-                'left': '50%',
-                'transform': 'translate(-50%, -50%) scale(0.9)',
-                'background-color': 'rgba(0, 0, 0, 0.85)',
-                'color': 'white',
-                'padding': '20px 30px',
-                'border-radius': '12px',
-                'box-shadow': '0 5px 30px rgba(0, 0, 0, 0.5)',
-                'z-index': '10000',
-                'text-align': 'center',
-                'min-width': '300px',
-                'max-width': '80%',
-                'opacity': '0',
-                'transition': 'all 0.4s ease',
-                'pointer-events': 'none'
-            },
-            '.final-countdown-alert.show': {
-                'opacity': '1',
-                'transform': 'translate(-50%, -50%) scale(1)'
-            },
-            '.final-countdown-alert.hide': {
-                'opacity': '0',
-                'transform': 'translate(-50%, -60%) scale(0.9)'
-            },
-            '.alert-content': {
-                'display': 'flex',
-                'flex-direction': 'column',
-                'align-items': 'center',
-                'gap': '10px'
-            },
-            '.alert-icon': {
-                'font-size': '40px',
-                'color': 'var(--urgent-color)',
-                'margin-bottom': '10px',
-                'animation': 'pulse 1s infinite'
-            },
-            '.alert-message': {
-                'font-size': '18px',
-                'font-weight': 'bold',
-                'margin-bottom': '5px'
-            },
-            '.alert-timer': {
-                'font-size': '26px',
-                'font-family': 'Consolas, monospace',
-                'font-weight': 'bold',
-                'color': 'var(--urgent-color)',
-                'background-color': 'rgba(255, 255, 255, 0.15)',
-                'padding': '5px 15px',
-                'border-radius': '20px',
-                'margin-top': '5px'
-            },
-            '@keyframes pulse': {
-                '0%': {
-                    'opacity': '0.6',
-                    'transform': 'scale(0.9)'
-                },
-                '50%': {
-                    'opacity': '1',
-                    'transform': 'scale(1.1)'
-                },
-                '100%': {
-                    'opacity': '0.6',
-                    'transform': 'scale(0.9)'
-                }
-            },
-            '@keyframes pulse-scale': {
-                '0%': {
-                    'transform': 'scale(1)'
-                },
-                '50%': {
-                    'transform': 'scale(1.05)'
-                },
-                '100%': {
-                    'transform': 'scale(1)'
-                }
-            },
-            '@keyframes pulse-shadow': {
-                '0%': {
-                    'box-shadow': '0 0 10px rgba(244, 67, 54, 0.2)'
-                },
-                '50%': {
-                    'box-shadow': '0 0 20px rgba(244, 67, 54, 0.5)'
-                },
-                '100%': {
-                    'box-shadow': '0 0 10px rgba(244, 67, 54, 0.2)'
-                }
-            },
-            '@keyframes highlight': {
-                '0%': {
-                    'transform': 'scale(1.1)',
-                    'text-shadow': '0 0 8px rgba(244, 67, 54, 0.8)'
-                },
-                '100%': {
-                    'transform': 'scale(1)',
-                    'text-shadow': 'none'
-                }
-            },
-            // 考试容器样式
-            '.exam-container': {
-                'margin': '20px auto',
-                'max-width': '1100px',
-                'padding': '0 20px'
-            },
-            // 面板样式
-            '.am-Panel': {
-                'border-radius': 'var(--border-radius)',
-                'overflow': 'hidden',
-                'box-shadow': 'var(--box-shadow)',
-                'border': 'none'
-            },
-            '.am-Panel-heading': {
-                'background-color': '#fff',
-                'border-bottom': '1px solid #eaeaea',
-                'padding': '15px 20px',
-                'text-align': 'center'
-            },
-            '.am-Panel-body': {
-                'padding': '20px'
-            },
-            // panel标题样式
-            '.exam-panel-header': {
-                'background-color': '#fff',
-                'border-bottom': '1px solid #eaeaea',
-                'padding': '15px 20px',
-                'text-align': 'center',
-                'background-image': 'linear-gradient(to right, rgba(63, 81, 181, 0.1), rgba(63, 81, 181, 0.05), rgba(63, 81, 181, 0))'
-            },
-            '.exam-panel-header .am-Panel-title, .exam-panel-header .exam-title': {
-                'font-size': '24px !important',
-                'font-weight': 'bold !important',
-                'color': 'var(--primary-color) !important',
-                'text-shadow': '0 1px 2px rgba(0,0,0,0.1) !important',
-                'letter-spacing': '1px !important'
-            },
-            // 考试信息样式
-            '.exam-info-panel': {
-                'background-color': '#fff',
-                'padding': '15px'
-            },
-            '.exam-info': {
-                'margin-bottom': '20px',
-                'flex-wrap': 'wrap',
-                'background-color': '#f9f9f9',
-                'padding': '15px',
-                'border-radius': 'var(--border-radius)',
-                'gap': '10px',
-                'justify-content': 'center'
-            },
-            '.exam-info-item': {
-                'margin-right': '20px',
-                'margin-bottom': '10px',
-                'padding': '8px 15px',
-                'background-color': '#fff',
-                'border-radius': 'var(--border-radius)',
-                'box-shadow': '0 2px 5px rgba(0,0,0,0.05)',
-                'border-left': '3px solid var(--primary-color)',
-                'font-weight': '500',
-                'min-width': '160px',
-                'text-align': 'center'
-            },
-            // 题目样式
-            '.question-container': {
-                'margin-top': '20px'
-            },
-            '.question-item': {
-                'margin-bottom': '30px',
-                'padding': '20px',
-                'border': '1px solid #e8e8e8',
-                'border-radius': 'var(--border-radius)',
-                'background-color': '#fff',
-                'box-shadow': '0 2px 8px rgba(0,0,0,0.04)',
-                'transition': 'all 0.3s ease',
-                'position': 'relative'
-            },
-            '.question-item:hover': {
-                'box-shadow': '0 5px 15px rgba(0,0,0,0.08)',
-                'transform': 'translateY(-2px)'
-            },
-            '.question-item::before': {
-                'content': 'attr(data-question-index)',
-                'position': 'absolute',
-                'top': '-12px',
-                'left': '20px',
-                'display': 'flex',
-                'align-items': 'center',
-                'justify-content': 'center',
-                'width': '30px',
-                'height': '30px',
-                'background-color': 'var(--primary-color)',
-                'color': 'white',
-                'border-radius': '50%',
-                'font-weight': 'bold',
-                'box-shadow': '0 2px 5px rgba(0,0,0,0.2)',
-                'z-index': '1'
-            },
-            '.question-label': {
-                'font-size': '16px',
-                'font-weight': '500',
-                'margin-bottom': '20px',
-                'display': 'block',
-                'padding-left': '15px',
-                'border-left': '4px solid var(--primary-color)',
-                'line-height': '1.5'
-            },
-            '.question-type-tag': {
-                'display': 'inline-block',
-                'padding': '2px 8px',
-                'border-radius': '12px',
-                'background-color': 'rgba(63, 81, 181, 0.1)',
-                'color': 'var(--primary-color)',
-                'font-size': '12px',
-                'margin-right': '10px',
-                'font-weight': 'bold'
-            },
-            '.question-score': {
-                'display': 'inline-block',
-                'padding': '2px 8px',
-                'border-radius': '12px',
-                'background-color': 'rgba(76, 175, 80, 0.1)',
-                'color': 'var(--success-color)',
-                'font-size': '12px',
-                'float': 'right',
-                'font-weight': 'bold'
-            },
-            '.question-content': {
-                'margin-bottom': '15px',
-                'padding-bottom': '15px',
-                'border-bottom': '1px dashed #eaeaea'
-            },
-            // 选项样式
-            '.am-RadioControl-group, .am-CheckboxControl-group': {
-                'padding': '10px 0',
-                'display': 'flex',
-                'flex-direction': 'column',
-                'gap': '12px'
-            },
-            '.am-RadioControl, .am-CheckboxControl': {
-                'margin-bottom': '0',
-                'padding': '12px 16px',
-                'border-radius': 'var(--border-radius)',
-                'transition': 'all 0.3s ease',
-                'border': '1px solid #e8e8e8',
-                'background-color': '#fff',
-                'box-shadow': '0 1px 3px rgba(0,0,0,0.02)',
-                'position': 'relative',
-                'overflow': 'hidden',
-                'cursor': 'pointer'
-            },
-            '.am-RadioControl:hover, .am-CheckboxControl:hover': {
-                'background-color': '#f9f9ff',
-                'border-color': '#d0d5ff',
-                'box-shadow': '0 3px 6px rgba(0,0,0,0.05)',
-                'transform': 'translateY(-1px)'
-            },
-            '.enhanced-options .am-RadioControl, .enhanced-options .am-CheckboxControl': {
-                'margin-bottom': '8px',
-                'border-left': '3px solid transparent'
-            },
-            '.question-container .am-RadioControl, .question-container .am-CheckboxControl': {
-                'border': '1px solid #e0e0e0',
-                'border-radius': '8px',
-                'margin-bottom': '10px',
-                'transition': 'all 0.2s ease-in-out'
-            },
-            '.am-RadioControl-input:checked + .am-RadioControl-icon, .am-CheckboxControl-input:checked + .am-CheckboxControl-icon': {
-                'background-color': 'var(--primary-color)',
-                'border-color': 'var(--primary-color)'
-            },
-            '.am-RadioControl.is-checked, .am-CheckboxControl.is-checked': {
-                'background-color': 'rgba(63, 81, 181, 0.05)',
-                'border-left': '3px solid var(--primary-color)',
-                'padding-left': '14px',
-                'font-weight': '500'
-            },
-            '.am-RadioControl-label, .am-CheckboxControl-label': {
-                'font-size': '15px',
-                'line-height': '1.5',
-                'padding-left': '5px'
-            },
-            // 选项字母标记
-            '.option-label': {
-                'display': 'inline-block',
-                'width': '26px',
-                'height': '26px',
-                'line-height': '26px',
-                'text-align': 'center',
-                'background-color': '#f0f0f0',
-                'color': '#333',
-                'border-radius': '50%',
-                'margin-right': '10px',
-                'font-weight': 'bold',
-                'font-size': '14px',
-                'box-shadow': '0 2px 4px rgba(0,0,0,0.1)'
-            },
-            '.is-checked .option-label': {
-                'background-color': 'var(--primary-color)',
-                'color': 'white',
-                'box-shadow': '0 2px 4px rgba(63, 81, 181, 0.3)'
-            },
-            '.enhanced-options .am-RadioControl-label, .enhanced-options .am-CheckboxControl-label': {
-                'font-size': '15px',
-                'line-height': '1.6',
-                'font-family': '"PingFang SC", "Microsoft YaHei", sans-serif',
-                'display': 'flex',
-                'align-items': 'center'
-            },
-            // 操作按钮样式
-            '.exam-actions': {
-                'margin-top': '30px',
-                'margin-bottom': '20px'
-            },
-            '.am-Button--primary': {
-                'background-color': 'var(--primary-color)',
-                'border-color': 'var(--primary-color)',
-                'padding': '10px 24px',
-                'font-size': '16px',
-                'border-radius': 'var(--border-radius)',
-                'transition': 'all 0.3s ease'
-            },
-            '.am-Button--primary:hover': {
-                'background-color': '#303f9f',
-                'transform': 'translateY(-2px)',
-                'box-shadow': '0 5px 15px rgba(63, 81, 181, 0.3)'
-            },
-            '.am-Button--link': {
-                'color': '#666',
-                'font-size': '16px',
-                'transition': 'all 0.3s ease'
-            },
-            '.am-Button--link:hover': {
-                'color': 'var(--danger-color)',
-                'text-decoration': 'none'
-            },
-            // 分割线样式
-            '.am-Divider': {
-                'margin': '20px 0',
-                'background-color': '#eaeaea'
-            },
-            // 响应式样式
-            '@media (max-width: 768px)': {
-                '.exam-container': {
-                    'padding': '10px',
-                    'margin': '10px auto'
-                },
-                '.fixed-header-container': {
-                    'position': 'fixed' // 确保在移动设备上也是固定的
-                },
-                '.fixed-header-spacer': {
-                    'height': 'calc(var(--fixed-header-height) + 15px)' // 移动设备上增加一点空间
-                },
-                '.exam-panel': {
-                    'margin-top': '0'
-                },
-                '.exam-info-panel': {
-                    'padding': '10px'
-                },
-                '.exam-info': {
-                    'padding': '10px',
-                    'flex-direction': 'column'
-                },
-                '.question-label': {
-                    'font-size': '15px',
-                    'padding-left': '10px',
-                    'line-height': '1.4',
-                    'margin-bottom': '15px'
-                },
-                '.question-content': {
-                    'padding-bottom': '10px',
-                    'margin-bottom': '10px'
-                },
-                '.question-item': {
-                    'padding': '15px',
-                    'margin-bottom': '20px',
-                    'box-shadow': '0 1px 5px rgba(0,0,0,0.03)'
-                },
-                '.question-type-tag, .question-score': {
-                    'font-size': '11px',
-                    'padding': '1px 6px'
-                },
-                '.am-RadioControl, .am-CheckboxControl': {
-                    'padding': '8px 12px',
-                    'margin-bottom': '8px'
-                },
-                '.am-RadioControl-label, .am-CheckboxControl-label': {
-                    'font-size': '14px',
-                    'line-height': '1.4'
-                },
-                '.option-label': {
-                    'width': '22px',
-                    'height': '22px',
-                    'line-height': '22px',
-                    'font-size': '12px',
-                    'margin-right': '8px'
-                },
-                '.am-Button--primary, .am-Button--link': {
-                    'font-size': '14px',
-                    'padding': '8px 16px'
-                },
-                '.exam-actions': {
-                    'margin-top': '20px',
-                    'flex-wrap': 'wrap',
-                    'gap': '10px'
-                },
-                '.client-header': {
-                    'padding': '10px 15px'
-                },
-                '.user-info': {
-                    'padding': '6px 10px',
-                    'font-size': '14px',
-                    'margin-right': '5px'
-                },
-                '.screen-switch-icon': {
-                    'padding': '6px 8px',
-                    'font-size': '12px'
-                },
-                '.screen-switch-icon i': {
-                    'font-size': '12px'
-                },
-                '.header-container': {
-                    'align-items': 'center'
-                },
-                '.header-status-container': {
-                    'flex-direction': 'row',
-                    'justify-content': 'center',
-                    'gap': '10px'
-                },
-                '.client-logo span': {
-                    'font-size': '18px'
-                },
-                '.exam-timer-container': {
-                    'width': '100%',
-                    'justify-content': 'center',
-                    'margin': '5px auto'
-                },
-                '.exam-timer': {
-                    'font-size': '16px'
-                },
-                '.exam-info-item': {
-                    'width': '100%',
-                    'margin-right': '0'
-                },
-                '.user-info-container': {
-                    'margin-right': '0',
-                    'margin-bottom': '0',
-                    'display': 'flex',
-                    'align-items': 'center'
-                },
-                '.exam-title': {
-                    'font-size': '20px'
-                },
-                '.student-info-card': {
-                    'margin-bottom': '5px'
-                },
-                '.student-info-body > .am-Flex': {
-                    'flex-wrap': 'wrap',
-                    'gap': '5px',
-                    'justify-content': 'flex-start'
-                },
-                '.student-info-item': {
-                    'margin-right': '10px',
-                    'margin-bottom': '5px',
-                    'font-size': '12px'
-                },
-                '.final-countdown-alert': {
-                    'min-width': '280px',
-                    'padding': '15px 20px'
-                },
-                '.alert-message': {
-                    'font-size': '16px'
-                },
-                '.alert-timer': {
-                    'font-size': '22px'
-                }
-            },
-            // 新增样式
-            '.enhanced-options': {
-                'border': '1px solid #eaeaea',
-                'border-radius': 'var(--border-radius)',
-                'padding': '10px 15px',
-                'margin-top': '10px',
-                'background-color': '#fafafa',
-                'box-shadow': '0 1px 3px rgba(0,0,0,0.03)'
-            },
-            '.screen-switch-counter': {
-                'margin-left': '0',
-                'min-width': '180px'
-            },
-            '.screen-switch-count': {
-                'font-size': '14px',
-                'font-weight': '500',
-                'color': '#f44336',
-                'background-color': 'rgba(244, 67, 54, 0.1)',
-                'padding': '6px 12px',
-                'border-radius': 'var(--border-radius)',
-                'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
-                'transition': 'all 0.3s ease',
-                'display': 'flex',
-                'align-items': 'center',
-                'justify-content': 'center',
-                'text-align': 'center'
-            },
-            '.screen-switch-count::before': {
-                'content': '""',
-                'display': 'inline-block',
-                'width': '8px',
-                'height': '8px',
-                'background-color': '#f44336',
-                'border-radius': '50%',
-                'margin-right': '6px'
-            },
-            '.screen-switch-value': {
-                'font-weight': 'bold',
-                'margin-left': '4px'
-            },
-            '.allowed-switch-value': {
-                'font-weight': 'normal',
-                'opacity': '0.8'
-            },
-            // 考生信息样式
-            '.student-profile-section': {
-                'margin': '0 0 10px 0',
-                'padding': '0'
-            },
-            '.student-info-card': {
-                'background': 'linear-gradient(to right, rgba(63, 81, 181, 0.05), rgba(255, 255, 255, 0.8))',
-                'border': 'none',
-                'border-radius': 'var(--border-radius)',
-                'box-shadow': '0 1px 3px rgba(0,0,0,0.05)',
-                'margin-bottom': '10px'
-            },
-            '.student-info-body': {
-                'padding': '8px 15px'
-            },
-            '.student-info-item': {
-                'font-size': '14px',
-                'margin-right': '15px',
-                'white-space': 'nowrap'
-            },
-            '.student-info-item i': {
-                'color': 'var(--primary-color)',
-                'margin-right': '4px',
-                'font-size': '14px'
-            },
-            '.student-name': {
-                'font-weight': '500'
-            },
-            '.student-groups': {
-                'display': 'inline-block',
-                'background-color': 'rgba(63, 81, 181, 0.1)',
-                'color': 'var(--primary-color)',
-                'border-radius': '12px',
-                'padding': '0 8px',
-                'font-size': '12px'
-            }
+            // 样式已经移动到外部 CSS 文件
         }
     };
 
@@ -2398,6 +1506,101 @@
         } catch (error) {
             console.error('[页面卸载] 保存答案失败：', error);
         }
+    });
+
+    // 添加滚动监听逻辑，实现顶部栏的紧凑化
+    function setupHeaderScroll() {
+        // 获取头部容器
+        const fixedHeaderContainer = document.querySelector('.fixed-header-container');
+        if (!fixedHeaderContainer) {
+            console.warn("[UI优化] 未找到固定头部容器，无法设置紧凑化效果");
+            return;
+        }
+        
+        const scrollThreshold = 50; // 滚动多少像素后紧凑化
+
+        // 滚动事件处理函数
+        function handleScroll() {
+            if (window.scrollY > scrollThreshold) {
+                // 滚动足够距离后添加紧凑样式
+                fixedHeaderContainer.classList.add('compact-header');
+            } else {
+                // 回到顶部时移除紧凑样式
+                fixedHeaderContainer.classList.remove('compact-header');
+            }
+        }
+
+        // 添加滚动事件监听
+        window.addEventListener('scroll', handleScroll);
+        
+        // 初始调用一次，确保页面刷新后也应用正确的样式
+        handleScroll();
+        
+        console.log("[UI优化] 设置顶部栏滚动紧凑化效果");
+    }
+
+    // 显示最后倒计时提醒
+    function showFinalCountdownAlert(remainingSeconds) {
+        let message = '';
+        let duration = 3000; // 默认显示3秒
+        
+        // 根据不同的时间节点设置不同的消息
+        if (remainingSeconds === 300) {
+            message = '注意：考试仅剩最后5分钟！';
+            duration = 5000;
+        } else if (remainingSeconds === 240) {
+            message = '考试即将结束，请检查您的答案！';
+        } else if (remainingSeconds === 180) {
+            message = '仅剩3分钟，请加快完成！';
+        } else if (remainingSeconds === 120) {
+            message = '仅剩2分钟，请准备提交！';
+            duration = 4000;
+        } else if (remainingSeconds === 60) {
+            message = '最后1分钟！请确保保存所有答案！';
+            duration = 5000;
+        } else if (remainingSeconds === 30) {
+            message = '30秒！即将自动提交！';
+        } else if (remainingSeconds === 10) {
+            message = '10秒！系统即将自动提交您的答卷！';
+            duration = 5000;
+        }
+        
+        // 创建并显示提示元素
+        const alertElement = document.createElement('div');
+        alertElement.className = 'final-countdown-alert';
+        alertElement.innerHTML = `
+            <div class="alert-content">
+                <div class="alert-icon"><i class="fa fa-clock-o"></i></div>
+                <div class="alert-message">${message}</div>
+                <div class="alert-timer">${Math.floor(remainingSeconds / 60)}:${(remainingSeconds % 60).toString().padStart(2, '0')}</div>
+            </div>
+        `;
+        
+        // 添加到页面
+        document.body.appendChild(alertElement);
+        
+        // 添加动画类
+        setTimeout(() => {
+            alertElement.classList.add('show');
+        }, 10);
+        
+        // 设置自动关闭
+        setTimeout(() => {
+            alertElement.classList.remove('show');
+            alertElement.classList.add('hide');
+            
+            // 动画结束后移除元素
+            setTimeout(() => {
+                if (document.body.contains(alertElement)) {
+                    document.body.removeChild(alertElement);
+                }
+            }, 500);
+        }, duration);
+    }
+
+    // 启动紧凑化顶部栏功能
+    window.addEventListener('DOMContentLoaded', function() {
+        setupHeaderScroll();
     });
 
 })(); 

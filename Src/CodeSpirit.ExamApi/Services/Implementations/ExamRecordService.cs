@@ -564,71 +564,62 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     /// <returns>考试记录</returns>
     public async Task<ExamRecord> CreateExamRecordAsync(long examId, long studentId, string userIp, string deviceInfo)
     {
-        try
-        {
-            var examSetting = await _examSettingRepository.CreateQuery()
+        var examSetting = await _examSettingRepository.CreateQuery()
                 .Include(e => e.ExamPaper)
                 .Where(e => e.Id == examId)
                 .FirstOrDefaultAsync();
 
-            if (examSetting == null)
-            {
-                throw new ArgumentException("考试不存在", nameof(examId));
-            }
-
-            // 检查考试时间
-            var now = DateTime.UtcNow;
-            if (examSetting.StartTime > now || examSetting.EndTime < now)
-            {
-                throw new InvalidOperationException("不在考试时间范围内");
-            }
-
-            // 获取学生实体
-            var student = await _studentRepository.GetByIdAsync(studentId);
-
-            if (student == null)
-            {
-                throw new InvalidOperationException("未找到考生信息");
-            }
-
-            // 查找是否已存在未完成的考试记录
-            var existingRecord = await Repository.CreateQuery()
-                .Where(r => r.ExamSettingId == examId && 
-                        r.StudentId == studentId && 
-                        r.Status == ExamRecordStatus.InProgress)
-                .FirstOrDefaultAsync();
-                
-            // 如果存在进行中的考试记录，直接返回
-            if (existingRecord != null)
-            {
-                return existingRecord;
-            }
-
-            // 检查考试次数
-            var attemptCount = await Repository.CreateQuery()
-                .CountAsync(r => r.ExamSettingId == examId && r.StudentId == studentId);
-
-            // 创建考试记录
-            var examRecord = new ExamRecord
-            {
-                ExamSettingId = examId,
-                StudentId = studentId,
-                AttemptNumber = attemptCount + 1,
-                StartTime = now,
-                Status = ExamRecordStatus.InProgress,
-                IpAddress = userIp,
-                DeviceInfo = deviceInfo
-            };
-
-            await Repository.AddAsync(examRecord);
-            return examRecord;
-        }
-        catch (Exception ex) when (
-            ex is not ArgumentException &&
-            ex is not InvalidOperationException)
+        if (examSetting == null)
         {
-            throw;
+            throw new ArgumentException("考试不存在", nameof(examId));
         }
+
+        // 检查考试时间
+        var now = DateTime.UtcNow;
+        if (examSetting.StartTime > now || examSetting.EndTime < now)
+        {
+            throw new InvalidOperationException("不在考试时间范围内");
+        }
+
+        // 获取学生实体
+        var student = await _studentRepository.GetByIdAsync(studentId);
+
+        if (student == null)
+        {
+            throw new InvalidOperationException("未找到考生信息");
+        }
+
+        // 查找是否已存在未完成的考试记录
+        var existingRecord = await Repository.CreateQuery()
+            .Where(r => r.ExamSettingId == examId &&
+                    r.StudentId == studentId &&
+                    r.Status == ExamRecordStatus.InProgress)
+            .FirstOrDefaultAsync();
+
+        // 如果存在进行中的考试记录，直接返回
+        if (existingRecord != null)
+        {
+            return existingRecord;
+        }
+
+        // 检查考试次数
+        var attemptCount = await Repository.CreateQuery()
+            .CountAsync(r => r.ExamSettingId == examId && r.StudentId == studentId);
+
+        // 创建考试记录
+        var examRecord = new ExamRecord
+        {
+            ExamSettingId = examId,
+            StudentId = studentId,
+            AttemptNumber = attemptCount + 1,
+            StartTime = now,
+            Status = ExamRecordStatus.InProgress,
+            IpAddress = userIp,
+            DeviceInfo = deviceInfo
+        };
+
+        await Repository.AddAsync(examRecord);
+        return examRecord;
     }
 
     /// <summary>
@@ -811,9 +802,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     /// <returns>历史考试记录</returns>
     public async Task<List<ClientExamHistoryDto>> GetExamHistoryForClientAsync(long studentId)
     {
-        try
-        {
-            var examHistory = await Repository.CreateQuery()
+        var examHistory = await Repository.CreateQuery()
                 .Include(r => r.ExamSetting)
                 .ThenInclude(s => s.ExamPaper)
                 .Where(r => r.StudentId == studentId)
@@ -834,12 +823,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 })
                 .ToListAsync();
 
-            return examHistory;
-        }
-        catch (Exception ex)
-        {
-            throw;
-        }
+        return examHistory;
     }
 
     /// <summary>

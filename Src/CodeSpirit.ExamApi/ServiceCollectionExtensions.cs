@@ -110,6 +110,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPracticeRecordService, PracticeRecordService>();
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<IExamSettingService, ExamSettingService>();
+        services.AddScoped<IMonitorService, MonitorService>();
 
         return services;
     }

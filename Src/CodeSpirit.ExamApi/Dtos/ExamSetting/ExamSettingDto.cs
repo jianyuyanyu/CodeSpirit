@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.StudentGroup;
@@ -102,6 +103,7 @@ public class ExamSettingDto
     /// </summary>
     [DisplayName("参加考试的学生分组")]
     [ListColumn(title: "name", subTitle: "description")]
+    [AmisTableField()]
     public List<StudentGroupDto> StudentGroups { get; set; } = [];
 
     /// <summary>

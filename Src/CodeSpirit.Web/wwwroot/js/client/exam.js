@@ -556,101 +556,140 @@
     
     // 修改初始化函数，确保在页面加载时正确加载答案
     function initializeAnswersFromStorage() {
+        console.log('[初始化答案] 开始初始化答案列表');
         try {
-            // 检查全局数据对象是否存在
-            if (!window.globalData) {
-                console.warn('[初始化答案] 全局数据对象未初始化，将在3秒后重试');
-                setTimeout(initializeAnswersFromStorage, 3000);
-                return;
-            }
-
-            // 防御性获取用户ID和考试ID
-            const userId = window.globalData?.user?.id;
-            const examId = window.globalData?.exam?.id;
+            // 获取用户ID和考试ID
+            const userId = window.globalData.user.id;
+            const examId = window.globalData.exam.id;
+            const recordId = window.globalData.exam.recordId;
             
-            console.log('[初始化答案] 当前用户ID:', userId);
-            console.log('[初始化答案] 当前考试ID:', examId);
-            
-            if (!userId || !examId) {
-                console.warn('[初始化答案] 用户ID或考试ID未就绪，将在3秒后重试');
-                setTimeout(initializeAnswersFromStorage, 3000);
+            if (!userId || !examId || !recordId) {
+                console.error('[初始化答案] 错误：无法初始化答案 - 缺少用户ID, 考试ID 或 记录ID');
+                examAnswers = [];
                 return;
             }
             
+            // 生成存储密钥
             const storageKey = `exam_${userId}_${examId}_answers`;
-            console.log(`[初始化答案] 尝试从存储密钥加载: ${storageKey}`);
+            console.log(`[初始化答案] 使用存储密钥: ${storageKey}`);
+            
+            // 从localStorage中加载答案
+            const savedAnswers = localStorage.getItem(storageKey);
+            
+            if (!savedAnswers) {
+                console.log('[初始化答案] 本地存储中没有找到答案');
+                examAnswers = [];
+                return;
+            }
             
             try {
-                const savedAnswers = localStorage.getItem(storageKey);
-                
-                if (!savedAnswers) {
-                    console.log('[初始化答案] 本地存储中没有找到已保存的答案，初始化空数组');
-                    examAnswers = [];
-                    return;
-                }
-                
+                // 解析JSON
                 const parsedAnswers = JSON.parse(savedAnswers);
+                console.log(`[初始化答案] 从本地存储加载了 ${parsedAnswers.length} 个答案`);
                 
-                if (!Array.isArray(parsedAnswers)) {
-                    console.error('[初始化答案] 存储的答案不是数组格式');
-                    examAnswers = [];
-                    return;
-                }
-                
-                console.log('[初始化答案] 从本地存储加载已保存的答案');
-                examAnswers = parsedAnswers;
-                console.log('[初始化答案] 成功加载已保存答案：', examAnswers);
-                
-                // 同步到amis实例
-                if (window.amisInstance) {
-                    try {
-                        const answersMap = {};
-                        examAnswers.forEach(answer => {
-                            if (answer && answer.questionId) {
-                                answersMap[`question_${answer.questionId}`] = answer.answer;
+                // 确保数据结构正确
+                if (Array.isArray(parsedAnswers)) {
+                    // 检查并过滤无效数据
+                    examAnswers = parsedAnswers.filter(item => item && item.questionId && item.answer !== undefined);
+                    console.log(`[初始化答案] 过滤后保留了 ${examAnswers.length} 个有效答案`);
+                    
+                    // 尝试从备份恢复，以防本地存储损坏
+                    if (examAnswers.length === 0) {
+                        console.warn('[初始化答案] 本地存储中的答案无效，尝试从备份恢复');
+                        try {
+                            const backupKey = `exam_${userId}_${examId}_answers_backup`;
+                            const backupAnswers = sessionStorage.getItem(backupKey);
+                            
+                            if (backupAnswers) {
+                                const parsedBackup = JSON.parse(backupAnswers);
+                                if (Array.isArray(parsedBackup) && parsedBackup.length > 0) {
+                                    examAnswers = parsedBackup.filter(item => item && item.questionId && item.answer !== undefined);
+                                    console.log(`[初始化答案] 从备份恢复了 ${examAnswers.length} 个答案`);
+                                }
                             }
-                        });
-                        
-                        window.amisInstance.updateProps({
-                            data: {
-                                ...(window.amisInstance.props?.data || {}),
-                                ...answersMap
-                            }
-                        });
-                        console.log('[初始化答案] 已同步答案到amis实例');
-                    } catch (amisError) {
-                        console.error('[初始化答案] 同步到amis实例失败：', amisError);
-                    }
-                }
-                
-                // 检查备份存储
-                try {
-                    const backupKey = `exam_${userId}_${examId}_answers_backup`;
-                    const backupAnswers = sessionStorage.getItem(backupKey);
-                    if (backupAnswers) {
-                        const parsedBackupAnswers = JSON.parse(backupAnswers);
-                        if (Array.isArray(parsedBackupAnswers) && parsedBackupAnswers.length > examAnswers.length) {
-                            console.log('[初始化答案] 从备份存储发现更多答案，使用备份数据');
-                            examAnswers = parsedBackupAnswers;
-                            // 再次同步到amis实例
-                            if (window.amisInstance) {
-                                const backupAnswersMap = {};
-                                examAnswers.forEach(answer => {
-                                    if (answer && answer.questionId) {
-                                        backupAnswersMap[`question_${answer.questionId}`] = answer.answer;
-                                    }
-                                });
-                                window.amisInstance.updateProps({
-                                    data: {
-                                        ...(window.amisInstance.props?.data || {}),
-                                        ...backupAnswersMap
-                                    }
-                                });
-                            }
+                        } catch (backupError) {
+                            console.error('[初始化答案] 检查备份存储失败：', backupError);
                         }
                     }
-                } catch (backupError) {
-                    console.error('[初始化答案] 检查备份存储失败：', backupError);
+                    
+                    // 尝试将本地答案同步到服务器
+                    if (examAnswers.length > 0) {
+                        console.log('[初始化答案] 尝试将本地答案同步到服务器');
+                        
+                        // 创建服务器需要的答案格式
+                        const answersToSync = examAnswers.map(answer => {
+                            // 将questionId转换为数字类型
+                            const numericQuestionId = parseInt(answer.questionId, 10);
+                            if (isNaN(numericQuestionId)) {
+                                console.error(`[初始化答案] 题目ID ${answer.questionId} 无法转换为数字，将跳过`);
+                                return null; // 返回null以便后面过滤掉
+                            }
+                            return {
+                                questionId: numericQuestionId,
+                                answer: answer.answer
+                            };
+                        }).filter(item => item !== null); // 过滤掉无效的项
+                        
+                        // 检查是否有有效的答案需要同步
+                        if (answersToSync.length === 0) {
+                            console.warn('[初始化答案] 没有有效的答案可以同步到服务器');
+                            return;
+                        }
+                        
+                        // 使用批量保存接口同步答案
+                        fetch(`/exam/api/exam/client/${recordId}/save-answers`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                                'X-Forwarded-With': 'CodeSpirit'
+                            },
+                            body: JSON.stringify(answersToSync)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 0) {
+                                console.log('[初始化答案] 成功将本地答案同步到服务器');
+                                
+                                // 初始化已同步答案集合
+                                window.syncedAnswers = new Set();
+                                examAnswers.forEach(answer => {
+                                    window.syncedAnswers.add(answer.questionId);
+                                });
+                                
+                                // 清空未同步记录
+                                window.unsyncedAnswers = new Set();
+                                window.failedSyncAnswers = new Map();
+                                
+                                // 更新同步状态显示
+                                updateSyncStatus();
+                            } else {
+                                console.error('[初始化答案] 同步到服务器失败:', data.msg);
+                                // 标记所有答案为未同步
+                                window.unsyncedAnswers = new Set();
+                                examAnswers.forEach(answer => {
+                                    window.unsyncedAnswers.add(answer.questionId);
+                                });
+                                
+                                // 更新同步状态显示
+                                updateSyncStatus();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('[初始化答案] 同步到服务器失败:', error);
+                            // 标记所有答案为未同步
+                            window.unsyncedAnswers = new Set();
+                            examAnswers.forEach(answer => {
+                                window.unsyncedAnswers.add(answer.questionId);
+                            });
+                            
+                            // 更新同步状态显示
+                            updateSyncStatus();
+                        });
+                    }
+                } else {
+                    console.error('[初始化答案] 存储的答案不是数组格式');
+                    examAnswers = [];
                 }
                 
             } catch (parseError) {
@@ -672,6 +711,7 @@
             // 获取用户ID和考试ID
             const userId = window.globalData.user.id;
             const examId = window.globalData.exam.id;
+            const recordId = window.globalData.exam.recordId;
             
             if (!userId) {
                 console.error('[保存答案] 错误：未找到用户ID');
@@ -680,6 +720,11 @@
             
             if (!examId) {
                 console.error('[保存答案] 错误：未找到考试ID');
+                return;
+            }
+            
+            if (!recordId) {
+                console.error('[保存答案] 错误：未找到考试记录ID');
                 return;
             }
             
@@ -803,19 +848,8 @@
                         [`question_${questionId}`]: processedAnswer
                     };
                     
-                    // 获取当前的props数据
-                    const currentData = window.amisInstance.props?.data || {};
-                    
-                    // 合并数据
-                    const newData = {
-                        ...currentData,
-                        ...updateData
-                    };
-                    
-                    // 更新props
-                    window.amisInstance.updateProps({
-                        data: newData
-                    });
+                    // 使用安全的更新函数
+                    window.safeUpdateAmisProps(updateData);
                     
                     console.log('[保存答案] 已同步到amis实例:', updateData);
                 } catch (amisError) {
@@ -823,6 +857,12 @@
                     // 同步失败不影响保存过程继续
                 }
             }
+            
+            // 向服务器提交当前答案
+            sendAnswerToServer(recordId, questionId, processedAnswer);
+            
+            // 更新答题进度
+            updateAnswerProgress();
             
             console.log(`[保存答案] 题目 ${questionId} 的答案保存完成`);
             
@@ -857,13 +897,11 @@
                                     }
                                 });
                                 
-                                window.amisInstance.updateProps({
-                                    data: {
-                                        ...(window.amisInstance.props?.data || {}),
-                                        ...answersMap
-                                    }
-                                });
+                                window.safeUpdateAmisProps(answersMap);
                                 console.log('[保存答案] 已重新同步所有答案到amis实例');
+                                
+                                // 更新答题进度
+                                updateAnswerProgress();
                             } catch (syncError) {
                                 console.error('[保存答案] 重新同步到amis实例失败:', syncError);
                             }
@@ -873,6 +911,149 @@
             } catch (recoveryError) {
                 console.error('[保存答案] 恢复答案失败：', recoveryError);
             }
+        }
+    }
+
+    // 添加向服务器提交单个答案的函数
+    function sendAnswerToServer(recordId, questionId, answer, retryCount = 0) {
+        const maxRetries = 3;
+        const retryDelay = 2000; // 2秒后重试
+        
+        // 跟踪未提交的答案（用于提交考试时的最终提交）
+        if (!window.unsyncedAnswers) {
+            window.unsyncedAnswers = new Set();
+        }
+        
+        // 标记此答案为未同步
+        window.unsyncedAnswers.add(questionId);
+        
+        // 更新同步状态显示
+        updateSyncStatus();
+        
+        console.log(`[提交答案] 向服务器提交题目 ${questionId} 的答案，尝试次数: ${retryCount + 1}`);
+        
+        // 确保questionId作为字符串提交，避免精度丢失
+        const answerDto = {
+            questionId: String(questionId), // 使用String()确保是字符串
+            answer: answer
+        };
+        
+        fetch(`/exam/api/exam/client/${recordId}/save-answer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                'X-Forwarded-With': 'CodeSpirit'
+            },
+            body: JSON.stringify(answerDto)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 0) {
+                console.log(`[提交答案] 题目 ${questionId} 的答案已成功提交到服务器`);
+                // 从未同步列表中移除
+                window.unsyncedAnswers.delete(questionId);
+                
+                // 添加到已同步列表，用于跟踪
+                if (!window.syncedAnswers) {
+                    window.syncedAnswers = new Set();
+                }
+                window.syncedAnswers.add(questionId);
+                
+                // 更新同步状态显示
+                updateSyncStatus();
+            } else {
+                console.error(`[提交答案] 服务器返回错误: ${data.msg || '未知错误'}`);
+                // 如果服务器返回了明确的错误，可以考虑重试
+                if (retryCount < maxRetries) {
+                    setTimeout(() => {
+                        sendAnswerToServer(recordId, questionId, answer, retryCount + 1);
+                    }, retryDelay * (retryCount + 1));
+                }
+            }
+        })
+        .catch(error => {
+            console.error(`[提交答案] 向服务器提交题目 ${questionId} 的答案失败:`, error);
+            
+            // 如果还有重试次数，则延迟后重试
+            if (retryCount < maxRetries) {
+                console.log(`[提交答案] 将在 ${retryDelay * (retryCount + 1) / 1000} 秒后重试...`);
+                setTimeout(() => {
+                    sendAnswerToServer(recordId, questionId, answer, retryCount + 1);
+                }, retryDelay * (retryCount + 1));
+            } else {
+                console.error(`[提交答案] 已达到最大重试次数 (${maxRetries})，题目 ${questionId} 的答案将在提交试卷时一并提交`);
+                
+                // 标记为需要在最终提交时同步
+                if (!window.failedSyncAnswers) {
+                    window.failedSyncAnswers = new Map();
+                }
+                window.failedSyncAnswers.set(questionId, answer);
+                
+                // 更新同步状态显示
+                updateSyncStatus();
+            }
+        });
+    }
+
+    // 添加更新同步状态显示的函数
+    function updateSyncStatus() {
+        try {
+            // 计算未同步的答案数量
+            const unsyncedCount = window.unsyncedAnswers ? window.unsyncedAnswers.size : 0;
+            const failedCount = window.failedSyncAnswers ? window.failedSyncAnswers.size : 0;
+            const totalUnsyncedCount = unsyncedCount + failedCount;
+            
+            // 获取状态显示元素
+            const statusElements = document.querySelectorAll('.sync-status-value');
+            const iconElements = document.querySelectorAll('.sync-status-icon');
+            
+            if (statusElements && statusElements.length > 0) {
+                // 设置适当的状态文本和样式
+                if (totalUnsyncedCount === 0) {
+                    // 全部已同步
+                    statusElements.forEach(el => {
+                        el.textContent = "已同步";
+                        el.className = "sync-status-value synced";
+                    });
+                    
+                    iconElements.forEach(el => {
+                        el.className = "sync-status-icon synced";
+                        el.setAttribute('title', '所有答案已同步到服务器');
+                    });
+                } else {
+                    // 有未同步的答案
+                    const text = `同步中 (${totalUnsyncedCount})`;
+                    statusElements.forEach(el => {
+                        el.textContent = text;
+                        el.className = "sync-status-value syncing";
+                    });
+                    
+                    iconElements.forEach(el => {
+                        el.className = "sync-status-icon syncing";
+                        el.setAttribute('title', `有 ${totalUnsyncedCount} 个答案正在同步到服务器`);
+                    });
+                    
+                    // 如果有同步失败的答案，特殊处理
+                    if (failedCount > 0) {
+                        statusElements.forEach(el => {
+                            el.className = "sync-status-value sync-failed";
+                        });
+                        
+                        iconElements.forEach(el => {
+                            el.className = "sync-status-icon sync-failed";
+                            el.setAttribute('title', `有 ${failedCount} 个答案同步失败，将在提交时重试`);
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[同步状态] 更新同步状态显示时出错：', error);
         }
     }
 
@@ -887,22 +1068,128 @@
             updateFixedHeaderHeight();
         }
         
-        // 转换为后端需要的格式
-        const answers = examAnswers.map(a => ({
-            questionId: a.questionId,
-            answer: a.answer
-        }));
-
-        console.debug(answers);
-        
         // 从全局数据获取recordId
         const recordId = window.globalData.exam.recordId;
         
         // 检查recordId是否有效
         if (!recordId) {
             console.error("提交失败: recordId为空");
-            alert("提交失败：无法获取考试记录ID，请刷新页面重试");
+            if (!isAutoSubmit) {
+                alert("提交失败：无法获取考试记录ID，请刷新页面重试");
+            }
             return;
+        }
+        
+        // 显示提交中的加载提示
+        showSubmittingNotification();
+        
+        // 首先检查是否有未同步到服务器的答案
+        let unsyncedAnswersExist = window.unsyncedAnswers && window.unsyncedAnswers.size > 0;
+        let failedSyncAnswersExist = window.failedSyncAnswers && window.failedSyncAnswers.size > 0;
+        
+        if (unsyncedAnswersExist || failedSyncAnswersExist) {
+            console.log('[提交考试] 检测到未同步的答案，先进行同步...');
+            
+            // 收集所有需要同步的答案
+            const answersToSync = [];
+            
+            // 添加未同步的答案
+            if (unsyncedAnswersExist) {
+                console.log(`[提交考试] 发现 ${window.unsyncedAnswers.size} 个未同步的答案`);
+                
+                // 从examAnswers中找出对应的答案
+                window.unsyncedAnswers.forEach(questionId => {
+                    const answer = examAnswers.find(a => a.questionId === questionId);
+                    if (answer) {
+                        answersToSync.push({
+                            questionId: String(answer.questionId), // 使用String()确保是字符串
+                            answer: answer.answer
+                        });
+                    }
+                });
+            }
+            
+            // 添加同步失败的答案
+            if (failedSyncAnswersExist) {
+                console.log(`[提交考试] 发现 ${window.failedSyncAnswers.size} 个同步失败的答案`);
+                
+                window.failedSyncAnswers.forEach((answer, questionId) => {
+                    answersToSync.push({
+                        questionId: String(questionId), // 使用String()确保是字符串
+                        answer: answer
+                    });
+                });
+            }
+            
+            console.log('[提交考试] 正在同步答案...', answersToSync);
+            
+            // 使用批量保存接口一次性提交所有未同步的答案
+            fetch(`/exam/api/exam/client/${recordId}/save-answers`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'X-Forwarded-With': 'CodeSpirit'
+                },
+                body: JSON.stringify(answersToSync)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 0) {
+                    console.log('[提交考试] 所有未同步答案已成功提交');
+                    // 清空未同步记录
+                    window.unsyncedAnswers = new Set();
+                    window.failedSyncAnswers = new Map();
+                    // 更新同步状态显示
+                    updateSyncStatus();
+                    // 继续提交考试
+                    proceedWithExamSubmission(recordId, isAutoSubmit);
+                } else {
+                    console.error('[提交考试] 批量同步答案失败:', data.msg);
+                    // 尽管同步失败，仍然继续提交考试，确保不影响用户
+                    proceedWithExamSubmission(recordId, isAutoSubmit);
+                }
+            })
+            .catch(error => {
+                console.error('[提交考试] 批量同步答案发生错误:', error);
+                // 即使发生错误也继续提交考试
+                proceedWithExamSubmission(recordId, isAutoSubmit);
+            });
+        } else {
+            // 没有未同步的答案，直接提交考试
+            console.log('[提交考试] 所有答案已同步，直接提交考试');
+            proceedWithExamSubmission(recordId, isAutoSubmit);
+        }
+    }
+    
+    // 显示提交中的通知
+    function showSubmittingNotification() {
+        // 使用自定义通知或浏览器原生API
+        if (typeof createCustomNotification === 'function') {
+            createCustomNotification('提交中', '正在提交您的答案，请勿关闭页面...', 'info', 0);
+        } else {
+            // 如果自定义通知不可用，只在控制台记录
+            console.log('[提交考试] 正在提交答案，请勿关闭页面...');
+        }
+    }
+    
+    // 实际执行提交考试的逻辑
+    function proceedWithExamSubmission(recordId, isAutoSubmit) {
+        console.log('[提交考试] 开始最终提交...');
+        
+        // 转换为后端需要的格式，确保questionId是字符串类型
+        const answers = examAnswers.map(a => {
+            return {
+                questionId: String(a.questionId), // 使用String()确保是字符串
+                answer: a.answer
+            };
+        });
+        
+        console.debug('[提交考试] 最终提交的答案数据:', answers);
+
+        // 提示用户提交正在进行中
+        if (typeof createCustomNotification === 'function') {
+            createCustomNotification('提交中', '正在提交考试，请不要关闭页面...', 'info', 30000);
         }
         
         // 提交考试
@@ -923,22 +1210,41 @@
                     clearInterval(examTimerInterval);
                 }
                 
+                // 显示成功提示
+                if (typeof createCustomNotification === 'function') {
+                    createCustomNotification('提交成功', '您的考试已成功提交！', 'success', 3000);
+                }
+                
                 // 根据后端返回的enableViewResult决定是否跳转到结果页面
                 if (data.data && data.data.enableViewResult) {
                     // 允许查看结果，跳转到结果页面
-                    window.location.href = `/client/exam/result/${recordId}`;
+                    setTimeout(() => {
+                        window.location.href = `/client/exam/result/${recordId}`;
+                    }, 1500);
                 } else {
                     // 不允许查看结果，显示提交成功页面
-                    alert("考试提交成功！");
-                    window.location.href = "/client/index";
+                    setTimeout(() => {
+                        window.location.href = "/client/index";
+                    }, 1500);
                 }
             } else {
-                alert(data.msg || "提交失败，请重试");
+                // 显示错误提示
+                if (typeof createCustomNotification === 'function') {
+                    createCustomNotification('提交失败', data.msg || "提交失败，请重试", 'error', 5000);
+                } else {
+                    alert(data.msg || "提交失败，请重试");
+                }
             }
         })
         .catch(error => {
-            console.error("提交考试失败", error);
-            alert("提交失败，请检查网络连接后重试");
+            console.error("[提交考试] 提交考试失败", error);
+            
+            // 显示错误提示
+            if (typeof createCustomNotification === 'function') {
+                createCustomNotification('提交失败', "网络错误，请检查网络连接后重试", 'error', 5000);
+            } else {
+                alert("提交失败，请检查网络连接后重试");
+            }
         });
     }
 
@@ -990,6 +1296,10 @@
                                             //    type: 'tpl',
                                             //    tpl: '<div class="user-info">欢迎您，${name}</div>'
                                             //},
+                                            {
+                                                type: 'tpl',
+                                                tpl: '<div class="sync-status-icon" title="答案同步状态"><i class="fa fa-cloud-upload"></i> <span class="sync-status-value">已同步</span></div>'
+                                            },
                                             {
                                                 type: 'tpl',
                                                 tpl: '<div class="screen-switch-icon" title="当前切屏次数/允许次数"><i class="fa fa-desktop"></i> <span class="screen-switch-value">0</span>/<span class="allowed-switch-value">${allowedScreenSwitchCount || "?"}</span></div>'
@@ -1103,6 +1413,23 @@
                                         tpl: '<div class="exam-timer">剩余时间：${timer.displayText}</div>'
                                     }
                                 ]
+                            },
+                            // 添加答题进度显示区域
+                            {
+                                type: 'flex',
+                                justify: 'center',
+                                alignItems: 'center',
+                                className: 'exam-progress-container',
+                                items: [
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="exam-progress"><span class="progress-label">答题进度：</span>' + 
+                                             '<div class="progress" style="width: 120px; margin-right: 5px;">' + 
+                                             '<div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>' + 
+                                             '</div>' + 
+                                             '<span class="progress-value">0/0</span> <span class="progress-percent">(0%)</span></div>'
+                                    }
+                                ]
                             }
                         ]
                     }
@@ -1127,6 +1454,12 @@
                                 script: `
                                     try {
                                         console.log("考试数据加载成功", event.data); 
+                                        
+                                        // 防御性检查：确保event和event.data存在
+                                        if (!event || !event.data) {
+                                            console.error("事件数据无效", event);
+                                            return;
+                                        }
                                         
                                         // 从API响应中获取记录ID
                                         recordId = event.data.recordId;
@@ -1157,54 +1490,60 @@
                                         // 更新允许切屏次数显示
                                         const allowedSwitchElements = document.querySelectorAll('.allowed-switch-value');
                                         if (allowedSwitchElements && allowedSwitchElements.length > 0) {
+                                            const allowedCount = event.data.allowedScreenSwitchCount || 0;
                                             allowedSwitchElements.forEach(el => {
-                                                el.textContent = window.globalData.exam.allowedScreenSwitchCount.toString();
+                                                el.textContent = allowedCount.toString();
                                             });
                                         }
                                         
-                                        // 显示调试信息
-                                        console.log("全局数据已更新:", {
-                                            exam: window.globalData.exam,
-                                            recordId: window.globalData.exam.recordId,
-                                            screenSwitch: {
-                                                count: window.globalData.exam.screenSwitchCount,
-                                                allowed: window.globalData.exam.allowedScreenSwitchCount
-                                            }
-                                        });
+                                        // 初始化考试计时器
+                                        initializeExamTimer(event.data);
                                         
-                                        // 启动计时器
-                                        try {
-                                            // 获取服务器返回的开始时间和考试时长
-                                            const serverStartTime = event.data.startTime;
-                                            const examDuration = event.data.duration;
-                                            
-                                            if (!serverStartTime) {
-                                                console.error("服务器未返回有效的开始时间，无法启动计时器");
-                                                return;
-                                            }
-                                            
-                                            console.log("从服务器获取的考试信息:", {
-                                                startTime: serverStartTime,
-                                                duration: examDuration + "分钟"
-                                            });
-                                            
-                                            // 调用计时器函数，传递考试时长和开始时间
-                                            startExamTimer(examDuration, serverStartTime);
-                                        } catch (error) {
-                                            console.error("调用计时器函数失败", error);
-                                        }
+                                        // 初始化答题进度显示
+                                        window.globalData.exam.questions = event.data.questions || [];
+                                        setTimeout(updateAnswerProgress, 1000); // 稍微延迟以确保答案数据已加载
                                         
-                                        // 在考试数据加载后初始化切屏检测（延迟执行确保数据已加载）
-                                        setTimeout(function() {
-                                            console.log("延迟执行切屏检测初始化");
-                                            if (typeof window.setupScreenSwitchDetection === 'function') {
-                                                window.setupScreenSwitchDetection();
+                                        console.log("成功初始化考试数据");
+                                        // 打印题目数据，检查是否正确
+                                        console.log("考试题目数据：", event.data.questions);
+                                        
+                                        // 直接将问题数据赋值给AMIS上下文
+                                        // 使用延迟加载，确保AMIS实例已完全初始化
+                                        setTimeout(() => {
+                                            if (window.amisInstance) {
+                                                try {
+                                                    // 防御性检查：确保props和data已初始化
+                                                    if (!window.amisInstance.props) {
+                                                        window.amisInstance.props = {};
+                                                        console.log("初始化了缺失的AMIS实例props属性");
+                                                    }
+                                                    
+                                                    if (!window.amisInstance.props.data) {
+                                                        window.amisInstance.props.data = {};
+                                                        console.log("初始化了缺失的AMIS实例data属性");
+                                                    }
+                                                    
+                                                    // 使用安全更新函数
+                                                    window.safeUpdateAmisProps({
+                                                        questions: event.data.questions || []
+                                                    });
+                                                    console.log("成功更新AMIS上下文中的题目数据");
+                                                } catch (err) {
+                                                    console.error("更新AMIS上下文数据时出错:", err);
+                                                }
                                             } else {
-                                                console.error("切屏检测函数未定义");
+                                                console.warn("延迟加载后AMIS实例仍未初始化");
+                                                
+                                                // 保存数据到全局，等待AMIS准备好后使用
+                                                if (!window.pendingData) {
+                                                    window.pendingData = {};
+                                                }
+                                                window.pendingData.questions = event.data.questions || [];
+                                                console.log("保存题目数据到临时存储，等待AMIS初始化");
                                             }
-                                        }, 2000);
+                                        }, 1000);
                                     } catch (error) {
-                                        console.error("处理考试数据时出错:", error);
+                                        console.error("初始化考试数据时出错:", error);
                                     }
                                 `
                             }
@@ -1255,16 +1594,123 @@
                             },
                             {
                                 type: 'service',
-                                schemaApi: `get:/exam/api/exam/client/${examId}/amis`,
                                 className: 'question-container',
+                                body: {
+                                    type: "form",
+                                    title: "",
+                                    id: "examForm",
+                                    actions: [],  // 隐藏表单自带的提交按钮
+                                    body: {
+                                        type: "each",
+                                        name: "questions",
+                                        items: {
+                                            type: "container",
+                                            body: [
+                                                {
+                                                    type: "tpl",
+                                                    tpl: "<div class=\"question-label\"><pre>${index + 1}. ${item.content} </pre><span style=\"color:#999\">（${item.score}分）</span></div>",
+                                                    inline: false
+                                                },
+                                                {
+                                                    type: "service",
+                                                    body: [
+                                                        {
+                                                            type: "radios",
+                                                            name: "question_${item.id}",
+                                                            source: "${options}",
+                                                            mode: "horizontal",
+                                                            visibleOn: "item.type === 'SingleChoice'",
+                                                            onEvent: {
+                                                                change: {
+                                                                    actions: [
+                                                                        {
+                                                                            actionType: "custom",
+                                                                            script: "saveAnswer(event.data.__rendererData.id, event.data.value);"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            type: "checkboxes",
+                                                            name: "question_${item.id}",
+                                                            options: "${options | split |json|asArray}",
+                                                            mode: "horizontal",
+                                                            required: "${item.isRequired}",
+                                                            visibleOn: "item.type === 'MultipleChoice'",
+                                                            onEvent: {
+                                                                change: {
+                                                                    actions: [
+                                                                        {
+                                                                            actionType: "custom",
+                                                                            script: "saveAnswer('${item.id}', event.data.value);"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            type: "radios",
+                                                            name: "question_${item.id}",
+                                                            options: [
+                                                                {
+                                                                    label: "正确",
+                                                                    value: "True"
+                                                                },
+                                                                {
+                                                                    label: "错误",
+                                                                    value: "False"
+                                                                }
+                                                            ],
+                                                            mode: "horizontal",
+                                                            required: "${item.isRequired}",
+                                                            visibleOn: "${item.type === 'TrueFalse'}",
+                                                            onEvent: {
+                                                                change: {
+                                                                    actions: [
+                                                                        {
+                                                                            actionType: "custom",
+                                                                            script: "saveAnswer('${item.id}', event.data.value);"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            type: "textarea",
+                                                            name: "question_${item.id}",
+                                                            placeholder: "请输入答案",
+                                                            minRows: 3,
+                                                            maxRows: 6,
+                                                            required: "${item.isRequired}",
+                                                            visibleOn: "${item.type !== 'SingleChoice' && item.type !== 'MultipleChoice' && item.type !== 'TrueFalse'}",
+                                                            onEvent: {
+                                                                change: {
+                                                                    actions: [
+                                                                        {
+                                                                            actionType: "custom",
+                                                                            script: "saveAnswer('${item.id}', event.data.value);"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    type: "divider",
+                                                    hidden: "${index === questions.length - 1}"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
                                 onEvent: {
-                                    fetchSchemaInited: {
+                                    fetchInited: {
                                         actions: [
                                             {
                                                 actionType: "custom",
-                                                script: `
-                                                    console.log("题目Amis配置加载成功", event.data); 
-                                                `
+                                                script: "console.log('题目数据：', event.data.questions);"
                                             }
                                         ]
                                     }
@@ -1290,30 +1736,12 @@
                                                 actions: [
                                                     {
                                                         actionType: 'custom',
-                                                        script: 'submitExam();',
+                                                        script: 'submitExam(false);',
                                                     }
                                                 ]
                                             }
                                         }
                                     }
-                                    //,
-                                    //{
-                                    //    type: 'button',
-                                    //    label: '取消考试',
-                                    //    level: 'link',
-                                    //    size: 'lg',
-                                    //    className: 'ml-3',
-                                    //    onEvent: {
-                                    //        click: {
-                                    //            actions: [
-                                    //                {
-                                    //                    actionType: 'custom',
-                                    //                    script: 'cancelExam();'
-                                    //                }
-                                    //            ]
-                                    //        }
-                                    //    }
-                                    //}
                                 ]
                             }
                         ],
@@ -1334,6 +1762,8 @@
     window.updateTimerDisplay = updateTimerDisplay;
     window.saveAnswer = saveAnswer;
     window.initializeAnswersFromStorage = initializeAnswersFromStorage;
+    window.initializeExamTimer = initializeExamTimer;
+    window.updateAnswerProgress = updateAnswerProgress;
 
     // 初始化amis
     let amisInstance = amis.embed(
@@ -1349,7 +1779,8 @@
                     seconds: 0,
                     remainingSeconds: 0
                 },
-                name: ''
+                name: '',
+                questions: window.globalData?.exam?.questions || []
             },
             locale: 'zh-CN',
             context: {
@@ -1359,6 +1790,38 @@
             }
         },
         {
+            // 添加AMIS组件挂载事件处理
+            mountRenderer: (renderer) => {
+                console.log("AMIS渲染器已挂载");
+                // 标记AMIS实例已完全初始化
+                window.amisReady = true;
+                
+                // 如果有之前缓存的待处理数据，立即应用它
+                if (window.pendingData && window.pendingData.questions) {
+                    console.log("从缓存加载待处理的题目数据");
+                    setTimeout(() => {
+                        window.safeUpdateAmisProps({
+                            questions: window.pendingData.questions
+                        });
+                        console.log("已从缓存应用题目数据到AMIS");
+                    }, 500);
+                }
+                // 如果有已加载的题目数据，尝试更新
+                else if (window.globalData?.exam?.questions?.length > 0) {
+                    setTimeout(() => {
+                        console.log("AMIS挂载后尝试更新题目数据");
+                        window.safeUpdateAmisProps({
+                            questions: window.globalData.exam.questions
+                        });
+                    }, 500);
+                }
+            },
+            updateLocation: (location) => {
+                history.push(location);
+            },
+            jumpTo: (to) => {
+                history.push(to);
+            },
             requestAdaptor: (api) => {
                 var token = localStorage.getItem('token');
                 return {
@@ -1406,6 +1869,25 @@
 
     // 立即设置全局amis实例以确保计时器可以使用
     window.amisInstance = amisInstance;
+    
+    // 确保AMIS实例初始化完成
+    console.log("AMIS实例初始化完成，测试属性访问:", amisInstance.props ? "props已存在" : "props不存在");
+    
+    // 如果amisInstance.props不存在，进行初始化
+    if (!amisInstance.props) {
+        amisInstance.props = {
+            data: {
+                timer: {
+                    displayText: '加载中...',
+                    hours: 0, 
+                    minutes: 0,
+                    seconds: 0,
+                    remainingSeconds: 0
+                }
+            }
+        };
+        console.log("已初始化AMIS实例的props属性");
+    }
 
     history.listen(state => {
         amisInstance.updateProps({
@@ -1419,6 +1901,9 @@
         
         // 初始化答案
         initializeAnswersFromStorage();
+        
+        // 初始化同步状态显示
+        updateSyncStatus();
         
         // 尝试初始化计时器
         if (window.globalData && window.globalData.exam) {
@@ -1447,13 +1932,13 @@
             if (fixedHeaderContainer) {
                 const height = fixedHeaderContainer.offsetHeight;
                 document.documentElement.style.setProperty('--fixed-header-height', height + 'px');
-                console.log("[固定头部] 高度已更新:", height + 'px');
+                //console.log("[固定头部] 高度已更新:", height + 'px');
                 
                 // 更新spacer高度
                 const spacer = document.querySelector('.fixed-header-spacer');
                 if (spacer) {
                     spacer.style.height = (height + 10) + 'px';
-                    console.log("[固定头部] spacer高度已更新:", (height + 10) + 'px');
+                    //console.log("[固定头部] spacer高度已更新:", (height + 10) + 'px');
                 }
             }
         } catch (error) {
@@ -1603,4 +2088,292 @@
         setupHeaderScroll();
     });
 
+    // 添加题目答题进度更新函数
+    function updateAnswerProgress() {
+        try {
+            // 获取题目总数
+            const totalQuestions = (window.globalData?.exam?.questions || []).length;
+            if (!totalQuestions) return;
+            
+            // 计算已回答的题目数
+            const answeredCount = examAnswers.filter(a => a && a.answer && a.answer.trim() !== '').length;
+            
+            // 计算进度百分比
+            const progressPercent = totalQuestions ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+            
+            // 更新DOM显示
+            const progressValueElements = document.querySelectorAll('.progress-value');
+            if (progressValueElements && progressValueElements.length > 0) {
+                progressValueElements.forEach(el => {
+                    el.textContent = `${answeredCount}/${totalQuestions}`;
+                });
+            }
+            
+            // 更新进度条
+            const progressBarElements = document.querySelectorAll('.progress-bar');
+            if (progressBarElements && progressBarElements.length > 0) {
+                progressBarElements.forEach(el => {
+                    el.style.width = `${progressPercent}%`;
+                    el.setAttribute('aria-valuenow', progressPercent);
+                });
+            }
+            
+            // 更新百分比显示
+            const progressPercentElements = document.querySelectorAll('.progress-percent');
+            if (progressPercentElements && progressPercentElements.length > 0) {
+                progressPercentElements.forEach(el => {
+                    el.textContent = `${progressPercent}%`;
+                });
+            }
+            
+            console.log(`[答题进度] 已更新: ${answeredCount}/${totalQuestions} (${progressPercent}%)`);
+        } catch (error) {
+            console.error('[答题进度] 更新答题进度时出错:', error);
+        }
+    }
+
+    // 修改saveAnswer函数，在保存答案后更新进度
+    function saveAnswer(questionId, answer) {
+        if (!questionId) {
+            console.error('[保存答案] 题目ID为空');
+            return;
+        }
+        
+        // 查找此题是否已有答案
+        const existingAnswerIndex = examAnswers.findIndex(a => a.questionId === questionId);
+        
+        if (existingAnswerIndex >= 0) {
+            // 如果答案相同，不做任何操作
+            if (examAnswers[existingAnswerIndex].answer === answer) {
+                return;
+            }
+            // 更新现有答案
+            examAnswers[existingAnswerIndex].answer = answer;
+        } else {
+            // 添加新答案
+            examAnswers.push({
+                questionId: questionId,
+                answer: answer
+            });
+        }
+        
+        // 记录到本地存储
+        localStorage.setItem(`exam_answers_${window.globalData.exam.recordId}`, JSON.stringify(examAnswers));
+        
+        // 向服务器提交答案
+        if (window.globalData.exam.recordId) {
+            sendAnswerToServer(window.globalData.exam.recordId, questionId, answer);
+        } else {
+            console.error('[保存答案] 考试记录ID未设置，无法向服务器提交答案');
+        }
+        
+        // 更新答题进度
+        updateAnswerProgress();
+    }
+
+    // 在初始加载答案后也更新进度
+    function recoverPreviousAnswers() {
+        try {
+            const savedAnswers = localStorage.getItem(`exam_answers_${window.globalData.exam.recordId}`);
+            if (savedAnswers) {
+                try {
+                    examAnswers = JSON.parse(savedAnswers);
+                    console.log('[保存答案] 已从本地存储恢复之前的答案');
+                    
+                    if (examAnswers.length > 0) {
+                        if (window.amisInstance) {
+                            try {
+                                const answersMap = {};
+                                examAnswers.forEach(answer => {
+                                    if (answer && answer.questionId) {
+                                        answersMap[`question_${answer.questionId}`] = answer.answer;
+                                    }
+                                });
+                                
+                                window.safeUpdateAmisProps(answersMap);
+                                console.log('[保存答案] 已重新同步所有答案到amis实例');
+                                
+                                // 更新答题进度
+                                updateAnswerProgress();
+                            } catch (syncError) {
+                                console.error('[保存答案] 重新同步到amis实例失败:', syncError);
+                            }
+                        }
+                    }
+                } catch (recoveryError) {
+                    console.error('[保存答案] 恢复答案失败：', recoveryError);
+                }
+            }
+        } catch (error) {
+            console.error('[保存答案] 尝试恢复答案时出错:', error);
+        }
+    }
+
+    // 修改onLoad回调函数，确保初始化时更新进度
+    window.onLoad = function() {
+        console.log('[考试页] 初始化事件');
+        
+        // 初始化考试全局变量
+        window.examAnswers = [];
+        
+        // 恢复之前的答案
+        recoverPreviousAnswers();
+        
+        // 设置切屏检测
+        window.setupScreenSwitchDetection();
+        
+        // 设置答题进度初始状态
+        updateAnswerProgress();
+        
+        // 其他初始化代码...
+    };
+
+    // 初始化考试计时器
+    function initializeExamTimer(examData) {
+        try {
+            // 获取服务器返回的开始时间和考试时长
+            const serverStartTime = examData.startTime;
+            const examDuration = examData.duration;
+            
+            if (!serverStartTime) {
+                console.error("服务器未返回有效的开始时间，无法启动计时器");
+                return;
+            }
+            
+            console.log("从服务器获取的考试信息:", {
+                startTime: serverStartTime,
+                duration: examDuration + "分钟"
+            });
+            
+            // 调用计时器函数，传递考试时长和开始时间
+            startExamTimer(examDuration, serverStartTime);
+            
+            // 在考试数据加载后初始化切屏检测（延迟执行确保数据已加载）
+            setTimeout(function() {
+                console.log("延迟执行切屏检测初始化");
+                if (typeof window.setupScreenSwitchDetection === 'function') {
+                    window.setupScreenSwitchDetection();
+                } else {
+                    console.error("切屏检测函数未定义");
+                }
+            }, 2000);
+            
+            // 显示调试信息
+            console.log("考试全局数据已更新:", {
+                exam: window.globalData.exam,
+                recordId: window.globalData.exam.recordId,
+                screenSwitch: {
+                    count: window.globalData.exam.screenSwitchCount,
+                    allowed: window.globalData.exam.allowedScreenSwitchCount
+                }
+            });
+        } catch (error) {
+            console.error("初始化考试计时器失败", error);
+        }
+    }
+
+    // 使函数全局可用，供AMIS调用
+    window.initializeExamTimer = initializeExamTimer;
+    window.updateAnswerProgress = updateAnswerProgress;
+    window.saveAnswer = saveAnswer;
 })(); 
+
+// 添加全局的安全访问AMIS数据函数
+window.safeUpdateAmisProps = function(data, retryCount = 0) {
+    // 最大重试次数
+    const MAX_RETRIES = 3;
+    
+    if (!window.amisInstance) {
+        console.warn("无法更新AMIS属性，amisInstance未初始化");
+        
+        // 保存数据到等待队列
+        if (!window.pendingData) {
+            window.pendingData = {};
+        }
+        Object.assign(window.pendingData, data);
+        console.log("amisInstance未初始化，数据已保存到待处理队列", data);
+        
+        // 如果未初始化，且未超过最大重试次数，则延迟重试
+        if (retryCount < MAX_RETRIES) {
+            console.log(`AMIS实例未初始化，将在2秒后重试 (${retryCount + 1}/${MAX_RETRIES})`);
+            setTimeout(() => {
+                window.safeUpdateAmisProps(data, retryCount + 1);
+            }, 2000);
+        }
+        return false;
+    }
+    
+    try {
+        // 确保props存在
+        if (!window.amisInstance.props) {
+            window.amisInstance.props = {};
+            console.log("创建了缺失的amisInstance.props");
+        }
+        
+        // 确保data存在
+        if (!window.amisInstance.props.data) {
+            window.amisInstance.props.data = {};
+            console.log("创建了缺失的amisInstance.props.data");
+        }
+        
+        const currentData = window.amisInstance.props.data || {};
+        
+        // 记录拷贝以防失败时可以回滚
+        const dataCopy = JSON.parse(JSON.stringify(currentData));
+        
+        try {
+            // 首先尝试直接合并，避免触发完整更新 
+            Object.assign(window.amisInstance.props.data, data);
+            console.log("已直接更新AMIS数据", data);
+            
+            // 如果数据包含关键数据如问题列表，还是要手动调用更新
+            if (data.questions) {
+                // 第二步：使用API调用更新以触发界面刷新 
+                window.amisInstance.updateProps({
+                    data: window.amisInstance.props.data
+                });
+                console.log("已触发AMIS重新渲染");
+            }
+            
+            return true;
+        } catch (innerError) {
+            // 如果直接更新失败，回滚数据并尝试标准方法
+            console.warn("直接更新AMIS数据失败，尝试标准方法", innerError);
+            window.amisInstance.props.data = dataCopy;
+            
+            // 使用标准更新方法
+            window.amisInstance.updateProps({
+                data: {
+                    ...currentData,
+                    ...data
+                }
+            });
+            
+            return true;
+        }
+    } catch (error) {
+        console.error("安全更新AMIS属性时出错:", error);
+        
+        // 尝试使用更安全的方法更新
+        try {
+            window.amisInstance.updateProps({
+                data: data
+            });
+            return true;
+        } catch (fallbackError) {
+            console.error("AMIS属性更新备用方法也失败:", fallbackError);
+            
+            // 如果仍然失败且未超过最大重试次数，则延迟重试
+            if (retryCount < MAX_RETRIES) {
+                console.log(`更新AMIS属性失败，将在2秒后重试 (${retryCount + 1}/${MAX_RETRIES})`);
+                setTimeout(() => {
+                    window.safeUpdateAmisProps(data, retryCount + 1);
+                }, 2000);
+            }
+            
+            return false;
+        }
+    }
+};
+
+// 添加同步状态样式部分已移除，样式已迁移到exam.css文件中

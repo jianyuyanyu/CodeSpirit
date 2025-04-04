@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel;
 
 namespace CodeSpirit.ExamApi.Dtos.Client;
 
 /// <summary>
-/// 考试基本信息DTO
+/// 客户端考试基本信息DTO
 /// </summary>
 public class ClientExamBasicInfoDto
 {
@@ -56,7 +57,7 @@ public class ClientExamBasicInfoDto
     public long? RecordId { get; set; }
     
     /// <summary>
-    /// 允许切屏次数
+    /// 允许切屏次数（0表示不限制）
     /// </summary>
     [DisplayName("允许切屏次数")]
     public int AllowedScreenSwitchCount { get; set; }
@@ -78,4 +79,10 @@ public class ClientExamBasicInfoDto
     /// </summary>
     [DisplayName("是否启用切屏检测")]
     public bool EnableScreenSwitchDetection => AllowedScreenSwitchCount >= 0;
+    
+    /// <summary>
+    /// 考试题目列表
+    /// </summary>
+    [DisplayName("考试题目列表")]
+    public List<ClientExamQuestionDto> Questions { get; set; } = new List<ClientExamQuestionDto>();
 } 

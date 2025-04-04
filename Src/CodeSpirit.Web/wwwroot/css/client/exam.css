@@ -989,3 +989,145 @@
         transform: translateY(-1px);
         box-shadow: 0 3px 6px rgba(0,0,0,0.1);
     }
+
+/* 答案同步状态样式 */
+.sync-status-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 15px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #555;
+    background-color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+    cursor: help;
+}
+
+.sync-status-icon i {
+    margin-right: 5px;
+    font-size: 1rem;
+}
+
+.sync-status-icon.synced {
+    color: #52c41a;
+    background-color: rgba(82, 196, 26, 0.1);
+}
+
+.sync-status-icon.syncing {
+    color: #1890ff;
+    background-color: rgba(24, 144, 255, 0.1);
+    animation: pulse 1.5s infinite;
+}
+
+.sync-status-icon.sync-failed {
+    color: #f5222d;
+    background-color: rgba(255, 240, 240, 0.9);
+}
+
+.sync-status-value {
+    font-weight: 500;
+}
+
+.sync-status-value.synced {
+    color: #52c41a;
+}
+
+.sync-status-value.syncing {
+    color: #1890ff;
+}
+
+.sync-status-value.sync-failed {
+    color: #f5222d;
+}
+
+/* 响应式样式中添加同步状态的处理 */
+@media (max-width: 768px) {
+    /* 现有响应式样式 */
+    
+    .sync-status-icon {
+        padding: 6px 8px;
+        font-size: 12px;
+        margin-right: 8px;
+    }
+    
+    .sync-status-icon i {
+        font-size: 12px;
+        margin-right: 3px;
+    }
+    
+    .sync-status-value {
+        font-size: 12px;
+    }
+}
+
+/* 答题进度样式 */
+.exam-progress-container {
+    margin-left: 10px;
+}
+
+.exam-progress {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+}
+
+.progress-label {
+    margin-right: 5px;
+    white-space: nowrap;
+}
+
+.progress {
+    height: 10px;
+    border-radius: 5px;
+    background-color: #f0f0f0;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    transition: width 0.6s ease, background-color 0.6s ease;
+}
+
+.progress-bar.bg-danger {
+    background-color: var(--danger-color);
+}
+
+.progress-bar.bg-warning {
+    background-color: var(--warning-color);
+}
+
+.progress-bar.bg-success {
+    background-color: var(--success-color);
+}
+
+.progress-value {
+    margin: 0 5px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.progress-percent {
+    color: #666;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .exam-progress-container {
+        margin-left: 0;
+    }
+    
+    .exam-progress {
+        font-size: 12px;
+    }
+    
+    .progress {
+        width: 80px !important;
+    }
+    
+    .progress-value,
+    .progress-percent {
+        font-size: 12px;
+    }
+}

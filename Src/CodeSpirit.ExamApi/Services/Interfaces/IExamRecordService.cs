@@ -3,6 +3,8 @@ using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Core.Dtos;
+using System.Linq.Expressions;
 
 namespace CodeSpirit.ExamApi.Services.Interfaces;
 
@@ -24,6 +26,14 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     /// <param name="submitAnswerDto">提交答案参数</param>
     /// <returns>是否成功</returns>
     Task<bool> SubmitAnswerAsync(SubmitAnswerDto submitAnswerDto);
+    
+    /// <summary>
+    /// 批量提交答案
+    /// </summary>
+    /// <param name="examRecordId">考试记录ID</param>
+    /// <param name="answers">答案列表</param>
+    /// <returns>是否全部成功</returns>
+    Task<bool> SubmitAnswersAsync(long examRecordId, List<ClientExamAnswerDto> answers);
     
     /// <summary>
     /// 完成考试
@@ -86,13 +96,13 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     Task RecordScreenSwitchForClientAsync(long recordId, long studentId, string userIp);
     
     /// <summary>
-    /// 提交考试答案
+    /// 客户端提交考试
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
     /// <param name="studentId">学生ID</param>
-    /// <param name="answers">答案列表</param>
-    /// <returns>提交结果，包含是否成功和是否可查看结果</returns>
-    Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto> answers);
+    /// <param name="answers">可选的答案列表，用于最后提交前保存</param>
+    /// <returns>提交结果和是否可查看结果</returns>
+    Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto> answers = null);
     
     /// <summary>
     /// 获取用户的考试历史记录

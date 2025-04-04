@@ -94,7 +94,7 @@ public class IndexController : ApiControllerBase
     /// <param name="answers">考试答案</param>
     /// <returns>操作结果，包含是否可以查看结果</returns>
     [HttpPost("{id}/submit")]
-    public async Task<IActionResult> SubmitExam(long id, [FromBody] List<ClientExamAnswerDto> answers)
+    public async Task<ActionResult<ApiResponse>> SubmitExam(long id, [FromBody] List<ClientExamAnswerDto> answers)
     {
         var currentUserId = GetCurrentUserId();
         if (!EnsureUserLoggedIn())
@@ -104,7 +104,15 @@ public class IndexController : ApiControllerBase
         
         try
         {
-            var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId, answers);
+            // 如果有未保存的答案，先保存这些答案
+            if (answers != null && answers.Count > 0)
+            {
+                _logger.LogInformation("提交考试前保存 {Count} 个答案", answers.Count);
+                await _clientService.SaveAnswerAsync(id, currentUserId, answers);
+            }
+            
+            // 调用提交服务更改考试状态（不再传递答案参数）
+            var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId, null);
             
             // 返回提交结果和是否允许查看结果
             return Ok(new ApiResponse<dynamic>(0, "提交成功！", new { success, enableViewResult }));
@@ -153,226 +161,6 @@ public class IndexController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取考试题目的Amis配置
-    /// </summary>
-    /// <param name="id">考试ID</param>
-    /// <returns>考试题目的Amis配置</returns>
-    [HttpGet("{id}/amis")]
-    public async Task<IActionResult> GetExamAmisConfig(long id)
-    {
-        var currentUserId = GetCurrentUserId();
-        if (!EnsureUserLoggedIn())
-        {
-            return Unauthorized(new ApiResponse(-1, "请先登录"));
-        }
-
-        var userIp = GetClientIpAddress();
-        var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
-
-        try
-        {
-            // 获取考试详情
-            var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
-
-            // 使用JObject/JArray构建表单
-            var formItems = new JArray();
-
-            // 为每个题目创建对应的表单组件
-            for (int i = 0; i < examDetail.Questions.Count; i++)
-            {
-                var question = examDetail.Questions[i];
-                int index = i + 1;
-
-                // 问题标题
-                var titleObj = new JObject
-                {
-                    ["type"] = "tpl",
-                    ["tpl"] = $"<div class=\"question-label\"><pre>{index}. {question.Content} </pre><span style=\"color:#999\">（{question.Score}分）</span></div>",
-                    ["inline"] = false
-                };
-                formItems.Add(titleObj);
-
-                // 根据题目类型添加不同的表单控件
-                switch (question.Type)
-                {
-                    case "SingleChoice":
-                        // 解析选项
-                        var singleOptions = new JArray();
-                        var options = question.Options.Split(',');
-                        for (int idx = 0; idx < options.Length; idx++)
-                        {
-                            singleOptions.Add(new JObject
-                            {
-                                ["label"] = options[idx],
-                                ["value"] = options[idx]
-                            });
-                        }
-
-                        var singleChoiceObj = new JObject
-                        {
-                            ["type"] = "radios",
-                            ["name"] = $"question_{question.Id}",
-                            ["options"] = singleOptions,
-                            ["mode"] = "horizontal",
-                            ["required"] = question.IsRequired
-                        };
-
-                        var singleChoiceEvent = new JObject
-                        {
-                            ["change"] = new JObject
-                            {
-                                ["actions"] = new JArray
-                                {
-                                    new JObject
-                                    {
-                                        ["actionType"] = "custom",
-                                        ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                    }
-                                }
-                            }
-                        };
-                        singleChoiceObj["onEvent"] = singleChoiceEvent;
-                        formItems.Add(singleChoiceObj);
-                        break;
-
-                    case "MultipleChoice":
-                        // 解析选项
-                        var multiOptions = new JArray();
-                        var multiChoiceOptions = question.Options.Split(',');
-                        for (int idx = 0; idx < multiChoiceOptions.Length; idx++)
-                        {
-                            multiOptions.Add(new JObject
-                            {
-                                ["label"] = multiChoiceOptions[idx],
-                                ["value"] = multiChoiceOptions[idx],
-                            });
-                        }
-
-                        var multiChoiceObj = new JObject
-                        {
-                            ["type"] = "checkboxes",
-                            ["name"] = $"question_{question.Id}",
-                            ["options"] = multiOptions,
-                            ["mode"] = "horizontal",
-                            ["required"] = question.IsRequired
-                        };
-
-                        var multiChoiceEvent = new JObject
-                        {
-                            ["change"] = new JObject
-                            {
-                                ["actions"] = new JArray
-                                {
-                                    new JObject
-                                    {
-                                        ["actionType"] = "custom",
-                                        ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                    }
-                                }
-                            }
-                        };
-                        multiChoiceObj["onEvent"] = multiChoiceEvent;
-                        formItems.Add(multiChoiceObj);
-                        break;
-
-                    case "TrueFalse":
-                        // 创建判断题选项（统一使用radios组件）
-                        var tfOptions = new JArray
-                        {
-                            new JObject { ["label"] = "正确", ["value"] = "True" },
-                            new JObject { ["label"] = "错误", ["value"] = "False" }
-                        };
-
-                        var tfObj = new JObject
-                        {
-                            ["type"] = "radios",
-                            ["name"] = $"question_{question.Id}",
-                            ["options"] = tfOptions,
-                            ["mode"] = "horizontal",
-                            ["required"] = question.IsRequired
-                        };
-
-                        var tfEvent = new JObject
-                        {
-                            ["change"] = new JObject
-                            {
-                                ["actions"] = new JArray
-                                {
-                                    new JObject
-                                    {
-                                        ["actionType"] = "custom",
-                                        ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                    }
-                                }
-                            }
-                        };
-                        tfObj["onEvent"] = tfEvent;
-                        formItems.Add(tfObj);
-                        break;
-
-                    default:
-                        // 简答题和其他题型
-                        var textareaObj = new JObject
-                        {
-                            ["type"] = "textarea",
-                            ["name"] = $"question_{question.Id}",
-                            ["placeholder"] = "请输入答案",
-                            ["minRows"] = 3,
-                            ["maxRows"] = 6,
-                            ["required"] = question.IsRequired
-                        };
-
-                        var textareaEvent = new JObject
-                        {
-                            ["change"] = new JObject
-                            {
-                                ["actions"] = new JArray
-                                {
-                                    new JObject
-                                    {
-                                        ["actionType"] = "custom",
-                                        ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                    }
-                                }
-                            }
-                        };
-                        textareaObj["onEvent"] = textareaEvent;
-                        formItems.Add(textareaObj);
-                        break;
-                }
-
-                // 如果不是最后一个题目，添加分隔线
-                if (i < examDetail.Questions.Count - 1)
-                {
-                    formItems.Add(new JObject { ["type"] = "divider" });
-                }
-            }
-
-            // 构建Amis配置对象
-            var amisConfig = new JObject
-            {
-                ["type"] = "form",
-                ["title"] = "",
-                ["id"] = "examForm",
-                ["body"] = formItems,
-                ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
-            };
-
-            return Ok(amisConfig);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "获取考试AMIS配置时发生业务逻辑错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
-            return BadRequest(new ApiResponse(-1, ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取考试AMIS配置时发生未处理错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
-            return StatusCode(500, new ApiResponse(-1, "获取考试配置失败，请稍后重试"));
-        }
-    }
-
-    /// <summary>
     /// 获取考试基本信息
     /// </summary>
     /// <param name="id">考试ID</param>
@@ -388,8 +176,28 @@ public class IndexController : ApiControllerBase
 
         try
         {
-            var result = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
-            return SuccessResponse(result);
+            // 获取用户IP和设备信息
+            var userIp = GetClientIpAddress();
+            var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
+            
+            // 获取考试详情，包括题目列表
+            var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
+            
+            // 获取基本信息
+            var basicInfo = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
+            
+            // 将题目信息添加到基本信息中
+            basicInfo.Questions = examDetail.Questions.Select(q => new ClientExamQuestionDto
+            {
+                Id = q.Id,
+                Type = q.Type,
+                Content = q.Content,
+                Score = q.Score,
+                Options = q.Options,
+                IsRequired = q.IsRequired
+            }).ToList();
+            
+            return SuccessResponse(basicInfo);
         }
         catch (InvalidOperationException ex)
         {
@@ -546,6 +354,91 @@ public class IndexController : ApiControllerBase
         {
             _logger.LogError(ex, "获取考生个人信息时发生未处理错误，用户 {UserId}", currentUserId);
             return StatusCode(500, new ApiResponse(-1, "获取考生信息失败，请稍后重试"));
+        }
+    }
+
+    /// <summary>
+    /// 保存单个题目的答案
+    /// </summary>
+    /// <param name="id">考试记录ID</param>
+    /// <param name="answer">单个题目的答案</param>
+    /// <returns>操作结果</returns>
+    [HttpPost("{id}/save-answer")]
+    public async Task<ActionResult<ApiResponse>> SaveAnswer(long id, [FromBody] ClientExamAnswerDto answer)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
+        {
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
+        }
+        
+        try
+        {
+            if (answer == null)
+            {
+                return BadRequest(new ApiResponse(-1, "答案数据无效"));
+            }
+            
+            // 将单个答案转换为列表，以便重用现有的服务方法
+            var answers = new List<ClientExamAnswerDto> { answer };
+            
+            // 保存单个答案到服务器
+            var success = await _clientService.SaveAnswerAsync(id, currentUserId, answers);
+            
+            return SuccessResponse();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "保存答案时发生业务逻辑错误，用户 {UserId}，考试记录 {RecordId}，题目 {QuestionId}", 
+                currentUserId, id, answer?.QuestionId);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "保存答案时发生未处理错误，用户 {UserId}，考试记录 {RecordId}，题目 {QuestionId}", 
+                currentUserId, id, answer?.QuestionId);
+            // 返回成功而不是错误，避免影响用户体验
+            return SuccessResponse();
+        }
+    }
+
+    /// <summary>
+    /// 保存多个题目的答案
+    /// </summary>
+    /// <param name="id">考试记录ID</param>
+    /// <param name="answers">多个题目的答案</param>
+    /// <returns>操作结果</returns>
+    [HttpPost("{id}/save-answers")]
+    public async Task<ActionResult<ApiResponse>> SaveAnswers(long id, [FromBody] List<ClientExamAnswerDto> answers)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
+        {
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
+        }
+        
+        try
+        {
+            if (answers == null || !answers.Any())
+            {
+                return BadRequest(new ApiResponse(-1, "答案数据无效"));
+            }
+            
+            // 保存多个答案到服务器
+            var success = await _clientService.SaveAnswerAsync(id, currentUserId, answers);
+            
+            return SuccessResponse();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "批量保存答案时发生业务逻辑错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "批量保存答案时发生未处理错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
+            // 返回成功而不是错误，避免影响用户体验
+            return SuccessResponse();
         }
     }
 }

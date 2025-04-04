@@ -1,6 +1,7 @@
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.Client;
+using CodeSpirit.ExamApi.Dtos.ExamRecord;
 
 namespace CodeSpirit.ExamApi.Services.Interfaces;
 
@@ -40,7 +41,16 @@ public interface IClientService
     /// <param name="userId">用户ID</param>
     /// <param name="answers">答案列表</param>
     /// <returns>提交结果，包含是否成功和是否可查看结果</returns>
-    Task<(bool Success, bool EnableViewResult)> SubmitExamAsync(long recordId, long userId, List<ClientExamAnswerDto> answers);
+    Task<(bool Success, bool EnableViewResult)> SubmitExamAsync(long recordId, long userId, List<ClientExamAnswerDto> answers = null);
+    
+    /// <summary>
+    /// 保存考试答案但不提交
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <param name="answers">答案列表</param>
+    /// <returns>保存是否成功</returns>
+    Task<bool> SaveAnswerAsync(long recordId, long userId, List<ClientExamAnswerDto> answers);
     
     /// <summary>
     /// 获取考试结果

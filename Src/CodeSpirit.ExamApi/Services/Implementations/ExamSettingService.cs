@@ -54,7 +54,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         // 关键词搜索
         if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
         {
-            predicate = predicate.And(x => x.Name.Contains(queryDto.Keywords) || 
+            predicate = predicate.And(x => x.Name.Contains(queryDto.Keywords) ||
                                          x.Description.Contains(queryDto.Keywords));
         }
 
@@ -332,14 +332,14 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             var now = DateTime.UtcNow;
             // 定义预展示时间，开考前半小时（30分钟）可见
             var previewTime = now.AddMinutes(30);
-            
+
             var availableExams = await _context.ExamSettings
                 .Include(e => e.StudentGroups)
                 .Include(e => e.ExamPaper)
                 .Where(e => e.Status == ExamSettingStatus.Published)
-                .Where(e => 
+                .Where(e =>
                     // 正在进行中的考试或即将开始的考试（开考前半小时）
-                    ((e.StartTime <= now && e.EndTime >= now) || 
+                    ((e.StartTime <= now && e.EndTime >= now) ||
                      (e.StartTime > now && e.StartTime <= previewTime))
                 )
                 .Where(e => e.StudentGroups.Any() == false || e.StudentGroups.Any(g => studentGroups.Contains(g.StudentGroupId)))
@@ -472,7 +472,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                     QuestionVersionId = q.QuestionVersionId,
                     Content = q.QuestionVersion.Content,
                     Type = q.Question.Type.ToString(),
-                    Options = string.Join(",", q.QuestionVersion.Options),
+                    Options = q.QuestionVersion.Options.Select(p => new OptionDisplayDto{ Label = p, Value = p }).ToList(),
                     Score = q.Score,
                     SequenceNumber = q.OrderNumber,
                     IsRequired = q.IsRequired
@@ -540,8 +540,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                     .Where(r => r.Id == recordId.Value)
                     .FirstOrDefaultAsync()
                 : await _context.ExamRecords
-                    .Where(r => r.ExamSettingId == examId && 
-                          r.StudentId == studentId && 
+                    .Where(r => r.ExamSettingId == examId &&
+                          r.StudentId == studentId &&
                           r.Status == ExamRecordStatus.InProgress)
                     .OrderByDescending(r => r.StartTime)
                     .FirstOrDefaultAsync();
@@ -573,4 +573,4 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             throw;
         }
     }
-} 
+}

@@ -244,7 +244,7 @@ public class ClientExamQuestionDto
     /// 选项（JSON格式）
     /// </summary>
     [DisplayName("选项")]
-    public string? Options { get; set; }
+    public List<OptionDisplayDto> Options { get; set; }
     
     /// <summary>
     /// 分值
@@ -263,6 +263,13 @@ public class ClientExamQuestionDto
     /// </summary>
     [DisplayName("是否必答")]
     public bool IsRequired { get; set; }
+}
+
+public class OptionDisplayDto
+{
+    public string Label { get; set; }
+
+    public string Value { get; set; }
 }
 
 /// <summary>

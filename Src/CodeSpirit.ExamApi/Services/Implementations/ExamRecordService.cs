@@ -11,6 +11,7 @@ using LinqKit;
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.Shared.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -23,6 +24,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     private readonly IRepository<ExamSetting> _examSettingRepository;
     private readonly IRepository<Student> _studentRepository;
     private readonly IRepository<QuestionVersion> _questionVersionRepository;
+    private readonly ILogger<ExamRecordService> _logger;
     
     /// <summary>
     /// 构造函数
@@ -33,12 +35,14 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         IRepository<ExamSetting> examSettingRepository,
         IRepository<Student> studentRepository,
         IRepository<QuestionVersion> questionVersionRepository,
-        IMapper mapper) : base(repository, mapper)
+        IMapper mapper,
+        ILogger<ExamRecordService> logger) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
         _examSettingRepository = examSettingRepository;
         _studentRepository = studentRepository;
         _questionVersionRepository = questionVersionRepository;
+        _logger = logger;
     }
     
     /// <summary>
@@ -224,6 +228,17 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     /// </summary>
     public async Task<bool> SubmitAnswerAsync(SubmitAnswerDto submitAnswerDto)
     {
+        // 参数验证
+        if (submitAnswerDto == null)
+        {
+            throw new ArgumentNullException(nameof(submitAnswerDto), "提交答案参数不能为空");
+        }
+        
+        if (submitAnswerDto.ExamRecordId <= 0 || submitAnswerDto.QuestionId <= 0 || submitAnswerDto.QuestionVersionId <= 0)
+        {
+            throw new BusinessException("提交答案参数无效，请检查考试记录ID、题目ID和题目版本ID");
+        }
+        
         // 验证考试记录是否存在
         var examRecord = await Repository.GetByIdAsync(submitAnswerDto.ExamRecordId);
         if (examRecord == null)
@@ -237,6 +252,17 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             throw new BusinessException("考试已结束，无法提交答案");
         }
         
+        // 检查考试是否超时
+        if (examRecord.StartTime != null && examRecord.ExamSetting?.Duration > 0)
+        {
+            var endTime = examRecord.StartTime.AddMinutes(examRecord.ExamSetting.Duration);
+            if (DateTime.UtcNow > endTime)
+            {
+                // 如果超时，自动将考试状态更新为已提交，但仍然接受此次答案提交
+                _logger.LogWarning($"考试已超时，但仍接受最后的答案提交。考试记录ID: {examRecord.Id}");
+            }
+        }
+        
         // 获取对应的答题记录
         var answerRecord = await _answerRecordRepository.CreateQuery()
             .FirstOrDefaultAsync(a => a.ExamRecordId == submitAnswerDto.ExamRecordId && 
@@ -245,28 +271,196 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                                      
         if (answerRecord == null)
         {
-            throw new BusinessException("答题记录不存在");
+            // 答题记录不存在，可能是数据异常，尝试创建新的答题记录
+            _logger.LogWarning($"答题记录不存在，为题目 {submitAnswerDto.QuestionId} 创建新的答题记录");
+            
+            // 获取题目信息以确认题目确实存在
+            var questionVersion = await _questionVersionRepository.GetByIdAsync(submitAnswerDto.QuestionVersionId);
+            if (questionVersion == null)
+            {
+                throw new BusinessException("题目版本不存在，无法提交答案");
+            }
+            
+            // 创建新的答题记录
+            answerRecord = new ExamAnswerRecord
+            {
+                ExamRecordId = submitAnswerDto.ExamRecordId,
+                QuestionId = submitAnswerDto.QuestionId,
+                QuestionVersionId = submitAnswerDto.QuestionVersionId,
+                OrderNumber = 0, // 无法确定顺序，设为0
+                IsMarked = submitAnswerDto.IsMarked
+            };
+            
+            await _answerRecordRepository.AddAsync(answerRecord);
         }
         
         // 更新答题记录
         answerRecord.Answer = submitAnswerDto.Answer;
         answerRecord.IsMarked = submitAnswerDto.IsMarked;
         
+        // 只在首次答题时设置开始时间
         if (submitAnswerDto.StartTime.HasValue && !answerRecord.StartTime.HasValue)
         {
             answerRecord.StartTime = submitAnswerDto.StartTime;
         }
         
+        // 设置提交时间
         answerRecord.SubmitTime = submitAnswerDto.SubmitTime ?? DateTime.UtcNow;
         
+        // 计算答题用时
         if (answerRecord.StartTime.HasValue && answerRecord.SubmitTime.HasValue)
         {
             answerRecord.Duration = (int)(answerRecord.SubmitTime.Value - answerRecord.StartTime.Value).TotalSeconds;
         }
         
-        await _answerRecordRepository.UpdateAsync(answerRecord);
+        // 保存更改
+        try
+        {
+            await _answerRecordRepository.UpdateAsync(answerRecord);
+            
+            // 记录日志
+            _logger.LogInformation($"答案提交成功。考试记录ID: {submitAnswerDto.ExamRecordId}, 题目ID: {submitAnswerDto.QuestionId}");
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"答案保存失败。考试记录ID: {submitAnswerDto.ExamRecordId}, 题目ID: {submitAnswerDto.QuestionId}");
+            throw new BusinessException("答案保存失败，请重试");
+        }
+    }
+    
+    /// <summary>
+    /// 批量提交答案
+    /// </summary>
+    /// <param name="examRecordId">考试记录ID</param>
+    /// <param name="answers">答案列表</param>
+    /// <returns>是否全部成功</returns>
+    public async Task<bool> SubmitAnswersAsync(long examRecordId, List<ClientExamAnswerDto> answers)
+    {
+        if (answers == null || !answers.Any())
+        {
+            throw new ArgumentException("答案列表不能为空", nameof(answers));
+        }
         
-        return true;
+        // 验证考试记录是否存在
+        var examRecord = await Repository.GetByIdAsync(examRecordId);
+        if (examRecord == null)
+        {
+            throw new BusinessException("考试记录不存在");
+        }
+        
+        // 检查考试状态
+        if (examRecord.Status != ExamRecordStatus.InProgress)
+        {
+            throw new BusinessException("考试已结束，无法提交答案");
+        }
+        
+        // 检查考试是否超时但仍然接受最后的答案提交
+        bool isOvertime = false;
+        if (examRecord.StartTime != null && examRecord.ExamSetting?.Duration > 0)
+        {
+            var endTime = examRecord.StartTime.AddMinutes(examRecord.ExamSetting.Duration);
+            if (DateTime.UtcNow > endTime)
+            {
+                isOvertime = true;
+                _logger.LogWarning($"考试已超时，但仍接受最后的答案提交。考试记录ID: {examRecord.Id}");
+            }
+        }
+        
+        // 获取考试试卷信息
+        var examPaper = await _examSettingRepository.CreateQuery()
+            .Include(es => es.ExamPaper)
+            .ThenInclude(ep => ep.ExamPaperQuestions)
+            .FirstOrDefaultAsync(es => es.Id == examRecord.ExamSettingId);
+            
+        if (examPaper == null || examPaper.ExamPaper == null || examPaper.ExamPaper.ExamPaperQuestions == null)
+        {
+            throw new BusinessException("试卷信息不存在，无法提交答案");
+        }
+        
+        // 获取所有试卷题目的映射，用于验证提交的答案
+        var examPaperQuestionsMap = examPaper.ExamPaper.ExamPaperQuestions
+            .ToDictionary(q => q.QuestionId, q => q.QuestionVersionId);
+            
+        // 获取所有已有的答题记录
+        var existingAnswerRecords = await _answerRecordRepository.CreateQuery()
+            .Where(a => a.ExamRecordId == examRecordId)
+            .ToListAsync();
+            
+        var existingAnswerMap = existingAnswerRecords
+            .ToDictionary(a => a.QuestionId, a => a);
+            
+        List<ExamAnswerRecord> recordsToUpdate = new List<ExamAnswerRecord>();
+        List<ExamAnswerRecord> recordsToAdd = new List<ExamAnswerRecord>();
+        
+        foreach (var answer in answers)
+        {
+            // 验证题目是否存在于试卷中
+            if (!examPaperQuestionsMap.TryGetValue(answer.QuestionId, out var questionVersionId))
+            {
+                _logger.LogWarning($"题目 {answer.QuestionId} 不在试卷中，已跳过");
+                continue;
+            }
+            
+            // 查找现有的答题记录
+            if (existingAnswerMap.TryGetValue(answer.QuestionId, out var answerRecord))
+            {
+                // 更新已有记录
+                answerRecord.Answer = answer.Answer;
+                answerRecord.SubmitTime = DateTime.UtcNow;
+                
+                // 计算答题用时
+                if (answerRecord.StartTime.HasValue)
+                {
+                    answerRecord.Duration = (int)(answerRecord.SubmitTime.Value - answerRecord.StartTime.Value).TotalSeconds;
+                }
+                
+                recordsToUpdate.Add(answerRecord);
+            }
+            else
+            {
+                // 创建新记录
+                var newRecord = new ExamAnswerRecord
+                {
+                    ExamRecordId = examRecordId,
+                    QuestionId = answer.QuestionId,
+                    QuestionVersionId = questionVersionId,
+                    Answer = answer.Answer,
+                    SubmitTime = DateTime.UtcNow,
+                    StartTime = DateTime.UtcNow, // 设置相同的开始时间和提交时间
+                    Duration = 0,
+                    OrderNumber = 0, // 顺序未知
+                    IsMarked = false
+                };
+                
+                recordsToAdd.Add(newRecord);
+            }
+        }
+        
+        try
+        {
+            // 批量保存更改
+            if (recordsToUpdate.Any())
+            {
+                await _answerRecordRepository.UpdateRangeAsync(recordsToUpdate);
+            }
+            
+            if (recordsToAdd.Any())
+            {
+                await _answerRecordRepository.AddRangeAsync(recordsToAdd);
+            }
+            
+            // 记录日志
+            _logger.LogInformation($"批量答案提交成功。考试记录ID: {examRecordId}, 更新: {recordsToUpdate.Count}, 新增: {recordsToAdd.Count}");
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"批量答案保存失败。考试记录ID: {examRecordId}");
+            throw new BusinessException("答案保存失败，请重试");
+        }
     }
     
     /// <summary>
@@ -721,9 +915,9 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
     /// <param name="studentId">学生ID</param>
-    /// <param name="answers">答案列表</param>
+    /// <param name="answers">可选的答案列表，用于最后提交前保存</param>
     /// <returns>提交结果，包含是否成功和是否可查看结果</returns>
-    public async Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto> answers)
+    public async Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto> answers = null)
     {
         try
         {
@@ -749,36 +943,23 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             {
                 throw new InvalidOperationException("考试已提交，不能重复提交");
             }
+            
+            // 如果提供了未保存的答案，先保存这些答案
+            if (answers != null && answers.Any())
+            {
+                _logger.LogInformation("提交前保存最后 {Count} 个答案", answers.Count);
+                await SubmitAnswersAsync(recordId, answers);
+            }
 
             var now = DateTime.UtcNow;
             examRecord.SubmitTime = now;
             examRecord.Status = ExamRecordStatus.Submitted;
             examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
 
-            // 添加答案记录
-            foreach (var answer in answers)
-            {
-                // 查找题目版本
-                var examPaperQuestion = examPaper.ExamPaper.ExamPaperQuestions
-                    .FirstOrDefault(q => q.Id == answer.QuestionId);
-
-                if (examPaperQuestion == null)
-                {
-                    continue;
-                }
-
-                var answerRecord = new ExamAnswerRecord
-                {
-                    ExamRecordId = recordId,
-                    QuestionId = examPaperQuestion.QuestionId,
-                    QuestionVersionId = examPaperQuestion.QuestionVersionId,
-                    OrderNumber = examPaperQuestion.OrderNumber,
-                    Answer = answer.Answer,
-                    IsCorrect = false // 先默认为错误，后续评分时更新
-                };
-
-                await _answerRecordRepository.AddAsync(answerRecord);
-            }
+            // 获取已保存的所有答案记录
+            var existingAnswers = await _answerRecordRepository.CreateQuery()
+                .Where(a => a.ExamRecordId == recordId)
+                .ToListAsync();
 
             // 更新考试记录
             await Repository.UpdateAsync(examRecord);

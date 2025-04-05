@@ -439,9 +439,6 @@
             // 向服务器提交当前答案
             sendAnswerToServer(recordId, questionId, processedAnswer);
             
-            // 更新答题进度
-            updateAnswerProgress();
-            
             console.log(`[保存答案] 题目 ${questionId} 的答案保存完成`);
             
         } catch (error) {
@@ -948,23 +945,6 @@
                                         tpl: '<div class="exam-timer">剩余时间：${timer.displayText}</div>'
                                     }
                                 ]
-                            },
-                            // 添加答题进度显示区域
-                            {
-                                type: 'flex',
-                                justify: 'center',
-                                alignItems: 'center',
-                                className: 'exam-progress-container',
-                                items: [
-                                    {
-                                        type: 'tpl',
-                                        tpl: '<div class="exam-progress"><span class="progress-label">答题进度：</span>' + 
-                                             '<div class="progress" style="width: 120px; margin-right: 5px;">' + 
-                                             '<div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>' + 
-                                             '</div>' + 
-                                             '<span class="progress-value">0/0</span> <span class="progress-percent">(0%)</span></div>'
-                                    }
-                                ]
                             }
                         ]
                     }
@@ -1034,9 +1014,8 @@
                                         // 初始化考试计时器
                                         initializeExamTimer(event.data);
                                         
-                                        // 初始化答题进度显示
+                                        // 保存题目数据以便其他功能使用
                                         window.globalData.exam.questions = event.data.questions || [];
-                                        setTimeout(updateAnswerProgress, 1000); // 稍微延迟以确保答案数据已加载
                                         
                                         console.log("成功初始化考试数据");
                                         // 打印题目数据，检查是否正确
@@ -1069,22 +1048,17 @@
                                 items: [
                                     {
                                         type: 'tpl',
-                                        tpl: '开始时间：${startTime}',
+                                        tpl: '总分：${totalScore} 分',
                                         className: 'exam-info-item'
                                     },
                                     {
                                         type: 'tpl',
-                                        tpl: '结束时间：${endTime}',
+                                        tpl: '题目数：${questions.length} 题',
                                         className: 'exam-info-item'
                                     },
                                     {
                                         type: 'tpl',
                                         tpl: '考试时长：${duration}分钟',
-                                        className: 'exam-info-item'
-                                    },
-                                    {
-                                        type: 'tpl',
-                                        tpl: '总分：${totalScore}分',
                                         className: 'exam-info-item'
                                     }
                                 ]
@@ -1264,7 +1238,6 @@
     window.updateTimerDisplay = updateTimerDisplay;
     window.saveAnswer = saveAnswer;
     window.initializeExamTimer = initializeExamTimer;
-    window.updateAnswerProgress = updateAnswerProgress;
 
     // 初始化amis
     let amisInstance = amis.embed(
@@ -1566,51 +1539,7 @@
         setupHeaderScroll();
     });
 
-    // 添加题目答题进度更新函数
-    function updateAnswerProgress() {
-        try {
-            // 获取题目总数
-            const totalQuestions = (window.globalData?.exam?.questions || []).length;
-            if (!totalQuestions) return;
-            
-            // 计算已回答的题目数
-            const answeredCount = examAnswers.filter(a => a && a.answer && a.answer.trim() !== '').length;
-            
-            // 计算进度百分比
-            const progressPercent = totalQuestions ? Math.round((answeredCount / totalQuestions) * 100) : 0;
-            
-            // 更新DOM显示
-            const progressValueElements = document.querySelectorAll('.progress-value');
-            if (progressValueElements && progressValueElements.length > 0) {
-                progressValueElements.forEach(el => {
-                    el.textContent = `${answeredCount}/${totalQuestions}`;
-                });
-            }
-            
-            // 更新进度条
-            const progressBarElements = document.querySelectorAll('.progress-bar');
-            if (progressBarElements && progressBarElements.length > 0) {
-                progressBarElements.forEach(el => {
-                    el.style.width = `${progressPercent}%`;
-                    el.setAttribute('aria-valuenow', progressPercent);
-                });
-            }
-            
-            // 更新百分比显示
-            const progressPercentElements = document.querySelectorAll('.progress-percent');
-            if (progressPercentElements && progressPercentElements.length > 0) {
-                progressPercentElements.forEach(el => {
-                    el.textContent = `${progressPercent}%`;
-                });
-            }
-            
-            console.log(`[答题进度] 已更新: ${answeredCount}/${totalQuestions} (${progressPercent}%)`);
-        } catch (error) {
-            console.error('[答题进度] 更新答题进度时出错:', error);
-        }
-    }
-
-    // 修改onLoad回调函数，确保初始化时更新进度
+    // 修改onLoad回调函数，确保初始化相关功能
     window.onLoad = function() {
         console.log('[考试页] 初始化事件');
         
@@ -1624,9 +1553,6 @@
             // 向后兼容旧的全局函数
             window.setupScreenSwitchDetection();
         }
-        
-        // 设置答题进度初始状态
-        updateAnswerProgress();
     };
 
     // 初始化考试计时器
@@ -1678,6 +1604,5 @@
 
     // 使函数全局可用，供AMIS调用
     window.initializeExamTimer = initializeExamTimer;
-    window.updateAnswerProgress = updateAnswerProgress;
     window.saveAnswer = saveAnswer;
 })(); 

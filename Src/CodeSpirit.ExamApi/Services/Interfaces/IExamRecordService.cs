@@ -1,5 +1,6 @@
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Dtos;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.Shared.Services;
@@ -118,4 +119,11 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     /// <param name="studentId">学生ID</param>
     /// <returns>考试结果</returns>
     Task<ClientExamResultDto> GetExamResultForClientAsync(long recordId, long studentId);
+    
+    /// <summary>
+    /// 获取考试的所有已保存答案
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>答案列表</returns>
+    Task<List<ExamAnswerRecord>> GetExamAnswersAsync(long recordId);
 } 

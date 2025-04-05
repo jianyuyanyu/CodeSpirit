@@ -84,5 +84,5 @@ public class ClientExamBasicInfoDto
     /// 考试题目列表
     /// </summary>
     [DisplayName("考试题目列表")]
-    public List<ClientExamQuestionDto> Questions { get; set; } = new List<ClientExamQuestionDto>();
+    public List<ClientExamQuestionDto> Questions { get; set; } = new List<ClientExamQuestionDto>();    
 } 

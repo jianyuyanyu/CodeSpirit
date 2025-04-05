@@ -8,9 +8,6 @@
     const examId = window.location.pathname.split('/').pop();
     window.enableAMISDebug = true;
     
-    // 创建全局切屏计数变量
-    window.screenSwitchCount = 0;
-    
     // 全局数据对象，用于存储用户信息和考试数据
     window.globalData = {
         user: {
@@ -37,205 +34,6 @@
             seconds: 0,
             remainingSeconds: 0
         }
-    };
-
-    // 改进显示警告的函数，使用正确的AMIS API
-    window.showScreenSwitchWarning = function(message) {
-        try {            
-            // 默认消息
-            const warningMessage = message || "警告：系统已记录您的切屏行为！频繁切屏可能会被判定为作弊行为。";
-        
-            
-            // 尝试方法4：添加一个自定义通知
-            const createCustomNotification = function() {
-                // 创建通知DOM元素
-                const notification = document.createElement('div');
-                notification.className = 'custom-notification warning';
-                notification.innerHTML = `
-                    <div class="notification-title">切屏警告</div>
-                    <div class="notification-body">${warningMessage}</div>
-                `;
-                
-                // 不再需要添加内联样式，使用CSS类
-                
-                // 添加到页面
-                document.body.appendChild(notification);
-                
-                // 5秒后自动移除
-                setTimeout(() => {
-                    notification.classList.add('fade-out');
-                    setTimeout(() => {
-                        if (document.body.contains(notification)) {
-                            document.body.removeChild(notification);
-                        }
-                    }, 300);
-                }, 5000);
-                
-                return true;
-            };
-            
-            createCustomNotification();
-            console.log("[切屏警告] 使用自定义通知方式显示警告");
-            return true;
-            
-        } catch (error) {
-            console.error("[切屏警告] 显示AMIS警告时出错:", error);
-            
-            // 最后的后备方案：使用原生alert (不推荐，会触发新的切屏事件)
-            // alert(message || "警告：系统已记录您的切屏行为！频繁切屏可能会被判定为作弊行为。");
-            return false;
-        }
-    };
-    
-    // 修改recordScreenSwitch函数，使用AMIS弹框代替alert
-    window.recordScreenSwitch = function() {
-        try {
-            console.log("[切屏检测] 检测到切屏行为");
-            
-            // 获取记录ID - 从全局变量获取
-            const recordId = window.globalData.exam.recordId;
-            if (!recordId) {
-                console.error("[切屏检测] 无法获取考试记录ID");
-                
-                // 使用AMIS弹框显示警告
-                window.showScreenSwitchWarning("警告：系统检测到切屏行为！请勿频繁切换窗口。");
-                return;
-            }
-            
-            // 获取允许的切屏次数
-            const allowedCount = window.globalData.exam.allowedScreenSwitchCount || 0;
-            
-            // 更新计数(使用全局变量)
-            window.screenSwitchCount++;
-            // 同步到globalData
-            window.globalData.exam.screenSwitchCount = window.screenSwitchCount;
-            console.log("[切屏检测] 当前切屏次数:", window.screenSwitchCount);
-            
-            // 显示警告信息，根据切屏次数和允许次数调整内容
-            if (allowedCount > 0) {
-                if (window.screenSwitchCount > allowedCount) {
-                    // 超过允许次数
-                    window.showScreenSwitchWarning(`严重警告：您已超出允许的切屏次数(${allowedCount}次)！此行为已被记录为作弊嫌疑。`);
-                } else {
-                    // 未超过允许次数
-                    window.showScreenSwitchWarning(`警告：系统已记录您的切屏行为！您已切屏 ${window.screenSwitchCount} 次，允许切屏 ${allowedCount} 次。`);
-                }
-            } else {
-                // 没有明确的允许次数
-                window.showScreenSwitchWarning();
-            }
-            
-            // 直接更新DOM显示
-            const switchCountElements = document.querySelectorAll('.screen-switch-value');
-            if (switchCountElements && switchCountElements.length > 0) {
-                switchCountElements.forEach(el => {
-                    el.textContent = window.screenSwitchCount.toString();
-                });
-            }
-            
-            // 发送切屏记录到服务器
-            fetch(`/exam/api/exam/client/${recordId}/screen-switch`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
-                    'X-Forwarded-With': 'CodeSpirit'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 0) {
-                    console.log("[切屏检测] 切屏记录已成功发送到服务器");
-                    
-                    // 如果服务器返回了更新后的切屏次数，更新本地计数
-                    if (data.data && typeof data.data.screenSwitchCount === 'number') {
-                        window.screenSwitchCount = data.data.screenSwitchCount;
-                        window.globalData.exam.screenSwitchCount = data.data.screenSwitchCount;
-                        
-                        // 更新DOM显示
-                        const elements = document.querySelectorAll('.screen-switch-value');
-                        if (elements && elements.length > 0) {
-                            elements.forEach(el => {
-                                el.textContent = window.screenSwitchCount.toString();
-                            });
-                        }
-                    }
-                } else {
-                    console.error("[切屏检测] 记录切屏失败:", data.msg);
-                }
-            })
-            .catch(error => {
-                console.error("[切屏检测] 发送切屏记录时出错:", error);
-            });
-        } catch (error) {
-            console.error("[切屏检测] 记录切屏过程中发生错误:", error);
-        }
-    };
-    
-    // 更新切屏检测初始化函数，但保留现有功能
-    window.setupScreenSwitchDetection = function() {
-        console.log("[切屏检测] 正在设置切屏检测...");
-        
-        try {
-            // 检查是否已有记录ID
-            if (!window.globalData.exam.recordId) {
-                console.warn("[切屏检测] 记录ID未设置，将在3秒后重试");
-                setTimeout(window.setupScreenSwitchDetection, 3000);
-                return;
-            }
-            
-            // 移除可能存在的旧事件监听器
-            document.removeEventListener('visibilitychange', window.handleVisibilityChange);
-            window.removeEventListener('blur', window.handleWindowBlur);
-            
-            // 添加事件监听
-            document.addEventListener('visibilitychange', window.handleVisibilityChange);
-            window.addEventListener('blur', window.handleWindowBlur);
-            
-            // 初始化切屏次数显示
-            window.screenSwitchCount = window.globalData.exam.screenSwitchCount || 0;
-            
-            // 更新DOM显示
-            const switchCountElements = document.querySelectorAll('.screen-switch-value');
-            if (switchCountElements && switchCountElements.length > 0) {
-                switchCountElements.forEach(el => {
-                    el.textContent = window.screenSwitchCount.toString();
-                });
-            }
-            
-            // 更新允许切屏次数显示
-            const allowedSwitchElements = document.querySelectorAll('.allowed-switch-value');
-            if (allowedSwitchElements && allowedSwitchElements.length > 0) {
-                const allowedCount = window.globalData.exam.allowedScreenSwitchCount || 0;
-                allowedSwitchElements.forEach(el => {
-                    el.textContent = allowedCount.toString();
-                });
-            }
-            
-            // 如果有允许的切屏次数，显示初始提示
-            const allowedCount = window.globalData.exam.allowedScreenSwitchCount || 0;
-            if (allowedCount > 0) {
-                // 5秒后显示切屏限制提示
-                setTimeout(() => {
-                    window.showScreenSwitchWarning(`本次考试允许切屏 ${allowedCount} 次，超过将被记录为作弊嫌疑。当前已切屏 ${window.screenSwitchCount} 次。`);
-                }, 5000);
-            }
-            
-            console.log("[切屏检测] 切屏检测已成功启用");
-        } catch (error) {
-            console.error("[切屏检测] 设置切屏检测时发生错误:", error);
-        }
-    };
-    
-    // 事件处理函数
-    window.handleVisibilityChange = function() {
-        if (document.visibilityState === 'hidden') {
-            window.recordScreenSwitch();
-        }
-    };
-    
-    window.handleWindowBlur = function() {
-        window.recordScreenSwitch();
     };
 
     // 全局数据辅助函数
@@ -405,7 +203,7 @@
             console.log("正在启动计时器间隔");
             examTimerInterval = setInterval(() => {
                 remainingTime--;
-                console.log("剩余时间", remainingTime);
+                //console.log("剩余时间", remainingTime);
                 if (remainingTime <= 0) {
                     console.log("考试时间结束，准备自动提交");
                     clearInterval(examTimerInterval);
@@ -439,7 +237,7 @@
             
             const displayText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
-            console.log("[计时器] 更新显示:", displayText, "剩余秒数:", remainingTime);
+            //console.log("[计时器] 更新显示:", displayText, "剩余秒数:", remainingTime);
             
             // 更新全局数据
             window.GlobalData.set('timer.displayText', displayText);
@@ -554,183 +352,18 @@
         }
     }
     
-    // 修改初始化函数，确保在页面加载时正确加载答案
-    function initializeAnswersFromStorage() {
-        console.log('[初始化答案] 开始初始化答案列表');
-        try {
-            // 获取用户ID和考试ID
-            const userId = window.globalData.user.id;
-            const examId = window.globalData.exam.id;
-            const recordId = window.globalData.exam.recordId;
-            
-            if (!userId || !examId || !recordId) {
-                console.error('[初始化答案] 错误：无法初始化答案 - 缺少用户ID, 考试ID 或 记录ID');
-                examAnswers = [];
-                return;
-            }
-            
-            // 生成存储密钥
-            const storageKey = `exam_${userId}_${examId}_answers`;
-            console.log(`[初始化答案] 使用存储密钥: ${storageKey}`);
-            
-            // 从localStorage中加载答案
-            const savedAnswers = localStorage.getItem(storageKey);
-            
-            if (!savedAnswers) {
-                console.log('[初始化答案] 本地存储中没有找到答案');
-                examAnswers = [];
-                return;
-            }
-            
-            try {
-                // 解析JSON
-                const parsedAnswers = JSON.parse(savedAnswers);
-                console.log(`[初始化答案] 从本地存储加载了 ${parsedAnswers.length} 个答案`);
-                
-                // 确保数据结构正确
-                if (Array.isArray(parsedAnswers)) {
-                    // 检查并过滤无效数据
-                    examAnswers = parsedAnswers.filter(item => item && item.questionId && item.answer !== undefined);
-                    console.log(`[初始化答案] 过滤后保留了 ${examAnswers.length} 个有效答案`);
-                    
-                    // 尝试从备份恢复，以防本地存储损坏
-                    if (examAnswers.length === 0) {
-                        console.warn('[初始化答案] 本地存储中的答案无效，尝试从备份恢复');
-                        try {
-                            const backupKey = `exam_${userId}_${examId}_answers_backup`;
-                            const backupAnswers = sessionStorage.getItem(backupKey);
-                            
-                            if (backupAnswers) {
-                                const parsedBackup = JSON.parse(backupAnswers);
-                                if (Array.isArray(parsedBackup) && parsedBackup.length > 0) {
-                                    examAnswers = parsedBackup.filter(item => item && item.questionId && item.answer !== undefined);
-                                    console.log(`[初始化答案] 从备份恢复了 ${examAnswers.length} 个答案`);
-                                }
-                            }
-                        } catch (backupError) {
-                            console.error('[初始化答案] 检查备份存储失败：', backupError);
-                        }
-                    }
-                    
-                    // 尝试将本地答案同步到服务器
-                    if (examAnswers.length > 0) {
-                        console.log('[初始化答案] 尝试将本地答案同步到服务器');
-                        
-                        // 创建服务器需要的答案格式
-                        const answersToSync = examAnswers.map(answer => {
-                            // 将questionId转换为数字类型
-                            const numericQuestionId = parseInt(answer.questionId, 10);
-                            if (isNaN(numericQuestionId)) {
-                                console.error(`[初始化答案] 题目ID ${answer.questionId} 无法转换为数字，将跳过`);
-                                return null; // 返回null以便后面过滤掉
-                            }
-                            return {
-                                questionId: numericQuestionId,
-                                answer: answer.answer
-                            };
-                        }).filter(item => item !== null); // 过滤掉无效的项
-                        
-                        // 检查是否有有效的答案需要同步
-                        if (answersToSync.length === 0) {
-                            console.warn('[初始化答案] 没有有效的答案可以同步到服务器');
-                            return;
-                        }
-                        
-                        // 使用批量保存接口同步答案
-                        fetch(`/exam/api/exam/client/${recordId}/save-answers`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + localStorage.getItem('token'),
-                                'X-Forwarded-With': 'CodeSpirit'
-                            },
-                            body: JSON.stringify(answersToSync)
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 0) {
-                                console.log('[初始化答案] 成功将本地答案同步到服务器');
-                                
-                                // 初始化已同步答案集合
-                                window.syncedAnswers = new Set();
-                                examAnswers.forEach(answer => {
-                                    window.syncedAnswers.add(answer.questionId);
-                                });
-                                
-                                // 清空未同步记录
-                                window.unsyncedAnswers = new Set();
-                                window.failedSyncAnswers = new Map();
-                                
-                                // 更新同步状态显示
-                                updateSyncStatus();
-                            } else {
-                                console.error('[初始化答案] 同步到服务器失败:', data.msg);
-                                // 标记所有答案为未同步
-                                window.unsyncedAnswers = new Set();
-                                examAnswers.forEach(answer => {
-                                    window.unsyncedAnswers.add(answer.questionId);
-                                });
-                                
-                                // 更新同步状态显示
-                                updateSyncStatus();
-                            }
-                        })
-                        .catch(error => {
-                            console.error('[初始化答案] 同步到服务器失败:', error);
-                            // 标记所有答案为未同步
-                            window.unsyncedAnswers = new Set();
-                            examAnswers.forEach(answer => {
-                                window.unsyncedAnswers.add(answer.questionId);
-                            });
-                            
-                            // 更新同步状态显示
-                            updateSyncStatus();
-                        });
-                    }
-                } else {
-                    console.error('[初始化答案] 存储的答案不是数组格式');
-                    examAnswers = [];
-                }
-                
-            } catch (parseError) {
-                console.error('[初始化答案] 解析存储的答案失败：', parseError);
-                examAnswers = [];
-            }
-        } catch (error) {
-            console.error('[初始化答案] 初始化答案时发生错误：', error);
-            // 设置默认值
-            examAnswers = [];
-        }
-    }
-
     // 修改保存答案函数的部分代码
     function saveAnswer(questionId, answer) {
         try {
             console.log(`[保存答案] 开始保存题目 ${questionId} 的答案:`, answer);
             
-            // 获取用户ID和考试ID
-            const userId = window.globalData.user.id;
-            const examId = window.globalData.exam.id;
+            // 获取考试记录ID
             const recordId = window.globalData.exam.recordId;
-            
-            if (!userId) {
-                console.error('[保存答案] 错误：未找到用户ID');
-                return;
-            }
-            
-            if (!examId) {
-                console.error('[保存答案] 错误：未找到考试ID');
-                return;
-            }
             
             if (!recordId) {
                 console.error('[保存答案] 错误：未找到考试记录ID');
                 return;
             }
-            
-            // 生成存储密钥
-            const storageKey = `exam_${userId}_${examId}_answers`;
-            console.log(`[保存答案] 使用存储密钥: ${storageKey}`);
             
             // 参数验证
             if (!questionId) {
@@ -742,8 +375,6 @@
             if (!Array.isArray(examAnswers)) {
                 console.warn('[保存答案] examAnswers不是数组，正在初始化');
                 examAnswers = [];
-                // 尝试从存储中恢复
-                initializeAnswersFromStorage();
             }
             
             // 确保答案格式正确
@@ -804,59 +435,6 @@
             
             // 验证更新后的答案列表
             console.log(`[保存答案] 更新后的答案列表长度: ${examAnswers.length}`);
-            console.log('[保存答案] 更新后的完整答案列表:', JSON.parse(JSON.stringify(examAnswers)));
-            
-            // 保存到本地存储
-            try {
-                const serializedAnswers = JSON.stringify(examAnswers);
-                
-                // 在保存前验证序列化的数据
-                if (serializedAnswers === '[]' || serializedAnswers === '{}') {
-                    console.error('[保存答案] 错误：序列化后的答案为空');
-                    return;
-                }
-                
-                localStorage.setItem(storageKey, serializedAnswers);
-                
-                // 验证保存是否成功
-                const savedData = localStorage.getItem(storageKey);
-                const parsedSavedData = JSON.parse(savedData);
-                console.log(`[保存答案] 本地存储验证 - 保存的答案数量: ${parsedSavedData.length}`);
-                
-                if (parsedSavedData.length !== examAnswers.length) {
-                    console.error('[保存答案] 警告：保存的答案数量与当前答案数量不匹配');
-                }
-                
-                console.log(`[保存答案] 成功保存到本地存储，键名：${storageKey}`);
-            } catch (storageError) {
-                console.error('[保存答案] 保存到本地存储失败：', storageError);
-                // 尝试使用备用存储方案
-                try {
-                    const backupKey = `exam_${userId}_${examId}_answers_backup`;
-                    sessionStorage.setItem(backupKey, JSON.stringify(examAnswers));
-                    console.log('[保存答案] 已保存到会话存储作为备份');
-                } catch (backupError) {
-                    console.error('[保存答案] 备份存储也失败了：', backupError);
-                }
-            }
-            
-            // 修改同步到amis实例的部分
-            if (window.amisInstance) {
-                try {
-                    // 创建更新数据对象
-                    const updateData = {
-                        [`question_${questionId}`]: processedAnswer
-                    };
-                    
-                    // 使用安全的更新函数
-                    window.safeUpdateAmisProps(updateData);
-                    
-                    console.log('[保存答案] 已同步到amis实例:', updateData);
-                } catch (amisError) {
-                    console.error('[保存答案] 同步到amis实例失败:', amisError);
-                    // 同步失败不影响保存过程继续
-                }
-            }
             
             // 向服务器提交当前答案
             sendAnswerToServer(recordId, questionId, processedAnswer);
@@ -868,49 +446,6 @@
             
         } catch (error) {
             console.error('[保存答案] 保存过程中发生错误：', error);
-            // 尝试进行错误恢复
-            try {
-                const userId = window.globalData?.user?.id;
-                const examId = window.globalData?.exam?.id;
-                
-                if (!userId || !examId) {
-                    console.error('[保存答案] 恢复失败：未找到用户ID或考试ID');
-                    return;
-                }
-                
-                const storageKey = `exam_${userId}_${examId}_answers`;
-                const savedAnswers = localStorage.getItem(storageKey);
-                if (savedAnswers) {
-                    console.log('[保存答案] 从本地存储恢复答案');
-                    const parsedAnswers = JSON.parse(savedAnswers);
-                    if (Array.isArray(parsedAnswers) && parsedAnswers.length > 0) {
-                        examAnswers = parsedAnswers;
-                        console.log('[保存答案] 成功恢复答案');
-                        
-                        // 尝试重新同步到amis实例
-                        if (window.amisInstance) {
-                            try {
-                                const answersMap = {};
-                                examAnswers.forEach(answer => {
-                                    if (answer && answer.questionId) {
-                                        answersMap[`question_${answer.questionId}`] = answer.answer;
-                                    }
-                                });
-                                
-                                window.safeUpdateAmisProps(answersMap);
-                                console.log('[保存答案] 已重新同步所有答案到amis实例');
-                                
-                                // 更新答题进度
-                                updateAnswerProgress();
-                            } catch (syncError) {
-                                console.error('[保存答案] 重新同步到amis实例失败:', syncError);
-                            }
-                        }
-                    }
-                }
-            } catch (recoveryError) {
-                console.error('[保存答案] 恢复答案失败：', recoveryError);
-            }
         }
     }
 
@@ -1507,41 +1042,6 @@
                                         // 打印题目数据，检查是否正确
                                         console.log("考试题目数据：", event.data.questions);
                                         
-                                        // 直接将问题数据赋值给AMIS上下文
-                                        // 使用延迟加载，确保AMIS实例已完全初始化
-                                        setTimeout(() => {
-                                            if (window.amisInstance) {
-                                                try {
-                                                    // 防御性检查：确保props和data已初始化
-                                                    if (!window.amisInstance.props) {
-                                                        window.amisInstance.props = {};
-                                                        console.log("初始化了缺失的AMIS实例props属性");
-                                                    }
-                                                    
-                                                    if (!window.amisInstance.props.data) {
-                                                        window.amisInstance.props.data = {};
-                                                        console.log("初始化了缺失的AMIS实例data属性");
-                                                    }
-                                                    
-                                                    // 使用安全更新函数
-                                                    window.safeUpdateAmisProps({
-                                                        questions: event.data.questions || []
-                                                    });
-                                                    console.log("成功更新AMIS上下文中的题目数据");
-                                                } catch (err) {
-                                                    console.error("更新AMIS上下文数据时出错:", err);
-                                                }
-                                            } else {
-                                                console.warn("延迟加载后AMIS实例仍未初始化");
-                                                
-                                                // 保存数据到全局，等待AMIS准备好后使用
-                                                if (!window.pendingData) {
-                                                    window.pendingData = {};
-                                                }
-                                                window.pendingData.questions = event.data.questions || [];
-                                                console.log("保存题目数据到临时存储，等待AMIS初始化");
-                                            }
-                                        }, 1000);
                                     } catch (error) {
                                         console.error("初始化考试数据时出错:", error);
                                     }
@@ -1593,7 +1093,7 @@
                                 type: 'divider'
                             },
                             {
-                                type: 'service',
+                                type: 'container',
                                 className: 'question-container',
                                 body: {
                                     type: "form",
@@ -1612,20 +1112,21 @@
                                                     inline: false
                                                 },
                                                 {
-                                                    type: "service",
+                                                    type: "container",
                                                     body: [
                                                         {
                                                             type: "radios",
                                                             name: "question_${item.id}",
                                                             source: "${options}",
                                                             mode: "horizontal",
+                                                            value: "${answer}",
                                                             visibleOn: "item.type === 'SingleChoice'",
                                                             onEvent: {
                                                                 change: {
                                                                     actions: [
                                                                         {
                                                                             actionType: "custom",
-                                                                            script: "saveAnswer(event.data.__rendererData.id, event.data.value);"
+                                                                            script: "saveAnswer(event.data.__super.questionId, event.data.value);"
                                                                         }
                                                                     ]
                                                                 }
@@ -1634,8 +1135,9 @@
                                                         {
                                                             type: "checkboxes",
                                                             name: "question_${item.id}",
-                                                            options: "${options | split |json|asArray}",
+                                                            options: "${options}",
                                                             mode: "horizontal",
+                                                            value: "${answer}",
                                                             required: "${item.isRequired}",
                                                             visibleOn: "item.type === 'MultipleChoice'",
                                                             onEvent: {
@@ -1643,7 +1145,7 @@
                                                                     actions: [
                                                                         {
                                                                             actionType: "custom",
-                                                                            script: "saveAnswer('${item.id}', event.data.value);"
+                                                                            script: "saveAnswer(event.data.__super.questionId, event.data.value);"
                                                                         }
                                                                     ]
                                                                 }
@@ -1663,14 +1165,14 @@
                                                                 }
                                                             ],
                                                             mode: "horizontal",
-                                                            required: "${item.isRequired}",
+                                                            value: "${answer}",
                                                             visibleOn: "${item.type === 'TrueFalse'}",
                                                             onEvent: {
                                                                 change: {
                                                                     actions: [
                                                                         {
                                                                             actionType: "custom",
-                                                                            script: "saveAnswer('${item.id}', event.data.value);"
+                                                                            script: "saveAnswer(event.data.__super.questionId, event.data.value);"
                                                                         }
                                                                     ]
                                                                 }
@@ -1689,7 +1191,7 @@
                                                                     actions: [
                                                                         {
                                                                             actionType: "custom",
-                                                                            script: "saveAnswer('${item.id}', event.data.value);"
+                                                                            script: "saveAnswer(event.data.__super.questionId, event.data.value);"
                                                                         }
                                                                     ]
                                                                 }
@@ -1705,16 +1207,16 @@
                                         }
                                     }
                                 },
-                                onEvent: {
-                                    fetchInited: {
-                                        actions: [
-                                            {
-                                                actionType: "custom",
-                                                script: "console.log('题目数据：', event.data.questions);"
-                                            }
-                                        ]
-                                    }
-                                }
+                                //onEvent: {
+                                //    fetchInited: {
+                                //        actions: [
+                                //            {
+                                //                actionType: "custom",
+                                //                script: "console.log('题目数据：', event.data.questions);"
+                                //            }
+                                //        ]
+                                //    }
+                                //}
                             },
                             {
                                 type: 'divider'
@@ -1761,7 +1263,6 @@
     window.startExamTimer = startExamTimer;
     window.updateTimerDisplay = updateTimerDisplay;
     window.saveAnswer = saveAnswer;
-    window.initializeAnswersFromStorage = initializeAnswersFromStorage;
     window.initializeExamTimer = initializeExamTimer;
     window.updateAnswerProgress = updateAnswerProgress;
 
@@ -1795,26 +1296,6 @@
                 console.log("AMIS渲染器已挂载");
                 // 标记AMIS实例已完全初始化
                 window.amisReady = true;
-                
-                // 如果有之前缓存的待处理数据，立即应用它
-                if (window.pendingData && window.pendingData.questions) {
-                    console.log("从缓存加载待处理的题目数据");
-                    setTimeout(() => {
-                        window.safeUpdateAmisProps({
-                            questions: window.pendingData.questions
-                        });
-                        console.log("已从缓存应用题目数据到AMIS");
-                    }, 500);
-                }
-                // 如果有已加载的题目数据，尝试更新
-                else if (window.globalData?.exam?.questions?.length > 0) {
-                    setTimeout(() => {
-                        console.log("AMIS挂载后尝试更新题目数据");
-                        window.safeUpdateAmisProps({
-                            questions: window.globalData.exam.questions
-                        });
-                    }, 500);
-                }
             },
             updateLocation: (location) => {
                 history.push(location);
@@ -1897,10 +1378,7 @@
 
     // 在考试页面加载完成后初始化答案
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("[页面加载] 文档已加载完成");
-        
-        // 初始化答案
-        initializeAnswersFromStorage();
+        // console.log("[页面加载] 文档已加载完成");
         
         // 初始化同步状态显示
         updateSyncStatus();
@@ -2132,83 +1610,6 @@
         }
     }
 
-    // 修改saveAnswer函数，在保存答案后更新进度
-    function saveAnswer(questionId, answer) {
-        if (!questionId) {
-            console.error('[保存答案] 题目ID为空');
-            return;
-        }
-        
-        // 查找此题是否已有答案
-        const existingAnswerIndex = examAnswers.findIndex(a => a.questionId === questionId);
-        
-        if (existingAnswerIndex >= 0) {
-            // 如果答案相同，不做任何操作
-            if (examAnswers[existingAnswerIndex].answer === answer) {
-                return;
-            }
-            // 更新现有答案
-            examAnswers[existingAnswerIndex].answer = answer;
-        } else {
-            // 添加新答案
-            examAnswers.push({
-                questionId: questionId,
-                answer: answer
-            });
-        }
-        
-        // 记录到本地存储
-        localStorage.setItem(`exam_answers_${window.globalData.exam.recordId}`, JSON.stringify(examAnswers));
-        
-        // 向服务器提交答案
-        if (window.globalData.exam.recordId) {
-            sendAnswerToServer(window.globalData.exam.recordId, questionId, answer);
-        } else {
-            console.error('[保存答案] 考试记录ID未设置，无法向服务器提交答案');
-        }
-        
-        // 更新答题进度
-        updateAnswerProgress();
-    }
-
-    // 在初始加载答案后也更新进度
-    function recoverPreviousAnswers() {
-        try {
-            const savedAnswers = localStorage.getItem(`exam_answers_${window.globalData.exam.recordId}`);
-            if (savedAnswers) {
-                try {
-                    examAnswers = JSON.parse(savedAnswers);
-                    console.log('[保存答案] 已从本地存储恢复之前的答案');
-                    
-                    if (examAnswers.length > 0) {
-                        if (window.amisInstance) {
-                            try {
-                                const answersMap = {};
-                                examAnswers.forEach(answer => {
-                                    if (answer && answer.questionId) {
-                                        answersMap[`question_${answer.questionId}`] = answer.answer;
-                                    }
-                                });
-                                
-                                window.safeUpdateAmisProps(answersMap);
-                                console.log('[保存答案] 已重新同步所有答案到amis实例');
-                                
-                                // 更新答题进度
-                                updateAnswerProgress();
-                            } catch (syncError) {
-                                console.error('[保存答案] 重新同步到amis实例失败:', syncError);
-                            }
-                        }
-                    }
-                } catch (recoveryError) {
-                    console.error('[保存答案] 恢复答案失败：', recoveryError);
-                }
-            }
-        } catch (error) {
-            console.error('[保存答案] 尝试恢复答案时出错:', error);
-        }
-    }
-
     // 修改onLoad回调函数，确保初始化时更新进度
     window.onLoad = function() {
         console.log('[考试页] 初始化事件');
@@ -2216,16 +1617,16 @@
         // 初始化考试全局变量
         window.examAnswers = [];
         
-        // 恢复之前的答案
-        recoverPreviousAnswers();
-        
         // 设置切屏检测
-        window.setupScreenSwitchDetection();
+        if (typeof window.ScreenSwitchDetector !== 'undefined' && typeof window.ScreenSwitchDetector.setup === 'function') {
+            window.ScreenSwitchDetector.setup();
+        } else if (typeof window.setupScreenSwitchDetection === 'function') {
+            // 向后兼容旧的全局函数
+            window.setupScreenSwitchDetection();
+        }
         
         // 设置答题进度初始状态
         updateAnswerProgress();
-        
-        // 其他初始化代码...
     };
 
     // 初始化考试计时器
@@ -2251,7 +1652,10 @@
             // 在考试数据加载后初始化切屏检测（延迟执行确保数据已加载）
             setTimeout(function() {
                 console.log("延迟执行切屏检测初始化");
-                if (typeof window.setupScreenSwitchDetection === 'function') {
+                if (typeof window.ScreenSwitchDetector !== 'undefined' && typeof window.ScreenSwitchDetector.setup === 'function') {
+                    window.ScreenSwitchDetector.setup();
+                } else if (typeof window.setupScreenSwitchDetection === 'function') {
+                    // 向后兼容旧的全局函数
                     window.setupScreenSwitchDetection();
                 } else {
                     console.error("切屏检测函数未定义");
@@ -2277,103 +1681,3 @@
     window.updateAnswerProgress = updateAnswerProgress;
     window.saveAnswer = saveAnswer;
 })(); 
-
-// 添加全局的安全访问AMIS数据函数
-window.safeUpdateAmisProps = function(data, retryCount = 0) {
-    // 最大重试次数
-    const MAX_RETRIES = 3;
-    
-    if (!window.amisInstance) {
-        console.warn("无法更新AMIS属性，amisInstance未初始化");
-        
-        // 保存数据到等待队列
-        if (!window.pendingData) {
-            window.pendingData = {};
-        }
-        Object.assign(window.pendingData, data);
-        console.log("amisInstance未初始化，数据已保存到待处理队列", data);
-        
-        // 如果未初始化，且未超过最大重试次数，则延迟重试
-        if (retryCount < MAX_RETRIES) {
-            console.log(`AMIS实例未初始化，将在2秒后重试 (${retryCount + 1}/${MAX_RETRIES})`);
-            setTimeout(() => {
-                window.safeUpdateAmisProps(data, retryCount + 1);
-            }, 2000);
-        }
-        return false;
-    }
-    
-    try {
-        // 确保props存在
-        if (!window.amisInstance.props) {
-            window.amisInstance.props = {};
-            console.log("创建了缺失的amisInstance.props");
-        }
-        
-        // 确保data存在
-        if (!window.amisInstance.props.data) {
-            window.amisInstance.props.data = {};
-            console.log("创建了缺失的amisInstance.props.data");
-        }
-        
-        const currentData = window.amisInstance.props.data || {};
-        
-        // 记录拷贝以防失败时可以回滚
-        const dataCopy = JSON.parse(JSON.stringify(currentData));
-        
-        try {
-            // 首先尝试直接合并，避免触发完整更新 
-            Object.assign(window.amisInstance.props.data, data);
-            console.log("已直接更新AMIS数据", data);
-            
-            // 如果数据包含关键数据如问题列表，还是要手动调用更新
-            if (data.questions) {
-                // 第二步：使用API调用更新以触发界面刷新 
-                window.amisInstance.updateProps({
-                    data: window.amisInstance.props.data
-                });
-                console.log("已触发AMIS重新渲染");
-            }
-            
-            return true;
-        } catch (innerError) {
-            // 如果直接更新失败，回滚数据并尝试标准方法
-            console.warn("直接更新AMIS数据失败，尝试标准方法", innerError);
-            window.amisInstance.props.data = dataCopy;
-            
-            // 使用标准更新方法
-            window.amisInstance.updateProps({
-                data: {
-                    ...currentData,
-                    ...data
-                }
-            });
-            
-            return true;
-        }
-    } catch (error) {
-        console.error("安全更新AMIS属性时出错:", error);
-        
-        // 尝试使用更安全的方法更新
-        try {
-            window.amisInstance.updateProps({
-                data: data
-            });
-            return true;
-        } catch (fallbackError) {
-            console.error("AMIS属性更新备用方法也失败:", fallbackError);
-            
-            // 如果仍然失败且未超过最大重试次数，则延迟重试
-            if (retryCount < MAX_RETRIES) {
-                console.log(`更新AMIS属性失败，将在2秒后重试 (${retryCount + 1}/${MAX_RETRIES})`);
-                setTimeout(() => {
-                    window.safeUpdateAmisProps(data, retryCount + 1);
-                }, 2000);
-            }
-            
-            return false;
-        }
-    }
-};
-
-// 添加同步状态样式部分已移除，样式已迁移到exam.css文件中

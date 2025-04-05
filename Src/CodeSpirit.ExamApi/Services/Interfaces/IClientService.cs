@@ -94,4 +94,11 @@ public interface IClientService
     /// <returns>考生个人信息</returns>
     Task<ClientProfileDto> GetStudentProfileAsync(long userId);
     
+    /// <summary>
+    /// 获取已提交的答案
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>已提交的答案列表</returns>
+    Task<List<ClientExamAnswerDto>> GetSubmittedAnswersAsync(long recordId, long userId);
 } 

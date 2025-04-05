@@ -263,6 +263,11 @@ public class ClientExamQuestionDto
     /// </summary>
     [DisplayName("是否必答")]
     public bool IsRequired { get; set; }
+
+    /// <summary>
+    /// 答案
+    /// </summary>
+    public string? Answer { get; set; }
 }
 
 public class OptionDisplayDto

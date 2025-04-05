@@ -31,9 +31,9 @@ public class IndexController : ApiControllerBase
     /// <param name="studentService">考生服务</param>
     /// <param name="distributedCache">分布式缓存服务</param>
     public IndexController(
-        IClientService clientService, 
-        ILogger<IndexController> logger, 
-        ICurrentUser currentUser, 
+        IClientService clientService,
+        ILogger<IndexController> logger,
+        ICurrentUser currentUser,
         IStudentService studentService,
         IDistributedCache distributedCache)
     {
@@ -101,7 +101,7 @@ public class IndexController : ApiControllerBase
         {
             return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
-        
+
         try
         {
             // 如果有未保存的答案，先保存这些答案
@@ -110,10 +110,10 @@ public class IndexController : ApiControllerBase
                 _logger.LogInformation("提交考试前保存 {Count} 个答案", answers.Count);
                 await _clientService.SaveAnswerAsync(id, currentUserId, answers);
             }
-            
+
             // 调用提交服务更改考试状态（不再传递答案参数）
             var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId, null);
-            
+
             // 返回提交结果和是否允许查看结果
             return Ok(new ApiResponse<dynamic>(0, "提交成功！", new { success, enableViewResult }));
         }
@@ -142,22 +142,8 @@ public class IndexController : ApiControllerBase
         {
             return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
-        
-        try
-        {
-            var result = await _clientService.GetExamResultAsync(id, currentUserId);
-            return SuccessResponse(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "获取考试结果时发生业务逻辑错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
-            return BadRequest(new ApiResponse(-1, ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取考试结果时发生未处理错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
-            return StatusCode(500, new ApiResponse(-1, "获取考试结果失败，请稍后重试"));
-        }
+        var result = await _clientService.GetExamResultAsync(id, currentUserId);
+        return SuccessResponse(result);
     }
 
     /// <summary>
@@ -174,41 +160,50 @@ public class IndexController : ApiControllerBase
             return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
 
-        try
+        // 获取用户IP和设备信息
+        var userIp = GetClientIpAddress();
+        var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
+
+        // 获取考试详情，包括题目列表
+        var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
+
+        // 获取基本信息
+        var basicInfo = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
+
+        // 将题目信息添加到基本信息中
+        basicInfo.Questions = examDetail.Questions.ToList();
+
+        // 获取用户已提交的答案
+        var recordId = basicInfo.RecordId;
+        if (recordId.HasValue)
         {
-            // 获取用户IP和设备信息
-            var userIp = GetClientIpAddress();
-            var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
-            
-            // 获取考试详情，包括题目列表
-            var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
-            
-            // 获取基本信息
-            var basicInfo = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
-            
-            // 将题目信息添加到基本信息中
-            basicInfo.Questions = examDetail.Questions.Select(q => new ClientExamQuestionDto
+            try
             {
-                Id = q.Id,
-                Type = q.Type,
-                Content = q.Content,
-                Score = q.Score,
-                Options = q.Options,
-                IsRequired = q.IsRequired
-            }).ToList();
-            
-            return SuccessResponse(basicInfo);
+                _logger.LogDebug("获取考试答案，考试ID: {ExamId}, 记录ID: {RecordId}, 用户ID: {UserId}", 
+                    id, recordId.Value, currentUserId);
+                    
+                var submittedAnswers = await _clientService.GetSubmittedAnswersAsync(recordId.Value, currentUserId);
+                
+                foreach (var item in basicInfo.Questions)
+                {
+                    item.Answer = submittedAnswers.FirstOrDefault(p => p.QuestionId == item.QuestionId)?.Answer ?? string.Empty;
+                }
+                
+                _logger.LogDebug("成功获取考试答案，题目数: {QuestionCount}, 答案数: {AnswerCount}", 
+                    basicInfo.Questions.Count, submittedAnswers.Count);
+            }
+            catch (Exception ex)
+            {
+                // 记录错误但不影响整体返回
+                _logger.LogError(ex, "获取考试答案时出现未处理错误，考试ID: {ExamId}, 记录ID: {RecordId}, 用户ID: {UserId}", 
+                    id, recordId.Value, currentUserId);
+            }
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            _logger.LogWarning(ex, "获取考试基本信息时发生业务逻辑错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
-            return BadRequest(new ApiResponse(-1, ex.Message));
+            _logger.LogWarning("无法获取答案：考试记录ID为空，考试ID: {ExamId}, 用户ID: {UserId}", id, currentUserId);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取考试基本信息时发生未处理错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
-            return StatusCode(500, new ApiResponse(-1, "获取考试基本信息失败，请稍后重试"));
-        }
+        return SuccessResponse(basicInfo);
     }
 
     /// <summary>
@@ -258,7 +253,7 @@ public class IndexController : ApiControllerBase
             {
                 return clientIp.ToString().Trim();
             }
-            
+
             // 按优先级尝试获取IP地址
             if (HttpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedIps))
             {
@@ -269,19 +264,19 @@ public class IndexController : ApiControllerBase
                     return ips[0]?.Trim() ?? "未知";
                 }
             }
-            
+
             // 尝试从X-Real-IP获取
             if (HttpContext.Request.Headers.TryGetValue("X-Real-IP", out var realIp))
             {
                 return realIp.ToString().Trim();
             }
-            
+
             // 使用HttpContext.Connection.RemoteIpAddress
             if (HttpContext.Connection.RemoteIpAddress != null)
             {
                 return HttpContext.Connection.RemoteIpAddress.ToString();
             }
-            
+
             return "未知";
         }
         catch (Exception ex)
@@ -305,11 +300,11 @@ public class IndexController : ApiControllerBase
         {
             return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
-        
+
         try
         {
             var userIp = GetClientIpAddress();
-            
+
             // 直接调用服务记录切屏，不使用缓存
             await _clientService.RecordScreenSwitchAsync(id, currentUserId, userIp);
             return SuccessResponse();
@@ -326,7 +321,7 @@ public class IndexController : ApiControllerBase
             return SuccessResponse();
         }
     }
-    
+
     /// <summary>
     /// 获取考生个人信息
     /// </summary>
@@ -339,7 +334,7 @@ public class IndexController : ApiControllerBase
         {
             return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
-        
+
         try
         {
             var result = await _clientService.GetStudentProfileAsync(currentUserId);
@@ -371,31 +366,31 @@ public class IndexController : ApiControllerBase
         {
             return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
-        
+
         try
         {
             if (answer == null)
             {
                 return BadRequest(new ApiResponse(-1, "答案数据无效"));
             }
-            
+
             // 将单个答案转换为列表，以便重用现有的服务方法
             var answers = new List<ClientExamAnswerDto> { answer };
-            
+
             // 保存单个答案到服务器
             var success = await _clientService.SaveAnswerAsync(id, currentUserId, answers);
-            
+
             return SuccessResponse();
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "保存答案时发生业务逻辑错误，用户 {UserId}，考试记录 {RecordId}，题目 {QuestionId}", 
+            _logger.LogWarning(ex, "保存答案时发生业务逻辑错误，用户 {UserId}，考试记录 {RecordId}，题目 {QuestionId}",
                 currentUserId, id, answer?.QuestionId);
             return BadRequest(new ApiResponse(-1, ex.Message));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "保存答案时发生未处理错误，用户 {UserId}，考试记录 {RecordId}，题目 {QuestionId}", 
+            _logger.LogError(ex, "保存答案时发生未处理错误，用户 {UserId}，考试记录 {RecordId}，题目 {QuestionId}",
                 currentUserId, id, answer?.QuestionId);
             // 返回成功而不是错误，避免影响用户体验
             return SuccessResponse();
@@ -416,17 +411,17 @@ public class IndexController : ApiControllerBase
         {
             return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
-        
+
         try
         {
             if (answers == null || !answers.Any())
             {
                 return BadRequest(new ApiResponse(-1, "答案数据无效"));
             }
-            
+
             // 保存多个答案到服务器
             var success = await _clientService.SaveAnswerAsync(id, currentUserId, answers);
-            
+
             return SuccessResponse();
         }
         catch (InvalidOperationException ex)

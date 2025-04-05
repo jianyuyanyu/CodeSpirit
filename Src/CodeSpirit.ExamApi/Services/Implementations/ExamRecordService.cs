@@ -381,7 +381,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         
         // 获取所有试卷题目的映射，用于验证提交的答案
         var examPaperQuestionsMap = examPaper.ExamPaper.ExamPaperQuestions
-            .ToDictionary(q => q.QuestionId, q => q.QuestionVersionId);
+            .ToDictionary(q => q.QuestionId, q => q);
             
         // 获取所有已有的答题记录
         var existingAnswerRecords = await _answerRecordRepository.CreateQuery()
@@ -397,7 +397,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         foreach (var answer in answers)
         {
             // 验证题目是否存在于试卷中
-            if (!examPaperQuestionsMap.TryGetValue(answer.QuestionId, out var questionVersionId))
+            if (!examPaperQuestionsMap.TryGetValue(answer.QuestionId, out var examPaperQuestion))
             {
                 _logger.LogWarning($"题目 {answer.QuestionId} 不在试卷中，已跳过");
                 continue;
@@ -425,12 +425,12 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 {
                     ExamRecordId = examRecordId,
                     QuestionId = answer.QuestionId,
-                    QuestionVersionId = questionVersionId,
+                    QuestionVersionId = examPaperQuestion.QuestionVersionId,
                     Answer = answer.Answer,
                     SubmitTime = DateTime.UtcNow,
                     StartTime = DateTime.UtcNow, // 设置相同的开始时间和提交时间
                     Duration = 0,
-                    OrderNumber = 0, // 顺序未知
+                    OrderNumber = examPaperQuestion.OrderNumber,
                     IsMarked = false
                 };
                 
@@ -1128,5 +1128,18 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             
             await Repository.UpdateAsync(examRecord);
         }
+    }
+
+    /// <summary>
+    /// 获取考试的所有已保存答案
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>答案列表</returns>
+    public async Task<List<ExamAnswerRecord>> GetExamAnswersAsync(long recordId)
+    {
+        return await _answerRecordRepository.CreateQuery()
+            .Where(a => a.ExamRecordId == recordId)
+            .OrderBy(a => a.OrderNumber)
+            .ToListAsync();
     }
 }

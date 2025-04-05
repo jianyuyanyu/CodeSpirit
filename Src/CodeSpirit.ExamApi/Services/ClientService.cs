@@ -368,26 +368,68 @@ public class ClientService : IClientService
     /// <returns>考生个人信息</returns>
     public async Task<ClientProfileDto> GetStudentProfileAsync(long userId)
     {
-        // 获取学生信息
+        // 获取学生实体
         var student = await GetStudentByUserIdAsync(userId);
         if (student == null)
         {
-            throw new AppServiceException(404, "未找到考生信息");
+            throw new InvalidOperationException("未找到考生信息");
         }
 
-        // 构建客户端个人信息DTO
         return new ClientProfileDto
         {
             Id = student.Id,
-            UserId = userId,
+            UserId = student.UserId,
             Name = student.Name,
             StudentNumber = student.StudentNumber,
-            IdNo = student.IdNo ?? string.Empty,
+            IdNo = student.IdNo,
             Gender = student.Gender.GetDisplayName(),
-            AdmissionTicket = student.AdmissionTicket ?? string.Empty,
+            AdmissionTicket = student.AdmissionTicket,
             PhoneNumber = student.PhoneNumber,
-            StudentGroups = student.StudentGroups?.ToList() ?? new List<string>()
+            StudentGroups = student.StudentGroups ?? new List<string>()
         };
+    }
+
+    /// <summary>
+    /// 获取已提交的答案
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>答案列表</returns>
+    public async Task<List<ClientExamAnswerDto>> GetSubmittedAnswersAsync(long recordId, long userId)
+    {
+        try
+        {
+            // 获取学生实体
+            var student = await GetStudentByUserIdAsync(userId);
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到考生信息");
+            }
+
+            // 检查考试记录是否存在且属于该学生
+            var record = await _examRecordService.GetAsync(recordId);
+            if (record == null || record.StudentId != student.Id)
+            {
+                throw new InvalidOperationException("无效的考试记录");
+            }
+
+            // 获取已保存的答案
+            var answerEntities = await _examRecordService.GetExamAnswersAsync(recordId);
+
+            // 将答案实体转换为DTO
+            var answers = answerEntities.Select(a => new ClientExamAnswerDto
+            {
+                QuestionId = a.QuestionId,
+                Answer = a.Answer ?? string.Empty
+            }).ToList();
+
+            return answers;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取已提交的答案时发生错误，记录ID: {RecordId}, 用户ID: {UserId}", recordId, userId);
+            return new List<ClientExamAnswerDto>(); // 返回空列表而不是抛出异常，避免影响客户端体验
+        }
     }
 
     /// <summary>
@@ -421,11 +463,11 @@ public class ClientService : IClientService
                 _logger.LogWarning("保存答案失败：考试记录不存在，记录ID: {RecordId}", recordId);
                 return false;
             }
-            
+
             // 验证记录归属
             if (examRecord.StudentId != student.Id)
             {
-                _logger.LogWarning("保存答案失败：考试记录归属不匹配，学生ID: {StudentId}, 记录学生ID: {RecordStudentId}", 
+                _logger.LogWarning("保存答案失败：考试记录归属不匹配，学生ID: {StudentId}, 记录学生ID: {RecordStudentId}",
                     student.Id, examRecord.StudentId);
                 return false;
             }
@@ -435,11 +477,16 @@ public class ClientService : IClientService
                 _logger.LogWarning("保存答案失败：考试状态不是进行中，当前状态: {Status}", examRecord.Status);
                 return false;
             }
-            
+
             // 直接调用ExamRecordService的批量保存答案接口
-            await _examRecordService.SubmitAnswersAsync(recordId, answers);
+            var result = await _examRecordService.SubmitAnswersAsync(recordId, answers);
+            if (!result)
+            {
+                _logger.LogWarning("批量保存答案失败，考试记录ID: {RecordId}", recordId);
+                return false;
+            }
             _logger.LogDebug("已保存考试 {RecordId} 的 {Count} 个答案", recordId, answers.Count);
-            
+
             return true;
         }
         catch (Exception ex)

@@ -129,41 +129,41 @@
             if (!amisInstance || !amisInstance.updateProps) return;
 
             try {
-                const data = {};
+            const data = {};
                 
-                if (selectedPaths && Array.isArray(selectedPaths)) {
+            if (selectedPaths && Array.isArray(selectedPaths)) {
                     // 只同步指定路径的数据
                     for (const path of selectedPaths) {
-                        const keys = path.split('.');
-                        let current = data;
-                        let source = window.globalData;
+                    const keys = path.split('.');
+                    let current = data;
+                    let source = window.globalData;
                         let isValid = true;
 
-                        for (let i = 0; i < keys.length - 1; i++) {
+                    for (let i = 0; i < keys.length - 1; i++) {
                             if (source[keys[i]] === undefined) {
                                 isValid = false;
                                 break;
                             }
 
-                            if (current[keys[i]] === undefined) {
-                                current[keys[i]] = {};
-                            }
-                            current = current[keys[i]];
-                            source = source[keys[i]];
+                        if (current[keys[i]] === undefined) {
+                            current[keys[i]] = {};
                         }
+                        current = current[keys[i]];
+                        source = source[keys[i]];
+                    }
 
                         if (isValid) {
                             const lastKey = keys[keys.length - 1];
                             current[lastKey] = source[lastKey];
                         }
                     }
-                } else {
+            } else {
                     // 同步所有数据
-                    Object.assign(data, window.globalData);
-                }
+                Object.assign(data, window.globalData);
+            }
 
                 // 更新AMIS实例
-                amisInstance.updateProps({ data });
+            amisInstance.updateProps({ data });
                 
                 // 可选：触发重新渲染
                 if (typeof amisInstance.forceUpdate === 'function') {

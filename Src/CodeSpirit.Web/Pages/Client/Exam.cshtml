@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "在线考试系统";
     var examId = ViewContext.RouteData.Values["id"]?.ToString();
+    var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
 }
 
 @section Head
@@ -20,16 +21,22 @@
     <resource path="css/client/exam.css" type="css" />
     
     <!-- 考试页面特定初始化数据 -->
-    <script type="text/javascript">
-        // 预定义考试ID，避免从URL解析
-        window.examId = "@examId";
-        
-        // 防作弊配置
-        window.examSecurity = {
-            blockCopy: true,        // 禁止复制
-            blockPaste: true,       // 禁止粘贴
-            blockRightClick: true,  // 禁止右键
-            blockPrint: true        // 禁止打印
+    <script>
+        // 全局配置对象
+        window.CS_CONFIG = {
+            examId: "@examId",
+            environment: "@Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")",
+            isDevelopment: @Json.Serialize(isDevelopment),
+            security: {
+                blockCopy: true,
+                blockPaste: true,
+                blockRightClick: true,
+                blockPrint: true
+            },
+            amisOptions: {
+                theme: 'antd',
+                locale: 'zh-CN'
+            }
         };
     </script>
 }
@@ -37,91 +44,71 @@
 <div id="root" class="app-wrapper"></div>
 
 @section Scripts {
-    <!-- 切屏检测模块 -->
+    <!-- 安全和监控模块 -->
     <resource path="js/client/screenSwitchDetector.js" type="js" />
     
-    <!-- 考试主体模块 -->
-    <resource path="js/client/exam.js" type="js" />
-    
-    <!-- 防作弊安全脚本 -->
-    <script type="text/javascript">
-        (function() {
-            'use strict';
+    <!-- 防作弊代码 - 按环境加载 -->
+    <script>
+    (function() {
+        'use strict';
+        
+        const config = window.CS_CONFIG || {};
+        
+        // 仅在非开发环境中应用完整的安全措施
+        if (!config.isDevelopment) {
+            // 检测开发者工具
+            const detectDevTools = () => {
+                const threshold = 160;
+                const widthDiff = window.outerWidth - window.innerWidth > threshold;
+                const heightDiff = window.outerHeight - window.innerHeight > threshold;
+                
+                if (widthDiff || heightDiff) {
+                    console.warn('可能检测到开发工具已打开');
+                }
+            };
             
-            // 检查是否为开发环境
-            const isDevelopment = '@Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")' === 'Development';
-            console.log(`当前环境: ${isDevelopment ? '开发环境' : '生产环境'}`);
+            // 定期检测
+            setInterval(detectDevTools, 1000);
             
-            // 禁用右键菜单
-            if (window.examSecurity?.blockRightClick) {
-                document.addEventListener('contextmenu', function(e) {
+            // 禁用开发者工具快捷键
+            document.addEventListener('keydown', e => {
+                if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && e.keyCode === 73)) {
                     e.preventDefault();
                     return false;
-                });
+                }
+            });
+        }
+        
+        // 以下安全措施在所有环境中应用
+        if (config.security) {
+            // 禁用右键
+            if (config.security.blockRightClick) {
+                document.addEventListener('contextmenu', e => e.preventDefault());
             }
             
             // 禁用复制粘贴
-            if (window.examSecurity?.blockCopy || window.examSecurity?.blockPaste) {
-                document.addEventListener('copy', function(e) {
-                    if (window.examSecurity?.blockCopy) {
-                        e.preventDefault();
-                    }
-                });
-                
-                document.addEventListener('paste', function(e) {
-                    if (window.examSecurity?.blockPaste) {
-                        e.preventDefault();
-                    }
-                });
-                
-                document.addEventListener('cut', function(e) {
-                    if (window.examSecurity?.blockCopy) {
-                        e.preventDefault();
-                    }
+            if (config.security.blockCopy || config.security.blockPaste) {
+                ['copy', 'cut', 'paste'].forEach(evt => {
+                    document.addEventListener(evt, e => {
+                        const type = evt === 'paste' ? 'blockPaste' : 'blockCopy';
+                        if (config.security[type]) e.preventDefault();
+                    });
                 });
             }
             
             // 禁用打印
-            if (window.examSecurity?.blockPrint) {
-                window.addEventListener('beforeprint', function(e) {
-                    e.preventDefault();
-                    return false;
-                });
+            if (config.security.blockPrint) {
+                window.addEventListener('beforeprint', e => e.preventDefault());
             }
-            
-            // 禁用F12开发者工具（仅在非开发环境）
-            if (!isDevelopment) {
-                document.addEventListener('keydown', function(e) {
-                    // F12键或Ctrl+Shift+I
-                    if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && e.keyCode === 73)) {
-                        e.preventDefault();
-                        return false;
-                    }
-                });
-                
-                // 其他开发者工具检测
-                const devtoolsDetector = function() {
-                    // 用于检测开发者工具状态的变量
-                    const widthThreshold = window.outerWidth - window.innerWidth > 160;
-                    const heightThreshold = window.outerHeight - window.innerHeight > 160;
-                    
-                    // 如果宽度或高度差异大于阈值，可能是开发者工具打开
-                    if (widthThreshold || heightThreshold) {
-                        console.warn('检测到开发者工具可能已打开');
-                        // 这里可以添加其他措施，如提醒用户或记录
-                    }
-                };
-                
-                // 定期检测开发者工具状态
-                setInterval(devtoolsDetector, 1000);
-            } else {
-                console.log('开发环境中: 允许使用F12开发者工具');
-            }
-            
-            // 防止页面内嵌在iframe中，避免潜在作弊
-            if (window.self !== window.top) {
-                window.top.location = window.self.location;
-            }
-        })();
+        }
+        
+        // 防止iframe嵌套
+        if (window.self !== window.top) {
+            window.top.location = window.self.location;
+        }
+    })();
     </script>
+    
+    <!-- 考试主模块 -->
+    <resource path="js/client/exam.js" type="js" />
 } 

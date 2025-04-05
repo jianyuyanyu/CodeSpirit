@@ -1,12 +1,36 @@
+/**
+ * 在线考试系统客户端主模块
+ * 负责考试页面渲染、答题、计时和提交功能
+ * @module ExamClient
+ */
 (function () {
-    let amis = amisRequire('amis/embed');
+    'use strict';
+
+    // 引入依赖模块
+    const amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
-    // 使用 HashHistory
     const history = History.createHashHistory();
 
     // 获取考试ID
     const examId = window.location.pathname.split('/').pop();
-    window.enableAMISDebug = true;
+    
+    // 调试模式配置
+    window.enableAMISDebug = false; // 生产环境应设为false
+    
+    // 常量定义
+    const CONSTANTS = {
+        TIMER_UPDATE_INTERVAL: 1000,       // 计时器更新频率(毫秒)
+        SUBMIT_REDIRECT_DELAY: 1500,       // 提交后跳转延迟(毫秒)
+        MAX_RETRY_COUNT: 3,                // 最大重试次数
+        RETRY_DELAY: 2000,                 // 重试延迟基础时间(毫秒)
+        AUTO_SUBMIT_DELAY: 3000,           // 自动提交延迟(毫秒)
+        COUNTDOWN_THRESHOLDS: {            // 倒计时阈值(秒)
+            WARNING: 1800,                 // 警告阈值(30分钟)
+            URGENT: 300,                   // 紧急阈值(5分钟)
+            EXTREMELY_URGENT: 60           // 极度紧急阈值(1分钟)
+        },
+        TIMER_TRIGGER_POINTS: [300, 240, 180, 120, 60, 30, 10] // 特殊倒计时提醒点(秒)
+    };
     
     // 全局数据对象，用于存储用户信息和考试数据
     window.globalData = {
@@ -24,8 +48,8 @@
             endTime: null,
             totalScore: 0,
             recordId: null,
-            screenSwitchCount: 0,         // 添加切屏次数属性
-            allowedScreenSwitchCount: 0   // 添加允许切屏次数属性
+            screenSwitchCount: 0,         // 切屏次数属性
+            allowedScreenSwitchCount: 0    // 允许切屏次数属性
         },
         timer: {
             displayText: '加载中...',
@@ -36,25 +60,52 @@
         }
     };
 
-    // 全局数据辅助函数
+    // 私有状态变量
+    let examTimerInterval = null;    // 计时器间隔ID
+    let remainingTime = 0;           // 剩余时间(秒)
+    let examAnswers = [];            // 答案集合
+    let recordId = null;             // 考试记录ID
+    let isSubmitting = false;        // 是否正在提交
+    
+    // AMIS实例引用
+    window.amisInstance = null;
+
+    /**
+     * 全局数据管理工具
+     * @namespace GlobalData
+     */
     window.GlobalData = {
-        // 获取数据
+        /**
+         * 获取指定路径的数据
+         * @param {string} path - 数据路径，格式为"a.b.c"
+         * @param {*} defaultValue - 数据不存在时的默认值
+         * @returns {*} 获取的数据或默认值
+         */
         get: function (path, defaultValue) {
+            if (!path) return defaultValue;
+            
             const keys = path.split('.');
             let current = window.globalData;
 
-            for (let i = 0; i < keys.length; i++) {
+            for (const key of keys) {
                 if (current === undefined || current === null) {
                     return defaultValue;
                 }
-                current = current[keys[i]];
+                current = current[key];
             }
 
             return current !== undefined ? current : defaultValue;
         },
 
-        // 设置数据
+        /**
+         * 设置指定路径的数据
+         * @param {string} path - 数据路径，格式为"a.b.c"
+         * @param {*} value - 要设置的值
+         * @returns {*} 设置的值
+         */
         set: function (path, value) {
+            if (!path) return value;
+            
             const keys = path.split('.');
             let current = window.globalData;
 
@@ -69,45 +120,391 @@
             return value;
         },
 
-        // 将全局数据同步到amis上下文
+        /**
+         * 将全局数据同步到amis上下文
+         * @param {object} amisInstance - amis实例
+         * @param {string[]} [selectedPaths] - 要同步的路径列表，不指定则同步全部数据
+         */
         syncToAmis: function (amisInstance, selectedPaths) {
-            if (!amisInstance) return;
+            if (!amisInstance || !amisInstance.updateProps) return;
 
-            const data = {};
-            if (selectedPaths && Array.isArray(selectedPaths)) {
-                selectedPaths.forEach(path => {
-                    const keys = path.split('.');
-                    let current = data;
-                    let source = window.globalData;
+            try {
+                const data = {};
+                
+                if (selectedPaths && Array.isArray(selectedPaths)) {
+                    // 只同步指定路径的数据
+                    for (const path of selectedPaths) {
+                        const keys = path.split('.');
+                        let current = data;
+                        let source = window.globalData;
+                        let isValid = true;
 
-                    for (let i = 0; i < keys.length - 1; i++) {
-                        if (source[keys[i]] === undefined) break;
+                        for (let i = 0; i < keys.length - 1; i++) {
+                            if (source[keys[i]] === undefined) {
+                                isValid = false;
+                                break;
+                            }
 
-                        if (current[keys[i]] === undefined) {
-                            current[keys[i]] = {};
+                            if (current[keys[i]] === undefined) {
+                                current[keys[i]] = {};
+                            }
+                            current = current[keys[i]];
+                            source = source[keys[i]];
                         }
-                        current = current[keys[i]];
-                        source = source[keys[i]];
+
+                        if (isValid) {
+                            const lastKey = keys[keys.length - 1];
+                            current[lastKey] = source[lastKey];
+                        }
                     }
+                } else {
+                    // 同步所有数据
+                    Object.assign(data, window.globalData);
+                }
 
-                    current[keys[keys.length - 1]] = source[keys[keys.length - 1]];
-                });
-            } else {
-                Object.assign(data, window.globalData);
+                // 更新AMIS实例
+                amisInstance.updateProps({ data });
+                
+                // 可选：触发重新渲染
+                if (typeof amisInstance.forceUpdate === 'function') {
+                    amisInstance.forceUpdate();
+                }
+            } catch (error) {
+                console.error('[GlobalData] 同步数据到AMIS失败:', error);
             }
-
-            amisInstance.updateProps({ data });
+        },
+        
+        /**
+         * 更新单个字段并同步到AMIS
+         * @param {string} path - 数据路径
+         * @param {*} value - 要设置的值
+         * @param {boolean} [syncToAmis=true] - 是否同步到AMIS
+         */
+        update: function(path, value, syncToAmis = true) {
+            this.set(path, value);
+            
+            if (syncToAmis && window.amisInstance) {
+                this.syncToAmis(window.amisInstance, [path]);
+            }
+        }
+    };
+    
+    /**
+     * 计时器模块，管理考试计时逻辑
+     * @namespace ExamTimer
+     */
+    const ExamTimer = {
+        /**
+         * 启动考试计时器
+         * @param {number} duration - 考试时长(分钟)
+         * @param {string|Date} startTime - 考试开始时间
+         */
+        start: function(duration, startTime) {
+            console.log("[计时器] 开始启动计时器", { duration, startTime });
+            
+            if (!duration || !startTime) {
+                console.error("[计时器] 参数无效", { duration, startTime });
+                return;
+            }
+            
+            try {
+                // 解析开始时间
+                let examStartTime = new Date(startTime);
+                
+                // 验证开始时间是否有效
+                if (isNaN(examStartTime.getTime())) {
+                    console.error("[计时器] 无效的开始时间格式", startTime);
+                    // 使用当前时间作为备用
+                    examStartTime = new Date();
+                    console.log("[计时器] 使用当前时间作为备用", examStartTime);
+                }
+                
+                // 计算考试结束时间
+                const examEndTime = new Date(examStartTime.getTime() + duration * 60 * 1000);
+                console.log("[计时器] 计算出的结束时间", examEndTime);
+                
+                // 计算剩余时间(秒)
+                const currentTime = new Date();
+                let secondsRemaining = Math.floor((examEndTime.getTime() - currentTime.getTime()) / 1000);
+                
+                // 考试已结束的情况
+                if (secondsRemaining <= 0) {
+                    console.log("[计时器] 考试时间已结束或即将结束");
+                    remainingTime = 0;
+                    
+                    // 更新显示
+                    this.updateDisplay();
+                    
+                    // 延迟后自动提交考试
+                    setTimeout(() => {
+                        console.log("[计时器] 考试时间已结束，准备自动提交");
+                        
+                        // 显示警告提示
+                        if (typeof window.showScreenSwitchWarning === 'function') {
+                            window.showScreenSwitchWarning("考试时间已结束，系统将自动提交您的答卷!");
+                        }
+                        
+                        // 延迟后自动提交
+                        setTimeout(() => {
+                            if (typeof window.submitExam === 'function') {
+                                window.submitExam(true); // 自动提交
+                            }
+                        }, CONSTANTS.AUTO_SUBMIT_DELAY);
+                    }, 500);
+                    
+                    return;
+                }
+                
+                // 设置剩余时间
+                remainingTime = secondsRemaining;
+                console.log("[计时器] 设置剩余时间(秒)", remainingTime);
+                
+                // 清除之前的计时器
+                if (examTimerInterval) {
+                    clearInterval(examTimerInterval);
+                    console.log("[计时器] 清除之前的计时器");
+                }
+                
+                // 更新计时器显示
+                this.updateDisplay();
+                
+                // 启动计时器
+                console.log("[计时器] 正在启动计时器间隔");
+                examTimerInterval = setInterval(() => {
+                    remainingTime--;
+                    
+                    if (remainingTime <= 0) {
+                        console.log("[计时器] 考试时间结束，准备自动提交");
+                        clearInterval(examTimerInterval);
+                        
+                        if (typeof window.submitExam === 'function') {
+                            window.submitExam(true); // 自动提交
+                        }
+                        return;
+                    }
+                    
+                    this.updateDisplay();
+                }, CONSTANTS.TIMER_UPDATE_INTERVAL);
+                
+                console.log("[计时器] 计时器已成功启动", examTimerInterval);
+            } catch (error) {
+                console.error("[计时器] 启动过程中出错", error);
+            }
+        },
+        
+        /**
+         * 更新计时器显示
+         */
+        updateDisplay: function() {
+            try {
+                // 防御性编程：确保remainingTime是有效值
+                if (isNaN(remainingTime) || remainingTime === undefined) {
+                    console.warn("[计时器] remainingTime无效:", remainingTime);
+                    remainingTime = 0;
+                }
+                
+                // 确保remainingTime不为负数
+                remainingTime = Math.max(0, remainingTime);
+                
+                // 计算时分秒
+                const hours = Math.floor(remainingTime / 3600);
+                const minutes = Math.floor((remainingTime % 3600) / 60);
+                const seconds = remainingTime % 60;
+                
+                // 格式化显示文本
+                const displayText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // 更新全局数据
+                window.GlobalData.set('timer.displayText', displayText);
+                window.GlobalData.set('timer.hours', hours);
+                window.GlobalData.set('timer.minutes', minutes);
+                window.GlobalData.set('timer.seconds', seconds);
+                window.GlobalData.set('timer.remainingSeconds', remainingTime);
+        
+                // 检测是否在特殊时间段内，设置相应样式类
+                let timerClassName = "exam-timer";
+                
+                // 根据剩余时间设置不同的样式
+                if (remainingTime <= CONSTANTS.COUNTDOWN_THRESHOLDS.URGENT) {
+                    timerClassName += " countdown-urgent countdown-final";
+                    this.handleFinalCountdown(remainingTime);
+                } else if (remainingTime <= CONSTANTS.COUNTDOWN_THRESHOLDS.WARNING) {
+                    timerClassName += " countdown-warn";
+                }
+                
+                // 更新DOM显示
+                this.updateDOMDisplay(displayText, timerClassName);
+                
+                // 同步到amis上下文
+                if (window.amisInstance && window.amisInstance.updateProps) {
+                    try {
+                        window.amisInstance.updateProps({
+                            data: {
+                                timer: {
+                                    displayText: displayText,
+                                    hours: hours,
+                                    minutes: minutes,
+                                    seconds: seconds,
+                                    remainingSeconds: remainingTime
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        console.error("[计时器] 更新AMIS显示时出错", e);
+                    }
+                }
+            } catch (error) {
+                console.error("[计时器] 更新显示时发生错误:", error);
+                
+                // 尝试最基本的DOM更新作为备用
+                try {
+                    this.updateDOMDisplay("00:00:00", "exam-timer");
+                } catch (e) {
+                    console.error("[计时器] 更新DOM时发生致命错误:", e);
+                }
+            }
+        },
+        
+        /**
+         * 更新DOM显示
+         * @param {string} displayText - 显示文本
+         * @param {string} className - CSS类名
+         * @private
+         */
+        updateDOMDisplay: function(displayText, className) {
+            const timerElements = document.querySelectorAll('.exam-timer');
+            if (timerElements && timerElements.length > 0) {
+                timerElements.forEach(el => {
+                    el.innerHTML = `剩余时间：${displayText}`;
+                    el.className = className || "exam-timer";
+                });
+            }
+        },
+        
+        /**
+         * 处理最后倒计时特效
+         * @param {number} remainingSeconds - 剩余秒数
+         * @private
+         */
+        handleFinalCountdown: function(remainingSeconds) {
+            try {
+                // 标记整个页面进入最后倒计时状态
+                document.body.classList.add('final-countdown-active');
+                
+                // 更新计时器容器的样式
+                const timerContainer = document.querySelector('.exam-timer-container');
+                if (timerContainer) {
+                    timerContainer.classList.add('final-countdown');
+                    
+                    // 移除之前的紧急程度类
+                    timerContainer.classList.remove('extremely-urgent', 'very-urgent', 'urgent');
+                    
+                    // 根据剩余时间设置不同程度的紧急样式
+                    if (remainingSeconds <= CONSTANTS.COUNTDOWN_THRESHOLDS.EXTREMELY_URGENT) {
+                        timerContainer.classList.add('extremely-urgent');
+                    } else if (remainingSeconds <= 180) { // 3分钟
+                        timerContainer.classList.add('very-urgent');
+                    } else {
+                        timerContainer.classList.add('urgent');
+                    }
+                }
+                
+                // 检查是否需要触发特殊提示
+                if (CONSTANTS.TIMER_TRIGGER_POINTS.includes(remainingSeconds)) {
+                    this.showCountdownAlert(remainingSeconds);
+                }
+            } catch (error) {
+                console.error("[计时器] 处理倒计时特效时出错:", error);
+            }
+        },
+        
+        /**
+         * 显示倒计时警告
+         * @param {number} remainingSeconds - 剩余秒数
+         * @private
+         */
+        showCountdownAlert: function(remainingSeconds) {
+            let message = '';
+            let duration = 3000; // 默认显示3秒
+            
+            // 根据不同的时间节点设置不同的消息
+            switch(remainingSeconds) {
+                case 300: // 5分钟
+                    message = '注意：考试仅剩最后5分钟！';
+                    duration = 5000;
+                    break;
+                case 240: // 4分钟
+                    message = '考试即将结束，请检查您的答案！';
+                    break;
+                case 180: // 3分钟
+                    message = '仅剩3分钟，请加快完成！';
+                    break;
+                case 120: // 2分钟
+                    message = '仅剩2分钟，请准备提交！';
+                    duration = 4000;
+                    break;
+                case 60: // 1分钟
+                    message = '最后1分钟！请确保保存所有答案！';
+                    duration = 5000;
+                    break;
+                case 30: // 30秒
+                    message = '30秒！即将自动提交！';
+                    break;
+                case 10: // 10秒
+                    message = '10秒！系统即将自动提交您的答卷！';
+                    duration = 5000;
+                    break;
+                default:
+                    return; // 不是特殊时间点，不显示提醒
+            }
+            
+            // 创建并显示提示元素
+            const alertElement = document.createElement('div');
+            alertElement.className = 'final-countdown-alert';
+            alertElement.innerHTML = `
+                <div class="alert-content">
+                    <div class="alert-icon"><i class="fa fa-clock-o"></i></div>
+                    <div class="alert-message">${message}</div>
+                    <div class="alert-timer">${Math.floor(remainingSeconds / 60)}:${(remainingSeconds % 60).toString().padStart(2, '0')}</div>
+                </div>
+            `;
+            
+            // 添加到页面
+            document.body.appendChild(alertElement);
+            
+            // 添加动画类
+            setTimeout(() => {
+                alertElement.classList.add('show');
+            }, 10);
+            
+            // 设置自动关闭
+            setTimeout(() => {
+                alertElement.classList.remove('show');
+                alertElement.classList.add('hide');
+                
+                // 动画结束后移除元素
+                setTimeout(() => {
+                    if (document.body.contains(alertElement)) {
+                        document.body.removeChild(alertElement);
+                    }
+                }, 500);
+            }, duration);
+        },
+        
+        /**
+         * 清除计时器
+         */
+        clear: function() {
+            if (examTimerInterval) {
+                clearInterval(examTimerInterval);
+                examTimerInterval = null;
+                console.log("[计时器] 已清除");
+            }
         }
     };
 
-    // 创建计时器状态
-    let examTimerInterval = null;
-    let remainingTime = 0;
-    let examEndTime = null;
-
     // 答案状态
-    let examAnswers = [];
-    let recordId = null;
+    // 无需重复声明，保持原有的private变量
 
     // 在文件开始位置添加
     window.amisInstance = null;

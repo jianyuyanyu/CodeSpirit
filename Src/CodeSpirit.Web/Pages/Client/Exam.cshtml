@@ -1,15 +1,127 @@
 @page "/client/exam/{id:long}"
 @model CodeSpirit.Web.Pages.Client.ExamModel
 @{
-    ViewData["Title"] = "考试";
+    ViewData["Title"] = "在线考试系统";
+    var examId = ViewContext.RouteData.Values["id"]?.ToString();
 }
+
 @section Head
 {
+    <meta name="description" content="在线考试系统 - 高效、安全的考试平台">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- 禁用缓存，确保考试内容及时更新 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <!-- 考试系统专用样式 -->
     <resource path="css/client/exam.css" type="css" />
+    
+    <!-- 考试页面特定初始化数据 -->
+    <script type="text/javascript">
+        // 预定义考试ID，避免从URL解析
+        window.examId = "@examId";
+        
+        // 防作弊配置
+        window.examSecurity = {
+            blockCopy: true,        // 禁止复制
+            blockPaste: true,       // 禁止粘贴
+            blockRightClick: true,  // 禁止右键
+            blockPrint: true        // 禁止打印
+        };
+    </script>
 }
+
 <div id="root" class="app-wrapper"></div>
 
 @section Scripts {
+    <!-- 切屏检测模块 -->
     <resource path="js/client/screenSwitchDetector.js" type="js" />
+    
+    <!-- 考试主体模块 -->
     <resource path="js/client/exam.js" type="js" />
+    
+    <!-- 防作弊安全脚本 -->
+    <script type="text/javascript">
+        (function() {
+            'use strict';
+            
+            // 检查是否为开发环境
+            const isDevelopment = '@Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")' === 'Development';
+            console.log(`当前环境: ${isDevelopment ? '开发环境' : '生产环境'}`);
+            
+            // 禁用右键菜单
+            if (window.examSecurity?.blockRightClick) {
+                document.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            }
+            
+            // 禁用复制粘贴
+            if (window.examSecurity?.blockCopy || window.examSecurity?.blockPaste) {
+                document.addEventListener('copy', function(e) {
+                    if (window.examSecurity?.blockCopy) {
+                        e.preventDefault();
+                    }
+                });
+                
+                document.addEventListener('paste', function(e) {
+                    if (window.examSecurity?.blockPaste) {
+                        e.preventDefault();
+                    }
+                });
+                
+                document.addEventListener('cut', function(e) {
+                    if (window.examSecurity?.blockCopy) {
+                        e.preventDefault();
+                    }
+                });
+            }
+            
+            // 禁用打印
+            if (window.examSecurity?.blockPrint) {
+                window.addEventListener('beforeprint', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            }
+            
+            // 禁用F12开发者工具（仅在非开发环境）
+            if (!isDevelopment) {
+                document.addEventListener('keydown', function(e) {
+                    // F12键或Ctrl+Shift+I
+                    if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && e.keyCode === 73)) {
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+                
+                // 其他开发者工具检测
+                const devtoolsDetector = function() {
+                    // 用于检测开发者工具状态的变量
+                    const widthThreshold = window.outerWidth - window.innerWidth > 160;
+                    const heightThreshold = window.outerHeight - window.innerHeight > 160;
+                    
+                    // 如果宽度或高度差异大于阈值，可能是开发者工具打开
+                    if (widthThreshold || heightThreshold) {
+                        console.warn('检测到开发者工具可能已打开');
+                        // 这里可以添加其他措施，如提醒用户或记录
+                    }
+                };
+                
+                // 定期检测开发者工具状态
+                setInterval(devtoolsDetector, 1000);
+            } else {
+                console.log('开发环境中: 允许使用F12开发者工具');
+            }
+            
+            // 防止页面内嵌在iframe中，避免潜在作弊
+            if (window.self !== window.top) {
+                window.top.location = window.self.location;
+            }
+        })();
+    </script>
 } 

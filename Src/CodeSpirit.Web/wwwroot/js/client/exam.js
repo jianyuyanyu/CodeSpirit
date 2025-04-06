@@ -63,7 +63,8 @@
     // 私有状态变量
     let examTimerInterval = null;    // 计时器间隔ID
     let remainingTime = 0;           // 剩余时间(秒)
-    let examAnswers = [];            // 答案集合
+    window.examAnswers = [];         // 答案集合 - 改为全局变量
+    let examAnswers = window.examAnswers; // 本地引用
     let recordId = null;             // 考试记录ID
     let isSubmitting = false;        // 是否正在提交
     
@@ -678,10 +679,10 @@
                     // 触发重新渲染
                     if (typeof window.amisInstance.forceUpdate === 'function') {
                         window.amisInstance.forceUpdate();
+                        
+                        // 更新DOM，强制显示最新时间
+                        updateTimerDOMDisplay(displayText, timerClassName);
                     }
-                    
-                    // 更新DOM，强制显示最新时间
-                    updateTimerDOMDisplay(displayText, timerClassName);
                 } catch (e) {
                     console.error("更新计时器显示时出错", e);
                     // 出错时直接更新DOM作为后备方案
@@ -749,97 +750,38 @@
         }
     }
     
-    // 修改保存答案函数的部分代码
+    // 添加保存答案的函数
     function saveAnswer(questionId, answer) {
         try {
-            console.log(`[保存答案] 开始保存题目 ${questionId} 的答案:`, answer);
+            console.log(`[答题卡] 开始保存题目 ${questionId} 答案: ${answer}`);
+            console.log(`[答题卡] 题目ID类型: ${typeof questionId}, 值: ${questionId}, 字符串长度: ${String(questionId).length}`);
+            
+            // 确保examAnswers对象存在
+            if (!window.examAnswers) {
+                window.examAnswers = {};
+            }
+            
+            // 保存答案到examAnswers对象
+            window.examAnswers[questionId] = answer;
+            console.log(`[答题卡] 当前已有答案数量: ${Object.keys(window.examAnswers).length}`);
+            
+            // 更新答题卡状态
+            const statusUpdated = updateAnswerCardStatus(questionId);
+            console.log(`[答题卡] 状态更新${statusUpdated ? '成功' : '失败'}`);
             
             // 获取考试记录ID
             const recordId = window.globalData.exam.recordId;
             
             if (!recordId) {
-                console.error('[保存答案] 错误：未找到考试记录ID');
-                return;
+                console.error(`[答题卡] 保存答案失败：缺少考试ID(${examId})或记录ID(${recordId})`);
+                return false;
             }
+            sendAnswerToServer(recordId, questionId, answer);
             
-            // 参数验证
-            if (!questionId) {
-                console.error('[保存答案] 错误：questionId 不能为空');
-                return;
-            }
-            
-            // 确保examAnswers是数组
-            if (!Array.isArray(examAnswers)) {
-                console.warn('[保存答案] examAnswers不是数组，正在初始化');
-                examAnswers = [];
-            }
-            
-            // 确保答案格式正确
-            let processedAnswer = answer;
-            
-            // 处理 null 或 undefined 答案
-            if (answer === null || answer === undefined) {
-                console.warn(`[保存答案] 题目 ${questionId} 的答案为空，将设置为空字符串`);
-                processedAnswer = '';
-            }
-            
-            // 如果不是字符串或数组，则转换为字符串
-            if (typeof answer !== 'string' && !Array.isArray(answer)) {
-                console.log(`[保存答案] 题目 ${questionId} 的答案类型为 ${typeof answer}，转换为字符串`);
-                processedAnswer = String(answer);
-            }
-            
-            // 如果是数组但包含非字符串元素，规范化数组
-            if (Array.isArray(processedAnswer)) {
-                console.log(`[保存答案] 处理题目 ${questionId} 的数组答案`);
-                processedAnswer = processedAnswer.map(item => {
-                    if (item === null || item === undefined) {
-                        return '';
-                    }
-                    if (typeof item !== 'string') {
-                        return String(item);
-                    }
-                    return item;
-                });
-            }
-            
-            // 查找已有答案
-            const existingIndex = examAnswers.findIndex(a => a.questionId === questionId);
-            console.log(`[保存答案] 查找结果：${existingIndex >= 0 ? '找到已有答案' : '未找到已有答案'}`);
-            
-            // 准备要保存的答案对象
-            const answerObject = {
-                questionId: questionId,
-                answer: processedAnswer,
-                timestamp: new Date().toISOString()
-            };
-            
-            // 在保存前验证答案对象
-            if (!answerObject.questionId || answerObject.answer === undefined) {
-                console.error('[保存答案] 错误：答案对象无效', answerObject);
-                return;
-            }
-            
-            if (existingIndex >= 0) {
-                // 更新已有答案
-                console.log(`[保存答案] 更新题目 ${questionId} 的已有答案`);
-                examAnswers[existingIndex] = answerObject;
-            } else {
-                // 添加新答案
-                console.log(`[保存答案] 添加题目 ${questionId} 的新答案`);
-                examAnswers.push(answerObject);
-            }
-            
-            // 验证更新后的答案列表
-            console.log(`[保存答案] 更新后的答案列表长度: ${examAnswers.length}`);
-            
-            // 向服务器提交当前答案
-            sendAnswerToServer(recordId, questionId, processedAnswer);
-            
-            console.log(`[保存答案] 题目 ${questionId} 的答案保存完成`);
-            
+            return true;
         } catch (error) {
-            console.error('[保存答案] 保存过程中发生错误：', error);
+            console.error(`[答题卡] 保存答案时出错:`, error);
+            return false;
         }
     }
 
@@ -1028,7 +970,7 @@
                 
                 // 从examAnswers中找出对应的答案
                 window.unsyncedAnswers.forEach(questionId => {
-                    const answer = examAnswers.find(a => a.questionId === questionId);
+                    const answer = window.examAnswers.find(a => a.questionId === questionId);
                     if (answer) {
                         answersToSync.push({
                             questionId: String(answer.questionId), // 使用String()确保是字符串
@@ -1107,7 +1049,7 @@
         console.log('[提交考试] 开始最终提交...');
         
         // 转换为后端需要的格式，确保questionId是字符串类型
-        const answers = examAnswers.map(a => {
+        const answers = window.examAnswers.map(a => {
             return {
                 questionId: String(a.questionId), // 使用String()确保是字符串
                 answer: a.answer
@@ -1344,6 +1286,51 @@
                                 ]
                             }
                         ]
+                    },
+                    {
+                        type: 'flex',
+                        justify: 'center',
+                        className: 'w-full header-status-container answer-card-row',
+                        items: [
+                            {
+                                type: 'flex',
+                                justify: 'center',
+                                alignItems: 'center',
+                                className: 'exam-answer-card-container',
+                                id: "answerCardContainer",
+                                items: [
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="answer-card-title">答题卡</div>'
+                                    },
+                                    {
+                                        type: 'each',
+                                        name: 'questions',
+                                        visibleOn: "questions && questions.length > 0",
+                                        items: {
+                                            type: 'tpl',
+                                            tpl: '<a href="#" data-question-id="${item.id}" data-question-index="${index + 1}" title="${index + 1}. ${item.type === \'SingleChoice\' ? \'单选题\' : item.type === \'MultipleChoice\' ? \'多选题\' : item.type === \'TrueFalse\' ? \'判断题\' : \'主观题\'}">${index + 1}</a>',
+                                            className: 'answer-card-item ${item.answered ? "answered" : "unanswered"}'
+                                        }
+                                    },
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="answer-card-empty">加载中...</div>',
+                                        visibleOn: "!questions || questions.length === 0"
+                                    }
+                                ],
+                                onEvent: {
+                                    "inited": {
+                                        actions: [
+                                            {
+                                                actionType: "custom",
+                                                script: "console.log('[答题卡] 初始化完成，items:', event.data.questions ? event.data.questions.length : 0);"
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
                     }
                 ]
             },
@@ -1411,12 +1398,48 @@
                                         // 初始化考试计时器
                                         initializeExamTimer(event.data);
                                         
-                                        // 保存题目数据以便其他功能使用
+                                        // 为题目数据添加answered状态
+                                        if (Array.isArray(event.data.questions)) {
+                                            // 初始化题目的answered状态为false
+                                            event.data.questions.forEach(question => {
+                                                question.answered = question.answer && question.answer.length>0;
+                                            });
+                                            
+                                            // 确保examAnswers是数组
+                                            if (typeof window.examAnswers === 'undefined') {
+                                                console.warn("window.examAnswers未定义，初始化为空数组");
+                                                window.examAnswers = [];
+                                                examAnswers = window.examAnswers;
+                                            }
+                                            
+                                            // 如果已有答案，更新answered状态
+                                            if (Array.isArray(window.examAnswers) && window.examAnswers.length > 0) {
+                                                window.examAnswers.forEach(answer => {
+                                                    if (answer && answer.questionId) {
+                                                        const questionIndex = event.data.questions.findIndex(q => q.id == answer.questionId);
+                                                        if (questionIndex >= 0) {
+                                                            event.data.questions[questionIndex].answered = true;
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                        }
+                                        
                                         window.globalData.exam.questions = event.data.questions || [];
                                         
                                         console.log("成功初始化考试数据");
                                         // 打印题目数据，检查是否正确
                                         console.log("考试题目数据：", event.data.questions);
+                                        
+                                        // 直接更新AMIS中的题目数据，确保答题卡显示
+                                        if (window.amisInstance) {
+                                            window.amisInstance.updateProps({
+                                                data: {
+                                                    questions: event.data.questions || []
+                                                }
+                                            });
+                                            console.log("已同步题目数据到AMIS:", event.data.questions?.length || 0);
+                                        }
                                         
                                     } catch (error) {
                                         console.error("初始化考试数据时出错:", error);
@@ -1479,7 +1502,7 @@
                                             body: [
                                                 {
                                                     type: "tpl",
-                                                    tpl: "<div class=\"question-label\"><pre>${index + 1}. ${item.content} </pre><span style=\"color:#999\">（${item.score}分）</span></div>",
+                                                    tpl: "<div class=\"question-label\" id=\"question_${item.id}_label\"><pre>${index + 1}. ${item.content} </pre><span style=\"color:#999\">（${item.score}分）</span></div>",
                                                     inline: false
                                                 },
                                                 {
@@ -1651,7 +1674,7 @@
                     remainingSeconds: 0
                 },
                 name: '',
-                questions: window.globalData?.exam?.questions || []
+                questions: [] // 初始化为空数组
             },
             locale: 'zh-CN',
             context: {
@@ -1708,7 +1731,7 @@
                         // 同时注入到amis全局上下文，使所有组件都能访问
                         window.GlobalData.syncToAmis(amisInstance);
 
-                        console.debug('Global user data updated:', window.globalData.user);
+                        //console.debug('Global user data updated:', window.globalData.user);
                     }
                 }
 
@@ -1723,22 +1746,7 @@
     
     // 确保AMIS实例初始化完成
     console.log("AMIS实例初始化完成，测试属性访问:", amisInstance.props ? "props已存在" : "props不存在");
-    
-    // 如果amisInstance.props不存在，进行初始化
-    if (!amisInstance.props) {
-        amisInstance.props = {
-            data: {
-                timer: {
-                    displayText: '加载中...',
-                    hours: 0, 
-                    minutes: 0,
-                    seconds: 0,
-                    remainingSeconds: 0
-                }
-            }
-        };
-        console.log("已初始化AMIS实例的props属性");
-    }
+
 
     history.listen(state => {
         amisInstance.updateProps({
@@ -1750,8 +1758,16 @@
     document.addEventListener('DOMContentLoaded', function() {
         // console.log("[页面加载] 文档已加载完成");
         
+        // 确保examAnswers变量初始化
+        if (typeof window.examAnswers === 'undefined') {
+            console.warn('初始化全局examAnswers变量');
+            window.examAnswers = {};
+        }
+        
         // 初始化同步状态显示
-        updateSyncStatus();
+        if (typeof updateSyncStatus === 'function') {
+            updateSyncStatus();
+        }
         
         // 尝试初始化计时器
         if (window.globalData && window.globalData.exam) {
@@ -1826,21 +1842,6 @@
         }, { passive: true });
     }
 
-    // 添加页面卸载时的保存机制
-    window.addEventListener('beforeunload', function() {
-        try {
-            const userId = window.globalData.user.id;
-            const examId = window.globalData.exam.id;
-            if (userId && examId && Array.isArray(examAnswers) && examAnswers.length > 0) {
-                const storageKey = `exam_${userId}_${examId}_answers`;
-                localStorage.setItem(storageKey, JSON.stringify(examAnswers));
-                console.log('[页面卸载] 已保存答案到本地存储');
-            }
-        } catch (error) {
-            console.error('[页面卸载] 保存答案失败：', error);
-        }
-    });
-
     // 添加滚动监听逻辑，实现顶部栏的紧凑化
     function setupHeaderScroll() {
         // 获取头部容器
@@ -1869,7 +1870,7 @@
         // 初始调用一次，确保页面刷新后也应用正确的样式
         handleScroll();
         
-        console.log("[UI优化] 设置顶部栏滚动紧凑化效果");
+        //console.log("[UI优化] 设置顶部栏滚动紧凑化效果");
     }
 
     // 显示最后倒计时提醒
@@ -2002,4 +2003,39 @@
     // 使函数全局可用，供AMIS调用
     window.initializeExamTimer = initializeExamTimer;
     window.saveAnswer = saveAnswer;
+
+    // 添加更新答题卡状态的函数
+    function updateAnswerCardStatus(questionId) {
+        try {
+            // 获取所有题目ID
+            const allQuestionIds = window.globalData?.exam?.questions?.map(q => q.questionId) || [];
+            
+            // 尝试精确匹配
+            const matchedQuestion = allQuestionIds.find(id => id === questionId);
+            if (matchedQuestion) {
+                console.log(`[答题卡] 找到精确匹配的题目: ${matchedQuestion}`);
+                const question = window.globalData?.exam?.questions?.find(q => q.questionId === matchedQuestion);
+                if (question) {
+                    question.answered = true;
+                }
+            }
+            return true;
+        } catch (error) {
+            console.error('[答题卡] 更新答题卡状态时出错:', error);
+            return false;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初始化全局数据
+        if (!window.globalData) {
+            window.globalData = {
+                exam: {
+                    questions: [],
+                    examId: null,
+                    recordId: null
+                }
+            };
+        }
+    });
 })(); 

@@ -13,6 +13,9 @@
     --border-radius: 4px;
     --box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     --header-transition: all 0.3s ease;
+    --answered-color: #4caf50;
+    --unanswered-color: #f5f5f5;
+    --answer-card-hover: #e0e0e0;
 }
 
 /* 顶部栏样式 */
@@ -1129,5 +1132,167 @@
     .progress-value,
     .progress-percent {
         font-size: 12px;
+    }
+}
+
+/* 答题卡样式 */
+.exam-answer-card-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    max-width: 90%;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    margin: 0 auto;
+    padding: 8px 10px;
+    background-color: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    max-height: 45px;
+    scrollbar-width: thin;
+}
+
+.answer-card-row {
+    border-top: 1px solid #eaeaea;
+    padding: 5px 0;
+    background-color: #f9f9f9;
+}
+
+.header-status-container.answer-card-row {
+    padding-top: 2px;
+    padding-bottom: 5px;
+}
+
+.exam-answer-card-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+.exam-answer-card-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.exam-answer-card-container::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+.exam-answer-card-container::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}
+
+.answer-card-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-right: 8px;
+    padding-left: 5px;
+    white-space: nowrap;
+}
+
+.answer-card-empty {
+    font-size: 12px;
+    color: #999;
+    font-style: italic;
+    padding: 0 10px;
+    line-height: 22px;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+.answer-card-item {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 28px;
+    height: 28px;
+    margin: 2px 3px;
+    border-radius: 50%;
+    font-size: 13px;
+    text-decoration: none;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: var(--unanswered-color);
+    border: 1px solid #ddd;
+    flex-shrink: 0;
+}
+
+.answer-card-item:hover {
+    background-color: var(--answer-card-hover);
+    transform: scale(1.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    z-index: 5;
+}
+
+.answer-card-item.answered {
+    background-color: var(--answered-color);
+    color: white;
+    border: 1px solid var(--answered-color);
+}
+
+.answer-card-item.unanswered {
+    background-color: var(--unanswered-color);
+    color: #666;
+}
+
+/* 紧凑模式下的答题卡样式 */
+.compact-header .answer-card-row {
+    padding: 2px 0;
+}
+
+.compact-header .exam-answer-card-container {
+    padding: 3px 10px;
+    max-height: 36px;
+}
+
+.compact-header .answer-card-title {
+    font-size: 12px;
+}
+
+.compact-header .answer-card-item {
+    min-width: 22px;
+    height: 22px;
+    font-size: 11px;
+    margin: 1px 2px;
+}
+
+/* 高亮当前题目样式 */
+.highlight-question {
+    animation: highlight-question 1.5s ease;
+}
+
+@keyframes highlight-question {
+    0% {
+        background-color: rgba(63, 81, 181, 0.1);
+    }
+    50% {
+        background-color: rgba(63, 81, 181, 0.2);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* 媒体查询 - 移动设备适配 */
+@media (max-width: 768px) {
+    .exam-answer-card-container {
+        max-width: 100%;
+        margin: 5px 0;
+        padding: 3px;
+        justify-content: center;
+    }
+
+    .answer-card-title {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 3px;
+    }
+
+    .answer-card-item {
+        min-width: 22px;
+        height: 22px;
+        margin: 1px;
     }
 }

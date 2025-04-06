@@ -1309,8 +1309,18 @@
                                         visibleOn: "questions && questions.length > 0",
                                         items: {
                                             type: 'tpl',
-                                            tpl: '<a href="#" data-question-id="${item.id}" data-question-index="${index + 1}" title="${index + 1}. ${item.type === \'SingleChoice\' ? \'单选题\' : item.type === \'MultipleChoice\' ? \'多选题\' : item.type === \'TrueFalse\' ? \'判断题\' : \'主观题\'}">${index + 1}</a>',
-                                            className: 'answer-card-item ${item.answered ? "answered" : "unanswered"}'
+                                            tpl: '<a href="javascript:void(0)" data-question-id="${item.id}" data-question-index="${index + 1}" title="${index + 1}. ${item.type === \'SingleChoice\' ? \'单选题\' : item.type === \'MultipleChoice\' ? \'多选题\' : item.type === \'TrueFalse\' ? \'判断题\' : \'主观题\'}">${index + 1}</a>',
+                                            className: 'answer-card-item ${item.answered ? "answered" : "unanswered"}',
+                                            onEvent: {
+                                                click: {
+                                                    actions: [
+                                                        {
+                                                            actionType: "custom",
+                                                            script: "scrollToQuestion(event.data.item.id, event.data.index + 1);"
+                                                        }
+                                                    ]
+                                                }
+                                            }
                                         }
                                     },
                                     {
@@ -1658,6 +1668,48 @@
     window.updateTimerDisplay = updateTimerDisplay;
     window.saveAnswer = saveAnswer;
     window.initializeExamTimer = initializeExamTimer;
+    
+    // 添加跳转到题目的全局方法
+    window.scrollToQuestion = function(questionId, questionIndex) {
+        try {
+            console.log(`[答题卡] 尝试滚动到题目 ${questionIndex}, ID: ${questionId}`);
+            // 查找对应的题目元素
+            const questionElement = document.getElementById(`question_${questionId}_label`);
+            if (questionElement) {
+                // 获取固定头部的高度
+                const fixedHeaderHeight = document.querySelector('.fixed-header-container')?.offsetHeight || 0;
+                
+                // 获取元素的位置
+                const rect = questionElement.getBoundingClientRect();
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                
+                // 计算目标滚动位置，减去固定头部高度和额外的20px空间
+                const targetScrollPosition = rect.top + scrollTop - fixedHeaderHeight - 20;
+                
+                // 使用window.scrollTo平滑滚动到目标位置
+                window.scrollTo({
+                    top: targetScrollPosition,
+                    behavior: 'smooth'
+                });
+                
+                // 添加高亮效果
+                questionElement.parentElement.classList.add('highlight-question');
+                // 3秒后移除高亮
+                setTimeout(function() {
+                    questionElement.parentElement.classList.remove('highlight-question');
+                }, 3000);
+                
+                console.log(`[答题卡] 成功滚动到题目 ${questionIndex}，考虑了顶部高度: ${fixedHeaderHeight}px`);
+                return true;
+            } else {
+                console.warn(`[答题卡] 未找到题目元素: ${questionId}`);
+                return false;
+            }
+        } catch (error) {
+            console.error(`[答题卡] 滚动到题目时出错:`, error);
+            return false;
+        }
+    };
 
     // 初始化amis
     let amisInstance = amis.embed(
@@ -1744,51 +1796,6 @@
     // 立即设置全局amis实例以确保计时器可以使用
     window.amisInstance = amisInstance;
     
-    // 确保AMIS实例初始化完成
-    console.log("AMIS实例初始化完成，测试属性访问:", amisInstance.props ? "props已存在" : "props不存在");
-
-
-    history.listen(state => {
-        amisInstance.updateProps({
-            location: state.location || state
-        });
-    });
-
-    // 在考试页面加载完成后初始化答案
-    document.addEventListener('DOMContentLoaded', function() {
-        // console.log("[页面加载] 文档已加载完成");
-        
-        // 确保examAnswers变量初始化
-        if (typeof window.examAnswers === 'undefined') {
-            console.warn('初始化全局examAnswers变量');
-            window.examAnswers = {};
-        }
-        
-        // 初始化同步状态显示
-        if (typeof updateSyncStatus === 'function') {
-            updateSyncStatus();
-        }
-        
-        // 尝试初始化计时器
-        if (window.globalData && window.globalData.exam) {
-            const { startTime, duration } = window.globalData.exam;
-            if (startTime && duration) {
-                console.log("[页面加载] 从全局数据初始化计时器", { startTime, duration });
-                // 这里不直接调用startExamTimer，因为API加载完成后会自动调用
-            }
-        } else {
-            console.log("[页面加载] 全局考试数据尚未准备好，将等待API加载");
-        }
-        
-        // 计算并设置固定头部高度
-        setTimeout(updateFixedHeaderHeight, 500);
-        // 窗口大小改变时重新计算
-        window.addEventListener('resize', updateFixedHeaderHeight);
-        
-        // 设置滚动事件处理
-        setupScrollHandler();
-    });
-    
     // 更新固定头部高度的函数
     function updateFixedHeaderHeight() {
         try {
@@ -1796,13 +1803,13 @@
             if (fixedHeaderContainer) {
                 const height = fixedHeaderContainer.offsetHeight;
                 document.documentElement.style.setProperty('--fixed-header-height', height + 'px');
-                //console.log("[固定头部] 高度已更新:", height + 'px');
+                console.log("[固定头部] 高度已更新:", height + 'px');
                 
                 // 更新spacer高度
                 const spacer = document.querySelector('.fixed-header-spacer');
                 if (spacer) {
                     spacer.style.height = (height + 10) + 'px';
-                    //console.log("[固定头部] spacer高度已更新:", (height + 10) + 'px');
+                    console.log("[固定头部] spacer高度已更新:", (height + 10) + 'px');
                 }
             }
         } catch (error) {
@@ -1935,6 +1942,11 @@
     // 启动紧凑化顶部栏功能
     window.addEventListener('DOMContentLoaded', function() {
         setupHeaderScroll();
+        
+        // 计算并设置固定头部高度
+        setTimeout(updateFixedHeaderHeight, 500);
+        // 窗口大小改变时重新计算
+        window.addEventListener('resize', updateFixedHeaderHeight);
     });
 
     // 修改onLoad回调函数，确保初始化相关功能
@@ -2025,17 +2037,4 @@
             return false;
         }
     }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // 初始化全局数据
-        if (!window.globalData) {
-            window.globalData = {
-                exam: {
-                    questions: [],
-                    examId: null,
-                    recordId: null
-                }
-            };
-        }
-    });
 })(); 

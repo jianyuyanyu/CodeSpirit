@@ -1138,31 +1138,37 @@
 /* 答题卡样式 */
 .exam-answer-card-container {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    max-width: 90%;
     width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    margin: 0 auto;
+    margin: 0;
     padding: 8px 10px;
     background-color: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    max-height: 45px;
+    border-radius: 0;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    max-height: 50px;
     scrollbar-width: thin;
+    transition: all 0.3s ease;
+    -webkit-overflow-scrolling: touch;
 }
 
 .answer-card-row {
-    border-top: 1px solid #eaeaea;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
     padding: 5px 0;
-    background-color: #f9f9f9;
+    background-color: #fafafa;
+    transition: all 0.3s ease;
+    width: 100%;
+    position: relative;
 }
 
 .header-status-container.answer-card-row {
     padding-top: 2px;
     padding-bottom: 5px;
+    width: 100%;
+    position: relative;
 }
 
 .exam-answer-card-container::-webkit-scrollbar {
@@ -1170,30 +1176,43 @@
 }
 
 .exam-answer-card-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: rgba(0, 0, 0, 0.03);
     border-radius: 10px;
 }
 
 .exam-answer-card-container::-webkit-scrollbar-thumb {
-    background: #ccc;
+    background: rgba(0, 0, 0, 0.1);
     border-radius: 10px;
+    transition: all 0.3s ease;
 }
 
 .exam-answer-card-container::-webkit-scrollbar-thumb:hover {
-    background: #aaa;
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .answer-card-title {
-    font-size: 13px;
-    font-weight: bold;
+    font-size: 14px;
+    font-weight: 600;
     color: var(--primary-color);
-    margin-right: 8px;
-    padding-left: 5px;
+    margin-right: 12px;
+    padding-left: 8px;
     white-space: nowrap;
+    position: relative;
+}
+
+.answer-card-title::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 16px;
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 .answer-card-empty {
-    font-size: 12px;
+    font-size: 13px;
     color: #999;
     font-style: italic;
     padding: 0 10px;
@@ -1205,57 +1224,73 @@
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    min-width: 28px;
-    height: 28px;
-    margin: 2px 3px;
-    border-radius: 50%;
-    font-size: 13px;
+    min-width: 32px;
+    height: 32px;
+    margin: 2px 4px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
     text-decoration: none;
     color: #333;
     cursor: pointer;
-    transition: all 0.2s ease;
-    background-color: var(--unanswered-color);
-    border: 1px solid #ddd;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: #f5f5f5;
+    border: 1px solid rgba(0, 0, 0, 0.05);
     flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.answer-card-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0));
+    pointer-events: none;
 }
 
 .answer-card-item:hover {
-    background-color: var(--answer-card-hover);
-    transform: scale(1.1);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    background-color: #e8e8e8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     z-index: 5;
 }
 
 .answer-card-item.answered {
-    background-color: var(--answered-color);
+    background-color: var(--primary-color);
     color: white;
-    border: 1px solid var(--answered-color);
+    border: 1px solid var(--primary-color);
+    box-shadow: 0 2px 6px rgba(63, 81, 181, 0.2);
 }
 
 .answer-card-item.unanswered {
-    background-color: var(--unanswered-color);
+    background-color: #f5f5f5;
     color: #666;
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* 紧凑模式下的答题卡样式 */
 .compact-header .answer-card-row {
-    padding: 2px 0;
+    padding: 4px 0;
 }
 
 .compact-header .exam-answer-card-container {
-    padding: 3px 10px;
-    max-height: 36px;
+    padding: 8px 12px;
+    max-height: 42px;
 }
 
 .compact-header .answer-card-title {
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .compact-header .answer-card-item {
-    min-width: 22px;
-    height: 22px;
-    font-size: 11px;
-    margin: 1px 2px;
+    min-width: 28px;
+    height: 28px;
+    font-size: 13px;
+    margin: 1px 3px;
 }
 
 /* 高亮当前题目样式 */
@@ -1266,33 +1301,65 @@
 @keyframes highlight-question {
     0% {
         background-color: rgba(63, 81, 181, 0.1);
+        transform: scale(1.05);
     }
     50% {
         background-color: rgba(63, 81, 181, 0.2);
+        transform: scale(1.1);
     }
     100% {
         background-color: transparent;
+        transform: scale(1);
     }
 }
 
 /* 媒体查询 - 移动设备适配 */
 @media (max-width: 768px) {
     .exam-answer-card-container {
-        max-width: 100%;
-        margin: 5px 0;
-        padding: 3px;
-        justify-content: center;
+        margin: 0;
+        padding: 8px 10px;
+        justify-content: flex-start;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
     }
 
     .answer-card-title {
-        width: 100%;
-        text-align: center;
-        margin-bottom: 3px;
+        width: auto;
+        text-align: left;
+        margin-bottom: 4px;
+        padding-left: 0;
+        position: sticky;
+        left: 0;
+        background-color: #fff;
+        z-index: 1;
+    }
+
+    .answer-card-title::after {
+        display: none;
     }
 
     .answer-card-item {
-        min-width: 22px;
-        height: 22px;
-        margin: 1px;
+        min-width: 28px;
+        height: 28px;
+        margin: 2px;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .answer-card-row {
+        padding: 6px 0;
+    }
+
+    .header-status-container.answer-card-row {
+        padding-top: 4px;
+        padding-bottom: 6px;
+    }
+}
+
+/* 修复iOS设备上的滚动问题 */
+@supports (-webkit-touch-callout: none) {
+    .exam-answer-card-container {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
     }
 }

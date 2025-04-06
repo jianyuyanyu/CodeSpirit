@@ -69,9 +69,9 @@ public class ExamSettingsController : ApiControllerBase
             Page = 1,
             PerPage = int.MaxValue // 获取所有已发布考试
         };
-        
+
         var result = await _examSettingService.GetExamSettingsAsync(queryDto);
-        
+
         // 筛选已发布状态的考试，并转换为OptionDto格式
         var publishedExams = result.Items
             .Where(e => e.Status == ExamSettingStatus.Published)
@@ -81,7 +81,7 @@ public class ExamSettingsController : ApiControllerBase
                 Name = e.Name
             })
             .ToList();
-        
+
         return SuccessResponse(publishedExams);
     }
 
@@ -128,7 +128,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <param name="id">考试设置ID</param>
     /// <returns>发布结果</returns>
     [HttpPost("{id}/publish")]
-    [Operation("发布", "ajax", null, "确定要发布此试卷吗？",visibleOn: "status == 0")]
+    [Operation("发布", "ajax", null, "确定要发布此试卷吗？", visibleOn: "status == 0")]
     public async Task<ActionResult<ApiResponse>> PublishExamSetting(long id)
     {
         await _examSettingService.PublishExamSettingAsync(id);
@@ -147,4 +147,10 @@ public class ExamSettingsController : ApiControllerBase
         await _examSettingService.UnpublishExamSettingAsync(id);
         return SuccessResponse();
     }
-} 
+
+    [Operation("监考大屏", "link", "/monitor/dashboard?examId=${id}", null, Blank = true)]
+    public ActionResult<ApiResponse> Go_Monitor_dashboard()
+    {
+        return SuccessResponse();
+    }
+}

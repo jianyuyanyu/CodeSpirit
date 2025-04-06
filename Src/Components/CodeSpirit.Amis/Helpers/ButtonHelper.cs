@@ -370,6 +370,7 @@ namespace CodeSpirit.Amis.Helpers
                 // 对于链接类型，使用 link 属性而不是 api
                 string url = op.Api ?? apiRouteHelper.GetApiRouteInfoForMethod(method).ApiPath;
                 button["link"] = url;
+                button["blank"] = op.Blank;
             }
             else if (op.ActionType == "ajax")
             {

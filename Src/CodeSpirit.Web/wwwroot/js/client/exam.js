@@ -1294,7 +1294,7 @@
                         items: [
                             {
                                 type: 'flex',
-                                justify: 'center',
+                                justify: 'start',
                                 alignItems: 'center',
                                 className: 'exam-answer-card-container',
                                 id: "answerCardContainer",

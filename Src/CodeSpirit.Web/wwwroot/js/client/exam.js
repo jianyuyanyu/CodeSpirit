@@ -356,13 +356,6 @@
                 }
             } catch (error) {
                 console.error("[计时器] 更新显示时发生错误:", error);
-                
-                // 尝试最基本的DOM更新作为备用
-                try {
-                    this.updateDOMDisplay("00:00:00", "exam-timer");
-                } catch (e) {
-                    console.error("[计时器] 更新DOM时发生致命错误:", e);
-                }
             }
         },
         

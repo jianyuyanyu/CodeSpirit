@@ -412,7 +412,13 @@ namespace CodeSpirit.Amis.Helpers
                         ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(method.GetParameters()))
                     }
                 };
-                return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+                
+                button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+                if (!string.IsNullOrEmpty(op.VisibleOn))
+                {
+                    button["visibleOn"] = op.VisibleOn;
+                }
+                return button;
             }
             //动态表单
             else if (op.ActionType == "service")

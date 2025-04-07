@@ -4,6 +4,7 @@ using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using System.Net;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -57,13 +58,13 @@ public class QuestionsController : ApiControllerBase
         const int MaxExportLimit = 10000; // 最大导出数量限制
         queryDto.PerPage = MaxExportLimit;
         queryDto.Page = 1;
-        
+
         // 获取题目数据
         PageList<QuestionDto> questions = await _questionService.GetQuestionsAsync(queryDto);
-        
+
         // 如果数据为空则返回错误信息
-        return questions.Items.Count == 0 
-            ? BadResponse<PageList<QuestionDto>>("没有数据可供导出") 
+        return questions.Items.Count == 0
+            ? BadResponse<PageList<QuestionDto>>("没有数据可供导出")
             : SuccessResponse(questions);
     }
 
@@ -181,7 +182,7 @@ public class QuestionsController : ApiControllerBase
 
     [HttpPost("batch/Parser-from-text")]
     [HeaderOperation("从文本导入", "form")]
-    public async Task<ActionResult<ApiResponse>> BatchParserFromText([FromBody]QuestionImportFromTextDto input)
+    public async Task<ActionResult<ApiResponse>> BatchParserFromText([FromBody] QuestionImportFromTextDto input)
     {
         (int successCount, List<string> failedQuestions) = await _questionService.ImportFromTextAsync(input);
 
@@ -333,7 +334,7 @@ public class QuestionsController : ApiControllerBase
 
         // 添加答案和解析区域
         formItems.Add(new JObject { ["type"] = "divider" });
-        
+
         // 显示正确答案
         formItems.Add(new JObject
         {
@@ -341,7 +342,7 @@ public class QuestionsController : ApiControllerBase
             ["tpl"] = $"<div style=\"color:#009900; font-weight:bold;\">正确答案：{question.CorrectAnswer}</div>",
             ["inline"] = false
         });
-        
+
         // 如果有解析，则显示解析
         if (!string.IsNullOrEmpty(question.Analysis))
         {
@@ -365,4 +366,4 @@ public class QuestionsController : ApiControllerBase
 
         return SuccessResponse(amisConfig);
     }
-} 
+}

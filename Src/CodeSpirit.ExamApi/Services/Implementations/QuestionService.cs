@@ -564,7 +564,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             // 使用事务包装所有数据库操作
             await _repository.ExecuteInTransactionAsync(async () =>
             {
-                var parsedQuestions = _questionTextParserV2.Parse(input.Text);
+                var text = WebUtility.HtmlEncode(input.Text);
+                var parsedQuestions = _questionTextParserV2.Parse(text);
 
                 if (!parsedQuestions.Any())
                 {
@@ -603,15 +604,15 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                         var question = new Question
                         {
                             Id = _idGenerator.NewId(),
-                            Content = WebUtility.HtmlEncode(questionData.Content),
-                            Options = questionData.Options?.Select(o => WebUtility.HtmlEncode(o)).ToList() ?? new List<string>(),
-                            CorrectAnswer = WebUtility.HtmlEncode(questionData.CorrectAnswer),
+                            Content = questionData.Content,
+                            Options = questionData.Options?.Select(o => o).ToList() ?? new List<string>(),
+                            CorrectAnswer = questionData.CorrectAnswer,
                             Type = questionData.Type,
                             Difficulty = questionData.Difficulty,
                             CategoryId = input.CategoryId,
                             Version = 1,
                             DefaultScore = questionData.Score,
-                            Analysis = questionData.Analysis != null ? WebUtility.HtmlEncode(questionData.Analysis) : null
+                            Analysis = questionData.Analysis != null ? questionData.Analysis : null
                         };
 
                         // 处理标签

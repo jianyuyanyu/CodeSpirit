@@ -148,7 +148,7 @@ public class ExamSettingsController : ApiControllerBase
         return SuccessResponse();
     }
 
-    [Operation("监考大屏", "link", "/monitor/dashboard?examId=${id}", null, Blank = true)]
+    [Operation("监考大屏", "link", "/monitor/dashboard?examId=${id}", null, visibleOn: "status == 1", Blank = true)]
     public ActionResult<ApiResponse> Go_Monitor_dashboard()
     {
         return SuccessResponse();

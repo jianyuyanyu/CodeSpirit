@@ -5,6 +5,7 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.ExamApi.Dtos.Student;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
+using System.Net;
 
 namespace CodeSpirit.ExamApi.Controllers.Client;
 
@@ -166,13 +167,22 @@ public class IndexController : ApiControllerBase
 
         // 获取考试详情，包括题目列表
         var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
-
+        
         // 获取基本信息
         var basicInfo = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
 
         // 将题目信息添加到基本信息中
         basicInfo.Questions = examDetail.Questions.ToList();
 
+        foreach (var item in basicInfo.Questions)
+        {
+            item.Content = WebUtility.HtmlDecode(item.Content);
+            foreach (var option in item.Options)
+            {
+                option.Label = WebUtility.HtmlDecode(option.Label);
+            }
+        }
+        
         // 获取用户已提交的答案
         var recordId = basicInfo.RecordId;
         if (recordId.HasValue)

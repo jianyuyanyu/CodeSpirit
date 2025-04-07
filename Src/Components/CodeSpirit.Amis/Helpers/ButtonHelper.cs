@@ -354,16 +354,6 @@ namespace CodeSpirit.Amis.Helpers
                 ["actionType"] = op.ActionType
             };
 
-            // 优先使用自定义图标，如果没有则使用默认图标映射
-            if (!string.IsNullOrEmpty(op.Icon))
-            {
-                button["icon"] = op.Icon;
-            }
-            else
-            {
-                CreateIcon(op.Label, button);
-            }
-
             // 处理不同的操作类型
             if (op.ActionType == "link")
             {
@@ -412,20 +402,19 @@ namespace CodeSpirit.Amis.Helpers
                         ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(method.GetParameters()))
                     }
                 };
-                
-                button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
-                if (!string.IsNullOrEmpty(op.VisibleOn))
+
+                button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody, visibleOn: op.VisibleOn);
+                if (!string.IsNullOrEmpty(op.Redirect))
                 {
-                    button["visibleOn"] = op.VisibleOn;
+                    button["redirect"] = op.Redirect;
                 }
-                return button;
             }
             //动态表单
             else if (op.ActionType == "service")
             {
                 // 对于 service 类型，创建一个 service 弹窗
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
-                return CreateServiceDialogButton(op.Label, route);
+                button = CreateServiceDialogButton(op.Label, route);
             }
             //出参表单
             else if (op.ActionType == "return-form")
@@ -449,7 +438,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromProperties(method.ReturnParameter.ParameterType?.GetUnderlyingDataType().GetProperties()))
                     }
                 };
-                return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+                button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
             }
 
             // 添加其他通用配置
@@ -468,6 +457,15 @@ namespace CodeSpirit.Amis.Helpers
                 button["visibleOn"] = op.VisibleOn;
             }
 
+            // 优先使用自定义图标，如果没有则使用默认图标映射
+            if (!string.IsNullOrEmpty(op.Icon))
+            {
+                button["icon"] = op.Icon;
+            }
+            else
+            {
+                CreateIcon(op.Label, button);
+            }
             return button;
         }
 

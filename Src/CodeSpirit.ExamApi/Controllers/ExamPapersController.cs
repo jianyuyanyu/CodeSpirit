@@ -206,13 +206,19 @@ public class ExamPapersController : ApiControllerBase
         return SuccessResponse(panelConfig);
     }
 
+    [Operation("考试管理", "link", "/exam/examSettings?examPaperId=$id", null, visibleOn: "status === 2")]
+    public ActionResult<ApiResponse> ExamSettings_Manager()
+    {
+        return SuccessResponse();
+    }
+
     /// <summary>
     /// 创建考试设置
     /// </summary>
     /// <param name="createDto">创建考试设置DTO</param>
     /// <returns>创建结果</returns>
     [HttpPost("create-examSetting")]
-    [Operation("创建考试", "form", visibleOn: "status === 2", Redirect = "/exam/examSettings", Data = "{\"examPaperId\":\"${id}\"}")]
+    [Operation("创建考试", "form", visibleOn: "status === 2", Redirect = "/exam/examSettings?examPaperId=$id", Data = "{\"examPaperId\":\"${id}\"}")]
     public async Task<ActionResult<ApiResponse<ExamSettingDto>>> CreateExamSetting([FromBody] CreateExamSettingDto createDto)
     {
         var result = await _examSettingService.CreateAsync(createDto);

@@ -308,7 +308,6 @@
                                                             name: 'statusText',
                                                             label: '状态',
                                                             width: 80,
-                                                            type: 'status',
                                                             searchable: true
                                                         },
                                                         {

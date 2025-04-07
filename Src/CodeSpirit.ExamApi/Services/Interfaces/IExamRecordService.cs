@@ -22,13 +22,6 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     Task<ExamRecordDto> StartExamAsync(StartExamDto startExamDto);
     
     /// <summary>
-    /// 提交答案
-    /// </summary>
-    /// <param name="submitAnswerDto">提交答案参数</param>
-    /// <returns>是否成功</returns>
-    Task<bool> SubmitAnswerAsync(SubmitAnswerDto submitAnswerDto);
-    
-    /// <summary>
     /// 批量提交答案
     /// </summary>
     /// <param name="examRecordId">考试记录ID</param>

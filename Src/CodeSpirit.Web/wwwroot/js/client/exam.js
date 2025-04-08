@@ -185,313 +185,6 @@
         }
     };
     
-    /**
-     * 计时器模块，管理考试计时逻辑
-     * @namespace ExamTimer
-     */
-    const ExamTimer = {
-        /**
-         * 启动考试计时器
-         * @param {number} duration - 考试时长(分钟)
-         * @param {string|Date} startTime - 考试开始时间
-         */
-        start: function(duration, startTime) {
-            console.log("[计时器] 开始启动计时器", { duration, startTime });
-            
-            if (!duration || !startTime) {
-                console.error("[计时器] 参数无效", { duration, startTime });
-                return;
-            }
-            
-            try {
-                // 解析开始时间
-                let examStartTime = new Date(startTime);
-                
-                // 验证开始时间是否有效
-                if (isNaN(examStartTime.getTime())) {
-                    console.error("[计时器] 无效的开始时间格式", startTime);
-                    // 使用当前时间作为备用
-                    examStartTime = new Date();
-                    console.log("[计时器] 使用当前时间作为备用", examStartTime);
-                }
-                
-                // 计算考试结束时间
-                const examEndTime = new Date(examStartTime.getTime() + duration * 60 * 1000);
-                console.log("[计时器] 计算出的结束时间", examEndTime);
-                
-                // 计算剩余时间(秒)
-                const currentTime = new Date();
-                let secondsRemaining = Math.floor((examEndTime.getTime() - currentTime.getTime()) / 1000);
-                
-                // 考试已结束的情况
-                if (secondsRemaining <= 0) {
-                    console.log("[计时器] 考试时间已结束或即将结束");
-                    remainingTime = 0;
-                    
-                    // 更新显示
-                    this.updateDisplay();
-                    
-                    // 延迟后自动提交考试
-                    setTimeout(() => {
-                        console.log("[计时器] 考试时间已结束，准备自动提交");
-                        
-                        // 显示警告提示
-                        if (typeof window.showScreenSwitchWarning === 'function') {
-                            window.showScreenSwitchWarning("考试时间已结束，系统将自动提交您的答卷!");
-                        }
-                        
-                        // 延迟后自动提交
-                        setTimeout(() => {
-                            if (typeof window.submitExam === 'function') {
-                                window.submitExam(true); // 自动提交
-                            }
-                        }, CONSTANTS.AUTO_SUBMIT_DELAY);
-                    }, 500);
-                    
-                    return;
-                }
-                
-                // 设置剩余时间
-                remainingTime = secondsRemaining;
-                console.log("[计时器] 设置剩余时间(秒)", remainingTime);
-                
-                // 清除之前的计时器
-                if (examTimerInterval) {
-                    clearInterval(examTimerInterval);
-                    console.log("[计时器] 清除之前的计时器");
-                }
-                
-                // 更新计时器显示
-                this.updateDisplay();
-                
-                // 启动计时器
-                console.log("[计时器] 正在启动计时器间隔");
-                examTimerInterval = setInterval(() => {
-                    remainingTime--;
-                    
-                    if (remainingTime <= 0) {
-                        console.log("[计时器] 考试时间结束，准备自动提交");
-                        clearInterval(examTimerInterval);
-                        
-                        if (typeof window.submitExam === 'function') {
-                            window.submitExam(true); // 自动提交
-                        }
-                        return;
-                    }
-                    
-                    this.updateDisplay();
-                }, CONSTANTS.TIMER_UPDATE_INTERVAL);
-                
-                console.log("[计时器] 计时器已成功启动", examTimerInterval);
-            } catch (error) {
-                console.error("[计时器] 启动过程中出错", error);
-            }
-        },
-        
-        /**
-         * 更新计时器显示
-         */
-        updateDisplay: function() {
-            try {
-                // 防御性编程：确保remainingTime是有效值
-                if (isNaN(remainingTime) || remainingTime === undefined) {
-                    console.warn("[计时器] remainingTime无效:", remainingTime);
-                    remainingTime = 0;
-                }
-                
-                // 确保remainingTime不为负数
-                remainingTime = Math.max(0, remainingTime);
-                
-                // 计算时分秒
-                const hours = Math.floor(remainingTime / 3600);
-                const minutes = Math.floor((remainingTime % 3600) / 60);
-                const seconds = remainingTime % 60;
-                
-                // 格式化显示文本
-                const displayText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
-                // 更新全局数据
-                window.GlobalData.set('timer.displayText', displayText);
-                window.GlobalData.set('timer.hours', hours);
-                window.GlobalData.set('timer.minutes', minutes);
-                window.GlobalData.set('timer.seconds', seconds);
-                window.GlobalData.set('timer.remainingSeconds', remainingTime);
-        
-                // 检测是否在特殊时间段内，设置相应样式类
-                let timerClassName = "exam-timer";
-                
-                // 根据剩余时间设置不同的样式
-                if (remainingTime <= CONSTANTS.COUNTDOWN_THRESHOLDS.URGENT) {
-                    timerClassName += " countdown-urgent countdown-final";
-                    this.handleFinalCountdown(remainingTime);
-                } else if (remainingTime <= CONSTANTS.COUNTDOWN_THRESHOLDS.WARNING) {
-                    timerClassName += " countdown-warn";
-                }
-                
-                // 更新DOM显示
-                this.updateDOMDisplay(displayText, timerClassName);
-                
-                // 同步到amis上下文
-                if (window.amisInstance && window.amisInstance.updateProps) {
-                    try {
-                        window.amisInstance.updateProps({
-                            data: {
-                                timer: {
-                                    displayText: displayText,
-                                    hours: hours,
-                                    minutes: minutes,
-                                    seconds: seconds,
-                                    remainingSeconds: remainingTime
-                                }
-                            }
-                        });
-                    } catch (e) {
-                        console.error("[计时器] 更新AMIS显示时出错", e);
-                    }
-                }
-            } catch (error) {
-                console.error("[计时器] 更新显示时发生错误:", error);
-            }
-        },
-        
-        /**
-         * 更新DOM显示
-         * @param {string} displayText - 显示文本
-         * @param {string} className - CSS类名
-         * @private
-         */
-        updateDOMDisplay: function(displayText, className) {
-            const timerElements = document.querySelectorAll('.exam-timer');
-            if (timerElements && timerElements.length > 0) {
-                timerElements.forEach(el => {
-                    el.innerHTML = `剩余时间：${displayText}`;
-                    el.className = className || "exam-timer";
-                });
-            }
-        },
-        
-        /**
-         * 处理最后倒计时特效
-         * @param {number} remainingSeconds - 剩余秒数
-         * @private
-         */
-        handleFinalCountdown: function(remainingSeconds) {
-            try {
-                // 标记整个页面进入最后倒计时状态
-                document.body.classList.add('final-countdown-active');
-                
-                // 更新计时器容器的样式
-                const timerContainer = document.querySelector('.exam-timer-container');
-                if (timerContainer) {
-                    timerContainer.classList.add('final-countdown');
-                    
-                    // 移除之前的紧急程度类
-                    timerContainer.classList.remove('extremely-urgent', 'very-urgent', 'urgent');
-                    
-                    // 根据剩余时间设置不同程度的紧急样式
-                    if (remainingSeconds <= CONSTANTS.COUNTDOWN_THRESHOLDS.EXTREMELY_URGENT) {
-                        timerContainer.classList.add('extremely-urgent');
-                    } else if (remainingSeconds <= 180) { // 3分钟
-                        timerContainer.classList.add('very-urgent');
-                    } else {
-                        timerContainer.classList.add('urgent');
-                    }
-                }
-                
-                // 检查是否需要触发特殊提示
-                if (CONSTANTS.TIMER_TRIGGER_POINTS.includes(remainingSeconds)) {
-                    this.showCountdownAlert(remainingSeconds);
-                }
-            } catch (error) {
-                console.error("[计时器] 处理倒计时特效时出错:", error);
-            }
-        },
-        
-        /**
-         * 显示倒计时警告
-         * @param {number} remainingSeconds - 剩余秒数
-         * @private
-         */
-        showCountdownAlert: function(remainingSeconds) {
-            let message = '';
-            let duration = 3000; // 默认显示3秒
-            
-            // 根据不同的时间节点设置不同的消息
-            switch(remainingSeconds) {
-                case 300: // 5分钟
-                    message = '注意：考试仅剩最后5分钟！';
-                    duration = 5000;
-                    break;
-                case 240: // 4分钟
-                    message = '考试即将结束，请检查您的答案！';
-                    break;
-                case 180: // 3分钟
-                    message = '仅剩3分钟，请加快完成！';
-                    break;
-                case 120: // 2分钟
-                    message = '仅剩2分钟，请准备提交！';
-                    duration = 4000;
-                    break;
-                case 60: // 1分钟
-                    message = '最后1分钟！请确保保存所有答案！';
-                    duration = 5000;
-                    break;
-                case 30: // 30秒
-                    message = '30秒！即将自动提交！';
-                    break;
-                case 10: // 10秒
-                    message = '10秒！系统即将自动提交您的答卷！';
-                    duration = 5000;
-                    break;
-                default:
-                    return; // 不是特殊时间点，不显示提醒
-            }
-            
-            // 创建并显示提示元素
-            const alertElement = document.createElement('div');
-            alertElement.className = 'final-countdown-alert';
-            alertElement.innerHTML = `
-                <div class="alert-content">
-                    <div class="alert-icon"><i class="fa fa-clock-o"></i></div>
-                    <div class="alert-message">${message}</div>
-                    <div class="alert-timer">${Math.floor(remainingSeconds / 60)}:${(remainingSeconds % 60).toString().padStart(2, '0')}</div>
-                </div>
-            `;
-            
-            // 添加到页面
-            document.body.appendChild(alertElement);
-            
-            // 添加动画类
-            setTimeout(() => {
-                alertElement.classList.add('show');
-            }, 10);
-            
-            // 设置自动关闭
-            setTimeout(() => {
-                alertElement.classList.remove('show');
-                alertElement.classList.add('hide');
-                
-                // 动画结束后移除元素
-                setTimeout(() => {
-                    if (document.body.contains(alertElement)) {
-                        document.body.removeChild(alertElement);
-                    }
-                }, 500);
-            }, duration);
-        },
-        
-        /**
-         * 清除计时器
-         */
-        clear: function() {
-            if (examTimerInterval) {
-                clearInterval(examTimerInterval);
-                examTimerInterval = null;
-                console.log("[计时器] 已清除");
-            }
-        }
-    };
-
     // 答案状态
     // 无需重复声明，保持原有的private变量
 
@@ -623,14 +316,7 @@
             
             const displayText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
-            //console.log("[计时器] 更新显示:", displayText, "剩余秒数:", remainingTime);
-            
-            // 更新全局数据
-            window.GlobalData.set('timer.displayText', displayText);
-            window.GlobalData.set('timer.hours', hours);
-            window.GlobalData.set('timer.minutes', minutes);
-            window.GlobalData.set('timer.seconds', seconds);
-            window.GlobalData.set('timer.remainingSeconds', remainingTime);
+            window.GlobalData.set('timer.remainingSeconds', remainingTime); // 保留，可能其他逻辑需要
     
             // 检测是否在特殊时间段内，设置相应样式类
             let timerClassName = "exam-timer";
@@ -643,33 +329,10 @@
             } else if (remainingTime <= 1800) { // 30分钟内
                 timerClassName += " countdown-warn";
             }
-            
-            // 同步到amis上下文
-            if (window.amisInstance) {
-                // 直接更新数据而不是通过syncToAmis函数
-                try {
-                    // 创建计时器数据对象
-                    const timerData = {
-                        displayText: displayText,
-                        hours: hours,
-                        minutes: minutes,
-                        seconds: seconds,
-                        remainingSeconds: remainingTime
-                    };
-                    
-                    // 防御性编程：检查props和data是否存在
-                    window.amisInstance.updateProps({
-                        data: {
-                            timer: timerData
-                        }
-                    });
-                    
-                } catch (e) {
-                    console.error("更新计时器显示时出错", e);
-                }
-            } else {
-                console.warn("amisInstance未初始化，使用DOM方式更新计时器显示");
-            }
+
+            // 直接更新DOM显示
+            updateTimerDOMDisplay(displayText, timerClassName);
+
         } catch (error) {
             console.error("更新计时器显示时发生错误:", error);
         }
@@ -709,16 +372,16 @@
         }
     }
     
-    // // 辅助函数：更新计时器DOM显示
-    // function updateTimerDOMDisplay(displayText, className) {
-    //     const timerElements = document.querySelectorAll('.exam-timer');
-    //     if (timerElements && timerElements.length > 0) {
-    //         timerElements.forEach(el => {
-    //             el.innerHTML = `剩余时间：${displayText}`;
-    //             el.className = className || "exam-timer"; // 应用适当的类名
-    //         });
-    //     }
-    // }
+    // 辅助函数：更新计时器DOM显示
+    function updateTimerDOMDisplay(displayText, className) {
+        const timerElements = document.querySelectorAll('.exam-timer');
+        if (timerElements && timerElements.length > 0) {
+            timerElements.forEach(el => {
+                el.innerHTML = `剩余时间：${displayText}`;
+                el.className = className || "exam-timer"; // 应用适当的类名
+            });
+        }
+    }
     
     // 添加保存答案的函数
     function saveAnswer(questionId, answer) {

@@ -414,6 +414,13 @@
     line-height: 1.5;
 }
 
+.question-label pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0; /* 重置 pre 标签可能存在的默认 margin */
+    font-family: inherit; /* 继承父元素的字体 */
+}
+
 .question-type-tag {
     display: inline-block;
     padding: 2px 8px;

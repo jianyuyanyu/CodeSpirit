@@ -952,7 +952,7 @@
                                         type: 'each',
                                         name: 'questions',
                                         visibleOn: "questions && questions.length > 0",
-                                        trackExpression: "${item.id}", // <--- 添加这里
+                                        trackExpression: "${item.id}",
                                         items: {
                                             type: 'tpl',
                                             tpl: '<a href="javascript:void(0)" data-question-id="${item.id}" data-question-index="${index + 1}" title="${index + 1}. ${item.type === \'SingleChoice\' ? \'单选题\' : item.type === \'MultipleChoice\' ? \'多选题\' : item.type === \'TrueFalse\' ? \'判断题\' : \'主观题\'}">${index + 1}</a>',
@@ -1675,8 +1675,10 @@
                 const question = window.globalData?.exam?.questions?.find(q => q.questionId === matchedQuestion);
                 if (question) {
                     question.answered = true;
+                    //console.debug(`[答题卡] 更新题目 ${questionId} 的状态为已回答`);
                 }
             }
+            GlobalData.update('exam.questions', window.globalData?.exam?.questions || []);
             return true;
         } catch (error) {
             console.error('[答题卡] 更新答题卡状态时出错:', error);

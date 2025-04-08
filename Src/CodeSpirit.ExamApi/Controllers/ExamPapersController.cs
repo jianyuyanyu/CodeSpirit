@@ -6,6 +6,7 @@ using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Dtos.ExamSetting;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using System.Net;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -246,6 +247,10 @@ public class ExamPapersController : ApiControllerBase
         for (int i = 0; i < examPaper.Questions.Count; i++)
         {
             var question = examPaper.Questions[i];
+            question.Content = WebUtility.HtmlDecode(question.Content);
+            question.Options = question.Options.Select(p => WebUtility.HtmlDecode(p)).ToList();
+            question.CorrectAnswer = WebUtility.HtmlDecode(question.CorrectAnswer);
+            question.Analysis = WebUtility.HtmlDecode(question.Analysis ?? string.Empty);
             int index = i + 1;
 
             // 问题标题

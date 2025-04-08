@@ -234,6 +234,11 @@ public class QuestionsController : ApiControllerBase
         {
             return NotFound("题目不存在");
         }
+        question.Content = WebUtility.HtmlDecode(question.Content);
+        question.Options = question.Options.Select(p => WebUtility.HtmlDecode(p)).ToList();
+        question.CorrectAnswer = WebUtility.HtmlDecode(question.CorrectAnswer);
+        question.Analysis = WebUtility.HtmlDecode(question.Analysis ?? string.Empty);
+        question.KnowledgePoints = WebUtility.HtmlDecode(question.KnowledgePoints ?? string.Empty);
 
         // 使用JObject/JArray构建表单
         var formItems = new JArray();

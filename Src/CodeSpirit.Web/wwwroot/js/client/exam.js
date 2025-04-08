@@ -746,8 +746,6 @@
     // 添加保存答案的函数
     function saveAnswer(questionId, answer) {
         try {
-            console.log(`[答题卡] 开始保存题目 ${questionId} 答案: ${answer}`);
-            console.log(`[答题卡] 题目ID类型: ${typeof questionId}, 值: ${questionId}, 字符串长度: ${String(questionId).length}`);
             
             // 确保examAnswers对象存在
             if (!window.examAnswers) {
@@ -756,7 +754,6 @@
             
             // 保存答案到examAnswers对象
             window.examAnswers[questionId] = answer;
-            console.log(`[答题卡] 当前已有答案数量: ${Object.keys(window.examAnswers).length}`);
             
             // 更新答题卡状态
             const statusUpdated = updateAnswerCardStatus(questionId);
@@ -1300,6 +1297,7 @@
                                         type: 'each',
                                         name: 'questions',
                                         visibleOn: "questions && questions.length > 0",
+                                        trackExpression: "${item.id}", // <--- 添加这里
                                         items: {
                                             type: 'tpl',
                                             tpl: '<a href="javascript:void(0)" data-question-id="${item.id}" data-question-index="${index + 1}" title="${index + 1}. ${item.type === \'SingleChoice\' ? \'单选题\' : item.type === \'MultipleChoice\' ? \'多选题\' : item.type === \'TrueFalse\' ? \'判断题\' : \'主观题\'}">${index + 1}</a>',
@@ -1500,6 +1498,7 @@
                                     body: {
                                         type: "each",
                                         name: "questions",
+                                        trackExpression: "${item.id}", // <--- 添加这里
                                         items: {
                                             type: "container",
                                             body: [
@@ -2018,7 +2017,6 @@
             // 尝试精确匹配
             const matchedQuestion = allQuestionIds.find(id => id === questionId);
             if (matchedQuestion) {
-                console.log(`[答题卡] 找到精确匹配的题目: ${matchedQuestion}`);
                 const question = window.globalData?.exam?.questions?.find(q => q.questionId === matchedQuestion);
                 if (question) {
                     question.answered = true;

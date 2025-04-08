@@ -62,7 +62,8 @@
 
     // 私有状态变量
     let examTimerInterval = null;    // 计时器间隔ID
-    let remainingTime = 0;           // 剩余时间(秒)
+    let remainingTime = 0;           // 剩余时间(秒) - 仅用于显示和逻辑判断
+    let examEndTimeMs = 0;           // 考试结束的精确时间戳(毫秒)
     window.examAnswers = [];         // 答案集合 - 改为全局变量
     let examAnswers = window.examAnswers; // 本地引用
     let recordId = null;             // 考试记录ID
@@ -218,32 +219,27 @@
             const examEndTimeByDuration = new Date(examStartTime.getTime() + duration * 60 * 1000);
             console.log("计算出的结束时间", examEndTimeByDuration);
             
+            // 存储精确的结束时间戳
+            examEndTimeMs = examEndTimeByDuration.getTime();
+            console.log("考试结束时间戳(ms)", examEndTimeMs);
+
             // 获取当前时间
             const currentTime = new Date();
             console.log("当前时间", currentTime);
             
-            // 计算剩余时间（秒）
-            let secondsRemaining = Math.floor((examEndTimeByDuration.getTime() - currentTime.getTime()) / 1000);
+            // 计算初始剩余时间（秒）
+            let initialRemainingSeconds = Math.max(0, Math.floor((examEndTimeMs - currentTime.getTime()) / 1000));
             
             // 如果剩余时间小于0，可能是考试已经结束
-            if (secondsRemaining <= 0) {
+            if (initialRemainingSeconds <= 0) {
                 console.log("考试时间已结束或即将结束");
-                secondsRemaining = 0;
-                
-                // 更新剩余时间为0
-                remainingTime = 0;
-                
-                // 更新显示
+                remainingTime = 0; // 设置为0
                 updateTimerDisplay();
                 
                 // 延迟一点时间后自动提交考试
                 setTimeout(() => {
                     console.log("考试时间已结束，准备自动提交");
-                    
-                    // 显示警告提示
                     window.showScreenSwitchWarning("考试时间已结束，系统将自动提交您的答卷!");
-                    
-                    // 延迟3秒后自动提交，给用户一点时间看到提示
                     setTimeout(() => {
                         submitExam(true); // 自动提交
                     }, 3000);
@@ -252,9 +248,9 @@
                 return;
             }
             
-            // 设置剩余时间
-            remainingTime = secondsRemaining;
-            console.log("设置剩余时间(秒)", remainingTime);
+            // 设置初始剩余时间，用于首次显示
+            remainingTime = initialRemainingSeconds; 
+            console.log("设置初始剩余时间(秒)", remainingTime);
             
             // 清除之前的计时器
             if (examTimerInterval) {
@@ -281,17 +277,36 @@
             // 启动计时器
             console.log("正在启动计时器间隔");
             examTimerInterval = setInterval(() => {
-                remainingTime--;
-                //console.log("剩余时间", remainingTime);
-                if (remainingTime <= 0) {
-                    console.log("考试时间结束，准备自动提交");
+                const callbackStartTime = performance.now(); // 记录回调开始时间
+                
+                // 基于结束时间戳计算当前剩余时间
+                const currentTimeMs = new Date().getTime();
+                const newRemainingSeconds = Math.max(0, Math.floor((examEndTimeMs - currentTimeMs) / 1000));
+                
+                remainingTime = newRemainingSeconds; // 更新剩余时间变量
+                
+                //const calculationTime = performance.now(); // 记录计算后时间
+                //console.log(`[TimerTick] 开始执行，当前时间: ${new Date().toISOString()}, 计算后剩余时间: ${remainingTime}, 计算耗时: ${(calculationTime - callbackStartTime).toFixed(2)}ms`);
+
+                if (remainingTime <= 1) {
+                    console.log("[TimerTick] 考试时间结束，准备自动提交");
                     clearInterval(examTimerInterval);
+                    // 确保显示为00:00:00
+                    updateTimerDisplay(); 
                     submitExam(true); // 自动提交
                     return;
                 }
                 
                 updateTimerDisplay();
-            }, 1000);
+                const updateDisplayTime = performance.now(); // 记录更新显示后时间
+                const callbackDuration = updateDisplayTime - callbackStartTime;
+                //console.log(`[TimerTick] 更新显示完成, 耗时: ${(updateDisplayTime - calculationTime).toFixed(2)}ms, 总耗时: ${callbackDuration.toFixed(2)}ms`);
+
+                // 如果回调执行时间过长（例如超过50ms），可以发出警告
+                if (callbackDuration > 50) {
+                     console.warn(`[TimerTick] 警告：计时器回调执行时间过长 (${callbackDuration.toFixed(2)}ms)，可能导致计时不准`);
+                }
+            }, 1000); // 保持1秒间隔触发检查
             console.log("计时器已成功启动", examTimerInterval);
         } catch (error) {
             console.error("计时器启动过程中出错", error);

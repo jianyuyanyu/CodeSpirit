@@ -16,7 +16,9 @@ public class ExamRecordProfile : Profile
         // 从 ExamRecord 到 ExamRecordDto 的映射
         CreateMap<ExamRecord, ExamRecordDto>()
             .ForMember(dest => dest.ExamName, opt => opt.MapFrom(src => src.ExamSetting.Name))
-            .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student.Name));
+            .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student.Name))
+            .ForMember(dest => dest.AdmissionTicket, opt => opt.MapFrom(src => src.Student.AdmissionTicket))
+            ;
             
         // 从 StartExamDto 到 ExamRecord 的映射
         CreateMap<StartExamDto, ExamRecord>()

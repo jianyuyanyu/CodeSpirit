@@ -115,14 +115,87 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 predicateBuilder = predicateBuilder.And(x => x.CheatingSuspicionLevel >= examRecordQueryDto.MinCheatingSuspicionLevel.Value);
             }
             
-            // 必须包含Student表关联，以支持姓名搜索
+            // 必须包含Student表关联，以支持姓名搜索和准考证号
             var includesList = includes.ToList();
             if (!includesList.Contains("Student"))
             {
                 includesList.Add("Student");
             }
             
-            return await base.GetPagedListAsync(queryDto, predicateBuilder, includesList.ToArray());
+            // 必须包含AnswerRecords和Question信息，用于计算各题型得分
+            if (!includesList.Contains("AnswerRecords"))
+            {
+                includesList.Add("AnswerRecords");
+            }
+            
+            if (!includesList.Contains("AnswerRecords.QuestionVersion"))
+            {
+                includesList.Add("AnswerRecords.QuestionVersion");
+            }
+            
+            if (!includesList.Contains("AnswerRecords.QuestionVersion.Question"))
+            {
+                includesList.Add("AnswerRecords.QuestionVersion.Question");
+            }
+            
+            // 获取查询结果总数
+            var totalCount = await Repository.CreateQuery()
+                .Where(predicateBuilder)
+                .CountAsync();
+                
+            // 获取分页数据
+            var query = Repository.CreateQuery()
+                .Where(predicateBuilder);
+                
+            // 应用包含
+            foreach (var include in includesList)
+            {
+                query = query.Include(include);
+            }
+            
+            // 应用排序和分页
+            string orderBy = queryDto.OrderBy ?? "CreatedAt";
+            string orderDir = queryDto.OrderDir ?? "desc";
+            
+            var pagedQuery = query
+                .ApplySorting(orderBy, orderDir)
+                .Skip((examRecordQueryDto.Page - 1) * examRecordQueryDto.PerPage)
+                .Take(examRecordQueryDto.PerPage);
+                
+            var examRecords = await pagedQuery.ToListAsync();
+            
+            // 映射到DTO并计算各题型得分
+            var examRecordDtos = new List<ExamRecordDto>();
+            foreach (var examRecord in examRecords)
+            {
+                var examRecordDto = Mapper.Map<ExamRecordDto>(examRecord);
+                
+                // 计算各题型得分
+                if (examRecord.AnswerRecords != null && examRecord.AnswerRecords.Any())
+                {
+                    examRecordDto.SingleChoiceScore = examRecord.AnswerRecords
+                        .Where(a => a.QuestionVersion?.Question?.Type == QuestionType.SingleChoice && a.Score.HasValue)
+                        .Sum(a => a.Score ?? 0);
+                        
+                    examRecordDto.MultipleChoiceScore = examRecord.AnswerRecords
+                        .Where(a => a.QuestionVersion?.Question?.Type == QuestionType.MultipleChoice && a.Score.HasValue)
+                        .Sum(a => a.Score ?? 0);
+                        
+                    examRecordDto.TrueFalseScore = examRecord.AnswerRecords
+                        .Where(a => a.QuestionVersion?.Question?.Type == QuestionType.TrueFalse && a.Score.HasValue)
+                        .Sum(a => a.Score ?? 0);
+                }
+                
+                // 添加准考证号
+                if (examRecord.Student != null)
+                {
+                    examRecordDto.AdmissionTicket = examRecord.Student.AdmissionTicket;
+                }
+                
+                examRecordDtos.Add(examRecordDto);
+            }
+            
+            return new PageList<ExamRecordDto>(examRecordDtos, totalCount);
         }
         
         return await base.GetPagedListAsync(queryDto, predicate, includes);

@@ -44,6 +44,12 @@ public class ExamRecordDto
     public string StudentName { get; set; }
 
     /// <summary>
+    /// 准考证号
+    /// </summary>
+    [DisplayName("准考证号")]
+    public string AdmissionTicket { get; set; }
+
+    /// <summary>
     /// 尝试次数
     /// </summary>
     [DisplayName("尝试次数")]
@@ -72,6 +78,24 @@ public class ExamRecordDto
     /// </summary>
     [DisplayName("得分")]
     public double? Score { get; set; }
+
+    /// <summary>
+    /// 单选题得分
+    /// </summary>
+    [DisplayName("单选题得分")]
+    public double? SingleChoiceScore { get; set; }
+
+    /// <summary>
+    /// 多选题得分
+    /// </summary>
+    [DisplayName("多选题得分")]
+    public double? MultipleChoiceScore { get; set; }
+
+    /// <summary>
+    /// 判断题得分
+    /// </summary>
+    [DisplayName("判断题得分")]
+    public double? TrueFalseScore { get; set; }
 
     /// <summary>
     /// 是否通过

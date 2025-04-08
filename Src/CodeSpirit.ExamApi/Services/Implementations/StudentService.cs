@@ -78,7 +78,16 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
 
         if (queryDto.StudentGroupId.HasValue)
         {
-            predicate = predicate.And(x => x.StudentGroups.Any(sg => sg.StudentGroupId == queryDto.StudentGroupId.Value));
+            if (queryDto.StudentGroupId.Value == -1)
+            {
+                // 查询无分组的学生
+                predicate = predicate.And(x => !x.StudentGroups.Any());
+            }
+            else
+            {
+                // 查询指定分组的学生
+                predicate = predicate.And(x => x.StudentGroups.Any(sg => sg.StudentGroupId == queryDto.StudentGroupId.Value));
+            }
         }
 
         // 修改查询

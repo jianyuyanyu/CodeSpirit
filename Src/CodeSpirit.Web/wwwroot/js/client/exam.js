@@ -165,11 +165,6 @@
 
                 // 更新AMIS实例
             amisInstance.updateProps({ data });
-                
-                // 可选：触发重新渲染
-                if (typeof amisInstance.forceUpdate === 'function') {
-                    amisInstance.forceUpdate();
-                }
             } catch (error) {
                 console.error('[GlobalData] 同步数据到AMIS失败:', error);
             }
@@ -669,32 +664,14 @@
                         }
                     });
                     
-                    // 触发重新渲染
-                    if (typeof window.amisInstance.forceUpdate === 'function') {
-                        window.amisInstance.forceUpdate();
-                        
-                        // 更新DOM，强制显示最新时间
-                        updateTimerDOMDisplay(displayText, timerClassName);
-                    }
                 } catch (e) {
                     console.error("更新计时器显示时出错", e);
-                    // 出错时直接更新DOM作为后备方案
-                    updateTimerDOMDisplay(displayText, timerClassName);
                 }
             } else {
                 console.warn("amisInstance未初始化，使用DOM方式更新计时器显示");
-                // 尝试直接更新DOM
-                updateTimerDOMDisplay(displayText, timerClassName);
             }
         } catch (error) {
             console.error("更新计时器显示时发生错误:", error);
-            // 尝试最基本的DOM更新
-            try {
-                const displayText = "00:00:00";
-                updateTimerDOMDisplay(displayText, "exam-timer");
-            } catch (e) {
-                console.error("更新计时器DOM时发生致命错误:", e);
-            }
         }
     }
     
@@ -732,16 +709,16 @@
         }
     }
     
-    // 辅助函数：更新计时器DOM显示
-    function updateTimerDOMDisplay(displayText, className) {
-        const timerElements = document.querySelectorAll('.exam-timer');
-        if (timerElements && timerElements.length > 0) {
-            timerElements.forEach(el => {
-                el.innerHTML = `剩余时间：${displayText}`;
-                el.className = className || "exam-timer"; // 应用适当的类名
-            });
-        }
-    }
+    // // 辅助函数：更新计时器DOM显示
+    // function updateTimerDOMDisplay(displayText, className) {
+    //     const timerElements = document.querySelectorAll('.exam-timer');
+    //     if (timerElements && timerElements.length > 0) {
+    //         timerElements.forEach(el => {
+    //             el.innerHTML = `剩余时间：${displayText}`;
+    //             el.className = className || "exam-timer"; // 应用适当的类名
+    //         });
+    //     }
+    // }
     
     // 添加保存答案的函数
     function saveAnswer(questionId, answer) {

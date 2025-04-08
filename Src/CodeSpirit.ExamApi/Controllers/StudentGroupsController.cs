@@ -167,9 +167,15 @@ public class StudentGroupsController : ApiControllerBase
     /// </summary>
     /// <returns>学生组列表</returns>
     [HttpGet("select")]
-    public async Task<ActionResult<ApiResponse<List<OptionDto<long>>>>> GetStudentGroupsForSelect()
+    public async Task<ActionResult<ApiResponse<List<OptionDto<long>>>>> GetStudentGroupsForSelect([FromQuery]bool hasNoGroup = false)
     {
         var groups = await _studentGroupService.GetAllActiveGroupsAsync();
-        return SuccessResponse(groups.Select(p => new OptionDto<long>() { Id = p.Id, Name = p.Name }).ToList());
+        var options = groups.Select(p => new OptionDto<long>() { Id = p.Id, Name = p.Name }).ToList();
+        if (hasNoGroup)
+        {
+            // 添加"无分组"选项到列表开头
+            options.Insert(0, new OptionDto<long> { Id = -1, Name = "无分组" });
+        }
+        return SuccessResponse(options);
     }
 }

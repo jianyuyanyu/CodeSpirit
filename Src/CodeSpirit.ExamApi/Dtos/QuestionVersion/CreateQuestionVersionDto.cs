@@ -74,9 +74,15 @@ public class CreateQuestionVersionDto
     /// <summary>
     /// 标签
     /// </summary>
-    [StringLength(500, ErrorMessage = "标签长度不能超过500")]
     [DisplayName("标签")]
-    public string? Tags { get; set; }
+    [AmisArrayField(
+        Items = "{ \"type\":\"input-text\" }",
+        Addable = true,
+        Removable = true,
+        Draggable = true,
+        MaxLength = 5
+    )]
+    public List<string>? Tags { get; set; }
 
     /// <summary>
     /// 修改原因

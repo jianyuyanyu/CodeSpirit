@@ -31,16 +31,10 @@ public class QuestionVersionProfile : Profile
             .ForMember(dest => dest.CreatedBy, opt => opt.MapFrom(src => src.CreatedBy))
             .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Any() ? JsonSerializer.Deserialize<List<string>>(src.Tags, new JsonSerializerOptions()) : null));
 
-        CreateMap<PageList<QuestionVersion>, PageList<QuestionVersionDto>>()
-        .ForMember(dest => dest.Items, opt => opt.MapFrom(src =>
-            src.Items.Select(q => new QuestionVersionDto
-            {
-                CreatedAt = q.CreatedAt,
-                CreatedBy = q.CreatedBy.ToString(),
-                Tags = !string.IsNullOrEmpty(q.Tags)
-                        ? JsonSerializer.Deserialize<List<string>>(q.Tags, new JsonSerializerOptions())
-                        : null,
-            }).ToList()
-        ));
+        CreateMap<UpdateQuestionVersionDto, QuestionVersion>()
+            .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Any() ? JsonSerializer.Serialize(src.Tags, new JsonSerializerOptions()) : null));
+
+        CreateMap<CreateQuestionVersionDto, QuestionVersion>()
+           .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Any() ? JsonSerializer.Serialize(src.Tags, new JsonSerializerOptions()) : null));
     }
 } 

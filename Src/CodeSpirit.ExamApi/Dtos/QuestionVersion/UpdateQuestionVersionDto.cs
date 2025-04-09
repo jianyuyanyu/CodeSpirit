@@ -23,6 +23,13 @@ public class UpdateQuestionVersionDto
     /// </summary>
     [Required(ErrorMessage = "题目选项不能为空")]
     [DisplayName("选项")]
+    [AmisArrayField(
+        Items = "{ \"type\":\"input-text\", \"required\":true }",
+        Addable = true,
+        Removable = true,
+        Draggable = true,
+        MaxLength = 10
+    )]
     public List<string> Options { get; set; } = [];
 
     /// <summary>
@@ -60,9 +67,15 @@ public class UpdateQuestionVersionDto
     /// <summary>
     /// 标签
     /// </summary>
-    [StringLength(500, ErrorMessage = "标签长度不能超过500")]
     [DisplayName("标签")]
-    public string? Tags { get; set; }
+    [AmisArrayField(
+        Items = "{ \"type\":\"input-text\" }",
+        Addable = true,
+        Removable = true,
+        Draggable = true,
+        MaxLength = 5
+    )]
+    public List<string>? Tags { get; set; }
 
     /// <summary>
     /// 修改原因

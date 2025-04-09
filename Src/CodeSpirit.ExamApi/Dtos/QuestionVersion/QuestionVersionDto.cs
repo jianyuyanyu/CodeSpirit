@@ -1,4 +1,5 @@
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Attributes;
 using System.ComponentModel;
 
@@ -37,6 +38,8 @@ public class QuestionVersionDto
     /// 题目选项
     /// </summary>
     [DisplayName("选项")]
+    [AmisColumn(Type = "json")]
+    [AmisFormField(Type = "json")]
     public List<string> Options { get; set; } = [];
 
     /// <summary>

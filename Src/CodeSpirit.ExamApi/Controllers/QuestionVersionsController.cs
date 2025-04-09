@@ -117,9 +117,8 @@ public class QuestionVersionsController : ApiControllerBase
     /// <param name="updateDto">更新题目版本请求数据</param>
     /// <returns>更新操作结果</returns>
     [HttpPut("{id:long}")]
-    public async Task<ActionResult<ApiResponse>> UpdateQuestionVersion(long id, UpdateQuestionVersionDto updateDto)
+    public async Task<ActionResult<ApiResponse>> UpdateQuestionVersion(long id, [FromBody]UpdateQuestionVersionDto updateDto)
     {
-        ArgumentNullException.ThrowIfNull(updateDto);
         await _questionVersionService.UpdateAsync(id, updateDto);
         return SuccessResponse();
     }

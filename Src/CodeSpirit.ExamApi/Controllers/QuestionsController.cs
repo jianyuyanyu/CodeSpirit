@@ -1,6 +1,7 @@
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Dtos.Question;
+using CodeSpirit.ExamApi.Dtos.QuestionVersion;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
@@ -112,9 +113,8 @@ public class QuestionsController : ApiControllerBase
     /// <param name="updateQuestionDto">更新题目请求数据</param>
     /// <returns>更新后的题目信息</returns>
     [HttpPut("{id:long}")]
-    public async Task<ActionResult<ApiResponse>> UpdateQuestion(long id, UpdateQuestionDto updateQuestionDto)
+    public async Task<ActionResult<ApiResponse>> UpdateQuestion(long id, [FromBody]UpdateQuestionDto updateQuestionDto)
     {
-        ArgumentNullException.ThrowIfNull(updateQuestionDto);
         await _questionService.UpdateQuestionAsync(id, updateQuestionDto);
         return SuccessResponse();
     }
@@ -139,10 +139,9 @@ public class QuestionsController : ApiControllerBase
     /// <returns>题目历史版本列表</returns>
     [HttpGet("{id:long}/versions")]
     [Operation("历史版本", "link", "/exam/questionVersions?questionId=${id}", null)]
-    public async Task<ActionResult<ApiResponse<List<QuestionVersionDto>>>> GetQuestionVersions(long id)
+    public ActionResult GetQuestionVersions(long id)
     {
-        var versions = await _questionService.GetQuestionVersionsAsync(id);
-        return SuccessResponse(versions);
+        return Ok();
     }
 
     /// <summary>

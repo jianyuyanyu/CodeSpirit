@@ -1,5 +1,6 @@
 using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Dtos.QuestionVersion;
 
 /// <summary>
 /// 题目服务接口

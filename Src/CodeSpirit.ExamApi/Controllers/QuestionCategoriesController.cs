@@ -101,7 +101,6 @@ public class QuestionCategoriesController : ApiControllerBase
     [HttpPut("{id:long}")]
     public async Task<ActionResult<ApiResponse>> UpdateQuestionCategory(long id, UpdateQuestionCategoryDto updateDto)
     {
-        ArgumentNullException.ThrowIfNull(updateDto);
         await _questionCategoryService.UpdateAsync(id, updateDto);
         return SuccessResponse();
     }

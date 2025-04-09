@@ -10,6 +10,7 @@ using CodeSpirit.Shared.Services;
 using LinqKit;
 using System.Text.Json;
 using System.Net;
+using CodeSpirit.ExamApi.Dtos.QuestionVersion;
 
 /// <summary>
 /// 题目服务实现
@@ -321,9 +322,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         /// </summary>
         protected override async Task OnUpdated(Question entity)
         {
+            // 增加版本号
+            entity.Version++;
             // 创建版本记录
             var version = new QuestionVersion
             {
+                Id = _idGenerator.NewId(),
                 QuestionId = entity.Id,
                 Version = entity.Version,
                 Content = entity.Content,
@@ -339,8 +343,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             await _versionRepository.AddAsync(version);
             await _versionRepository.SaveChangesAsync();
 
-            // 增加版本号
-            entity.Version++;
+           
             await _repository.UpdateAsync(entity);
             await _repository.SaveChangesAsync();
 

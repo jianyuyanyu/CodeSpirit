@@ -1,5 +1,4 @@
 using AutoMapper;
-using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
 using System.Text.Json;
 
@@ -24,8 +23,6 @@ public class QuestionProfile : Profile
         CreateMap<CreateQuestionDto, Question>()
             .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Any() ? JsonSerializer.Serialize(src.Tags, new JsonSerializerOptions()) : null));
         CreateMap<UpdateQuestionDto, Question>()
-            .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Any() ? JsonSerializer.Serialize(src.Tags, new JsonSerializerOptions()) : null));
-        CreateMap<QuestionVersion, QuestionVersionDto>()
             .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Any() ? JsonSerializer.Serialize(src.Tags, new JsonSerializerOptions()) : null));
 
         // 添加 PageList 映射配置

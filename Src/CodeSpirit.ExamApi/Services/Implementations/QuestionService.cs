@@ -363,6 +363,15 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     throw new AppServiceException(400, "题目必须包含选项！");
                 }
             }
+            // 检查选项是否有重复
+            else if (type == QuestionType.SingleChoice || type == QuestionType.MultipleChoice)
+            {
+                 // 检查选项是否有重复
+                if (options.Distinct().Count() != options.Count)
+                {
+                    throw new AppServiceException(400, "题目选项不能重复！");
+                }
+            }
 
             switch (type)
             {

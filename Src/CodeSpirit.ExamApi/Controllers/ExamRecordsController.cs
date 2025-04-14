@@ -51,13 +51,13 @@ public class ExamRecordsController : ApiControllerBase
         const int MaxExportLimit = 10000; // 最大导出数量限制
         queryDto.PerPage = MaxExportLimit;
         queryDto.Page = 1;
-        
+
         // 获取考试记录数据
         var records = await _examRecordService.GetPagedListAsync(queryDto, includes: ["ExamSetting", "Student"]);
-        
+
         // 如果数据为空则返回错误信息
-        return records.Items.Count == 0 
-            ? BadResponse<PageList<ExamRecordDto>>("没有数据可供导出") 
+        return records.Items.Count == 0
+            ? BadResponse<PageList<ExamRecordDto>>("没有数据可供导出")
             : SuccessResponse(records);
     }
 
@@ -102,7 +102,7 @@ public class ExamRecordsController : ApiControllerBase
     [HttpGet("{id}/preview")]
     [Operation(label: "答卷预览", actionType: "service")]
     public async Task<ActionResult<ApiResponse<JObject>>> PreviewExamPaper(long id)
-    { 
+    {
         var panelConfig = new JObject
         {
             ["type"] = "service",
@@ -126,7 +126,7 @@ public class ExamRecordsController : ApiControllerBase
     [HttpGet("{id}/questions-preview")]
     public async Task<ActionResult<ApiResponse<JObject>>> GetExamQuestionsPreviewConfig(long id)
     {
-        var preview = await _examRecordService.GetAnswerPreviewAsync(id); 
+        var preview = await _examRecordService.GetAnswerPreviewAsync(id);
 
         var examPaper = await _examPaperService.GetAsync(preview.ExamPaperId);
         if (examPaper == null)
@@ -142,7 +142,53 @@ public class ExamRecordsController : ApiControllerBase
         {
             var question = examPaper.Questions[i];
             int index = i + 1;
-            var answer = preview.Answers.FirstOrDefault(x => x.QuestionId == question.QuestionId)?.Answer;
+            var answerInfo = preview.Answers.FirstOrDefault(x => x.QuestionId == question.QuestionId);
+            var answer = answerInfo?.Answer;
+            var correctAnswer = answerInfo?.CorrectAnswer;
+            var questionType = answerInfo?.QuestionType;
+            var score = answerInfo?.Score;
+            var isCorrect = answerInfo?.IsCorrect;
+            var defaultScore = answerInfo?.DefaultScore ?? question.Score;
+
+            // 计算得分情况
+            string scoreStatus = "";
+            string scoreColor = "#dc3545"; // 默认红色（错误）
+            
+            if (isCorrect.HasValue)
+            {
+                if (isCorrect.Value)
+                {
+                    scoreStatus = $"<span style='color:#28a745'>答案正确</span>，得分：{score} / {defaultScore}";
+                    scoreColor = "#28a745"; // 绿色（正确）
+                }
+                else
+                {
+                    scoreStatus = $"<span style='color:#dc3545'>答案错误</span>，得分：{score} / {defaultScore}";
+                }
+            }
+            else if (score.HasValue)
+            {
+                // 部分得分
+                if (score.Value > 0 && score.Value < defaultScore)
+                {
+                    scoreStatus = $"<span style='color:#fd7e14'>部分得分</span>，得分：{score} / {defaultScore}";
+                    scoreColor = "#fd7e14"; // 橙色（部分正确）
+                }
+                else if (score.Value >= defaultScore)
+                {
+                    scoreStatus = $"<span style='color:#28a745'>满分</span>，得分：{score} / {defaultScore}";
+                    scoreColor = "#28a745"; // 绿色（满分）
+                }
+                else
+                {
+                    scoreStatus = $"<span style='color:#dc3545'>未得分</span>，得分：{score} / {defaultScore}";
+                }
+            }
+            else
+            {
+                scoreStatus = $"<span style='color:#6c757d'>未评分</span>";
+                scoreColor = "#6c757d"; // 灰色（未评分）
+            }
 
             // 问题标题
             var titleObj = new JObject
@@ -177,7 +223,7 @@ public class ExamRecordsController : ApiControllerBase
                         ["mode"] = "horizontal",
                         ["required"] = question.IsRequired,
                         ["value"] = answer
-                     };
+                    };
 
                     var singleChoiceEvent = new JObject
                     {
@@ -195,6 +241,22 @@ public class ExamRecordsController : ApiControllerBase
                     };
                     singleChoiceObj["onEvent"] = singleChoiceEvent;
                     formItems.Add(singleChoiceObj);
+                    
+                    // 添加正确答案显示
+                    formItems.Add(new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = $"<div style=\"color:#28a745;margin-top:5px;font-weight:bold;\">正确答案: {correctAnswer}</div>",
+                        ["inline"] = false
+                    });
+                    
+                    // 添加得分情况显示
+                    formItems.Add(new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = $"<div style=\"color:{scoreColor};margin-top:5px;\">{scoreStatus}</div>",
+                        ["inline"] = false
+                    });
                     break;
 
                 case "MultipleChoice":
@@ -236,6 +298,22 @@ public class ExamRecordsController : ApiControllerBase
                     };
                     multiChoiceObj["onEvent"] = multiChoiceEvent;
                     formItems.Add(multiChoiceObj);
+                    
+                    // 添加正确答案显示
+                    formItems.Add(new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = $"<div style=\"color:#28a745;margin-top:5px;font-weight:bold;\">正确答案: {correctAnswer}</div>",
+                        ["inline"] = false
+                    });
+                    
+                    // 添加得分情况显示
+                    formItems.Add(new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = $"<div style=\"color:{scoreColor};margin-top:5px;\">{scoreStatus}</div>",
+                        ["inline"] = false
+                    });
                     break;
 
                 case "TrueFalse":
@@ -272,6 +350,23 @@ public class ExamRecordsController : ApiControllerBase
                     };
                     tfObj["onEvent"] = tfEvent;
                     formItems.Add(tfObj);
+                    
+                    // 添加正确答案显示 - 转换为显示文本
+                    var correctTfAnswer = correctAnswer == "True" ? "正确" : "错误";
+                    formItems.Add(new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = $"<div style=\"color:#28a745;margin-top:5px;font-weight:bold;\">正确答案: {correctTfAnswer}</div>",
+                        ["inline"] = false
+                    });
+                    
+                    // 添加得分情况显示
+                    formItems.Add(new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = $"<div style=\"color:{scoreColor};margin-top:5px;\">{scoreStatus}</div>",
+                        ["inline"] = false
+                    });
                     break;
 
                 default:
@@ -303,6 +398,22 @@ public class ExamRecordsController : ApiControllerBase
                     };
                     textareaObj["onEvent"] = textareaEvent;
                     formItems.Add(textareaObj);
+                    
+                    // 添加正确答案显示
+                    formItems.Add(new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = $"<div style=\"color:#28a745;margin-top:5px;font-weight:bold;\">正确答案: {correctAnswer}</div>",
+                        ["inline"] = false
+                    });
+                    
+                    // 添加得分情况显示
+                    formItems.Add(new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = $"<div style=\"color:{scoreColor};margin-top:5px;\">{scoreStatus}</div>",
+                        ["inline"] = false
+                    });
                     break;
             }
 
@@ -326,4 +437,28 @@ public class ExamRecordsController : ApiControllerBase
         return SuccessResponse(amisConfig);
     }
 
+    /// <summary>
+    /// 重新批改考试分数
+    /// </summary>
+    /// <param name="modifyExamScoreDto">批改参数</param>
+    /// <returns>考试记录详情</returns>
+    [HttpPut("{id}/regrade")]
+    [Operation("重新批改", "form", null, "确定要重新批改吗？", visibleOn: "status===3")]
+    public async Task<ActionResult<ApiResponse<ExamRecordDto>>> ModifyExamScore(long id, ModifyExamScoreDto modifyExamScoreDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadResponse<ExamRecordDto>("请求参数无效");
+        }
+
+        try
+        {
+            var result = await _examRecordService.ModifyExamScoreAsync(id, modifyExamScoreDto);
+            return SuccessResponse(result);
+        }
+        catch (Exception ex)
+        {
+            return BadResponse<ExamRecordDto>(ex.Message);
+        }
+    }
 }

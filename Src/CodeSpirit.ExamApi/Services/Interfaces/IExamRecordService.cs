@@ -119,4 +119,11 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     /// <param name="recordId">考试记录ID</param>
     /// <returns>答案列表</returns>
     Task<List<ExamAnswerRecord>> GetExamAnswersAsync(long recordId);
+    
+    /// <summary>
+    /// 重新批改
+    /// </summary>
+    /// <param name="modifyExamScoreDto">重新批改参数</param>
+    /// <returns>修改后的考试记录</returns>
+    Task<ExamRecordDto> ModifyExamScoreAsync(long recordId, ModifyExamScoreDto modifyExamScoreDto);
 } 

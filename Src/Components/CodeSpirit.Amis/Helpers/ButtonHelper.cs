@@ -380,6 +380,27 @@ namespace CodeSpirit.Amis.Helpers
                 }
 
                 button["api"] = api;
+
+                // 添加反馈弹框配置
+                if (!string.IsNullOrEmpty(op.FeedbackTitle) && !op.FeedbackBodyTpl.IsNullOrWhiteSpace())
+                {
+                    if (op.FeedbackBodyTpl.StartsWith("{"))
+                    {
+                        button["feedback"] = new JObject
+                        {
+                            ["title"] = op.FeedbackTitle,
+                            ["body"] = JObject.Parse(op.FeedbackBodyTpl)
+                        };
+                    }
+                    else
+                    {
+                        button["feedback"] = new JObject
+                        {
+                            ["title"] = op.FeedbackTitle,
+                            ["body"] = op.FeedbackBodyTpl
+                        };
+                    }
+                }
             }
             //输入表单
             else if (op.ActionType == "form")

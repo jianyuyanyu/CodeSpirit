@@ -108,11 +108,33 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // POST: /api/Users/{id}/resetRandomPassword
         [HttpPost("{id}/resetRandomPassword")]
-        [Operation("重置密码", "ajax", null, "确定要重置密码吗？", "isActive == true")]
+        [Operation("重置密码", "ajax", null, "确定要重置密码吗？", "isActive == true", 
+            FeedbackTitle = "重置密码结果",
+            FeedbackBodyTpl = @"{
+                'type': 'form',
+                'body': [
+                    {
+                        'type': 'tpl',
+                        'tpl': '<div class=""alert alert-warning""><i class=""fa fa-exclamation-circle""></i> <strong>注意：</strong>密码只显示一次，请及时保存!</div>',
+                        'className': 'mb-3'
+                    },
+                    {
+                        'type': 'button',
+                        'label': '${newPassword}',
+                        'icon': 'fa fa-copy',
+                        'actionType': 'copy',
+                        'content': '${newPassword}'
+                    }
+                ]
+            }")]
         public async Task<ActionResult<ApiResponse>> ResetRandomPassword(long id)
         {
             string newPassword = await _userService.ResetRandomPasswordAsync(id);
-            return SuccessResponse(newPassword);
+            return Ok(new
+            {
+                message = "密码已重置成功！",
+                data = new { newPassword },
+            });
         }
 
         // PUT: /api/Users/{id}/unlock

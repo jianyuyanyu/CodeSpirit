@@ -31,6 +31,16 @@ public class OperationAttribute : Attribute
     /// 仅ActionType为link时可用，如果为 true 将在新 tab 页面打开。
     /// </summary>
     public bool Blank { get; set; }
+    
+    /// <summary>
+    /// 操作完成后反馈弹框标题，设置此属性将显示操作结果弹框
+    /// </summary>
+    public string FeedbackTitle { get; set; }
+
+    /// <summary>
+    /// 操作完成后反馈弹框内容，支持 Amis 渲染
+    /// </summary>
+    public string FeedbackBodyTpl { get; set; }
 
     public OperationAttribute(string label, string actionType = "ajax", string api = null, string confirmText = null, string visibleOn = null, bool isBulkOperation = false)
     {

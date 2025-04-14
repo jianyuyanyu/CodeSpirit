@@ -697,6 +697,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     {
         var examRecord = await Repository.CreateQuery()
             .Include(r => r.ExamSetting)
+            .ThenInclude(es => es.ExamPaper)
             .Include(r => r.AnswerRecords)
             .ThenInclude(a => a.QuestionVersion)
             .Include(r => r.AnswerRecords)
@@ -705,6 +706,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             .Select(x => new AnswerPreviewDto
             {
                 ExamPaperId = x.ExamSetting.ExamPaperId,
+                TotalScore = x.ExamSetting.ExamPaper.TotalScore,
+                StudentScore = x.Score,
                 Answers = x.AnswerRecords == null ? new List<ClientExamAnswerWithCorrectDto>() : x.AnswerRecords.Select(a => new ClientExamAnswerWithCorrectDto
                 {
                     QuestionId = a.QuestionId,

@@ -1,9 +1,11 @@
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
 using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using System.Text;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -133,308 +135,316 @@ public class ExamRecordsController : ApiControllerBase
         {
             return NotFound("试卷不存在");
         }
-
-        // 使用JObject/JArray构建表单
-        var formItems = new JArray();
-
-        // 为每个题目创建对应的表单组件
-        for (int i = 0; i < examPaper.Questions.Count; i++)
-        {
-            var question = examPaper.Questions[i];
-            int index = i + 1;
-            var answerInfo = preview.Answers.FirstOrDefault(x => x.QuestionId == question.QuestionId);
-            var answer = answerInfo?.Answer;
-            var correctAnswer = answerInfo?.CorrectAnswer;
-            var questionType = answerInfo?.QuestionType;
-            var score = answerInfo?.Score;
-            var isCorrect = answerInfo?.IsCorrect;
-            var defaultScore = answerInfo?.DefaultScore ?? question.Score;
-
-            // 计算得分情况
-            string scoreStatus = "";
-            string scoreColor = "#dc3545"; // 默认红色（错误）
+        
+        // 计算总得分
+        double totalScore = preview.StudentScore ?? 0;
+        
+        // 按题目类型分组
+        var questionsByType = examPaper.Questions
+            .GroupBy(q => q.Type.ToString())
+            .ToDictionary(g => g.Key, g => g.ToList());
             
-            if (isCorrect.HasValue)
-            {
-                if (isCorrect.Value)
-                {
-                    scoreStatus = $"<span style='color:#28a745'>答案正确</span>，得分：{score} / {defaultScore}";
-                    scoreColor = "#28a745"; // 绿色（正确）
-                }
-                else
-                {
-                    scoreStatus = $"<span style='color:#dc3545'>答案错误</span>，得分：{score} / {defaultScore}";
-                }
-            }
-            else if (score.HasValue)
-            {
-                // 部分得分
-                if (score.Value > 0 && score.Value < defaultScore)
-                {
-                    scoreStatus = $"<span style='color:#fd7e14'>部分得分</span>，得分：{score} / {defaultScore}";
-                    scoreColor = "#fd7e14"; // 橙色（部分正确）
-                }
-                else if (score.Value >= defaultScore)
-                {
-                    scoreStatus = $"<span style='color:#28a745'>满分</span>，得分：{score} / {defaultScore}";
-                    scoreColor = "#28a745"; // 绿色（满分）
-                }
-                else
-                {
-                    scoreStatus = $"<span style='color:#dc3545'>未得分</span>，得分：{score} / {defaultScore}";
-                }
-            }
-            else
-            {
-                scoreStatus = $"<span style='color:#6c757d'>未评分</span>";
-                scoreColor = "#6c757d"; // 灰色（未评分）
-            }
-
-            // 问题标题
-            var titleObj = new JObject
-            {
-                ["type"] = "tpl",
-                ["tpl"] = $"<div class=\"question-label\">{index}. {question.Content} <span style=\"color:#999\">（{question.Score}分）</span></div>",
-                ["inline"] = false
-            };
-            formItems.Add(titleObj);
-
-            // 根据题目类型添加不同的表单控件
-            switch (question.Type.ToString())
-            {
-                case "SingleChoice":
-                    // 解析选项
-                    var singleOptions = new JArray();
-                    var options = question.Options;
-                    for (int idx = 0; idx < options.Count; idx++)
-                    {
-                        singleOptions.Add(new JObject
-                        {
-                            ["label"] = options[idx],
-                            ["value"] = options[idx]
-                        });
-                    }
-
-                    var singleChoiceObj = new JObject
-                    {
-                        ["type"] = "radios",
-                        ["name"] = $"question_{question.Id}",
-                        ["options"] = singleOptions,
-                        ["mode"] = "horizontal",
-                        ["required"] = question.IsRequired,
-                        ["value"] = answer
-                    };
-
-                    var singleChoiceEvent = new JObject
-                    {
-                        ["change"] = new JObject
-                        {
-                            ["actions"] = new JArray
-                            {
-                                new JObject
-                                {
-                                    ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                }
-                            }
-                        }
-                    };
-                    singleChoiceObj["onEvent"] = singleChoiceEvent;
-                    formItems.Add(singleChoiceObj);
-                    
-                    // 添加正确答案显示
-                    formItems.Add(new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = $"<div style=\"color:#28a745;margin-top:5px;font-weight:bold;\">正确答案: {correctAnswer}</div>",
-                        ["inline"] = false
-                    });
-                    
-                    // 添加得分情况显示
-                    formItems.Add(new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = $"<div style=\"color:{scoreColor};margin-top:5px;\">{scoreStatus}</div>",
-                        ["inline"] = false
-                    });
-                    break;
-
-                case "MultipleChoice":
-                    // 解析选项
-                    var multiOptions = new JArray();
-                    var multiChoiceOptions = question.Options;
-                    for (int idx = 0; idx < multiChoiceOptions.Count; idx++)
-                    {
-                        multiOptions.Add(new JObject
-                        {
-                            ["label"] = multiChoiceOptions[idx],
-                            ["value"] = multiChoiceOptions[idx],
-                        });
-                    }
-
-                    var multiChoiceObj = new JObject
-                    {
-                        ["type"] = "checkboxes",
-                        ["name"] = $"question_{question.Id}",
-                        ["options"] = multiOptions,
-                        ["mode"] = "horizontal",
-                        ["required"] = question.IsRequired,
-                        ["value"] = answer
-                    };
-
-                    var multiChoiceEvent = new JObject
-                    {
-                        ["change"] = new JObject
-                        {
-                            ["actions"] = new JArray
-                            {
-                                new JObject
-                                {
-                                    ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                }
-                            }
-                        }
-                    };
-                    multiChoiceObj["onEvent"] = multiChoiceEvent;
-                    formItems.Add(multiChoiceObj);
-                    
-                    // 添加正确答案显示
-                    formItems.Add(new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = $"<div style=\"color:#28a745;margin-top:5px;font-weight:bold;\">正确答案: {correctAnswer}</div>",
-                        ["inline"] = false
-                    });
-                    
-                    // 添加得分情况显示
-                    formItems.Add(new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = $"<div style=\"color:{scoreColor};margin-top:5px;\">{scoreStatus}</div>",
-                        ["inline"] = false
-                    });
-                    break;
-
-                case "TrueFalse":
-                    // 创建判断题选项（统一使用radios组件）
-                    var tfOptions = new JArray
-                    {
-                        new JObject { ["label"] = "正确", ["value"] = "True" },
-                        new JObject { ["label"] = "错误", ["value"] = "False" }
-                    };
-
-                    var tfObj = new JObject
-                    {
-                        ["type"] = "radios",
-                        ["name"] = $"question_{question.Id}",
-                        ["options"] = tfOptions,
-                        ["mode"] = "horizontal",
-                        ["required"] = question.IsRequired,
-                        ["value"] = answer
-                    };
-
-                    var tfEvent = new JObject
-                    {
-                        ["change"] = new JObject
-                        {
-                            ["actions"] = new JArray
-                            {
-                                new JObject
-                                {
-                                    ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                }
-                            }
-                        }
-                    };
-                    tfObj["onEvent"] = tfEvent;
-                    formItems.Add(tfObj);
-                    
-                    // 添加正确答案显示 - 转换为显示文本
-                    var correctTfAnswer = correctAnswer == "True" ? "正确" : "错误";
-                    formItems.Add(new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = $"<div style=\"color:#28a745;margin-top:5px;font-weight:bold;\">正确答案: {correctTfAnswer}</div>",
-                        ["inline"] = false
-                    });
-                    
-                    // 添加得分情况显示
-                    formItems.Add(new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = $"<div style=\"color:{scoreColor};margin-top:5px;\">{scoreStatus}</div>",
-                        ["inline"] = false
-                    });
-                    break;
-
-                default:
-                    // 简答题和其他题型
-                    var textareaObj = new JObject
-                    {
-                        ["type"] = "textarea",
-                        ["name"] = $"question_{question.Id}",
-                        ["placeholder"] = "请输入答案",
-                        ["minRows"] = 3,
-                        ["maxRows"] = 6,
-                        ["required"] = question.IsRequired,
-                        ["value"] = answer
-                    };
-
-                    var textareaEvent = new JObject
-                    {
-                        ["change"] = new JObject
-                        {
-                            ["actions"] = new JArray
-                            {
-                                new JObject
-                                {
-                                    ["actionType"] = "custom",
-                                    ["script"] = $"saveAnswer('{question.Id}', event.data.value);"
-                                }
-                            }
-                        }
-                    };
-                    textareaObj["onEvent"] = textareaEvent;
-                    formItems.Add(textareaObj);
-                    
-                    // 添加正确答案显示
-                    formItems.Add(new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = $"<div style=\"color:#28a745;margin-top:5px;font-weight:bold;\">正确答案: {correctAnswer}</div>",
-                        ["inline"] = false
-                    });
-                    
-                    // 添加得分情况显示
-                    formItems.Add(new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = $"<div style=\"color:{scoreColor};margin-top:5px;\">{scoreStatus}</div>",
-                        ["inline"] = false
-                    });
-                    break;
-            }
-
-            // 如果不是最后一个题目，添加分隔线
-            if (i < examPaper.Questions.Count - 1)
-            {
-                formItems.Add(new JObject { ["type"] = "divider" });
-            }
+        // 计算每种题型的得分
+        var scoreByType = new Dictionary<string, (double Score, int TotalScore)>();
+        foreach (var type in questionsByType.Keys)
+        {
+            var typeQuestions = questionsByType[type];
+            var typeAnswers = preview.Answers.Where(a => a.QuestionType == type).ToList();
+            
+            double typeScore = typeAnswers.Sum(a => a.Score ?? 0);
+            int typeTotalScore = typeQuestions.Sum(q => q.Score);
+            
+            scoreByType[type] = (typeScore, typeTotalScore);
         }
 
-        // 构建Amis配置对象
-        var amisConfig = new JObject
+        // 创建Amis页面
+        var page = new JObject
         {
-            ["type"] = "form",
-            ["title"] = "",
-            ["id"] = "examForm",
-            ["body"] = formItems,
-            ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
+            ["type"] = "page",
+            ["title"] = "答卷预览",
+            ["body"] = new JArray()
         };
-
-        return SuccessResponse(amisConfig);
+        
+        // 添加头部统计信息
+        var header = new JObject
+        {
+            ["type"] = "card",
+            ["header"] = new JObject
+            {
+                ["title"] = "成绩统计",
+                ["subTitle"] = $"总分: {totalScore}/{preview.TotalScore}"
+            },
+            ["body"] = new JArray()
+        };
+        
+        var headerBody = (JArray)header["body"];
+        
+        // 添加各题型得分表格
+        var typeScoreTable = new JObject
+        {
+            ["type"] = "table",
+            ["columns"] = new JArray(),
+            ["items"] = new JArray()
+        };
+        
+        var tableColumns = (JArray)typeScoreTable["columns"];
+        tableColumns.Add(new JObject
+        {
+            ["label"] = "题型",
+            ["name"] = "type"
+        });
+        
+        tableColumns.Add(new JObject
+        {
+            ["label"] = "得分/总分",
+            ["name"] = "score",
+            ["type"] = "tpl",
+            ["tpl"] = "<span class=\"${scoreClass}\">${score}/${totalScore}</span>"
+        });
+        
+        var tableItems = (JArray)typeScoreTable["items"];
+        foreach (var typeScore in scoreByType)
+        {
+            string typeName = GetQuestionTypeName(typeScore.Key);
+            bool isPassed = typeScore.Value.Score >= typeScore.Value.TotalScore * 0.6;
+            
+            tableItems.Add(new JObject
+            {
+                ["type"] = typeName,
+                ["score"] = typeScore.Value.Score,
+                ["totalScore"] = typeScore.Value.TotalScore,
+                ["scoreClass"] = isPassed ? "text-success" : "text-danger"
+            });
+        }
+        
+        headerBody.Add(typeScoreTable);
+        ((JArray)page["body"]).Add(header);
+        
+        // 创建选项卡区域
+        var tabs = new JObject
+        {
+            ["type"] = "tabs",
+            ["tabs"] = new JArray()
+        };
+        
+        // 添加全部题目选项卡
+        var allTab = new JObject
+        {
+            ["title"] = "全部题目",
+            ["body"] = new JArray()
+        };
+        
+        // 遍历所有题目
+        int questionIndex = 1;
+        foreach (var question in examPaper.Questions)
+        {
+            var questionCard = CreateQuestionCard(question, questionIndex++, preview.Answers);
+            ((JArray)allTab["body"]).Add(questionCard);
+        }
+        
+        ((JArray)tabs["tabs"]).Add(allTab);
+        
+        // 为每种题型创建选项卡
+        foreach (var type in questionsByType.Keys)
+        {
+            string typeName = GetQuestionTypeName(type);
+            var typeTab = new JObject
+            {
+                ["title"] = $"{typeName} ({scoreByType[type].Score}/{scoreByType[type].TotalScore})",
+                ["body"] = new JArray()
+            };
+            
+            var typeQuestions = questionsByType[type];
+            foreach (var question in typeQuestions)
+            {
+                int globalIndex = examPaper.Questions.IndexOf(question) + 1;
+                var questionCard = CreateQuestionCard(question, globalIndex, preview.Answers);
+                ((JArray)typeTab["body"]).Add(questionCard);
+            }
+            
+            ((JArray)tabs["tabs"]).Add(typeTab);
+        }
+        
+        ((JArray)page["body"]).Add(tabs);
+        
+        return SuccessResponse(page);
+    }
+    
+    /// <summary>
+    /// 创建题目卡片
+    /// </summary>
+    private JObject CreateQuestionCard(ExamPaperQuestionDto question, int index, List<ClientExamAnswerWithCorrectDto> answers)
+    {
+        var answerInfo = answers.FirstOrDefault(x => x.QuestionId == question.QuestionId);
+        var studentAnswer = answerInfo?.Answer ?? "";
+        var correctAnswer = answerInfo?.CorrectAnswer ?? "";
+        var score = answerInfo?.Score ?? 0;
+        var isCorrect = answerInfo?.IsCorrect ?? false;
+        var maxScore = question.Score;
+        
+        // 确定状态标签
+        string statusLabel;
+        string statusClass;
+        
+        if (isCorrect)
+        {
+            statusLabel = "正确";
+            statusClass = "success";
+        }
+        else if (score > 0)
+        {
+            statusLabel = "部分得分";
+            statusClass = "warning";
+        }
+        else
+        {
+            statusLabel = "错误";
+            statusClass = "danger";
+        }
+        
+        // 创建卡片
+        var card = new JObject
+        {
+            ["type"] = "card",
+            ["className"] = "mb-2",
+            ["header"] = new JObject
+            {
+                ["title"] = $"{index}. {question.Content}",
+                ["badge"] = new JObject
+                {
+                    ["label"] = statusLabel,
+                    ["variant"] = statusClass
+                },
+                ["subTitle"] = $"得分: {score}/{maxScore}"
+            },
+            ["body"] = new JArray()
+        };
+        
+        var cardBody = (JArray)card["body"];
+        
+        // 根据题目类型添加不同内容
+        switch (question.Type.ToString())
+        {
+            case "SingleChoice":
+                // 单选题
+                var radioGroup = new JObject
+                {
+                    ["type"] = "radios",
+                    ["name"] = $"q{question.Id}",
+                    ["value"] = studentAnswer,
+                    ["disabled"] = true,
+                    ["options"] = new JArray()
+                };
+                
+                var radioOptions = (JArray)radioGroup["options"];
+                foreach (var option in question.Options)
+                {
+                    bool isCorrectOption = option == correctAnswer;
+                    radioOptions.Add(new JObject
+                    {
+                        ["label"] = $"{option} {(isCorrectOption ? "✓" : "")}",
+                        ["value"] = option
+                    });
+                }
+                
+                cardBody.Add(radioGroup);
+                break;
+                
+            case "MultipleChoice":
+                // 多选题
+                var selectedOptions = studentAnswer.Split(',').Select(o => o.Trim()).ToArray();
+                var correctOptions = correctAnswer.Split(',').Select(o => o.Trim()).ToArray();
+                
+                var checkboxGroup = new JObject
+                {
+                    ["type"] = "checkboxes",
+                    ["name"] = $"q{question.Id}",
+                    ["value"] = new JArray(selectedOptions),
+                    ["disabled"] = true,
+                    ["options"] = new JArray()
+                };
+                
+                var checkOptions = (JArray)checkboxGroup["options"];
+                foreach (var option in question.Options)
+                {
+                    bool isCorrectOption = correctOptions.Contains(option);
+                    checkOptions.Add(new JObject
+                    {
+                        ["label"] = $"{option} {(isCorrectOption ? "✓" : "")}",
+                        ["value"] = option
+                    });
+                }
+                
+                cardBody.Add(checkboxGroup);
+                break;
+                
+            case "TrueFalse":
+                // 判断题
+                var tfGroup = new JObject
+                {
+                    ["type"] = "radios",
+                    ["name"] = $"q{question.Id}",
+                    ["value"] = studentAnswer,
+                    ["disabled"] = true,
+                    ["options"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["label"] = $"正确 {(correctAnswer == "True" ? "✓" : "")}",
+                            ["value"] = "True"
+                        },
+                        new JObject
+                        {
+                            ["label"] = $"错误 {(correctAnswer == "False" ? "✓" : "")}",
+                            ["value"] = "False"
+                        }
+                    }
+                };
+                
+                cardBody.Add(tfGroup);
+                break;
+                
+            default:
+                // 简答题
+                // 学生答案
+                cardBody.Add(new JObject
+                {
+                    ["type"] = "alert",
+                    ["level"] = "info",
+                    ["showIcon"] = true,
+                    ["title"] = "学生答案",
+                    ["body"] = string.IsNullOrEmpty(studentAnswer) ? "未作答" : studentAnswer
+                });
+                
+                // 正确答案
+                cardBody.Add(new JObject
+                {
+                    ["type"] = "alert",
+                    ["level"] = "success",
+                    ["showIcon"] = true,
+                    ["title"] = "参考答案",
+                    ["body"] = correctAnswer
+                });
+                break;
+        }
+        
+        return card;
+    }
+    
+    /// <summary>
+    /// 获取题目类型名称
+    /// </summary>
+    private string GetQuestionTypeName(string questionType)
+    {
+        return questionType switch
+        {
+            "SingleChoice" => "单选题",
+            "MultipleChoice" => "多选题",
+            "TrueFalse" => "判断题",
+            "ShortAnswer" => "简答题",
+            "Essay" => "论述题",
+            _ => questionType
+        };
     }
 
     /// <summary>

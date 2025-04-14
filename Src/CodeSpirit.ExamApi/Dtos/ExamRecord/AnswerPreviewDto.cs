@@ -41,7 +41,24 @@ namespace CodeSpirit.ExamApi.Dtos.ExamRecord
 
     public class AnswerPreviewDto
     {
+        /// <summary>
+        /// 试卷ID
+        /// </summary>
         public long ExamPaperId { get; set; } 
+        
+        /// <summary>
+        /// 试卷总分
+        /// </summary>
+        public int TotalScore { get; set; }
+        
+        /// <summary>
+        /// 考生总得分
+        /// </summary>
+        public double? StudentScore { get; set; }
+        
+        /// <summary>
+        /// 考试答案列表
+        /// </summary>
         public List<ClientExamAnswerWithCorrectDto> Answers { get; set; }
     }
 }

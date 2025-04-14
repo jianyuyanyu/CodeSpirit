@@ -83,8 +83,6 @@ public static class ServiceCollectionExtensions
 
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddOpenApi();
-        builder.Services.AddSwaggerGen();
 
         // 添加 CORS 策略
         builder.Services.AddCors(options =>
@@ -114,13 +112,6 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static async Task<WebApplication> ConfigureAppAsync(this WebApplication app)
     {
-        // Configure the HTTP request pipeline
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
-
         app.UseHttpsRedirection();
         app.UseCors("AllowSpecificOriginsWithCredentials");
 

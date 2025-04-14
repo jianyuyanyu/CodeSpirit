@@ -25,7 +25,7 @@ namespace CodeSpirit.Authorization
 
         private const string CACHE_KEY_PREFIX = "CodeSpirit:PermissionTree:Module:";
         private const string MODULE_NAMES_CACHE_KEY = "CodeSpirit:PermissionTree:ModuleNames";
-        
+
         private static readonly DistributedCacheEntryOptions _cacheOptions = new()
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(365),
@@ -49,18 +49,6 @@ namespace CodeSpirit.Authorization
         public List<PermissionNode> GetPermissionTree()
         {
             return GetPermissionTreeAsync().GetAwaiter().GetResult();
-        }
-
-        /// <summary>
-        /// 检查用户是否拥有指定权限
-        /// </summary>
-        /// <param name="name">权限代码</param>
-        /// <returns>true 表示权限存在，false 表示权限不存在</returns>
-        public bool HasPermission(string name)
-        {
-            var httpContext = _serviceProvider.GetRequiredService<IHttpContextAccessor>().HttpContext;
-            HashSet<string> userPermissions = httpContext.User.FindAll("permissions").Select(c => c.Value).ToHashSet();
-            return HasPermission(name, userPermissions);
         }
 
         /// <summary>

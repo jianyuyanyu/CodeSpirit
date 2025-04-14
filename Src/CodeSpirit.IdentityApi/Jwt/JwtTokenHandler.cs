@@ -1,4 +1,5 @@
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ namespace CodeSpirit.IdentityApi.Jwt
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger<JwtTokenHandler> _logger;
+        private readonly IRoleService _roleService;
         
         private readonly string _issuer;
         private readonly string _audience;
@@ -27,11 +29,13 @@ namespace CodeSpirit.IdentityApi.Jwt
         public JwtTokenHandler(
             UserManager<ApplicationUser> userManager, 
             IConfiguration configuration,
-            ILogger<JwtTokenHandler> logger)
+            ILogger<JwtTokenHandler> logger,
+            IRoleService roleService)
         {
             _userManager = userManager;
             _configuration = configuration;
             _logger = logger;
+            _roleService = roleService;
             
             _issuer = _configuration["Jwt:Issuer"];
             _audience = _configuration["Jwt:Audience"];
@@ -68,6 +72,13 @@ namespace CodeSpirit.IdentityApi.Jwt
                 foreach (var role in roles)
                 {
                     claims.Add(new Claim(ClaimTypes.Role, role));
+                }
+
+                // 获取用户权限并添加到令牌中
+                var permissions = await _roleService.GetUserPermissionsAsync(user.Id);
+                foreach (var permission in permissions)
+                {
+                    claims.Add(new Claim("permissions", permission));
                 }
 
                 // 创建加密密钥和签名凭证

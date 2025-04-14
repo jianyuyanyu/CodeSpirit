@@ -52,7 +52,7 @@ namespace CodeSpirit.Navigation
         public async Task<List<NavigationNode>> GetNavigationTreeAsync()
         {
             var allModuleNodes = new List<NavigationNode>();
-            
+
             try
             {
                 var moduleNames = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY);
@@ -88,49 +88,51 @@ namespace CodeSpirit.Navigation
                 return allModuleNodes;
             }
 
-            // 根据权限过滤导航节点
-            allModuleNodes = FilterNodesByPermission(allModuleNodes);
-            
             return allModuleNodes;
         }
-        
+
         /// <summary>
         /// 根据用户权限过滤导航节点
         /// </summary>
         /// <param name="nodes">导航节点列表</param>
         /// <returns>过滤后的导航节点列表</returns>
-        protected virtual List<NavigationNode> FilterNodesByPermission(List<NavigationNode> nodes)
+        public virtual List<NavigationNode> FilterNodesByPermission(List<NavigationNode> nodes, IHasPermissionService hasPermissionService)
         {
             if (nodes == null || !nodes.Any())
             {
-                return new List<NavigationNode>();
+                return [];
             }
-            
-            var permissionService = GetServiceProvider()
-                .GetService<IHasPermissionService>();
-            
-            if (permissionService == null)
+
+            if (hasPermissionService == null)
             {
                 _logger.LogWarning("Permission service not available. Skipping permission filtering.");
                 return nodes;
             }
-            
-            var filteredNodes = nodes
-                .Where(node => string.IsNullOrEmpty(node.Permission) || permissionService.HasPermission(node.Permission))
-                .ToList();
-                
-            // 递归处理子节点
-            foreach (var node in filteredNodes)
+
+            var result = new List<NavigationNode>();
+
+            foreach (var node in nodes)
             {
-                if (node.Children?.Any() == true)
+                // 首先递归处理子节点
+                var filteredChildren = FilterNodesByPermission(node.Children, hasPermissionService);
+                
+                // 检查节点自身权限或子节点是否有权限
+                bool hasPermission = string.IsNullOrEmpty(node.Permission) || 
+                                     hasPermissionService.HasPermission(node.Permission) || 
+                                     filteredChildren.Any();
+
+                if (hasPermission)
                 {
-                    node.Children = FilterNodesByPermission(node.Children);
+                    // 创建节点副本，保留原始引用
+                    var nodeCopy = node;
+                    nodeCopy.Children = filteredChildren;
+                    result.Add(nodeCopy);
                 }
             }
-            
-            return filteredNodes;
+
+            return result;
         }
-        
+
         /// <summary>
         /// 获取服务提供者
         /// </summary>
@@ -141,5 +143,5 @@ namespace CodeSpirit.Navigation
             var httpContext = accessor.HttpContext;
             return httpContext?.RequestServices ?? null;
         }
-    }  
+    }
 }

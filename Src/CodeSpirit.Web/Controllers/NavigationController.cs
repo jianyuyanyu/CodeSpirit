@@ -1,7 +1,9 @@
+using CodeSpirit.Core.Authorization;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Navigation;
 using CodeSpirit.Navigation.Models;
 using CodeSpirit.Navigation.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.Web.Controllers
@@ -11,20 +13,24 @@ namespace CodeSpirit.Web.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(policy: "DynamicPermissions")]
     public class NavigationController : ControllerBase
     {
         private const string DefaultDashboardUrl = "/";
         private const string DefaultDashboardIcon = "fa-solid fa-gauge-high";
         private readonly INavigationService _navigationService;
         private readonly ILogger<NavigationController> _logger;
+        private readonly IHasPermissionService _hasPermissionService;
         private readonly DashboardConfig _dashboardConfig;
 
         public NavigationController(
             INavigationService navigationService,
-            ILogger<NavigationController> logger)
+            ILogger<NavigationController> logger,
+            IHasPermissionService hasPermissionService)
         {
             _navigationService = navigationService;
             _logger = logger;
+            _hasPermissionService = hasPermissionService;
         }
 
         /// <summary>
@@ -35,7 +41,8 @@ namespace CodeSpirit.Web.Controllers
         public async Task<ActionResult<object>> GetNavigationPageTree()
         {
             var tree = await _navigationService.GetNavigationTreeAsync();
-            var pageTree = ConvertToPageFormat(tree).ToList();
+            var allNode = _navigationService.FilterNodesByPermission(tree, _hasPermissionService);
+            var pageTree = ConvertToPageFormat(allNode).ToList();
 
             if (pageTree.Any())
             {

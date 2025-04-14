@@ -5,6 +5,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.DependencyInjection;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Authorization;
 
 namespace CodeSpirit.Authorization
 {
@@ -39,9 +40,9 @@ namespace CodeSpirit.Authorization
 
             if (context.User?.Claims != null)
             {
+                var currentUser = httpContext.RequestServices.GetService<ICurrentUser>();
                 // 提前转换为 HashSet 提高查找效率
-                HashSet<string> roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToHashSet();
-                HashSet<string> userPermissions = context.User.FindAll("permissions").Select(c => c.Value).ToHashSet();
+                HashSet<string> roles = currentUser?.Roles?.ToHashSet() ?? [];
 
                 // 管理员直接通过
                 if (roles.Contains("Admin"))
@@ -62,7 +63,7 @@ namespace CodeSpirit.Authorization
                     // 如果没有显式指定权限名称，则根据路由生成默认的权限代码
                     string controllerName = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>()?.ControllerName;
                     string actionName = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>()?.ActionName;
-                    
+
                     if (!string.IsNullOrEmpty(controllerName) && !string.IsNullOrEmpty(actionName))
                     {
                         string modulePrefix = endpoint.Metadata.GetMetadata<ModuleAttribute>()?.Name ?? "default";
@@ -76,8 +77,9 @@ namespace CodeSpirit.Authorization
                     }
                 }
 
-                var permissionService = httpContext.RequestServices.GetRequiredService<IPermissionService>();
-                if (permissionService.HasPermission(permissionName, userPermissions))
+                // 从服务容器中获取IHasPermissionService实例，使用Scoped生命周期
+                var hasPermissionService = httpContext.RequestServices.GetRequiredService<IHasPermissionService>();
+                if (hasPermissionService.HasPermission(permissionName))
                 {
                     logger.LogInformation("User {UserId} has permission {PermissionCode}", context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, permissionName);
                     context.Succeed(requirement);

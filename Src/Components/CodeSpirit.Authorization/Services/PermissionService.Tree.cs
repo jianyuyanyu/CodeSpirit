@@ -6,27 +6,27 @@ namespace CodeSpirit.Authorization
 {
     public partial class PermissionService
     {
-        /// <summary>
-        /// 构建权限树的主要方法
-        /// </summary>
-        private void BuildPermissionTree()
-        {
-            _logger.LogInformation("Building permission tree");
+        ///// <summary>
+        ///// 构建权限树的主要方法
+        ///// </summary>
+        //private void BuildPermissionTree()
+        //{
+        //    _logger.LogInformation("Building permission tree");
 
-            var controllers = GetControllers()
-                .Where(c => !IsAnonymousController(c))
-                .GroupBy(c => c.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default");
+        //    var controllers = GetControllers()
+        //        .Where(c => !IsAnonymousController(c))
+        //        .GroupBy(c => c.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default");
 
-            foreach (var moduleGroup in controllers)
-            {
-                var moduleNode = CreateModuleNode(moduleGroup);
-                ProcessModuleControllers(moduleGroup, moduleNode);
-                _permissionTree.Add(moduleNode);
-            }
+        //    foreach (var moduleGroup in controllers)
+        //    {
+        //        var moduleNode = CreateModuleNode(moduleGroup);
+        //        ProcessModuleControllers(moduleGroup, moduleNode);
+        //        _permissionTree.Add(moduleNode);
+        //    }
 
-            BuildHierarchicalTree(_permissionTree);
-            _logger.LogInformation("Permission tree built successfully with {ModuleCount} modules", _permissionTree.Count);
-        }
+        //    BuildHierarchicalTree(_permissionTree);
+        //    _logger.LogInformation("Permission tree built successfully with {ModuleCount} modules", _permissionTree.Count);
+        //}
 
         /// <summary>
         /// 创建模块节点

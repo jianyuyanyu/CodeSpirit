@@ -6,6 +6,7 @@ using CodeSpirit.IdentityApi.Jwt;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -22,6 +23,7 @@ namespace CodeSpirit.IdentityApi.Services
         private readonly IConfiguration _configuration;
         private readonly IJwtTokenHandler _jwtHandler;
         private readonly ILogger<AuthService> _logger;
+        private readonly IRoleService _roleService;
         private readonly int _refreshTokenExpirationDays;
 
         public AuthService(
@@ -32,7 +34,8 @@ namespace CodeSpirit.IdentityApi.Services
             IRepository<RefreshToken> refreshTokenRepository,
             ILoginLogRepository loginLogRepository,
             IJwtTokenHandler jwtHandler,
-            ILogger<AuthService> logger)
+            ILogger<AuthService> logger,
+            IRoleService roleService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -42,6 +45,7 @@ namespace CodeSpirit.IdentityApi.Services
             _loginLogRepository = loginLogRepository;
             _jwtHandler = jwtHandler;
             _logger = logger;
+            _roleService = roleService;
 
             // 刷新令牌过期时间，默认7天
             if (!int.TryParse(_configuration["Jwt:RefreshTokenExpirationDays"], out _refreshTokenExpirationDays))
@@ -89,6 +93,9 @@ namespace CodeSpirit.IdentityApi.Services
                     user.LastLoginTime = DateTimeOffset.UtcNow;
                     await _userManager.UpdateAsync(user);
 
+                    // 预热缓存：提前获取并缓存用户权限
+                    await _roleService.GetUserPermissionsAsync(user.Id);
+                    
                     // 生成令牌
                     var token = await _jwtHandler.GenerateTokenAsync(user);
 
@@ -209,6 +216,9 @@ namespace CodeSpirit.IdentityApi.Services
                 {
                     return AuthResultDto.CreateFailure("用户不存在");
                 }
+
+                // 预热缓存：提前获取并缓存用户权限
+                await _roleService.GetUserPermissionsAsync(user.Id);
 
                 // 生成新的访问令牌
                 var newToken = await _jwtHandler.GenerateTokenAsync(user);
@@ -333,6 +343,9 @@ namespace CodeSpirit.IdentityApi.Services
                 {
                     return (false, "账号已被禁用", null, null);
                 }
+
+                // 预热缓存：提前获取并缓存用户权限
+                await _roleService.GetUserPermissionsAsync(user.Id);
 
                 // 生成token
                 var token = await _jwtHandler.GenerateTokenAsync(user);

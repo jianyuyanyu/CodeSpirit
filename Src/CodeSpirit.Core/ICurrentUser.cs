@@ -33,6 +33,7 @@ namespace CodeSpirit.Core
         /// 获取用户的所有声明（Claims）
         /// </summary>
         IEnumerable<Claim> Claims { get; }
+        HashSet<string> Permissions { get; }
 
         /// <summary>
         /// 判断用户是否属于指定角色

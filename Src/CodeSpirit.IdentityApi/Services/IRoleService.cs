@@ -23,4 +23,11 @@ public interface IRoleService : IBaseCRUDIService<ApplicationRole, RoleDto, long
     /// <param name="importDtos">要导入的角色列表</param>
     /// <returns>导入结果，包含成功数量和失败的ID列表</returns>
     Task<(int successCount, List<string> failedIds)> BatchImportRolesAsync(List<RoleBatchImportItemDto> importDtos);
+    
+    /// <summary>
+    /// 获取用户权限列表
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>用户权限列表</returns>
+    Task<HashSet<string>> GetUserPermissionsAsync(long userId);
 }

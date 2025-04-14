@@ -1,4 +1,5 @@
-﻿using CodeSpirit.Navigation.Models;
+﻿using CodeSpirit.Core.Authorization;
+using CodeSpirit.Navigation.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -25,5 +26,6 @@ namespace CodeSpirit.Navigation.Services
         /// </summary>
         /// <param name="moduleName">模块名称</param>
         Task ClearModuleNavigationCacheAsync(string moduleName);
+        List<NavigationNode> FilterNodesByPermission(List<NavigationNode> nodes, IHasPermissionService hasPermissionService);
     }
 }

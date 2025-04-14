@@ -5,7 +5,7 @@ namespace CodeSpirit.Authorization
     /// <summary>
     /// 权限服务接口：用于管理和查询应用的权限
     /// </summary>
-    public interface IPermissionService : IHasPermissionService
+    public interface IPermissionService
     {
         /// <summary>
         /// 获取权限树，即所有控制器及其下属动作组成的节点集合

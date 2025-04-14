@@ -31,7 +31,7 @@ namespace CodeSpirit.Navigation
         private static readonly DistributedCacheEntryOptions _cacheOptions = new()
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(365),
-            SlidingExpiration = TimeSpan.FromDays(1)
+            SlidingExpiration = TimeSpan.FromDays(90)
         };
 
         public NavigationService(

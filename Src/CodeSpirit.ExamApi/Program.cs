@@ -1,7 +1,6 @@
 // Program.cs
-using System.Text;
 using CodeSpirit.ExamApi;
-using Microsoft.Extensions.Logging;
+using System.Text;
 
 Console.OutputEncoding = Encoding.UTF8;
 
@@ -13,6 +12,7 @@ var app = builder.Build();
 try
 {
     await app.UseExamApiServicesAsync();
+    
     app.Run();
 }
 catch (Exception ex)

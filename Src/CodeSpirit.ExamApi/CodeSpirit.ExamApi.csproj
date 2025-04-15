@@ -30,6 +30,7 @@
 		<ProjectReference Include="..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
 		<ProjectReference Include="..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
+		<ProjectReference Include="..\CodeSpirit.Settings\CodeSpirit.Settings.csproj" />
 	</ItemGroup>
 
 </Project>

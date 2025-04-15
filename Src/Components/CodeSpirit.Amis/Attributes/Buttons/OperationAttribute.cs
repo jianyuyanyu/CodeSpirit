@@ -42,6 +42,11 @@ public class OperationAttribute : Attribute
     /// </summary>
     public string FeedbackBodyTpl { get; set; }
 
+    /// <summary>
+    /// 仅当 ActionType 为 form 时可用，用于表单数据初始化
+    /// </summary>
+    public string InitApi { get; set; }
+
     public OperationAttribute(string label, string actionType = "ajax", string api = null, string confirmText = null, string visibleOn = null, bool isBulkOperation = false)
     {
         Label = label;

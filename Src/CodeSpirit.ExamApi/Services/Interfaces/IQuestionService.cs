@@ -63,4 +63,17 @@ public interface IQuestionService
     /// </summary>
     /// <returns>导入结果，包含成功数量和失败项</returns>
     Task<(int successCount, List<string> failedItems)> ImportFromTextAsync(QuestionImportFromTextDto input);
+    
+    /// <summary>
+    /// 获取题目设置
+    /// </summary>
+    /// <returns>题目设置</returns>
+    Task<QuestionSettingsDto> GetQuestionSettingsAsync();
+
+    /// <summary>
+    /// 更新题目设置
+    /// </summary>
+    /// <param name="settings">题目设置</param>
+    /// <returns>是否更新成功</returns>
+    Task<bool> UpdateQuestionSettingsAsync(QuestionSettingsDto settings);
 } 

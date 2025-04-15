@@ -20,6 +20,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System.Text;
+using CodeSpirit.Settings.Extensions;
+using CodeSpirit.ExamApi.Settings;
 
 namespace CodeSpirit.ExamApi;
 
@@ -112,6 +114,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExamSettingService, ExamSettingService>();
         services.AddScoped<IMonitorService, MonitorService>();
 
+        // 添加设置管理
+        services.AddSettingsManagerWithDatabase(configuration);
+
         return services;
     }
 
@@ -145,7 +150,10 @@ public static class ServiceCollectionExtensions
         app.UseAmis();
         app.UseCodeSpiritAuthorization();
         await app.UseCodeSpiritNavigationAsync();
-
+        
+        // 初始化设置管理
+        await app.UseSettingsManagerAsync();
+        
         app.UseCodeSpiritAggregator();
 
         // 初始化数据库

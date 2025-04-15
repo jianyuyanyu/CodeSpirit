@@ -1,16 +1,19 @@
 using AutoMapper;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.IdGenerator;
+using CodeSpirit.ExamApi.Constants;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Question;
+using CodeSpirit.ExamApi.Dtos.QuestionVersion;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
+using CodeSpirit.ExamApi.Settings.Enums;
+using CodeSpirit.Settings.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
-using System.Text.Json;
 using System.Net;
-using CodeSpirit.ExamApi.Dtos.QuestionVersion;
+using System.Text.Json;
 
 /// <summary>
 /// 题目服务实现
@@ -19,11 +22,13 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 {
     public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, CreateQuestionDto, UpdateQuestionDto, QuestionBatchImportItemDto>, IQuestionService
     {
+        private const string QuestionSettings = "QuestionSettings";
         private readonly IRepository<Question> _repository;
         private readonly IRepository<QuestionCategory> _categoryRepository;
         private readonly IRepository<QuestionVersion> _versionRepository;
         private readonly IMapper _mapper;
         private readonly ILogger<QuestionService> _logger;
+        private readonly ISettingsService _settingsService;
         private string? _changeReason;
         private QuestionTextParserV2 _questionTextParserV2;
         private readonly IIdGenerator _idGenerator;
@@ -38,7 +43,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             IMapper mapper,
             ILogger<QuestionService> logger,
             QuestionTextParserV2 questionTextParserV2,
-            IIdGenerator idGenerator)
+            IIdGenerator idGenerator,
+            ISettingsService settingsService)
             : base(repository, mapper)
         {
             _repository = repository;
@@ -48,6 +54,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             _logger = logger;
             _questionTextParserV2 = questionTextParserV2;
             _idGenerator = idGenerator;
+            _settingsService = settingsService;
         }
 
         /// <summary>
@@ -203,14 +210,28 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(400, "所选分类不存在！");
             }
 
-            // 检查题目是否重复
-            var existingQuestion = await _repository.CreateQuery()
-                .Where(q => q.Content == createDto.Content && q.Type == createDto.Type)
-                .FirstOrDefaultAsync();
+            // 获取当前的唯一性校验模式
+            var settings = await GetQuestionSettingsAsync();
 
-            if (existingQuestion != null)
+            // 根据唯一性校验模式进行校验
+            if (settings.UniquenessMode != QuestionUniquenessMode.None)
             {
-                throw new AppServiceException(400, "该题目已存在！");
+                // 构建查询条件
+                var query = _repository.CreateQuery()
+                    .Where(q => q.Content == createDto.Content && q.Type == createDto.Type);
+
+                // 如果是分类唯一，则添加分类条件
+                if (settings.UniquenessMode == QuestionUniquenessMode.Category)
+                {
+                    query = query.Where(q => q.CategoryId == createDto.CategoryId);
+                }
+
+                // 检查题目是否重复
+                var existingQuestion = await query.FirstOrDefaultAsync();
+                if (existingQuestion != null)
+                {
+                    throw new AppServiceException(400, "该题目已存在！");
+                }
             }
 
             // 根据题目类型验证选项和答案
@@ -229,14 +250,28 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(400, "所选分类不存在！");
             }
 
-            // 检查题目是否重复（排除自身）
-            var existingQuestion = await _repository.CreateQuery()
-                .Where(q => q.Id != id && q.Content == updateDto.Content && q.Type == updateDto.Type)
-                .FirstOrDefaultAsync();
+            // 获取当前的唯一性校验模式
+            var settings = await GetQuestionSettingsAsync();
 
-            if (existingQuestion != null)
+            // 根据唯一性校验模式进行校验
+            if (settings.UniquenessMode != QuestionUniquenessMode.None)
             {
-                throw new AppServiceException(400, "该题目已存在！");
+                // 构建查询条件
+                var query = _repository.CreateQuery()
+                    .Where(q => q.Id != id && q.Content == updateDto.Content && q.Type == updateDto.Type);
+
+                // 如果是分类唯一，则添加分类条件
+                if (settings.UniquenessMode == QuestionUniquenessMode.Category)
+                {
+                    query = query.Where(q => q.CategoryId == updateDto.CategoryId);
+                }
+
+                // 检查题目是否重复
+                var existingQuestion = await query.FirstOrDefaultAsync();
+                if (existingQuestion != null)
+                {
+                    throw new AppServiceException(400, "该题目已存在！");
+                }
             }
 
             // 根据题目类型验证选项和答案
@@ -252,13 +287,13 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             entity.Content = WebUtility.HtmlEncode(createDto.Content);
             entity.CorrectAnswer = WebUtility.HtmlEncode(createDto.CorrectAnswer);
             entity.Analysis = createDto.Analysis != null ? WebUtility.HtmlEncode(createDto.Analysis) : null;
-            
+
             // 对选项列表进行HTML编码处理
             if (entity.Options != null && entity.Options.Any())
             {
                 entity.Options = entity.Options.Select(o => WebUtility.HtmlEncode(o)).ToList();
             }
-            
+
             // 处理JSON序列化
             if (createDto.Tags?.Any() == true)
             {
@@ -303,13 +338,13 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             entity.Content = WebUtility.HtmlEncode(updateDto.Content);
             entity.CorrectAnswer = WebUtility.HtmlEncode(updateDto.CorrectAnswer);
             entity.Analysis = updateDto.Analysis != null ? WebUtility.HtmlEncode(updateDto.Analysis) : null;
-            
+
             // 对选项列表进行HTML编码处理
             if (updateDto.Options != null && updateDto.Options.Any())
             {
                 entity.Options = updateDto.Options.Select(o => WebUtility.HtmlEncode(o)).ToList();
             }
-            
+
             // 处理 JSON 序列化
             if (updateDto.Tags?.Any() == true)
             {
@@ -343,7 +378,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             await _versionRepository.AddAsync(version);
             await _versionRepository.SaveChangesAsync();
 
-           
+
             await _repository.UpdateAsync(entity);
             await _repository.SaveChangesAsync();
 
@@ -366,7 +401,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             // 检查选项是否有重复
             else if (type == QuestionType.SingleChoice || type == QuestionType.MultipleChoice)
             {
-                 // 检查选项是否有重复
+                // 检查选项是否有重复
                 if (options.Distinct().Count() != options.Count)
                 {
                     throw new AppServiceException(400, "题目选项不能重复！");
@@ -414,95 +449,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         /// </summary>
         public override async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<QuestionBatchImportItemDto> importData)
         {
-            ArgumentNullException.ThrowIfNull(importData);
-
-            var successCount = 0;
-            var failedIds = new List<string>();
-            var importList = importData.ToList();
-
-            // 预先检查所有题目的内容是否重复
-            var contents = importList.Select(x => x.Content).ToList();
-            var existingContents = await _repository
-                .CreateQuery()
-                .Where(q => contents.Contains(q.Content))
-                .Select(q => q.Content)
-                .ToListAsync();
-
-            if (existingContents.Any())
-            {
-                return (0, existingContents.Select(c => $"重复的题目内容: {c}").ToList());
-            }
-
-            // 使用事务包装所有数据库操作
-            await _repository.ExecuteInTransactionAsync(async () =>
-            {
-                foreach (var item in importList)
-                {
-                    try
-                    {
-                        // 解析题目类型
-                        if (!Enum.TryParse<QuestionType>(item.QuestionType, out var questionType))
-                        {
-                            failedIds.Add($"{item.Content}(无效的题目类型)");
-                            continue;
-                        }
-
-                        // 解析难度等级
-                        if (!Enum.IsDefined(typeof(QuestionDifficulty), item.DifficultyLevel))
-                        {
-                            failedIds.Add($"{item.Content}(无效的难度等级)");
-                            continue;
-                        }
-
-                        // 创建题目实体
-                        var question = new Question
-                        {
-                            Id = _idGenerator.NewId(),
-                            Content = WebUtility.HtmlEncode(item.Content),
-                            Type = questionType,
-                            Difficulty = (QuestionDifficulty)item.DifficultyLevel,
-                            CorrectAnswer = WebUtility.HtmlEncode(item.Answer),
-                            Analysis = item.Analysis != null ? WebUtility.HtmlEncode(item.Analysis) : null,
-                            Version = 1
-                        };
-
-                        if (!item.Tags.IsNullOrWhiteSpace())
-                        {
-                            question.Tags = JsonSerializer.Serialize(item.Tags);
-                        }
-
-                        var version = new QuestionVersion
-                        {
-                            QuestionId = question.Id,
-                            Version = question.Version,
-                            Content = question.Content,
-                            Options = question.Options,
-                            CorrectAnswer = question.CorrectAnswer,
-                            Analysis = question.Analysis,
-                            KnowledgePoints = question.KnowledgePoints,
-                            DefaultScore = question.DefaultScore,
-                            Tags = question.Tags,
-                            ChangeReason = "初始创建"
-                        };
-
-                        // 添加到数据库（不立即保存）
-                        await _repository.AddAsync(question, false);
-                        await _versionRepository.AddAsync(version, false);
-                        successCount++;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "导入题目失败: {Content}", item.Content);
-                        failedIds.Add($"{item.Content}(导入失败)");
-                    }
-                }
-
-                // 在事务结束时统一保存所有更改
-                await _repository.SaveChangesAsync();
-                await _versionRepository.SaveChangesAsync();
-            });
-
-            return (successCount, failedIds);
+            throw new NotSupportedException("暂不支持！");
         }
 
         /// <summary>
@@ -584,21 +531,33 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     throw new AppServiceException(400, "未能从文本中解析出任何题目，请检查文本格式！");
                 }
 
+                // 获取当前的唯一性校验模式
+                var settings = await GetQuestionSettingsAsync();
+
                 foreach (var questionData in parsedQuestions)
                 {
                     try
                     {
-                        // 检查题目是否重复
-                        var existingQuestion = _repository.Find(q =>
-                            q.Content == questionData.Content &&
-                            q.Type == questionData.Type)
-                            .FirstOrDefault();
-
-                        if (existingQuestion != null)
+                        // 检查题目是否重复（根据唯一性校验模式）
+                        if (settings.UniquenessMode != QuestionUniquenessMode.None)
                         {
-                            string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
-                            failedItems.Add($"{typeStr}「{questionData.Content}」已存在");
-                            continue;
+                            IQueryable<Question> query = _repository.CreateQuery()
+                                .Where(q => q.Content == questionData.Content && q.Type == questionData.Type);
+
+                            // 如果是分类唯一，则添加分类条件
+                            if (settings.UniquenessMode == QuestionUniquenessMode.Category)
+                            {
+                                query = query.Where(q => q.CategoryId == input.CategoryId);
+                            }
+
+                            var existingQuestion = await query.FirstOrDefaultAsync();
+
+                            if (existingQuestion != null)
+                            {
+                                string typeStr = questionData.Type == QuestionType.SingleChoice ? "单选题" : "判断题";
+                                failedItems.Add($"{typeStr}「{questionData.Content}」已存在");
+                                continue;
+                            }
                         }
 
                         // 确保选项和答案格式正确
@@ -669,6 +628,43 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 _logger.LogInformation($"{failedItems.Count} 个题目导入失败: \n{string.Join(", \n", failedItems)}");
             }
             return (successCount, failedItems);
+        }
+
+        /// <summary>
+        /// 获取题目设置
+        /// </summary>
+        /// <returns>题目设置</returns>
+        public async Task<QuestionSettingsDto> GetQuestionSettingsAsync()
+        {
+            var settings = await _settingsService.GetGlobalSettingAsync<QuestionSettingsDto>(
+                ExamConstants.ExamModule,
+                QuestionSettings);
+
+            return settings ?? new QuestionSettingsDto()
+            {
+                UniquenessMode = QuestionUniquenessMode.Global
+            };
+        }
+
+        /// <summary>
+        /// 更新题目设置
+        /// </summary>
+        /// <param name="settings">题目设置</param>
+        /// <returns>是否更新成功</returns>
+        public async Task<bool> UpdateQuestionSettingsAsync(QuestionSettingsDto settings)
+        {
+            if (settings == null)
+            {
+                throw new ArgumentNullException(nameof(settings));
+            }
+
+            // 更新唯一性校验模式设置
+            var result = await _settingsService.SetGlobalSettingAsync(
+                ExamConstants.ExamModule,
+                QuestionSettings,
+                settings);
+
+            return result;
         }
     }
 }

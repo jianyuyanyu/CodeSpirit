@@ -1,8 +1,8 @@
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Dtos.Question;
-using CodeSpirit.ExamApi.Dtos.QuestionVersion;
-using CodeSpirit.Shared.Dtos.Common;
+using CodeSpirit.Settings.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.Net;
@@ -24,6 +24,7 @@ public class QuestionsController : ApiControllerBase
     /// </summary>
     /// <param name="questionService">题目服务</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="settingsService">设置服务</param>
     public QuestionsController(
         IQuestionService questionService,
         ILogger<QuestionsController> logger)
@@ -113,7 +114,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="updateQuestionDto">更新题目请求数据</param>
     /// <returns>更新后的题目信息</returns>
     [HttpPut("{id:long}")]
-    public async Task<ActionResult<ApiResponse>> UpdateQuestion(long id, [FromBody]UpdateQuestionDto updateQuestionDto)
+    public async Task<ActionResult<ApiResponse>> UpdateQuestion(long id, [FromBody] UpdateQuestionDto updateQuestionDto)
     {
         await _questionService.UpdateQuestionAsync(id, updateQuestionDto);
         return SuccessResponse();
@@ -369,5 +370,37 @@ public class QuestionsController : ApiControllerBase
         };
 
         return SuccessResponse(amisConfig);
+    }
+
+    /// <summary>
+    /// 获取题目设置
+    /// </summary>
+    /// <returns>题目设置</returns>
+    [HttpGet("settings")]
+    public async Task<ActionResult<ApiResponse<QuestionSettingsDto>>> GetQuestionSettings()
+    {
+        var settings = await _questionService.GetQuestionSettingsAsync();
+        return SuccessResponse(settings);
+    }
+
+    /// <summary>
+    /// 更新题目设置
+    /// </summary>
+    /// <param name="settings">题目设置</param>
+    /// <returns>操作结果</returns>
+    [HttpPut("settings")]
+    [HeaderOperation("设置", "form", null, null, InitApi = "/exam/api/exam/Questions/settings")]
+    public async Task<ActionResult<ApiResponse>> UpdateQuestionSettings(
+        [FromBody] QuestionSettingsDto settings)
+    {
+        var result = await _questionService.UpdateQuestionSettingsAsync(settings);
+        if (result)
+        {
+            return SuccessResponse("题目设置已更新");
+        }
+        else
+        {
+            return BadResponse("更新题目设置失败");
+        }
     }
 }

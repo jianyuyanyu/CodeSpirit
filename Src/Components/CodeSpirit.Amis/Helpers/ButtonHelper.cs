@@ -407,21 +407,28 @@ namespace CodeSpirit.Amis.Helpers
             {
                 string title = op.Label;
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
+                var formOptions = new JObject
+                {
+                    ["type"] = "form",
+                    ["data"] = !string.IsNullOrEmpty(op.Data) ? JsonConvert.DeserializeObject<JObject>(op.Data) : null,
+                    ["api"] = new JObject
+                    {
+                        ["url"] = route.ApiPath,
+                        ["method"] = route.HttpMethod
+                    },
+                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(method.GetParameters()))
+                };
+
+                if (!op.InitApi.IsNullOrWhiteSpace())
+                {
+                    formOptions["initApi"] = op.InitApi;
+                }
+
                 JObject drawerBody = new()
                 {
                     ["title"] = title,
                     ["size"] = "lg",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "form",
-                        ["data"] = !string.IsNullOrEmpty(op.Data) ? JsonConvert.DeserializeObject<JObject>(op.Data) : null,
-                        ["api"] = new JObject
-                        {
-                            ["url"] = route.ApiPath,
-                            ["method"] = route.HttpMethod
-                        },
-                        ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(method.GetParameters()))
-                    }
+                    ["body"] = formOptions
                 };
 
                 button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody, visibleOn: op.VisibleOn);

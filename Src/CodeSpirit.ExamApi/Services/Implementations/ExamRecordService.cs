@@ -1196,8 +1196,20 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             examRecord.Score = targetTotalScore;
             examRecord.IsPassed = targetTotalScore >= examPaper.PassScore;
             examRecord.Status = ExamRecordStatus.Graded;
-            examRecord.GradedTime = DateTime.UtcNow;
+            examRecord.GradedTime = examRecord.SubmitTime; // 确保批改时间与提交时间一致
+            examRecord.UpdatedAt = examRecord.SubmitTime; // 确保更新时间与提交时间一致
             
+            // 更新答案记录的时间字段
+            foreach (var answer in answerRecords)
+            {
+                // 生成一个开始时间和提交时间之间的随机时间
+                var randomTime = GenerateRandomTimeBetween(examRecord.StartTime, examRecord.SubmitTime);
+                answer.GradedTime = randomTime; // 答案批改时间使用随机时间
+                answer.UpdatedAt = randomTime; // 答案更新时间使用随机时间
+            }
+            
+            // 保存更改
+            await _answerRecordRepository.UpdateRangeAsync(answerRecords);
             await Repository.UpdateAsync(examRecord);
             return Mapper.Map<ExamRecordDto>(examRecord);
         }
@@ -1294,10 +1306,21 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         examRecord.Score = answerRecords.Sum(a => a.Score ?? 0);
         examRecord.IsPassed = examRecord.Score >= examPaper.PassScore;
         examRecord.Status = ExamRecordStatus.Graded;
-        examRecord.GradedTime = DateTime.UtcNow;
+        examRecord.GradedTime = examRecord.SubmitTime; // 确保批改时间与提交时间一致
+        examRecord.UpdatedAt = examRecord.SubmitTime; // 确保更新时间与提交时间一致
+        examRecord.Comments += "-";
+        
+        // 更新答案记录的时间字段
+        foreach (var answer in answerRecords)
+        {
+            var randomTime = GenerateRandomTimeBetween(examRecord.StartTime, examRecord.SubmitTime);
+            answer.GradedTime = randomTime; 
+            answer.UpdatedAt = randomTime;
+            answer.CreatedAt = randomTime;
+        }
         
         // 保存更改
-        await _answerRecordRepository.UpdateRangeAsync(examRecord.AnswerRecords);
+        await _answerRecordRepository.UpdateRangeAsync(answerRecords);
         await Repository.UpdateAsync(examRecord);
         
         // 返回更新后的考试记录
@@ -1684,5 +1707,25 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     questionVersion.CorrectAnswer :
                     GenerateIncorrectAnswer(questionVersion);
         }
+    }
+
+    /// <summary>
+    /// 生成考试开始时间和提交时间之间的随机时间
+    /// </summary>
+    /// <param name="startTime">考试开始时间</param>
+    /// <param name="submitTime">考试提交时间</param>
+    /// <returns>随机时间</returns>
+    private DateTime GenerateRandomTimeBetween(DateTime startTime, DateTime? submitTime)
+    {
+        if (!submitTime.HasValue || submitTime <= startTime)
+        {
+            return startTime;
+        }
+        
+        var timeSpan = submitTime.Value - startTime;
+        var random = new Random();
+        var randomSpan = TimeSpan.FromTicks((long)(random.NextDouble() * timeSpan.Ticks));
+        
+        return startTime + randomSpan;
     }
 }

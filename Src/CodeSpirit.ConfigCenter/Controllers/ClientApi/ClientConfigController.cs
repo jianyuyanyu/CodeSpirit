@@ -3,6 +3,7 @@ using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.ConfigCenter.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace CodeSpirit.ConfigCenter.Controllers.ClientApi;
@@ -33,6 +34,7 @@ public class ClientConfigController : ControllerBase
     /// <param name="environment">环境</param>
     /// <returns>应用配置集合</returns>
     [HttpGet("{appId}/{environment}")]
+    [DisplayName("获取应用配置")]
     public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetAppConfig(
         string appId, 
         string environment)
@@ -67,6 +69,7 @@ public class ClientConfigController : ControllerBase
     /// 验证客户端连接
     /// </summary>
     [HttpGet("ping")]
+    [DisplayName("验证连接")]
     public ActionResult<ApiResponse<object>> Ping()
     {
         return new ApiResponse<object>

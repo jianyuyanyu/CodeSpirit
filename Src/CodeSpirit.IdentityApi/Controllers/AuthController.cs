@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -43,6 +44,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>登录结果</returns>
         [HttpPost("login")]
         [AllowAnonymous]
+        [DisplayName("用户登录")]
         public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> Login([FromBody] LoginModel model)
         {
             try
@@ -84,6 +86,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>新的令牌信息</returns>
         [HttpPost("refresh-token")]
         [AllowAnonymous]
+        [DisplayName("刷新访问令牌")]
         public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
         {
             try
@@ -120,6 +123,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>登出结果</returns>
         [HttpPost("logout")]
         [Authorize]
+        [DisplayName("用户登出")]
         public async Task<ActionResult<ApiResponse>> Logout()
         {
             await _signInManager.SignOutAsync();

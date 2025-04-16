@@ -40,6 +40,7 @@ public class PracticeRecordsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>练习记录列表分页结果</returns>
     [HttpGet]
+    [DisplayName("获取练习记录列表")]
     public async Task<ActionResult<ApiResponse<PageList<PracticeRecordDto>>>> GetPracticeRecords([FromQuery] PracticeRecordQueryDto queryDto)
     {
         PageList<PracticeRecordDto> practiceRecords = await _practiceRecordService.GetPracticeRecordsAsync(queryDto);
@@ -52,6 +53,7 @@ public class PracticeRecordsController : ApiControllerBase
     /// <param name="id">练习记录ID</param>
     /// <returns>练习记录详细信息</returns>
     [HttpGet("{id}")]
+    [DisplayName("获取练习记录详情")]
     public async Task<ActionResult<ApiResponse<PracticeRecordDto>>> GetPracticeRecord(long id)
     {
         PracticeRecordDto practiceRecord = await _practiceRecordService.GetPracticeRecordAsync(id);
@@ -64,6 +66,7 @@ public class PracticeRecordsController : ApiControllerBase
     /// <param name="createDto">创建练习记录DTO</param>
     /// <returns>创建成功的练习记录</returns>
     [HttpPost]
+    [DisplayName("创建练习记录")]
     public async Task<ActionResult<ApiResponse<PracticeRecordDto>>> CreatePracticeRecord([FromBody] CreatePracticeRecordDto createDto)
     {
         PracticeRecordDto practiceRecord = await _practiceRecordService.CreatePracticeRecordAsync(createDto);
@@ -77,6 +80,7 @@ public class PracticeRecordsController : ApiControllerBase
     /// <param name="updateDto">更新练习记录DTO</param>
     /// <returns>成功响应</returns>
     [HttpPut("{id}")]
+    [DisplayName("更新练习记录")]
     public async Task<ActionResult<ApiResponse>> UpdatePracticeRecord(long id, [FromBody] UpdatePracticeRecordDto updateDto)
     {
         await _practiceRecordService.UpdatePracticeRecordAsync(id, updateDto);
@@ -89,6 +93,7 @@ public class PracticeRecordsController : ApiControllerBase
     /// <param name="id">练习记录ID</param>
     /// <returns>成功响应</returns>
     [HttpDelete("{id}")]
+    [DisplayName("删除练习记录")]
     public async Task<ActionResult<ApiResponse>> DeletePracticeRecord(long id)
     {
         await _practiceRecordService.DeletePracticeRecordAsync(id);
@@ -102,6 +107,7 @@ public class PracticeRecordsController : ApiControllerBase
     /// <returns>成功响应，包含成功删除数量和失败ID列表</returns>
     [HttpPost("batch/delete")]
     [Operation("批量删除", "ajax", null, "确定要删除选中的练习记录吗？")]
+    [DisplayName("批量删除练习记录")]
     public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -120,6 +126,7 @@ public class PracticeRecordsController : ApiControllerBase
     /// <returns>成功响应，包含成功导入数量和失败ID列表</returns>
     [HttpPost("batch/import")]
     [Operation("批量导入", "ajax")]
+    [DisplayName("批量导入练习记录")]
     public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<PracticeRecordBatchImportDto> importDto)
     {
         ArgumentNullException.ThrowIfNull(importDto);

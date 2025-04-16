@@ -48,6 +48,7 @@ public class AppsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>应用列表分页结果</returns>
     [HttpGet]
+    [DisplayName("获取应用列表")]
     public async Task<ActionResult<ApiResponse<PageList<AppDto>>>> GetApps([FromQuery] AppQueryDto queryDto)
     {
         PageList<AppDto> apps = await _appService.GetAppsAsync(queryDto);
@@ -60,6 +61,7 @@ public class AppsController : ApiControllerBase
     /// <param name="id">应用ID</param>
     /// <returns>应用详细信息</returns>
     [HttpGet("{id}")]
+    [DisplayName("获取应用详情")]
     public async Task<ActionResult<ApiResponse<AppDto>>> GetApp(string id)
     {
         AppDto app = await _appService.GetAppAsync(id);
@@ -72,6 +74,7 @@ public class AppsController : ApiControllerBase
     /// <param name="createAppDto">创建应用请求数据</param>
     /// <returns>创建的应用信息</returns>
     [HttpPost]
+    [DisplayName("创建应用")]
     public async Task<ActionResult<ApiResponse<AppDto>>> CreateApp(CreateAppDto createAppDto)
     {
         AppDto appDto = await _appService.CreateAppAsync(createAppDto);
@@ -85,6 +88,7 @@ public class AppsController : ApiControllerBase
     /// <param name="updateAppDto">更新应用请求数据</param>
     /// <returns>更新后的应用信息</returns>
     [HttpPut("{id}")]
+    [DisplayName("更新应用")]
     public async Task<ActionResult<ApiResponse>> UpdateApp(string id, UpdateAppDto updateAppDto)
     {
         await _appService.UpdateAppAsync(id, updateAppDto);
@@ -110,6 +114,7 @@ public class AppsController : ApiControllerBase
     /// <param name="importDto">导入数据</param>
     /// <returns>导入结果</returns>
     [HttpPost("batch/import")]
+    [DisplayName("批量导入应用")]
     public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<AppBatchImportItemDto> importDto)
     {
         ArgumentNullException.ThrowIfNull(importDto);
@@ -144,12 +149,14 @@ public class AppsController : ApiControllerBase
     /// </summary>
     /// <returns>操作结果</returns>
     [Operation("配置管理", "link", "/config/configItems?appId=${id}", null)]
+    [DisplayName("配置管理")]
     public ActionResult<ApiResponse> ManageSettings()
     {
         return SuccessResponse();
     }
 
     [Operation("发布历史", "link", "/config/configPublishHistories?appId=${id}", null)]
+    [DisplayName("发布历史")]
     public ActionResult<ApiResponse> ConfigPublishHistories()
     {
         return SuccessResponse();
@@ -162,6 +169,7 @@ public class AppsController : ApiControllerBase
     /// <returns>表单配置JSON对象</returns>
     [Operation(label: "批量配置", actionType: "service")]
     [HttpGet("batch/settings")]
+    [DisplayName("批量配置")]
     public JObject CreateBatchConfigButton(string id)
     {
         var tabsArray = new JArray();
@@ -209,6 +217,7 @@ public class AppsController : ApiControllerBase
     /// <returns></returns>
     [HttpGet("{id}/view")]
     [Operation(label: "配置查看", actionType: "return-form", null)]
+    [DisplayName("配置查看")]
     public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetCompare(string id)
     {
         var result = await _configItemService.GetAppConfigsWithInheritanceAsync(id, environment: EnvironmentType.Development.ToString());

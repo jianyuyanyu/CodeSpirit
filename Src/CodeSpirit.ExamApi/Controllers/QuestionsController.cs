@@ -42,6 +42,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>题目列表分页结果</returns>
     [HttpGet]
+    [DisplayName("获取题目列表")]
     public async Task<ActionResult<ApiResponse<PageList<QuestionDto>>>> GetQuestions([FromQuery] QuestionQueryDto queryDto)
     {
         PageList<QuestionDto> questions = await _questionService.GetQuestionsAsync(queryDto);
@@ -54,6 +55,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>导出的题目列表</returns>
     [HttpGet("Export")]
+    [DisplayName("导出题目列表")]
     public async Task<ActionResult<ApiResponse<PageList<QuestionDto>>>> Export([FromQuery] QuestionQueryDto queryDto)
     {
         // 设置导出时的分页参数
@@ -76,6 +78,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="queryDto"></param>
     /// <returns></returns>
     [HttpGet("select-list")]
+    [DisplayName("获取题目选择列表")]
     public async Task<ActionResult<ApiResponse<List<QuestionSelectListDto>>>> GetSelectList([FromQuery] QuestionSelectListQueryDto queryDto)
     {
         List<QuestionSelectListDto> questions = await _questionService.GetQuestionSelectListAsync(queryDto);
@@ -88,6 +91,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="id">题目ID</param>
     /// <returns>题目详细信息</returns>
     [HttpGet("{id:long}")]
+    [DisplayName("获取题目详情")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> GetQuestion(long id)
     {
         QuestionDto question = await _questionService.GetQuestionAsync(id);
@@ -100,6 +104,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="createQuestionDto">创建题目请求数据</param>
     /// <returns>创建的题目信息</returns>
     [HttpPost]
+    [DisplayName("创建题目")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> CreateQuestion(CreateQuestionDto createQuestionDto)
     {
         ArgumentNullException.ThrowIfNull(createQuestionDto);
@@ -114,6 +119,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="updateQuestionDto">更新题目请求数据</param>
     /// <returns>更新后的题目信息</returns>
     [HttpPut("{id:long}")]
+    [DisplayName("更新题目")]
     public async Task<ActionResult<ApiResponse>> UpdateQuestion(long id, [FromBody] UpdateQuestionDto updateQuestionDto)
     {
         await _questionService.UpdateQuestionAsync(id, updateQuestionDto);
@@ -127,6 +133,7 @@ public class QuestionsController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpDelete("{id:long}")]
     [Operation("删除", "ajax", null, "确定要删除此题目吗？")]
+    [DisplayName("删除题目")]
     public async Task<ActionResult<ApiResponse>> DeleteQuestion(long id)
     {
         await _questionService.DeleteQuestionAsync(id);
@@ -140,6 +147,7 @@ public class QuestionsController : ApiControllerBase
     /// <returns>题目历史版本列表</returns>
     [HttpGet("{id:long}/versions")]
     [Operation("历史版本", "link", "/exam/questionVersions?questionId=${id}", null)]
+    [DisplayName("获取题目历史版本")]
     public ActionResult GetQuestionVersions(long id)
     {
         return Ok();
@@ -152,6 +160,7 @@ public class QuestionsController : ApiControllerBase
     /// <returns>删除结果</returns>
     [HttpPost("batch/delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的题目吗？", isBulkOperation: true)]
+    [DisplayName("批量删除题目")]
     public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -182,6 +191,7 @@ public class QuestionsController : ApiControllerBase
 
     [HttpPost("batch/Parser-from-text")]
     [HeaderOperation("从文本导入", "form")]
+    [DisplayName("从文本导入题目")]
     public async Task<ActionResult<ApiResponse>> BatchParserFromText([FromBody] QuestionImportFromTextDto input)
     {
         (int successCount, List<string> failedQuestions) = await _questionService.ImportFromTextAsync(input);
@@ -198,6 +208,7 @@ public class QuestionsController : ApiControllerBase
     /// <returns>题目预览的Amis配置</returns>
     [HttpGet("{id:long}/preview")]
     [Operation(label: "预览", actionType: "service")]
+    [DisplayName("预览题目")]
     public async Task<ActionResult<ApiResponse<JObject>>> PreviewQuestion(long id)
     {
         var question = await _questionService.GetQuestionAsync(id);
@@ -227,6 +238,7 @@ public class QuestionsController : ApiControllerBase
     /// <param name="id">题目ID</param>
     /// <returns>题目的Amis配置</returns>
     [HttpGet("{id:long}/question-preview")]
+    [DisplayName("获取题目预览配置")]
     public async Task<ActionResult<ApiResponse<JObject>>> GetQuestionPreviewConfig(long id)
     {
         var question = await _questionService.GetQuestionAsync(id);
@@ -377,6 +389,7 @@ public class QuestionsController : ApiControllerBase
     /// </summary>
     /// <returns>题目设置</returns>
     [HttpGet("settings")]
+    [DisplayName("获取题目设置")]
     public async Task<ActionResult<ApiResponse<QuestionSettingsDto>>> GetQuestionSettings()
     {
         var settings = await _questionService.GetQuestionSettingsAsync();
@@ -390,6 +403,7 @@ public class QuestionsController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpPut("settings")]
     [HeaderOperation("设置", "form", null, null, InitApi = "/exam/api/exam/Questions/settings")]
+    [DisplayName("更新题目设置")]
     public async Task<ActionResult<ApiResponse>> UpdateQuestionSettings(
         [FromBody] QuestionSettingsDto settings)
     {

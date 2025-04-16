@@ -1,6 +1,7 @@
 ﻿// Controllers/AuthController.cs
 using CodeSpirit.Core;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -13,6 +14,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="file">上传的图片文件</param>
         /// <returns>返回符合 Amis InputImage 组件预期的响应格式</returns>
         [HttpPost("avatar")]
+        [DisplayName("上传头像")]
         public Task<ActionResult<ApiResponse<ImageDto>>> UploadAvatar([FromForm] IFormFile file)
         {
             return Task.FromResult(SuccessResponse(new ImageDto

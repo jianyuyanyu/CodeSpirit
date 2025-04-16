@@ -2,6 +2,7 @@ using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.ConfigCenter.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel;
 using System.Threading.Tasks;
 
 namespace CodeSpirit.ConfigCenter.Controllers.ClientApi;
@@ -30,6 +31,7 @@ public class ClientAppController : ControllerBase
     /// <param name="request">应用注册请求</param>
     /// <returns>应用注册结果</returns>
     [HttpPost("register")]
+    [DisplayName("注册应用")]
     public async Task<ActionResult<ApiResponse<AppRegistrationResponseDto>>> RegisterApp(
         [FromBody] AppRegistrationRequestDto request)
     {

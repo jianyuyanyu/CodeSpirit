@@ -39,6 +39,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>题目版本列表分页结果</returns>
     [HttpGet]
+    [DisplayName("获取题目版本列表")]
     public async Task<ActionResult<ApiResponse<PageList<QuestionVersionDto>>>> GetQuestionVersions([FromQuery] QuestionVersionQueryDto queryDto)
     {
         PageList<QuestionVersionDto> questionVersions = await _questionVersionService.GetQuestionVersionsAsync(queryDto);
@@ -51,6 +52,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <param name="questionId">题目ID</param>
     /// <returns>题目的所有版本列表</returns>
     [HttpGet("questions/{questionId:long}/versions")]
+    [DisplayName("获取题目所有版本")]
     public async Task<ActionResult<ApiResponse<List<QuestionVersionDto>>>> GetVersionsByQuestionId(long questionId)
     {
         if (questionId <= 0)
@@ -69,6 +71,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <param name="version">版本号</param>
     /// <returns>题目版本详情</returns>
     [HttpGet("questions/{questionId:long}/versions/{version:int}")]
+    [DisplayName("获取题目特定版本")]
     public async Task<ActionResult<ApiResponse<QuestionVersionDto>>> GetQuestionVersionByVersion(long questionId, int version)
     {
         if (questionId <= 0)
@@ -91,6 +94,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <param name="id">题目版本ID</param>
     /// <returns>题目版本详细信息</returns>
     [HttpGet("{id:long}")]
+    [DisplayName("获取题目版本详情")]
     public async Task<ActionResult<ApiResponse<QuestionVersionDto>>> GetQuestionDetail(long id)
     {
         QuestionVersionDto questionVersion = await _questionVersionService.GetAsync(id);
@@ -103,6 +107,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <param name="createDto">创建题目版本请求数据</param>
     /// <returns>创建的题目版本信息</returns>
     [HttpPost]
+    [DisplayName("创建题目版本")]
     public async Task<ActionResult<ApiResponse<QuestionVersionDto>>> CreateQuestionVersion(CreateQuestionVersionDto createDto)
     {
         ArgumentNullException.ThrowIfNull(createDto);
@@ -117,6 +122,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <param name="updateDto">更新题目版本请求数据</param>
     /// <returns>更新操作结果</returns>
     [HttpPut("{id:long}")]
+    [DisplayName("更新题目版本")]
     public async Task<ActionResult<ApiResponse>> UpdateQuestionVersion(long id, [FromBody]UpdateQuestionVersionDto updateDto)
     {
         await _questionVersionService.UpdateAsync(id, updateDto);
@@ -130,6 +136,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <returns>删除操作结果</returns>
     [HttpDelete("{id:long}")]
     [Operation("删除", "ajax", null, "确定要删除此题目版本吗？")]
+    [DisplayName("删除题目版本")]
     public async Task<ActionResult<ApiResponse>> DeleteQuestionVersion(long id)
     {
         await _questionVersionService.DeleteAsync(id);
@@ -143,6 +150,7 @@ public class QuestionVersionsController : ApiControllerBase
     /// <returns>批量删除操作结果</returns>
     [HttpPost("batch-delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的题目版本吗？", IsBulkOperation = true)]
+    [DisplayName("批量删除题目版本")]
     public async Task<ActionResult<ApiResponse>> BatchDeleteQuestionVersions([FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);

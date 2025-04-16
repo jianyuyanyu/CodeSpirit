@@ -26,6 +26,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Permissions
         [HttpGet]
+        [DisplayName("获取权限列表")]
         public ActionResult<ApiResponse<PageList<PermissionDto>>> GetPermissions()
         {
             List<PermissionNode> permissions = _permissionService.GetPermissionTree();
@@ -42,6 +43,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// </summary>
         /// <returns>权限树列表</returns>
         [HttpGet("tree")]
+        [DisplayName("获取权限树")]
         public ActionResult<ApiResponse<List<PermissionTreeDto>>> GetPermissionTree()
         {
             var permissions = _permissionService.GetPermissionTree();
@@ -64,6 +66,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="id">父权限标识</param>
         /// <returns>子权限树节点</returns>
         [HttpGet("tree/{id}")]
+        [DisplayName("获取子权限")]
         public ActionResult<ApiResponse<PermissionTreeDeferDto>> GetPermissionChildren(string id)
         {
             if (string.IsNullOrEmpty(id))

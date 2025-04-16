@@ -41,6 +41,7 @@ public class ConfigItemsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>配置项列表分页结果</returns>
     [HttpGet]
+    [DisplayName("获取配置项列表")]
     public async Task<ActionResult<ApiResponse<PageList<ConfigItemDto>>>> GetConfigItems([FromQuery] ConfigItemQueryDto queryDto)
     {
         PageList<ConfigItemDto> configs = await _configItemService.GetConfigsAsync(queryDto);
@@ -55,6 +56,7 @@ public class ConfigItemsController : ApiControllerBase
     /// <param name="key">配置键</param>
     /// <returns>配置项详情</returns>
     [HttpGet("{appId}/{environment}/{key}")]
+    [DisplayName("获取配置项详情")]
     public async Task<ActionResult<ApiResponse<ConfigItemDto>>> GetConfig(string appId, string environment, string key)
     {
         ConfigItemDto config = await _configItemService.GetConfigAsync(appId, environment, key);
@@ -67,6 +69,7 @@ public class ConfigItemsController : ApiControllerBase
     /// <param name="createDto">创建配置项请求数据</param>
     /// <returns>创建的配置项信息</returns>
     [HttpPost]
+    [DisplayName("创建配置项")]
     public async Task<ActionResult<ApiResponse<ConfigItemDto>>> CreateConfig(CreateConfigDto createDto)
     {
         ConfigItemDto configDto = await _configItemService.CreateAsync(createDto);
@@ -80,6 +83,7 @@ public class ConfigItemsController : ApiControllerBase
     /// <param name="updateDto">更新配置项请求数据</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}")]
+    [DisplayName("更新配置项")]
     public async Task<ActionResult<ApiResponse>> UpdateConfig(int id, UpdateConfigDto updateDto)
     {
         await _configItemService.UpdateAsync(id, updateDto);
@@ -105,6 +109,7 @@ public class ConfigItemsController : ApiControllerBase
     /// <param name="importDtos">导入的配置项列表</param>
     /// <returns>操作结果</returns>
     [HttpPost("import")]
+    [DisplayName("批量导入配置项")]
     public async Task<ActionResult<ApiResponse>> ImportConfigs([FromBody] List<ConfigItemBatchImportDto> importDtos)
     {
         await _configItemService.BatchImportAsync(importDtos);
@@ -118,6 +123,7 @@ public class ConfigItemsController : ApiControllerBase
     /// <param name="environment">环境</param>
     /// <returns>应用配置集合</returns>
     [HttpGet("{appId}/{environment}/collection")]
+    [DisplayName("获取配置集合")]
     public async Task<ActionResult<ApiResponse<ConfigItemsExportDto>>> GetConfigCollection(string appId, string environment)
     {
         ConfigItemsExportDto configs = await _configItemService.GetAppConfigsAsync(appId, environment);
@@ -132,6 +138,7 @@ public class ConfigItemsController : ApiControllerBase
     /// <param name="updateDto">更新请求数据</param>
     /// <returns>更新结果</returns>
     [HttpPut("{appId}/{environment}/collection")]
+    [DisplayName("批量更新配置")]
     public async Task<ActionResult<ApiResponse>> UpdateConfigCollection(string appId, string environment, [FromBody] ConfigItemsUpdateDto updateDto)
     {
         // 验证路由参数与请求体参数是否一致

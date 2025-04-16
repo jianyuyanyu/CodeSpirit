@@ -4,6 +4,7 @@ using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Dtos.Profile;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -23,6 +24,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/identity/profile
         [HttpGet("")]
+        [DisplayName("获取个人资料")]
         public async Task<ActionResult<ApiResponse<ProfileDto>>> GetProfile()
         {
             if (!_currentUser.IsAuthenticated || _currentUser.Id == null)

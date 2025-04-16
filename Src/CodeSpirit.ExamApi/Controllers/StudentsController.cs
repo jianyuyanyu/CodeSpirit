@@ -39,6 +39,7 @@ public class StudentsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>考生列表分页结果</returns>
     [HttpGet]
+    [DisplayName("获取考生列表")]
     public async Task<ActionResult<ApiResponse<PageList<StudentDto>>>> GetStudents([FromQuery] StudentQueryDto queryDto)
     {
         var result = await _studentService.GetStudentsAsync(queryDto);
@@ -51,6 +52,7 @@ public class StudentsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>导出的考生列表</returns>
     [HttpGet("Export")]
+    [DisplayName("导出考生列表")]
     public async Task<ActionResult<ApiResponse<PageList<StudentDto>>>> Export([FromQuery] StudentQueryDto queryDto)
     {
         // 设置导出时的分页参数
@@ -73,6 +75,7 @@ public class StudentsController : ApiControllerBase
     /// <param name="id">考生ID</param>
     /// <returns>考生详情</returns>
     [HttpGet("{id}")]
+    [DisplayName("获取考生详情")]
     public async Task<ActionResult<ApiResponse<StudentDto>>> GetStudent(long id)
     {
         if (id <= 0) return BadRequest("无效的ID");
@@ -87,6 +90,7 @@ public class StudentsController : ApiControllerBase
     /// <param name="createDto">创建考生信息</param>
     /// <returns>创建结果</returns>
     [HttpPost]
+    [DisplayName("创建考生")]
     public async Task<ActionResult<ApiResponse<StudentDto>>> CreateStudent([FromBody] CreateStudentDto createDto)
     {
         var result = await _studentService.CreateAsync(createDto);
@@ -100,6 +104,7 @@ public class StudentsController : ApiControllerBase
     /// <param name="updateDto">更新信息</param>
     /// <returns>更新结果</returns>
     [HttpPut("{id}")]
+    [DisplayName("更新考生")]
     public async Task<ActionResult<ApiResponse>> UpdateStudent(long id, [FromBody] UpdateStudentDto updateDto)
     {
         await _studentService.UpdateAsync(id, updateDto);
@@ -113,6 +118,7 @@ public class StudentsController : ApiControllerBase
     /// <returns>删除结果</returns>
     [HttpDelete("{id}")]
     [Operation("删除", "ajax", null, "确定要删除此考生吗？")]
+    [DisplayName("删除考生")]
     public async Task<ActionResult<ApiResponse>> DeleteStudent(long id)
     {
         await _studentService.DeleteAsync(id);
@@ -125,6 +131,7 @@ public class StudentsController : ApiControllerBase
     /// <param name="importDto">考生信息导入数据</param>
     /// <returns>导入结果</returns>
     [HttpPost("batch/import")]
+    [DisplayName("批量导入考生")]
     public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<StudentBatchImportDto> importDto)
     {
         ArgumentNullException.ThrowIfNull(importDto);
@@ -142,6 +149,7 @@ public class StudentsController : ApiControllerBase
     /// <returns>删除结果</returns>
     [HttpPost("batch/delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的考生吗？", isBulkOperation: true)]
+    [DisplayName("批量删除考生")]
     public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -160,6 +168,7 @@ public class StudentsController : ApiControllerBase
     /// <param name="studentNumber">学号</param>
     /// <returns>考生信息</returns>
     [HttpGet("by-student-number/{studentNumber}")]
+    [DisplayName("通过学号查询考生")]
     public async Task<ActionResult<ApiResponse<StudentDto>>> GetByStudentNumber(string studentNumber)
     {
         if (string.IsNullOrEmpty(studentNumber)) return BadRequest("学号不能为空");
@@ -174,6 +183,7 @@ public class StudentsController : ApiControllerBase
     /// <param name="userId">用户ID</param>
     /// <returns>考生信息</returns>
     [HttpGet("by-user-id/{userId}")]
+    [DisplayName("通过用户ID查询考生")]
     public async Task<ActionResult<ApiResponse<StudentDto>>> GetByUserId(long userId)
     {
         var result = await _studentService.GetByUserIdAsync(userId);
@@ -187,6 +197,7 @@ public class StudentsController : ApiControllerBase
     /// <returns>分配结果</returns>
     [HttpPost("batch/assign-groups")]
     [Operation("批量分配考生组", "form", null, "确定要将选中的考生分配到指定考生组吗？", isBulkOperation: true)]
+    [DisplayName("批量分配考生到考生组")]
     public async Task<ActionResult<ApiResponse>> BatchAssignGroups([FromBody] BatchAssignGroupsDto request)
     {
         ArgumentNullException.ThrowIfNull(request);

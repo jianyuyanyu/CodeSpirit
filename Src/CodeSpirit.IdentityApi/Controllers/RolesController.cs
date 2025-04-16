@@ -20,6 +20,7 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpGet]
+    [DisplayName("获取角色列表")]
     public async Task<ActionResult<ApiResponse<PageList<RoleDto>>>> GetRoles([FromQuery] RoleQueryDto queryDto)
     {
         PageList<RoleDto> result = await _roleService.GetRolesAsync(queryDto);
@@ -27,6 +28,7 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpGet("{id}")]
+    [DisplayName("获取角色详情")]
     public async Task<ActionResult<ApiResponse<RoleDto>>> GetRole(long id)
     {
         RoleDto role = await _roleService.GetAsync(id);
@@ -34,6 +36,7 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpPost]
+    [DisplayName("创建角色")]
     public async Task<ActionResult<ApiResponse<RoleDto>>> Create(RoleCreateDto createDto)
     {
         RoleDto roleDto = await _roleService.CreateAsync(createDto);
@@ -41,6 +44,7 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpPut("{id}")]
+    [DisplayName("更新角色")]
     public async Task<ActionResult<ApiResponse>> Update(long id, RoleUpdateDto updateDto)
     {
         await _roleService.UpdateAsync(id, updateDto);
@@ -49,6 +53,7 @@ public class RolesController : ApiControllerBase
 
     [HttpDelete("{id}")]
     [Operation("删除", "ajax", null, "确定要删除此角色吗？", "permissionIds.length == 0 && name !='Admin'")]
+    [DisplayName("删除角色")]
     public async Task<ActionResult<ApiResponse>> Delete(long id)
     {
         await _roleService.DeleteAsync(id);
@@ -61,6 +66,7 @@ public class RolesController : ApiControllerBase
     /// <param name="importDto">批量导入角色 DTO 列表</param>
     /// <returns>操作结果</returns>
     [HttpPost("batch/import")]
+    [DisplayName("批量导入角色")]
     public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<RoleBatchImportItemDto> importDto)
     {
         (int successCount, List<string> failedIds) = await _roleService.BatchImportRolesAsync(importDto.ImportData);

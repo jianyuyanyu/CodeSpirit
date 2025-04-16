@@ -41,6 +41,7 @@ public class ConfigPublishHistoriesController : ApiControllerBase
     /// <param name="queryDto">查询参数</param>
     /// <returns>发布历史列表</returns>
     [HttpGet]
+    [DisplayName("获取发布历史列表")]
     public async Task<ActionResult<ApiResponse<PageList<ConfigPublishHistoryDto>>>> GetPublishHistories(
         [FromQuery] ConfigPublishHistoryQueryDto queryDto)
     {
@@ -59,6 +60,7 @@ public class ConfigPublishHistoriesController : ApiControllerBase
     /// <param name="id">发布历史ID</param>
     /// <returns>发布历史详情</returns>
     [HttpGet("{id:int}")]
+    [DisplayName("获取发布历史详情")]
     public async Task<ActionResult<ApiResponse<ConfigPublishHistoryDto>>> GetPublishHistoryDetail(int id)
     {
         var history = await _publishHistoryService.GetPublishHistoryDetailAsync(id);

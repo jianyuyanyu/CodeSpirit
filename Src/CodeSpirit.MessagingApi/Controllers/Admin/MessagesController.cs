@@ -37,6 +37,7 @@ public class MessagesController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>消息分页列表</returns>
     [HttpGet]
+    [DisplayName("获取消息列表")]
     public async Task<ActionResult<ApiResponse<PageList<MessageDto>>>> GetMessages([FromQuery] MessageQueryDto queryDto)
     {
         var result = await _messageService.GetMessagesAsync(
@@ -66,6 +67,7 @@ public class MessagesController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>导出的消息列表</returns>
     [HttpGet("Export")]
+    [DisplayName("导出消息列表")]
     public async Task<ActionResult<ApiResponse<PageList<MessageDto>>>> Export([FromQuery] MessageQueryDto queryDto)
     {
         // 设置导出时的分页参数
@@ -105,6 +107,7 @@ public class MessagesController : ApiControllerBase
     /// <param name="id">消息ID</param>
     /// <returns>消息详情</returns>
     [HttpGet("{id}")]
+    [DisplayName("获取消息详情")]
     public async Task<ActionResult<ApiResponse<MessageDto>>> Detail(Guid id)
     {
         var message = await _messageService.GetMessageByIdAsync(id);
@@ -123,6 +126,7 @@ public class MessagesController : ApiControllerBase
     /// <param name="request">系统通知请求</param>
     /// <returns>操作结果</returns>
     [HttpPost("SystemNotification")]
+    [DisplayName("发送系统通知")]
     public async Task<ActionResult<ApiResponse>> SendSystemNotification(SystemNotificationRequest request)
     {
         if (string.IsNullOrEmpty(request.RecipientId) && (request.RecipientIds == null || !request.RecipientIds.Any()))
@@ -149,6 +153,7 @@ public class MessagesController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpDelete("{id}")]
     [Operation("删除", "ajax", null, "确定要删除此消息吗？")]
+    [DisplayName("删除消息")]
     public async Task<ActionResult<ApiResponse>> DeleteMessage(Guid id)
     {
         bool success = await _messageService.BatchDeleteMessagesAsync(new List<Guid> { id });
@@ -164,6 +169,7 @@ public class MessagesController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpPost("Batch/Delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的消息吗？", isBulkOperation: true)]
+    [DisplayName("批量删除消息")]
     public async Task<ActionResult<ApiResponse>> BatchDelete(BatchDeleteMessagesDto request)
     {
         if (request.Ids == null || !request.Ids.Any())
@@ -184,6 +190,7 @@ public class MessagesController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpPut("{id}/MarkAsRead")]
     [Operation("标记为已读", "ajax", null, "确定要将此消息标记为已读吗？", "isRead == false")]
+    [DisplayName("标记消息为已读")]
     public async Task<ActionResult<ApiResponse>> MarkAsRead(Guid id)
     {
         var message = await _messageService.GetMessageByIdAsync(id);
@@ -205,6 +212,7 @@ public class MessagesController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpPost("Batch/MarkAsRead")]
     [Operation("批量标记已读", "ajax", null, "确定要将选中的消息标记为已读吗？", isBulkOperation: true)]
+    [DisplayName("批量标记消息为已读")]
     public async Task<ActionResult<ApiResponse>> BatchMarkAsRead(BatchMarkAsReadDto request)
     {
         if (request.Ids == null || !request.Ids.Any())

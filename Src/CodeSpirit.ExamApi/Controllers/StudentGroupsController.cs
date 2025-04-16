@@ -41,6 +41,7 @@ public class StudentGroupsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>考生组列表分页结果</returns>
     [HttpGet]
+    [DisplayName("获取考生组列表")]
     public async Task<ActionResult<ApiResponse<PageList<StudentGroupDto>>>> GetStudentGroups([FromQuery] StudentGroupQueryDto queryDto)
     {
         PageList<StudentGroupDto> groups = await _studentGroupService.GetStudentGroupsAsync(queryDto);
@@ -53,6 +54,7 @@ public class StudentGroupsController : ApiControllerBase
     /// <param name="id">考生组ID</param>
     /// <returns>考生组详细信息</returns>
     [HttpGet("{id:long}")]
+    [DisplayName("获取考生组详情")]
     public async Task<ActionResult<ApiResponse<StudentGroupDto>>> GetStudentGroup(long id)
     {
         StudentGroupDto group = await _studentGroupService.GetAsync(id);
@@ -65,6 +67,7 @@ public class StudentGroupsController : ApiControllerBase
     /// <param name="createDto">创建考生组请求数据</param>
     /// <returns>创建的考生组信息</returns>
     [HttpPost]
+    [DisplayName("创建考生组")]
     public async Task<ActionResult<ApiResponse<StudentGroupDto>>> CreateStudentGroup(CreateStudentGroupDto createDto)
     {
         ArgumentNullException.ThrowIfNull(createDto);
@@ -79,6 +82,7 @@ public class StudentGroupsController : ApiControllerBase
     /// <param name="updateDto">更新考生组请求数据</param>
     /// <returns>更新操作结果</returns>
     [HttpPut("{id:long}")]
+    [DisplayName("更新考生组")]
     public async Task<ActionResult<ApiResponse>> UpdateStudentGroup(long id, UpdateStudentGroupDto updateDto)
     {
         ArgumentNullException.ThrowIfNull(updateDto);
@@ -93,6 +97,7 @@ public class StudentGroupsController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpDelete("{id:long}")]
     [Operation("删除", "ajax", null, "确定要删除此考生组吗？")]
+    [DisplayName("删除考生组")]
     public async Task<ActionResult<ApiResponse>> DeleteStudentGroup(long id)
     {
         await _studentGroupService.DeleteAsync(id);
@@ -106,6 +111,7 @@ public class StudentGroupsController : ApiControllerBase
     /// <returns>删除结果</returns>
     [HttpPost("batch/delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的考生组吗？", isBulkOperation: true)]
+    [DisplayName("批量删除考生组")]
     public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -123,6 +129,7 @@ public class StudentGroupsController : ApiControllerBase
     /// <param name="importDto">导入数据</param>
     /// <returns>导入结果</returns>
     [HttpPost("batch/import")]
+    [DisplayName("批量导入考生组")]
     public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<StudentGroupBatchImportDto> importDto)
     {
         ArgumentNullException.ThrowIfNull(importDto);
@@ -141,6 +148,7 @@ public class StudentGroupsController : ApiControllerBase
     /// <param name="request">考生ID列表</param>
     /// <returns>操作结果</returns>
     [HttpPost("{id:long}/students")]
+    [DisplayName("添加考生到分组")]
     public async Task<ActionResult<ApiResponse>> AddStudentsToGroup(long id, [FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -155,6 +163,7 @@ public class StudentGroupsController : ApiControllerBase
     /// <param name="request">考生ID列表</param>
     /// <returns>操作结果</returns>
     [HttpDelete("{id:long}/students")]
+    [DisplayName("从分组移除考生")]
     public async Task<ActionResult<ApiResponse>> RemoveStudentsFromGroup(long id, [FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -167,6 +176,7 @@ public class StudentGroupsController : ApiControllerBase
     /// </summary>
     /// <returns>学生组列表</returns>
     [HttpGet("select")]
+    [DisplayName("获取考生组选择列表")]
     public async Task<ActionResult<ApiResponse<List<OptionDto<long>>>>> GetStudentGroupsForSelect([FromQuery]bool hasNoGroup = false)
     {
         var groups = await _studentGroupService.GetAllActiveGroupsAsync();

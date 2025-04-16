@@ -34,6 +34,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>考试设置分页列表</returns>
     [HttpGet]
+    [DisplayName("获取考试设置列表")]
     public async Task<ActionResult<ApiResponse<PageList<ExamSettingDto>>>> GetExamSettings([FromQuery] ExamSettingQueryDto queryDto)
     {
         var result = await _examSettingService.GetExamSettingsAsync(queryDto);
@@ -46,6 +47,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <param name="id">考试设置ID</param>
     /// <returns>考试设置详情</returns>
     [HttpGet("{id}")]
+    [DisplayName("获取考试设置详情")]
     public async Task<ActionResult<ApiResponse<ExamSettingDto>>> GetExamSetting(long id)
     {
         var result = await _examSettingService.GetExamSettingDetailAsync(id);
@@ -61,6 +63,7 @@ public class ExamSettingsController : ApiControllerBase
     /// </summary>
     /// <returns>已发布考试列表</returns>
     [HttpGet("select-published")]
+    [DisplayName("获取已发布考试列表")]
     public async Task<ActionResult<ApiResponse<List<OptionDto<long>>>>> GetPublishedExamSettingsForSelect()
     {
         // 创建查询对象，只筛选已发布状态的考试
@@ -91,6 +94,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <param name="createDto">创建考试设置DTO</param>
     /// <returns>创建结果</returns>
     [HttpPost]
+    [DisplayName("创建考试设置")]
     public async Task<ActionResult<ApiResponse<ExamSettingDto>>> CreateExamSetting([FromBody] CreateExamSettingDto createDto)
     {
         var result = await _examSettingService.CreateAsync(createDto);
@@ -104,6 +108,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <param name="updateDto">更新考试设置DTO</param>
     /// <returns>更新结果</returns>
     [HttpPut("{id}")]
+    [DisplayName("更新考试设置")]
     public async Task<ActionResult<ApiResponse>> UpdateExamSetting(long id, [FromBody] UpdateExamSettingDto updateDto)
     {
         await _examSettingService.UpdateAsync(id, updateDto);
@@ -116,6 +121,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <param name="id">考试设置ID</param>
     /// <returns>删除结果</returns>
     [HttpDelete("{id}")]
+    [DisplayName("删除考试设置")]
     public async Task<ActionResult<ApiResponse>> DeleteExamSetting(long id)
     {
         await _examSettingService.DeleteAsync(id);
@@ -129,6 +135,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <returns>发布结果</returns>
     [HttpPost("{id}/publish")]
     [Operation("发布", "ajax", null, "确定要发布此试卷吗？", visibleOn: "status == 0")]
+    [DisplayName("发布考试设置")]
     public async Task<ActionResult<ApiResponse>> PublishExamSetting(long id)
     {
         await _examSettingService.PublishExamSettingAsync(id);
@@ -142,6 +149,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <returns>取消发布结果</returns>
     [HttpPost("{id}/unpublish")]
     [Operation("取消发布", "ajax", null, "确定要取消发布此试卷吗？", visibleOn: "status == 1")]
+    [DisplayName("取消发布考试设置")]
     public async Task<ActionResult<ApiResponse>> UnpublishExamSetting(long id)
     {
         await _examSettingService.UnpublishExamSettingAsync(id);
@@ -149,6 +157,7 @@ public class ExamSettingsController : ApiControllerBase
     }
 
     [Operation("监考大屏", "link", "/monitor/dashboard?examId=${id}", null, visibleOn: "status == 1", Blank = true)]
+    [DisplayName("监考大屏")]
     public ActionResult<ApiResponse> Go_Monitor_dashboard()
     {
         return SuccessResponse();

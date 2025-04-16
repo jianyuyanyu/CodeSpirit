@@ -39,6 +39,7 @@ public class QuestionCategoriesController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>题目分类列表分页结果</returns>
     [HttpGet]
+    [DisplayName("获取题目分类列表")]
     public async Task<ActionResult<ApiResponse<PageList<QuestionCategoryDto>>>> GetQuestionCategories([FromQuery] QuestionCategoryQueryDto queryDto)
     {
         PageList<QuestionCategoryDto> categories = await _questionCategoryService.GetQuestionCategoriesAsync(queryDto);
@@ -50,6 +51,7 @@ public class QuestionCategoriesController : ApiControllerBase
     /// </summary>
     /// <returns>所有题目分类列表</returns>
     [HttpGet("all")]
+    [DisplayName("获取所有题目分类")]
     public async Task<ActionResult<ApiResponse<List<QuestionCategoryDto>>>> GetAllCategories()
     {
         List<QuestionCategoryDto> categories = await _questionCategoryService.GetAllCategoriesAsync();
@@ -61,6 +63,7 @@ public class QuestionCategoriesController : ApiControllerBase
     /// </summary>
     /// <returns>树形结构的题目分类列表</returns>
     [HttpGet("tree")]
+    [DisplayName("获取题目分类树")]
     public async Task<ActionResult<ApiResponse<List<QuestionCategoryTreeDto>>>> GetCategoryTree()
     {
         List<QuestionCategoryTreeDto> categoryTree = await _questionCategoryService.GetCategoryTreeAsync();
@@ -73,6 +76,7 @@ public class QuestionCategoriesController : ApiControllerBase
     /// <param name="id">题目分类ID</param>
     /// <returns>题目分类详细信息</returns>
     [HttpGet("{id:long}")]
+    [DisplayName("获取题目分类详情")]
     public async Task<ActionResult<ApiResponse<QuestionCategoryDto>>> GetQuestionCategory(long id)
     {
         QuestionCategoryDto category = await _questionCategoryService.GetAsync(id);
@@ -85,6 +89,7 @@ public class QuestionCategoriesController : ApiControllerBase
     /// <param name="createDto">创建题目分类请求数据</param>
     /// <returns>创建的题目分类信息</returns>
     [HttpPost]
+    [DisplayName("创建题目分类")]
     public async Task<ActionResult<ApiResponse<QuestionCategoryDto>>> CreateQuestionCategory(CreateQuestionCategoryDto createDto)
     {
         ArgumentNullException.ThrowIfNull(createDto);
@@ -99,6 +104,7 @@ public class QuestionCategoriesController : ApiControllerBase
     /// <param name="updateDto">更新题目分类请求数据</param>
     /// <returns>更新操作结果</returns>
     [HttpPut("{id:long}")]
+    [DisplayName("更新题目分类")]
     public async Task<ActionResult<ApiResponse>> UpdateQuestionCategory(long id, UpdateQuestionCategoryDto updateDto)
     {
         await _questionCategoryService.UpdateAsync(id, updateDto);
@@ -112,6 +118,7 @@ public class QuestionCategoriesController : ApiControllerBase
     /// <returns>删除操作结果</returns>
     [HttpDelete("{id:long}")]
     [Operation("删除", "ajax", null, "确定要删除此题目分类吗？")]
+    [DisplayName("删除题目分类")]
     public async Task<ActionResult<ApiResponse>> DeleteQuestionCategory(long id)
     {
         await _questionCategoryService.DeleteAsync(id);
@@ -125,6 +132,7 @@ public class QuestionCategoriesController : ApiControllerBase
     /// <returns>批量删除操作结果</returns>
     [HttpPost("batch-delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的题目分类吗？", isBulkOperation: true)]
+    [DisplayName("批量删除题目分类")]
     public async Task<ActionResult<ApiResponse>> BatchDeleteQuestionCategories([FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);

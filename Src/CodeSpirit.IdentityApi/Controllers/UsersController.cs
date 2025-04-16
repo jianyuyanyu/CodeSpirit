@@ -27,6 +27,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Users
         [HttpGet]
+        [DisplayName("获取用户列表")]
         public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> GetUsers([FromQuery] UserQueryDto queryDto)
         {
             PageList<UserDto> users = await _userService.GetUsersAsync(queryDto);
@@ -35,6 +36,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Users/Export
         [HttpGet("Export")]
+        [DisplayName("导出用户列表")]
         public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> Export([FromQuery] UserQueryDto queryDto)
         {
             // 设置导出时的分页参数
@@ -51,6 +53,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // GET: api/Users/{id}
         [HttpGet("{id}")]
+        [DisplayName("获取用户详情")]
         public async Task<ActionResult<ApiResponse<UserDto>>> Detail(long id)
         {
             UserDto userDto = await _userService.GetAsync(id);
@@ -59,6 +62,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // POST: api/Users
         [HttpPost]
+        [DisplayName("创建用户")]
         public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser(CreateUserDto createUserDto)
         {
             var userDto = await _userService.CreateAsync(createUserDto);
@@ -67,6 +71,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // PUT: api/Users/{id}
         [HttpPut("{id}")]
+        [DisplayName("更新用户")]
         public async Task<ActionResult<ApiResponse>> UpdateUser(long id, UpdateUserDto updateUserDto)
         {
             await _userService.UpdateUserAsync(id, updateUserDto);
@@ -75,6 +80,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // DELETE: api/Users/{id}
         [HttpDelete("{id}")]
+        [DisplayName("删除用户")]
         public async Task<ActionResult<ApiResponse>> DeleteUser(long id)
         {
             await _userService.DeleteAsync(id);
@@ -83,6 +89,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // POST: api/Users/{id}/roles
         [HttpPost("{id}/roles")]
+        [DisplayName("分配用户角色")]
         public async Task<ActionResult<ApiResponse>> AssignRoles(long id, [FromBody] List<string> roles)
         {
             await _userService.AssignRolesAsync(id, roles);
@@ -91,6 +98,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // DELETE: api/Users/{id}/roles
         [HttpDelete("{id}/roles")]
+        [DisplayName("移除用户角色")]
         public async Task<ActionResult<ApiResponse>> RemoveRoles(long id, [FromBody] List<string> roles)
         {
             await _userService.RemoveRolesAsync(id, roles);
@@ -99,6 +107,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // PUT: /api/Users/{id}/setActive
         [HttpPut("{id}/setActive")]
+        [DisplayName("设置用户激活状态")]
         public async Task<ActionResult<ApiResponse>> SetActiveStatus(long id, [FromQuery] bool isActive)
         {
             await _userService.SetActiveStatusAsync(id, isActive);
@@ -127,6 +136,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                     }
                 ]
             }")]
+        [DisplayName("重置随机密码")]
         public async Task<ActionResult<ApiResponse>> ResetRandomPassword(long id)
         {
             string newPassword = await _userService.ResetRandomPasswordAsync(id);
@@ -140,6 +150,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         // PUT: /api/Users/{id}/unlock
         [HttpPut("{id}/unlock")]
         [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？", "lockoutEnd != null")]
+        [DisplayName("解锁用户")]
         public async Task<ActionResult<ApiResponse>> UnlockUser(long id)
         {
             await _userService.UnlockUserAsync(id);
@@ -148,6 +159,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // PATCH: /api/Users/quickSave
         [HttpPatch("quickSave")]
+        [DisplayName("快速保存用户")]
         public async Task<ActionResult<ApiResponse>> QuickSaveUsers([FromBody] QuickSaveRequestDto request)
         {
             await _userService.QuickSaveUsersAsync(request);
@@ -157,6 +169,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: api/Users/{id}/impersonate
         [HttpPost("{id}/impersonate")]
         [Operation("模拟登录", "ajax", null, "确定要模拟此用户登录吗？", "isActive == true", Redirect = "/impersonate?token=${token}")]
+        [DisplayName("模拟用户登录")]
         public async Task<ActionResult<ApiResponse<object>>> ImpersonateUser(long id)
         {
             // Check if current user is Admin
@@ -182,6 +195,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // POST: api/Users/batch/import
         [HttpPost("batch/import")]
+        [DisplayName("批量导入用户")]
         public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<UserBatchImportItemDto> importDto)
         {
             var (successCount, failedIds) = await _userService.BatchImportAsync(importDto.ImportData);
@@ -191,6 +205,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: api/Users/batch/delete
         [HttpPost("batch/delete")]
         [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
+        [DisplayName("批量删除用户")]
         public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
         {
             var (successCount, failedIds) = await _userService.BatchDeleteAsync(request.Ids);

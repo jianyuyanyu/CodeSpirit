@@ -37,6 +37,7 @@ public class ClientConnectionsController : ApiControllerBase
     /// <param name="query">查询参数</param>
     /// <returns>在线客户端列表</returns>
     [HttpGet]
+    [DisplayName("获取客户端连接列表")]
     public ActionResult<ApiResponse<List<ClientConnectionDto>>> GetAllClients([FromQuery] GetClientConnectionsQueryDto query)
     {
         IEnumerable<ClientConnection> clients;
@@ -76,6 +77,7 @@ public class ClientConnectionsController : ApiControllerBase
     /// </summary>
     /// <returns>客户端连接统计信息</returns>
     [HttpGet("stats")]
+    [DisplayName("获取连接统计信息")]
     public object GetConnectionStats()
     {
         var allConnections = _clientTrackingService.GetAllConnections().ToList();

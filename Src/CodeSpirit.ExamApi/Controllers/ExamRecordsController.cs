@@ -35,6 +35,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="queryDto">查询参数</param>
     /// <returns>考试记录列表</returns>
     [HttpGet]
+    [DisplayName("获取考试记录列表")]
     public async Task<ActionResult<ApiResponse<PageList<ExamRecordDto>>>> GetExamRecords([FromQuery] ExamRecordQueryDto queryDto)
     {
         var records = await _examRecordService.GetPagedListAsync(queryDto, includes: ["ExamSetting", "Student"]);
@@ -47,6 +48,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="queryDto">查询参数</param>
     /// <returns>导出的考试记录列表</returns>
     [HttpGet("Export")]
+    [DisplayName("导出考试记录列表")]
     public async Task<ActionResult<ApiResponse<PageList<ExamRecordDto>>>> Export([FromQuery] ExamRecordQueryDto queryDto)
     {
         // 设置导出时的分页参数
@@ -69,6 +71,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="id">考试记录ID</param>
     /// <returns>考试记录详情</returns>
     [HttpGet("{id}")]
+    [DisplayName("获取考试记录详情")]
     public async Task<ActionResult<ApiResponse<ExamRecordDto>>> GetExamRecordDetail(long id)
     {
         var record = await _examRecordService.GetExamRecordDetailAsync(id);
@@ -81,6 +84,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="examSettingId">考试设置ID</param>
     /// <returns>考试统计信息</returns>
     [Operation("考试统计", "link", "/exam/examStatistics?examSettingId=${id}", null)]
+    [DisplayName("获取考试统计信息")]
     public ActionResult<ApiResponse> GetExamStatistics()
     {
         return SuccessResponse();
@@ -92,6 +96,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="queryDto">查询参数</param>
     /// <returns>错题列表</returns>
     [Operation("错题管理", "link", "/exam/wrongQuestions?studentId=${studentId}", null)]
+    [DisplayName("获取错题列表")]
     public ActionResult<ApiResponse> GetWrongQuestions()
     {
         return SuccessResponse();
@@ -103,6 +108,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <returns>预览配置</returns>
     [HttpGet("{id}/preview")]
     [Operation(label: "答卷预览", actionType: "service")]
+    [DisplayName("预览答卷")]
     public async Task<ActionResult<ApiResponse<JObject>>> PreviewExamPaper(long id)
     {
         var panelConfig = new JObject
@@ -126,6 +132,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="id">试卷ID</param>
     /// <returns>试卷题目的Amis配置</returns>
     [HttpGet("{id}/questions-preview")]
+    [DisplayName("获取试卷题目预览配置")]
     public async Task<ActionResult<ApiResponse<JObject>>> GetExamQuestionsPreviewConfig(long id)
     {
         var preview = await _examRecordService.GetAnswerPreviewAsync(id);
@@ -454,6 +461,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <returns>考试记录详情</returns>
     [HttpPut("{id}/regrade")]
     [Operation("重新批改", "form", null, "确定要重新批改吗？", visibleOn: "status===3")]
+    [DisplayName("重新批改考试")]
     public async Task<ActionResult<ApiResponse<ExamRecordDto>>> ModifyExamScore(long id, ModifyExamScoreDto modifyExamScoreDto)
     {
         if (!ModelState.IsValid)

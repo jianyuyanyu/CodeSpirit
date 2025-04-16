@@ -35,6 +35,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>试卷分页列表</returns>
     [HttpGet]
+    [DisplayName("获取试卷列表")]
     public async Task<ActionResult<ApiResponse<PageList<ExamPaperDto>>>> GetExamPapers([FromQuery] ExamPaperQueryDto queryDto)
     {
         var result = await _examPaperService.GetExamPapersAsync(queryDto);
@@ -47,6 +48,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="id">试卷ID</param>
     /// <returns>试卷详情</returns>
     [HttpGet("{id}")]
+    [DisplayName("获取试卷详情")]
     public async Task<ActionResult<ApiResponse<ExamPaperDto>>> GetExamPaper(long id)
     {
         var result = await _examPaperService.GetAsync(id);
@@ -64,6 +66,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>创建的试卷</returns>
     [HttpPost]
     [HeaderOperation("生成固定试卷", "form")]
+    [DisplayName("创建试卷")]
     public async Task<ActionResult<ApiResponse<ExamPaperDto>>> CreateExamPaper(CreateExamPaperDto createDto)
     {
         var result = await _examPaperService.CreateAsync(createDto);
@@ -77,6 +80,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="updateDto">更新试卷DTO</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}")]
+    [DisplayName("更新试卷")]
     public async Task<ActionResult<ApiResponse>> UpdateExamPaper(long id, UpdateExamPaperDto updateDto)
     {
         await _examPaperService.UpdateAsync(id, updateDto);
@@ -90,6 +94,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpDelete("{id}")]
     [Operation("删除", "ajax", null, "确定要删除此试卷吗？")]
+    [DisplayName("删除试卷")]
     public async Task<ActionResult<ApiResponse>> DeleteExamPaper(long id)
     {
         await _examPaperService.DeleteAsync(id);
@@ -103,6 +108,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpPut("{id}/publish")]
     [Operation("发布", "ajax", null, "确定要发布此试卷吗？", visibleOn: "status == 1")]
+    [DisplayName("发布试卷")]
     public async Task<ActionResult<ApiResponse>> PublishExamPaper(long id)
     {
         await _examPaperService.PublishExamPaperAsync(id);
@@ -116,6 +122,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpPut("{id}/unpublish")]
     [Operation("取消发布", "ajax", null, "确定要取消发布此试卷吗？", visibleOn: "status == 2")]
+    [DisplayName("取消发布试卷")]
     public async Task<ActionResult<ApiResponse>> UnpublishExamPaper(long id)
     {
         await _examPaperService.UnpublishExamPaperAsync(id);
@@ -129,6 +136,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>操作结果</returns>
     [HttpPost("batch-delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的试卷吗？", isBulkOperation: true)]
+    [DisplayName("批量删除试卷")]
     public async Task<ActionResult<ApiResponse>> BatchDeleteExamPapers([FromBody] IEnumerable<long> ids)
     {
         var result = await _examPaperService.BatchDeleteAsync(ids);
@@ -142,6 +150,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>生成的试卷</returns>
     [HttpPost("generate-random")]
     [HeaderOperation("生成随机试卷", "form")]
+    [DisplayName("生成随机试卷")]
     public async Task<ActionResult<ApiResponse<ExamPaperDto>>> GenerateRandomExamPaper(GenerateRandomExamPaperDto createDto)
     {
         var result = await _examPaperService.GenerateRandomExamPaperAsync(createDto);
@@ -155,6 +164,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>复制的新试卷</returns>
     [HttpPost("{id}/copy")]
     [Operation("复制", "ajax", null, "确定要复制此试卷吗？")]
+    [DisplayName("复制试卷")]
     public async Task<ActionResult<ApiResponse<ExamPaperDto>>> CopyExamPaper(long id)
     {
         var result = await _examPaperService.CopyExamPaperAsync(id);
@@ -166,6 +176,7 @@ public class ExamPapersController : ApiControllerBase
     /// </summary>
     /// <returns>试卷下拉列表</returns>
     [HttpGet("select-published")]
+    [DisplayName("获取已发布试卷列表")]
     public async Task<ActionResult<ApiResponse<List<OptionDto<long>>>>> GetSelectList()
     {
         var papers = await _examPaperService.GetAllExamPapersByStatusAsync(ExamPaperStatus.Published);
@@ -184,6 +195,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>预览配置</returns>
     [HttpGet("{id}/preview")]
     [Operation(label: "试卷预览", actionType: "service")]
+    [DisplayName("预览试卷")]
     public async Task<ActionResult<ApiResponse<JObject>>> PreviewExamPaper(long id)
     {
         var examPaper = await _examPaperService.GetAsync(id);
@@ -208,6 +220,7 @@ public class ExamPapersController : ApiControllerBase
     }
 
     [Operation("考试管理", "link", "/exam/examSettings?examPaperId=$id", null, visibleOn: "status === 2")]
+    [DisplayName("考试管理")]
     public ActionResult<ApiResponse> ExamSettings_Manager()
     {
         return SuccessResponse();
@@ -220,6 +233,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>创建结果</returns>
     [HttpPost("create-examSetting")]
     [Operation("创建考试", "form", visibleOn: "status === 2", Redirect = "/exam/examSettings?examPaperId=$id", Data = "{\"examPaperId\":\"${id}\"}")]
+    [DisplayName("创建考试设置")]
     public async Task<ActionResult<ApiResponse<ExamSettingDto>>> CreateExamSetting([FromBody] CreateExamSettingDto createDto)
     {
         var result = await _examSettingService.CreateAsync(createDto);
@@ -232,6 +246,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="id">试卷ID</param>
     /// <returns>试卷题目的Amis配置</returns>
     [HttpGet("{id}/questions-preview")]
+    [DisplayName("获取试卷题目预览配置")]
     public async Task<ActionResult<ApiResponse<JObject>>> GetExamQuestionsPreviewConfig(long id)
     {
         var examPaper = await _examPaperService.GetAsync(id);

@@ -29,6 +29,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="isSuccess">按登录结果过滤（可选）。</param>
         /// <returns>分页的登录日志列表。</returns>
         [HttpGet]
+        [DisplayName("获取登录日志列表")]
         public async Task<ActionResult<ApiResponse<PageList<LoginLogDto>>>> GetLoginLogs([FromQuery] LoginLogsQueryDto queryDto)
         {
             PageList<LoginLogDto> result = await _loginLogService.GetPagedLoginLogsAsync(queryDto);
@@ -41,6 +42,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="id">登录日志的唯一标识。</param>
         /// <returns>单个登录日志详情。</returns>
         [HttpGet("{id}")]
+        [DisplayName("获取登录日志详情")]
         public async Task<ActionResult<LoginLogDto>> GetLoginLog(int id)
         {
             LoginLogDto logDto = await _loginLogService.GetLoginLogByIdAsync(id);

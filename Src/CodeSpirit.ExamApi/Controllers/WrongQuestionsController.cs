@@ -38,6 +38,7 @@ public class WrongQuestionsController : ApiControllerBase
     /// <param name="queryDto">查询条件</param>
     /// <returns>错题列表分页结果</returns>
     [HttpGet]
+    [DisplayName("获取错题列表")]
     public async Task<ActionResult<ApiResponse<PageList<WrongQuestionDto>>>> GetWrongQuestions([FromQuery] WrongQuestionQueryDto queryDto)
     {
         PageList<WrongQuestionDto> wrongQuestions = await _wrongQuestionService.GetWrongQuestionsAsync(queryDto);
@@ -50,6 +51,7 @@ public class WrongQuestionsController : ApiControllerBase
     /// <param name="studentId">考生ID</param>
     /// <returns>考生的错题列表</returns>
     [HttpGet("students/{studentId:long}")]
+    [DisplayName("获取考生错题列表")]
     public async Task<ActionResult<ApiResponse<List<WrongQuestionDto>>>> GetStudentWrongQuestions(long studentId)
     {
         if (studentId <= 0)
@@ -67,6 +69,7 @@ public class WrongQuestionsController : ApiControllerBase
     /// <param name="id">错题ID</param>
     /// <returns>错题详细信息</returns>
     [HttpGet("{id:long}")]
+    [DisplayName("获取错题详情")]
     public async Task<ActionResult<ApiResponse<WrongQuestionDto>>> GetWrongQuestion(long id)
     {
         WrongQuestionDto wrongQuestion = await _wrongQuestionService.GetAsync(id);
@@ -79,6 +82,7 @@ public class WrongQuestionsController : ApiControllerBase
     /// <param name="createDto">创建错题请求数据</param>
     /// <returns>创建的错题信息</returns>
     [HttpPost]
+    [DisplayName("创建错题")]
     public async Task<ActionResult<ApiResponse<WrongQuestionDto>>> CreateWrongQuestion(CreateWrongQuestionDto createDto)
     {
         ArgumentNullException.ThrowIfNull(createDto);
@@ -92,6 +96,7 @@ public class WrongQuestionsController : ApiControllerBase
     /// <param name="createDto">错题记录数据</param>
     /// <returns>错题记录结果</returns>
     [HttpPost("record")]
+    [DisplayName("记录错题")]
     public async Task<ActionResult<ApiResponse<WrongQuestionDto>>> RecordWrongQuestion(CreateWrongQuestionDto createDto)
     {
         ArgumentNullException.ThrowIfNull(createDto);
@@ -106,6 +111,7 @@ public class WrongQuestionsController : ApiControllerBase
     /// <param name="updateDto">更新错题请求数据</param>
     /// <returns>更新操作结果</returns>
     [HttpPut("{id:long}")]
+    [DisplayName("更新错题")]
     public async Task<ActionResult<ApiResponse>> UpdateWrongQuestion(long id, UpdateWrongQuestionDto updateDto)
     {
         ArgumentNullException.ThrowIfNull(updateDto);
@@ -120,6 +126,7 @@ public class WrongQuestionsController : ApiControllerBase
     /// <returns>删除操作结果</returns>
     [HttpDelete("{id:long}")]
     [Operation("删除", "ajax", null, "确定要删除此错题记录吗？")]
+    [DisplayName("删除错题")]
     public async Task<ActionResult<ApiResponse>> DeleteWrongQuestion(long id)
     {
         await _wrongQuestionService.DeleteAsync(id);
@@ -133,6 +140,7 @@ public class WrongQuestionsController : ApiControllerBase
     /// <returns>批量删除操作结果</returns>
     [HttpPost("batch-delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的错题记录吗？", IsBulkOperation = true)]
+    [DisplayName("批量删除错题")]
     public async Task<ActionResult<ApiResponse>> BatchDeleteWrongQuestions([FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);

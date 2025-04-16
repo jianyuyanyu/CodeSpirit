@@ -22,6 +22,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         }
 
         [HttpGet]
+        [DisplayName("获取审计日志列表")]
         public async Task<ActionResult<ApiResponse<PageList<AuditLogDto>>>> GetAuditLogs([FromQuery] AuditLogQueryDto queryDto)
         {
             PageList<AuditLogDto> results = await _auditLogService.GetAuditLogsAsync(queryDto);
@@ -29,6 +30,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         }
 
         [HttpGet("{id}")]
+        [DisplayName("获取审计日志详情")]
         public async Task<ActionResult<ApiResponse<AuditLogDto>>> Detail(long id)
         {
             AuditLogDto log = await _auditLogService.GetAuditLogByIdAsync(id);

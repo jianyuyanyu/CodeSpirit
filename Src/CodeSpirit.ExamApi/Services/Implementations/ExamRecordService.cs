@@ -936,11 +936,6 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             examRecord.Status = ExamRecordStatus.Submitted;
             examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
 
-            // 获取已保存的所有答案记录
-            var existingAnswers = await _answerRecordRepository.CreateQuery()
-                .Where(a => a.ExamRecordId == recordId)
-                .ToListAsync();
-
             // 更新考试记录
             await Repository.UpdateAsync(examRecord);
 

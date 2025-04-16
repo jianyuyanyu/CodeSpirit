@@ -253,7 +253,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             {
                 UserId = student.UserId,
                 UserName = student.IdNo,
-                //IdNo
+                Gender = student.Gender == Gender.Male ? "男" : (student.Gender == Gender.Female ? "女" : "未知"),
                 Name = student.Name,
                 PhoneNumber = student.PhoneNumber,
                 Email = $"{student.IdNo}@example.com", // 默认邮箱
@@ -321,7 +321,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         {
             throw new AppServiceException(400, "学号/工号已存在！");
         }
-        
+
         var existsIdNo = Repository.Find(x => x.IdNo == updateDto.IdNo && x.Id != entity.Id);
         if (!updateDto.IdNo.IsNullOrWhiteSpace() && await existsIdNo.AnyAsync())
         {
@@ -330,7 +330,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
 
         var existsAdmissionTicket = Repository.Find(x => x.AdmissionTicket == updateDto.AdmissionTicket && x.Id != entity.Id);
         if (!updateDto.AdmissionTicket.IsNullOrWhiteSpace() && await existsAdmissionTicket.AnyAsync())
-        { 
+        {
             throw new AppServiceException(400, "该准考证已存在！");
         }
         var entityGroups = entity.StudentGroups?.Select(x => x.StudentGroupId).ToList();

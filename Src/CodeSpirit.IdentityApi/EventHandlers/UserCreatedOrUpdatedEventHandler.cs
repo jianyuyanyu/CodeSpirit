@@ -8,6 +8,7 @@ using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.Extensions.Logging;
 using CodeSpirit.Core.Extensions;
+using CodeSpirit.IdentityApi.Data.Models;
 
 namespace CodeSpirit.IdentityApi.EventHandlers;
 
@@ -40,6 +41,13 @@ public class UserCreatedOrUpdatedEventHandler : IEventHandler<UserCreatedOrUpdat
             // 查询用户是否存在
             var existingUser = await _userService.GetUserByUserNameAsync(@event.IdNo);
 
+            Gender gender = @event.Gender switch
+            {
+                "男" => Gender.Male,
+                "女" => Gender.Female,
+                _ => Gender.Unknown,
+            };
+
             if (existingUser != null)
             {
                 // 更新已存在的用户信息
@@ -56,7 +64,8 @@ public class UserCreatedOrUpdatedEventHandler : IEventHandler<UserCreatedOrUpdat
                         Name = @event.Name,
                         PhoneNumber = @event.PhoneNumber,
                         IdNo = @event.IdNo,
-                        IsActive = @event.IsActive
+                        IsActive = @event.IsActive,
+                        Gender = gender,
                     };
 
                     await _userService.UpdateAsync(@event.UserId, updateUserDto);
@@ -73,6 +82,7 @@ public class UserCreatedOrUpdatedEventHandler : IEventHandler<UserCreatedOrUpdat
                     PhoneNumber = @event.PhoneNumber,
                     Email = @event.Email,
                     IdNo = @event.IdNo,
+                    Gender = gender,
                 };
                 var pwd = @event.IdNo.@IsNullOrWhiteSpace() || @event.IdNo.Length < 6 ? "123456" : @event.IdNo[^6..];
                 await _userService.CreateAdvancedUserAsync(createUserDto, pwd.ToUpper(), -1, @event.UserId);

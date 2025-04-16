@@ -1,5 +1,6 @@
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.ExamApi.Data.Models;
 using Humanizer.Localisation;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -50,6 +51,13 @@ public class UpdateStudentDto
     [Phone(ErrorMessage = "手机号码格式不正确")]
     [DisplayName("手机号码")]
     public string PhoneNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 性别
+    /// </summary>
+    [DisplayName("性别")]
+    public Gender Gender { get; set; }
+
     /// <summary>
     /// 学生组ID列表
     /// </summary>

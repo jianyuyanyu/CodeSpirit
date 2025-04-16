@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace CodeSpirit.Shared.EventBus.Events;
 
 /// <summary>
@@ -35,4 +37,9 @@ public class UserCreatedOrUpdatedEvent
     /// </summary>
     public string IdNo { get; set; }
     public string UserName { get; set; }
+
+    /// <summary>
+    /// 性别
+    /// </summary>
+    public string Gender { get; set; }
 } 

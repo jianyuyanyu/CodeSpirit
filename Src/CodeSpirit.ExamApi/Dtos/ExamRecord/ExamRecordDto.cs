@@ -50,6 +50,13 @@ public class ExamRecordDto
     public string AdmissionTicket { get; set; }
 
     /// <summary>
+    /// 身份证号码
+    /// </summary>
+    [DisplayName("身份证号码")]
+    [AmisColumn(Copyable = true)]
+    public string IdNo { get; set; }
+
+    /// <summary>
     /// 尝试次数
     /// </summary>
     [DisplayName("尝试次数")]

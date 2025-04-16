@@ -190,6 +190,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 if (examRecord.Student != null)
                 {
                     examRecordDto.AdmissionTicket = examRecord.Student.AdmissionTicket;
+                    examRecordDto.IdNo = examRecord.Student.IdNo;
                 }
 
                 examRecordDtos.Add(examRecordDto);

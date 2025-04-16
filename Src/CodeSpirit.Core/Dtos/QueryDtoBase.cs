@@ -32,6 +32,6 @@ namespace CodeSpirit.Core.Dtos
         /// <summary>
         /// 排序顺序（"asc" 或 "desc"，默认 "asc"）
         /// </summary>
-        public string OrderDir { get; set; } = "asc";
+        public string OrderDir { get; set; } = "desc";
     }
 }

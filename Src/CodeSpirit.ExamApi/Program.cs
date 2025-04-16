@@ -1,11 +1,21 @@
 // Program.cs
 using CodeSpirit.ExamApi;
 using System.Text;
+using CodeSpirit.Shared.DistributedLock;
 
 Console.OutputEncoding = Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddExam();
+
+// 添加Redis分布式锁服务
+builder.Services.AddRedisDistributedLock(options =>
+{
+    options.KeyPrefix = "CodeSpirit:Exam:Lock:";
+    options.DefaultLockTimeout = TimeSpan.FromMinutes(5);
+    options.DefaultAcquireTimeout = TimeSpan.FromSeconds(10);
+    options.RetryInterval = TimeSpan.FromMilliseconds(100);
+});
 
 var app = builder.Build();
 

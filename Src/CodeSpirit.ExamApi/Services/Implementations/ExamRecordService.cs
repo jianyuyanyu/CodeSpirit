@@ -12,6 +12,7 @@ using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.Shared.Extensions;
 using Microsoft.Extensions.Logging;
+using CodeSpirit.Shared.DistributedLock;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -25,6 +26,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     private readonly IRepository<Student> _studentRepository;
     private readonly IRepository<QuestionVersion> _questionVersionRepository;
     private readonly ILogger<ExamRecordService> _logger;
+    private readonly IDistributedLockProvider _distributedLockProvider;
 
     /// <summary>
     /// 构造函数
@@ -36,13 +38,15 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         IRepository<Student> studentRepository,
         IRepository<QuestionVersion> questionVersionRepository,
         IMapper mapper,
-        ILogger<ExamRecordService> logger) : base(repository, mapper)
+        ILogger<ExamRecordService> logger,
+        IDistributedLockProvider distributedLockProvider) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
         _examSettingRepository = examSettingRepository;
         _studentRepository = studentRepository;
         _questionVersionRepository = questionVersionRepository;
         _logger = logger;
+        _distributedLockProvider = distributedLockProvider ?? throw new ArgumentNullException(nameof(distributedLockProvider));
     }
 
     /// <summary>
@@ -899,54 +903,73 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     /// <returns>提交结果，包含是否成功和是否可查看结果</returns>
     public async Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto> answers = null)
     {
+        // 使用分布式锁防止并发提交
+        var lockKey = $"exam_submit_{recordId}_{studentId}";
+        
         try
         {
-            // 获取考试记录
-            var examRecord = await Repository.CreateQuery()
-                .Include(r => r.ExamSetting)
-                .ThenInclude(s => s.ExamPaper)
-                .Where(r => r.Id == recordId && r.StudentId == studentId)
-                .FirstOrDefaultAsync();
-
-            if (examRecord == null)
+            using (await _distributedLockProvider.AcquireLockAsync(lockKey, TimeSpan.FromMinutes(1)))
             {
-                throw new AppServiceException(400, "考试记录不存在");
+                _logger.LogInformation("已获取考试提交锁: {LockKey}", lockKey);
+                
+                // 获取考试记录
+                var examRecord = await Repository.CreateQuery()
+                    .Include(r => r.ExamSetting)
+                    .ThenInclude(s => s.ExamPaper)
+                    .Where(r => r.Id == recordId && r.StudentId == studentId)
+                    .FirstOrDefaultAsync();
+
+                if (examRecord == null)
+                {
+                    throw new AppServiceException(400, "考试记录不存在");
+                }
+                
+                // 重新查询状态，确保在获取锁期间状态未被更改
+                if (examRecord.Status != ExamRecordStatus.InProgress)
+                {
+                    _logger.LogWarning("考试已提交，不能重复提交: 记录ID={RecordId}, 学生ID={StudentId}, 当前状态={Status}", 
+                        recordId, studentId, examRecord.Status);
+                    throw new InvalidOperationException("考试已提交，不能重复提交");
+                }
+
+                // 加载试卷题目
+                var examPaper = await _examSettingRepository.CreateQuery()
+                    .Include(es => es.ExamPaper)
+                    .ThenInclude(ep => ep.ExamPaperQuestions)
+                    .FirstOrDefaultAsync(es => es.Id == examRecord.ExamSettingId);
+
+                // 如果提供了未保存的答案，先保存这些答案
+                if (answers != null && answers.Any())
+                {
+                    _logger.LogInformation("提交前保存最后 {Count} 个答案", answers.Count);
+                    await SubmitAnswersAsync(recordId, answers);
+                }
+
+                var now = DateTime.UtcNow;
+                examRecord.SubmitTime = now;
+                examRecord.Status = ExamRecordStatus.Submitted;
+                examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
+
+                // 更新考试记录
+                await Repository.UpdateAsync(examRecord);
+
+                // 如果是客观题，可以自动评分
+                await AutoGradeObjectiveQuestions(examRecord);
+                
+                _logger.LogInformation("考试提交成功: 记录ID={RecordId}, 学生ID={StudentId}", recordId, studentId);
+
+                // 返回提交成功状态和是否可以查看结果的设置
+                return (true, examRecord.ExamSetting.EnableViewResult);
             }
-
-            // 加载试卷题目
-            var examPaper = await _examSettingRepository.CreateQuery()
-                .Include(es => es.ExamPaper)
-                .ThenInclude(ep => ep.ExamPaperQuestions)
-                .FirstOrDefaultAsync(es => es.Id == examRecord.ExamSettingId);
-
-            if (examRecord.Status != ExamRecordStatus.InProgress)
-            {
-                throw new InvalidOperationException("考试已提交，不能重复提交");
-            }
-
-            // 如果提供了未保存的答案，先保存这些答案
-            if (answers != null && answers.Any())
-            {
-                _logger.LogInformation("提交前保存最后 {Count} 个答案", answers.Count);
-                await SubmitAnswersAsync(recordId, answers);
-            }
-
-            var now = DateTime.UtcNow;
-            examRecord.SubmitTime = now;
-            examRecord.Status = ExamRecordStatus.Submitted;
-            examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
-
-            // 更新考试记录
-            await Repository.UpdateAsync(examRecord);
-
-            // 如果是客观题，可以自动评分
-            await AutoGradeObjectiveQuestions(examRecord);
-
-            // 返回提交成功状态和是否可以查看结果的设置
-            return (true, examRecord.ExamSetting.EnableViewResult);
         }
-        catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
+        catch (TimeoutException ex)
         {
+            _logger.LogError(ex, "获取考试提交锁超时: {LockKey}", lockKey);
+            throw new AppServiceException(423, "系统繁忙，请稍后再试");
+        }
+        catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException && ex is not AppServiceException)
+        {
+            _logger.LogError(ex, "考试提交过程发生错误: 记录ID={RecordId}, 学生ID={StudentId}", recordId, studentId);
             throw;
         }
     }

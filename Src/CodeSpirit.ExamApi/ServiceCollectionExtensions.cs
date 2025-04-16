@@ -2,26 +2,13 @@ using CodeSpirit.Aggregator;
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Charts.Extensions;
-using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Services;
-using CodeSpirit.ExamApi.Services.Implementations;
-using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
-using CodeSpirit.Shared.EventBus.Events;
-using CodeSpirit.Shared.EventBus.Extensions;
-using CodeSpirit.Shared.Extensions;
-using CodeSpirit.Shared.Repositories;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
-using System.Text;
 using CodeSpirit.Settings.Extensions;
-using CodeSpirit.ExamApi.Settings;
+using CodeSpirit.Shared.EventBus.Extensions;
+using CodeSpirit.Shared.Repositories;
 
 namespace CodeSpirit.ExamApi;
 

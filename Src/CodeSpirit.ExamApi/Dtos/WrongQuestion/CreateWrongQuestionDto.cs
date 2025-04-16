@@ -58,7 +58,7 @@ public class CreateWrongQuestionDto
     /// 最后错误时间
     /// </summary>
     [DisplayName("错误时间")]
-    [AmisDatetimeField(Utc = true)]
+    [AmisDatetimeField()]
     public DateTime LastWrongTime { get; set; } = DateTime.UtcNow;
     
     /// <summary>

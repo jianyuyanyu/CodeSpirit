@@ -18,7 +18,17 @@ namespace CodeSpirit.Shared.JsonConverters
                 return null;
             }
 
-            // 保持原样,让 Model Binder 处理输入转换
+            // 将输入字符串解析为 DateTime
+            if (DateTime.TryParse(reader.Value.ToString(), out DateTime dateTime))
+            {
+                // 将解析后的时间视为本地时间
+                dateTime = DateTime.SpecifyKind(dateTime, DateTimeKind.Local);
+                
+                // 将本地时间转换为 UTC 时间
+                return TimeZoneInfo.ConvertTimeToUtc(dateTime);
+            }
+            
+            // 如果解析失败，返回原始值（兼容原有逻辑）
             return DateTime.Parse(reader.Value.ToString());
         }
 

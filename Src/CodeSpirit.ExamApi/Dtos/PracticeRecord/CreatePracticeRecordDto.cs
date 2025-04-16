@@ -55,7 +55,7 @@ public class CreatePracticeRecordDto
     /// 练习时间
     /// </summary>
     [DisplayName("练习时间")]
-    [AmisDatetimeField(Utc = true)]
+    [AmisDatetimeField()]
     public DateTime PracticeTime { get; set; } = DateTime.UtcNow;
     
     /// <summary>

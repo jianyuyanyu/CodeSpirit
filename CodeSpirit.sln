@@ -68,6 +68,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.ExamApi.Tests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Settings", "Src\CodeSpirit.Settings\CodeSpirit.Settings.csproj", "{591E5177-AEFF-E904-2BB9-B0FC08313F1A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.Settings.Tests", "Src\Tests\Components\CodeSpirit.Settings.Tests\CodeSpirit.Settings.Tests.csproj", "{21EADF0D-654D-7D57-AB64-099ADD2EE9BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -178,6 +180,10 @@ Global
 		{591E5177-AEFF-E904-2BB9-B0FC08313F1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{591E5177-AEFF-E904-2BB9-B0FC08313F1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{591E5177-AEFF-E904-2BB9-B0FC08313F1A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21EADF0D-654D-7D57-AB64-099ADD2EE9BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21EADF0D-654D-7D57-AB64-099ADD2EE9BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21EADF0D-654D-7D57-AB64-099ADD2EE9BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21EADF0D-654D-7D57-AB64-099ADD2EE9BF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -208,6 +214,7 @@ Global
 		{504BC8F1-53BD-477F-3E2F-AB83B42DBD29} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{E6CA2699-0E47-58F4-7FBE-1667D1A9DF0E} = {3F014F1E-8908-4DC0-9AD9-27E01C9C9118}
 		{591E5177-AEFF-E904-2BB9-B0FC08313F1A} = {28E19F6A-7ADD-4941-9E72-EFA73162E871}
+		{21EADF0D-654D-7D57-AB64-099ADD2EE9BF} = {E9AA3C88-F320-411E-9CBB-75B0047F0F46}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FA2D98D6-8906-4629-AE73-437BD9C6A177}

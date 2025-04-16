@@ -29,7 +29,7 @@ public class CreateUserDto
         Accept = "image/png,image/jpeg",
         MaxSize = 1048576, // 1MB
         Multiple = false,
-        Required = true,
+        Required = false,
         Placeholder = "请上传您的头像"
     )]
     public string AvatarUrl { get; set; }

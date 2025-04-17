@@ -1,15 +1,18 @@
-﻿html, body, .app-wrapper {
+﻿/* 基础样式 */
+html, body, .app-wrapper {
     position: relative;
     width: 100%;
     height: 100%;
     margin: 0;
     padding: 0;
 }
+
+/* 表单样式优化 */
 .antd-Form-item {
     padding-bottom: 5px;
 }
 
-/* 顶部栏通知和聊天图标样式 */
+/* 顶部导航栏图标样式 */
 .notification-btn,
 .chat-btn {
     font-size: 18px !important;
@@ -20,12 +23,13 @@
     justify-content: center;
     padding: 0 10px;
     cursor: pointer;
-    transition: color 0.3s;
+    transition: all 0.3s ease;
 }
 
 .notification-btn:hover,
 .chat-btn:hover {
     color: #1890ff !important;
+    transform: scale(1.05);
 }
 
 /* 通知徽章样式 */
@@ -39,17 +43,24 @@
     text-align: center;
     border-radius: 8px;
     padding: 0 4px;
+    box-shadow: 0 0 0 1px #fff;
 }
 
-/* 聊天通知样式 */
+/* 聊天消息通知组件样式 */
 .chat-notification {
     cursor: pointer;
-    padding: 5px 0;
+    padding: 8px 0;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.chat-notification:hover {
+    background-color: rgba(24, 144, 255, 0.05);
 }
 
 .chat-notification .sender {
     font-weight: bold;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
 }
 
 .chat-notification .message {
@@ -65,16 +76,28 @@
     font-size: 12px;
     color: #1890ff;
     text-align: right;
+    transition: color 0.2s ease;
 }
 
 .chat-notification:hover .action {
     text-decoration: underline;
+    color: #40a9ff;
 }
 
-/* 修复Amis在移动设备上的响应式问题 */
+/* 响应式适配 */
 @media (max-width: 768px) {
     .notification-btn,
     .chat-btn {
         padding: 0 5px;
+    }
+    
+    .chat-notification .message {
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chat-notification .message {
+        max-width: 150px;
     }
 }

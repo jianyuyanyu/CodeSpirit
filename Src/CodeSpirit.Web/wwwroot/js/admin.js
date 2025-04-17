@@ -1,10 +1,16 @@
-﻿(function () {
-    let amis = amisRequire('amis/embed');
+﻿/**
+ * 后台管理系统前端入口
+ * 基于AMIS框架构建的后台UI系统
+ */
+(function () {
+    // 基础依赖
+    const amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
-    // 使用 HashHistory
     const history = History.createHashHistory();
 
-    // 全局数据对象，用于存储用户信息和其他共享数据
+    /**
+     * 全局数据存储
+     */
     window.globalData = {
         user: {
             id: null,
@@ -17,12 +23,13 @@
             hasUnread: false,
             items: []
         },
-        // 可以添加其他全局数据
         settings: {},
         permissions: []
     };
 
-    // 全局数据辅助函数
+    /**
+     * 全局数据操作工具
+     */
     window.GlobalData = {
         // 获取数据
         get: function (path, defaultValue) {
@@ -86,7 +93,10 @@
         }
     };
 
-    const app = {
+    /**
+     * 应用配置
+     */
+    const appConfig = {
         type: 'app',
         brandName: window.siteSettings ? window.siteSettings.siteName : 'CodeSpirit',
         logo: window.siteSettings ? (window.siteSettings.logoUrl) : (webHost + '/favicon.ico'),
@@ -101,13 +111,13 @@
                         {
                             actionType: "custom",
                             script: `
-                        window.fetchUnreadNotificationCount();
-                        
-                        // 设置定时任务，每分钟更新一次未读通知数
-                        window.notificationTimer = setInterval(function() {
-                            window.fetchUnreadNotificationCount();
-                        }, 60000);
-                      `
+                                window.fetchUnreadNotificationCount();
+                                
+                                // 设置定时任务，每分钟更新一次未读通知数
+                                window.notificationTimer = setInterval(function() {
+                                    window.fetchUnreadNotificationCount();
+                                }, 60000);
+                            `
                         }
                     ]
                 }
@@ -262,177 +272,193 @@
         api: '/api/navigation/site'
     };
 
-    function normalizeLink(to, location = history.location) {
-        to = to || '';
-        if (to && to[0] === '#') {
-            to = location.pathname + location.search + to;
-        } else if (to && to[0] === '?') {
-            to = location.pathname + to;
-        }
-
-        const idx = to.indexOf('?');
-        const idx2 = to.indexOf('#');
-        let pathname = ~idx ? to.substring(0, idx) : ~idx2 ? to.substring(0, idx2) : to;
-        let search = ~idx ? to.substring(idx, ~idx2 ? idx2 : undefined) : '';
-        let hash = ~idx2 ? to.substring(idx2) : location.hash;
-
-        if (!pathname) {
-            pathname = location.pathname;
-        } else if (pathname[0] != '/' && !/^https?\:\/\//.test(pathname)) {
-            let relativeBase = location.pathname;
-            const paths = relativeBase.split('/');
-            paths.pop();
-            let m;
-            while ((m = /^\.\.?\//.exec(pathname))) {
-                if (m[0] === '../') {
-                    paths.pop();
-                }
-                pathname = pathname.substring(m[0].length);
+    /**
+     * 路由工具函数
+     */
+    const routerUtils = {
+        normalizeLink: function(to, location = history.location) {
+            to = to || '';
+            if (to && to[0] === '#') {
+                to = location.pathname + location.search + to;
+            } else if (to && to[0] === '?') {
+                to = location.pathname + to;
             }
-            pathname = paths.concat(pathname).join('/');
+
+            const idx = to.indexOf('?');
+            const idx2 = to.indexOf('#');
+            let pathname = ~idx ? to.substring(0, idx) : ~idx2 ? to.substring(0, idx2) : to;
+            let search = ~idx ? to.substring(idx, ~idx2 ? idx2 : undefined) : '';
+            let hash = ~idx2 ? to.substring(idx2) : location.hash;
+
+            if (!pathname) {
+                pathname = location.pathname;
+            } else if (pathname[0] != '/' && !/^https?\:\/\//.test(pathname)) {
+                let relativeBase = location.pathname;
+                const paths = relativeBase.split('/');
+                paths.pop();
+                let m;
+                while ((m = /^\.\.?\//.exec(pathname))) {
+                    if (m[0] === '../') {
+                        paths.pop();
+                    }
+                    pathname = pathname.substring(m[0].length);
+                }
+                pathname = paths.concat(pathname).join('/');
+            }
+
+            return pathname + search + hash;
+        },
+
+        isCurrentUrl: function(to, ctx) {
+            if (!to) {
+                return false;
+            }
+
+            const pathname = history.location.pathname;
+            const link = this.normalizeLink(to, {
+                ...location,
+                pathname,
+                hash: ''
+            });
+
+            if (!~link.indexOf('http') && ~link.indexOf(':')) {
+                let strict = ctx && ctx.strict;
+                return match(link, {
+                    decode: decodeURIComponent,
+                    strict: typeof strict !== 'undefined' ? strict : true
+                })(pathname);
+            }
+
+            return decodeURI(pathname) === link;
         }
+    };
 
-        return pathname + search + hash;
-    }
-
-    function isCurrentUrl(to, ctx) {
-        if (!to) {
-            return false;
+    /**
+     * AMIS实例配置
+     */
+    const amisOptions = {
+        location: history.location,
+        data: {},
+        context: {
+            API_HOST: apiHost,
+            WEB_HOST: webHost,
+            aspire_dashboard: aspire_dashboard
         }
+    };
 
-        const pathname = history.location.pathname;
-        const link = normalizeLink(to, {
-            ...location,
-            pathname,
-            hash: ''
-        });
+    /**
+     * AMIS事件处理器
+     */
+    const amisHandlers = {
+        updateLocation: (location, replace) => {
+            location = routerUtils.normalizeLink(location);
+            if (location === 'goBack') {
+                return history.goBack();
+            } else if (
+                (!/^https?\:\/\//.test(location) &&
+                    location ===
+                    history.location.pathname + history.location.search) ||
+                location === history.location.href
+            ) {
+                return;
+            } else if (/^https?\:\/\//.test(location) || !history) {
+                return (window.location.href = location);
+            }
 
-        if (!~link.indexOf('http') && ~link.indexOf(':')) {
-            let strict = ctx && ctx.strict;
-            return match(link, {
-                decode: decodeURIComponent,
-                strict: typeof strict !== 'undefined' ? strict : true
-            })(pathname);
-        }
+            history[replace ? 'replace' : 'push'](location);
+        },
+        
+        jumpTo: (to, action) => {
+            if (to === 'goBack') {
+                return history.goBack();
+            }
 
-        return decodeURI(pathname) === link;
-    }
+            to = routerUtils.normalizeLink(to);
 
-    let amisInstance = amis.embed(
-        '#root',
-        app,
-        {
-            location: history.location,
-            data: {},
-            context: {
-                API_HOST: apiHost,
-                WEB_HOST: webHost,
-                aspire_dashboard: aspire_dashboard
+            if (routerUtils.isCurrentUrl(to)) {
+                return;
+            }
+
+            if (to.startsWith('/impersonate') || to.startsWith('/login') || to.startsWith('/notifications') || to.startsWith('/chat')) {
+                window.location.href = to;
+                return;
+            }
+
+            if (action && action.actionType === 'url') {
+                action.blank === false
+                    ? (window.location.href = to)
+                    : window.open(to, '_blank');
+                return;
+            } else if (action && action.blank) {
+                window.open(to, '_blank');
+                return;
+            }
+
+            if (/^https?:\/\//.test(to)) {
+                window.location.href = to;
+            } else if (
+                (!/^https?\:\/\//.test(to) &&
+                    to === history.pathname + history.location.search) ||
+                to === history.location.href
+            ) {
+                // do nothing
+            } else {
+                history.push(to);
             }
         },
-        {
-            updateLocation: (location, replace) => {
-                location = normalizeLink(location);
-                if (location === 'goBack') {
-                    return history.goBack();
-                } else if (
-                    (!/^https?\:\/\//.test(location) &&
-                        location ===
-                        history.location.pathname + history.location.search) ||
-                    location === history.location.href
-                ) {
-                    return;
-                } else if (/^https?\:\/\//.test(location) || !history) {
-                    return (window.location.href = location);
+        
+        isCurrentUrl: (to, ctx) => routerUtils.isCurrentUrl(to, ctx),
+        
+        requestAdaptor: (api) => {
+            const token = localStorage.getItem('token');
+            return {
+                ...api,
+                headers: {
+                    ...api.headers,
+                    'Authorization': 'Bearer ' + token,
+                    'X-Forwarded-With': 'CodeSpirit'
                 }
+            };
+        },
+        
+        responseAdaptor: function (api, payload, query, request, response) {
+            // 处理错误响应
+            if (response.status === 403) {
+                return { msg: '您没有权限访问此页面，请联系管理员！' }
+            }
+            else if (response.status === 401) {
+                // 获取当前路径作为重定向参数
+                const currentPath = encodeURIComponent(window.location.hash || window.location.pathname);
+                window.location.href = `/login?redirect=${currentPath}`;
+                return { msg: '登录过期！' };
+            }
 
-                history[replace ? 'replace' : 'push'](location);
-            },
-            jumpTo: (to, action) => {
-                if (to === 'goBack') {
-                    return history.goBack();
+            // 如果是获取用户信息的接口,将数据注入到全局
+            if (api.url.includes('/identity/api/identity/profile')) {
+                // 更新全局数据对象
+                if (payload.status === 0 && payload.data) {
+                    window.GlobalData.set('user.id', payload.data.id || null);
+                    window.GlobalData.set('user.name', payload.data.name || payload.data.userName || '');
+                    window.GlobalData.set('user.avatar', payload.data.avatar || '');
+                    window.GlobalData.set('user.roles', payload.data.roles || []);
+
+                    // 同时注入到amis全局上下文，使所有组件都能访问
+                    window.GlobalData.syncToAmis(amisInstance);
+
+                    console.debug('Global user data updated:', window.globalData.user);
                 }
+            }
 
-                to = normalizeLink(to);
+            return payload;
+        },
+        
+        theme: 'antd'
+    };
 
-                if (isCurrentUrl(to)) {
-                    return;
-                }
+    // 初始化AMIS实例
+    let amisInstance = amis.embed('#root', appConfig, amisOptions, amisHandlers);
 
-                if (to.startsWith('/impersonate') || to.startsWith('/login') || to.startsWith('/notifications') || to.startsWith('/chat')) {
-                    window.location.href = to;
-                    return;
-                }
-
-                if (action && action.actionType === 'url') {
-                    action.blank === false
-                        ? (window.location.href = to)
-                        : window.open(to, '_blank');
-                    return;
-                } else if (action && action.blank) {
-                    window.open(to, '_blank');
-                    return;
-                }
-
-                if (/^https?:\/\//.test(to)) {
-                    window.location.href = to;
-                } else if (
-                    (!/^https?\:\/\//.test(to) &&
-                        to === history.pathname + history.location.search) ||
-                    to === history.location.href
-                ) {
-                    // do nothing
-                } else {
-                    history.push(to);
-                }
-            },
-            isCurrentUrl: isCurrentUrl,
-            requestAdaptor: (api) => {
-                var token = localStorage.getItem('token');
-                return {
-                    ...api,
-                    headers: {
-                        ...api.headers,
-                        'Authorization': 'Bearer ' + token,
-                        'X-Forwarded-With': 'CodeSpirit'
-                    }
-                };
-            },
-            responseAdaptor: function (api, payload, query, request, response) {
-
-                // 处理错误响应
-                if (response.status === 403) {
-                    return { msg: '您没有权限访问此页面，请联系管理员！' }
-                }
-                else if (response.status === 401) {
-                    // 获取当前路径作为重定向参数
-                    const currentPath = encodeURIComponent(window.location.hash || window.location.pathname);
-                    window.location.href = `/login?redirect=${currentPath}`;
-                    return { msg: '登录过期！' };
-                }
-
-                // 如果是获取用户信息的接口,将数据注入到全局
-                if (api.url.includes('/identity/api/identity/profile')) {
-                    // 更新全局数据对象
-                    if (payload.status === 0 && payload.data) {
-                        window.GlobalData.set('user.id', payload.data.id || null);
-                        window.GlobalData.set('user.name', payload.data.name || payload.data.userName || '');
-                        window.GlobalData.set('user.avatar', payload.data.avatar || '');
-                        window.GlobalData.set('user.roles', payload.data.roles || []);
-
-                        // 同时注入到amis全局上下文，使所有组件都能访问
-                        window.GlobalData.syncToAmis(amisInstance);
-
-                        console.debug('Global user data updated:', window.globalData.user);
-                    }
-                }
-
-                return payload;
-            },
-            theme: 'antd'
-        }
-    );
-
+    // 初始化通知数据
     amisInstance.updateProps({
         data: {
             notifications: {
@@ -442,19 +468,23 @@
         }
     });
 
+    // 监听路由变化
     history.listen(state => {
         amisInstance.updateProps({
             location: state.location || state
         });
     });
 
-    // 导出全局函数用于更新通知
+    /**
+     * 通知相关功能
+     */
+    // 更新通知计数
     window.updateNotificationCount = function (count) {
         // 更新全局数据
         window.GlobalData.set('notifications.count', count);
         window.GlobalData.set('notifications.hasUnread', count > 0);
 
-        // 这样更新后，所有绑定到这些变量的组件都会自动更新
+        // 更新AMIS实例中的数据，触发UI更新
         amisInstance.updateProps({
             data: {
                 notifications: {
@@ -463,36 +493,40 @@
                 }
             }
         });
-
     };
 
-    // 自动获取未读通知数
+    // 获取未读通知数
     window.fetchUnreadNotificationCount = function () {
-        var token = localStorage.getItem('token');                
+        const token = localStorage.getItem('token');                
         // 发起AJAX请求获取未读消息数
         fetch(`/messaging/api/messaging/messages/my/unread/count`, {
             headers: {
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'X-Forwarded-With': 'CodeSpirit'
             }
         })
             .then(response => {
-                console.debug(response);
                 if (!response.ok) {
                     console.error('获取未读消息数失败:', response);
+                    return null;
                 }
                 return response.json();
             })
             .then(data => {
-                console.debug(data);
-                const count = data.count || data.unreadCount || 0;
-                window.updateNotificationCount(count);
+                if (data) {
+                    const count = data.count || data.unreadCount || 0;
+                    window.updateNotificationCount(count);
+                }
             })
             .catch(error => {
                 console.error('获取未读消息数失败:', error);
             });
     };
 
-    // 导出全局函数用于显示新聊天消息通知
+    /**
+     * 聊天相关功能
+     */
+    // 显示聊天消息通知
     window.showChatNotification = function (message, sender, conversationId) {
         // 创建通知toast
         amis.toast.info(
@@ -519,5 +553,4 @@
             }
         });
     };
-
 })();

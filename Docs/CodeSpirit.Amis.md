@@ -37,7 +37,7 @@
         - [x] `List<T> where T:calss`——>List 
         - [x] `TplColumnAttribute`——>tpl
         - [x] `LinkColumnAttribute`——>link
-        - [ ] 状态
+        - [x] 状态
         - [x] `BadgeAttribute`（仅支持tpl、link、avatar）
         - [x] JSON
       - [x] 列排序
@@ -86,7 +86,7 @@
         - [ ] 后端导出（Magicodes.IE)
       - [x] 批量操作
         - [x] 批量删除
-        - [ ] 批量表单操作
+        - [x] 批量表单操作
     - [x] 底部信息及操作
       - [x] 切换分页数
       - [x] 记录数展示
@@ -113,7 +113,7 @@
         - [ ] 对比编辑器
         - [ ] 地理位置选择
         - [ ] 评分
-        - [ ] 标签
+        - [x] 标签
         - [ ] 签名
       - [x] 字段验证
         - [x] 必填

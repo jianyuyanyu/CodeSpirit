@@ -7,6 +7,7 @@ using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Settings.Extensions;
+using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Repositories;
 
@@ -29,6 +30,15 @@ public static class ServiceCollectionExtensions
         builder.Services.AddJwtAuthentication(builder.Configuration);
 
         builder.Services.ConfigureDefaultControllers();
+
+        // 添加Redis分布式锁服务
+        builder.Services.AddRedisDistributedLock(options =>
+        {
+            options.KeyPrefix = "CodeSpirit:Exam:Lock:";
+            options.DefaultLockTimeout = TimeSpan.FromMinutes(5);
+            options.DefaultAcquireTimeout = TimeSpan.FromSeconds(10);
+            options.RetryInterval = TimeSpan.FromMilliseconds(100);
+        });
 
         return builder.Services;
     }

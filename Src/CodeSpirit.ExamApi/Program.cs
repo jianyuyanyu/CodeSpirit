@@ -1,6 +1,7 @@
 // Program.cs
 using CodeSpirit.ExamApi;
 using System.Text;
+using CodeSpirit.Shared.DistributedLock;
 
 Console.OutputEncoding = Encoding.UTF8;
 

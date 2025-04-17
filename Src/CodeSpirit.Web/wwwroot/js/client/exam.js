@@ -743,7 +743,15 @@
                         window.location.href = "/client/index";
                     }, 1500);
                 }
-            } else {
+            }
+            else if (data.status === 409) {
+                createCustomNotification('提交失败', data.msg || "提交失败，请重试", 'error', 5000);
+                // 不允许查看结果，显示提交成功页面
+                setTimeout(() => {
+                    window.location.href = "/client/index";
+                }, 1500);
+            }
+            else {
                 // 显示错误提示
                 if (typeof createCustomNotification === 'function') {
                     createCustomNotification('提交失败', data.msg || "提交失败，请重试", 'error', 5000);

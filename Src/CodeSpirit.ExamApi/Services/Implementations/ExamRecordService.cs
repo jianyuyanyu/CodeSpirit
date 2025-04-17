@@ -12,6 +12,7 @@ using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.Shared.Extensions;
 using Microsoft.Extensions.Logging;
+using CodeSpirit.Shared.DistributedLock;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -25,6 +26,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     private readonly IRepository<Student> _studentRepository;
     private readonly IRepository<QuestionVersion> _questionVersionRepository;
     private readonly ILogger<ExamRecordService> _logger;
+    private readonly IDistributedLockProvider _distributedLockProvider;
 
     /// <summary>
     /// 构造函数
@@ -36,13 +38,15 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         IRepository<Student> studentRepository,
         IRepository<QuestionVersion> questionVersionRepository,
         IMapper mapper,
-        ILogger<ExamRecordService> logger) : base(repository, mapper)
+        ILogger<ExamRecordService> logger,
+        IDistributedLockProvider distributedLockProvider) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
         _examSettingRepository = examSettingRepository;
         _studentRepository = studentRepository;
         _questionVersionRepository = questionVersionRepository;
         _logger = logger;
+        _distributedLockProvider = distributedLockProvider ?? throw new ArgumentNullException(nameof(distributedLockProvider));
     }
 
     /// <summary>
@@ -899,54 +903,73 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     /// <returns>提交结果，包含是否成功和是否可查看结果</returns>
     public async Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto> answers = null)
     {
+        // 使用分布式锁防止并发提交
+        var lockKey = $"exam_submit_{recordId}_{studentId}";
+
         try
         {
-            // 获取考试记录
-            var examRecord = await Repository.CreateQuery()
-                .Include(r => r.ExamSetting)
-                .ThenInclude(s => s.ExamPaper)
-                .Where(r => r.Id == recordId && r.StudentId == studentId)
-                .FirstOrDefaultAsync();
-
-            if (examRecord == null)
+            using (await _distributedLockProvider.AcquireLockAsync(lockKey, TimeSpan.FromMinutes(1)))
             {
-                throw new AppServiceException(400, "考试记录不存在");
+                _logger.LogInformation("已获取考试提交锁: {LockKey}", lockKey);
+
+                // 获取考试记录
+                var examRecord = await Repository.CreateQuery()
+                    .Include(r => r.ExamSetting)
+                    .ThenInclude(s => s.ExamPaper)
+                    .Where(r => r.Id == recordId && r.StudentId == studentId)
+                    .FirstOrDefaultAsync();
+
+                if (examRecord == null)
+                {
+                    throw new AppServiceException(409, "考试记录不存在");
+                }
+
+                // 重新查询状态，确保在获取锁期间状态未被更改
+                if (examRecord.Status != ExamRecordStatus.InProgress)
+                {
+                    _logger.LogWarning("考试已提交，不能重复提交: 记录ID={RecordId}, 学生ID={StudentId}, 当前状态={Status}",
+                        recordId, studentId, examRecord.Status);
+                    throw new AppServiceException(409, "考试已提交，不能重复提交");
+                }
+
+                // 加载试卷题目
+                var examPaper = await _examSettingRepository.CreateQuery()
+                    .Include(es => es.ExamPaper)
+                    .ThenInclude(ep => ep.ExamPaperQuestions)
+                    .FirstOrDefaultAsync(es => es.Id == examRecord.ExamSettingId);
+
+                // 如果提供了未保存的答案，先保存这些答案
+                if (answers != null && answers.Any())
+                {
+                    _logger.LogInformation("提交前保存最后 {Count} 个答案", answers.Count);
+                    await SubmitAnswersAsync(recordId, answers);
+                }
+
+                var now = DateTime.UtcNow;
+                examRecord.SubmitTime = now;
+                examRecord.Status = ExamRecordStatus.Submitted;
+                examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
+
+                // 更新考试记录
+                await Repository.UpdateAsync(examRecord);
+
+                // 如果是客观题，可以自动评分
+                await AutoGradeObjectiveQuestions(examRecord);
+
+                _logger.LogInformation("考试提交成功: 记录ID={RecordId}, 学生ID={StudentId}", recordId, studentId);
+
+                // 返回提交成功状态和是否可以查看结果的设置
+                return (true, examRecord.ExamSetting.EnableViewResult);
             }
-
-            // 加载试卷题目
-            var examPaper = await _examSettingRepository.CreateQuery()
-                .Include(es => es.ExamPaper)
-                .ThenInclude(ep => ep.ExamPaperQuestions)
-                .FirstOrDefaultAsync(es => es.Id == examRecord.ExamSettingId);
-
-            if (examRecord.Status != ExamRecordStatus.InProgress)
-            {
-                throw new InvalidOperationException("考试已提交，不能重复提交");
-            }
-
-            // 如果提供了未保存的答案，先保存这些答案
-            if (answers != null && answers.Any())
-            {
-                _logger.LogInformation("提交前保存最后 {Count} 个答案", answers.Count);
-                await SubmitAnswersAsync(recordId, answers);
-            }
-
-            var now = DateTime.UtcNow;
-            examRecord.SubmitTime = now;
-            examRecord.Status = ExamRecordStatus.Submitted;
-            examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
-
-            // 更新考试记录
-            await Repository.UpdateAsync(examRecord);
-
-            // 如果是客观题，可以自动评分
-            await AutoGradeObjectiveQuestions(examRecord);
-
-            // 返回提交成功状态和是否可以查看结果的设置
-            return (true, examRecord.ExamSetting.EnableViewResult);
         }
-        catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
+        catch (TimeoutException ex)
         {
+            _logger.LogError(ex, "获取考试提交锁超时: {LockKey}", lockKey);
+            throw new AppServiceException(423, "系统繁忙，请稍后再试");
+        }
+        catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException && ex is not AppServiceException)
+        {
+            _logger.LogError(ex, "考试提交过程发生错误: 记录ID={RecordId}, 学生ID={StudentId}", recordId, studentId);
             throw;
         }
     }
@@ -1134,31 +1157,31 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             .ThenInclude(a => a.QuestionVersion)
             .ThenInclude(qv => qv.Question)
             .FirstOrDefaultAsync(r => r.Id == recordId);
-            
+
         if (examRecord == null)
         {
             throw new BusinessException("考试记录不存在");
         }
-        
+
         // 验证考试状态
         if (examRecord.Status == ExamRecordStatus.InProgress)
         {
             throw new BusinessException("考试尚未完成，无法修改分数");
         }
-        
+
         // 获取试卷信息
         var examPaper = examRecord.ExamSetting?.ExamPaper;
         if (examPaper == null)
         {
             throw new BusinessException("试卷信息不存在");
         }
-        
+
         // 验证目标分数不超过试卷总分
         if (modifyExamScoreDto.TargetScore > examPaper.TotalScore)
         {
             throw new BusinessException($"目标分数不能超过试卷总分 {examPaper.TotalScore}");
         }
-        
+
         if (modifyExamScoreDto.TargetScore < 0)
         {
             throw new BusinessException("目标分数不能小于0");
@@ -1167,24 +1190,24 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         // 区分客观题和非客观题
         var objectiveQuestionTypes = new[] { QuestionType.SingleChoice, QuestionType.MultipleChoice, QuestionType.TrueFalse };
         var answerRecords = examRecord.AnswerRecords.ToList();
-        
+
         var objectiveAnswers = answerRecords
             .Where(a => a.QuestionVersion?.Question != null && objectiveQuestionTypes.Contains(a.QuestionVersion.Question.Type))
             .ToList();
-            
+
         var subjectiveAnswers = answerRecords
             .Where(a => a.QuestionVersion?.Question != null && !objectiveQuestionTypes.Contains(a.QuestionVersion.Question.Type))
             .ToList();
-        
+
         // 计算当前客观题总分和非客观题总分
         double currentObjectiveScore = objectiveAnswers.Sum(a => a.Score ?? 0);
         double currentSubjectiveScore = subjectiveAnswers.Sum(a => a.Score ?? 0);
         double currentTotalScore = currentObjectiveScore + currentSubjectiveScore;
-        
+
         // 计算需要调整的目标分数与当前分数的差异
         double targetTotalScore = modifyExamScoreDto.TargetScore;
         double scoreDifference = targetTotalScore - currentTotalScore;
-        
+
         // 如果分数差异很小，无需调整
         if (Math.Abs(scoreDifference) < 0.01)
         {
@@ -1194,7 +1217,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             examRecord.Status = ExamRecordStatus.Graded;
             examRecord.GradedTime = examRecord.SubmitTime; // 确保批改时间与提交时间一致
             examRecord.UpdatedAt = examRecord.SubmitTime; // 确保更新时间与提交时间一致
-            
+
             // 更新答案记录的时间字段
             foreach (var answer in answerRecords)
             {
@@ -1203,13 +1226,13 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 answer.GradedTime = randomTime; // 答案批改时间使用随机时间
                 answer.UpdatedAt = randomTime; // 答案更新时间使用随机时间
             }
-            
+
             // 保存更改
             await _answerRecordRepository.UpdateRangeAsync(answerRecords);
             await Repository.UpdateAsync(examRecord);
             return Mapper.Map<ExamRecordDto>(examRecord);
         }
-        
+
         // 如果需要增加分数，先尝试使用自动评分重新评估客观题
         if (scoreDifference > 0 && objectiveAnswers.Any())
         {
@@ -1219,16 +1242,16 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 answer.IsCorrect = null;
                 answer.Score = null;
             }
-            
+
             // 使用自动评分方法重新评分
             await AutoGradeObjectiveQuestions(examRecord);
-            
+
             // 重新计算调整后的分数差异
             double newObjectiveScore = objectiveAnswers.Sum(a => a.Score ?? 0);
             double newTotalScore = newObjectiveScore + currentSubjectiveScore;
             scoreDifference = targetTotalScore - newTotalScore;
         }
-        
+
         // 如果仍然需要调整分数
         if (Math.Abs(scoreDifference) > 0.01)
         {
@@ -1236,10 +1259,10 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             {
                 // 需要增加分数
                 AdjustScoreUpward(objectiveAnswers, scoreDifference);
-                
+
                 // 如果客观题已经全部得满分，但仍需增加分数
                 double remainingScoreToAdd = targetTotalScore - (objectiveAnswers.Sum(a => a.Score ?? 0) + currentSubjectiveScore);
-                
+
                 // 如果还有剩余分数需要添加且有非客观题
                 if (remainingScoreToAdd > 0.01 && subjectiveAnswers.Any())
                 {
@@ -1250,7 +1273,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             {
                 // 需要减少分数
                 double scoreToReduce = Math.Abs(scoreDifference);
-                
+
                 // 优先从客观题中减分
                 if (currentObjectiveScore >= scoreToReduce)
                 {
@@ -1263,7 +1286,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     {
                         AdjustScoreDownward(objectiveAnswers, currentObjectiveScore);
                     }
-                    
+
                     // 剩余从主观题中减分
                     double remainingScoreToReduce = scoreToReduce - currentObjectiveScore;
                     if (remainingScoreToReduce > 0.01 && subjectiveAnswers.Any())
@@ -1273,10 +1296,10 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 }
             }
         }
-        
+
         // 最终检查和调整，确保总分符合目标
         double adjustedTotalScore = answerRecords.Sum(a => a.Score ?? 0);
-        
+
         // 如果调整后分数与目标分数有较大差异，进行最后的微调
         if (Math.Abs(adjustedTotalScore - targetTotalScore) > 0.1)
         {
@@ -1285,11 +1308,11 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 .Where(a => a.Score > 0)
                 .OrderByDescending(a => a.Score)
                 .FirstOrDefault();
-                
+
             if (adjustableAnswer != null)
             {
                 adjustableAnswer.Score = adjustableAnswer.Score + (targetTotalScore - adjustedTotalScore);
-                
+
                 // 确保分数不为负数
                 if (adjustableAnswer.Score < 0)
                 {
@@ -1297,7 +1320,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 }
             }
         }
-        
+
         // 更新考试记录
         examRecord.Score = answerRecords.Sum(a => a.Score ?? 0);
         examRecord.IsPassed = examRecord.Score >= examPaper.PassScore;
@@ -1305,25 +1328,25 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         examRecord.GradedTime = examRecord.SubmitTime; // 确保批改时间与提交时间一致
         examRecord.UpdatedAt = examRecord.SubmitTime; // 确保更新时间与提交时间一致
         examRecord.Comments += "-";
-        
+
         // 更新答案记录的时间字段
         foreach (var answer in answerRecords)
         {
             var randomTime = GenerateRandomTimeBetween(examRecord.StartTime, examRecord.SubmitTime);
-            answer.GradedTime = randomTime; 
+            answer.GradedTime = randomTime;
             answer.UpdatedAt = randomTime;
             answer.CreatedAt = randomTime;
         }
-        
+
         // 保存更改
         await _answerRecordRepository.UpdateRangeAsync(answerRecords);
         await Repository.UpdateAsync(examRecord);
-        
+
         // 返回更新后的考试记录
         return Mapper.Map<ExamRecordDto>(examRecord);
     }
-    
-    
+
+
     /// <summary>
     /// 提高分数
     /// </summary>
@@ -1717,11 +1740,11 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         {
             return startTime;
         }
-        
+
         var timeSpan = submitTime.Value - startTime;
         var random = new Random();
         var randomSpan = TimeSpan.FromTicks((long)(random.NextDouble() * timeSpan.Ticks));
-        
+
         return startTime + randomSpan;
     }
 }

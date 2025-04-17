@@ -103,31 +103,18 @@ public class IndexController : ApiControllerBase
             return Unauthorized(new ApiResponse(-1, "请先登录"));
         }
 
-        try
+        // 如果有未保存的答案，先保存这些答案
+        if (answers != null && answers.Count > 0)
         {
-            // 如果有未保存的答案，先保存这些答案
-            if (answers != null && answers.Count > 0)
-            {
-                _logger.LogInformation("提交考试前保存 {Count} 个答案", answers.Count);
-                await _clientService.SaveAnswerAsync(id, currentUserId, answers);
-            }
+            _logger.LogInformation("提交考试前保存 {Count} 个答案", answers.Count);
+            await _clientService.SaveAnswerAsync(id, currentUserId, answers);
+        }
 
-            // 调用提交服务更改考试状态（不再传递答案参数）
-            var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId, null);
+        // 调用提交服务更改考试状态（不再传递答案参数）
+        var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId, null);
 
-            // 返回提交结果和是否允许查看结果
-            return Ok(new ApiResponse<dynamic>(0, "提交成功！", new { success, enableViewResult }));
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "提交考试答案时发生业务逻辑错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
-            return BadRequest(new ApiResponse(-1, ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "提交考试答案时发生未处理错误，用户 {UserId}，考试记录 {RecordId}", currentUserId, id);
-            return StatusCode(500, new ApiResponse(-1, "提交答案失败，请稍后重试"));
-        }
+        // 返回提交结果和是否允许查看结果
+        return Ok(new ApiResponse<dynamic>(0, "提交成功！", new { success, enableViewResult }));
     }
 
     /// <summary>

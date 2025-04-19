@@ -40,14 +40,14 @@ public static class Extensions
         //}
         //else
         {
-            // 添加服务发现
+            // 娣诲姞鏈嶅姟鍙戠幇
             builder.Services.AddServiceDiscovery();
         }
         
-        // 配置 HttpClient 默认使用服务发现
+        // 閰嶇疆 HttpClient 榛樿浣跨敤鏈嶅姟鍙戠幇
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            http.AddStandardResilienceHandler();
+            //http.AddStandardResilienceHandler();
             http.AddServiceDiscovery();
         });
 

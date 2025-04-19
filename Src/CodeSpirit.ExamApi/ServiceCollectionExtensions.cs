@@ -3,6 +3,7 @@ using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.ExamApi.Data;
+using CodeSpirit.ExamApi.Hubs;
 using CodeSpirit.ExamApi.Services;
 using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.ExamApi.Services.Interfaces;
@@ -114,8 +115,25 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExamSettingService, ExamSettingService>();
         services.AddScoped<IMonitorService, MonitorService>();
 
+        // 注册AI题目生成服务
+        services.AddSignalRAndNotificationServices();
+        services.AddHttpClient();
+
         // 添加设置管理
         services.AddSettingsManagerWithDatabase(configuration);
+
+        // 初始化LLM设置
+        var llmSettings = new LLMSettings
+        {
+            ApiBaseUrl = configuration["LLM:ApiBaseUrl"] ?? "https://api.openai.com/v1",
+            ApiKey = configuration["LLM:ApiKey"] ?? string.Empty,
+            ModelName = configuration["LLM:ModelName"] ?? "gpt-4o",
+            TimeoutSeconds = int.TryParse(configuration["LLM:TimeoutSeconds"], out int timeout) ? timeout : 120,
+            MaxTokens = int.TryParse(configuration["LLM:MaxTokens"], out int maxTokens) ? maxTokens : 2048,
+            UseProxy = bool.TryParse(configuration["LLM:UseProxy"], out bool useProxy) && useProxy,
+            ProxyAddress = configuration["LLM:ProxyAddress"]
+        };
+        services.AddSingleton(llmSettings);
 
         return services;
     }
@@ -137,6 +155,28 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// 添加AI题目生成服务
+    /// </summary>
+    public static IServiceCollection AddSignalRAndNotificationServices(this IServiceCollection services)
+    {
+        // 注册AI题目生成服务
+        services.AddScoped<IAIQuestionGeneratorService, AIQuestionGeneratorService>();
+        
+        // 注册通知服务
+        services.AddScoped<INotificationService, NotificationService>();
+        
+        // 添加SignalR服务
+        services.AddSignalR()
+            .AddNewtonsoftJsonProtocol(options =>
+            {
+                options.PayloadSerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+                options.PayloadSerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+            });
+            
+        return services;
+    }
+
+    /// <summary>
     /// 配置考试系统API服务中间件
     /// </summary>
     /// <param name="app">应用程序构建器</param>
@@ -150,6 +190,9 @@ public static class ServiceCollectionExtensions
         app.UseAmis();
         app.UseCodeSpiritAuthorization();
         await app.UseCodeSpiritNavigationAsync();
+        
+        // 配置SignalR Hub
+        app.MapHub<QuestionGenerationHub>("/api/exam/questionGenerationHub");
         
         // 初始化设置管理
         await app.UseSettingsManagerAsync();

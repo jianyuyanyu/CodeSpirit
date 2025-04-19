@@ -1,0 +1,288 @@
+using CodeSpirit.ExamApi.Constants;
+using CodeSpirit.ExamApi.Dtos.Question;
+using CodeSpirit.ExamApi.Services.Helpers;
+using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.ExamApi.Services.LLM;
+using CodeSpirit.ExamApi.Settings;
+using CodeSpirit.Settings.Services.Interfaces;
+using Microsoft.Extensions.Configuration;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+namespace CodeSpirit.ExamApi.Services.Implementations;
+
+/// <summary>
+/// AI题目生成服务实现
+/// </summary>
+public class AIQuestionGeneratorService : IAIQuestionGeneratorService
+{
+    private readonly ISettingsService _settingsService;
+    private readonly ILogger<AIQuestionGeneratorService> _logger;
+    private readonly IConfiguration _configuration;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILLMClientFactory _llmClientFactory;
+    private readonly IPromptBuilder _promptBuilder;
+    private readonly IQuestionParser _questionParser;
+
+    /// <summary>
+    /// 初始化AI题目生成服务
+    /// </summary>
+    /// <param name="settingsService">设置服务</param>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="configuration">配置</param>
+    /// <param name="httpClientFactory">HTTP客户端工厂</param>
+    /// <param name="llmClientFactory">LLM客户端工厂</param>
+    /// <param name="promptBuilder">提示词构建器</param>
+    /// <param name="questionParser">题目解析器</param>
+    public AIQuestionGeneratorService(
+        ISettingsService settingsService,
+        ILogger<AIQuestionGeneratorService> logger,
+        IConfiguration configuration,
+        IHttpClientFactory httpClientFactory,
+        ILLMClientFactory llmClientFactory,
+        IPromptBuilder promptBuilder,
+        IQuestionParser questionParser)
+    {
+        _settingsService = settingsService;
+        _logger = logger;
+        _configuration = configuration;
+        _httpClientFactory = httpClientFactory;
+        _llmClientFactory = llmClientFactory;
+        _promptBuilder = promptBuilder;
+        _questionParser = questionParser;
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<CreateQuestionDto>> GenerateQuestionsAsync(AIGenerateQuestionDto request)
+    {
+        _logger.LogInformation("开始生成题目: 主题={Topic}, 数量={Count}, 类型={Type}, 难度={Difficulty}", 
+            request.Topic, request.Count, request.Type, request.Difficulty);
+
+        // 获取LLM客户端
+        var llmClient = await _llmClientFactory.CreateClientAsync();
+        if (llmClient == null)
+        {
+            _logger.LogError("未能创建LLM客户端，无法生成题目");
+            throw new InvalidOperationException("未配置LLM设置，请先配置大语言模型");
+        }
+
+        // 重试策略
+        int maxRetries = 3;
+        int retryCount = 0;
+        int backoffMs = 1000; // 初始重试延迟
+
+        while (true)
+        {
+            try
+            {
+                // 构建提示词
+                string prompt = _promptBuilder.BuildGenerationPrompt(request);
+                _logger.LogTrace("生成的提示词: {Prompt}", prompt);
+
+                // 发送请求获取生成内容
+                var generatedContent = await llmClient.GenerateContentAsync(prompt);
+                
+                if (string.IsNullOrEmpty(generatedContent))
+                {
+                    _logger.LogWarning("提取的生成内容为空");
+                    throw new InvalidOperationException("提取的生成内容为空");
+                }
+                
+                // 解析生成的题目
+                var questions = _questionParser.ParseQuestions(generatedContent, request);
+                
+                if (questions.Count == 0)
+                {
+                    _logger.LogWarning("未能解析出任何题目");
+                    throw new InvalidOperationException("未能解析出任何题目，请检查生成内容格式");
+                }
+                
+                _logger.LogInformation("成功生成 {Count} 道题目", questions.Count);
+                return questions;
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogError(ex, "格式错误: {Message}", ex.Message);
+                
+                if (retryCount < maxRetries)
+                {
+                    retryCount++;
+                    _logger.LogWarning("检测到格式错误，尝试请求修正");
+                    
+                    try
+                    {
+                        // 请求LLM修正格式
+                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request);
+                        
+                        // 使用修正后的内容尝试重新解析
+                        _logger.LogInformation("获取到修正内容，尝试重新解析");
+                        var questions = _questionParser.ParseQuestions(correctedContent, request);
+                        
+                        if (questions.Count > 0)
+                        {
+                            _logger.LogInformation("成功从修正内容中解析出 {Count} 道题目", questions.Count);
+                            return questions;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("从修正内容中未能解析出任何题目，继续重试");
+                        }
+                    }
+                    catch (Exception innerEx)
+                    {
+                        _logger.LogError(innerEx, "尝试修正格式失败，将进行常规重试");
+                    }
+                    
+                    await ApplyRetryDelay(retryCount, maxRetries, backoffMs);
+                    backoffMs *= 2; // 指数退避
+                    continue;
+                }
+                
+                throw;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "HTTP请求失败: {Message}", ex.Message);
+                
+                if (retryCount < maxRetries)
+                {
+                    retryCount++;
+                    await ApplyRetryDelay(retryCount, maxRetries, backoffMs);
+                    backoffMs *= 2; // 指数退避
+                    continue;
+                }
+                
+                throw new Exception($"生成题目失败，HTTP请求错误: {ex.Message}", ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // 记录错误
+                _logger.LogError(ex, "操作无效: {Message}", ex.Message);
+                
+                // 检查是否与格式相关
+                bool isFormatRelated = ex.Message.Contains("格式") || 
+                                       ex.Message.Contains("解析") || 
+                                       ex.Message.Contains("提取") || 
+                                       ex.Message.Contains("空");
+                
+                if (isFormatRelated && retryCount < maxRetries)
+                {
+                    retryCount++;
+                    _logger.LogWarning("检测到内容格式问题，尝试请求修正");
+                    
+                    try 
+                    {
+                        // 请求LLM修正格式
+                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request);
+                        
+                        // 使用修正后的内容尝试重新解析
+                        _logger.LogInformation("获取到修正内容，尝试重新处理");
+                        var questions = _questionParser.ParseQuestions(correctedContent, request);
+                        
+                        if (questions.Count > 0)
+                        {
+                            _logger.LogInformation("成功从修正内容中解析出 {Count} 道题目", questions.Count);
+                            return questions;
+                        }
+                    }
+                    catch (Exception innerEx)
+                    {
+                        _logger.LogError(innerEx, "尝试修正格式失败");
+                    }
+                    
+                    await ApplyRetryDelay(retryCount, maxRetries, backoffMs);
+                    backoffMs *= 2; // 指数退避
+                    continue;
+                }
+                
+                // 这些是我们自己抛出的异常，直接向上传递
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "生成题目时发生未预期错误: {Message}", ex.Message);
+                
+                // 判断是否可能是格式问题
+                bool isLikelyFormatIssue = ex.Message.Contains("JSON") || 
+                                           ex.Message.Contains("格式") || 
+                                           ex.Message.Contains("解析") || 
+                                           ex.InnerException is System.Text.Json.JsonException;
+                
+                if (isLikelyFormatIssue && retryCount < maxRetries)
+                {
+                    retryCount++;
+                    _logger.LogWarning("检测到可能的格式问题，尝试请求修正");
+                    
+                    try
+                    {
+                        // 请求LLM修正格式
+                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request);
+                        
+                        // 使用修正后的内容尝试重新解析
+                        _logger.LogInformation("获取到修正内容，尝试重新处理");
+                        var questions = _questionParser.ParseQuestions(correctedContent, request);
+                        
+                        if (questions.Count > 0)
+                        {
+                            _logger.LogInformation("成功从修正内容中解析出 {Count} 道题目", questions.Count);
+                            return questions;
+                        }
+                    }
+                    catch (Exception innerEx)
+                    {
+                        _logger.LogError(innerEx, "尝试修正格式失败");
+                    }
+                }
+                
+                if (retryCount < maxRetries)
+                {
+                    retryCount++;
+                    await ApplyRetryDelay(retryCount, maxRetries, backoffMs);
+                    backoffMs *= 2; // 指数退避
+                    continue;
+                }
+                
+                throw new Exception("生成题目时发生错误", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 应用重试延迟
+    /// </summary>
+    private async Task ApplyRetryDelay(int retryCount, int maxRetries, int delayMs)
+    {
+        _logger.LogWarning("尝试第 {RetryCount}/{MaxRetries} 次重试，延迟 {Delay}ms", 
+            retryCount, maxRetries, delayMs);
+        await Task.Delay(delayMs);
+    }
+
+    /// <summary>
+    /// 请求LLM修正格式问题
+    /// </summary>
+    private async Task<string> RequestFormatCorrectionAsync(ILLMClient llmClient, AIGenerateQuestionDto request)
+    {
+        _logger.LogInformation("请求LLM修正格式问题");
+        
+        try
+        {
+            // 构建修正提示词
+            string prompt = _promptBuilder.BuildCorrectionPrompt(request);
+            
+            _logger.LogDebug("发送格式修正请求");
+            
+            // 发送请求
+            string correctedContent = await llmClient.GenerateContentAsync(prompt);
+            
+            _logger.LogInformation("成功获取修正后的内容");
+            return correctedContent;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "请求格式修正失败: {ErrorMessage}", ex.Message);
+            throw new Exception("请求LLM修正格式失败", ex);
+        }
+    }
+} 

@@ -13,7 +13,6 @@ using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Data.Seeders;
 using CodeSpirit.IdentityApi.EventHandlers;
 using CodeSpirit.IdentityApi.Services;
-using CodeSpirit.LLM.Extensions;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.EventBus.Events;
@@ -232,7 +231,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddEventHandler<UserCreatedOrUpdatedEvent, UserCreatedOrUpdatedEventHandler>();
         
         // 注册LLM服务
-        builder.Services.AddLLMService(builder.Configuration);
+        //builder.Services.AddLLMService(builder.Configuration);
 
         return builder;
     }
@@ -276,7 +275,7 @@ public static class ServiceCollectionExtensions
         app.UseCodeSpiritAggregator();
         
         // 启用LLM服务
-        app.UseLLMService();
+        //app.UseLLMService();
         
         return app;
     }

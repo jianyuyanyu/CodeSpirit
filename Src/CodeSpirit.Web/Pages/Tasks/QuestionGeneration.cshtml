@@ -1,0 +1,12 @@
+@page "/Tasks/QuestionGeneration"
+@model CodeSpirit.Web.Pages.Tasks.QuestionGenerationModel
+@{
+    ViewData["Title"] = "AI题目生成";
+}
+
+<div id="question-generation-app"></div>
+
+@section Scripts {
+    @Html.Raw("<script src=\"https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js\"></script>")
+    <resource path="js/question-generation-amis.js" type="js" />
+}

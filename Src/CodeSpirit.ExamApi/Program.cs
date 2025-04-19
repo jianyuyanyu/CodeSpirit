@@ -1,11 +1,15 @@
 // Program.cs
 using CodeSpirit.ExamApi;
+using CodeSpirit.ExamApi.Extensions;
 using System.Text;
 
 Console.OutputEncoding = Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddExam();
+
+// 添加AI题目生成服务 - 使用Extensions命名空间下的方法
+CodeSpirit.ExamApi.Extensions.DependencyInjectionExtensions.AddAIQuestionGeneratorServices(builder.Services);
 
 var app = builder.Build();
 

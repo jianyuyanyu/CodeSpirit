@@ -1,8 +1,6 @@
 /**
  * 题目生成页面脚本 - 基于AMIS框架
  * 实现AI题目生成功能，包括表单提交、实时进度展示和状态通知
- * 
- * 外部CSS样式文件: /css/question-generation-amis.css
  */
 (function () {
     'use strict';
@@ -10,41 +8,41 @@
     // 初始化变量
     let connection = null;       // SignalR连接对象 
     let currentSessionId = null; // 当前生成会话ID
-    let amisScoped = null;       // AMIS作用域对象
-    let logs = [];               // 日志数组
+    let amisInstance = null;     // AMIS实例对象
 
-    // 全局数据对象，用于存储生成状态信息
-    window.globalData = {
-        generation: {
-            status: 'waiting',           // 生成状态：waiting, generating, completed, error
-            sessionId: null,             // 会话ID
-            progressStage: '准备中...',   // 当前阶段
-            progressPercentage: 0,       // 进度百分比
-            progressMessage: '正在初始化...', // 进度消息
-            questionCount: 0,            // 生成的题目数量
-            duration: 0,                 // 生成耗时(秒)
-            errorMessage: '',            // 错误消息
-            errorDetails: '',            // 错误详情
-            completionMessage: '生成完成'  // 完成消息
+    // 数据管理器 - 统一管理数据更新和传递，应用AMIS数据域和数据链概念
+    const DataManager = {
+        // 基础数据结构
+        initialData: {
+            generation: {
+                status: 'waiting',           // 生成状态：waiting, generating, completed, error
+                sessionId: null,             // 会话ID
+                progressStage: '准备中...',   // 当前阶段
+                progressPercentage: 0,       // 进度百分比
+                progressMessage: '正在初始化...', // 进度消息
+                questionCount: 0,            // 生成的题目数量
+                duration: 0,                 // 生成耗时(秒)
+                errorMessage: '',            // 错误消息
+                errorDetails: '',            // 错误详情
+                completionMessage: '生成完成'  // 完成消息
+            },
+            logs: [],                        // 日志数组
+            generatedQuestions: [],          // 生成的题目
+            showResults: false,              // 显示结果标志
+            formData: {}                     // 表单数据
         },
-        logs: []                        // 日志数组
-    };
 
-    /**
-     * 全局数据管理工具
-     */
-    window.GlobalData = {
         /**
-         * 获取指定路径的数据
+         * 获取数据 - 支持深层路径访问
          * @param {string} path - 数据路径，格式为"a.b.c"
          * @param {*} defaultValue - 数据不存在时的默认值
          * @returns {*} 获取的数据或默认值
          */
-        get: function (path, defaultValue) {
+        get(path, defaultValue) {
             if (!path) return defaultValue;
 
             const keys = path.split('.');
-            let current = window.globalData;
+            let current = this.initialData;
 
             for (const key of keys) {
                 if (current === undefined || current === null) {
@@ -57,16 +55,16 @@
         },
 
         /**
-         * 设置指定路径的数据
+         * 设置数据 - 支持深层路径设置
          * @param {string} path - 数据路径，格式为"a.b.c"
          * @param {*} value - 要设置的值
          * @returns {*} 设置的值
          */
-        set: function (path, value) {
+        set(path, value) {
             if (!path) return value;
 
             const keys = path.split('.');
-            let current = window.globalData;
+            let current = this.initialData;
 
             for (let i = 0; i < keys.length - 1; i++) {
                 if (current[keys[i]] === undefined) {
@@ -80,55 +78,247 @@
         },
 
         /**
-         * 将全局数据同步到amis上下文
-         * @param {object} scope - amis作用域
-         * @param {string[]} [selectedPaths] - 要同步的路径列表，不指定则同步全部数据
+         * 更新AMIS组件数据并触发更新
+         * @param {object|string} keyOrData - 要更新的键或数据对象
+         * @param {*} [value] - 如果keyOrData是字符串，则为要设置的值
          */
-        syncToAmis: function (scope, selectedPaths) {
-            if (!scope || !scope.setValueByName) return;
+        updateAmis(keyOrData, value) {
+            if (!amisInstance) {
+                console.warn('AMIS实例不可用，无法更新数据');
+                return;
+            }
 
             try {
-                if (selectedPaths && Array.isArray(selectedPaths)) {
-                    // 只同步指定路径的数据
-                    for (const path of selectedPaths) {
-                        const value = this.get(path);
-                        scope.setValueByName(path, value);
+                const updateData = { data: {} };
+                
+                // 如果是对象，则更新多个键
+                if (typeof keyOrData === 'object' && keyOrData !== null) {
+                    Object.keys(keyOrData).forEach(key => {
+                        // 设置到内部数据
+                        if (key.includes('.')) {
+                            this.set(key, keyOrData[key]);
+                            // 为AMIS准备扁平化的数据 - 同时处理嵌套路径
+                            const finalKey = key.split('.').pop();
+                            updateData.data[finalKey] = keyOrData[key];
+                        } else {
+                            // 检查是否是从generation对象转换来的键
+                            if (this.initialData.generation && this.initialData.generation.hasOwnProperty(key)) {
+                                this.initialData.generation[key] = keyOrData[key];
+                            } else {
+                                this.initialData[key] = keyOrData[key];
+                            }
+                            updateData.data[key] = keyOrData[key];
+                        }
+                    });
+                } 
+                // 如果是字符串，则更新单个键
+                else if (typeof keyOrData === 'string') {
+                    // 设置到内部数据
+                    if (keyOrData.includes('.')) {
+                        this.set(keyOrData, value);
+                        // 为AMIS准备扁平化的数据
+                        const finalKey = keyOrData.split('.').pop();
+                        updateData.data[finalKey] = value;
+                    } else {
+                        // 检查是否是从generation对象转换来的键
+                        if (this.initialData.generation && this.initialData.generation.hasOwnProperty(keyOrData)) {
+                            this.initialData.generation[keyOrData] = value;
+                        } else {
+                            this.initialData[keyOrData] = value;
+                        }
+                        updateData.data[keyOrData] = value;
                     }
-                } else {
-                    // 同步所有数据
-                    for (const key in window.globalData.generation) {
-                        scope.setValueByName(key, window.globalData.generation[key]);
-                    }
-                    // 同步日志
-                    scope.setValueByName('generationLogs', window.globalData.logs);
                 }
+
+                // 确保完整同步generation对象的关键属性到顶层
+                if (this.initialData.generation) {
+                    // 同步generation的关键属性到顶层，确保数据链访问
+                    const keysToSync = [
+                        'progressStage', 'progressPercentage', 'progressMessage', 
+                        'status', 'errorMessage', 'errorDetails', 'completionMessage'
+                    ];
+                    
+                    keysToSync.forEach(key => {
+                        if (this.initialData.generation[key] !== undefined) {
+                            updateData.data[key] = this.initialData.generation[key];
+                            // 同步到initialData顶层保持数据一致性
+                            this.initialData[key] = this.initialData.generation[key];
+                        }
+                    });
+
+                    // 特殊处理generationStatus字段，对应generation.status
+                    if (this.initialData.generation.status !== undefined) {
+                        updateData.data.generationStatus = this.initialData.generation.status;
+                        this.initialData.generationStatus = this.initialData.generation.status;
+                    }
+                }
+
+                // 使用AMIS实例更新UI
+                amisInstance.updateProps(updateData);
+                
+                // 尝试强制更新UI
+                setTimeout(() => {
+                    if (amisInstance.forceUpdate) {
+                        amisInstance.forceUpdate();
+                    }
+                }, 10);
+                
+                return true;
             } catch (error) {
-                console.error('同步数据到AMIS失败:', error);
+                console.error('更新AMIS数据失败:', error);
+                return false;
             }
         },
 
         /**
-         * 更新单个字段并同步到AMIS
-         * @param {string} path - 数据路径
-         * @param {*} value - 要设置的值
-         * @param {object} [scope] - amis作用域，不提供则使用全局保存的作用域
+         * 添加日志条目
+         * @param {string} message - 日志消息
          */
-        update: function (path, value, scope) {
-            this.set(path, value);
-
-            // 确保作用域对象正确，并且有setValueByName方法
-            const effectiveScope = scope || window.amisScoped;
-            if (effectiveScope && typeof effectiveScope.setValueByName === 'function') {
-                if (path.startsWith('generation.')) {
-                    // 转换路径从generation.xxx到xxx
-                    const amisPath = path.substring('generation.'.length);
-                    effectiveScope.setValueByName(amisPath, value);
-                } else {
-                    effectiveScope.setValueByName(path, value);
-                }
-            } else {
-                console.log("未能更新AMIS作用域，setValueByName方法不可用");
+        addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            // 使用简单字符串格式的日志项，便于Log组件显示
+            const logItem = `[${timestamp}] ${message}`;
+            
+            // 添加到开头
+            if (!this.initialData.logs) {
+                this.initialData.logs = [];
             }
+            this.initialData.logs.unshift(logItem);
+            
+            // 限制日志条数
+            if (this.initialData.logs.length > 100) {
+                this.initialData.logs = this.initialData.logs.slice(0, 100);
+            }
+            
+            // 同步到AMIS可用的generationLogs字段
+            this.initialData.generationLogs = [...this.initialData.logs];
+            
+            // 更新AMIS - 直接使用updateProps更新可靠性更高
+            if (amisInstance) {
+                amisInstance.updateProps({
+                    data: {
+                        generationLogs: this.initialData.logs
+                    }
+                });
+                
+                // 强制刷新
+                setTimeout(() => {
+                    if (amisInstance && amisInstance.forceUpdate) {
+                        amisInstance.forceUpdate();
+                    }
+                }, 50);
+            }
+            
+            console.log('生成日志:', message);
+        },
+
+        /**
+         * 更新生成状态
+         * @param {string} status - 生成状态
+         */
+        updateGenerationStatus(status) {
+            this.set('generation.status', status);
+            this.updateAmis('generationStatus', status);
+            
+            // 确保根据状态更新页面CSS类
+            setTimeout(() => {
+                checkGenerationStatusClass(status);
+            }, 50);
+            
+            console.log(`更新生成状态: ${status}`);
+        },
+
+        /**
+         * 更新进度
+         * @param {string} stage - 当前阶段
+         * @param {string} message - 进度消息
+         * @param {number} percentage - 进度百分比
+         */
+        updateProgress(stage, message, percentage) {
+            // 确保百分比是有效数值
+            if (isNaN(percentage)) {
+                percentage = 0;
+            }
+            
+            // 获取格式化的阶段名称
+            const formattedStage = getStageName(stage);
+            
+            // 更新内部数据
+            this.set('generation.progressStage', formattedStage);
+            this.set('generation.progressMessage', message);
+            this.set('generation.progressPercentage', percentage);
+            
+            // 同时更新到顶层，确保数据链访问
+            this.initialData.progressStage = formattedStage;
+            this.initialData.progressMessage = message;
+            this.initialData.progressPercentage = percentage;
+            
+            // 直接使用amisInstance更新更可靠
+            if (amisInstance) {
+                amisInstance.updateProps({
+                    data: {
+                        progressStage: formattedStage,
+                        progressMessage: message,
+                        progressPercentage: percentage,
+                        // 确保生成状态一致
+                        generationStatus: this.get('generation.status', 'generating')
+                    }
+                });
+                
+                // 强制刷新
+                setTimeout(() => {
+                    if (amisInstance && amisInstance.forceUpdate) {
+                        amisInstance.forceUpdate();
+                    }
+                }, 50);
+            }
+            
+            console.log(`更新进度: ${stage}, ${message}, ${percentage}%`);
+        },
+
+        /**
+         * 设置表单数据
+         * @param {object} formData - 表单数据
+         */
+        setFormData(formData) {
+            this.initialData.formData = formData;
+        },
+
+        /**
+         * 重置所有数据到初始状态
+         */
+        reset() {
+            // 重置基础数据
+            this.initialData.generation = {
+                status: 'waiting',
+                sessionId: null,
+                progressStage: '准备中...',
+                progressPercentage: 0,
+                progressMessage: '正在初始化...',
+                questionCount: 0,
+                duration: 0,
+                errorMessage: '',
+                errorDetails: '',
+                completionMessage: '生成完成'
+            };
+            this.initialData.logs = [];
+            this.initialData.generatedQuestions = [];
+            this.initialData.showResults = false;
+            
+            // 更新AMIS
+            this.updateAmis({
+                generationStatus: 'waiting',
+                progressStage: '准备中...',
+                progressMessage: '正在初始化...',
+                progressPercentage: 0,
+                errorMessage: '',
+                errorDetails: '',
+                generationLogs: [],
+                generatedQuestions: [],
+                showResults: false
+            });
+            
+            console.log('数据已重置');
         }
     };
 
@@ -149,7 +339,7 @@
     /**
      * 错误处理工具
      */
-    window.ErrorHandler = {
+    const ErrorHandler = {
         /**
          * 处理API错误
          * @param {string} title - 错误标题
@@ -159,23 +349,19 @@
             console.error(`${title}: ${message}`);
 
             // 添加到日志
-            addLog(`错误: ${message}`);
+            DataManager.addLog(`错误: ${message}`);
 
-            // 更新全局状态
-            GlobalData.set('generation.status', 'error');
-            GlobalData.set('generation.errorMessage', title);
-            GlobalData.set('generation.errorDetails', message);
-
-            // 同步到AMIS作用域
-            const updateMethod = window.amisUpdateMethod;
-            if (updateMethod && typeof updateMethod === 'function') {
-                updateMethod('generationStatus', 'error');
-                updateMethod('errorMessage', title);
-                updateMethod('errorDetails', message);
-            } else {
-                console.error("无法更新AMIS作用域，更新方法不可用");
-                alert(`错误: ${title} - ${message}`);
-            }
+            // 更新状态
+            DataManager.set('generation.status', 'error');
+            DataManager.set('generation.errorMessage', title);
+            DataManager.set('generation.errorDetails', message);
+            
+            // 更新AMIS数据
+            DataManager.updateAmis({
+                generationStatus: 'error',
+                errorMessage: title,
+                errorDetails: message
+            });
 
             // 停止SignalR连接
             if (connection) {
@@ -205,7 +391,7 @@
             connection.stop();
         }
 
-        addLog("正在建立实时连接...");
+        DataManager.addLog("正在建立实时连接...");
         console.log("正在建立实时连接...", sessionId);
 
         // 创建连接
@@ -224,13 +410,13 @@
         // 启动连接
         connection.start()
             .then(function () {
-                addLog("实时连接已建立");
+                DataManager.addLog("实时连接已建立");
                 console.log("实时连接已建立");
                 // 加入生成组
                 return connection.invoke("JoinGenerationGroup", sessionId);
             })
             .then(function () {
-                addLog(`已加入生成组: ${sessionId}`);
+                DataManager.addLog(`已加入生成组: ${sessionId}`);
                 console.log(`已加入生成组: ${sessionId}`);
                 executeGeneration(sessionId);
             })
@@ -238,43 +424,6 @@
                 console.error("连接错误:", err);
                 ErrorHandler.handleApiError("连接错误", err.toString());
             });
-    }
-
-    /**
-     * 更新生成状态
-     * @param {string} status - 生成状态：waiting, generating, completed, error
-     */
-    function updateGenerationStatus(status) {
-        console.log(`更新生成状态: ${status}`);
-
-        // 更新全局状态
-        GlobalData.set('generation.status', status);
-
-        // 使用AMIS实例直接更新
-        if (window.amisInstance && typeof window.amisInstance.updateProps === 'function') {
-            try {
-                window.amisInstance.updateProps({
-                    data: {
-                        generationStatus: status
-                    }
-                });
-                console.log(`通过amisInstance.updateProps更新状态成功: ${status}`);
-                return true;
-            } catch (err) {
-                console.error("通过AMIS实例更新状态时出错:", err);
-            }
-        }
-
-        // 备用方法：使用全局更新方法
-        const updateMethod = window.amisUpdateMethod;
-        if (updateMethod && typeof updateMethod === 'function') {
-            updateMethod('generationStatus', status);
-            console.log(`通过updateMethod更新状态成功: ${status}`);
-            return true;
-        }
-
-        console.warn("无法更新生成状态，更新方法不可用");
-        return false;
     }
 
     /**
@@ -288,8 +437,8 @@
 
         connection.on("GenerationStarted", (data) => {
             console.log("收到生成开始事件:", data);
-            updateGenerationStatus("进行中");
-            addLog("生成已开始");
+            DataManager.updateGenerationStatus("generating");
+            DataManager.addLog("生成已开始");
         });
 
         connection.on("GenerationProgress", (data) => {
@@ -298,50 +447,51 @@
             const stage = data.stage || '';
             const message = data.message || '';
             const percentage = data.percentage || 0;
-            updateProgress(stage, message, percentage);
+            DataManager.updateProgress(stage, message, percentage);
+            
+            // 添加进度日志
+            const progressMessage = `${getStageName(stage)}: ${message} (${percentage}%)`;
+            DataManager.addLog(progressMessage);
         });
 
         connection.on("GenerationCompleted", (data) => {
             console.log(`收到生成完成事件:`, data);
             // 从对象中提取信息
-
             const generatedCount = data.generatedCount || data.questionCount || 0;
             const message = data.message || generatedCount;
+            
             // 更新状态
-            updateGenerationStatus("completed");
+            DataManager.updateGenerationStatus("completed");
             // 更新进度
-            updateProgress("已完成", message, 100);
-            addLog(`生成完成: ${message}`);
+            DataManager.updateProgress("已完成", message, 100);
+            DataManager.addLog(`生成完成: ${message}`);
 
             // 更新生成数量信息
-            if (window.amisUpdateMethod) {
-                window.amisUpdateMethod('questionCount', generatedCount);
-                window.amisUpdateMethod('generationStatus', 'completed'); // 确保状态更新
-            }
+            DataManager.updateAmis({
+                questionCount: generatedCount,
+                generationStatus: 'completed'
+            });
 
             // 自动获取生成的题目
-            const sessionId = GlobalData.get('generation.sessionId');
+            const sessionId = DataManager.get('generation.sessionId');
             if (sessionId) {
                 // 添加短暂延迟确保后端数据已就绪
                 setTimeout(() => {
                     fetchGeneratedQuestions(sessionId);
                     // 显示结果区域
-                    if (window.amisUpdateMethod) {
-                        window.amisUpdateMethod('showResults', true);
-                        // 强制更新UI
-                        forceUpdateAmisComponent();
-                        // 滚动到结果区域
-                        setTimeout(() => {
-                            const resultsElement = document.querySelector('.generated-questions-container');
-                            if (resultsElement) {
-                                resultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                        }, 500);
-                    }
+                    DataManager.updateAmis('showResults', true);
+                    
+                    // 滚动到结果区域
+                    setTimeout(() => {
+                        const resultsElement = document.querySelector('.generated-questions-container');
+                        if (resultsElement) {
+                            resultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 500);
                 }, 800);
             } else {
                 console.error("无法获取生成的题目，会话ID不存在");
-                addLog("无法获取生成的题目，会话ID不存在");
+                DataManager.addLog("无法获取生成的题目，会话ID不存在");
             }
         });
 
@@ -355,9 +505,9 @@
                 errorMessage = data.error || data.message || data.errorMessage || '未知错误';
             }
 
-            updateGenerationStatus("失败");
-            updateProgress("失败", errorMessage, 0);
-            addLog(`生成失败: ${errorMessage}`);
+            DataManager.updateGenerationStatus("error");
+            DataManager.updateProgress("失败", errorMessage, 0);
+            DataManager.addLog(`生成失败: ${errorMessage}`);
             ErrorHandler.handleApiError("生成失败", errorMessage);
         });
 
@@ -376,12 +526,10 @@
         }
 
         // 更新加载状态
-        if (window.amisUpdateMethod) {
-            window.amisUpdateMethod({
-                isFetchingQuestions: true,
-                questionFetchMessage: '正在获取生成的题目...'
-            });
-        }
+        DataManager.updateAmis({
+            isFetchingQuestions: true,
+            questionFetchMessage: '正在获取生成的题目...'
+        });
 
         // 获取认证令牌
         const token = getToken();
@@ -417,51 +565,28 @@
                 // 确保数据格式正确 - 这里需要检查ApiResponse的结构
                 if (!data || !Array.isArray(data.data)) {
                     console.warn('获取到的题目数据格式不正确:', data);
-                    if (window.amisUpdateMethod) {
-                        window.amisUpdateMethod({
-                            isFetchingQuestions: false,
-                            questionFetchMessage: '题目数据格式不正确',
-                            generatedQuestions: []
-                        });
-                    }
+                    DataManager.updateAmis({
+                        isFetchingQuestions: false,
+                        questionFetchMessage: '题目数据格式不正确',
+                        generatedQuestions: []
+                    });
                     return;
                 }
 
-                // 格式化题目数据 - 使用data作为题目数组
-                const formattedQuestions = data.data.map((question, index) => {
-                    // 为选项添加标签 (A, B, C, D...)
-                    const options = Array.isArray(question.options) ?
-                        question.options.map((option, optIndex) => ({
-                            ...option,
-                            label: String.fromCharCode(65 + optIndex) // A, B, C, D...
-                        })) : [];
-
-                    return {
-                        ...question,
-                        index: index + 1,
-                        typeName: question.typeName || '未知类型',
-                        difficultyName: question.difficultyName || '未知难度',
-                        content: question.content || '无内容',
-                        options: options
-                    };
-                });
+                // 使用处理函数确保所有字段正确处理
+                const formattedQuestions = processQuestionData(data.data);
 
                 // 更新AMIS组件
-                if (window.amisUpdateMethod) {
-                    window.amisUpdateMethod({
-                        isFetchingQuestions: false,
-                        questionFetchMessage: '题目获取成功',
-                        generatedQuestions: formattedQuestions,
-                        showResults: true,               // 确保显示结果面板
-                        generationStatus: 'completed'    // 确保状态正确
-                    });
-                    
-                    // 强制更新
-                    forceUpdateAmisComponent();
-                    
-                    // 确保状态类正确
-                    checkGenerationStatusClass('completed');
-                }
+                DataManager.updateAmis({
+                    isFetchingQuestions: false,
+                    questionFetchMessage: '题目获取成功',
+                    generatedQuestions: formattedQuestions,
+                    showResults: true,               // 确保显示结果面板
+                    generationStatus: 'completed'    // 确保状态正确
+                });
+                
+                // 确保状态类正确
+                checkGenerationStatusClass('completed');
 
                 // 滚动到题目容器
                 setTimeout(() => {
@@ -473,14 +598,73 @@
             })
             .catch(error => {
                 console.error('获取题目时发生错误:', error);
-                if (window.amisUpdateMethod) {
-                    window.amisUpdateMethod({
-                        isFetchingQuestions: false,
-                        questionFetchMessage: `获取题目失败: ${error.message}`,
-                        generatedQuestions: []
-                    });
-                }
+                DataManager.updateAmis({
+                    isFetchingQuestions: false,
+                    questionFetchMessage: `获取题目失败: ${error.message}`,
+                    generatedQuestions: []
+                });
             });
+    }
+
+    /**
+     * 辅助函数 - 从题目类型ID获取名称
+     * @param {number} typeId - 题目类型ID
+     * @returns {string} 题目类型名称
+     */
+    function getQuestionTypeNameByValue(typeId) {
+        const typeMap = {
+            1: '单选题',
+            2: '多选题',
+            3: '判断题',
+            4: '填空题',
+            5: '简答题'
+        };
+        return typeMap[typeId] || '未知类型';
+    }
+
+    /**
+     * 辅助函数 - 从难度ID获取名称
+     * @param {number} difficultyId - 题目难度ID
+     * @returns {string} 题目难度名称
+     */
+    function getQuestionDifficultyNameByValue(difficultyId) {
+        const difficultyMap = {
+            1: '简单',
+            2: '中等',
+            3: '困难'
+        };
+        return difficultyMap[difficultyId] || '未知难度';
+    }
+
+    /**
+     * 辅助函数 - 格式化正确答案
+     * @param {object} question - 题目对象
+     * @returns {string} 格式化后的正确答案
+     */
+    function formatCorrectAnswer(question) {
+        // 如果已有正确答案，直接返回
+        if (question.correctAnswer) return question.correctAnswer;
+        
+        // 尝试从选项中提取正确答案
+        if (Array.isArray(question.options)) {
+            const correctOptions = question.options.filter(opt => opt.isCorrect);
+            if (correctOptions.length > 0) {
+                // 对于单选题和多选题，以字母和内容格式化
+                const labels = correctOptions.map((opt, idx) => 
+                    String.fromCharCode(65 + question.options.indexOf(opt)));
+                    
+                if (labels.length > 0) {
+                    return `${labels.join('、')}：${correctOptions.map(opt => opt.content).join('；')}`;
+                }
+            }
+        }
+        
+        // 判断题特殊处理
+        if (question.type === 3) {
+            return question.answer === true ? '正确' : '错误';
+        }
+        
+        return '未提供答案';
     }
 
     /**
@@ -489,21 +673,8 @@
      */
     function getToken() {
         // 从cookie或localStorage中获取令牌
-        // 这里使用示例实现，需要根据实际认证方式调整
         return document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1") ||
             localStorage.getItem('token');
-    }
-
-    /**
-     * 强制AMIS组件重新渲染
-     * 参考exam.js中的方法，确保所有数据正确同步到AMIS
-     */
-    function forceUpdateAmisComponent() {
-        setTimeout(() => {
-            if (window.amisInstance && window.amisInstance.forceUpdate) {
-                window.amisInstance.forceUpdate();
-            }
-        }, 200);
     }
 
     /**
@@ -511,10 +682,10 @@
      * @param {string} sessionId - 生成会话ID
      */
     function executeGeneration(sessionId) {
-        addLog("触发后端生成过程...");
+        DataManager.addLog("触发后端生成过程...");
 
-        // 获取AMIS表单数据
-        const formData = window.globalData && window.globalData.formData ? window.globalData.formData : {};
+        // 获取表单数据
+        const formData = DataManager.initialData.formData || {};
 
         console.log(`正在执行生成，会话ID: ${sessionId}`);
 
@@ -543,117 +714,18 @@
         console.log("执行生成过程:", formData);
         console.log("AMIS上下文对象:", context);
 
-        // 保存表单数据到全局对象，供后续请求使用
-        GlobalData.set('formData', formData);
-        window.globalData.formData = formData;
-
-        // 检查AMIS作用域关键属性（避免循环引用问题）
-        if (context && context.scoped) {
-            console.log("AMIS scoped对象可用");
-            console.log("scoped属性:", Object.keys(context.scoped));
-
-            if (context.scoped.getComponents) {
-                try {
-                    const components = context.scoped.getComponents();
-                    console.log("组件数量:", components ? components.length : 0);
-                } catch (err) {
-                    console.error("获取组件失败:", err);
-                }
-            }
-        }
-
-        // 获取更新方法
-        let updateMethod = null;
-
-        // 方法1: 直接使用AMIS的setState方法
-        if (context && context.scoped && typeof context.scoped.setState === 'function') {
-            console.log("找到scoped.setState方法");
-            updateMethod = function (key, value) {
-                const updateObj = {};
-                updateObj[key] = value;
-                context.scoped.setState(updateObj);
-            };
-        }
-        // 方法2: 使用AMIS的setValueByName方法
-        else if (context && context.scoped && typeof context.scoped.setValueByName === 'function') {
-            console.log("找到scoped.setValueByName方法");
-            updateMethod = context.scoped.setValueByName.bind(context.scoped);
-        }
-        // 方法3: 使用表单的setValues方法
-        else if (context && context.scoped && context.scoped.getComponentByName && context.scoped.getComponentByName('form')) {
-            console.log("找到表单组件");
-            const form = context.scoped.getComponentByName('form');
-            if (form && typeof form.setValues === 'function') {
-                console.log("找到form.setValues方法");
-                updateMethod = function (key, value) {
-                    const values = {};
-                    values[key] = value;
-                    form.setValues(values);
-                };
-            }
-        }
-        // 方法4: 查找页面组件并使用其setState方法
-        else if (context && context.scoped && context.scoped.getComponents) {
-            try {
-                const components = context.scoped.getComponents();
-                console.log("查找组件中的setState方法，组件数:", components ? components.length : 0);
-                if (components && components.length > 0) {
-                    for (let i = 0; i < components.length; i++) {
-                        const comp = components[i];
-                        if (comp && typeof comp.setState === 'function') {
-                            console.log("找到组件setState方法");
-                            updateMethod = function (key, value) {
-                                const updateObj = {};
-                                updateObj[key] = value;
-                                comp.setState(updateObj);
-                            };
-                            break;
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("查找组件时出错:", err);
-            }
-        }
-
-        // 方法5: 通过amisInstance直接更新
-        if (!updateMethod && window.amisInstance && window.amisInstance.updateProps) {
-            console.log("找到amisInstance.updateProps方法");
-            updateMethod = function (key, value) {
-                try {
-                    const updateData = { data: {} };
-                    updateData.data[key] = value;
-                    window.amisInstance.updateProps(updateData);
-                    console.log(`通过amisInstance更新: ${key} = ${JSON.stringify(value)}`);
-                } catch (err) {
-                    console.error("通过amisInstance更新失败:", err);
-                }
-            };
-        }
-
-        // 如果没有找到其他方法，使用一个模拟的方法并记录错误
-        if (!updateMethod) {
-            console.warn("无法找到有效的AMIS更新方法，将使用模拟方法");
-            updateMethod = function (key, value) {
-                console.log(`模拟更新: ${key} = ${JSON.stringify(value)}`);
-            };
-        }
-
-        // 保存更新方法到全局变量
-        window.amisUpdateMethod = updateMethod;
+        // 保存表单数据
+        DataManager.setFormData(formData);
 
         // 更新状态为生成中
-        GlobalData.set('generation.status', 'generating');
-        updateMethod('generationStatus', 'generating');
-
+        DataManager.updateGenerationStatus('generating');
+        
         // 初始化进度
-        updateMethod('progressPercentage', 0);
-        updateMethod('progressStage', '准备中...');
-        updateMethod('progressMessage', '正在初始化...');
-
+        DataManager.updateProgress('准备中...', '正在初始化...', 0);
+        
         // 清空日志
-        GlobalData.set('logs', []);
-        updateMethod('generationLogs', []);
+        DataManager.initialData.logs = [];
+        DataManager.updateAmis('generationLogs', []);
 
         // 直接调用fetch而不依赖AMIS的ajax
         fetch("/exam/api/exam/Questions/ai/generate-and-save", {
@@ -692,8 +764,8 @@
                     const sessionId = responseData.data.sessionId;
                     currentSessionId = sessionId;
 
-                    // 更新全局变量
-                    GlobalData.set('generation.sessionId', sessionId);
+                    // 更新会话ID
+                    DataManager.set('generation.sessionId', sessionId);
                     console.log("获取到会话ID:", sessionId);
 
                     // 初始化SignalR连接
@@ -704,17 +776,8 @@
                 } else {
                     // 错误处理
                     console.error("请求返回失败状态:", responseData);
-                    GlobalData.set('generation.status', 'error');
-                    GlobalData.set('generation.errorMessage', "生成失败");
-                    GlobalData.set('generation.errorDetails', responseData.msg || "未知错误");
-
-                    updateMethod('generationStatus', 'error');
-                    updateMethod('errorMessage', "生成失败");
-                    updateMethod('errorDetails', responseData.msg || "未知错误");
-
-                    // 记录日志
-                    addLog(`错误: ${responseData.msg || "未知错误"}`);
-
+                    ErrorHandler.handleApiError("生成失败", responseData.msg || "未知错误");
+                    
                     // 停止连接
                     if (connection) {
                         connection.stop();
@@ -724,18 +787,8 @@
             .catch(error => {
                 // 错误处理
                 console.error("请求失败:", error);
-
-                GlobalData.set('generation.status', 'error');
-                GlobalData.set('generation.errorMessage', "请求失败");
-                GlobalData.set('generation.errorDetails', error.toString());
-
-                updateMethod('generationStatus', 'error');
-                updateMethod('errorMessage', "请求失败");
-                updateMethod('errorDetails', error.toString());
-
-                // 记录日志
-                addLog(`错误: ${error.toString()}`);
-
+                ErrorHandler.handleApiError("请求失败", error.toString());
+                
                 // 停止连接
                 if (connection) {
                     connection.stop();
@@ -744,264 +797,18 @@
     };
 
     /**
-     * 更新进度显示
-     * @param {string} stage - 当前阶段名称
-     * @param {string} message - 进度消息
-     * @param {number} percentage - 完成百分比
-     */
-    function updateProgress(stage, message, percentage) {
-        console.log(`更新进度: ${stage}, ${message}, ${percentage}%`);
-
-        // 确保百分比是有效数值
-        if (isNaN(percentage)) {
-            percentage = 0;
-            console.warn("进度百分比无效，已设为0");
-        }
-
-        // 更新全局状态
-        GlobalData.set('generation.progressStage', getStageName(stage));
-        GlobalData.set('generation.progressMessage', message);
-        GlobalData.set('generation.progressPercentage', percentage);
-
-        // 确保生成状态为"生成中"
-        if (GlobalData.get('generation.status') !== 'generating') {
-            GlobalData.set('generation.status', 'generating');
-        }
-
-        // 使用AMIS实例直接更新（最可靠的方法）
-        if (window.amisInstance && typeof window.amisInstance.updateProps === 'function') {
-            try {
-                // 直接更新所有进度相关属性
-                window.amisInstance.updateProps({
-                    data: {
-                        generationStatus: 'generating',
-                        progressStage: getStageName(stage),
-                        progressMessage: message,
-                        progressPercentage: percentage,
-                        generationLogs: window.globalData.logs || []
-                    }
-                });
-
-                // 尝试调用强制更新
-                if (typeof window.amisInstance.forceUpdate === 'function') {
-                    window.amisInstance.forceUpdate();
-                }
-
-                return true;
-            } catch (err) {
-                console.error("通过AMIS实例更新进度时出错:", err);
-            }
-        }
-
-        // 备用方法：使用全局更新方法
-        try {
-            const updateMethod = window.amisUpdateMethod;
-            if (updateMethod && typeof updateMethod === 'function') {
-                // 确保更新UI状态为"生成中"
-                updateMethod('generationStatus', 'generating');
-                updateMethod('progressStage', getStageName(stage));
-                updateMethod('progressMessage', message);
-                updateMethod('progressPercentage', percentage);
-                console.log("通过updateMethod更新进度成功");
-                return true;
-            } else {
-                console.error("无法更新AMIS进度，更新方法不可用");
-
-                // 尝试通过amisInstance更新（最后尝试）
-                if (window.amisInstance && window.amisInstance.updateProps) {
-                    const updateData = {
-                        data: {
-                            generationStatus: 'generating',
-                            progressStage: getStageName(stage),
-                            progressMessage: message,
-                            progressPercentage: percentage
-                        }
-                    };
-                    window.amisInstance.updateProps(updateData);
-                    console.log("通过amisInstance.updateProps更新进度成功");
-                }
-            }
-        } catch (err) {
-            console.error("更新进度时出错:", err);
-
-            // 直接尝试通过DOM更新，作为最后的备选方案
-            updateProgressDOM(stage, message, percentage);
-        }
-    }
-
-    /**
-     * 使用DOM直接更新进度显示（备选方案）
-     * @param {string} stage - 当前阶段名称
-     * @param {string} message - 进度消息
-     * @param {number} percentage - 完成百分比
-     */
-    function updateProgressDOM(stage, message, percentage) {
-        try {
-            console.log("尝试通过DOM直接更新进度...");
-
-            // 更新进度条
-            const progressBars = document.querySelectorAll('.progress .progress-bar');
-            if (progressBars && progressBars.length > 0) {
-                progressBars.forEach(bar => {
-                    bar.style.width = `${percentage}%`;
-                    bar.setAttribute('aria-valuenow', percentage);
-                });
-                console.log("更新了DOM进度条");
-            }
-
-            // 更新阶段文本
-            const stageElements = document.querySelectorAll('[data-role="progress-stage"]');
-            if (stageElements && stageElements.length > 0) {
-                const stageName = getStageName(stage);
-                stageElements.forEach(el => {
-                    el.textContent = stageName;
-                });
-                console.log("更新了DOM阶段文本");
-            }
-
-            // 更新进度消息
-            const messageElements = document.querySelectorAll('[data-role="progress-message"]');
-            if (messageElements && messageElements.length > 0) {
-                messageElements.forEach(el => {
-                    el.textContent = message;
-                });
-                console.log("更新了DOM进度消息");
-            }
-
-            // 更新百分比显示
-            const percentageElements = document.querySelectorAll('[data-role="progress-percentage"]');
-            if (percentageElements && percentageElements.length > 0) {
-                percentageElements.forEach(el => {
-                    el.textContent = `${percentage}%`;
-                });
-                console.log("更新了DOM百分比显示");
-            }
-
-            // 确保生成中的容器显示
-            const generatingContainer = document.querySelector('[data-status-container="generating"]');
-            if (generatingContainer) {
-                generatingContainer.style.display = 'block';
-                console.log("显示了生成中容器");
-            }
-
-            // 隐藏其他状态容器
-            const otherContainers = document.querySelectorAll('[data-status-container]:not([data-status-container="generating"])');
-            if (otherContainers && otherContainers.length > 0) {
-                otherContainers.forEach(container => {
-                    container.style.display = 'none';
-                });
-                console.log("隐藏了其他状态容器");
-            }
-
-            return true;
-        } catch (error) {
-            console.error("通过DOM更新进度时出错:", error);
-            return false;
-        }
-    }
-
-    /**
-     * 添加日志条目
-     * @param {string} message - 日志消息
-     */
-    function addLog(message) {
-        try {
-            const timestamp = new Date().toLocaleTimeString();
-            const logItem = `[${timestamp}] ${message}`;
-            console.log("生成日志:", logItem);
-
-            // 添加到开头
-            if (!window.globalData.logs) {
-                window.globalData.logs = [];
-            }
-            window.globalData.logs.unshift(logItem);
-
-            // 限制日志条数，防止过多
-            if (window.globalData.logs.length > 100) {
-                window.globalData.logs = window.globalData.logs.slice(0, 100);
-            }
-
-            // 更新AMIS中的日志数组
-            const updateMethod = window.amisUpdateMethod;
-            if (updateMethod && typeof updateMethod === 'function') {
-                updateMethod('generationLogs', window.globalData.logs);
-            } else {
-                console.warn("无法更新AMIS日志，更新方法不可用");
-
-                // 尝试通过amisInstance更新
-                if (window.amisInstance && window.amisInstance.updateProps) {
-                    const updateData = {
-                        data: {
-                            generationLogs: window.globalData.logs
-                        }
-                    };
-                    window.amisInstance.updateProps(updateData);
-                }
-            }
-
-            // 强制刷新AMIS页面
-            if (window.amisInstance && window.amisInstance.forceUpdate) {
-                try {
-                    window.amisInstance.forceUpdate();
-                } catch (err) {
-                    console.warn("强制刷新AMIS页面失败:", err);
-                }
-            }
-        } catch (err) {
-            console.error("添加日志时出错:", err);
-        }
-    }
-
-    /**
      * 重置表单和状态
      */
     function resetForm() {
-        // 更新全局状态
-        GlobalData.set('generation.status', 'waiting');
-        window.globalData.logs = [];
-
-        // 使用全局更新方法
-        const updateMethod = window.amisUpdateMethod;
-        if (updateMethod && typeof updateMethod === 'function') {
-            updateMethod('generationStatus', 'waiting');
-            updateMethod('generationLogs', []);
-            updateMethod('progressPercentage', 0);
-            updateMethod('progressStage', '准备中...');
-            updateMethod('progressMessage', '正在初始化...');
-            updateMethod('errorMessage', '');
-            updateMethod('errorDetails', '');
-            updateMethod('generatedQuestions', []); // 清空题目列表
-            updateMethod('showResults', false);    // 隐藏结果面板
-        } else {
-            console.warn("无法重置AMIS表单，更新方法不可用");
-
-            // 尝试更新amisInstance
-            if (window.amisInstance && window.amisInstance.updateProps) {
-                const updateData = {
-                    data: {
-                        generationStatus: 'waiting',
-                        generationLogs: [],
-                        progressPercentage: 0,
-                        progressStage: '准备中...',
-                        progressMessage: '正在初始化...',
-                        errorMessage: '',
-                        errorDetails: '',
-                        generatedQuestions: [],
-                        showResults: false
-                    }
-                };
-                window.amisInstance.updateProps(updateData);
-            }
-        }
-
+        // 重置数据
+        DataManager.reset();
+        
+        // 如果存在连接，停止连接
         if (connection) {
             connection.stop();
         }
 
         currentSessionId = null;
-        
-        // 强制刷新界面
-        forceUpdateAmisComponent();
         
         // 更新状态类
         checkGenerationStatusClass('waiting');
@@ -1020,873 +827,6 @@
         };
         return stageNames[stage] || stage;
     }
-
-    /**
-     * 获取题目类型显示名称
-     * @param {number} type - 题目类型ID
-     * @returns {string} 题目类型名称
-     */
-    function getQuestionTypeName(type) {
-        const typeMap = {
-            0: '单选题',
-            1: '多选题',
-            2: '判断题',
-            3: '填空题',
-            4: '简答题',
-            5: '编程题'
-        };
-        return typeMap[type] || '未知类型';
-    }
-
-    /**
-     * 获取题目难度名称
-     * @param {number} difficulty - 难度ID
-     * @returns {string} 难度名称
-     */
-    function getQuestionDifficultyName(difficulty) {
-        const difficultyMap = {
-            0: '简单',
-            1: '中等',
-            2: '困难'
-        };
-        return difficultyMap[difficulty] || '未知难度';
-    }
-
-    // AMIS页面配置
-    const amisJSON = {
-        type: "page",
-        title: "AI题目生成",
-        className: "question-generation-page p-3",
-        body: [
-            {
-                type: "grid",
-                className: "mb-4",
-                columns: [
-                    {
-                        md: 6,
-                        body: {
-                            type: "form",
-                            title: "",
-                            mode: "horizontal",
-                            horizontal: {
-                                left: 3,
-                                right: 9
-                            },
-                            className: "form-card shadow-sm border-0 rounded",
-                            wrapWithPanel: true,
-                            panelClassName: "border-0 shadow-sm rounded",
-                            actionsClassName: "border-top mt-3 pt-3",
-                            actions: [
-                                {
-                                    type: "button",
-                                    label: "开始生成",
-                                    level: "primary",
-                                    size: "lg",
-                                    className: "question-generation-button shadow-sm",
-                                    iconClassName: "fas fa-magic me-1",
-                                    onEvent: {
-                                        click: {
-                                            actions: [
-                                                {
-                                                    actionType: "custom",
-                                                    script: "window.executeGenerationProcess(event.data, event.context);"
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    disabledOn: "generation.generationStatus === 'generating'"
-                                }
-                            ],
-                            body: [
-                                {
-                                    type: "input-text",
-                                    name: "topic",
-                                    label: "主题",
-                                    required: true,
-                                    maxLength: 100,
-                                    value: "C#编程基础",
-                                    placeholder: "请输入题目主题或知识领域",
-                                    description: "请输入题目主题或知识领域",
-                                    disabledOn: "data.generationStatus === 'generating'",
-                                    clearable: true,
-                                    prefixIcon: "fa fa-book"
-                                },
-                                {
-                                    type: "input-number",
-                                    name: "count",
-                                    label: "题目数量",
-                                    value: 10,
-                                    min: 1,
-                                    max: 10,
-                                    step: 1,
-                                    required: true,
-                                    description: "范围为1-10题",
-                                    disabledOn: "data.generationStatus === 'generating'",
-                                    displayMode: "enhance"
-                                },
-                                {
-                                    type: "select",
-                                    name: "type",
-                                    label: "题目类型",
-                                    value: 1,
-                                    options: [
-                                        { label: "单选题", value: 1 },
-                                        { label: "多选题", value: 2 },
-                                        { label: "判断题", value: 3 }
-                                    ],
-                                    required: true,
-                                    disabledOn: "data.generationStatus === 'generating'",
-                                    searchable: true,
-                                    clearable: false
-                                },
-                                {
-                                    type: "select",
-                                    name: "difficulty",
-                                    label: "难度",
-                                    value: 2,
-                                    options: [
-                                        { label: "简单", value: 1, badge: "success" },
-                                        { label: "中等", value: 2, badge: "warning" },
-                                        { label: "困难", value: 3, badge: "danger" }
-                                    ],
-                                    required: true,
-                                    disabledOn: "data.generationStatus === 'generating'",
-                                    searchable: false,
-                                    clearable: false
-                                },
-                                {
-                                    type: "tree-select",
-                                    name: "categoryId",
-                                    label: "分类",
-                                    source: "/exam/api/exam/QuestionCategories/tree",
-                                    multiple: false,
-                                    required: true,
-                                    cascade: true,
-                                    showOutline: true,
-                                    labelField: "name",
-                                    valueField: "id",
-                                    disabledOn: "data.generationStatus === 'generating'",
-                                    searchable: true
-                                },
-                                {
-                                    type: "textarea",
-                                    name: "requirements",
-                                    label: "生成要求",
-                                    maxLength: 500,
-                                    showCounter: true,
-                                    placeholder: "请输入对生成题目的特定要求，例如：围绕某个特定概念、包含具体知识点等",
-                                    disabledOn: "data.generationStatus === 'generating'",
-                                    minRows: 3,
-                                    maxRows: 6
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "generationStatus",
-                                    value: "waiting"
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "progressPercentage",
-                                    value: 0
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "progressStage",
-                                    value: "准备中..."
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "progressMessage",
-                                    value: "正在初始化..."
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "questionCount",
-                                    value: 0
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "duration",
-                                    value: 0
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "errorMessage",
-                                    value: ""
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "errorDetails",
-                                    value: ""
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "completionMessage",
-                                    value: "生成完成"
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "generationLogs",
-                                    value: []
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "generatedQuestions",
-                                    value: []
-                                },
-                                {
-                                    type: "hidden",
-                                    name: "showResults",
-                                    value: false
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        md: 6,
-                        body: {
-                            type: "service",
-                            className: "h-100",
-                            initFetch: false,
-                            schemaApi: "",
-                            body: [
-                                {
-                                    type: "card",
-                                    className: "h-100 shadow-sm border-0",
-                                    header: {
-                                        title: "生成进度",
-                                        className: "border-bottom bg-light",
-                                        subTitle: ""
-                                    },
-                                    headerClassName: "bg-light border-bottom",
-                                    bodyClassName: "p-3",
-                                    body: [
-                                        // 待生成状态
-                                        {
-                                            type: "tpl",
-                                            tpl: "<div class='waiting-container text-center py-5 fade-in'><i class='fas fa-robot waiting-icon'></i><p class='mt-3 text-secondary fs-5'>请填写表单开始生成题目</p><p class='text-muted'>AI将根据您的需求自动生成高质量的考试题目</p></div>",
-                                            visibleOn: "data.generationStatus === 'waiting' || !data.generationStatus",
-                                            data: {
-                                                status: "waiting"
-                                            }
-                                        },
-
-                                        // 生成中状态
-                                        {
-                                            type: "container",
-                                            className: "fade-in",
-                                            visibleOn: "data.generationStatus === 'generating'",
-                                            data: {
-                                                status: "generating"
-                                            },
-                                            body: [
-                                                {
-                                                    type: "tpl",
-                                                    tpl: "<div class='text-center text-primary my-3'><i class='fa fa-cog fa-spin me-2'></i><span class='fs-5 fw-medium'>正在生成题目...</span></div>",
-                                                    className: "mb-3"
-                                                },
-                                                {
-                                                    type: "grid",
-                                                    className: "mb-2",
-                                                    columns: [
-                                                        {
-                                                            md: 6,
-                                                            body: {
-                                                                type: "tpl",
-                                                                tpl: "<div class='progress-stage fw-medium'>${progressStage || '准备中...'}</div>",
-                                                                className: "font-weight-bold",
-                                                                data: {
-                                                                    role: "progress-stage"
-                                                                }
-                                                            }
-                                                        },
-                                                        {
-                                                            md: 6,
-                                                            body: {
-                                                                type: "tpl",
-                                                                className: "text-right text-end",
-                                                                tpl: "<div class='progress-percentage fw-bold'>${progressPercentage || 0}%</div>",
-                                                                data: {
-                                                                    role: "progress-percentage"
-                                                                }
-                                                            }
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    type: "progress",
-                                                    mode: "line",
-                                                    value: "${progressPercentage || 0}",
-                                                    strokeWidth: 8,
-                                                    showLabel: false,
-                                                    animate: true,
-                                                    className: "generation-progress mb-3"
-                                                },
-                                                {
-                                                    type: "alert",
-                                                    level: "info",
-                                                    body: "${progressMessage || '正在初始化...'}",
-                                                    showIcon: true,
-                                                    className: "mt-2 shadow-sm",
-                                                    data: {
-                                                        role: "progress-message"
-                                                    }
-                                                },
-                                                {
-                                                    type: "panel",
-                                                    title: "生成日志",
-                                                    titleClassName: "fs-6",
-                                                    headerClassName: "bg-dark text-light py-2 px-3 rounded-top",
-                                                    bodyClassName: "bg-dark text-light p-2 rounded-bottom",
-                                                    className: "mt-4 shadow",
-                                                    body: {
-                                                        type: "each",
-                                                        name: "generationLogs",
-                                                        items: {
-                                                            type: "tpl",
-                                                            tpl: "<div>${item || ''}</div>"
-                                                        },
-                                                        placeholder: "<div class='text-muted p-2'>暂无日志记录</div>"
-                                                    },
-                                                    affixFooter: false,
-                                                    style: {
-                                                        height: "200px",
-                                                        overflow: "auto",
-                                                        fontFamily: "monospace",
-                                                        fontSize: "13px"
-                                                    }
-                                                }
-                                            ]
-                                        },
-
-                                        // 生成完成状态
-                                        {
-                                            type: "container",
-                                            className: "fade-in",
-                                            visibleOn: "data.generationStatus === 'completed' || data.showResults === true",
-                                            data: {
-                                                status: "completed"
-                                            },
-                                            body: [
-                                                {
-                                                    type: "alert",
-                                                    level: "success",
-                                                    showIcon: true,
-                                                    body: "${completionMessage}",
-                                                    className: "shadow-sm"
-                                                },
-                                                {
-                                                    type: "card",
-                                                    className: "mt-3 border-0 shadow-sm",
-                                                    headerClassName: "bg-light",
-                                                    header: {
-                                                        title: "生成结果统计",
-                                                        className: "fs-6"
-                                                    },
-                                                    body: [
-                                                        {
-                                                            type: "grid",
-                                                            columns: [
-                                                                {
-                                                                    md: 6,
-                                                                    body: {
-                                                                        type: "card",
-                                                                        className: "border-0 bg-light text-center py-2",
-                                                                        body: [
-                                                                            {
-                                                                                type: "tpl",
-                                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${questionCount}</div><div class='text-muted'>题目数量</div>"
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                },
-                                                                {
-                                                                    md: 6,
-                                                                    body: {
-                                                                        type: "card",
-                                                                        className: "border-0 bg-light text-center py-2",
-                                                                        body: [
-                                                                            {
-                                                                                type: "tpl",
-                                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${duration}</div><div class='text-muted'>耗时(秒)</div>"
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                }
-                                                            ]
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    type: "panel",
-                                                    title: "生成的题目",
-                                                    titleClassName: "fs-6",
-                                                    className: "generated-questions-container mt-4 shadow-sm",
-                                                    headerClassName: "bg-primary text-white py-2",
-                                                    body: [
-                                                        {
-                                                            type: 'table',
-                                                            source: '${generatedQuestions}',
-                                                            className: 'table-striped table-hover generated-questions-table',
-                                                            columnsTogglable: false,
-                                                            columns: [
-                                                                {
-                                                                    name: 'index',
-                                                                    label: '序号',
-                                                                    type: 'tpl',
-                                                                    tpl: '<span class="badge bg-light text-dark">${index}</span>',
-                                                                    width: 60
-                                                                },
-                                                                {
-                                                                    name: 'content',
-                                                                    label: '题目内容',
-                                                                    type: 'tpl',
-                                                                    tpl: '<div class="text-truncate" style="max-width: 300px;" title="${content}">${content}</div>',
-                                                                    width: 300
-                                                                },
-                                                                {
-                                                                    name: 'type',
-                                                                    label: '题型',
-                                                                    type: 'mapping',
-                                                                    map: {
-                                                                        '1': '<span class="status-badge status-badge-success">单选题</span>',
-                                                                        '2': '<span class="status-badge status-badge-processing">多选题</span>',
-                                                                        '3': '<span class="status-badge">判断题</span>',
-                                                                        '*': '<span class="status-badge">其他</span>'
-                                                                    },
-                                                                    width: 80
-                                                                },
-                                                                {
-                                                                    name: 'difficulty',
-                                                                    label: '难度',
-                                                                    type: 'mapping',
-                                                                    map: {
-                                                                        '1': '<span class="text-success"><i class="fa fa-circle me-1"></i>简单</span>',
-                                                                        '2': '<span class="text-warning"><i class="fa fa-circle me-1"></i>中等</span>',
-                                                                        '3': '<span class="text-danger"><i class="fa fa-circle me-1"></i>困难</span>',
-                                                                        '*': '<span>未知</span>'
-                                                                    },
-                                                                    width: 80
-                                                                },
-                                                                {
-                                                                    type: 'operation',
-                                                                    label: '操作',
-                                                                    buttons: [
-                                                                        {
-                                                                            type: 'button',
-                                                                            label: '查看',
-                                                                            actionType: 'dialog',
-                                                                            level: 'link',
-                                                                            icon: 'fa fa-eye',
-                                                                            dialog: {
-                                                                                title: '题目详情',
-                                                                                size: 'lg',
-                                                                                body: [
-                                                                                    {
-                                                                                        type: 'card',
-                                                                                        className: 'question-card mb-3 border-0 shadow-sm',
-                                                                                        header: {
-                                                                                            title: '基本信息',
-                                                                                            className: 'fs-6'
-                                                                                        },
-                                                                                        headerClassName: 'bg-light',
-                                                                                        body: [
-                                                                                            {
-                                                                                                type: 'grid',
-                                                                                                columns: [
-                                                                                                    {
-                                                                                                        md: 4,
-                                                                                                        body: {
-                                                                                                            type: 'tpl',
-                                                                                                            tpl: '<div class="mb-2"><span class="text-muted me-2">题目ID:</span><span class="badge bg-light text-dark">${id}</span></div>'
-                                                                                                        }
-                                                                                                    },
-                                                                                                    {
-                                                                                                        md: 4,
-                                                                                                        body: {
-                                                                                                            type: 'tpl',
-                                                                                                            tpl: '<div class="mb-2"><span class="text-muted me-2">题型:</span>${type == 1 ? "<span class=\'status-badge status-badge-success\'>单选题</span>" : type == 2 ? "<span class=\'status-badge status-badge-processing\'>多选题</span>" : "<span class=\'status-badge\'>判断题</span>"}</div>'
-                                                                                                        }
-                                                                                                    },
-                                                                                                    {
-                                                                                                        md: 4,
-                                                                                                        body: {
-                                                                                                            type: 'tpl',
-                                                                                                            tpl: '<div class="mb-2"><span class="text-muted me-2">难度:</span>${difficulty == 1 ? "<span class=\'text-success\'><i class=\'fa fa-circle me-1\'></i>简单</span>" : difficulty == 2 ? "<span class=\'text-warning\'><i class=\'fa fa-circle me-1\'></i>中等</span>" : "<span class=\'text-danger\'><i class=\'fa fa-circle me-1\'></i>困难</span>"}</div>'
-                                                                                                        }
-                                                                                                    }
-                                                                                                ]
-                                                                                            }
-                                                                                        ]
-                                                                                    },
-                                                                                    {
-                                                                                        type: 'card',
-                                                                                        className: 'question-card mb-3 border-0 shadow-sm',
-                                                                                        header: {
-                                                                                            title: '题目内容',
-                                                                                            className: 'fs-6'
-                                                                                        },
-                                                                                        headerClassName: 'bg-light',
-                                                                                        body: {
-                                                                                            type: 'markdown',
-                                                                                            value: '${content}'
-                                                                                        }
-                                                                                    },
-                                                                                    {
-                                                                                        type: 'card',
-                                                                                        className: 'question-card mb-3 border-0 shadow-sm',
-                                                                                        header: {
-                                                                                            title: '选项',
-                                                                                            className: 'fs-6'
-                                                                                        },
-                                                                                        headerClassName: 'bg-light',
-                                                                                        visibleOn: 'this.type == 1 || this.type == 2',
-                                                                                        body: [
-                                                                                            {
-                                                                                                type: 'each',
-                                                                                                name: 'options',
-                                                                                                items: {
-                                                                                                    type: 'card',
-                                                                                                    className: 'mb-2 border-0 bg-light',
-                                                                                                    body: {
-                                                                                                        type: 'tpl',
-                                                                                                        tpl: '<div class="p-2 ${isCorrect ? "bg-success bg-opacity-10 border-start border-3 border-success" : ""}"><span class="badge ${isCorrect ? "bg-success" : "bg-secondary"} me-2">${label}</span> ${content}</div>'
-                                                                                                    }
-                                                                                                }
-                                                                                            }
-                                                                                        ]
-                                                                                    },
-                                                                                    {
-                                                                                        type: 'card',
-                                                                                        className: 'question-card border-0 shadow-sm',
-                                                                                        header: {
-                                                                                            title: '答案与解析',
-                                                                                            className: 'fs-6'
-                                                                                        },
-                                                                                        headerClassName: 'bg-light',
-                                                                                        body: [
-                                                                                            {
-                                                                                                type: 'alert',
-                                                                                                className: 'mb-3',
-                                                                                                level: 'success',
-                                                                                                icon: 'fa fa-check-circle',
-                                                                                                body: '${correctAnswer}'
-                                                                                            },
-                                                                                            {
-                                                                                                type: 'markdown',
-                                                                                                value: '#### 解析\n\n${analysis}'
-                                                                                            }
-                                                                                        ]
-                                                                                    }
-                                                                                ]
-                                                                            }
-                                                                        }
-                                                                    ]
-                                                                }
-                                                            ]
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    type: "button-group",
-                                                    className: "mt-4",
-                                                    buttons: [
-                                                        {
-                                                            type: "button",
-                                                            level: "primary",
-                                                            label: "查看题库",
-                                                            actionType: "link",
-                                                            link: "/exam/questions",
-                                                            className: "me-2 shadow-sm"
-                                                        },
-                                                        {
-                                                            type: "button",
-                                                            level: "default",
-                                                            label: "再次生成",
-                                                            className: "shadow-sm",
-                                                            onEvent: {
-                                                                click: {
-                                                                    actions: [
-                                                                        {
-                                                                            actionType: "custom",
-                                                                            script: "resetForm();"
-                                                                        }
-                                                                    ]
-                                                                }
-                                                            }
-                                                        }
-                                                    ]
-                                                }
-                                            ]
-                                        },
-
-                                        // 错误状态
-                                        {
-                                            type: "container",
-                                            className: "fade-in",
-                                            visibleOn: "data.generationStatus === 'error'",
-                                            data: {
-                                                status: "error"
-                                            },
-                                            body: [
-                                                {
-                                                    type: "alert",
-                                                    level: "danger",
-                                                    showIcon: true,
-                                                    body: "${errorMessage}",
-                                                    className: "shadow-sm"
-                                                },
-                                                {
-                                                    type: "card",
-                                                    className: "mt-3 border-0 shadow-sm",
-                                                    header: {
-                                                        title: "错误详情",
-                                                        className: "fs-6"
-                                                    },
-                                                    headerClassName: "bg-danger text-white",
-                                                    body: "${errorDetails}",
-                                                    bodyClassName: "text-danger",
-                                                    style: {
-                                                        maxHeight: "150px",
-                                                        overflow: "auto"
-                                                    }
-                                                },
-                                                {
-                                                    type: "button",
-                                                    level: "primary",
-                                                    label: "重试",
-                                                    className: "mt-4 shadow-sm",
-                                                    onEvent: {
-                                                        click: {
-                                                            actions: [
-                                                                {
-                                                                    actionType: "custom",
-                                                                    script: "resetForm();"
-                                                                }
-                                                            ]
-                                                        }
-                                                    }
-                                                }
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        ]
-    };
-
-    // 初始化AMIS应用
-    window.addEventListener('load', function () {
-        console.log("页面加载完成，初始化AMIS应用");
-        
-        const amisApp = amisRequire('amis/embed');
-
-        // 保存全局作用域
-        window.amisScoped = null;
-        window.amisInstance = null;
-
-        // 初始默认数据
-        const initialData = {
-            generationStatus: 'waiting',
-            progressPercentage: 0,
-            progressStage: '准备中...',
-            progressMessage: '正在初始化...',
-            questionCount: 0,
-            duration: 0,
-            errorMessage: '',
-            errorDetails: '',
-            completionMessage: '生成完成',
-            generationLogs: [],
-            generatedQuestions: [], // 添加生成的题目数组
-            showResults: false     // 添加结果显示标志
-        };
-
-        // 设置到全局数据
-        for (const key in initialData) {
-            GlobalData.set(`generation.${key}`, initialData[key]);
-        }
-        window.globalData.logs = [];
-
-        // 配置AMIS应用
-        let app = amisApp.embed('#question-generation-app', amisJSON, {
-            locale: 'zh-CN',
-            theme: 'antd',
-            data: initialData
-        }, {
-            requestAdaptor: requestAdaptor,
-            // 添加AMIS错误处理
-            responseAdaptor: function (api, payload, query, request, response) {
-                // 处理错误响应
-                if (response.status >= 400) {
-                    ErrorHandler.showError(`请求失败: ${response.status} ${response.statusText}`);
-                    return payload;
-                }
-
-                return payload;
-            },
-            onAction: function () {
-                console.log("AMIS动作触发:", arguments);
-            },
-            // 添加值变更事件
-            watchData: function (data) {
-                console.log("AMIS数据变更:", data);
-                if (data && data.generationStatus) {
-                    // 更新全局数据保持同步
-                    GlobalData.set('generation.status', data.generationStatus);
-                    console.log("页面状态变更:", data.generationStatus);
-
-                    // 检查CSS类
-                    //checkGenerationStatusClass(data.generationStatus);
-                }
-            },
-            scopeRef: function (scoped) {
-                console.log("AMIS作用域更新");
-                window.amisScoped = scoped;
-
-                // 保存全局更新方法
-                if (scoped && typeof scoped.setValueByName === 'function') {
-                    window.amisUpdateMethod = scoped.setValueByName.bind(scoped);
-                } else if (scoped && typeof scoped.setState === 'function') {
-                    window.amisUpdateMethod = function (key, value) {
-                        const updateObj = {};
-                        updateObj[key] = value;
-                        scoped.setState(updateObj);
-                    };
-                }
-
-                // 初始同步全局数据到AMIS
-                GlobalData.syncToAmis(scoped);
-            }
-        });
-
-        // 保存应用实例到全局变量
-        window.amisInstance = app;
-
-        // 暴露重置函数到全局
-        window.resetForm = resetForm;
-
-        // 添加DOM辅助函数，确保视图状态正确
-        window.addDomEventHandlers();
-
-        // 立即设置一次状态类，确保CSS正确
-        checkGenerationStatusClass('waiting');
-
-        // 暴露更多调试方法
-        window.debugAmis = {
-            updateProgress: updateProgress,
-            addLog: addLog,
-            simulateProgress: function (stage, message, percentage) {
-                updateProgress(stage, message, percentage);
-            },
-            simulateCompleted: function (questionCount, duration) {
-                const durationInSeconds = duration || 30;
-                const count = questionCount || 10;
-
-                // 更新全局状态
-                GlobalData.set('generation.status', 'completed');
-                GlobalData.set('generation.questionCount', count);
-                GlobalData.set('generation.duration', durationInSeconds);
-                GlobalData.set('generation.completionMessage', `成功生成 ${count} 道题目！`);
-
-                // 使用全局更新方法
-                const updateMethod = window.amisUpdateMethod;
-                if (updateMethod && typeof updateMethod === 'function') {
-                    updateMethod('generationStatus', 'completed');
-                    updateMethod('questionCount', count);
-                    updateMethod('duration', durationInSeconds);
-                    updateMethod('completionMessage', `成功生成 ${count} 道题目！`);
-                }
-
-                addLog(`生成完成！共生成 ${count} 道题目，耗时 ${durationInSeconds} 秒`);
-            },
-            simulateError: function (title, message) {
-                ErrorHandler.handleApiError(title || "生成错误", message || "模拟的错误消息");
-            },
-            forceUpdate: function () {
-                if (window.amisInstance && window.amisInstance.forceUpdate) {
-                    window.amisInstance.forceUpdate();
-                }
-            },
-            setStatus: function (status) {
-                const validStatus = ['waiting', 'generating', 'completed', 'error'];
-                if (validStatus.includes(status)) {
-                    // 更新全局状态
-                    GlobalData.set('generation.status', status);
-
-                    // 使用全局更新方法
-                    const updateMethod = window.amisUpdateMethod;
-                    if (updateMethod && typeof updateMethod === 'function') {
-                        updateMethod('generationStatus', status);
-                    }
-
-                    // 如果是生成中状态，初始化进度数据
-                    if (status === 'generating') {
-                        updateProgress('preparing', '正在准备生成...', 10);
-                    }
-
-                    console.log(`状态已更新为: ${status}`);
-                    return true;
-                } else {
-                    console.error(`无效的状态: ${status}，有效值为: ${validStatus.join(', ')}`);
-                    return false;
-                }
-            },
-            refreshUI: function () {
-                // 强制刷新AMIS实例
-                if (window.amisInstance) {
-                    if (window.amisInstance.forceUpdate) {
-                        window.amisInstance.forceUpdate();
-                    }
-
-                    // 尝试通过更新props触发重新渲染
-                    if (window.amisInstance.updateProps) {
-                        const currentData = {};
-                        for (const key in initialData) {
-                            currentData[key] = GlobalData.get(`generation.${key}`, initialData[key]);
-                        }
-                        window.amisInstance.updateProps({ data: currentData });
-                    }
-
-                    return true;
-                }
-                return false;
-            },
-            dumpState: function () {
-                return {
-                    globalData: window.globalData,
-                    amisScoped: !!window.amisScoped,
-                    amisInstance: !!window.amisInstance,
-                    amisUpdateMethod: !!window.amisUpdateMethod,
-                    connection: !!connection,
-                    currentSessionId: currentSessionId
-                };
-            }
-        };
-
-        console.log("AMIS应用初始化完成", app);
-        console.log("调试方法已可用: window.debugAmis");
-    });
-
-    /**
-     * 添加DOM事件处理程序
-     */
-    window.addDomEventHandlers = function () {
-         try {
-             // 添加轮询检查器，确保状态和UI一致
-             setInterval(function() {
-                 const status = GlobalData.get('generation.status', 'waiting');
-                 checkGenerationStatusClass(status);
-             }, 1000);
-
-             console.log("DOM事件处理器已添加");
-         } catch (error) {
-             console.error("添加DOM事件处理器时出错:", error);
-         }
-    };
 
     /**
      * 检查并设置生成状态CSS类
@@ -1940,15 +880,764 @@
                 .then(() => {
                     console.log('SignalR连接已关闭');
                     window.signalRConnection = null;
-                    if (window.amisUpdateMethod) {
-                        window.amisUpdateMethod({
-                            signalRConnected: false
-                        });
-                    }
+                    DataManager.updateAmis('signalRConnected', false);
                 })
                 .catch(err => {
                     console.error('关闭SignalR连接时发生错误:', err);
                 });
         }
     }
+
+    // AMIS页面配置
+    const amisJSON = {
+        type: "page",
+        title: "AI题目生成",
+        className: "question-generation-page p-3",
+        data: {
+            // 使用数据链，共享初始数据
+            generationStatus: 'waiting',
+            progressPercentage: 0,
+            progressStage: '准备中...',
+            progressMessage: '正在初始化...',
+            questionCount: 0,
+            duration: 0,
+            errorMessage: '',
+            errorDetails: '',
+            completionMessage: '生成完成',
+            generationLogs: [],
+            generatedQuestions: [],
+            showResults: false
+        },
+        body: [
+            {
+                type: "grid",
+                className: "mb-4",
+                columns: [
+                    {
+                        md: 6,
+                        body: {
+                            type: "form",
+                            title: "",
+                            mode: "horizontal",
+                            horizontal: {
+                                left: 3,
+                                right: 9
+                            },
+                            className: "form-card shadow-sm border-0 rounded",
+                            wrapWithPanel: true,
+                            panelClassName: "border-0 shadow-sm rounded",
+                            actionsClassName: "border-top mt-3 pt-3",
+                            // 添加数据域，方便表单内数据传递
+                            data: {
+                                topic: "C#编程基础",
+                                count: 10,
+                                type: 1,
+                                difficulty: 2
+                            },
+                            actions: [
+                                {
+                                    type: "button",
+                                    label: "开始生成",
+                                    level: "primary",
+                                    size: "lg",
+                                    className: "question-generation-button shadow-sm",
+                                    iconClassName: "fas fa-magic me-1",
+                                    onEvent: {
+                                        click: {
+                                            actions: [
+                                                {
+                                                    actionType: "custom",
+                                                    script: "window.executeGenerationProcess(event.data, event.context);"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    // 使用数据链表达式引用父级数据域
+                                    disabledOn: "${generationStatus === 'generating'}"
+                                }
+                            ],
+                            body: [
+                                {
+                                    type: "input-text",
+                                    name: "topic",
+                                    label: "主题",
+                                    required: true,
+                                    maxLength: 100,
+                                    placeholder: "请输入题目主题或知识领域",
+                                    description: "请输入题目主题或知识领域",
+                                    // 使用数据链表达式引用父级数据域
+                                    disabledOn: "${generationStatus === 'generating'}",
+                                    clearable: true,
+                                    prefixIcon: "fa fa-book"
+                                },
+                                {
+                                    type: "input-number",
+                                    name: "count",
+                                    label: "题目数量",
+                                    min: 1,
+                                    max: 10,
+                                    step: 1,
+                                    required: true,
+                                    description: "范围为1-10题",
+                                    disabledOn: "${generationStatus === 'generating'}",
+                                    displayMode: "enhance"
+                                },
+                                {
+                                    type: "select",
+                                    name: "type",
+                                    label: "题目类型",
+                                    options: [
+                                        { label: "单选题", value: 1 },
+                                        { label: "多选题", value: 2 },
+                                        { label: "判断题", value: 3 }
+                                    ],
+                                    required: true,
+                                    disabledOn: "${generationStatus === 'generating'}",
+                                    searchable: true,
+                                    clearable: false
+                                },
+                                {
+                                    type: "select",
+                                    name: "difficulty",
+                                    label: "难度",
+                                    options: [
+                                        { label: "简单", value: 1, badge: "success" },
+                                        { label: "中等", value: 2, badge: "warning" },
+                                        { label: "困难", value: 3, badge: "danger" }
+                                    ],
+                                    required: true,
+                                    disabledOn: "${generationStatus === 'generating'}",
+                                    searchable: false,
+                                    clearable: false
+                                },
+                                {
+                                    type: "tree-select",
+                                    name: "categoryId",
+                                    label: "分类",
+                                    source: "/exam/api/exam/QuestionCategories/tree",
+                                    multiple: false,
+                                    required: true,
+                                    cascade: true,
+                                    showOutline: true,
+                                    labelField: "name",
+                                    valueField: "id",
+                                    disabledOn: "${generationStatus === 'generating'}",
+                                    searchable: true
+                                },
+                                {
+                                    type: "textarea",
+                                    name: "requirements",
+                                    label: "生成要求",
+                                    maxLength: 500,
+                                    showCounter: true,
+                                    placeholder: "请输入对生成题目的特定要求，例如：围绕某个特定概念、包含具体知识点等",
+                                    disabledOn: "${generationStatus === 'generating'}",
+                                    minRows: 3,
+                                    maxRows: 6
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        md: 6,
+                        body: {
+                            type: "service",
+                            className: "h-100",
+                            initFetch: false,
+                            // 使用数据链共享父级数据
+                            data: "${parent.data}",
+                            body: [
+                                {
+                                    type: "card",
+                                    className: "h-100 shadow-sm border-0",
+                                    header: {
+                                        title: "生成进度",
+                                        className: "border-bottom bg-light",
+                                        subTitle: ""
+                                    },
+                                    headerClassName: "bg-light border-bottom",
+                                    bodyClassName: "p-3",
+                                    body: [
+                                        // 待生成状态
+                                        {
+                                            type: "tpl",
+                                            tpl: "<div class='waiting-container text-center py-5 fade-in'><i class='fas fa-robot waiting-icon'></i><p class='mt-3 text-secondary fs-5'>请填写表单开始生成题目</p><p class='text-muted'>AI将根据您的需求自动生成高质量的考试题目</p></div>",
+                                            // 使用数据链表达式判断状态
+                                            visibleOn: "${generationStatus === 'waiting' || !generationStatus}"
+                                        },
+
+                                        // 生成中状态
+                                        {
+                                            type: "container",
+                                            className: "fade-in",
+                                            // 使用数据链表达式判断状态
+                                            visibleOn: "${generationStatus === 'generating'}",
+                                            body: [
+                                                {
+                                                    type: "tpl",
+                                                    tpl: "<div class='text-center text-primary my-3'><i class='fa fa-cog fa-spin me-2'></i><span class='fs-5 fw-medium'>正在生成题目...</span></div>",
+                                                    className: "mb-3"
+                                                },
+                                                {
+                                                    type: "grid",
+                                                    className: "mb-2",
+                                                    columns: [
+                                                        {
+                                                            md: 6,
+                                                            body: {
+                                                                type: "tpl",
+                                                                // 使用数据链表达式访问父级数据
+                                                                tpl: "<div class='progress-stage fw-medium'>${progressStage || '准备中...'}</div>",
+                                                                className: "font-weight-bold"
+                                                            }
+                                                        },
+                                                        {
+                                                            md: 6,
+                                                            body: {
+                                                                type: "tpl",
+                                                                className: "text-right text-end",
+                                                                // 使用数据链表达式访问父级数据
+                                                                tpl: "<div class='progress-percentage fw-bold'>${progressPercentage || 0}%</div>"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    type: "progress",
+                                                    mode: "line",
+                                                    // 使用数据链表达式访问父级数据
+                                                    value: "${progressPercentage || 0}",
+                                                    strokeWidth: 8,
+                                                    showLabel: false,
+                                                    animate: true,
+                                                    className: "generation-progress mb-3"
+                                                },
+                                                {
+                                                    type: "alert",
+                                                    level: "info",
+                                                    // 使用数据链表达式访问父级数据
+                                                    body: "${progressMessage || '正在初始化...'}",
+                                                    showIcon: true,
+                                                    className: "mt-2 shadow-sm"
+                                                },
+                                                {
+                                                    type: "card",
+                                                    title: "生成日志",
+                                                    className: "mt-4 shadow",
+                                                    headerClassName: "bg-dark text-light py-2 px-3 rounded-top",
+                                                    bodyClassName: "p-0",
+                                                    header: {
+                                                        title: "生成日志",
+                                                        className: "fs-6"
+                                                    },
+                                                    body: {
+                                                        type: "log",
+                                                        source: "${generationLogs}",
+                                                        height: 200,
+                                                        className: "bg-dark text-light",
+                                                        operation: ["stop", "clear", "export"],
+                                                        placeholder: "<div class='text-muted p-2'>暂无日志记录</div>",
+                                                        autoScroll: true
+                                                    }
+                                                }
+                                            ]
+                                        },
+
+                                        // 生成完成状态
+                                        {
+                                            type: "container",
+                                            className: "fade-in",
+                                            // 使用数据链表达式判断状态
+                                            visibleOn: "${generationStatus === 'completed' || showResults === true}",
+                                            body: [
+                                                {
+                                                    type: "alert",
+                                                    level: "success",
+                                                    showIcon: true,
+                                                    // 使用数据链表达式访问父级数据
+                                                    body: "${completionMessage}",
+                                                    className: "shadow-sm"
+                                                },
+                                                {
+                                                    type: "card",
+                                                    className: "mt-3 border-0 shadow-sm",
+                                                    headerClassName: "bg-light",
+                                                    header: {
+                                                        title: "生成结果统计",
+                                                        className: "fs-6"
+                                                    },
+                                                    body: [
+                                                        {
+                                                            type: "grid",
+                                                            columns: [
+                                                                {
+                                                                    md: 6,
+                                                                    body: {
+                                                                        type: "card",
+                                                                        className: "border-0 bg-light text-center py-2",
+                                                                        body: [
+                                                                            {
+                                                                                type: "tpl",
+                                                                                // 使用数据链表达式访问父级数据
+                                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${questionCount}</div><div class='text-muted'>题目数量</div>"
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                {
+                                                                    md: 6,
+                                                                    body: {
+                                                                        type: "card",
+                                                                        className: "border-0 bg-light text-center py-2",
+                                                                        body: [
+                                                                            {
+                                                                                type: "tpl",
+                                                                                // 使用数据链表达式访问父级数据
+                                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${duration}</div><div class='text-muted'>耗时(秒)</div>"
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    type: "panel",
+                                                    title: "生成的题目",
+                                                    titleClassName: "fs-6",
+                                                    className: "generated-questions-container mt-4 shadow-sm",
+                                                    headerClassName: "bg-primary text-white py-2",
+                                                    body: [
+                                                        {
+                                                            type: 'table',
+                                                            // 使用数据链表达式访问父级数据
+                                                            source: '${generatedQuestions}',
+                                                            className: 'table-striped table-hover generated-questions-table',
+                                                            columnsTogglable: false,
+                                                            columns: [
+                                                                {
+                                                                    name: 'index',
+                                                                    label: '序号',
+                                                                    type: 'tpl',
+                                                                    tpl: '<span class="badge bg-light text-dark">${index}</span>',
+                                                                    width: 60
+                                                                },
+                                                                {
+                                                                    name: 'content',
+                                                                    label: '题目内容',
+                                                                    type: 'tpl',
+                                                                    tpl: '<div class="text-truncate" style="max-width: 300px;" title="${content}">${content}</div>',
+                                                                    width: 300
+                                                                },
+                                                                {
+                                                                    name: 'type',
+                                                                    label: '题型',
+                                                                    type: 'html',
+                                                                    html: '${typeDisplay|raw}',
+                                                                    width: 80
+                                                                },
+                                                                {
+                                                                    name: 'difficulty',
+                                                                    label: '难度',
+                                                                    type: 'html',
+                                                                    html: '${difficultyDisplay|raw}',
+                                                                    width: 80
+                                                                },
+                                                                {
+                                                                    type: 'operation',
+                                                                    label: '操作',
+                                                                    buttons: [
+                                                                        {
+                                                                            type: 'button',
+                                                                            label: '查看',
+                                                                            actionType: 'dialog',
+                                                                            level: 'link',
+                                                                            icon: 'fa fa-eye',
+                                                                            dialog: {
+                                                                                title: '题目详情 - ${typeName}',
+                                                                                headerClassName: 'bg-primary text-white',
+                                                                                closeOnEsc: true,
+                                                                                closeOnOutside: true,
+                                                                                showCloseButton: true,
+                                                                                size: 'lg',
+                                                                                // 使用严格模式传递数据
+                                                                                data: {
+                                                                                    "id": "${id}",
+                                                                                    "type": "${type}",
+                                                                                    "typeName": "${typeName}",
+                                                                                    "difficulty": "${difficulty}",
+                                                                                    "difficultyName": "${difficultyName}",
+                                                                                    "content": "${content|raw}",
+                                                                                    "options": "${options|json|raw}",
+                                                                                    "correctAnswer": "${correctAnswer|raw}",
+                                                                                    "analysis": "${analysis|raw}"
+                                                                                },
+                                                                                body: [
+                                                                                    {
+                                                                                        type: 'card',
+                                                                                        className: 'question-card mb-3 border-0 shadow-sm',
+                                                                                        header: {
+                                                                                            title: '基本信息',
+                                                                                            className: 'fs-6'
+                                                                                        },
+                                                                                        headerClassName: 'bg-light',
+                                                                                        body: [
+                                                                                            {
+                                                                                                type: 'grid',
+                                                                                                columns: [
+                                                                                                    {
+                                                                                                        md: 4,
+                                                                                                        body: {
+                                                                                                            type: 'tpl',
+                                                                                                            tpl: '<div class="mb-2"><span class="text-muted me-2">题目ID:</span><span class="badge bg-light text-dark">${id}</span></div>'
+                                                                                                        }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        md: 4,
+                                                                                                        body: {
+                                                                                                            type: 'html',
+                                                                                                            html: '<div class="mb-2"><span class="text-muted me-2">题型:</span>${typeDisplay|raw}</div>'
+                                                                                                        }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        md: 4,
+                                                                                                        body: {
+                                                                                                            type: 'html',
+                                                                                                            html: '<div class="mb-2"><span class="text-muted me-2">难度:</span>${difficultyDisplay|raw}</div>'
+                                                                                                        }
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    },
+                                                                                    {
+                                                                                        type: 'card',
+                                                                                        className: 'question-card mb-3 border-0 shadow-sm',
+                                                                                        header: {
+                                                                                            title: '题目内容',
+                                                                                            className: 'fs-6'
+                                                                                        },
+                                                                                        headerClassName: 'bg-light',
+                                                                                        body: {
+                                                                                            type: 'html',
+                                                                                            html: '<div class="question-content">${content|raw}</div>'
+                                                                                        }
+                                                                                    },
+                                                                                    {
+                                                                                        type: 'card',
+                                                                                        className: 'question-card mb-3 border-0 shadow-sm',
+                                                                                        header: {
+                                                                                            title: '选项',
+                                                                                            className: 'fs-6'
+                                                                                        },
+                                                                                        headerClassName: 'bg-light',
+                                                                                        visibleOn: 'this.type == 1 || this.type == 2',
+                                                                                        body: [
+                                                                                            {
+                                                                                                type: 'service',
+                                                                                                api: {
+                                                                                                    method: 'get',
+                                                                                                    url: '/api/dummy',
+                                                                                                    mockResponse: "${options|json|raw}",
+                                                                                                    responseType: 'json'
+                                                                                                },
+                                                                                                body: [
+                                                                                                    {
+                                                                                                        type: 'each',
+                                                                                                        source: '${items}',
+                                                                                                        items: {
+                                                                                                            type: 'card',
+                                                                                                            className: 'mb-2 border-0 bg-light option-card',
+                                                                                                            bodyClassName: '${isCorrect ? "bg-success bg-opacity-10 border-start border-3 border-success" : ""}',
+                                                                                                            body: {
+                                                                                                                type: 'tpl',
+                                                                                                                tpl: '<div class="p-2"><span class="badge ${isCorrect ? "bg-success" : "bg-secondary"} me-2">${label}</span> ${content}</div>'
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        ]
+                                                                                    },
+                                                                                    {
+                                                                                        type: 'card',
+                                                                                        className: 'question-card border-0 shadow-sm',
+                                                                                        header: {
+                                                                                            title: '答案与解析',
+                                                                                            className: 'fs-6'
+                                                                                        },
+                                                                                        headerClassName: 'bg-light',
+                                                                                        body: [
+                                                                                            {
+                                                                                                type: 'alert',
+                                                                                                className: 'mb-3',
+                                                                                                level: 'success',
+                                                                                                icon: 'fa fa-check-circle',
+                                                                                                body: '${correctAnswer|raw}'
+                                                                                            },
+                                                                                            {
+                                                                                                type: 'divider',
+                                                                                                className: 'my-2'
+                                                                                            },
+                                                                                            {
+                                                                                                type: 'html',
+                                                                                                html: '<h5 class="mb-2">解析</h5><div class="analysis-content">${analysis|raw}</div>'
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    type: "button-group",
+                                                    className: "mt-4",
+                                                    buttons: [
+                                                        {
+                                                            type: "button",
+                                                            level: "primary",
+                                                            label: "查看题库",
+                                                            actionType: "link",
+                                                            link: "/exam/questions",
+                                                            className: "me-2 shadow-sm"
+                                                        },
+                                                        {
+                                                            type: "button",
+                                                            level: "default",
+                                                            label: "再次生成",
+                                                            className: "shadow-sm",
+                                                            onEvent: {
+                                                                click: {
+                                                                    actions: [
+                                                                        {
+                                                                            actionType: "custom",
+                                                                            script: "resetForm();"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        },
+
+                                        // 错误状态
+                                        {
+                                            type: "container",
+                                            className: "fade-in",
+                                            // 使用数据链表达式判断状态
+                                            visibleOn: "${generationStatus === 'error'}",
+                                            body: [
+                                                {
+                                                    type: "alert",
+                                                    level: "danger",
+                                                    showIcon: true,
+                                                    // 使用数据链表达式访问父级数据
+                                                    body: "${errorMessage}",
+                                                    className: "shadow-sm"
+                                                },
+                                                {
+                                                    type: "card",
+                                                    className: "mt-3 border-0 shadow-sm",
+                                                    header: {
+                                                        title: "错误详情",
+                                                        className: "fs-6"
+                                                    },
+                                                    headerClassName: "bg-danger text-white",
+                                                    // 使用数据链表达式访问父级数据
+                                                    body: "${errorDetails}",
+                                                    bodyClassName: "text-danger",
+                                                    style: {
+                                                        maxHeight: "150px",
+                                                        overflow: "auto"
+                                                    }
+                                                },
+                                                {
+                                                    type: "button",
+                                                    level: "primary",
+                                                    label: "重试",
+                                                    className: "mt-4 shadow-sm",
+                                                    onEvent: {
+                                                        click: {
+                                                            actions: [
+                                                                {
+                                                                    actionType: "custom",
+                                                                    script: "resetForm();"
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    };
+
+    // 初始化AMIS应用
+    window.addEventListener('load', function () {
+        console.log("页面加载完成，初始化AMIS应用");
+        
+        const amisApp = amisRequire('amis/embed');
+
+        // 配置AMIS应用
+        const app = amisApp.embed('#question-generation-app', amisJSON, {
+            locale: 'zh-CN',
+            theme: 'antd',
+            // 使用DataManager的初始数据
+            data: DataManager.initialData
+        }, {
+            requestAdaptor: requestAdaptor,
+            // AMIS错误处理
+            responseAdaptor: function (api, payload, query, request, response) {
+                // 处理错误响应
+                if (response.status >= 400) {
+                    ErrorHandler.showError(`请求失败: ${response.status} ${response.statusText}`);
+                    return payload;
+                }
+
+                return payload;
+            },
+            // 添加动作触发时的回调
+            onAction: function (e) {
+                console.log("AMIS动作触发:", e);
+            },
+            // 添加值变更事件监听
+            watchData: function (data) {
+                console.log("AMIS数据变更:", data);
+                // 监听关键状态变更
+                if (data) {
+                    // 监听生成状态变更
+                    if (data.generationStatus) {
+                        // 更新状态
+                        DataManager.set('generation.status', data.generationStatus);
+                        console.log("页面状态变更:", data.generationStatus);
+                        // 检查CSS类
+                        checkGenerationStatusClass(data.generationStatus);
+                    }
+                    
+                    // 监听进度相关字段变更
+                    const progressKeys = ['progressPercentage', 'progressStage', 'progressMessage'];
+                    let hasProgressChange = false;
+                    progressKeys.forEach(key => {
+                        if (data[key] !== undefined) {
+                            DataManager.set(`generation.${key}`, data[key]);
+                            hasProgressChange = true;
+                        }
+                    });
+                    
+                    // 如果有进度变更，强制更新UI
+                    if (hasProgressChange && amisInstance && amisInstance.forceUpdate) {
+                        setTimeout(() => amisInstance.forceUpdate(), 10);
+                    }
+                }
+            }
+        });
+
+        // 保存应用实例到全局变量
+        amisInstance = app;
+        window.amisInstance = app;
+
+        // 暴露重置函数到全局
+        window.resetForm = resetForm;
+
+        // 立即设置一次状态类，确保CSS正确
+        checkGenerationStatusClass('waiting');
+
+        console.log("AMIS应用初始化完成", app);
+    });
+
+    /**
+     * 处理题目数据，确保所有显示字段正确处理
+     * @param {Array} questions - 原始题目数据数组 
+     * @returns {Array} 处理后的题目数据数组
+     */
+    function processQuestionData(questions) {
+        if (!Array.isArray(questions)) return [];
+        
+        return questions.map((question, index) => {
+            // 处理选项，添加标签 (A, B, C, D...)
+            const options = Array.isArray(question.options) ?
+                question.options.map((option, optIndex) => ({
+                    ...option,
+                    label: String.fromCharCode(65 + optIndex), // A, B, C, D...
+                    // 确保选项内容是HTML安全的
+                    content: option.content || ''
+                })) : [];
+            
+            // 处理正确答案 - 如果未提供则尝试从选项中构建
+            let correctAnswer = question.correctAnswer || formatCorrectAnswer(question);
+            
+            // 处理解析内容 - 确保存在
+            let analysis = question.analysis || '暂无解析';
+            
+            // 处理题目类型名称
+            let typeName = question.typeName || getQuestionTypeNameByValue(question.type);
+            
+            // 处理难度名称
+            let difficultyName = question.difficultyName || getQuestionDifficultyNameByValue(question.difficulty);
+            
+            // 确保题目内容存在
+            let content = question.content || '无内容';
+            
+            // 返回完整的题目对象
+            return {
+                ...question,
+                index: index + 1,
+                typeName,
+                difficultyName,
+                content,
+                correctAnswer,
+                analysis,
+                options,
+                // 添加额外字段以方便UI使用
+                typeDisplay: getQuestionTypeDisplay(question.type),
+                difficultyDisplay: getQuestionDifficultyDisplay(question.difficulty)
+            };
+        });
+    }
+
+    /**
+     * 获取题目类型显示HTML
+     * @param {number} typeId - 题目类型ID
+     * @returns {string} 类型显示HTML
+     */
+    function getQuestionTypeDisplay(typeId) {
+        const typeMap = {
+            1: '<span class="status-badge status-badge-success">单选题</span>',
+            2: '<span class="status-badge status-badge-processing">多选题</span>',
+            3: '<span class="status-badge">判断题</span>',
+            4: '<span class="status-badge status-badge-info">填空题</span>',
+            5: '<span class="status-badge status-badge-warning">简答题</span>'
+        };
+        return typeMap[typeId] || '<span class="status-badge">未知类型</span>';
+    }
+
+    /**
+     * 获取题目难度显示HTML
+     * @param {number} difficultyId - 难度ID
+     * @returns {string} 难度显示HTML
+     */
+    function getQuestionDifficultyDisplay(difficultyId) {
+        const difficultyMap = {
+            1: '<span class="text-success"><i class="fa fa-circle me-1"></i>简单</span>',
+            2: '<span class="text-warning"><i class="fa fa-circle me-1"></i>中等</span>',
+            3: '<span class="text-danger"><i class="fa fa-circle me-1"></i>困难</span>'
+        };
+        return difficultyMap[difficultyId] || '<span>未知难度</span>';
+    }
+
 })(); 

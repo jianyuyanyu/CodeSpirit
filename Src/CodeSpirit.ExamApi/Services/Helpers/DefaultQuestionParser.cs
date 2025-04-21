@@ -61,13 +61,16 @@ public class DefaultQuestionParser : IQuestionParser
                     catch (JsonException innerEx)
                     {
                         _logger.LogError(innerEx, "二次JSON解析失败，需要在下一轮请求中向LLM提供更明确的格式指导");
-                        throw new FormatException("无法解析生成的内容为有效JSON", innerEx);
+                        string errorDetail = $"提取到的JSON片段无效：'{(extractedJson.Length > 150 ? extractedJson.Substring(0, 150) + "..." : extractedJson)}'。请检查JSON语法，确保所有引号、括号配对，避免未转义的特殊字符。";
+                        throw new FormatException(errorDetail, innerEx);
                     }
                 }
                 else
                 {
                     _logger.LogError("无法提取有效的JSON，需要向LLM请求完全重新生成并严格遵循JSON格式");
-                    throw new FormatException("响应内容不包含有效的JSON", ex);
+                    // 提供更详细的错误信息，以便LLM能够更精确地修正
+                    string errorDetail = $"无法从内容中提取有效的JSON格式。原始内容片段：'{(content.Length > 100 ? content.Substring(0, 100) + "..." : content)}'。请确保返回完整有效的JSON对象，包含questions数组。";
+                    throw new FormatException(errorDetail, ex);
                 }
             }
 
@@ -278,19 +281,14 @@ public class DefaultQuestionParser : IQuestionParser
                     switch (request.Type)
                     {
                         case Data.Models.Enums.QuestionType.SingleChoice:
-                            // 如果返回的是完整选项文本，转换为选项字母
-                            if (answer.Length > 1 && dto.Options.Any() &&
-                               dto.Options.Any(opt => opt.Contains(answer) || answer.Contains(opt)))
+                            // 将选项字母转换为完整选项文本
+                            if (answer.Length == 1 && char.IsLetter(answer[0]))
                             {
-                                // 查找匹配的选项索引
-                                for (int i = 0; i < dto.Options.Count; i++)
+                                string optionText = ConvertLetterToOptionText(answer, dto.Options);
+                                if (optionText != answer)
                                 {
-                                    if (dto.Options[i].Contains(answer) || answer.Contains(dto.Options[i]))
-                                    {
-                                        answer = ((char)('A' + i)).ToString();
-                                        _logger.LogDebug("单选题答案转换为: {Answer}", answer);
-                                        break;
-                                    }
+                                    answer = optionText;
+                                    _logger.LogDebug("单选题字母答案转换为选项文本: {Answer}", answer);
                                 }
                             }
                             break;
@@ -318,6 +316,16 @@ public class DefaultQuestionParser : IQuestionParser
                                 {
                                     answer = string.Join(",", letterAnswers);
                                     _logger.LogDebug("多选题答案转换为: {Answer}", answer);
+                                }
+                            }
+                            // 将选项字母列表转换为完整选项文本
+                            else if (answer.All(c => char.IsLetter(c) || c == ',' || c == ' '))
+                            {
+                                string optionText = ConvertLetterToOptionText(answer, dto.Options);
+                                if (optionText != answer)
+                                {
+                                    answer = optionText;
+                                    _logger.LogDebug("多选题字母答案转换为选项文本: {Answer}", answer);
                                 }
                             }
                             break;
@@ -491,5 +499,64 @@ public class DefaultQuestionParser : IQuestionParser
         }
 
         return options;
+    }
+
+    /// <summary>
+    /// 将选项字母（如A,B,C）转换为完整选项文本
+    /// </summary>
+    /// <param name="letterAnswer">选项字母</param>
+    /// <param name="options">选项列表</param>
+    /// <returns>选项文本</returns>
+    private string ConvertLetterToOptionText(string letterAnswer, List<string> options)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(letterAnswer) || options == null || !options.Any())
+            {
+                return letterAnswer;
+            }
+
+            // 如果答案是单个字母（如"A"、"B"等）
+            if (letterAnswer.Length == 1 && char.IsLetter(letterAnswer[0]))
+            {
+                int index = letterAnswer[0] - 'A';
+                if (index >= 0 && index < options.Count)
+                {
+                    _logger.LogDebug("将选项字母 {Letter} 转换为完整选项文本", letterAnswer);
+                    return options[index];
+                }
+            }
+            // 如果答案是多个字母（如"A,B,C"）
+            else if (letterAnswer.All(c => char.IsLetter(c) || c == ',' || c == ' '))
+            {
+                var letters = letterAnswer.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var optionTexts = new List<string>();
+
+                foreach (var letter in letters)
+                {
+                    if (letter.Length == 1 && char.IsLetter(letter[0]))
+                    {
+                        int index = letter[0] - 'A';
+                        if (index >= 0 && index < options.Count)
+                        {
+                            optionTexts.Add(options[index]);
+                        }
+                    }
+                }
+
+                if (optionTexts.Any())
+                {
+                    _logger.LogDebug("将选项字母组合 {Letters} 转换为完整选项文本", letterAnswer);
+                    return string.Join("，", optionTexts);
+                }
+            }
+
+            return letterAnswer;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "转换选项字母为文本时出错: {Letter}", letterAnswer);
+            return letterAnswer;
+        }
     }
 }

@@ -78,13 +78,22 @@ public class DefaultPromptBuilder : IPromptBuilder
     }
 
     /// <inheritdoc/>
-    public string BuildCorrectionPrompt(AIGenerateQuestionDto request)
+    public string BuildCorrectionPrompt(AIGenerateQuestionDto request, string errorMessage = null)
     {
         _logger.LogDebug("构建格式修正的提示词");
         
         StringBuilder sb = new StringBuilder();
         
         sb.AppendLine("你之前生成的回答存在格式问题，请修正。");
+        
+        // 如果有具体错误信息，将其包含在提示词中
+        if (!string.IsNullOrEmpty(errorMessage))
+        {
+            sb.AppendLine();
+            sb.AppendLine("具体错误信息：");
+            sb.AppendLine(errorMessage);
+        }
+        
         sb.AppendLine();
         sb.AppendLine("我需要严格的JSON格式响应，格式如下:");
         sb.AppendLine("{\"questions\": [{\"content\": \"题目内容\",\"options\": [\"选项A\", \"选项B\", \"选项C\", \"选项D\"],\"correctAnswer\": \"选项字母\",\"analysis\": \"答案解析\",\"knowledgePoints\": \"涉及的知识点\"}]}");

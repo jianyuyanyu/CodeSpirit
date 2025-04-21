@@ -45,8 +45,8 @@ public class DefaultLLMClient : ILLMClient
     public async Task<string> GenerateContentAsync(string prompt, int maxTokens)
     {
         return await GenerateContentAsync(
-            "你是一个专业的考试题目生成助手，严格按照要求生成考试题目。", 
-            prompt, 
+            "你是一个专业的考试题目生成助手，严格按照要求生成考试题目。",
+            prompt,
             maxTokens);
     }
 
@@ -71,10 +71,10 @@ public class DefaultLLMClient : ILLMClient
         {
             // 构建请求URL
             string requestUrl = DetermineRequestUrl(Settings.ApiBaseUrl, Settings.ModelName);
-            
+
             // 构建请求体
             var requestBody = BuildRequestBody(Settings.ModelName, systemPrompt, userPrompt, maxTokens);
-            
+
             _logger.LogDebug("请求体: {RequestBody}", JsonSerializer.Serialize(requestBody));
 
             // 发送请求
@@ -84,47 +84,63 @@ public class DefaultLLMClient : ILLMClient
                 "application/json");
 
             _logger.LogInformation("发送请求到大模型API: {Url}", requestUrl);
-            var response = await _httpClient.PostAsync(requestUrl, httpContent);
             
-            // 记录响应状态
-            _logger.LogDebug("API响应状态码: {StatusCode}", response.StatusCode);
+            // 使用流式处理
+            var request = new HttpRequestMessage(HttpMethod.Post, requestUrl)
+            {
+                Content = httpContent
+            };
+            
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             
             // 确保请求成功
             response.EnsureSuccessStatusCode();
             
-            // 读取响应内容
-            var responseContent = await response.Content.ReadAsStringAsync();
-            _logger.LogDebug("大模型响应: {Response}", responseContent.Length > 1000 
-                ? responseContent.Substring(0, 1000) + "..." 
-                : responseContent);
+            _logger.LogInformation("API响应状态码: {StatusCode}", response.StatusCode);
             
-            if (string.IsNullOrEmpty(responseContent))
+            // 读取流式响应
+            var streamResult = new StringBuilder();
+            using (var stream = await response.Content.ReadAsStreamAsync())
+            using (var reader = new StreamReader(stream))
             {
-                _logger.LogWarning("大模型返回了空响应");
-                throw new InvalidOperationException("大模型返回了空响应");
+                string line;
+                while ((line = await reader.ReadLineAsync()) != null)
+                {
+                    if (string.IsNullOrEmpty(line) || line == "data: [DONE]")
+                    {
+                        continue;
+                    }
+                    
+                    if (line.StartsWith("data: "))
+                    {
+                        line = line.Substring("data: ".Length);
+                    }
+                    
+                    try
+                    {
+                        JsonElement chunk = JsonDocument.Parse(line).RootElement;
+                        string content = ExtractContentFromStreamChunk(chunk, Settings.ModelName);
+                        if (!string.IsNullOrEmpty(content))
+                        {
+                            streamResult.Append(content);
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "解析流式数据块失败: {Line}", line);
+                        // 继续处理下一个数据块
+                    }
+                }
             }
             
-            // 解析响应
-            JsonElement responseJson = JsonDocument.Parse(responseContent).RootElement;
-            
-            // 检查是否包含错误信息
-            if (responseJson.TryGetProperty("error", out var errorElement) ||
-                responseJson.TryGetProperty("error_code", out errorElement))
-            {
-                string errorMessage = errorElement.ToString();
-                _logger.LogError("API返回错误: {Error}", errorMessage);
-                throw new InvalidOperationException($"大模型API返回错误: {errorMessage}");
-            }
-            
-            // 提取生成的内容
-            string generatedContent = ExtractGeneratedContent(responseJson, Settings.ModelName);
+            string generatedContent = streamResult.ToString();
             
             if (string.IsNullOrEmpty(generatedContent))
             {
                 _logger.LogWarning("提取的生成内容为空");
                 throw new InvalidOperationException("提取的生成内容为空");
             }
-            
+
             return generatedContent;
         }
         catch (HttpRequestException ex)
@@ -141,6 +157,66 @@ public class DefaultLLMClient : ILLMClient
         {
             _logger.LogError(ex, "生成内容时发生错误: {Message}", ex.Message);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 从流式响应块中提取内容
+    /// </summary>
+    private string ExtractContentFromStreamChunk(JsonElement chunk, string modelName)
+    {
+        try
+        {
+            // OpenAI 流式响应格式
+            if (chunk.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+            {
+                var choice = choices[0];
+                if (choice.TryGetProperty("delta", out var delta) && 
+                    delta.TryGetProperty("content", out var content))
+                {
+                    return content.GetString() ?? "";
+                }
+            }
+            
+            // 阿里云灵积模型响应格式
+            if (modelName.StartsWith("qwen") || modelName.Contains("tongyi"))
+            {
+                if (chunk.TryGetProperty("output", out var output))
+                {
+                    if (output.TryGetProperty("choices", out var qwenChoices) && 
+                        qwenChoices.GetArrayLength() > 0)
+                    {
+                        var choice = qwenChoices[0];
+                        if (choice.TryGetProperty("delta", out var delta) &&
+                            delta.TryGetProperty("content", out var content))
+                        {
+                            return content.GetString() ?? "";
+                        }
+                    }
+                }
+            }
+            
+            // 尝试其他可能的路径
+            foreach (var propName in new[] { "content", "text", "delta" })
+            {
+                if (chunk.TryGetProperty(propName, out var prop))
+                {
+                    string value = prop.ValueKind == JsonValueKind.String 
+                        ? prop.GetString() ?? "" 
+                        : prop.ToString();
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        return value;
+                    }
+                }
+            }
+            
+            return "";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "提取流式数据块内容失败");
+            return "";
         }
     }
 
@@ -185,15 +261,15 @@ public class DefaultLLMClient : ILLMClient
             // 设置超时
             client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
             _logger.LogDebug("HTTP客户端超时设置为 {Timeout} 秒", settings.TimeoutSeconds);
-            
+
             // 设置认证头
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", 
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
                 string.IsNullOrEmpty(settings.ApiKey) ? string.Empty : settings.ApiKey);
-            
+
             // 添加请求头
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "CodeSpirit.ExamApi/1.0");
-            
+
             // 添加可能特定于供应商的头部
             if (settings.ApiBaseUrl.Contains("dashscope.aliyuncs.com"))
             {
@@ -239,105 +315,7 @@ public class DefaultLLMClient : ILLMClient
             },
             max_tokens = maxTokens,
             temperature = 0.7,
-            response_format = new { type = "json_object" }
+            stream = true
         };
     }
-
-    /// <summary>
-    /// 从响应中提取生成的内容
-    /// </summary>
-    private string ExtractGeneratedContent(JsonElement response, string modelName)
-    {
-        _logger.LogDebug("开始从响应中提取生成内容，模型: {ModelName}", modelName);
-        
-        try
-        {
-            // 阿里云灵积模型响应格式
-            if (modelName.StartsWith("qwen") || modelName.Contains("tongyi"))
-            {
-                _logger.LogDebug("使用阿里云灵积模型提取逻辑");
-                
-                if (response.TryGetProperty("output", out var output))
-                {
-                    if (output.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
-                    {
-                        var firstChoice = choices[0];
-                        if (firstChoice.TryGetProperty("message", out var message) && 
-                            message.TryGetProperty("content", out var content))
-                        {
-                            string contentValue = content.GetString() ?? string.Empty;
-                            _logger.LogDebug("成功提取阿里云灵积模型响应内容，长度: {Length}", contentValue.Length);
-                            return contentValue;
-                        }
-                    }
-                }
-            }
-            
-            // 百度文心一言响应格式
-            if (modelName.Contains("ernie") || modelName.Contains("wenxin"))
-            {
-                _logger.LogDebug("尝试使用文心一言提取逻辑");
-                
-                if (response.TryGetProperty("result", out var result))
-                {
-                    string resultValue = result.GetString() ?? string.Empty;
-                    if (!string.IsNullOrEmpty(resultValue))
-                    {
-                        return resultValue;
-                    }
-                }
-                
-                if (response.TryGetProperty("data", out var data))
-                {
-                    if (data.TryGetProperty("result", out var dataResult) || 
-                        data.TryGetProperty("content", out dataResult))
-                    {
-                        string resultValue = dataResult.GetString() ?? string.Empty;
-                        return resultValue;
-                    }
-                }
-            }
-            
-            // OpenAI格式响应
-            _logger.LogDebug("尝试使用OpenAI提取逻辑");
-            if (response.TryGetProperty("choices", out var openaiChoices) && openaiChoices.GetArrayLength() > 0)
-            {
-                var firstChoice = openaiChoices[0];
-                if (firstChoice.TryGetProperty("message", out var message) && 
-                    message.TryGetProperty("content", out var content))
-                {
-                    string contentValue = content.GetString() ?? string.Empty;
-                    return contentValue;
-                }
-                else if (firstChoice.TryGetProperty("text", out var text))
-                {
-                    string textValue = text.GetString() ?? string.Empty;
-                    return textValue;
-                }
-            }
-            
-            // 通用提取逻辑
-            foreach (var propName in new[] { "content", "text", "generated_text", "answer", "response", "message" })
-            {
-                if (response.TryGetProperty(propName, out var prop))
-                {
-                    string value = prop.GetString() ?? string.Empty;
-                    if (!string.IsNullOrEmpty(value))
-                    {
-                        _logger.LogInformation("从属性 {PropertyName} 中找到可能的内容", propName);
-                        return value;
-                    }
-                }
-            }
-            
-            // 如果所有尝试都失败，返回整个响应
-            _logger.LogWarning("无法找到标准内容字段，返回完整响应");
-            return response.ToString();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "解析模型响应失败: {ErrorMessage}", ex.Message);
-            throw new Exception("解析大模型生成内容失败", ex);
-        }
-    }
-} 
+}

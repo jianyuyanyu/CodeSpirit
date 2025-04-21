@@ -55,7 +55,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
     }
 
     /// <inheritdoc/>
-    public async Task<List<CreateQuestionDto>> GenerateQuestionsAsync(AIGenerateQuestionDto request)
+    public async Task<List<CreateQuestionDto>> GenerateQuestionsAsync(AIGenerateQuestionDto request, string sessionId = null, INotificationService notificationService = null)
     {
         _logger.LogInformation("开始生成题目: 主题={Topic}, 数量={Count}, 类型={Type}, 难度={Difficulty}", 
             request.Topic, request.Count, request.Type, request.Difficulty);
@@ -66,6 +66,12 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
         {
             _logger.LogError("未能创建LLM客户端，无法生成题目");
             throw new InvalidOperationException("未配置LLM设置，请先配置大语言模型");
+        }
+
+        // 如果提供了通知服务和会话ID，则发送构建提示词开始通知
+        if (notificationService != null && !string.IsNullOrEmpty(sessionId))
+        {
+            await notificationService.NotifyGenerationProgressAsync(sessionId, "preparing", "正在构建提示词...", 20);
         }
 
         // 重试策略
@@ -80,9 +86,21 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                 // 构建提示词
                 string prompt = _promptBuilder.BuildGenerationPrompt(request);
                 _logger.LogTrace("生成的提示词: {Prompt}", prompt);
+                
+                // 如果提供了通知服务和会话ID，则发送提示词构建完成通知
+                if (notificationService != null && !string.IsNullOrEmpty(sessionId))
+                {
+                    await notificationService.NotifyGenerationProgressAsync(sessionId, "prompt_ready", "提示词构建完成，开始生成题目...", 30);
+                }
 
                 // 发送请求获取生成内容
                 var generatedContent = await llmClient.GenerateContentAsync(prompt);
+                
+                // 如果提供了通知服务和会话ID，则发送内容生成完成通知
+                if (notificationService != null && !string.IsNullOrEmpty(sessionId))
+                {
+                    await notificationService.NotifyGenerationProgressAsync(sessionId, "content_generated", "内容生成完成，开始解析题目...", 60);
+                }
                 
                 if (string.IsNullOrEmpty(generatedContent))
                 {
@@ -90,8 +108,15 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     throw new InvalidOperationException("提取的生成内容为空");
                 }
                 
+                _logger.LogInformation(generatedContent);
                 // 解析生成的题目
                 var questions = _questionParser.ParseQuestions(generatedContent, request);
+                
+                // 如果提供了通知服务和会话ID，则发送题目解析完成通知
+                if (notificationService != null && !string.IsNullOrEmpty(sessionId))
+                {
+                    await notificationService.NotifyGenerationProgressAsync(sessionId, "parsing_completed", $"成功解析 {questions.Count} 道题目", 90);
+                }
                 
                 if (questions.Count == 0)
                 {
@@ -114,7 +139,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     try
                     {
                         // 请求LLM修正格式
-                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request);
+                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request, ex.Message);
                         
                         // 使用修正后的内容尝试重新解析
                         _logger.LogInformation("获取到修正内容，尝试重新解析");
@@ -175,7 +200,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     try 
                     {
                         // 请求LLM修正格式
-                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request);
+                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request, ex.Message);
                         
                         // 使用修正后的内容尝试重新解析
                         _logger.LogInformation("获取到修正内容，尝试重新处理");
@@ -218,7 +243,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     try
                     {
                         // 请求LLM修正格式
-                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request);
+                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request, ex.Message);
                         
                         // 使用修正后的内容尝试重新解析
                         _logger.LogInformation("获取到修正内容，尝试重新处理");
@@ -239,12 +264,34 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                 if (retryCount < maxRetries)
                 {
                     retryCount++;
-                    await ApplyRetryDelay(retryCount, maxRetries, backoffMs);
-                    backoffMs *= 2; // 指数退避
+                    int backoffDelay = backoffMs * (int)Math.Pow(2, retryCount - 1); // 指数退避
+                    _logger.LogWarning("生成题目时发生错误，{RetryCount}/{MaxRetries} 次重试，将在 {Delay}ms 后重试", 
+                        retryCount, maxRetries, backoffDelay);
+                    
+                    // 发送重试通知
+                    if (notificationService != null && !string.IsNullOrEmpty(sessionId))
+                    {
+                        await notificationService.NotifyGenerationProgressAsync(
+                            sessionId, 
+                            "retrying", 
+                            $"生成题目时遇到问题，正在进行第 {retryCount}/{maxRetries} 次尝试...", 
+                            20 + retryCount * 10);
+                    }
+                    
+                    await Task.Delay(backoffDelay);
                     continue;
                 }
                 
-                throw new Exception("生成题目时发生错误", ex);
+                // 已达到最大重试次数
+                _logger.LogError("生成题目失败，已达到最大重试次数 {MaxRetries}", maxRetries);
+                
+                // 如果提供了通知服务和会话ID，则发送生成失败通知
+                if (notificationService != null && !string.IsNullOrEmpty(sessionId))
+                {
+                    await notificationService.NotifyGenerationErrorAsync(sessionId, "生成题目失败，请稍后重试");
+                }
+                
+                throw;
             }
         }
     }
@@ -262,14 +309,14 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
     /// <summary>
     /// 请求LLM修正格式问题
     /// </summary>
-    private async Task<string> RequestFormatCorrectionAsync(ILLMClient llmClient, AIGenerateQuestionDto request)
+    private async Task<string> RequestFormatCorrectionAsync(ILLMClient llmClient, AIGenerateQuestionDto request, string errorMessage = null)
     {
         _logger.LogInformation("请求LLM修正格式问题");
         
         try
         {
-            // 构建修正提示词
-            string prompt = _promptBuilder.BuildCorrectionPrompt(request);
+            // 构建修正提示词，包含详细的错误信息
+            string prompt = _promptBuilder.BuildCorrectionPrompt(request, errorMessage);
             
             _logger.LogDebug("发送格式修正请求");
             

@@ -2,272 +2,10 @@
  * 题目生成页面脚本 - 基于AMIS框架
  * 实现AI题目生成功能，包括表单提交、实时进度展示和状态通知
  * 
- * 自定义CSS样式，确保不同状态下的元素显示正确
+ * 外部CSS样式文件: /css/question-generation-amis.css
  */
 (function () {
     'use strict';
-
-    // 添加自定义CSS样式
-    function addCustomStyles() {
-        const styleElement = document.createElement('style');
-        styleElement.textContent = `
-            /* 基础样式和主题颜色 */
-            :root {
-                --primary-color: #1677ff;
-                --primary-light: #e6f4ff;
-                --success-color: #52c41a;
-                --warning-color: #faad14;
-                --error-color: #ff4d4f;
-                --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                --border-radius: 6px;
-                --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-                --transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
-            }
-            
-            /* 全局样式优化 */
-            #question-generation-app {
-                font-family: var(--font-family);
-            }
-            
-            #question-generation-app .card {
-                border-radius: var(--border-radius);
-                box-shadow: var(--box-shadow);
-                transition: var(--transition);
-                border: none;
-            }
-            
-            #question-generation-app .card:hover {
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-            }
-            
-            /* 表单样式优化 */
-            #question-generation-app .form-control,
-            #question-generation-app .form-select,
-            #question-generation-app .amis-select {
-                border-radius: var(--border-radius);
-                transition: var(--transition);
-            }
-            
-            #question-generation-app .form-control:focus,
-            #question-generation-app .form-select:focus {
-                border-color: var(--primary-color);
-                box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.2);
-            }
-            
-            /* 按钮样式优化 */
-            #question-generation-app .btn {
-                border-radius: var(--border-radius);
-                transition: var(--transition);
-                padding: 8px 16px;
-                font-weight: 500;
-            }
-            
-            #question-generation-app .btn-primary {
-                background-color: var(--primary-color);
-                border-color: var(--primary-color);
-            }
-            
-            #question-generation-app .btn-primary:hover {
-                background-color: #0958d9;
-                border-color: #0958d9;
-                transform: translateY(-1px);
-            }
-            
-            /* 确保不同状态下容器的显示 */
-            #question-generation-app:not(.status-generating) [data-status="generating"] {
-                display: none !important;
-            }
-            
-            #question-generation-app:not(.status-completed) [data-status="completed"] {
-                display: none !important;
-            }
-            
-            #question-generation-app:not(.status-error) [data-status="error"] {
-                display: none !important;
-            }
-            
-            #question-generation-app:not(.status-waiting) [data-status="waiting"] {
-                display: none !important;
-            }
-            
-            /* 针对生成中状态的进度样式 */
-            #question-generation-app.status-generating [data-status="generating"] {
-                display: block !important;
-            }
-            
-            /* 进度条动画效果 */
-            .generation-progress .progress-bar {
-                transition: width 0.5s ease;
-                background-image: linear-gradient(45deg, 
-                    rgba(255, 255, 255, 0.15) 25%, 
-                    transparent 25%, 
-                    transparent 50%, 
-                    rgba(255, 255, 255, 0.15) 50%, 
-                    rgba(255, 255, 255, 0.15) 75%, 
-                    transparent 75%, 
-                    transparent);
-                background-size: 1rem 1rem;
-                animation: progress-bar-stripes 1s linear infinite, progress-pulse 2s infinite;
-            }
-            
-            @keyframes progress-bar-stripes {
-                from { background-position: 1rem 0; }
-                to { background-position: 0 0; }
-            }
-            
-            @keyframes progress-pulse {
-                0% { opacity: 1; }
-                50% { opacity: 0.8; }
-                100% { opacity: 1; }
-            }
-            
-            /* 生成日志区域样式 */
-            .bg-dark.text-light {
-                max-height: 300px;
-                overflow-y: auto;
-                border-radius: var(--border-radius);
-                background-color: #272b30 !important;
-            }
-            
-            /* 确保日志项目间的分隔 */
-            .bg-dark.text-light div {
-                padding: 4px 10px;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-                font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-                font-size: 13px;
-            }
-            
-            /* 状态相关的颜色 */
-            .status-generating .progress-stage {
-                color: var(--primary-color);
-                font-weight: bold;
-            }
-            
-            /* 主题化面板和卡片 */
-            #question-generation-app .panel-default,
-            #question-generation-app .panel {
-                border: none;
-                border-radius: var(--border-radius);
-                box-shadow: var(--box-shadow);
-                overflow: hidden;
-            }
-            
-            #question-generation-app .panel-heading,
-            #question-generation-app .panel-default > .panel-heading {
-                background-color: #f8f9fa;
-                border-bottom: 1px solid #f0f0f0;
-                padding: 12px 16px;
-            }
-            
-            #question-generation-app .panel-body {
-                padding: 16px;
-            }
-            
-            /* 美化等待状态 */
-            .waiting-container {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 40px 0;
-                color: #8c8c8c;
-            }
-            
-            .waiting-container .waiting-icon {
-                font-size: 48px;
-                margin-bottom: 16px;
-                color: #d9d9d9;
-                transition: var(--transition);
-            }
-            
-            .waiting-container:hover .waiting-icon {
-                color: var(--primary-color);
-                transform: scale(1.1);
-            }
-            
-            /* 美化生成结果表格 */
-            .generated-questions-table {
-                margin-top: 16px;
-            }
-            
-            .generated-questions-table th {
-                background-color: #f5f5f5;
-                font-weight: 600;
-            }
-            
-            .generated-questions-table tr:hover {
-                background-color: var(--primary-light);
-            }
-            
-            /* 自适应设计 */
-            @media (max-width: 768px) {
-                #question-generation-app .grid-row {
-                    flex-direction: column;
-                }
-                
-                #question-generation-app .grid-col {
-                    width: 100% !important;
-                    margin-bottom: 16px;
-                }
-                
-                #question-generation-app .card {
-                    margin-bottom: 16px;
-                }
-            }
-            
-            /* 动画效果 */
-            .fade-in {
-                animation: fadeIn 0.5s ease-in-out;
-            }
-            
-            @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(10px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            
-            /* 题目卡片样式 */
-            .question-card {
-                border-left: 3px solid var(--primary-color);
-                transition: var(--transition);
-            }
-            
-            .question-card:hover {
-                transform: translateY(-2px);
-            }
-            
-            /* 状态标签样式 */
-            .status-badge {
-                display: inline-block;
-                padding: 2px 8px;
-                border-radius: 12px;
-                font-size: 12px;
-                font-weight: 500;
-            }
-            
-            .status-badge-success {
-                background-color: #f6ffed;
-                border: 1px solid #b7eb8f;
-                color: #52c41a;
-            }
-            
-            .status-badge-processing {
-                background-color: #e6f4ff;
-                border: 1px solid #91caff;
-                color: #1677ff;
-            }
-            
-            .status-badge-error {
-                background-color: #fff2f0;
-                border: 1px solid #ffccc7;
-                color: #ff4d4f;
-            }
-        `;
-        document.head.appendChild(styleElement);
-        console.log("自定义CSS样式已添加");
-    }
-
-    // 页面加载完成时添加样式
-    window.addEventListener('DOMContentLoaded', addCustomStyles);
 
     // 初始化变量
     let connection = null;       // SignalR连接对象 
@@ -570,7 +308,7 @@
             const generatedCount = data.generatedCount || data.questionCount || 0;
             const message = data.message || generatedCount;
             // 更新状态
-            updateGenerationStatus("已完成");
+            updateGenerationStatus("completed");
             // 更新进度
             updateProgress("已完成", message, 100);
             addLog(`生成完成: ${message}`);
@@ -578,6 +316,7 @@
             // 更新生成数量信息
             if (window.amisUpdateMethod) {
                 window.amisUpdateMethod('questionCount', generatedCount);
+                window.amisUpdateMethod('generationStatus', 'completed'); // 确保状态更新
             }
 
             // 自动获取生成的题目
@@ -589,6 +328,8 @@
                     // 显示结果区域
                     if (window.amisUpdateMethod) {
                         window.amisUpdateMethod('showResults', true);
+                        // 强制更新UI
+                        forceUpdateAmisComponent();
                         // 滚动到结果区域
                         setTimeout(() => {
                             const resultsElement = document.querySelector('.generated-questions-container');
@@ -710,13 +451,21 @@
                     window.amisUpdateMethod({
                         isFetchingQuestions: false,
                         questionFetchMessage: '题目获取成功',
-                        generatedQuestions: formattedQuestions
+                        generatedQuestions: formattedQuestions,
+                        showResults: true,               // 确保显示结果面板
+                        generationStatus: 'completed'    // 确保状态正确
                     });
+                    
+                    // 强制更新
+                    forceUpdateAmisComponent();
+                    
+                    // 确保状态类正确
+                    checkGenerationStatusClass('completed');
                 }
 
                 // 滚动到题目容器
                 setTimeout(() => {
-                    const questionsContainer = document.getElementById('questionsContainer');
+                    const questionsContainer = document.querySelector('.generated-questions-container');
                     if (questionsContainer) {
                         questionsContainer.scrollIntoView({ behavior: 'smooth' });
                     }
@@ -1221,6 +970,8 @@
             updateMethod('progressMessage', '正在初始化...');
             updateMethod('errorMessage', '');
             updateMethod('errorDetails', '');
+            updateMethod('generatedQuestions', []); // 清空题目列表
+            updateMethod('showResults', false);    // 隐藏结果面板
         } else {
             console.warn("无法重置AMIS表单，更新方法不可用");
 
@@ -1234,7 +985,9 @@
                         progressStage: '准备中...',
                         progressMessage: '正在初始化...',
                         errorMessage: '',
-                        errorDetails: ''
+                        errorDetails: '',
+                        generatedQuestions: [],
+                        showResults: false
                     }
                 };
                 window.amisInstance.updateProps(updateData);
@@ -1246,6 +999,12 @@
         }
 
         currentSessionId = null;
+        
+        // 强制刷新界面
+        forceUpdateAmisComponent();
+        
+        // 更新状态类
+        checkGenerationStatusClass('waiting');
     }
 
     /**
@@ -1335,7 +1094,7 @@
                                             ]
                                         }
                                     },
-                                    disabledOn: "data.generationStatus === 'generating'"
+                                    disabledOn: "generation.generationStatus === 'generating'"
                                 }
                             ],
                             body: [
@@ -1469,6 +1228,16 @@
                                     type: "hidden",
                                     name: "generationLogs",
                                     value: []
+                                },
+                                {
+                                    type: "hidden",
+                                    name: "generatedQuestions",
+                                    value: []
+                                },
+                                {
+                                    type: "hidden",
+                                    name: "showResults",
+                                    value: false
                                 }
                             ]
                         }
@@ -1594,7 +1363,7 @@
                                         {
                                             type: "container",
                                             className: "fade-in",
-                                            visibleOn: "data.generationStatus === 'completed'",
+                                            visibleOn: "data.generationStatus === 'completed' || data.showResults === true",
                                             data: {
                                                 status: "completed"
                                             },
@@ -1913,6 +1682,7 @@
     // 初始化AMIS应用
     window.addEventListener('load', function () {
         console.log("页面加载完成，初始化AMIS应用");
+        
         const amisApp = amisRequire('amis/embed');
 
         // 保存全局作用域
@@ -1930,7 +1700,9 @@
             errorMessage: '',
             errorDetails: '',
             completionMessage: '生成完成',
-            generationLogs: []
+            generationLogs: [],
+            generatedQuestions: [], // 添加生成的题目数组
+            showResults: false     // 添加结果显示标志
         };
 
         // 设置到全局数据
@@ -2103,17 +1875,17 @@
      * 添加DOM事件处理程序
      */
     window.addDomEventHandlers = function () {
-        // try {
-        //     // 添加轮询检查器，确保状态和UI一致
-        //     setInterval(function() {
-        //         const status = GlobalData.get('generation.status', 'waiting');
-        //         checkGenerationStatusClass(status);
-        //     }, 1000);
+         try {
+             // 添加轮询检查器，确保状态和UI一致
+             setInterval(function() {
+                 const status = GlobalData.get('generation.status', 'waiting');
+                 checkGenerationStatusClass(status);
+             }, 1000);
 
-        //     console.log("DOM事件处理器已添加");
-        // } catch (error) {
-        //     console.error("添加DOM事件处理器时出错:", error);
-        // }
+             console.log("DOM事件处理器已添加");
+         } catch (error) {
+             console.error("添加DOM事件处理器时出错:", error);
+         }
     };
 
     /**
@@ -2124,6 +1896,11 @@
         try {
             const root = document.getElementById('question-generation-app');
             if (root) {
+                // 将"已完成"转换为"completed"以保持统一
+                if (status === '已完成') {
+                    status = 'completed';
+                }
+                
                 // 移除所有状态类
                 root.classList.remove('status-waiting', 'status-generating', 'status-completed', 'status-error');
 

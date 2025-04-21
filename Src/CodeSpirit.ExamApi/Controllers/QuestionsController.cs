@@ -544,7 +544,7 @@ public class QuestionsController : ApiControllerBase
             stopwatch.Stop();
             
             // 发送完成通知
-            await _notificationService.NotifyGenerationCompletedAsync(sessionId, savedQuestions, stopwatch.ElapsedMilliseconds);
+            await _notificationService.NotifyGenerationCompletedAsync(sessionId, questions, stopwatch.ElapsedMilliseconds);
             
             if (failedItems.Any())
             {

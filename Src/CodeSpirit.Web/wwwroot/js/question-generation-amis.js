@@ -220,12 +220,37 @@
             this.set('generation.status', status);
             this.updateAmis('generationStatus', status);
             
+            // 根据状态更新当前步骤
+            let currentStep = 0;
+            let activePanel = 'form';
+            
+            if (status === 'generating') {
+                currentStep = 1;
+                activePanel = 'progress';
+            } else if (status === 'completed') {
+                currentStep = 2;
+                activePanel = 'results';
+            } else if (status === 'waiting') {
+                currentStep = 0;
+                activePanel = 'form';
+            } else if (status === 'error') {
+                // 错误状态下保持生成中步骤，但显示错误状态
+                currentStep = 1;
+                activePanel = 'progress';
+            }
+            
+            // 更新当前步骤状态和活动面板
+            this.updateAmis({
+                currentStep: currentStep,
+                activePanel: activePanel
+            });
+            
             // 确保根据状态更新页面CSS类
             setTimeout(() => {
                 checkGenerationStatusClass(status);
             }, 50);
             
-            console.log(`更新生成状态: ${status}`);
+            console.log(`更新生成状态: ${status}, 当前步骤: ${currentStep}, 活动面板: ${activePanel}`);
         },
 
         /**
@@ -304,6 +329,8 @@
             this.initialData.logs = [];
             this.initialData.generatedQuestions = [];
             this.initialData.showResults = false;
+            this.initialData.currentStep = 0;
+            this.initialData.activePanel = 'form';
             
             // 更新AMIS
             this.updateAmis({
@@ -315,7 +342,9 @@
                 errorDetails: '',
                 generationLogs: [],
                 generatedQuestions: [],
-                showResults: false
+                showResults: false,
+                currentStep: 0,
+                activePanel: 'form'
             });
             
             console.log('数据已重置');
@@ -360,7 +389,9 @@
             DataManager.updateAmis({
                 generationStatus: 'error',
                 errorMessage: title,
-                errorDetails: message
+                errorDetails: message,
+                // 保持在生成步骤，但状态为错误
+                currentStep: 1
             });
 
             // 停止SignalR连接
@@ -418,6 +449,23 @@
             .then(function () {
                 DataManager.addLog(`已加入生成组: ${sessionId}`);
                 console.log(`已加入生成组: ${sessionId}`);
+                
+                // 强制更新AMIS状态以确保面板切换
+                DataManager.updateAmis({
+                    generationStatus: 'generating',
+                    currentStep: 1,
+                    activePanel: 'progress'
+                });
+                
+                // 确保界面状态更新
+                setTimeout(() => {
+                    if (amisInstance && amisInstance.forceUpdate) {
+                        amisInstance.forceUpdate();
+                        // 手动检查状态类
+                        checkGenerationStatusClass('generating');
+                    }
+                }, 200);
+                
                 executeGeneration(sessionId);
             })
             .catch(function (err) {
@@ -469,7 +517,11 @@
             // 更新生成数量信息
             DataManager.updateAmis({
                 questionCount: generatedCount,
-                generationStatus: 'completed'
+                generationStatus: 'completed',
+                // 确保更新步骤到结果查看
+                currentStep: 2,
+                // 设置激活面板为结果面板
+                activePanel: 'results'
             });
 
             // 自动获取生成的题目
@@ -479,7 +531,10 @@
                 setTimeout(() => {
                     fetchGeneratedQuestions(sessionId);
                     // 显示结果区域
-                    DataManager.updateAmis('showResults', true);
+                    DataManager.updateAmis({
+                        showResults: true,
+                        currentStep: 2
+                    });
                     
                     // 滚动到结果区域
                     setTimeout(() => {
@@ -726,6 +781,22 @@
         // 清空日志
         DataManager.initialData.logs = [];
         DataManager.updateAmis('generationLogs', []);
+        
+        // 强制更新AMIS状态以确保面板切换
+        DataManager.updateAmis({
+            currentStep: 1,
+            activePanel: 'progress'
+        });
+        
+        // 强制检查状态类
+        checkGenerationStatusClass('generating');
+        
+        // 确保界面状态更新
+        setTimeout(() => {
+            if (amisInstance && amisInstance.forceUpdate) {
+                amisInstance.forceUpdate();
+            }
+        }, 200);
 
         // 直接调用fetch而不依赖AMIS的ajax
         fetch("/exam/api/exam/Questions/ai/generate-and-save", {
@@ -812,6 +883,9 @@
         
         // 更新状态类
         checkGenerationStatusClass('waiting');
+        
+        // 确保步骤回到初始状态
+        DataManager.updateAmis('currentStep', 0);
     }
 
     /**
@@ -861,6 +935,41 @@
                     });
                     console.log("已手动更新状态容器可见性");
                 }
+                
+                // 确保选项卡显示正确
+                const tabs = document.querySelectorAll('.generation-panels .tabs-content > div');
+                if (tabs && tabs.length > 0) {
+                    // 根据状态确定当前选项卡
+                    let activeTabIndex = 0;
+                    if (status === 'generating' || status === 'error') {
+                        activeTabIndex = 1;
+                    } else if (status === 'completed') {
+                        activeTabIndex = 2;
+                    }
+                    
+                    // 设置活动选项卡
+                    tabs.forEach((tab, index) => {
+                        if (index === activeTabIndex) {
+                            tab.style.display = 'block';
+                        } else {
+                            tab.style.display = 'none';
+                        }
+                    });
+                    
+                    // 更新选项卡头部
+                    const tabHeaders = document.querySelectorAll('.generation-panels .tabs-header > div');
+                    if (tabHeaders && tabHeaders.length > 0) {
+                        tabHeaders.forEach((header, index) => {
+                            if (index === activeTabIndex) {
+                                header.classList.add('is-active');
+                            } else {
+                                header.classList.remove('is-active');
+                            }
+                        });
+                    }
+                    
+                    console.log(`已手动设置活动选项卡: ${activeTabIndex}`);
+                }
 
                 return true;
             }
@@ -906,512 +1015,335 @@
             completionMessage: '生成完成',
             generationLogs: [],
             generatedQuestions: [],
-            showResults: false
+            showResults: false,
+            // 添加步骤状态数据
+            currentStep: 0,
+            // 添加折叠面板激活状态
+            activePanel: 'form'
         },
         body: [
             {
-                type: "grid",
-                className: "mb-4",
-                columns: [
+                type: "container",
+                className: "mb-4 p-0 page-container",
+                body: [
                     {
-                        md: 6,
-                        body: {
-                            type: "form",
-                            title: "",
-                            mode: "horizontal",
-                            horizontal: {
-                                left: 3,
-                                right: 9
+                        type: "steps",
+                        className: "mb-4 generation-steps shadow-sm p-3 bg-white rounded",
+                        value: "${generationStatus === 'waiting' ? 0 : (generationStatus === 'generating' ? 1 : (generationStatus === 'completed' || showResults === true ? 2 : (generationStatus === 'error' ? 1 : 0)))}",
+                        steps: [
+                            {
+                                title: "设置参数",
+                                subTitle: "填写生成需求",
+                                icon: "fa fa-cog",
+                                value: 0
                             },
-                            className: "form-card shadow-sm border-0 rounded",
-                            wrapWithPanel: true,
-                            panelClassName: "border-0 shadow-sm rounded",
-                            actionsClassName: "border-top mt-3 pt-3",
-                            // 添加数据域，方便表单内数据传递
-                            data: {
-                                topic: "C#编程基础",
-                                count: 10,
-                                type: 1,
-                                difficulty: 2
+                            {
+                                title: "生成中",
+                                subTitle: "AI模型工作",
+                                icon: "fa fa-sync",
+                                value: 1
                             },
-                            actions: [
-                                {
-                                    type: "button",
-                                    label: "开始生成",
-                                    level: "primary",
-                                    size: "lg",
-                                    className: "question-generation-button shadow-sm",
-                                    iconClassName: "fas fa-magic me-1",
-                                    onEvent: {
-                                        click: {
-                                            actions: [
-                                                {
-                                                    actionType: "custom",
-                                                    script: "window.executeGenerationProcess(event.data, event.context);"
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    // 使用数据链表达式引用父级数据域
-                                    disabledOn: "${generationStatus === 'generating'}"
-                                }
-                            ],
-                            body: [
-                                {
-                                    type: "input-text",
-                                    name: "topic",
-                                    label: "主题",
-                                    required: true,
-                                    maxLength: 100,
-                                    placeholder: "请输入题目主题或知识领域",
-                                    description: "请输入题目主题或知识领域",
-                                    // 使用数据链表达式引用父级数据域
-                                    disabledOn: "${generationStatus === 'generating'}",
-                                    clearable: true,
-                                    prefixIcon: "fa fa-book"
-                                },
-                                {
-                                    type: "input-number",
-                                    name: "count",
-                                    label: "题目数量",
-                                    min: 1,
-                                    max: 10,
-                                    step: 1,
-                                    required: true,
-                                    description: "范围为1-10题",
-                                    disabledOn: "${generationStatus === 'generating'}",
-                                    displayMode: "enhance"
-                                },
-                                {
-                                    type: "select",
-                                    name: "type",
-                                    label: "题目类型",
-                                    options: [
-                                        { label: "单选题", value: 1 },
-                                        { label: "多选题", value: 2 },
-                                        { label: "判断题", value: 3 }
-                                    ],
-                                    required: true,
-                                    disabledOn: "${generationStatus === 'generating'}",
-                                    searchable: true,
-                                    clearable: false
-                                },
-                                {
-                                    type: "select",
-                                    name: "difficulty",
-                                    label: "难度",
-                                    options: [
-                                        { label: "简单", value: 1, badge: "success" },
-                                        { label: "中等", value: 2, badge: "warning" },
-                                        { label: "困难", value: 3, badge: "danger" }
-                                    ],
-                                    required: true,
-                                    disabledOn: "${generationStatus === 'generating'}",
-                                    searchable: false,
-                                    clearable: false
-                                },
-                                {
-                                    type: "tree-select",
-                                    name: "categoryId",
-                                    label: "分类",
-                                    source: "/exam/api/exam/QuestionCategories/tree",
-                                    multiple: false,
-                                    required: true,
-                                    cascade: true,
-                                    showOutline: true,
-                                    labelField: "name",
-                                    valueField: "id",
-                                    disabledOn: "${generationStatus === 'generating'}",
-                                    searchable: true
-                                },
-                                {
-                                    type: "textarea",
-                                    name: "requirements",
-                                    label: "生成要求",
-                                    maxLength: 500,
-                                    showCounter: true,
-                                    placeholder: "请输入对生成题目的特定要求，例如：围绕某个特定概念、包含具体知识点等",
-                                    disabledOn: "${generationStatus === 'generating'}",
-                                    minRows: 3,
-                                    maxRows: 6
-                                }
-                            ]
-                        }
+                            {
+                                title: "结果查看",
+                                subTitle: "查看生成的题目",
+                                icon: "fa fa-list",
+                                value: 2
+                            }
+                        ],
+                        // 在移动设备上自动换行
+                        mode: "horizontal",
+                        labelPlacement: "vertical",
+                        status: "${generationStatus === 'error' ? 'error' : 'process'}"
                     },
                     {
-                        md: 6,
-                        body: {
-                            type: "service",
-                            className: "h-100",
-                            initFetch: false,
-                            // 使用数据链共享父级数据
-                            data: "${parent.data}",
-                            body: [
-                                {
-                                    type: "card",
-                                    className: "h-100 shadow-sm border-0",
-                                    header: {
-                                        title: "生成进度",
-                                        className: "border-bottom bg-light",
-                                        subTitle: ""
+                        type: "tabs",
+                        className: "mb-4 generation-panels",
+                        tabsMode: "line",
+                        // 通过currentStep确定当前激活的选项卡
+                        activeKey: "${currentStep === 0 ? 0 : (currentStep === 1 ? 1 : 2)}",
+                        tabs: [
+                            {
+                                title: "参数设置",
+                                icon: "fa fa-cog",
+                                tab: {
+                                    type: "form",
+                                    title: "",
+                                    mode: "horizontal",
+                                    horizontal: {
+                                        left: 3,
+                                        right: 9
                                     },
-                                    headerClassName: "bg-light border-bottom",
-                                    bodyClassName: "p-3",
+                                    className: "form-card shadow-sm border-0 rounded",
+                                    wrapWithPanel: true,
+                                    panelClassName: "border-0 shadow-sm rounded",
+                                    actionsClassName: "border-top mt-3 pt-3",
+                                    // 添加数据域，方便表单内数据传递
+                                    data: {
+                                        topic: "C#编程基础",
+                                        count: 10,
+                                        type: 1,
+                                        difficulty: 2
+                                    },
+                                    actions: [
+                                        {
+                                            type: "button",
+                                            label: "开始生成",
+                                            level: "primary",
+                                            size: "lg",
+                                            className: "question-generation-button shadow-sm",
+                                            iconClassName: "fas fa-magic me-1",
+                                            onEvent: {
+                                                click: {
+                                                    actions: [
+                                                        {
+                                                            actionType: "custom",
+                                                            script: "window.executeGenerationProcess(event.data, event.context);"
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            // 使用数据链表达式引用父级数据域
+                                            disabledOn: "${generationStatus === 'generating'}"
+                                        }
+                                    ],
                                     body: [
-                                        // 待生成状态
                                         {
-                                            type: "tpl",
-                                            tpl: "<div class='waiting-container text-center py-5 fade-in'><i class='fas fa-robot waiting-icon'></i><p class='mt-3 text-secondary fs-5'>请填写表单开始生成题目</p><p class='text-muted'>AI将根据您的需求自动生成高质量的考试题目</p></div>",
-                                            // 使用数据链表达式判断状态
-                                            visibleOn: "${generationStatus === 'waiting' || !generationStatus}"
+                                            type: "input-text",
+                                            name: "topic",
+                                            label: "主题",
+                                            required: true,
+                                            maxLength: 100,
+                                            placeholder: "请输入题目主题或知识领域",
+                                            description: "请输入题目主题或知识领域",
+                                            disabledOn: "${generationStatus === 'generating'}",
+                                            clearable: true,
+                                            prefixIcon: "fa fa-book"
                                         },
-
-                                        // 生成中状态
                                         {
-                                            type: "container",
-                                            className: "fade-in",
-                                            // 使用数据链表达式判断状态
-                                            visibleOn: "${generationStatus === 'generating'}",
+                                            type: "input-number",
+                                            name: "count",
+                                            label: "题目数量",
+                                            min: 1,
+                                            max: 10,
+                                            step: 1,
+                                            required: true,
+                                            description: "范围为1-10题",
+                                            disabledOn: "${generationStatus === 'generating'}",
+                                            displayMode: "enhance"
+                                        },
+                                        {
+                                            type: "select",
+                                            name: "type",
+                                            label: "题目类型",
+                                            options: [
+                                                { label: "单选题", value: 1 },
+                                                { label: "多选题", value: 2 },
+                                                { label: "判断题", value: 3 }
+                                            ],
+                                            required: true,
+                                            disabledOn: "${generationStatus === 'generating'}",
+                                            searchable: true,
+                                            clearable: false
+                                        },
+                                        {
+                                            type: "select",
+                                            name: "difficulty",
+                                            label: "难度",
+                                            options: [
+                                                { label: "简单", value: 1, badge: "success" },
+                                                { label: "中等", value: 2, badge: "warning" },
+                                                { label: "困难", value: 3, badge: "danger" }
+                                            ],
+                                            required: true,
+                                            disabledOn: "${generationStatus === 'generating'}",
+                                            searchable: false,
+                                            clearable: false
+                                        },
+                                        {
+                                            type: "tree-select",
+                                            name: "categoryId",
+                                            label: "分类",
+                                            source: "/exam/api/exam/QuestionCategories/tree",
+                                            multiple: false,
+                                            required: true,
+                                            cascade: true,
+                                            showOutline: true,
+                                            labelField: "name",
+                                            valueField: "id",
+                                            disabledOn: "${generationStatus === 'generating'}",
+                                            searchable: true
+                                        },
+                                        {
+                                            type: "textarea",
+                                            name: "requirements",
+                                            label: "生成要求",
+                                            maxLength: 500,
+                                            showCounter: true,
+                                            placeholder: "请输入对生成题目的特定要求，例如：围绕某个特定概念、包含具体知识点等",
+                                            disabledOn: "${generationStatus === 'generating'}",
+                                            minRows: 3,
+                                            maxRows: 6
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                title: "生成进度",
+                                icon: "fa fa-sync",
+                                visibleOn: "${currentStep >= 1}",
+                                tab: {
+                                    type: "service",
+                                    className: "h-100",
+                                    initFetch: false,
+                                    // 使用数据链共享父级数据
+                                    data: "${parent.data}",
+                                    body: [
+                                        {
+                                            type: "card",
+                                            className: "h-100 shadow-sm border-0",
+                                            bodyClassName: "p-3",
                                             body: [
+                                                // 待生成状态
                                                 {
                                                     type: "tpl",
-                                                    tpl: "<div class='text-center text-primary my-3'><i class='fa fa-cog fa-spin me-2'></i><span class='fs-5 fw-medium'>正在生成题目...</span></div>",
-                                                    className: "mb-3"
+                                                    tpl: "<div class='waiting-container text-center py-5 fade-in'><i class='fas fa-robot waiting-icon'></i><p class='mt-3 text-secondary fs-5'>请填写表单开始生成题目</p><p class='text-muted'>AI将根据您的需求自动生成高质量的考试题目</p></div>",
+                                                    // 使用数据链表达式判断状态
+                                                    visibleOn: "${generationStatus === 'waiting' || !generationStatus}"
                                                 },
+
+                                                // 生成中状态
                                                 {
-                                                    type: "grid",
-                                                    className: "mb-2",
-                                                    columns: [
+                                                    type: "container",
+                                                    className: "fade-in",
+                                                    // 使用数据链表达式判断状态
+                                                    visibleOn: "${generationStatus === 'generating'}",
+                                                    body: [
                                                         {
-                                                            md: 6,
-                                                            body: {
-                                                                type: "tpl",
-                                                                // 使用数据链表达式访问父级数据
-                                                                tpl: "<div class='progress-stage fw-medium'>${progressStage || '准备中...'}</div>",
-                                                                className: "font-weight-bold"
-                                                            }
+                                                            type: "tpl",
+                                                            tpl: "<div class='text-center text-primary my-3'><i class='fa fa-cog fa-spin me-2'></i><span class='fs-5 fw-medium'>正在生成题目...</span></div>",
+                                                            className: "mb-3"
                                                         },
                                                         {
-                                                            md: 6,
+                                                            type: "grid",
+                                                            className: "mb-2",
+                                                            columns: [
+                                                                {
+                                                                    md: 6,
+                                                                    body: {
+                                                                        type: "tpl",
+                                                                        // 使用数据链表达式访问父级数据
+                                                                        tpl: "<div class='progress-stage fw-medium'>${progressStage || '准备中...'}</div>",
+                                                                        className: "font-weight-bold"
+                                                                    }
+                                                                },
+                                                                {
+                                                                    md: 6,
+                                                                    body: {
+                                                                        type: "tpl",
+                                                                        className: "text-right text-end",
+                                                                        // 使用数据链表达式访问父级数据
+                                                                        tpl: "<div class='progress-percentage fw-bold'>${progressPercentage || 0}%</div>"
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            type: "progress",
+                                                            mode: "line",
+                                                            // 使用数据链表达式访问父级数据
+                                                            value: "${progressPercentage || 0}",
+                                                            strokeWidth: 8,
+                                                            showLabel: false,
+                                                            animate: true,
+                                                            className: "generation-progress mb-3"
+                                                        },
+                                                        {
+                                                            type: "alert",
+                                                            level: "info",
+                                                            // 使用数据链表达式访问父级数据
+                                                            body: "${progressMessage || '正在初始化...'}",
+                                                            showIcon: true,
+                                                            className: "mt-2 shadow-sm"
+                                                        },
+                                                        {
+                                                            type: "card",
+                                                            title: "生成日志",
+                                                            className: "mt-4 shadow",
+                                                            headerClassName: "bg-dark text-light py-2 px-3 rounded-top",
+                                                            bodyClassName: "p-0",
+                                                            header: {
+                                                                title: "生成日志",
+                                                                className: "fs-6"
+                                                            },
                                                             body: {
-                                                                type: "tpl",
-                                                                className: "text-right text-end",
-                                                                // 使用数据链表达式访问父级数据
-                                                                tpl: "<div class='progress-percentage fw-bold'>${progressPercentage || 0}%</div>"
+                                                                type: "log",
+                                                                source: "${generationLogs}",
+                                                                height: 200,
+                                                                className: "bg-dark text-light",
+                                                                operation: ["stop", "clear", "export"],
+                                                                placeholder: "<div class='text-muted p-2'>暂无日志记录</div>",
+                                                                autoScroll: true
                                                             }
                                                         }
                                                     ]
                                                 },
-                                                {
-                                                    type: "progress",
-                                                    mode: "line",
-                                                    // 使用数据链表达式访问父级数据
-                                                    value: "${progressPercentage || 0}",
-                                                    strokeWidth: 8,
-                                                    showLabel: false,
-                                                    animate: true,
-                                                    className: "generation-progress mb-3"
-                                                },
-                                                {
-                                                    type: "alert",
-                                                    level: "info",
-                                                    // 使用数据链表达式访问父级数据
-                                                    body: "${progressMessage || '正在初始化...'}",
-                                                    showIcon: true,
-                                                    className: "mt-2 shadow-sm"
-                                                },
-                                                {
-                                                    type: "card",
-                                                    title: "生成日志",
-                                                    className: "mt-4 shadow",
-                                                    headerClassName: "bg-dark text-light py-2 px-3 rounded-top",
-                                                    bodyClassName: "p-0",
-                                                    header: {
-                                                        title: "生成日志",
-                                                        className: "fs-6"
-                                                    },
-                                                    body: {
-                                                        type: "log",
-                                                        source: "${generationLogs}",
-                                                        height: 200,
-                                                        className: "bg-dark text-light",
-                                                        operation: ["stop", "clear", "export"],
-                                                        placeholder: "<div class='text-muted p-2'>暂无日志记录</div>",
-                                                        autoScroll: true
-                                                    }
-                                                }
-                                            ]
-                                        },
 
-                                        // 生成完成状态
-                                        {
-                                            type: "container",
-                                            className: "fade-in",
-                                            // 使用数据链表达式判断状态
-                                            visibleOn: "${generationStatus === 'completed' || showResults === true}",
-                                            body: [
+                                                // 生成完成状态 - 简化版，只显示信息，详细结果在下方单独显示
                                                 {
-                                                    type: "alert",
-                                                    level: "success",
-                                                    showIcon: true,
-                                                    // 使用数据链表达式访问父级数据
-                                                    body: "${completionMessage}",
-                                                    className: "shadow-sm"
-                                                },
-                                                {
-                                                    type: "card",
-                                                    className: "mt-3 border-0 shadow-sm",
-                                                    headerClassName: "bg-light",
-                                                    header: {
-                                                        title: "生成结果统计",
-                                                        className: "fs-6"
-                                                    },
+                                                    type: "container",
+                                                    className: "fade-in",
+                                                    visibleOn: "${generationStatus === 'completed' || showResults === true}",
                                                     body: [
                                                         {
-                                                            type: "grid",
-                                                            columns: [
-                                                                {
-                                                                    md: 6,
-                                                                    body: {
-                                                                        type: "card",
-                                                                        className: "border-0 bg-light text-center py-2",
-                                                                        body: [
-                                                                            {
-                                                                                type: "tpl",
-                                                                                // 使用数据链表达式访问父级数据
-                                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${questionCount}</div><div class='text-muted'>题目数量</div>"
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                },
-                                                                {
-                                                                    md: 6,
-                                                                    body: {
-                                                                        type: "card",
-                                                                        className: "border-0 bg-light text-center py-2",
-                                                                        body: [
-                                                                            {
-                                                                                type: "tpl",
-                                                                                // 使用数据链表达式访问父级数据
-                                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${duration}</div><div class='text-muted'>耗时(秒)</div>"
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                }
-                                                            ]
+                                                            type: "alert",
+                                                            level: "success",
+                                                            showIcon: true,
+                                                            body: "${completionMessage} - 请在下方查看生成的题目",
+                                                            className: "shadow-sm mb-3"
+                                                        },
+                                                        {
+                                                            type: "tpl",
+                                                            tpl: "<div class='text-center py-4'><i class='fa fa-arrow-down fs-3 text-primary mb-3'></i><p class='text-muted'>生成结果已在下方显示</p></div>"
                                                         }
                                                     ]
                                                 },
+
+                                                // 错误状态
                                                 {
-                                                    type: "panel",
-                                                    title: "生成的题目",
-                                                    titleClassName: "fs-6",
-                                                    className: "generated-questions-container mt-4 shadow-sm",
-                                                    headerClassName: "bg-primary text-white py-2",
+                                                    type: "container",
+                                                    className: "fade-in",
+                                                    // 使用数据链表达式判断状态
+                                                    visibleOn: "${generationStatus === 'error'}",
                                                     body: [
                                                         {
-                                                            type: 'table',
+                                                            type: "alert",
+                                                            level: "danger",
+                                                            showIcon: true,
                                                             // 使用数据链表达式访问父级数据
-                                                            source: '${generatedQuestions}',
-                                                            className: 'table-striped table-hover generated-questions-table',
-                                                            columnsTogglable: false,
-                                                            columns: [
-                                                                {
-                                                                    name: 'index',
-                                                                    label: '序号',
-                                                                    type: 'tpl',
-                                                                    tpl: '<span class="badge bg-light text-dark">${index}</span>',
-                                                                    width: 60
-                                                                },
-                                                                {
-                                                                    name: 'content',
-                                                                    label: '题目内容',
-                                                                    type: 'tpl',
-                                                                    tpl: '<div class="text-truncate" style="max-width: 300px;" title="${content}">${content}</div>',
-                                                                    width: 300
-                                                                },
-                                                                {
-                                                                    name: 'type',
-                                                                    label: '题型',
-                                                                    type: 'html',
-                                                                    html: '${typeDisplay|raw}',
-                                                                    width: 80
-                                                                },
-                                                                {
-                                                                    name: 'difficulty',
-                                                                    label: '难度',
-                                                                    type: 'html',
-                                                                    html: '${difficultyDisplay|raw}',
-                                                                    width: 80
-                                                                },
-                                                                {
-                                                                    type: 'operation',
-                                                                    label: '操作',
-                                                                    buttons: [
-                                                                        {
-                                                                            type: 'button',
-                                                                            label: '查看',
-                                                                            actionType: 'dialog',
-                                                                            level: 'link',
-                                                                            icon: 'fa fa-eye',
-                                                                            dialog: {
-                                                                                title: '题目详情 - ${typeName}',
-                                                                                headerClassName: 'bg-primary text-white',
-                                                                                closeOnEsc: true,
-                                                                                closeOnOutside: true,
-                                                                                showCloseButton: true,
-                                                                                size: 'lg',
-                                                                                // 使用严格模式传递数据
-                                                                                data: {
-                                                                                    "id": "${id}",
-                                                                                    "type": "${type}",
-                                                                                    "typeName": "${typeName}",
-                                                                                    "difficulty": "${difficulty}",
-                                                                                    "difficultyName": "${difficultyName}",
-                                                                                    "content": "${content|raw}",
-                                                                                    "options": "${options|json|raw}",
-                                                                                    "correctAnswer": "${correctAnswer|raw}",
-                                                                                    "analysis": "${analysis|raw}"
-                                                                                },
-                                                                                body: [
-                                                                                    {
-                                                                                        type: 'card',
-                                                                                        className: 'question-card mb-3 border-0 shadow-sm',
-                                                                                        header: {
-                                                                                            title: '基本信息',
-                                                                                            className: 'fs-6'
-                                                                                        },
-                                                                                        headerClassName: 'bg-light',
-                                                                                        body: [
-                                                                                            {
-                                                                                                type: 'grid',
-                                                                                                columns: [
-                                                                                                    {
-                                                                                                        md: 4,
-                                                                                                        body: {
-                                                                                                            type: 'tpl',
-                                                                                                            tpl: '<div class="mb-2"><span class="text-muted me-2">题目ID:</span><span class="badge bg-light text-dark">${id}</span></div>'
-                                                                                                        }
-                                                                                                    },
-                                                                                                    {
-                                                                                                        md: 4,
-                                                                                                        body: {
-                                                                                                            type: 'html',
-                                                                                                            html: '<div class="mb-2"><span class="text-muted me-2">题型:</span>${typeDisplay|raw}</div>'
-                                                                                                        }
-                                                                                                    },
-                                                                                                    {
-                                                                                                        md: 4,
-                                                                                                        body: {
-                                                                                                            type: 'html',
-                                                                                                            html: '<div class="mb-2"><span class="text-muted me-2">难度:</span>${difficultyDisplay|raw}</div>'
-                                                                                                        }
-                                                                                                    }
-                                                                                                ]
-                                                                                            }
-                                                                                        ]
-                                                                                    },
-                                                                                    {
-                                                                                        type: 'card',
-                                                                                        className: 'question-card mb-3 border-0 shadow-sm',
-                                                                                        header: {
-                                                                                            title: '题目内容',
-                                                                                            className: 'fs-6'
-                                                                                        },
-                                                                                        headerClassName: 'bg-light',
-                                                                                        body: {
-                                                                                            type: 'html',
-                                                                                            html: '<div class="question-content">${content|raw}</div>'
-                                                                                        }
-                                                                                    },
-                                                                                    {
-                                                                                        type: 'card',
-                                                                                        className: 'question-card mb-3 border-0 shadow-sm',
-                                                                                        header: {
-                                                                                            title: '选项',
-                                                                                            className: 'fs-6'
-                                                                                        },
-                                                                                        headerClassName: 'bg-light',
-                                                                                        visibleOn: 'this.type == 1 || this.type == 2',
-                                                                                        body: [
-                                                                                            {
-                                                                                                type: 'service',
-                                                                                                api: {
-                                                                                                    method: 'get',
-                                                                                                    url: '/api/dummy',
-                                                                                                    mockResponse: "${options|json|raw}",
-                                                                                                    responseType: 'json'
-                                                                                                },
-                                                                                                body: [
-                                                                                                    {
-                                                                                                        type: 'each',
-                                                                                                        source: '${items}',
-                                                                                                        items: {
-                                                                                                            type: 'card',
-                                                                                                            className: 'mb-2 border-0 bg-light option-card',
-                                                                                                            bodyClassName: '${isCorrect ? "bg-success bg-opacity-10 border-start border-3 border-success" : ""}',
-                                                                                                            body: {
-                                                                                                                type: 'tpl',
-                                                                                                                tpl: '<div class="p-2"><span class="badge ${isCorrect ? "bg-success" : "bg-secondary"} me-2">${label}</span> ${content}</div>'
-                                                                                                            }
-                                                                                                        }
-                                                                                                    }
-                                                                                                ]
-                                                                                            }
-                                                                                        ]
-                                                                                    },
-                                                                                    {
-                                                                                        type: 'card',
-                                                                                        className: 'question-card border-0 shadow-sm',
-                                                                                        header: {
-                                                                                            title: '答案与解析',
-                                                                                            className: 'fs-6'
-                                                                                        },
-                                                                                        headerClassName: 'bg-light',
-                                                                                        body: [
-                                                                                            {
-                                                                                                type: 'alert',
-                                                                                                className: 'mb-3',
-                                                                                                level: 'success',
-                                                                                                icon: 'fa fa-check-circle',
-                                                                                                body: '${correctAnswer|raw}'
-                                                                                            },
-                                                                                            {
-                                                                                                type: 'divider',
-                                                                                                className: 'my-2'
-                                                                                            },
-                                                                                            {
-                                                                                                type: 'html',
-                                                                                                html: '<h5 class="mb-2">解析</h5><div class="analysis-content">${analysis|raw}</div>'
-                                                                                            }
-                                                                                        ]
-                                                                                    }
-                                                                                ]
-                                                                            }
-                                                                        }
-                                                                    ]
-                                                                }
-                                                            ]
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    type: "button-group",
-                                                    className: "mt-4",
-                                                    buttons: [
+                                                            body: "${errorMessage}",
+                                                            className: "shadow-sm"
+                                                        },
+                                                        {
+                                                            type: "card",
+                                                            className: "mt-3 border-0 shadow-sm",
+                                                            header: {
+                                                                title: "错误详情",
+                                                                className: "fs-6"
+                                                            },
+                                                            headerClassName: "bg-danger text-white",
+                                                            // 使用数据链表达式访问父级数据
+                                                            body: "${errorDetails}",
+                                                            bodyClassName: "text-danger",
+                                                            style: {
+                                                                maxHeight: "150px",
+                                                                overflow: "auto"
+                                                            }
+                                                        },
                                                         {
                                                             type: "button",
                                                             level: "primary",
-                                                            label: "查看题库",
-                                                            actionType: "link",
-                                                            link: "/exam/questions",
-                                                            className: "me-2 shadow-sm"
-                                                        },
-                                                        {
-                                                            type: "button",
-                                                            level: "default",
-                                                            label: "再次生成",
-                                                            className: "shadow-sm",
+                                                            label: "重试",
+                                                            className: "mt-4 shadow-sm",
                                                             onEvent: {
                                                                 click: {
                                                                     actions: [
@@ -1426,61 +1358,467 @@
                                                     ]
                                                 }
                                             ]
-                                        },
-
-                                        // 错误状态
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                title: "生成结果",
+                                icon: "fa fa-list",
+                                visibleOn: "${generationStatus === 'completed' || showResults === true}",
+                                tab: {
+                                    type: "card",
+                                    className: "mb-4 border-0 shadow-sm",
+                                    bodyClassName: "p-3",
+                                    body: [
                                         {
-                                            type: "container",
-                                            className: "fade-in",
-                                            // 使用数据链表达式判断状态
-                                            visibleOn: "${generationStatus === 'error'}",
-                                            body: [
+                                            type: "alert",
+                                            level: "success",
+                                            showIcon: true,
+                                            body: "${completionMessage} - 生成已完成",
+                                            className: "shadow-sm mb-3"
+                                        },
+                                        {
+                                            type: "grid",
+                                            columns: [
                                                 {
-                                                    type: "alert",
-                                                    level: "danger",
-                                                    showIcon: true,
-                                                    // 使用数据链表达式访问父级数据
-                                                    body: "${errorMessage}",
-                                                    className: "shadow-sm"
-                                                },
-                                                {
-                                                    type: "card",
-                                                    className: "mt-3 border-0 shadow-sm",
-                                                    header: {
-                                                        title: "错误详情",
-                                                        className: "fs-6"
-                                                    },
-                                                    headerClassName: "bg-danger text-white",
-                                                    // 使用数据链表达式访问父级数据
-                                                    body: "${errorDetails}",
-                                                    bodyClassName: "text-danger",
-                                                    style: {
-                                                        maxHeight: "150px",
-                                                        overflow: "auto"
+                                                    md: 6,
+                                                    sm: 6,
+                                                    xs: 12,
+                                                    body: {
+                                                        type: "card",
+                                                        className: "border-0 bg-light text-center py-3 h-100",
+                                                        body: [
+                                                            {
+                                                                type: "tpl",
+                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${questionCount}</div><div class='text-muted'>题目数量</div>"
+                                                            }
+                                                        ]
                                                     }
                                                 },
                                                 {
-                                                    type: "button",
-                                                    level: "primary",
-                                                    label: "重试",
-                                                    className: "mt-4 shadow-sm",
-                                                    onEvent: {
-                                                        click: {
-                                                            actions: [
+                                                    md: 6,
+                                                    sm: 6,
+                                                    xs: 12,
+                                                    body: {
+                                                        type: "card",
+                                                        className: "border-0 bg-light text-center py-3 h-100",
+                                                        body: [
+                                                            {
+                                                                type: "tpl",
+                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${duration}</div><div class='text-muted'>耗时(秒)</div>"
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            type: "tpl",
+                                            tpl: "<div class='text-center py-3 mt-2'><p class='text-muted'>完整题目列表已在下方生成</p><i class='fa fa-arrow-down fs-4 text-primary'></i></div>"
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        type: "container",
+                        className: "results-container mt-4 fade-in",
+                        visibleOn: "${generationStatus === 'completed' || showResults === true}",
+                        body: [
+                            {
+                                type: "card",
+                                className: "mb-4 border-0 shadow-sm",
+                                headerClassName: "bg-primary text-white",
+                                header: {
+                                    title: "生成结果统计",
+                                    className: "fs-5"
+                                },
+                                body: [
+                                    {
+                                        type: "grid",
+                                        columns: [
+                                            {
+                                                md: 3,
+                                                sm: 6,
+                                                xs: 12,
+                                                body: {
+                                                    type: "card",
+                                                    className: "border-0 bg-light text-center py-3 h-100",
+                                                    body: [
+                                                        {
+                                                            type: "tpl",
+                                                            tpl: "<div class='fs-1 text-primary fw-bold'>${questionCount}</div><div class='text-muted'>题目数量</div>"
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                md: 3,
+                                                sm: 6,
+                                                xs: 12,
+                                                body: {
+                                                    type: "card",
+                                                    className: "border-0 bg-light text-center py-3 h-100",
+                                                    body: [
+                                                        {
+                                                            type: "tpl",
+                                                            tpl: "<div class='fs-1 text-primary fw-bold'>${duration}</div><div class='text-muted'>耗时(秒)</div>"
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            {
+                                                md: 6,
+                                                sm: 12,
+                                                xs: 12,
+                                                body: {
+                                                    type: "alert",
+                                                    level: "success",
+                                                    showIcon: true,
+                                                    body: "${completionMessage}",
+                                                    className: "h-100 d-flex align-items-center"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        type: "button-group",
+                                        className: "mt-3",
+                                        buttons: [
+                                            {
+                                                type: "button",
+                                                level: "primary",
+                                                label: "查看题库",
+                                                actionType: "link",
+                                                link: "/exam/questions",
+                                                className: "me-2 shadow-sm"
+                                            },
+                                            {
+                                                type: "button",
+                                                level: "default",
+                                                label: "再次生成",
+                                                className: "shadow-sm",
+                                                onEvent: {
+                                                    click: {
+                                                        actions: [
+                                                            {
+                                                                actionType: "custom",
+                                                                script: "resetForm();"
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                type: "panel",
+                                title: "生成的题目",
+                                titleClassName: "fs-5",
+                                className: "generated-questions-container shadow-sm",
+                                headerClassName: "bg-primary text-white py-2",
+                                body: [
+                                    {
+                                        type: 'table',
+                                        source: '${generatedQuestions}',
+                                        className: 'table-striped table-hover generated-questions-table',
+                                        columnsTogglable: true,
+                                        footerToolbar: [
+                                            "statistics",
+                                            "pagination"
+                                        ],
+                                        // 添加移动端显示配置
+                                        itemActions: [
+                                            {
+                                                type: "button",
+                                                label: "查看",
+                                                actionType: "dialog",
+                                                level: "link",
+                                                icon: "fa fa-eye",
+                                                // 使用AMIS设备状态变量判断
+                                                visibleOn: "${isMobile}", // 仅在移动端显示
+                                                dialog: {
+                                                    title: '题目详情',
+                                                    size: "full", // 移动端使用全屏
+                                                    actions: [],
+                                                    body: {
+                                                        type: "panel",
+                                                        bodyClassName: "p-0",
+                                                        body: [
+                                                            {
+                                                                type: "card",
+                                                                title: "题目内容",
+                                                                headerClassName: "bg-light",
+                                                                body: {
+                                                                    type: "html",
+                                                                    html: "${content|raw}"
+                                                                }
+                                                            },
+                                                            {
+                                                                type: "card",
+                                                                title: "选项",
+                                                                headerClassName: "bg-light",
+                                                                visibleOn: "${type == 1 || type == 2}",
+                                                                body: {
+                                                                    type: "service",
+                                                                    api: {
+                                                                        method: "get",
+                                                                        url: "/api/dummy",
+                                                                        mockResponse: "${options|json|raw}",
+                                                                        responseType: "json"
+                                                                    },
+                                                                    body: {
+                                                                        type: "each",
+                                                                        source: "${items}",
+                                                                        items: {
+                                                                            type: "tpl",
+                                                                            tpl: "<div class='${isCorrect ? \"text-success fw-bold\" : \"\"} py-1'><span class='badge me-2 ${isCorrect ? \"bg-success\" : \"bg-secondary\"}'>${label}</span>${content}</div>"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            {
+                                                                type: "card",
+                                                                title: "答案",
+                                                                headerClassName: "bg-light",
+                                                                body: {
+                                                                    type: "alert",
+                                                                    level: "success",
+                                                                    body: "${correctAnswer|raw}"
+                                                                }
+                                                            },
+                                                            {
+                                                                type: "card",
+                                                                title: "解析",
+                                                                headerClassName: "bg-light",
+                                                                body: {
+                                                                    type: "html",
+                                                                    html: "${analysis|raw}"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        ],
+                                        headerToolbar: [
+                                            {
+                                                type: "columns-toggler",
+                                                align: "right"
+                                            },
+                                            {
+                                                type: "export-excel",
+                                                align: "right"
+                                            }
+                                        ],
+                                        // 在窄屏幕上切换为卡片模式
+                                        alwaysShowPagination: true,
+                                        autoFillHeight: false,
+                                        // 适配移动设备
+                                        mobileClassName: "table-mobile-view",
+                                        resizable: true,
+                                        // 针对不同屏幕宽度调整列的显示方式
+                                        columns: [
+                                            // 保持原有列定义不变，但添加响应式设置
+                                            {
+                                                name: 'index',
+                                                label: '序号',
+                                                type: 'tpl',
+                                                tpl: '<span class="badge bg-light text-dark">${index}</span>',
+                                                width: 60,
+                                                visible: true, // 始终可见
+                                                toggled: true
+                                            },
+                                            {
+                                                name: 'content',
+                                                label: '题目内容',
+                                                type: 'tpl',
+                                                tpl: '<div class="text-truncate" style="max-width: 300px;" title="${content}">${content}</div>',
+                                                width: 300,
+                                                breakpoint: "*", // 任何屏幕宽度都显示
+                                                visible: true,
+                                                toggled: true
+                                            },
+                                            {
+                                                name: 'type',
+                                                label: '题型',
+                                                type: 'html',
+                                                html: '${typeDisplay|raw}',
+                                                width: 80,
+                                                // 仅在移动设备上隐藏此列
+                                                visible: "${!isMobile}",
+                                                toggled: true
+                                            },
+                                            {
+                                                name: 'difficulty',
+                                                label: '难度',
+                                                type: 'html',
+                                                html: '${difficultyDisplay|raw}',
+                                                width: 80,
+                                                // 仅在移动设备上隐藏此列
+                                                visible: "${!isMobile}",
+                                                toggled: true
+                                            },
+                                            {
+                                                type: 'operation',
+                                                label: '操作',
+                                                width: 80,
+                                                breakpoint: "*", // 任何屏幕宽度都显示
+                                                buttons: [
+                                                    {
+                                                        type: 'button',
+                                                        label: '查看',
+                                                        actionType: 'dialog',
+                                                        level: 'link',
+                                                        icon: 'fa fa-eye',
+                                                        // 在桌面设备显示
+                                                        visibleOn: "${!isMobile}",
+                                                        dialog: {
+                                                            title: '题目详情 - ${typeName}',
+                                                            headerClassName: 'bg-primary text-white',
+                                                            closeOnEsc: true,
+                                                            closeOnOutside: true,
+                                                            showCloseButton: true,
+                                                            size: 'lg',
+                                                            // 传递数据
+                                                            data: {
+                                                                "id": "${id}",
+                                                                "type": "${type}",
+                                                                "typeName": "${typeName}",
+                                                                "difficulty": "${difficulty}",
+                                                                "difficultyName": "${difficultyName}",
+                                                                "content": "${content|raw}",
+                                                                "options": "${options|json|raw}",
+                                                                "correctAnswer": "${correctAnswer|raw}",
+                                                                "analysis": "${analysis|raw}"
+                                                            },
+                                                            body: [
                                                                 {
-                                                                    actionType: "custom",
-                                                                    script: "resetForm();"
+                                                                    type: 'card',
+                                                                    className: 'question-card mb-3 border-0 shadow-sm',
+                                                                    header: {
+                                                                        title: '基本信息',
+                                                                        className: 'fs-6'
+                                                                    },
+                                                                    headerClassName: 'bg-light',
+                                                                    body: [
+                                                                        {
+                                                                            type: 'grid',
+                                                                            columns: [
+                                                                                {
+                                                                                    md: 4,
+                                                                                    body: {
+                                                                                        type: 'tpl',
+                                                                                        tpl: '<div class="mb-2"><span class="text-muted me-2">题目ID:</span><span class="badge bg-light text-dark">${id}</span></div>'
+                                                                                    }
+                                                                                },
+                                                                                {
+                                                                                    md: 4,
+                                                                                    body: {
+                                                                                        type: 'html',
+                                                                                        html: '<div class="mb-2"><span class="text-muted me-2">题型:</span>${typeDisplay|raw}</div>'
+                                                                                    }
+                                                                                },
+                                                                                {
+                                                                                    md: 4,
+                                                                                    body: {
+                                                                                        type: 'html',
+                                                                                        html: '<div class="mb-2"><span class="text-muted me-2">难度:</span>${difficultyDisplay|raw}</div>'
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    type: 'card',
+                                                                    className: 'question-card mb-3 border-0 shadow-sm',
+                                                                    header: {
+                                                                        title: '题目内容',
+                                                                        className: 'fs-6'
+                                                                    },
+                                                                    headerClassName: 'bg-light',
+                                                                    body: {
+                                                                        type: 'html',
+                                                                        html: '<div class="question-content">${content|raw}</div>'
+                                                                    }
+                                                                },
+                                                                {
+                                                                    type: 'card',
+                                                                    className: 'question-card mb-3 border-0 shadow-sm',
+                                                                    header: {
+                                                                        title: '选项',
+                                                                        className: 'fs-6'
+                                                                    },
+                                                                    headerClassName: 'bg-light',
+                                                                    visibleOn: 'this.type == 1 || this.type == 2',
+                                                                    body: [
+                                                                        {
+                                                                            type: 'service',
+                                                                            api: {
+                                                                                method: 'get',
+                                                                                url: '/api/dummy',
+                                                                                mockResponse: "${options|json|raw}",
+                                                                                responseType: 'json'
+                                                                            },
+                                                                            body: [
+                                                                                {
+                                                                                    type: 'each',
+                                                                                    source: '${items}',
+                                                                                    items: {
+                                                                                        type: 'card',
+                                                                                        className: 'mb-2 border-0 bg-light option-card',
+                                                                                        bodyClassName: '${isCorrect ? "bg-success bg-opacity-10 border-start border-3 border-success" : ""}',
+                                                                                        body: {
+                                                                                            type: 'tpl',
+                                                                                            tpl: '<div class="p-2"><span class="badge ${isCorrect ? "bg-success" : "bg-secondary"} me-2">${label}</span> ${content}</div>'
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    type: 'card',
+                                                                    className: 'question-card border-0 shadow-sm',
+                                                                    header: {
+                                                                        title: '答案与解析',
+                                                                        className: 'fs-6'
+                                                                    },
+                                                                    headerClassName: 'bg-light',
+                                                                    body: [
+                                                                        {
+                                                                            type: 'alert',
+                                                                            className: 'mb-3',
+                                                                            level: 'success',
+                                                                            icon: 'fa fa-check-circle',
+                                                                            body: '${correctAnswer|raw}'
+                                                                        },
+                                                                        {
+                                                                            type: 'divider',
+                                                                            className: 'my-2'
+                                                                        },
+                                                                        {
+                                                                            type: 'html',
+                                                                            html: '<h5 class="mb-2">解析</h5><div class="analysis-content">${analysis|raw}</div>'
+                                                                        }
+                                                                    ]
                                                                 }
                                                             ]
                                                         }
                                                     }
-                                                }
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 ]
             }

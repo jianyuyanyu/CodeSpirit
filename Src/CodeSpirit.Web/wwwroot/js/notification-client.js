@@ -3,7 +3,7 @@
  * 提供与通知服务的连接和消息处理功能
  */
 class NotificationClient {
-    constructor(hubUrl) {
+    constructor(hubUrl = '/notification-hub') {
         this.hubUrl = hubUrl;
         this.connection = null;
         this.handlers = new Map();

@@ -441,7 +441,7 @@
         try {
             // 确保通知客户端已初始化
             if (!notificationClient) {
-                notificationClient = new NotificationClient('/notification-hub');
+                notificationClient = new NotificationClient();
                 await notificationClient.connect();
             }
 
@@ -1754,7 +1754,7 @@
 
         try {
             // 初始化通知客户端
-            notificationClient = new NotificationClient('/notification-hub');
+            notificationClient = new NotificationClient();
             await notificationClient.connect();
             console.log("通知客户端已初始化");
 

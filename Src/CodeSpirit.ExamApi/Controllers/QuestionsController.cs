@@ -534,6 +534,8 @@ public class QuestionsController : ApiControllerBase
                     // 确保进度不超过100%
                     savePercentage = Math.Min(99, savePercentage);
                     
+                    Thread.Sleep(500);
+
                     await _notificationService.NotifyGenerationProgressAsync(
                         sessionId, 
                         "saving", 

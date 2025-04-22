@@ -250,9 +250,9 @@
                 currentStep = 0;
                 activePanel = 'form';
             } else if (status === 'error') {
-                // 错误状态下保持生成中步骤，但显示错误状态
-                currentStep = 1;
-                activePanel = 'progress';
+                // 错误状态下切换到结果视图
+                currentStep = 2;
+                activePanel = 'results';
             }
             
             // 更新当前步骤状态和活动面板
@@ -391,18 +391,24 @@
             // 添加到日志
             DataManager.addLog(`错误: ${message}`);
 
+            // 确保message是字符串
+            const errorDetails = typeof message === 'object' ? 
+                JSON.stringify(message, null, 2) : String(message);
+
             // 更新状态
             DataManager.set('generation.status', 'error');
             DataManager.set('generation.errorMessage', title);
-            DataManager.set('generation.errorDetails', message);
+            DataManager.set('generation.errorDetails', errorDetails);
             
             // 更新AMIS数据
             DataManager.updateAmis({
                 generationStatus: 'error',
                 errorMessage: title,
-                errorDetails: message,
-                // 保持在生成步骤，但状态为错误
-                currentStep: 1
+                errorDetails: errorDetails,
+                // 更新到结果页，显示错误信息
+                currentStep: 2,
+                activePanel: 'results',
+                showResults: true
             });
 
             // 停止SignalR连接
@@ -412,6 +418,14 @@
                 } catch (err) {
                     console.error("停止SignalR连接时出错:", err);
                 }
+            }
+            
+            // 尝试获取生成的题目（即使发生错误也尝试）
+            const sessionId = DataManager.get('generation.sessionId');
+            if (sessionId) {
+                setTimeout(() => {
+                    fetchGeneratedQuestions(sessionId);
+                }, 500);
             }
         },
 
@@ -517,6 +531,7 @@
             // 尝试直接更新AMIS组件 - 双保险
             setTimeout(() => {
                 if (amisInstance) {
+                    // 方式1：明确更新进度条值
                     amisInstance.updateProps({
                         data: {
                             progressStage: getStageName(stage),
@@ -529,7 +544,7 @@
                         amisInstance.forceUpdate();
                     }
                 }
-            }, 100);
+            }, 50);
         });
 
         connection.on("GenerationCompleted", (data) => {
@@ -584,16 +599,47 @@
             console.error(`收到生成错误事件:`, data);
             // 错误可能在data.error或message中，或者本身就是字符串
             let errorMessage = '未知错误';
+            let errorDetails = '';
+            
             if (typeof data === 'string') {
                 errorMessage = data;
+                errorDetails = data;
             } else if (data && typeof data === 'object') {
                 errorMessage = data.error || data.message || data.errorMessage || '未知错误';
+                // 保存详细信息
+                errorDetails = JSON.stringify(data, null, 2);
             }
 
             DataManager.updateGenerationStatus("error");
             DataManager.updateProgress("失败", errorMessage, 0);
             DataManager.addLog(`生成失败: ${errorMessage}`);
+            
+            // 设置错误详情
+            DataManager.set('generation.errorDetails', errorDetails);
+            
+            // 使用错误处理器处理
             ErrorHandler.handleApiError("生成失败", errorMessage);
+            
+            // 确保切换到结果页显示错误
+            setTimeout(() => {
+                DataManager.updateAmis({
+                    currentStep: 2,
+                    activePanel: 'results',
+                    showResults: true,
+                    errorDetails: errorDetails
+                });
+                
+                // 强制刷新UI
+                if (amisInstance && amisInstance.forceUpdate) {
+                    amisInstance.forceUpdate();
+                }
+                
+                // 尝试获取题目（如果有sessionId）
+                const sessionId = DataManager.get('generation.sessionId');
+                if (sessionId) {
+                    fetchGeneratedQuestions(sessionId);
+                }
+            }, 100);
         });
 
         console.log("SignalR事件已注册");
@@ -667,11 +713,11 @@
                     questionFetchMessage: '题目获取成功',
                     generatedQuestions: formattedQuestions,
                     showResults: true,               // 确保显示结果面板
-                    generationStatus: 'completed'    // 确保状态正确
+                    generationStatus: DataManager.get('generation.status', 'completed')  // 保持原有状态
                 });
                 
                 // 确保状态类正确
-                checkGenerationStatusClass('completed');
+                checkGenerationStatusClass(DataManager.get('generation.status', 'completed'));
 
                 // 滚动到题目容器
                 setTimeout(() => {
@@ -686,7 +732,8 @@
                 DataManager.updateAmis({
                     isFetchingQuestions: false,
                     questionFetchMessage: `获取题目失败: ${error.message}`,
-                    generatedQuestions: []
+                    generatedQuestions: [],
+                    showResults: true  // 仍然显示结果面板，但内容为空
                 });
             });
     }
@@ -1284,26 +1331,18 @@
                                                         {
                                                             type: "progress",
                                                             mode: "line",
-                                                            // 使用数据链表达式访问父级数据
-                                                            value: "${progressPercentage || 0}",
+                                                            value: "${progressPercentage}",
                                                             strokeWidth: 8,
                                                             showLabel: true,
                                                             animate: true,
+                                                            valueTpl: "${progressPercentage}%",
                                                             className: "generation-progress mb-3",
                                                             id: "main-progress-bar",
                                                             name: "progressPercentage",
+                                                            reload: true,
                                                             reloadOn: "progressPercentage",
                                                             progressClassName: "bg-primary",
-                                                            valueTpl: "${progressPercentage}%",
-                                                            onEvent: {
-                                                                "numberChange": {
-                                                                    actions: [
-                                                                        {
-                                                                            actionType: "reload"
-                                                                        }
-                                                                    ]
-                                                                }
-                                                            }
+                                                            trackClassName: "bg-light"
                                                         },
                                                         {
                                                             type: "alert",
@@ -1373,24 +1412,24 @@
                                                             type: "alert",
                                                             level: "danger",
                                                             showIcon: true,
-                                                            // 使用数据链表达式访问父级数据
                                                             body: "${errorMessage}",
-                                                            className: "shadow-sm"
+                                                            className: "shadow-sm mb-3",
+                                                            visibleOn: "${generationStatus === 'error'}"
                                                         },
                                                         {
                                                             type: "card",
-                                                            className: "mt-3 border-0 shadow-sm",
+                                                            className: "bg-light mb-3 border-0",
+                                                            headerClassName: "bg-danger text-white",
                                                             header: {
                                                                 title: "错误详情",
-                                                                className: "fs-6"
+                                                                className: "fs-6 py-2"
                                                             },
-                                                            headerClassName: "bg-danger text-white",
-                                                            // 使用数据链表达式访问父级数据
-                                                            body: "${errorDetails}",
-                                                            bodyClassName: "text-danger",
-                                                            style: {
-                                                                maxHeight: "150px",
-                                                                overflow: "auto"
+                                                            bodyClassName: "p-3 bg-white",
+                                                            visibleOn: "${generationStatus === 'error' && errorDetails}",
+                                                            body: {
+                                                                type: "html",
+                                                                html: "${errorDetails}",
+                                                                className: "text-danger"
                                                             }
                                                         },
                                                         {
@@ -1430,46 +1469,100 @@
                                             level: "success",
                                             showIcon: true,
                                             body: "${completionMessage} - 生成已完成",
-                                            className: "shadow-sm mb-3"
+                                            className: "shadow-sm mb-3",
+                                            visibleOn: "${generationStatus === 'completed'}"
                                         },
                                         {
-                                            type: "grid",
-                                            columns: [
-                                                {
-                                                    md: 6,
-                                                    sm: 6,
-                                                    xs: 12,
-                                                    body: {
-                                                        type: "card",
-                                                        className: "border-0 bg-light text-center py-3 h-100",
-                                                        body: [
-                                                            {
-                                                                type: "tpl",
-                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${questionCount}</div><div class='text-muted'>题目数量</div>"
-                                                            }
-                                                        ]
+                                            type: "alert",
+                                            level: "danger",
+                                            showIcon: true,
+                                            body: "${errorMessage}",
+                                            className: "shadow-sm mb-3",
+                                            visibleOn: "${generationStatus === 'error'}"
+                                        },
+                                        {
+                                            type: "card",
+                                            className: "bg-light mb-3 border-0",
+                                            bodyClassName: "p-3",
+                                            body: {
+                                                type: "grid",
+                                                columns: [
+                                                    {
+                                                        md: 6,
+                                                        sm: 6,
+                                                        xs: 12,
+                                                        body: {
+                                                            type: "card",
+                                                            className: "border-0 bg-white shadow-sm text-center py-3 h-100",
+                                                            body: [
+                                                                {
+                                                                    type: "tpl",
+                                                                    tpl: "<div class='fs-1 text-primary fw-bold'>${questionCount}</div><div class='text-muted'>题目数量</div>"
+                                                                }
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        md: 6,
+                                                        sm: 6,
+                                                        xs: 12,
+                                                        body: {
+                                                            type: "card",
+                                                            className: "border-0 bg-white shadow-sm text-center py-3 h-100",
+                                                            body: [
+                                                                {
+                                                                    type: "tpl",
+                                                                    tpl: "<div class='fs-1 text-primary fw-bold'>${duration}</div><div class='text-muted'>耗时(秒)</div>"
+                                                                }
+                                                            ]
+                                                        }
                                                     }
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            type: "button-group",
+                                            className: "mt-3 mb-3",
+                                            buttons: [
+                                                {
+                                                    type: "button",
+                                                    level: "primary",
+                                                    label: "查看题库",
+                                                    actionType: "link",
+                                                    link: "/exam/questions",
+                                                    className: "me-2 shadow-sm"
                                                 },
                                                 {
-                                                    md: 6,
-                                                    sm: 6,
-                                                    xs: 12,
-                                                    body: {
-                                                        type: "card",
-                                                        className: "border-0 bg-light text-center py-3 h-100",
-                                                        body: [
-                                                            {
-                                                                type: "tpl",
-                                                                tpl: "<div class='fs-1 text-primary fw-bold'>${duration}</div><div class='text-muted'>耗时(秒)</div>"
-                                                            }
-                                                        ]
+                                                    type: "button",
+                                                    level: "default",
+                                                    label: "再次生成",
+                                                    className: "shadow-sm",
+                                                    onEvent: {
+                                                        click: {
+                                                            actions: [
+                                                                {
+                                                                    actionType: "custom",
+                                                                    script: "resetForm();"
+                                                                }
+                                                            ]
+                                                        }
                                                     }
                                                 }
                                             ]
                                         },
                                         {
+                                            type: "divider",
+                                            className: "my-3"
+                                        },
+                                        {
                                             type: "tpl",
-                                            tpl: "<div class='text-center py-3 mt-2'><p class='text-muted'>完整题目列表已在下方生成</p><i class='fa fa-arrow-down fs-4 text-primary'></i></div>"
+                                            tpl: "<h5 class='text-center mb-3'>生成的题目列表</h5>",
+                                            visibleOn: "${generationStatus === 'completed'}"
+                                        },
+                                        {
+                                            type: "tpl",
+                                            tpl: "<div class='text-center text-muted mb-3'>由于发生错误，无法获取题目列表</div>",
+                                            visibleOn: "${generationStatus === 'error'}"
                                         }
                                     ]
                                 }
@@ -1481,94 +1574,6 @@
                         className: "results-container mt-4 fade-in",
                         visibleOn: "${generationStatus === 'completed' || showResults === true}",
                         body: [
-                            {
-                                type: "card",
-                                className: "mb-4 border-0 shadow-sm",
-                                headerClassName: "bg-primary text-white",
-                                header: {
-                                    title: "生成结果统计",
-                                    className: "fs-5"
-                                },
-                                body: [
-                                    {
-                                        type: "grid",
-                                        columns: [
-                                            {
-                                                md: 3,
-                                                sm: 6,
-                                                xs: 12,
-                                                body: {
-                                                    type: "card",
-                                                    className: "border-0 bg-light text-center py-3 h-100",
-                                                    body: [
-                                                        {
-                                                            type: "tpl",
-                                                            tpl: "<div class='fs-1 text-primary fw-bold'>${questionCount}</div><div class='text-muted'>题目数量</div>"
-                                                        }
-                                                    ]
-                                                }
-                                            },
-                                            {
-                                                md: 3,
-                                                sm: 6,
-                                                xs: 12,
-                                                body: {
-                                                    type: "card",
-                                                    className: "border-0 bg-light text-center py-3 h-100",
-                                                    body: [
-                                                        {
-                                                            type: "tpl",
-                                                            tpl: "<div class='fs-1 text-primary fw-bold'>${duration}</div><div class='text-muted'>耗时(秒)</div>"
-                                                        }
-                                                    ]
-                                                }
-                                            },
-                                            {
-                                                md: 6,
-                                                sm: 12,
-                                                xs: 12,
-                                                body: {
-                                                    type: "alert",
-                                                    level: "success",
-                                                    showIcon: true,
-                                                    body: "${completionMessage}",
-                                                    className: "h-100 d-flex align-items-center"
-                                                }
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        type: "button-group",
-                                        className: "mt-3",
-                                        buttons: [
-                                            {
-                                                type: "button",
-                                                level: "primary",
-                                                label: "查看题库",
-                                                actionType: "link",
-                                                link: "/exam/questions",
-                                                className: "me-2 shadow-sm"
-                                            },
-                                            {
-                                                type: "button",
-                                                level: "default",
-                                                label: "再次生成",
-                                                className: "shadow-sm",
-                                                onEvent: {
-                                                    click: {
-                                                        actions: [
-                                                            {
-                                                                actionType: "custom",
-                                                                script: "resetForm();"
-                                                            }
-                                                        ]
-                                                    }
-                                                }
-                                            }
-                                        ]
-                                    }
-                                ]
-                            },
                             {
                                 type: "panel",
                                 title: "生成的题目",

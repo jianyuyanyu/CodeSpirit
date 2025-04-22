@@ -230,9 +230,6 @@ public static class ServiceCollectionExtensions
         // 注册事件处理器
         builder.Services.AddEventHandler<UserCreatedOrUpdatedEvent, UserCreatedOrUpdatedEventHandler>();
         
-        // 注册LLM服务
-        //builder.Services.AddLLMService(builder.Configuration);
-
         return builder;
     }
 

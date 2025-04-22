@@ -5,10 +5,17 @@ using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
+using CodeSpirit.Shared.EventBus.Events;
+using CodeSpirit.Shared.EventBus.Extensions;
+using CodeSpirit.Shared.EventBus.Interfaces;
 using CodeSpirit.Shared.Extensions;
+using CodeSpirit.Shared.Notifications;
+using CodeSpirit.Shared.Notifications.Events;
 using CodeSpirit.Web.Extensions;
+using CodeSpirit.Web.Hubs;
 using CodeSpirit.Web.Middlewares;
 using CodeSpirit.Web.Options;
+using CodeSpirit.Web.Services.EventHandlers;
 using Microsoft.AspNetCore.Components;
 
 public class Program
@@ -67,6 +74,15 @@ public class Program
         // 添加代理相关服务，包括聚合器
         builder.Services.AddProxyServices();
 
+        // 添加SignalR服务
+        builder.Services.AddSignalR();
+
+        // 注册事件总线服务
+        builder.Services.AddEventBus();
+        
+        // 注册事件处理器
+        builder.Services.AddEventHandler<SessionNotificationEvent, NotificationEventHandler>();
+
         WebApplication app = builder.Build();
 
         if (!app.Environment.IsDevelopment())
@@ -86,6 +102,7 @@ public class Program
         app.MapRazorPages();
         app.MapBlazorHub();
         app.MapHub<ChatHub>("/chathub");
+        app.MapHub<NotificationHub>("/notification-hub");
 
         app.UseCors("AllowSpecificOriginsWithCredentials");
         app.UseAuthentication();

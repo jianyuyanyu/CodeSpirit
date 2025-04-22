@@ -6,9 +6,9 @@
     'use strict';
 
     // 初始化变量
-    let connection = null;       // SignalR连接对象 
     let currentSessionId = null; // 当前生成会话ID
     let amisInstance = null;     // AMIS实例对象
+    let notificationClient = null; // 通知客户端实例
 
     // 数据管理器 - 统一管理数据更新和传递，应用AMIS数据域和数据链概念
     const DataManager = {
@@ -434,151 +434,97 @@
     };
 
     /**
-     * 初始化SignalR连接
+     * 初始化通知服务连接
      * @param {string} sessionId 生成会话ID
      */
-    function initializeSignalRConnection(sessionId) {
-        if (connection) {
-            connection.stop();
-        }
+    async function initializeNotificationConnection(sessionId) {
+        try {
+            // 确保通知客户端已初始化
+            if (!notificationClient) {
+                notificationClient = new NotificationClient('/notification-hub');
+                await notificationClient.connect();
+            }
 
-        DataManager.addLog("正在建立实时连接...");
-        console.log("正在建立实时连接...", sessionId);
+            DataManager.addLog("正在建立实时连接...");
+            console.log("正在建立实时连接...", sessionId);
 
-        var baseUrl = window.CodeSpirit.config.examApi.baseUrl;
-        var questionGenerationHubUrl = window.CodeSpirit.config.examApi.signalR.questionGenerationHubUrl;
-        console.log(baseUrl + questionGenerationHubUrl);
-        // 创建连接
-        connection = new signalR.HubConnectionBuilder()
-            .withUrl(baseUrl + questionGenerationHubUrl)
-            .withAutomaticReconnect([0, 2000, 5000, 10000, 15000, 30000])
-            .configureLogging(signalR.LogLevel.Information)
-            .build();
-        // 存储连接实例以便后续管理
-        window.signalRConnection = connection;
+            // 加入题目生成主题
+            await notificationClient.joinTopic('question-generation', sessionId);
 
-        // 注册事件处理程序
-        registerSignalREvents();
+            // 注册通知处理程序
+            registerNotificationHandlers();
 
-        // 启动连接
-        connection.start()
-            .then(function () {
-                DataManager.addLog("实时连接已建立");
-                console.log("实时连接已建立");
-                // 加入生成组
-                return connection.invoke("JoinGenerationGroup", sessionId);
-            })
-            .then(function () {
-                DataManager.addLog(`已加入生成组: ${sessionId}`);
-                console.log(`已加入生成组: ${sessionId}`);
-
-                // 强制更新AMIS状态以确保面板切换
-                DataManager.updateAmis({
-                    generationStatus: 'generating',
-                    currentStep: 1,
-                    activePanel: 'progress'
-                });
-
-                // 确保界面状态更新
-                setTimeout(() => {
-                    if (amisInstance && amisInstance.forceUpdate) {
-                        amisInstance.forceUpdate();
-                        // 手动检查状态类
-                        checkGenerationStatusClass('generating');
-                    }
-                }, 200);
-
-                executeGeneration(sessionId);
-            })
-            .catch(function (err) {
-                console.error("连接错误:", err);
-                ErrorHandler.handleApiError("连接错误", err.toString());
+            // 更新状态
+            DataManager.updateAmis({
+                generationStatus: 'generating',
+                currentStep: 1,
+                activePanel: 'progress'
             });
+
+            // 确保界面状态更新
+            setTimeout(() => {
+                if (amisInstance && amisInstance.forceUpdate) {
+                    amisInstance.forceUpdate();
+                    checkGenerationStatusClass('generating');
+                }
+            }, 200);
+
+            executeGeneration(sessionId);
+        } catch (error) {
+            console.error("初始化通知连接失败:", error);
+            ErrorHandler.handleApiError("连接失败", error.toString());
+        }
     }
 
     /**
-     * 注册SignalR事件处理程序
+     * 注册通知处理程序
      */
-    function registerSignalREvents() {
-        if (!connection) {
-            console.error("无法注册SignalR事件，连接尚未建立");
-            return;
-        }
-
-        connection.on("GenerationStarted", (data) => {
-            console.log("收到生成开始事件:", data);
+    function registerNotificationHandlers() {
+        // 生成开始通知
+        notificationClient.on('question-generation', 'started', (data) => {
+            console.log("收到生成开始通知:", data);
             DataManager.updateGenerationStatus("generating");
             DataManager.addLog("生成已开始");
         });
 
-        connection.on("GenerationProgress", (data) => {
+        // 生成进度通知
+        notificationClient.on('question-generation', 'progress', (data) => {
             console.log(`收到生成进度更新:`, data);
-            // 从对象中提取信息
             const stage = data.stage || '';
             const message = data.message || '';
             const percentage = data.percentage || 0;
 
-            // 更新进度 - 确保数据有效
             DataManager.updateProgress(stage, message, percentage);
-
-            // 添加进度日志
             const progressMessage = `${getStageName(stage)}: ${message} (${percentage}%)`;
             DataManager.addLog(progressMessage);
-
-            // 尝试直接更新AMIS组件 - 双保险
-            setTimeout(() => {
-                if (amisInstance) {
-                    // 方式1：明确更新进度条值
-                    amisInstance.updateProps({
-                        data: {
-                            progressStage: getStageName(stage),
-                            progressMessage: message,
-                            progressPercentage: percentage
-                        }
-                    });
-
-                    if (amisInstance.forceUpdate) {
-                        amisInstance.forceUpdate();
-                    }
-                }
-            }, 50);
         });
 
-        connection.on("GenerationCompleted", (data) => {
-            console.log(`收到生成完成事件:`, data);
-            // 从对象中提取信息
+        // 生成完成通知
+        notificationClient.on('question-generation', 'completed', (data) => {
+            console.log(`收到生成完成通知:`, data);
             const generatedCount = data.generatedCount || data.questionCount || 0;
             const message = data.message || generatedCount;
 
-            // 更新状态
             DataManager.updateGenerationStatus("completed");
-            // 更新进度
             DataManager.updateProgress("已完成", message, 100);
             DataManager.addLog(`生成完成: ${message}`);
 
-            // 更新生成数量信息
             DataManager.updateAmis({
                 questionCount: generatedCount,
                 generationStatus: 'completed',
-                // 确保更新步骤到结果查看
                 currentStep: 2,
-                // 设置激活面板为结果面板
                 activePanel: 'results'
             });
 
-            // 自动获取生成的题目
             const sessionId = DataManager.get('generation.sessionId');
             if (sessionId) {
-                // 添加短暂延迟确保后端数据已就绪
                 setTimeout(() => {
                     fetchGeneratedQuestions(sessionId);
-                    // 显示结果区域
                     DataManager.updateAmis({
                         showResults: true,
                         currentStep: 2
                     });
 
-                    // 滚动到结果区域
                     setTimeout(() => {
                         const resultsElement = document.querySelector('.generated-questions-container');
                         if (resultsElement) {
@@ -586,33 +532,22 @@
                         }
                     }, 500);
                 }, 800);
-            } else {
-                console.error("无法获取生成的题目，会话ID不存在");
-                DataManager.addLog("无法获取生成的题目，会话ID不存在");
             }
         });
 
-        connection.on("GenerationError", (data) => {
-            console.error(`收到生成错误事件:`, data);
-            
+        // 生成错误通知
+        notificationClient.on('question-generation', 'error', (data) => {
+            console.error(`收到生成错误通知:`, data);
             let errorMessage = '未知错误';
 
-            // 解析新的错误消息结构
             if (typeof data === 'string') {
                 try {
-                    // 尝试将字符串解析为JSON
                     const parsedData = JSON.parse(data);
-                    if (parsedData && parsedData.error) {
-                        errorMessage = parsedData.error;
-                    } else {
-                        errorMessage = data;
-                    }
+                    errorMessage = parsedData.error || data;
                 } catch (e) {
-                    // 如果解析失败，直接使用字符串
                     errorMessage = data;
                 }
             } else if (data && typeof data === 'object') {
-                // 从对象中提取错误信息
                 errorMessage = data.error || data.message || data.errorMessage || '未知错误';
             }
 
@@ -620,10 +555,8 @@
             DataManager.updateProgress("失败", errorMessage, 0);
             DataManager.addLog(`生成失败: ${errorMessage}`);
 
-            // 使用错误处理器处理
             ErrorHandler.handleApiError("生成失败", errorMessage);
 
-            // 确保切换到结果页显示错误
             setTimeout(() => {
                 DataManager.updateAmis({
                     currentStep: 2,
@@ -631,20 +564,16 @@
                     showResults: true
                 });
 
-                // 强制刷新UI
                 if (amisInstance && amisInstance.forceUpdate) {
                     amisInstance.forceUpdate();
                 }
 
-                // 尝试获取题目（如果有sessionId）
                 const sessionId = DataManager.get('generation.sessionId');
                 if (sessionId) {
                     fetchGeneratedQuestions(sessionId);
                 }
             }, 100);
         });
-
-        console.log("SignalR事件已注册");
     }
 
     /**
@@ -848,36 +777,25 @@
         console.log("执行生成过程:", formData);
         console.log("AMIS上下文对象:", context);
 
-        // 保存表单数据
         DataManager.setFormData(formData);
-
-        // 更新状态为生成中
         DataManager.updateGenerationStatus('generating');
-
-        // 初始化进度
         DataManager.updateProgress('准备中...', '正在初始化...', 0);
-
-        // 清空日志
         DataManager.initialData.logs = [];
         DataManager.updateAmis('generationLogs', []);
 
-        // 强制更新AMIS状态以确保面板切换
         DataManager.updateAmis({
             currentStep: 1,
             activePanel: 'progress'
         });
 
-        // 强制检查状态类
         checkGenerationStatusClass('generating');
 
-        // 确保界面状态更新
         setTimeout(() => {
             if (amisInstance && amisInstance.forceUpdate) {
                 amisInstance.forceUpdate();
             }
         }, 200);
 
-        // 直接调用fetch而不依赖AMIS的ajax
         fetch("/exam/api/exam/Questions/ai/generate-and-save", {
             method: "POST",
             headers: {
@@ -903,7 +821,6 @@
             .then(data => {
                 console.log("生成请求响应:", data);
 
-                // 处理嵌套的响应结构
                 let responseData = data;
                 if (data.result && data.result.value) {
                     responseData = data.result.value;
@@ -914,56 +831,40 @@
                     const sessionId = responseData.data.sessionId;
                     currentSessionId = sessionId;
 
-                    // 更新会话ID
                     DataManager.set('generation.sessionId', sessionId);
                     console.log("获取到会话ID:", sessionId);
 
-                    // 初始化SignalR连接
                     setTimeout(() => {
-                        console.log("即将初始化SignalR连接...");
-                        initializeSignalRConnection(sessionId);
+                        console.log("即将初始化通知连接...");
+                        initializeNotificationConnection(sessionId);
                     }, 100);
                 } else {
-                    // 错误处理
                     console.error("请求返回失败状态:", responseData);
                     ErrorHandler.handleApiError("生成失败", responseData.msg || "未知错误");
-
-                    // 停止连接
-                    if (connection) {
-                        connection.stop();
-                    }
                 }
             })
             .catch(error => {
-                // 错误处理
                 console.error("请求失败:", error);
                 ErrorHandler.handleApiError("请求失败", error.toString());
-
-                // 停止连接
-                if (connection) {
-                    connection.stop();
-                }
             });
     };
 
     /**
      * 重置表单和状态
      */
-    function resetForm() {
-        // 重置数据
-        DataManager.reset();
-
-        // 如果存在连接，停止连接
-        if (connection) {
-            connection.stop();
+    async function resetForm() {
+        try {
+            // 离开主题
+            if (notificationClient && currentSessionId) {
+                await notificationClient.leaveTopic('question-generation', currentSessionId);
+            }
+        } catch (error) {
+            console.error("离开主题失败:", error);
         }
 
+        DataManager.reset();
         currentSessionId = null;
-
-        // 更新状态类
         checkGenerationStatusClass('waiting');
-
-        // 确保步骤回到初始状态
         DataManager.updateAmis('currentStep', 0);
     }
 
@@ -1056,23 +957,6 @@
         } catch (error) {
             console.error("检查状态类时出错:", error);
             return false;
-        }
-    }
-
-    // 停止SignalR连接
-    function stopSignalRConnection() {
-        if (window.signalRConnection || connection) {
-            console.log('正在关闭SignalR连接...');
-            const conn = window.signalRConnection || connection;
-            conn.stop()
-                .then(() => {
-                    console.log('SignalR连接已关闭');
-                    window.signalRConnection = null;
-                    DataManager.updateAmis('signalRConnected', false);
-                })
-                .catch(err => {
-                    console.error('关闭SignalR连接时发生错误:', err);
-                });
         }
     }
 
@@ -1865,76 +1749,69 @@
     };
 
     // 初始化AMIS应用
-    window.addEventListener('load', function () {
+    window.addEventListener('load', async function () {
         console.log("页面加载完成，初始化AMIS应用");
 
-        const amisApp = amisRequire('amis/embed');
+        try {
+            // 初始化通知客户端
+            notificationClient = new NotificationClient('/notification-hub');
+            await notificationClient.connect();
+            console.log("通知客户端已初始化");
 
-        // 配置AMIS应用
-        const app = amisApp.embed('#question-generation-app', amisJSON, {
-            locale: 'zh-CN',
-            theme: 'antd',
-            // 使用DataManager的初始数据
-            data: DataManager.initialData
-        }, {
-            requestAdaptor: requestAdaptor,
-            // AMIS错误处理
-            responseAdaptor: function (api, payload, query, request, response) {
-                // 处理错误响应
-                if (response.status >= 400) {
-                    ErrorHandler.showError(`请求失败: ${response.status} ${response.statusText}`);
+            const amisApp = amisRequire('amis/embed');
+
+            // 配置AMIS应用
+            const app = amisApp.embed('#question-generation-app', amisJSON, {
+                locale: 'zh-CN',
+                theme: 'antd',
+                data: DataManager.initialData
+            }, {
+                requestAdaptor: requestAdaptor,
+                responseAdaptor: function (api, payload, query, request, response) {
+                    if (response.status >= 400) {
+                        ErrorHandler.showError(`请求失败: ${response.status} ${response.statusText}`);
+                        return payload;
+                    }
                     return payload;
-                }
-
-                return payload;
-            },
-            // 添加动作触发时的回调
-            onAction: function (e) {
-                console.log("AMIS动作触发:", e);
-            },
-            // 添加值变更事件监听
-            watchData: function (data) {
-                console.log("AMIS数据变更:", data);
-                // 监听关键状态变更
-                if (data) {
-                    // 监听生成状态变更
-                    if (data.generationStatus) {
-                        // 更新状态
-                        DataManager.set('generation.status', data.generationStatus);
-                        console.log("页面状态变更:", data.generationStatus);
-                        // 检查CSS类
-                        checkGenerationStatusClass(data.generationStatus);
-                    }
-
-                    // 监听进度相关字段变更
-                    const progressKeys = ['progressPercentage', 'progressStage', 'progressMessage'];
-                    let hasProgressChange = false;
-                    progressKeys.forEach(key => {
-                        if (data[key] !== undefined) {
-                            DataManager.set(`generation.${key}`, data[key]);
-                            hasProgressChange = true;
+                },
+                onAction: function (e) {
+                    console.log("AMIS动作触发:", e);
+                },
+                watchData: function (data) {
+                    console.log("AMIS数据变更:", data);
+                    if (data) {
+                        if (data.generationStatus) {
+                            DataManager.set('generation.status', data.generationStatus);
+                            console.log("页面状态变更:", data.generationStatus);
+                            checkGenerationStatusClass(data.generationStatus);
                         }
-                    });
 
-                    // 如果有进度变更，强制更新UI
-                    if (hasProgressChange && amisInstance && amisInstance.forceUpdate) {
-                        setTimeout(() => amisInstance.forceUpdate(), 10);
+                        const progressKeys = ['progressPercentage', 'progressStage', 'progressMessage'];
+                        let hasProgressChange = false;
+                        progressKeys.forEach(key => {
+                            if (data[key] !== undefined) {
+                                DataManager.set(`generation.${key}`, data[key]);
+                                hasProgressChange = true;
+                            }
+                        });
+
+                        if (hasProgressChange && amisInstance && amisInstance.forceUpdate) {
+                            setTimeout(() => amisInstance.forceUpdate(), 10);
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        // 保存应用实例到全局变量
-        amisInstance = app;
-        window.amisInstance = app;
+            amisInstance = app;
+            window.amisInstance = app;
+            window.resetForm = resetForm;
+            checkGenerationStatusClass('waiting');
 
-        // 暴露重置函数到全局
-        window.resetForm = resetForm;
-
-        // 立即设置一次状态类，确保CSS正确
-        checkGenerationStatusClass('waiting');
-
-        console.log("AMIS应用初始化完成", app);
+            console.log("AMIS应用初始化完成", app);
+        } catch (error) {
+            console.error("初始化失败:", error);
+            ErrorHandler.showError("初始化失败: " + error.message);
+        }
     });
 
     /**

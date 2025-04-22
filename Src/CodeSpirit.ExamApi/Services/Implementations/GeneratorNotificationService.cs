@@ -1,28 +1,27 @@
 using CodeSpirit.ExamApi.Dtos.Question;
-using CodeSpirit.ExamApi.Hubs;
-using CodeSpirit.ExamApi.Services.Interfaces;
-using Microsoft.AspNetCore.SignalR;
+using CodeSpirit.Shared.Notifications;
+using CodeSpirit.Shared.Notifications.Events;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
 /// <summary>
 /// 通知服务实现
 /// </summary>
-public class NotificationService : INotificationService
+public class GeneratorNotificationService : IGeneratorNotificationService
 {
-    private readonly IHubContext<QuestionGenerationHub> _questionGenerationHubContext;
-    private readonly ILogger<NotificationService> _logger;
+    private readonly ISessionNotificationService _notificationService;
+    private readonly ILogger<GeneratorNotificationService> _logger;
 
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="questionGenerationHubContext">题目生成Hub上下文</param>
+    /// <param name="notificationService">通知服务</param>
     /// <param name="logger">日志记录器</param>
-    public NotificationService(
-        IHubContext<QuestionGenerationHub> questionGenerationHubContext,
-        ILogger<NotificationService> logger)
+    public GeneratorNotificationService(
+        ISessionNotificationService notificationService,
+        ILogger<GeneratorNotificationService> logger)
     {
-        _questionGenerationHubContext = questionGenerationHubContext;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -35,19 +34,18 @@ public class NotificationService : INotificationService
     {
         try
         {
-            await _questionGenerationHubContext.Clients.Group(sessionId).SendAsync(
-                "GenerationStarted",
-                new
+            var message = new SessionNotificationEvent
+            {
+                Topic = "question-generation",
+                Type = "started",
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
                 {
-                    sessionId,
-                    request.Topic,
-                    request.Count,
-                    request.Type,
-                    request.Difficulty,
-                    request.CategoryId,
-                    request.Requirements,
-                    timestamp = DateTime.UtcNow
-                });
+                    { "request", request }
+                }
+            };
+
+            await _notificationService.SendNotificationAsync(message);
             _logger.LogInformation("已发送题目生成开始通知: {SessionId}", sessionId);
         }
         catch (Exception ex)
@@ -67,16 +65,20 @@ public class NotificationService : INotificationService
     {
         try
         {
-            await _questionGenerationHubContext.Clients.Group(sessionId).SendAsync(
-                "GenerationProgress",
-                new
+            var notification = new SessionNotificationEvent
+            {
+                Topic = "question-generation",
+                Type = "progress",
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
                 {
-                    sessionId,
-                    stage,
-                    message,
-                    percentage,
-                    timestamp = DateTime.UtcNow
-                });
+                    { "stage", stage },
+                    { "message", message },
+                    { "percentage", percentage }
+                }
+            };
+
+            await _notificationService.SendNotificationAsync(notification);
             _logger.LogDebug("已发送题目生成进度通知: {SessionId}, {Stage}, {Percentage}%", sessionId, stage, percentage);
         }
         catch (Exception ex)
@@ -95,15 +97,19 @@ public class NotificationService : INotificationService
     {
         try
         {
-            await _questionGenerationHubContext.Clients.Group(sessionId).SendAsync(
-                "GenerationCompleted",
-                new
+            var notification = new SessionNotificationEvent
+            {
+                Topic = "question-generation",
+                Type = "completed",
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
                 {
-                    sessionId,
-                    questionCount = questions.Count,
-                    duration,
-                    timestamp = DateTime.UtcNow
-                });
+                    { "questionCount", questions.Count },
+                    { "duration", duration }
+                }
+            };
+
+            await _notificationService.SendNotificationAsync(notification);
             _logger.LogInformation("已发送题目生成完成通知: {SessionId}, 生成了{Count}道题目, 耗时{Duration}ms", 
                 sessionId, questions.Count, duration);
         }
@@ -122,14 +128,18 @@ public class NotificationService : INotificationService
     {
         try
         {
-            await _questionGenerationHubContext.Clients.Group(sessionId).SendAsync(
-                "GenerationError",
-                new
+            var notification = new SessionNotificationEvent
+            {
+                Topic = "question-generation",
+                Type = "error",
+                SessionId = sessionId,
+                Data = new Dictionary<string, object>
                 {
-                    sessionId,
-                    error,
-                    timestamp = DateTime.UtcNow
-                });
+                    { "error", error }
+                }
+            };
+
+            await _notificationService.SendNotificationAsync(notification);
             _logger.LogWarning("已发送题目生成错误通知: {SessionId}, {Error}", sessionId, error);
         }
         catch (Exception ex)

@@ -19,7 +19,7 @@ public class QuestionsController : ApiControllerBase
     private readonly IQuestionService _questionService;
     private readonly IAIQuestionGeneratorService _aiQuestionGeneratorService;
     private readonly ILogger<QuestionsController> _logger;
-    private readonly INotificationService _notificationService;
+    private readonly IGeneratorNotificationService _notificationService;
     private readonly IDistributedCache _distributedCache;
 
     /// <summary>
@@ -34,7 +34,7 @@ public class QuestionsController : ApiControllerBase
         IQuestionService questionService,
         IAIQuestionGeneratorService aiQuestionGeneratorService,
         ILogger<QuestionsController> logger,
-        INotificationService notificationService,
+        IGeneratorNotificationService notificationService,
         IDistributedCache distributedCache)
     {
         ArgumentNullException.ThrowIfNull(questionService);

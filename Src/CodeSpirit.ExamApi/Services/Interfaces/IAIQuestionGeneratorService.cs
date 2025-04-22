@@ -15,5 +15,5 @@ public interface IAIQuestionGeneratorService
     /// <param name="sessionId">会话ID，用于实时推送生成过程</param>
     /// <param name="notificationService">通知服务，用于实时推送生成过程</param>
     /// <returns>生成的题目列表</returns>
-    Task<List<CreateQuestionDto>> GenerateQuestionsAsync(AIGenerateQuestionDto request, string sessionId = null, INotificationService notificationService = null);
+    Task<List<CreateQuestionDto>> GenerateQuestionsAsync(AIGenerateQuestionDto request, string sessionId = null, IGeneratorNotificationService notificationService = null);
 } 

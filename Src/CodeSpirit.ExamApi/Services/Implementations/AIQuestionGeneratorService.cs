@@ -36,7 +36,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
     }
 
     /// <inheritdoc/>
-    public async Task<List<CreateQuestionDto>> GenerateQuestionsAsync(AIGenerateQuestionDto request, string sessionId = null, INotificationService notificationService = null)
+    public async Task<List<CreateQuestionDto>> GenerateQuestionsAsync(AIGenerateQuestionDto request, string sessionId = null, IGeneratorNotificationService notificationService = null)
     {
         _logger.LogInformation("开始生成题目: 主题={Topic}, 数量={Count}, 类型={Type}, 难度={Difficulty}", 
             request.Topic, request.Count, request.Type, request.Difficulty);

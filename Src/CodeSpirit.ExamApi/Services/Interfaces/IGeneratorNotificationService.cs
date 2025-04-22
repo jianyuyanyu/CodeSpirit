@@ -5,7 +5,7 @@ namespace CodeSpirit.ExamApi.Services.Interfaces;
 /// <summary>
 /// 通知服务接口
 /// </summary>
-public interface INotificationService
+public interface IGeneratorNotificationService
 {
     /// <summary>
     /// 发送题目生成开始通知

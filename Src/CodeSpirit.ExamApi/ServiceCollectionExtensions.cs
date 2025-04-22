@@ -3,7 +3,6 @@ using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.ExamApi.Data;
-using CodeSpirit.ExamApi.Hubs;
 using CodeSpirit.ExamApi.Services;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.ExamApi.Settings;
@@ -150,7 +149,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAIQuestionGeneratorService, AIQuestionGeneratorService>();
         
         // 注册通知服务
-        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IGeneratorNotificationService, GeneratorNotificationService>();
         
         // 添加SignalR服务
         services.AddSignalR()
@@ -177,9 +176,6 @@ public static class ServiceCollectionExtensions
         app.UseAmis();
         app.UseCodeSpiritAuthorization();
         await app.UseCodeSpiritNavigationAsync();
-        
-        // 配置SignalR Hub
-        app.MapHub<QuestionGenerationHub>("/api/exam/questionGenerationHub");
         
         // 初始化设置管理
         await app.UseSettingsManagerAsync();

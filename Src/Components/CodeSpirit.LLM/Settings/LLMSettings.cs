@@ -1,6 +1,7 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.ExamApi.Settings;
+namespace CodeSpirit.LLM.Settings;
 
 /// <summary>
 /// 大语言模型设置
@@ -43,7 +44,7 @@ public class LLMSettings
     /// 最大令牌数
     /// </summary>
     [DisplayName("最大令牌数")]
-    [Range(100, 4000)]
+    [Range(100, 8000)]
     [Description("生成内容的最大令牌数")]
     public int MaxTokens { get; set; } = 2048;
 
@@ -60,4 +61,4 @@ public class LLMSettings
     [DisplayName("代理地址")]
     [Description("HTTP代理地址，如http://127.0.0.1:7890")]
     public string? ProxyAddress { get; set; }
-} 
+}

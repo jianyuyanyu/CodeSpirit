@@ -1,6 +1,6 @@
-using CodeSpirit.ExamApi.Settings;
+using CodeSpirit.LLM.Settings;
 
-namespace CodeSpirit.ExamApi.Services.LLM;
+namespace CodeSpirit.LLM.Clients;
 
 /// <summary>
 /// LLM客户端接口
@@ -34,4 +34,4 @@ public interface ILLMClient
     /// <param name="userPrompt">用户提示词</param>
     /// <returns>生成的内容</returns>
     Task<string> GenerateContentAsync(string systemPrompt, string userPrompt);
-} 
+}

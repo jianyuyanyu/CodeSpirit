@@ -1,15 +1,8 @@
-using CodeSpirit.ExamApi.Constants;
 using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.ExamApi.Services.Helpers;
-using CodeSpirit.ExamApi.Services.Interfaces;
-using CodeSpirit.ExamApi.Services.LLM;
-using CodeSpirit.ExamApi.Settings;
+using CodeSpirit.LLM;
+using CodeSpirit.LLM.Factories;
 using CodeSpirit.Settings.Services.Interfaces;
-using Microsoft.Extensions.Configuration;
-using System.Net;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -18,40 +11,28 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// </summary>
 public class AIQuestionGeneratorService : IAIQuestionGeneratorService
 {
-    private readonly ISettingsService _settingsService;
     private readonly ILogger<AIQuestionGeneratorService> _logger;
-    private readonly IConfiguration _configuration;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILLMClientFactory _llmClientFactory;
     private readonly IPromptBuilder _promptBuilder;
     private readonly IQuestionParser _questionParser;
+    private readonly LLMAssistant _llmAssistant;
 
     /// <summary>
     /// 初始化AI题目生成服务
     /// </summary>
-    /// <param name="settingsService">设置服务</param>
     /// <param name="logger">日志记录器</param>
-    /// <param name="configuration">配置</param>
-    /// <param name="httpClientFactory">HTTP客户端工厂</param>
-    /// <param name="llmClientFactory">LLM客户端工厂</param>
     /// <param name="promptBuilder">提示词构建器</param>
     /// <param name="questionParser">题目解析器</param>
+    /// <param name="llmAssistant">LLM助手</param>
     public AIQuestionGeneratorService(
-        ISettingsService settingsService,
         ILogger<AIQuestionGeneratorService> logger,
-        IConfiguration configuration,
-        IHttpClientFactory httpClientFactory,
-        ILLMClientFactory llmClientFactory,
         IPromptBuilder promptBuilder,
-        IQuestionParser questionParser)
+        IQuestionParser questionParser,
+        LLMAssistant llmAssistant)
     {
-        _settingsService = settingsService;
         _logger = logger;
-        _configuration = configuration;
-        _httpClientFactory = httpClientFactory;
-        _llmClientFactory = llmClientFactory;
         _promptBuilder = promptBuilder;
         _questionParser = questionParser;
+        _llmAssistant = llmAssistant;
     }
 
     /// <inheritdoc/>
@@ -59,14 +40,6 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
     {
         _logger.LogInformation("开始生成题目: 主题={Topic}, 数量={Count}, 类型={Type}, 难度={Difficulty}", 
             request.Topic, request.Count, request.Type, request.Difficulty);
-
-        // 获取LLM客户端
-        var llmClient = await _llmClientFactory.CreateClientAsync();
-        if (llmClient == null)
-        {
-            _logger.LogError("未能创建LLM客户端，无法生成题目");
-            throw new InvalidOperationException("未配置LLM设置，请先配置大语言模型");
-        }
 
         // 如果提供了通知服务和会话ID，则发送构建提示词开始通知
         if (notificationService != null && !string.IsNullOrEmpty(sessionId))
@@ -93,8 +66,8 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     await notificationService.NotifyGenerationProgressAsync(sessionId, "prompt_ready", "提示词构建完成，开始生成题目...", 30);
                 }
 
-                // 发送请求获取生成内容
-                var generatedContent = await llmClient.GenerateContentAsync(prompt);
+                // 使用LLM助手生成内容
+                var generatedContent = await _llmAssistant.GenerateContentAsync(prompt);
                 
                 // 如果提供了通知服务和会话ID，则发送内容生成完成通知
                 if (notificationService != null && !string.IsNullOrEmpty(sessionId))
@@ -139,7 +112,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     try
                     {
                         // 请求LLM修正格式
-                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request, ex.Message);
+                        string correctedContent = await RequestFormatCorrectionAsync(request, ex.Message);
                         
                         // 使用修正后的内容尝试重新解析
                         _logger.LogInformation("获取到修正内容，尝试重新解析");
@@ -200,7 +173,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     try 
                     {
                         // 请求LLM修正格式
-                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request, ex.Message);
+                        string correctedContent = await RequestFormatCorrectionAsync(request, ex.Message);
                         
                         // 使用修正后的内容尝试重新解析
                         _logger.LogInformation("获取到修正内容，尝试重新处理");
@@ -243,7 +216,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     try
                     {
                         // 请求LLM修正格式
-                        string correctedContent = await RequestFormatCorrectionAsync(llmClient, request, ex.Message);
+                        string correctedContent = await RequestFormatCorrectionAsync(request, ex.Message);
                         
                         // 使用修正后的内容尝试重新解析
                         _logger.LogInformation("获取到修正内容，尝试重新处理");
@@ -309,7 +282,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
     /// <summary>
     /// 请求LLM修正格式问题
     /// </summary>
-    private async Task<string> RequestFormatCorrectionAsync(ILLMClient llmClient, AIGenerateQuestionDto request, string errorMessage = null)
+    private async Task<string> RequestFormatCorrectionAsync(AIGenerateQuestionDto request, string errorMessage = null)
     {
         _logger.LogInformation("请求LLM修正格式问题");
         
@@ -320,8 +293,8 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
             
             _logger.LogDebug("发送格式修正请求");
             
-            // 发送请求
-            string correctedContent = await llmClient.GenerateContentAsync(prompt);
+            // 使用LLM助手发送请求
+            string correctedContent = await _llmAssistant.GenerateContentAsync(prompt);
             
             _logger.LogInformation("成功获取修正后的内容");
             return correctedContent;

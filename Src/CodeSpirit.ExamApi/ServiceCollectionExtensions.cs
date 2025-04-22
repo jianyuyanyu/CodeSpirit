@@ -121,20 +121,7 @@ public static class ServiceCollectionExtensions
 
         // 添加设置管理
         services.AddSettingsManagerWithDatabase(configuration);
-
-        // 初始化LLM设置
-        var llmSettings = new LLMSettings
-        {
-            ApiBaseUrl = configuration["LLM:ApiBaseUrl"] ?? "https://api.openai.com/v1",
-            ApiKey = configuration["LLM:ApiKey"] ?? string.Empty,
-            ModelName = configuration["LLM:ModelName"] ?? "gpt-4o",
-            TimeoutSeconds = int.TryParse(configuration["LLM:TimeoutSeconds"], out int timeout) ? timeout : 120,
-            MaxTokens = int.TryParse(configuration["LLM:MaxTokens"], out int maxTokens) ? maxTokens : 2048,
-            UseProxy = bool.TryParse(configuration["LLM:UseProxy"], out bool useProxy) && useProxy,
-            ProxyAddress = configuration["LLM:ProxyAddress"]
-        };
-        services.AddSingleton(llmSettings);
-
+        
         return services;
     }
 

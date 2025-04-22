@@ -1,10 +1,11 @@
-using CodeSpirit.ExamApi.Settings;
+using CodeSpirit.LLM.Settings;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-namespace CodeSpirit.ExamApi.Services.LLM;
+namespace CodeSpirit.LLM.Clients;
 
 /// <summary>
 /// 默认LLM客户端实现
@@ -45,7 +46,7 @@ public class DefaultLLMClient : ILLMClient
     public async Task<string> GenerateContentAsync(string prompt, int maxTokens)
     {
         return await GenerateContentAsync(
-            "你是一个专业的考试题目生成助手，严格按照要求生成考试题目。",
+            "你是一个专业的AI助手，请根据用户的提示提供专业的回答。",
             prompt,
             maxTokens);
     }
@@ -167,8 +168,9 @@ public class DefaultLLMClient : ILLMClient
     {
         try
         {
-            // OpenAI 流式响应格式
-            if (chunk.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+            // 标准OpenAI流式响应格式
+            if (chunk.TryGetProperty("choices", out var choices) && 
+                choices.GetArrayLength() > 0)
             {
                 var choice = choices[0];
                 if (choice.TryGetProperty("delta", out var delta) && 
@@ -176,38 +178,22 @@ public class DefaultLLMClient : ILLMClient
                 {
                     return content.GetString() ?? "";
                 }
-            }
-            
-            // 阿里云灵积模型响应格式
-            if (modelName.StartsWith("qwen") || modelName.Contains("tongyi"))
-            {
-                if (chunk.TryGetProperty("output", out var output))
+                
+                // 兼容阿里云灵积API的格式（dashscope compatible mode）
+                if (choice.TryGetProperty("message", out var message) && 
+                    message.TryGetProperty("content", out var msgContent))
                 {
-                    if (output.TryGetProperty("choices", out var qwenChoices) && 
-                        qwenChoices.GetArrayLength() > 0)
-                    {
-                        var choice = qwenChoices[0];
-                        if (choice.TryGetProperty("delta", out var delta) &&
-                            delta.TryGetProperty("content", out var content))
-                        {
-                            return content.GetString() ?? "";
-                        }
-                    }
+                    return msgContent.GetString() ?? "";
                 }
             }
             
             // 尝试其他可能的路径
             foreach (var propName in new[] { "content", "text", "delta" })
             {
-                if (chunk.TryGetProperty(propName, out var prop))
+                if (chunk.TryGetProperty(propName, out var content) && 
+                    content.ValueKind == JsonValueKind.String)
                 {
-                    string value = prop.ValueKind == JsonValueKind.String 
-                        ? prop.GetString() ?? "" 
-                        : prop.ToString();
-                    if (!string.IsNullOrEmpty(value))
-                    {
-                        return value;
-                    }
+                    return content.GetString() ?? "";
                 }
             }
             
@@ -215,96 +201,142 @@ public class DefaultLLMClient : ILLMClient
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "提取流式数据块内容失败");
+            // 记录错误但不抛出，以保持流式处理的连续性
             return "";
         }
     }
-
+    
     /// <summary>
     /// 创建HTTP客户端
     /// </summary>
     private HttpClient CreateHttpClient(LLMSettings settings, IHttpClientFactory httpClientFactory)
     {
-        _logger.LogDebug("创建HTTP客户端");
-        HttpClient client;
-
-        try
+        var client = httpClientFactory.CreateClient("LLMClient");
+        
+        // 设置超时
+        client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+        
+        // 配置请求头
+        if (!string.IsNullOrEmpty(settings.ApiKey))
         {
-            if (settings.UseProxy && !string.IsNullOrEmpty(settings.ProxyAddress))
+            if (settings.ApiBaseUrl.Contains("openai.com"))
             {
-                // 使用代理
-                _logger.LogDebug("使用代理: {ProxyAddress}", settings.ProxyAddress);
-                try
-                {
-                    var handler = new HttpClientHandler
-                    {
-                        Proxy = new WebProxy(settings.ProxyAddress),
-                        UseProxy = true
-                    };
-                    client = new HttpClient(handler);
-                    _logger.LogInformation("成功配置HTTP代理");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "配置HTTP代理时发生错误: {ErrorMessage}", ex.Message);
-                    _logger.LogWarning("回退到不使用代理的客户端");
-                    client = httpClientFactory.CreateClient();
-                }
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
+            }
+            else if (settings.ApiBaseUrl.Contains("dashscope"))
+            {
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {settings.ApiKey}");
             }
             else
             {
-                // 使用普通客户端
-                _logger.LogDebug("使用默认HTTP客户端，不使用代理");
-                client = httpClientFactory.CreateClient();
+                client.DefaultRequestHeaders.Add("api-key", settings.ApiKey);
             }
-
-            // 设置超时
-            client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
-            _logger.LogDebug("HTTP客户端超时设置为 {Timeout} 秒", settings.TimeoutSeconds);
-
-            // 设置认证头
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
-                string.IsNullOrEmpty(settings.ApiKey) ? string.Empty : settings.ApiKey);
-
-            // 添加请求头
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            client.DefaultRequestHeaders.Add("User-Agent", "CodeSpirit.ExamApi/1.0");
-
-            // 添加可能特定于供应商的头部
-            if (settings.ApiBaseUrl.Contains("dashscope.aliyuncs.com"))
-            {
-                _logger.LogDebug("添加阿里云特定请求头");
-                client.DefaultRequestHeaders.Add("X-DashScope-Client", "CodeSpirit.ExamApi");
-            }
-
-            _logger.LogInformation("HTTP客户端创建成功");
-            return client;
         }
-        catch (Exception ex)
+        
+        // 配置代理
+        if (settings.UseProxy && !string.IsNullOrEmpty(settings.ProxyAddress))
         {
-            _logger.LogError(ex, "创建HTTP客户端时发生错误: {ErrorMessage}", ex.Message);
-            // 尝试创建一个基本客户端
-            var fallbackClient = new HttpClient();
-            fallbackClient.Timeout = TimeSpan.FromSeconds(120); // 默认超时
-            return fallbackClient;
+            try
+            {
+                var webProxy = new WebProxy(settings.ProxyAddress)
+                {
+                    UseDefaultCredentials = true
+                };
+                
+                var handler = new HttpClientHandler
+                {
+                    Proxy = webProxy,
+                    UseProxy = true
+                };
+                
+                client = new HttpClient(handler);
+                client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+                
+                if (!string.IsNullOrEmpty(settings.ApiKey))
+                {
+                    if (settings.ApiBaseUrl.Contains("openai.com"))
+                    {
+                        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
+                    }
+                    else if (settings.ApiBaseUrl.Contains("dashscope"))
+                    {
+                        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {settings.ApiKey}");
+                    }
+                    else
+                    {
+                        client.DefaultRequestHeaders.Add("api-key", settings.ApiKey);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "配置代理失败: {ProxyAddress}, {ErrorMessage}", 
+                    settings.ProxyAddress, ex.Message);
+            }
         }
+        
+        return client;
     }
-
+    
     /// <summary>
     /// 确定请求URL
     /// </summary>
     private string DetermineRequestUrl(string apiBaseUrl, string modelName)
     {
-        // 所有API都使用相同的接口地址
-        return $"{apiBaseUrl.TrimEnd('/')}/chat/completions";
+        if (apiBaseUrl.EndsWith("/"))
+        {
+            apiBaseUrl = apiBaseUrl.TrimEnd('/');
+        }
+        
+        // 对于OpenAI和阿里云灵积API，都需要添加/chat/completions路径
+        if (apiBaseUrl.Contains("openai.com") || apiBaseUrl.Contains("dashscope"))
+        {
+            return $"{apiBaseUrl}/chat/completions";
+        }
+        
+        return apiBaseUrl;
     }
-
+    
     /// <summary>
     /// 构建请求体
     /// </summary>
     private object BuildRequestBody(string modelName, string systemPrompt, string userPrompt, int maxTokens)
     {
-        // 通用格式
+        // OpenAI格式
+        if (modelName.Contains("gpt") || Settings.ApiBaseUrl.Contains("openai.com"))
+        {
+            return new
+            {
+                model = modelName,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
+                },
+                max_tokens = maxTokens,
+                temperature = 0.7,
+                stream = true
+            };
+        }
+        
+        // 阿里云格式
+        if (modelName.StartsWith("qwen") || Settings.ApiBaseUrl.Contains("dashscope"))
+        {
+            return new
+            {
+                model = modelName,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
+                },
+                max_tokens = maxTokens,
+                temperature = 0.7,
+                stream = true
+            };
+        }
+        
+        // 默认格式
         return new
         {
             model = modelName,

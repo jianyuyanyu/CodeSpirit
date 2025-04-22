@@ -1,15 +1,17 @@
-using CodeSpirit.ExamApi.Settings;
-using CodeSpirit.Settings.Services.Interfaces;
+using CodeSpirit.LLM.Clients;
+using CodeSpirit.LLM.Settings;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace CodeSpirit.ExamApi.Services.LLM;
+namespace CodeSpirit.LLM.Factories;
 
 /// <summary>
 /// 默认LLM客户端工厂实现
 /// </summary>
 public class DefaultLLMClientFactory : ILLMClientFactory
 {
-    private readonly ISettingsService _settingsService;
+    private readonly ISettingsProvider _settingsProvider;
     private readonly ILogger<DefaultLLMClientFactory> _logger;
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -20,19 +22,19 @@ public class DefaultLLMClientFactory : ILLMClientFactory
     /// <summary>
     /// 初始化默认LLM客户端工厂
     /// </summary>
-    /// <param name="settingsService">设置服务</param>
+    /// <param name="settingsProvider">设置提供程序</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="configuration">配置</param>
     /// <param name="httpClientFactory">HTTP客户端工厂</param>
     /// <param name="serviceProvider">服务提供者</param>
     public DefaultLLMClientFactory(
-        ISettingsService settingsService,
+        ISettingsProvider settingsProvider,
         ILogger<DefaultLLMClientFactory> logger,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
         IServiceProvider serviceProvider)
     {
-        _settingsService = settingsService;
+        _settingsProvider = settingsProvider;
         _logger = logger;
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
@@ -61,8 +63,7 @@ public class DefaultLLMClientFactory : ILLMClientFactory
         }
 
         // 创建日志记录器
-        var clientLogger = (ILogger<DefaultLLMClient>)_serviceProvider
-            .GetRequiredService(typeof(ILogger<DefaultLLMClient>));
+        var clientLogger = _serviceProvider.GetRequiredService<ILogger<DefaultLLMClient>>();
 
         // 创建客户端
         return new DefaultLLMClient(clientLogger, _cachedSettings, _httpClientFactory);
@@ -77,19 +78,19 @@ public class DefaultLLMClientFactory : ILLMClientFactory
         try
         {
             // 尝试从设置服务获取
-            _logger.LogDebug("从设置服务获取LLM设置");
-            var settings = await _settingsService.GetGlobalSettingAsync<LLMSettings>("ExamApi", "LLMSettings");
+            _logger.LogDebug("从设置提供程序获取LLM设置");
+            var settings = await _settingsProvider.GetSettingsAsync<LLMSettings>("LLMSettings");
             
             // 如果设置不为null且API密钥不为空，则返回
             if (settings != null && !string.IsNullOrEmpty(settings.ApiKey))
             {
-                _logger.LogInformation("成功从设置服务获取LLM设置: 模型={ModelName}, API={ApiBaseUrl}", 
+                _logger.LogInformation("成功从设置提供程序获取LLM设置: 模型={ModelName}, API={ApiBaseUrl}", 
                     settings.ModelName, settings.ApiBaseUrl);
                 return settings;
             }
             
             // 如果从设置服务获取失败，则从配置文件中获取
-            _logger.LogInformation("从设置服务获取LLM设置失败或API密钥为空，尝试从配置文件获取");
+            _logger.LogInformation("从设置提供程序获取LLM设置失败或API密钥为空，尝试从配置文件获取");
             
             var llmSettings = new LLMSettings
             {
@@ -167,4 +168,4 @@ public class DefaultLLMClientFactory : ILLMClientFactory
             settings.MaxTokens = 2048;
         }
     }
-} 
+}

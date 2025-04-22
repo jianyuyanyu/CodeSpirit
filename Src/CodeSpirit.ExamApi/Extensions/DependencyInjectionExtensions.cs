@@ -1,7 +1,8 @@
 using CodeSpirit.ExamApi.Services.Helpers;
 using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.ExamApi.Services.Interfaces;
-using CodeSpirit.ExamApi.Services.LLM;
+using CodeSpirit.ExamApi.Services.Settings;
+using CodeSpirit.LLM;
 
 namespace CodeSpirit.ExamApi.Extensions;
 
@@ -17,8 +18,8 @@ public static class DependencyInjectionExtensions
     /// <returns>服务集合</returns>
     public static IServiceCollection AddAIQuestionGeneratorServices(this IServiceCollection services)
     {
-        // 注册LLM客户端工厂
-        services.AddScoped<ILLMClientFactory, DefaultLLMClientFactory>();
+        // 添加LLM服务，使用自定义设置提供者
+        services.AddLLMServices<ExamLLMSettingsProvider>();
         
         // 注册工具类
         services.AddSingleton<IPromptBuilder, DefaultPromptBuilder>();

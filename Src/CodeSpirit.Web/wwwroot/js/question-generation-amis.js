@@ -23,7 +23,6 @@
                 questionCount: 0,            // 生成的题目数量
                 duration: 0,                 // 生成耗时(秒)
                 errorMessage: '',            // 错误消息
-                errorDetails: '',            // 错误详情
                 completionMessage: '生成完成'  // 完成消息
             },
             logs: [],                        // 日志数组
@@ -135,7 +134,7 @@
                     // 同步generation的关键属性到顶层，确保数据链访问
                     const keysToSync = [
                         'progressStage', 'progressPercentage', 'progressMessage',
-                        'status', 'errorMessage', 'errorDetails', 'completionMessage'
+                        'status', 'errorMessage', 'completionMessage'
                     ];
 
                     keysToSync.forEach(key => {
@@ -334,7 +333,6 @@
                 questionCount: 0,
                 duration: 0,
                 errorMessage: '',
-                errorDetails: '',
                 completionMessage: '生成完成'
             };
             this.initialData.logs = [];
@@ -350,7 +348,6 @@
                 progressMessage: '正在初始化...',
                 progressPercentage: 0,
                 errorMessage: '',
-                errorDetails: '',
                 generationLogs: [],
                 generatedQuestions: [],
                 showResults: false,
@@ -392,19 +389,17 @@
             DataManager.addLog(`错误: ${message}`);
 
             // 确保message是字符串
-            const errorDetails = typeof message === 'object' ?
+            const errorMessage = typeof message === 'object' ?
                 JSON.stringify(message, null, 2) : String(message);
 
             // 更新状态
             DataManager.set('generation.status', 'error');
-            DataManager.set('generation.errorMessage', title);
-            DataManager.set('generation.errorDetails', errorDetails);
+            DataManager.set('generation.errorMessage', errorMessage);
 
             // 更新AMIS数据
             DataManager.updateAmis({
                 generationStatus: 'error',
-                errorMessage: title,
-                errorDetails: errorDetails,
+                errorMessage: errorMessage,
                 // 更新到结果页，显示错误信息
                 currentStep: 2,
                 activePanel: 'results',
@@ -599,25 +594,31 @@
 
         connection.on("GenerationError", (data) => {
             console.error(`收到生成错误事件:`, data);
-            // 错误可能在data.error或message中，或者本身就是字符串
+            
             let errorMessage = '未知错误';
-            let errorDetails = '';
 
+            // 解析新的错误消息结构
             if (typeof data === 'string') {
-                errorMessage = data;
-                errorDetails = data;
+                try {
+                    // 尝试将字符串解析为JSON
+                    const parsedData = JSON.parse(data);
+                    if (parsedData && parsedData.error) {
+                        errorMessage = parsedData.error;
+                    } else {
+                        errorMessage = data;
+                    }
+                } catch (e) {
+                    // 如果解析失败，直接使用字符串
+                    errorMessage = data;
+                }
             } else if (data && typeof data === 'object') {
+                // 从对象中提取错误信息
                 errorMessage = data.error || data.message || data.errorMessage || '未知错误';
-                // 保存详细信息
-                errorDetails = JSON.stringify(data, null, 2);
             }
 
             DataManager.updateGenerationStatus("error");
             DataManager.updateProgress("失败", errorMessage, 0);
             DataManager.addLog(`生成失败: ${errorMessage}`);
-
-            // 设置错误详情
-            DataManager.set('generation.errorDetails', errorDetails);
 
             // 使用错误处理器处理
             ErrorHandler.handleApiError("生成失败", errorMessage);
@@ -627,8 +628,7 @@
                 DataManager.updateAmis({
                     currentStep: 2,
                     activePanel: 'results',
-                    showResults: true,
-                    errorDetails: errorDetails
+                    showResults: true
                 });
 
                 // 强制刷新UI
@@ -1090,7 +1090,6 @@
             questionCount: 0,
             duration: 0,
             errorMessage: '',
-            errorDetails: '',
             completionMessage: '生成完成',
             generationLogs: [],
             generatedQuestions: [],
@@ -1419,22 +1418,6 @@
                                                             visibleOn: "${generationStatus === 'error'}"
                                                         },
                                                         {
-                                                            type: "card",
-                                                            className: "bg-light mb-3 border-0",
-                                                            headerClassName: "bg-danger text-white",
-                                                            header: {
-                                                                title: "错误详情",
-                                                                className: "fs-6 py-2"
-                                                            },
-                                                            bodyClassName: "p-3 bg-white",
-                                                            visibleOn: "${generationStatus === 'error' && errorDetails}",
-                                                            body: {
-                                                                type: "html",
-                                                                html: "${errorDetails}",
-                                                                className: "text-danger"
-                                                            }
-                                                        },
-                                                        {
                                                             type: "button",
                                                             level: "primary",
                                                             label: "重试",
@@ -1560,11 +1543,6 @@
                                             type: "tpl",
                                             tpl: "<h5 class='text-center mb-3'>生成的题目列表</h5>",
                                             visibleOn: "${generationStatus === 'completed'}"
-                                        },
-                                        {
-                                            type: "tpl",
-                                            tpl: "<div class='text-center text-muted mb-3'>由于发生错误，无法获取题目列表</div>",
-                                            visibleOn: "${generationStatus === 'error'}"
                                         }
                                     ]
                                 }

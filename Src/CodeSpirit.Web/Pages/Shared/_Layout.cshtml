@@ -26,6 +26,9 @@
         @{
             var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
         }
+        // 初始化全局命名空间
+        window.CodeSpirit = window.CodeSpirit || {};
+        
         window.webHost = '@(isDevelopment ? "https://localhost:7120" : "https://codespirit-app.xin-lai.com")';
         window.apiHost = '@(isDevelopment ? "https://localhost:17134" : "https://codespirit-api.xin-lai.com")';
         window.aspire_dashboard = '@(isDevelopment ? "https://localhost:17109" : "https://codespirit-api.xin-lai.com")';

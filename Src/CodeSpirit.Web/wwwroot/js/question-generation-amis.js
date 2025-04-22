@@ -90,7 +90,7 @@
 
             try {
                 const updateData = { data: {} };
-                
+
                 // 如果是对象，则更新多个键
                 if (typeof keyOrData === 'object' && keyOrData !== null) {
                     Object.keys(keyOrData).forEach(key => {
@@ -110,7 +110,7 @@
                             updateData.data[key] = keyOrData[key];
                         }
                     });
-                } 
+                }
                 // 如果是字符串，则更新单个键
                 else if (typeof keyOrData === 'string') {
                     // 设置到内部数据
@@ -134,10 +134,10 @@
                 if (this.initialData.generation) {
                     // 同步generation的关键属性到顶层，确保数据链访问
                     const keysToSync = [
-                        'progressStage', 'progressPercentage', 'progressMessage', 
+                        'progressStage', 'progressPercentage', 'progressMessage',
                         'status', 'errorMessage', 'errorDetails', 'completionMessage'
                     ];
-                    
+
                     keysToSync.forEach(key => {
                         if (this.initialData.generation[key] !== undefined) {
                             updateData.data[key] = this.initialData.generation[key];
@@ -155,14 +155,14 @@
 
                 // 使用AMIS实例更新UI
                 amisInstance.updateProps(updateData);
-                
+
                 // 尝试强制更新UI
                 setTimeout(() => {
                     if (amisInstance.forceUpdate) {
                         amisInstance.forceUpdate();
                     }
                 }, 10);
-                
+
                 return true;
             } catch (error) {
                 console.error('更新AMIS数据失败:', error);
@@ -178,26 +178,26 @@
             const timestamp = new Date().toLocaleTimeString();
             // 使用简单字符串格式的日志项，便于Log组件显示
             const logItem = `[${timestamp}] ${message}`;
-            
+
             // 添加到开头
             if (!this.initialData.logs) {
                 this.initialData.logs = [];
             }
             this.initialData.logs.unshift(logItem);
-            
+
             // 限制日志条数
             if (this.initialData.logs.length > 100) {
                 this.initialData.logs = this.initialData.logs.slice(0, 100);
             }
-            
+
             // 确保generationLogs字段存在
             if (!this.initialData.generationLogs) {
                 this.initialData.generationLogs = [];
             }
-            
+
             // 直接更新generationLogs，使用新数组引用以确保变化被检测到
             this.initialData.generationLogs = [...this.initialData.logs];
-            
+
             // 直接更新AMIS数据，使用完整日志数组
             if (amisInstance) {
                 try {
@@ -207,13 +207,13 @@
                             generationLogs: [...this.initialData.logs]
                         }
                     });
-                    
+
                     // 强制刷新UI
                     setTimeout(() => {
                         if (amisInstance && amisInstance.forceUpdate) {
                             amisInstance.forceUpdate();
                         }
-                        
+
                         // 尝试直接更新日志组件
                         const logComponent = document.querySelector('.generation-log');
                         if (logComponent && logComponent.__amis) {
@@ -224,7 +224,7 @@
                     console.error('更新日志组件失败', error);
                 }
             }
-            
+
             console.log('生成日志:', message);
         },
 
@@ -235,11 +235,11 @@
         updateGenerationStatus(status) {
             this.set('generation.status', status);
             this.updateAmis('generationStatus', status);
-            
+
             // 根据状态更新当前步骤
             let currentStep = 0;
             let activePanel = 'form';
-            
+
             if (status === 'generating') {
                 currentStep = 1;
                 activePanel = 'progress';
@@ -254,18 +254,18 @@
                 currentStep = 2;
                 activePanel = 'results';
             }
-            
+
             // 更新当前步骤状态和活动面板
             this.updateAmis({
                 currentStep: currentStep,
                 activePanel: activePanel
             });
-            
+
             // 确保根据状态更新页面CSS类
             setTimeout(() => {
                 checkGenerationStatusClass(status);
             }, 50);
-            
+
             console.log(`更新生成状态: ${status}, 当前步骤: ${currentStep}, 活动面板: ${activePanel}`);
         },
 
@@ -280,22 +280,22 @@
             if (isNaN(percentage)) {
                 percentage = 0;
             }
-            
+
             // 获取格式化的阶段名称
             const formattedStage = getStageName(stage);
-            
+
             // 更新内部数据
             this.set('generation.progressStage', formattedStage);
             this.set('generation.progressMessage', message);
             this.set('generation.progressPercentage', percentage);
-            
+
             // 同时更新到顶层，确保数据链访问
             this.initialData.progressStage = formattedStage;
             this.initialData.progressMessage = message;
             this.initialData.progressPercentage = percentage;
-            
+
             console.log(`更新进度: ${stage}, ${message}, ${percentage}%`);
-            
+
             // 使用AMIS推荐的方式更新组件
             if (amisInstance) {
                 // 方式1：使用updateProps直接更新特定字段
@@ -342,7 +342,7 @@
             this.initialData.showResults = false;
             this.initialData.currentStep = 0;
             this.initialData.activePanel = 'form';
-            
+
             // 更新AMIS
             this.updateAmis({
                 generationStatus: 'waiting',
@@ -357,7 +357,7 @@
                 currentStep: 0,
                 activePanel: 'form'
             });
-            
+
             console.log('数据已重置');
         }
     };
@@ -392,14 +392,14 @@
             DataManager.addLog(`错误: ${message}`);
 
             // 确保message是字符串
-            const errorDetails = typeof message === 'object' ? 
+            const errorDetails = typeof message === 'object' ?
                 JSON.stringify(message, null, 2) : String(message);
 
             // 更新状态
             DataManager.set('generation.status', 'error');
             DataManager.set('generation.errorMessage', title);
             DataManager.set('generation.errorDetails', errorDetails);
-            
+
             // 更新AMIS数据
             DataManager.updateAmis({
                 generationStatus: 'error',
@@ -419,7 +419,7 @@
                     console.error("停止SignalR连接时出错:", err);
                 }
             }
-            
+
             // 尝试获取生成的题目（即使发生错误也尝试）
             const sessionId = DataManager.get('generation.sessionId');
             if (sessionId) {
@@ -450,13 +450,15 @@
         DataManager.addLog("正在建立实时连接...");
         console.log("正在建立实时连接...", sessionId);
 
+        var baseUrl = window.CodeSpirit.config.examApi.baseUrl;
+        var questionGenerationHubUrl = window.CodeSpirit.config.examApi.signalR.questionGenerationHubUrl;
+        console.log(baseUrl + questionGenerationHubUrl);
         // 创建连接
         connection = new signalR.HubConnectionBuilder()
-            .withUrl("https://localhost:61882/api/exam/questionGenerationHub")
+            .withUrl(baseUrl + questionGenerationHubUrl)
             .withAutomaticReconnect([0, 2000, 5000, 10000, 15000, 30000])
             .configureLogging(signalR.LogLevel.Information)
             .build();
-
         // 存储连接实例以便后续管理
         window.signalRConnection = connection;
 
@@ -474,14 +476,14 @@
             .then(function () {
                 DataManager.addLog(`已加入生成组: ${sessionId}`);
                 console.log(`已加入生成组: ${sessionId}`);
-                
+
                 // 强制更新AMIS状态以确保面板切换
                 DataManager.updateAmis({
                     generationStatus: 'generating',
                     currentStep: 1,
                     activePanel: 'progress'
                 });
-                
+
                 // 确保界面状态更新
                 setTimeout(() => {
                     if (amisInstance && amisInstance.forceUpdate) {
@@ -490,7 +492,7 @@
                         checkGenerationStatusClass('generating');
                     }
                 }, 200);
-                
+
                 executeGeneration(sessionId);
             })
             .catch(function (err) {
@@ -520,14 +522,14 @@
             const stage = data.stage || '';
             const message = data.message || '';
             const percentage = data.percentage || 0;
-            
+
             // 更新进度 - 确保数据有效
             DataManager.updateProgress(stage, message, percentage);
-            
+
             // 添加进度日志
             const progressMessage = `${getStageName(stage)}: ${message} (${percentage}%)`;
             DataManager.addLog(progressMessage);
-            
+
             // 尝试直接更新AMIS组件 - 双保险
             setTimeout(() => {
                 if (amisInstance) {
@@ -539,7 +541,7 @@
                             progressPercentage: percentage
                         }
                     });
-                    
+
                     if (amisInstance.forceUpdate) {
                         amisInstance.forceUpdate();
                     }
@@ -552,7 +554,7 @@
             // 从对象中提取信息
             const generatedCount = data.generatedCount || data.questionCount || 0;
             const message = data.message || generatedCount;
-            
+
             // 更新状态
             DataManager.updateGenerationStatus("completed");
             // 更新进度
@@ -580,7 +582,7 @@
                         showResults: true,
                         currentStep: 2
                     });
-                    
+
                     // 滚动到结果区域
                     setTimeout(() => {
                         const resultsElement = document.querySelector('.generated-questions-container');
@@ -600,7 +602,7 @@
             // 错误可能在data.error或message中，或者本身就是字符串
             let errorMessage = '未知错误';
             let errorDetails = '';
-            
+
             if (typeof data === 'string') {
                 errorMessage = data;
                 errorDetails = data;
@@ -613,13 +615,13 @@
             DataManager.updateGenerationStatus("error");
             DataManager.updateProgress("失败", errorMessage, 0);
             DataManager.addLog(`生成失败: ${errorMessage}`);
-            
+
             // 设置错误详情
             DataManager.set('generation.errorDetails', errorDetails);
-            
+
             // 使用错误处理器处理
             ErrorHandler.handleApiError("生成失败", errorMessage);
-            
+
             // 确保切换到结果页显示错误
             setTimeout(() => {
                 DataManager.updateAmis({
@@ -628,12 +630,12 @@
                     showResults: true,
                     errorDetails: errorDetails
                 });
-                
+
                 // 强制刷新UI
                 if (amisInstance && amisInstance.forceUpdate) {
                     amisInstance.forceUpdate();
                 }
-                
+
                 // 尝试获取题目（如果有sessionId）
                 const sessionId = DataManager.get('generation.sessionId');
                 if (sessionId) {
@@ -715,7 +717,7 @@
                     showResults: true,               // 确保显示结果面板
                     generationStatus: DataManager.get('generation.status', 'completed')  // 保持原有状态
                 });
-                
+
                 // 确保状态类正确
                 checkGenerationStatusClass(DataManager.get('generation.status', 'completed'));
 
@@ -776,26 +778,26 @@
     function formatCorrectAnswer(question) {
         // 如果已有正确答案，直接返回
         if (question.correctAnswer) return question.correctAnswer;
-        
+
         // 尝试从选项中提取正确答案
         if (Array.isArray(question.options)) {
             const correctOptions = question.options.filter(opt => opt.isCorrect);
             if (correctOptions.length > 0) {
                 // 对于单选题和多选题，以字母和内容格式化
-                const labels = correctOptions.map((opt, idx) => 
+                const labels = correctOptions.map((opt, idx) =>
                     String.fromCharCode(65 + question.options.indexOf(opt)));
-                    
+
                 if (labels.length > 0) {
                     return `${labels.join('、')}：${correctOptions.map(opt => opt.content).join('；')}`;
                 }
             }
         }
-        
+
         // 判断题特殊处理
         if (question.type === 3) {
             return question.answer === true ? '正确' : '错误';
         }
-        
+
         return '未提供答案';
     }
 
@@ -851,23 +853,23 @@
 
         // 更新状态为生成中
         DataManager.updateGenerationStatus('generating');
-        
+
         // 初始化进度
         DataManager.updateProgress('准备中...', '正在初始化...', 0);
-        
+
         // 清空日志
         DataManager.initialData.logs = [];
         DataManager.updateAmis('generationLogs', []);
-        
+
         // 强制更新AMIS状态以确保面板切换
         DataManager.updateAmis({
             currentStep: 1,
             activePanel: 'progress'
         });
-        
+
         // 强制检查状态类
         checkGenerationStatusClass('generating');
-        
+
         // 确保界面状态更新
         setTimeout(() => {
             if (amisInstance && amisInstance.forceUpdate) {
@@ -925,7 +927,7 @@
                     // 错误处理
                     console.error("请求返回失败状态:", responseData);
                     ErrorHandler.handleApiError("生成失败", responseData.msg || "未知错误");
-                    
+
                     // 停止连接
                     if (connection) {
                         connection.stop();
@@ -936,7 +938,7 @@
                 // 错误处理
                 console.error("请求失败:", error);
                 ErrorHandler.handleApiError("请求失败", error.toString());
-                
+
                 // 停止连接
                 if (connection) {
                     connection.stop();
@@ -950,17 +952,17 @@
     function resetForm() {
         // 重置数据
         DataManager.reset();
-        
+
         // 如果存在连接，停止连接
         if (connection) {
             connection.stop();
         }
 
         currentSessionId = null;
-        
+
         // 更新状态类
         checkGenerationStatusClass('waiting');
-        
+
         // 确保步骤回到初始状态
         DataManager.updateAmis('currentStep', 0);
     }
@@ -991,7 +993,7 @@
                 if (status === '已完成') {
                     status = 'completed';
                 }
-                
+
                 // 移除所有状态类
                 root.classList.remove('status-waiting', 'status-generating', 'status-completed', 'status-error');
 
@@ -1012,7 +1014,7 @@
                     });
                     console.log("已手动更新状态容器可见性");
                 }
-                
+
                 // 确保选项卡显示正确
                 const tabs = document.querySelectorAll('.generation-panels .tabs-content > div');
                 if (tabs && tabs.length > 0) {
@@ -1023,7 +1025,7 @@
                     } else if (status === 'completed') {
                         activeTabIndex = 2;
                     }
-                    
+
                     // 设置活动选项卡
                     tabs.forEach((tab, index) => {
                         if (index === activeTabIndex) {
@@ -1032,7 +1034,7 @@
                             tab.style.display = 'none';
                         }
                     });
-                    
+
                     // 更新选项卡头部
                     const tabHeaders = document.querySelectorAll('.generation-panels .tabs-header > div');
                     if (tabHeaders && tabHeaders.length > 0) {
@@ -1044,7 +1046,7 @@
                             }
                         });
                     }
-                    
+
                     console.log(`已手动设置活动选项卡: ${activeTabIndex}`);
                 }
 
@@ -1275,7 +1277,7 @@
                                     // 使用数据链共享父级数据
                                     data: "${parent.data}",
                                     // 添加生成状态下的数据刷新
-                                    interval: 300, 
+                                    interval: 300,
                                     silentPolling: true,
                                     stopAutoRefreshWhen: "generationStatus !== 'generating'",
                                     body: [
@@ -1887,7 +1889,7 @@
     // 初始化AMIS应用
     window.addEventListener('load', function () {
         console.log("页面加载完成，初始化AMIS应用");
-        
+
         const amisApp = amisRequire('amis/embed');
 
         // 配置AMIS应用
@@ -1925,7 +1927,7 @@
                         // 检查CSS类
                         checkGenerationStatusClass(data.generationStatus);
                     }
-                    
+
                     // 监听进度相关字段变更
                     const progressKeys = ['progressPercentage', 'progressStage', 'progressMessage'];
                     let hasProgressChange = false;
@@ -1935,7 +1937,7 @@
                             hasProgressChange = true;
                         }
                     });
-                    
+
                     // 如果有进度变更，强制更新UI
                     if (hasProgressChange && amisInstance && amisInstance.forceUpdate) {
                         setTimeout(() => amisInstance.forceUpdate(), 10);
@@ -1964,7 +1966,7 @@
      */
     function processQuestionData(questions) {
         if (!Array.isArray(questions)) return [];
-        
+
         return questions.map((question, index) => {
             // 处理选项，添加标签 (A, B, C, D...)
             const options = Array.isArray(question.options) ?
@@ -1974,22 +1976,22 @@
                     // 确保选项内容是HTML安全的
                     content: option.content || ''
                 })) : [];
-            
+
             // 处理正确答案 - 如果未提供则尝试从选项中构建
             let correctAnswer = question.correctAnswer || formatCorrectAnswer(question);
-            
+
             // 处理解析内容 - 确保存在
             let analysis = question.analysis || '暂无解析';
-            
+
             // 处理题目类型名称
             let typeName = question.typeName || getQuestionTypeNameByValue(question.type);
-            
+
             // 处理难度名称
             let difficultyName = question.difficultyName || getQuestionDifficultyNameByValue(question.difficulty);
-            
+
             // 确保题目内容存在
             let content = question.content || '无内容';
-            
+
             // 返回完整的题目对象
             return {
                 ...question,

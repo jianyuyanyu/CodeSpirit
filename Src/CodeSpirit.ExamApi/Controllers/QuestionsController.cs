@@ -1,9 +1,9 @@
-using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Dtos.Question;
-using CodeSpirit.Settings.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Distributed;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Net;
 
@@ -17,23 +17,37 @@ namespace CodeSpirit.ExamApi.Controllers;
 public class QuestionsController : ApiControllerBase
 {
     private readonly IQuestionService _questionService;
+    private readonly IAIQuestionGeneratorService _aiQuestionGeneratorService;
     private readonly ILogger<QuestionsController> _logger;
+    private readonly INotificationService _notificationService;
+    private readonly IDistributedCache _distributedCache;
 
     /// <summary>
     /// 初始化题目管理控制器
     /// </summary>
     /// <param name="questionService">题目服务</param>
+    /// <param name="aiQuestionGeneratorService">AI题目生成服务</param>
     /// <param name="logger">日志记录器</param>
-    /// <param name="settingsService">设置服务</param>
+    /// <param name="notificationService">通知服务</param>
+    /// <param name="distributedCache">分布式缓存</param>
     public QuestionsController(
         IQuestionService questionService,
-        ILogger<QuestionsController> logger)
+        IAIQuestionGeneratorService aiQuestionGeneratorService,
+        ILogger<QuestionsController> logger,
+        INotificationService notificationService,
+        IDistributedCache distributedCache)
     {
         ArgumentNullException.ThrowIfNull(questionService);
+        ArgumentNullException.ThrowIfNull(aiQuestionGeneratorService);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(notificationService);
+        ArgumentNullException.ThrowIfNull(distributedCache);
 
         _questionService = questionService;
+        _aiQuestionGeneratorService = aiQuestionGeneratorService;
         _logger = logger;
+        _notificationService = notificationService;
+        _distributedCache = distributedCache;
     }
 
     /// <summary>
@@ -415,6 +429,343 @@ public class QuestionsController : ApiControllerBase
         else
         {
             return BadResponse("更新题目设置失败");
+        }
+    }
+
+    ///// <summary>
+    ///// 使用AI生成题目
+    ///// </summary>
+    ///// <param name="request">生成题目请求</param>
+    ///// <returns>生成的题目</returns>
+    //[HttpPost("ai/generate")]
+    //[HeaderOperation("AI生成题目", "form")]
+    //[DisplayName("AI生成题目")]
+    //public async Task<ActionResult<ApiResponse<List<CreateQuestionDto>>>> GenerateQuestions(AIGenerateQuestionDto request)
+    //{
+    //    try
+    //    {
+    //        var questions = await _aiQuestionGeneratorService.GenerateQuestionsAsync(request);
+    //        return SuccessResponse(questions);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        _logger.LogError(ex, "生成题目时发生错误");
+    //        return BadResponse<List<CreateQuestionDto>>(ex.Message);
+    //    }
+    //}
+
+    /// <summary>
+    /// 使用AI生成并保存题目
+    /// </summary>
+    /// <param name="request">生成题目请求</param>
+    /// <returns>保存结果</returns>
+    [HttpPost("ai/generate-and-save")]
+    [DisplayName("AI题目生成")]
+    [HeaderOperation("AI题目生成", "link", "/Tasks/QuestionGeneration", null, Blank = true)]
+    public IActionResult GenerateQuestions()
+    {
+        try
+        {
+            // 生成唯一会话ID
+            string sessionId = Guid.NewGuid().ToString("N");
+
+            // 返回会话ID给前端
+            return Ok(SuccessResponse(new { sessionId }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "初始化题目生成过程时发生错误");
+            return BadRequest(BadResponse(ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// 执行AI题目生成（后台处理）
+    /// </summary>
+    /// <param name="sessionId">会话ID</param>
+    /// <param name="request">生成题目请求</param>
+    [HttpPost("ai/execute-generation/{sessionId}")]
+    //[NonAction] // 标记为非API操作，由前端单独调用
+    public async Task ExecuteGenerationAsync(string sessionId, AIGenerateQuestionDto request)
+    {
+        try
+        {
+            // 开始计时
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            // 发送开始生成通知
+            await _notificationService.NotifyGenerationStartedAsync(sessionId, request);
+            
+            // 使用修改后的生成方法，直接传递sessionId和notificationService
+            var questions = await _aiQuestionGeneratorService.GenerateQuestionsAsync(
+                request, 
+                sessionId, 
+                _notificationService);
+            
+            // 保存题目到缓存，设置过期时间为1小时
+            var cacheKey = $"GeneratedQuestions_{sessionId}";
+            var cacheOptions = new DistributedCacheEntryOptions()
+                .SetSlidingExpiration(TimeSpan.FromHours(1))
+                .SetAbsoluteExpiration(TimeSpan.FromHours(2));
+            
+            // 保存原始生成的题目到缓存（需要序列化）
+            await _distributedCache.SetStringAsync(
+                cacheKey, 
+                JsonConvert.SerializeObject(questions), 
+                cacheOptions);
+            
+            // 保存题目
+            int successCount = 0;
+            List<string> failedItems = new();
+            List<QuestionDto> savedQuestions = new();
+            
+            await _notificationService.NotifyGenerationProgressAsync(sessionId, "saving", "正在保存题目...", 95);
+            
+            foreach (var question in questions)
+            {
+                try
+                {
+                    var savedQuestion = await _questionService.CreateQuestionAsync(question);
+                    savedQuestions.Add(savedQuestion);
+                    successCount++;
+                    
+                    // 计算保存进度
+                    int savePercentage = 95 + (int)((float)successCount / questions.Count * 5);
+                    // 确保进度不超过100%
+                    savePercentage = Math.Min(99, savePercentage);
+                    
+                    await _notificationService.NotifyGenerationProgressAsync(
+                        sessionId, 
+                        "saving", 
+                        $"正在保存题目 ({successCount}/{questions.Count})...", 
+                        savePercentage);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "保存生成的题目时发生错误");
+                    failedItems.Add($"题目 [{question.Content.Substring(0, Math.Min(30, question.Content.Length))}...] 保存失败: {ex.Message}");
+                }
+            }
+            
+            // 保存成功保存的题目到缓存
+            var savedCacheKey = $"SavedQuestions_{sessionId}";
+            await _distributedCache.SetStringAsync(
+                savedCacheKey, 
+                JsonConvert.SerializeObject(savedQuestions), 
+                cacheOptions);
+            
+            // 停止计时
+            stopwatch.Stop();
+            
+            // 发送完成通知
+            await _notificationService.NotifyGenerationCompletedAsync(sessionId, questions, stopwatch.ElapsedMilliseconds);
+            
+            if (failedItems.Any())
+            {
+                string errorMessage = $"成功保存 {successCount} 个题目，{failedItems.Count} 个题目保存失败: {string.Join(", ", failedItems)}";
+                await _notificationService.NotifyGenerationErrorAsync(sessionId, errorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "生成并保存题目时发生错误");
+            await _notificationService.NotifyGenerationErrorAsync(sessionId, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 获取已生成的题目列表
+    /// </summary>
+    /// <param name="sessionId">生成会话ID</param>
+    /// <returns>已生成的题目列表</returns>
+    [HttpGet("generated/{sessionId}")]
+    [DisplayName("获取已生成题目")]
+    public async Task<ActionResult<ApiResponse<List<QuestionDto>>>> GetGeneratedQuestions(string sessionId)
+    {
+        try
+        {
+            _logger.LogInformation("正在获取生成会话 {SessionId} 的题目", sessionId);
+            
+            // 优先从缓存中获取已保存的题目
+            var savedCacheKey = $"SavedQuestions_{sessionId}";
+            string savedCacheValue = await _distributedCache.GetStringAsync(savedCacheKey);
+            
+            if (!string.IsNullOrEmpty(savedCacheValue))
+            {
+                var savedQuestions = JsonConvert.DeserializeObject<List<QuestionDto>>(savedCacheValue);
+                if (savedQuestions != null && savedQuestions.Any())
+                {
+                    _logger.LogInformation("从缓存中获取到生成会话 {SessionId} 的 {Count} 个已保存题目", 
+                        sessionId, savedQuestions.Count);
+                    return SuccessResponse(savedQuestions);
+                }
+            }
+            
+            // 如果没有已保存的题目，尝试获取原始生成的题目
+            var generatedCacheKey = $"GeneratedQuestions_{sessionId}";
+            string generatedCacheValue = await _distributedCache.GetStringAsync(generatedCacheKey);
+            
+            if (!string.IsNullOrEmpty(generatedCacheValue))
+            {
+                var generatedQuestions = JsonConvert.DeserializeObject<List<CreateQuestionDto>>(generatedCacheValue);
+                if (generatedQuestions != null && generatedQuestions.Any())
+                {
+                    _logger.LogInformation("从缓存中获取到生成会话 {SessionId} 的 {Count} 个原始生成题目", 
+                        sessionId, generatedQuestions.Count);
+                    
+                    // 将CreateQuestionDto转换为QuestionDto（简化版本）
+                    var convertedQuestions = generatedQuestions.Select((q, index) => new QuestionDto
+                    {
+                        Id = -(index + 1), // 使用负数ID表示未保存到数据库的题目
+                        Content = q.Content,
+                        Type = q.Type,
+                        // 使用枚举ToString作为类型名称
+                        Difficulty = q.Difficulty,
+                        // 使用枚举ToString作为难度名称
+                        Options = q.Options,
+                        CorrectAnswer = q.CorrectAnswer,
+                        Analysis = q.Analysis,
+                        KnowledgePoints = q.KnowledgePoints,
+                        DefaultScore = q.DefaultScore
+                        // 避免使用创建和更新时间属性，因为QuestionDto可能没有这些属性
+                    }).ToList();
+                    
+                    return SuccessResponse(convertedQuestions);
+                }
+            }
+            
+            // 如果缓存中没有，则尝试从数据库查询
+            _logger.LogInformation("缓存中未找到生成会话 {SessionId} 的题目，尝试从数据库查询", sessionId);
+            
+            // 查询条件：创建时间最近的题目
+            var queryDto = new QuestionQueryDto
+            {
+                PerPage = 1000, // 使用较大的数量限制以确保获取所有题目
+                Page = 1
+                // 注意：实际应用中应通过SessionId或其他方式过滤题目
+            };
+            
+            // 获取题目列表 - 这里仅模拟返回，实际项目中需改进此查询
+            var result = await _questionService.GetQuestionsAsync(queryDto);
+            var questions = result.Items;
+            
+            // 在内存中过滤最近创建的题目
+            // 这是临时解决方案，实际项目中应在数据库层面实现过滤
+            var recentQuestions = questions.Take(10).ToList();
+            
+            if (recentQuestions.Count == 0)
+            {
+                _logger.LogWarning("未找到生成会话 {SessionId} 的题目", sessionId);
+                return SuccessResponse(new List<QuestionDto>());
+            }
+            
+            // 将查询结果缓存起来
+            var cacheOptions = new DistributedCacheEntryOptions()
+                .SetSlidingExpiration(TimeSpan.FromHours(1))
+                .SetAbsoluteExpiration(TimeSpan.FromHours(2));
+            
+            await _distributedCache.SetStringAsync(
+                savedCacheKey, 
+                JsonConvert.SerializeObject(recentQuestions), 
+                cacheOptions);
+            
+            _logger.LogInformation("从数据库获取并缓存生成会话的 {Count} 个题目", recentQuestions.Count);
+            return SuccessResponse(recentQuestions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取生成会话的题目时发生错误: {Message}", ex.Message);
+            return BadResponse<List<QuestionDto>>($"获取生成题目失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 清除指定会话的题目缓存
+    /// </summary>
+    /// <param name="sessionId">生成会话ID</param>
+    /// <returns>操作结果</returns>
+    [HttpDelete("generated/{sessionId}/cache")]
+    [DisplayName("清除题目缓存")]
+    public async Task<ActionResult<ApiResponse>> ClearGeneratedQuestionsCache(string sessionId)
+    {
+        try
+        {
+            _logger.LogInformation("正在清除生成会话 {SessionId} 的题目缓存", sessionId);
+            
+            // 移除两种缓存
+            var savedCacheKey = $"SavedQuestions_{sessionId}";
+            var generatedCacheKey = $"GeneratedQuestions_{sessionId}";
+            
+            await _distributedCache.RemoveAsync(savedCacheKey);
+            await _distributedCache.RemoveAsync(generatedCacheKey);
+            
+            _logger.LogInformation("已清除生成会话 {SessionId} 的题目缓存", sessionId);
+            return SuccessResponse("题目缓存已清除");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清除生成会话的题目缓存时发生错误: {Message}", ex.Message);
+            return BadResponse($"清除题目缓存失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 获取缓存状态
+    /// </summary>
+    /// <param name="sessionId">生成会话ID</param>
+    /// <returns>缓存状态信息</returns>
+    [HttpGet("generated/{sessionId}/cache-status")]
+    [DisplayName("获取缓存状态")]
+    public async Task<ActionResult<ApiResponse<object>>> GetCacheStatus(string sessionId)
+    {
+        try
+        {
+            _logger.LogInformation("正在检查生成会话 {SessionId} 的缓存状态", sessionId);
+            
+            var savedCacheKey = $"SavedQuestions_{sessionId}";
+            var generatedCacheKey = $"GeneratedQuestions_{sessionId}";
+            
+            // 检查已保存题目的缓存
+            string savedCacheValue = await _distributedCache.GetStringAsync(savedCacheKey);
+            bool hasSavedCache = !string.IsNullOrEmpty(savedCacheValue);
+            int savedCount = 0;
+            
+            if (hasSavedCache)
+            {
+                var savedQuestions = JsonConvert.DeserializeObject<List<QuestionDto>>(savedCacheValue);
+                savedCount = savedQuestions?.Count ?? 0;
+            }
+            
+            // 检查生成题目的缓存
+            string generatedCacheValue = await _distributedCache.GetStringAsync(generatedCacheKey);
+            bool hasGeneratedCache = !string.IsNullOrEmpty(generatedCacheValue);
+            int generatedCount = 0;
+            
+            if (hasGeneratedCache)
+            {
+                var generatedQuestions = JsonConvert.DeserializeObject<List<CreateQuestionDto>>(generatedCacheValue);
+                generatedCount = generatedQuestions?.Count ?? 0;
+            }
+            
+            var cacheStatus = new
+            {
+                SessionId = sessionId,
+                HasSavedCache = hasSavedCache,
+                SavedQuestionsCount = savedCount,
+                HasGeneratedCache = hasGeneratedCache,
+                GeneratedQuestionsCount = generatedCount,
+                Timestamp = DateTime.UtcNow
+            };
+            
+            _logger.LogInformation("生成会话 {SessionId} 的缓存状态: 已保存题目缓存={HasSavedCache}, 数量={SavedCount}; 生成题目缓存={HasGeneratedCache}, 数量={GeneratedCount}", 
+                sessionId, hasSavedCache, savedCount, hasGeneratedCache, generatedCount);
+                
+            return SuccessResponse<object>(cacheStatus);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取生成会话的缓存状态时发生错误: {Message}", ex.Message);
+            return BadResponse<object>($"获取缓存状态失败: {ex.Message}");
         }
     }
 }

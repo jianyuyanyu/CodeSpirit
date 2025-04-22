@@ -205,7 +205,7 @@ namespace CodeSpirit.Web.Middlewares
             {
                 var client = _httpClientFactory.CreateClient();
                 // 设置请求超时时间
-                client.Timeout = TimeSpan.FromSeconds(60);
+                client.Timeout = TimeSpan.FromSeconds(120);
 
                 using var response = await client.SendAsync(proxyRequest,
                     HttpCompletionOption.ResponseHeadersRead,

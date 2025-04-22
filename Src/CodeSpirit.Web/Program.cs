@@ -33,6 +33,9 @@ public class Program
 
         // 注册站点配置选项
         builder.Services.Configure<SiteSettings>(builder.Configuration.GetSection("SiteSettings"));
+        
+        // 注册考试API配置选项
+        builder.Services.Configure<ExamApiSettings>(builder.Configuration.GetSection("ExamApi"));
 
         // Add HttpClient for Blazor components
         builder.Services.AddHttpClient();

@@ -30,4 +30,31 @@ namespace CodeSpirit.Web.Options
         /// </summary>
         public string CdnUrl { get; set; } = "";
     }
+
+    /// <summary>
+    /// 考试API设置选项类
+    /// </summary>
+    public class ExamApiSettings
+    {
+        /// <summary>
+        /// 考试API基础URL
+        /// </summary>
+        public string BaseUrl { get; set; } = "https://localhost:61882";
+
+        /// <summary>
+        /// SignalR配置
+        /// </summary>
+        public SignalRSettings SignalR { get; set; } = new SignalRSettings();
+    }
+
+    /// <summary>
+    /// SignalR设置选项类
+    /// </summary>
+    public class SignalRSettings
+    {
+        /// <summary>
+        /// 题目生成Hub的URL
+        /// </summary>
+        public string QuestionGenerationHubUrl { get; set; } = "/api/exam/questionGenerationHub";
+    }
 } 

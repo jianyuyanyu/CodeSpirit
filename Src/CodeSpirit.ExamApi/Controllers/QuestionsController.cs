@@ -446,9 +446,9 @@ public class QuestionsController : ApiControllerBase
     /// <param name="request">生成题目请求</param>
     /// <returns>保存结果</returns>
     [HttpPost("ai/generate-and-save")]
-    [HeaderOperation("AI生成并保存题目", "form")]
-    [DisplayName("AI生成并保存题目")]
-    public IActionResult GenerateAndSaveQuestions(AIGenerateQuestionDto request)
+    [DisplayName("AI题目生成")]
+    [HeaderOperation("AI题目生成", "link", "/Tasks/QuestionGeneration", null, Blank = true)]
+    public IActionResult GenerateQuestions()
     {
         try
         {

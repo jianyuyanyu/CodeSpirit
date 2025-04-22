@@ -190,23 +190,39 @@
                 this.initialData.logs = this.initialData.logs.slice(0, 100);
             }
             
-            // 同步到AMIS可用的generationLogs字段
+            // 确保generationLogs字段存在
+            if (!this.initialData.generationLogs) {
+                this.initialData.generationLogs = [];
+            }
+            
+            // 直接更新generationLogs，使用新数组引用以确保变化被检测到
             this.initialData.generationLogs = [...this.initialData.logs];
             
-            // 更新AMIS - 直接使用updateProps更新可靠性更高
+            // 直接更新AMIS数据，使用完整日志数组
             if (amisInstance) {
-                amisInstance.updateProps({
-                    data: {
-                        generationLogs: this.initialData.logs
-                    }
-                });
-                
-                // 强制刷新
-                setTimeout(() => {
-                    if (amisInstance && amisInstance.forceUpdate) {
-                        amisInstance.forceUpdate();
-                    }
-                }, 50);
+                try {
+                    // 使用更可靠的方式更新日志数据
+                    amisInstance.updateProps({
+                        data: {
+                            generationLogs: [...this.initialData.logs]
+                        }
+                    });
+                    
+                    // 强制刷新UI
+                    setTimeout(() => {
+                        if (amisInstance && amisInstance.forceUpdate) {
+                            amisInstance.forceUpdate();
+                        }
+                        
+                        // 尝试直接更新日志组件
+                        const logComponent = document.querySelector('.generation-log');
+                        if (logComponent && logComponent.__amis) {
+                            logComponent.__amis.forceUpdate();
+                        }
+                    }, 50);
+                } catch (error) {
+                    console.error('更新日志组件失败', error);
+                }
             }
             
             console.log('生成日志:', message);
@@ -278,8 +294,11 @@
             this.initialData.progressMessage = message;
             this.initialData.progressPercentage = percentage;
             
-            // 直接使用amisInstance更新更可靠
+            console.log(`更新进度: ${stage}, ${message}, ${percentage}%`);
+            
+            // 使用AMIS推荐的方式更新组件
             if (amisInstance) {
+                // 方式1：使用updateProps直接更新特定字段
                 amisInstance.updateProps({
                     data: {
                         progressStage: formattedStage,
@@ -289,16 +308,8 @@
                         generationStatus: this.get('generation.status', 'generating')
                     }
                 });
-                
-                // 强制刷新
-                setTimeout(() => {
-                    if (amisInstance && amisInstance.forceUpdate) {
-                        amisInstance.forceUpdate();
-                    }
-                }, 50);
+
             }
-            
-            console.log(`更新进度: ${stage}, ${message}, ${percentage}%`);
         },
 
         /**
@@ -495,11 +506,30 @@
             const stage = data.stage || '';
             const message = data.message || '';
             const percentage = data.percentage || 0;
+            
+            // 更新进度 - 确保数据有效
             DataManager.updateProgress(stage, message, percentage);
             
             // 添加进度日志
             const progressMessage = `${getStageName(stage)}: ${message} (${percentage}%)`;
             DataManager.addLog(progressMessage);
+            
+            // 尝试直接更新AMIS组件 - 双保险
+            setTimeout(() => {
+                if (amisInstance) {
+                    amisInstance.updateProps({
+                        data: {
+                            progressStage: getStageName(stage),
+                            progressMessage: message,
+                            progressPercentage: percentage
+                        }
+                    });
+                    
+                    if (amisInstance.forceUpdate) {
+                        amisInstance.forceUpdate();
+                    }
+                }
+            }, 100);
         });
 
         connection.on("GenerationCompleted", (data) => {
@@ -1197,6 +1227,10 @@
                                     initFetch: false,
                                     // 使用数据链共享父级数据
                                     data: "${parent.data}",
+                                    // 添加生成状态下的数据刷新
+                                    interval: 300, 
+                                    silentPolling: true,
+                                    stopAutoRefreshWhen: "generationStatus !== 'generating'",
                                     body: [
                                         {
                                             type: "card",
@@ -1232,7 +1266,7 @@
                                                                     body: {
                                                                         type: "tpl",
                                                                         // 使用数据链表达式访问父级数据
-                                                                        tpl: "<div class='progress-stage fw-medium'>${progressStage || '准备中...'}</div>",
+                                                                        tpl: "<div class='progress-stage fw-medium' id='progress-stage'>${progressStage || '准备中...'}</div>",
                                                                         className: "font-weight-bold"
                                                                     }
                                                                 },
@@ -1242,7 +1276,7 @@
                                                                         type: "tpl",
                                                                         className: "text-right text-end",
                                                                         // 使用数据链表达式访问父级数据
-                                                                        tpl: "<div class='progress-percentage fw-bold'>${progressPercentage || 0}%</div>"
+                                                                        tpl: "<div class='progress-percentage fw-bold' id='progress-percentage'>${progressPercentage || 0}%</div>"
                                                                     }
                                                                 }
                                                             ]
@@ -1253,9 +1287,23 @@
                                                             // 使用数据链表达式访问父级数据
                                                             value: "${progressPercentage || 0}",
                                                             strokeWidth: 8,
-                                                            showLabel: false,
+                                                            showLabel: true,
                                                             animate: true,
-                                                            className: "generation-progress mb-3"
+                                                            className: "generation-progress mb-3",
+                                                            id: "main-progress-bar",
+                                                            name: "progressPercentage",
+                                                            reloadOn: "progressPercentage",
+                                                            progressClassName: "bg-primary",
+                                                            valueTpl: "${progressPercentage}%",
+                                                            onEvent: {
+                                                                "numberChange": {
+                                                                    actions: [
+                                                                        {
+                                                                            actionType: "reload"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
                                                         },
                                                         {
                                                             type: "alert",
@@ -1263,7 +1311,12 @@
                                                             // 使用数据链表达式访问父级数据
                                                             body: "${progressMessage || '正在初始化...'}",
                                                             showIcon: true,
-                                                            className: "mt-2 shadow-sm"
+                                                            className: "mt-2 shadow-sm progress-message-alert",
+                                                            id: "progress-message-alert",
+                                                            showCloseButton: false,
+                                                            // 每次数据变化都刷新
+                                                            reload: true,
+                                                            reloadOn: "progressMessage"
                                                         },
                                                         {
                                                             type: "card",
@@ -1279,10 +1332,11 @@
                                                                 type: "log",
                                                                 source: "${generationLogs}",
                                                                 height: 200,
-                                                                className: "bg-dark text-light",
+                                                                className: "bg-dark text-light generation-log",
                                                                 operation: ["stop", "clear", "export"],
                                                                 placeholder: "<div class='text-muted p-2'>暂无日志记录</div>",
-                                                                autoScroll: true
+                                                                autoScroll: true,
+                                                                encoding: "utf-8"
                                                             }
                                                         }
                                                     ]

@@ -479,4 +479,48 @@ public class ExamRecordsController : ApiControllerBase
             return BadResponse<ExamRecordDto>(ex.Message);
         }
     }
+    
+    /// <summary>
+    /// 批量批改考试分数
+    /// </summary>
+    /// <param name="request">批量批改请求数据</param>
+    /// <returns>批改结果</returns>
+    [HttpPost("batch/regrade")]
+    [Operation("批量批改", "form", null, "确定要批量批改选中的考试记录吗？", isBulkOperation: true)]
+    [DisplayName("批量批改")]
+    public async Task<ActionResult<ApiResponse>> BatchModifyExamScore([FromBody] BatchModifyExamScoreDto request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        
+        if (!ModelState.IsValid)
+        {
+            return BadResponse("请求参数无效");
+        }
+        
+        int successCount = 0;
+        List<long> failedIds = new();
+        
+        // 创建单个批改DTO
+        var modifyExamScoreDto = new ModifyExamScoreDto
+        {
+            TargetScore = request.TargetScore
+        };
+        
+        foreach (var id in request.Ids)
+        {
+            try
+            {
+                await _examRecordService.ModifyExamScoreAsync(id, modifyExamScoreDto);
+                successCount++;
+            }
+            catch
+            {
+                failedIds.Add(id);
+            }
+        }
+        
+        return failedIds.Any()
+            ? SuccessResponse($"成功批改 {successCount} 个考试记录，但以下考试记录批改失败: {string.Join(", ", failedIds)}")
+            : SuccessResponse($"成功批改 {successCount} 个考试记录！");
+    }
 }

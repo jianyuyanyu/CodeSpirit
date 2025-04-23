@@ -599,13 +599,10 @@
         // 构建请求头
         const headers = {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + localStorage.getItem('token'),
+            'X-Forwarded-With': 'CodeSpirit'
         };
-
-        // 如果有令牌则添加到头部
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
 
         // 发送请求获取题目 - 注意URL
         console.log(`正在获取生成的题目，会话ID: ${sessionId}`);

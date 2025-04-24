@@ -28,7 +28,10 @@ namespace CodeSpirit.IdentityApi.Dtos.Role
             Required = true,
             Placeholder = "请选择权限",
             ShowIcon = true,
-            Expand = 1
+            Expand = 1,
+            //Cascade = true,
+            ShowOutline = true
+            //AutoCheckChildren = true
         )]
         public List<string> PermissionIds { get; set; }
     }

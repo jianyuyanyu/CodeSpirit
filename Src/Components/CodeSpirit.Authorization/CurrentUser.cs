@@ -97,24 +97,24 @@ namespace CodeSpirit.Authorization
                     return cachedPermissions;
                 }
 
-                // 如果缓存中没有，则从claims中读取
-                var claimsPermissions = User?.FindAll("permissions")
-                    .Select(c => c.Value)
-                    .ToHashSet() ?? new HashSet<string>();
+                //// 如果缓存中没有，则从claims中读取
+                //var claimsPermissions = User?.FindAll("permissions")
+                //    .Select(c => c.Value)
+                //    .ToHashSet() ?? new HashSet<string>();
 
-                // 将从claims中读取的权限存入缓存（如果有权限）
-                if (claimsPermissions.Count > 0)
-                {
-                    var cacheOptions = new DistributedCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(12),
-                        SlidingExpiration = TimeSpan.FromMinutes(30)
-                    };
+                //// 将从claims中读取的权限存入缓存（如果有权限）
+                //if (claimsPermissions.Count > 0)
+                //{
+                //    var cacheOptions = new DistributedCacheEntryOptions
+                //    {
+                //        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(12),
+                //        SlidingExpiration = TimeSpan.FromMinutes(30)
+                //    };
 
-                    _cache.SetAsync(cacheKey, claimsPermissions, cacheOptions).GetAwaiter().GetResult();
-                }
+                //    _cache.SetAsync(cacheKey, claimsPermissions, cacheOptions).GetAwaiter().GetResult();
+                //}
 
-                return claimsPermissions;
+                return null;
             }
         }
     }

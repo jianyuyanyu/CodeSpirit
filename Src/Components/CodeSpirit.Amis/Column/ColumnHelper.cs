@@ -125,13 +125,13 @@ namespace CodeSpirit.Amis.Column
             TagsColumnAttribute tagsAttr = prop.GetCustomAttribute<TagsColumnAttribute>();
             bool isTagsField = prop.Name.Equals("Tags", StringComparison.OrdinalIgnoreCase);
             bool isStringArrayType = IsStringArrayProperty(prop);
-            
+
             // 如果有TagsColumnAttribute特性或者是符合自动应用条件的属性
             if (tagsAttr != null || (isTagsField && isStringArrayType))
             {
                 // 如果是自动应用的标签列，使用默认配置创建TagsColumnAttribute
                 tagsAttr ??= new TagsColumnAttribute();
-                
+
                 // 应用标签列配置
                 return CreateTagsColumn(column, fieldName, tagsAttr);
             }
@@ -177,7 +177,7 @@ namespace CodeSpirit.Amis.Column
                     column["toggled"] = columnAttr.Toggled;
                 }
 
-                if(columnAttr.Disabled)
+                if (columnAttr.Disabled)
                     column["disabled"] = columnAttr.Disabled;
 
                 // 添加背景色阶配置
@@ -383,7 +383,7 @@ namespace CodeSpirit.Amis.Column
             if (eachAttr != null)
             {
                 column["type"] = "each";
-                
+
                 // 设置数据源，如果没有指定则使用当前字段的值
                 if (!string.IsNullOrEmpty(eachAttr.Source))
                 {
@@ -393,19 +393,19 @@ namespace CodeSpirit.Amis.Column
                 {
                     column["source"] = $"${fieldName}";
                 }
-                
+
                 // 设置循环项变量名
                 if (!string.IsNullOrEmpty(eachAttr.ItemVariable))
                 {
                     column["itemVariable"] = eachAttr.ItemVariable;
                 }
-                
+
                 // 设置索引变量名
                 if (!string.IsNullOrEmpty(eachAttr.IndexVariable))
                 {
                     column["indexVariable"] = eachAttr.IndexVariable;
                 }
-                
+
                 // 设置每项的渲染模板
                 if (!string.IsNullOrEmpty(eachAttr.ItemTemplate))
                 {
@@ -608,7 +608,7 @@ namespace CodeSpirit.Amis.Column
             JArray buttons = [];
             if (actions.Detail != null)
             {
-                if (apiRoute.Detail != null && actions.Detail != null)
+                if (apiRoute.Detail != null && actions.Detail != null && _permissionService.HasPermission(_permissionService.GetPermissionCode(actions.Detail)))
                 {
                     Type actualType = actions.Detail.ReturnType.GetUnderlyingDataType();
                     PropertyInfo[] properties = actualType.GetProperties();
@@ -618,9 +618,7 @@ namespace CodeSpirit.Amis.Column
                 }
             }
 
-            // 如果用户有编辑权限，则添加编辑按钮
-            //if (_permissionService.HasPermission($"{controllerName}Edit"))
-            if (actions.Update != null)
+            if (actions.Update != null && _permissionService.HasPermission(_permissionService.GetPermissionCode(actions.Update)))
             {
                 if (apiRoute.Update != null && actions.Update != null)
                 {
@@ -630,9 +628,7 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 如果用户有删除权限，则添加删除按钮
-            if (actions.Delete != null
-                //&& _permissionService.HasPermission($"{controllerName}Delete")
-                )
+            if (actions.Delete != null && _permissionService.HasPermission(_permissionService.GetPermissionCode(actions.Delete)))
             {
                 OperationAttribute operationAttribute = actions.Delete.GetCustomAttribute<OperationAttribute>();
                 if (operationAttribute == null)
@@ -670,19 +666,19 @@ namespace CodeSpirit.Amis.Column
         private bool IsStringArrayProperty(PropertyInfo prop)
         {
             Type type = prop.PropertyType;
-            
+
             // 检查是否为普通数组类型
             if (type.IsArray && type.GetElementType() == typeof(string))
             {
                 return true;
             }
-            
+
             // 检查是否为泛型集合类型（如List<string>、IEnumerable<string>等）
             if (type.IsGenericType)
             {
                 Type genericTypeDef = type.GetGenericTypeDefinition();
-                
-                if (genericTypeDef == typeof(List<>) || 
+
+                if (genericTypeDef == typeof(List<>) ||
                     genericTypeDef == typeof(IList<>) ||
                     genericTypeDef == typeof(ICollection<>) ||
                     genericTypeDef == typeof(IEnumerable<>))
@@ -691,7 +687,7 @@ namespace CodeSpirit.Amis.Column
                     return genericArgs.Length == 1 && genericArgs[0] == typeof(string);
                 }
             }
-            
+
             return false;
         }
 
@@ -700,18 +696,18 @@ namespace CodeSpirit.Amis.Column
         {
             column["type"] = "each";
             column["source"] = $"${fieldName}";
-            
+
             // 构建标签模板
             string tagTemplate = $"<span class='{tagsAttr.CssClass} {tagsAttr.CssClass}-{tagsAttr.Color} {tagsAttr.ExtraClass}'>${{item}}</span>";
-            
+
             JObject items = new JObject
             {
                 ["type"] = "tpl",
                 ["tpl"] = tagTemplate
             };
-            
+
             column["items"] = items;
-            
+
             // 添加最大显示数量配置
             if (tagsAttr.MaxTags > 0)
             {
@@ -722,13 +718,13 @@ namespace CodeSpirit.Amis.Column
                     ["overflowText"] = tagsAttr.OverflowTemplate
                 };
             }
-            
+
             // 添加占位符配置
             if (tagsAttr.ShowPlaceholder)
             {
                 column["placeholder"] = tagsAttr.Placeholder;
             }
-            
+
             return column;
         }
     }

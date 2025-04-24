@@ -74,12 +74,12 @@ namespace CodeSpirit.IdentityApi.Jwt
                     claims.Add(new Claim(ClaimTypes.Role, role));
                 }
 
-                // 获取用户权限并添加到令牌中
-                var permissions = await _roleService.GetUserPermissionsAsync(user.Id);
-                foreach (var permission in permissions)
-                {
-                    claims.Add(new Claim("permissions", permission));
-                }
+                //// 获取用户权限并添加到令牌中
+                //var permissions = await _roleService.GetUserPermissionsAsync(user.Id);
+                //foreach (var permission in permissions)
+                //{
+                //    claims.Add(new Claim("permissions", permission));
+                //}
 
                 // 创建加密密钥和签名凭证
                 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));

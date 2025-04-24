@@ -317,15 +317,18 @@ namespace CodeSpirit.Amis.Helpers
 
                 if (op != null && op.IsBulkOperation == isBulkOperation)
                 {
-                    // 为每个操作方法创建按钮
-                    JObject button = CreateCustomOperationButton(op, method);
-
-                    // Add redirect configuration if specified
-                    if (op.ActionType == "ajax" && !string.IsNullOrEmpty(op.Redirect))
+                    if (_permissionService.HasPermission(_permissionService.GetPermissionCode(method)))
                     {
-                        button["redirect"] = op.Redirect;
+                        // 为每个操作方法创建按钮
+                        JObject button = CreateCustomOperationButton(op, method);
+
+                        // Add redirect configuration if specified
+                        if (op.ActionType == "ajax" && !string.IsNullOrEmpty(op.Redirect))
+                        {
+                            button["redirect"] = op.Redirect;
+                        }
+                        buttons.Add(button);
                     }
-                    buttons.Add(button);
                 }
             }
 

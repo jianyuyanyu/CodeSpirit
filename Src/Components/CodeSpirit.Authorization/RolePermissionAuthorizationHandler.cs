@@ -67,8 +67,18 @@ namespace CodeSpirit.Authorization
                     if (!string.IsNullOrEmpty(controllerName) && !string.IsNullOrEmpty(actionName))
                     {
                         string modulePrefix = endpoint.Metadata.GetMetadata<ModuleAttribute>()?.Name ?? "default";
-                        // 生成格式：{module}_{controller}_{action}，与 PermissionService 保持一致
-                        permissionName = $"{modulePrefix}_{controllerName.ToCamelCase()}_{actionName.ToCamelCase()}";
+                        
+                        // 判断是否为HttpOptions请求
+                        if (httpContext.Request.Method == HttpMethods.Options)
+                        {
+                            // HttpOptions请求的权限名称格式：{module}_{controller}
+                            permissionName = $"{modulePrefix}_{controllerName.ToCamelCase()}";
+                        }
+                        else
+                        {
+                            // 生成格式：{module}_{controller}_{action}，与 PermissionService 保持一致
+                            permissionName = $"{modulePrefix}_{controllerName.ToCamelCase()}_{actionName.ToCamelCase()}";
+                        }
                     }
                     else
                     {
@@ -76,13 +86,16 @@ namespace CodeSpirit.Authorization
                         return Task.CompletedTask;
                     }
                 }
-
                 // 从服务容器中获取IHasPermissionService实例，使用Scoped生命周期
                 var hasPermissionService = httpContext.RequestServices.GetRequiredService<IHasPermissionService>();
                 if (hasPermissionService.HasPermission(permissionName))
                 {
-                    logger.LogInformation("User {UserId} has permission {PermissionCode}", context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, permissionName);
+                    logger.LogDebug("User {UserId} has permission {PermissionCode}", currentUser.Id, permissionName);
                     context.Succeed(requirement);
+                }
+                else
+                {
+                    logger.LogWarning("User {UserId} does not have permission {PermissionCode}", currentUser.Id, permissionName);
                 }
             }
 

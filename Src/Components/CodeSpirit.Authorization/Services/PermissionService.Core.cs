@@ -130,16 +130,16 @@ namespace CodeSpirit.Authorization
                 return false;
             }
 
-            // 检查用户权限集合是否为 null
-            if (userPermissions == null)
-            {
-                return false;
-            }
-
             // 默认放通所有 default_ 开头的权限
             if (permissionName.StartsWith("default_", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
+            }
+
+            // 检查用户权限集合是否为 null
+            if (userPermissions == null)
+            {
+                return false;
             }
 
             //权限继承逻辑：
@@ -160,6 +160,12 @@ namespace CodeSpirit.Authorization
             if (permissionParts.Length < 2)
             {
                 return false;
+            }
+            //对于二级权限，如果用户存在三级及以下权限，则放通二级权限（控制器权限）
+            else if (permissionParts.Length == 2)
+            {
+                if (userPermissions.Any(p => p.StartsWith(permissionName)))
+                    return true;
             }
 
             // 先检查模块级权限

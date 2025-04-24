@@ -66,7 +66,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>创建的试卷</returns>
     [HttpPost]
     [HeaderOperation("生成固定试卷", "form")]
-    [DisplayName("创建试卷")]
+    [DisplayName("生成固定试卷")]
     public async Task<ActionResult<ApiResponse<ExamPaperDto>>> CreateExamPaper(CreateExamPaperDto createDto)
     {
         var result = await _examPaperService.CreateAsync(createDto);
@@ -80,7 +80,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="updateDto">更新试卷DTO</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}")]
-    [DisplayName("更新试卷")]
+    [DisplayName("编辑")]
     public async Task<ActionResult<ApiResponse>> UpdateExamPaper(long id, UpdateExamPaperDto updateDto)
     {
         await _examPaperService.UpdateAsync(id, updateDto);
@@ -164,7 +164,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>复制的新试卷</returns>
     [HttpPost("{id}/copy")]
     [Operation("复制", "ajax", null, "确定要复制此试卷吗？")]
-    [DisplayName("复制试卷")]
+    [DisplayName("复制")]
     public async Task<ActionResult<ApiResponse<ExamPaperDto>>> CopyExamPaper(long id)
     {
         var result = await _examPaperService.CopyExamPaperAsync(id);
@@ -195,7 +195,7 @@ public class ExamPapersController : ApiControllerBase
     /// <returns>预览配置</returns>
     [HttpGet("{id}/preview")]
     [Operation(label: "试卷预览", actionType: "service")]
-    [DisplayName("预览试卷")]
+    [DisplayName("试卷预览")]
     public async Task<ActionResult<ApiResponse<JObject>>> PreviewExamPaper(long id)
     {
         var examPaper = await _examPaperService.GetAsync(id);

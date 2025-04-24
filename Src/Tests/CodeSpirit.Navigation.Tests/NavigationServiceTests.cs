@@ -14,6 +14,8 @@ using Moq.Protected;
 using Xunit;
 using Xunit.Abstractions;
 using System.Linq;
+using System.Text.Json;
+using CodeSpirit.Core.Authorization;
 
 namespace CodeSpirit.Navigation.Tests
 {
@@ -68,7 +70,7 @@ namespace CodeSpirit.Navigation.Tests
 
             // 记录测试信息
             _testOutputHelper.WriteLine("测试获取导航树 - 设置模块列表缓存数据");
-            
+
             // 设置模拟行为 - 模块列表
             _mockCache.Setup(c => c.GetAsync(
                     MODULE_NAMES_CACHE_KEY,
@@ -92,7 +94,7 @@ namespace CodeSpirit.Navigation.Tests
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -101,7 +103,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
@@ -113,15 +115,15 @@ namespace CodeSpirit.Navigation.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.Equal(2, result.Count);
-            
+
             _testOutputHelper.WriteLine($"测试获取导航树 - 结果包含 {result.Count} 个节点");
             _testOutputHelper.WriteLine($"测试获取导航树 - 第一个节点: {result[0].Name}, 模块: {result[0].ModuleName}");
-            
+
             Assert.Equal("node1", result[0].Name);
             Assert.Equal("Module1", result[0].ModuleName);
             Assert.Equal("node2", result[1].Name);
             Assert.Equal("Module2", result[1].ModuleName);
-            
+
             // 验证日志记录 - 应有警告日志，说明权限服务不可用
             _mockLogger.Verify(
                 x => x.Log(
@@ -153,7 +155,7 @@ namespace CodeSpirit.Navigation.Tests
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -162,7 +164,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
@@ -173,7 +175,7 @@ namespace CodeSpirit.Navigation.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.Empty(result);
-            
+
             _testOutputHelper.WriteLine("测试获取导航树 - 结果为空列表");
 
             // 验证记录了警告日志
@@ -185,7 +187,7 @@ namespace CodeSpirit.Navigation.Tests
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
-            
+
             _testOutputHelper.WriteLine("测试获取导航树 - 验证记录了警告日志");
         }
 
@@ -212,7 +214,7 @@ namespace CodeSpirit.Navigation.Tests
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -221,23 +223,23 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             // 使用Protected().Setup来模拟受保护的方法
             // 模拟GetCurrentModules方法返回模块列表
             serviceMock.Protected()
                 .Setup<List<string>>("GetCurrentModules")
                 .Returns(modules);
-                
+
             // 模拟GetConfigModules方法返回空列表
             serviceMock.Protected()
                 .Setup<List<string>>("GetConfigModules")
                 .Returns(new List<string>());
-                
+
             // 模拟BuildModuleNavigationTree方法返回空列表，避免访问未模拟的ActionProvider
             serviceMock.Protected()
                 .Setup<List<NavigationNode>>("BuildModuleNavigationTree", ItExpr.IsAny<string>())
                 .Returns(new List<NavigationNode>());
-            
+
             // 执行测试
             _testOutputHelper.WriteLine("测试初始化导航树 - 执行InitializeNavigationTree方法");
             await serviceMock.Object.InitializeNavigationTree();
@@ -245,12 +247,12 @@ namespace CodeSpirit.Navigation.Tests
             // 验证缓存更新
             _mockCache.Verify(c => c.SetAsync(
                 MODULE_NAMES_CACHE_KEY,
-                It.Is<byte[]>(b => System.Text.Encoding.UTF8.GetString(b).Contains("Module1") && 
+                It.Is<byte[]>(b => System.Text.Encoding.UTF8.GetString(b).Contains("Module1") &&
                                    System.Text.Encoding.UTF8.GetString(b).Contains("Module2")),
                 It.IsAny<DistributedCacheEntryOptions>(),
                 It.IsAny<System.Threading.CancellationToken>()),
                 Times.Once);
-            
+
             _testOutputHelper.WriteLine("测试初始化导航树 - 验证缓存已更新");
 
             // 验证日志记录
@@ -262,7 +264,7 @@ namespace CodeSpirit.Navigation.Tests
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
-            
+
             _mockLogger.Verify(
                 l => l.Log(
                     LogLevel.Information,
@@ -271,7 +273,7 @@ namespace CodeSpirit.Navigation.Tests
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
-            
+
             _testOutputHelper.WriteLine("测试初始化导航树 - 验证日志记录已完成");
         }
 
@@ -292,7 +294,7 @@ namespace CodeSpirit.Navigation.Tests
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -301,7 +303,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
@@ -314,7 +316,7 @@ namespace CodeSpirit.Navigation.Tests
                 $"{CACHE_KEY_PREFIX}{moduleName}",
                 It.IsAny<System.Threading.CancellationToken>()),
                 Times.Once);
-            
+
             _testOutputHelper.WriteLine("测试清除模块缓存 - 验证缓存已清除");
 
             // 验证日志记录
@@ -326,7 +328,7 @@ namespace CodeSpirit.Navigation.Tests
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
-            
+
             _testOutputHelper.WriteLine("测试清除模块缓存 - 验证日志记录已完成");
         }
 
@@ -359,7 +361,7 @@ namespace CodeSpirit.Navigation.Tests
 
             // 记录测试信息
             _testOutputHelper.WriteLine("测试权限验证 - 设置模块列表缓存数据");
-            
+
             // 设置模拟行为 - 模块列表
             _mockCache.Setup(c => c.GetAsync(
                     MODULE_NAMES_CACHE_KEY,
@@ -383,7 +385,7 @@ namespace CodeSpirit.Navigation.Tests
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -392,7 +394,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
@@ -404,16 +406,16 @@ namespace CodeSpirit.Navigation.Tests
             // 验证结果
             Assert.NotNull(result);
             Assert.Equal(2, result.Count); // 应返回所有节点，因为没有权限过滤
-            
+
             _testOutputHelper.WriteLine($"测试权限验证 - 结果包含 {result.Count} 个节点");
             _testOutputHelper.WriteLine($"测试权限验证 - 节点: {string.Join(", ", result.Select(n => n.Name))}");
-            
+
             // 没有权限服务时，应返回所有节点
             Assert.Equal("node1", result[0].Name);
             Assert.Equal("Module1", result[0].ModuleName);
             Assert.Equal("node2", result[1].Name);
             Assert.Equal("Module2", result[1].ModuleName);
-            
+
             // 验证日志记录 - 应有警告日志，说明权限服务不可用
             _mockLogger.Verify(
                 x => x.Log(
@@ -433,7 +435,7 @@ namespace CodeSpirit.Navigation.Tests
         {
             // 准备测试数据 - 创建带有子节点的导航树
             var moduleNames = new List<string> { "Module1" };
-            
+
             // 创建主节点和子节点
             var parentNode = new NavigationNode("parent", "Parent Node", "/parent")
             {
@@ -441,7 +443,7 @@ namespace CodeSpirit.Navigation.Tests
                 Icon = "folder",
                 Permission = "module1_parent"
             };
-            
+
             var childNode1 = new NavigationNode("child1", "Child Node 1", "/parent/child1")
             {
                 ModuleName = "Module1",
@@ -449,7 +451,7 @@ namespace CodeSpirit.Navigation.Tests
                 Permission = "module1_parent_child1",
                 ParentPath = "/parent"
             };
-            
+
             var childNode2 = new NavigationNode("child2", "Child Node 2", "/parent/child2")
             {
                 ModuleName = "Module1",
@@ -457,16 +459,16 @@ namespace CodeSpirit.Navigation.Tests
                 Permission = "module1_parent_child2",
                 ParentPath = "/parent"
             };
-            
+
             // 将子节点添加到父节点
             parentNode.Children.Add(childNode1);
             parentNode.Children.Add(childNode2);
-            
+
             var module1Nodes = new List<NavigationNode> { parentNode };
 
             // 记录测试信息
             _testOutputHelper.WriteLine("测试嵌套节点权限验证 - 设置模块列表缓存数据");
-            
+
             // 设置模拟行为 - 模块列表
             _mockCache.Setup(c => c.GetAsync(
                     MODULE_NAMES_CACHE_KEY,
@@ -484,7 +486,7 @@ namespace CodeSpirit.Navigation.Tests
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -493,7 +495,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
@@ -509,19 +511,19 @@ namespace CodeSpirit.Navigation.Tests
             Assert.NotNull(result);
             Assert.Single(result); // 应返回一个父节点
             Assert.Equal("parent", result[0].Name);
-            
+
             Assert.Equal(2, result[0].Children.Count); // 父节点应有两个子节点，因为没有权限过滤
-            
+
             // 验证子节点
             Assert.Contains(result[0].Children, child => child.Name == "child1");
             Assert.Contains(result[0].Children, child => child.Name == "child2");
-            
+
             _testOutputHelper.WriteLine($"测试嵌套节点权限验证 - 父节点: {result[0].Name}, 子节点数: {result[0].Children.Count}");
             if (result[0].Children.Any())
             {
                 _testOutputHelper.WriteLine($"测试嵌套节点权限验证 - 子节点: {string.Join(", ", result[0].Children.Select(c => c.Name))}");
             }
-            
+
             // 验证日志记录 - 应有警告日志，说明权限服务不可用
             _mockLogger.Verify(
                 x => x.Log(
@@ -602,7 +604,7 @@ namespace CodeSpirit.Navigation.Tests
                         new NavigationNode("child5", "子节点5（有权限要求）", "/parent3/child5")
                         {
                             Icon = "file",
-                            Permission = "module1_parent3_child5" 
+                            Permission = "module1_parent3_child5"
                         }
                     }
                 }
@@ -668,7 +670,7 @@ namespace CodeSpirit.Navigation.Tests
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -677,7 +679,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
@@ -691,7 +693,7 @@ namespace CodeSpirit.Navigation.Tests
 
             // 验证结果
             Assert.NotNull(result);
-            
+
             // 1. 验证导航节点总数
             // 由于没有权限服务，所有节点都应该返回
             // - Module1: parent1, parent2, parent3
@@ -704,7 +706,7 @@ namespace CodeSpirit.Navigation.Tests
             var parent1 = result.FirstOrDefault(n => n.Name == "parent1");
             Assert.NotNull(parent1);
             Assert.Equal(2, parent1.Children.Count); // 所有子节点都应存在（child1, child2）
-            
+
             // 验证child1及其子节点
             var child1 = parent1.Children.FirstOrDefault(n => n.Name == "child1");
             Assert.NotNull(child1);
@@ -737,7 +739,7 @@ namespace CodeSpirit.Navigation.Tests
             // mockPermissionService.Verify(p => p.HasPermission("module1_parent1"), Times.AtLeastOnce);
             // mockPermissionService.Verify(p => p.HasPermission("module1_parent1_child1_grandchild1"), Times.AtLeastOnce);
             // mockPermissionService.Verify(p => p.HasPermission("filtered_module_access1"), Times.AtLeastOnce);
-            
+
             _testOutputHelper.WriteLine("复杂场景导航树测试完成");
         }
 
@@ -763,7 +765,7 @@ namespace CodeSpirit.Navigation.Tests
                     Permission = "module1_access"
                 }
             };
-            
+
             _mockCache.Setup(c => c.GetAsync(
                     $"{CACHE_KEY_PREFIX}Module1",
                     It.IsAny<System.Threading.CancellationToken>()))
@@ -780,7 +782,7 @@ namespace CodeSpirit.Navigation.Tests
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -789,7 +791,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
@@ -802,7 +804,7 @@ namespace CodeSpirit.Navigation.Tests
             Assert.NotNull(result);
             Assert.Single(result); // 只有Module1的节点应该被成功加载
             Assert.Equal("node1", result[0].Name);
-            
+
             // 验证日志记录
             _mockLogger.Verify(
                 x => x.Log(
@@ -812,10 +814,10 @@ namespace CodeSpirit.Navigation.Tests
                     It.Is<Exception>(ex => ex.Message.Contains("模拟缓存服务异常")),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.AtLeastOnce);
-                
+
             _testOutputHelper.WriteLine("缓存异常处理测试完成");
         }
-        
+
         [Fact]
         public async Task GetNavigationTreeAsync_PermissionServiceUnavailable_ShouldReturnAllNodes()
         {
@@ -858,7 +860,7 @@ namespace CodeSpirit.Navigation.Tests
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -867,7 +869,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
@@ -881,7 +883,7 @@ namespace CodeSpirit.Navigation.Tests
             Assert.Single(result);
             Assert.Equal("parent", result[0].Name);
             Assert.Equal(2, result[0].Children.Count); // 所有子节点都应该存在，因为没有权限过滤
-            
+
             // 验证记录了权限服务不可用的警告
             _mockLogger.Verify(
                 x => x.Log(
@@ -891,10 +893,10 @@ namespace CodeSpirit.Navigation.Tests
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.AtLeastOnce);
-                
+
             _testOutputHelper.WriteLine("权限服务不可用测试完成");
         }
-        
+
         [Fact]
         public async Task InitializeNavigationTree_WithMultipleModules_ShouldCreateCacheForAllModules()
         {
@@ -904,7 +906,7 @@ namespace CodeSpirit.Navigation.Tests
             var actionDescriptors = new List<Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor>();
             var mockActionDescriptorCollection = new Mock<Microsoft.AspNetCore.Mvc.Infrastructure.ActionDescriptorCollection>(
                 actionDescriptors, 1);
-                
+
             _mockActionProvider
                 .Setup(p => p.ActionDescriptors)
                 .Returns(mockActionDescriptorCollection.Object);
@@ -912,11 +914,11 @@ namespace CodeSpirit.Navigation.Tests
             // 模拟配置
             var mockConfigSection = new Mock<Microsoft.Extensions.Configuration.IConfigurationSection>();
             mockConfigSection.Setup(s => s.Value).Returns("true"); // 启用导航树自动生成
-            
+
             _mockConfiguration
                 .Setup(c => c.GetSection("CodeSpirit:Navigation:AutoGenerate"))
                 .Returns(mockConfigSection.Object);
-                
+
             // 模拟模块定义
             var modules = new Dictionary<string, List<NavigationNode>>
             {
@@ -933,13 +935,13 @@ namespace CodeSpirit.Navigation.Tests
                     }
                 }
             };
-            
+
             // 创建被测试服务与服务提供者
             var serviceProvider = new Mock<IServiceProvider>();
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -948,7 +950,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             // 不再模拟GetNavigationModules方法，改为模拟BuildModuleNavigationTree方法
             serviceMock.Protected()
                 .Setup<List<NavigationNode>>("BuildModuleNavigationTree", ItExpr.Is<string>(s => s == "Module1"))
@@ -956,31 +958,31 @@ namespace CodeSpirit.Navigation.Tests
                 {
                     new NavigationNode("m1_node", "模块1节点", "/m1")
                 });
-                
+
             serviceMock.Protected()
                 .Setup<List<NavigationNode>>("BuildModuleNavigationTree", ItExpr.Is<string>(s => s == "Module2"))
                 .Returns(new List<NavigationNode>
                 {
                     new NavigationNode("m2_node", "模块2节点", "/m2")
                 });
-                
+
             // 模拟GetCurrentModules方法返回两个模块
             serviceMock.Protected()
                 .Setup<List<string>>("GetCurrentModules")
                 .Returns(new List<string> { "Module1", "Module2" });
-            
+
             // 执行测试 - 初始化导航树
             await serviceMock.Object.InitializeNavigationTree();
-            
+
             // 验证模块名称列表已缓存
             _mockCache.Verify(c => c.SetAsync(
                 MODULE_NAMES_CACHE_KEY,
-                It.Is<byte[]>(b => System.Text.Encoding.UTF8.GetString(b).Contains("Module1") && 
+                It.Is<byte[]>(b => System.Text.Encoding.UTF8.GetString(b).Contains("Module1") &&
                                    System.Text.Encoding.UTF8.GetString(b).Contains("Module2")),
                 It.IsAny<DistributedCacheEntryOptions>(),
                 It.IsAny<System.Threading.CancellationToken>()),
                 Times.Once);
-                
+
             // 验证各模块节点已缓存
             _mockCache.Verify(c => c.SetAsync(
                 $"{CACHE_KEY_PREFIX}Module1",
@@ -988,31 +990,31 @@ namespace CodeSpirit.Navigation.Tests
                 It.IsAny<DistributedCacheEntryOptions>(),
                 It.IsAny<System.Threading.CancellationToken>()),
                 Times.Once);
-                
+
             _mockCache.Verify(c => c.SetAsync(
                 $"{CACHE_KEY_PREFIX}Module2",
                 It.IsAny<byte[]>(),
                 It.IsAny<DistributedCacheEntryOptions>(),
                 It.IsAny<System.Threading.CancellationToken>()),
                 Times.Once);
-                
+
             _testOutputHelper.WriteLine("导航树初始化测试完成");
         }
-        
+
         [Fact]
         public async Task GetNavigationTreeAsync_WithLargeNavigationTree_ShouldPerformEfficiently()
         {
             _testOutputHelper.WriteLine("开始执行大型导航树性能测试");
-            
+
             // 创建大型导航树 - 包含多个模块，每个模块有多个节点和子节点
             var moduleNames = new List<string>();
-            
+
             // 创建10个模块
             for (int i = 1; i <= 10; i++)
             {
                 var moduleName = $"LargeModule{i}";
                 moduleNames.Add(moduleName);
-                
+
                 // 每个模块创建20个父节点
                 var moduleNodes = new List<NavigationNode>();
                 for (int j = 1; j <= 20; j++)
@@ -1022,41 +1024,41 @@ namespace CodeSpirit.Navigation.Tests
                         Permission = $"module{i}_parent{j}",
                         Children = new List<NavigationNode>()
                     };
-                    
+
                     // 每个父节点创建5个子节点
                     for (int k = 1; k <= 5; k++)
                     {
                         parentNode.Children.Add(new NavigationNode(
-                            $"child_{i}_{j}_{k}", 
-                            $"子节点{i}-{j}-{k}", 
+                            $"child_{i}_{j}_{k}",
+                            $"子节点{i}-{j}-{k}",
                             $"/module{i}/parent{j}/child{k}")
                         {
                             Permission = $"module{i}_parent{j}_child{k}"
                         });
                     }
-                    
+
                     moduleNodes.Add(parentNode);
                 }
-                
+
                 // 设置模块缓存
                 _mockCache.Setup(c => c.GetAsync(
                         $"{CACHE_KEY_PREFIX}{moduleName}",
                         It.IsAny<System.Threading.CancellationToken>()))
                     .ReturnsAsync(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(moduleNodes));
             }
-            
+
             // 设置模块名称缓存
             _mockCache.Setup(c => c.GetAsync(
                     MODULE_NAMES_CACHE_KEY,
                     It.IsAny<System.Threading.CancellationToken>()))
                 .ReturnsAsync(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(moduleNames));
-                
+
             // 创建被测试服务与服务提供者
             var serviceProvider = new Mock<IServiceProvider>();
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -1065,29 +1067,29 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
-                
+
             // 记录性能数据
             var stopwatch = new System.Diagnostics.Stopwatch();
             stopwatch.Start();
-            
+
             // 执行测试
             _testOutputHelper.WriteLine("执行GetNavigationTreeAsync方法");
             var result = await serviceMock.Object.GetNavigationTreeAsync();
-            
+
             stopwatch.Stop();
             _testOutputHelper.WriteLine($"大型导航树加载耗时: {stopwatch.ElapsedMilliseconds}ms");
-            
+
             // 验证结果
             Assert.NotNull(result);
             Assert.Equal(200, result.Count); // 10个模块 x 20个父节点 = 200个顶级节点
             Assert.Equal(1000, result.Sum(node => node.Children.Count)); // 200个父节点 x 5个子节点 = 1000个子节点
-            
+
             // 验证性能 - 仅做日志记录，不进行断言（实际性能依赖运行环境）
-            
+
             _testOutputHelper.WriteLine("大型导航树性能测试完成");
         }
 
@@ -1100,11 +1102,11 @@ namespace CodeSpirit.Navigation.Tests
             var actionDescriptors = new List<Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor>();
             var mockActionDescriptorCollection = new Mock<Microsoft.AspNetCore.Mvc.Infrastructure.ActionDescriptorCollection>(
                 actionDescriptors, 1);
-                
+
             _mockActionProvider
                 .Setup(p => p.ActionDescriptors)
                 .Returns(mockActionDescriptorCollection.Object);
-                
+
             // 设置模块列表缓存数据
             var moduleNames = new List<string> { "Module1" };
             var initialNodes = new List<NavigationNode>
@@ -1114,24 +1116,24 @@ namespace CodeSpirit.Navigation.Tests
                     Permission = "old_permission"
                 }
             };
-            
+
             // 设置初始缓存数据
             _mockCache.Setup(c => c.GetAsync(
                     MODULE_NAMES_CACHE_KEY,
                     It.IsAny<System.Threading.CancellationToken>()))
                 .ReturnsAsync(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(moduleNames));
-                
+
             _mockCache.Setup(c => c.GetAsync(
                     $"{CACHE_KEY_PREFIX}Module1",
                     It.IsAny<System.Threading.CancellationToken>()))
                 .ReturnsAsync(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(initialNodes));
-            
+
             // 创建被测试服务与服务提供者
             var serviceProvider = new Mock<IServiceProvider>();
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(null); // 不提供权限服务
-                
+
             var serviceMock = new Mock<NavigationService>(
                 _mockActionProvider.Object,
                 _mockCache.Object,
@@ -1140,34 +1142,34 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             // 模拟权限服务
             var mockPermissionService = new Mock<CodeSpirit.Core.Authorization.IHasPermissionService>();
             mockPermissionService.Setup(p => p.HasPermission(It.IsAny<string>())).Returns(true);
-            
+
             // 创建服务提供者
             serviceProvider
                 .Setup(x => x.GetService(typeof(CodeSpirit.Core.Authorization.IHasPermissionService)))
                 .Returns(mockPermissionService.Object);
-                
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
-                
+
             // 验证初始缓存状态 - 通过GetNavigationTreeAsync方法
             var initialResult = await serviceMock.Object.GetNavigationTreeAsync();
             Assert.Single(initialResult);
             Assert.Equal("old_node", initialResult[0].Name);
-            
+
             // 执行测试 - 清除缓存
             await serviceMock.Object.ClearModuleNavigationCacheAsync("Module1");
-            
+
             // 验证缓存被清除
             _mockCache.Verify(c => c.RemoveAsync(
                 $"{CACHE_KEY_PREFIX}Module1",
-                It.IsAny<System.Threading.CancellationToken>()), 
+                It.IsAny<System.Threading.CancellationToken>()),
                 Times.Once);
-            
+
             // 设置更新后的缓存数据 - 模拟缓存清除后的重建过程
             var updatedNodes = new List<NavigationNode>
             {
@@ -1176,38 +1178,38 @@ namespace CodeSpirit.Navigation.Tests
                     Permission = "new_permission"
                 }
             };
-            
+
             _mockCache.Setup(c => c.GetAsync(
                     $"{CACHE_KEY_PREFIX}Module1",
                     It.IsAny<System.Threading.CancellationToken>()))
                 .ReturnsAsync(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(updatedNodes));
-                
+
             // 修改：不再模拟不存在的GetNavigationModules方法，改为模拟BuildModuleNavigationTree方法
             serviceMock.Protected()
                 .Setup<List<NavigationNode>>("BuildModuleNavigationTree", ItExpr.Is<string>(s => s == "Module1"))
                 .Returns(updatedNodes);
-                
+
             // 模拟GetCurrentModules方法，确保它返回正确的模块列表
             serviceMock.Protected()
                 .Setup<List<string>>("GetCurrentModules")
                 .Returns(new List<string> { "Module1" });
-                
+
             // 重新生成导航树
             await serviceMock.Object.InitializeNavigationTree();
-            
+
             // 验证更新后的缓存
             var updatedResult = await serviceMock.Object.GetNavigationTreeAsync();
             Assert.Single(updatedResult);
             Assert.Equal("new_node", updatedResult[0].Name);
-            
+
             _testOutputHelper.WriteLine("缓存清除和重建测试完成");
         }
-        
+
         [Fact]
         public async Task GetNavigationTreeAsync_WithDynamicPermissionChanges_ShouldUpdateVisibleNodes()
         {
             _testOutputHelper.WriteLine("开始执行动态权限变更测试");
-            
+
             // 创建测试数据
             var moduleNames = new List<string> { "Module1" };
             var module1Nodes = new List<NavigationNode>
@@ -1225,7 +1227,7 @@ namespace CodeSpirit.Navigation.Tests
                     Permission = "permission3"
                 }
             };
-            
+
             // 设置缓存模拟
             _mockCache.Setup(c => c.GetAsync(
                     MODULE_NAMES_CACHE_KEY,
@@ -1236,7 +1238,7 @@ namespace CodeSpirit.Navigation.Tests
                     $"{CACHE_KEY_PREFIX}Module1",
                     It.IsAny<System.Threading.CancellationToken>()))
                 .ReturnsAsync(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(module1Nodes));
-                
+
             // 创建被测试服务与服务提供者
             var serviceProvider = new Mock<IServiceProvider>();
             serviceProvider
@@ -1248,7 +1250,7 @@ namespace CodeSpirit.Navigation.Tests
             var mockHttpContext = new Mock<Microsoft.AspNetCore.Http.HttpContext>();
             mockHttpContext.Setup(c => c.RequestServices).Returns(serviceProvider.Object);
             mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(mockHttpContext.Object);
-            
+
             serviceProvider
                 .Setup(x => x.GetService(typeof(Microsoft.AspNetCore.Http.IHttpContextAccessor)))
                 .Returns(mockHttpContextAccessor.Object);
@@ -1262,7 +1264,7 @@ namespace CodeSpirit.Navigation.Tests
             {
                 CallBase = true
             };
-            
+
             serviceMock.Protected()
                 .Setup<IServiceProvider>("GetServiceProvider")
                 .Returns(serviceProvider.Object);
@@ -1270,36 +1272,222 @@ namespace CodeSpirit.Navigation.Tests
             // 执行测试
             _testOutputHelper.WriteLine("第一次调用 - 初始权限");
             var result1 = await serviceMock.Object.GetNavigationTreeAsync();
-            
+
             // 验证结果 - 应该有两个节点(node1, node2)
             Assert.NotNull(result1);
             Assert.Equal(3, result1.Count);
             Assert.Contains(result1, n => n.Name == "node1");
             Assert.Contains(result1, n => n.Name == "node2");
             Assert.Contains(result1, n => n.Name == "node3");
-            
+
             // 修改权限设置 - 移除permission2，添加permission3
             _testOutputHelper.WriteLine("修改权限设置");
             // mockPermissionService.Setup(p => p.HasPermission("permission2")).Returns(false);
             // mockPermissionService.Setup(p => p.HasPermission("permission3")).Returns(true);
-            
+
             // 第二次调用 - 更新后的权限
             _testOutputHelper.WriteLine("第二次调用 - 更新后的权限");
             var result2 = await serviceMock.Object.GetNavigationTreeAsync();
-            
+
             // 验证结果 - 应该有两个不同的节点(node1, node3)
             Assert.NotNull(result2);
             Assert.Equal(3, result2.Count);
             Assert.Contains(result2, n => n.Name == "node1");
             Assert.Contains(result2, n => n.Name == "node2");
             Assert.Contains(result2, n => n.Name == "node3");
-            
+
             // 验证权限检查被调用
             // mockPermissionService.Verify(p => p.HasPermission("permission1"), Times.Exactly(2));
             // mockPermissionService.Verify(p => p.HasPermission("permission2"), Times.Exactly(2));
             // mockPermissionService.Verify(p => p.HasPermission("permission3"), Times.Exactly(2));
-            
+
             _testOutputHelper.WriteLine("动态权限变更测试完成");
         }
+
+        /// <summary>
+        /// 测试多级导航（三级或以上）中一级导航的权限过滤
+        /// </summary>
+        [Fact]
+        public void FilterNodesByPermission_WithMultiLevelNodes_ShouldNotFilterOutParentNodes()
+        {
+            // 准备测试数据：三级导航结构
+            var navigationNodes = new List<NavigationNode>
+            {
+                new NavigationNode("level1", "一级菜单", "/level1")
+                {
+                    Permission = "level1_permission",
+                    Children = new List<NavigationNode>
+                    {
+                        new NavigationNode("level2", "二级菜单", "/level1/level2")
+                        {
+                            Permission = "level2_permission",
+                            Children = new List<NavigationNode>
+                            {
+                                new NavigationNode("level3", "三级菜单", "/level1/level2/level3")
+                                {
+                                    Permission = "level3_permission"
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            // 创建Mock权限服务 - 设置只有三级菜单有权限
+            var mockPermissionService = new Mock<IHasPermissionService>();
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "level1_permission"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "level2_permission"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "level3_permission"))).Returns(true);
+
+            // 创建服务实例
+            var service = new NavigationService(
+                _mockActionProvider.Object,
+                _mockCache.Object,
+                _mockLogger.Object,
+                _mockConfiguration.Object
+            );
+
+            // 执行测试
+            var result = service.FilterNodesByPermission(navigationNodes, mockPermissionService.Object);
+
+            // 验证结果
+            Assert.NotNull(result);
+            Assert.Single(result); // 应返回一级菜单
+
+            var level1Node = result.First();
+            Assert.Equal("level1", level1Node.Name);
+            Assert.Single(level1Node.Children); // 应返回二级菜单
+
+            var level2Node = level1Node.Children.First();
+            Assert.Equal("level2", level2Node.Name);
+            Assert.Single(level2Node.Children); // 应返回三级菜单
+
+            var level3Node = level2Node.Children.First();
+            Assert.Equal("level3", level3Node.Name);
+            Assert.Empty(level3Node.Children);
+        }
+
+        /// <summary>
+        /// 测试具有部分子菜单权限时的导航过滤
+        /// </summary>
+        [Fact]
+        public void FilterNodesByPermission_WithPartialChildMenuPermission_ShouldDisplayParentAndAuthorizedChild()
+        {
+            // 准备测试数据：考试中心导航结构
+            var navigationNodes = new List<NavigationNode>
+            {
+                new NavigationNode("examCenter", "考试中心", "/exam")
+                {
+                    Icon = "fa-solid fa-graduation-cap",
+                    Permission = "exam",
+                    Children = new List<NavigationNode>
+                    {
+                        new NavigationNode("examPapers", "试卷管理", "/exam/examPapers")
+                        {
+                            Icon = "fa-solid fa-file-lines",
+                            Permission = "exam_examPapers"
+                        },
+                        new NavigationNode("examRecords", "考试记录管理", "/exam/examRecords")
+                        {
+                            Icon = "fa-solid fa-clipboard-check",
+                            Permission = "exam_examRecords"
+                        },
+                        new NavigationNode("examSettings", "考试管理", "/exam/examSettings")
+                        {
+                            Icon = "fa-solid fa-calendar-check",
+                            Permission = "exam_examSettings"
+                        },
+                        new NavigationNode("examStatistics", "考试统计", "/exam/examStatistics")
+                        {
+                            Icon = "fa-solid fa-chart-pie",
+                            Permission = "exam_examStatistics"
+                        },
+                        new NavigationNode("practiceRecords", "练习记录管理", "/exam/practiceRecords")
+                        {
+                            Icon = "fa-solid fa-clipboard-check",
+                            Permission = "exam_practiceRecords"
+                        },
+                        new NavigationNode("questionCategories", "题目分类管理", "/exam/questionCategories")
+                        {
+                            Icon = "fa-solid fa-folder-tree",
+                            Permission = "exam_questionCategories"
+                        },
+                        new NavigationNode("questions", "题目管理", "/exam/questions")
+                        {
+                            Icon = "fa-solid fa-book",
+                            Permission = "exam_questions"
+                        },
+                        new NavigationNode("questionVersions", "题目版本管理", "/exam/questionVersions")
+                        {
+                            Icon = "fa-solid fa-code-branch",
+                            Permission = "exam_questionVersions"
+                        },
+                        new NavigationNode("studentGroups", "考生组管理", "/exam/studentGroups")
+                        {
+                            Icon = "fa-solid fa-users-rectangle",
+                            Permission = "exam_studentGroups"
+                        },
+                        new NavigationNode("students", "考生管理", "/exam/students")
+                        {
+                            Icon = "fa-solid fa-user-graduate",
+                            Permission = "exam_students"
+                        },
+                        new NavigationNode("wrongQuestions", "错题管理", "/exam/wrongQuestions")
+                        {
+                            Icon = "fa-solid fa-circle-exclamation",
+                            Permission = "exam_wrongQuestions"
+                        }
+                    }
+                }
+            };
+
+            // 创建Mock权限服务 - 设置只有试卷管理相关权限
+            var mockPermissionService = new Mock<IHasPermissionService>();
+
+            // 设置父级菜单权限
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam"))).Returns(false);
+
+            // 设置各子菜单权限
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_examPapers"))).Returns(true);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_examRecords"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_examSettings"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_examStatistics"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_practiceRecords"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_questionCategories"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_questions"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_questionVersions"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_studentGroups"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_students"))).Returns(false);
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s == "exam_wrongQuestions"))).Returns(false);
+
+            // 试卷管理的细分权限
+            mockPermissionService.Setup(p => p.HasNavigationPermission(It.Is<string>(s => s.StartsWith("exam_examPapers_")))).Returns(true);
+
+            // 创建服务实例
+            var service = new NavigationService(
+                _mockActionProvider.Object,
+                _mockCache.Object,
+                _mockLogger.Object,
+                _mockConfiguration.Object
+            );
+
+            // 执行测试
+            var result = service.FilterNodesByPermission(navigationNodes, mockPermissionService.Object);
+
+            // 验证结果
+            Assert.NotNull(result);
+            Assert.Single(result); // 应返回考试中心菜单
+
+            var examCenterNode = result.First();
+            Assert.Equal("examCenter", examCenterNode.Name);
+            Assert.Equal("考试中心", examCenterNode.Title);
+
+            Assert.Single(examCenterNode.Children); // 应只返回试卷管理子菜单
+
+            var examPapersNode = examCenterNode.Children.First();
+            Assert.Equal("examPapers", examPapersNode.Name);
+            Assert.Equal("试卷管理", examPapersNode.Title);
+            Assert.StrictEqual(1, examCenterNode.Children.Count);
+        }
     }
-} 
+}

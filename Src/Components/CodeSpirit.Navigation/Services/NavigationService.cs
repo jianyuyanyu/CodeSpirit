@@ -113,35 +113,40 @@ namespace CodeSpirit.Navigation
 
             foreach (var node in nodes)
             {
+                // 深拷贝节点，避免引用问题
+                var nodeCopy = new NavigationNode(node.Name, node.Title, node.Path)
+                {
+                    Link = node.Link,
+                    Icon = node.Icon,
+                    Order = node.Order,
+                    ParentPath = node.ParentPath,
+                    Hidden = node.Hidden,
+                    Permission = node.Permission,
+                    Description = node.Description,
+                    IsExternal = node.IsExternal,
+                    Target = node.Target,
+                    Route = node.Route,
+                    ModuleName = node.ModuleName,
+                    Children = []
+                };
+                
                 // 首先递归处理子节点
                 var filteredChildren = FilterNodesByPermission(node.Children, hasPermissionService);
                 
                 // 检查节点自身权限或子节点是否有权限
                 bool hasPermission = string.IsNullOrEmpty(node.Permission) || 
-                                     hasPermissionService.HasPermission(node.Permission) || 
+                                     hasPermissionService.HasNavigationPermission(node.Permission) || 
                                      filteredChildren.Any();
 
                 if (hasPermission)
                 {
-                    // 创建节点副本，保留原始引用
-                    var nodeCopy = node;
+                    // 设置过滤后的子节点集合
                     nodeCopy.Children = filteredChildren;
                     result.Add(nodeCopy);
                 }
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// 获取服务提供者
-        /// </summary>
-        /// <returns>服务提供者</returns>
-        protected virtual IServiceProvider GetServiceProvider()
-        {
-            var accessor = new HttpContextAccessor();
-            var httpContext = accessor.HttpContext;
-            return httpContext?.RequestServices ?? null;
         }
     }
 }

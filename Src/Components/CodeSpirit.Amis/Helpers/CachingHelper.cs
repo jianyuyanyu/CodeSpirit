@@ -6,31 +6,28 @@ namespace CodeSpirit.Amis.Helpers
 {
     public class CachingHelper
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IMemoryCache _cache;
+        private readonly ICurrentUser currentUser;
 
-        public CachingHelper(IHttpContextAccessor httpContextAccessor, IMemoryCache cache)
+        public CachingHelper(IMemoryCache cache, ICurrentUser currentUser)
         {
-            _httpContextAccessor = httpContextAccessor;
             _cache = cache;
+            this.currentUser = currentUser;
         }
 
         public string GenerateCacheKey(string controllerName)
         {
-            System.Security.Claims.ClaimsPrincipal user = _httpContextAccessor.HttpContext?.User;
-            string permissionsHash = GetUserPermissionsHash(user);
-            return $"AmisJson_{controllerName.ToLower()}_{permissionsHash.GetHashCode()}";
+            string rolesHash = GetUserRolesHash();
+            return $"AmisJson_{controllerName.ToLower()}_{rolesHash.GetHashCode()}";
         }
 
-        private string GetUserPermissionsHash(System.Security.Claims.ClaimsPrincipal user)
+        private string GetUserRolesHash()
         {
-            List<string> userPermissions = user?.Claims
-                .Where(c => c.Type == "Permission")
-                .Select(c => c.Value)
+            List<string> userRoles = currentUser.Roles
                 .OrderBy(p => p)
                 .ToList() ?? [];
 
-            return string.Join(",", userPermissions);
+            return string.Join(",", userRoles);
         }
 
         public bool TryGetValue(string key, out JObject value)

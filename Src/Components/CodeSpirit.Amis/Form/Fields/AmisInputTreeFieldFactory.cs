@@ -34,6 +34,24 @@ namespace CodeSpirit.Amis.Form.Fields
                 field["deferApi"] = attr.DeferApi;
                 field["expand"] = attr.Expand;
                 field["showIcon"] = attr.ShowIcon;
+
+                if (attr.Cascade)
+                    field["cascade"] = attr.Cascade;
+
+                if (!attr.AutoCheckChildren)
+                    field["autoCheckChildren"] = attr.AutoCheckChildren;
+
+                if (attr.Searchable)
+                    field["searchable"] = attr.Searchable;
+                if (attr.ShowOutline)
+                    field["showOutline"] = attr.ShowOutline;
+                if (attr.ShowOutline)
+                    field["clearable"] = attr.Clearable;
+                field["childrenField"] = attr.ChildrenField;
+                if (!attr.DeferField.IsNullOrWhiteSpace())
+                    field["deferField"] = attr.DeferField;
+                if (attr.OnlyLeaf)
+                    field["onlyLeaf"] = attr.OnlyLeaf;
             }
             return field;
         }

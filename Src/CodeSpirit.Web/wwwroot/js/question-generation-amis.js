@@ -407,9 +407,9 @@
             });
 
             // 停止SignalR连接
-            if (connection) {
+            if (notificationClient && notificationClient.connection) {
                 try {
-                    connection.stop();
+                    notificationClient.connection.stop();
                 } catch (err) {
                     console.error("停止SignalR连接时出错:", err);
                 }

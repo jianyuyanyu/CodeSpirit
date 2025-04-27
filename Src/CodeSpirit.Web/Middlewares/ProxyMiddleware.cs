@@ -104,6 +104,15 @@ namespace CodeSpirit.Web.Middlewares
                 return;
             }
 
+            // 检查是否为内部接口请求，如果是则拒绝转发
+            if (request.Path.Value?.Contains("/internal/", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _logger.LogWarning("拒绝转发内部接口请求 - 路径: {Path}", request.Path);
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsync("禁止访问内部接口");
+                return;
+            }
+
             //// Check if the request is a JSON request
             //if (!request.ContentType?.Equals("application/json", StringComparison.OrdinalIgnoreCase) ?? true)
             //{

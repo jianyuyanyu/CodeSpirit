@@ -57,6 +57,6 @@ public class ConfigPublishHistoryDto
     /// TODO: 应提供聚合器独立的内部接口
     /// </summary>
     [DisplayName("发布人")]
-    [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "用户: {field}")]
+    [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "用户: {field}")]
     public string CreatedBy { get; set; }
 }

@@ -69,6 +69,6 @@ public class QuestionDto
     public DateTime? UpdatedAt { get; set; }
 
     [DisplayName("更新人")]
-    [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "{field}")]
+    [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "{field}")]
     public string? UpdatedBy { get; set; }
 }

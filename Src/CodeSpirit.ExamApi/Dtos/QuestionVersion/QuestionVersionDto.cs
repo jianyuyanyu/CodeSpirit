@@ -89,6 +89,6 @@ public class QuestionVersionDto
     /// 创建人
     /// </summary>
     [DisplayName("创建人")]
-    [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "{field}")]
+    [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "{field}")]
     public string? CreatedBy { get; set; }
 } 

@@ -57,6 +57,6 @@ public class QuestionCategoryDto
     /// 更新人
     /// </summary>
     [DisplayName("更新人")]
-    [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "{field}")]
+    [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "{field}")]
     public string? UpdatedBy { get; set; }
 } 

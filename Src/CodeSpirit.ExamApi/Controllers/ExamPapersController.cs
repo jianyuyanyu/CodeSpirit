@@ -107,7 +107,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="id">试卷ID</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}/publish")]
-    [Operation("发布", "ajax", null, "确定要发布此试卷吗？", visibleOn: "status == 1")]
+    [Operation("发布", "ajax", null, "确定要发布此试卷吗？", visibleOn: "status == 1 && isPreviewChecked")]
     [DisplayName("发布试卷")]
     public async Task<ActionResult<ApiResponse>> PublishExamPaper(long id)
     {
@@ -204,6 +204,9 @@ public class ExamPapersController : ApiControllerBase
             return NotFound("试卷不存在");
         }
 
+        // 自动标记为已预览
+        await _examPaperService.MarkPreviewedAsync(id);
+
         var panelConfig = new JObject
         {
             ["type"] = "service",
@@ -217,6 +220,19 @@ public class ExamPapersController : ApiControllerBase
         };
 
         return SuccessResponse(panelConfig);
+    }
+
+    /// <summary>
+    /// 标记试卷已完成预览
+    /// </summary>
+    /// <param name="id">试卷ID</param>
+    /// <returns>操作结果</returns>
+    [HttpPut("{id}/mark-previewed")]
+    [DisplayName("标记为已预览")]
+    public async Task<ActionResult<ApiResponse>> MarkExamPaperPreviewed(long id)
+    {
+        await _examPaperService.MarkPreviewedAsync(id);
+        return SuccessResponse("试卷已标记为已预览");
     }
 
     [Operation("考试管理", "link", "/exam/examSettings?examPaperId=$id", null, visibleOn: "status === 2")]

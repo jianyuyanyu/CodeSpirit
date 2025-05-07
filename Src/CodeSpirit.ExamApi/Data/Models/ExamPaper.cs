@@ -86,5 +86,14 @@ public class ExamPaper: LongKeyAuditableEntityBase
     /// </summary>
     [Range(0, 100)]
     public decimal PassRate { get; set; } = 0;
+    
+    /// <summary>
+    /// 试卷状态
+    /// </summary>
     public ExamPaperStatus Status { get; set; }
+    
+    /// <summary>
+    /// 是否已完成预览检查
+    /// </summary>
+    public bool IsPreviewChecked { get; set; } = false;
 }

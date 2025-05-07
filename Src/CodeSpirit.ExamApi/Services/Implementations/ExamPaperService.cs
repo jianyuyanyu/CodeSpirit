@@ -252,6 +252,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             {
                 throw new AppServiceException(400, "试卷没有题目，不能发布");
             }
+            
+            // 检查是否已预览
+            if (!examPaper.IsPreviewChecked)
+            {
+                throw new AppServiceException(400, "试卷发布前必须先完成预览操作");
+            }
 
             // 发布试卷
             examPaper.Status = ExamPaperStatus.Published;
@@ -598,6 +604,24 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 .Find(v => v.QuestionId == questionId)
                 .OrderByDescending(v => v.Version)
                 .FirstOrDefaultAsync();
+        }
+
+        /// <summary>
+        /// 标记试卷已预览
+        /// </summary>
+        public async Task MarkPreviewedAsync(long id)
+        {
+            var examPaper = await _examPaperRepository.GetByIdAsync(id);
+            if (examPaper == null)
+            {
+                throw new AppServiceException(404, "试卷不存在");
+            }
+
+            // 标记试卷为已预览
+            examPaper.IsPreviewChecked = true;
+            await _examPaperRepository.UpdateAsync(examPaper);
+            
+            _logger.LogInformation("试卷 {ExamPaperId} 已完成预览检查", id);
         }
     }
 }

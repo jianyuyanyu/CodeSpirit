@@ -95,6 +95,12 @@ public class ExamPaperDto
     public ExamPaperStatus Status { get; set; }
 
     /// <summary>
+    /// 是否已完成预览
+    /// </summary>
+    [DisplayName("已预览")]
+    public bool IsPreviewChecked { get; set; }
+
+    /// <summary>
     /// 试卷包含的题目列表
     /// </summary>
     [DisplayName("题目列表")]

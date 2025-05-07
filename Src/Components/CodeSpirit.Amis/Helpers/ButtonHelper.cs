@@ -4,6 +4,7 @@ using CodeSpirit.Amis.Helpers.Dtos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 
 namespace CodeSpirit.Amis.Helpers
 {
@@ -523,10 +524,28 @@ namespace CodeSpirit.Amis.Helpers
                         ["method"] = route.HttpMethod
                     },
                     ["body"] = "${body}" // 使用Service返回的body内容
+                },
+                ["actions"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["type"] = "button",
+                        ["label"] = "关闭",
+                        ["actionType"] = "close"
+                    }
                 }
             };
 
-            return CreateButton(title, "dialog", dialogOrDrawer: serviceBody);
+            JObject button = new()
+            {
+                ["type"] = "button",
+                ["label"] = title,
+                ["actionType"] = "dialog",
+                ["dialog"] = serviceBody
+            };
+
+            CreateIcon(title, button);
+            return button;
         }
     }
 }

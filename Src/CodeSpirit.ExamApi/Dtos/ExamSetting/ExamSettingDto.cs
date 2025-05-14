@@ -123,4 +123,22 @@ public class ExamSettingDto
     /// </summary>
     [DisplayName("更新时间")]
     public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// 通过率
+    /// </summary>
+    [DisplayName("通过率")]
+    public decimal? PassRate { get; set; }
+
+    /// <summary>
+    /// 参考人数
+    /// </summary>
+    [DisplayName("参考人数")]
+    public int TotalParticipants { get; set; }
+
+    /// <summary>
+    /// 通过人数
+    /// </summary>
+    [DisplayName("通过人数")]
+    public int PassedParticipants { get; set; }
 }

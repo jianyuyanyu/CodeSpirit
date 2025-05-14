@@ -49,4 +49,16 @@ public class ExamSettingQueryDto : QueryDtoBase
     /// </summary>
     [DisplayName("-")]
     public DateTime? EndTimeTo { get; set; }
+    
+    /// <summary>
+    /// 最小通过率
+    /// </summary>
+    [DisplayName("最小通过率")]
+    public decimal? MinPassRate { get; set; }
+
+    /// <summary>
+    /// 最大通过率
+    /// </summary>
+    [DisplayName("最大通过率")]
+    public decimal? MaxPassRate { get; set; }
 } 

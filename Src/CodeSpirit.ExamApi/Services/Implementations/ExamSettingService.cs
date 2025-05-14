@@ -88,16 +88,50 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             .Include(x => x.ExamPaper)
             .Include(x => x.StudentGroups)
                 .ThenInclude(x => x.StudentGroup)
+            .Include(x => x.ExamRecords) // 添加考试记录关联
             .Where(predicate);
 
-        var total = await query.CountAsync();
+        // 通过率范围筛选
+        // 注意：由于通过率是计算得出的值，我们需要在内存中进行筛选
         var items = await query
             .OrderByDescending(x => x.CreatedAt)
-            .Skip((queryDto.Page - 1) * queryDto.PerPage)
-            .Take(queryDto.PerPage)
             .ToListAsync();
 
+        // 计算并筛选通过率
+        if (queryDto.MinPassRate.HasValue || queryDto.MaxPassRate.HasValue)
+        {
+            items = items.Where(x =>
+            {
+                if (!x.ExamRecords.Any()) return false;
+                var passRate = (decimal)x.ExamRecords.Count(r => r.Score >= x.ExamPaper.PassScore) / x.ExamRecords.Count * 100;
+                return (!queryDto.MinPassRate.HasValue || passRate >= queryDto.MinPassRate.Value) &&
+                       (!queryDto.MaxPassRate.HasValue || passRate <= queryDto.MaxPassRate.Value);
+            }).ToList();
+        }
+
+        // 计算总数并进行分页
+        var total = items.Count;
+        items = items
+            .Skip((queryDto.Page - 1) * queryDto.PerPage)
+            .Take(queryDto.PerPage)
+            .ToList();
+
         var dtos = _mapper.Map<List<ExamSettingDto>>(items);
+
+        // 计算通过率信息
+        foreach (var dto in dtos)
+        {
+            var examSetting = items.First(x => x.Id == dto.Id);
+            var examRecords = examSetting.ExamRecords;
+            var passScore = examSetting.ExamPaper.PassScore;
+            
+            dto.TotalParticipants = examRecords.Count;
+            dto.PassedParticipants = examRecords.Count(r => r.Score >= passScore);
+            dto.PassRate = dto.TotalParticipants > 0 
+                ? Math.Round((decimal)dto.PassedParticipants / dto.TotalParticipants * 100, 2)
+                : null;
+        }
+
         return new PageList<ExamSettingDto>(dtos, total);
     }
 

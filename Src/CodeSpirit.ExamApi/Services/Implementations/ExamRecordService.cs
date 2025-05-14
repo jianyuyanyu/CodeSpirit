@@ -13,6 +13,7 @@ using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.Shared.Extensions;
 using Microsoft.Extensions.Logging;
 using CodeSpirit.Shared.DistributedLock;
+using CodeSpirit.ExamApi.Dtos.ExamPaper;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -975,7 +976,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     }
 
     /// <summary>
-    /// 获取用户的考试历史记录
+    /// 获取学生的考试历史记录
     /// </summary>
     /// <param name="studentId">学生ID</param>
     /// <returns>历史考试记录</returns>
@@ -1746,5 +1747,140 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         var randomSpan = TimeSpan.FromTicks((long)(random.NextDouble() * timeSpan.Ticks));
 
         return startTime + randomSpan;
+    }
+
+    /// <summary>
+    /// 获取学生考试试卷详情（用于PDF导出）
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>考试试卷详情</returns>
+    public async Task<ExamPaperDetailDto> GetStudentExamPaperDetailAsync(long recordId)
+    {
+        try
+        {
+            // 获取考试记录
+            var examRecord = await Repository.CreateQuery()
+                .Include(r => r.ExamSetting)
+                .Include(r => r.Student)
+                .Include(r => r.AnswerRecords)
+                .ThenInclude(a => a.QuestionVersion)
+                .ThenInclude(qv => qv.Question)
+                .FirstOrDefaultAsync(r => r.Id == recordId);
+
+            if (examRecord == null)
+            {
+                throw new BusinessException("考试记录不存在");
+            }
+            
+            // 获取试卷预览信息
+            var preview = await GetAnswerPreviewAsync(recordId);
+            
+            // 获取学生信息
+            var student = examRecord.Student;
+            if (student == null)
+            {
+                throw new BusinessException("学生信息不存在");
+            }
+            
+            // 按题型分组
+            var questionsByType = examRecord.AnswerRecords
+                .GroupBy(a => a.QuestionVersion.Question.Type.ToString())
+                .ToDictionary(g => g.Key, g => g.ToList());
+            
+            // 计算各题型统计
+            var typeStatistics = new List<QuestionTypeStatistics>();
+            
+            foreach (var type in questionsByType.Keys)
+            {
+                var typeAnswers = questionsByType[type];
+                
+                var totalScore = typeAnswers.Sum(a => a.QuestionVersion.DefaultScore);
+                var obtainedScore = (int)typeAnswers.Sum(a => a.Score ?? 0);
+                var correctCount = typeAnswers.Count(a => a.IsCorrect ?? false);
+                
+                typeStatistics.Add(new QuestionTypeStatistics
+                {
+                    Type = type,
+                    TypeName = GetQuestionTypeName(type),
+                    QuestionCount = typeAnswers.Count,
+                    Score = obtainedScore,
+                    TotalScore = totalScore,
+                    CorrectCount = correctCount
+                });
+            }
+            
+            // 构建试卷题目列表
+            var questions = examRecord.AnswerRecords
+                .OrderBy(a => a.OrderNumber)
+                .Select(a => new ExamPaperQuestionDto
+                {
+                    QuestionId = a.QuestionId,
+                    Type = a.QuestionVersion.Question.Type,
+                    Content = a.QuestionVersion.Content,
+                    Options = a.QuestionVersion.Options,
+                    Score = a.QuestionVersion.DefaultScore,
+                    OrderNumber = a.OrderNumber
+                })
+                .ToList();
+                
+            // 构建答案列表
+            var answers = examRecord.AnswerRecords
+                .OrderBy(a => a.OrderNumber)
+                .Select(a => new ClientExamAnswerWithCorrectDto
+                {
+                    QuestionId = a.QuestionId,
+                    Answer = a.Answer,
+                    CorrectAnswer = a.QuestionVersion.CorrectAnswer,
+                    QuestionType = a.QuestionVersion.Question.Type.ToString(),
+                    Score = a.Score,
+                    IsCorrect = a.IsCorrect,
+                    DefaultScore = a.QuestionVersion.DefaultScore
+                })
+                .ToList();
+            
+            // 构建详情DTO
+            var detail = new ExamPaperDetailDto
+            {
+                ExamPaperId = examRecord.ExamSetting.ExamPaperId,
+                ExamRecordId = recordId,
+                ExamName = examRecord.ExamSetting.Name,
+                StudentId = student.Id,
+                StudentName = student.Name,
+                StartTime = examRecord.StartTime,
+                SubmitTime = examRecord.SubmitTime,
+                TotalScore = (int)(examRecord.Score ?? 0),
+                MaxScore = (int)(examRecord.ExamSetting.ExamPaper?.TotalScore ?? 0),
+                PassScore = examRecord.ExamSetting.ExamPaper?.PassScore ?? 0,
+                IsPassed = examRecord.IsPassed,
+                Status = examRecord.Status.ToString(),
+                Questions = questions,
+                Answers = answers,
+                TypeStatistics = typeStatistics
+            };
+            
+            return detail;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取学生试卷详情失败: {RecordId}", recordId);
+            throw new BusinessException($"获取试卷详情失败: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// 获取题目类型名称
+    /// </summary>
+    private string GetQuestionTypeName(string type)
+    {
+        return type switch
+        {
+            "SingleChoice" => "单选题",
+            "MultipleChoice" => "多选题",
+            "TrueFalse" => "判断题",
+            "ShortAnswer" => "简答题",
+            "Essay" => "论述题",
+            "Coding" => "编程题",
+            _ => type
+        };
     }
 }

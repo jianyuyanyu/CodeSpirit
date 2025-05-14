@@ -5,12 +5,15 @@ using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
+using CodeSpirit.Shared;
 using CodeSpirit.Shared.EventBus.Events;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.EventBus.Interfaces;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Notifications;
 using CodeSpirit.Shared.Notifications.Events;
+using CodeSpirit.Shared.Services.Background;
+using CodeSpirit.Shared.Services.Files;
 using CodeSpirit.Web.Extensions;
 using CodeSpirit.Web.Hubs;
 using CodeSpirit.Web.Middlewares;
@@ -82,6 +85,16 @@ public class Program
         
         // 注册事件处理器
         builder.Services.AddEventHandler<SessionNotificationEvent, NotificationEventHandler>();
+
+        // 注册后台任务服务
+        builder.Services.AddHostedService<BackgroundJobServiceImpl>();
+        builder.Services.AddSingleton<IBackgroundJobService>(provider =>
+            provider.GetRequiredService<IEnumerable<IHostedService>>()
+                .OfType<BackgroundJobServiceImpl>()
+                .First());
+
+        // 注册文件服务
+        builder.Services.AddScoped<ITempFileService, TempFileServiceImpl>();
 
         WebApplication app = builder.Build();
 

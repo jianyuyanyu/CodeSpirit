@@ -16,8 +16,8 @@ public class BatchExportExamPapersDto : BatchOperationDto<long>
     [AmisFormField(Type = "hidden")]
     public override List<long> Ids { get => base.Ids; set => base.Ids = value; }
 
-    [AmisFormField(Type = "markdown", Value = "**导出说明：** 系统将排队生成导出文件，并打包为压缩包以供下载。大量数据导出可能需要较长时间，请耐心等待。")]
-    public string Tip { get; set; }
+    [AmisFormField(Type = "markdown", DefaultValue = "**导出说明：** 系统将排队生成导出文件，并打包为压缩包以供下载。大量数据导出可能需要较长时间，请耐心等待。")]
+    public string? Tip { get; set; }
     ///// <summary>
     ///// 是否包含答案
     ///// </summary>

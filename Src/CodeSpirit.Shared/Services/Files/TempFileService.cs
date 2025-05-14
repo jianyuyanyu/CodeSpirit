@@ -16,7 +16,7 @@ public class TempFileServiceImpl : ITempFileService
     private readonly ILogger<TempFileServiceImpl> _logger;
     private readonly IConfiguration _configuration;
     private readonly IDistributedCache _distributedCache;
-    private readonly string _fileStoragePath;
+    //private readonly string _fileStoragePath;
     
     // 缓存键前缀
     private const string ExportTaskKeyPrefix = "ExportTask:";
@@ -38,16 +38,16 @@ public class TempFileServiceImpl : ITempFileService
         _configuration = configuration;
         _distributedCache = distributedCache;
         
-        // 获取文件存储路径，默认为应用程序根目录下的FileStorage文件夹
-        _fileStoragePath = _configuration["FileStorage:Path"] ?? 
-                          Path.Combine(AppContext.BaseDirectory, "FileStorage");
+        //// 获取文件存储路径，默认为应用程序根目录下的FileStorage文件夹
+        //_fileStoragePath = _configuration["FileStorage:Path"] ?? 
+        //                  Path.Combine(AppContext.BaseDirectory, "FileStorage");
         
-        // 确保存储目录存在
-        if (!Directory.Exists(_fileStoragePath))
-        {
-            Directory.CreateDirectory(_fileStoragePath);
-            _logger.LogInformation("已创建文件存储目录: {Path}", _fileStoragePath);
-        }
+        //// 确保存储目录存在
+        //if (!Directory.Exists(_fileStoragePath))
+        //{
+        //    Directory.CreateDirectory(_fileStoragePath);
+        //    _logger.LogInformation("已创建文件存储目录: {Path}", _fileStoragePath);
+        //}
     }
 
     /// <summary>
@@ -184,28 +184,29 @@ public class TempFileServiceImpl : ITempFileService
             else
             {
                 // 从文件系统获取文件
-                var filePath = Path.Combine(_fileStoragePath, fileInfo.FileName);
-                if (!System.IO.File.Exists(filePath))
-                {
-                    return new FileDownloadResult
-                    {
-                        IsSuccess = false,
-                        ErrorMessage = "文件在文件系统中不存在"
-                    };
-                }
+                //var filePath = Path.Combine(_fileStoragePath, fileInfo.FileName);
+                //if (!System.IO.File.Exists(filePath))
+                //{
+                //    return new FileDownloadResult
+                //    {
+                //        IsSuccess = false,
+                //        ErrorMessage = "文件在文件系统中不存在"
+                //    };
+                //}
                 
-                var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                //var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
                 
-                _logger.LogInformation("从文件系统下载文件，文件ID: {FileId}", fileId);
+                //_logger.LogInformation("从文件系统下载文件，文件ID: {FileId}", fileId);
                 
-                return new FileDownloadResult
-                {
-                    FileStream = fileStream,
-                    FileName = fileInfo.FileName,
-                    ContentType = fileInfo.ContentType,
-                    FileSize = fileInfo.FileSize,
-                    IsSuccess = true
-                };
+                //return new FileDownloadResult
+                //{
+                //    FileStream = fileStream,
+                //    FileName = fileInfo.FileName,
+                //    ContentType = fileInfo.ContentType,
+                //    FileSize = fileInfo.FileSize,
+                //    IsSuccess = true
+                //};
+                throw new NotSupportedException("从文件系统下载文件的功能尚未实现。");
             }
         }
         catch (Exception ex)

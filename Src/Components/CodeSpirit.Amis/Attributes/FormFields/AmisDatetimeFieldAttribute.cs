@@ -42,9 +42,20 @@ namespace CodeSpirit.Amis.Attributes.FormFields
         public bool ReadOnly { get; set; } = false;
 
         /// <summary>
-        /// 是否使用当前时间作为默认值
+        /// 是否使用当前时间作为默认值（已弃用，请使用 ValueType = DefaultValueType.CurrentDateTime）
         /// </summary>
+        [Obsolete("请使用 ValueType = DefaultValueType.CurrentDateTime 替代")]
         public bool UseCurrentTime { get; set; } = false;
+
+        /// <summary>
+        /// 相对时间表达式，支持：today、yesterday、tomorrow、lastWeek、nextWeek、lastMonth、nextMonth等
+        /// </summary>
+        public string RelativeTime { get; set; }
+
+        /// <summary>
+        /// 时间偏移量（分钟），可以是正数或负数，用于基于当前时间或相对时间的偏移
+        /// </summary>
+        public int TimeOffset { get; set; }
 
         /// <summary>
         /// 日期分隔符

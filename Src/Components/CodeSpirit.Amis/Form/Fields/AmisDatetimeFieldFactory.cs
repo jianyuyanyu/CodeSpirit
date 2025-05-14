@@ -62,12 +62,6 @@ namespace CodeSpirit.Amis.Form.Fields
                 // 设置是否只读
                 field["readOnly"] = attr.ReadOnly;
                 
-                // 设置是否使用当前时间
-                if (attr.UseCurrentTime)
-                {
-                    field["value"] = "${NOW}";
-                }
-                
                 // 设置分隔符
                 field["dateSeparator"] = attr.DateSeparator;
                 field["timeFormat"] = attr.TimeSeparator;
@@ -91,6 +85,74 @@ namespace CodeSpirit.Amis.Form.Fields
                 }
             }
             return field;
+        }
+        /// <summary>
+        /// 处理日期时间字段的默认值
+        /// </summary>
+        /// <param name="field">AMIS字段配置</param>
+        /// <param name="attr">字段特性</param>
+        protected override void HandleDefaultValue(JObject field, AmisFormFieldAttribute attr)
+        {
+            var datetimeAttr = attr as AmisDatetimeFieldAttribute;
+            if (datetimeAttr == null)
+            {
+                base.HandleDefaultValue(field, attr);
+                return;
+            }
+
+            // 处理相对时间表达式
+            if (!string.IsNullOrEmpty(datetimeAttr.RelativeTime))
+            {
+                string expression = datetimeAttr.RelativeTime.ToLower() switch
+                {
+                    "today" => "${now}",
+                    "yesterday" => "${now | dateModify -1 days}",
+                    "tomorrow" => "${now | dateModify 1 days}",
+                    "lastweek" => "${now | dateModify -7 days}",
+                    "nextweek" => "${now | dateModify 7 days}",
+                    "lastmonth" => "${now | dateModify -1 month}",
+                    "nextmonth" => "${now | dateModify 1 month}",
+                    _ => datetimeAttr.RelativeTime // 如果是自定义表达式，直接使用
+                };
+
+                // 处理时间偏移
+                if (datetimeAttr.TimeOffset != 0)
+                {
+                    expression = $"{expression} | dateModify {datetimeAttr.TimeOffset} minutes";
+                }
+
+                field["value"] = expression;
+                return;
+            }
+
+            // 处理旧的 UseCurrentTime 属性（向后兼容）
+#pragma warning disable CS0618 // 禁用过时警告
+            if (datetimeAttr.UseCurrentTime)
+            {
+                string expression = "${now}";
+                if (datetimeAttr.TimeOffset != 0)
+                {
+                    expression = $"{expression} | dateModify {datetimeAttr.TimeOffset} minutes";
+                }
+                field["value"] = expression;
+                return;
+            }
+#pragma warning restore CS0618
+
+            // 处理其他默认值情况
+            if (attr.ValueType == DefaultValueType.CurrentDateTime)
+            {
+                string expression = "${now}";
+                if (datetimeAttr.TimeOffset != 0)
+                {
+                    expression = $"{expression} | dateModify {datetimeAttr.TimeOffset} minutes";
+                }
+                field["value"] = expression;
+                return;
+            }
+
+            // 如果没有特殊处理，使用基类的默认值处理
+            base.HandleDefaultValue(field, attr);
         }
     }
 }

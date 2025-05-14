@@ -65,6 +65,7 @@ public class CreateExamSettingDto
     [DisplayName("考试时长（分钟）")]
     [Required(ErrorMessage = "考试时长不能为空")]
     [Range(1, 1440, ErrorMessage = "考试时长必须在1-1440分钟之间")]
+    [AmisNumberField(DefaultValue = 120)]
     public int Duration { get; set; }
 
     /// <summary>
@@ -73,18 +74,21 @@ public class CreateExamSettingDto
     [DisplayName("允许考试次数")]
     [Required(ErrorMessage = "允许考试次数不能为空")]
     [Range(1, 10, ErrorMessage = "允许考试次数必须在1-10次之间")]
+    [AmisNumberField(DefaultValue = 1)]
     public int AllowedAttempts { get; set; } = 1;
 
     /// <summary>
     /// 是否启用题目乱序
     /// </summary>
     [DisplayName("是否启用题目乱序")]
+    [AmisFormField(Type = "switch", DefaultValue = true)]
     public bool EnableRandomQuestionOrder { get; set; }
 
     /// <summary>
     /// 是否启用选项乱序
     /// </summary>
     [DisplayName("是否启用选项乱序")]
+    [AmisFormField(Type = "switch", DefaultValue = true)]
     public bool EnableRandomOptionOrder { get; set; }
 
     /// <summary>
@@ -92,13 +96,15 @@ public class CreateExamSettingDto
     /// </summary>
     [DisplayName("允许切屏次数")]
     [Range(0, 10, ErrorMessage = "允许切屏次数必须在0-10次之间")]
+    [AmisNumberField(DefaultValue = 0)]
     public int AllowedScreenSwitchCount { get; set; } = 0;
 
     /// <summary>
     /// 提交后是否可以查看考试结果
     /// </summary>
     [DisplayName("提交后是否可以查看考试结果")]
-    public bool EnableViewResult { get; set; } = false;
+    [AmisFormField(Type = "switch", DefaultValue = true)]
+    public bool EnableViewResult { get; set; }
 
     /// <summary>
     /// 参加考试的学生分组ID列表

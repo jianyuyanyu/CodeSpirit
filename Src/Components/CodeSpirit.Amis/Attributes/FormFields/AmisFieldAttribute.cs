@@ -1,4 +1,4 @@
-﻿namespace CodeSpirit.Amis.Attributes.FormFields
+﻿﻿namespace CodeSpirit.Amis.Attributes.FormFields
 {
     /// <summary>
     /// 自定义特性，用于配置 AMIS 表单字段的通用属性。
@@ -30,7 +30,26 @@
 
         public bool Hidden {  get; set; }
 
+        /// <summary>
+        /// 字段的值（已弃用，请使用 DefaultValue 或 DefaultValueExpression）
+        /// </summary>
+        [Obsolete("请使用 DefaultValue 或 DefaultValueExpression 属性替代")]
         public string Value { get; set; }
+
+        /// <summary>
+        /// 字段的默认值，支持多种数据类型
+        /// </summary>
+        public object DefaultValue { get; set; }
+
+        /// <summary>
+        /// 字段的默认值表达式，支持 ${xxx} 语法
+        /// </summary>
+        public string DefaultValueExpression { get; set; }
+
+        /// <summary>
+        /// 默认值的类型
+        /// </summary>
+        public DefaultValueType ValueType { get; set; } = DefaultValueType.Static;
 
         /// <summary>
         /// 自定义表单字段的其他配置，以 JSON 字符串形式提供。
@@ -54,4 +73,3 @@
         }
     }
 }
-

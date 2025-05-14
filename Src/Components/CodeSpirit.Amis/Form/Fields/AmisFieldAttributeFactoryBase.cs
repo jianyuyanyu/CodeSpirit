@@ -1,4 +1,4 @@
-﻿// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
+﻿﻿﻿// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
 
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Helpers;
@@ -55,15 +55,74 @@ namespace CodeSpirit.Amis.Form.Fields
                 field["hidden"] = fieldAttr.Hidden;
             }
 
-            if (!string.IsNullOrEmpty(fieldAttr.Value))
-            {
-                field["value"] = fieldAttr.Value;
-            }
+            // 处理默认值
+            HandleDefaultValue(field, fieldAttr);
 
             // 处理额外的自定义配置
             utilityHelper.HandleAdditionalConfig(fieldAttr.AdditionalConfig, field);
 
             return (field, fieldAttr);
+        }
+
+        /// <summary>
+        /// 处理字段的默认值
+        /// </summary>
+        /// <param name="field">AMIS字段配置</param>
+        /// <param name="attr">字段特性</param>
+        protected virtual void HandleDefaultValue(JObject field, AmisFormFieldAttribute attr)
+        {
+            // 按优先级处理默认值
+            if (attr.DefaultValue != null)
+            {
+                field["value"] = JToken.FromObject(attr.DefaultValue);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(attr.DefaultValueExpression))
+            {
+                field["value"] = attr.DefaultValueExpression;
+                return;
+            }
+
+            // 根据ValueType处理特殊的默认值类型
+            switch (attr.ValueType)
+            {
+                case DefaultValueType.CurrentDateTime:
+                    field["value"] = "${now}";
+                    break;
+                case DefaultValueType.CurrentUser:
+                    field["value"] = "${user}";
+                    break;
+                case DefaultValueType.Expression:
+                    // 如果设置了ValueType为Expression但没有设置DefaultValueExpression，使用空表达式
+                    if (string.IsNullOrEmpty(attr.DefaultValueExpression))
+                    {
+                        field["value"] = "${value}";
+                    }
+                    break;
+                case DefaultValueType.Custom:
+                    // Custom类型的处理交给具体的字段工厂实现
+                    HandleCustomDefaultValue(field, attr);
+                    break;
+                case DefaultValueType.Static:
+                default:
+                    // 如果没有设置新的默认值属性，则使用旧的Value属性（向后兼容）
+                    if (!string.IsNullOrEmpty(attr.Value))
+                    {
+                        field["value"] = attr.Value;
+                    }
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 处理自定义类型的默认值，可由派生类重写
+        /// </summary>
+        /// <param name="field">AMIS字段配置</param>
+        /// <param name="attr">字段特性</param>
+        protected virtual void HandleCustomDefaultValue(JObject field, AmisFormFieldAttribute attr)
+        {
+            // 基类不做任何处理，由具体的字段工厂实现
         }
     }
 }

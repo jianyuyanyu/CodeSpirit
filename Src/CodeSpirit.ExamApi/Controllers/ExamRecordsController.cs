@@ -635,6 +635,7 @@ public class ExamRecordsController : ApiControllerBase
             }
         };
 
+        Thread.Sleep(1000);
         return Ok(result);
     }
 

@@ -135,8 +135,8 @@
                 if (this.initialData.task) {
                     // 同步task的关键属性到顶层
                     const keysToSync = [
-                        'fileName', 'status', 'progress', 'createTime', 
-                        'completionTime', 'processedRecords', 'totalRecords', 
+                        'fileName', 'status', 'progress', 'createTime',
+                        'completionTime', 'processedRecords', 'totalRecords',
                         'fileUrl', 'errorMessage'
                     ];
 
@@ -175,7 +175,7 @@
 
             // 更新内部数据
             this.initialData.task = { ...this.initialData.task, ...taskData };
-            
+
             // 同步到顶层数据
             Object.keys(taskData).forEach(key => {
                 this.initialData[key] = taskData[key];
@@ -301,21 +301,21 @@
      */
     function extractFileIdFromUrl(fileUrl) {
         if (!fileUrl) return null;
-        
+
         // 尝试从URL中提取fileId
         // 假设fileUrl格式可能是以下几种之一：
         // 1. /api/tempfiles/download/{fileId}
         // 2. /api/tempfiles/{fileId}
         // 3. https://domain.com/api/tempfiles/download/{fileId}
         // 4. 其他包含fileId的格式
-        
+
         try {
             // 创建URL对象（对于完整URL）或者假URL（对于相对路径）
             const url = fileUrl.startsWith('http') ? new URL(fileUrl) : new URL(fileUrl, window.location.origin);
-            
+
             // 分割路径
             const pathParts = url.pathname.split('/').filter(Boolean);
-            
+
             // 检查常见模式
             if (pathParts.includes('download')) {
                 // 如果路径包含'download'，取其后面的部分作为fileId
@@ -324,7 +324,7 @@
                     return pathParts[downloadIndex + 1];
                 }
             }
-            
+
             // 如果路径包含'tempfiles'，取其后面的部分作为fileId
             if (pathParts.includes('tempfiles')) {
                 const tempfilesIndex = pathParts.indexOf('tempfiles');
@@ -332,12 +332,12 @@
                     return pathParts[tempfilesIndex + 1];
                 }
             }
-            
+
             // 如果以上都不匹配，取路径的最后一部分作为fileId
             if (pathParts.length > 0) {
                 return pathParts[pathParts.length - 1];
             }
-            
+
             return null;
         } catch (error) {
             console.error('从URL提取fileId失败:', error);
@@ -376,7 +376,7 @@
             }
 
             const data = await response.json();
-            
+
             if (data.status === 0 && data.data) {
                 // 格式化日期时间
                 if (data.data.createTime) {
@@ -394,7 +394,7 @@
 
                 // 从fileUrl中提取fileId
                 const fileId = extractFileIdFromUrl(data.data.fileUrl);
-                
+
                 // 更新任务数据
                 DataManager.updateTaskData({
                     ...data.data,
@@ -431,7 +431,7 @@
      */
     function formatDateTime(dateTimeStr) {
         if (!dateTimeStr) return '';
-        
+
         try {
             const date = new Date(dateTimeStr);
             return date.toLocaleString('zh-CN', {
@@ -454,9 +454,9 @@
      * @returns {boolean} 是否已完成
      */
     function isTaskCompleted(status) {
-        return status === "已完成" || 
-               status === "已取消" || 
-               status?.startsWith("失败") === true;
+        return status === "已完成" ||
+            status === "已取消" ||
+            status?.startsWith("失败") === true;
     }
 
     /**
@@ -507,7 +507,7 @@
             }
 
             const data = await response.json();
-            
+
             if (data.status === 0 && data.data) {
                 // 格式化日期时间
                 if (data.data.createTime) {
@@ -566,7 +566,7 @@
             if (progressBar) {
                 // 移除所有状态类
                 progressBar.classList.remove('bg-success', 'bg-warning', 'bg-danger', 'progress-bar-striped', 'progress-bar-animated');
-                
+
                 // 根据状态应用样式
                 if (status === '处理中') {
                     progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
@@ -584,7 +584,7 @@
             if (statusBadge) {
                 // 移除所有状态类
                 statusBadge.classList.remove('processing', 'success', 'warning', 'error', 'default');
-                
+
                 // 根据状态应用样式
                 if (status === '处理中') {
                     statusBadge.classList.add('processing');
@@ -700,7 +700,7 @@
                                                     tpl: "<div class='info-item'><i class='fa fa-calendar-alt text-primary me-2'></i><label>创建时间：</label><span>${createTime || '未知'}</span></div>"
                                                 },
                                                 {
-                                                    type: "tpl", 
+                                                    type: "tpl",
                                                     tpl: "<div class='info-item'><i class='fa fa-clock text-primary me-2'></i><label>更新时间：</label><span>${updateTime || '未知'}</span></div>",
                                                     visibleOn: "${updateTime}"
                                                 },
@@ -777,7 +777,7 @@
                                         className: "mb-3 download-button",
                                         iconClassName: "fa fa-download",
                                         actionType: "download",
-                                        api:"${fileUrl}",
+                                        api: "${fileUrl}",
                                         visibleOn: "fileUrl && status === '已完成'"
                                     }
                                 ]
@@ -828,7 +828,7 @@
 
             // 初始化AMIS应用
             const amisApp = amisRequire('amis/embed');
-            
+
             // 配置AMIS实例
             const app = amisApp.embed('#export-task-app', amisJSON, {
                 locale: 'zh-CN',

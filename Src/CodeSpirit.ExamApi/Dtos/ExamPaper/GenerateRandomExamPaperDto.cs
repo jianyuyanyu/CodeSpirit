@@ -29,6 +29,7 @@ public class GenerateRandomExamPaperDto
     [DisplayName("总分")]
     [Required(ErrorMessage = "总分不能为空")]
     [Range(1, 1000, ErrorMessage = "总分必须在1-1000之间")]
+    [AmisNumberField(DefaultValue = 100)]
     public int TotalScore { get; set; } = 100;
 
     /// <summary>
@@ -36,6 +37,7 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("及格分数")]
     [Range(0, 1000, ErrorMessage = "及格分数必须在0-1000之间")]
+    [AmisNumberField(DefaultValue = 60)]
     public int PassScore { get; set; } = 60;
 
     /// <summary>
@@ -43,6 +45,7 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("时长（分钟）")]
     [Range(1, 1440, ErrorMessage = "考试时长必须在1-1440分钟之间")]
+    [AmisNumberField(DefaultValue = 120)]
     public int Duration { get; set; } = 120;
 
     /// <summary>

@@ -465,32 +465,6 @@ public class ExamRecordsController : ApiControllerBase
     }
 
     /// <summary>
-    /// 重新批改考试分数
-    /// </summary>
-    /// <param name="modifyExamScoreDto">批改参数</param>
-    /// <returns>考试记录详情</returns>
-    [HttpPut("{id}/regrade")]
-    [Operation("重新批改", "form", null, "确定要重新批改吗？", visibleOn: "status===3")]
-    [DisplayName("重新批改考试")]
-    public async Task<ActionResult<ApiResponse<ExamRecordDto>>> ModifyExamScore(long id, ModifyExamScoreDto modifyExamScoreDto)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadResponse<ExamRecordDto>("请求参数无效");
-        }
-
-        try
-        {
-            var result = await _examRecordService.ModifyExamScoreAsync(id, modifyExamScoreDto);
-            return SuccessResponse(result);
-        }
-        catch (Exception ex)
-        {
-            return BadResponse<ExamRecordDto>(ex.Message);
-        }
-    }
-
-    /// <summary>
     /// 批量导出考生试卷
     /// </summary>
     /// <param name="dto">批量导出参数</param>

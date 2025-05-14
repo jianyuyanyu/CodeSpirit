@@ -1,0 +1,19 @@
+@page "/Tasks/Export-Task/{TaskId}"
+@model CodeSpirit.Web.Pages.Tasks.ExportTaskModel
+@using Microsoft.Extensions.Options
+@using CodeSpirit.Web.Options
+@{
+    ViewData["Title"] = "导出任务进度";
+}
+
+<div id="export-task-app"></div>
+
+@section Scripts {
+    <resource path="lib/signalr/dist/browser/signalr.min.js" type="js" />
+    <resource path="js/notification-client.js" type="js" />
+    <resource path="js/export-task-amis.js" type="js" />
+}
+
+@section Styles {
+    <resource path="css/export-task-amis.css" type="css" />
+}

@@ -11,6 +11,8 @@ using CodeSpirit.Shared.Entities.Interfaces;
 using CodeSpirit.Shared.Filters;
 using CodeSpirit.Shared.JsonConverters;
 using CodeSpirit.Shared.ModelBindings;
+using CodeSpirit.Shared.Services.Background;
+using CodeSpirit.Shared.Services.Files;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -86,6 +88,17 @@ public static class ServiceCollectionExtensions
         services.AddCodeSpiritNavigation();
 
         services.AddCodeSpiritAggregator();
+
+        // 注册后台任务服务
+        services.AddHostedService<BackgroundJobServiceImpl>();
+        services.AddSingleton<IBackgroundJobService>(provider =>
+            provider.GetRequiredService<IEnumerable<IHostedService>>()
+                .OfType<BackgroundJobServiceImpl>()
+                .First());
+
+        // 注册文件服务
+        services.AddScoped<ITempFileService, TempFileServiceImpl>();
+
         return services;
     }
 

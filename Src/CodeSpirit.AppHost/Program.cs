@@ -1,7 +1,7 @@
 using Aspire.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
-IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
+var builder = DistributedApplication.CreateBuilder(args);
 
 var cache = builder.AddRedis("cache")
                    .WithLifetime(ContainerLifetime.Persistent)

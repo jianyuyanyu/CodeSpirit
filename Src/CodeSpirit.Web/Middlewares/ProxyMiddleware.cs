@@ -137,7 +137,8 @@ namespace CodeSpirit.Web.Middlewares
                 serviceName == "signalr" || serviceName == "hubs" ||
                 serviceName == "Login" || serviceName == "Index" ||
                 serviceName == "Chat" || serviceName == "Notifications" ||
-                serviceName == "Impersonate" || serviceName == "Shared")
+                serviceName == "Impersonate" || serviceName == "Shared" ||
+                serviceName == "export-task")
             {
                 _logger.LogInformation("Web项目路径，跳过代理 - 路径: {Path}", request.Path);
                 await _next(context);

@@ -48,6 +48,7 @@ public class CreateExamSettingDto
     /// </summary>
     [DisplayName("开始时间")]
     [Required(ErrorMessage = "开始时间不能为空")]
+    [AmisDatetimeField]
     public DateTime StartTime { get; set; }
 
     /// <summary>
@@ -55,6 +56,7 @@ public class CreateExamSettingDto
     /// </summary>
     [DisplayName("结束时间")]
     [Required(ErrorMessage = "结束时间不能为空")]
+    [AmisDatetimeField]
     public DateTime EndTime { get; set; }
 
     /// <summary>

@@ -1,8 +1,6 @@
 // Program.cs
 using CodeSpirit.ExamApi;
-using CodeSpirit.ExamApi.Extensions;
 using System.Text;
-using CodeSpirit.Shared.DistributedLock;
 
 Console.OutputEncoding = Encoding.UTF8;
 
@@ -16,8 +14,7 @@ var app = builder.Build();
 
 try
 {
-    await app.UseExamApiServicesAsync();
-    
+    await app.UseExamApiServicesAsync();    
     app.Run();
 }
 catch (Exception ex)

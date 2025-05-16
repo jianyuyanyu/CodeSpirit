@@ -2,11 +2,10 @@ using CodeSpirit.Aggregator;
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Charts.Extensions;
-using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Services;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
-using CodeSpirit.ExamApi.Settings;
 using CodeSpirit.Navigation.Extensions;
+using CodeSpirit.PdfGeneration.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.DistributedLock;
@@ -114,6 +113,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExamSettingService, ExamSettingService>();
         services.AddScoped<IMonitorService, MonitorService>();
 
+        // 注册PDF生成服务
+        services.AddPdfGeneration(configuration);
+
         // 注册AI题目生成服务
         services.AddSignalRAndNotificationServices();
         services.AddHttpClient();
@@ -200,6 +202,9 @@ public static class ServiceCollectionExtensions
                 logger.LogError(ex, "初始化数据库时发生错误。");
             }
         }
+
+        // 初始化PDF生成服务
+        await app.UsePdfGenerationAsync();
 
         return app;
     }

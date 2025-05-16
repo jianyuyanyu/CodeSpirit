@@ -13,8 +13,6 @@
 	<ItemGroup>
 		<PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.14" />
 		<PackageReference Include="LinqKit.Core" Version="1.2.8" />
-		<PackageReference Include="Magicodes.IE.Html" Version="2.7.5.2" />
-		<PackageReference Include="Magicodes.IE.Pdf" Version="2.7.5.2" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.NewtonsoftJson" Version="9.0.2" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Options" Version="9.0.2" />
@@ -35,6 +33,7 @@
 		<ProjectReference Include="..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Settings\CodeSpirit.Settings.csproj" />
 		<ProjectReference Include="..\Components\CodeSpirit.LLM\CodeSpirit.LLM.csproj" />
+		<ProjectReference Include="..\Components\CodeSpirit.PdfGeneration\CodeSpirit.PdfGeneration.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -4,11 +4,13 @@ using CodeSpirit.ExamApi.Dtos.ExamRecord;
 using CodeSpirit.Shared.Services.Background;
 using CodeSpirit.Shared.Services.Background.Dtos;
 using CodeSpirit.Shared.Services.Files;
-using Magicodes.ExporterAndImporter.Pdf;
+using CodeSpirit.PdfGeneration.Services;
+using PuppeteerSharp;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.IO.Compression;
 using System.Text;
+using PuppeteerSharp.Media;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -22,6 +24,8 @@ public class ExamRecordsController : ApiControllerBase
     private readonly IExamRecordService _examRecordService;
     private readonly IExamPaperService _examPaperService;
     private readonly IBackgroundJobService _backgroundJobService;
+    private readonly IPdfGenerationService _pdfGenerationService;
+    private readonly ILogger<ExamRecordsController> _logger;
 
     /// <summary>
     /// 构造函数
@@ -29,14 +33,20 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="examRecordService">考试记录服务</param>
     /// <param name="examPaperService">试卷服务</param>
     /// <param name="backgroundJobService">后台任务服务</param>
+    /// <param name="pdfGenerationService">PDF生成服务</param>
+    /// <param name="logger">日志服务</param>
     public ExamRecordsController(
         IExamRecordService examRecordService,
         IExamPaperService examPaperService,
-        IBackgroundJobService backgroundJobService)
+        IBackgroundJobService backgroundJobService,
+        IPdfGenerationService pdfGenerationService,
+        ILogger<ExamRecordsController> logger)
     {
         _examRecordService = examRecordService;
         _examPaperService = examPaperService;
         _backgroundJobService = backgroundJobService;
+        _pdfGenerationService = pdfGenerationService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -644,18 +654,52 @@ public class ExamRecordsController : ApiControllerBase
     /// </summary>
     private async Task<byte[]> GeneratePdfFromHtml(ExamPaperDetailDto record, ExamPaperDto examPaper)
     {
-        // 生成HTML内容
-        string htmlContent = await GenerateHtmlContent(record, examPaper);
-        var pdfExporter = new PdfExporter();
-        var result = await pdfExporter.ExportBytesByTemplate(record, new PdfExporterAttribute
+        try
         {
-            PaperKind = WkHtmlToPdfDotNet.PaperKind.A4,
-            Orientation = WkHtmlToPdfDotNet.Orientation.Portrait,
-            IsEnablePagesCount = true,
-        },
-        htmlContent);
+            // 确保PDF生成服务已初始化
+            var status = await _pdfGenerationService.GetStatusAsync();
+            if (!status.IsInitialized)
+            {
+                await _pdfGenerationService.InitializeAsync();
+            }
 
-        return result;
+            // 生成HTML内容
+            string htmlContent = await GenerateHtmlContent(record, examPaper);
+
+            // 配置PDF生成选项
+            var pdfOptions = new PdfOptions
+            {
+                Format = PaperFormat.A4,
+                PrintBackground = true,
+                MarginOptions = new MarginOptions
+                {
+                    Top = "10mm",
+                    Bottom = "10mm",
+                    Left = "10mm",
+                    Right = "10mm"
+                },
+                PreferCSSPageSize = true,
+                Scale = 1.0m
+            };
+
+            // 生成PDF
+            var result = await _pdfGenerationService.GeneratePdfAsync(htmlContent, pdfOptions);
+            _logger.LogInformation(
+                "成功生成PDF，学生：{StudentName}，考试：{ExamName}，大小：{Size:N0} 字节",
+                record.StudentName,
+                record.ExamName,
+                result.Length);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, 
+                "生成PDF失败，学生：{StudentName}，考试：{ExamName}",
+                record.StudentName,
+                record.ExamName);
+            throw;
+        }
     }
 
     /// <summary>

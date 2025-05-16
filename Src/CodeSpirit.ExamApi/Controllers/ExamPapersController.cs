@@ -456,7 +456,27 @@ public class ExamPapersController : ApiControllerBase
             ["title"] = "",
             ["id"] = "examForm",
             ["body"] = formItems,
-            ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
+            ["actions"] = new JArray()
+            {
+                new JObject
+                    {
+                        ["type"] = "button",
+                        ["label"] = "返回",
+                        ["actionType"] = "close",
+                        ["level"] = "default"
+                    },
+                    new JObject
+                    {
+                        ["type"] = "button",
+                        ["label"] = "发布试卷",
+                        ["actionType"] = "ajax",
+                        ["api"] = $"PUT:/exam/api/exam/examPapers/{id}/publish",
+                        ["level"] = "primary",
+                        ["confirmText"] = "确定要发布此试卷吗？发布后将可用于创建考试。",
+                        ["visibleOn"] = "status == 1",
+                        ["reload"] = "window"
+                    }
+            }
         };
 
         return SuccessResponse(amisConfig);

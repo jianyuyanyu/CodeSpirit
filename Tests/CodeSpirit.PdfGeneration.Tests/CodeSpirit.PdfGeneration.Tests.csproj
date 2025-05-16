@@ -25,7 +25,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Src\CodeSpirit.PdfGeneration\CodeSpirit.PdfGeneration.csproj" />
+    <ProjectReference Include="..\..\Src\Components\CodeSpirit.PdfGeneration\CodeSpirit.PdfGeneration.csproj" />
   </ItemGroup>
-
 </Project>

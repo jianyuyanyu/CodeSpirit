@@ -50,7 +50,7 @@ COPY ["Src/Components/CodeSpirit.Amis/CodeSpirit.Amis.csproj", "Src/Components/C
 COPY ["Src/Components/CodeSpirit.Authorization/CodeSpirit.Authorization.csproj", "Src/Components/CodeSpirit.Authorization/"]
 COPY ["Src/Components/CodeSpirit.Navigation/CodeSpirit.Navigation.csproj", "Src/Components/CodeSpirit.Navigation/"]
 COPY ["Src/Components/CodeSpirit.Charts/CodeSpirit.Charts.csproj", "Src/Components/CodeSpirit.Charts/"]
-COPY ["Src/CodeSpirit.PdfGeneration/CodeSpirit.PdfGeneration.csproj", "Src/CodeSpirit.PdfGeneration/"]
+COPY ["Src/Components/CodeSpirit.PdfGeneration/CodeSpirit.PdfGeneration.csproj", "Src/Components/CodeSpirit.PdfGeneration/"]
 RUN dotnet restore "./Src/CodeSpirit.ExamApi/CodeSpirit.ExamApi.csproj"
 COPY . .
 WORKDIR "/src/Src/CodeSpirit.ExamApi"

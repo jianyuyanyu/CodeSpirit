@@ -24,6 +24,28 @@ public static class ServiceCollectionExtensions
         // 注册配置选项
         services.Configure<PdfGenerationOptions>(configuration.GetSection("PdfGeneration"));
         
+        // 确保设置Chrome可执行文件路径
+        services.Configure<PdfGenerationOptions>(options =>
+        {
+            if (string.IsNullOrEmpty(options.ExecutablePath))
+            {
+                // 从环境变量获取路径
+                var envPath = Environment.GetEnvironmentVariable("PUPPETEER_EXECUTABLE_PATH");
+                if (!string.IsNullOrEmpty(envPath))
+                {
+                    options.ExecutablePath = envPath;
+                }
+                // 如果环境变量未设置，根据操作系统提供默认路径
+                else if (OperatingSystem.IsLinux())
+                {
+                    // Linux环境（Docker容器）使用预装的Chromium
+                    options.ExecutablePath = "/usr/bin/chromium";
+                }
+                // 在Windows环境下，不设置ExecutablePath，允许PuppeteerSharp自动下载Chrome
+                // 这样可以确保在Windows开发环境中正常工作
+            }
+        });
+        
         // 注册PDF生成服务
         services.TryAddSingleton<IPdfGenerationService>(sp =>
         {
@@ -46,6 +68,28 @@ public static class ServiceCollectionExtensions
     {
         // 注册配置选项
         services.Configure(configureOptions);
+        
+        // 确保设置Chrome可执行文件路径
+        services.Configure<PdfGenerationOptions>(options =>
+        {
+            if (string.IsNullOrEmpty(options.ExecutablePath))
+            {
+                // 从环境变量获取路径
+                var envPath = Environment.GetEnvironmentVariable("PUPPETEER_EXECUTABLE_PATH");
+                if (!string.IsNullOrEmpty(envPath))
+                {
+                    options.ExecutablePath = envPath;
+                }
+                // 如果环境变量未设置，根据操作系统提供默认路径
+                else if (OperatingSystem.IsLinux())
+                {
+                    // Linux环境（Docker容器）使用预装的Chromium
+                    options.ExecutablePath = "/usr/bin/chromium";
+                }
+                // 在Windows环境下，不设置ExecutablePath，允许PuppeteerSharp自动下载Chrome
+                // 这样可以确保在Windows开发环境中正常工作
+            }
+        });
         
         // 注册PDF生成服务
         services.TryAddSingleton<IPdfGenerationService>(sp =>

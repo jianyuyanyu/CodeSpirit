@@ -18,7 +18,7 @@ public class CreateUserDto
 
     [MaxLength(18)]
     [DisplayName("身份证")]
-    [RegularExpression(@"^\d{15}|\d{18}$", ErrorMessage = "身份证号码格式不正确。")]
+    [RegularExpression(@"^(\d{6}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx])$", ErrorMessage = "身份证号码格式不正确。")]
     public string IdNo { get; set; }
 
     [MaxLength(255)]

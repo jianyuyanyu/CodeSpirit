@@ -139,28 +139,22 @@ sequenceDiagram
 
 ## 路线图规划
 
-### Q1 2025
+### Q2 2025
 
 - 智能界面生成引擎
 - 码灵Beta版发布
 - H5生成引擎
 
-### Q2 2025
+### Q3 2025
 
 - 可视化分析模块
 - 深度集成LLM代码生成能力
 
-### Q3 2025
+### Q4 2025
 
 - 全栈生成引擎
 - 多云部署支持
 - Java支持
-
-### Q4 2025
-
-- DSL支持
-- 智能运维机器人
-- 低代码应用市场
 
 ## 框架优势对比
 
@@ -188,6 +182,16 @@ https://codespirit-app.xin-lai.com/
 
 请关注“麦扣聊技术”公众号获取最新的体验账号及密码。
 
+## 快速开始
+
+1. 安装并启动 Docker Desktop
+
+2. 将CodeSpirit.AppHost设为启动项目
+
+3. 启动（启动时会拉取redis、seq、rabbitmq等镜像，如无法拉取，请采取方式进行加速）
+
+   **注意：当前基于.NET Aspire简化了分布式应用开发时的编排，服务发现、环境变量、容器设置的配置，以便更轻松地在开发阶段进行管理。**
+
 ## 开发文档
 
 - Github：[xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit)**（定期推送）**
@@ -195,6 +199,11 @@ https://codespirit-app.xin-lai.com/
 
 [📘 上手文档](./Docs/CodeSpirit（码灵）开发指南（初稿）.md) | [💬 加入技术社区（暂未开放，请关注公众号）](https://codespirit-chat.xin-lai.com/)
 
+1. [聚合器使用指南](./Docs/CodeSpirit.Aggregator聚合器使用指南.md)
+1. [表单默认值设置](./Docs/CodeSpirit.Amis表单默认值使用指南.md)
+1. [PdfGeneration使用](./Docs/CodeSpirit.PdfGeneration使用指南.md)
+1. [设置管理组件使用](./Docs/CodeSpirit.Settings设置管理组件使用指南)
+1. [分布式锁使用](./Docs/CodeSpirit分布式锁使用指南.md)
 1. [界面生成引擎](./Docs/CodeSpirit.Amis.md)
 
 ![公众号](./Res/qrcode.jpg)

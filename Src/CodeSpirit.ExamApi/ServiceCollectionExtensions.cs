@@ -132,11 +132,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddChartServices(this IServiceCollection services)
     {
         // 注册CodeSpirit.Charts服务
-        services.AddCharts(options =>
+        services.AddChartServices(options =>
         {
-            options.DefaultTheme = "light";
-            options.EnableAI = true;
-            options.CacheMinutes = 30;
+            options.EnableCache = true;
+            options.CacheExpiration = 30;
         });
 
         return services;

@@ -11,6 +11,7 @@ using LinqKit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using CodeSpirit.Core.Extensions;
 
 public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IUserService
 {
@@ -569,24 +570,53 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     /// <returns></returns>
     public async Task<List<ActiveUserDto>> GetActiveUsersAsync(DateTimeOffset startDate, DateTimeOffset endDate)
     {
-        IQueryable<ApplicationUser> query = _userManager.Users
-            .Where(u => u.LastLoginTime >= startDate && u.LastLoginTime <= endDate);
-
-        // 按天统计活跃用户数量
-        var dailyActiveUsers = await query
-            .GroupBy(u => u.LastLoginTime.Value.Date)
-            .Select(g => new { Date = g.Key, ActiveUserCount = g.Count() })
-            .OrderBy(g => g.Date)
-            .ToListAsync();
-
-        // 返回前端所需格式
-        List<ActiveUserDto> result = dailyActiveUsers.Select(g => new ActiveUserDto
+        try
         {
-            Date = g.Date,
-            ActiveUserCount = g.ActiveUserCount
-        }).ToList();
+            IQueryable<ApplicationUser> query = _userManager.Users
+                .Where(u => u.LastLoginTime >= startDate && u.LastLoginTime <= endDate);
 
-        return result;
+            // 按天统计活跃用户数量
+            var dailyActiveUsers = await query
+                .GroupBy(u => u.LastLoginTime.Value.Date)
+                .Select(g => new { Date = g.Key, ActiveUserCount = g.Count() })
+                .OrderBy(g => g.Date)
+                .ToListAsync();
+
+            _logger.LogInformation("查询到的活跃用户数据条数: {Count}", dailyActiveUsers.Count);
+
+            // 返回前端所需格式
+            List<ActiveUserDto> result = dailyActiveUsers.Select(g => new ActiveUserDto
+            {
+                Date = g.Date,
+                ActiveUserCount = g.ActiveUserCount
+            }).ToList();
+
+            // 如果没有数据，添加一条默认数据以避免空集合异常
+            if (result.Count == 0)
+            {
+                _logger.LogWarning("活跃用户数据为空，添加默认数据");
+                result.Add(new ActiveUserDto 
+                { 
+                    Date = DateTime.Now.Date, 
+                    ActiveUserCount = 0 
+                });
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取活跃用户统计时发生错误");
+            // 发生异常时返回含有一条默认数据的列表，而不是空列表
+            return new List<ActiveUserDto> 
+            { 
+                new ActiveUserDto 
+                { 
+                    Date = DateTime.Now.Date, 
+                    ActiveUserCount = 0 
+                } 
+            };
+        }
     }
 
     /// <summary>
@@ -600,7 +630,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
             .GroupBy(u => u.Gender)
             .Select(g => new
             {
-                Gender = g.Key.ToString(),
+                Gender = g.Key.GetDisplayName(),
                 Count = g.Count()
             });
 
@@ -742,30 +772,58 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     /// <returns>未登录用户数据列表</returns>
     public async Task<IEnumerable<object>> GetInactiveUsersStatisticsAsync(int thresholdDays)
     {
-        var now = DateTime.UtcNow;
-        var cutoffDates = Enumerable.Range(1, 5)
-            .Select(multiplier => now.AddDays(-thresholdDays * multiplier))
-            .ToList();
-
-        var result = new List<object>();
-
-        foreach (var cutoffDate in cutoffDates)
+        try
         {
-            var daysInactive = (int)(now - cutoffDate).TotalDays;
+            var now = DateTime.UtcNow;
+            var cutoffDates = Enumerable.Range(1, 5)
+                .Select(multiplier => now.AddDays(-thresholdDays * multiplier))
+                .ToList();
 
-            var inactiveCount = await _userManager.Users
-                .Where(u => !u.IsDeleted)
-                .Where(u => u.LastLoginTime == null || u.LastLoginTime < cutoffDate)
-                .CountAsync();
+            var result = new List<object>();
 
-            result.Add(new
+            foreach (var cutoffDate in cutoffDates)
             {
-                InactiveDays = $"{daysInactive}天以上",
-                UserCount = inactiveCount
-            });
-        }
+                var daysInactive = (int)(now - cutoffDate).TotalDays;
 
-        return result.ToList();
+                var inactiveCount = await _userManager.Users
+                    .Where(u => !u.IsDeleted)
+                    .Where(u => u.LastLoginTime == null || u.LastLoginTime < cutoffDate)
+                    .CountAsync();
+
+                result.Add(new
+                {
+                    InactiveDays = $"{daysInactive}天以上",
+                    UserCount = inactiveCount
+                });
+            }
+
+            _logger.LogInformation("查询到的未登录用户数据条数: {Count}", result.Count);
+
+            // 确保结果非空
+            if (result.Count == 0)
+            {
+                _logger.LogWarning("未登录用户数据为空，添加默认数据");
+                result.Add(new
+                {
+                    InactiveDays = $"{thresholdDays}天以上",
+                    UserCount = 0
+                });
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取未登录用户统计时发生错误");
+            return new List<object>
+            {
+                new
+                {
+                    InactiveDays = $"{thresholdDays}天以上",
+                    UserCount = 0
+                }
+            };
+        }
     }
     #endregion
 

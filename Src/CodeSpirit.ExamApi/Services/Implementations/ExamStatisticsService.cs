@@ -1,16 +1,6 @@
-using CodeSpirit.Charts.Analysis;
-using CodeSpirit.Charts.Services;
-using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
-using CodeSpirit.ExamApi.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -21,7 +11,6 @@ public class ExamStatisticsService : IExamStatisticsService
 {
     private readonly ExamDbContext _dbContext;
     private readonly ILogger<ExamStatisticsService> _logger;
-    private readonly IDataAnalyzer _dataAnalyzer;
 
     /// <summary>
     /// 构造函数
@@ -31,12 +20,10 @@ public class ExamStatisticsService : IExamStatisticsService
     /// <param name="dataAnalyzer">数据分析器</param>
     public ExamStatisticsService(
         ExamDbContext dbContext,
-        ILogger<ExamStatisticsService> logger,
-        IDataAnalyzer dataAnalyzer)
+        ILogger<ExamStatisticsService> logger)
     {
         _dbContext = dbContext;
         _logger = logger;
-        _dataAnalyzer = dataAnalyzer;
     }
 
     /// <summary>
@@ -97,7 +84,18 @@ public class ExamStatisticsService : IExamStatisticsService
                 PassRate = 0.0
             };
             
-        return statistics;
+        // 将统计数据转换为图表所需的集合格式
+        var result = new List<object>
+        {
+            new { Category = "考试人数", Value = statistics.TotalCount },
+            new { Category = "平均分", Value = Math.Round(statistics.AverageScore, 2) },
+            new { Category = "最高分", Value = statistics.MaxScore },
+            new { Category = "最低分", Value = statistics.MinScore },
+            new { Category = "及格人数", Value = statistics.PassCount },
+            new { Category = "及格率(%)", Value = Math.Round(statistics.PassRate, 2) }
+        };
+            
+        return result;
     }
 
     /// <summary>
@@ -335,7 +333,6 @@ public class ExamStatisticsService : IExamStatisticsService
             time, 
             CalendarWeekRule.FirstFourDayWeek, 
             DayOfWeek.Monday);
-    }
-    
+    }    
     #endregion
 } 

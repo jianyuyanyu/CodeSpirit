@@ -12,6 +12,7 @@ using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Data.Seeders;
 using CodeSpirit.IdentityApi.EventHandlers;
+using CodeSpirit.IdentityApi.Jwt;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
@@ -29,6 +30,12 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddCustomServices(this IServiceCollection services)
     {
+        // 注册JWT服务
+        services.AddScoped<IJwtTokenHandler, JwtTokenHandler>();
+
+        // 注册登录日志仓储
+        services.AddScoped<ILoginLogRepository, LoginLogRepository>();
+
         // 添加 DbContext 基类的解析
         services.AddScoped<DbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
@@ -215,7 +222,7 @@ public static class ServiceCollectionExtensions
         builder.Services.ConfigureCustomControllers();
         
         // 注册Charts服务
-        builder.Services.AddChartServices();
+        builder.Services.RegisterChartServices();
 
         // 配置审计
         builder.Services.Configure<AuditConfig>(
@@ -280,14 +287,13 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// 添加图表服务
     /// </summary>
-    public static IServiceCollection AddChartServices(this IServiceCollection services)
+    public static IServiceCollection RegisterChartServices(this IServiceCollection services)
     {
         // 注册CodeSpirit.Charts服务
-        services.AddCharts(options =>
+        services.AddChartServices(options =>
         {
-            options.DefaultTheme = "light";
-            options.EnableAI = true;
-            options.CacheMinutes = 30;
+            options.EnableCache = true;
+            options.CacheExpiration = 30; // 修改为int类型的值，表示缓存过期时间（分钟）
         });
         
         return services;

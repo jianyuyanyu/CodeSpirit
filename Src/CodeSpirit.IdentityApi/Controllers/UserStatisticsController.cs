@@ -18,17 +18,14 @@ namespace CodeSpirit.IdentityApi.Controllers
     public class UserStatisticsController : ApiControllerBase
     {
         private readonly IUserService _userService;
-        private readonly IChartService _chartService;
-        private readonly IEChartConfigGenerator _eChartConfigGenerator;
+        private readonly ILogger<UserStatisticsController> _logger;
 
         public UserStatisticsController(
             IUserService userService,
-            IChartService chartService,
-            IEChartConfigGenerator eChartConfigGenerator)
+            ILogger<UserStatisticsController> logger)
         {
             _userService = userService;
-            _chartService = chartService;
-            _eChartConfigGenerator = eChartConfigGenerator;
+            _logger = logger;
         }
 
         /// <summary>
@@ -38,9 +35,8 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>图表配置</returns>
         [HttpGet("usergrowth")]
         [Display(Name = "用户增长趋势")]
-        [Chart("用户增长趋势", "展示用户随时间的增长趋势")]
-        [ChartType(ChartType.Line)]
-        [ChartData(dimensionField: "Date", metricFields: new[] { "UserCount" })]
+        [Chart("line")]
+        [ChartData(XField = "Date", YField = "UserCount")]
         [DisplayName("获取用户增长趋势")]
         public async Task<IActionResult> GetUserGrowthStatisticsAsync([FromQuery] DateTime[] dateRange)
         {
@@ -49,7 +45,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
             // 获取数据
             var dailyGrowth = await _userService.GetUserGrowthAsync(startDate, endDate);
-            return this.AutoChartResult(dailyGrowth);
+            return await this.AutoChartResult(dailyGrowth);
         }
 
         /// <summary>
@@ -59,9 +55,8 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>图表配置</returns>
         [HttpGet("activeusers")]
         [Display(Name = "活跃用户统计")]
-        [Chart("活跃用户统计", "展示活跃用户数量随时间的变化")]
-        [ChartType(ChartType.Bar)]
-        [ChartData(dimensionField: "Date", metricFields: new[] { "ActiveUserCount" })]
+        [Chart("bar")]
+        [ChartData(XField = "Date", YField = "ActiveUserCount")]
         [DisplayName("获取活跃用户统计")]
         public async Task<IActionResult> GetActiveUsersStatisticsAsync([FromQuery] DateTime[] dateRange)
         {
@@ -70,7 +65,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
             // 获取数据
             var activeUsers = await _userService.GetActiveUsersAsync(startDate, endDate);
-            return this.AutoChartResult(activeUsers);
+            return await this.AutoChartResult(activeUsers);
         }
 
         /// <summary>
@@ -79,14 +74,14 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>图表配置</returns>
         [HttpGet("gender-distribution")]
         [Display(Name = "用户性别分布")]
-        [Chart("用户性别分布", "展示不同性别用户的数量分布")]
-        [ChartType(ChartType.Pie)]
-        [ChartData(dimensionField: "Gender", metricFields: new[] { "Count" })]
+        [Chart("pie")]
+        [ChartData(CategoryField = "Gender", ValueField = "Count")]
         [DisplayName("获取用户性别分布")]
+        [ChartTitle("用户性别分布")]
         public async Task<IActionResult> GetGenderDistributionAsync()
         {
             var genderDistribution = await _userService.GetUserGenderDistributionAsync();
-            return this.AutoChartResult(genderDistribution);
+            return await this.AutoChartResult(genderDistribution);
         }
 
         /// <summary>
@@ -95,14 +90,13 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>图表配置</returns>
         [HttpGet("active-status")]
         [Display(Name = "用户活跃状态")]
-        [Chart("用户活跃状态", "展示活跃和非活跃用户的分布")]
-        [ChartType(ChartType.Pie)]
-        [ChartData(dimensionField: "Status", metricFields: new[] { "Count" })]
+        [Chart("pie")]
+        [ChartData(CategoryField = "Status", ValueField = "Count")]
         [DisplayName("获取用户活跃状态分布")]
         public async Task<IActionResult> GetActiveStatusDistributionAsync()
         {
             var statusDistribution = await _userService.GetUserActiveStatusDistributionAsync();
-            return this.AutoChartResult(statusDistribution);
+            return await this.AutoChartResult(statusDistribution);
         }
 
         /// <summary>
@@ -113,8 +107,8 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>图表配置</returns>
         [HttpGet("registration-trend")]
         [Display(Name = "用户注册趋势")]
-        [Chart("用户注册趋势", "展示用户注册时间的分布趋势")]
-        [ChartData(dimensionField: "TimePeriod", metricFields: new[] { "RegisteredCount" })]
+        [Chart("line")]
+        [ChartData(XField = "TimePeriod", YField = "RegisteredCount")]
         [DisplayName("获取用户注册趋势")]
         public async Task<IActionResult> GetRegistrationTrendAsync(
             [FromQuery] string groupBy = "Day",
@@ -124,7 +118,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             DateTimeOffset endDate = dateRange?.Length > 1 ? dateRange[1] : DateTimeOffset.Now.AddDays(1);
 
             var registrationTrend = await _userService.GetUserRegistrationTrendAsync(startDate, endDate, groupBy);
-            return this.AutoChartResult(registrationTrend);
+            return await this.AutoChartResult(registrationTrend);
         }
 
         /// <summary>
@@ -134,8 +128,8 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>图表配置</returns>
         [HttpGet("login-frequency")]
         [Display(Name = "用户登录频率")]
-        [Chart("用户登录频率", "展示用户登录频率的分布")]
-        [ChartData(dimensionField: "FrequencyRange", metricFields: new[] { "UserCount" })]
+        [Chart("bar")]
+        [ChartData(CategoryField = "FrequencyRange", ValueField = "UserCount")]
         [DisplayName("获取用户登录频率")]
         public async Task<IActionResult> GetLoginFrequencyAsync([FromQuery] DateTime[] dateRange)
         {
@@ -143,7 +137,7 @@ namespace CodeSpirit.IdentityApi.Controllers
             DateTimeOffset endDate = dateRange?.Length > 1 ? dateRange[1] : DateTimeOffset.Now.AddDays(1);
 
             var loginFrequency = await _userService.GetUserLoginFrequencyAsync(startDate, endDate);
-            return this.AutoChartResult(loginFrequency);
+            return await this.AutoChartResult(loginFrequency);
         }
         
         /// <summary>
@@ -153,14 +147,13 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>图表配置</returns>
         [HttpGet("inactive-users")]
         [Display(Name = "长期未登录用户")]
-        [Chart("长期未登录用户", "展示长期未登录用户的数量随时间的变化")]
-        [ChartType(ChartType.Line)]
-        [ChartData(dimensionField: "InactiveDays", metricFields: new[] { "UserCount" })]
+        [Chart("line")]
+        [ChartData(XField = "InactiveDays", YField = "UserCount")]
         [DisplayName("获取长期未登录用户")]
         public async Task<IActionResult> GetInactiveUsersAsync([FromQuery] int thresholdDays = 30)
         {
             var inactiveUsers = await _userService.GetInactiveUsersStatisticsAsync(thresholdDays);
-            return this.AutoChartResult(inactiveUsers);
+            return await this.AutoChartResult(inactiveUsers);
         }
     }
 }

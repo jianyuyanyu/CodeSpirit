@@ -1,123 +1,175 @@
-using CodeSpirit.Charts.Analysis;
+using CodeSpirit.Charts.Core.Abstractions;
 using CodeSpirit.Charts.Models;
 using CodeSpirit.Charts.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
 
-namespace CodeSpirit.Charts.Extensions
+namespace CodeSpirit.Charts.Extensions;
+
+/// <summary>
+/// 控制器图表扩展类
+/// </summary>
+public static class ChartControllerExtensions
 {
     /// <summary>
-    /// 图表控制器扩展方法
+    /// 获取图表服务
     /// </summary>
-    public static class ChartControllerExtensions
+    /// <param name="controller">控制器</param>
+    /// <returns>图表服务</returns>
+    public static IChartService GetChartService(this ControllerBase controller)
     {
-        /// <summary>
-        /// 返回ECharts配置JSON结果
-        /// </summary>
-        public static IActionResult ChartResult(this ControllerBase controller, ChartConfig config, object data)
+        return controller.HttpContext.RequestServices.GetRequiredService<IChartService>();
+    }
+
+    /// <summary>
+    /// 创建图表配置
+    /// </summary>
+    /// <param name="controller">控制器</param>
+    /// <param name="chartType">图表类型</param>
+    /// <param name="data">图表数据</param>
+    /// <param name="options">配置选项</param>
+    /// <returns>图表配置</returns>
+    public static async Task<object> CreateChartConfigAsync(
+        this ControllerBase controller,
+        string chartType,
+        object data,
+        object? options = null)
+    {
+        var chartService = controller.GetChartService();
+        return await chartService.CreateChartConfigAsync(chartType, data, options);
+    }
+
+    /// <summary>
+    /// 创建图表配置
+    /// </summary>
+    /// <param name="controller">控制器</param>
+    /// <param name="providerName">提供者名称</param>
+    /// <param name="chartType">图表类型</param>
+    /// <param name="data">图表数据</param>
+    /// <param name="options">配置选项</param>
+    /// <returns>图表配置</returns>
+    public static async Task<object> CreateChartConfigAsync(
+        this ControllerBase controller,
+        string providerName,
+        string chartType,
+        object data,
+        object? options = null)
+    {
+        var chartService = controller.GetChartService();
+        return await chartService.CreateChartConfigAsync(providerName, chartType, data, options);
+    }
+
+    /// <summary>
+    /// 获取 Amis 图表配置
+    /// </summary>
+    /// <param name="controller">控制器</param>
+    /// <param name="chartConfig">图表配置</param>
+    /// <param name="providerName">提供者名称</param>
+    /// <param name="options">Amis 配置选项</param>
+    /// <returns>Amis 配置</returns>
+    public static async Task<object> GetAmisChartConfigAsync(
+        this ControllerBase controller,
+        object chartConfig,
+        string providerName,
+        object? options = null)
+    {
+        var chartService = controller.GetChartService();
+        return await chartService.GetAmisConfigAsync(chartConfig, providerName, options);
+    }
+
+    /// <summary>
+    /// 推荐图表类型
+    /// </summary>
+    /// <param name="controller">控制器</param>
+    /// <param name="data">数据</param>
+    /// <param name="providerName">提供者名称</param>
+    /// <returns>推荐的图表类型列表</returns>
+    public static async Task<IEnumerable<string>> RecommendChartTypesAsync(
+        this ControllerBase controller,
+        object data,
+        string? providerName = null)
+    {
+        var chartService = controller.GetChartService();
+        return await chartService.RecommendChartTypesAsync(data, providerName);
+    }
+
+    /// <summary>
+    /// 导出图表数据
+    /// </summary>
+    /// <param name="controller">控制器</param>
+    /// <param name="chartConfig">图表配置</param>
+    /// <param name="format">导出格式</param>
+    /// <param name="options">导出选项</param>
+    /// <returns>文件结果</returns>
+    public static async Task<FileResult> ExportChartDataAsync(
+        this ControllerBase controller,
+        object chartConfig,
+        string format,
+        object? options = null)
+    {
+        var chartService = controller.GetChartService();
+        var data = await chartService.ExportChartDataAsync(chartConfig, format, options);
+
+        string contentType = format.ToLowerInvariant() switch
         {
-            ArgumentNullException.ThrowIfNull(controller);
-            ArgumentNullException.ThrowIfNull(config);
+            "csv" => "text/csv",
+            "excel" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "json" => "application/json",
+            _ => "application/octet-stream"
+        };
 
-            var serviceProvider = controller.HttpContext.RequestServices;
-            var echartGenerator = serviceProvider.GetService<IEChartConfigGenerator>();
+        string fileName = $"chart-export-{DateTime.Now:yyyyMMddHHmmss}.{format.ToLowerInvariant()}";
 
-            if (echartGenerator == null)
-            {
-                return controller.BadRequest("未注册EChartConfigGenerator服务");
-            }
+        return controller.File(data, contentType, fileName);
+    }
 
-            var echartConfig = echartGenerator.GenerateCompleteEChartConfig(config, data);
-            return new JsonResult(echartConfig);
-        }
+    /// <summary>
+    /// 导出图表图片
+    /// </summary>
+    /// <param name="controller">控制器</param>
+    /// <param name="chartConfig">图表配置</param>
+    /// <param name="providerName">提供者名称</param>
+    /// <param name="options">导出选项</param>
+    /// <returns>文件结果</returns>
+    public static async Task<FileResult> ExportChartImageAsync(
+        this ControllerBase controller,
+        object chartConfig,
+        string providerName,
+        object? options = null)
+    {
+        var chartService = controller.GetChartService();
+        var data = await chartService.ExportChartImageAsync(chartConfig, providerName, options);
 
-        /// <summary>
-        /// 返回使用自动推荐的ECharts配置JSON结果
-        /// 自动获取当前调用方法的信息，从特性中读取配置
-        /// </summary>
-        public static IActionResult AutoChartResult(this ControllerBase controller, object data, ChartType? preferredType = null, [CallerMemberName] string? caller = null)
-        {
-            ArgumentNullException.ThrowIfNull(controller);
+        string fileName = $"chart-image-{DateTime.Now:yyyyMMddHHmmss}.png";
 
-            var serviceProvider = controller.HttpContext.RequestServices;
-            var recommender = serviceProvider.GetService<IChartRecommender>();
-            var echartGenerator = serviceProvider.GetService<IEChartConfigGenerator>();
-            var chartService = serviceProvider.GetService<IChartService>();
+        return controller.File(data, "image/png", fileName);
+    }
 
-            if (recommender == null || echartGenerator == null)
-            {
-                return controller.BadRequest("未注册图表服务");
-            }
+    /// <summary>
+    /// 返回图表结果
+    /// </summary>
+    /// <param name="controller">控制器</param>
+    /// <param name="config">图表配置</param>
+    /// <param name="data">数据</param>
+    /// <returns>Action结果</returns>
+    public static IActionResult ChartResult(this ControllerBase controller, ChartConfig config, object data)
+    {
+        var echartGenerator = controller.HttpContext.RequestServices.GetRequiredService<IEChartConfigGenerator>();
+        var result = echartGenerator.GenerateCompleteEChartConfig(config, data);
+        return controller.Ok(result);
+    }
 
-            // 根据是否获取到方法信息使用不同的处理方式
-            ChartConfig config;
-
-            MethodInfo? methodInfo = null;
-            if (!string.IsNullOrEmpty(caller))
-            {
-                methodInfo = controller.GetType().GetMethod(caller);
-            }
-
-            if (methodInfo != null && chartService != null)
-            {
-                // 如果获取到方法信息并且有图表服务，则使用方法特性生成配置
-                config = chartService.AnalyzeAndGenerateChartAsync(data, methodInfo).GetAwaiter().GetResult();
-
-                // 如果指定了首选图表类型，则覆盖
-                if (preferredType.HasValue)
-                {
-                    config.Type = preferredType.Value;
-                }
-            }
-            else
-            {
-                // 如果没有获取到方法信息或没有图表服务，则使用默认的推荐器生成配置
-                config = recommender.GenerateChartConfig(data, preferredType);
-            }
-
-            var echartConfig = echartGenerator.GenerateCompleteEChartConfig(config, data);
-            return new JsonResult(echartConfig);
-        }
-
-        /// <summary>
-        /// 返回多种图表推荐选项
-        /// </summary>
-        public static IActionResult ChartRecommendations(this ControllerBase controller, object data, int maxCount = 3)
-        {
-            ArgumentNullException.ThrowIfNull(controller);
-
-            var serviceProvider = controller.HttpContext.RequestServices;
-            var recommender = serviceProvider.GetService<IChartRecommender>();
-            var echartGenerator = serviceProvider.GetService<IEChartConfigGenerator>();
-
-            if (recommender == null || echartGenerator == null)
-            {
-                return controller.BadRequest("未注册图表服务");
-            }
-
-            // 获取推荐的图表类型
-            var recommendations = recommender.RecommendChartTypes(data, maxCount);
-
-            // 为每种推荐的图表类型生成配置
-            var result = new List<object>();
-            foreach (var recommendation in recommendations)
-            {
-                var config = recommender.GenerateChartConfig(data, recommendation.Key);
-                var echartConfig = echartGenerator.GenerateCompleteEChartConfig(config, data);
-
-                result.Add(new
-                {
-                    Type = recommendation.Key.ToString(),
-                    Score = recommendation.Value,
-                    Config = echartConfig
-                });
-            }
-
-            return new JsonResult(result);
-        }
+    /// <summary>
+    /// 获取图表推荐
+    /// </summary>
+    /// <param name="controller">控制器</param>
+    /// <param name="data">数据</param>
+    /// <param name="maxCount">最大数量</param>
+    /// <returns>Action结果</returns>
+    public static async Task<IActionResult> ChartRecommendations(this ControllerBase controller, object data, int maxCount = 3)
+    {
+        var recommender = controller.HttpContext.RequestServices.GetRequiredService<IChartRecommender>();
+        var results = await recommender.RecommendChartTypesAsync(data, "echarts");
+        var items = results.Take(maxCount);
+        return controller.Ok(new { recommendations = items });
     }
 }

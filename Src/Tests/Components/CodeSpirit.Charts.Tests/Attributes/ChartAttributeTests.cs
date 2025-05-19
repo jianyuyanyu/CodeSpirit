@@ -14,13 +14,10 @@ namespace CodeSpirit.Charts.Tests.Attributes
             // 断言默认值
             Assert.Equal(string.Empty, attr.Title);
             Assert.Equal(string.Empty, attr.Description);
-            Assert.True(attr.EnableAutoAnalysis);
             Assert.False(attr.AutoRefresh);
             Assert.Equal(60, attr.RefreshInterval);
             Assert.True(attr.ShowToolbox);
             Assert.Equal("default", attr.Theme);
-            Assert.Equal(400, attr.Height);
-            Assert.Equal(0, attr.Width);
             Assert.True(attr.EnableInteraction);
             Assert.True(attr.EnableExport);
         }
@@ -29,7 +26,10 @@ namespace CodeSpirit.Charts.Tests.Attributes
         public void ChartAttribute_TitleConstructor_SetsTitle()
         {
             // 创建特性
-            var attr = new ChartAttribute("测试图表");
+            var attr = new ChartAttribute()
+            {
+                Title = "测试图表"
+            };
 
             // 断言
             Assert.Equal("测试图表", attr.Title);
@@ -40,7 +40,11 @@ namespace CodeSpirit.Charts.Tests.Attributes
         public void ChartAttribute_FullConstructor_SetsTitleAndDescription()
         {
             // 创建特性
-            var attr = new ChartAttribute("测试图表", "这是一个测试图表");
+            var attr = new ChartAttribute()
+            {
+                Title = "测试图表",
+                Description = "这是一个测试图表"
+            };
 
             // 断言
             Assert.Equal("测试图表", attr.Title);
@@ -55,13 +59,10 @@ namespace CodeSpirit.Charts.Tests.Attributes
             {
                 Title = "销售统计",
                 Description = "销售月度统计图表",
-                EnableAutoAnalysis = false,
                 AutoRefresh = true,
                 RefreshInterval = 30,
                 ShowToolbox = false,
                 Theme = "dark",
-                Height = 500,
-                Width = 800,
                 EnableInteraction = false,
                 EnableExport = false
             };
@@ -69,15 +70,12 @@ namespace CodeSpirit.Charts.Tests.Attributes
             // 断言
             Assert.Equal("销售统计", attr.Title);
             Assert.Equal("销售月度统计图表", attr.Description);
-            Assert.False(attr.EnableAutoAnalysis);
             Assert.True(attr.AutoRefresh);
             Assert.Equal(30, attr.RefreshInterval);
             Assert.False(attr.ShowToolbox);
             Assert.Equal("dark", attr.Theme);
-            Assert.Equal(500, attr.Height);
-            Assert.Equal(800, attr.Width);
             Assert.False(attr.EnableInteraction);
             Assert.False(attr.EnableExport);
         }
     }
-} 
+}

@@ -112,6 +112,11 @@ public class ExamDbContext : AuditableDbContext
     /// 题目版本
     /// </summary>
     public DbSet<QuestionVersion> QuestionVersions => Set<QuestionVersion>();
+    
+    /// <summary>
+    /// 练习设置
+    /// </summary>
+    public DbSet<PracticeSetting> PracticeSettings => Set<PracticeSetting>();
     #endregion
 
     /// <summary>
@@ -391,6 +396,22 @@ public class ExamDbContext : AuditableDbContext
 
             // 确保题目序号在考试记录中唯一
             entity.HasIndex(e => new { e.ExamRecordId, e.OrderNumber }).IsUnique();
+        });
+        
+        // 配置练习设置关系
+        modelBuilder.Entity<PracticeSetting>(entity =>
+        {
+            entity.ToTable("PracticeSettings");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            
+            // 配置与试卷的关系
+            entity.HasOne(ps => ps.ExamPaper)
+                .WithMany()
+                .HasForeignKey(ps => ps.ExamPaperId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 

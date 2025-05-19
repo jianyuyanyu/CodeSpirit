@@ -1,39 +1,39 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.ExamApi.Data.Models.Enums;
 
 /// <summary>
-/// 练习类型
+/// 练习模式
 /// </summary>
-public enum PracticeType
+public enum PracticeMode
 {
     /// <summary>
-    /// 普通练习
+    /// 顺序练习
     /// </summary>
-    [Display(Name = "普通练习")]
-    Normal = 1,
+    [Display(Name = "顺序练习")]
+    Sequential = 1,
+    
+    /// <summary>
+    /// 随机练习
+    /// </summary>
+    [Display(Name = "随机练习")]
+    Random = 2,
     
     /// <summary>
     /// 模拟考试
     /// </summary>
     [Display(Name = "模拟考试")]
-    MockExam = 2,
+    MockExam = 3,
     
     /// <summary>
     /// 错题练习
     /// </summary>
     [Display(Name = "错题练习")]
-    WrongQuestions = 3,
+    WrongQuestions = 4,
     
     /// <summary>
     /// 自由练习
     /// </summary>
     [Display(Name = "自由练习")]
-    Free = 4,
-    
-    /// <summary>
-    /// 定向练习
-    /// </summary>
-    [Display(Name = "定向练习")]
-    Directed = 5
-}
+    Free = 5
+} 

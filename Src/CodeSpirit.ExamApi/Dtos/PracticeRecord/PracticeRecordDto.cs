@@ -1,6 +1,4 @@
-using System.ComponentModel.DataAnnotations;
-using CodeSpirit.Amis.Attributes;
-using CodeSpirit.Amis.Attributes.Columns;
+using System.ComponentModel;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Dtos.PracticeRecord;
@@ -73,7 +71,7 @@ public class PracticeRecordDto
     /// <summary>
     /// 耗时（秒）
     /// </summary>
-    [DisplayName("耗时(秒)")]
+    [DisplayName("耗时（秒）")]
     public int TimeSpent { get; set; }
     
     /// <summary>
@@ -87,6 +85,12 @@ public class PracticeRecordDto
     /// </summary>
     [DisplayName("模拟考试ID")]
     public long? MockExamId { get; set; }
+    
+    /// <summary>
+    /// 练习设置ID
+    /// </summary>
+    [DisplayName("练习设置ID")]
+    public long? PracticeSettingId { get; set; }
     
     /// <summary>
     /// 创建时间

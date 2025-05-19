@@ -2,6 +2,7 @@ using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.PracticeRecord;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.ExamApi.Services.Interfaces;
 
@@ -42,25 +43,57 @@ public interface IPracticeRecordService : IBaseCRUDIService<
     /// </summary>
     /// <param name="id">练习记录ID</param>
     /// <param name="updateDto">更新练习记录DTO</param>
+    /// <returns>操作结果</returns>
     Task UpdatePracticeRecordAsync(long id, UpdatePracticeRecordDto updateDto);
     
     /// <summary>
     /// 删除练习记录
     /// </summary>
     /// <param name="id">练习记录ID</param>
+    /// <returns>操作结果</returns>
     Task DeletePracticeRecordAsync(long id);
     
     /// <summary>
     /// 批量删除练习记录
     /// </summary>
-    /// <param name="ids">练习记录ID列表</param>
+    /// <param name="ids">ID列表</param>
     /// <returns>成功删除数量和失败ID列表</returns>
     Task<(int successCount, List<long> failedIds)> BatchDeleteAsync(IEnumerable<long> ids);
     
     /// <summary>
     /// 批量导入练习记录
     /// </summary>
-    /// <param name="importData">导入数据</param>
+    /// <param name="importDtos">导入数据</param>
     /// <returns>成功导入数量和失败ID列表</returns>
-    Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<PracticeRecordBatchImportDto> importData);
+    Task<(int successCount, List<string> failedIds)> BatchImportAsync(List<PracticeRecordBatchImportDto> importDtos);
+    
+    /// <summary>
+    /// 批量创建练习记录
+    /// </summary>
+    /// <param name="practiceRecordDtos">练习记录DTO列表</param>
+    /// <returns>创建的练习记录列表</returns>
+    Task<List<PracticeRecordDto>> BatchCreatePracticeRecordsAsync(List<PracticeRecordDto> practiceRecordDtos);
+    
+    /// <summary>
+    /// 获取学生的练习统计数据
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>练习统计数据</returns>
+    Task<PracticeStatisticsDto> GetStudentPracticeStatisticsAsync(long studentId);
+    
+    /// <summary>
+    /// 获取学生对特定试卷的练习统计数据
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="examPaperId">试卷ID</param>
+    /// <returns>练习统计数据</returns>
+    Task<PracticeStatisticsDto> GetStudentExamPaperPracticeStatisticsAsync(long studentId, long examPaperId);
+    
+    /// <summary>
+    /// 获取学生对特定练习设置的练习统计数据
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="practiceSettingId">练习设置ID</param>
+    /// <returns>练习统计数据</returns>
+    Task<PracticeStatisticsDto> GetStudentPracticeSettingStatisticsAsync(long studentId, long practiceSettingId);
 } 

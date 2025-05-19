@@ -1,66 +1,75 @@
-using CodeSpirit.Amis.Attributes.FormFields;
-using CodeSpirit.ExamApi.Data.Models.Enums;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Newtonsoft.Json;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Dtos.PracticeRecord;
 
 /// <summary>
-/// 练习记录批量导入DTO
+/// 练习记录批量导入项DTO
 /// </summary>
 public class PracticeRecordBatchImportDto
 {
     /// <summary>
     /// 考生ID
     /// </summary>
+    [Required]
     [DisplayName("考生ID")]
-    [Required(ErrorMessage = "考生ID不能为空")]
+    [JsonProperty("考生ID")]
     public long StudentId { get; set; }
     
     /// <summary>
     /// 题目ID
     /// </summary>
+    [Required]
     [DisplayName("题目ID")]
-    [Required(ErrorMessage = "题目ID不能为空")]
+    [JsonProperty("题目ID")]
     public long QuestionId { get; set; }
+    
+    /// <summary>
+    /// 题目类型
+    /// </summary>
+    [Required]
+    [DisplayName("题目类型")]
+    [JsonProperty("题目类型")]
+    public string QuestionType { get; set; } = string.Empty;
     
     /// <summary>
     /// 练习类型
     /// </summary>
+    [Required]
     [DisplayName("练习类型")]
-    [Required(ErrorMessage = "练习类型不能为空")]
-    public PracticeType PracticeType { get; set; }
+    [JsonProperty("练习类型")]
+    public string PracticeType { get; set; } = string.Empty;
     
     /// <summary>
     /// 考生回答
     /// </summary>
+    [Required]
     [DisplayName("考生回答")]
-    [Required(ErrorMessage = "考生回答不能为空")]
+    [JsonProperty("考生回答")]
     public string Answer { get; set; } = string.Empty;
     
     /// <summary>
-    /// 是否正确
+    /// 正确答案
     /// </summary>
-    [DisplayName("是否正确")]
-    public bool IsCorrect { get; set; }
+    [Required]
+    [DisplayName("正确答案")]
+    [JsonProperty("正确答案")]
+    public string CorrectAnswer { get; set; } = string.Empty;
     
     /// <summary>
     /// 耗时（秒）
     /// </summary>
-    [DisplayName("耗时(秒)")]
-    [Required(ErrorMessage = "耗时不能为空")]
-    [Range(0, int.MaxValue, ErrorMessage = "耗时必须为正整数")]
+    [Range(0, int.MaxValue)]
+    [DisplayName("耗时（秒）")]
+    [JsonProperty("耗时（秒）")]
     public int TimeSpent { get; set; }
     
     /// <summary>
-    /// 练习时间
+    /// 练习设置ID
     /// </summary>
-    [DisplayName("练习时间")]
-    [AmisDatetimeField()]
-    public DateTime PracticeTime { get; set; } = DateTime.UtcNow;
-    
-    /// <summary>
-    /// 模拟考试ID
-    /// </summary>
-    [DisplayName("模拟考试ID")]
-    public long? MockExamId { get; set; }
+    [DisplayName("练习设置ID")]
+    [JsonProperty("练习设置ID")]
+    public long? PracticeSettingId { get; set; }
 } 

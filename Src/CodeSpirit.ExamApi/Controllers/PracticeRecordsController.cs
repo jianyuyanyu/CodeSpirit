@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Amis.Attributes;
@@ -5,6 +6,7 @@ using CodeSpirit.ExamApi.Dtos.PracticeRecord;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using CodeSpirit.Shared.Dtos.Common;
+using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -12,7 +14,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 练习记录管理控制器
 /// </summary>
 [DisplayName("练习记录管理")]
-[Navigation(Icon = "fa-solid fa-clipboard-check")]
+[Navigation(Icon = "fa-solid fa-clipboard-list")]
 public class PracticeRecordsController : ApiControllerBase
 {
     private readonly IPracticeRecordService _practiceRecordService;
@@ -58,6 +60,64 @@ public class PracticeRecordsController : ApiControllerBase
     {
         PracticeRecordDto practiceRecord = await _practiceRecordService.GetPracticeRecordAsync(id);
         return SuccessResponse(practiceRecord);
+    }
+
+    /// <summary>
+    /// 获取学生的练习统计数据
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>练习统计数据</returns>
+    [HttpGet("student/{studentId}/statistics")]
+    [DisplayName("获取学生练习统计")]
+    public async Task<ActionResult<ApiResponse<PracticeStatisticsDto>>> GetStudentPracticeStatistics(long studentId)
+    {
+        var result = await _practiceRecordService.GetStudentPracticeStatisticsAsync(studentId);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 获取学生的练习记录列表
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>练习记录列表</returns>
+    [HttpGet("student/{studentId}")]
+    [DisplayName("获取学生练习记录")]
+    public async Task<ActionResult<ApiResponse<PageList<PracticeRecordDto>>>> GetStudentPracticeRecords(long studentId, [FromQuery] PracticeRecordQueryDto queryDto)
+    {
+        queryDto.StudentId = studentId;
+        var result = await _practiceRecordService.GetPracticeRecordsAsync(queryDto);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 获取试卷的练习记录列表
+    /// </summary>
+    /// <param name="examPaperId">试卷ID</param>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>练习记录列表</returns>
+    [HttpGet("exam-paper/{examPaperId}")]
+    [DisplayName("获取试卷练习记录")]
+    public async Task<ActionResult<ApiResponse<PageList<PracticeRecordDto>>>> GetExamPaperPracticeRecords(long examPaperId, [FromQuery] PracticeRecordQueryDto queryDto)
+    {
+        queryDto.ExamPaperId = examPaperId;
+        var result = await _practiceRecordService.GetPracticeRecordsAsync(queryDto);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 获取练习设置的练习记录列表
+    /// </summary>
+    /// <param name="practiceSettingId">练习设置ID</param>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>练习记录列表</returns>
+    [HttpGet("practice-setting/{practiceSettingId}")]
+    [DisplayName("获取练习设置练习记录")]
+    public async Task<ActionResult<ApiResponse<PageList<PracticeRecordDto>>>> GetPracticeSettingRecords(long practiceSettingId, [FromQuery] PracticeRecordQueryDto queryDto)
+    {
+        queryDto.PracticeSettingId = practiceSettingId;
+        var result = await _practiceRecordService.GetPracticeRecordsAsync(queryDto);
+        return SuccessResponse(result);
     }
 
     /// <summary>

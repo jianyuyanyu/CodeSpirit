@@ -34,6 +34,7 @@ public static class ExamDbContextSeed
             await SeedExamPapersAsync(context);
             await SeedExamSettingsAsync(context);
             await SeedWrongQuestionsAsync(context);
+            await SeedPracticeSettingsAsync(context);
             //await SeedExamRecordsAsync(context);
             //await SeedPracticeRecordsAsync(context);
 
@@ -561,6 +562,91 @@ public static class ExamDbContextSeed
     }
 
     /// <summary>
+    /// 初始化练习设置数据
+    /// </summary>
+    private static async Task SeedPracticeSettingsAsync(ExamDbContext context)
+    {
+        if (await context.PracticeSettings.AnyAsync())
+        {
+            return;
+        }
+
+        var examPapers = await context.ExamPapers.ToListAsync();
+        if (!examPapers.Any())
+        {
+            return;
+        }
+
+        var practiceSettings = new List<PracticeSetting>
+        {
+            new()
+            {
+                Name = "C#编程基础练习",
+                Description = "适合初学者的C#编程基础练习，包含基本语法和概念",
+                ExamPaperId = examPapers.First(p => p.Name.Contains("初级")).Id,
+                PracticeMode = PracticeMode.Sequential,
+                MaxAttempts = 0, // 无限制
+                TimeLimit = 0, // 无时间限制
+                ShowAnalysis = true,
+                RandomizeQuestions = false,
+                Status = PracticeSettingStatus.Published
+            },
+            new()
+            {
+                Name = "数据结构随机练习",
+                Description = "数据结构相关题目的随机练习，难度适中",
+                ExamPaperId = examPapers.First(p => p.Name.Contains("中级")).Id,
+                PracticeMode = PracticeMode.Random,
+                MaxAttempts = 5,
+                TimeLimit = 60,
+                ShowAnalysis = true,
+                RandomizeQuestions = true,
+                Status = PracticeSettingStatus.Published
+            },
+            new()
+            {
+                Name = "高级算法模拟考试",
+                Description = "高级算法知识模拟考试，限时完成",
+                ExamPaperId = examPapers.First(p => p.Name.Contains("高级")).Id,
+                PracticeMode = PracticeMode.MockExam,
+                MaxAttempts = 3,
+                TimeLimit = 120,
+                ShowAnalysis = false,
+                RandomizeQuestions = true,
+                Status = PracticeSettingStatus.Draft
+            },
+            new()
+            {
+                Name = "错题重练集",
+                Description = "收集学生错题进行重点练习",
+                ExamPaperId = examPapers.First().Id,
+                PracticeMode = PracticeMode.WrongQuestions,
+                MaxAttempts = 0,
+                TimeLimit = 0,
+                ShowAnalysis = true,
+                RandomizeQuestions = false,
+                Status = PracticeSettingStatus.Published
+            },
+            new()
+            {
+                Name = "自由练习模式",
+                Description = "不限时间和次数的自由练习",
+                ExamPaperId = examPapers.Last().Id,
+                PracticeMode = PracticeMode.Free,
+                MaxAttempts = 0,
+                TimeLimit = 0,
+                ShowAnalysis = true,
+                RandomizeQuestions = false,
+                Status = PracticeSettingStatus.Published
+            }
+        };
+
+        // 使用DbContext的AddRangeAsync方法
+        await context.AddRangeAsync(practiceSettings);
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
     /// 初始化考试记录数据
     /// </summary>
     private static async Task SeedExamRecordsAsync(ExamDbContext context)
@@ -835,7 +921,7 @@ public static class ExamDbContextSeed
             foreach (var question in studentQuestions)
             {
                 // 决定是自由练习还是模拟考试
-                var practiceType = random.Next(3) < 2 ? PracticeType.FreePractice : PracticeType.MockExam;
+                var practiceType = random.Next(3) < 2 ? PracticeType.Free : PracticeType.MockExam;
                 
                 // 随机生成练习时间(过去30天内)
                 var practiceTime = DateTime.UtcNow.AddDays(-random.Next(1, 31))

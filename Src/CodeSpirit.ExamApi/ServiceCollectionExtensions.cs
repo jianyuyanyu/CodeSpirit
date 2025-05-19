@@ -112,6 +112,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<IExamSettingService, ExamSettingService>();
         services.AddScoped<IMonitorService, MonitorService>();
+        services.AddScoped<IPracticeSettingService, PracticeSettingService>();
 
         // 注册PDF生成服务
         services.AddPdfGeneration(configuration);

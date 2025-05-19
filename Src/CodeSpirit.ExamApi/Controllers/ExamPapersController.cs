@@ -4,6 +4,7 @@ using CodeSpirit.ExamApi.Controllers.Client;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Dtos.ExamSetting;
+using CodeSpirit.ExamApi.Dtos.PracticeSetting;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.Net;
@@ -19,14 +20,18 @@ public class ExamPapersController : ApiControllerBase
 {
     private readonly IExamPaperService _examPaperService;
     private readonly IExamSettingService _examSettingService;
+    private readonly IPracticeSettingService _practiceSettingService;
 
     /// <summary>
     /// 构造函数
     /// </summary>
-    public ExamPapersController(IExamPaperService examPaperService, IExamSettingService examSettingService)
+    public ExamPapersController(IExamPaperService examPaperService, 
+        IExamSettingService examSettingService,
+        IPracticeSettingService practiceSettingService)
     {
         _examPaperService = examPaperService;
         _examSettingService = examSettingService;
+        _practiceSettingService = practiceSettingService;
     }
 
     /// <summary>
@@ -480,5 +485,30 @@ public class ExamPapersController : ApiControllerBase
         };
 
         return SuccessResponse(amisConfig);
+    }
+
+    /// <summary>
+    /// 创建练习设置
+    /// </summary>
+    /// <param name="createDto">创建练习设置DTO</param>
+    /// <returns>创建结果</returns>
+    [HttpPost("create-practiceSetting")]
+    [Operation("创建练习", "form", visibleOn: "status === 2", Redirect = "/exam/practiceSettings?examPaperId=$id", Data = "{\"examPaperId\":\"${id}\"}")]
+    [DisplayName("创建练习设置")]
+    public async Task<ActionResult<ApiResponse<PracticeSettingDto>>> CreatePracticeSetting([FromBody] CreatePracticeSettingDto createDto)
+    {
+        var result = await _practiceSettingService.CreateAsync(createDto);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 练习管理
+    /// </summary>
+    /// <returns>跳转链接</returns>
+    [Operation("练习管理", "link", "/exam/practiceSettings?examPaperId=$id", null, visibleOn: "status === 2")]
+    [DisplayName("练习管理")]
+    public ActionResult<ApiResponse> PracticeSettings_Manager()
+    {
+        return SuccessResponse();
     }
 }

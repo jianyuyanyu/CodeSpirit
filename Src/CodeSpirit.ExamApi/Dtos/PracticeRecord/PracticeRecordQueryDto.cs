@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+using System.ComponentModel;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 
@@ -22,6 +22,12 @@ public class PracticeRecordQueryDto : QueryDtoBase
     public long? QuestionId { get; set; }
     
     /// <summary>
+    /// 题目类型
+    /// </summary>
+    [DisplayName("题目类型")]
+    public QuestionType? QuestionType { get; set; }
+    
+    /// <summary>
     /// 练习类型
     /// </summary>
     [DisplayName("练习类型")]
@@ -34,14 +40,32 @@ public class PracticeRecordQueryDto : QueryDtoBase
     public bool? IsCorrect { get; set; }
     
     /// <summary>
-    /// 开始时间
+    /// 模拟考试ID
     /// </summary>
-    [DisplayName("开始时间")]
-    public DateTime? StartTime { get; set; }
+    [DisplayName("模拟考试ID")]
+    public long? MockExamId { get; set; }
     
     /// <summary>
-    /// 结束时间
+    /// 练习设置ID
     /// </summary>
-    [DisplayName("结束时间")]
-    public DateTime? EndTime { get; set; }
+    [DisplayName("练习设置ID")]
+    public long? PracticeSettingId { get; set; }
+    
+    /// <summary>
+    /// 试卷ID
+    /// </summary>
+    [DisplayName("试卷ID")]
+    public long? ExamPaperId { get; set; }
+    
+    /// <summary>
+    /// 练习开始时间
+    /// </summary>
+    [DisplayName("练习开始时间")]
+    public DateTime? PracticeStartTime { get; set; }
+    
+    /// <summary>
+    /// 练习结束时间
+    /// </summary>
+    [DisplayName("练习结束时间")]
+    public DateTime? PracticeEndTime { get; set; }
 } 

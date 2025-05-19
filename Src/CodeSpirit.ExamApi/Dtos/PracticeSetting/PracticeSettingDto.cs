@@ -21,7 +21,6 @@ public class PracticeSettingDto
     /// 名称
     /// </summary>
     [DisplayName("名称")]
-    [TplColumn(template: "${name}")]
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
@@ -29,19 +28,11 @@ public class PracticeSettingDto
     /// </summary>
     [DisplayName("描述")]
     public string? Description { get; set; }
-    
-    /// <summary>
-    /// 试卷ID
-    /// </summary>
-    [DisplayName("试卷ID")]
-    public long ExamPaperId { get; set; }
-    
+        
     /// <summary>
     /// 试卷名称
     /// </summary>
     [DisplayName("试卷名称")]
-    [AggregateField("ExamPaper", "Name")]
-    [TplColumn(template: "${examPaperName}")]
     public string ExamPaperName { get; set; } = string.Empty;
     
     /// <summary>

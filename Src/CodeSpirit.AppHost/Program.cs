@@ -1,5 +1,6 @@
 using Aspire.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Aspire.Hosting.Elasticsearch;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -33,6 +34,13 @@ var rabbitmqService = builder.AddRabbitMQ("rabbitmq", rabbitmqUser, rabbitmqPass
                      //.WithEndpoint(port: 5672, name: "rabbitmq")
                      //.WithHttpEndpoint(port: 20000, targetPort: 15672, name: "rabbitmq-management")
                     ;
+
+// 添加 Elasticsearch 服务
+var elasticsearchService = builder.AddElasticsearch("elasticsearch")
+                          .WithLifetime(ContainerLifetime.Persistent)
+                          .WithDataVolume()
+                          .WithHttpEndpoint(port: 61687, targetPort: 9200, name: "elasticsearch")
+                          .WithHttpEndpoint(port: 61686, targetPort: 9300, name: "elasticsearch-nodes");
 
 // 添加 ConfigCenter 服务
 var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
@@ -73,6 +81,8 @@ var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
         .WaitFor(configService)
     .WithReference(rabbitmqService)
         .WaitFor(rabbitmqService)
+    .WithReference(elasticsearchService)
+        .WaitFor(elasticsearchService)
     ;
 
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
@@ -91,6 +101,8 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
         .WaitFor(messagingService)
     .WithReference(examService)
         .WaitFor(examService)
+    .WithReference(elasticsearchService)
+        .WaitFor(elasticsearchService)
     ;
 
 builder.Build().Run();

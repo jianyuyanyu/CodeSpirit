@@ -23,5 +23,23 @@ public enum QuestionType
     /// 判断题
     /// </summary>
     [Display(Name = "判断题")]
-    TrueFalse = 3
+    TrueFalse = 3,
+    
+    /// <summary>
+    /// 填空题
+    /// </summary>
+    [Display(Name = "填空题")]
+    FillBlank = 4,
+    
+    /// <summary>
+    /// 简答题
+    /// </summary>
+    [Display(Name = "简答题")]
+    ShortAnswer = 5,
+    
+    /// <summary>
+    /// 问答题
+    /// </summary>
+    [Display(Name = "问答题")]
+    Essay = 6
 }

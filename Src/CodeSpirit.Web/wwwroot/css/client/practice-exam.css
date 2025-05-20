@@ -1,0 +1,294 @@
+/* 练习答题页面样式 */
+:root {
+    --primary: #3f51b5;
+    --secondary: #ff4081;
+    --text: #333;
+    --light-bg: #f5f7fa;
+    --radius: 8px;
+    --shadow: 0 4px 12px rgba(0,0,0,0.08);
+    --fixed-header-height: 180px;
+}
+
+body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background-color: #f9fafc;
+}
+
+body.mobile-view {
+    font-size: 14px;
+}
+
+body.small-mobile-view {
+    font-size: 13px;
+}
+
+/* 固定头部 */
+.fixed-header-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: #fff;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.fixed-header-spacer {
+    height: var(--fixed-header-height); /* 根据固定头部的高度调整 */
+    margin-bottom: 20px;
+}
+
+.compact-header {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+/* 客户端头部 */
+.client-header {
+    padding: 10px 20px;
+    background-color: #fff;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.client-logo {
+    display: flex;
+    align-items: center;
+}
+
+.client-logo img {
+    height: 30px;
+    margin-right: 10px;
+}
+
+.client-logo span {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.user-info-container {
+    display: flex;
+    align-items: center;
+}
+
+.user-info {
+    margin-right: 20px;
+    font-size: 14px;
+}
+
+/* 计时器 */
+.practice-timer-container {
+    background-color: #f5f7fa;
+    padding: 8px 0;
+    border-bottom: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+.practice-timer {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--primary);
+    font-family: 'Courier New', monospace;
+}
+
+/* 答题卡 */
+.header-status-container {
+    padding: 10px 20px;
+    background-color: #fff;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.practice-answer-card-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 5px 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+}
+
+.answer-card-title {
+    margin-right: 15px;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.answer-card-item {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    margin: 3px;
+    border-radius: 50%;
+    color: #666;
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.answer-card-item:hover {
+    background-color: #e0e0e0;
+    transform: scale(1.1);
+}
+
+.answer-card-item.answered {
+    background-color: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.answer-card-row {
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+/* 练习面板 */
+.practice-panel {
+    margin: 0 20px 30px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background-color: #fff;
+}
+
+.practice-panel-header {
+    padding: 15px;
+    background-color: #f5f7fa;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.practice-info-panel {
+    padding: 15px;
+}
+
+.practice-title {
+    text-align: center;
+    margin: 0;
+    color: var(--primary);
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.practice-info {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.practice-info-item {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    padding: 10px;
+    background-color: #f5f7fa;
+    border-radius: var(--radius);
+    margin: 5px;
+}
+
+/* 问题容器 */
+.question-container {
+    margin-top: 20px;
+}
+
+.question-label {
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.question-label pre {
+    white-space: pre-wrap;
+    font-family: inherit;
+    margin: 0;
+}
+
+/* 提交按钮 */
+.practice-actions {
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
+}
+
+/* 高亮题目 */
+.highlight-question {
+    animation: highlight-pulse 2s ease-out;
+}
+
+@keyframes highlight-pulse {
+    0% {
+        background-color: rgba(63, 81, 181, 0.2);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .practice-panel {
+        margin: 0 10px 20px;
+    }
+    
+    .practice-title {
+        font-size: 18px;
+    }
+    
+    .practice-info-item {
+        min-width: 100px;
+        padding: 8px;
+        font-size: 13px;
+    }
+    
+    .practice-timer {
+        font-size: 16px;
+    }
+    
+    .answer-card-item {
+        width: 26px;
+        height: 26px;
+        line-height: 26px;
+        font-size: 13px;
+    }
+    
+    .header-status-container {
+        padding: 5px 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .client-logo span {
+        font-size: 16px;
+    }
+    
+    .practice-info {
+        flex-direction: column;
+    }
+    
+    .practice-info-item {
+        margin: 3px 0;
+    }
+    
+    .answer-card-item {
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        font-size: 12px;
+        margin: 2px;
+    }
+    
+    .answer-card-title {
+        margin-right: 8px;
+        font-size: 12px;
+    }
+} 

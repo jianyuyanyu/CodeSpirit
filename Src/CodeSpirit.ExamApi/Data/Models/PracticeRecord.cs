@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Entities;
+using CodeSpirit.Shared.Data;
 
 namespace CodeSpirit.ExamApi.Data.Models;
 
@@ -30,6 +31,16 @@ public class PracticeRecord : LongKeyAuditableEntityBase
     public Question Question { get; set; } = null!;
     
     /// <summary>
+    /// 练习会话ID
+    /// </summary>
+    public long PracticeSessionId { get; set; }
+    
+    /// <summary>
+    /// 练习会话
+    /// </summary>
+    public PracticeSession PracticeSession { get; set; }
+    
+    /// <summary>
     /// 练习类型
     /// </summary>
     public PracticeType PracticeType { get; set; }
@@ -44,6 +55,11 @@ public class PracticeRecord : LongKeyAuditableEntityBase
     /// 是否正确
     /// </summary>
     public bool IsCorrect { get; set; }
+    
+    /// <summary>
+    /// 是否标记
+    /// </summary>
+    public bool IsMarked { get; set; }
     
     /// <summary>
     /// 耗时（秒）

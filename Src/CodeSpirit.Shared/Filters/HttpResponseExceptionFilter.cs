@@ -101,9 +101,9 @@ namespace CodeSpirit.Shared.Filters
         {
             switch (appException.Code)
             {
-                case 404:
-                    context.Result = new NotFoundResult();
-                    break;
+                //case 404:
+                //    context.Result = new NotFoundResult();
+                //    break;
                 case 401:
                     context.Result = new StatusCodeResult(StatusCodes.Status401Unauthorized);
                     break;

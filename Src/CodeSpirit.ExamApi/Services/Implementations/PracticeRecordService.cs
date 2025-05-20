@@ -1,6 +1,7 @@
 using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.PracticeRecord;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
@@ -8,6 +9,11 @@ using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using CodeSpirit.Shared.DistributedLock;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -19,8 +25,13 @@ public class PracticeRecordService : BaseCRUDIService<PracticeRecord, PracticeRe
     private readonly IRepository<PracticeRecord> _repository;
     private readonly IRepository<Student> _studentRepository;
     private readonly IRepository<Question> _questionRepository;
+    private readonly IRepository<PracticeSetting> _practiceSettingRepository;
+    private readonly IRepository<PracticeSession> _practiceSessionRepository;
+    private readonly IRepository<ExamPaperQuestion> _examPaperQuestionRepository;
+    private readonly IRepository<QuestionVersion> _questionVersionRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<PracticeRecordService> _logger;
+    private readonly IDistributedLockProvider _distributedLockProvider;
 
     /// <summary>
     /// 构造函数
@@ -29,15 +40,25 @@ public class PracticeRecordService : BaseCRUDIService<PracticeRecord, PracticeRe
         IRepository<PracticeRecord> repository,
         IRepository<Student> studentRepository,
         IRepository<Question> questionRepository,
+        IRepository<PracticeSetting> practiceSettingRepository,
+        IRepository<PracticeSession> practiceSessionRepository,
+        IRepository<ExamPaperQuestion> examPaperQuestionRepository,
+        IRepository<QuestionVersion> questionVersionRepository,
         IMapper mapper,
-        ILogger<PracticeRecordService> logger)
+        ILogger<PracticeRecordService> logger,
+        IDistributedLockProvider distributedLockProvider)
         : base(repository, mapper)
     {
         _repository = repository;
         _studentRepository = studentRepository;
         _questionRepository = questionRepository;
+        _practiceSettingRepository = practiceSettingRepository;
+        _practiceSessionRepository = practiceSessionRepository;
+        _examPaperQuestionRepository = examPaperQuestionRepository;
+        _questionVersionRepository = questionVersionRepository;
         _mapper = mapper;
         _logger = logger;
+        _distributedLockProvider = distributedLockProvider;
     }
 
     /// <summary>
@@ -94,6 +115,83 @@ public class PracticeRecordService : BaseCRUDIService<PracticeRecord, PracticeRe
             queryDto.OrderBy,
             queryDto.OrderDir,
             "Student", "Question");
+    }
+
+    /// <summary>
+    /// 获取练习会话分页列表
+    /// </summary>
+    public async Task<PageList<PracticeSessionDto>> GetPracticeSessionsAsync(PracticeSessionQueryDto queryDto)
+    {
+        ExpressionStarter<PracticeSession> predicate = PredicateBuilder.New<PracticeSession>(true);
+
+        if (queryDto.StudentId.HasValue)
+        {
+            predicate = predicate.And(x => x.StudentId == queryDto.StudentId.Value);
+        }
+
+        if (queryDto.PracticeId.HasValue)
+        {
+            predicate = predicate.And(x => x.PracticeSettingId == queryDto.PracticeId.Value);
+        }
+
+        if (queryDto.StartTimeBegin.HasValue)
+        {
+            predicate = predicate.And(x => x.StartTime >= queryDto.StartTimeBegin.Value);
+        }
+
+        if (queryDto.StartTimeEnd.HasValue)
+        {
+            predicate = predicate.And(x => x.StartTime <= queryDto.StartTimeEnd.Value);
+        }
+
+        // 查询会话数据
+        var query = _practiceSessionRepository.Find(predicate)
+            .Include(x => x.Student)
+            .Include(x => x.PracticeSetting)
+            .Include(x => x.PracticeRecords)
+            .OrderByDescending(x => x.StartTime);
+
+        // 计算总数
+        var total = await query.CountAsync();
+        
+        // 应用分页
+        var sessions = await query
+            .Skip((queryDto.Page - 1) * queryDto.PerPage)
+            .Take(queryDto.PerPage)
+            .ToListAsync();
+
+        // 转换为DTO
+        var sessionDtos = new List<PracticeSessionDto>();
+        foreach (var session in sessions)
+        {
+            var sessionDto = new PracticeSessionDto
+            {
+                Id = session.Id,
+                StudentId = session.StudentId,
+                StudentName = session.Student?.Name ?? string.Empty,
+                PracticeId = session.PracticeSettingId,
+                PracticeName = session.PracticeSetting?.Name ?? string.Empty,
+                StartTime = session.StartTime,
+                EndTime = session.EndTime,
+                TotalScore = session.TotalScore,
+                Duration = session.EndTime.HasValue 
+                    ? (int)Math.Round((session.EndTime.Value - session.StartTime).TotalMinutes) 
+                    : 0,
+                CorrectCount = session.CorrectCount,
+                TotalQuestions = session.PracticeRecords?.Count ?? 0,
+                Score = session.PracticeRecords?.Where(r => r.IsCorrect).Sum(r => r.Question?.DefaultScore ?? 0) ?? 0,
+                CreatedTime = session.CreatedAt
+            };
+            
+            sessionDtos.Add(sessionDto);
+        }
+
+        // 返回分页结果
+        return new PageList<PracticeSessionDto>
+        {
+            Items = sessionDtos,
+            Total = total
+        };
     }
 
     /// <summary>
@@ -366,5 +464,365 @@ public class PracticeRecordService : BaseCRUDIService<PracticeRecord, PracticeRe
             PracticeTypeStatistics = new List<PracticeTypeStatisticsDto>(),
             QuestionTypeStatistics = new List<QuestionTypeStatisticsDto>()
         };
+    }
+
+    /// <summary>
+    /// 开始练习
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="practiceSettingId">练习设置ID</param>
+    /// <returns>练习记录ID</returns>
+    public async Task<long> StartPracticeAsync(long studentId, long practiceSettingId)
+    {
+        // 检查学生是否存在
+        var student = await _studentRepository.GetByIdAsync(studentId);
+        if (student == null)
+        {
+            throw new AppServiceException(404, "学生不存在");
+        }
+
+        // 检查练习设置是否存在
+        var practiceSetting = await _practiceSettingRepository.Find(p => p.Id == practiceSettingId)
+            .Include(p => p.ExamPaper)
+            .FirstOrDefaultAsync();
+            
+        if (practiceSetting == null)
+        {
+            throw new AppServiceException(404, "练习设置不存在");
+        }
+
+        // 检查练习设置状态
+        if (practiceSetting.Status != PracticeSettingStatus.Published)
+        {
+            throw new AppServiceException(400, "练习设置未发布，不能开始练习");
+        }
+
+        // 创建练习会话
+        var practiceSession = new PracticeSession
+        {
+            StudentId = studentId,
+            PracticeSettingId = practiceSettingId,
+            StartTime = DateTime.Now,
+            Status = PracticeSessionStatus.InProgress
+        };
+
+        await _practiceSessionRepository.AddAsync(practiceSession);
+        
+        return practiceSession.Id;
+    }
+
+    /// <summary>
+    /// 保存答案
+    /// </summary>
+    /// <param name="recordId">练习会话ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="answerDto">答案DTO</param>
+    public async Task SaveAnswerAsync(long recordId, long studentId, PracticeAnswerDto answerDto)
+    {
+        // 记录请求信息
+        _logger.LogInformation($"收到保存答案请求: recordId={recordId}, studentId={studentId}, questionId={answerDto.QuestionId}, answer={answerDto.Answer?.Substring(0, Math.Min(answerDto.Answer?.Length ?? 0, 20))}...");
+        
+        // 验证questionId有效性
+        if (answerDto.QuestionId <= 0 || answerDto.QuestionId.ToString() == "undefined")
+        {
+            _logger.LogWarning($"提交的questionId无效: {answerDto.QuestionId}");
+            throw new AppServiceException(400, "题目ID无效或为空");
+        }
+
+        // 检查练习会话是否存在
+        var practiceSession = await _practiceSessionRepository.Find(s => s.Id == recordId && s.StudentId == studentId)
+            .FirstOrDefaultAsync();
+            
+        if (practiceSession == null)
+        {
+            throw new AppServiceException(404, "练习会话不存在");
+        }
+
+        // 检查练习会话状态
+        if (practiceSession.Status != PracticeSessionStatus.InProgress)
+        {
+            throw new AppServiceException(400, "练习会话已结束，不能保存答案");
+        }
+
+        // 检查题目是否存在
+        var question = await _questionRepository.GetByIdAsync(answerDto.QuestionId);
+        if (question == null)
+        {
+            _logger.LogWarning($"题目不存在: questionId={answerDto.QuestionId}");
+            throw new AppServiceException(404, "题目不存在");
+        }
+
+        // 查找已有的练习记录
+        var practiceRecord = await _repository.Find(r => 
+            r.PracticeSessionId == recordId && 
+            r.QuestionId == answerDto.QuestionId)
+            .FirstOrDefaultAsync();
+
+        if (practiceRecord == null)
+        {
+            // 创建新的练习记录
+            practiceRecord = new PracticeRecord
+            {
+                StudentId = studentId,
+                QuestionId = answerDto.QuestionId,
+                PracticeSessionId = recordId,
+                Answer = answerDto.Answer,
+                TimeSpent = answerDto.TimeSpent,
+                IsMarked = answerDto.IsMarked,
+                PracticeTime = DateTime.Now,
+                PracticeType = PracticeType.Normal
+            };
+            
+            await _repository.AddAsync(practiceRecord);
+            _logger.LogInformation($"创建新练习记录: recordId={recordId}, questionId={answerDto.QuestionId}");
+        }
+        else
+        {
+            // 更新已有的练习记录
+            practiceRecord.Answer = answerDto.Answer;
+            practiceRecord.TimeSpent = answerDto.TimeSpent;
+            practiceRecord.IsMarked = answerDto.IsMarked;
+            
+            await _repository.UpdateAsync(practiceRecord);
+            _logger.LogInformation($"更新练习记录: recordId={recordId}, questionId={answerDto.QuestionId}");
+        }
+    }
+
+    /// <summary>
+    /// 提交练习
+    /// </summary>
+    /// <param name="recordId">练习会话ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="answers">答案列表</param>
+    public async Task SubmitPracticeAsync(long recordId, long studentId, List<PracticeAnswerDto> answers)
+    {
+        // 使用分布式锁防止并发提交
+        var lockKey = $"practice_submit_{recordId}_{studentId}";
+
+        try
+        {
+            using (await _distributedLockProvider.AcquireLockAsync(lockKey, TimeSpan.FromMinutes(1)))
+            {
+                _logger.LogInformation("已获取练习提交锁: {LockKey}", lockKey);
+
+                // 检查练习会话是否存在
+                var practiceSession = await _practiceSessionRepository.Find(s => s.Id == recordId && s.StudentId == studentId)
+                    .Include(s => s.PracticeSetting)
+                    .ThenInclude(p => p.ExamPaper)
+                    .FirstOrDefaultAsync();
+                    
+                if (practiceSession == null)
+                {
+                    throw new AppServiceException(404, "练习会话不存在");
+                }
+
+                // 检查练习会话状态
+                if (practiceSession.Status != PracticeSessionStatus.InProgress)
+                {
+                    _logger.LogWarning("练习已提交，不能重复提交: 记录ID={RecordId}, 学生ID={StudentId}, 当前状态={Status}",
+                        recordId, studentId, practiceSession.Status);
+                    throw new AppServiceException(400, "练习会话已结束，不能提交");
+                }
+
+                // 并行保存所有答案，提高性能
+                if (answers != null && answers.Any())
+                {
+                    var saveTasks = answers.Select(answerDto => SaveAnswerAsync(recordId, studentId, answerDto));
+                    await Task.WhenAll(saveTasks);
+                }
+
+                // 更新练习会话状态
+                practiceSession.EndTime = DateTime.Now;
+                practiceSession.Status = PracticeSessionStatus.Completed;
+                
+                // 使用评分器进行自动评分
+                await AutoGradeQuestions(practiceSession);
+
+                _logger.LogInformation("练习提交成功: 记录ID={RecordId}, 学生ID={StudentId}", recordId, studentId);
+            }
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex, "获取练习提交锁超时: {LockKey}", lockKey);
+            throw new AppServiceException(423, "系统繁忙，请稍后再试");
+        }
+        catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException && ex is not AppServiceException)
+        {
+            _logger.LogError(ex, "练习提交过程发生错误: 记录ID={RecordId}, 学生ID={StudentId}", recordId, studentId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 客观题自动评分
+    /// </summary>
+    /// <param name="practiceSession">练习会话</param>
+    private async Task AutoGradeQuestions(PracticeSession practiceSession)
+    {
+        // 获取所有练习记录
+        var practiceRecords = await _repository.Find(r => r.PracticeSessionId == practiceSession.Id)
+            .Include(r => r.Question)
+            .ToListAsync();
+            
+        // 获取试卷题目关联信息，用于获取题目版本和正确答案
+        var examPaperQuestions = await _examPaperQuestionRepository
+            .Find(q => q.ExamPaperId == practiceSession.PracticeSetting.ExamPaperId)
+            .Include(q => q.Question)
+            .Include(q => q.QuestionVersion)
+            .ToListAsync();
+
+        // 计算练习得分
+        decimal totalScore = 0;
+        int correctCount = 0;
+        
+        // 定义客观题类型
+        var objectiveQuestionTypes = new[] { QuestionType.SingleChoice, QuestionType.MultipleChoice, QuestionType.TrueFalse };
+        
+        foreach (var record in practiceRecords)
+        {
+            // 获取题目对应的试卷题目信息
+            var examPaperQuestion = examPaperQuestions.FirstOrDefault(q => q.QuestionId == record.QuestionId);
+            if (examPaperQuestion == null || examPaperQuestion.QuestionVersion == null)
+            {
+                continue; // 跳过无法找到对应试卷题目的记录
+            }
+            
+            // 判断题目类型，只自动评分客观题
+            if (record.Question != null && objectiveQuestionTypes.Contains(record.Question.Type))
+            {
+                bool isCorrect = false;
+                
+                if (record.Question.Type == QuestionType.MultipleChoice && !string.IsNullOrEmpty(record.Answer))
+                {
+                    // 多选题答案比较
+                    var studentAnswers = record.Answer.Split(',')
+                        .Select(a => a.Trim())
+                        .OrderBy(a => a)
+                        .ToArray();
+                        
+                    var correctAnswers = examPaperQuestion.QuestionVersion.CorrectAnswer.Split(',')
+                        .Select(a => a.Trim())
+                        .OrderBy(a => a)
+                        .ToArray();
+
+                    isCorrect = studentAnswers.SequenceEqual(correctAnswers, StringComparer.OrdinalIgnoreCase);
+                }
+                else if (!string.IsNullOrEmpty(record.Answer))
+                {
+                    // 单选题和判断题直接比较
+                    isCorrect = string.Equals(
+                        record.Answer.Trim(), 
+                        examPaperQuestion.QuestionVersion.CorrectAnswer.Trim(), 
+                        StringComparison.OrdinalIgnoreCase
+                    );
+                }
+
+                // 更新练习记录
+                record.IsCorrect = isCorrect;
+                
+                if (isCorrect)
+                {
+                    correctCount++;
+                    totalScore += examPaperQuestion.Score;
+                }
+            }
+        }
+        
+        // 计算总分和正确率
+        practiceSession.TotalScore = totalScore;
+        practiceSession.CorrectCount = correctCount;
+        
+        // 计算正确率
+        decimal correctRate = practiceRecords.Count > 0 
+            ? (decimal)correctCount / practiceRecords.Count * 100 
+            : 0;
+        
+        _logger.LogInformation("练习评分完成: 会话ID={SessionId}, 总分={TotalScore}, 正确数={CorrectCount}", 
+            practiceSession.Id, totalScore, correctCount);
+            
+        // 更新所有练习记录和会话
+        await _repository.UpdateRangeAsync(practiceRecords);
+        await _practiceSessionRepository.UpdateAsync(practiceSession);
+    }
+
+    /// <summary>
+    /// 获取练习结果
+    /// </summary>
+    /// <param name="recordId">练习记录ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>练习结果</returns>
+    public async Task<PracticeResultDto> GetPracticeResultAsync(long recordId, long studentId)
+    {
+        // 检查学生是否存在
+        var student = await _studentRepository.GetByIdAsync(studentId);
+        if (student == null)
+        {
+            throw new AppServiceException(404, "学生不存在");
+        }
+
+        // 检查练习会话是否存在
+        var practiceSession = await _practiceSessionRepository.Find(s => s.Id == recordId && s.StudentId == studentId)
+            .Include(s => s.PracticeSetting)
+            .ThenInclude(p => p.ExamPaper)
+            .FirstOrDefaultAsync();
+            
+        if (practiceSession == null)
+        {
+            throw new AppServiceException(404, "练习会话不存在");
+        }
+
+        // 获取所有练习记录
+        var practiceRecords = await _repository.Find(r => r.PracticeSessionId == recordId)
+            .Include(r => r.Question)
+            .ToListAsync();
+            
+        // 获取试卷所有题目
+        var examPaperQuestions = await _examPaperQuestionRepository
+            .Find(q => q.ExamPaperId == practiceSession.PracticeSetting.ExamPaperId)
+            .Include(q => q.Question)
+            .Include(q => q.QuestionVersion)
+            .ToListAsync();
+
+        // 构建答题结果详情
+        var answerResults = new List<PracticeAnswerResultDto>();
+        foreach (var examPaperQuestion in examPaperQuestions)
+        {
+            var record = practiceRecords.FirstOrDefault(r => r.QuestionId == examPaperQuestion.QuestionId);
+            var questionVersion = examPaperQuestion.QuestionVersion;
+            
+            var answerResult = new PracticeAnswerResultDto
+            {
+                QuestionId = examPaperQuestion.QuestionId,
+                Content = questionVersion?.Content ?? examPaperQuestion.Question.Content,
+                Type = examPaperQuestion.Question.Type.ToString(),
+                UserAnswer = record?.Answer ?? "",
+                CorrectAnswer = questionVersion?.CorrectAnswer ?? examPaperQuestion.Question.CorrectAnswer,
+                IsCorrect = record?.IsCorrect ?? false,
+                Score = examPaperQuestion.Score,
+                ObtainedScore = (record?.IsCorrect ?? false) ? examPaperQuestion.Score : 0,
+                TimeSpent = record?.TimeSpent ?? 0
+            };
+            
+            answerResults.Add(answerResult);
+        }
+
+        // 构建练习结果DTO
+        var resultDto = new PracticeResultDto
+        {
+            Id = practiceSession.Id,
+            PracticeSettingId = practiceSession.PracticeSettingId,
+            Name = practiceSession.PracticeSetting?.Name ?? "未知练习",
+            StartTime = practiceSession.StartTime,
+            EndTime = practiceSession.EndTime,
+            PracticeMode = practiceSession.PracticeSetting.PracticeMode,
+            Score = practiceSession.TotalScore,
+            TotalScore = examPaperQuestions.Sum(q => q.Score),
+            CorrectCount = practiceSession.CorrectCount,
+            TotalCount = examPaperQuestions.Count,
+            Status = practiceSession.Status,
+            Answers = answerResults
+        };
+
+        return resultDto;
     }
 } 

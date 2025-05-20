@@ -1,9 +1,11 @@
+using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.PracticeRecord;
 using CodeSpirit.ExamApi.Dtos.PracticeSetting;
+using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +21,7 @@ public class PracticeController : ApiControllerBase
     private readonly IPracticeSettingService _practiceSettingService;
     private readonly IPracticeRecordService _practiceRecordService;
     private readonly ILogger<PracticeController> _logger;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 构造函数
@@ -27,13 +30,15 @@ public class PracticeController : ApiControllerBase
     /// <param name="practiceRecordService">练习记录服务</param>
     /// <param name="logger">日志服务</param>
     public PracticeController(
-        IPracticeSettingService practiceSettingService, 
+        IPracticeSettingService practiceSettingService,
         IPracticeRecordService practiceRecordService,
-        ILogger<PracticeController> logger)
+        ILogger<PracticeController> logger,
+        ICurrentUser currentUser)
     {
         _practiceSettingService = practiceSettingService;
         _practiceRecordService = practiceRecordService;
         _logger = logger;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -46,7 +51,7 @@ public class PracticeController : ApiControllerBase
     {
         // 从Token中获取当前学生ID (仅是示例，实际应根据认证系统获取)
         long studentId = GetCurrentUserId();
-        
+
         // 仅获取已发布的练习设置
         var queryDto = new PracticeSettingQueryDto
         {
@@ -60,9 +65,9 @@ public class PracticeController : ApiControllerBase
     /// 获取学生的练习统计数据
     /// </summary>
     /// <returns>练习统计数据</returns>
-    [HttpGet("statistics")]
-    [DisplayName("获取练习统计")]
-    public async Task<ActionResult<ApiResponse<PracticeStatisticsDto>>> GetPracticeStatistics()
+    [HttpGet("analysis")]
+    [DisplayName("获取练习统计分析")]
+    public async Task<ActionResult<ApiResponse<PracticeStatisticsDto>>> GetPracticeAnalysis()
     {
         long studentId = GetCurrentUserId();
         var statistics = await _practiceRecordService.GetStudentPracticeStatisticsAsync(studentId);
@@ -73,22 +78,85 @@ public class PracticeController : ApiControllerBase
     /// 获取学生的练习记录
     /// </summary>
     /// <param name="queryDto">查询条件</param>
-    /// <returns>练习记录列表</returns>
+    /// <returns>练习会话记录列表</returns>
     [HttpGet("records")]
     [DisplayName("获取练习记录")]
-    public async Task<ActionResult<ApiResponse<PageList<PracticeRecordDto>>>> GetPracticeRecords([FromQuery] PracticeRecordQueryDto queryDto)
+    public async Task<ActionResult<ApiResponse<PageList<PracticeSessionDto>>>> GetPracticeRecords([FromQuery] PracticeSessionQueryDto queryDto)
     {
         long studentId = GetCurrentUserId();
         queryDto.StudentId = studentId;
-        var records = await _practiceRecordService.GetPracticeRecordsAsync(queryDto);
+        var records = await _practiceRecordService.GetPracticeSessionsAsync(queryDto);
         return SuccessResponse(records);
     }
 
-    // 获取当前用户ID (示例方法)
-    private long GetCurrentUserId()
+    /// <summary>
+    /// 开始练习
+    /// </summary>
+    [HttpPost("{id}/start")]
+    [DisplayName("开始练习")]
+    public async Task<ActionResult> StartPractice(long id)
     {
-        // 实际应用中，应从认证Token中获取
-        // 这里简单返回一个示例值
-        return 1;
+        long studentId = GetCurrentUserId();
+        var recordId = await _practiceRecordService.StartPracticeAsync(studentId, id);
+        return Ok(new { recordId, id });
     }
-} 
+
+    /// <summary>
+    /// 获取练习基本信息
+    /// </summary>
+    [HttpGet("{id}/basic")]
+    [DisplayName("获取练习基本信息")]
+    public async Task<ActionResult<ApiResponse<PracticeBasicInfoDto>>> GetPracticeBasicInfo(long id)
+    {
+        long studentId = GetCurrentUserId();
+        var practiceInfo = await _practiceSettingService.GetPracticeBasicInfoAsync(id, studentId);
+        return SuccessResponse(practiceInfo);
+    }
+
+    /// <summary>
+    /// 保存答案
+    /// </summary>
+    [HttpPost("{recordId}/save-answer")]
+    [DisplayName("保存答案")]
+    public async Task<ActionResult<ApiResponse>> SaveAnswer(long recordId, [FromBody] PracticeAnswerDto answerDto)
+    {
+        long studentId = GetCurrentUserId();
+        await _practiceRecordService.SaveAnswerAsync(recordId, studentId, answerDto);
+        return SuccessResponse();
+    }
+
+    /// <summary>
+    /// 提交练习
+    /// </summary>
+    [HttpPost("{recordId}/submit")]
+    [DisplayName("提交练习")]
+    public async Task<ActionResult<ApiResponse>> SubmitPractice(long recordId, [FromBody] List<PracticeAnswerDto> answers)
+    {
+        long studentId = GetCurrentUserId();
+        await _practiceRecordService.SubmitPracticeAsync(recordId, studentId, answers);
+        return SuccessResponse();
+    }
+
+    /// <summary>
+    /// 获取练习结果
+    /// </summary>
+    /// <param name="recordId">练习记录ID</param>
+    /// <returns>练习结果</returns>
+    [HttpGet("result/{recordId}")]
+    [DisplayName("获取练习结果")]
+    public async Task<ActionResult<ApiResponse<PracticeResultDto>>> GetPracticeResult(long recordId)
+    {
+        long studentId = GetCurrentUserId();
+        var result = await _practiceRecordService.GetPracticeResultAsync(recordId, studentId);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 获取当前用户ID
+    /// </summary>
+    /// <returns>当前用户ID，若未登录则返回0</returns>
+    protected long GetCurrentUserId()
+    {
+        return _currentUser.Id.HasValue ? _currentUser.Id.Value : 0;
+    }
+}

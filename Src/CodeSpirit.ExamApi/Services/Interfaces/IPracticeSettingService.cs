@@ -1,4 +1,4 @@
-using CodeSpirit.Core.Dtos;
+using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.PracticeSetting;
 using CodeSpirit.Shared.Services;
@@ -44,4 +44,12 @@ public interface IPracticeSettingService : IBaseCRUDService<PracticeSetting, Pra
     /// <param name="examPaperId">试卷ID</param>
     /// <returns>练习设置列表</returns>
     Task<List<PracticeSettingDto>> GetPracticeSettingsByExamPaperIdAsync(long examPaperId);
+
+    /// <summary>
+    /// 获取练习基本信息
+    /// </summary>
+    /// <param name="id">练习设置ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>练习基本信息</returns>
+    Task<PracticeBasicInfoDto> GetPracticeBasicInfoAsync(long id, long studentId);
 } 

@@ -147,32 +147,7 @@ public class SensitiveDataOptions
 /// RabbitMQ配置选项
 /// </summary>
 public class RabbitMQOptions
-{
-    /// <summary>
-    /// 主机
-    /// </summary>
-    public string HostName { get; set; } = "localhost";
-    
-    /// <summary>
-    /// 端口
-    /// </summary>
-    public int Port { get; set; } = 5672;
-    
-    /// <summary>
-    /// 用户名
-    /// </summary>
-    public string UserName { get; set; } = "guest";
-    
-    /// <summary>
-    /// 密码
-    /// </summary>
-    public string Password { get; set; } = "guest";
-    
-    /// <summary>
-    /// 虚拟主机
-    /// </summary>
-    public string VirtualHost { get; set; } = "/";
-    
+{    
     /// <summary>
     /// 交换机名称
     /// </summary>
@@ -203,6 +178,13 @@ public class ElasticsearchOptions
     /// 索引名称
     /// </summary>
     public string IndexName { get; set; } = "auditlogs";
+    
+    /// <summary>
+    /// 索引前缀，用于区分不同环境（可选）
+    /// 例如：dev、test、prod等
+    /// 最终索引名称格式：{IndexPrefix}_{IndexName}
+    /// </summary>
+    public string IndexPrefix { get; set; } = "codespirit";
     
     /// <summary>
     /// 用户名

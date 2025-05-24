@@ -1,5 +1,4 @@
-using Nest;
-using Elasticsearch.Net;
+using Elastic.Clients.Elasticsearch;
 using CodeSpirit.Audit.Models;
 using System.Dynamic;
 using GeoLoc = CodeSpirit.Audit.Models.GeoLocation;
@@ -11,49 +10,133 @@ namespace CodeSpirit.Audit.Services.Implementation;
 /// </summary>
 public class ElasticsearchService : IElasticsearchService
 {
-    private readonly IElasticClient _client;
+    private readonly ElasticsearchClient _client;
     private readonly ILogger<ElasticsearchService> _logger;
     private readonly ElasticsearchOptions _options;
     
     /// <summary>
-    /// 构造函数
+    /// 获取最终的索引名称（包含前缀）
     /// </summary>
-    public ElasticsearchService(ILogger<ElasticsearchService> logger, IConfiguration configuration)
+    /// <returns>完整的索引名称</returns>
+    private string GetFinalIndexName()
+    {
+        if (string.IsNullOrWhiteSpace(_options.IndexPrefix))
+        {
+            return _options.IndexName;
+        }
+        
+        return $"{_options.IndexPrefix}_{_options.IndexName}";
+    }
+    
+    /// <summary>
+    /// 构造函数 - 优先使用Aspire注入的客户端
+    /// </summary>
+    public ElasticsearchService(
+        ILogger<ElasticsearchService> logger, 
+        IConfiguration configuration,
+        ElasticsearchClient? elasticsearchClient = null)
     {
         _logger = logger;
         
-        // 获取配置
+        // 获取配置 - 智能处理配置绑定
         var options = new AuditOptions();
-        configuration.GetSection("Audit").Bind(options);
+        if (configuration.GetSection("Audit").Exists())
+        {
+            // 传入的是完整配置，获取Audit节
+            configuration.GetSection("Audit").Bind(options);
+        }
+        else
+        {
+            // 传入的就是Audit配置节
+            configuration.Bind(options);
+        }
         _options = options.Elasticsearch;
         
+        if (elasticsearchClient != null)
+        {
+            // 使用Aspire注入的客户端
+            _client = elasticsearchClient;
+            _logger.LogInformation("使用Aspire配置的Elasticsearch客户端");
+        }
+        else
+        {
+            // 回退到手动创建客户端
+            _client = CreateManualClient();
+            _logger.LogInformation("使用手动配置的Elasticsearch客户端");
+        }
+    }
+    
+    /// <summary>
+    /// 手动创建Elasticsearch客户端
+    /// </summary>
+    private ElasticsearchClient CreateManualClient()
+    {
         try
         {
             // 创建连接设置
-            var pool = new StaticConnectionPool(_options.Urls.Select(url => new Uri(url)));
-            var settings = new ConnectionSettings(pool);
+            var settings = new ElasticsearchClientSettings();
+            
+            // 设置节点地址
+            if (_options.Urls?.Any() == true)
+            {
+                var uri = new Uri(_options.Urls.First());
+                settings = new ElasticsearchClientSettings(uri);
+            }
             
             // 设置默认索引
-            settings.DefaultIndex(_options.IndexName);
+            settings = settings.DefaultIndex(GetFinalIndexName());
             
             // 如果配置了用户名和密码，则设置基本认证
             if (!string.IsNullOrEmpty(_options.UserName) && !string.IsNullOrEmpty(_options.Password))
             {
-                settings.BasicAuthentication(_options.UserName, _options.Password);
+                settings = settings.Authentication(new Elastic.Transport.BasicAuthentication(_options.UserName, _options.Password));
             }
             
-            // 设置最大重试次数
-            settings.MaximumRetries(5);
-            
             // 创建客户端
-            _client = new ElasticClient(settings);
+            var client = new ElasticsearchClient(settings);
             
-            _logger.LogInformation("Elasticsearch连接已建立");
+            _logger.LogInformation("Elasticsearch手动连接已建立");
+            return client;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Elasticsearch连接建立失败");
             throw;
+        }
+    }
+    
+    /// <summary>
+    /// 重建索引（删除现有索引并重新创建）
+    /// </summary>
+    public async Task<bool> RecreateIndexAsync()
+    {
+        try
+        {
+            // 检查索引是否存在，如果存在则删除
+            if (await IndexExistsAsync())
+            {
+                _logger.LogInformation("正在删除现有Elasticsearch索引: {IndexName}", GetFinalIndexName());
+                var deleteResponse = await _client.Indices.DeleteAsync(GetFinalIndexName());
+                
+                if (!deleteResponse.IsValidResponse)
+                {
+                    _logger.LogError("删除现有Elasticsearch索引失败: {Error}", deleteResponse.DebugInformation);
+                    return false;
+                }
+                
+                _logger.LogInformation("现有Elasticsearch索引删除成功: {IndexName}", GetFinalIndexName());
+            }
+            
+            // 等待一小段时间确保删除操作完成
+            await Task.Delay(1000);
+            
+            // 重新创建索引
+            return await CreateIndexAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "重建Elasticsearch索引失败");
+            return false;
         }
     }
     
@@ -67,74 +150,56 @@ public class ElasticsearchService : IElasticsearchService
             // 检查索引是否存在
             if (await IndexExistsAsync())
             {
-                _logger.LogInformation("Elasticsearch索引已存在: {IndexName}", _options.IndexName);
+                _logger.LogInformation("Elasticsearch索引已存在: {IndexName}", GetFinalIndexName());
                 return true;
             }
             
-            // 创建索引
-            var createIndexResponse = await _client.Indices.CreateAsync(_options.IndexName, c => c
+            // 创建索引，使用明确的字段映射以确保正确的字段名称
+            var createResponse = await _client.Indices.CreateAsync(GetFinalIndexName(), c => c
                 .Settings(s => s
                     .NumberOfShards(_options.NumberOfShards)
                     .NumberOfReplicas(_options.NumberOfReplicas)
-                    .Analysis(a => a
-                        .Analyzers(aa => aa
-                            .Custom("standard_pinyin", ca => ca
-                                .Tokenizer("standard")
-                                .Filters("lowercase", "asciifolding")
-                            )
-                        )
-                    )
                 )
-                .Map<AuditLog>(m => m
-                    .AutoMap() // 自动映射属性
-                    .Properties(p => p
-                        .Date(d => d.Name(n => n.OperationTime).Format("yyyy-MM-dd'T'HH:mm:ss.SSSZ"))
-                        .Text(t => t.Name(n => n.UserId).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.UserName).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.IpAddress).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.UserAgent).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Object<GeoLoc>(o => o
-                            .Name(n => n.Location)
-                            .Properties(lp => lp
-                                .Text(t => t.Name(n => n.Country).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                                .Text(t => t.Name(n => n.CountryCode).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                                .Text(t => t.Name(n => n.Region).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                                .Text(t => t.Name(n => n.City).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                                .GeoPoint(g => g.Name(n => n.Longitude))
-                                .GeoPoint(g => g.Name(n => n.Latitude))
-                                .Text(t => t.Name(n => n.ISP).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                            )
-                        )
-                        .Text(t => t.Name(n => n.ServiceName).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.ControllerName).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.ActionName).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.OperationName).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.OperationType).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.Description))
-                        .Text(t => t.Name(n => n.RequestPath).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.RequestMethod).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.RequestParams))
-                        .Text(t => t.Name(n => n.EntityName).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.EntityId).Fields(f => f.Keyword(k => k.Name("keyword"))))
-                        .Text(t => t.Name(n => n.BeforeData))
-                        .Text(t => t.Name(n => n.AfterData))
-                        .Number(n => n.Name(n => n.ExecutionDuration).Type(NumberType.Long))
-                        .Boolean(b => b.Name(n => n.IsSuccess))
-                        .Text(t => t.Name(n => n.ErrorMessage))
-                        .Object<Dictionary<string, string>>(o => o.Name(n => n.AttributeProperties))
-                        .Object<Dictionary<string, object>>(o => o.Name(n => n.AdditionalData))
+                .Mappings(m => m
+                    .Properties<AuditLog>(p => p
+                        .Keyword(f => f.Id)
+                        .Keyword(f => f.UserId)
+                        .Text(f => f.UserName)
+                        .Keyword(f => f.IpAddress)
+                        .Date(f => f.OperationTime) // 这将映射为operationTime字段
+                        .Keyword(f => f.ServiceName)
+                        .Keyword(f => f.ControllerName)
+                        .Keyword(f => f.ActionName)
+                        .Keyword(f => f.OperationType)
+                        .Text(f => f.Description)
+                        .Keyword(f => f.RequestPath)
+                        .Keyword(f => f.RequestMethod)
+                        .Text(f => f.RequestParams)
+                        .Keyword(f => f.EntityName)
+                        .Keyword(f => f.EntityId)
+                        .LongNumber(f => f.ExecutionDuration)
+                        .Boolean(f => f.IsSuccess)
+                        .Text(f => f.ErrorMessage)
+                        .IntegerNumber(f => f.StatusCode)
+                        .Text(f => f.BeforeData)
+                        .Text(f => f.AfterData)
+                        .Text(f => f.UserAgent)
+                        .Text(f => f.OperationName)
                     )
                 )
             );
             
-            if (createIndexResponse.IsValid)
+            if (createResponse.IsValidResponse)
             {
-                _logger.LogInformation("Elasticsearch索引创建成功: {IndexName}", _options.IndexName);
+                _logger.LogInformation("Elasticsearch索引创建成功，包含正确的字段映射: {IndexName}", GetFinalIndexName());
+                
+                // 记录字段映射信息以便调试
+                _logger.LogDebug("索引字段映射创建完成，OperationTime字段将映射为operationTime");
                 return true;
             }
             else
             {
-                _logger.LogError("Elasticsearch索引创建失败: {Error}", createIndexResponse.DebugInformation);
+                _logger.LogError("Elasticsearch索引创建失败: {Error}", createResponse.DebugInformation);
                 return false;
             }
         }
@@ -152,8 +217,8 @@ public class ElasticsearchService : IElasticsearchService
     {
         try
         {
-            var existsResponse = await _client.Indices.ExistsAsync(_options.IndexName);
-            return existsResponse.Exists;
+            var existsResponse = await _client.Indices.ExistsAsync(GetFinalIndexName());
+            return existsResponse.IsValidResponse;
         }
         catch (Exception ex)
         {
@@ -175,9 +240,9 @@ public class ElasticsearchService : IElasticsearchService
                 await CreateIndexAsync();
             }
             
-            var indexResponse = await _client.IndexDocumentAsync(document);
+            var indexResponse = await _client.IndexAsync(document, idx => idx.Index(GetFinalIndexName()));
             
-            if (indexResponse.IsValid)
+            if (indexResponse.IsValidResponse)
             {
                 _logger.LogDebug("文档已成功索引到Elasticsearch: {Id}", indexResponse.Id);
                 return true;
@@ -200,32 +265,26 @@ public class ElasticsearchService : IElasticsearchService
     /// </summary>
     public async Task<bool> BulkIndexAsync<T>(IEnumerable<T> documents) where T : class
     {
-        if (documents == null || !documents.Any())
-        {
-            return true;
-        }
-        
         try
         {
+            if (!documents.Any())
+            {
+                return true;
+            }
+
             // 确保索引存在
             if (!await IndexExistsAsync())
             {
                 await CreateIndexAsync();
             }
-            
-            var bulkRequest = new BulkRequest(_options.IndexName)
-            {
-                Operations = new List<IBulkOperation>()
-            };
-            
-            foreach (var document in documents)
-            {
-                bulkRequest.Operations.Add(new BulkIndexOperation<T>(document));
-            }
-            
-            var bulkResponse = await _client.BulkAsync(bulkRequest);
-            
-            if (bulkResponse.IsValid)
+
+            // 使用简单的批量索引
+            var bulkResponse = await _client.BulkAsync(b => b
+                .Index(GetFinalIndexName())
+                .IndexMany(documents)
+            );
+
+            if (bulkResponse.IsValidResponse && !bulkResponse.Errors)
             {
                 _logger.LogInformation("批量索引文档到Elasticsearch成功: {Count}条", documents.Count());
                 return true;
@@ -250,21 +309,17 @@ public class ElasticsearchService : IElasticsearchService
     {
         try
         {
-            var getResponse = await _client.GetAsync<T>(id, g => g.Index(_options.IndexName));
+            var getResponse = await _client.GetAsync<T>(id, g => g.Index(GetFinalIndexName()));
             
-            if (getResponse.IsValid)
+            if (getResponse.IsValidResponse && getResponse.Found)
             {
                 return getResponse.Source;
             }
-            else
-            {
-                _logger.LogError("Elasticsearch获取文档失败: {Error}", getResponse.DebugInformation);
-                return null;
-            }
+            
+            return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取文档时发生错误");
             _logger.LogError(ex, "从Elasticsearch获取文档失败");
             return null;
         }
@@ -273,24 +328,72 @@ public class ElasticsearchService : IElasticsearchService
     /// <summary>
     /// 搜索文档
     /// </summary>
-    public async Task<(IEnumerable<T> Items, long Total)> SearchAsync<T>(Func<SearchDescriptor<T>, SearchDescriptor<T>> searchFunc) where T : class
+    public async Task<(IEnumerable<T> Items, long Total)> SearchAsync<T>(Func<SearchRequestDescriptor<T>, SearchRequestDescriptor<T>> searchFunc) where T : class
     {
         try
         {
-            var searchRequest = searchFunc(new SearchDescriptor<T>().Index(_options.IndexName));
+            var searchDescriptor = new SearchRequestDescriptor<T>().Index(GetFinalIndexName());
+            var searchRequest = searchFunc(searchDescriptor);
+            
+            // 记录搜索请求信息
+            _logger.LogInformation("开始执行Elasticsearch搜索，索引: {IndexName}", GetFinalIndexName());
+            
             var searchResponse = await _client.SearchAsync<T>(searchRequest);
             
-            if (searchResponse.IsValid)
-            {
-                return (searchResponse.Documents, searchResponse.Total);
-            }
+            // 详细记录搜索结果
+            _logger.LogInformation("Elasticsearch搜索完成");
+            _logger.LogInformation("搜索响应状态: {IsValid}", searchResponse.IsValidResponse);
+            _logger.LogInformation("返回文档数量: {DocumentCount}", searchResponse.Documents?.Count() ?? 0);
+            _logger.LogInformation("总文档数量: {Total}", searchResponse.Total);
+            _logger.LogInformation("查询耗时: {Took}ms", searchResponse.Took);
             
-            _logger.LogError("Elasticsearch搜索失败: {Error}", searchResponse.DebugInformation);
-            return (Enumerable.Empty<T>(), 0);
+            if (searchResponse.IsValidResponse)
+            {
+                var items = searchResponse.Documents ?? Enumerable.Empty<T>();
+                var total = searchResponse.Total;
+                
+                _logger.LogInformation("搜索成功 - 返回 {ItemCount} 条记录，总计 {Total} 条", items.Count(), total);
+                
+                // 如果是AuditLog类型，打印前几条记录的关键信息
+                if (typeof(T) == typeof(CodeSpirit.Audit.Models.AuditLog))
+                {
+                    var auditLogs = items.Cast<CodeSpirit.Audit.Models.AuditLog>().Take(3);
+                    foreach (var log in auditLogs)
+                    {
+                        _logger.LogInformation("审计日志样本 - ID: {Id}, 用户: {UserName}, 操作时间: {OperationTime}, 操作类型: {OperationType}", 
+                            log.Id, log.UserName, log.OperationTime, log.OperationType);
+                    }
+                }
+                
+                return (items, total);
+            }
+            else
+            {
+                _logger.LogError("Elasticsearch搜索失败");
+                _logger.LogError("错误信息: {Error}", searchResponse.DebugInformation);
+                
+                // 记录HTTP状态码和基本错误信息
+                _logger.LogError("HTTP状态码: {StatusCode}", searchResponse.ApiCallDetails?.HttpStatusCode);
+                
+                if (searchResponse.ElasticsearchServerError != null)
+                {
+                    _logger.LogError("服务器错误详情: {ServerError}", searchResponse.ElasticsearchServerError.ToString());
+                }
+                
+                return (Enumerable.Empty<T>(), 0);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "搜索文档时发生错误");
+            _logger.LogError(ex, "Elasticsearch搜索时发生异常");
+            _logger.LogError("异常类型: {ExceptionType}", ex.GetType().Name);
+            _logger.LogError("异常消息: {Message}", ex.Message);
+            
+            if (ex.InnerException != null)
+            {
+                _logger.LogError("内部异常: {InnerMessage}", ex.InnerException.Message);
+            }
+            
             return (Enumerable.Empty<T>(), 0);
         }
     }
@@ -302,9 +405,9 @@ public class ElasticsearchService : IElasticsearchService
     {
         try
         {
-            var deleteResponse = await _client.DeleteAsync(new DeleteRequest(_options.IndexName, id));
+            var deleteResponse = await _client.DeleteAsync<object>(id, d => d.Index(GetFinalIndexName()));
             
-            if (deleteResponse.IsValid)
+            if (deleteResponse.IsValidResponse)
             {
                 _logger.LogInformation("从Elasticsearch删除文档成功: {Id}", id);
                 return true;
@@ -325,27 +428,23 @@ public class ElasticsearchService : IElasticsearchService
     /// <summary>
     /// 聚合查询
     /// </summary>
-    public async Task<IDictionary<string, object>?> AggregateAsync<T>(Func<SearchDescriptor<T>, SearchDescriptor<T>> aggregationFunc) where T : class
+    public async Task<IDictionary<string, object>?> AggregateAsync<T>(Func<SearchRequestDescriptor<T>, SearchRequestDescriptor<T>> aggregationFunc) where T : class
     {
         try
         {
-            var searchRequest = aggregationFunc(new SearchDescriptor<T>().Index(_options.IndexName));
+            var searchDescriptor = new SearchRequestDescriptor<T>().Index(GetFinalIndexName()).Size(0);
+            var searchRequest = aggregationFunc(searchDescriptor);
+            
             var searchResponse = await _client.SearchAsync<T>(searchRequest);
             
-            if (searchResponse.IsValid && searchResponse.Aggregations != null && searchResponse.Aggregations.Count > 0)
+            if (searchResponse.IsValidResponse && searchResponse.Aggregations != null)
             {
+                // 简化的聚合结果处理
                 var result = new Dictionary<string, object>();
-                
-                // 将聚合结果转换为字典对象
-                foreach (var aggregation in searchResponse.Aggregations)
+                foreach (var agg in searchResponse.Aggregations)
                 {
-                    var convertedValue = ConvertAggregation(aggregation.Value);
-                    if (convertedValue != null)
-                    {
-                        result[aggregation.Key] = convertedValue;
-                    }
+                    result[agg.Key] = agg.Value;
                 }
-                
                 return result;
             }
             else
@@ -356,60 +455,8 @@ public class ElasticsearchService : IElasticsearchService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "聚合查询时发生错误");
+            _logger.LogError(ex, "Elasticsearch聚合查询失败");
             return null;
         }
-    }
-    
-    /// <summary>
-    /// 转换聚合结果
-    /// </summary>
-    private object ConvertAggregation(IAggregate aggregate)
-    {
-        if (aggregate is ValueAggregate valueAggregate)
-        {
-            return valueAggregate.Value;
-        }
-        else if (aggregate is BucketAggregate bucketAggregate)
-        {
-            var result = new List<Dictionary<string, object>>();
-            foreach (var bucket in bucketAggregate.Items)
-            {
-                var bucketResult = new Dictionary<string, object>();
-                
-                // 键值桶
-                if (bucket is KeyedBucket<object> keyedBucket)
-                {
-                    bucketResult["key"] = keyedBucket.Key;
-                    bucketResult["count"] = keyedBucket.DocCount;
-                }
-                
-                result.Add(bucketResult);
-            }
-            return result;
-        }
-        else if (aggregate is SingleBucketAggregate singleBucketAggregate)
-        {
-            var result = new Dictionary<string, object>
-            {
-                ["count"] = singleBucketAggregate.DocCount
-            };
-            
-            return result;
-        }
-        
-        return null;
-    }
-    
-    private IDictionary<string, object> ConvertAggregations(IReadOnlyDictionary<string, IAggregate> aggregations)
-    {
-        var result = new Dictionary<string, object>();
-        
-        foreach (var agg in aggregations)
-        {
-            result[agg.Key] = ConvertAggregation(agg.Value);
-        }
-        
-        return result;
     }
 } 

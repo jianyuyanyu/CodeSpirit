@@ -16,6 +16,5 @@ global using CodeSpirit.Audit.Attributes;
 global using CodeSpirit.Audit.Middleware;
 global using CodeSpirit.Audit.Helpers;
 global using Microsoft.Extensions.Logging.Abstractions;
-global using Nest;
-global using Elasticsearch.Net;
+global using Elastic.Clients.Elasticsearch;
 global using System.Reflection; 

@@ -36,7 +36,14 @@ namespace CodeSpirit.Amis.Helpers
 
         public string GetControllerRoutePrefix(Type controllerType)
         {
-            RouteAttribute routeAttribute = controllerType.GetCustomAttribute<RouteAttribute>();
+            // 优先使用控制器类本身定义的Route属性，如果没有则使用继承的
+            var routeAttribute = controllerType.GetCustomAttribute<RouteAttribute>(inherit: false);
+            if (routeAttribute == null)
+            {
+                // 如果当前类没有定义Route属性，则查找继承的Route属性
+                routeAttribute = controllerType.GetCustomAttribute<RouteAttribute>(inherit: true);
+            }
+            
             if (routeAttribute != null)
             {
                 string template = routeAttribute.Template;
@@ -132,7 +139,13 @@ namespace CodeSpirit.Amis.Helpers
 
         public string GetRoute(Type controller)
         {
-            RouteAttribute routeAttr = controller.GetCustomAttribute<RouteAttribute>();
+            // 优先使用控制器类本身定义的Route属性，如果没有则使用继承的
+            var routeAttr = controller.GetCustomAttribute<RouteAttribute>(inherit: false);
+            if (routeAttr == null)
+            {
+                // 如果当前类没有定义Route属性，则查找继承的Route属性
+                routeAttr = controller.GetCustomAttribute<RouteAttribute>(inherit: true);
+            }
             return routeAttr?.Template?.Replace("[controller]", GetControllerName(controller)) ?? string.Empty;
         }
     }

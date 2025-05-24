@@ -8,6 +8,7 @@ using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using CodeSpirit.ServiceDefaults.Messaging;
 
 namespace CodeSpirit.ServiceDefaults;
 
@@ -28,9 +29,8 @@ public static class Extensions
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();
 
-        builder.AddRabbitMQClient(
-            "rabbitmq",
-            static settings => settings.DisableHealthChecks = true);
+        // 添加多个键控RabbitMQ客户端以支持不同用途
+        builder.AddRabbitMQClients();
 
         //if (builder.Environment.IsProduction())
         //{
@@ -58,6 +58,48 @@ public static class Extensions
         //});
 
         
+
+        return builder;
+    }
+
+    /// <summary>
+    /// 添加多个键控RabbitMQ客户端
+    /// </summary>
+    /// <typeparam name="TBuilder">构建器类型</typeparam>
+    /// <param name="builder">应用程序构建器</param>
+    /// <returns>构建器</returns>
+    public static TBuilder AddRabbitMQClients<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        // 默认RabbitMQ客户端（主要用于向后兼容）
+        builder.AddRabbitMQClient(
+            "rabbitmq",
+            static settings => settings.DisableHealthChecks = true);
+
+        //// 事件总线专用客户端
+        //builder.AddKeyedRabbitMQClient("eventbus", settings =>
+        //{
+        //    // 可以为事件总线配置特定的参数
+        //    settings.DisableHealthChecks = true;
+        //    settings.DisableTracing = false; // 事件总线需要跟踪
+        //});
+
+        //// 审计服务专用客户端
+        //builder.AddKeyedRabbitMQClient("audit", settings =>
+        //{
+        //    // 审计服务可能需要不同的配置
+        //    settings.DisableHealthChecks = true;
+        //    settings.DisableTracing = true; // 审计不需要跟踪以避免循环
+        //});
+
+        //// 通用消息服务专用客户端
+        //builder.AddKeyedRabbitMQClient("messaging", settings =>
+        //{
+        //    settings.DisableHealthChecks = true;
+        //    settings.DisableTracing = false; // 通用消息需要跟踪
+        //});
+
+        // 注册RabbitMQ服务工厂
+        builder.Services.AddSingleton<IRabbitMQServiceFactory, RabbitMQServiceFactory>();
 
         return builder;
     }

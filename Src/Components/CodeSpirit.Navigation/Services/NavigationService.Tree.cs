@@ -152,7 +152,13 @@ namespace CodeSpirit.Navigation
             if (string.IsNullOrEmpty(node.Route) && memberInfo is Type controllerType2)
             {
                 var controllerName = controllerType2.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
-                var route = controllerType2.GetCustomAttribute<RouteAttribute>()?.Template?.Replace("[controller]", controllerName.ToCamelCase()) ?? string.Empty;
+                // 优先使用控制器类本身定义的Route属性，如果没有则使用继承的
+                var routeAttr = controllerType2.GetCustomAttribute<RouteAttribute>(inherit: false);
+                if (routeAttr == null)
+                {
+                    routeAttr = controllerType2.GetCustomAttribute<RouteAttribute>(inherit: true);
+                }
+                var route = routeAttr?.Template?.Replace("[controller]", controllerName.ToCamelCase()) ?? string.Empty;
 
                 if (!string.IsNullOrEmpty(route))
                 {

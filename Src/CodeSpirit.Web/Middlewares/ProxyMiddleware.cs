@@ -6,14 +6,48 @@ using System.Text;
 
 namespace CodeSpirit.Web.Middlewares
 {
+    /// <summary>
+    /// 代理中间件，负责将API请求转发到相应的微服务
+    /// </summary>
+    /// <remarks>
+    /// 该中间件会解析请求路径，将请求转发到对应的微服务，
+    /// 并支持请求聚合和响应处理功能
+    /// </remarks>
     public class ProxyMiddleware
     {
+        /// <summary>
+        /// 下一个中间件委托
+        /// </summary>
         private readonly RequestDelegate _next;
+        
+        /// <summary>
+        /// HTTP客户端工厂，用于创建HTTP客户端
+        /// </summary>
         private readonly IHttpClientFactory _httpClientFactory;
+        
+        /// <summary>
+        /// 日志记录器
+        /// </summary>
         private readonly ILogger<ProxyMiddleware> _logger;
+        
+        /// <summary>
+        /// 聚合器服务，用于处理响应聚合
+        /// </summary>
         private readonly IAggregatorService _aggregatorService;
-        private const int MaxRequestBodySize = 100 * 1024 * 1024; // 例如限制为100MB
+        
+        /// <summary>
+        /// 最大请求体大小限制（100MB）
+        /// </summary>
+        private const int MaxRequestBodySize = 100 * 1024 * 1024;
 
+        /// <summary>
+        /// 初始化代理中间件
+        /// </summary>
+        /// <param name="next">下一个中间件委托</param>
+        /// <param name="httpClientFactory">HTTP客户端工厂</param>
+        /// <param name="logger">日志记录器</param>
+        /// <param name="aggregatorService">聚合器服务</param>
+        /// <exception cref="ArgumentNullException">当任何参数为null时抛出</exception>
         public ProxyMiddleware(
             RequestDelegate next,
             IHttpClientFactory httpClientFactory,
@@ -26,6 +60,11 @@ namespace CodeSpirit.Web.Middlewares
             _aggregatorService = aggregatorService ?? throw new ArgumentNullException(nameof(aggregatorService));
         }
 
+        /// <summary>
+        /// 中间件调用方法，处理HTTP请求
+        /// </summary>
+        /// <param name="context">HTTP上下文</param>
+        /// <returns>异步任务</returns>
         public async Task Invoke(HttpContext context)
         {
             try
@@ -33,7 +72,7 @@ namespace CodeSpirit.Web.Middlewares
                 var currentHost = context.Request.Host.Host;
 
                 _logger.LogInformation("收到请求 - {Method}: {Url}, 来源: {Host}",
-                    context.Request.GetEncodedUrl(), context.Request.Method, currentHost);
+                    context.Request.Method, context.Request.GetEncodedUrl(), currentHost);
 
                 await HandleProxyRequest(context);
             }
@@ -45,6 +84,11 @@ namespace CodeSpirit.Web.Middlewares
             }
         }
 
+        /// <summary>
+        /// 处理代理请求的核心逻辑
+        /// </summary>
+        /// <param name="context">HTTP上下文</param>
+        /// <returns>异步任务</returns>
         private async Task HandleProxyRequest(HttpContext context)
         {
             var request = context.Request;
@@ -132,17 +176,25 @@ namespace CodeSpirit.Web.Middlewares
 
             // 扩展不代理的本地路径列表
             // 增加Pages目录下的所有页面路由
-            if (serviceName == "api" || serviceName == "_blazor" || 
-                serviceName == "swagger" || serviceName == "health" || 
-                serviceName == "signalr" || serviceName == "hubs" ||
-                serviceName == "Login" || serviceName == "Index" ||
-                serviceName == "Chat" || serviceName == "Notifications" ||
-                serviceName == "Impersonate" || serviceName == "Shared" ||
-                serviceName == "export-task")
+            switch (serviceName)
             {
-                _logger.LogInformation("Web项目路径，跳过代理 - 路径: {Path}", request.Path);
-                await _next(context);
-                return;
+                case "api":
+                case "web":
+                case "_blazor":
+                case "swagger":
+                case "health":
+                case "signalr":
+                case "hubs":
+                case "Login":
+                case "Index":
+                case "Chat":
+                case "Notifications":
+                case "Impersonate":
+                case "Shared":
+                case "export-task":
+                    _logger.LogInformation("Web项目路径，跳过代理 - 路径: {Path}", request.Path);
+                    await _next(context);
+                    return;
             }
 
             // 重构目标路径：移除开头的服务名，保留 /api 开始的部分
@@ -242,6 +294,14 @@ namespace CodeSpirit.Web.Middlewares
             }
         }
 
+        /// <summary>
+        /// 复制HTTP请求头到代理请求
+        /// </summary>
+        /// <param name="source">源HTTP请求</param>
+        /// <param name="target">目标HTTP请求消息</param>
+        /// <remarks>
+        /// 会跳过Host头，因为需要使用新的目标主机
+        /// </remarks>
         private static void CopyRequestHeaders(HttpRequest source, HttpRequestMessage target)
         {
             foreach (var header in source.Headers)
@@ -260,6 +320,17 @@ namespace CodeSpirit.Web.Middlewares
             }
         }
 
+        /// <summary>
+        /// 将HTTP响应内容复制到当前上下文
+        /// </summary>
+        /// <param name="context">HTTP上下文</param>
+        /// <param name="response">HTTP响应消息</param>
+        /// <param name="logger">日志记录器</param>
+        /// <returns>异步任务</returns>
+        /// <remarks>
+        /// 支持JSON内容聚合处理，确保正确的字符编码，
+        /// 并对不同类型的内容采用适当的传输方式
+        /// </remarks>
         private async Task CopyResponseToContext(HttpContext context, HttpResponseMessage response, ILogger<ProxyMiddleware> logger)
         {
             context.Response.StatusCode = (int)response.StatusCode;

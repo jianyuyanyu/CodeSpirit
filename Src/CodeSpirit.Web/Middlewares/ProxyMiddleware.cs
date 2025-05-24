@@ -3,6 +3,14 @@ using System.Net.Http.Headers;
 using System.Collections.Generic;
 using CodeSpirit.Aggregator.Services;
 using System.Text;
+using CodeSpirit.Shared.Services;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using System;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace CodeSpirit.Web.Middlewares
 {
@@ -36,6 +44,11 @@ namespace CodeSpirit.Web.Middlewares
         private readonly IAggregatorService _aggregatorService;
         
         /// <summary>
+        /// 客户端IP地址获取服务
+        /// </summary>
+        private readonly IClientIpService _clientIpService;
+        
+        /// <summary>
         /// 最大请求体大小限制（100MB）
         /// </summary>
         private const int MaxRequestBodySize = 100 * 1024 * 1024;
@@ -47,17 +60,20 @@ namespace CodeSpirit.Web.Middlewares
         /// <param name="httpClientFactory">HTTP客户端工厂</param>
         /// <param name="logger">日志记录器</param>
         /// <param name="aggregatorService">聚合器服务</param>
+        /// <param name="clientIpService">客户端IP地址获取服务</param>
         /// <exception cref="ArgumentNullException">当任何参数为null时抛出</exception>
         public ProxyMiddleware(
             RequestDelegate next,
             IHttpClientFactory httpClientFactory,
             ILogger<ProxyMiddleware> logger,
-            IAggregatorService aggregatorService)
+            IAggregatorService aggregatorService,
+            IClientIpService clientIpService)
         {
             _next = next ?? throw new ArgumentNullException(nameof(next));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _aggregatorService = aggregatorService ?? throw new ArgumentNullException(nameof(aggregatorService));
+            _clientIpService = clientIpService ?? throw new ArgumentNullException(nameof(clientIpService));
         }
 
         /// <summary>
@@ -251,11 +267,11 @@ namespace CodeSpirit.Web.Middlewares
             context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
 
             // 添加原始IP地址
-            var remoteIpAddress = context.Connection.RemoteIpAddress?.ToString();
-            if (!string.IsNullOrEmpty(remoteIpAddress))
+            var clientIpAddress = _clientIpService.GetClientIpAddress(context);
+            if (!string.IsNullOrEmpty(clientIpAddress) && clientIpAddress != "未知")
             {
-                proxyRequest.Headers.Add("X-Forwarded-For", remoteIpAddress);
-                proxyRequest.Headers.Add("X-Real-IP", remoteIpAddress);
+                proxyRequest.Headers.Add("X-Forwarded-For", clientIpAddress);
+                proxyRequest.Headers.Add("X-Real-IP", clientIpAddress);
             }
 
             // 添加原始协议

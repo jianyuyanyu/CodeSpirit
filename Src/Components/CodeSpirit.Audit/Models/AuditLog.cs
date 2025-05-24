@@ -23,7 +23,6 @@ public class AuditLog
     /// </summary>
     [DisplayName("用户ID")]
     [StringLength(50)]
-    [AggregateField("/api/web/user/{value}", "{value}")]
     public string UserId { get; set; } = string.Empty;
     
     /// <summary>

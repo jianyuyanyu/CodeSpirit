@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.ConfigCenter.Services;
+using CodeSpirit.Shared.Services;
 using System;
 using System.Threading.Tasks;
 
@@ -14,13 +15,16 @@ namespace CodeSpirit.ConfigCenter.Hubs
     {
         private readonly ILogger<ConfigHub> _logger;
         private readonly IClientTrackingService _clientTrackingService;
+        private readonly IClientIpService _clientIpService;
 
         public ConfigHub(
             ILogger<ConfigHub> logger,
-            IClientTrackingService clientTrackingService)
+            IClientTrackingService clientTrackingService,
+            IClientIpService clientIpService)
         {
             _logger = logger;
             _clientTrackingService = clientTrackingService;
+            _clientIpService = clientIpService;
         }
 
         /// <summary>
@@ -98,7 +102,7 @@ namespace CodeSpirit.ConfigCenter.Hubs
                 Environment = environment,
                 HostName = hostName,
                 Version = version,
-                IpAddress = Context.GetHttpContext()?.Connection?.RemoteIpAddress?.ToString() ?? "未知"
+                IpAddress = _clientIpService.GetClientIpAddress(Context.GetHttpContext()) ?? "未知"
             };
             
             _clientTrackingService.RegisterConnection(Context.ConnectionId, connection);
@@ -120,7 +124,7 @@ namespace CodeSpirit.ConfigCenter.Hubs
             // 在连接时创建一个基本信息，具体的应用和环境信息会在后续调用中设置
             var connection = new ClientConnection
             {
-                IpAddress = Context.GetHttpContext()?.Connection?.RemoteIpAddress?.ToString() ?? "未知"
+                IpAddress = _clientIpService.GetClientIpAddress(Context.GetHttpContext()) ?? "未知"
             };
             
             _clientTrackingService.RegisterConnection(Context.ConnectionId, connection);

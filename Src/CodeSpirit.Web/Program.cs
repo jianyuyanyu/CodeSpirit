@@ -116,9 +116,6 @@ public class Program
         //注册 AMIS 服务
         builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);
 
-        // 注册客户端IP地址获取服务
-        builder.Services.AddScoped<IClientIpService, ClientIpService>();
-
         WebApplication app = builder.Build();
 
         if (!app.Environment.IsDevelopment())

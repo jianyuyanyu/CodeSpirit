@@ -4,6 +4,7 @@ using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Auth;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,12 +20,14 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
         private readonly Mock<IAuthService> _mockAuthService;
         private readonly Mock<SignInManager<ApplicationUser>> _mockSignInManager;
         private readonly Mock<ILogger<AuthController>> _mockLogger;
+        private readonly Mock<IClientIpService> _mockClientIpService;
         private readonly AuthController _controller;
 
         public AuthControllerTests()
         {
             _mockAuthService = new Mock<IAuthService>();
             _mockLogger = new Mock<ILogger<AuthController>>();
+            _mockClientIpService = new Mock<IClientIpService>();
             
             // 设置 SignInManager 的 Mock
             var mockUserManager = new Mock<UserManager<ApplicationUser>>(
@@ -36,7 +39,11 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
                 Mock.Of<IUserClaimsPrincipalFactory<ApplicationUser>>(),
                 null, null, null, null);
 
-            _controller = new AuthController(_mockAuthService.Object, _mockSignInManager.Object, _mockLogger.Object);
+            // 设置 ClientIpService 的默认行为
+            _mockClientIpService.Setup(x => x.GetClientIpAddress(It.IsAny<HttpContext>()))
+                .Returns("127.0.0.1");
+
+            _controller = new AuthController(_mockAuthService.Object, _mockSignInManager.Object, _mockLogger.Object, _mockClientIpService.Object);
         }
 
         [Fact]
@@ -71,10 +78,11 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             var result = await _controller.Login(loginModel);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var actionResult = Assert.IsType<ActionResult<ApiResponse<AuthTokenResponse>>>(result);
+            var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             var response = Assert.IsType<ApiResponse<AuthTokenResponse>>(okResult.Value);
             
-            Assert.Equal(200, response.Status);
+            Assert.Equal(0, response.Status);
             Assert.Equal("登录成功", response.Msg);
             Assert.NotNull(response.Data);
             Assert.Equal("test-token", response.Data.Token);
@@ -109,10 +117,12 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             var result = await _controller.Login(loginModel);
 
             // Assert
-            var badResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse>(badResult.Value);
-            Assert.Equal(400, response.Status);
+            var actionResult = Assert.IsType<ActionResult<ApiResponse<AuthTokenResponse>>>(result);
+            var badResult = Assert.IsType<ObjectResult>(actionResult.Result);
+            var response = Assert.IsType<ApiResponse<AuthTokenResponse>>(badResult.Value);
+            Assert.Equal(400, badResult.StatusCode);
             // 不验证具体错误消息，只确保是失败状态
+            Assert.True(response.Status != 0);
             Assert.False(string.IsNullOrEmpty(response.Msg));
         }
 
@@ -136,9 +146,10 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             var result = await _controller.RefreshToken(refreshTokenDto);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var actionResult = Assert.IsType<ActionResult<ApiResponse<AuthTokenResponse>>>(result);
+            var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             var response = Assert.IsType<ApiResponse<AuthTokenResponse>>(okResult.Value);
-            Assert.Equal(200, response.Status);
+            Assert.Equal(0, response.Status);
             Assert.Equal("令牌刷新成功", response.Msg);
             Assert.NotNull(response.Data);
             Assert.Equal("new-token", response.Data.Token);
@@ -166,9 +177,10 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             var result = await _controller.RefreshToken(refreshTokenDto);
 
             // Assert
-            var badResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse>(badResult.Value);
-            Assert.Equal(400, response.Status);
+            var actionResult = Assert.IsType<ActionResult<ApiResponse<AuthTokenResponse>>>(result);
+            var badResult = Assert.IsType<ObjectResult>(actionResult.Result);
+            var response = Assert.IsType<ApiResponse<AuthTokenResponse>>(badResult.Value);
+            Assert.Equal(400, badResult.StatusCode);
             Assert.Equal(errorMessage, response.Msg);
         }
 
@@ -186,9 +198,10 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             var result = await _controller.RefreshToken(refreshTokenDto);
 
             // Assert
-            var badResult = Assert.IsType<BadRequestObjectResult>(result);
-            var response = Assert.IsType<ApiResponse>(badResult.Value);
-            Assert.Equal(400, response.Status);
+            var actionResult = Assert.IsType<ActionResult<ApiResponse<AuthTokenResponse>>>(result);
+            var badResult = Assert.IsType<ObjectResult>(actionResult.Result);
+            var response = Assert.IsType<ApiResponse<AuthTokenResponse>>(badResult.Value);
+            Assert.Equal(400, badResult.StatusCode);
             Assert.Equal("访问令牌和刷新令牌不能为空", response.Msg);
         }
 
@@ -203,9 +216,10 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             var result = await _controller.Logout();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var actionResult = Assert.IsType<ActionResult<ApiResponse>>(result);
+            var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             var response = Assert.IsType<ApiResponse>(okResult.Value);
-            Assert.Equal(200, response.Status);
+            Assert.Equal(0, response.Status);
             Assert.Equal("退出登录成功!", response.Msg);
         }
     }

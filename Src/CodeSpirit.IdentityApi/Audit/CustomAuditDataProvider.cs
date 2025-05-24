@@ -4,6 +4,7 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.Shared.Services;
 using Newtonsoft.Json;
 
 namespace CodeSpirit.IdentityApi.Audit
@@ -26,6 +27,7 @@ namespace CodeSpirit.IdentityApi.Audit
                 ApplicationDbContext dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 IHttpContextAccessor httpContextAccessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
                 ICurrentUser currentUser = scope.ServiceProvider.GetRequiredService<ICurrentUser>();
+                IClientIpService clientIpService = scope.ServiceProvider.GetRequiredService<IClientIpService>();
 
                 AuditApiAction webApiAudit = auditEvent.GetWebApiAuditAction();
                 if (webApiAudit == null)
@@ -44,7 +46,7 @@ namespace CodeSpirit.IdentityApi.Audit
                 {
                     EventType = auditEvent.EventType?.Truncate(50),
                     UserName = (currentUser.UserName ?? "anonymous").Truncate(50),
-                    IpAddress = GetClientIpAddress(httpContextAccessor).Truncate(50),
+                    IpAddress = clientIpService.GetClientIpAddress(httpContextAccessor).Truncate(50),
                     Method = webApiAudit.HttpMethod?.Truncate(10),
                     Url = webApiAudit.RequestUrl?.Truncate(2000),
                     QueryString = queryString?.Truncate(2000),
@@ -107,21 +109,6 @@ namespace CodeSpirit.IdentityApi.Audit
                 ILogger<CustomAuditDataProvider> logger = _serviceProvider.GetRequiredService<ILogger<CustomAuditDataProvider>>();
                 logger.LogError(ex, "Failed to update audit log");
             }
-        }
-
-        private string GetClientIpAddress(IHttpContextAccessor httpContextAccessor)
-        {
-            if (httpContextAccessor.HttpContext == null)
-            {
-                return "unknown";
-            }
-
-            string ip = httpContextAccessor.HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-            if (string.IsNullOrEmpty(ip))
-            {
-                ip = httpContextAccessor.HttpContext.Connection.RemoteIpAddress?.ToString();
-            }
-            return ip ?? "unknown";
         }
 
         private string SerializeObject(object obj)

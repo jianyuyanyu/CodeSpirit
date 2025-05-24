@@ -6,12 +6,18 @@ using CodeSpirit.ExamApi.Dtos.Student;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Net;
+using CodeSpirit.Core;
+using CodeSpirit.ExamApi.Services;
+using CodeSpirit.Shared.Services;
+using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel;
 
 namespace CodeSpirit.ExamApi.Controllers.Client;
 
 /// <summary>
 /// 考试客户端接口
 /// </summary>
+[Authorize]
 [DisplayName("考试客户端")]
 [Route("api/exam/client")]
 public class IndexController : ApiControllerBase
@@ -21,6 +27,7 @@ public class IndexController : ApiControllerBase
     private readonly ICurrentUser _currentUser;
     private readonly IStudentService _studentService;
     private readonly IDistributedCache _distributedCache;
+    private readonly IClientIpService _clientIpService;
     private const string CLIENT_IP_HEADER = "X-Client-IP";
 
     /// <summary>
@@ -31,18 +38,21 @@ public class IndexController : ApiControllerBase
     /// <param name="currentUser">当前用户</param>
     /// <param name="studentService">考生服务</param>
     /// <param name="distributedCache">分布式缓存服务</param>
+    /// <param name="clientIpService">客户端IP地址获取服务</param>
     public IndexController(
         IClientService clientService,
         ILogger<IndexController> logger,
         ICurrentUser currentUser,
         IStudentService studentService,
-        IDistributedCache distributedCache)
+        IDistributedCache distributedCache,
+        IClientIpService clientIpService)
     {
         _clientService = clientService;
         _logger = logger;
         _currentUser = currentUser;
         _studentService = studentService;
         _distributedCache = distributedCache;
+        _clientIpService = clientIpService;
     }
 
     /// <summary>
@@ -243,45 +253,7 @@ public class IndexController : ApiControllerBase
     /// <returns>客户端IP地址</returns>
     private string GetClientIpAddress()
     {
-        try
-        {
-            // 优化IP获取逻辑，提高性能
-            if (HttpContext.Request.Headers.TryGetValue(CLIENT_IP_HEADER, out var clientIp) && !string.IsNullOrEmpty(clientIp))
-            {
-                return clientIp.ToString().Trim();
-            }
-
-            // 按优先级尝试获取IP地址
-            if (HttpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedIps))
-            {
-                var ips = forwardedIps.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
-                if (ips.Length > 0)
-                {
-                    // 通常第一个是客户端真实IP
-                    return ips[0]?.Trim() ?? "未知";
-                }
-            }
-
-            // 尝试从X-Real-IP获取
-            if (HttpContext.Request.Headers.TryGetValue("X-Real-IP", out var realIp))
-            {
-                return realIp.ToString().Trim();
-            }
-
-            // 使用HttpContext.Connection.RemoteIpAddress
-            if (HttpContext.Connection.RemoteIpAddress != null)
-            {
-                return HttpContext.Connection.RemoteIpAddress.ToString();
-            }
-
-            return "未知";
-        }
-        catch (Exception ex)
-        {
-            // 记录异常但不中断流程
-            _logger.LogError(ex, "获取客户端IP地址时发生异常");
-            return "未知";
-        }
+        return _clientIpService.GetClientIpAddress(HttpContext);
     }
 
     /// <summary>

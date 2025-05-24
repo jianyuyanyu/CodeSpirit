@@ -75,7 +75,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IIdGenerator, SnowflakeIdGenerator>();
 
         // 注册客户端IP地址获取服务
-        services.AddScoped<IClientIpService, ClientIpService>();
+        services.AddSingleton<IClientIpService, ClientIpService>();
 
         //// 注册 Repositories 和 Handlers
         //services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -179,6 +179,22 @@ public static class ServiceCollectionExtensions
             };
         });
 
+        return services;
+    }
+
+    /// <summary>
+    /// 添加共享服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <returns>服务集合</returns>
+    public static IServiceCollection AddSharedServices(this IServiceCollection services)
+    {
+        // 添加 HttpContextAccessor
+        services.AddHttpContextAccessor();
+        
+        // 注册客户端IP地址获取服务
+        services.AddSingleton<IClientIpService, ClientIpService>();
+        
         return services;
     }
 }

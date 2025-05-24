@@ -1,4 +1,5 @@
 using CodeSpirit.Aggregator.Services;
+using CodeSpirit.Shared.Services;
 using CodeSpirit.Web.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -29,6 +30,9 @@ namespace CodeSpirit.Web.Extensions
 
             // 注册聚合器服务
             services.AddSingleton<IAggregatorService, JsonNetAggregatorService>();
+
+            // 注册客户端IP地址获取服务
+            services.AddSingleton<IClientIpService, ClientIpService>();
 
             return services;
         }

@@ -3,6 +3,7 @@ using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Auth;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         private readonly IAuthService _authService;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILogger<AuthController> _logger;
+        private readonly IClientIpService _clientIpService;
 
         /// <summary>
         /// 初始化授权控制器
@@ -27,14 +29,17 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="authService">授权服务</param>
         /// <param name="signInManager">登录管理器</param>
         /// <param name="logger">日志记录器</param>
+        /// <param name="clientIpService">客户端IP地址获取服务</param>
         public AuthController(
             IAuthService authService,
             SignInManager<ApplicationUser> signInManager,
-            ILogger<AuthController> logger)
+            ILogger<AuthController> logger,
+            IClientIpService clientIpService)
         {
             _authService = authService;
             _signInManager = signInManager;
             _logger = logger;
+            _clientIpService = clientIpService;
         }
 
         /// <summary>
@@ -54,7 +59,7 @@ namespace CodeSpirit.IdentityApi.Controllers
                 {
                     UserName = model.UserName,
                     Password = model.Password,
-                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    IpAddress = _clientIpService.GetClientIpAddress(HttpContext),
                     UserAgent = HttpContext.Request.Headers["User-Agent"].ToString()
                 };
 

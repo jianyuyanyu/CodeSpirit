@@ -3,6 +3,7 @@ using CodeSpirit.Amis;
 using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Authorization;
 using CodeSpirit.Authorization.Extensions;
+using CodeSpirit.Charts.Extensions;
 using CodeSpirit.Core;
 using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
@@ -75,6 +76,14 @@ public class Program
 
         // 添加应用程序自定义服务
         builder.Services.AddApplicationServices();
+
+        // 添加图表服务
+        builder.Services.AddChartServices(options =>
+        {
+            options.EnableCache = true;
+            options.CacheExpiration = 30; // 缓存30分钟
+            options.DefaultProvider = "echarts";
+        });
 
         // 添加消息模块服务
         builder.Services.AddMessagingServices(builder.Configuration);

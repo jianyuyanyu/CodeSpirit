@@ -11,6 +11,7 @@ using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Notifications.Events;
+using CodeSpirit.Shared.Services;
 using CodeSpirit.Shared.Services.Background;
 using CodeSpirit.Shared.Services.Files;
 using CodeSpirit.Web.Extensions;
@@ -35,7 +36,7 @@ public class Program
     {
         // 设置控制台编码为UTF-8以正确显示中文字符
         Console.OutputEncoding = Encoding.UTF8;
-        
+
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Add service defaults & Aspire client integrations.
@@ -53,7 +54,7 @@ public class Program
 
         // 注册站点配置选项
         builder.Services.Configure<SiteSettings>(builder.Configuration.GetSection("SiteSettings"));
-        
+
         // Add HttpClient for Blazor components
         builder.Services.AddHttpClient();
         builder.Services.AddScoped<HttpClient>(sp =>
@@ -110,6 +111,9 @@ public class Program
 
         //注册 AMIS 服务
         builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);
+
+        // 注册客户端IP地址获取服务
+        builder.Services.AddScoped<IClientIpService, ClientIpService>();
 
         WebApplication app = builder.Build();
 

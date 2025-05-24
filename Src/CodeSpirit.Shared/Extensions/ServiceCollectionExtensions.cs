@@ -11,6 +11,7 @@ using CodeSpirit.Shared.Entities.Interfaces;
 using CodeSpirit.Shared.Filters;
 using CodeSpirit.Shared.JsonConverters;
 using CodeSpirit.Shared.ModelBindings;
+using CodeSpirit.Shared.Services;
 using CodeSpirit.Shared.Services.Background;
 using CodeSpirit.Shared.Services.Files;
 using Microsoft.AspNetCore.Hosting;
@@ -72,6 +73,9 @@ public static class ServiceCollectionExtensions
 
         // 注册雪花ID生成器服务
         services.AddSingleton<IIdGenerator, SnowflakeIdGenerator>();
+
+        // 注册客户端IP地址获取服务
+        services.AddScoped<IClientIpService, ClientIpService>();
 
         //// 注册 Repositories 和 Handlers
         //services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

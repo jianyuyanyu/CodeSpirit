@@ -180,6 +180,13 @@ public class ElasticsearchOptions
     public string IndexName { get; set; } = "auditlogs";
     
     /// <summary>
+    /// 索引前缀，用于区分不同环境（可选）
+    /// 例如：dev、test、prod等
+    /// 最终索引名称格式：{IndexPrefix}_{IndexName}
+    /// </summary>
+    public string IndexPrefix { get; set; } = "codespirit";
+    
+    /// <summary>
     /// 用户名
     /// </summary>
     public string UserName { get; set; } = string.Empty;

@@ -56,6 +56,7 @@ CodeSpirit.Audit是一个全面的审计组件，提供操作日志记录、消�
         "http://localhost:9200"
       ],
       "IndexName": "auditlogs",
+      "IndexPrefix": "",
       "UserName": "",
       "Password": "",
       "NumberOfShards": 1,
@@ -147,6 +148,71 @@ var userQuery = AuditQueryHelper.CreateUserQuery(userId);
 // 创建复杂聚合查询
 var complexQuery = AuditQueryHelper.CreateComplexAggregation(startTime, endTime);
 ```
+
+## 多环境索引配置
+
+### 索引前缀配置
+
+为了支持在同一个Elasticsearch集群中为不同环境（开发、测试、生产等）存储审计日志，组件支持配置索引前缀：
+
+```json
+{
+  "Audit": {
+    "Elasticsearch": {
+      "IndexName": "auditlogs",
+      "IndexPrefix": "dev"
+    }
+  }
+}
+```
+
+配置说明：
+- `IndexPrefix`：索引前缀，用于区分不同环境（可选）
+- 如果设置了前缀，最终的索引名称格式为：`{IndexPrefix}_{IndexName}`
+- 如果不设置前缀（空字符串），直接使用`IndexName`
+
+### 环境配置示例
+
+#### 开发环境 (appsettings.Development.json)
+```json
+{
+  "Audit": {
+    "Elasticsearch": {
+      "IndexPrefix": "dev",
+      "IndexName": "auditlogs"
+    }
+  }
+}
+```
+最终索引名称：`dev_auditlogs`
+
+#### 测试环境 (appsettings.Testing.json)
+```json
+{
+  "Audit": {
+    "Elasticsearch": {
+      "IndexPrefix": "test",
+      "IndexName": "auditlogs"
+    }
+  }
+}
+```
+最终索引名称：`test_auditlogs`
+
+#### 生产环境 (appsettings.Production.json)
+```json
+{
+  "Audit": {
+    "Elasticsearch": {
+      "IndexPrefix": "prod",
+      "IndexName": "auditlogs"
+    }
+  }
+}
+```
+最终索引名称：`prod_auditlogs`
+
+这样配置后，不同环境的审计日志将存储在不同的索引中，避免了数据混乱，同时可以共享同一个Elasticsearch集群。
 
 ## 架构设计
 

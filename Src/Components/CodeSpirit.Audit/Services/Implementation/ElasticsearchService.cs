@@ -15,6 +15,20 @@ public class ElasticsearchService : IElasticsearchService
     private readonly ElasticsearchOptions _options;
     
     /// <summary>
+    /// 获取最终的索引名称（包含前缀）
+    /// </summary>
+    /// <returns>完整的索引名称</returns>
+    private string GetFinalIndexName()
+    {
+        if (string.IsNullOrWhiteSpace(_options.IndexPrefix))
+        {
+            return _options.IndexName;
+        }
+        
+        return $"{_options.IndexPrefix}_{_options.IndexName}";
+    }
+    
+    /// <summary>
     /// 构造函数 - 优先使用Aspire注入的客户端
     /// </summary>
     public ElasticsearchService(
@@ -70,7 +84,7 @@ public class ElasticsearchService : IElasticsearchService
             }
             
             // 设置默认索引
-            settings = settings.DefaultIndex(_options.IndexName);
+            settings = settings.DefaultIndex(GetFinalIndexName());
             
             // 如果配置了用户名和密码，则设置基本认证
             if (!string.IsNullOrEmpty(_options.UserName) && !string.IsNullOrEmpty(_options.Password))
@@ -101,8 +115,8 @@ public class ElasticsearchService : IElasticsearchService
             // 检查索引是否存在，如果存在则删除
             if (await IndexExistsAsync())
             {
-                _logger.LogInformation("正在删除现有Elasticsearch索引: {IndexName}", _options.IndexName);
-                var deleteResponse = await _client.Indices.DeleteAsync(_options.IndexName);
+                _logger.LogInformation("正在删除现有Elasticsearch索引: {IndexName}", GetFinalIndexName());
+                var deleteResponse = await _client.Indices.DeleteAsync(GetFinalIndexName());
                 
                 if (!deleteResponse.IsValidResponse)
                 {
@@ -110,7 +124,7 @@ public class ElasticsearchService : IElasticsearchService
                     return false;
                 }
                 
-                _logger.LogInformation("现有Elasticsearch索引删除成功: {IndexName}", _options.IndexName);
+                _logger.LogInformation("现有Elasticsearch索引删除成功: {IndexName}", GetFinalIndexName());
             }
             
             // 等待一小段时间确保删除操作完成
@@ -136,12 +150,12 @@ public class ElasticsearchService : IElasticsearchService
             // 检查索引是否存在
             if (await IndexExistsAsync())
             {
-                _logger.LogInformation("Elasticsearch索引已存在: {IndexName}", _options.IndexName);
+                _logger.LogInformation("Elasticsearch索引已存在: {IndexName}", GetFinalIndexName());
                 return true;
             }
             
             // 创建索引，使用明确的字段映射以确保正确的字段名称
-            var createResponse = await _client.Indices.CreateAsync(_options.IndexName, c => c
+            var createResponse = await _client.Indices.CreateAsync(GetFinalIndexName(), c => c
                 .Settings(s => s
                     .NumberOfShards(_options.NumberOfShards)
                     .NumberOfReplicas(_options.NumberOfReplicas)
@@ -177,7 +191,7 @@ public class ElasticsearchService : IElasticsearchService
             
             if (createResponse.IsValidResponse)
             {
-                _logger.LogInformation("Elasticsearch索引创建成功，包含正确的字段映射: {IndexName}", _options.IndexName);
+                _logger.LogInformation("Elasticsearch索引创建成功，包含正确的字段映射: {IndexName}", GetFinalIndexName());
                 
                 // 记录字段映射信息以便调试
                 _logger.LogDebug("索引字段映射创建完成，OperationTime字段将映射为operationTime");
@@ -203,7 +217,7 @@ public class ElasticsearchService : IElasticsearchService
     {
         try
         {
-            var existsResponse = await _client.Indices.ExistsAsync(_options.IndexName);
+            var existsResponse = await _client.Indices.ExistsAsync(GetFinalIndexName());
             return existsResponse.IsValidResponse;
         }
         catch (Exception ex)
@@ -226,7 +240,7 @@ public class ElasticsearchService : IElasticsearchService
                 await CreateIndexAsync();
             }
             
-            var indexResponse = await _client.IndexAsync(document, idx => idx.Index(_options.IndexName));
+            var indexResponse = await _client.IndexAsync(document, idx => idx.Index(GetFinalIndexName()));
             
             if (indexResponse.IsValidResponse)
             {
@@ -266,7 +280,7 @@ public class ElasticsearchService : IElasticsearchService
 
             // 使用简单的批量索引
             var bulkResponse = await _client.BulkAsync(b => b
-                .Index(_options.IndexName)
+                .Index(GetFinalIndexName())
                 .IndexMany(documents)
             );
 
@@ -295,7 +309,7 @@ public class ElasticsearchService : IElasticsearchService
     {
         try
         {
-            var getResponse = await _client.GetAsync<T>(id, g => g.Index(_options.IndexName));
+            var getResponse = await _client.GetAsync<T>(id, g => g.Index(GetFinalIndexName()));
             
             if (getResponse.IsValidResponse && getResponse.Found)
             {
@@ -318,11 +332,11 @@ public class ElasticsearchService : IElasticsearchService
     {
         try
         {
-            var searchDescriptor = new SearchRequestDescriptor<T>().Index(_options.IndexName);
+            var searchDescriptor = new SearchRequestDescriptor<T>().Index(GetFinalIndexName());
             var searchRequest = searchFunc(searchDescriptor);
             
             // 记录搜索请求信息
-            _logger.LogInformation("开始执行Elasticsearch搜索，索引: {IndexName}", _options.IndexName);
+            _logger.LogInformation("开始执行Elasticsearch搜索，索引: {IndexName}", GetFinalIndexName());
             
             var searchResponse = await _client.SearchAsync<T>(searchRequest);
             
@@ -391,7 +405,7 @@ public class ElasticsearchService : IElasticsearchService
     {
         try
         {
-            var deleteResponse = await _client.DeleteAsync<object>(id, d => d.Index(_options.IndexName));
+            var deleteResponse = await _client.DeleteAsync<object>(id, d => d.Index(GetFinalIndexName()));
             
             if (deleteResponse.IsValidResponse)
             {
@@ -418,7 +432,7 @@ public class ElasticsearchService : IElasticsearchService
     {
         try
         {
-            var searchDescriptor = new SearchRequestDescriptor<T>().Index(_options.IndexName).Size(0);
+            var searchDescriptor = new SearchRequestDescriptor<T>().Index(GetFinalIndexName()).Size(0);
             var searchRequest = aggregationFunc(searchDescriptor);
             
             var searchResponse = await _client.SearchAsync<T>(searchRequest);

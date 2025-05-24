@@ -29,7 +29,7 @@
         // 初始化全局命名空间
         window.CodeSpirit = window.CodeSpirit || {};
 
-        window.webHost = '@(isDevelopment ? "https://localhost:7120" : "\"" + SiteOptions.Value.WebHost + "\"")';
+        window.webHost = '@(isDevelopment ? "https://localhost:7120" : SiteOptions.Value.WebHost)';
 
         // 站点配置
         window.siteSettings = {

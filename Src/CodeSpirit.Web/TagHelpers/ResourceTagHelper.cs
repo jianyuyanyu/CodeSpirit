@@ -56,7 +56,7 @@ namespace CodeSpirit.Web.TagHelpers
             // 添加版本号
             if (cdnEnabled)
             {
-                var timestamp = DateTime.UtcNow.ToString("yyyyMMddHH");
+                var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
                 url += $"?v={timestamp}";
             }
             

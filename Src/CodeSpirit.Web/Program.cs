@@ -104,7 +104,11 @@ public class Program
         // 注册文件服务
         builder.Services.AddScoped<ITempFileService, TempFileServiceImpl>();
 
-        builder.AddElasticsearchClient(connectionName: "elasticsearch");
+        builder.AddElasticsearchClient(connectionName: "elasticsearch", null, clientSettings =>
+        {
+            //临时禁用SSL验证，生产环境请务必配置正确的证书验证
+            clientSettings.ServerCertificateValidationCallback((_, _, _, _) => true); // 禁用SSL验证
+        });
 
         // 添加审计组件配置
         builder.Services.AddAuditServices(builder.Configuration.GetSection("Audit"));

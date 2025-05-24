@@ -8,6 +8,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
+		<ProjectReference Include="..\..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
 		<ProjectReference Include="..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
 	</ItemGroup>
 
@@ -16,8 +17,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="NEST" Version="7.17.5" />
-		<PackageReference Include="Aspire.RabbitMQ.Client" Version="9.1.0" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="9.0.5" />
+		<PackageReference Include="Aspire.Elastic.Clients.Elasticsearch" Version="9.2.1-preview.1.25222.1" />
+		<PackageReference Include="Aspire.RabbitMQ.Client" Version="9.3.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
 	</ItemGroup>
 

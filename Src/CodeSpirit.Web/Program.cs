@@ -1,3 +1,4 @@
+using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Authorization;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Core;
@@ -5,12 +6,8 @@ using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
-using CodeSpirit.Shared;
-using CodeSpirit.Shared.EventBus.Events;
 using CodeSpirit.Shared.EventBus.Extensions;
-using CodeSpirit.Shared.EventBus.Interfaces;
 using CodeSpirit.Shared.Extensions;
-using CodeSpirit.Shared.Notifications;
 using CodeSpirit.Shared.Notifications.Events;
 using CodeSpirit.Shared.Services.Background;
 using CodeSpirit.Shared.Services.Files;
@@ -20,16 +17,27 @@ using CodeSpirit.Web.Middlewares;
 using CodeSpirit.Web.Options;
 using CodeSpirit.Web.Services.EventHandlers;
 using Microsoft.AspNetCore.Components;
+using System.Text;
 
+/// <summary>
+/// Web前端应用程序入口点
+/// </summary>
 public class Program
 {
+    /// <summary>
+    /// 应用程序主入口方法
+    /// </summary>
+    /// <param name="args">命令行参数</param>
+    /// <returns>异步任务</returns>
     public static async Task Main(string[] args)
     {
+        // 设置控制台编码为UTF-8以正确显示中文字符
+        Console.OutputEncoding = Encoding.UTF8;
+        
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Add service defaults & Aspire client integrations.
         builder.AddServiceDefaults("webfrontend");
-        //builder.AddRedisOutputCache("cache");
 
         // Add messaging service client
         builder.Services.AddHttpClient("Messaging", client =>
@@ -43,7 +51,7 @@ public class Program
 
         // 注册站点配置选项
         builder.Services.Configure<SiteSettings>(builder.Configuration.GetSection("SiteSettings"));
-        
+
         // 注册考试API配置选项
         builder.Services.Configure<ExamApiSettings>(builder.Configuration.GetSection("ExamApi"));
 
@@ -82,7 +90,7 @@ public class Program
 
         // 注册事件总线服务
         builder.Services.AddEventBus();
-        
+
         // 注册事件处理器
         builder.Services.AddEventHandler<SessionNotificationEvent, NotificationEventHandler>();
 
@@ -95,6 +103,11 @@ public class Program
 
         // 注册文件服务
         builder.Services.AddScoped<ITempFileService, TempFileServiceImpl>();
+
+        builder.AddElasticsearchClient(connectionName: "elasticsearch");
+
+        // 添加审计组件配置
+        builder.Services.AddAuditServices(builder.Configuration.GetSection("Audit"));
 
         WebApplication app = builder.Build();
 
@@ -110,8 +123,6 @@ public class Program
         app.UseStaticFiles();
         app.UseAntiforgery();
 
-        //app.UseOutputCache();
-
         app.MapRazorPages();
         app.MapBlazorHub();
         app.MapHub<ChatHub>("/chathub");
@@ -124,6 +135,10 @@ public class Program
         await app.UseCodeSpiritNavigationAsync();
         app.MapControllers();
 
+        // 在中间件管道中注册 (在应用程序的 Configure 方法中)
+        app.UseAudit();
+
+        // 确保在代理中间件之前注册
         app.UseMiddleware<ProxyMiddleware>();
 
         await app.RunAsync();

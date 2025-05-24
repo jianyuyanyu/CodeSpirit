@@ -1,6 +1,17 @@
 using Aspire.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Aspire.Hosting.Elasticsearch;
+using System.Text;
+
+/// <summary>
+/// Aspire应用宿主程序入口点
+/// </summary>
+/// <remarks>
+/// 该程序负责启动和协调整个微服务应用的运行
+/// </remarks>
+
+// 设置控制台编码为UTF-8以正确显示中文字符
+Console.OutputEncoding = Encoding.UTF8;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -11,7 +22,7 @@ var cache = builder.AddRedis("cache")
                    .WithRedisCommander((op) =>
                    {
                        op.WithHttpEndpoint(port: 61689, targetPort: 8081, name: "commander-ui")
-                         .WithUrlForEndpoint("commander-ui", url => 
+                         .WithUrlForEndpoint("commander-ui", url =>
                              url.DisplayLocation = UrlDisplayLocation.SummaryAndDetails);
                    });
 
@@ -21,7 +32,7 @@ var seqService = builder.AddSeq("seq")
                  .WithLifetime(ContainerLifetime.Persistent)
                  .WithHttpEndpoint(port: 61688, targetPort: 80, name: "seq-ui")
                  .WithEnvironment("ACCEPT_EULA", "Y")
-                 .WithUrlForEndpoint("seq-ui", url => 
+                 .WithUrlForEndpoint("seq-ui", url =>
                      url.DisplayText = "Seq 日志界面");
 
 // 添加 RabbitMQ 服务的用户名和密码参数
@@ -32,17 +43,20 @@ var rabbitmqPass = builder.AddParameter("rabbitmq-password", "Password123", secr
 var rabbitmqService = builder.AddRabbitMQ("rabbitmq", rabbitmqUser, rabbitmqPass)
                      .WithManagementPlugin()
                      .WithLifetime(ContainerLifetime.Persistent)
-                     .WithUrlForEndpoint("management", url => {
+                     .WithUrlForEndpoint("management", url =>
+                     {
                          url.DisplayText = "RabbitMQ 管理界面";
                      });
 
 // 添加 Elasticsearch 服务
-var elasticsearchService = builder.AddElasticsearch("elasticsearch")
+var esPassword = builder.AddParameter("password", "Password123", secret: true);
+var elasticsearchService = builder.AddElasticsearch("elasticsearch", password: esPassword)
                           .WithLifetime(ContainerLifetime.Persistent)
                           .WithDataVolume()
                           .WithHttpEndpoint(port: 61687, targetPort: 9200, name: "elasticsearch")
                           .WithHttpEndpoint(port: 61686, targetPort: 9300, name: "elasticsearch-nodes")
-                          .WithUrlForEndpoint("elasticsearch", ep => new() {
+                          .WithUrlForEndpoint("elasticsearch", ep => new()
+                          {
                               Url = "/_cluster/health",
                               DisplayText = "ES 集群健康状态",
                               DisplayLocation = UrlDisplayLocation.DetailsOnly
@@ -82,17 +96,20 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(messagingService)
     .WithReference(examService)
     .WithReference(elasticsearchService)
-    .WithUrlForEndpoint("https", url => { 
-        url.DisplayText = "Web 前端"; 
+    .WithUrlForEndpoint("https", url =>
+    {
+        url.DisplayText = "Web 前端";
     })
-    .WithUrlForEndpoint("https", ep => new() {
+    .WithUrlForEndpoint("https", ep => new()
+    {
         Url = "/health",
         DisplayText = "健康检查",
         DisplayLocation = UrlDisplayLocation.DetailsOnly
     });
 
 // 注册资源初始化事件，需要提供CancellationToken参数
-builder.Eventing.Subscribe<InitializeResourceEvent>((eventData, cancellationToken) => {
+builder.Eventing.Subscribe<InitializeResourceEvent>((eventData, cancellationToken) =>
+{
     Console.WriteLine($"资源初始化: {eventData.Resource.Name}");
     return Task.CompletedTask;
 });

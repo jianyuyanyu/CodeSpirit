@@ -223,11 +223,6 @@ public class RabbitMQServiceTests : TestBase
 
         _rabbitMQOptions = new RabbitMQOptions
         {
-            HostName = "localhost",
-            Port = 5672,
-            UserName = "guest",
-            Password = "guest",
-            VirtualHost = "/",
             ExchangeName = "audit.test.exchange",
             QueueName = "audit.test.queue",
             RoutingKey = "audit.test"
@@ -247,27 +242,6 @@ public class RabbitMQServiceTests : TestBase
         auditSection.Setup(s => s.Key).Returns("Audit");
         auditSection.Setup(s => s.Value).Returns(string.Empty);
         auditSection.Setup(s => s.GetSection("RabbitMQ")).Returns(rabbitMQSection.Object);
-        
-        // 替换 GetValue<T> 扩展方法调用
-        var hostNameSection = new Mock<IConfigurationSection>();
-        hostNameSection.Setup(s => s.Value).Returns(_rabbitMQOptions.HostName);
-        rabbitMQSection.Setup(s => s.GetSection("HostName")).Returns(hostNameSection.Object);
-        
-        var portSection = new Mock<IConfigurationSection>();
-        portSection.Setup(s => s.Value).Returns(_rabbitMQOptions.Port.ToString());
-        rabbitMQSection.Setup(s => s.GetSection("Port")).Returns(portSection.Object);
-        
-        var userNameSection = new Mock<IConfigurationSection>();
-        userNameSection.Setup(s => s.Value).Returns(_rabbitMQOptions.UserName);
-        rabbitMQSection.Setup(s => s.GetSection("UserName")).Returns(userNameSection.Object);
-        
-        var passwordSection = new Mock<IConfigurationSection>();
-        passwordSection.Setup(s => s.Value).Returns(_rabbitMQOptions.Password);
-        rabbitMQSection.Setup(s => s.GetSection("Password")).Returns(passwordSection.Object);
-        
-        var virtualHostSection = new Mock<IConfigurationSection>();
-        virtualHostSection.Setup(s => s.Value).Returns(_rabbitMQOptions.VirtualHost);
-        rabbitMQSection.Setup(s => s.GetSection("VirtualHost")).Returns(virtualHostSection.Object);
         
         var exchangeNameSection = new Mock<IConfigurationSection>();
         exchangeNameSection.Setup(s => s.Value).Returns(_rabbitMQOptions.ExchangeName);

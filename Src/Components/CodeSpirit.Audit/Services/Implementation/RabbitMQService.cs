@@ -3,11 +3,13 @@ using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
 using CodeSpirit.Audit.Models;
+using CodeSpirit.ServiceDefaults.Messaging;
 
 namespace CodeSpirit.Audit.Services.Implementation;
 
 /// <summary>
 /// RabbitMQ服务实现
+/// 基于Aspire.RabbitMQ.Client集成重构
 /// </summary>
 public class RabbitMQService : IRabbitMQService, IDisposable
 {
@@ -18,11 +20,23 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     private readonly Dictionary<string, IModel> _consumerChannels = new Dictionary<string, IModel>();
     
     /// <summary>
-    /// 构造函数
+    /// 构造函数 - 使用RabbitMQ服务工厂
     /// </summary>
-    public RabbitMQService(ILogger<RabbitMQService> logger, IConfiguration configuration)
+    /// <param name="logger">日志记录器</param>
+    /// <param name="configuration">配置</param>
+    /// <param name="rabbitMQServiceFactory">RabbitMQ服务工厂</param>
+    public RabbitMQService(
+        ILogger<RabbitMQService> logger, 
+        IConfiguration configuration, 
+        IRabbitMQServiceFactory rabbitMQServiceFactory)
     {
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        if (rabbitMQServiceFactory == null)
+            throw new ArgumentNullException(nameof(rabbitMQServiceFactory));
+
+        // 获取审计专用连接
+        _connection = rabbitMQServiceFactory.GetAuditConnection();
         
         // 获取配置
         var options = new AuditOptions();
@@ -31,18 +45,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
         
         try
         {
-            // 创建连接
-            var factory = new ConnectionFactory
-            {
-                HostName = _options.HostName,
-                Port = _options.Port,
-                UserName = _options.UserName,
-                Password = _options.Password,
-                VirtualHost = _options.VirtualHost,
-                DispatchConsumersAsync = true // 使用异步消费者
-            };
-            
-            _connection = factory.CreateConnection();
+            // 使用注入的连接创建通道
             _channel = _connection.CreateModel();
             
             // 声明交换机
@@ -65,11 +68,12 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                 exchange: _options.ExchangeName,
                 routingKey: _options.RoutingKey);
             
-            _logger.LogInformation("RabbitMQ连接已建立");
+            _logger.LogInformation("审计RabbitMQ通道已创建，交换机: {ExchangeName}, 队列: {QueueName}",
+                _options.ExchangeName, _options.QueueName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "RabbitMQ连接建立失败");
+            _logger.LogError(ex, "审计RabbitMQ通道创建失败");
             throw;
         }
     }
@@ -91,19 +95,26 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             var json = JsonSerializer.Serialize(message);
             var body = Encoding.UTF8.GetBytes(json);
             
+            // 创建消息属性
+            var properties = _channel.CreateBasicProperties();
+            properties.Persistent = true; // 消息持久化
+            properties.MessageId = Guid.NewGuid().ToString();
+            properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            
             // 发布消息
             _channel.BasicPublish(
                 exchange: _options.ExchangeName,
                 routingKey: routingKey,
-                basicProperties: null,
+                basicProperties: properties,
                 body: body);
             
-            _logger.LogDebug("消息已发送到RabbitMQ: {RoutingKey}", routingKey);
+            _logger.LogDebug("审计消息已发送到RabbitMQ: {RoutingKey}, 消息ID: {MessageId}", 
+                routingKey, properties.MessageId);
             return Task.CompletedTask;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发送消息到RabbitMQ失败");
+            _logger.LogError(ex, "发送审计消息到RabbitMQ失败");
             throw;
         }
     }
@@ -132,6 +143,9 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             // 绑定队列到交换机
             consumerChannel.QueueBind(queueName, _options.ExchangeName, routingKey);
             
+            // 设置QoS
+            consumerChannel.BasicQos(prefetchSize: 0, prefetchCount: 10, global: false);
+            
             // 创建消费者
             var consumer = new AsyncEventingBasicConsumer(consumerChannel);
             
@@ -151,7 +165,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "处理RabbitMQ消息失败");
+                    _logger.LogError(ex, "处理审计RabbitMQ消息失败");
                     
                     // 拒绝消息并重新入队
                     consumerChannel.BasicNack(e.DeliveryTag, false, true);
@@ -164,12 +178,14 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             // 保存消费者通道
             _consumerChannels[consumerTag] = consumerChannel;
             
-            _logger.LogInformation("已订阅RabbitMQ消息: {RoutingKey}", routingKey);
+            _logger.LogInformation("审计RabbitMQ消费者已创建，队列: {QueueName}, 消费者标签: {ConsumerTag}",
+                queueName, consumerTag);
+                
             return consumerTag;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "订阅RabbitMQ消息失败");
+            _logger.LogError(ex, "创建审计RabbitMQ消费者失败");
             throw;
         }
     }
@@ -179,23 +195,20 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     /// </summary>
     public void Unsubscribe(string consumerTag)
     {
-        if (string.IsNullOrEmpty(consumerTag) || !_consumerChannels.ContainsKey(consumerTag))
+        if (_consumerChannels.TryGetValue(consumerTag, out var channel))
         {
-            return;
-        }
-        
-        try
-        {
-            var channel = _consumerChannels[consumerTag];
-            channel.BasicCancel(consumerTag);
-            channel.Close();
-            _consumerChannels.Remove(consumerTag);
-            
-            _logger.LogInformation("已取消订阅RabbitMQ消息: {ConsumerTag}", consumerTag);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "取消订阅RabbitMQ消息失败");
+            try
+            {
+                channel.BasicCancel(consumerTag);
+                channel.Dispose();
+                _consumerChannels.Remove(consumerTag);
+                
+                _logger.LogInformation("审计RabbitMQ消费者已取消订阅: {ConsumerTag}", consumerTag);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "取消审计RabbitMQ消费者订阅失败: {ConsumerTag}", consumerTag);
+            }
         }
     }
     
@@ -204,34 +217,31 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     /// </summary>
     public void Dispose()
     {
+        // 取消所有消费者
+        foreach (var kvp in _consumerChannels.ToList())
+        {
+            try
+            {
+                kvp.Value.BasicCancel(kvp.Key);
+                kvp.Value.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "释放审计RabbitMQ消费者通道失败: {ConsumerTag}", kvp.Key);
+            }
+        }
+        _consumerChannels.Clear();
+        
+        // 释放主通道
         try
         {
-            // 关闭所有消费者通道
-            foreach (var channel in _consumerChannels.Values)
-            {
-                if (channel.IsOpen)
-                {
-                    channel.Close();
-                }
-            }
-            
-            // 关闭主通道
-            if (_channel != null && _channel.IsOpen)
-            {
-                _channel.Close();
-            }
-            
-            // 关闭连接
-            if (_connection != null && _connection.IsOpen)
-            {
-                _connection.Close();
-            }
-            
-            _logger.LogInformation("RabbitMQ连接已关闭");
+            _channel?.Dispose();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "关闭RabbitMQ连接失败");
+            _logger.LogWarning(ex, "释放审计RabbitMQ主通道失败");
         }
+        
+        _logger.LogInformation("审计RabbitMQ服务已释放资源");
     }
 } 

@@ -1,4 +1,5 @@
-using Nest;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.QueryDsl;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -12,196 +13,153 @@ namespace CodeSpirit.Audit.Helpers;
 public static class AuditQueryHelper
 {
     /// <summary>
-    /// 创建基于时间范围的查询
+    /// 创建用户查询
     /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateTimeRangeQuery(
-        DateTime startTime, 
-        DateTime endTime)
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateUserQuery(string userId)
     {
-        return s => s
-            .Query(q => q
-                .DateRange(r => r
+        return s => s.Query(q => q
+            .Term(t => t
+                .Field(f => f.UserId)
+                .Value(userId)
+            )
+        );
+    }
+    
+    /// <summary>
+    /// 创建操作类型查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateOperationQuery(string operation)
+    {
+        return s => s.Query(q => q
+            .Term(t => t
+                .Field(f => f.OperationType)
+                .Value(operation)
+            )
+        );
+    }
+    
+    /// <summary>
+    /// 创建时间范围查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateTimeRangeQuery(
+        DateTime? startTime = null, 
+        DateTime? endTime = null)
+    {
+        return s => s.Query(q => q
+            .Range(r => r
+                .DateRange(dr => dr
                     .Field(f => f.OperationTime)
-                    .GreaterThanOrEquals(startTime)
-                    .LessThanOrEquals(endTime)
-                )
-            );
-    }
-    
-    /// <summary>
-    /// 创建基于用户的查询
-    /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateUserQuery(string userId)
-    {
-        return s => s
-            .Query(q => q
-                .Term(t => t
-                    .Field(f => f.UserId)
-                    .Value(userId)
-                )
-            );
-    }
-    
-    /// <summary>
-    /// 创建基于控制器的查询
-    /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateControllerQuery(string controllerName)
-    {
-        return s => s
-            .Query(q => q
-                .Term(t => t
-                    .Field(f => f.ControllerName)
-                    .Value(controllerName)
-                )
-            );
-    }
-    
-    /// <summary>
-    /// 创建基于操作类型的查询
-    /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateOperationTypeQuery(string operationType)
-    {
-        return s => s
-            .Query(q => q
-                .Term(t => t
-                    .Field(f => f.OperationType)
-                    .Value(operationType)
-                )
-            );
-    }
-    
-    /// <summary>
-    /// 创建基于关键字的查询
-    /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateKeywordQuery(string keyword)
-    {
-        return s => s
-            .Query(q => q
-                .MultiMatch(m => m
-                    .Fields(f => f
-                        .Field(ff => ff.Description)
-                        .Field(ff => ff.RequestParams)
-                        .Field(ff => ff.BeforeData)
-                        .Field(ff => ff.AfterData)
-                    )
-                    .Query(keyword)
-                    .Type(TextQueryType.BestFields)
-                    .Operator(Operator.Or)
-                )
-            );
-    }
-    
-    /// <summary>
-    /// 创建基于IP地址的查询
-    /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateIpAddressQuery(string ipAddress)
-    {
-        return s => s
-            .Query(q => q
-                .Term(t => t
-                    .Field(f => f.IpAddress)
-                    .Value(ipAddress)
-                )
-            );
-    }
-    
-    /// <summary>
-    /// 创建基于成功状态的查询
-    /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateSuccessQuery(bool isSuccess)
-    {
-        return s => s
-            .Query(q => q
-                .Term(t => t
-                    .Field(f => f.IsSuccess)
-                    .Value(isSuccess)
-                )
-            );
-    }
-    
-    /// <summary>
-    /// 创建统计聚合
-    /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateStatsAggregation(
-        string fieldName, 
-        string aggregationName,
-        int size = 20)
-    {
-        return s => s
-            .Aggregations(a => a
-                .Terms(aggregationName, t => t
-                    .Field($"{fieldName}.keyword")
-                    .Size(size)
-                )
-            );
-    }
-    
-    /// <summary>
-    /// 创建时间柱状图聚合
-    /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateTimeHistogramAggregation(
-        DateTime startTime, 
-        DateTime endTime, 
-        string interval = "1d")
-    {
-        return s => s
-            .Aggregations(a => a
-                .DateHistogram("time_histogram", h => h
-                    .Field(f => f.OperationTime)
-                    .CalendarInterval(interval)
-                    .Format("yyyy-MM-dd'T'HH:mm:ss")
-                    .MinimumDocumentCount(0)
-                    .ExtendedBounds(
-                        startTime,
-                        endTime
-                    )
-                )
-            );
-    }
-    
-    /// <summary>
-    /// 创建复杂聚合查询
-    /// </summary>
-    public static Func<SearchDescriptor<AuditLog>, SearchDescriptor<AuditLog>> CreateComplexAggregation(
-        DateTime startTime, 
-        DateTime endTime)
-    {
-        return s => s
-            .Query(q => q
-                .DateRange(r => r
-                    .Field(f => f.OperationTime)
-                    .GreaterThanOrEquals(startTime)
-                    .LessThanOrEquals(endTime)
+                    .Gte(startTime)
+                    .Lte(endTime)
                 )
             )
-            .Aggregations(a => a
-                .Terms("users", t => t
-                    .Field(f => f.UserName.Suffix("keyword"))
-                    .Size(10)
-                    .Aggregations(aa => aa
-                        .Terms("operations", tt => tt
-                            .Field(f => f.OperationType.Suffix("keyword"))
-                            .Size(10)
+        );
+    }
+    
+    /// <summary>
+    /// 创建资源查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateResourceQuery(string resource)
+    {
+        return s => s.Query(q => q
+            .Wildcard(w => w
+                .Field(f => f.EntityName)
+                .Value($"*{resource}*")
+            )
+        );
+    }
+    
+    /// <summary>
+    /// 创建IP地址查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateIPQuery(string ipAddress)
+    {
+        return s => s.Query(q => q
+            .Term(t => t
+                .Field(f => f.IpAddress)
+                .Value(ipAddress)
+            )
+        );
+    }
+    
+    /// <summary>
+    /// 创建全文搜索查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateFullTextQuery(string searchText)
+    {
+        return s => s.Query(q => q
+            .MultiMatch(m => m
+                .Query(searchText)
+                .Fields(new[] { "operationType", "entityName", "beforeData", "afterData", "userAgent" })
+                .Type(TextQueryType.BestFields)
+                .Operator(Operator.And)
+            )
+        );
+    }
+    
+    /// <summary>
+    /// 创建状态码查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateStatusCodeQuery(int statusCode)
+    {
+        return s => s.Query(q => q
+            .Term(t => t
+                .Field(f => f.StatusCode)
+                .Value(statusCode)
+            )
+        );
+    }
+    
+    /// <summary>
+    /// 创建用户代理查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateUserAgentQuery(string userAgent)
+    {
+        return s => s.Query(q => q
+            .Match(m => m
+                .Field(f => f.UserAgent)
+                .Query(userAgent)
+            )
+        );
+    }
+    
+    /// <summary>
+    /// 创建成功操作查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateSuccessfulOperationsQuery()
+    {
+        return s => s.Query(q => q
+            .Bool(b => b
+                .Must(m => m
+                    .Range(r => r
+                        .NumberRange(nr => nr
+                            .Field(f => f.StatusCode)
+                            .Gte(200)
+                            .Lt(300)
                         )
                     )
                 )
-                .DateHistogram("daily", h => h
-                    .Field(f => f.OperationTime)
-                    .CalendarInterval("1d")
-                    .Format("yyyy-MM-dd")
-                    .MinimumDocumentCount(0)
-                    .ExtendedBounds(
-                        startTime,
-                        endTime
-                    )
-                    .Aggregations(aa => aa
-                        .Terms("operations", tt => tt
-                            .Field(f => f.OperationType.Suffix("keyword"))
-                            .Size(10)
+            )
+        );
+    }
+    
+    /// <summary>
+    /// 创建失败操作查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateFailedOperationsQuery()
+    {
+        return s => s.Query(q => q
+            .Bool(b => b
+                .Must(m => m
+                    .Range(r => r
+                        .NumberRange(nr => nr
+                            .Field(f => f.StatusCode)
+                            .Gte(400)
                         )
                     )
                 )
-            );
+            )
+        );
     }
     
     /// <summary>
@@ -211,66 +169,93 @@ public static class AuditQueryHelper
     {
         var result = new Dictionary<string, object>();
         
-        // 解析用户统计
-        if (aggregationResults.ContainsKey("users"))
+        foreach (var item in aggregationResults)
         {
-            var userStats = new Dictionary<string, object>();
-            var users = aggregationResults["users"] as IEnumerable<object>;
-            
-            if (users != null)
+            if (item.Value is Dictionary<string, object> bucketData)
             {
-                foreach (dynamic userBucket in users)
+                if (bucketData.ContainsKey("buckets"))
                 {
-                    var operationStats = new Dictionary<string, long>();
-                    if (((IDictionary<string, object>)userBucket).ContainsKey("operations"))
-                    {
-                        foreach (dynamic opBucket in userBucket.operations)
-                        {
-                            operationStats[opBucket.key.ToString()] = (long)opBucket.docCount;
-                        }
-                    }
-                    
-                    userStats[userBucket.key.ToString()] = new
-                    {
-                        Total = (long)userBucket.docCount,
-                        Operations = operationStats
-                    };
+                    result[item.Key] = bucketData["buckets"];
+                }
+                else if (bucketData.ContainsKey("value"))
+                {
+                    result[item.Key] = bucketData["value"];
+                }
+                else
+                {
+                    result[item.Key] = bucketData;
                 }
             }
-            
-            result["UserStats"] = userStats;
-        }
-        
-        // 解析日期统计
-        if (aggregationResults.ContainsKey("daily"))
-        {
-            var dailyStats = new Dictionary<string, object>();
-            var daily = aggregationResults["daily"] as IEnumerable<object>;
-            
-            if (daily != null)
+            else
             {
-                foreach (dynamic dateBucket in daily)
-                {
-                    var operationStats = new Dictionary<string, long>();
-                    if (((IDictionary<string, object>)dateBucket).ContainsKey("operations"))
-                    {
-                        foreach (dynamic opBucket in dateBucket.operations)
-                        {
-                            operationStats[opBucket.key.ToString()] = (long)opBucket.docCount;
-                        }
-                    }
-                    
-                    dailyStats[dateBucket.key.ToString()] = new
-                    {
-                        Total = (long)dateBucket.docCount,
-                        Operations = operationStats
-                    };
-                }
+                result[item.Key] = item.Value;
             }
-            
-            result["DailyStats"] = dailyStats;
         }
         
         return result;
+    }
+    
+    /// <summary>
+    /// 创建文本搜索查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateTextQuery(string searchText)
+    {
+        return s => s.Query(q => q
+            .Bool(b => b
+                .Should(should => should
+                    .Match(m => m
+                        .Field(f => f.UserName)
+                        .Query(searchText)
+                    )
+                    .Match(m => m
+                        .Field(f => f.OperationType)
+                        .Query(searchText)
+                    )
+                    .Match(m => m
+                        .Field(f => f.EntityName)
+                        .Query(searchText)
+                    )
+                    .Match(m => m
+                        .Field(f => f.Description)
+                        .Query(searchText)
+                    )
+                )
+            )
+        );
+    }
+    
+    /// <summary>
+    /// 创建分页查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreatePaginationQuery(int pageIndex, int pageSize)
+    {
+        return s => s.From((pageIndex - 1) * pageSize).Size(pageSize);
+    }
+    
+    /// <summary>
+    /// 创建排序查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateSortQuery(string fieldName = "operationTime", bool ascending = false)
+    {
+        return s => s.Sort(sort => sort
+            .Field(fieldName, new FieldSort { Order = ascending ? SortOrder.Asc : SortOrder.Desc })
+        );
+    }
+    
+    /// <summary>
+    /// 组合多个查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CombineQueries(
+        params Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>>[] queries)
+    {
+        return s =>
+        {
+            var result = s;
+            foreach (var query in queries)
+            {
+                result = query(result);
+            }
+            return result;
+        };
     }
 } 

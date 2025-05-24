@@ -176,17 +176,25 @@ namespace CodeSpirit.Web.Middlewares
 
             // 扩展不代理的本地路径列表
             // 增加Pages目录下的所有页面路由
-            if (serviceName == "api" || serviceName == "_blazor" || 
-                serviceName == "swagger" || serviceName == "health" || 
-                serviceName == "signalr" || serviceName == "hubs" ||
-                serviceName == "Login" || serviceName == "Index" ||
-                serviceName == "Chat" || serviceName == "Notifications" ||
-                serviceName == "Impersonate" || serviceName == "Shared" ||
-                serviceName == "export-task")
+            switch (serviceName)
             {
-                _logger.LogInformation("Web项目路径，跳过代理 - 路径: {Path}", request.Path);
-                await _next(context);
-                return;
+                case "api":
+                case "web":
+                case "_blazor":
+                case "swagger":
+                case "health":
+                case "signalr":
+                case "hubs":
+                case "Login":
+                case "Index":
+                case "Chat":
+                case "Notifications":
+                case "Impersonate":
+                case "Shared":
+                case "export-task":
+                    _logger.LogInformation("Web项目路径，跳过代理 - 路径: {Path}", request.Path);
+                    await _next(context);
+                    return;
             }
 
             // 重构目标路径：移除开头的服务名，保留 /api 开始的部分

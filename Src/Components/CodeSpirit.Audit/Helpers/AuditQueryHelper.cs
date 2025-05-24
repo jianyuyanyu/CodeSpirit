@@ -235,11 +235,49 @@ public static class AuditQueryHelper
     /// <summary>
     /// 创建排序查询
     /// </summary>
-    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateSortQuery(string fieldName = "operationTime", bool ascending = false)
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateSortQuery(string fieldName = "OperationTime", bool ascending = false)
     {
+        // 将C#字段名称转换为Elasticsearch字段名称（camelCase）
+        var elasticsearchFieldName = ConvertToElasticsearchFieldName(fieldName);
+        
+        // 使用控制台输出记录字段映射转换（因为这是静态方法，无法注入logger）
+        Console.WriteLine($"[AuditQueryHelper] 字段名称转换: {fieldName} -> {elasticsearchFieldName}");
+        Console.WriteLine($"[AuditQueryHelper] 排序方向: {(ascending ? "升序" : "降序")}");
+        
         return s => s.Sort(sort => sort
-            .Field(fieldName, new FieldSort { Order = ascending ? SortOrder.Asc : SortOrder.Desc })
+            .Field(elasticsearchFieldName, new FieldSort { Order = ascending ? SortOrder.Asc : SortOrder.Desc })
         );
+    }
+    
+    /// <summary>
+    /// 将C#属性名称转换为Elasticsearch字段名称
+    /// </summary>
+    /// <param name="fieldName">C#属性名称</param>
+    /// <returns>Elasticsearch字段名称</returns>
+    private static string ConvertToElasticsearchFieldName(string fieldName)
+    {
+        if (string.IsNullOrEmpty(fieldName))
+            return "operationTime";
+            
+        // 处理常见字段名称映射
+        return fieldName switch
+        {
+            "OperationTime" => "operationTime",
+            "UserId" => "userId", 
+            "UserName" => "userName",
+            "IpAddress" => "ipAddress",
+            "ServiceName" => "serviceName",
+            "ControllerName" => "controllerName",
+            "ActionName" => "actionName",
+            "OperationType" => "operationType",
+            "EntityName" => "entityName",
+            "EntityId" => "entityId",
+            "IsSuccess" => "isSuccess",
+            "StatusCode" => "statusCode",
+            "ExecutionDuration" => "executionDuration",
+            // 如果没有特殊映射，将PascalCase转换为camelCase
+            _ => char.ToLowerInvariant(fieldName[0]) + fieldName.Substring(1)
+        };
     }
     
     /// <summary>

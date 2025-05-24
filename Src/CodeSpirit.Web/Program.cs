@@ -1,3 +1,5 @@
+using Audit.Core;
+using CodeSpirit.Amis;
 using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Authorization;
 using CodeSpirit.Authorization.Extensions;
@@ -109,6 +111,9 @@ public class Program
         // 添加审计组件配置
         builder.Services.AddAuditServices(builder.Configuration.GetSection("Audit"));
 
+        //注册 AMIS 服务
+        builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);
+
         WebApplication app = builder.Build();
 
         if (!app.Environment.IsDevelopment())
@@ -140,6 +145,8 @@ public class Program
 
         // 确保在代理中间件之前注册
         app.UseMiddleware<ProxyMiddleware>();
+
+        app.UseAmis();
 
         await app.RunAsync();
     }

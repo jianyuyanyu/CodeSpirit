@@ -109,6 +109,11 @@ namespace CodeSpirit.Web.Controllers
         private static string GetSchemaApi(NavigationNode node)
         {
             if (node.IsExternal) return null;
+            //针对web模块的特殊处理，直接返回options:/{route}?amis格式
+            if (node.ModuleName.Equals("web", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return !string.IsNullOrEmpty(node.Route) ? $"options:/{node.Route}?amis" : null;
+            }
             return !string.IsNullOrEmpty(node.Route) ? $"options:/{node.ModuleName.ToCamelCase()}/{node.Route}?amis" : null;
         }
     }

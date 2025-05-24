@@ -23,8 +23,21 @@ public static class AuditExtensions
     /// </summary>
     public static IServiceCollection AddAuditServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // 智能处理配置 - 检查是否已经是Audit配置节
+        IConfiguration auditConfig;
+        if (configuration.GetSection("Audit").Exists())
+        {
+            // 传入的是完整配置，获取Audit节
+            auditConfig = configuration.GetSection("Audit");
+        }
+        else
+        {
+            // 传入的就是Audit配置节
+            auditConfig = configuration;
+        }
+        
         // 注册选项
-        services.Configure<AuditOptions>(configuration.GetSection("Audit"));
+        services.Configure<AuditOptions>(auditConfig);
         
         // 注册Elasticsearch服务
         services.AddSingleton<IElasticsearchService, ElasticsearchService>();

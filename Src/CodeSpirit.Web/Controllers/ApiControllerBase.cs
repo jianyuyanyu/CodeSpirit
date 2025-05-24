@@ -1,4 +1,8 @@
+using CodeSpirit.Amis.Controllers;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Attributes;
+using CodeSpirit.Web.Constants;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.Web.Controllers
@@ -7,8 +11,10 @@ namespace CodeSpirit.Web.Controllers
     /// API控制器基类
     /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
-    public abstract class ApiControllerBase : ControllerBase
+    [Authorize(policy: "DynamicPermissions")]
+    [Route("api/web/[controller]")]
+    [Module(Constants.Constants.Module, "系统管理", Icon = "fa-solid fa-gear")]
+    public abstract class ApiControllerBase : AmisApiControllerBase
     {
         /// <summary>
         /// 生成成功响应

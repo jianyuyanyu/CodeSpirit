@@ -24,9 +24,18 @@ public class ElasticsearchService : IElasticsearchService
     {
         _logger = logger;
         
-        // 获取配置
+        // 获取配置 - 智能处理配置绑定
         var options = new AuditOptions();
-        configuration.GetSection("Audit").Bind(options);
+        if (configuration.GetSection("Audit").Exists())
+        {
+            // 传入的是完整配置，获取Audit节
+            configuration.GetSection("Audit").Bind(options);
+        }
+        else
+        {
+            // 传入的就是Audit配置节
+            configuration.Bind(options);
+        }
         _options = options.Elasticsearch;
         
         if (elasticsearchClient != null)
@@ -83,6 +92,41 @@ public class ElasticsearchService : IElasticsearchService
     }
     
     /// <summary>
+    /// 重建索引（删除现有索引并重新创建）
+    /// </summary>
+    public async Task<bool> RecreateIndexAsync()
+    {
+        try
+        {
+            // 检查索引是否存在，如果存在则删除
+            if (await IndexExistsAsync())
+            {
+                _logger.LogInformation("正在删除现有Elasticsearch索引: {IndexName}", _options.IndexName);
+                var deleteResponse = await _client.Indices.DeleteAsync(_options.IndexName);
+                
+                if (!deleteResponse.IsValidResponse)
+                {
+                    _logger.LogError("删除现有Elasticsearch索引失败: {Error}", deleteResponse.DebugInformation);
+                    return false;
+                }
+                
+                _logger.LogInformation("现有Elasticsearch索引删除成功: {IndexName}", _options.IndexName);
+            }
+            
+            // 等待一小段时间确保删除操作完成
+            await Task.Delay(1000);
+            
+            // 重新创建索引
+            return await CreateIndexAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "重建Elasticsearch索引失败");
+            return false;
+        }
+    }
+    
+    /// <summary>
     /// 创建索引
     /// </summary>
     public async Task<bool> CreateIndexAsync()
@@ -96,12 +140,47 @@ public class ElasticsearchService : IElasticsearchService
                 return true;
             }
             
-            // 简化的索引创建，先使用基本设置
-            var createResponse = await _client.Indices.CreateAsync(_options.IndexName);
+            // 创建索引，使用明确的字段映射以确保正确的字段名称
+            var createResponse = await _client.Indices.CreateAsync(_options.IndexName, c => c
+                .Settings(s => s
+                    .NumberOfShards(_options.NumberOfShards)
+                    .NumberOfReplicas(_options.NumberOfReplicas)
+                )
+                .Mappings(m => m
+                    .Properties<AuditLog>(p => p
+                        .Keyword(f => f.Id)
+                        .Keyword(f => f.UserId)
+                        .Text(f => f.UserName)
+                        .Keyword(f => f.IpAddress)
+                        .Date(f => f.OperationTime) // 这将映射为operationTime字段
+                        .Keyword(f => f.ServiceName)
+                        .Keyword(f => f.ControllerName)
+                        .Keyword(f => f.ActionName)
+                        .Keyword(f => f.OperationType)
+                        .Text(f => f.Description)
+                        .Keyword(f => f.RequestPath)
+                        .Keyword(f => f.RequestMethod)
+                        .Text(f => f.RequestParams)
+                        .Keyword(f => f.EntityName)
+                        .Keyword(f => f.EntityId)
+                        .LongNumber(f => f.ExecutionDuration)
+                        .Boolean(f => f.IsSuccess)
+                        .Text(f => f.ErrorMessage)
+                        .IntegerNumber(f => f.StatusCode)
+                        .Text(f => f.BeforeData)
+                        .Text(f => f.AfterData)
+                        .Text(f => f.UserAgent)
+                        .Text(f => f.OperationName)
+                    )
+                )
+            );
             
             if (createResponse.IsValidResponse)
             {
-                _logger.LogInformation("Elasticsearch索引创建成功: {IndexName}", _options.IndexName);
+                _logger.LogInformation("Elasticsearch索引创建成功，包含正确的字段映射: {IndexName}", _options.IndexName);
+                
+                // 记录字段映射信息以便调试
+                _logger.LogDebug("索引字段映射创建完成，OperationTime字段将映射为operationTime");
                 return true;
             }
             else
@@ -242,23 +321,65 @@ public class ElasticsearchService : IElasticsearchService
             var searchDescriptor = new SearchRequestDescriptor<T>().Index(_options.IndexName);
             var searchRequest = searchFunc(searchDescriptor);
             
+            // 记录搜索请求信息
+            _logger.LogInformation("开始执行Elasticsearch搜索，索引: {IndexName}", _options.IndexName);
+            
             var searchResponse = await _client.SearchAsync<T>(searchRequest);
+            
+            // 详细记录搜索结果
+            _logger.LogInformation("Elasticsearch搜索完成");
+            _logger.LogInformation("搜索响应状态: {IsValid}", searchResponse.IsValidResponse);
+            _logger.LogInformation("返回文档数量: {DocumentCount}", searchResponse.Documents?.Count() ?? 0);
+            _logger.LogInformation("总文档数量: {Total}", searchResponse.Total);
+            _logger.LogInformation("查询耗时: {Took}ms", searchResponse.Took);
             
             if (searchResponse.IsValidResponse)
             {
                 var items = searchResponse.Documents ?? Enumerable.Empty<T>();
                 var total = searchResponse.Total;
+                
+                _logger.LogInformation("搜索成功 - 返回 {ItemCount} 条记录，总计 {Total} 条", items.Count(), total);
+                
+                // 如果是AuditLog类型，打印前几条记录的关键信息
+                if (typeof(T) == typeof(CodeSpirit.Audit.Models.AuditLog))
+                {
+                    var auditLogs = items.Cast<CodeSpirit.Audit.Models.AuditLog>().Take(3);
+                    foreach (var log in auditLogs)
+                    {
+                        _logger.LogInformation("审计日志样本 - ID: {Id}, 用户: {UserName}, 操作时间: {OperationTime}, 操作类型: {OperationType}", 
+                            log.Id, log.UserName, log.OperationTime, log.OperationType);
+                    }
+                }
+                
                 return (items, total);
             }
             else
             {
-                _logger.LogError("Elasticsearch搜索失败: {Error}", searchResponse.DebugInformation);
+                _logger.LogError("Elasticsearch搜索失败");
+                _logger.LogError("错误信息: {Error}", searchResponse.DebugInformation);
+                
+                // 记录HTTP状态码和基本错误信息
+                _logger.LogError("HTTP状态码: {StatusCode}", searchResponse.ApiCallDetails?.HttpStatusCode);
+                
+                if (searchResponse.ElasticsearchServerError != null)
+                {
+                    _logger.LogError("服务器错误详情: {ServerError}", searchResponse.ElasticsearchServerError.ToString());
+                }
+                
                 return (Enumerable.Empty<T>(), 0);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Elasticsearch搜索失败");
+            _logger.LogError(ex, "Elasticsearch搜索时发生异常");
+            _logger.LogError("异常类型: {ExceptionType}", ex.GetType().Name);
+            _logger.LogError("异常消息: {Message}", ex.Message);
+            
+            if (ex.InnerException != null)
+            {
+                _logger.LogError("内部异常: {InnerMessage}", ex.InnerException.Message);
+            }
+            
             return (Enumerable.Empty<T>(), 0);
         }
     }

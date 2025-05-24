@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using System.Reflection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Hosting;
+using System.Linq;
 
 namespace CodeSpirit.Amis.Helpers
 {
@@ -76,8 +77,14 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>控制器的路由模板。</returns>
         public string GetRoute(Type controller)
         {
-            // 获取路由特性，替换 [controller] 为当前控制器的名称
-            RouteAttribute routeAttr = controller.GetCustomAttribute<RouteAttribute>();
+            // 获取路由特性，处理可能存在多个RouteAttribute的情况
+            // 优先使用控制器类本身定义的Route属性，如果没有则使用继承的
+            var routeAttr = controller.GetCustomAttribute<RouteAttribute>(inherit: false);
+            if (routeAttr == null)
+            {
+                // 如果当前类没有定义Route属性，则查找继承的Route属性
+                routeAttr = controller.GetCustomAttribute<RouteAttribute>(inherit: true);
+            }
             return routeAttr?.Template?.Replace("[controller]", _amisContext.ControllerName) ?? string.Empty;
         }
 

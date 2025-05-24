@@ -1,119 +1,102 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
-using CodeSpirit.Core.Attributes;
+using GeoLoc = CodeSpirit.Audit.Models.GeoLocation;
 
-namespace CodeSpirit.Audit.Models;
+namespace CodeSpirit.Audit.Services.Dtos;
 
 /// <summary>
-/// 审计日志模型
+/// 审计日志详情DTO
 /// </summary>
-public class AuditLog
+public class AuditLogDetailDto
 {
     /// <summary>
     /// 日志ID
     /// </summary>
     [DisplayName("日志ID")]
-    [Key]
-    [StringLength(50)]
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Id { get; set; } = string.Empty;
     
     /// <summary>
     /// 用户ID
     /// </summary>
     [DisplayName("用户ID")]
-    [StringLength(50)]
-    [AggregateField("/api/web/user/{value}", "{value}")]
     public string UserId { get; set; } = string.Empty;
     
     /// <summary>
     /// 用户名
     /// </summary>
     [DisplayName("用户名")]
-    [StringLength(100)]
     public string UserName { get; set; } = string.Empty;
     
     /// <summary>
     /// IP地址
     /// </summary>
     [DisplayName("IP地址")]
-    [StringLength(45)]
     public string IpAddress { get; set; } = string.Empty;
     
     /// <summary>
     /// 地理位置信息
     /// </summary>
     [DisplayName("地理位置")]
-    public GeoLocation Location { get; set; } = new GeoLocation();
+    public GeoLoc Location { get; set; } = new GeoLoc();
     
     /// <summary>
-    /// 用户代理（浏览器/设备信息）
+    /// 用户代理
     /// </summary>
     [DisplayName("用户代理")]
-    [StringLength(500)]
     public string UserAgent { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作时间
     /// </summary>
     [DisplayName("操作时间")]
-    [Required]
-    public DateTime OperationTime { get; set; } = DateTime.UtcNow;
+    public DateTime OperationTime { get; set; }
     
     /// <summary>
     /// 服务名称
     /// </summary>
     [DisplayName("服务名称")]
-    [StringLength(100)]
     public string ServiceName { get; set; } = string.Empty;
     
     /// <summary>
     /// 控制器名称
     /// </summary>
     [DisplayName("控制器名称")]
-    [StringLength(100)]
     public string ControllerName { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作名称
     /// </summary>
     [DisplayName("操作名称")]
-    [StringLength(100)]
     public string ActionName { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作显示名称
     /// </summary>
     [DisplayName("操作显示名称")]
-    [StringLength(200)]
     public string OperationName { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作类型
     /// </summary>
     [DisplayName("操作类型")]
-    [StringLength(50)]
     public string OperationType { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作描述
     /// </summary>
     [DisplayName("操作描述")]
-    [StringLength(1000)]
     public string Description { get; set; } = string.Empty;
     
     /// <summary>
     /// 请求路径
     /// </summary>
     [DisplayName("请求路径")]
-    [StringLength(500)]
     public string RequestPath { get; set; } = string.Empty;
     
     /// <summary>
     /// 请求方法
     /// </summary>
     [DisplayName("请求方法")]
-    [StringLength(10)]
     public string RequestMethod { get; set; } = string.Empty;
     
     /// <summary>
@@ -126,14 +109,12 @@ public class AuditLog
     /// 业务实体名称
     /// </summary>
     [DisplayName("业务实体名称")]
-    [StringLength(100)]
     public string EntityName { get; set; } = string.Empty;
     
     /// <summary>
     /// 业务实体ID
     /// </summary>
     [DisplayName("业务实体ID")]
-    [StringLength(100)]
     public string EntityId { get; set; } = string.Empty;
     
     /// <summary>
@@ -152,7 +133,6 @@ public class AuditLog
     /// 执行时长(毫秒)
     /// </summary>
     [DisplayName("执行时长(毫秒)")]
-    [Range(0, long.MaxValue)]
     public long ExecutionDuration { get; set; }
     
     /// <summary>
@@ -168,6 +148,12 @@ public class AuditLog
     public string ErrorMessage { get; set; } = string.Empty;
     
     /// <summary>
+    /// HTTP状态码
+    /// </summary>
+    [DisplayName("HTTP状态码")]
+    public int StatusCode { get; set; }
+    
+    /// <summary>
     /// 特性属性
     /// </summary>
     [DisplayName("特性属性")]
@@ -178,43 +164,4 @@ public class AuditLog
     /// </summary>
     [DisplayName("附加数据")]
     public Dictionary<string, object> AdditionalData { get; set; } = new Dictionary<string, object>();
-    
-    /// <summary>
-    /// HTTP状态码
-    /// </summary>
-    [DisplayName("HTTP状态码")]
-    [Range(100, 599, ErrorMessage = "HTTP状态码必须在100-599之间")]
-    public int StatusCode { get; set; }
-
-    /// <summary>
-    /// 设置附加数据
-    /// </summary>
-    /// <param name="key">键</param>
-    /// <param name="value">值</param>
-    public void SetAdditionalData(string key, object value)
-    {
-        if (AdditionalData.ContainsKey(key))
-        {
-            AdditionalData[key] = value;
-        }
-        else
-        {
-            AdditionalData.Add(key, value);
-        }
-    }
-    
-    /// <summary>
-    /// 将对象转换为JSON
-    /// </summary>
-    /// <param name="obj">要转换的对象</param>
-    /// <returns>JSON字符串</returns>
-    public string ToJson(object obj)
-    {
-        if (obj == null) return null;
-        return JsonSerializer.Serialize(obj, new JsonSerializerOptions
-        {
-            WriteIndented = false,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-    }
-}
+} 

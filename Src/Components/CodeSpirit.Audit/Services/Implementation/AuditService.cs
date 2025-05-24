@@ -25,9 +25,18 @@ public class AuditService : IAuditService
         _rabbitMQService = rabbitMQService;
         _logger = logger;
         
-        // 获取配置
+        // 获取配置 - 智能处理配置绑定
         var options = new AuditOptions();
-        configuration.GetSection("Audit").Bind(options);
+        if (configuration.GetSection("Audit").Exists())
+        {
+            // 传入的是完整配置，获取Audit节
+            configuration.GetSection("Audit").Bind(options);
+        }
+        else
+        {
+            // 传入的就是Audit配置节
+            configuration.Bind(options);
+        }
         _options = options;
     }
     
@@ -40,8 +49,11 @@ public class AuditService : IAuditService
         {
             if (!_options.Enabled)
             {
+                _logger.LogDebug("审计功能已禁用，跳过记录");
                 return;
             }
+            
+            _logger.LogDebug("开始记录审计日志: {Id}", auditLog.Id);
             
             try 
             {
@@ -55,10 +67,16 @@ public class AuditService : IAuditService
                 _logger.LogWarning(ex, "RabbitMQ服务不可用，正在直接写入Elasticsearch");
                 await _elasticsearchService.IndexDocumentAsync(auditLog);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "推送审计日志到RabbitMQ失败，尝试直接写入Elasticsearch");
+                // 如果RabbitMQ出错，尝试直接写入Elasticsearch
+                await _elasticsearchService.IndexDocumentAsync(auditLog);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "记录审计日志失败");
+            _logger.LogError(ex, "记录审计日志失败: {Id}", auditLog.Id);
         }
     }
     
@@ -85,21 +103,48 @@ public class AuditService : IAuditService
     {
         try
         {
+            // 记录查询参数
+            _logger.LogInformation("开始搜索审计日志");
+            _logger.LogInformation("查询参数 - 页码: {PageIndex}, 页大小: {PageSize}", query.PageIndex, query.PageSize);
+            _logger.LogInformation("排序字段: {SortField}, 排序方向: {SortDirection}", query.SortField, query.SortDirection);
+            
+            if (!string.IsNullOrEmpty(query.UserId))
+                _logger.LogInformation("用户ID过滤: {UserId}", query.UserId);
+            if (!string.IsNullOrEmpty(query.OperationType))
+                _logger.LogInformation("操作类型过滤: {OperationType}", query.OperationType);
+            if (query.StartTime.HasValue || query.EndTime.HasValue)
+                _logger.LogInformation("时间范围: {StartTime} - {EndTime}", query.StartTime, query.EndTime);
+            if (!string.IsNullOrEmpty(query.Keywords))
+                _logger.LogInformation("关键词搜索: {Keyword}", query.Keywords);
+            
             // 构建复合查询
             var searchFunc = BuildSearchQuery(query);
+            
+            // 确定排序字段和方向
+            var sortField = string.IsNullOrEmpty(query.SortField) ? "OperationTime" : query.SortField;
+            var isAscending = query.SortDirection?.ToLower() == "asc";
+            
+            _logger.LogInformation("最终排序配置 - 字段: {SortField}, 升序: {IsAscending}", sortField, isAscending);
             
             // 添加分页和排序
             var combinedFunc = AuditQueryHelper.CombineQueries(
                 searchFunc,
                 AuditQueryHelper.CreatePaginationQuery(query.PageIndex, query.PageSize),
-                AuditQueryHelper.CreateSortQuery("operationTime", false)
+                AuditQueryHelper.CreateSortQuery(sortField, isAscending)
             );
             
-            return await _elasticsearchService.SearchAsync<Models.AuditLog>(combinedFunc);
+            _logger.LogInformation("开始执行Elasticsearch查询...");
+            var result = await _elasticsearchService.SearchAsync<Models.AuditLog>(combinedFunc);
+            
+            _logger.LogInformation("审计日志搜索完成 - 返回 {Count} 条记录，总计 {Total} 条", 
+                result.Items.Count(), result.Total);
+            
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "搜索审计日志失败");
+            _logger.LogError("查询参数: {Query}", System.Text.Json.JsonSerializer.Serialize(query));
             return (Enumerable.Empty<Models.AuditLog>(), 0);
         }
     }
@@ -130,9 +175,9 @@ public class AuditService : IAuditService
         }
         
         // 关键词搜索
-        if (!string.IsNullOrEmpty(query.Keyword))
+        if (!string.IsNullOrEmpty(query.Keywords))
         {
-            queries.Add(AuditQueryHelper.CreateTextQuery(query.Keyword));
+            queries.Add(AuditQueryHelper.CreateTextQuery(query.Keywords));
         }
         
         // 如果没有任何查询条件，返回匹配所有的查询

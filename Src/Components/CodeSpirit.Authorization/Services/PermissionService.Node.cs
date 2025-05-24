@@ -32,7 +32,13 @@ namespace CodeSpirit.Authorization
             string displayName = permissionAttr?.DisplayName ?? displayNameAttr?.DisplayName ?? name;
 
             // 处理路由
-            string route = controller.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
+            // 优先使用控制器类本身定义的Route属性，如果没有则使用继承的
+            var routeAttr = controller.GetCustomAttribute<RouteAttribute>(inherit: false);
+            if (routeAttr == null)
+            {
+                routeAttr = controller.GetCustomAttribute<RouteAttribute>(inherit: true);
+            }
+            string route = routeAttr?.Template ?? string.Empty;
             string path = RouteHelper.CombineRoutes(route, null, controllerName);
 
             return new PermissionNode(
@@ -65,7 +71,13 @@ namespace CodeSpirit.Authorization
                             actionName;
 
             // 处理路由
-            string controllerRoute = controller.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;
+            // 优先使用控制器类本身定义的Route属性，如果没有则使用继承的
+            var controllerRouteAttr = controller.GetCustomAttribute<RouteAttribute>(inherit: false);
+            if (controllerRouteAttr == null)
+            {
+                controllerRouteAttr = controller.GetCustomAttribute<RouteAttribute>(inherit: true);
+            }
+            string controllerRoute = controllerRouteAttr?.Template ?? string.Empty;
             string actionRoute = GetActionRoute(action);
             string path = RouteHelper.CombineRoutes(controllerRoute, actionRoute, controllerNode.Name);
             string requestMethod = HttpMethodHelper.GetRequestMethod(action);

@@ -14,6 +14,12 @@ public interface IElasticsearchService
     Task<bool> CreateIndexAsync();
     
     /// <summary>
+    /// 重建索引（删除现有索引并重新创建）
+    /// </summary>
+    /// <returns>是否成功</returns>
+    Task<bool> RecreateIndexAsync();
+    
+    /// <summary>
     /// 检查索引是否存在
     /// </summary>
     /// <returns>是否存在</returns>

@@ -545,9 +545,7 @@
             location: history.location,
             data: { date: new Date() },
             context: {
-                API_HOST: apiHost,
-                WEB_HOST: webHost,
-                aspire_dashboard: aspire_dashboard
+                WEB_HOST: webHost
             },
             locale: 'zh-CN'
         },

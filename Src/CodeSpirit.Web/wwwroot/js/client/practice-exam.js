@@ -927,9 +927,7 @@
             },
             locale: 'zh-CN',
             context: {
-                API_HOST: apiHost || '',
-                WEB_HOST: webHost || '',
-                aspire_dashboard: aspire_dashboard || ''
+                WEB_HOST: webHost || ''
             }
         },
         {

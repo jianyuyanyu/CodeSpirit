@@ -169,7 +169,6 @@
         location: history.location,
         data: {},
         context: {
-            API_HOST: apiHost,
             WEB_HOST: webHost
         }
     }, { theme: 'antd' });

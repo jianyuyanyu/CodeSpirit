@@ -21,6 +21,59 @@ CodeSpirit is a revolutionary full-stack low-code development framework that ach
 - **AI-Collaborative Programming**: Requirement Description → Prototype Generation → Code Verification → Deployment Monitoring
 - **Cloud-Native Foundation**: Native Kubernetes support, one-click deployment to multi-cloud environments
 
+## Technical Architecture Overview
+
+### Architecture Diagram
+
+```mermaid
+flowchart TD
+    classDef uiLayer fill:#f9d1d1,stroke:#333,stroke-width:1px
+    classDef backendLayer fill:#d1f9d1,stroke:#333,stroke-width:1px
+    classDef cloudLayer fill:#d1d1f9,stroke:#333,stroke-width:1px
+    
+    subgraph UI["Intelligent UI Generation Engine"]
+        direction LR
+        A1["🧭 Dynamic Navigation"] --> A2["📝 Smart Forms"]
+        A2 --> A3["📊 Smart Tables"]
+        A3 --> A4["📦 Batch Processing"]
+    end
+    
+    subgraph Backend["Enterprise Backend Architecture"]
+        direction LR
+        B1["🔐 Permission System"] --> B2["💾 ORM Extensions"]
+        B2 --> B3["🏢 Multi-tenancy"]
+        B3 --> B4["📋 Audit Service"]
+    end
+    
+    subgraph Cloud["Cloud-Native Foundation"]
+        direction LR
+        C1["🚀 .NET Aspire"] --> C2["⚙️ Config Center"]
+        C2 --> C3["☸️ K8s Support"]
+        C3 --> C4["📦 Distributed Cache"]
+    end
+    
+    UI --> Backend
+    Backend --> Cloud
+    
+    class UI uiLayer
+    class Backend backendLayer
+    class Cloud cloudLayer
+```
+
+### Core Technology Stack
+
+| Category | Technology Selection |
+| :--- | :--- |
+| **Framework** | .NET 9 |
+| **Language** | C# 12 (Supporting Primary Constructor and other new features) |
+| **Backend Architecture** | Clean Architecture + DDD |
+| **ORM** | Entity Framework Core (with soft delete, audit tracking) |
+| **Frontend Generation** | AMIS (Dynamic form/table generation) |
+| **Microservices** | .NET Aspire (Service discovery, health checks) |
+| **Container Orchestration** | Kubernetes (Supporting auto-scaling) |
+| **Identity Authentication** | JWT + OAuth2.0 (RBAC/ABAC hybrid model) |
+| **Data Access** | Repository Pattern + CQRS (partial modules) |
+
 ## Functional Architecture Overview
 
 ### I. Intelligent UI Generation Engine
@@ -41,7 +94,7 @@ CodeSpirit is a revolutionary full-stack low-code development framework that ach
 
 *Note: Zero-code here refers to zero frontend code.*
 
-#### 3. Visual Analysis Module (*VNext*)
+#### 3. Intelligent Chart Analysis Module
 
 - Dynamic Chart Engine: Automatically matches optimal visualization solutions based on data characteristics
 - SQL2API: Generate API interfaces from SQL
@@ -64,23 +117,27 @@ CodeSpirit is a revolutionary full-stack low-code development framework that ach
 
 #### 2. Key Functional Components
 
-- **Permission System**
-- **ORM Extensions**
-- **Multi-tenancy**
-- **Data Filters**
-- **Audit Service**
-- **Health Checks**
-- **Event Bus**
-- ...
+- **Permission System**: RBAC+ABAC hybrid model, fine-grained permission control
+- **ORM Extensions**: Soft delete, audit tracking, multi-tenancy support
+- **Multi-tenancy**: Data isolation, configuration isolation
+- **Data Filters**: Global filters, automatic injection
+- **Audit Service**: Full-chain operation tracking, data change recording
+- **Health Checks**: Service status monitoring, automatic failover
+- **Event Bus**: Distributed event processing, message queue integration
+- **Distributed Lock**: Redis distributed lock, duplicate submission prevention
+- **Configuration Center**: Multi-environment configuration management, dynamic configuration updates
+- **Aggregator**: Data aggregation, dynamic field replacement
+- **PDF Generation**: Template-based PDF document generation
+- **Time Processing**: Unified time processing mechanism, timezone support
 
 ### III. Out-of-the-Box Functional Modules
 
 | Module Name | Core Features | Technical Characteristics |
 | :--- | :--- | :--- |
 | User Center | Multi-factor authentication, Organization management(*VNext*), Fine-grained permission control | RBAC+ABAC hybrid model |
-| Audit Center | Operation log tracing, Data change tracking, Security compliance reporting | |
-| Order Center | | |
-| ... | ... | ... |
+| Audit Center | Operation log tracing, Data change tracking, Security compliance reporting | Elasticsearch storage |
+| Configuration Center | Multi-environment configuration management, Version control, Dynamic updates | Built-in implementation |
+| Order Center | Order management, Status flow, Payment integration | Event-driven architecture |
 
 ### IV. Full-Stack Generation Engine
 
@@ -104,30 +161,36 @@ CodeSpirit is a revolutionary full-stack low-code development framework that ach
 
   ✅ Write database migration script
 
+Concept Diagram:
+
+```mermaid
+sequenceDiagram
+  Developer->>+AI Engine: Input natural language requirements
+  AI Engine->>+Code Analyzer: Parse semantic intent
+  Code Analyzer->>+Architecture Validator: Check compatibility
+  Architecture Validator-->>-AI Engine: Return constraints
+  AI Engine->>+Code Generator: Generate candidate solutions
+  Code Generator-->>-Developer: Return executable code
+```
+
 ## Roadmap
 
-### Q1 2025
+### Q2 2025
 
 - Intelligent UI Generation Engine
 - CodeSpirit Beta Release
 - H5 Generation Engine
 
-### Q2 2025
+### Q3 2025
 
 - Visual Analysis Module
 - Deep Integration of LLM Code Generation Capabilities
 
-### Q3 2025
+### Q4 2025
 
 - Full-Stack Generation Engine
 - Multi-Cloud Deployment Support
 - Java Support
-
-### Q4 2025
-
-- DSL Support
-- Intelligent Operations Robot
-- Low-Code Application Marketplace
 
 ## Framework Advantages Comparison
 
@@ -155,16 +218,53 @@ https://codespirit-app.xin-lai.com/
 
 Please follow "麦扣聊技术" WeChat Official Account for the latest demo account and password.
 
+## Quick Start
+
+1. Install and start Docker Desktop
+
+2. Set CodeSpirit.AppHost as the startup project
+
+3. Start (Docker images like redis, seq, rabbitmq will be pulled during startup. If unable to pull, please use acceleration methods)
+
+   **Note: Currently based on .NET Aspire to simplify orchestration, service discovery, environment variables, and container settings configuration for distributed application development, making it easier to manage during the development phase.**
+
 ## Development Documentation
 
-- Github: [xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit)
-- Gitee: [magicodes/CodeSpirit](https://gitee.com/magicodes/code-spirit)
+- Github: [xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit) **(Regular updates)**
+- Gitee: [magicodes/CodeSpirit](https://gitee.com/magicodes/code-spirit) **(Priority updates)**
 
-[📘 Complete Development Docs](https://codespirit-docs.xin-lai.com/) | [💬 Join Technical Community](https://codespirit-chat.xin-lai.com/)
+### 📘 Core Documentation
 
-1. [UI Generation Engine](./Docs/CodeSpirit.Amis.md)
-2. [Backend Architecture](./Docs/后端架构.md)
-3. CRUD Development (TODO)
+1. [📖 Development Guide (Draft)](./Docs/CodeSpirit（码灵）开发指南（初稿）.md) - Complete development guide and best practices
+2. [🏗️ Overall Technical System Description](./Docs/总体技术体系说明.md) - Technical architecture and design philosophy
+3. [🏛️ Backend Architecture](./Docs/后端架构.md) - Backend architecture design description
+
+### 🎨 UI Generation Engine
+
+4. [🎯 AMIS UI Generation Engine](./Docs/CodeSpirit.Amis.md) - Intelligent UI generation core component
+5. [📊 AMIS Column Auto-Inference](./Docs/AMIS列自动推断功能说明.md) - Intelligent table column generation detailed explanation
+6. [📝 Form Default Values](./Docs/CodeSpirit.Amis表单默认值使用指南.md) - Form default value configuration guide
+7. [📈 Smart Chart Component](./Docs/CodeSpirit.Charts智能图表使用指南.md) - Data visualization solution
+8. [⏰ Date Time Column Optimization](./Docs/日期时间列优化功能总结.md) - Intelligent time field processing
+
+### 🔧 Core Components
+
+9. [🔗 Aggregator Usage Guide](./Docs/CodeSpirit.Aggregator聚合器使用指南.md) - Data aggregation and field replacement
+10. [⚙️ Settings Management Component](./Docs/CodeSpirit.Settings设置管理组件使用指南.md) - Configuration management solution
+11. [🔒 Distributed Lock Usage Guide](./Docs/CodeSpirit分布式锁使用指南.md) - Distributed lock implementation and usage
+12. [📄 PDF Generation Component](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF document generation service
+13. [🕒 Time Processing Mechanism](./Docs/CodeSpirit时间处理机制.md) - Unified time processing solution
+14. [🌐 Client IP Service](./Docs/ClientIpService使用指南.md) - Client IP acquisition and processing
+
+### 🚀 Infrastructure
+
+15. [🐰 RabbitMQ Integration Guide](./Docs/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
+16. [🔧 RabbitMQ Troubleshooting](./Docs/RabbitMQ故障排除指南.md) - Common problem solutions
+17. [🔍 Elasticsearch Migration Summary](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
+
+### 💬 Technical Community
+
+[💬 Join Technical Community (Not yet open, please follow WeChat Official Account)](https://codespirit-chat.xin-lai.com/)
 
 ![WeChat Official Account](./Res/qrcode.jpg)
 

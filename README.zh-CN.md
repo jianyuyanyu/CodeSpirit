@@ -39,7 +39,58 @@ CodeSpirit（码灵）是一款革命性的全栈低代码开发框架，通过�
     D --> D2[多技术栈扩展]
   ```
 
-  
+## 技术架构全景
+
+### 架构图
+
+```mermaid
+flowchart TD
+    classDef uiLayer fill:#f9d1d1,stroke:#333,stroke-width:1px
+    classDef backendLayer fill:#d1f9d1,stroke:#333,stroke-width:1px
+    classDef cloudLayer fill:#d1d1f9,stroke:#333,stroke-width:1px
+    
+    subgraph UI["智能界面生成引擎"]
+        direction LR
+        A1["🧭 动态导航系统"] --> A2["📝 智能表单"]
+        A2 --> A3["📊 智能表格"]
+        A3 --> A4["📦 批量处理"]
+    end
+    
+    subgraph Backend["企业级后端架构"]
+        direction LR
+        B1["🔐 权限系统"] --> B2["💾 ORM扩展"]
+        B2 --> B3["🏢 多租户"]
+        B3 --> B4["📋 审计服务"]
+    end
+    
+    subgraph Cloud["云原生底座"]
+        direction LR
+        C1["🚀 .NET Aspire"] --> C2["⚙️ 配置中心"]
+        C2 --> C3["☸️ K8s支持"]
+        C3 --> C4["📦 分布式缓存"]
+    end
+    
+    UI --> Backend
+    Backend --> Cloud
+    
+    class UI uiLayer
+    class Backend backendLayer
+    class Cloud cloudLayer
+```
+
+### 核心技术栈
+
+| 类别         | 技术选型                                    |
+| :----------- | :------------------------------------------ |
+| **框架**     | .NET 9                                      |
+| **语言**     | C# 12（支持Primary Constructor等新特性）    |
+| **后端架构** | Clean Architecture + DDD                    |
+| **ORM**      | Entity Framework Core（含软删除、审计追踪） |
+| **前端生成** | AMIS（动态表单/表格生成）                   |
+| **微服务**   | .NET Aspire（服务发现、健康检查）           |
+| **容器编排** | Kubernetes（支持自动扩缩容）                |
+| **身份认证** | JWT + OAuth2.0（RBAC/ABAC混合模型）         |
+| **数据访问** | Repository Pattern + CQRS（部分模块）       |
 
 ## 功能架构全景
 
@@ -61,7 +112,7 @@ CodeSpirit（码灵）是一款革命性的全栈低代码开发框架，通过�
 
 *注意：这里的零代码指的是零前端代码。*
 
-#### 3. 可视化分析模块（*VNext*）
+#### 3. 智能图表分析模块
 
 - 动态图表引擎：根据数据特征自动匹配最佳可视化方案
 - SQL2API：根据SQL生成API接口
@@ -84,23 +135,27 @@ CodeSpirit（码灵）是一款革命性的全栈低代码开发框架，通过�
 
 #### 2. 关键功能组件
 
-- **权限系统**
-- **ORM扩展**
-- **多租户**
-- **数据筛选器**
-- **审计服务**
-- **健康检查**
-- **事件总线**
-- ...
+- **权限系统**：RBAC+ABAC混合模型，细粒度权限控制
+- **ORM扩展**：软删除、审计追踪、多租户支持
+- **多租户**：数据隔离、配置隔离
+- **数据筛选器**：全局过滤器、自动注入
+- **审计服务**：全链路操作追踪、数据变更记录
+- **健康检查**：服务状态监控、自动故障转移
+- **事件总线**：分布式事件处理、消息队列集成
+- **分布式锁**：Redis分布式锁、防重复提交
+- **配置中心**：多环境配置管理、动态配置更新
+- **聚合器**：数据聚合、字段动态替换
+- **PDF生成**：模板化PDF文档生成
+- **时间处理**：统一时间处理机制、时区支持
 
 ### 三、开箱即用功能模块
 
 | 模块名称 | 核心功能                                            | 技术特性          |
 | :------- | :-------------------------------------------------- | :---------------- |
 | 用户中心 | 多因子认证、组织架构管理（*VNext*）、细粒度权限控制 | RBAC+ABAC混合模型 |
-| 审计中心 | 操作日志追溯、数据变更追踪、安全合规报告            |                   |
-| 订单中心 |                                                     |                   |
-| ...      | ...                                                 | ...               |
+| 审计中心 | 操作日志追溯、数据变更追踪、安全合规报告            | Elasticsearch存储 |
+| 配置中心 | 多环境配置管理、版本控制、动态更新                  | 内置实现          |
+| 订单中心 | 订单管理、状态流转、支付集成                        | 事件驱动架构      |
 
 ### 四、全栈生成引擎
 
@@ -135,9 +190,6 @@ sequenceDiagram
   AI引擎->>+代码生成: 生成候选方案
   代码生成-->>-开发者: 返回可执行代码
 ```
-
-
-
 
 ## 路线图规划
 
@@ -182,7 +234,7 @@ sequenceDiagram
 
 https://codespirit-app.xin-lai.com/
 
-请关注“麦扣聊技术”公众号获取最新的体验账号及密码。
+请关注"麦扣聊技术"公众号获取最新的体验账号及密码。
 
 ## 快速开始
 
@@ -199,14 +251,38 @@ https://codespirit-app.xin-lai.com/
 - Github：[xin-lai/CodeSpirit](https://github.com/xin-lai/CodeSpirit)**（定期推送）**
 - Gitee：[magicodes/CodeSpirit](https://gitee.com/magicodes/code-spirit)  **（优先推送）**
 
-[📘 上手文档](./Docs/CodeSpirit（码灵）开发指南（初稿）.md) | [💬 加入技术社区（暂未开放，请关注公众号）](https://codespirit-chat.xin-lai.com/)
+### 📘 核心文档
 
-1. [聚合器使用指南](./Docs/CodeSpirit.Aggregator聚合器使用指南.md)
-1. [表单默认值设置](./Docs/CodeSpirit.Amis表单默认值使用指南.md)
-1. [PdfGeneration使用](./Docs/CodeSpirit.PdfGeneration使用指南.md)
-1. [设置管理组件使用](./Docs/CodeSpirit.Settings设置管理组件使用指南)
-1. [分布式锁使用](./Docs/CodeSpirit分布式锁使用指南.md)
-1. [界面生成引擎](./Docs/CodeSpirit.Amis.md)
+1. [📖 开发指南（初稿）](./Docs/CodeSpirit（码灵）开发指南（初稿）.md) - 完整的开发指南和最佳实践
+2. [🏗️ 总体技术体系说明](./Docs/总体技术体系说明.md) - 技术架构和设计理念
+3. [🏛️ 后端架构](./Docs/后端架构.md) - 后端架构设计说明
+
+### 🎨 界面生成引擎
+
+4. [🎯 AMIS界面生成引擎](./Docs/CodeSpirit.Amis.md) - 智能界面生成核心组件
+5. [📊 AMIS列自动推断功能](./Docs/AMIS列自动推断功能说明.md) - 智能表格列生成详解
+6. [📝 表单默认值设置](./Docs/CodeSpirit.Amis表单默认值使用指南.md) - 表单默认值配置指南
+7. [📈 智能图表组件](./Docs/CodeSpirit.Charts智能图表使用指南.md) - 数据可视化解决方案
+8. [⏰ 日期时间列优化](./Docs/日期时间列优化功能总结.md) - 时间字段智能处理
+
+### 🔧 核心组件
+
+9. [🔗 聚合器使用指南](./Docs/CodeSpirit.Aggregator聚合器使用指南.md) - 数据聚合和字段替换
+10. [⚙️ 设置管理组件](./Docs/CodeSpirit.Settings设置管理组件使用指南.md) - 配置管理解决方案
+11. [🔒 分布式锁使用指南](./Docs/CodeSpirit分布式锁使用指南.md) - 分布式锁实现和使用
+12. [📄 PDF生成组件](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF文档生成服务
+13. [🕒 时间处理机制](./Docs/CodeSpirit时间处理机制.md) - 统一时间处理方案
+14. [🌐 客户端IP服务](./Docs/ClientIpService使用指南.md) - 客户端IP获取和处理
+
+### 🚀 基础设施
+
+15. [🐰 RabbitMQ集成指南](./Docs/RabbitMQ-Aspire-Integration.md) - 消息队列集成方案
+16. [🔧 RabbitMQ故障排除](./Docs/RabbitMQ故障排除指南.md) - 常见问题解决方案
+17. [🔍 Elasticsearch迁移总结](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - 搜索引擎集成指南
+
+### 💬 技术社区
+
+[💬 加入技术社区（暂未开放，请关注公众号）](https://codespirit-chat.xin-lai.com/)
 
 ![公众号](./Res/qrcode.jpg)
 

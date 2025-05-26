@@ -24,6 +24,13 @@ public class AuditMiddleware
     private readonly ILogger<AuditMiddleware> _logger;
     private readonly AuditOptions _options;
 
+    // 使用弱引用缓存避免内存泄漏，并添加定期清理机制
+    private static readonly ConcurrentDictionary<string, WeakReference<Type>> _controllerTypeCache
+        = new ConcurrentDictionary<string, WeakReference<Type>>(StringComparer.OrdinalIgnoreCase);
+    
+    private static readonly Timer _cacheCleanupTimer = new Timer(CleanupCache, null, 
+        TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(30));
+
     /// <summary>
     /// 构造函数
     /// </summary>
@@ -31,7 +38,7 @@ public class AuditMiddleware
         RequestDelegate next,
         ILogger<AuditMiddleware> logger,
         IConfiguration configuration,
-        IActionDescriptorCollectionProvider actionDescriptorCollectionProvider = null)
+        IActionDescriptorCollectionProvider? actionDescriptorCollectionProvider = null)
     {
         _next = next;
         _logger = logger;
@@ -45,6 +52,27 @@ public class AuditMiddleware
         if (actionDescriptorCollectionProvider != null)
         {
             InitializeControllerTypesCache(actionDescriptorCollectionProvider);
+        }
+    }
+
+    /// <summary>
+    /// 清理缓存中的无效弱引用
+    /// </summary>
+    private static void CleanupCache(object? state)
+    {
+        var keysToRemove = new List<string>();
+        
+        foreach (var kvp in _controllerTypeCache)
+        {
+            if (!kvp.Value.TryGetTarget(out _))
+            {
+                keysToRemove.Add(kvp.Key);
+            }
+        }
+        
+        foreach (var key in keysToRemove)
+        {
+            _controllerTypeCache.TryRemove(key, out _);
         }
     }
 
@@ -64,7 +92,7 @@ public class AuditMiddleware
                     var controllerName = controllerActionDescriptor.ControllerName;
                     var controllerType = controllerActionDescriptor.ControllerTypeInfo.AsType();
 
-                    _controllerTypeCache.TryAdd(controllerName, controllerType);
+                    _controllerTypeCache.TryAdd(controllerName, new WeakReference<Type>(controllerType));
                 }
             }
 
@@ -366,15 +394,19 @@ public class AuditMiddleware
             auditLog.ExecutionDuration = stopwatch.ElapsedMilliseconds;
             auditLog.IsSuccess = isSuccess;
             auditLog.ErrorMessage = errorMessage;
+            auditLog.StatusCode = context.Response.StatusCode;
 
             // 记录审计日志
             try
             {
                 await auditService.LogAsync(auditLog);
+                
+                // 标记请求已被审计处理（用于性能监控）
+                context.Items["AuditProcessed"] = true;
             }
-            catch (Exception ex)
+            catch (Exception logEx)
             {
-                _logger.LogError(ex, "记录审计日志失败");
+                _logger.LogError(logEx, "记录审计日志失败");
             }
         }
     }
@@ -499,60 +531,67 @@ public class AuditMiddleware
         return FindControllerTypeFromCache(controllerName);
     }
 
-    // 静态缓存，存储控制器名称到类型的映射
-    private static readonly ConcurrentDictionary<string, Type> _controllerTypeCache
-        = new ConcurrentDictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
-
     /// <summary>
     /// 从缓存中查找控制器类型
     /// </summary>
-    private Type FindControllerTypeFromCache(string controllerName)
+    private Type? FindControllerTypeFromCache(string controllerName)
     {
         // 首先尝试从缓存获取
-        if (_controllerTypeCache.TryGetValue(controllerName, out var cachedType))
+        if (_controllerTypeCache.TryGetValue(controllerName, out var weakRef) && 
+            weakRef.TryGetTarget(out var cachedType))
         {
             return cachedType;
         }
 
-        // 如果缓存中没有，则执行回退搜索
-        return _controllerTypeCache.GetOrAdd(controllerName, name =>
-        {
-            // 搜索所有程序集
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (var assembly in assemblies)
-            {
-                try
-                {
-                    // 检查是否为Web程序集或应用程序程序集
-                    if (assembly.FullName.Contains("Microsoft") ||
-                        assembly.FullName.Contains("System") ||
-                        assembly.FullName.Contains("mscorlib"))
-                    {
-                        continue;
-                    }
+        // 如果缓存中没有，则执行优化的搜索
+        return FindAndCacheControllerType(controllerName);
+    }
 
-                    var types = assembly.GetTypes();
-                    foreach (var type in types)
-                    {
-                        // 检查是否为controller
-                        if (type.Name.Equals($"{name}Controller", StringComparison.OrdinalIgnoreCase) ||
-                            type.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _logger.LogDebug("在程序集 {Assembly} 中发现控制器 {Controller}", assembly.GetName().Name, type.Name);
-                            return type;
-                        }
-                    }
-                }
-                catch (Exception ex)
+    /// <summary>
+    /// 查找并缓存控制器类型（优化版本）
+    /// </summary>
+    private Type? FindAndCacheControllerType(string controllerName)
+    {
+        // 优先搜索应用程序程序集
+        var appAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a => !a.FullName?.StartsWith("Microsoft.") == true &&
+                       !a.FullName?.StartsWith("System.") == true &&
+                       !a.FullName?.StartsWith("mscorlib") == true &&
+                       !a.IsDynamic)
+            .ToList();
+
+        foreach (var assembly in appAssemblies)
+        {
+            try
+            {
+                // 使用更高效的类型查找
+                var controllerType = assembly.GetTypes()
+                    .FirstOrDefault(type => 
+                        (type.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase) ||
+                         type.Name.Equals(controllerName, StringComparison.OrdinalIgnoreCase)) &&
+                        type.IsClass && !type.IsAbstract);
+
+                if (controllerType != null)
                 {
-                    // 忽略无法加载的程序集，但记录日志
-                    _logger.LogTrace(ex, "在搜索控制器时跳过程序集 {Assembly}", assembly.GetName().Name);
+                    _controllerTypeCache.TryAdd(controllerName, new WeakReference<Type>(controllerType));
+                    _logger.LogDebug("在程序集 {Assembly} 中发现控制器 {Controller}", 
+                        assembly.GetName().Name, controllerType.Name);
+                    return controllerType;
                 }
             }
+            catch (ReflectionTypeLoadException ex)
+            {
+                _logger.LogTrace(ex, "在搜索控制器时跳过程序集 {Assembly}，部分类型无法加载", 
+                    assembly.GetName().Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogTrace(ex, "在搜索控制器时跳过程序集 {Assembly}", assembly.GetName().Name);
+            }
+        }
 
-            _logger.LogWarning("无法找到名为 {ControllerName} 的控制器", name);
-            return null;
-        });
+        _logger.LogWarning("无法找到名为 {ControllerName} 的控制器", controllerName);
+        return null;
     }
 
     /// <summary>
@@ -637,6 +676,34 @@ public class AuditMiddleware
     }
 
     /// <summary>
+    /// 检查是否为有效的JSON并返回解析结果
+    /// </summary>
+    private (bool IsValid, JsonDocument? Document) TryParseJson(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return (false, null);
+        }
+
+        input = input.Trim();
+        if (!((input.StartsWith("{") && input.EndsWith("}")) || 
+              (input.StartsWith("[") && input.EndsWith("]"))))
+        {
+            return (false, null);
+        }
+
+        try
+        {
+            var document = JsonDocument.Parse(input);
+            return (true, document);
+        }
+        catch (JsonException)
+        {
+            return (false, null);
+        }
+    }
+
+    /// <summary>
     /// 对敏感数据进行脱敏处理
     /// </summary>
     private string SanitizeSensitiveData(string data)
@@ -649,9 +716,13 @@ public class AuditMiddleware
         try
         {
             // 尝试解析为JSON
-            if (IsValidJson(data))
+            var (isValidJson, jsonDoc) = TryParseJson(data);
+            if (isValidJson && jsonDoc != null)
             {
-                return SanitizeJson(data);
+                using (jsonDoc) // 确保JsonDocument被正确释放
+                {
+                    return SanitizeJson(jsonDoc);
+                }
             }
 
             // 对查询字符串参数进行脱敏
@@ -670,55 +741,25 @@ public class AuditMiddleware
     }
 
     /// <summary>
-    /// 检查是否为有效的JSON
-    /// </summary>
-    private bool IsValidJson(string input)
-    {
-        if (string.IsNullOrEmpty(input))
-        {
-            return false;
-        }
-
-        input = input.Trim();
-        if ((input.StartsWith("{") && input.EndsWith("}")) || (input.StartsWith("[") && input.EndsWith("]")))
-        {
-            try
-            {
-                JsonDocument.Parse(input);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
     /// 处理JSON中的敏感数据
     /// </summary>
-    private string SanitizeJson(string json)
+    private string SanitizeJson(JsonDocument jsonDoc)
     {
         try
         {
-            var jsonDoc = JsonDocument.Parse(json);
-            var stream = new MemoryStream();
-
+            using var stream = new MemoryStream();
             using (var writer = new Utf8JsonWriter(stream))
             {
                 SanitizeJsonElement(jsonDoc.RootElement, writer);
                 writer.Flush();
-
-                stream.Position = 0;
-                using var reader = new StreamReader(stream);
-                return reader.ReadToEnd();
             }
+
+            return Encoding.UTF8.GetString(stream.ToArray());
         }
-        catch
+        catch (Exception ex)
         {
-            return json;
+            _logger.LogWarning(ex, "JSON脱敏处理失败");
+            return "[JSON脱敏失败]";
         }
     }
 

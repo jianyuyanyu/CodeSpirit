@@ -45,20 +45,48 @@ namespace CodeSpirit.Web.Controllers
         [ChartTitle("操作类型分布")]
         public async Task<IActionResult> GetOperationStatsAsync([FromQuery] DateTime[] dateRange)
         {
-            DateTime startDate = dateRange?.Length > 0 ? dateRange[0] : DateTime.UtcNow.AddMonths(-1);
-            DateTime endDate = dateRange?.Length > 1 ? dateRange[1] : DateTime.UtcNow;
-
-            // 获取操作统计数据
-            var stats = await _auditService.GetOperationStatsAsync(startDate, endDate);
-            
-            // 转换为图表数据格式
-            var chartData = stats.Select(kvp => new 
+            try
             {
-                OperationType = kvp.Key,
-                Count = kvp.Value
-            }).ToList();
+                DateTime startDate = dateRange?.Length > 0 ? dateRange[0] : DateTime.UtcNow.AddMonths(-1);
+                DateTime endDate = dateRange?.Length > 1 ? dateRange[1] : DateTime.UtcNow;
 
-            return await this.AutoChartResult(chartData);
+                _logger.LogInformation("获取操作类型统计，时间范围: {StartDate} 到 {EndDate}", startDate, endDate);
+
+                // 获取操作统计数据
+                var stats = await _auditService.GetOperationStatsAsync(startDate, endDate);
+                
+                _logger.LogInformation("获取到 {Count} 种操作类型的统计数据", stats?.Count ?? 0);
+                
+                // 转换为图表数据格式
+                var chartData = stats?.Select(kvp => new 
+                {
+                    OperationType = kvp.Key,
+                    Count = kvp.Value
+                }).Cast<object>().ToList() ?? new List<object>();
+
+                // 如果没有数据，提供默认的空数据提示
+                if (!chartData.Any())
+                {
+                    _logger.LogWarning("指定时间范围内没有操作类型统计数据");
+                    chartData = new List<object>
+                    {
+                        new { OperationType = "暂无操作", Count = 0 }
+                    };
+                }
+
+                return await this.AutoChartResult(chartData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取操作类型统计时发生错误");
+                
+                return BadRequest(new
+                {
+                    error = "获取操作类型统计失败",
+                    message = ex.Message,
+                    suggestion = "请检查审计服务是否正常运行，或稍后重试"
+                });
+            }
         }
 
         /// <summary>
@@ -179,24 +207,62 @@ namespace CodeSpirit.Web.Controllers
         [ChartTitle("每日操作数量")]
         public async Task<IActionResult> GetDailyOperationsAsync([FromQuery] int days = 7)
         {
-            DateTime endDate = DateTime.UtcNow;
-            DateTime startDate = endDate.AddDays(-days);
-            
-            // 获取操作趋势数据
-            var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, 24);
-            
-            // 按天聚合数据
-            var dailyData = trend
-                .GroupBy(kvp => kvp.Key.Date)
-                .Select(g => new
+            try
+            {
+                DateTime endDate = DateTime.UtcNow;
+                DateTime startDate = endDate.AddDays(-days);
+                
+                _logger.LogInformation("获取每日操作统计，时间范围: {StartDate} 到 {EndDate}", startDate, endDate);
+                
+                // 获取操作趋势数据
+                var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, 24);
+                
+                _logger.LogInformation("获取到 {Count} 条趋势数据", trend?.Count ?? 0);
+                
+                // 按天聚合数据
+                var dailyData = trend?
+                    .GroupBy(kvp => kvp.Key.Date)
+                    .Select(g => new
+                    {
+                        Date = g.Key.ToString("yyyy-MM-dd"),
+                        Count = g.Sum(kvp => kvp.Value)
+                    })
+                    .OrderBy(item => item.Date)
+                    .Cast<object>()
+                    .ToList() ?? new List<object>();
+                
+                _logger.LogInformation("聚合后的每日数据: {Count} 条", dailyData.Count);
+                
+                // 如果没有数据，创建一个空的数据集合以便图表组件能够正确处理
+                if (!dailyData.Any())
                 {
-                    Date = g.Key.ToString("yyyy-MM-dd"),
-                    Count = g.Sum(kvp => kvp.Value)
-                })
-                .OrderBy(item => item.Date)
-                .ToList();
-            
-            return await this.AutoChartResult(dailyData);
+                    _logger.LogWarning("没有找到指定时间范围内的操作数据");
+                    
+                    // 生成空的日期范围数据，以便显示空图表
+                    dailyData = Enumerable.Range(0, days)
+                        .Select(i => new
+                        {
+                            Date = startDate.AddDays(i).ToString("yyyy-MM-dd"),
+                            Count = 0
+                        })
+                        .Cast<object>()
+                        .ToList();
+                }
+                
+                return await this.AutoChartResult(dailyData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取每日操作统计时发生错误");
+                
+                // 返回错误信息
+                return BadRequest(new
+                {
+                    error = "获取每日操作统计失败",
+                    message = ex.Message,
+                    suggestion = "请检查审计服务是否正常运行，或稍后重试"
+                });
+            }
         }
 
         /// <summary>
@@ -211,22 +277,57 @@ namespace CodeSpirit.Web.Controllers
         [DisplayName("获取操作成功率")]
         public async Task<IActionResult> GetSuccessRateAsync([FromQuery] DateTime[] dateRange)
         {
-            DateTime startDate = dateRange?.Length > 0 ? dateRange[0] : DateTime.UtcNow.AddMonths(-1);
-            DateTime endDate = dateRange?.Length > 1 ? dateRange[1] : DateTime.UtcNow;
-
-            // 获取操作趋势数据
-            var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, 24);
-            
-            // 模拟成功率数据（实际项目中应该从AuditLog中获取）
-            var totalCount = trend.Values.Sum();
-            var successCount = (long)(totalCount * 0.95); // 假设95%成功率
-            
-            var chartData = new List<object>
+            try
             {
-                new { Status = "成功", Percentage = (double)successCount / totalCount * 100 }
-            };
-            
-            return await this.AutoChartResult(chartData);
+                DateTime startDate = dateRange?.Length > 0 ? dateRange[0] : DateTime.UtcNow.AddMonths(-1);
+                DateTime endDate = dateRange?.Length > 1 ? dateRange[1] : DateTime.UtcNow;
+
+                _logger.LogInformation("获取操作成功率统计，时间范围: {StartDate} 到 {EndDate}", startDate, endDate);
+
+                // 获取操作趋势数据
+                var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, 24);
+                
+                _logger.LogInformation("获取到 {Count} 条趋势数据", trend?.Count ?? 0);
+                
+                // 计算成功率数据
+                var totalCount = trend?.Values.Sum() ?? 0;
+                
+                double successPercentage;
+                if (totalCount > 0)
+                {
+                    // 模拟成功率数据（实际项目中应该从AuditLog中获取）
+                    var successCount = (long)(totalCount * 0.95); // 假设95%成功率
+                    successPercentage = Math.Round((double)successCount / totalCount * 100, 2);
+                    
+                    _logger.LogInformation("总操作数: {TotalCount}, 成功操作数: {SuccessCount}, 成功率: {SuccessPercentage}%", 
+                        totalCount, successCount, successPercentage);
+                }
+                else
+                {
+                    // 当没有操作数据时，默认成功率为0
+                    successPercentage = 0.0;
+                    _logger.LogWarning("指定时间范围内没有操作数据，成功率设置为0%");
+                }
+                
+                var chartData = new List<object>
+                {
+                    new { Status = "成功", Percentage = successPercentage }
+                };
+                
+                return await this.AutoChartResult(chartData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取操作成功率统计时发生错误");
+                
+                // 返回错误信息
+                return BadRequest(new
+                {
+                    error = "获取操作成功率统计失败",
+                    message = ex.Message,
+                    suggestion = "请检查审计服务是否正常运行，或稍后重试"
+                });
+            }
         }
     }
 } 

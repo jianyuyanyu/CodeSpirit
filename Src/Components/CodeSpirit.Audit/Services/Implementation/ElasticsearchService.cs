@@ -1,5 +1,6 @@
 using Elastic.Clients.Elasticsearch;
 using CodeSpirit.Audit.Models;
+using CodeSpirit.Audit.Helpers;
 using System.Dynamic;
 using GeoLoc = CodeSpirit.Audit.Models.GeoLocation;
 
@@ -38,19 +39,8 @@ public class ElasticsearchService : IElasticsearchService
     {
         _logger = logger;
         
-        // 获取配置 - 智能处理配置绑定
-        var options = new AuditOptions();
-        if (configuration.GetSection("Audit").Exists())
-        {
-            // 传入的是完整配置，获取Audit节
-            configuration.GetSection("Audit").Bind(options);
-        }
-        else
-        {
-            // 传入的就是Audit配置节
-            configuration.Bind(options);
-        }
-        _options = options.Elasticsearch;
+        // 使用配置助手简化配置绑定
+        _options = ConfigurationHelper.BindElasticsearchOptions(configuration);
         
         if (elasticsearchClient != null)
         {

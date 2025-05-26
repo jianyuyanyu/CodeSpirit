@@ -51,6 +51,9 @@ public static class AuditExtensions
         // 注册地理位置服务
         services.AddSingleton<IGeoLocationService, GeoLocationService>();
         
+        // 注册错误处理服务
+        services.AddSingleton<IAuditErrorHandler, AuditErrorHandler>();
+        
         // 注册内存缓存（如果尚未注册）
         if (!services.Any(s => s.ServiceType == typeof(IMemoryCache)))
         {

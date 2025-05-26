@@ -273,12 +273,13 @@ https://codespirit-app.xin-lai.com/
 12. [📄 PDF生成组件](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF文档生成服务
 13. [🕒 时间处理机制](./Docs/CodeSpirit时间处理机制.md) - 统一时间处理方案
 14. [🌐 客户端IP服务](./Docs/ClientIpService使用指南.md) - 客户端IP获取和处理
+15. [📋 审计组件集成使用指南](./Docs/CodeSpirit.Audit审计组件集成使用指南.md) - 完整的审计系统集成和使用
 
 ### 🚀 基础设施
 
-15. [🐰 RabbitMQ集成指南](./Docs/RabbitMQ-Aspire-Integration.md) - 消息队列集成方案
-16. [🔧 RabbitMQ故障排除](./Docs/RabbitMQ故障排除指南.md) - 常见问题解决方案
-17. [🔍 Elasticsearch迁移总结](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - 搜索引擎集成指南
+16. [🐰 RabbitMQ集成指南](./Docs/RabbitMQ-Aspire-Integration.md) - 消息队列集成方案
+17. [🔧 RabbitMQ故障排除](./Docs/RabbitMQ故障排除指南.md) - 常见问题解决方案
+18. [🔍 Elasticsearch迁移总结](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - 搜索引擎集成指南
 
 ### 💬 技术社区
 

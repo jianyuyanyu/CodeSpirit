@@ -79,6 +79,8 @@ public class DataProcessor : IDataProcessor
                 "tree" or "treemap" => await TransformForTreeChartAsync(data, options),
                 "sankey" => await TransformForSankeyChartAsync(data, options),
                 "heatmap" => await TransformForHeatmapChartAsync(data, options),
+                "gauge" => await TransformForGaugeChartAsync(data, options),
+                "card" => await TransformForCardChartAsync(data, options),
                 _ => throw new ArgumentException($"Unsupported chart type: {chartType}")
             };
         }
@@ -348,7 +350,7 @@ public class DataProcessor : IDataProcessor
         var supportedTypes = new[]
         {
             "line", "area", "bar", "column", "pie", "donut",
-            "scatter", "radar", "tree", "treemap", "sankey", "heatmap"
+            "scatter", "radar", "tree", "treemap", "sankey", "heatmap", "gauge", "card"
         };
 
         if (!supportedTypes.Contains(normalizedChartType))
@@ -366,6 +368,8 @@ public class DataProcessor : IDataProcessor
             "tree" or "treemap" => ValidateTreeChartData,
             "sankey" => ValidateSankeyChartData,
             "heatmap" => ValidateHeatmapChartData,
+            "gauge" => ValidateGaugeChartData,
+            "card" => ValidateCardChartData,
             _ => throw new ArgumentException($"Unsupported chart type: {chartType}", nameof(chartType))
         };
     }
@@ -598,6 +602,113 @@ public class DataProcessor : IDataProcessor
         }
     }
 
+    private async Task<(bool, string?)> ValidateGaugeChartData(object data)
+    {
+        // 基本数据验证
+        if (data == null)
+        {
+            return (false, "仪表盘数据不能为空。请确保您的查询返回有效数据。");
+        }
+
+        try
+        {
+            // 验证数据结构
+            if (data is IEnumerable<object> collection)
+            {
+                var list = collection.ToList();
+                if (!list.Any())
+                {
+                    _logger.LogWarning("仪表盘数据集合为空");
+                    return (false, "数据集合为空。请确保您的查询返回至少一条记录。");
+                }
+
+                // 仪表盘通常只需要一个数值，但也可以支持多个指标
+                return (true, null);
+            }
+
+            // 仪表盘也可以接受单个数值
+            if (data is int or long or float or double or decimal)
+            {
+                return (true, null);
+            }
+
+            // 仪表盘也可以接受包含数值的对象
+            if (data is IDictionary<string, object> dict)
+            {
+                // 检查是否包含数值字段
+                var hasNumericValue = dict.Values.Any(v => v is int or long or float or double or decimal);
+                if (hasNumericValue)
+                {
+                    return (true, null);
+                }
+                return (false, "仪表盘数据必须包含数值字段");
+            }
+
+            return (false, "仪表盘数据必须是数值、对象集合或包含数值的对象");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "验证仪表盘数据时出错");
+            return (false, $"验证仪表盘数据时出错: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 验证卡片图表数据
+    /// </summary>
+    /// <param name="data">数据</param>
+    /// <returns>验证结果</returns>
+    private async Task<(bool, string?)> ValidateCardChartData(object data)
+    {
+        // 基本数据验证
+        if (data == null)
+        {
+            return (false, "卡片数据不能为空。请确保您的查询返回有效数据。");
+        }
+
+        try
+        {
+            // 验证数据结构
+            if (data is IEnumerable<object> collection)
+            {
+                var list = collection.ToList();
+                if (!list.Any())
+                {
+                    _logger.LogWarning("卡片数据集合为空");
+                    return (false, "数据集合为空。请确保您的查询返回至少一条记录。");
+                }
+
+                // 卡片图表支持多个指标项
+                return (true, null);
+            }
+
+            // 卡片也可以接受单个数值
+            if (data is int or long or float or double or decimal)
+            {
+                return (true, null);
+            }
+
+            // 卡片也可以接受包含数值的对象
+            if (data is IDictionary<string, object> dict)
+            {
+                // 检查是否包含数值字段
+                var hasNumericValue = dict.Values.Any(v => v is int or long or float or double or decimal);
+                if (hasNumericValue)
+                {
+                    return (true, null);
+                }
+                return (false, "卡片数据必须包含数值字段");
+            }
+
+            return (false, "卡片数据必须是数值、对象集合或包含数值的对象");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "验证卡片数据时出错");
+            return (false, $"验证卡片数据时出错: {ex.Message}");
+        }
+    }
+
     #region Data Transformation Methods
 
     private Task<object> TransformForLineChartAsync(object data, object? options) =>
@@ -623,6 +734,18 @@ public class DataProcessor : IDataProcessor
 
     private Task<object> TransformForHeatmapChartAsync(object data, object? options) =>
         Task.FromResult<object>(data); // 实现具体转换逻辑
+
+    private Task<object> TransformForGaugeChartAsync(object data, object? options) =>
+        Task.FromResult<object>(data); // 实现具体转换逻辑
+
+    /// <summary>
+    /// 转换卡片图表数据
+    /// </summary>
+    /// <param name="data">原始数据</param>
+    /// <param name="options">转换选项</param>
+    /// <returns>转换后的数据</returns>
+    private Task<object> TransformForCardChartAsync(object data, object? options) =>
+        Task.FromResult<object>(data); // 卡片图表通常不需要特殊的数据转换
 
     #endregion
 

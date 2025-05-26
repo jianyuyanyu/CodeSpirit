@@ -12,6 +12,7 @@ global using CodeSpirit.Core.Attributes;
 global using CodeSpirit.Shared;
 global using CodeSpirit.Audit.Models;
 global using CodeSpirit.Audit.Services;
+global using CodeSpirit.Audit.Services.Implementation;
 global using CodeSpirit.Audit.Attributes;
 global using CodeSpirit.Audit.Middleware;
 global using CodeSpirit.Audit.Helpers;

@@ -75,8 +75,10 @@ public class ChartService : IChartService
             var (isValid, errorMessage) = await _dataProcessor.ValidateDataForChartTypeAsync(processedData, chartType);
             if (!isValid)
             {
-                // 查看是否是空数据集错误
-                if (errorMessage?.Contains("empty") == true)
+                // 查看是否是空数据集错误（支持中英文错误消息）
+                if (errorMessage?.Contains("empty") == true || 
+                    errorMessage?.Contains("为空") == true ||
+                    errorMessage?.Contains("集合为空") == true)
                 {
                     _logger.LogWarning("尝试使用空数据集创建图表: {ChartType}, {ErrorMessage}", chartType, errorMessage);
                     
@@ -109,57 +111,140 @@ public class ChartService : IChartService
     /// <returns>默认图表配置</returns>
     private object GenerateEmptyChartConfig(string chartType, string message)
     {
+        _logger.LogInformation("为图表类型 '{ChartType}' 生成空数据配置", chartType);
+        
         // 基于图表类型创建不同的空图表配置
         var baseConfig = new
         {
             title = new
             {
                 text = "暂无数据",
-                subtext = message ?? "请稍后再试或修改查询条件"
+                subtext = message ?? "请稍后再试或修改查询条件",
+                left = "center",
+                top = "center",
+                textStyle = new
+                {
+                    fontSize = 16,
+                    color = "#999"
+                },
+                subtextStyle = new
+                {
+                    fontSize = 12,
+                    color = "#ccc"
+                }
             },
             tooltip = new { },
             legend = new
             {
                 data = new string[] { }
+            },
+            graphic = new[]
+            {
+                new
+                {
+                    type = "text",
+                    left = "center",
+                    top = "middle",
+                    style = new
+                    {
+                        text = "📊",
+                        fontSize = 48,
+                        fill = "#ddd"
+                    }
+                }
             }
         };
 
         switch (chartType.ToLowerInvariant())
         {
             case "bar":
+            case "column":
                 return new
                 {
                     baseConfig.title,
                     baseConfig.tooltip,
                     baseConfig.legend,
-                    xAxis = new { type = "category", data = new string[] { "暂无数据" } },
-                    yAxis = new { type = "value" },
+                    baseConfig.graphic,
+                    xAxis = new 
+                    { 
+                        type = "category", 
+                        data = new string[] { "暂无数据" },
+                        axisLabel = new { show = false },
+                        axisTick = new { show = false },
+                        axisLine = new { show = false }
+                    },
+                    yAxis = new 
+                    { 
+                        type = "value",
+                        axisLabel = new { show = false },
+                        axisTick = new { show = false },
+                        axisLine = new { show = false },
+                        splitLine = new { show = false }
+                    },
                     series = new[]
                     {
-                        new { type = "bar", data = new int[] { 0 } }
+                        new 
+                        { 
+                            type = "bar", 
+                            data = new int[] { 0 },
+                            itemStyle = new
+                            {
+                                color = "transparent"
+                            }
+                        }
                     }
                 };
                 
             case "line":
+            case "area":
                 return new
                 {
                     baseConfig.title,
                     baseConfig.tooltip,
                     baseConfig.legend,
-                    xAxis = new { type = "category", data = new string[] { "暂无数据" } },
-                    yAxis = new { type = "value" },
+                    baseConfig.graphic,
+                    xAxis = new 
+                    { 
+                        type = "category", 
+                        data = new string[] { "暂无数据" },
+                        axisLabel = new { show = false },
+                        axisTick = new { show = false },
+                        axisLine = new { show = false }
+                    },
+                    yAxis = new 
+                    { 
+                        type = "value",
+                        axisLabel = new { show = false },
+                        axisTick = new { show = false },
+                        axisLine = new { show = false },
+                        splitLine = new { show = false }
+                    },
                     series = new[]
                     {
-                        new { type = "line", data = new int[] { 0 } }
+                        new 
+                        { 
+                            type = "line", 
+                            data = new int[] { 0 },
+                            lineStyle = new
+                            {
+                                color = "transparent"
+                            },
+                            itemStyle = new
+                            {
+                                color = "transparent"
+                            }
+                        }
                     }
                 };
                 
             case "pie":
+            case "donut":
                 return new
                 {
                     baseConfig.title,
                     baseConfig.tooltip,
                     baseConfig.legend,
+                    baseConfig.graphic,
                     series = new[]
                     {
                         new 
@@ -168,7 +253,34 @@ public class ChartService : IChartService
                             data = new[]
                             { 
                                 new { name = "暂无数据", value = 1 }
-                            }
+                            },
+                            radius = new[] { "0%", "0%" }, // 隐藏饼图
+                            label = new { show = false },
+                            labelLine = new { show = false }
+                        }
+                    }
+                };
+                
+            case "gauge":
+                return new
+                {
+                    baseConfig.title,
+                    baseConfig.tooltip,
+                    baseConfig.graphic,
+                    series = new[]
+                    {
+                        new
+                        {
+                            type = "gauge",
+                            data = new[]
+                            {
+                                new { value = 0, name = "暂无数据" }
+                            },
+                            detail = new { show = false },
+                            pointer = new { show = false },
+                            axisTick = new { show = false },
+                            axisLabel = new { show = false },
+                            splitLine = new { show = false }
                         }
                     }
                 };
@@ -179,6 +291,7 @@ public class ChartService : IChartService
                     baseConfig.title,
                     baseConfig.tooltip,
                     baseConfig.legend,
+                    baseConfig.graphic,
                     series = new object[] { }
                 };
         }

@@ -19,7 +19,7 @@ public class EChartsProvider : IChartProvider
         {
             "line", "bar", "pie", "scatter", "radar", "tree", "treemap", "sunburst",
             "boxplot", "candlestick", "heatmap", "map", "parallel", "lines", "graph",
-            "sankey", "funnel", "gauge", "pictorialBar", "themeRiver", "custom"
+            "sankey", "funnel", "gauge", "pictorialBar", "themeRiver", "custom", "card"
         };
     }
 
@@ -57,6 +57,8 @@ public class EChartsProvider : IChartProvider
                 "treemap" => GenerateTreemapChartConfig(data, options),
                 "heatmap" => GenerateHeatmapChartConfig(data, options),
                 "sankey" => GenerateSankeyChartConfig(data, options),
+                "gauge" => GenerateGaugeChartConfig(data, options),
+                "card" => GenerateCardChartConfig(data, options),
                 _ => throw new NotImplementedException($"Chart type '{chartType}' is supported but not implemented.")
             };
 
@@ -706,6 +708,276 @@ public class EChartsProvider : IChartProvider
         };
         
         return config;
+    }
+
+    /// <summary>
+    /// 生成仪表盘图表配置
+    /// </summary>
+    /// <param name="data">数据</param>
+    /// <param name="options">选项</param>
+    /// <returns>仪表盘图表配置</returns>
+    private Dictionary<string, object> GenerateGaugeChartConfig(object data, object? options)
+    {
+        var config = new Dictionary<string, object>();
+        
+        try
+        {
+            _logger.LogInformation("生成仪表盘配置，数据类型: {DataType}", data?.GetType().FullName);
+            
+            // 提取仪表盘数据
+            var gaugeData = ExtractGaugeData(data, options);
+            
+            // 设置基本配置
+            config["series"] = new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["type"] = "gauge",
+                    ["data"] = gaugeData,
+                    ["detail"] = new Dictionary<string, object>
+                    {
+                        ["valueAnimation"] = true,
+                        ["formatter"] = "{value}%"
+                    },
+                    ["axisLine"] = new Dictionary<string, object>
+                    {
+                        ["lineStyle"] = new Dictionary<string, object>
+                        {
+                            ["width"] = 30,
+                            ["color"] = new object[]
+                            {
+                                new object[] { 0.3, "#67e0e3" },
+                                new object[] { 0.7, "#37a2da" },
+                                new object[] { 1, "#fd666d" }
+                            }
+                        }
+                    },
+                    ["pointer"] = new Dictionary<string, object>
+                    {
+                        ["itemStyle"] = new Dictionary<string, object>
+                        {
+                            ["color"] = "auto"
+                        }
+                    },
+                    ["axisTick"] = new Dictionary<string, object>
+                    {
+                        ["distance"] = -30,
+                        ["length"] = 8,
+                        ["lineStyle"] = new Dictionary<string, object>
+                        {
+                            ["color"] = "#fff",
+                            ["width"] = 2
+                        }
+                    },
+                    ["splitLine"] = new Dictionary<string, object>
+                    {
+                        ["distance"] = -30,
+                        ["length"] = 30,
+                        ["lineStyle"] = new Dictionary<string, object>
+                        {
+                            ["color"] = "#fff",
+                            ["width"] = 4
+                        }
+                    },
+                    ["axisLabel"] = new Dictionary<string, object>
+                    {
+                        ["color"] = "auto",
+                        ["distance"] = 40,
+                        ["fontSize"] = 20
+                    },
+                    ["title"] = new Dictionary<string, object>
+                    {
+                        ["fontSize"] = 14
+                    }
+                }
+            };
+            
+            // 如果是标题选项，设置标题
+            if (options is IDictionary<string, object> titleOptions && 
+                titleOptions.TryGetValue("title", out var titleObj) && 
+                titleObj is string title && !string.IsNullOrEmpty(title))
+            {
+                config["title"] = new Dictionary<string, object>
+                {
+                    ["text"] = title,
+                    ["left"] = "center",
+                    ["top"] = "20px"
+                };
+            }
+            
+            return config;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "生成仪表盘配置时出错");
+            
+            // 返回基本配置
+            config["series"] = new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["type"] = "gauge",
+                    ["data"] = new[]
+                    {
+                        new Dictionary<string, object>
+                        {
+                            ["value"] = 0,
+                            ["name"] = "暂无数据"
+                        }
+                    }
+                }
+            };
+            
+            return config;
+        }
+    }
+
+    /// <summary>
+    /// 生成卡片图表配置
+    /// </summary>
+    /// <param name="data">数据</param>
+    /// <param name="options">选项</param>
+    /// <returns>卡片图表配置</returns>
+    private Dictionary<string, object> GenerateCardChartConfig(object data, object? options)
+    {
+        var config = new Dictionary<string, object>();
+        
+        try
+        {
+            _logger.LogInformation("生成卡片配置，数据类型: {DataType}", data?.GetType().FullName);
+            
+            // 提取卡片数据
+            var cardData = ExtractCardData(data, options);
+            
+            // 卡片图表实际上是一个特殊的文本显示配置
+            // 我们使用 ECharts 的 graphic 组件来实现卡片效果
+            var graphics = new List<Dictionary<string, object>>();
+            
+            // 如果有标题选项，设置标题
+            if (options is IDictionary<string, object> titleOptions && 
+                titleOptions.TryGetValue("title", out var titleObj) && 
+                titleObj is string title && !string.IsNullOrEmpty(title))
+            {
+                config["title"] = new Dictionary<string, object>
+                {
+                    ["text"] = title,
+                    ["left"] = "center",
+                    ["top"] = "20px"
+                };
+            }
+            
+            // 为每个数据项创建卡片
+            var cardCount = cardData.Length;
+            var cardWidth = cardCount > 1 ? 100.0 / cardCount : 100.0;
+            
+            for (int i = 0; i < cardData.Length; i++)
+            {
+                var item = cardData[i];
+                if (item is IDictionary<string, object> cardItem)
+                {
+                    var name = cardItem.TryGetValue("name", out var nameValue) ? nameValue?.ToString() ?? "指标" : "指标";
+                    var value = cardItem.TryGetValue("value", out var valueValue) ? valueValue?.ToString() ?? "0" : "0";
+                    
+                    var leftPosition = $"{i * cardWidth + cardWidth / 2}%";
+                    
+                    // 添加数值显示
+                    graphics.Add(new Dictionary<string, object>
+                    {
+                        ["type"] = "text",
+                        ["left"] = leftPosition,
+                        ["top"] = "40%",
+                        ["style"] = new Dictionary<string, object>
+                        {
+                            ["text"] = value,
+                            ["fontSize"] = 36,
+                            ["fontWeight"] = "bold",
+                            ["fill"] = "#1890ff",
+                            ["textAlign"] = "center"
+                        }
+                    });
+                    
+                    // 添加标签显示
+                    graphics.Add(new Dictionary<string, object>
+                    {
+                        ["type"] = "text",
+                        ["left"] = leftPosition,
+                        ["top"] = "60%",
+                        ["style"] = new Dictionary<string, object>
+                        {
+                            ["text"] = name,
+                            ["fontSize"] = 14,
+                            ["fill"] = "#666",
+                            ["textAlign"] = "center"
+                        }
+                    });
+                    
+                    // 添加背景卡片
+                    graphics.Add(new Dictionary<string, object>
+                    {
+                        ["type"] = "rect",
+                        ["left"] = $"{i * cardWidth + 5}%",
+                        ["top"] = "30%",
+                        ["shape"] = new Dictionary<string, object>
+                        {
+                            ["width"] = $"{cardWidth - 10}%",
+                            ["height"] = "40%",
+                            ["r"] = 8
+                        },
+                        ["style"] = new Dictionary<string, object>
+                        {
+                            ["fill"] = "rgba(24, 144, 255, 0.05)",
+                            ["stroke"] = "rgba(24, 144, 255, 0.2)",
+                            ["lineWidth"] = 1
+                        }
+                    });
+                }
+            }
+            
+            config["graphic"] = graphics.ToArray();
+            
+            // 设置基本配置以确保图表正常显示
+            config["xAxis"] = new Dictionary<string, object>
+            {
+                ["show"] = false
+            };
+            
+            config["yAxis"] = new Dictionary<string, object>
+            {
+                ["show"] = false
+            };
+            
+            config["series"] = new object[] { };
+            
+            return config;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "生成卡片配置时出错");
+            
+            // 返回基本配置
+            config["graphic"] = new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["type"] = "text",
+                    ["left"] = "center",
+                    ["top"] = "center",
+                    ["style"] = new Dictionary<string, object>
+                    {
+                        ["text"] = "暂无数据",
+                        ["fontSize"] = 16,
+                        ["fill"] = "#999",
+                        ["textAlign"] = "center"
+                    }
+                }
+            };
+            
+            config["xAxis"] = new Dictionary<string, object> { ["show"] = false };
+            config["yAxis"] = new Dictionary<string, object> { ["show"] = false };
+            config["series"] = new object[] { };
+            
+            return config;
+        }
     }
 
     private void ApplyCommonOptions(Dictionary<string, object> config, object? options)
@@ -1539,6 +1811,381 @@ public class EChartsProvider : IChartProvider
         }
         
         return Array.Empty<object>();
+    }
+
+    /// <summary>
+    /// 从数据中提取卡片数据
+    /// </summary>
+    /// <param name="data">原始数据</param>
+    /// <param name="options">选项</param>
+    /// <returns>卡片数据数组</returns>
+    private object[] ExtractCardData(object data, object? options)
+    {
+        _logger.LogInformation("ExtractCardData - 数据类型: {DataType}", data?.GetType().FullName);
+        
+        // 如果数据为空，返回默认数据
+        if (data == null)
+        {
+            _logger.LogWarning("ExtractCardData - 数据为空，返回默认数据");
+            return new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["value"] = 0,
+                    ["name"] = "暂无数据"
+                }
+            };
+        }
+        
+        // 处理单个数值
+        if (data is int or long or float or double or decimal)
+        {
+            var numericValue = ConvertToNumeric(data);
+            _logger.LogInformation("处理单个数值: {Value}", numericValue);
+            return new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["value"] = numericValue,
+                    ["name"] = "数值"
+                }
+            };
+        }
+        
+        // 处理字典类型
+        if (data is IDictionary<string, object> dict)
+        {
+            _logger.LogInformation("处理字典类型数据");
+            
+            // 查找数值字段
+            var valueField = dict.Keys.FirstOrDefault(k => 
+                k.Contains("value", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("count", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("amount", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("total", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("sum", StringComparison.OrdinalIgnoreCase));
+                
+            var nameField = dict.Keys.FirstOrDefault(k => 
+                k.Contains("name", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("title", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("label", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("period", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("category", StringComparison.OrdinalIgnoreCase));
+            
+            if (valueField != null)
+            {
+                var value = ConvertToNumeric(dict[valueField]);
+                var name = nameField != null ? dict[nameField]?.ToString() ?? "指标" : "指标";
+                
+                _logger.LogInformation("从字典中提取卡片数据: value={Value}, name={Name}", value, name);
+                return new[]
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["value"] = value,
+                        ["name"] = name
+                    }
+                };
+            }
+        }
+        
+        // 处理集合类型
+        if (data is IEnumerable<object> collection)
+        {
+            _logger.LogInformation("处理集合类型数据");
+            var result = new List<Dictionary<string, object>>();
+            
+            foreach (var item in collection)
+            {
+                if (item is IDictionary<string, object> itemDict)
+                {
+                    // 查找数值字段
+                    var valueField = itemDict.Keys.FirstOrDefault(k => 
+                        k.Contains("value", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("count", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("amount", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("total", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("sum", StringComparison.OrdinalIgnoreCase));
+                        
+                    var nameField = itemDict.Keys.FirstOrDefault(k => 
+                        k.Contains("name", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("title", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("label", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("period", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("category", StringComparison.OrdinalIgnoreCase));
+                    
+                    if (valueField != null)
+                    {
+                        var value = ConvertToNumeric(itemDict[valueField]);
+                        var name = nameField != null ? itemDict[nameField]?.ToString() ?? "指标" : "指标";
+                        
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["value"] = value,
+                            ["name"] = name
+                        });
+                    }
+                }
+                else if (item != null)
+                {
+                    // 尝试通过反射处理
+                    try
+                    {
+                        var properties = item.GetType().GetProperties();
+                        var valueProperty = properties.FirstOrDefault(p => 
+                            p.Name.Contains("value", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("count", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("amount", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("total", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("sum", StringComparison.OrdinalIgnoreCase));
+                            
+                        var nameProperty = properties.FirstOrDefault(p => 
+                            p.Name.Contains("name", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("title", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("label", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("period", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("category", StringComparison.OrdinalIgnoreCase));
+                        
+                        if (valueProperty != null)
+                        {
+                            var value = ConvertToNumeric(valueProperty.GetValue(item));
+                            var name = nameProperty?.GetValue(item)?.ToString() ?? "指标";
+                            
+                            result.Add(new Dictionary<string, object>
+                            {
+                                ["value"] = value,
+                                ["name"] = name
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("通过反射处理卡片数据项失败: {Error}", ex.Message);
+                    }
+                }
+            }
+            
+            if (result.Any())
+            {
+                _logger.LogInformation("从集合中提取了{Count}个卡片数据项", result.Count);
+                return result.ToArray();
+            }
+        }
+        
+        // 处理JSON字符串
+        if (data is string jsonString)
+        {
+            try
+            {
+                _logger.LogInformation("尝试解析JSON字符串提取卡片数据");
+                var jsonData = JsonConvert.DeserializeObject(jsonString);
+                if (jsonData != null)
+                {
+                    return ExtractCardData(jsonData, options);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("解析JSON失败: {Error}", ex.Message);
+            }
+        }
+        
+        // 如果无法提取有效数据，返回默认数据
+        _logger.LogWarning("无法从给定数据中提取有效的卡片数据，返回默认数据");
+        return new[]
+        {
+            new Dictionary<string, object>
+            {
+                ["value"] = 0,
+                ["name"] = "暂无数据"
+            }
+        };
+    }
+
+    /// <summary>
+    /// 从数据中提取仪表盘数据
+    /// </summary>
+    /// <param name="data">原始数据</param>
+    /// <param name="options">选项</param>
+    /// <returns>仪表盘数据数组</returns>
+    private object[] ExtractGaugeData(object data, object? options)
+    {
+        _logger.LogInformation("ExtractGaugeData - 数据类型: {DataType}", data?.GetType().FullName);
+        
+        // 如果数据为空，返回默认数据
+        if (data == null)
+        {
+            _logger.LogWarning("ExtractGaugeData - 数据为空，返回默认数据");
+            return new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["value"] = 0,
+                    ["name"] = "暂无数据"
+                }
+            };
+        }
+        
+        // 处理单个数值
+        if (data is int or long or float or double or decimal)
+        {
+            var numericValue = ConvertToNumeric(data);
+            _logger.LogInformation("处理单个数值: {Value}", numericValue);
+            return new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["value"] = numericValue,
+                    ["name"] = "数值"
+                }
+            };
+        }
+        
+        // 处理字典类型
+        if (data is IDictionary<string, object> dict)
+        {
+            _logger.LogInformation("处理字典类型数据");
+            
+            // 查找数值字段
+            var valueField = dict.Keys.FirstOrDefault(k => 
+                k.Contains("value", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("percentage", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("percent", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("rate", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("count", StringComparison.OrdinalIgnoreCase));
+                
+            var nameField = dict.Keys.FirstOrDefault(k => 
+                k.Contains("name", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("title", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("label", StringComparison.OrdinalIgnoreCase) ||
+                k.Contains("status", StringComparison.OrdinalIgnoreCase));
+            
+            if (valueField != null)
+            {
+                var value = ConvertToNumeric(dict[valueField]);
+                var name = nameField != null ? dict[nameField]?.ToString() ?? "指标" : "指标";
+                
+                _logger.LogInformation("从字典中提取仪表盘数据: value={Value}, name={Name}", value, name);
+                return new[]
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["value"] = value,
+                        ["name"] = name
+                    }
+                };
+            }
+        }
+        
+        // 处理集合类型
+        if (data is IEnumerable<object> collection)
+        {
+            _logger.LogInformation("处理集合类型数据");
+            var result = new List<Dictionary<string, object>>();
+            
+            foreach (var item in collection)
+            {
+                if (item is IDictionary<string, object> itemDict)
+                {
+                    // 查找数值字段
+                    var valueField = itemDict.Keys.FirstOrDefault(k => 
+                        k.Contains("value", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("percentage", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("percent", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("rate", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("count", StringComparison.OrdinalIgnoreCase));
+                        
+                    var nameField = itemDict.Keys.FirstOrDefault(k => 
+                        k.Contains("name", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("title", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("label", StringComparison.OrdinalIgnoreCase) ||
+                        k.Contains("status", StringComparison.OrdinalIgnoreCase));
+                    
+                    if (valueField != null)
+                    {
+                        var value = ConvertToNumeric(itemDict[valueField]);
+                        var name = nameField != null ? itemDict[nameField]?.ToString() ?? "指标" : "指标";
+                        
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["value"] = value,
+                            ["name"] = name
+                        });
+                    }
+                }
+                else if (item != null)
+                {
+                    // 尝试通过反射处理
+                    try
+                    {
+                        var properties = item.GetType().GetProperties();
+                        var valueProperty = properties.FirstOrDefault(p => 
+                            p.Name.Contains("value", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("percentage", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("percent", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("rate", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("count", StringComparison.OrdinalIgnoreCase));
+                            
+                        var nameProperty = properties.FirstOrDefault(p => 
+                            p.Name.Contains("name", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("title", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("label", StringComparison.OrdinalIgnoreCase) ||
+                            p.Name.Contains("status", StringComparison.OrdinalIgnoreCase));
+                        
+                        if (valueProperty != null)
+                        {
+                            var value = ConvertToNumeric(valueProperty.GetValue(item));
+                            var name = nameProperty?.GetValue(item)?.ToString() ?? "指标";
+                            
+                            result.Add(new Dictionary<string, object>
+                            {
+                                ["value"] = value,
+                                ["name"] = name
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("通过反射处理仪表盘数据项失败: {Error}", ex.Message);
+                    }
+                }
+            }
+            
+            if (result.Any())
+            {
+                _logger.LogInformation("从集合中提取了{Count}个仪表盘数据项", result.Count);
+                return result.ToArray();
+            }
+        }
+        
+        // 处理JSON字符串
+        if (data is string jsonString)
+        {
+            try
+            {
+                _logger.LogInformation("尝试解析JSON字符串提取仪表盘数据");
+                var jsonData = JsonConvert.DeserializeObject(jsonString);
+                if (jsonData != null)
+                {
+                    return ExtractGaugeData(jsonData, options);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("解析JSON失败: {Error}", ex.Message);
+            }
+        }
+        
+        // 如果无法提取有效数据，返回默认数据
+        _logger.LogWarning("无法从给定数据中提取有效的仪表盘数据，返回默认数据");
+        return new[]
+        {
+            new Dictionary<string, object>
+            {
+                ["value"] = 0,
+                ["name"] = "暂无数据"
+            }
+        };
     }
 
     private string[] GetCustomColors(object? options)

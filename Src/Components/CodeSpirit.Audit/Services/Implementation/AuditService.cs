@@ -1,4 +1,5 @@
 using CodeSpirit.Audit.Services.Dtos;
+using CodeSpirit.Audit.Helpers;
 
 namespace CodeSpirit.Audit.Services.Implementation;
 
@@ -25,19 +26,8 @@ public class AuditService : IAuditService
         _rabbitMQService = rabbitMQService;
         _logger = logger;
         
-        // 获取配置 - 智能处理配置绑定
-        var options = new AuditOptions();
-        if (configuration.GetSection("Audit").Exists())
-        {
-            // 传入的是完整配置，获取Audit节
-            configuration.GetSection("Audit").Bind(options);
-        }
-        else
-        {
-            // 传入的就是Audit配置节
-            configuration.Bind(options);
-        }
-        _options = options;
+        // 使用配置助手简化配置绑定
+        _options = ConfigurationHelper.BindAuditOptions(configuration);
     }
     
     /// <summary>

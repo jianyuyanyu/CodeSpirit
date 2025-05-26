@@ -79,6 +79,9 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
         
         // 使用模拟的RabbitMQ服务
         services.AddSingleton<IRabbitMQService, MockRabbitMQService>();
+        
+        // 添加模拟的客户端IP服务
+        services.AddSingleton<CodeSpirit.Shared.Services.IClientIpService, MockClientIpService>();
 
         // 添加控制器并注册测试控制器
         services.AddControllers();

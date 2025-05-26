@@ -3,6 +3,7 @@ using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
 using CodeSpirit.Audit.Models;
+using CodeSpirit.Audit.Helpers;
 using CodeSpirit.ServiceDefaults.Messaging;
 using System.Collections.Concurrent;
 
@@ -10,17 +11,22 @@ namespace CodeSpirit.Audit.Services.Implementation;
 
 /// <summary>
 /// RabbitMQ服务实现
-/// 基于Aspire.RabbitMQ.Client集成重构
+/// 基于Aspire.RabbitMQ.Client集成重构，支持线程安全的通道池
 /// </summary>
 public class RabbitMQService : IRabbitMQService, IDisposable
 {
     private readonly RabbitMQ.Client.IConnection _connection;
-    private readonly IModel _channel;
     private readonly ILogger<RabbitMQService> _logger;
     private readonly RabbitMQOptions _options;
     private readonly ConcurrentDictionary<string, IModel> _consumerChannels = new();
     private readonly object _subscriptionLock = new object();
     private readonly JsonSerializerOptions _jsonOptions;
+    
+    // 线程安全的通道池
+    private readonly ConcurrentQueue<IModel> _channelPool = new();
+    private readonly SemaphoreSlim _channelSemaphore;
+    private readonly int _maxChannels = 10;
+    private volatile bool _disposed = false;
     
     /// <summary>
     /// 构造函数 - 使用RabbitMQ服务工厂
@@ -41,19 +47,11 @@ public class RabbitMQService : IRabbitMQService, IDisposable
         // 获取审计专用连接
         _connection = rabbitMQServiceFactory.GetAuditConnection();
         
-        // 获取配置 - 智能处理配置绑定
-        var options = new AuditOptions();
-        if (configuration.GetSection("Audit").Exists())
-        {
-            // 传入的是完整配置，获取Audit节
-            configuration.GetSection("Audit").Bind(options);
-        }
-        else
-        {
-            // 传入的就是Audit配置节
-            configuration.Bind(options);
-        }
-        _options = options.RabbitMQ;
+        // 使用配置助手简化配置绑定
+        _options = ConfigurationHelper.BindRabbitMQOptions(configuration);
+        
+        // 初始化通道池信号量
+        _channelSemaphore = new SemaphoreSlim(_maxChannels, _maxChannels);
         
         // 配置JSON序列化选项
         _jsonOptions = new JsonSerializerOptions
@@ -64,53 +62,144 @@ public class RabbitMQService : IRabbitMQService, IDisposable
         
         try
         {
-            // 使用注入的连接创建通道
-            _channel = _connection.CreateModel();
+            // 初始化通道池
+            InitializeChannelPool();
+            
+            _logger.LogInformation("审计RabbitMQ服务已初始化，通道池大小: {MaxChannels}, 交换机: {ExchangeName}, 队列: {QueueName}",
+                _maxChannels, _options.ExchangeName, _options.QueueName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "审计RabbitMQ服务初始化失败");
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// 初始化通道池
+    /// </summary>
+    private void InitializeChannelPool()
+    {
+        // 预创建一些通道
+        for (int i = 0; i < Math.Min(3, _maxChannels); i++)
+        {
+            var channel = CreateAndConfigureChannel();
+            if (channel != null)
+            {
+                _channelPool.Enqueue(channel);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 创建并配置通道
+    /// </summary>
+    private IModel? CreateAndConfigureChannel()
+    {
+        try
+        {
+            var channel = _connection.CreateModel();
             
             // 声明交换机
-            _channel.ExchangeDeclare(
+            channel.ExchangeDeclare(
                 exchange: _options.ExchangeName,
                 type: ExchangeType.Topic,
                 durable: true,
                 autoDelete: false);
             
             // 声明队列
-            _channel.QueueDeclare(
+            channel.QueueDeclare(
                 queue: _options.QueueName,
                 durable: true,
                 exclusive: false,
                 autoDelete: false);
             
-            _logger.LogInformation("队列声明完成: {QueueName}, durable=true, exclusive=false, autoDelete=false", 
-                _options.QueueName);
-
             // 绑定队列到交换机
-            _channel.QueueBind(
+            channel.QueueBind(
                 queue: _options.QueueName,
                 exchange: _options.ExchangeName,
                 routingKey: _options.RoutingKey);
             
-            _logger.LogInformation("队列绑定完成: 队列={Queue} -> 交换机={Exchange}, 路由键={RoutingKey}",
-                _options.QueueName, _options.ExchangeName, _options.RoutingKey);
-            
-            _logger.LogInformation("审计RabbitMQ通道已创建，交换机: {ExchangeName}, 队列: {QueueName}",
-                _options.ExchangeName, _options.QueueName);
+            return channel;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "审计RabbitMQ通道创建失败");
-            throw;
+            _logger.LogError(ex, "创建RabbitMQ通道失败");
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// 获取通道（线程安全）
+    /// </summary>
+    private async Task<IModel?> GetChannelAsync()
+    {
+        if (_disposed)
+            return null;
+            
+        await _channelSemaphore.WaitAsync();
+        
+        try
+        {
+            // 尝试从池中获取可用通道
+            if (_channelPool.TryDequeue(out var channel))
+            {
+                if (channel.IsOpen)
+                {
+                    return channel;
+                }
+                else
+                {
+                    // 通道已关闭，释放资源并创建新的
+                    try { channel.Dispose(); } catch { }
+                }
+            }
+            
+            // 创建新通道
+            return CreateAndConfigureChannel();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取RabbitMQ通道失败");
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// 归还通道到池中
+    /// </summary>
+    private void ReturnChannel(IModel channel)
+    {
+        try
+        {
+            if (!_disposed && channel != null && channel.IsOpen && _channelPool.Count < _maxChannels)
+            {
+                _channelPool.Enqueue(channel);
+            }
+            else
+            {
+                // 池已满或通道无效，直接释放
+                try { channel?.Dispose(); } catch { }
+            }
+        }
+        finally
+        {
+            _channelSemaphore.Release();
         }
     }
     
     /// <summary>
     /// 发送消息
     /// </summary>
-    public Task SendMessageAsync<T>(T message, string? routingKey = null)
+    public async Task SendMessageAsync<T>(T message, string? routingKey = null)
     {
-        if (_channel == null || !_channel.IsOpen)
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(RabbitMQService));
+            
+        var channel = await GetChannelAsync();
+        if (channel == null)
         {
-            throw new InvalidOperationException("RabbitMQ通道未打开");
+            throw new InvalidOperationException("无法获取RabbitMQ通道");
         }
         
         routingKey ??= _options.RoutingKey;
@@ -124,7 +213,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                 _options.ExchangeName, routingKey, body.Length);
             
             // 创建消息属性
-            var properties = _channel.CreateBasicProperties();
+            var properties = channel.CreateBasicProperties();
             properties.Persistent = true; // 消息持久化
             properties.MessageId = Guid.NewGuid().ToString();
             properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
@@ -132,7 +221,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             properties.ContentEncoding = "utf-8";
             
             // 发布消息
-            _channel.BasicPublish(
+            channel.BasicPublish(
                 exchange: _options.ExchangeName,
                 routingKey: routingKey,
                 basicProperties: properties,
@@ -140,18 +229,20 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             
             _logger.LogDebug("审计消息已发送到RabbitMQ: 交换机={Exchange}, 路由键={RoutingKey}, 消息ID={MessageId}", 
                 _options.ExchangeName, routingKey, properties.MessageId);
-            
-            // 验证消息是否真正发布（仅调试时使用）
-            _logger.LogDebug("消息发布完成，JSON内容: {Json}", json.Length > 1000 ? json.Substring(0, 1000) + "..." : json);
-            
-            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "发送审计消息到RabbitMQ失败，交换机: {Exchange}, 路由键: {RoutingKey}", 
                 _options.ExchangeName, routingKey);
+            
+            // 通道可能已损坏，不归还到池中
+            try { channel.Dispose(); } catch { }
+            _channelSemaphore.Release();
             throw;
         }
+        
+        // 归还通道到池中
+        ReturnChannel(channel);
     }
     
     /// <summary>
@@ -375,7 +466,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             // 释放主通道
             try
             {
-                _channel?.Dispose();
+                _connection?.Dispose();
             }
             catch (Exception ex)
             {
@@ -384,5 +475,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             
             _logger.LogInformation("审计RabbitMQ服务已释放资源");
         }
+        
+        _disposed = true;
     }
 } 

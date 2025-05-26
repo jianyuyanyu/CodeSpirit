@@ -255,12 +255,13 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 12. [📄 PDF Generation Component](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF document generation service
 13. [🕒 Time Processing Mechanism](./Docs/CodeSpirit时间处理机制.md) - Unified time processing solution
 14. [🌐 Client IP Service](./Docs/ClientIpService使用指南.md) - Client IP acquisition and processing
+15. [📋 Audit Component Integration Guide](./Docs/CodeSpirit.Audit审计组件集成使用指南.md) - Complete audit system integration and usage
 
 ### 🚀 Infrastructure
 
-15. [🐰 RabbitMQ Integration Guide](./Docs/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
-16. [🔧 RabbitMQ Troubleshooting](./Docs/RabbitMQ故障排除指南.md) - Common problem solutions
-17. [🔍 Elasticsearch Migration Summary](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
+16. [🐰 RabbitMQ Integration Guide](./Docs/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
+17. [🔧 RabbitMQ Troubleshooting](./Docs/RabbitMQ故障排除指南.md) - Common problem solutions
+18. [🔍 Elasticsearch Migration Summary](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
 
 ### 💬 Technical Community
 

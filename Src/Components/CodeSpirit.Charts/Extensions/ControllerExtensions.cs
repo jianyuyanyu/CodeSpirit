@@ -156,11 +156,39 @@ public static class ControllerExtensions
 
         logger?.LogInformation("图表选项: {Options}", Newtonsoft.Json.JsonConvert.SerializeObject(chartOptions));
 
-        // 创建图表配置
-        var chartConfig = await chartService.CreateChartConfigAsync(chartType, data, chartOptions);
-        logger?.LogInformation("生成的图表配置: {Config}", Newtonsoft.Json.JsonConvert.SerializeObject(chartConfig));
+        try
+        {
+            // 创建图表配置
+            var chartConfig = await chartService.CreateChartConfigAsync(chartType, data, chartOptions);
+            logger?.LogInformation("生成的图表配置: {Config}", Newtonsoft.Json.JsonConvert.SerializeObject(chartConfig));
 
-        // 返回结果
-        return controller.Ok(chartConfig);
+            // 返回结果
+            return controller.Ok(chartConfig);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Data validation failed"))
+        {
+            logger?.LogWarning(ex, "图表数据验证失败，返回错误信息");
+            
+            // 返回友好的错误信息
+            return controller.BadRequest(new
+            {
+                error = "数据验证失败",
+                message = ex.Message,
+                chartType = chartType,
+                suggestion = "请检查数据源是否返回了有效数据，或者尝试修改查询条件"
+            });
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "创建图表配置时发生未预期的错误");
+            
+            // 返回通用错误信息
+            return controller.StatusCode(500, new
+            {
+                error = "图表生成失败",
+                message = "服务器内部错误，请稍后重试",
+                chartType = chartType
+            });
+        }
     }
 }

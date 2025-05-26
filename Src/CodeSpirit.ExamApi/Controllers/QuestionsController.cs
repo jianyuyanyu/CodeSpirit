@@ -273,7 +273,12 @@ public class QuestionsController : ApiControllerBase
         var titleObj = new JObject
         {
             ["type"] = "tpl",
-            ["tpl"] = $"<div class=\"question-label\"><pre>1. {question.Content} </pre><span style=\"color:#999\">（{question.DefaultScore}分）</span></div>",
+            ["tpl"] = "<div class=\"question-label\"><pre>1. ${content | raw} </pre><span style=\"color:#999\">（${score}分）</span></div>",
+            ["data"] = new JObject
+            {
+                ["content"] = question.Content,
+                ["score"] = question.DefaultScore
+            },
             ["inline"] = false
         };
         formItems.Add(titleObj);
@@ -300,7 +305,8 @@ public class QuestionsController : ApiControllerBase
                     ["name"] = $"question_{id}",
                     ["options"] = singleOptions,
                     ["mode"] = "horizontal",
-                    ["required"] = true
+                    ["required"] = true,
+                    ["labelTpl"] = "${label | raw}"  // 使用raw过滤器确保特殊字符正确显示
                 };
                 formItems.Add(singleChoiceObj);
                 break;
@@ -324,7 +330,8 @@ public class QuestionsController : ApiControllerBase
                     ["name"] = $"question_{id}",
                     ["options"] = multiOptions,
                     ["mode"] = "horizontal",
-                    ["required"] = true
+                    ["required"] = true,
+                    ["labelTpl"] = "${label | raw}"  // 使用raw过滤器确保特殊字符正确显示
                 };
                 formItems.Add(multiChoiceObj);
                 break;
@@ -370,7 +377,11 @@ public class QuestionsController : ApiControllerBase
         formItems.Add(new JObject
         {
             ["type"] = "tpl",
-            ["tpl"] = $"<div style=\"color:#009900; font-weight:bold;\">正确答案：{question.CorrectAnswer}</div>",
+            ["tpl"] = "<div style=\"color:#009900; font-weight:bold;\">正确答案：${answer | raw}</div>",
+            ["data"] = new JObject
+            {
+                ["answer"] = question.CorrectAnswer
+            },
             ["inline"] = false
         });
 
@@ -380,7 +391,11 @@ public class QuestionsController : ApiControllerBase
             formItems.Add(new JObject
             {
                 ["type"] = "tpl",
-                ["tpl"] = $"<div style=\"margin-top:10px;\"><b>解析：</b>{question.Analysis}</div>",
+                ["tpl"] = "<div style=\"margin-top:10px;\"><b>解析：</b>${analysis | raw}</div>",
+                ["data"] = new JObject
+                {
+                    ["analysis"] = question.Analysis
+                },
                 ["inline"] = false
             });
         }

@@ -761,4 +761,279 @@ D、HTML
         Assert.Contains("Python", multipleChoice.CorrectAnswer);
         Assert.Contains("C++", multipleChoice.CorrectAnswer);
     }
+
+    [Fact]
+    public void Parse_QuestionsWithDollarSign_ParsesCorrectly()
+    {
+        // Arrange
+        var text = @"一、单项选择题（每题1分）
+1、在JavaScript中，以下哪个变量声明是正确的（B）？
+A、var $name = ""test"";
+B、var $userName = ""admin"";
+C、var 123name = ""invalid"";
+D、var class = ""reserved"";
+【解析】在JavaScript中，变量名可以包含$字符，但不能以数字开头，也不能使用保留字。
+【标签】JavaScript、变量声明
+
+二、判断题（每题1分）
+1. 在PHP中，所有变量都必须以$符号开头。（对）
+【解析】PHP中的变量确实必须以$符号开头，这是PHP的语法规则。
+【标签】PHP、变量
+
+三、多项选择题（每题2分）
+1、以下哪些是Shell脚本中的有效变量声明（ABC）？
+A、$HOME
+B、$USER
+C、$PATH
+D、$123invalid
+【解析】Shell脚本中的变量名不能以数字开头。
+【标签】Shell、变量";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        
+        // 验证单选题中$字符被转义
+        var singleChoice = result[0];
+        Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
+        Assert.Equal("在JavaScript中，以下哪个变量声明是正确的？", singleChoice.Content);
+        Assert.Equal("var $userName = \"admin\";", singleChoice.CorrectAnswer);
+        Assert.Contains("var \\$name = \"test\";", singleChoice.Options);
+        Assert.Contains("var \\$userName = \"admin\";", singleChoice.Options);
+        Assert.Contains("在JavaScript中，变量名可以包含$字符，但不能以数字开头，也不能使用保留字。", singleChoice.Analysis);
+        
+        // 验证判断题中$字符被转义
+        var trueFalse = result[1];
+        Assert.Equal(QuestionType.TrueFalse, trueFalse.Type);
+        Assert.Equal("在PHP中，所有变量都必须以$符号开头。", trueFalse.Content);
+        Assert.Equal("True", trueFalse.CorrectAnswer);
+        Assert.Contains("PHP中的变量确实必须以$符号开头，这是PHP的语法规则。", trueFalse.Analysis);
+        
+        // 验证多选题中$字符被转义
+        var multipleChoice = result[2];
+        Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
+        Assert.Equal("以下哪些是Shell脚本中的有效变量声明？", multipleChoice.Content);
+        Assert.Contains("\\$HOME", multipleChoice.Options);
+        Assert.Contains("\\$USER", multipleChoice.Options);
+        Assert.Contains("\\$PATH", multipleChoice.Options);
+        Assert.Contains("\\$123invalid", multipleChoice.Options);
+        Assert.Equal("Shell脚本中的变量名不能以数字开头。", multipleChoice.Analysis);
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithProgrammingSpecialCharacters_ParsesCorrectly()
+    {
+        // Arrange
+        var text = @"一、单项选择题（每题1分）
+1、在C#中，以下哪个字符串插值表达式是正确的（A）？
+A、$""Hello {name}!""
+B、@""Hello {name}!""
+C、#""Hello {name}!""
+D、%""Hello {name}!""
+【解析】C#中使用$符号进行字符串插值。
+【标签】C#、字符串插值
+
+2、在正则表达式中，以下哪个模式匹配任意数字（B）？
+A、[a-z]
+B、\d
+C、\w
+D、\s
+【解析】\d在正则表达式中匹配任意数字字符。
+【标签】正则表达式、模式匹配
+
+三、多项选择题（每题2分）
+1、以下哪些是有效的SQL查询语句（ABC）？
+A、SELECT * FROM users WHERE id = 1;
+B、UPDATE users SET name = 'John' WHERE id = 1;
+C、DELETE FROM users WHERE age > 65;
+D、INVALID SYNTAX users SET name;
+【解析】前三个都是有效的SQL语句，最后一个语法错误。
+【标签】SQL、数据库查询
+
+二、判断题（每题1分）
+1. 在JavaScript中，变量名可以包含$和_字符。（对）
+【解析】JavaScript允许变量名包含字母、数字、$和_字符。
+【标签】JavaScript、变量命名
+
+2. 在Python中，字符串可以使用单引号'或双引号""来定义。（对）
+【解析】Python支持使用单引号或双引号来定义字符串。
+【标签】Python、字符串";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Equal(5, result.Count);
+        
+        // 验证单选题1 - C#字符串插值
+        var singleChoice1 = result[0];
+        Assert.Equal(QuestionType.SingleChoice, singleChoice1.Type);
+        Assert.Equal("在C#中，以下哪个字符串插值表达式是正确的？", singleChoice1.Content);
+        Assert.Equal("$\"Hello {name}!\"", singleChoice1.CorrectAnswer);
+        Assert.Contains("\\$\"Hello {name}!\"", singleChoice1.Options);
+        Assert.Contains("@\"Hello {name}!\"", singleChoice1.Options);
+        
+        // 验证单选题2 - 正则表达式
+        var singleChoice2 = result[1];
+        Assert.Equal(QuestionType.SingleChoice, singleChoice2.Type);
+        Assert.Equal("在正则表达式中，以下哪个模式匹配任意数字？", singleChoice2.Content);
+        Assert.Equal("\\d", singleChoice2.CorrectAnswer);
+        Assert.Contains("\\d", singleChoice2.Options);
+        Assert.Contains("\\w", singleChoice2.Options);
+        Assert.Contains("\\s", singleChoice2.Options);
+        
+        // 验证多选题 - SQL语句
+        var multipleChoice = result[2];
+        Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
+        Assert.Equal("以下哪些是有效的SQL查询语句？", multipleChoice.Content);
+        Assert.Contains("SELECT * FROM users WHERE id = 1;", multipleChoice.Options);
+        Assert.Contains("UPDATE users SET name = 'John' WHERE id = 1;", multipleChoice.Options);
+        Assert.Contains("DELETE FROM users WHERE age > 65;", multipleChoice.Options);
+        Assert.Contains("INVALID SYNTAX users SET name;", multipleChoice.Options);
+        
+        // 验证判断题1 - JavaScript变量命名
+        var trueFalse1 = result[3];
+        Assert.Equal(QuestionType.TrueFalse, trueFalse1.Type);
+        Assert.Equal("在JavaScript中，变量名可以包含$和_字符。", trueFalse1.Content);
+        Assert.Equal("True", trueFalse1.CorrectAnswer);
+        
+        // 验证判断题2 - Python字符串
+        var trueFalse2 = result[4];
+        Assert.Equal(QuestionType.TrueFalse, trueFalse2.Type);
+        Assert.Equal("在Python中，字符串可以使用单引号'或双引号\"来定义。", trueFalse2.Content);
+        Assert.Equal("True", trueFalse2.CorrectAnswer);
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithSpecialCharactersForAmis_ParsesCorrectly()
+    {
+        // Arrange - 测试AMIS框架中可能出现问题的特殊字符
+        var text = @"一、单项选择题（每题1分）
+1、在JavaScript中，以下哪个变量声明包含$字符（B）？
+A、var name = ""test"";
+B、var $userName = ""admin"";
+C、var user_name = ""test"";
+D、var userName = ""admin"";
+【解析】JavaScript中变量名可以包含$字符，这在jQuery等库中很常见。
+【标签】JavaScript、变量命名
+
+2、以下哪个HTML标签是正确的（A）？
+A、<div>内容</div>
+B、<div>内容<div>
+C、div>内容</div>
+D、<div内容</div>
+【解析】HTML标签必须正确闭合，<div>标签需要对应的</div>结束标签。
+【标签】HTML、标签
+
+三、多项选择题（每题2分）
+1、以下哪些字符在编程中有特殊含义（ABC）？
+A、$ (美元符号)
+B、& (与符号)
+C、< > (尖括号)
+D、# (井号)
+【解析】这些字符在不同编程语言和标记语言中都有特殊含义。
+【标签】编程、特殊字符
+
+二、判断题（每题1分）
+1. 在PHP中，变量$name和变量name是相同的。（错）
+【解析】PHP中$name是变量，而name是常量或字符串，两者不同。
+【标签】PHP、变量";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Equal(4, result.Count);
+        
+        // 验证包含$字符的单选题
+        var singleChoice1 = result[0];
+        Assert.Equal(QuestionType.SingleChoice, singleChoice1.Type);
+        Assert.Equal("在JavaScript中，以下哪个变量声明包含$字符？", singleChoice1.Content);
+        Assert.Equal("var $userName = \"admin\";", singleChoice1.CorrectAnswer);
+        Assert.Contains("var \\$userName = \"admin\";", singleChoice1.Options);
+        
+        // 验证包含HTML标签的单选题
+        var singleChoice2 = result[1];
+        Assert.Equal(QuestionType.SingleChoice, singleChoice2.Type);
+        Assert.Equal("以下哪个HTML标签是正确的？", singleChoice2.Content);
+        Assert.Equal("<div>内容</div>", singleChoice2.CorrectAnswer);
+        Assert.Contains("<div>内容</div>", singleChoice2.Options);
+        Assert.Contains("<div>内容<div>", singleChoice2.Options);
+        
+        // 验证包含特殊字符的多选题
+        var multipleChoice = result[2];
+        Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
+        Assert.Equal("以下哪些字符在编程中有特殊含义？", multipleChoice.Content);
+        Assert.Contains("\\$ (美元符号)", multipleChoice.Options);
+        Assert.Contains("& (与符号)", multipleChoice.Options);
+        Assert.Contains("< > (尖括号)", multipleChoice.Options);
+        
+        // 验证包含$字符的判断题
+        var trueFalse = result[3];
+        Assert.Equal(QuestionType.TrueFalse, trueFalse.Type);
+        Assert.Equal("在PHP中，变量$name和变量name是相同的。", trueFalse.Content);
+        Assert.Equal("False", trueFalse.CorrectAnswer);
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithDollarSignInParser_ProcessesCorrectly()
+    {
+        // Arrange - 测试解析器层面对$字符的处理
+        var text = @"一、单项选择题（每题1分）
+1、在JavaScript中，以下哪个变量声明是正确的（B）？
+A、var $name = ""test"";
+B、var $userName = ""admin"";
+C、var 123name = ""invalid"";
+D、var class = ""reserved"";
+【解析】在JavaScript中，变量名可以包含$字符，但不能以数字开头，也不能使用保留字。
+【标签】JavaScript、变量声明
+
+二、判断题（每题1分）
+1. 在PHP中，所有变量都必须以$符号开头。（对）
+【解析】PHP中的变量确实必须以$符号开头，这是PHP的语法规则。
+【标签】PHP、变量
+
+三、多项选择题（每题2分）
+1、以下哪些是Shell脚本中的有效变量声明（ABC）？
+A、$HOME
+B、$USER
+C、$PATH
+D、$123invalid
+【解析】Shell脚本中的变量名不能以数字开头。
+【标签】Shell、变量";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        
+        // 验证单选题中$字符被转义
+        var singleChoice = result[0];
+        Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
+        Assert.Equal("在JavaScript中，以下哪个变量声明是正确的？", singleChoice.Content);
+        Assert.Equal("var $userName = \"admin\";", singleChoice.CorrectAnswer);
+        Assert.Contains("var \\$name = \"test\";", singleChoice.Options);
+        Assert.Contains("var \\$userName = \"admin\";", singleChoice.Options);
+        Assert.Equal("在JavaScript中，变量名可以包含$字符，但不能以数字开头，也不能使用保留字。", singleChoice.Analysis);
+        
+        // 验证判断题中$字符被转义
+        var trueFalse = result[1];
+        Assert.Equal(QuestionType.TrueFalse, trueFalse.Type);
+        Assert.Equal("在PHP中，所有变量都必须以$符号开头。", trueFalse.Content);
+        Assert.Equal("True", trueFalse.CorrectAnswer);
+        Assert.Equal("PHP中的变量确实必须以$符号开头，这是PHP的语法规则。", trueFalse.Analysis);
+        
+        // 验证多选题中$字符被转义
+        var multipleChoice = result[2];
+        Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
+        Assert.Equal("以下哪些是Shell脚本中的有效变量声明？", multipleChoice.Content);
+        Assert.Contains("\\$HOME", multipleChoice.Options);
+        Assert.Contains("\\$USER", multipleChoice.Options);
+        Assert.Contains("\\$PATH", multipleChoice.Options);
+        Assert.Contains("\\$123invalid", multipleChoice.Options);
+        Assert.Equal("Shell脚本中的变量名不能以数字开头。", multipleChoice.Analysis);
+    }
 } 

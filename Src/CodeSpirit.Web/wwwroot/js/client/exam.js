@@ -1167,7 +1167,7 @@
                                             body: [
                                                 {
                                                     type: "tpl",
-                                                    tpl: "<div class=\"question-label\" id=\"question_${item.id}_label\"><pre>${index + 1}. ${item.content} </pre><span style=\"color:#999\">（${item.score}分）</span></div>",
+                                                    tpl: "<div class=\"question-label\" id=\"question_${item.id}_label\"><pre>${(index + 1) + '. ' + item.content | raw} </pre><span style=\"color:#999\">（${item.score}分）</span></div>",
                                                     inline: false
                                                 },
                                                 {

@@ -566,7 +566,6 @@ D、MongoDB
         Assert.Equal(QuestionDifficulty.Medium, result[0].Difficulty); // 无效难度应返回中等
     }
 
-
     [Fact]
     public void Parse_QuestionWithSpacesInBrackets_ReturnsCorrectResult()
     {
@@ -652,5 +651,114 @@ D、.form
         Assert.Equal(2, question.Tags.Count);
         Assert.Contains("WinForms", question.Tags);
         Assert.Contains("文件扩展名", question.Tags);
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithBrackets_PreservesBracketsInContent()
+    {
+        // Arrange
+        var text = @"一、单项选择题（每题1分）
+1、以下关于HTTP协议（超文本传输协议）的说法，正确的是(B)
+A、HTTP是传输层协议
+B、HTTP是应用层协议（基于TCP）
+C、HTTP只支持GET方法
+D、HTTP是加密协议
+【解析】HTTP是应用层协议，基于TCP传输。
+【标签】HTTP、协议
+
+二、判断题（每题1分）
+1. 数据库中的主键（Primary Key）可以为空值。（错）
+【解析】主键不能为空值，这是数据库的基本约束。
+【标签】数据库、主键
+
+三、多项选择题（每题2分）
+1、以下哪些是常见的编程语言（Programming Language）(ABC)？
+A、Java（面向对象）
+B、Python（解释型）
+C、C++（编译型）
+D、HTML（标记语言）
+【解析】HTML是标记语言，不是编程语言。
+【标签】编程语言、分类";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        
+        // 验证单选题保留括号
+        var singleChoice = result[0];
+        Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
+        Assert.Equal("以下关于HTTP协议（超文本传输协议）的说法，正确的是", singleChoice.Content);
+        Assert.Equal("HTTP是应用层协议（基于TCP）", singleChoice.CorrectAnswer);
+        Assert.Contains("HTTP是应用层协议（基于TCP）", singleChoice.Options);
+        
+        // 验证判断题保留括号
+        var trueFalse = result[1];
+        Assert.Equal(QuestionType.TrueFalse, trueFalse.Type);
+        Assert.Equal("数据库中的主键（Primary Key）可以为空值。", trueFalse.Content);
+        Assert.Equal("False", trueFalse.CorrectAnswer);
+        
+        // 验证多选题保留括号
+        var multipleChoice = result[2];
+        Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
+        Assert.Equal("以下哪些是常见的编程语言（Programming Language）？", multipleChoice.Content);
+        Assert.Contains("Java（面向对象）", multipleChoice.Options);
+        Assert.Contains("Python（解释型）", multipleChoice.Options);
+        Assert.Contains("C++（编译型）", multipleChoice.Options);
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithChineseBrackets_ParsesCorrectly()
+    {
+        // Arrange
+        var text = @"一、单项选择题（每题1分）
+1、以下关于HTTP协议的说法，正确的是（B）
+A、HTTP是传输层协议
+B、HTTP是应用层协议
+C、HTTP只支持GET方法
+D、HTTP是加密协议
+【解析】HTTP是应用层协议，基于TCP传输。
+【标签】HTTP、协议
+
+二、判断题（每题1分）
+1. 数据库中的主键可以为空值。（错）
+【解析】主键不能为空值，这是数据库的基本约束。
+【标签】数据库、主键
+
+三、多项选择题（每题2分）
+1、以下哪些是常见的编程语言（ABC）？
+A、Java
+B、Python
+C、C++
+D、HTML
+【解析】HTML是标记语言，不是编程语言。
+【标签】编程语言、分类";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Equal(3, result.Count);
+        
+        // 验证单选题
+        var singleChoice = result[0];
+        Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
+        Assert.Equal("以下关于HTTP协议的说法，正确的是", singleChoice.Content);
+        Assert.Equal("HTTP是应用层协议", singleChoice.CorrectAnswer);
+        
+        // 验证判断题
+        var trueFalse = result[1];
+        Assert.Equal(QuestionType.TrueFalse, trueFalse.Type);
+        Assert.Equal("数据库中的主键可以为空值。", trueFalse.Content);
+        Assert.Equal("False", trueFalse.CorrectAnswer);
+        
+        // 验证多选题
+        var multipleChoice = result[2];
+        Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
+        Assert.Equal("以下哪些是常见的编程语言？", multipleChoice.Content);
+        Assert.Contains("Java", multipleChoice.CorrectAnswer);
+        Assert.Contains("Python", multipleChoice.CorrectAnswer);
+        Assert.Contains("C++", multipleChoice.CorrectAnswer);
     }
 } 

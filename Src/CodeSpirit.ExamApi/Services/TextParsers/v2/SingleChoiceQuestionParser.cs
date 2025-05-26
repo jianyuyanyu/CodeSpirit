@@ -66,7 +66,26 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
             if (answerMatch.Success)
             {
                 result.CorrectAnswer = answerMatch.Groups[1].Value;
-                currentContent = Regex.Replace(currentContent, @"\s*[A-Z]\s*$", "").Trim(); // 移除末尾的答案
+                // 智能移除答案标记：
+                // 1. 如果答案标记在题目末尾，直接移除
+                // 2. 如果答案标记在题目中间，需要判断是否为真正的答案标记
+                var answerText = answerMatch.Value;
+                
+                // 检查是否在末尾
+                if (currentContent.EndsWith(answerText))
+                {
+                    currentContent = currentContent.Substring(0, currentContent.Length - answerText.Length).Trim();
+                }
+                else
+                {
+                    // 在中间位置，需要更谨慎地处理
+                    // 只有当括号内只包含单个大写字母时才认为是答案标记
+                    var singleLetterPattern = @"[\(（]\s*[A-Z]\s*[\)）]";
+                    if (Regex.IsMatch(answerText, singleLetterPattern))
+                    {
+                        currentContent = currentContent.Replace(answerText, "").Trim();
+                    }
+                }
             }
 
             // 收集所有内容行，直到遇到选项标记

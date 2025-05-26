@@ -48,10 +48,11 @@ public class MultipleChoiceQuestionParser : BaseQuestionParser
             if (answerMatch.Success)
             {
                 var answerText = answerMatch.Value;
+                // 只移除题目末尾的答案标记，保留题目内容中的其他括号
                 var index = result.Content.LastIndexOf(answerText);
                 if (index >= 0)
                 {
-                    result.Content = result.Content.Remove(index).Trim();
+                    result.Content = result.Content.Remove(index, answerText.Length).Trim();
                 }
             }
 

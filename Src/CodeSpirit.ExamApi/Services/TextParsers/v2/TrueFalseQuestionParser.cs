@@ -93,10 +93,11 @@ public class TrueFalseQuestionParser : BaseQuestionParser
             if (answerMatch.Success)
             {
                 var answerText = answerMatch.Value;
+                // 只移除包含正确答案的括号，保留题目内容中的其他括号
                 var index = result.Content.LastIndexOf(answerText);
                 if (index >= 0)
                 {
-                    result.Content = result.Content.Remove(index).Trim();
+                    result.Content = result.Content.Remove(index, answerText.Length).Trim();
                 }
             }
 
@@ -138,28 +139,9 @@ public class TrueFalseQuestionParser : BaseQuestionParser
                         _logger.LogWarning("无法识别的判断题答案: {Answer}", answer);
                         result.CorrectAnswer = "False"; // 默认值
                     }
-                    result.Content = result.Content.Substring(0, endMatch.Index).Trim();
+                    // 只移除包含正确答案的括号
+                    result.Content = result.Content.Remove(endMatch.Index, endMatch.Length).Trim();
                 }
-            }
-
-            // 移除最后的括号部分
-            var lastBracketStart = result.Content.LastIndexOf('（');
-            if (lastBracketStart < 0) lastBracketStart = result.Content.LastIndexOf('(');
-            if (lastBracketStart >= 0)
-            {
-                var lastBracketEnd = result.Content.IndexOf('）', lastBracketStart);
-                if (lastBracketEnd < 0) lastBracketEnd = result.Content.IndexOf(')', lastBracketStart);
-                if (lastBracketEnd >= 0)
-                {
-                    result.Content = result.Content.Remove(lastBracketStart).Trim();
-                }
-            }
-
-            // 移除重复的题目开头部分
-            var prefix = "平邮包裹的到货周期较长，";
-            if (result.Content.StartsWith(prefix))
-            {
-                result.Content = prefix + result.Content.Substring(prefix.Length).TrimStart();
             }
 
             // 解析解析和标签

@@ -208,6 +208,13 @@ namespace CodeSpirit.ExamApi.Services.TextParsers.v2
                     }
                 }
             }
+
+            // 处理正确答案中的$字符，确保与选项保持一致
+            if (!string.IsNullOrEmpty(result.CorrectAnswer) && result.CorrectAnswer.Contains("$"))
+            {
+                result.CorrectAnswer = result.CorrectAnswer.Replace("$", "\\$");
+                _logger.LogDebug("正确答案包含$字符，已进行转义处理: {CorrectAnswer}", result.CorrectAnswer);
+            }
         }
     }
 } 

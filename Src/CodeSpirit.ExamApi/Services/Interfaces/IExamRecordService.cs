@@ -133,4 +133,17 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     /// <param name="recordId">考试记录ID</param>
     /// <returns>考试试卷详情</returns>
     Task<ExamPaperDetailDto> GetStudentExamPaperDetailAsync(long recordId);
+    
+    /// <summary>
+    /// 获取答卷导出设置
+    /// </summary>
+    /// <returns>答卷导出设置</returns>
+    Task<ExamPaperExportSettingsDto> GetExamPaperExportSettingsAsync();
+
+    /// <summary>
+    /// 更新答卷导出设置
+    /// </summary>
+    /// <param name="settings">答卷导出设置</param>
+    /// <returns>是否更新成功</returns>
+    Task<bool> UpdateExamPaperExportSettingsAsync(ExamPaperExportSettingsDto settings);
 } 

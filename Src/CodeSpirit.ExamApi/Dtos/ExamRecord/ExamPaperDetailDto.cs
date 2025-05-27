@@ -39,6 +39,18 @@ public class ExamPaperDetailDto
     public string StudentName { get; set; }
     
     /// <summary>
+    /// 身份证号码
+    /// </summary>
+    [DisplayName("身份证号码")]
+    public string IdNo { get; set; }
+    
+    /// <summary>
+    /// 准考证号码
+    /// </summary>
+    [DisplayName("准考证号码")]
+    public string AdmissionTicket { get; set; }
+    
+    /// <summary>
     /// 考试开始时间
     /// </summary>
     [DisplayName("考试开始时间")]
@@ -49,6 +61,12 @@ public class ExamPaperDetailDto
     /// </summary>
     [DisplayName("提交时间")]
     public DateTime? SubmitTime { get; set; }
+    
+    /// <summary>
+    /// 作答时长（分钟）
+    /// </summary>
+    [DisplayName("作答时长")]
+    public int? Duration { get; set; }
     
     /// <summary>
     /// 总得分

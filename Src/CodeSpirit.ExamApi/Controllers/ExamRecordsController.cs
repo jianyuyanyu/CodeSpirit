@@ -663,13 +663,21 @@ public class ExamRecordsController : ApiControllerBase
                 await _pdfGenerationService.InitializeAsync();
             }
 
-            // 生成HTML内容
-            string htmlContent = await GenerateHtmlContent(record, examPaper);
+            // 获取导出设置
+            var exportSettings = await _examRecordService.GetExamPaperExportSettingsAsync();
 
-            // 配置PDF生成选项
+            // 生成HTML内容
+            string htmlContent = await GenerateHtmlContent(record, examPaper, exportSettings);
+
+            // 根据设置配置PDF生成选项
             var pdfOptions = new PdfOptions
             {
-                Format = PaperFormat.A4,
+                Format = exportSettings.PageSize switch
+                {
+                    PdfPageSize.A3 => PaperFormat.A3,
+                    PdfPageSize.Letter => PaperFormat.Letter,
+                    _ => PaperFormat.A4
+                },
                 PrintBackground = true,
                 MarginOptions = new MarginOptions
                 {
@@ -679,7 +687,8 @@ public class ExamRecordsController : ApiControllerBase
                     Right = "10mm"
                 },
                 PreferCSSPageSize = true,
-                Scale = 1.0m
+                Scale = 1.0m,
+                Landscape = exportSettings.PageOrientation == PdfOrientation.Landscape
             };
 
             // 生成PDF
@@ -705,7 +714,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <summary>
     /// 将HTML转换为PDF
     /// </summary>
-    private async Task<string> GenerateHtmlContent(ExamPaperDetailDto record, ExamPaperDto examPaper)
+    private async Task<string> GenerateHtmlContent(ExamPaperDetailDto record, ExamPaperDto examPaper, ExamPaperExportSettingsDto exportSettings)
     {
         // 使用HTML模板生成PDF内容
         StringBuilder htmlBuilder = new StringBuilder();
@@ -716,9 +725,9 @@ public class ExamRecordsController : ApiControllerBase
         htmlBuilder.AppendLine("  <title>考试答卷</title>");
         htmlBuilder.AppendLine("  <style>");
         htmlBuilder.AppendLine("    body { font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 20px; }");
-        htmlBuilder.AppendLine("    .header { text-align: center; margin-bottom: 20px; }");
-        htmlBuilder.AppendLine("    .title { font-size: 18px; font-weight: bold; }");
-        htmlBuilder.AppendLine("    .info { font-size: 14px; margin-top: 5px; }");
+        htmlBuilder.AppendLine("    .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 15px; }");
+        htmlBuilder.AppendLine("    .title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }");
+        htmlBuilder.AppendLine("    .info { font-size: 14px; margin-top: 8px; line-height: 1.6; }");
         htmlBuilder.AppendLine("    .summary { border: 1px solid #ddd; padding: 10px; margin-bottom: 20px; }");
         htmlBuilder.AppendLine("    .summary-title { font-weight: bold; margin-bottom: 10px; }");
         htmlBuilder.AppendLine("    .summary-table { width: 100%; border-collapse: collapse; }");
@@ -734,9 +743,82 @@ public class ExamRecordsController : ApiControllerBase
         htmlBuilder.AppendLine("    .answer-box { background-color: #f9f9f9; padding: 10px; margin-top: 5px; }");
         htmlBuilder.AppendLine("    .correct-answer { background-color: #f0fff0; padding: 10px; margin-top: 5px; }");
         htmlBuilder.AppendLine("    .footer { text-align: center; font-size: 12px; margin-top: 30px; }");
+        
+        // 添加水印样式
+        if (exportSettings.EnableWatermark)
+        {
+            htmlBuilder.AppendLine("    .watermark {");
+            htmlBuilder.AppendLine("      position: fixed;");
+            htmlBuilder.AppendLine("      top: 50%;");
+            htmlBuilder.AppendLine("      left: 50%;");
+            htmlBuilder.AppendLine("      transform: translate(-50%, -50%) rotate(" + exportSettings.WatermarkRotation + "deg);");
+            htmlBuilder.AppendLine($"      font-size: {exportSettings.WatermarkFontSize}px;");
+            htmlBuilder.AppendLine($"      color: {exportSettings.WatermarkColor};");
+            htmlBuilder.AppendLine($"      opacity: {exportSettings.WatermarkOpacity};");
+            htmlBuilder.AppendLine("      pointer-events: none;");
+            htmlBuilder.AppendLine("      z-index: 1000;");
+            htmlBuilder.AppendLine("      white-space: nowrap;");
+            htmlBuilder.AppendLine("      font-weight: bold;");
+            htmlBuilder.AppendLine("    }");
+        }
+
+        // 添加页眉页脚样式
+        if (!string.IsNullOrEmpty(exportSettings.HeaderText))
+        {
+            htmlBuilder.AppendLine("    .page-header {");
+            htmlBuilder.AppendLine("      position: fixed;");
+            htmlBuilder.AppendLine("      top: 0;");
+            htmlBuilder.AppendLine("      left: 0;");
+            htmlBuilder.AppendLine("      right: 0;");
+            htmlBuilder.AppendLine("      height: 30px;");
+            htmlBuilder.AppendLine("      text-align: center;");
+            htmlBuilder.AppendLine("      font-size: 12px;");
+            htmlBuilder.AppendLine("      border-bottom: 1px solid #ddd;");
+            htmlBuilder.AppendLine("      padding: 5px;");
+            htmlBuilder.AppendLine("      background: white;");
+            htmlBuilder.AppendLine("    }");
+        }
+
+        if (!string.IsNullOrEmpty(exportSettings.FooterText))
+        {
+            htmlBuilder.AppendLine("    .page-footer {");
+            htmlBuilder.AppendLine("      position: fixed;");
+            htmlBuilder.AppendLine("      bottom: 0;");
+            htmlBuilder.AppendLine("      left: 0;");
+            htmlBuilder.AppendLine("      right: 0;");
+            htmlBuilder.AppendLine("      height: 30px;");
+            htmlBuilder.AppendLine("      text-align: center;");
+            htmlBuilder.AppendLine("      font-size: 12px;");
+            htmlBuilder.AppendLine("      border-top: 1px solid #ddd;");
+            htmlBuilder.AppendLine("      padding: 5px;");
+            htmlBuilder.AppendLine("      background: white;");
+            htmlBuilder.AppendLine("    }");
+        }
+
         htmlBuilder.AppendLine("  </style>");
         htmlBuilder.AppendLine("</head>");
         htmlBuilder.AppendLine("<body>");
+
+        // 添加水印元素
+        if (exportSettings.EnableWatermark)
+        {
+            var watermarkText = ReplaceWatermarkVariables(exportSettings.WatermarkText, record, examPaper);
+            htmlBuilder.AppendLine($"  <div class=\"watermark\">{watermarkText}</div>");
+        }
+
+        // 添加页眉
+        if (!string.IsNullOrEmpty(exportSettings.HeaderText))
+        {
+            var headerText = ReplaceWatermarkVariables(exportSettings.HeaderText, record, examPaper);
+            htmlBuilder.AppendLine($"  <div class=\"page-header\">{headerText}</div>");
+        }
+
+        // 添加页脚
+        if (!string.IsNullOrEmpty(exportSettings.FooterText))
+        {
+            var footerText = ReplaceWatermarkVariables(exportSettings.FooterText, record, examPaper);
+            htmlBuilder.AppendLine($"  <div class=\"page-footer\">{footerText}</div>");
+        }
 
         // 页面头部
         htmlBuilder.AppendLine("  <div class=\"header\">");
@@ -745,13 +827,37 @@ public class ExamRecordsController : ApiControllerBase
 
         // 获取学生信息
         var studentName = record.StudentName ?? "未知学生";
+        var idNo = record.IdNo ?? "未设置";
+        var admissionTicket = record.AdmissionTicket ?? "未设置";
 
-        htmlBuilder.AppendLine($"      学生: {studentName} | ");
+        htmlBuilder.AppendLine($"      考生姓名: {studentName} | ");
+        htmlBuilder.AppendLine($"      身份证号: {idNo} | ");
+        htmlBuilder.AppendLine($"      准考证号: {admissionTicket}");
+        htmlBuilder.AppendLine("    </div>");
+        htmlBuilder.AppendLine("    <div class=\"info\">");
         htmlBuilder.AppendLine($"      得分: {record.TotalScore}/{examPaper.TotalScore} | ");
 
         var submitTime = record.SubmitTime;
+        var startTime = record.StartTime;
+        var duration = record.Duration;
 
-        htmlBuilder.AppendLine($"      提交时间: {submitTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未提交"}");
+        htmlBuilder.AppendLine($"      开始作答时间: {startTime.ToString("yyyy-MM-dd HH:mm:ss")} | ");
+        htmlBuilder.AppendLine($"      提交时间: {submitTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未提交"} | ");
+        
+        if (duration.HasValue)
+        {
+            htmlBuilder.AppendLine($"      作答时长: {duration.Value}分钟");
+        }
+        else if (submitTime.HasValue)
+        {
+            var actualDuration = (int)Math.Ceiling((submitTime.Value - startTime).TotalMinutes);
+            htmlBuilder.AppendLine($"      作答时长: {actualDuration}分钟");
+        }
+        else
+        {
+            htmlBuilder.AppendLine("      作答时长: 未完成");
+        }
+        
         htmlBuilder.AppendLine("    </div>");
         htmlBuilder.AppendLine("  </div>");
 
@@ -969,5 +1075,67 @@ public class ExamRecordsController : ApiControllerBase
 
             await fileService.UpdateExportTaskAsync(taskInfo);
         }
+    }
+
+    /// <summary>
+    /// 获取答卷导出设置
+    /// </summary>
+    /// <returns>答卷导出设置</returns>
+    [HttpGet("export-settings")]
+    [DisplayName("获取答卷导出设置")]
+    public async Task<ActionResult<ApiResponse<ExamPaperExportSettingsDto>>> GetExamPaperExportSettings()
+    {
+        var settings = await _examRecordService.GetExamPaperExportSettingsAsync();
+        return SuccessResponse(settings);
+    }
+
+    /// <summary>
+    /// 更新答卷导出设置
+    /// </summary>
+    /// <param name="settings">答卷导出设置</param>
+    /// <returns>操作结果</returns>
+    [HttpPut("export-settings")]
+    [HeaderOperation("导出设置", "form", null, null, InitApi = "/exam/api/exam/examRecords/export-settings")]
+    [DisplayName("更新答卷导出设置")]
+    public async Task<ActionResult<ApiResponse>> UpdateExamPaperExportSettings(
+        [FromBody] ExamPaperExportSettingsDto settings)
+    {
+        var result = await _examRecordService.UpdateExamPaperExportSettingsAsync(settings);
+        if (result)
+        {
+            return SuccessResponse("答卷导出设置已更新");
+        }
+        else
+        {
+            return BadResponse("更新答卷导出设置失败");
+        }
+    }
+
+    /// <summary>
+    /// 替换水印文本中的变量
+    /// </summary>
+    /// <param name="template">模板文本</param>
+    /// <param name="record">考试记录</param>
+    /// <param name="examPaper">试卷信息</param>
+    /// <returns>替换后的文本</returns>
+    private string ReplaceWatermarkVariables(string template, ExamPaperDetailDto record, ExamPaperDto examPaper)
+    {
+        if (string.IsNullOrEmpty(template))
+            return string.Empty;
+
+        var result = template
+            .Replace("{StudentName}", record.StudentName ?? "未知学生")
+            .Replace("{ExamName}", record.ExamName ?? "未知考试")
+            .Replace("{DateTime}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))
+            .Replace("{StudentId}", record.StudentId.ToString())
+            .Replace("{ExamRecordId}", record.ExamRecordId.ToString())
+            .Replace("{IdNo}", record.IdNo ?? "未设置")
+            .Replace("{AdmissionTicket}", record.AdmissionTicket ?? "未设置")
+            .Replace("{Score}", record.TotalScore.ToString())
+            .Replace("{TotalScore}", record.MaxScore.ToString())
+            .Replace("{PageNumber}", "1") // PDF生成时会自动处理页码
+            .Replace("{TotalPages}", "1"); // PDF生成时会自动处理总页数
+
+        return result;
     }
 }

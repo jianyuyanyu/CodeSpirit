@@ -14,6 +14,8 @@ using CodeSpirit.Shared.Extensions;
 using Microsoft.Extensions.Logging;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
+using CodeSpirit.Settings.Services.Interfaces;
+using CodeSpirit.ExamApi.Constants;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -22,12 +24,14 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// </summary>
 public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long, StartExamDto, object>, IExamRecordService
 {
+    private const string ExamPaperExportSettings = "ExamPaperExportSettings";
     private readonly IRepository<ExamAnswerRecord> _answerRecordRepository;
     private readonly IRepository<ExamSetting> _examSettingRepository;
     private readonly IRepository<Student> _studentRepository;
     private readonly IRepository<QuestionVersion> _questionVersionRepository;
     private readonly ILogger<ExamRecordService> _logger;
     private readonly IDistributedLockProvider _distributedLockProvider;
+    private readonly ISettingsService _settingsService;
 
     /// <summary>
     /// 构造函数
@@ -40,7 +44,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         IRepository<QuestionVersion> questionVersionRepository,
         IMapper mapper,
         ILogger<ExamRecordService> logger,
-        IDistributedLockProvider distributedLockProvider) : base(repository, mapper)
+        IDistributedLockProvider distributedLockProvider,
+        ISettingsService settingsService) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
         _examSettingRepository = examSettingRepository;
@@ -48,6 +53,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         _questionVersionRepository = questionVersionRepository;
         _logger = logger;
         _distributedLockProvider = distributedLockProvider ?? throw new ArgumentNullException(nameof(distributedLockProvider));
+        _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
     }
 
     /// <summary>
@@ -1846,8 +1852,11 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 ExamName = examRecord.ExamSetting.Name,
                 StudentId = student.Id,
                 StudentName = student.Name,
+                IdNo = student.IdNo ?? string.Empty,
+                AdmissionTicket = student.AdmissionTicket ?? string.Empty,
                 StartTime = examRecord.StartTime,
                 SubmitTime = examRecord.SubmitTime,
+                Duration = examRecord.Duration,
                 TotalScore = (int)(examRecord.Score ?? 0),
                 MaxScore = (int)(examRecord.ExamSetting.ExamPaper?.TotalScore ?? 0),
                 PassScore = examRecord.ExamSetting.ExamPaper?.PassScore ?? 0,
@@ -1882,5 +1891,39 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             "Coding" => "编程题",
             _ => type
         };
+    }
+
+    /// <summary>
+    /// 获取答卷导出设置
+    /// </summary>
+    /// <returns>答卷导出设置</returns>
+    public async Task<ExamPaperExportSettingsDto> GetExamPaperExportSettingsAsync()
+    {
+        var settings = await _settingsService.GetGlobalSettingAsync<ExamPaperExportSettingsDto>(
+            ExamConstants.ExamModule,
+            ExamPaperExportSettings);
+
+        return settings ?? new ExamPaperExportSettingsDto();
+    }
+
+    /// <summary>
+    /// 更新答卷导出设置
+    /// </summary>
+    /// <param name="settings">答卷导出设置</param>
+    /// <returns>是否更新成功</returns>
+    public async Task<bool> UpdateExamPaperExportSettingsAsync(ExamPaperExportSettingsDto settings)
+    {
+        if (settings == null)
+        {
+            throw new ArgumentNullException(nameof(settings));
+        }
+
+        // 更新答卷导出设置
+        var result = await _settingsService.SetGlobalSettingAsync(
+            ExamConstants.ExamModule,
+            ExamPaperExportSettings,
+            settings);
+
+        return result;
     }
 }

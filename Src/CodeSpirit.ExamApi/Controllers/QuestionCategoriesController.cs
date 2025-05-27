@@ -34,16 +34,34 @@ public class QuestionCategoriesController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取题目分类列表
+    /// 获取题目分类列表（优化为非分页模式，支持树形展示）
     /// </summary>
     /// <param name="queryDto">查询条件</param>
-    /// <returns>题目分类列表分页结果</returns>
+    /// <returns>题目分类列表结果</returns>
     [HttpGet]
     [DisplayName("获取题目分类列表")]
     public async Task<ActionResult<ApiResponse<PageList<QuestionCategoryDto>>>> GetQuestionCategories([FromQuery] QuestionCategoryQueryDto queryDto)
     {
-        PageList<QuestionCategoryDto> categories = await _questionCategoryService.GetQuestionCategoriesAsync(queryDto);
-        return SuccessResponse(categories);
+        // 获取所有分类数据
+        List<QuestionCategoryDto> allCategories = await _questionCategoryService.GetAllCategoriesAsync();
+        
+        // 如果有查询关键字，进行过滤
+        List<QuestionCategoryDto> filteredCategories = allCategories;
+        if (!string.IsNullOrEmpty(queryDto.Keywords))
+        {
+            filteredCategories = allCategories.Where(c => 
+                c.Name.Contains(queryDto.Keywords, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(c.Description) && c.Description.Contains(queryDto.Keywords, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        // 构建树形结构
+        List<QuestionCategoryDto> treeCategories = BuildCategoryTree(filteredCategories);
+
+        // 创建非分页的PageList，这样Amis会自动使用树形展示
+        PageList<QuestionCategoryDto> listData = new(treeCategories, treeCategories.Count);
+
+        return SuccessResponse(listData);
     }
 
     /// <summary>
@@ -141,5 +159,34 @@ public class QuestionCategoriesController : ApiControllerBase
         return failedIds.Any()
             ? SuccessResponse($"成功删除 {successCount} 个题目分类，但以下题目分类删除失败: {string.Join(", ", failedIds)}")
             : SuccessResponse($"成功删除 {successCount} 个题目分类！");
+    }
+
+    /// <summary>
+    /// 构建分类树形结构
+    /// </summary>
+    /// <param name="categories">分类列表</param>
+    /// <returns>树形结构的分类列表</returns>
+    private static List<QuestionCategoryDto> BuildCategoryTree(List<QuestionCategoryDto> categories)
+    {
+        // 创建字典以便快速查找
+        var categoryDict = categories.ToDictionary(c => c.Id, c => c);
+
+        // 初始化所有分类的Children列表
+        foreach (var category in categories)
+        {
+            category.Children = [];
+        }
+
+        // 构建父子关系
+        foreach (var category in categories)
+        {
+            if (category.ParentId.HasValue && categoryDict.TryGetValue(category.ParentId.Value, out var parent))
+            {
+                parent.Children.Add(category);
+            }
+        }
+
+        // 返回根节点（没有父级的分类）
+        return categories.Where(c => !c.ParentId.HasValue).ToList();
     }
 } 

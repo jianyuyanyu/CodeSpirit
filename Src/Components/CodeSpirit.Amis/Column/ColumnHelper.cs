@@ -121,6 +121,13 @@ namespace CodeSpirit.Amis.Column
                 ["type"] = GetColumnType(prop)
             };
 
+            // 检查是否有显式的列类型特性
+            TplColumnAttribute tplAttr = prop.GetCustomAttribute<TplColumnAttribute>();
+            if (tplAttr != null && !tplAttr.Template.IsNullOrWhiteSpace())
+            {
+                column["tpl"] = tplAttr.Template;
+            }
+
             // 首先处理 AmisColumnAttribute 配置（最高优先级）
             AmisColumnAttribute columnAttr = (AmisColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(AmisColumnAttribute));
             if (columnAttr != null)
@@ -196,7 +203,7 @@ namespace CodeSpirit.Amis.Column
             if (dateAttr != null)
             {
                 column["type"] = "date";
-                
+
                 // 设置日期格式
                 if (!string.IsNullOrEmpty(dateAttr.Format))
                 {
@@ -262,19 +269,19 @@ namespace CodeSpirit.Amis.Column
 
                 // 应用标签列配置
                 JObject tagsColumn = CreateTagsColumn(column, fieldName, tagsAttr);
-                
+
                 // 应用AmisColumnAttribute的配置（如果有的话）
                 if (columnAttr != null)
                 {
                     ApplyAmisColumnAttributeToColumn(tagsColumn, columnAttr);
                 }
-                
+
                 // 如果是主键，依然需要隐藏该列
                 if (IsPrimaryKey(prop))
                 {
                     tagsColumn["hidden"] = true;
                 }
-                
+
                 return tagsColumn;
             }
 
@@ -282,19 +289,19 @@ namespace CodeSpirit.Amis.Column
             if (isStringArrayType)
             {
                 JObject stringArrayColumn = CreateStringArrayColumn(column, fieldName);
-                
+
                 // 应用AmisColumnAttribute的配置（如果有的话）
                 if (columnAttr != null)
                 {
                     ApplyAmisColumnAttributeToColumn(stringArrayColumn, columnAttr);
                 }
-                
+
                 // 如果是主键，依然需要隐藏该列
                 if (IsPrimaryKey(prop))
                 {
                     stringArrayColumn["hidden"] = true;
                 }
-                
+
                 return stringArrayColumn;
             }
 
@@ -321,17 +328,17 @@ namespace CodeSpirit.Amis.Column
                         {
                             column["size"] = avatarAttr.Size;
                         }
-                        
+
                         if (!string.IsNullOrEmpty(avatarAttr.Shape))
                         {
                             column["shape"] = avatarAttr.Shape;
                         }
-                        
+
                         if (!string.IsNullOrEmpty(avatarAttr.Icon))
                         {
                             column["icon"] = avatarAttr.Icon;
                         }
-                        
+
                         if (!string.IsNullOrEmpty(avatarAttr.Text))
                         {
                             column["text"] = avatarAttr.Text;
@@ -373,7 +380,7 @@ namespace CodeSpirit.Amis.Column
             {
                 ApplyDurationColumnFormat(column, prop, fieldName);
             }
-            
+
             // 处理数值类型的格式化
             Type numericUnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
             if (numericUnderlyingType == typeof(decimal) || numericUnderlyingType == typeof(double) || numericUnderlyingType == typeof(float))
@@ -456,7 +463,7 @@ namespace CodeSpirit.Amis.Column
                 else
                 {
                     // 即使没有DataType特性，也要优化显示
-                    column["type"] = "tpl"; 
+                    column["type"] = "tpl";
                     column["tpl"] = "<span class=\"text-muted\"><i class=\"fa fa-phone\"></i></span> <a href=\"tel:${" + fieldName + "}\" class=\"text-primary\">${" + fieldName + "}</a>";
                     column["copyable"] = true;
                 }
@@ -501,7 +508,7 @@ namespace CodeSpirit.Amis.Column
             if (IsListProperty(prop))
             {
                 column["type"] = "list";
-                
+
                 // 获取 List 类型的配置
                 JObject listItem = CreateListItemConfiguration(prop);
                 if (listItem != null)
@@ -515,7 +522,7 @@ namespace CodeSpirit.Amis.Column
             if (eachAttr != null)
             {
                 column["type"] = "each";
-                
+
                 // 设置数据来源
                 if (!string.IsNullOrEmpty(eachAttr.Source))
                 {
@@ -616,24 +623,24 @@ namespace CodeSpirit.Amis.Column
 
             // 获取 ListColumnAttribute 特性，如果存在
             ListColumnAttribute listItemAttr = prop.GetCustomAttribute<ListColumnAttribute>();
-            
+
             // 修复拼写错误并提供更好的默认值
             string titleField = listItemAttr?.Title ?? "title";
             string subTitleField = listItemAttr?.SubTitle ?? "subTitle";
-            
+
             // 确保字段名是camelCase格式
             listItem["title"] = $"${{{titleField.ToCamelCase()}}}";
             listItem["subTitle"] = $"${{{subTitleField.ToCamelCase()}}}";
-            
+
             // 尝试智能推断头像字段
             listItem["avatar"] = "${avatar || profileImage || image || ''}";
-            
+
             // 设置占位符
             listItem["placeholder"] = listItemAttr?.Placeholder ?? "暂无数据";
-            
+
             // 添加描述字段支持 - 根据常见命名模式推断
             listItem["desc"] = "${description || desc || remark || ''}";
-            
+
             // 添加默认的操作按钮配置
             listItem["actions"] = new JArray
             {
@@ -650,7 +657,7 @@ namespace CodeSpirit.Amis.Column
                     }
                 }
             };
-            
+
             return listItem;
         }
 
@@ -769,33 +776,33 @@ namespace CodeSpirit.Amis.Column
             {
                 // 布尔类型映射为开关
                 Type t when t == typeof(bool) => "switch",
-                
+
                 // 日期时间类型
                 Type t when t == typeof(DateTime) || t == typeof(DateTimeOffset) => "date",
                 Type t when t == typeof(TimeSpan) => "text", // TimeSpan 显示为文本
-                
+
                 // 数值类型
-                Type t when t == typeof(int) || t == typeof(long) || t == typeof(short) || 
+                Type t when t == typeof(int) || t == typeof(long) || t == typeof(short) ||
                            t == typeof(uint) || t == typeof(ulong) || t == typeof(ushort) ||
                            t == typeof(byte) || t == typeof(sbyte) => "text",
-                           
+
                 Type t when t == typeof(decimal) || t == typeof(double) || t == typeof(float) => "text",
-                
+
                 // 浮点数类型（Oracle特定）
                 Type t when t.Name == "BINARY_FLOAT" || t.Name == "BINARY_DOUBLE" => "text",
-                
+
                 // Guid 类型
                 Type t when t == typeof(Guid) => "text",
-                
+
                 // 字符串类型 - 根据字段名称和特性判断具体类型
                 Type t when t == typeof(string) => GetStringColumnType(prop),
-                
+
                 // 字节数组（通常用于存储文件或图片）
                 Type t when t == typeof(byte[]) => "text",
-                
+
                 // JSON 类型（如果项目支持）
                 Type t when t.Name == "JsonElement" || t.Name == "JObject" || t.Name == "JToken" => "json",
-                
+
                 // 数组和集合类型
                 Type t when t.IsArray => IsStringArrayProperty(prop) ? "each" : "text",
                 Type t when t.IsGenericType && (
@@ -804,15 +811,15 @@ namespace CodeSpirit.Amis.Column
                     t.GetGenericTypeDefinition() == typeof(ICollection<>) ||
                     t.GetGenericTypeDefinition() == typeof(IEnumerable<>)
                 ) => GetCollectionColumnType(prop),
-                
+
                 // 复杂对象类型默认显示为JSON
                 Type t when t.IsClass && t != typeof(string) && !t.IsArray => "json",
-                
+
                 // 其他值类型（结构体等）也显示为JSON
-                Type t when t.IsValueType && !t.IsPrimitive && !t.IsEnum && 
+                Type t when t.IsValueType && !t.IsPrimitive && !t.IsEnum &&
                            t != typeof(decimal) && t != typeof(DateTime) && t != typeof(DateTimeOffset) &&
                            t != typeof(TimeSpan) && t != typeof(Guid) => "json",
-                
+
                 // 默认为文本类型
                 _ => "text"
             };
@@ -826,7 +833,7 @@ namespace CodeSpirit.Amis.Column
         private string GetStringColumnType(PropertyInfo prop)
         {
             string propName = prop.Name.ToLowerInvariant();
-            
+
             // 检查 DataType 特性
             DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
             if (dataTypeAttr != null)
@@ -877,7 +884,7 @@ namespace CodeSpirit.Amis.Column
                 return "text"; // 密码字段在 CreateAmisColumn 中会被特殊处理
             }
 
-            if (propName.Contains("description") || propName.Contains("content") || 
+            if (propName.Contains("description") || propName.Contains("content") ||
                 propName.Contains("note") || propName.Contains("remark") || propName.Contains("comment"))
             {
                 // 长文本字段，可能需要截断或弹窗显示
@@ -915,7 +922,7 @@ namespace CodeSpirit.Amis.Column
         private string GetCollectionColumnType(PropertyInfo prop)
         {
             Type collectionType = prop.PropertyType;
-            
+
             // 检查是否为字符串数组/集合
             if (IsStringArrayProperty(prop))
             {
@@ -928,13 +935,13 @@ namespace CodeSpirit.Amis.Column
                 Type elementType = collectionType.GetGenericArguments()[0];
                 Type underlyingElementType = Nullable.GetUnderlyingType(elementType) ?? elementType;
 
-                if (underlyingElementType.IsPrimitive || underlyingElementType == typeof(string) || 
+                if (underlyingElementType.IsPrimitive || underlyingElementType == typeof(string) ||
                     underlyingElementType == typeof(decimal) || underlyingElementType == typeof(DateTime) ||
                     underlyingElementType == typeof(Guid))
                 {
                     return "each"; // 基础类型集合显示为循环
                 }
-                
+
                 if (underlyingElementType.IsClass && underlyingElementType != typeof(string))
                 {
                     return "list"; // 复杂对象集合显示为列表
@@ -1189,7 +1196,7 @@ namespace CodeSpirit.Amis.Column
             column["quickEdit"] = columnAttr.QuickEdit;
             column["copyable"] = columnAttr.Copyable;
             column["hidden"] = columnAttr.Hidden;
-            
+
             if (!columnAttr.Toggled)
             {
                 column["toggled"] = columnAttr.Toggled;
@@ -1221,18 +1228,18 @@ namespace CodeSpirit.Amis.Column
         {
             // 获取基础类型（处理可空类型）
             Type underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-            
+
             // 检查是否为数值类型
-            if (underlyingType != typeof(int) && underlyingType != typeof(long) && 
-                underlyingType != typeof(short) && underlyingType != typeof(uint) && 
-                underlyingType != typeof(ulong) && underlyingType != typeof(ushort) && 
+            if (underlyingType != typeof(int) && underlyingType != typeof(long) &&
+                underlyingType != typeof(short) && underlyingType != typeof(uint) &&
+                underlyingType != typeof(ulong) && underlyingType != typeof(ushort) &&
                 underlyingType != typeof(byte) && underlyingType != typeof(sbyte) &&
-                underlyingType != typeof(decimal) && underlyingType != typeof(double) && 
+                underlyingType != typeof(decimal) && underlyingType != typeof(double) &&
                 underlyingType != typeof(float))
             {
                 return false;
             }
-            
+
             // 检查是否为时长字段
             return prop.Name.IndexOf("Duration", StringComparison.OrdinalIgnoreCase) >= 0 ||
                    prop.Name.IndexOf("Time", StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -1255,7 +1262,7 @@ namespace CodeSpirit.Amis.Column
         private void ApplyDurationColumnFormat(JObject column, PropertyInfo prop, string fieldName)
         {
             column["type"] = "tpl";
-            
+
             // 根据字段名称智能判断单位
             if (prop.Name.IndexOf("Milliseconds", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 prop.Name.IndexOf("Duration", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -1291,11 +1298,11 @@ namespace CodeSpirit.Amis.Column
         private void ApplyDateTimeColumnOptimization(JObject column, PropertyInfo prop, string fieldName, Type underlyingType)
         {
             column["type"] = "date";
-            
+
             // 智能推断日期格式
             string format = GetIntelligentDateFormat(prop, underlyingType);
             column["format"] = format;
-            
+
             // 根据属性名称模式设置相对时间显示
             if (ShouldShowRelativeTime(prop))
             {
@@ -1303,10 +1310,10 @@ namespace CodeSpirit.Amis.Column
                 // 为相对时间显示设置更新频率（可选）
                 column["updateFrequency"] = 60000; // 每分钟更新一次
             }
-            
+
             // 设置默认占位符
             column["placeholder"] = GetDateTimePlaceholder(prop);
-            
+
             // 为某些特殊日期字段添加特定配置
             ApplySpecialDateFieldConfig(column, prop, fieldName);
         }
@@ -1320,7 +1327,7 @@ namespace CodeSpirit.Amis.Column
         private string GetIntelligentDateFormat(PropertyInfo prop, Type underlyingType)
         {
             string propName = prop.Name.ToLowerInvariant();
-            
+
             // 包含时间相关词汇的字段，显示完整的日期时间
             if (propName.Contains("time") || propName.Contains("created") ||
                 propName.Contains("createdAt") || propName.Contains("updatedAt") || propName.Contains("deletedAt") ||
@@ -1331,32 +1338,32 @@ namespace CodeSpirit.Amis.Column
             {
                 return "YYYY-MM-DD HH:mm:ss";
             }
-            
+
             // 仅包含日期相关词汇的字段，只显示日期
             if (propName.Contains("date") || propName.Contains("birth") ||
                 propName.Contains("anniversary") || propName.Contains("deadline"))
             {
                 return "YYYY-MM-DD";
             }
-            
+
             // 特殊时间格式
             if (propName.Contains("year"))
             {
                 return "YYYY";
             }
-            
+
             if (propName.Contains("month"))
             {
                 return "YYYY-MM";
             }
-            
+
             // 默认根据类型决定
             if (underlyingType == typeof(DateTime) || underlyingType == typeof(DateTimeOffset))
             {
                 // 检查属性的默认值或上下文来判断是否需要时间部分
                 return "YYYY-MM-DD HH:mm:ss";
             }
-            
+
             return "YYYY-MM-DD";
         }
 
@@ -1368,7 +1375,7 @@ namespace CodeSpirit.Amis.Column
         private bool ShouldShowRelativeTime(PropertyInfo prop)
         {
             string propName = prop.Name.ToLowerInvariant();
-            
+
             // 这些字段适合显示相对时间
             return propName.Contains("created") || propName.Contains("updated") ||
                    propName.Contains("modified") || propName.Contains("last") ||
@@ -1384,7 +1391,7 @@ namespace CodeSpirit.Amis.Column
         private string GetDateTimePlaceholder(PropertyInfo prop)
         {
             string propName = prop.Name.ToLowerInvariant();
-            
+
             if (propName.Contains("birth"))
                 return "出生日期";
             if (propName.Contains("deadline"))
@@ -1401,7 +1408,7 @@ namespace CodeSpirit.Amis.Column
                 return "登录时间";
             if (propName.Contains("expired"))
                 return "过期时间";
-                
+
             return "请选择日期";
         }
 
@@ -1414,9 +1421,9 @@ namespace CodeSpirit.Amis.Column
         private void ApplySpecialDateFieldConfig(JObject column, PropertyInfo prop, string fieldName)
         {
             string propName = prop.Name.ToLowerInvariant();
-            
+
             // 为创建时间/更新时间等添加排序优化
-            if (propName.Contains("created") || propName.Contains("updated") || 
+            if (propName.Contains("created") || propName.Contains("updated") ||
                 propName.Contains("modified"))
             {
                 column["sortable"] = true;

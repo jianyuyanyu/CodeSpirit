@@ -4,6 +4,7 @@
 @{
     var cdnEnabled = SiteOptions.Value.EnableCdn;
     var resourceBase = cdnEnabled ? SiteOptions.Value.CdnUrl : "";
+    var sdkVersion = "6.12.0";
 }
 
 <!DOCTYPE html>
@@ -16,9 +17,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
 
     <!-- 样式表 -->
-    <resource path="sdk/antd.css" type="css" />
-    <resource path="sdk/helper.css" type="css" />
-    <resource path="sdk/iconfont.css" type="css" />
+    <resource path="sdk/@sdkVersion/antd.css" type="css" />
+    <resource path="sdk/@sdkVersion/helper.css" type="css" />
+    <resource path="sdk/@sdkVersion/iconfont.css" type="css" />
     <resource path="css/chat.css" type="css" />
 
     <!-- 全局变量配置 -->
@@ -44,7 +45,7 @@
     </script>
 
     <!-- 脚本 -->
-    <resource path="sdk/sdk.js" type="js" />
+    <resource path="sdk/@sdkVersion/sdk.js" type="js" />
     <resource path="js/history.js" type="js" />
     <resource path="js/tokenManager.js" type="js" />
     @RenderSection("Head", required: false)  <!-- 可选的 Razor section -->

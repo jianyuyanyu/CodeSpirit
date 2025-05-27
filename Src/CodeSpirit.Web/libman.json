@@ -11,6 +11,18 @@
         "dist/browser/signalr.js.map",
         "dist/browser/signalr.min.js.map"
       ]
+    },
+    {
+      "files": [
+        "sdk/sdk.js",
+        "sdk/sdk.css",
+        "sdk/cxd.css",
+        "sdk/dark.css",
+        "sdk/antd.css",
+        "sdk/ang.css"
+      ],
+      "library": "amis@6.12.0",
+      "destination": "wwwroot/sdk/"
     }
   ]
 }

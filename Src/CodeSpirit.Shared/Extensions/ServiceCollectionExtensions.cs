@@ -82,7 +82,7 @@ public static class ServiceCollectionExtensions
         services.AddDataFilters();
         services.AddCodeSpiritAuthorization();
 
-        services.AddCorsPolicy();
+        services.AddCorsPolicy(configuration);
 
         //注册 AMIS 服务
         services.AddAmisServices(configuration, apiAssembly: programType.Assembly);
@@ -106,21 +106,67 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddCorsPolicy(this IServiceCollection services)
+    /// <summary>
+    /// 添加跨域策略配置
+    /// 支持通过配置文件配置跨域设置
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    /// <returns>服务集合</returns>
+    public static IServiceCollection AddCorsPolicy(this IServiceCollection services, IConfiguration? configuration = null)
     {
-        //TODO:通过配置文件配置跨域
         services.AddCors(options =>
         {
-            options.AddPolicy("AllowSpecificOriginsWithCredentials",
-                builder =>
+            // 从配置文件读取跨域设置
+            var corsSection = configuration?.GetSection("Cors");
+            var allowedOrigins = corsSection?.GetSection("AllowedOrigins")?.Get<string[]>() 
+                ?? new[] { "http://localhost:3000", "https://localhost:7120", "https://*.xin-lai.com", "http://*.xin-lai.com" };
+            
+            var allowCredentials = corsSection?.GetValue<bool>("AllowCredentials") ?? true;
+            var allowAnyHeader = corsSection?.GetValue<bool>("AllowAnyHeader") ?? true;
+            var allowAnyMethod = corsSection?.GetValue<bool>("AllowAnyMethod") ?? true;
+            var allowWildcardSubdomains = corsSection?.GetValue<bool>("AllowWildcardSubdomains") ?? true;
+
+            options.AddPolicy("AllowSpecificOriginsWithCredentials", builder =>
+            {
+                builder.WithOrigins(allowedOrigins);
+                
+                if (allowWildcardSubdomains)
                 {
-                    builder
-                        .WithOrigins("http://localhost:3000", "https://localhost:7120", "https://*.xin-lai.com", "http://*.xin-lai.com")
-                        .SetIsOriginAllowedToAllowWildcardSubdomains()
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials();
-                });
+                    builder.SetIsOriginAllowedToAllowWildcardSubdomains();
+                }
+                
+                if (allowAnyHeader)
+                {
+                    builder.AllowAnyHeader();
+                }
+                else
+                {
+                    var allowedHeaders = corsSection?.GetSection("AllowedHeaders")?.Get<string[]>();
+                    if (allowedHeaders?.Length > 0)
+                    {
+                        builder.WithHeaders(allowedHeaders);
+                    }
+                }
+                
+                if (allowAnyMethod)
+                {
+                    builder.AllowAnyMethod();
+                }
+                else
+                {
+                    var allowedMethods = corsSection?.GetSection("AllowedMethods")?.Get<string[]>();
+                    if (allowedMethods?.Length > 0)
+                    {
+                        builder.WithMethods(allowedMethods);
+                    }
+                }
+                
+                if (allowCredentials)
+                {
+                    builder.AllowCredentials();
+                }
+            });
         });
 
         return services;

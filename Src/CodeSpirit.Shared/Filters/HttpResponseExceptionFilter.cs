@@ -1,99 +1,147 @@
 using CodeSpirit.Core;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Data;
+using System.Text.Json;
 
 namespace CodeSpirit.Shared.Filters
 {
+    /// <summary>
+    /// 统一异常处理过滤器
+    /// 提供标准化的异常处理和错误响应格式
+    /// </summary>
     public class HttpResponseExceptionFilter : IExceptionFilter
     {
         private readonly ILogger<HttpResponseExceptionFilter> _logger;
+        private readonly IWebHostEnvironment _environment;
 
-        public HttpResponseExceptionFilter(ILogger<HttpResponseExceptionFilter> logger)
+        public HttpResponseExceptionFilter(
+            ILogger<HttpResponseExceptionFilter> logger,
+            IWebHostEnvironment environment)
         {
             _logger = logger;
+            _environment = environment;
         }
 
+        /// <summary>
+        /// 异常处理主方法
+        /// </summary>
+        /// <param name="context">异常上下文</param>
         public void OnException(ExceptionContext context)
         {
-            switch (context.Exception)
+            var exception = context.Exception;
+            var traceId = context.HttpContext.TraceIdentifier;
+            
+            // 记录异常详细信息
+            LogException(exception, context.HttpContext, traceId);
+
+            // 根据异常类型进行处理
+            var errorResponse = exception switch
             {
-                case AppServiceException appException:
-                    HandleAppServiceException(context, appException);
-                    break;
+                BusinessException businessException => CreateAmisErrorResponse(
+                    StatusCodes.Status400BadRequest,
+                    businessException.Message,
+                    "BUSINESS_ERROR",
+                    traceId),
 
-                case NullReferenceException nullRef:
-                    HandleNotFound(context, nullRef, "空引用异常");
-                    break;
+                ValidationException validationException => CreateValidationErrorResponse(
+                    validationException,
+                    traceId),
 
-                case ArgumentNullException argNull:
-                    HandleBadRequest(context, "信息不存在！", argNull);
-                    break;
+                AppServiceException appException => CreateAmisErrorResponse(
+                    appException.Code >= 1000 ? StatusCodes.Status500InternalServerError : appException.Code,
+                    appException.Message,
+                    "BUSINESS_ERROR",
+                    traceId),
 
-                case BadHttpRequestException badHttp:
-                    HandleBadRequest(context, badHttp.Message, badHttp);
-                    break;
+                ArgumentNullException => CreateAmisErrorResponse(
+                    StatusCodes.Status400BadRequest,
+                    "请求参数不能为空",
+                    "INVALID_ARGUMENT",
+                    traceId),
 
-                case DBConcurrencyException dbConcurrency:
-                    HandleConflict(context, dbConcurrency, "数据并发冲突");
-                    break;
+                ArgumentException => CreateAmisErrorResponse(
+                    StatusCodes.Status400BadRequest,
+                    "请求参数无效",
+                    "INVALID_ARGUMENT",
+                    traceId),
 
-                case NotImplementedException notImplemented:
-                    HandleNotImplemented(context, notImplemented);
-                    break;
+                BadHttpRequestException badHttp => CreateAmisErrorResponse(
+                    StatusCodes.Status400BadRequest,
+                    badHttp.Message,
+                    "BAD_REQUEST",
+                    traceId),
 
-                case DbUpdateException dbUpdate:
-                    HandleDbUpdateException(context, dbUpdate);
-                    break;
+                UnauthorizedAccessException => CreateAmisErrorResponse(
+                    StatusCodes.Status403Forbidden,
+                    "访问被拒绝，权限不足",
+                    "FORBIDDEN",
+                    traceId),
 
-                //case DaprException daprException:
-                //    HandleDaprException(context, daprException);
-                //    break;
+                FileNotFoundException => CreateAmisErrorResponse(
+                    StatusCodes.Status404NotFound,
+                    "请求的资源未找到",
+                    "NOT_FOUND",
+                    traceId),
 
-                //case DaprApiException daprApiException:
-                //    HandleDaprApiException(context, daprApiException);
-                //    break;
+                KeyNotFoundException => CreateAmisErrorResponse(
+                    StatusCodes.Status404NotFound,
+                    "请求的数据未找到",
+                    "NOT_FOUND",
+                    traceId),
 
-                case UnauthorizedAccessException unauthorized:
-                    HandleForbidden(context, unauthorized);
-                    break;
+                NotImplementedException => CreateAmisErrorResponse(
+                    StatusCodes.Status501NotImplemented,
+                    "功能尚未实现",
+                    "NOT_IMPLEMENTED",
+                    traceId),
 
-                case TimeoutException timeout:
-                    HandleGatewayTimeout(context, timeout);
-                    break;
+                TimeoutException => CreateAmisErrorResponse(
+                    StatusCodes.Status504GatewayTimeout,
+                    "请求超时，请稍后重试",
+                    "TIMEOUT",
+                    traceId),
 
-                case OperationCanceledException operationCanceled:
-                    HandleOperationCanceled(context, operationCanceled);
-                    break;
+                OperationCanceledException => CreateAmisErrorResponse(
+                    StatusCodes.Status499ClientClosedRequest,
+                    "请求已取消",
+                    "CANCELLED",
+                    traceId),
 
-                case InvalidOperationException invalidOperation:
-                    HandleConflict(context, invalidOperation, "无效操作");
-                    break;
+                DBConcurrencyException => CreateAmisErrorResponse(
+                    StatusCodes.Status409Conflict,
+                    "数据并发冲突，请刷新后重试",
+                    "CONCURRENCY_CONFLICT",
+                    traceId),
 
-                case FileNotFoundException fileNotFound:
-                    HandleNotFound(context, fileNotFound, "文件未找到");
-                    break;
+                DbUpdateException dbUpdate => HandleDbUpdateException(dbUpdate, traceId),
 
-                case FormatException format:
-                    HandleBadRequest(context, "格式错误", format);
-                    break;
+                InvalidOperationException => CreateAmisErrorResponse(
+                    StatusCodes.Status409Conflict,
+                    "当前操作无效",
+                    "INVALID_OPERATION",
+                    traceId),
 
-                case KeyNotFoundException keyNotFound:
-                    HandleNotFound(context, keyNotFound, "键值未找到");
-                    break;
+                FormatException => CreateAmisErrorResponse(
+                    StatusCodes.Status400BadRequest,
+                    "数据格式错误",
+                    "FORMAT_ERROR",
+                    traceId),
 
-                //case DbUpdateConcurrencyException dbUpdateConcurrency:
-                //    HandleConflict(context, "数据库并发冲突", dbUpdateConcurrency);
-                //    break;
+                _ => CreateAmisErrorResponse(
+                    StatusCodes.Status500InternalServerError,
+                    _environment.IsDevelopment() ? exception.Message : "服务器内部错误",
+                    "INTERNAL_ERROR",
+                    traceId,
+                    _environment.IsDevelopment() ? exception.StackTrace : null)
+            };
 
-                default:
-                    SetServerErrorByException(context);
-                    break;
-            }
-
+            context.Result = errorResponse;
             context.ExceptionHandled = true;
         }
 
@@ -172,14 +220,10 @@ namespace CodeSpirit.Shared.Filters
         private void HandleDbUpdateException(ExceptionContext context, DbUpdateException dbUpdateException)
         {
             _logger.LogError(dbUpdateException, dbUpdateException.Message);
-            if (dbUpdateException.InnerException != null)
-            {
-                SetServerErrorByException(context, dbUpdateException.InnerException);
-            }
-            else
-            {
-                SetServerErrorByException(context);
-            }
+            
+            var traceId = context.HttpContext.TraceIdentifier;
+            var errorResponse = HandleDbUpdateException(dbUpdateException, traceId);
+            context.Result = errorResponse;
         }
 
         //private void HandleDaprException(ExceptionContext context, DaprException daprException)
@@ -245,23 +289,139 @@ namespace CodeSpirit.Shared.Filters
             _logger.LogError(exception, $"{logMessage}：{exception.Message}");
         }
 
-        private void SetServerErrorByException(ExceptionContext context, Exception exception = null)
+        /// <summary>
+        /// 记录异常信息
+        /// </summary>
+        /// <param name="exception">异常对象</param>
+        /// <param name="httpContext">HTTP上下文</param>
+        /// <param name="traceId">跟踪ID</param>
+        private void LogException(Exception exception, HttpContext httpContext, string traceId)
         {
-            Exception ex = exception ?? context.Exception;
-            context.Result = new ObjectResult(ApiResponse<object>.Error(
-                StatusCodes.Status500InternalServerError,
-                "服务器繁忙，请稍后再试！"))
+            try
             {
-                StatusCode = StatusCodes.Status500InternalServerError,
-            };
+                var logLevel = GetLogLevel(exception);
+                var requestInfo = new
+                {
+                    TraceId = traceId,
+                    Method = httpContext.Request.Method,
+                    Path = httpContext.Request.Path.Value,
+                    QueryString = httpContext.Request.QueryString.Value,
+                    UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
+                    RemoteIpAddress = httpContext.Connection.RemoteIpAddress?.ToString()
+                };
 
-            _logger.LogError(ex, ex?.Message);
-
-            // 记录内部异常（如果有）
-            if (ex?.InnerException != null)
+                _logger.Log(logLevel, exception, 
+                    "异常发生 - {ExceptionType}: {Message} | 请求信息: {@RequestInfo}",
+                    exception.GetType().Name, exception.Message, requestInfo);
+            }
+            catch
             {
-                _logger.LogError(ex.InnerException, ex.InnerException.Message);
+                // 如果日志记录失败，忽略错误，避免影响异常处理流程
+                // 这确保即使日志系统出现问题，异常处理器仍能正常工作
             }
         }
+
+        /// <summary>
+        /// 根据异常类型确定日志级别
+        /// </summary>
+        /// <param name="exception">异常对象</param>
+        /// <returns>日志级别</returns>
+        private static LogLevel GetLogLevel(Exception exception)
+        {
+            return exception switch
+            {
+                ArgumentException or ArgumentNullException or FormatException => LogLevel.Warning,
+                UnauthorizedAccessException or FileNotFoundException or KeyNotFoundException => LogLevel.Warning,
+                BusinessException or ValidationException => LogLevel.Information,
+                OperationCanceledException => LogLevel.Information,
+                _ => LogLevel.Error
+            };
+        }
+
+        /// <summary>
+        /// 创建兼容 Amis 的错误响应
+        /// </summary>
+        /// <param name="statusCode">HTTP状态码</param>
+        /// <param name="message">错误消息</param>
+        /// <param name="errorCode">错误代码</param>
+        /// <param name="traceId">跟踪ID</param>
+        /// <param name="details">错误详情</param>
+        /// <returns>Amis兼容的错误响应</returns>
+        private ObjectResult CreateAmisErrorResponse(
+            int statusCode, 
+            string message, 
+            string errorCode, 
+            string traceId,
+            object? details = null)
+        {
+            // Amis API 标准响应格式
+            var amisResponse = new
+            {
+                status = statusCode,
+                msg = message,
+                data = (object?)null,
+                errors = details,
+                traceId = traceId,
+                timestamp = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+            };
+
+            return new ObjectResult(amisResponse)
+            {
+                StatusCode = statusCode
+            };
+        }
+
+        /// <summary>
+        /// 创建验证错误响应
+        /// </summary>
+        /// <param name="validationException">验证异常</param>
+        /// <param name="traceId">跟踪ID</param>
+        /// <returns>验证错误响应</returns>
+        private ObjectResult CreateValidationErrorResponse(ValidationException validationException, string traceId)
+        {
+            // 对于验证异常，使用 Amis 兼容格式
+            return CreateAmisErrorResponse(
+                StatusCodes.Status422UnprocessableEntity,
+                validationException.Message,
+                "VALIDATION_ERROR",
+                traceId);
+        }
+
+        /// <summary>
+        /// 处理数据库更新异常（新版本）
+        /// </summary>
+        /// <param name="dbUpdateException">数据库更新异常</param>
+        /// <param name="traceId">跟踪ID</param>
+        /// <returns>错误响应</returns>
+        private ObjectResult HandleDbUpdateException(DbUpdateException dbUpdateException, string traceId)
+        {
+            var message = "数据操作失败";
+            var errorCode = "DATABASE_ERROR";
+
+            // 分析内部异常以提供更具体的错误信息
+            if (dbUpdateException.InnerException != null)
+            {
+                var innerMessage = dbUpdateException.InnerException.Message.ToLower();
+                if (innerMessage.Contains("unique") || innerMessage.Contains("duplicate"))
+                {
+                    message = "数据已存在，不能重复添加";
+                    errorCode = "DUPLICATE_DATA";
+                }
+                else if (innerMessage.Contains("foreign key") || innerMessage.Contains("reference"))
+                {
+                    message = "数据关联约束冲突";
+                    errorCode = "REFERENCE_CONSTRAINT";
+                }
+            }
+
+            return CreateAmisErrorResponse(
+                StatusCodes.Status409Conflict,
+                message,
+                errorCode,
+                traceId,
+                _environment.IsDevelopment() ? dbUpdateException.InnerException?.Message : null);
+        }
+
+
     }
 }

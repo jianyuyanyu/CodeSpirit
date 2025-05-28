@@ -55,18 +55,35 @@ public static class AuditExtensions
         services.AddSingleton<IAuditErrorHandler, AuditErrorHandler>();
         
         // 注册内存缓存（如果尚未注册）
-        if (!services.Any(s => s.ServiceType == typeof(IMemoryCache)))
+        if (!services.Any(x => x.ServiceType == typeof(IMemoryCache)))
         {
             services.AddMemoryCache();
         }
         
-        // 添加HTTP客户端
+        // 添加HTTP客户端用于地理位置服务
         services.AddHttpClient("GeoLocation", client =>
         {
             client.DefaultRequestHeaders.Add("User-Agent", "CodeSpirit-Audit");
             client.Timeout = TimeSpan.FromSeconds(5);
         });
         
+        services.AddAuditBackgroundServices();
+        return services;
+    }
+
+    /// <summary>
+    /// 使用审计中间件
+    /// </summary>
+    public static IApplicationBuilder UseAuditMiddleware(this IApplicationBuilder app)
+    {
+        return app.UseMiddleware<AuditMiddleware>();
+    }
+    
+    /// <summary>
+    /// 添加审计后台服务
+    /// </summary>
+    public static IServiceCollection AddAuditBackgroundServices(this IServiceCollection services)
+    {
         // 注册审计日志消费者后台服务
         services.AddHostedService<AuditLogConsumerService>();
         
@@ -74,12 +91,30 @@ public static class AuditExtensions
     }
     
     /// <summary>
-    /// 使用审计中间件
+    /// 添加审计性能监控
+    /// </summary>
+    public static IServiceCollection AddAuditPerformanceMonitoring(this IServiceCollection services)
+    {
+        // 注册性能监控中间件
+        services.AddTransient<AuditPerformanceMiddleware>();
+        
+        return services;
+    }
+    
+    /// <summary>
+    /// 使用审计性能监控中间件
+    /// </summary>
+    public static IApplicationBuilder UseAuditPerformanceMonitoring(this IApplicationBuilder app)
+    {
+        return app.UseMiddleware<AuditPerformanceMiddleware>();
+    }
+    
+    /// <summary>
+    /// 使用传统命名的审计中间件方法 (兼容性)
     /// </summary>
     public static IApplicationBuilder UseAuditLogging(this IApplicationBuilder app)
     {
-        app.UseMiddleware<AuditMiddleware>();
-        return app;
+        return UseAuditMiddleware(app);
     }
     
     /// <summary>
@@ -87,6 +122,6 @@ public static class AuditExtensions
     /// </summary>
     public static IApplicationBuilder UseAudit(this IApplicationBuilder app)
     {
-        return UseAuditLogging(app);
+        return UseAuditMiddleware(app);
     }
 }

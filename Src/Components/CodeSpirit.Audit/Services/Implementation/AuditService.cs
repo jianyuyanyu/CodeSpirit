@@ -242,9 +242,30 @@ public class AuditService : IAuditService
         {
             if (result.TryGetValue("operations", out var operationsObj))
             {
-                // 这里需要根据实际的聚合结果结构来解析
-                // 简化处理，实际项目中需要更详细的解析逻辑
-                _logger.LogDebug("操作统计结果: {Result}", operationsObj);
+                _logger.LogDebug("操作统计结果: {Result}", System.Text.Json.JsonSerializer.Serialize(operationsObj));
+                
+                // 解析Terms聚合结果
+                if (operationsObj is Dictionary<string, object> operationsDict)
+                {
+                    if (operationsDict.TryGetValue("buckets", out var bucketsObj))
+                    {
+                        if (bucketsObj is List<Dictionary<string, object>> buckets)
+                        {
+                            foreach (var bucket in buckets)
+                            {
+                                if (bucket.TryGetValue("key", out var keyObj) && 
+                                    bucket.TryGetValue("doc_count", out var countObj))
+                                {
+                                    var key = keyObj?.ToString() ?? "未知";
+                                    var count = Convert.ToInt64(countObj);
+                                    stats[key] = count;
+                                    
+                                    _logger.LogDebug("操作统计 - {Operation}: {Count}", key, count);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -316,9 +337,30 @@ public class AuditService : IAuditService
         {
             if (result.TryGetValue("users", out var usersObj))
             {
-                // 这里需要根据实际的聚合结果结构来解析
-                // 简化处理，实际项目中需要更详细的解析逻辑
-                _logger.LogDebug("用户统计结果: {Result}", usersObj);
+                _logger.LogDebug("用户统计结果: {Result}", System.Text.Json.JsonSerializer.Serialize(usersObj));
+                
+                // 解析Terms聚合结果
+                if (usersObj is Dictionary<string, object> usersDict)
+                {
+                    if (usersDict.TryGetValue("buckets", out var bucketsObj))
+                    {
+                        if (bucketsObj is List<Dictionary<string, object>> buckets)
+                        {
+                            foreach (var bucket in buckets)
+                            {
+                                if (bucket.TryGetValue("key", out var keyObj) && 
+                                    bucket.TryGetValue("doc_count", out var countObj))
+                                {
+                                    var key = keyObj?.ToString() ?? "未知用户";
+                                    var count = Convert.ToInt64(countObj);
+                                    stats[key] = count;
+                                    
+                                    _logger.LogDebug("用户统计 - {UserId}: {Count}", key, count);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -390,9 +432,68 @@ public class AuditService : IAuditService
         {
             if (result.TryGetValue("trend", out var trendObj))
             {
-                // 这里需要根据实际的聚合结果结构来解析
-                // 简化处理，实际项目中需要更详细的解析逻辑
-                _logger.LogDebug("操作趋势结果: {Result}", trendObj);
+                _logger.LogDebug("操作趋势结果: {Result}", System.Text.Json.JsonSerializer.Serialize(trendObj));
+                
+                // 解析DateHistogram聚合结果
+                if (trendObj is Dictionary<string, object> trendDict)
+                {
+                    if (trendDict.TryGetValue("buckets", out var bucketsObj))
+                    {
+                        if (bucketsObj is List<Dictionary<string, object>> buckets)
+                        {
+                            foreach (var bucket in buckets)
+                            {
+                                if (bucket.TryGetValue("key", out var keyObj) && 
+                                    bucket.TryGetValue("doc_count", out var countObj))
+                                {
+                                    // 尝试解析时间戳
+                                    DateTime dateTime;
+                                    if (keyObj is long timestamp)
+                                    {
+                                        // 处理毫秒级Unix时间戳
+                                        try
+                                        {
+                                            dateTime = DateTimeOffset.FromUnixTimeMilliseconds(timestamp).DateTime;
+                                        }
+                                        catch (ArgumentOutOfRangeException ex)
+                                        {
+                                            _logger.LogWarning("时间戳超出有效范围: {Timestamp}, 错误: {Error}", timestamp, ex.Message);
+                                            continue;
+                                        }
+                                    }
+                                    else if (keyObj is double doubleTimestamp)
+                                    {
+                                        // 处理浮点数时间戳
+                                        try
+                                        {
+                                            var longTimestamp = Convert.ToInt64(doubleTimestamp);
+                                            dateTime = DateTimeOffset.FromUnixTimeMilliseconds(longTimestamp).DateTime;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            _logger.LogWarning("无法转换浮点数时间戳: {Timestamp}, 错误: {Error}", doubleTimestamp, ex.Message);
+                                            continue;
+                                        }
+                                    }
+                                    else if (DateTime.TryParse(keyObj?.ToString(), out var parsedDate))
+                                    {
+                                        dateTime = parsedDate;
+                                    }
+                                    else
+                                    {
+                                        _logger.LogWarning("无法解析时间戳: {Key}", keyObj);
+                                        continue;
+                                    }
+                                    
+                                    var count = Convert.ToInt64(countObj);
+                                    trend[dateTime] = count;
+                                    
+                                    _logger.LogDebug("操作趋势 - {DateTime}: {Count}", dateTime, count);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         catch (Exception ex)

@@ -1,0 +1,79 @@
+{
+  "CodeSpirit": {
+    "Cache": {
+      "DefaultExpirationMinutes": 30,
+      "PermissionExpirationMinutes": 30,
+      "UserInfoExpirationMinutes": 60,
+      "CleanupIntervalMinutes": 30,
+      "EnableDistributedCache": true
+    },
+    "Retry": {
+      "MaxAttempts": 3,
+      "BaseDelayMs": 1000,
+      "UseExponentialBackoff": true,
+      "MaxDelayMs": 30000
+    },
+    "Performance": {
+      "Enabled": true,
+      "ReportInterval": 1000,
+      "SlowRequestThresholdMs": 5000,
+      "LogSlowRequests": true
+    },
+    "Audit": {
+      "Enabled": true,
+      "LogUnauthorized": true,
+      "BatchSize": 100,
+      "FlushIntervalSeconds": 30,
+      "ExcludedPaths": [
+        "/health",
+        "/metrics",
+        "/swagger",
+        "/_framework",
+        "/css",
+        "/js",
+        "/images"
+      ],
+      "RabbitMQ": {
+        "ExchangeName": "audit.exchange",
+        "QueueName": "audit.queue",
+        "RoutingKey": "audit.log",
+        "Durable": true,
+        "ConnectionTimeoutSeconds": 30
+      }
+    }
+  },
+  "Cors": {
+    "AllowedOrigins": [
+      "http://localhost:3000",
+      "https://localhost:7120",
+      "https://*.xin-lai.com",
+      "http://*.xin-lai.com"
+    ],
+    "AllowCredentials": true,
+    "AllowAnyHeader": true,
+    "AllowAnyMethod": true,
+    "AllowWildcardSubdomains": true,
+    "AllowedHeaders": [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "OPTIONS"
+    ]
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "CodeSpirit": "Debug"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=CodeSpiritDb;Trusted_Connection=true;MultipleActiveResultSets=true"
+  }
+} 

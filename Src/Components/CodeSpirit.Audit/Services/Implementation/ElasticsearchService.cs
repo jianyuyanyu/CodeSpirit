@@ -3,6 +3,7 @@ using CodeSpirit.Audit.Models;
 using CodeSpirit.Audit.Helpers;
 using System.Dynamic;
 using GeoLoc = CodeSpirit.Audit.Models.GeoLocation;
+using System.Text;
 
 namespace CodeSpirit.Audit.Services.Implementation;
 
@@ -425,28 +426,412 @@ public class ElasticsearchService : IElasticsearchService
             var searchDescriptor = new SearchRequestDescriptor<T>().Index(GetFinalIndexName()).Size(0);
             var searchRequest = aggregationFunc(searchDescriptor);
             
+            _logger.LogInformation("开始执行Elasticsearch聚合查询，索引: {IndexName}", GetFinalIndexName());
+            
             var searchResponse = await _client.SearchAsync<T>(searchRequest);
+            
+            _logger.LogInformation("Elasticsearch聚合查询完成");
+            _logger.LogInformation("聚合响应状态: {IsValid}", searchResponse.IsValidResponse);
+            _logger.LogInformation("查询耗时: {Took}ms", searchResponse.Took);
             
             if (searchResponse.IsValidResponse && searchResponse.Aggregations != null)
             {
-                // 简化的聚合结果处理
+                _logger.LogInformation("聚合查询成功，返回 {Count} 个聚合结果", searchResponse.Aggregations.Count);
+                
+                // 详细的聚合结果处理
                 var result = new Dictionary<string, object>();
+                
                 foreach (var agg in searchResponse.Aggregations)
                 {
-                    result[agg.Key] = agg.Value;
+                    var aggregationResult = ParseAggregationResult(agg.Key, agg.Value);
+                    result[agg.Key] = aggregationResult;
+                    
+                    _logger.LogDebug("聚合结果 {AggName}: {Result}", agg.Key, 
+                        System.Text.Json.JsonSerializer.Serialize(aggregationResult));
                 }
+                
                 return result;
             }
             else
             {
-                _logger.LogError("Elasticsearch聚合查询失败: {Error}", searchResponse.DebugInformation);
+                _logger.LogError("Elasticsearch聚合查询失败");
+                _logger.LogError("错误信息: {Error}", searchResponse.DebugInformation);
+                
+                if (searchResponse.ElasticsearchServerError != null)
+                {
+                    _logger.LogError("服务器错误详情: {ServerError}", searchResponse.ElasticsearchServerError.ToString());
+                }
+                
                 return null;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Elasticsearch聚合查询失败");
+            _logger.LogError(ex, "Elasticsearch聚合查询时发生异常");
+            _logger.LogError("异常类型: {ExceptionType}", ex.GetType().Name);
+            _logger.LogError("异常消息: {Message}", ex.Message);
+            
+            if (ex.InnerException != null)
+            {
+                _logger.LogError("内部异常: {InnerMessage}", ex.InnerException.Message);
+            }
+            
             return null;
         }
+    }
+    
+    /// <summary>
+    /// 解析聚合结果
+    /// </summary>
+    /// <param name="aggregationName">聚合名称</param>
+    /// <param name="aggregationValue">聚合值</param>
+    /// <returns>解析后的聚合结果</returns>
+    private object ParseAggregationResult(string aggregationName, object aggregationValue)
+    {
+        try
+        {
+            // 使用动态类型处理，避免直接引用具体的聚合类型
+            var aggregationType = aggregationValue.GetType();
+            var typeName = aggregationType.Name;
+            
+            _logger.LogDebug("处理聚合类型: {TypeName}", typeName);
+            
+            // 根据类型名称进行处理
+            return typeName switch
+            {
+                var name when name.Contains("Terms") => ParseTermsAggregationDynamic(aggregationValue),
+                var name when name.Contains("DateHistogram") => ParseDateHistogramAggregationDynamic(aggregationValue),
+                var name when name.Contains("Value") => ParseValueAggregationDynamic(aggregationValue),
+                var name when name.Contains("Stats") => ParseStatsAggregationDynamic(aggregationValue),
+                var name when name.Contains("Range") => ParseRangeAggregationDynamic(aggregationValue),
+                _ => ParseGenericAggregationDynamic(aggregationValue)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "解析聚合结果失败，聚合名称: {AggName}", aggregationName);
+            return aggregationValue; // 返回原始值作为备选
+        }
+    }
+    
+    /// <summary>
+    /// 动态解析Terms聚合结果
+    /// </summary>
+    private object ParseTermsAggregationDynamic(object termsAgg)
+    {
+        try
+        {
+            var result = new Dictionary<string, object>();
+            var type = termsAgg.GetType();
+            
+            // 获取Buckets属性
+            var bucketsProperty = type.GetProperty("Buckets");
+            if (bucketsProperty != null)
+            {
+                var buckets = bucketsProperty.GetValue(termsAgg);
+                if (buckets is IEnumerable<object> bucketList)
+                {
+                    var bucketResults = new List<Dictionary<string, object>>();
+                    
+                    foreach (var bucket in bucketList)
+                    {
+                        var bucketData = ParseBucketDynamic(bucket);
+                        bucketResults.Add(bucketData);
+                    }
+                    
+                    result["buckets"] = bucketResults;
+                }
+            }
+            
+            // 获取其他统计信息
+            var docCountErrorProperty = type.GetProperty("DocCountErrorUpperBound");
+            if (docCountErrorProperty != null)
+            {
+                result["doc_count_error_upper_bound"] = docCountErrorProperty.GetValue(termsAgg) ?? 0;
+            }
+            
+            var sumOtherDocCountProperty = type.GetProperty("SumOtherDocCount");
+            if (sumOtherDocCountProperty != null)
+            {
+                result["sum_other_doc_count"] = sumOtherDocCountProperty.GetValue(termsAgg) ?? 0;
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "动态解析Terms聚合失败");
+            return new Dictionary<string, object> { ["error"] = "解析失败" };
+        }
+    }
+    
+    /// <summary>
+    /// 动态解析日期直方图聚合结果
+    /// </summary>
+    private object ParseDateHistogramAggregationDynamic(object dateHistAgg)
+    {
+        try
+        {
+            var result = new Dictionary<string, object>();
+            var type = dateHistAgg.GetType();
+            
+            // 获取Buckets属性
+            var bucketsProperty = type.GetProperty("Buckets");
+            if (bucketsProperty != null)
+            {
+                var buckets = bucketsProperty.GetValue(dateHistAgg);
+                if (buckets is IEnumerable<object> bucketList)
+                {
+                    var bucketResults = new List<Dictionary<string, object>>();
+                    
+                    foreach (var bucket in bucketList)
+                    {
+                        var bucketData = ParseBucketDynamic(bucket);
+                        bucketResults.Add(bucketData);
+                    }
+                    
+                    result["buckets"] = bucketResults;
+                }
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "动态解析DateHistogram聚合失败");
+            return new Dictionary<string, object> { ["error"] = "解析失败" };
+        }
+    }
+    
+    /// <summary>
+    /// 动态解析值聚合结果
+    /// </summary>
+    private object ParseValueAggregationDynamic(object valueAgg)
+    {
+        try
+        {
+            var type = valueAgg.GetType();
+            var valueProperty = type.GetProperty("Value");
+            
+            if (valueProperty != null)
+            {
+                var value = valueProperty.GetValue(valueAgg);
+                return new Dictionary<string, object> { ["value"] = value ?? 0 };
+            }
+            
+            return new Dictionary<string, object> { ["value"] = 0 };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "动态解析Value聚合失败");
+            return new Dictionary<string, object> { ["value"] = 0 };
+        }
+    }
+    
+    /// <summary>
+    /// 动态解析统计聚合结果
+    /// </summary>
+    private object ParseStatsAggregationDynamic(object statsAgg)
+    {
+        try
+        {
+            var result = new Dictionary<string, object>();
+            var type = statsAgg.GetType();
+            
+            // 获取统计属性
+            var properties = new[] { "Count", "Min", "Max", "Avg", "Sum" };
+            
+            foreach (var propName in properties)
+            {
+                var property = type.GetProperty(propName);
+                if (property != null)
+                {
+                    var value = property.GetValue(statsAgg);
+                    result[propName.ToLowerInvariant()] = value ?? 0;
+                }
+            }
+            
+            // 检查是否是扩展统计
+            var extendedProperties = new[] { "SumOfSquares", "Variance", "VariancePopulation", 
+                "VarianceSampling", "StdDeviation", "StdDeviationPopulation", "StdDeviationSampling" };
+            
+            foreach (var propName in extendedProperties)
+            {
+                var property = type.GetProperty(propName);
+                if (property != null)
+                {
+                    var value = property.GetValue(statsAgg);
+                    result[ConvertPropertyNameToSnakeCase(propName)] = value ?? 0;
+                }
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "动态解析Stats聚合失败");
+            return new Dictionary<string, object> { ["error"] = "解析失败" };
+        }
+    }
+    
+    /// <summary>
+    /// 动态解析范围聚合结果
+    /// </summary>
+    private object ParseRangeAggregationDynamic(object rangeAgg)
+    {
+        try
+        {
+            var result = new Dictionary<string, object>();
+            var type = rangeAgg.GetType();
+            
+            // 获取Buckets属性
+            var bucketsProperty = type.GetProperty("Buckets");
+            if (bucketsProperty != null)
+            {
+                var buckets = bucketsProperty.GetValue(rangeAgg);
+                if (buckets is IEnumerable<object> bucketList)
+                {
+                    var bucketResults = new List<Dictionary<string, object>>();
+                    
+                    foreach (var bucket in bucketList)
+                    {
+                        var bucketData = ParseBucketDynamic(bucket);
+                        
+                        // 添加范围特有的属性
+                        var bucketType = bucket.GetType();
+                        var fromProperty = bucketType.GetProperty("From");
+                        var toProperty = bucketType.GetProperty("To");
+                        
+                        if (fromProperty != null)
+                        {
+                            bucketData["from"] = fromProperty.GetValue(bucket);
+                        }
+                        
+                        if (toProperty != null)
+                        {
+                            bucketData["to"] = toProperty.GetValue(bucket);
+                        }
+                        
+                        bucketResults.Add(bucketData);
+                    }
+                    
+                    result["buckets"] = bucketResults;
+                }
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "动态解析Range聚合失败");
+            return new Dictionary<string, object> { ["error"] = "解析失败" };
+        }
+    }
+    
+    /// <summary>
+    /// 动态解析通用聚合结果
+    /// </summary>
+    private object ParseGenericAggregationDynamic(object aggregationValue)
+    {
+        try
+        {
+            var result = new Dictionary<string, object>();
+            var type = aggregationValue.GetType();
+            
+            // 获取所有公共属性
+            var properties = type.GetProperties();
+            
+            foreach (var property in properties)
+            {
+                try
+                {
+                    var value = property.GetValue(aggregationValue);
+                    if (value != null)
+                    {
+                        result[ConvertPropertyNameToSnakeCase(property.Name)] = value;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "获取属性 {PropertyName} 失败", property.Name);
+                }
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "动态解析通用聚合失败");
+            return aggregationValue;
+        }
+    }
+    
+    /// <summary>
+    /// 动态解析Bucket
+    /// </summary>
+    private Dictionary<string, object> ParseBucketDynamic(object bucket)
+    {
+        var bucketData = new Dictionary<string, object>();
+        var bucketType = bucket.GetType();
+        
+        // 获取基本属性
+        var keyProperty = bucketType.GetProperty("Key");
+        if (keyProperty != null)
+        {
+            bucketData["key"] = keyProperty.GetValue(bucket)?.ToString() ?? "";
+        }
+        
+        var keyAsStringProperty = bucketType.GetProperty("KeyAsString");
+        if (keyAsStringProperty != null)
+        {
+            bucketData["key_as_string"] = keyAsStringProperty.GetValue(bucket)?.ToString() ?? "";
+        }
+        
+        var docCountProperty = bucketType.GetProperty("DocCount");
+        if (docCountProperty != null)
+        {
+            bucketData["doc_count"] = docCountProperty.GetValue(bucket) ?? 0;
+        }
+        
+        // 处理子聚合
+        var aggregationsProperty = bucketType.GetProperty("Aggregations");
+        if (aggregationsProperty != null)
+        {
+            var subAggregations = aggregationsProperty.GetValue(bucket);
+            if (subAggregations != null && subAggregations is IDictionary<string, object> subAggDict)
+            {
+                foreach (var subAgg in subAggDict)
+                {
+                    bucketData[subAgg.Key] = ParseAggregationResult(subAgg.Key, subAgg.Value);
+                }
+            }
+        }
+        
+        return bucketData;
+    }
+    
+    /// <summary>
+    /// 将属性名称转换为snake_case格式
+    /// </summary>
+    private string ConvertPropertyNameToSnakeCase(string propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName))
+            return propertyName;
+            
+        var result = new StringBuilder();
+        
+        for (int i = 0; i < propertyName.Length; i++)
+        {
+            char c = propertyName[i];
+            
+            if (char.IsUpper(c) && i > 0)
+            {
+                result.Append('_');
+            }
+            
+            result.Append(char.ToLowerInvariant(c));
+        }
+        
+        return result.ToString();
     }
 } 

@@ -1,11 +1,13 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.IdentityApi.Data.Models
 {
     /// <summary>
     /// 审计日志实体类，用于记录系统操作日志
     /// </summary>
-    public class AuditLog
+    public class AuditLog : IMultiTenant
     {
         /// <summary>
         /// 审计日志记录的唯一标识符
@@ -13,6 +15,13 @@ namespace CodeSpirit.IdentityApi.Data.Models
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
+
+        /// <summary>
+        /// 租户ID
+        /// </summary>
+        [Required]
+        [MaxLength(50)]
+        public string TenantId { get; set; }
 
         /// <summary>
         /// 事件类型，例如"GET.Users.GetAll"

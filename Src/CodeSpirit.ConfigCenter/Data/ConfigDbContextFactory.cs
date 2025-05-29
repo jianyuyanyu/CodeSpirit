@@ -70,8 +70,15 @@ namespace CodeSpirit.ConfigCenter.Data
         public IEnumerable<Claim> Claims => Array.Empty<Claim>();
 
         public HashSet<string> Permissions { get; }
+        public string TenantId { get; }
+        public string TenantName { get; }
 
         public bool IsInRole(string role)
+        {
+            return false;
+        }
+
+        public bool IsInTenant(string tenantId)
         {
             return false;
         }

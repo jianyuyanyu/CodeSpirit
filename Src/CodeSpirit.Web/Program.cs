@@ -7,6 +7,8 @@ using CodeSpirit.Charts.Extensions;
 using CodeSpirit.Core;
 using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
+// using CodeSpirit.MultiTenant.Extensions;
+// using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.EventBus.Extensions;
@@ -58,12 +60,12 @@ public class Program
 
         // Add HttpClient for Blazor components
         builder.Services.AddHttpClient();
-        builder.Services.AddScoped<HttpClient>(sp =>
+        
+        // 为租户登录页面配置专用的HttpClient
+        builder.Services.AddHttpClient("TenantLogin", client =>
         {
-            var navigationManager = sp.GetRequiredService<NavigationManager>();
-            var httpClient = new HttpClient();
-            httpClient.BaseAddress = new Uri(navigationManager.BaseUri);
-            return httpClient;
+            // 在运行时动态设置BaseAddress，因为我们在开发时使用相对路径
+            // 生产环境中可以通过配置文件设置具体的API地址
         });
 
         // 添加 HttpContextAccessor 和内存缓存
@@ -71,6 +73,10 @@ public class Program
         builder.Services.AddMemoryCache();
         builder.Services.AddCorsPolicy();
         builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+
+        // 添加多租户支持
+        // builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
+
         // 使用共享项目中的JWT认证扩展方法
         builder.Services.AddJwtAuthentication(builder.Configuration);
 
@@ -145,6 +151,10 @@ public class Program
         app.MapHub<NotificationHub>("/notification-hub");
 
         app.UseCors("AllowSpecificOriginsWithCredentials");
+
+        // 在认证之前添加租户路径解析中间件
+        // app.UseMiddleware<TenantPathMiddleware>();
+
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapDefaultEndpoints();

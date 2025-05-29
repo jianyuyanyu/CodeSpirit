@@ -1,19 +1,28 @@
 ﻿// Models/LoginLog.cs
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.IdentityApi.Data.Models
 {
     /// <summary>
     /// 登录日志模型，记录用户的登录尝试信息。
     /// </summary>
-    public class LoginLog
+    public class LoginLog : IMultiTenant
     {
         /// <summary>
         /// 日志的唯一标识。
         /// </summary>
         [Key]
         public int Id { get; set; }
+
+        /// <summary>
+        /// 租户ID
+        /// </summary>
+        [Required]
+        [MaxLength(50)]
+        public string TenantId { get; set; }
 
         /// <summary>
         /// 登录用户的唯一标识（外键）。

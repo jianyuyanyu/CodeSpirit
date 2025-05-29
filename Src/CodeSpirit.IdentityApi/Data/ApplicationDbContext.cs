@@ -1,6 +1,8 @@
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.MultiTenant.Abstractions;
+using CodeSpirit.MultiTenant.Models;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities.Interfaces;
 using Microsoft.AspNetCore.Identity;
@@ -35,16 +37,27 @@ namespace CodeSpirit.IdentityApi.Data
         /// </summary>
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
+        /// <summary>
+        /// 租户信息实体集。
+        /// </summary>
+        public DbSet<TenantInfo> Tenants { get; set; }
+
         private readonly IServiceProvider serviceProvider;
         private readonly ILogger<ApplicationDbContext> logger;
         private readonly ChangeTracker changeTracker;
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICurrentUser _currentUser;
+        private readonly Lazy<string> _defaultTenantId;
 
         /// <summary>
         /// 是否启用软删除
         /// </summary>
         protected virtual bool IsSoftDeleteFilterEnabled => DataFilter?.IsEnabled<ISoftDeleteAuditable>() ?? false;
+
+        /// <summary>
+        /// 是否启用多租户过滤
+        /// </summary>
+        protected virtual bool IsMultiTenantFilterEnabled => true; // 可以从配置中读取
 
         /// <summary>
         /// 数据筛选器
@@ -59,6 +72,69 @@ namespace CodeSpirit.IdentityApi.Data
         protected long? CurrentUserId => this.UserId ?? _currentUser?.Id;
 
         public long? UserId { get; set; }
+
+        /// <summary>
+        /// 获取当前租户ID
+        /// </summary>
+        protected virtual string GetCurrentTenantId()
+        {
+            try
+            {
+                // 设计时检查 - 如果是设计时上下文，返回默认值
+                if (_currentUser == null && httpContextAccessor == null)
+                {
+                    return "default";
+                }
+
+                // 优先从CurrentUser获取租户ID（更安全，避免异步调用）
+                var tenantId = _currentUser?.TenantId;
+                
+                // 如果CurrentUser中没有，尝试从HttpContext获取
+                if (string.IsNullOrEmpty(tenantId))
+                {
+                    tenantId = httpContextAccessor?.HttpContext?.Items["TenantId"] as string;
+                }
+                
+                // 如果仍然没有，使用默认租户ID（可配置）
+                if (string.IsNullOrEmpty(tenantId))
+                {
+                    tenantId = _defaultTenantId?.Value ?? "default";
+                }
+                
+                return tenantId;
+            }
+            catch (Exception ex)
+            {
+                // 设计时或其他异常情况下，返回默认值
+                logger?.LogWarning(ex, "获取租户ID时发生异常，使用默认值");
+                return "default";
+            }
+        }
+
+        /// <summary>
+        /// 设置多租户字段
+        /// 在保存实体时自动设置租户ID
+        /// </summary>
+        protected virtual void SetMultiTenantFields()
+        {
+            var currentTenantId = GetCurrentTenantId();
+            if (string.IsNullOrEmpty(currentTenantId))
+            {
+                return;
+            }
+
+            foreach (EntityEntry entry in changeTracker.Entries()
+                .Where(e => e.State == EntityState.Added && e.Entity is IMultiTenant))
+            {
+                var multiTenantEntity = (IMultiTenant)entry.Entity;
+                if (string.IsNullOrEmpty(multiTenantEntity.TenantId))
+                {
+                    multiTenantEntity.TenantId = currentTenantId;
+                    logger?.LogDebug("为实体 {EntityType} 设置租户ID: {TenantId}", 
+                        entry.Entity.GetType().Name, currentTenantId);
+                }
+            }
+        }
 
         public ApplicationDbContext(
             DbContextOptions<ApplicationDbContext> options,
@@ -76,6 +152,13 @@ namespace CodeSpirit.IdentityApi.Data
 
             DataFilter = serviceProvider.GetService<IDataFilter>();
             _currentUser = currentUser;
+            
+            // 延迟初始化默认租户ID，从配置中读取
+            _defaultTenantId = new Lazy<string>(() => 
+            {
+                var configuration = serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                return configuration?.GetValue<string>("MultiTenant:DefaultTenantId") ?? "default";
+            });
         }
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -185,6 +268,34 @@ namespace CodeSpirit.IdentityApi.Data
                       .HasDatabaseName("IX_RefreshTokens_UserId_Token");
             });
 
+            // 配置 TenantInfo 实体
+            builder.Entity<TenantInfo>(entity =>
+            {
+                // 主键设置
+                entity.HasKey(t => t.Id);
+                
+                // 索引 TenantId，提高按租户ID查询的性能
+                entity.HasIndex(t => t.TenantId)
+                      .IsUnique()
+                      .HasDatabaseName("IX_Tenants_TenantId");
+                
+                // 索引 Name，提高按名称查询的性能
+                entity.HasIndex(t => t.Name)
+                      .HasDatabaseName("IX_Tenants_Name");
+                
+                // 索引 Domain，提高按域名查询的性能
+                entity.HasIndex(t => t.Domain)
+                      .HasDatabaseName("IX_Tenants_Domain");
+                
+                // 索引 IsActive，提高按状态过滤的性能
+                entity.HasIndex(t => t.IsActive)
+                      .HasDatabaseName("IX_Tenants_IsActive");
+                
+                // 索引 ExpiresAt，便于查询过期租户
+                entity.HasIndex(t => t.ExpiresAt)
+                      .HasDatabaseName("IX_Tenants_ExpiresAt");
+            });
+
             ConfigureGlobalFiltersOnModelCreating(builder);
         }
 
@@ -192,12 +303,14 @@ namespace CodeSpirit.IdentityApi.Data
         public override int SaveChanges()
         {
             SetAuditFields();
+            SetMultiTenantFields();
             return base.SaveChanges();
         }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SetAuditFields();
+            SetMultiTenantFields();
             return base.SaveChangesAsync(cancellationToken);
         }
 
@@ -353,7 +466,8 @@ namespace CodeSpirit.IdentityApi.Data
         protected virtual bool ShouldFilterEntity<TEntity>(IMutableEntityType entityType) where TEntity : class
         {
             return typeof(ISoftDeleteAuditable).IsAssignableFrom(typeof(TEntity)) ||
-                   typeof(IIsActive).IsAssignableFrom(typeof(TEntity));
+                   typeof(IIsActive).IsAssignableFrom(typeof(TEntity)) ||
+                   typeof(IMultiTenant).IsAssignableFrom(typeof(TEntity));
         }
 
         protected virtual Expression<Func<TEntity, bool>> CreateFilterExpression<TEntity>()
@@ -361,9 +475,48 @@ namespace CodeSpirit.IdentityApi.Data
         {
             Expression<Func<TEntity, bool>> expression = null;
 
+            // 软删除过滤
             if (typeof(ISoftDeleteAuditable).IsAssignableFrom(typeof(TEntity)))
             {
                 expression = e => !IsSoftDeleteFilterEnabled || !EF.Property<bool>(e, "IsDeleted");
+            }
+
+            // 多租户过滤 - 使用更安全的方式获取租户ID
+            if (typeof(IMultiTenant).IsAssignableFrom(typeof(TEntity)) && IsMultiTenantFilterEnabled)
+            {
+                var currentTenantId = GetCurrentTenantId();
+
+                if (!string.IsNullOrEmpty(currentTenantId))
+                {
+                    Expression<Func<TEntity, bool>> tenantFilter = e => EF.Property<string>(e, "TenantId") == currentTenantId;
+                    
+                    if (expression != null)
+                    {
+                        expression = CombineExpressions(expression, tenantFilter);
+                    }
+                    else
+                    {
+                        expression = tenantFilter;
+                    }
+                }
+                else
+                {
+                    // 如果无法获取租户ID，为了安全起见，返回空结果
+                    // 在生产环境中，这种情况应该被记录并处理
+                    Expression<Func<TEntity, bool>> noDataFilter = e => false;
+                    
+                    if (expression != null)
+                    {
+                        expression = CombineExpressions(expression, noDataFilter);
+                    }
+                    else
+                    {
+                        expression = noDataFilter;
+                    }
+                    
+                    // 记录警告日志
+                    logger?.LogWarning("无法确定租户ID，多租户实体 {EntityType} 查询将返回空结果", typeof(TEntity).Name);
+                }
             }
 
             return expression;

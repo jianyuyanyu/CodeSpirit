@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.Navigation.Models;
@@ -6,6 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,10 +21,6 @@ namespace CodeSpirit.Navigation
     {
         private readonly string CONFIG_SECTION_KEY = "Navigation";
 
-        /// <summary>
-        /// 构建模块导航树
-        /// </summary>
-        /// <param name="moduleName">模块名称</param>
         /// <summary>
         /// 构建指定模块的导航树。
         /// 首先从代码中构建导航，如果成功则加载配置文件中的导航，并进行合并。
@@ -122,8 +121,34 @@ namespace CodeSpirit.Navigation
                 Description = attr.Description ?? descriptionAttr?.Description,
                 IsExternal = attr.IsExternal,
                 Target = attr.Target,
-                ModuleName = moduleName
+                ModuleName = moduleName,
+                PlatformType = attr.PlatformType,
+                Group = attr.Group,
+                Tags = attr.Tags ?? [],
+                RequireAuth = attr.RequireAuth,
+                IsExperimental = attr.IsExperimental,
+                MinVersion = attr.MinVersion,
+                MaxVersion = attr.MaxVersion,
+                SupportedDevices = attr.SupportedDevices ?? ["desktop", "tablet", "mobile"],
+                Priority = attr.Priority,
+                Shortcut = attr.Shortcut,
+                Badge = attr.Badge,
+                BadgeType = attr.BadgeType
             };
+
+            // 解析元数据JSON
+            if (!string.IsNullOrEmpty(attr.MetaDataJson))
+            {
+                try
+                {
+                    node.MetaData = JsonConvert.DeserializeObject<Dictionary<string, object>>(attr.MetaDataJson) ?? new();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, $"Failed to parse metadata JSON for navigation node {defaultName}: {attr.MetaDataJson}");
+                    node.MetaData = new();
+                }
+            }
 
             // Generate permission code if not explicitly set
             if (string.IsNullOrEmpty(attr.Permission))
@@ -187,6 +212,24 @@ namespace CodeSpirit.Navigation
             existing.ModuleName = current.ModuleName;
             existing.Route = current.Route;
             existing.Link = current.Link;
+            existing.PlatformType = current.PlatformType;
+            existing.Group = current.Group;
+            existing.Tags = current.Tags;
+            existing.RequireAuth = current.RequireAuth;
+            existing.IsExperimental = current.IsExperimental;
+            existing.MinVersion = current.MinVersion;
+            existing.MaxVersion = current.MaxVersion;
+            existing.SupportedDevices = current.SupportedDevices;
+            existing.Priority = current.Priority;
+            existing.Shortcut = current.Shortcut;
+            existing.Badge = current.Badge;
+            existing.BadgeType = current.BadgeType;
+
+            // 合并元数据
+            foreach (var kvp in current.MetaData)
+            {
+                existing.MetaData[kvp.Key] = kvp.Value;
+            }
 
             foreach (var currentChild in current.Children)
             {
@@ -238,7 +281,20 @@ namespace CodeSpirit.Navigation
                 Target = item.Target,
                 ModuleName = item.ModuleName ?? moduleName,
                 Route = item.Route,
-                Link = item.Link
+                Link = item.Link,
+                PlatformType = item.PlatformType,
+                Group = item.Group,
+                Tags = item.Tags ?? [],
+                MetaData = item.MetaData ?? new(),
+                RequireAuth = item.RequireAuth,
+                IsExperimental = item.IsExperimental,
+                MinVersion = item.MinVersion,
+                MaxVersion = item.MaxVersion,
+                SupportedDevices = item.SupportedDevices ?? ["desktop", "tablet", "mobile"],
+                Priority = item.Priority,
+                Shortcut = item.Shortcut,
+                Badge = item.Badge,
+                BadgeType = item.BadgeType
             };
 
             if (item.Children?.Any() == true)

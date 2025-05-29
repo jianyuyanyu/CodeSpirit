@@ -377,7 +377,7 @@
                 return;
             }
 
-            if (to.startsWith('/impersonate') || to.startsWith('/login') || to.startsWith('/notifications') || to.startsWith('/chat')) {
+            if (to.startsWith('/impersonate') || to.startsWith('/login') || to.startsWith('/notifications') || to.startsWith('/chat') || to.endsWith("/login")) {
                 window.location.href = to;
                 return;
             }

@@ -57,18 +57,35 @@ namespace CodeSpirit.IdentityApi.Services
         /// <summary>
         /// 登录方法，验证用户名和密码，并返回结果及JWT Token
         /// </summary>
-        /// <param name="userName">用户名</param>
-        /// <param name="password">密码</param>
+        /// <param name="input">登录请求</param>
         /// <returns>返回一个包含登录成功与否、信息和JWT Token的元组</returns>
         public async Task<AuthResultDto> LoginAsync(LoginDto input)
         {
             try
             {
+                // 验证租户信息（如果提供了租户ID）
+                if (!string.IsNullOrEmpty(input.TenantId))
+                {
+                    // 这里可以添加租户验证逻辑
+                    // 由于当前没有直接的租户验证服务，我们暂时跳过
+                    // 在实际应用中，应该验证租户是否存在且处于活跃状态
+                }
+
                 var user = await _userManager.FindByNameAsync(input.UserName);
                 if (user == null)
                 {
                     await LogLoginAsync(input, null, false, "用户不存在！");
                     return AuthResultDto.CreateFailure("用户名或密码不正确！");
+                }
+
+                // 验证用户是否属于指定租户（如果提供了租户ID）
+                if (!string.IsNullOrEmpty(input.TenantId) && !string.IsNullOrEmpty(user.TenantId))
+                {
+                    if (user.TenantId != input.TenantId)
+                    {
+                        await LogLoginAsync(input, user.Id, false, "用户不属于指定租户");
+                        return AuthResultDto.CreateFailure("用户名或密码不正确！");
+                    }
                 }
 
                 if (!user.IsActive)
@@ -84,7 +101,8 @@ namespace CodeSpirit.IdentityApi.Services
                     UserName = input.UserName,
                     LoginTime = DateTime.UtcNow,
                     IPAddress = input.IpAddress,
-                    IsSuccess = result.Succeeded
+                    IsSuccess = result.Succeeded,
+                    TenantId = user.TenantId ?? input.TenantId ?? "default"
                 };
 
                 if (result.Succeeded)

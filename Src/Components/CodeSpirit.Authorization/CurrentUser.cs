@@ -3,6 +3,7 @@ using CodeSpirit.Core;
 using CodeSpirit.Authorization.Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
+using System.Reflection;
 
 namespace CodeSpirit.Authorization
 {
@@ -13,6 +14,13 @@ namespace CodeSpirit.Authorization
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IDistributedCache _cache;
+        
+        // 缓存反射结果以提升性能
+        private static readonly PropertyInfo _tenantInfoNameProperty = 
+            typeof(object).Assembly.GetTypes()
+            .FirstOrDefault(t => t.Name == "ITenantInfo")?
+            .GetProperty("Name") ?? 
+            typeof(object).GetProperty("Name"); // 备用方案
 
         /// <summary>
         /// 获取当前HTTP上下文中的用户主体
@@ -68,11 +76,92 @@ namespace CodeSpirit.Authorization
         public IEnumerable<Claim> Claims => User?.Claims ?? Enumerable.Empty<Claim>();
 
         /// <summary>
+        /// 获取当前用户的租户ID
+        /// 优先从JWT声明中获取，如果没有则从HttpContext中获取
+        /// </summary>
+        public string? TenantId
+        {
+            get
+            {
+                // 先从JWT声明中获取租户ID
+                var tenantIdClaim = User?.FindFirst("TenantId");
+                if (!string.IsNullOrEmpty(tenantIdClaim?.Value))
+                {
+                    return tenantIdClaim.Value;
+                }
+
+                // 如果JWT声明中没有，从HttpContext Items中获取（多租户中间件设置）
+                var httpContext = _httpContextAccessor.HttpContext;
+                if (httpContext?.Items.ContainsKey("TenantId") == true)
+                {
+                    return httpContext.Items["TenantId"] as string;
+                }
+
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 获取当前用户的租户名称
+        /// 优先从JWT声明中获取，如果没有则从HttpContext中获取
+        /// </summary>
+        public string? TenantName
+        {
+            get
+            {
+                // 先从JWT声明中获取租户名称
+                var tenantNameClaim = User?.FindFirst("TenantName");
+                if (!string.IsNullOrEmpty(tenantNameClaim?.Value))
+                {
+                    return tenantNameClaim.Value;
+                }
+
+                // 如果JWT声明中没有，从HttpContext Items中获取租户信息
+                var httpContext = _httpContextAccessor.HttpContext;
+                if (httpContext?.Items.ContainsKey("TenantInfo") == true)
+                {
+                    var tenantInfo = httpContext.Items["TenantInfo"];
+                    if (tenantInfo != null)
+                    {
+                        // 尝试直接访问Name属性（大多数情况下都有此属性）
+                        try
+                        {
+                            var nameProperty = tenantInfo.GetType().GetProperty("Name");
+                            return nameProperty?.GetValue(tenantInfo) as string;
+                        }
+                        catch
+                        {
+                            // 如果获取失败，返回null而不是抛出异常
+                            return null;
+                        }
+                    }
+                }
+
+                return null;
+            }
+        }
+
+        /// <summary>
         /// 判断当前用户是否属于指定角色
         /// </summary>
         /// <param name="role">角色名称</param>
         /// <returns>如果用户属于该角色返回true，否则返回false</returns>
         public bool IsInRole(string role) => User?.IsInRole(role) ?? false;
+
+        /// <summary>
+        /// 判断用户是否属于指定租户
+        /// </summary>
+        /// <param name="tenantId">租户ID</param>
+        /// <returns>如果用户属于该租户返回true，否则返回false</returns>
+        public bool IsInTenant(string tenantId)
+        {
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                return false;
+            }
+
+            return string.Equals(TenantId, tenantId, StringComparison.OrdinalIgnoreCase);
+        }
 
         /// <summary>
         /// 权限集合
@@ -87,8 +176,12 @@ namespace CodeSpirit.Authorization
                     return new HashSet<string>();
                 }
 
-                // 定义缓存键
+                // 定义缓存键，包含租户信息
                 string cacheKey = $"UserPermissions:{Id.Value}";
+                if (!string.IsNullOrEmpty(TenantId))
+                {
+                    cacheKey += $":Tenant:{TenantId}";
+                }
 
                 // 尝试从缓存中获取权限
                 var cachedPermissions = _cache.GetAsync<HashSet<string>>(cacheKey).GetAwaiter().GetResult();
@@ -114,7 +207,7 @@ namespace CodeSpirit.Authorization
                 //    _cache.SetAsync(cacheKey, claimsPermissions, cacheOptions).GetAwaiter().GetResult();
                 //}
 
-                return null;
+                return new HashSet<string>();
             }
         }
     }

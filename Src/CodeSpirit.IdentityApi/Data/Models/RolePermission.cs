@@ -1,10 +1,19 @@
 ﻿using CodeSpirit.IdentityApi.Data.Models;
+using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core;
 /// <summary>
 /// 角色与权限的关联实体，用于表示角色拥有的权限及其允许状态。
 /// </summary>
-public class RolePermission
+public class RolePermission : IMultiTenant
 {
     public int Id { get; set; }
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [MaxLength(50)]
+    public string TenantId { get; set; }
 
     /// <summary>
     /// 角色的唯一标识。

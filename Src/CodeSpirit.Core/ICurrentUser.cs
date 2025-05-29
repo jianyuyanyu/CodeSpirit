@@ -33,7 +33,21 @@ namespace CodeSpirit.Core
         /// 获取用户的所有声明（Claims）
         /// </summary>
         IEnumerable<Claim> Claims { get; }
+        
+        /// <summary>
+        /// 获取用户权限集合
+        /// </summary>
         HashSet<string> Permissions { get; }
+
+        /// <summary>
+        /// 获取当前用户的租户ID
+        /// </summary>
+        string? TenantId { get; }
+
+        /// <summary>
+        /// 获取当前用户的租户名称
+        /// </summary>
+        string? TenantName { get; }
 
         /// <summary>
         /// 判断用户是否属于指定角色
@@ -41,5 +55,12 @@ namespace CodeSpirit.Core
         /// <param name="role">角色名称</param>
         /// <returns>如果用户属于该角色返回true，否则返回false</returns>
         bool IsInRole(string role);
+
+        /// <summary>
+        /// 判断用户是否属于指定租户
+        /// </summary>
+        /// <param name="tenantId">租户ID</param>
+        /// <returns>如果用户属于该租户返回true，否则返回false</returns>
+        bool IsInTenant(string tenantId);
     }
 }

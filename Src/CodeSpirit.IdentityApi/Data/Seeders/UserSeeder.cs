@@ -45,7 +45,8 @@ public class UserSeeder : IScopedDependency
                 EmailConfirmed = true,
                 Name = "Admin",
                 IsActive = true,
-                Gender = Gender.Unknown
+                Gender = Gender.Unknown,
+                TenantId = "default"
             };
 
             IdentityResult result = await _userManager.CreateAsync(adminUser, "123@Admin");
@@ -70,7 +71,15 @@ public class UserSeeder : IScopedDependency
 
         if (!await _roleManager.RoleExistsAsync("Admin"))
         {
-            IdentityResult createRoleResult = await _roleManager.CreateAsync(new ApplicationRole() { Name = "Admin" });
+            var adminRole = new ApplicationRole() 
+            { 
+                Name = "Admin",
+                TenantId = "default",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = -1L // 系统用户
+            };
+            IdentityResult createRoleResult = await _roleManager.CreateAsync(adminRole);
             if (createRoleResult.Succeeded)
             {
                 _logger.LogInformation("管理员角色创建成功。");
@@ -156,7 +165,8 @@ public class UserSeeder : IScopedDependency
                 IsActive = random.Next(1, 10) % 2 == 0,
                 AvatarUrl = avatarUrl,
                 PhoneNumber = GenerateRandomPhoneNumber(random),
-                IdNo = GenerateRandomIdNumber(random)
+                IdNo = GenerateRandomIdNumber(random),
+                TenantId = "default"
             };
 
             if (i > 5)

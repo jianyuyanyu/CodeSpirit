@@ -1,0 +1,527 @@
+/* 租户登录页面全局样式 */
+:root {
+    --tenant-primary-color: #3f51b5;
+    --tenant-bg-color: #f5f5f5;
+    --tenant-text-color: #333;
+    --tenant-border-color: #ddd;
+    --tenant-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --tenant-radius: 8px;
+}
+
+/* 覆盖默认布局样式，实现全屏显示 */
+body.tenant-login-body {
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.tenant-login-root {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    background: linear-gradient(135deg, var(--tenant-bg-color) 0%, #e3f2fd 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-sizing: border-box;
+}
+
+/* 隐藏默认布局元素 */
+.tenant-login-root ~ * {
+    display: none !important;
+}
+
+/* Loading状态 */
+.tenant-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    color: var(--tenant-primary-color);
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--tenant-primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.tenant-loading p {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
+}
+
+/* 错误页面 */
+.tenant-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    padding: 20px;
+}
+
+.error-content {
+    text-align: center;
+    max-width: 400px;
+    background: white;
+    padding: 40px 30px;
+    border-radius: var(--tenant-radius);
+    box-shadow: var(--tenant-shadow);
+}
+
+.error-icon {
+    color: #ff9800;
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.error-content h3 {
+    color: var(--tenant-text-color);
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+
+.error-content p {
+    color: #666;
+    margin-bottom: 30px;
+    line-height: 1.5;
+}
+
+.error-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.error-actions .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.error-actions .btn-primary {
+    background: var(--tenant-primary-color);
+    color: white;
+}
+
+.error-actions .btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.error-actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 登录页面容器 */
+.tenant-login-page {
+    background: transparent !important;
+    min-height: 100vh;
+}
+
+.tenant-login-container {
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.tenant-login-content {
+    background: white;
+    border-radius: var(--tenant-radius);
+    box-shadow: var(--tenant-shadow);
+    overflow: hidden;
+    max-width: 500px;
+    width: 100%;
+}
+
+/* 租户品牌区域 */
+.tenant-branding {
+    background: linear-gradient(135deg, var(--tenant-primary-color) 0%, #5c6bc0 100%);
+    color: white;
+    padding: 40px 30px;
+    text-align: center;
+}
+
+.tenant-logo-container {
+    margin-bottom: 20px;
+}
+
+.tenant-logo {
+    max-width: 80px;
+    max-height: 80px;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    background: white;
+    padding: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tenant-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.tenant-description {
+    font-size: 14px;
+    opacity: 0.9;
+    margin: 0 0 20px 0;
+    line-height: 1.4;
+}
+
+.login-welcome h3 {
+    font-size: 18px;
+    margin: 0 0 5px 0;
+    font-weight: 500;
+}
+
+.login-welcome p {
+    font-size: 13px;
+    opacity: 0.8;
+    margin: 0;
+}
+
+/* 登录表单区域 */
+.tenant-login-panel {
+    background: white;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.tenant-login-form {
+    padding: 40px 30px 30px;
+}
+
+.tenant-input-field .cxd-Form-item {
+    margin-bottom: 20px;
+}
+
+.tenant-input-field .cxd-Form-label {
+    color: var(--tenant-text-color);
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.tenant-input-field .cxd-TextControl-input {
+    border: 2px solid var(--tenant-border-color);
+    border-radius: 6px;
+    padding: 12px 40px 12px 12px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.tenant-input-field .cxd-TextControl-input:focus {
+    border-color: var(--tenant-primary-color);
+    box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.1);
+}
+
+.tenant-input-field .cxd-TextControl-input-prefix {
+    color: #999;
+    left: 12px;
+}
+
+/* 登录选项 */
+.login-options {
+    margin: 20px 0;
+}
+
+.remember-checkbox .cxd-Checkbox-wrap {
+    color: var(--tenant-text-color);
+    font-size: 14px;
+}
+
+.forgot-password-link {
+    color: var(--tenant-primary-color) !important;
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.forgot-password-link:hover {
+    text-decoration: underline;
+}
+
+/* 登录按钮 */
+.tenant-login-btn .cxd-Button {
+    background: var(--tenant-primary-color) !important;
+    border-color: var(--tenant-primary-color) !important;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 14px 30px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.tenant-login-btn .cxd-Button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(63, 81, 181, 0.3);
+}
+
+/* 其他登录选项 */
+.alternative-login-options {
+    padding: 0 30px 20px;
+}
+
+.alternative-login-options .cxd-Divider {
+    margin: 20px 0;
+    color: #999;
+    font-size: 13px;
+}
+
+.sso-login-btn .cxd-Button,
+.sms-login-btn .cxd-Button {
+    border: 2px solid var(--tenant-border-color) !important;
+    background: white !important;
+    color: var(--tenant-text-color) !important;
+    font-size: 14px;
+    padding: 12px 20px;
+    transition: all 0.3s ease;
+}
+
+.sso-login-btn .cxd-Button:hover,
+.sms-login-btn .cxd-Button:hover {
+    border-color: var(--tenant-primary-color) !important;
+    color: var(--tenant-primary-color) !important;
+    transform: translateY(-1px);
+}
+
+/* 页脚 */
+.tenant-login-footer {
+    background: #f8f9fa;
+    padding: 20px 30px;
+    text-align: center;
+    border-top: 1px solid var(--tenant-border-color);
+}
+
+.footer-links {
+    margin-bottom: 10px;
+}
+
+.footer-links a {
+    color: var(--tenant-primary-color);
+    text-decoration: none;
+    font-size: 13px;
+    margin: 0 5px;
+}
+
+.footer-links a:hover {
+    text-decoration: underline;
+}
+
+.footer-links .separator {
+    color: #ccc;
+    margin: 0 5px;
+}
+
+.footer-copyright p {
+    margin: 0;
+    color: #666;
+    font-size: 12px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .tenant-login-root {
+        padding: 10px;
+    }
+    
+    .tenant-login-container {
+        padding: 10px;
+        min-height: auto;
+    }
+    
+    .tenant-login-content {
+        margin: 0;
+        max-width: none;
+    }
+    
+    .tenant-branding {
+        padding: 30px 20px;
+    }
+    
+    .tenant-title {
+        font-size: 20px;
+    }
+    
+    .tenant-login-form {
+        padding: 30px 20px 20px;
+    }
+    
+    .alternative-login-options {
+        padding: 0 20px 15px;
+    }
+    
+    .tenant-login-footer {
+        padding: 15px 20px;
+    }
+    
+    .footer-links {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .footer-links .separator {
+        display: none;
+    }
+    
+    .error-actions {
+        flex-direction: column;
+    }
+    
+    .error-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .tenant-login-root {
+        padding: 5px;
+    }
+    
+    .tenant-branding {
+        padding: 25px 15px;
+    }
+    
+    .tenant-logo {
+        max-width: 60px;
+        max-height: 60px;
+    }
+    
+    .tenant-title {
+        font-size: 18px;
+    }
+    
+    .tenant-login-form {
+        padding: 25px 15px 15px;
+    }
+    
+    .tenant-input-field .cxd-TextControl-input {
+        padding: 10px 35px 10px 10px;
+    }
+    
+    .tenant-login-btn .cxd-Button {
+        padding: 12px 20px;
+        font-size: 15px;
+    }
+}
+
+/* 动画效果 */
+.tenant-login-content {
+    animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 深色主题支持 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --tenant-bg-color: #1a1a1a;
+        --tenant-text-color: #e0e0e0;
+        --tenant-border-color: #333;
+    }
+    
+    .tenant-login-content {
+        background: #2d2d2d;
+        color: var(--tenant-text-color);
+    }
+    
+    .tenant-login-footer {
+        background: #1e1e1e;
+        border-top-color: #333;
+    }
+    
+    .error-content {
+        background: #2d2d2d;
+        color: var(--tenant-text-color);
+    }
+}
+
+/* AMIS组件覆盖样式 */
+.tenant-login-root .amis-scope {
+    height: 100vh;
+}
+
+.tenant-login-root .cxd-Page {
+    padding: 0 !important;
+    min-height: 100vh;
+}
+
+.tenant-login-root .cxd-Page-body {
+    padding: 0 !important;
+}
+
+/* 表单输入框样式增强 */
+.tenant-input-field .cxd-TextControl-input {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.tenant-input-field .cxd-FormItem-label {
+    font-weight: 500;
+    color: var(--tenant-text-color);
+    margin-bottom: 8px;
+}
+
+/* 焦点指示器 */
+.tenant-input-field .cxd-TextControl:focus-within::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid var(--tenant-primary-color);
+    border-radius: 8px;
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+/* 页面进入动画 */
+.tenant-login-root {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+} 

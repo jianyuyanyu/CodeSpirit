@@ -23,6 +23,12 @@ namespace CodeSpirit.IdentityApi.Dtos.Auth
         public string Password { get; set; }
         
         /// <summary>
+        /// 租户ID
+        /// </summary>
+        [DisplayName("租户ID")]
+        public string TenantId { get; set; }
+        
+        /// <summary>
         /// 客户端IP地址
         /// </summary>
         public string IpAddress { get; set; }

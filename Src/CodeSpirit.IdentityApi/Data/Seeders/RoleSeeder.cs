@@ -53,22 +53,103 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
         public List<ApplicationRole> GetRoles()
         {
+            var currentTime = DateTime.UtcNow;
             var roles = new List<ApplicationRole>()
             {
-                new() { Id = _idGenerator.NewId(), Name = "Admin", Description = "系统管理员，拥有所有权限。" }
+                new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "Admin", 
+                    Description = "系统管理员，拥有所有权限。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L // 系统用户
+                }
             };
 
             if (_hostEnvironment.IsDevelopment())
             {
-                roles.Add(new() { Id = _idGenerator.NewId(), Name = "项目经理", Description = "项目经理，负责项目管理和团队协调。" });
-                roles.Add(new() { Id = _idGenerator.NewId(), Name = "开发人员", Description = "开发人员，负责编码和实现功能。" });
-                roles.Add(new() { Id = _idGenerator.NewId(), Name = "测试人员", Description = "测试人员，负责软件测试和质量保证。" });
-                roles.Add(new() { Id = _idGenerator.NewId(), Name = "技术支持", Description = "支持人员，提供技术支持和客户服务。" });
-                roles.Add(new() { Id = _idGenerator.NewId(), Name = "人力资源", Description = "人力资源，管理员工信息和招聘流程。" });
-                roles.Add(new() { Id = _idGenerator.NewId(), Name = "财务人员", Description = "财务人员，负责财务管理和预算控制。" });
-                roles.Add(new() { Id = _idGenerator.NewId(), Name = "销售人员", Description = "销售人员，负责销售和市场推广。" });
-                roles.Add(new() { Id = _idGenerator.NewId(), Name = "市场营销", Description = "市场营销，负责市场分析和营销策略。" });
-                roles.Add(new() { Id = _idGenerator.NewId(), Name = "访客", Description = "访客，具有最低权限的用户。" });
+                roles.Add(new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "项目经理", 
+                    Description = "项目经理，负责项目管理和团队协调。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L
+                });
+                roles.Add(new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "开发人员", 
+                    Description = "开发人员，负责编码和实现功能。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L
+                });
+                roles.Add(new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "测试人员", 
+                    Description = "测试人员，负责软件测试和质量保证。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L
+                });
+                roles.Add(new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "技术支持", 
+                    Description = "支持人员，提供技术支持和客户服务。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L
+                });
+                roles.Add(new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "人力资源", 
+                    Description = "人力资源，管理员工信息和招聘流程。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L
+                });
+                roles.Add(new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "财务人员", 
+                    Description = "财务人员，负责财务管理和预算控制。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L
+                });
+                roles.Add(new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "销售人员", 
+                    Description = "销售人员，负责销售和市场推广。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L
+                });
+                roles.Add(new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "市场营销", 
+                    Description = "市场营销，负责市场分析和营销策略。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L
+                });
+                roles.Add(new() { 
+                    Id = _idGenerator.NewId(), 
+                    Name = "访客", 
+                    Description = "访客，具有最低权限的用户。",
+                    TenantId = "default",
+                    IsActive = true,
+                    CreatedAt = currentTime,
+                    CreatedBy = -1L
+                });
             }
             return roles;
         }

@@ -1,15 +1,24 @@
 ﻿using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities.Interfaces;
+using CodeSpirit.MultiTenant.Abstractions;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.IdentityApi.Data.Models
 {
     /// <summary>
     /// 用户信息
     /// </summary> 
-    public class ApplicationUser : IdentityUser<long>, IIsActive, IFullEntityEvent, IFullAuditable
+    public class ApplicationUser : IdentityUser<long>, IIsActive, IFullEntityEvent, IFullAuditable, IMultiTenant
     {
+        /// <summary>
+        /// 租户ID
+        /// </summary>
+        [Required]
+        [MaxLength(50)]
+        public string TenantId { get; set; }
+
         /// <summary>
         /// 姓名
         /// </summary>

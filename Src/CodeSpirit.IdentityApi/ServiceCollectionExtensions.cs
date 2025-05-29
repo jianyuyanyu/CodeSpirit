@@ -14,6 +14,7 @@ using CodeSpirit.IdentityApi.Data.Seeders;
 using CodeSpirit.IdentityApi.EventHandlers;
 using CodeSpirit.IdentityApi.Jwt;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.EventBus.Events;
@@ -49,8 +50,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SeederService>();
         services.AddScoped<UserSeeder>();
         services.AddScoped<RoleSeeder>();
+        services.AddScoped<TenantSeeder>();
         services.AddScoped<ILoginLogService, LoginLogService>();
         services.AddScoped<IAuditLogService, AuditLogService>();
+        services.AddScoped<ITenantService, TenantService>();
 
         // 注册自定义授权处理程序（这个需要特殊处理，因为是 Identity 框架的组件）
         services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
@@ -221,6 +224,9 @@ public static class ServiceCollectionExtensions
         builder.Services.AddJwtAuthentication(builder.Configuration);
         builder.Services.ConfigureCustomControllers();
         
+        // 注册多租户服务
+        builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
+        
         // 注册Charts服务
         builder.Services.RegisterChartServices();
 
@@ -266,6 +272,10 @@ public static class ServiceCollectionExtensions
         await app.InitializeDatabaseAsync();
 
         app.UseCors("AllowSpecificOriginsWithCredentials");
+        
+        // 启用多租户中间件（在认证之前）
+        app.UseCodeSpiritMultiTenant();
+        
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseAuditLogging();

@@ -67,6 +67,26 @@ namespace CodeSpirit.IdentityApi.Jwt
                     new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName)
                 };
 
+                // 添加租户信息到Claims（直接从用户对象获取，避免循环依赖）
+                if (!string.IsNullOrEmpty(user.TenantId))
+                {
+                    claims.Add(new Claim("TenantId", user.TenantId));
+                    
+                    // 尝试获取租户名称（如果需要的话）
+                    // 这里可以通过查询租户表获取名称，但要注意性能
+                    // 暂时只添加TenantId，TenantName可以在需要时从租户服务获取
+                    
+                    //var tenantService = serviceProvider.GetService<ITenantService>();
+                    //if (tenantService != null)
+                    //{
+                    //    var tenant = await tenantService.GetByTenantIdAsync(user.TenantId);
+                    //    if (tenant != null)
+                    //    {
+                    //        claims.Add(new Claim("TenantName", tenant.Name));
+                    //    }
+                    //}
+                }
+
                 // 添加角色声明
                 var roles = await _userManager.GetRolesAsync(user);
                 foreach (var role in roles)

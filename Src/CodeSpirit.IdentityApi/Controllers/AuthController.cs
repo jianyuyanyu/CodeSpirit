@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
+using System.Linq;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -54,11 +55,17 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             try
             {
+                // 从请求头或模型中获取租户ID
+                var tenantId = HttpContext.Request.Headers["TenantId"].FirstOrDefault() 
+                              ?? HttpContext.Items["TenantId"]?.ToString()
+                              ?? model.TenantId;
+
                 // 在服务器端获取客户端信息
                 var loginDto = new LoginDto
                 {
                     UserName = model.UserName,
                     Password = model.Password,
+                    TenantId = tenantId,
                     IpAddress = _clientIpService.GetClientIpAddress(HttpContext),
                     UserAgent = HttpContext.Request.Headers["User-Agent"].ToString()
                 };

@@ -268,24 +268,25 @@ https://codespirit-app.xin-lai.com/
 
 ### 🔧 核心组件
 
-10. [🔗 聚合器使用指南](./Docs/CodeSpirit.Aggregator聚合器使用指南.md) - 数据聚合和字段替换
-11. [⚙️ 设置管理组件](./Docs/CodeSpirit.Settings设置管理组件使用指南.md) - 配置管理解决方案
-12. [🔒 分布式锁使用指南](./Docs/CodeSpirit分布式锁使用指南.md) - 分布式锁实现和使用
-13. [🌐 跨域策略配置指南](./Docs/CodeSpirit跨域策略配置指南.md) - CORS跨域资源共享配置和安全策略
-14. [📄 PDF生成组件](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF文档生成服务
-15. [🕒 时间处理机制](./Docs/CodeSpirit时间处理机制.md) - 统一时间处理方案
-16. [🌐 客户端IP服务](./Docs/ClientIpService使用指南.md) - 客户端IP获取和处理
-17. [📋 审计组件集成使用指南](./Docs/CodeSpirit.Audit审计组件集成使用指南.md) - 完整的审计系统集成和使用
+10. [🧭 Navigation导航组件](./Docs/CodeSpirit.Navigation导航组件使用指南.md) - 智能导航系统，支持多平台、权限过滤和上下文感知
+11. [🔗 聚合器使用指南](./Docs/CodeSpirit.Aggregator聚合器使用指南.md) - 数据聚合和字段替换
+12. [⚙️ 设置管理组件](./Docs/CodeSpirit.Settings设置管理组件使用指南.md) - 配置管理解决方案
+13. [🔒 分布式锁使用指南](./Docs/CodeSpirit分布式锁使用指南.md) - 分布式锁实现和使用
+14. [🌐 跨域策略配置指南](./Docs/CodeSpirit跨域策略配置指南.md) - CORS跨域资源共享配置和安全策略
+15. [📄 PDF生成组件](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF文档生成服务
+16. [🕒 时间处理机制](./Docs/CodeSpirit时间处理机制.md) - 统一时间处理方案
+17. [🌐 客户端IP服务](./Docs/ClientIpService使用指南.md) - 客户端IP获取和处理
+18. [📋 审计组件集成使用指南](./Docs/CodeSpirit.Audit审计组件集成使用指南.md) - 完整的审计系统集成和使用
 
 ### 🚀 基础设施
 
-18. [🐰 RabbitMQ集成指南](./Docs/RabbitMQ-Aspire-Integration.md) - 消息队列集成方案
-19. [🔧 RabbitMQ故障排除](./Docs/RabbitMQ故障排除指南.md) - 常见问题解决方案
-20. [🔍 Elasticsearch迁移总结](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - 搜索引擎集成指南
+19. [🐰 RabbitMQ集成指南](./Docs/RabbitMQ-Aspire-Integration.md) - 消息队列集成方案
+20. [🔧 RabbitMQ故障排除](./Docs/RabbitMQ故障排除指南.md) - 常见问题解决方案
+21. [🔍 Elasticsearch迁移总结](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - 搜索引擎集成指南
 
 ### 📊 项目管理
 
-21. [📋 技术债管理文档](./Docs/技术债管理文档.md) - 技术债跟踪和管理规范
+22. [📋 技术债管理文档](./Docs/技术债管理文档.md) - 技术债跟踪和管理规范
 
 ### 💬 技术社区
 

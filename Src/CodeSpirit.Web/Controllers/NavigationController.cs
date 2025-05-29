@@ -1,5 +1,6 @@
 using CodeSpirit.Core.Authorization;
 using CodeSpirit.Core.Extensions;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.Navigation;
 using CodeSpirit.Navigation.Models;
 using CodeSpirit.Navigation.Services;
@@ -36,26 +37,164 @@ namespace CodeSpirit.Web.Controllers
         /// <summary>
         /// 获取导航树（Page格式）
         /// </summary>
+        /// <param name="platformType">平台类型，默认为Both</param>
+        /// <param name="deviceType">设备类型，默认为desktop</param>
+        /// <param name="groupFilter">分组过滤器</param>
+        /// <param name="includeDashboard">是否包含控制台首页，默认为true</param>
         /// <returns>Page格式的导航树JSON</returns>
         [HttpGet("site")]
-        public async Task<ActionResult<object>> GetNavigationPageTree()
+        public async Task<ActionResult<object>> GetNavigationPageTree(
+            [FromQuery] PlatformType platformType = PlatformType.Both,
+            [FromQuery] string deviceType = "desktop",
+            [FromQuery] string[] groupFilter = null,
+            [FromQuery] bool includeDashboard = true)
         {
-            var tree = await _navigationService.GetNavigationTreeAsync();
-            var allNode = _navigationService.FilterNodesByPermission(tree, _hasPermissionService);
-            var pageTree = ConvertToPageFormat(allNode).ToList();
-
-            if (pageTree.Any())
+            try
             {
-                var dashboardConfig = new DashboardConfig
+                var tree = await _navigationService.GetNavigationTreeAsync(platformType);
+                
+                // 创建上下文过滤条件
+                var filterContext = new NavigationFilterContext
                 {
-                    Label = "控制台",
-                    Url = DefaultDashboardUrl,
-                    Icon = DefaultDashboardIcon
+                    PlatformType = platformType,
+                    PermissionService = _hasPermissionService,
+                    DeviceType = deviceType,
+                    IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
+                    IsDevelopment = IsEnvironmentDevelopment(),
+                    GroupFilter = groupFilter ?? [],
+                    UserTags = GetUserTags()
                 };
-                pageTree.Insert(0, dashboardConfig.ToDashboardNode());
-            }
 
-            return new { Pages = new { Children = pageTree } };
+                // 使用新的上下文过滤功能
+                var filteredNodes = _navigationService.FilterNodesByContext(tree, filterContext);
+                var pageTree = ConvertToPageFormat(filteredNodes).ToList();
+
+                if (pageTree.Any() && includeDashboard)
+                {
+                    var dashboardConfig = new DashboardConfig
+                    {
+                        Label = "控制台",
+                        Url = DefaultDashboardUrl,
+                        Icon = DefaultDashboardIcon
+                    };
+                    pageTree.Insert(0, dashboardConfig.ToDashboardNode());
+                }
+
+                return new { Pages = new { Children = pageTree } };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get navigation page tree for platform {PlatformType}, device {DeviceType}", platformType, deviceType);
+                return StatusCode(500, new { Message = "获取导航树失败", Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 获取指定平台的导航树（原始格式）
+        /// </summary>
+        /// <param name="platformType">平台类型</param>
+        /// <returns>原始格式的导航树</returns>
+        [HttpGet("tree")]
+        public async Task<ActionResult<List<NavigationNode>>> GetNavigationTree(
+            [FromQuery] PlatformType platformType = PlatformType.Both)
+        {
+            try
+            {
+                var tree = await _navigationService.GetNavigationTreeAsync(platformType);
+                var filteredNodes = _navigationService.FilterNodesByPermission(tree, _hasPermissionService);
+                return Ok(filteredNodes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get navigation tree for platform {PlatformType}", platformType);
+                return StatusCode(500, new { Message = "获取导航树失败", Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 清除导航缓存
+        /// </summary>
+        /// <param name="moduleName">模块名称，为空时清除所有缓存</param>
+        /// <param name="platformType">平台类型，为空时清除所有平台缓存</param>
+        /// <returns></returns>
+        [HttpDelete("cache")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> ClearNavigationCache(
+            [FromQuery] string moduleName = null,
+            [FromQuery] PlatformType? platformType = null)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(moduleName))
+                {
+                    await _navigationService.ClearAllNavigationCacheAsync();
+                    _logger.LogInformation("All navigation cache cleared by user {User}", User.Identity?.Name);
+                }
+                else
+                {
+                    await _navigationService.ClearModuleNavigationCacheAsync(moduleName, platformType);
+                    _logger.LogInformation("Navigation cache cleared for module {ModuleName}, platform {PlatformType} by user {User}", 
+                        moduleName, platformType, User.Identity?.Name);
+                }
+
+                return Ok(new { Message = "缓存清除成功" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clear navigation cache for module {ModuleName}, platform {PlatformType}", moduleName, platformType);
+                return StatusCode(500, new { Message = "清除缓存失败", Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 重新初始化导航树
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost("initialize")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> InitializeNavigationTree()
+        {
+            try
+            {
+                await _navigationService.InitializeNavigationTree();
+                _logger.LogInformation("Navigation tree initialized by user {User}", User.Identity?.Name);
+                return Ok(new { Message = "导航树初始化成功" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize navigation tree");
+                return StatusCode(500, new { Message = "导航树初始化失败", Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 检查是否为开发环境
+        /// </summary>
+        /// <returns></returns>
+        private bool IsEnvironmentDevelopment()
+        {
+            // 可以通过配置或环境变量来判断
+            return Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+        }
+
+        /// <summary>
+        /// 获取用户标签
+        /// </summary>
+        /// <returns></returns>
+        private string[] GetUserTags()
+        {
+            // 可以从用户Claims、数据库或其他地方获取用户标签
+            // 这里简单示例，可以根据实际需求扩展
+            var tags = new List<string>();
+            
+            if (User.IsInRole("Admin"))
+                tags.Add("admin");
+            if (User.IsInRole("Manager"))
+                tags.Add("management");
+            if (User.IsInRole("User"))
+                tags.Add("user");
+
+            return tags.ToArray();
         }
 
         private static IEnumerable<object> ConvertToPageFormat(IEnumerable<NavigationNode> nodes, NavigationNode parent = null)
@@ -75,7 +214,7 @@ namespace CodeSpirit.Web.Controllers
 
         private static object CreatePageNode(NavigationNode node)
         {
-            return new
+            var pageNode = new
             {
                 label = node.Title,
                 url = node.Path,
@@ -86,6 +225,29 @@ namespace CodeSpirit.Web.Controllers
                 schemaApi = GetSchemaApi(node),
                 schema = GetScheme(node)
             };
+
+            // 添加扩展属性到页面节点
+            if (!string.IsNullOrEmpty(node.Badge))
+            {
+                return new
+                {
+                    pageNode.label,
+                    pageNode.url,
+                    pageNode.link,
+                    pageNode.icon,
+                    pageNode.permission,
+                    pageNode.children,
+                    pageNode.schemaApi,
+                    pageNode.schema,
+                    badge = new
+                    {
+                        text = node.Badge,
+                        type = node.BadgeType
+                    }
+                };
+            }
+
+            return pageNode;
         }
 
         private static object GetScheme(NavigationNode node)

@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using CodeSpirit.Shared.Entities;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.IdentityApi.Data.Models
 {
@@ -9,8 +10,15 @@ namespace CodeSpirit.IdentityApi.Data.Models
     /// 刷新令牌实体，用于实现JWT令牌的刷新功能
     /// </summary>
     [Table("RefreshTokens")]
-    public class RefreshToken : EntityBase<long>
+    public class RefreshToken : EntityBase<long>, IMultiTenant
     {
+        /// <summary>
+        /// 租户ID
+        /// </summary>
+        [Required]
+        [MaxLength(50)]
+        public string TenantId { get; set; }
+
         /// <summary>
         /// 用户ID
         /// </summary>

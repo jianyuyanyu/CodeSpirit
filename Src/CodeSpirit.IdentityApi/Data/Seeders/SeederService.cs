@@ -28,6 +28,11 @@ public class SeederService: IScopedDependency
                 // 应用迁移
                 await dbContext.Database.MigrateAsync();
 
+                // 1. 首先初始化租户数据（必须在用户和角色之前）
+                TenantSeeder tenantSeeder = scope.ServiceProvider.GetRequiredService<TenantSeeder>();
+                await tenantSeeder.SeedAsync();
+                _logger.LogInformation("租户数据初始化完毕！");
+
                 // 初始化各个 Seeder
                 RoleSeeder roleSeeder = scope.ServiceProvider.GetRequiredService<RoleSeeder>();
                 UserSeeder userSeeder = scope.ServiceProvider.GetRequiredService<UserSeeder>();
@@ -46,6 +51,10 @@ public class SeederService: IScopedDependency
                 // 创建随机用户
                 await userSeeder.SeedRandomUsersAsync(20, roleManager);
                 _logger.LogInformation("随机用户创建完毕！");
+
+                // 验证租户数据迁移结果
+                await tenantSeeder.ValidateMigrationAsync();
+                _logger.LogInformation("租户数据验证完毕！");
 
                 // 保存更改
                 await dbContext.SaveChangesAsync();

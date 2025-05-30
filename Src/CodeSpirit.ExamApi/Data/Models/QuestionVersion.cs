@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
 
@@ -6,7 +7,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 题目版本实体
 /// </summary>
-public class QuestionVersion : LongKeyAuditableEntityBase
+public class QuestionVersion : LongKeyAuditableEntityBase, IMultiTenant
 {
     /// <summary>
     /// 题目ID
@@ -75,4 +76,11 @@ public class QuestionVersion : LongKeyAuditableEntityBase
     /// </summary>
     [StringLength(500)]
     public string? ChangeReason { get; set; }
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 } 

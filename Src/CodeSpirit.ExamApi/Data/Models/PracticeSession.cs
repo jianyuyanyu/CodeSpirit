@@ -1,12 +1,14 @@
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Entities;
+using CodeSpirit.Core;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.ExamApi.Data.Models;
 
 /// <summary>
 /// 练习会话
 /// </summary>
-public class PracticeSession : LongKeyAuditableEntityBase
+public class PracticeSession : LongKeyAuditableEntityBase, IMultiTenant
 {
     /// <summary>
     /// 学生ID
@@ -57,4 +59,11 @@ public class PracticeSession : LongKeyAuditableEntityBase
     /// 练习记录
     /// </summary>
     public List<PracticeRecord> PracticeRecords { get; set; } = new List<PracticeRecord>();
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 } 

@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
@@ -7,7 +8,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 试卷实体
 /// </summary>
-public class ExamPaper: LongKeyAuditableEntityBase
+public class ExamPaper: LongKeyAuditableEntityBase, IMultiTenant
 {    
     /// <summary>
     /// 试卷名称
@@ -96,4 +97,11 @@ public class ExamPaper: LongKeyAuditableEntityBase
     /// 是否已完成预览检查
     /// </summary>
     public bool IsPreviewChecked { get; set; } = false;
+    
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 }

@@ -147,7 +147,7 @@
                                                     }
                                                     
                                                     // 登录成功，重定向到租户主页
-                                                    const redirectUrl = `/${tenant.tenantId}/dashboard` || '/';
+                                                    const redirectUrl = `/${tenant.tenantId}/admin` || '/';
                                                     setTimeout(() => {
                                                         window.location.href = redirectUrl;
                                                     }, 1000);

@@ -1,12 +1,21 @@
 using System.ComponentModel;
+using CodeSpirit.Core;
+using CodeSpirit.Shared.Entities.Interfaces;
 
 namespace CodeSpirit.Settings.Models;
 
 /// <summary>
 /// 设置历史记录
 /// </summary>
-public class SettingHistory : AuditableEntityBase<long>
+public class SettingHistory : AuditableEntityBase<long>, IMultiTenant
 {
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = "default";
+    
     /// <summary>
     /// 设置项ID
     /// </summary>

@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
@@ -7,7 +8,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 考试设置实体
 /// </summary>
-public class ExamSetting : LongKeyAuditableEntityBase
+public class ExamSetting : LongKeyAuditableEntityBase, IMultiTenant
 {
     /// <summary>
     /// 考试名称
@@ -95,4 +96,11 @@ public class ExamSetting : LongKeyAuditableEntityBase
     /// 考试记录
     /// </summary>
     public ICollection<ExamRecord> ExamRecords { get; set; } = [];
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 }

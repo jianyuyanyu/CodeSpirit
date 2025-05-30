@@ -90,6 +90,69 @@ namespace CodeSpirit.Web.Controllers
         }
 
         /// <summary>
+        /// 获取租户平台导航树（Page格式）
+        /// </summary>
+        /// <param name="tenantId">租户ID</param>
+        /// <param name="deviceType">设备类型，默认为desktop</param>
+        /// <param name="groupFilter">分组过滤器</param>
+        /// <param name="includeDashboard">是否包含控制台首页，默认为true</param>
+        /// <returns>Page格式的导航树JSON</returns>
+        [HttpGet("tenant")]
+        public async Task<ActionResult<object>> GetTenantNavigationPageTree(
+            [FromQuery] string tenantId,
+            [FromQuery] string deviceType = "desktop",
+            [FromQuery] string[] groupFilter = null,
+            [FromQuery] bool includeDashboard = true)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(tenantId))
+                {
+                    return BadRequest(new { Message = "租户ID不能为空" });
+                }
+
+                // 获取租户平台的导航
+                var tree = await _navigationService.GetNavigationTreeAsync(PlatformType.Tenant);
+                
+                // 创建租户上下文过滤条件
+                var filterContext = new NavigationFilterContext
+                {
+                    PlatformType = PlatformType.Tenant,
+                    PermissionService = _hasPermissionService,
+                    DeviceType = deviceType,
+                    IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
+                    IsDevelopment = IsEnvironmentDevelopment(),
+                    GroupFilter = groupFilter ?? [],
+                    UserTags = GetUserTags()
+                };
+
+                // 使用新的上下文过滤功能
+                var filteredNodes = _navigationService.FilterNodesByContext(tree, filterContext);
+                
+                // 使用标准的页面格式转换，无需特殊处理租户路径
+                var pageTree = ConvertToPageFormat(filteredNodes).ToList();
+
+                if (pageTree.Any() && includeDashboard)
+                {
+                    var dashboardConfig = new DashboardConfig
+                    {
+                        Label = "控制台",
+                        Url = DefaultDashboardUrl,
+                        Icon = DefaultDashboardIcon
+                    };
+                    pageTree.Insert(0, dashboardConfig.ToDashboardNode());
+                }
+
+                return new { Pages = new { Children = pageTree } };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get tenant navigation page tree for tenant {TenantId}, device {DeviceType}", tenantId, deviceType);
+                return StatusCode(500, new { Message = "获取租户导航树失败", Error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// 获取指定平台的导航树（原始格式）
         /// </summary>
         /// <param name="platformType">平台类型</param>

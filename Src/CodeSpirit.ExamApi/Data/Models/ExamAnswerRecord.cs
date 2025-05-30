@@ -1,12 +1,13 @@
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.ExamApi.Data.Models;
 
 /// <summary>
 /// 考试答题记录实体
 /// </summary>
-public class ExamAnswerRecord : LongKeyAuditableEntityBase
+public class ExamAnswerRecord : LongKeyAuditableEntityBase, IMultiTenant
 {
     /// <summary>
     /// 考试记录ID
@@ -99,4 +100,11 @@ public class ExamAnswerRecord : LongKeyAuditableEntityBase
     /// 答题用时（秒）
     /// </summary>
     public int? Duration { get; set; }
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 }

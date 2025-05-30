@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
@@ -8,7 +9,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 题目
 /// </summary>
-public class Question : LongKeyAuditableEntityBase
+public class Question : LongKeyAuditableEntityBase, IMultiTenant
 {    
     /// <summary>
     /// 题目内容
@@ -104,4 +105,11 @@ public class Question : LongKeyAuditableEntityBase
     /// </summary>
     [NotMapped]
     public bool IsReferenced => ExamPaperQuestions.Any();
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 }

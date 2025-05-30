@@ -2,13 +2,14 @@ using System.ComponentModel.DataAnnotations;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Data;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.ExamApi.Data.Models;
 
 /// <summary>
 /// 练习记录实体
 /// </summary>
-public class PracticeRecord : LongKeyAuditableEntityBase
+public class PracticeRecord : LongKeyAuditableEntityBase, IMultiTenant
 {    
     /// <summary>
     /// 考生ID
@@ -75,4 +76,11 @@ public class PracticeRecord : LongKeyAuditableEntityBase
     /// 模拟考试ID（如果是模拟考试的练习）
     /// </summary>
     public long? MockExamId { get; set; }
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 }

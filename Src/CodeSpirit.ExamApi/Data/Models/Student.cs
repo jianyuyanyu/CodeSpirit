@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Entities.Interfaces;
 using System.ComponentModel.DataAnnotations;
@@ -7,7 +8,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 考生实体
 /// </summary>
-public class Student : LongKeyAuditableEntityBase, IIsActive
+public class Student : LongKeyAuditableEntityBase, IIsActive, IMultiTenant
 {    
     /// <summary>
     /// 用户ID（关联到身份系统）
@@ -56,6 +57,13 @@ public class Student : LongKeyAuditableEntityBase, IIsActive
     /// 考试记录
     /// </summary>
     public ICollection<ExamRecord> ExamRecords { get; set; } = new List<ExamRecord>();
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 
     /// <summary>
     /// 是否激活

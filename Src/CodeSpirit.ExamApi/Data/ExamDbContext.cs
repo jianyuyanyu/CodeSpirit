@@ -8,13 +8,14 @@ using CodeSpirit.ExamApi.Data.Seeds;
 using CodeSpirit.Core.IdGenerator;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using Microsoft.AspNetCore.Http;
 
 namespace CodeSpirit.ExamApi.Data;
 
 /// <summary>
-/// 考试系统数据库上下文
+/// 考试系统数据库上下文 - 支持多租户
 /// </summary>
-public class ExamDbContext : AuditableDbContext
+public class ExamDbContext : MultiTenantDbContext
 {
     private readonly IServiceProvider _serviceProvider;
     
@@ -24,10 +25,12 @@ public class ExamDbContext : AuditableDbContext
     /// <param name="options">数据库上下文选项</param>
     /// <param name="serviceProvider">服务提供者</param>
     /// <param name="currentUser">当前用户</param>
+    /// <param name="httpContextAccessor">HTTP上下文访问器</param>
     public ExamDbContext(
         DbContextOptions<ExamDbContext> options,
         IServiceProvider serviceProvider,
-        ICurrentUser currentUser) : base(options, serviceProvider, currentUser)
+        ICurrentUser currentUser,
+        IHttpContextAccessor httpContextAccessor) : base(options, serviceProvider, currentUser, httpContextAccessor)
     {
         _serviceProvider = serviceProvider;
     }
@@ -154,6 +157,74 @@ public class ExamDbContext : AuditableDbContext
             .HasForeignKey(epq => epq.ExamPaperId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // 配置多租户索引
+        ConfigureMultiTenantIndexes(modelBuilder);
+    }
+
+    /// <summary>
+    /// 配置多租户索引
+    /// </summary>
+    /// <param name="modelBuilder">模型构建器</param>
+    private void ConfigureMultiTenantIndexes(ModelBuilder modelBuilder)
+    {
+        // 为所有实现IMultiTenant的实体添加TenantId索引
+        var multiTenantEntities = modelBuilder.Model.GetEntityTypes()
+            .Where(e => typeof(IMultiTenant).IsAssignableFrom(e.ClrType))
+            .ToList();
+
+        foreach (var entityType in multiTenantEntities)
+        {
+            // 添加TenantId单列索引
+            modelBuilder.Entity(entityType.ClrType)
+                .HasIndex(nameof(IMultiTenant.TenantId))
+                .HasDatabaseName($"IX_{entityType.GetTableName()}_TenantId");
+
+            // 为主要查询字段添加组合索引（TenantId + Id）
+            modelBuilder.Entity(entityType.ClrType)
+                .HasIndex("TenantId", "Id")
+                .HasDatabaseName($"IX_{entityType.GetTableName()}_TenantId_Id");
+        }
+
+        // 为特定实体添加业务组合索引
+        AddBusinessSpecificIndexes(modelBuilder);
+    }
+
+    /// <summary>
+    /// 添加业务相关的组合索引
+    /// </summary>
+    /// <param name="modelBuilder">模型构建器</param>
+    private void AddBusinessSpecificIndexes(ModelBuilder modelBuilder)
+    {
+        // Student: TenantId + StudentNumber (学号在租户内唯一)
+        modelBuilder.Entity<Student>()
+            .HasIndex(e => new { e.TenantId, e.StudentNumber })
+            .IsUnique()
+            .HasDatabaseName("IX_Students_TenantId_StudentNumber");
+
+        // Question: TenantId + CategoryId (按租户和分类查询题目)
+        modelBuilder.Entity<Question>()
+            .HasIndex(e => new { e.TenantId, e.CategoryId })
+            .HasDatabaseName("IX_Questions_TenantId_CategoryId");
+
+        // ExamRecord: TenantId + StudentId (按租户和学生查询考试记录)
+        modelBuilder.Entity<ExamRecord>()
+            .HasIndex(e => new { e.TenantId, e.StudentId })
+            .HasDatabaseName("IX_ExamRecords_TenantId_StudentId");
+
+        // ExamRecord: TenantId + ExamSettingId (按租户和考试设置查询)
+        modelBuilder.Entity<ExamRecord>()
+            .HasIndex(e => new { e.TenantId, e.ExamSettingId })
+            .HasDatabaseName("IX_ExamRecords_TenantId_ExamSettingId");
+
+        // PracticeRecord: TenantId + StudentId (按租户和学生查询练习记录)
+        modelBuilder.Entity<PracticeRecord>()
+            .HasIndex(e => new { e.TenantId, e.StudentId })
+            .HasDatabaseName("IX_PracticeRecords_TenantId_StudentId");
+
+        // WrongQuestion: TenantId + StudentId (按租户和学生查询错题)
+        modelBuilder.Entity<WrongQuestion>()
+            .HasIndex(e => new { e.TenantId, e.StudentId })
+            .HasDatabaseName("IX_WrongQuestions_TenantId_StudentId");
     }
 
     private void ConfigureQuestionEntities(ModelBuilder modelBuilder)

@@ -1,12 +1,13 @@
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.ExamApi.Data.Models;
 
 /// <summary>
 /// 错题记录实体
 /// </summary>
-public class WrongQuestion : LongKeyAuditableEntityBase
+public class WrongQuestion : LongKeyAuditableEntityBase, IMultiTenant
 {
     /// <summary>
     /// 考生ID
@@ -53,4 +54,11 @@ public class WrongQuestion : LongKeyAuditableEntityBase
     /// 考生笔记
     /// </summary>
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 }

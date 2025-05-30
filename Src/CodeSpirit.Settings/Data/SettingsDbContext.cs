@@ -1,6 +1,7 @@
 using CodeSpirit.Core;
 using CodeSpirit.Settings.Models;
 using CodeSpirit.Shared.Data;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.Settings.Data;
@@ -8,7 +9,7 @@ namespace CodeSpirit.Settings.Data;
 /// <summary>
 /// 设置数据库上下文
 /// </summary>
-public class SettingsDbContext : AuditableDbContext
+public class SettingsDbContext : MultiTenantDbContext
 {
     private readonly IServiceProvider _serviceProvider;
 
@@ -26,10 +27,14 @@ public class SettingsDbContext : AuditableDbContext
     /// 构造函数
     /// </summary>
     /// <param name="options">数据库上下文选项</param>
+    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="currentUser">当前用户</param>
+    /// <param name="httpContextAccessor">HTTP上下文访问器</param>
     public SettingsDbContext(DbContextOptions<SettingsDbContext> options,
         IServiceProvider serviceProvider,
-        ICurrentUser currentUser) :
-        base(options, serviceProvider, currentUser)
+        ICurrentUser currentUser,
+        IHttpContextAccessor httpContextAccessor) :
+        base(options, serviceProvider, currentUser, httpContextAccessor)
     {
         _serviceProvider = serviceProvider;
     }
@@ -61,9 +66,15 @@ public class SettingsDbContext : AuditableDbContext
             // 设置主键
             entity.HasKey(e => e.Id);
 
-            // 索引
+            // 基础索引
             entity.HasIndex(e => new { e.Module, e.Key }).IsUnique();
             entity.HasIndex(e => new { e.Module, e.Scope, e.ScopeId });
+            
+            // 多租户索引
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Id });
+            entity.HasIndex(e => new { e.TenantId, e.Module, e.Key }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Module, e.Scope, e.ScopeId });
 
             // 将枚举存储为字符串
             entity.Property(e => e.ValueType)
@@ -93,9 +104,14 @@ public class SettingsDbContext : AuditableDbContext
                 .HasForeignKey(e => e.SettingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // 索引
+            // 基础索引
             entity.HasIndex(e => e.SettingId);
             entity.HasIndex(e => e.Version);
+            
+            // 多租户索引
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => new { e.TenantId, e.Id });
+            entity.HasIndex(e => new { e.TenantId, e.SettingId });
 
             // 软删除筛选器
             entity.HasQueryFilter(e => !e.IsDeleted);

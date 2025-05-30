@@ -33,7 +33,21 @@ public abstract class MultiTenantDbContext : AuditableDbContext
     /// <summary>
     /// 多租户配置选项
     /// </summary>
-    protected MultiTenantOptions MultiTenantOptions => _multiTenantOptions.Value;
+    protected MultiTenantOptions MultiTenantOptions 
+    {
+        get
+        {
+            try
+            {
+                return _multiTenantOptions.Value;
+            }
+            catch
+            {
+                // 在设计时或配置缺失时返回默认配置
+                return new MultiTenantOptions { Enabled = false, DefaultTenantId = "default" };
+            }
+        }
+    }
 
     /// <summary>
     /// 是否启用多租户过滤

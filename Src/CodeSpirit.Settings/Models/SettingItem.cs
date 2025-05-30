@@ -1,10 +1,20 @@
+using CodeSpirit.Core;
+using CodeSpirit.Shared.Entities.Interfaces;
+
 namespace CodeSpirit.Settings.Models;
 
 /// <summary>
 /// 设置项
 /// </summary>
-public class SettingItem : AuditableEntityBase<long>
+public class SettingItem : AuditableEntityBase<long>, IMultiTenant
 {
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = "default";
+    
     /// <summary>
     /// 模块
     /// </summary>

@@ -1,5 +1,6 @@
 using CodeSpirit.Settings.Data;
 using CodeSpirit.Settings.Services.Implementations;
+using CodeSpirit.MultiTenant.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,6 +23,9 @@ public static class SettingsExtensions
         IConfiguration configuration,
         Action<DbContextOptionsBuilder> dbContextOptions = null)
     {
+        // 添加多租户支持
+        services.AddCodeSpiritMultiTenant(configuration);
+        
         // 添加数据库上下文
         if (dbContextOptions != null)
         {

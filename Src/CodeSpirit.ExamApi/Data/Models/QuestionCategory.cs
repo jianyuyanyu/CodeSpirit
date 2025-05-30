@@ -1,12 +1,14 @@
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Entities.Interfaces;
+using CodeSpirit.Core;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.ExamApi.Data.Models;
 
 /// <summary>
 /// 题目分类
 /// </summary>
-public class QuestionCategory : LongKeyAuditableEntityBase
+public class QuestionCategory : LongKeyAuditableEntityBase, IMultiTenant
 {
     /// <summary>
     /// 分类名称
@@ -37,4 +39,11 @@ public class QuestionCategory : LongKeyAuditableEntityBase
     /// 题目列表
     /// </summary>
     public List<Question> Questions { get; set; } = [];
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 }

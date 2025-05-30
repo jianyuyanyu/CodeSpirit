@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Shared.Entities;
 
@@ -7,7 +8,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 练习设置实体
 /// </summary>
-public class PracticeSetting : LongKeyAuditableEntityBase
+public class PracticeSetting : LongKeyAuditableEntityBase, IMultiTenant
 {
     /// <summary>
     /// 名称
@@ -61,4 +62,11 @@ public class PracticeSetting : LongKeyAuditableEntityBase
     /// 状态
     /// </summary>
     public PracticeSettingStatus Status { get; set; } = PracticeSettingStatus.Draft;
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 } 

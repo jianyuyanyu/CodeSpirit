@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
 
@@ -6,7 +7,7 @@ namespace CodeSpirit.ExamApi.Data.Models;
 /// <summary>
 /// 学生-分组映射关系
 /// </summary>
-public class StudentGroupMapping : LongKeyAuditableEntityBase
+public class StudentGroupMapping : LongKeyAuditableEntityBase, IMultiTenant
 {
     /// <summary>
     /// 学生ID
@@ -29,4 +30,11 @@ public class StudentGroupMapping : LongKeyAuditableEntityBase
     /// 分组
     /// </summary>
     public StudentGroup StudentGroup { get; set; } = null!;
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 } 

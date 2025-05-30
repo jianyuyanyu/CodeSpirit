@@ -4,6 +4,7 @@ using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.ExamApi.Services;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
+using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.PdfGeneration.Extensions;
 using CodeSpirit.ServiceDefaults;
@@ -27,6 +28,9 @@ public static class ServiceCollectionExtensions
 
         builder.Services.AddSystemServices(builder.Configuration, typeof(Program), builder.Environment);
         builder.Services.AddExamApiServices(builder.Configuration);
+
+        // 添加多租户支持
+        builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
 
         // 使用共享项目中的JWT认证扩展方法
         builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -172,6 +176,10 @@ public static class ServiceCollectionExtensions
     public static async Task<WebApplication> UseExamApiServicesAsync(this WebApplication app)
     {
         app.UseCors("AllowSpecificOriginsWithCredentials");
+        
+        // 使用多租户中间件
+        app.UseCodeSpiritMultiTenant();
+        
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();

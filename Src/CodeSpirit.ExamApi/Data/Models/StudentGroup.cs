@@ -1,12 +1,13 @@
 using CodeSpirit.Shared.Entities;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.ExamApi.Data.Models;
 
 /// <summary>
 /// 考生分组实体
 /// </summary>
-public class StudentGroup: LongKeyAuditableEntityBase
+public class StudentGroup : LongKeyAuditableEntityBase, IMultiTenant
 {    
     /// <summary>
     /// 分组名称
@@ -30,4 +31,11 @@ public class StudentGroup: LongKeyAuditableEntityBase
     /// 分组参与的考试
     /// </summary>
     public ICollection<ExamSetting> ExamSettings { get; set; } = new List<ExamSetting>();
+
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [StringLength(50)]
+    public string TenantId { get; set; } = string.Empty;
 }

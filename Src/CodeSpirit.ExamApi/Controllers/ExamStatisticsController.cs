@@ -4,6 +4,7 @@ using CodeSpirit.Charts.Extensions;
 using CodeSpirit.Charts.Models;
 using CodeSpirit.Charts.Services;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -15,7 +16,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 考试统计控制器
 /// </summary>
 [DisplayName("考试统计")]
-[Navigation(Icon = "fa-solid fa-chart-pie")]
+[Navigation(Icon = "fa-solid fa-chart-pie", PlatformType = PlatformType.Tenant)]
 public class ExamStatisticsController : ApiControllerBase
 {
     private readonly IExamStatisticsService _examStatisticsService;

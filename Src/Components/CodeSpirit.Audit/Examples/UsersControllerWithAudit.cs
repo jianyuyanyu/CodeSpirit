@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CodeSpirit.Audit.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.Audit.Examples;
 
@@ -9,7 +10,7 @@ namespace CodeSpirit.Audit.Examples;
 /// 用户管理控制器审计使用示例
 /// </summary>
 [DisplayName("用户管理")]
-[Navigation(Icon = "fa-solid fa-users")]
+[Navigation(Icon = "fa-solid fa-users", PlatformType = PlatformType.Both)]
 [Audit("用户管理模块")]
 [ApiController]
 [Route("api/[controller]")]

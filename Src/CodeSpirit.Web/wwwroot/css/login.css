@@ -67,18 +67,68 @@ body {
     margin-top: 20px;
 }
 
-/* 提交按钮样式 */
+/* 登录表单面板样式优化 */
+.form-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+}
+
+.form-wrap .antd-Panel-body {
+    padding: 20px !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* 表单内容自适应 */
+.antd-Tabs-content {
+    padding-top: 15px !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.antd-Tabs-content .antd-Form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+}
+
+/* 提交按钮样式优化 */
 .submit-btn {
-    width: 100%;
+    width: 100% !important;
     margin-top: 15px !important;
     height: 52px !important;
     box-shadow: 0px 4px 24px -6px rgba(70, 108, 255, 0.9) !important;
+    flex-shrink: 0 !important; /* 防止按钮被压缩 */
 }
 
     .submit-btn:hover {
         background-color: #1c86e0;
     }
 
+/* 输入框样式 */
+.input-field {
+    margin-bottom: 15px !important;
+}
+
+.antd-TextControl-input {
+    height: 52px !important;
+}
+
+/* 间距控制 */
+.mb-2 {
+    margin-bottom: 10px !important;
+}
+
+.mb-3 {
+    margin-bottom: 15px !important;
+}
+
+/* 页面布局 */
 body {
     padding: 0 !important;
     margin: 0 !important;
@@ -89,20 +139,42 @@ body {
     overflow: hidden;
 }
 
+/* 标签页标题样式 */
 .tabs-title-box .antd-Tabs-link-text {
     font-weight: normal;
     font-size: 20px;
 }
 
-.antd-Panel-body {
-    padding: 40px !important;
-    padding-top: 30px !important;
+/* 响应式优化 */
+@media (max-height: 800px) {
+    .form-wrap {
+        max-height: 85vh !important;
+    }
+    
+    .logo img {
+        height: 80px;
+        margin-top: 30px;
+    }
+    
+    .carousel-img img {
+        margin-top: 5vh;
+    }
 }
 
-.antd-Tabs-content {
-    padding-top: 20px !important;
-}
-
-.antd-TextControl-input {
-    height: 52px !important;
+@media (max-height: 600px) {
+    .form-wrap {
+        max-height: 95vh !important;
+    }
+    
+    .antd-Panel-body {
+        padding: 15px !important;
+    }
+    
+    .submit-btn {
+        height: 45px !important;
+    }
+    
+    .antd-TextControl-input {
+        height: 45px !important;
+    }
 }

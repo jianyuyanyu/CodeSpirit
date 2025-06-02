@@ -186,5 +186,77 @@ namespace CodeSpirit.Navigation.Tests.Services
             Assert.Single(result);
             Assert.Equal("system1", result[0].Name);
         }
+
+        [Fact]
+        public void FilterNodesByPlatform_SystemPlatform_ShouldNotIncludeTenantOnlyModules()
+        {
+            // Arrange - 模拟类似 ExamApi 的模块结构
+            var moduleNode = new NavigationNode("examApi", "考试中心", "/examApi")
+            {
+                PlatformType = PlatformType.Tenant, // 模块级别设置为 Tenant
+                OriginalPlatformType = PlatformType.Tenant
+            };
+
+            var controllerNode = new NavigationNode("apiControllerBase", "考试API基础", "/examApi/api")
+            {
+                PlatformType = PlatformType.Tenant,
+                OriginalPlatformType = PlatformType.Tenant
+            };
+
+            var actionNode = new NavigationNode("examPapers", "试卷管理", "/examApi/api/examPapers")
+            {
+                PlatformType = PlatformType.Tenant,
+                OriginalPlatformType = PlatformType.Tenant
+            };
+
+            controllerNode.Children.Add(actionNode);
+            moduleNode.Children.Add(controllerNode);
+
+            var nodes = new List<NavigationNode> { moduleNode };
+
+            // Act - 使用系统平台过滤
+            var result = NavigationService.FilterNodesByPlatform(nodes, PlatformType.System);
+
+            // Assert - 应该不包含任何租户专用的节点
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public void FilterNodesByPlatform_TenantPlatform_ShouldIncludeTenantOnlyModules()
+        {
+            // Arrange - 模拟类似 ExamApi 的模块结构
+            var moduleNode = new NavigationNode("examApi", "考试中心", "/examApi")
+            {
+                PlatformType = PlatformType.Tenant,
+                OriginalPlatformType = PlatformType.Tenant
+            };
+
+            var controllerNode = new NavigationNode("apiControllerBase", "考试API基础", "/examApi/api")
+            {
+                PlatformType = PlatformType.Tenant,
+                OriginalPlatformType = PlatformType.Tenant
+            };
+
+            var actionNode = new NavigationNode("examPapers", "试卷管理", "/examApi/api/examPapers")
+            {
+                PlatformType = PlatformType.Tenant,
+                OriginalPlatformType = PlatformType.Tenant
+            };
+
+            controllerNode.Children.Add(actionNode);
+            moduleNode.Children.Add(controllerNode);
+
+            var nodes = new List<NavigationNode> { moduleNode };
+
+            // Act - 使用租户平台过滤
+            var result = NavigationService.FilterNodesByPlatform(nodes, PlatformType.Tenant);
+
+            // Assert - 应该包含租户专用的节点
+            Assert.Single(result);
+            Assert.Equal("examApi", result[0].Name);
+            Assert.Equal(PlatformType.Tenant, result[0].PlatformType);
+            Assert.Single(result[0].Children);
+            Assert.Equal("apiControllerBase", result[0].Children[0].Name);
+        }
     }
 } 

@@ -2,6 +2,7 @@
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,6 +12,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     [Authorize(policy: "DynamicPermissions")]
     [Route("api/identity/[controller]")]
     [Module("identity", displayName: "用户中心",Icon = "fa-solid fa-user-group")]
+    [Navigation(Icon = "fa-solid fa-user-group", PlatformType = PlatformType.Both)]
     public abstract class ApiControllerBase : AmisApiControllerBase
     {
         /// <summary>

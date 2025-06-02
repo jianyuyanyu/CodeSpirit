@@ -1,10 +1,12 @@
 ﻿// Controllers/AuthController.cs
 using CodeSpirit.Core;
+using CodeSpirit.Core.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
+    [Navigation(Hidden = true)]
     public class UploadController : ApiControllerBase
     {
 

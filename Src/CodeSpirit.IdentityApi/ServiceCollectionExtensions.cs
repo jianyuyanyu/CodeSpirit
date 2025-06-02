@@ -48,9 +48,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITokenBlacklistService, TokenBlacklistService>();
         services.AddScoped<SeederService>();
-        services.AddScoped<UserSeeder>();
-        services.AddScoped<RoleSeeder>();
         services.AddScoped<TenantSeeder>();
+        services.AddScoped<IRoleSeederService, UnifiedRoleSeederService>();
+        services.AddScoped<IUserSeederService, UnifiedUserSeederService>();
         services.AddScoped<ILoginLogService, LoginLogService>();
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<ITenantService, TenantService>();

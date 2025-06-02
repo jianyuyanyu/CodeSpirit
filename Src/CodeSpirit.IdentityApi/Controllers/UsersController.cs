@@ -1,6 +1,7 @@
 ﻿using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
@@ -11,7 +12,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("用户管理")]
-    [Navigation(Icon = "fa-solid fa-users")]
+    [Navigation(Icon = "fa-solid fa-users", PlatformType = PlatformType.Tenant)]
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _userService;

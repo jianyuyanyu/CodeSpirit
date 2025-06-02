@@ -8,6 +8,7 @@ using CodeSpirit.ExamApi.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -15,7 +16,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 考试设置管理
 /// </summary>
 [DisplayName("考试管理")]
-[Navigation(Icon = "fa-solid fa-calendar-check")]
+[Navigation(Icon = "fa-solid fa-calendar-check", PlatformType = PlatformType.Tenant)]
 public class ExamSettingsController : ApiControllerBase
 {
     private readonly IExamSettingService _examSettingService;

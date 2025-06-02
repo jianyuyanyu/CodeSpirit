@@ -81,7 +81,7 @@ namespace CodeSpirit.Navigation.Models
         /// <summary>
         /// 平台类型
         /// </summary>
-        public PlatformType PlatformType { get; set; } = PlatformType.Both;
+        public PlatformType PlatformType { get; set; } = PlatformType.Inherit;
 
         /// <summary>
         /// 导航项的分组/分类

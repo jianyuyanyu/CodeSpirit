@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using System.IO.Compression;
 using System.Text;
 using PuppeteerSharp.Media;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -18,7 +19,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 考试记录控制器
 /// </summary>
 [DisplayName("考试记录管理")]
-[Navigation(Icon = "fa-solid fa-clipboard-check")]
+[Navigation(Icon = "fa-solid fa-clipboard-check", PlatformType = PlatformType.Tenant)]
 public class ExamRecordsController : ApiControllerBase
 {
     private readonly IExamRecordService _examRecordService;

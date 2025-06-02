@@ -17,6 +17,7 @@
 - **层次结构**：支持多级导航菜单结构
 - **外部链接**：支持外部链接和 iframe 嵌入
 - **图标支持**：支持 FontAwesome 等图标库
+- **优先级策略**：`NavigationAttribute` 优先于 `ModuleAttribute`，提供精细化控制
 
 ### 2.0.0 新特性 🎉
 - **多平台支持**：`PlatformType` 枚举（None, System, Tenant, Both）
@@ -28,6 +29,7 @@
 - **设备类型**：支持按设备类型过滤导航项
 - **实验性功能**：开发环境实验性功能支持
 - **徽章系统**：导航项徽章显示支持
+- **智能属性合并**：`NavigationAttribute` 与 `ModuleAttribute` 的智能优先级处理
 
 ## 项目结构
 
@@ -64,6 +66,61 @@ await app.UseCodeSpiritNavigationAsync();
 ```
 
 ### 2. 使用特性定义导航
+
+#### 属性优先级策略 🎯
+
+导航组件实现了智能的属性优先级策略，确保灵活性和精确控制：
+
+```csharp
+// 场景1：只有 ModuleAttribute - 自动创建导航节点
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+public class UserController : ControllerBase
+{
+    // 控制器会自动出现在导航中，使用 ModuleAttribute 的属性
+    // 标题：用户管理
+    // 图标：fa-solid fa-users
+    // 其他属性使用默认值
+}
+
+// 场景2：ModuleAttribute + NavigationAttribute - NavigationAttribute 优先
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(
+    Title = "用户列表", // 覆盖 ModuleAttribute 的 DisplayName
+    Icon = "fa-solid fa-user-list", // 覆盖 ModuleAttribute 的 Icon
+    Order = 1,
+    Permission = "user_management"
+)]
+public class UserController : ControllerBase
+{
+    // 最终使用 NavigationAttribute 的所有属性
+    // 标题：用户列表（不是"用户管理"）
+    // 图标：fa-solid fa-user-list（不是"fa-solid fa-users"）
+}
+
+// 场景3：隐藏的 NavigationAttribute - 回退到 ModuleAttribute
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(Hidden = true)] // NavigationAttribute 被隐藏
+public class UserController : ControllerBase
+{
+    // 由于 NavigationAttribute.Hidden = true，系统会检查 ModuleAttribute
+    // 如果 ModuleAttribute 存在，使用其属性创建导航节点
+    // 标题：用户管理
+    // 图标：fa-solid fa-users
+}
+
+// 场景4：完全没有导航 - 不出现在导航中
+public class InternalController : ControllerBase
+{
+    // 既没有 ModuleAttribute 也没有 NavigationAttribute
+    // 该控制器不会出现在导航树中
+}
+```
+
+**优先级规则总结：**
+1. **NavigationAttribute** 存在且 `Hidden = false` → 使用 NavigationAttribute
+2. **NavigationAttribute** 不存在或 `Hidden = true` → 检查 ModuleAttribute
+3. **ModuleAttribute** 存在 → 使用 ModuleAttribute 属性创建默认导航
+4. **都不存在** → 控制器不出现在导航中
 
 #### 模块级导航
 
@@ -715,7 +772,85 @@ public class ProductsController : ControllerBase
 }
 ```
 
-### 2. 权限命名规范
+### 2. 属性优先级策略的最佳实践 🎯
+
+```csharp
+// ✅ 推荐：使用 ModuleAttribute 作为默认导航
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+public class UserController : ControllerBase
+{
+    // 控制器会自动出现在导航中，使用模块的标题和图标
+}
+
+// ✅ 推荐：使用 NavigationAttribute 进行精细控制
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(
+    Title = "用户列表", // 更具体的标题
+    Icon = "fa-solid fa-user-list", // 更具体的图标
+    Order = 1,
+    Permission = "user_list",
+    PlatformType = PlatformType.Both
+)]
+public class UserController : ControllerBase { }
+
+// ✅ 推荐：使用 Hidden 属性控制显示/隐藏
+[Module("InternalModule", "内部模块", Icon = "fa-solid fa-gear")]
+[Navigation(Hidden = true)] // 临时隐藏，但保留模块信息
+public class InternalController : ControllerBase
+{
+    // 如果需要重新显示，只需要设置 Hidden = false
+}
+
+// ❌ 避免：不必要的属性重复
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(
+    Title = "用户管理", // 不必要的重复
+    Icon = "fa-solid fa-users" // 不必要的重复
+)]
+public class UserController : ControllerBase { }
+
+// ✅ 更好的方式：只定义不同的属性
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(Order = 1, Permission = "user_management")] // 只设置必要的额外属性
+public class UserController : ControllerBase { }
+```
+
+### 3. 渐进式导航开发
+
+```csharp
+// 第一阶段：快速开发，使用 ModuleAttribute
+[Module("BlogManagement", "博客管理", Icon = "fa-solid fa-blog")]
+public class BlogController : ControllerBase { }
+
+// 第二阶段：精细化控制，添加 NavigationAttribute
+[Module("BlogManagement", "博客管理", Icon = "fa-solid fa-blog")]
+[Navigation(
+    Order = 2,
+    Permission = "blog_management",
+    PlatformType = PlatformType.Both,
+    Group = "Content"
+)]
+public class BlogController : ControllerBase { }
+
+// 第三阶段：完整配置，添加高级属性
+[Module("BlogManagement", "博客管理", Icon = "fa-solid fa-blog")]
+[Navigation(
+    Title = "博客文章",
+    Icon = "fa-solid fa-pen-to-square",
+    Order = 2,
+    Permission = "blog_management",
+    PlatformType = PlatformType.Both,
+    Group = "Content",
+    Tags = new[] { "content", "management" },
+    Priority = 5,
+    Badge = "BETA",
+    BadgeType = "warning",
+    MinVersion = "2.0.0"
+)]
+public class BlogController : ControllerBase { }
+```
+
+### 4. 权限命名规范
 
 ```csharp
 // 使用有意义的权限名称
@@ -724,7 +859,7 @@ public class ProductsController : ControllerBase
 [Navigation(Permission = "product_create")]      // 操作级权限
 ```
 
-### 3. 图标使用规范
+### 5. 图标使用规范
 
 ```csharp
 // 使用 FontAwesome 图标
@@ -734,7 +869,7 @@ public class ProductsController : ControllerBase
 [Navigation(Icon = "fa-solid fa-cog")]           // 设置
 ```
 
-### 4. 排序最佳实践
+### 6. 排序最佳实践
 
 ```csharp
 // 使用 10 的倍数便于插入新项目
@@ -744,7 +879,7 @@ public class ProductsController : ControllerBase
 [Navigation(Order = 90)]  // 设置功能
 ```
 
-### 5. 平台和设备策略
+### 7. 平台和设备策略
 
 ```csharp
 // 合理使用平台过滤

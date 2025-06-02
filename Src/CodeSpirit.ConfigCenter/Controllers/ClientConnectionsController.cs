@@ -3,6 +3,7 @@ using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
@@ -12,7 +13,7 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 /// 客户端连接管理控制器
 /// </summary>
 [DisplayName("客户端连接")]
-[Navigation(Icon = "fa-solid fa-plug")]
+[Navigation(Icon = "fa-solid fa-plug", PlatformType = PlatformType.Inherit)]
 public class ClientConnectionsController : ApiControllerBase
 {
     private readonly IClientTrackingService _clientTrackingService;

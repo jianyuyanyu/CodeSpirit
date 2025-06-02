@@ -1,6 +1,7 @@
 using Audit.WebApi;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Dtos.AuditLog;
 using CodeSpirit.IdentityApi.Services;
@@ -10,7 +11,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("审计日志")]
-    [Navigation(Icon = "fa-solid fa-list-check")]
+    [Navigation(Icon = "fa-solid fa-list-check", PlatformType = PlatformType.Both)]
     [AuditIgnore]
     public class AuditLogsController : ApiControllerBase
     {

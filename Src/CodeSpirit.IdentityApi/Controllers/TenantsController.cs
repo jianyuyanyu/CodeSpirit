@@ -1,11 +1,13 @@
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Tenant;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -13,7 +15,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     /// 租户管理控制器
     /// </summary>
     [DisplayName("租户管理")]
-    [Navigation(Icon = "fa-solid fa-building")]
+    [Navigation(Icon = "fa-solid fa-building", PlatformType = PlatformType.System)]
     public class TenantsController : ApiControllerBase
     {
         private readonly ITenantService _tenantService;
@@ -78,7 +80,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>创建结果</returns>
         [HttpPost]
         [DisplayName("创建租户")]
-        public async Task<ActionResult<ApiResponse<TenantDto>>> CreateTenant([FromBody] TenantCreateDto createDto)
+        public ActionResult<ApiResponse<TenantDto>> CreateTenant([FromBody] TenantCreateDto createDto)
         {
             // 这里需要实现创建逻辑
             return Ok(ApiResponse<TenantDto>.Success(new TenantDto(), "创建成功"));
@@ -92,7 +94,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>更新结果</returns>
         [HttpPut("{id}")]
         [DisplayName("更新租户")]
-        public async Task<ActionResult<ApiResponse<TenantDto>>> UpdateTenant(string id, [FromBody] TenantUpdateDto updateDto)
+        public ActionResult<ApiResponse<TenantDto>> UpdateTenant(string id, [FromBody] TenantUpdateDto updateDto)
         {
             // 这里需要实现更新逻辑
             return Ok(ApiResponse<TenantDto>.Success(new TenantDto(), "更新成功"));
@@ -105,7 +107,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>删除结果</returns>
         [HttpDelete("{id}")]
         [DisplayName("删除租户")]
-        public async Task<ActionResult<ApiResponse>> DeleteTenant(string id)
+        public ActionResult<ApiResponse> DeleteTenant(string id)
         {
             // 这里需要实现删除逻辑
             return Ok(new ApiResponse(0, "删除成功"));
@@ -314,10 +316,10 @@ namespace CodeSpirit.IdentityApi.Controllers
                     domain = tenant.Domain,
                     // 主题配置（如果有的话）
                     themeConfig = !string.IsNullOrEmpty(tenant.ThemeConfig) ? 
-                        System.Text.Json.JsonSerializer.Deserialize<object>(tenant.ThemeConfig) : null,
+                        JsonSerializer.Deserialize<object>(tenant.ThemeConfig) : null,
                     // 功能配置（如果有的话）
                     configuration = !string.IsNullOrEmpty(tenant.Configuration) ? 
-                        System.Text.Json.JsonSerializer.Deserialize<object>(tenant.Configuration) : null,
+                        JsonSerializer.Deserialize<object>(tenant.Configuration) : null,
                     isActive = tenant.IsActive,
                     expiresAt = tenant.ExpiresAt
                 };

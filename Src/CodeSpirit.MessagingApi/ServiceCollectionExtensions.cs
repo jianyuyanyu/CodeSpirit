@@ -5,6 +5,7 @@ using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
 using CodeSpirit.Messaging.Services;
 using CodeSpirit.MessagingApi.Mappings;
+using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
@@ -34,6 +35,9 @@ public static class ServiceCollectionExtensions
 
         // 添加AutoMapper
         services.AddAutoMapper(typeof(MappingProfile).Assembly);
+
+        // 添加多租户支持
+        services.AddCodeSpiritMultiTenant(configuration);
 
         return services;
     }
@@ -114,6 +118,9 @@ public static class ServiceCollectionExtensions
     {
         app.UseHttpsRedirection();
         app.UseCors("AllowSpecificOriginsWithCredentials");
+
+        // 添加多租户中间件 - 必须在身份验证之前
+        app.UseCodeSpiritMultiTenant();
 
         // 添加身份验证中间件
         app.UseAuthentication();

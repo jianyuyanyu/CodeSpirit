@@ -3,6 +3,7 @@ using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Dtos.WrongQuestion;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -10,7 +11,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 错题管理控制器
 /// </summary>
 [DisplayName("错题管理")]
-[Navigation(Icon = "fa-solid fa-circle-exclamation")]
+[Navigation(Icon = "fa-solid fa-circle-exclamation", PlatformType = PlatformType.Tenant)]
 public class WrongQuestionsController : ApiControllerBase
 {
     private readonly IWrongQuestionService _wrongQuestionService;

@@ -149,7 +149,10 @@ namespace CodeSpirit.IdentityApi.Services
         /// <returns>租户信息</returns>
         public async Task<TenantInfo> GetByTenantIdAsync(string tenantId)
         {
-            return await _context.Tenants.FirstOrDefaultAsync(x => x.TenantId == tenantId);
+            return await _context.WithoutMultiTenantFilterAsync(async () =>
+            {
+                return await _context.Tenants.FirstOrDefaultAsync(x => x.TenantId == tenantId);
+            });
         }
 
         /// <summary>
@@ -159,7 +162,10 @@ namespace CodeSpirit.IdentityApi.Services
         /// <returns>是否存在</returns>
         public async Task<bool> ExistsByTenantIdAsync(string tenantId)
         {
-            return await _context.Tenants.AnyAsync(x => x.TenantId == tenantId);
+            return await _context.WithoutMultiTenantFilterAsync(async () =>
+            {
+                return await _context.Tenants.AnyAsync(x => x.TenantId == tenantId);
+            });
         }
 
         /// <summary>

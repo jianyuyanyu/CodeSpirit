@@ -193,8 +193,6 @@ namespace CodeSpirit.IdentityApi.Data
             {
                 userRole.ToTable(nameof(ApplicationUserRole));
 
-                //userRole.HasKey(ur => ur.Id); // 使用单独的主键
-
                 userRole.HasOne(ur => ur.User)
                     .WithMany(u => u.UserRoles)
                     .HasForeignKey(ur => ur.UserId)
@@ -207,7 +205,18 @@ namespace CodeSpirit.IdentityApi.Data
                     .IsRequired()
                     .OnDelete(DeleteBehavior.Cascade); // 保持级联删除
 
-                //userRole.HasIndex(ur => new { ur.UserId, ur.RoleId }).IsUnique();
+                // 创建包含租户ID的复合唯一索引，确保在同一租户内用户角色关联的唯一性
+                userRole.HasIndex(ur => new { ur.UserId, ur.RoleId, ur.TenantId })
+                    .IsUnique()
+                    .HasDatabaseName("IX_ApplicationUserRole_UserId_RoleId_TenantId");
+
+                // 为TenantId单独创建索引，提高多租户查询性能
+                userRole.HasIndex(ur => ur.TenantId)
+                    .HasDatabaseName("IX_ApplicationUserRole_TenantId");
+
+                // 为经常查询的组合创建索引
+                userRole.HasIndex(ur => new { ur.TenantId, ur.UserId })
+                    .HasDatabaseName("IX_ApplicationUserRole_TenantId_UserId");
             });
 
             // 应用转换器到 RolePermission 实体的 PermissionIds 属性
@@ -552,5 +561,37 @@ namespace CodeSpirit.IdentityApi.Data
             }
 
         }
+
+        #region 多租户操作方法
+
+        /// <summary>
+        /// 禁用多租户过滤执行异步操作
+        /// </summary>
+        /// <typeparam name="T">返回类型</typeparam>
+        /// <param name="operation">要执行的异步操作</param>
+        /// <returns>异步操作结果</returns>
+        public virtual async Task<T> WithoutMultiTenantFilterAsync<T>(Func<Task<T>> operation)
+        {
+            using (DataFilter?.Disable<IMultiTenant>())
+            {
+                return await operation();
+            }
+        }
+
+        /// <summary>
+        /// 禁用多租户过滤执行操作
+        /// </summary>
+        /// <typeparam name="T">返回类型</typeparam>
+        /// <param name="operation">要执行的操作</param>
+        /// <returns>操作结果</returns>
+        public virtual T WithoutMultiTenantFilter<T>(Func<T> operation)
+        {
+            using (DataFilter?.Disable<IMultiTenant>())
+            {
+                return operation();
+            }
+        }
+
+        #endregion
     }
 }

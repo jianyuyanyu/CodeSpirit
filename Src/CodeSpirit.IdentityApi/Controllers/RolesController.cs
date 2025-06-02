@@ -1,5 +1,6 @@
 ﻿using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers;
 using CodeSpirit.IdentityApi.Dtos.Role;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
 [DisplayName("角色管理")]
-[Navigation(Icon = "fa-solid fa-user-shield")]
+[Navigation(Icon = "fa-solid fa-user-tag", PlatformType = PlatformType.Tenant)]
 public class RolesController : ApiControllerBase
 {
     private readonly IRoleService _roleService;

@@ -1,6 +1,7 @@
 using CodeSpirit.Amis.Controllers;
 using CodeSpirit.Authorization;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ namespace CodeSpirit.ExamApi.Controllers
     [Authorize(policy: "DynamicPermissions")]
     [Route("api/exam/[controller]")]
     [Module(ExamConstants.ExamModule, "考试中心", Icon = "fa-solid fa-graduation-cap")]
+    [Navigation(Icon = "fa-solid fa-graduation-cap", PlatformType = PlatformType.Tenant)]
     public abstract class ApiControllerBase : AmisApiControllerBase
     {
         /// <summary>

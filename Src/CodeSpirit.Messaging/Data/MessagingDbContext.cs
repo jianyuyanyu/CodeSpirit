@@ -1,4 +1,7 @@
+using CodeSpirit.Core;
 using CodeSpirit.Messaging.Models;
+using CodeSpirit.Shared.Data;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.Messaging.Data;
@@ -6,13 +9,20 @@ namespace CodeSpirit.Messaging.Data;
 /// <summary>
 /// 消息模块数据库上下文
 /// </summary>
-public class MessagingDbContext : DbContext
+public class MessagingDbContext : MultiTenantDbContext
 {
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="options">数据库上下文选项</param>
-    public MessagingDbContext(DbContextOptions<MessagingDbContext> options) : base(options)
+    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="currentUser">当前用户服务</param>
+    /// <param name="httpContextAccessor">HTTP上下文访问器</param>
+    public MessagingDbContext(
+        DbContextOptions<MessagingDbContext> options,
+        IServiceProvider serviceProvider,
+        ICurrentUser currentUser,
+        IHttpContextAccessor httpContextAccessor) : base(options, serviceProvider, currentUser, httpContextAccessor)
     {
     }
     
@@ -54,6 +64,10 @@ public class MessagingDbContext : DbContext
             entity.Property(e => e.SenderName).HasMaxLength(100);
             entity.Property(e => e.RecipientId).HasMaxLength(100).IsRequired();
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()");
+            
+            // 多租户字段配置
+            entity.Property(e => e.TenantId).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => e.TenantId).HasDatabaseName("IX_Messages_TenantId");
         });
         
         // 配置对话实体
@@ -63,6 +77,10 @@ public class MessagingDbContext : DbContext
             entity.Property(e => e.Title).HasMaxLength(200);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()");
             entity.Property(e => e.LastActivityAt).HasDefaultValueSql("GETDATE()");
+            
+            // 多租户字段配置
+            entity.Property(e => e.TenantId).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => e.TenantId).HasDatabaseName("IX_Conversations_TenantId");
             
             // 定义对话与参与者的关系
             entity.HasMany(e => e.Participants)
@@ -84,6 +102,10 @@ public class MessagingDbContext : DbContext
             entity.Property(e => e.UserId).HasMaxLength(100).IsRequired();
             entity.Property(e => e.UserName).HasMaxLength(100).IsRequired();
             entity.Property(e => e.JoinedAt).HasDefaultValueSql("GETDATE()");
+            
+            // 多租户字段配置
+            entity.Property(e => e.TenantId).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => e.TenantId).HasDatabaseName("IX_ConversationParticipants_TenantId");
         });
         
         // 配置用户消息已读状态实体
@@ -91,6 +113,11 @@ public class MessagingDbContext : DbContext
         {
             entity.HasKey(e => new { e.UserId, e.MessageId });
             entity.Property(e => e.UserId).HasMaxLength(100).IsRequired();
+            
+            // 多租户字段配置
+            entity.Property(e => e.TenantId).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => e.TenantId).HasDatabaseName("IX_UserMessageReads_TenantId");
+            
             entity.HasOne(e => e.Message)
                 .WithMany()
                 .HasForeignKey(e => e.MessageId)

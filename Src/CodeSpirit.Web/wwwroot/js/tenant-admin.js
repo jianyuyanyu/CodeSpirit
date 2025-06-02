@@ -45,266 +45,51 @@
     /**
      * 租户应用配置
      */
-    const appConfig = {
+    let appConfig = {
         type: 'app',
         brandName: '租户管理后台',
-        logo: '/favicon.ico', // 初始默认logo，后续通过API更新
+        logo: '/favicon.ico',
         api: `/api/navigation/tenant?tenantId=${tenantId}`, // 获取租户平台的导航
         header: {
             type: 'service',
             api: '/identity/api/identity/profile',
             silentPolling: false,
             className: 'flex w-full justify-between items-center px-4',
-            onEvent: {
-                fetchInited: {
-                    actions: [
-                        {
-                            actionType: "custom",
-                            script: `
-                                // 获取租户信息并更新品牌
-                                window.fetchTenantInfo();
-                                // 获取未读通知数
-                                window.fetchUnreadNotificationCount();
-                                
-                                // 设置定时任务，每分钟更新一次未读通知数
-                                window.notificationTimer = setInterval(function() {
-                                    window.fetchUnreadNotificationCount();
-                                }, 60000);
-                            `
-                        }
-                    ]
-                }
-            },
             body: [
-                // 左侧：租户品牌信息（更显眼的展示）
                 {
                     type: 'flex',
-                    className: 'tenant-header-info mr-auto',
+                    justify: 'space-between',
+                    alignItems: 'center',
+                    className: 'w-full',
                     items: [
                         {
                             type: 'container',
-                            className: 'tenant-brand-container flex items-center',
-                            body: [
-                                {
-                                    type: 'image',
-                                    name: 'tenant.logoUrl',
-                                    className: 'tenant-logo rounded-full',
-                                    width: 40,
-                                    height: 40,
-                                    defaultImage: '/favicon.ico'
-                                },
-                                {
-                                    type: 'container',
-                                    className: 'tenant-info ml-3',
-                                    body: [
-                                        {
-                                            type: 'tpl',
-                                            tpl: '<div class="tenant-name">${tenant.displayName || tenant.name || "租户后台"}</div>',
-                                            className: 'mb-1'
-                                        },
-                                        {
-                                            type: 'tpl',
-                                            tpl: '<div class="tenant-id">租户ID: ${tenant.id}</div>'
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                },
-                // 右侧：通知和用户菜单
-                {
-                    type: 'flex',
-                    className: 'header-actions ml-auto flex items-center',
-                    items: [
-                        // 通知按钮
-                        {
-                            type: 'button',
-                            icon: 'fa fa-bell',
-                            className: 'mr-3 notification-btn',
-                            tooltip: '通知',
-                            level: 'link',
-                            badge: {
-                                mode: 'text',
-                                text: '${notifications.count}',
-                                position: 'top-left',
-                                visibleOn: 'this.notifications.hasUnread',
-                                level: 'danger'
-                            },
-                            actionType: 'dialog',
-                            dialog: {
-                                title: '我的通知',
-                                size: 'md',
-                                body: {
-                                    type: 'service',
-                                    api: {
-                                        url: '/messaging/api/messaging/messages/my/list',
-                                        method: 'GET'
-                                    },
-                                    body: [
-                                        {
-                                            type: 'list',
-                                            source: '${items}',
-                                            listItem: {
-                                                title: '${title}',
-                                                desc: '<span class="text-base">${content}</span>',
-                                                actions: [
-                                                    {
-                                                        type: 'button',
-                                                        icon: 'fa fa-times',
-                                                        tooltip: '删除通知',
-                                                        actionType: 'ajax',
-                                                        api: 'DELETE:/messaging/api/messaging/messages/my/${id}',
-                                                        confirmText: '确定要删除该通知吗？'
-                                                    },
-                                                    {
-                                                        type: 'button',
-                                                        icon: 'fa fa-check',
-                                                        tooltip: '标记为已读',
-                                                        actionType: 'ajax',
-                                                        api: 'POST:/messaging/api/messaging/messages/my/${id}/read'
-                                                    }
-                                                ]
-                                            },
-                                            placeholder: '暂无通知',
-                                            footer: [
-                                                {
-                                                    type: 'button',
-                                                    label: '全部标记为已读',
-                                                    level: 'primary',
-                                                    size: 'sm',
-                                                    actionType: 'ajax',
-                                                    api: 'POST:/messaging/api/messaging/messages/my/read/all',
-                                                    reload: 'window'
-                                                }
-                                            ]
-                                        }
-                                    ]
-                                }
-                            }
+                            className: 'flex-1',
+                            body: []
                         },
-                        // 用户头像
-                        {
-                            type: 'avatar',
-                            src: '${user.avatar}',
-                            text: '${user.name}',
-                            icon: 'fa fa-user',
-                            className: 'mr-3',
-                            size: 40,
-                            onError: function () {
-                                return true;
-                            }
-                        },
-                        // 用户菜单
                         {
                             type: 'dropdown-button',
-                            label: '${user.name}',
-                            align: 'right',
-                            className: 'ml-2',
+                            label: '${userName || email || "用户"}',
+                            icon: 'fa fa-user',
+                            trigger: 'click',
+                            closeOnClick: true,
                             buttons: [
                                 {
                                     type: 'button',
-                                    label: '个人信息',
-                                    icon: 'fa fa-address-card',
-                                    actionType: 'dialog',
-                                    dialog: {
-                                        title: '个人信息',
-                                        size: 'md',
-                                        body: {
-                                            type: 'form',
-                                            api: '/identity/api/identity/profile',
-                                            controls: [
-                                                {
-                                                    type: 'image',
-                                                    name: 'avatar',
-                                                    label: '头像',
-                                                    thumbMode: 'cover',
-                                                    thumbRatio: '1:1',
-                                                    width: 100,
-                                                    height: 100,
-                                                    className: 'rounded-full'
-                                                },
-                                                {
-                                                    type: 'static',
-                                                    name: 'userName',
-                                                    label: '用户名'
-                                                },
-                                                {
-                                                    type: 'static',
-                                                    name: 'email',
-                                                    label: '邮箱'
-                                                }
-                                            ]
-                                        }
-                                    }
+                                    label: '个人设置',
+                                    icon: 'fa fa-cog',
+                                    actionType: 'url',
+                                    url: '/profile'
                                 },
                                 {
                                     type: 'divider'
                                 },
                                 {
                                     type: 'button',
-                                    label: '租户设置',
-                                    icon: 'fa fa-cog',
-                                    level: 'info',
-                                    actionType: 'dialog',
-                                    dialog: {
-                                        title: '租户设置',
-                                        size: 'lg',
-                                        body: {
-                                            type: 'service',
-                                            api: `/identity/api/identity/tenants/${tenantId}/login-config`,
-                                            body: [
-                                                {
-                                                    type: 'form',
-                                                    title: '租户基本信息',
-                                                    controls: [
-                                                        {
-                                                            type: 'static',
-                                                            name: 'id',
-                                                            label: '租户ID'
-                                                        },
-                                                        {
-                                                            type: 'static',
-                                                            name: 'name',
-                                                            label: '租户名称'
-                                                        },
-                                                        {
-                                                            type: 'static',
-                                                            name: 'displayName',
-                                                            label: '显示名称'
-                                                        },
-                                                        {
-                                                            type: 'image',
-                                                            name: 'logoUrl',
-                                                            label: '租户Logo',
-                                                            width: 100,
-                                                            height: 100
-                                                        }
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                {
-                                    type: 'button',
-                                    label: '切换到系统管理',
-                                    icon: 'fa fa-exchange-alt',
-                                    level: 'info',
-                                    actionType: 'url',
-                                    url: '/admin',
-                                    visibleOn: 'this.user.roles && this.user.roles.indexOf("Admin") !== -1'
-                                },
-                                {
-                                    type: 'button',
                                     label: '退出登录',
-                                    icon: 'fa fa-sign-out',
-                                    level: 'danger',
-                                    actionType: 'ajax',
-                                    confirmText: '确认要退出登录？',
-                                    api: '/identity/api/identity/auth/logout',
-                                    reload: 'none',
-                                    redirect: '/login'
+                                    icon: 'fa fa-sign-out-alt',
+                                    actionType: 'custom',
+                                    script: 'window.logout();'
                                 }
                             ]
                         }
@@ -386,7 +171,7 @@
     /**
      * AMIS实例配置
      */
-    const amisOptions = {
+    let amisOptions = {
         location: history.location,
         data: {
             tenant: {
@@ -394,10 +179,14 @@
                 name: '加载中...',
                 displayName: '加载中...',
                 logoUrl: '/favicon.ico'
+            },
+            notifications: {
+                count: 0,
+                hasUnread: false
             }
         },
         context: {
-            WEB_HOST: webHost,
+            WEB_HOST: window.webHost || '',
             TENANT_ID: tenantId,
             PLATFORM_TYPE: 'tenant'
         }
@@ -513,150 +302,72 @@
         theme: 'antd'
     };
 
-    // 初始化AMIS实例
-    let amisInstance = amis.embed('#root', appConfig, amisOptions, amisHandlers);
-
-    // 初始化数据
-    amisInstance.updateProps({
-        data: {
-            tenant: {
-                id: tenantId,
-                name: '加载中...',
-                displayName: '加载中...',
-                logoUrl: '/favicon.ico'
-            },
-            notifications: {
-                count: 0,
-                hasUnread: false
-            }
-        }
-    });
-
-    // 监听路由变化
-    history.listen(state => {
-        amisInstance.updateProps({
-            location: state.location || state
-        });
-    });
-
-    /**
-     * 全局数据操作工具（继承系统版本）
-     */
-    window.GlobalData = window.GlobalData || {
-        get: function (path, defaultValue) {
-            const keys = path.split('.');
-            let current = window.globalData;
-
-            for (let i = 0; i < keys.length; i++) {
-                if (current === undefined || current === null) {
-                    return defaultValue;
-                }
-                current = current[keys[i]];
-            }
-
-            return current !== undefined ? current : defaultValue;
-        },
-
-        set: function (path, value) {
-            const keys = path.split('.');
-            let current = window.globalData;
-
-            for (let i = 0; i < keys.length - 1; i++) {
-                if (current[keys[i]] === undefined) {
-                    current[keys[i]] = {};
-                }
-                current = current[keys[i]];
-            }
-
-            current[keys[keys.length - 1]] = value;
-            return value;
-        },
-
-        syncToAmis: function (amisInstance, selectedPaths) {
-            if (!amisInstance) return;
-
-            const data = {};
-            if (selectedPaths && Array.isArray(selectedPaths)) {
-                selectedPaths.forEach(path => {
-                    const keys = path.split('.');
-                    let current = data;
-                    let source = window.globalData;
-
-                    for (let i = 0; i < keys.length - 1; i++) {
-                        if (source[keys[i]] === undefined) break;
-
-                        if (current[keys[i]] === undefined) {
-                            current[keys[i]] = {};
-                        }
-                        current = current[keys[i]];
-                        source = source[keys[i]];
-                    }
-
-                    current[keys[keys.length - 1]] = source[keys[keys.length - 1]];
-                });
-            } else {
-                Object.assign(data, window.globalData);
-            }
-
-            amisInstance.updateProps({ data });
-        }
-    };
-
     /**
      * 获取租户信息
      */
     window.fetchTenantInfo = function () {
-        const token = localStorage.getItem('token');                
-        fetch(`/identity/api/tenants/${tenantId}/login-config`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'X-Forwarded-With': 'CodeSpirit',
-                'X-Tenant-Id': tenantId
-            }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    console.error('获取租户信息失败:', response);
-                    return null;
+        return new Promise((resolve, reject) => {
+            const token = localStorage.getItem('token');                
+            fetch(`/identity/api/identity/tenants/${tenantId}/login-config`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-Forwarded-With': 'CodeSpirit',
+                    'X-Tenant-Id': tenantId
                 }
-                return response.json();
             })
-            .then(data => {
-                if (data && data.status === 0 && data.data) {
-                    const tenant = data.data;
-                    
-                    // 更新全局数据
-                    window.GlobalData.set('tenant.name', tenant.name || '');
-                    window.GlobalData.set('tenant.displayName', tenant.displayName || tenant.name || '');
-                    window.GlobalData.set('tenant.logoUrl', tenant.logoUrl || '/favicon.ico');
-                    window.GlobalData.set('tenant.themeConfig', tenant.themeConfig || {});
-
-                    // 更新AMIS实例中的数据
-                    amisInstance.updateProps({
-                        data: {
-                            tenant: {
-                                id: tenantId,
-                                name: tenant.name || '',
-                                displayName: tenant.displayName || tenant.name || '',
-                                logoUrl: tenant.logoUrl || '/favicon.ico'
-                            }
+                .then(response => {
+                    if (!response.ok) {
+                        console.error('获取租户信息失败:', response);
+                        return null;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && data.status === 0 && data.data) {
+                        const tenant = data.data;
+                        
+                        // 更新全局租户数据
+                        window.GlobalData.set('tenant.id', tenant.tenantId);
+                        window.GlobalData.set('tenant.name', tenant.name);
+                        window.GlobalData.set('tenant.displayName', tenant.displayName);
+                        window.GlobalData.set('tenant.description', tenant.description);
+                        window.GlobalData.set('tenant.logoUrl', tenant.logoUrl || '/favicon.ico');
+                        window.GlobalData.set('tenant.themeConfig', tenant.themeConfig);
+                        
+                        // 更新app配置
+                        appConfig.brandName = tenant.displayName || tenant.name || '租户管理后台';
+                        appConfig.logo = tenant.logoUrl || '/favicon.ico';
+                        
+                        // 更新amisOptions中的租户数据
+                        amisOptions.data.tenant = {
+                            id: tenant.tenantId,
+                            name: tenant.name,
+                            displayName: tenant.displayName,
+                            description: tenant.description,
+                            logoUrl: tenant.logoUrl || '/favicon.ico',
+                            themeConfig: tenant.themeConfig
+                        };
+                        
+                        // 更新页面标题
+                        document.title = (tenant.displayName || tenant.name || '租户管理后台') + ' - CodeSpirit';
+                        
+                        // 应用租户主题配置
+                        if (tenant.themeConfig) {
+                            applyTenantTheme(tenant.themeConfig);
                         }
-                    });
-
-                    // 更新应用品牌名称
-                    if (tenant.displayName || tenant.name) {
-                        document.title = `${tenant.displayName || tenant.name} - 管理后台`;
+                        
+                        console.log('租户信息已获取:', tenant);
+                        resolve(tenant);
+                    } else {
+                        console.warn('租户信息获取失败或数据为空');
+                        resolve(null);
                     }
-
-                    // 应用租户主题
-                    if (tenant.themeConfig) {
-                        applyTenantTheme(tenant.themeConfig);
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('获取租户信息失败:', error);
-            });
+                })
+                .catch(error => {
+                    console.error('获取租户信息异常:', error);
+                    reject(error);
+                });
+        });
     };
 
     /**
@@ -742,5 +453,208 @@
             .catch(error => {
                 console.error('获取未读消息数失败:', error);
             });
+    };
+
+    /**
+     * 退出登录
+     */
+    window.logout = function() {
+        const token = localStorage.getItem('token');
+        
+        // 调用登出API
+        fetch('/identity/api/identity/auth/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'X-Forwarded-With': 'CodeSpirit',
+                'X-Tenant-Id': tenantId
+            }
+        })
+        .then(() => {
+            // 清除本地存储
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            // 重定向到登录页
+            window.location.href = '/login';
+        })
+        .catch(error => {
+            console.error('退出登录失败:', error);
+            // 即使API失败也清除本地存储并跳转
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        });
+    };
+
+    /**
+     * 获取未读通知数量
+     */
+    window.fetchUnreadNotificationCount = function() {
+        const token = localStorage.getItem('token');
+        
+        fetch('/messaging/api/messaging/messages/my/unread-count', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'X-Forwarded-With': 'CodeSpirit',
+                'X-Tenant-Id': tenantId
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.status === 0) {
+                const count = data.data || 0;
+                
+                // 更新通知数据
+                if (window.amisInstance) {
+                    window.amisInstance.updateProps({
+                        data: {
+                            notifications: {
+                                count: count,
+                                hasUnread: count > 0
+                            }
+                        }
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('获取未读通知数量失败:', error);
+        });
+    };
+
+    /**
+     * 初始化应用
+     */
+    async function initializeApp() {
+        try {
+            // 显示加载提示
+            const rootElement = document.getElementById('root');
+            if (rootElement) {
+                rootElement.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 16px;">正在加载租户信息...</div>';
+            }
+            
+            // 先获取租户信息
+            await window.fetchTenantInfo();
+            
+            // 清空加载提示
+            if (rootElement) {
+                rootElement.innerHTML = '';
+            }
+            
+            // 使用更新后的配置初始化AMIS实例
+            window.amisInstance = amis.embed('#root', appConfig, amisOptions, amisHandlers);
+            
+            // 绑定路由监听
+            window.bindRouteListener();
+            
+            console.log('应用初始化完成');
+            
+        } catch (error) {
+            console.error('应用初始化失败:', error);
+            
+            // 即使失败也要初始化基本界面
+            const rootElement = document.getElementById('root');
+            if (rootElement) {
+                rootElement.innerHTML = '';
+            }
+            
+            window.amisInstance = amis.embed('#root', appConfig, amisOptions, amisHandlers);
+            window.bindRouteListener();
+        }
+    }
+
+    // 路由监听器变量
+    let routeUnlisten = null;
+
+    // 绑定路由监听函数
+    window.bindRouteListener = function() {
+        // 如果已经有监听器，先解绑
+        if (routeUnlisten) {
+            routeUnlisten();
+        }
+        
+        // 绑定新的监听器
+        routeUnlisten = history.listen(state => {
+            if (window.amisInstance) {
+                window.amisInstance.updateProps({
+                    location: state.location || state
+                });
+            }
+        });
+    };
+
+    // 页面加载完成后初始化应用
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeApp();
+    });
+    
+    // 如果DOMContentLoaded已经触发，立即执行
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        initializeApp();
+    }
+
+    /**
+     * 全局数据操作工具（继承系统版本）
+     */
+    window.GlobalData = window.GlobalData || {
+        get: function (path, defaultValue) {
+            const keys = path.split('.');
+            let current = window.globalData;
+
+            for (let i = 0; i < keys.length; i++) {
+                if (current === undefined || current === null) {
+                    return defaultValue;
+                }
+                current = current[keys[i]];
+            }
+
+            return current !== undefined ? current : defaultValue;
+        },
+
+        set: function (path, value) {
+            const keys = path.split('.');
+            let current = window.globalData;
+
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (current[keys[i]] === undefined) {
+                    current[keys[i]] = {};
+                }
+                current = current[keys[i]];
+            }
+
+            current[keys[keys.length - 1]] = value;
+            return value;
+        },
+
+        syncToAmis: function (amisInstance, selectedPaths) {
+            if (!amisInstance) return;
+
+            const data = {};
+            if (selectedPaths && Array.isArray(selectedPaths)) {
+                selectedPaths.forEach(path => {
+                    const keys = path.split('.');
+                    let current = data;
+                    let source = window.globalData;
+
+                    for (let i = 0; i < keys.length - 1; i++) {
+                        if (source[keys[i]] === undefined) break;
+
+                        if (current[keys[i]] === undefined) {
+                            current[keys[i]] = {};
+                        }
+                        current = current[keys[i]];
+                        source = source[keys[i]];
+                    }
+
+                    current[keys[keys.length - 1]] = source[keys[keys.length - 1]];
+                });
+            } else {
+                Object.assign(data, window.globalData);
+            }
+
+            amisInstance.updateProps({ data });
+        }
     };
 })(); 

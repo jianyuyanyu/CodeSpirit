@@ -41,11 +41,18 @@ namespace CodeSpirit.Navigation
             if (configNavigation != null && codeNavigation.Count > 0)
             {
                 MergeNavigationNodes(configNavigation, codeNavigation[0]);
-                return [configNavigation];
+                var result = new List<NavigationNode> { configNavigation };
+                ProcessPlatformTypeInheritance(result);
+                return result;
             }
 
             // 返回非空的那个，如果都为空则返回空列表
-            return configNavigation != null ? [configNavigation] : codeNavigation;
+            var navigationResult = configNavigation != null ? new List<NavigationNode> { configNavigation } : codeNavigation;
+            
+            // 处理平台类型继承
+            ProcessPlatformTypeInheritance(navigationResult);
+            
+            return navigationResult;
         }
 
         /// <summary>
@@ -70,21 +77,66 @@ namespace CodeSpirit.Navigation
             var moduleDisplayName = moduleAttr?.DisplayName;
             var modulePath = $"/{moduleName.ToCamelCase()}";
 
+            // 推断模块级别的平台类型：优先使用最具体的平台类型
+            var inferredPlatformType = PlatformType.Both; // 默认为Both，支持所有平台
+            
+            // 收集所有控制器的平台类型
+            var controllerPlatformTypes = controllers
+                .Select(c => c.Key.GetCustomAttribute<NavigationAttribute>()?.PlatformType)
+                .Where(pt => pt.HasValue && pt.Value != PlatformType.Inherit)
+                .Select(pt => pt.Value)
+                .Distinct()
+                .ToList();
+
+            if (controllerPlatformTypes.Any())
+            {
+                // 如果所有控制器都是同一个平台类型，使用该平台类型
+                if (controllerPlatformTypes.Count == 1)
+                {
+                    inferredPlatformType = controllerPlatformTypes.First();
+                }
+                // 如果包含多种平台类型，使用 Both 表示支持多平台
+                else if (controllerPlatformTypes.Contains(PlatformType.System) && controllerPlatformTypes.Contains(PlatformType.Tenant))
+                {
+                    inferredPlatformType = PlatformType.Both;
+                }
+                // 如果只有 System 或 Tenant 控制器（没有 Both），使用对应的平台类型
+                else if (controllerPlatformTypes.Contains(PlatformType.System) && !controllerPlatformTypes.Contains(PlatformType.Both))
+                {
+                    inferredPlatformType = PlatformType.System;
+                }
+                else if (controllerPlatformTypes.Contains(PlatformType.Tenant) && !controllerPlatformTypes.Contains(PlatformType.Both))
+                {
+                    inferredPlatformType = PlatformType.Tenant;
+                }
+            }
+
             var moduleNode = new NavigationNode(moduleName, moduleDisplayName, modulePath)
             {
                 ModuleName = moduleName,
                 Permission = moduleName.ToCamelCase(),
-                Icon = moduleAttr?.Icon
+                Icon = moduleAttr?.Icon,
+                PlatformType = inferredPlatformType,
+                OriginalPlatformType = inferredPlatformType
             };
 
             foreach (var controller in controllers)
             {
                 var navAttr = controller.Key.GetCustomAttribute<NavigationAttribute>();
+                
+                NavigationNode controllerNode = null;
+                
+                // 只有明确定义了 NavigationAttribute 且未隐藏的控制器才创建导航节点
                 if (navAttr != null && !navAttr.Hidden)
                 {
                     var controllerName = controller.Key.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase).ToCamelCase();
                     var controllerPath = $"{modulePath}/{controllerName}";
-                    var controllerNode = CreateNavigationNode(moduleName, navAttr, controllerName, controller.Key, controllerPath);
+                    controllerNode = CreateNavigationNode(moduleName, navAttr, controllerName, controller.Key, controllerPath);
+                }
+                
+                // 如果成功创建了控制器节点，则添加到模块节点中并处理动作方法
+                if (controllerNode != null)
+                {
                     moduleNode.Children.Add(controllerNode);
 
                     foreach (var action in controller)
@@ -93,12 +145,18 @@ namespace CodeSpirit.Navigation
                         if (actionNavAttr != null && !actionNavAttr.Hidden)
                         {
                             var actionName = action.ActionName.ToCamelCase();
-                            var actionPath = $"{controllerPath}/{actionName}";
+                            var actionPath = $"{controllerNode.Path}/{actionName}";
                             var actionNode = CreateNavigationNode(moduleName, actionNavAttr, actionName, action.MethodInfo, actionPath);
                             controllerNode.Children.Add(actionNode);
                         }
                     }
                 }
+            }
+
+            // 如果模块没有任何子节点（所有控制器都被隐藏），则不返回该模块
+            if (moduleNode.Children.Count == 0)
+            {
+                return [];
             }
 
             return [moduleNode];
@@ -123,6 +181,7 @@ namespace CodeSpirit.Navigation
                 Target = attr.Target,
                 ModuleName = moduleName,
                 PlatformType = attr.PlatformType,
+                OriginalPlatformType = attr.PlatformType,
                 Group = attr.Group,
                 Tags = attr.Tags ?? [],
                 RequireAuth = attr.RequireAuth,
@@ -213,6 +272,7 @@ namespace CodeSpirit.Navigation
             existing.Route = current.Route;
             existing.Link = current.Link;
             existing.PlatformType = current.PlatformType;
+            existing.OriginalPlatformType = current.OriginalPlatformType;
             existing.Group = current.Group;
             existing.Tags = current.Tags;
             existing.RequireAuth = current.RequireAuth;
@@ -283,6 +343,7 @@ namespace CodeSpirit.Navigation
                 Route = item.Route,
                 Link = item.Link,
                 PlatformType = item.PlatformType,
+                OriginalPlatformType = item.PlatformType,
                 Group = item.Group,
                 Tags = item.Tags ?? [],
                 MetaData = item.MetaData ?? new(),
@@ -304,6 +365,53 @@ namespace CodeSpirit.Navigation
             }
 
             return node;
+        }
+
+        /// <summary>
+        /// 解析平台类型，处理继承逻辑
+        /// </summary>
+        /// <param name="currentPlatformType">当前节点的平台类型</param>
+        /// <param name="parentPlatformType">父级节点的平台类型</param>
+        /// <returns>解析后的实际平台类型</returns>
+        private PlatformType ResolvePlatformType(PlatformType currentPlatformType, PlatformType? parentPlatformType = null)
+        {
+            // 如果当前节点设置为继承，则使用父级的配置
+            if (currentPlatformType == PlatformType.Inherit)
+            {
+                // 如果父级存在且不是继承类型，则使用父级配置
+                if (parentPlatformType.HasValue && parentPlatformType != PlatformType.Inherit)
+                {
+                    return parentPlatformType.Value;
+                }
+                
+                // 如果父级也是继承或者没有父级，则默认为Both
+                return PlatformType.Both;
+            }
+            
+            return currentPlatformType;
+        }
+
+        /// <summary>
+        /// 递归处理导航树的平台类型继承
+        /// </summary>
+        /// <param name="nodes">导航节点列表</param>
+        /// <param name="parentPlatformType">父级平台类型</param>
+        private void ProcessPlatformTypeInheritance(List<NavigationNode> nodes, PlatformType? parentPlatformType = null)
+        {
+            foreach (var node in nodes)
+            {
+                // 如果节点的原始平台类型是继承，则更新为解析后的类型
+                if (node.OriginalPlatformType == PlatformType.Inherit)
+                {
+                    node.PlatformType = ResolvePlatformType(PlatformType.Inherit, parentPlatformType);
+                }
+
+                // 递归处理子节点，传递当前节点的解析后平台类型
+                if (node.Children.Any())
+                {
+                    ProcessPlatformTypeInheritance(node.Children, node.PlatformType);
+                }
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.Extensions.Logging;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -14,7 +15,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 练习记录管理控制器
 /// </summary>
 [DisplayName("练习记录管理")]
-[Navigation(Icon = "fa-solid fa-clipboard-list")]
+[Navigation(Icon = "fa-solid fa-clipboard-list", PlatformType = PlatformType.Tenant)]
 public class PracticeRecordsController : ApiControllerBase
 {
     private readonly IPracticeRecordService _practiceRecordService;

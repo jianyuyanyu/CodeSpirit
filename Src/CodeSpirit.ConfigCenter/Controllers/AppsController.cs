@@ -4,6 +4,7 @@ using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
@@ -16,7 +17,7 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 /// 应用管理控制器
 /// </summary>
 [DisplayName("应用管理")]
-[Navigation(Icon = "fa-solid fa-cube")]
+[Navigation(Icon = "fa-solid fa-cube", PlatformType = PlatformType.Inherit)]
 public class AppsController : ApiControllerBase
 {
     private readonly IAppService _appService;

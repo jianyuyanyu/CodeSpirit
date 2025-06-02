@@ -2,7 +2,7 @@
 
 ## 概述
 
-CodeSpirit.Authorization是框架的核心权限管理组件，实现了基于角色的访问控制（RBAC）和基于属性的访问控制（ABAC）的混合权限模型。该组件提供了灵活、细粒度的权限控制机制，支持动态权限验证、权限树管理和多层级权限继承。
+CodeSpirit.Authorization是框架的核心权限管理组件，实现了基于角色的访问控制（RBAC）和基于属性的访问控制（ABAC）的混合权限模型，以及多租户平台权限验证系统。该组件提供了灵活、细粒度的权限控制机制，支持动态权限验证、权限树管理、多层级权限继承和多租户隔离。
 
 ## 权限模型架构
 
@@ -12,6 +12,7 @@ graph TB
         User[用户]
         Role[角色]
         Group[用户组]
+        Tenant[租户]
     end
     
     subgraph "权限对象 (Objects)"
@@ -19,25 +20,31 @@ graph TB
         Action[操作]
         Controller[控制器]
         Method[方法]
+        Platform[平台]
     end
     
     subgraph "权限规则 (Rules)"
         Permission[权限]
         Policy[策略]
         Attribute[属性]
+        PlatformRule[平台规则]
     end
     
     subgraph "权限验证 (Verification)"
         Handler[授权处理器]
         Requirement[权限要求]
         Context[上下文]
+        PlatformHandler[平台处理器]
     end
     
     User --> Role
+    User --> Tenant
     Role --> Permission
     Permission --> Resource
     Permission --> Action
+    Tenant --> Platform
     Handler --> Requirement
+    PlatformHandler --> PlatformRule
     Handler --> Context
     Context --> User
     Context --> Resource
@@ -47,10 +54,393 @@ graph TB
     classDef rule fill:#e8f5e8
     classDef verification fill:#fff3e0
     
-    class User,Role,Group subject
-    class Resource,Action,Controller,Method object
-    class Permission,Policy,Attribute rule
-    class Handler,Requirement,Context verification
+    class User,Role,Group,Tenant subject
+    class Resource,Action,Controller,Method,Platform object
+    class Permission,Policy,Attribute,PlatformRule rule
+    class Handler,Requirement,Context,PlatformHandler verification
+```
+
+## 多租户平台权限验证系统
+
+### 1. 平台类型定义
+
+系统支持四种平台类型，用于区分不同的访问权限级别：
+
+```csharp
+/// <summary>
+/// 平台类型枚举
+/// </summary>
+public enum PlatformType
+{
+    /// <summary>
+    /// 无权限 - 禁止访问
+    /// </summary>
+    None = 0,
+
+    /// <summary>
+    /// 系统平台 - 仅系统租户可访问
+    /// </summary>
+    System = 1,
+
+    /// <summary>
+    /// 租户平台 - 仅业务租户可访问
+    /// </summary>
+    Tenant = 2,
+
+    /// <summary>
+    /// 通用平台 - 系统租户和业务租户都可访问
+    /// </summary>
+    Both = 3
+}
+```
+
+### 2. 租户类型分类
+
+系统将租户分为三种类型：
+
+- **系统租户 (system)**: 系统管理租户，拥有系统级权限
+- **默认租户 (default)**: 默认租户，通常用于初始化，无业务权限
+- **业务租户**: 除系统和默认租户外的所有租户，拥有业务级权限
+
+### 3. 平台权限验证矩阵
+
+| 用户租户类型 | PlatformType.System | PlatformType.Tenant | PlatformType.Both | PlatformType.None |
+|-------------|-------------------|-------------------|------------------|------------------|
+| system      | ✅ 允许            | ❌ 拒绝            | ✅ 允许           | ❌ 拒绝          |
+| default     | ❌ 拒绝            | ❌ 拒绝            | ❌ 拒绝           | ❌ 拒绝          |
+| business    | ❌ 拒绝            | ✅ 允许            | ✅ 允许           | ❌ 拒绝          |
+
+### 4. 平台权限要求 (PlatformRequirement)
+
+平台权限要求定义了访问特定平台功能所需的租户类型：
+
+```csharp
+/// <summary>
+/// 平台权限要求
+/// </summary>
+public class PlatformRequirement : IAuthorizationRequirement
+{
+    /// <summary>
+    /// 平台类型
+    /// </summary>
+    public PlatformType PlatformType { get; }
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="platformType">平台类型</param>
+    public PlatformRequirement(PlatformType platformType)
+    {
+        PlatformType = platformType;
+    }
+}
+```
+
+### 5. 平台权限特性 (PlatformAttribute)
+
+平台权限特性提供了声明式的权限控制方式：
+
+```csharp
+/// <summary>
+/// 平台权限特性
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public class PlatformAttribute : AuthorizeAttribute
+{
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="platformType">平台类型</param>
+    public PlatformAttribute(PlatformType platformType)
+    {
+        Policy = $"Platform_{platformType}";
+    }
+}
+```
+
+### 6. 平台权限验证处理器 (PlatformAuthorizationHandler)
+
+平台权限验证处理器负责执行具体的权限验证逻辑：
+
+```csharp
+/// <summary>
+/// 平台权限验证处理器
+/// </summary>
+public class PlatformAuthorizationHandler : AuthorizationHandler<PlatformRequirement>
+{
+    private readonly ICurrentUser _currentUser;
+    private readonly ILogger<PlatformAuthorizationHandler> _logger;
+
+    public PlatformAuthorizationHandler(ICurrentUser currentUser, ILogger<PlatformAuthorizationHandler> logger)
+    {
+        _currentUser = currentUser;
+        _logger = logger;
+    }
+
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        PlatformRequirement requirement)
+    {
+        var platformType = requirement.PlatformType;
+        var currentUserTenantId = _currentUser.TenantId;
+        
+        // 如果用户未认证，直接拒绝
+        if (!_currentUser.IsAuthenticated)
+        {
+            _logger.LogWarning("用户未认证，无法访问 {PlatformType} 平台功能", platformType);
+            return Task.CompletedTask;
+        }
+        
+        // 判断用户租户类型
+        var isSystemTenant = currentUserTenantId == "system";
+        var isDefaultTenant = currentUserTenantId == "default";
+        var isBusinessTenant = !string.IsNullOrEmpty(currentUserTenantId) && !isSystemTenant && !isDefaultTenant;
+
+        var hasAccess = platformType switch
+        {
+            PlatformType.System => isSystemTenant,
+            PlatformType.Tenant => isBusinessTenant,
+            PlatformType.Both => isSystemTenant || isBusinessTenant,
+            PlatformType.None => false,
+            _ => false
+        };
+
+        if (hasAccess)
+        {
+            context.Succeed(requirement);
+            _logger.LogDebug("用户 {UserId} (租户: {TenantId}) 成功访问 {PlatformType} 平台功能", 
+                _currentUser.Id, currentUserTenantId, platformType);
+        }
+        else
+        {
+            _logger.LogWarning("用户 {UserId} (租户: {TenantId}) 无权访问 {PlatformType} 平台功能", 
+                _currentUser.Id, currentUserTenantId, platformType);
+        }
+
+        return Task.CompletedTask;
+    }
+}
+```
+
+### 7. 使用示例
+
+#### 7.1 控制器级别权限控制
+
+```csharp
+/// <summary>
+/// 系统管理控制器 - 只有系统租户用户可以访问
+/// </summary>
+[Platform(PlatformType.System)]
+[ApiController]
+[Route("api/[controller]")]
+public class SystemManagementController : ControllerBase
+{
+    [HttpGet("tenants")]
+    public IActionResult GetTenants()
+    {
+        return Ok("系统租户管理功能");
+    }
+}
+
+/// <summary>
+/// 租户业务控制器 - 只有业务租户用户可以访问
+/// </summary>
+[Platform(PlatformType.Tenant)]
+[ApiController]
+[Route("api/[controller]")]
+public class TenantBusinessController : ControllerBase
+{
+    [HttpGet("data")]
+    public IActionResult GetBusinessData()
+    {
+        return Ok("租户业务数据");
+    }
+}
+
+/// <summary>
+/// 通用功能控制器 - 系统租户和业务租户都可以访问
+/// </summary>
+[Platform(PlatformType.Both)]
+[ApiController]
+[Route("api/[controller]")]
+public class CommonController : ControllerBase
+{
+    [HttpGet("info")]
+    public IActionResult GetInfo()
+    {
+        return Ok("通用信息");
+    }
+}
+```
+
+#### 7.2 方法级别权限控制
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class MixedController : ControllerBase
+{
+    /// <summary>
+    /// 系统管理功能 - 只有系统租户用户可以访问
+    /// </summary>
+    [HttpGet("system-management")]
+    [Platform(PlatformType.System)]
+    public IActionResult SystemManagement()
+    {
+        return Ok("系统管理功能");
+    }
+
+    /// <summary>
+    /// 租户业务功能 - 只有业务租户用户可以访问
+    /// </summary>
+    [HttpGet("tenant-business")]
+    [Platform(PlatformType.Tenant)]
+    public IActionResult TenantBusiness()
+    {
+        return Ok("租户业务功能");
+    }
+
+    /// <summary>
+    /// 通用功能 - 系统租户和业务租户都可以访问
+    /// </summary>
+    [HttpGet("common-feature")]
+    [Platform(PlatformType.Both)]
+    public IActionResult CommonFeature()
+    {
+        return Ok("通用功能");
+    }
+}
+```
+
+#### 7.3 组合权限控制
+
+```csharp
+/// <summary>
+/// 高级功能控制器 - 需要同时满足平台权限和角色权限
+/// </summary>
+[Platform(PlatformType.Tenant)]
+[ApiController]
+[Route("api/[controller]")]
+public class AdvancedController : ControllerBase
+{
+    /// <summary>
+    /// 高级操作 - 需要租户平台权限和特定角色权限
+    /// </summary>
+    [HttpPost("advanced-operation")]
+    [Permission(Name = "advanced_operation")]
+    public IActionResult AdvancedOperation()
+    {
+        return Ok("高级操作完成");
+    }
+}
+```
+
+### 8. 服务注册和配置
+
+#### 8.1 完整权限系统注册
+
+```csharp
+// 注册完整的权限系统（包括角色权限和平台权限）
+services.AddCodeSpiritAuthorization();
+```
+
+#### 8.2 仅平台权限注册
+
+```csharp
+// 仅注册平台权限系统
+services.AddPlatformAuthorization();
+```
+
+#### 8.3 自定义配置
+
+```csharp
+services.AddAuthorization(options =>
+{
+    // 手动配置平台策略
+    options.AddPolicy("Platform_System", policy =>
+        policy.Requirements.Add(new PlatformRequirement(PlatformType.System)));
+    
+    options.AddPolicy("Platform_Tenant", policy =>
+        policy.Requirements.Add(new PlatformRequirement(PlatformType.Tenant)));
+    
+    options.AddPolicy("Platform_Both", policy =>
+        policy.Requirements.Add(new PlatformRequirement(PlatformType.Both)));
+});
+
+// 注册平台权限处理器
+services.AddScoped<IAuthorizationHandler, PlatformAuthorizationHandler>();
+```
+
+### 9. 最佳实践
+
+#### 9.1 权限设计原则
+
+1. **最小权限原则**: 默认拒绝访问，只授予必要的权限
+2. **职责分离**: 系统管理功能与业务功能严格分离
+3. **防御性编程**: 对未认证用户和默认租户一律拒绝访问
+
+#### 9.2 使用建议
+
+1. **系统管理功能**: 使用 `PlatformType.System`
+2. **租户业务功能**: 使用 `PlatformType.Tenant`
+3. **通用功能**: 使用 `PlatformType.Both`
+4. **禁止访问**: 使用 `PlatformType.None`
+
+#### 9.3 错误处理
+
+```csharp
+[HttpGet("protected")]
+[Platform(PlatformType.System)]
+public IActionResult ProtectedAction()
+{
+    try
+    {
+        // 业务逻辑
+        return Ok("操作成功");
+    }
+    catch (UnauthorizedAccessException)
+    {
+        return Forbid("权限不足");
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "操作失败");
+        return StatusCode(500, "内部错误");
+    }
+}
+```
+
+### 10. 单元测试
+
+平台权限系统提供了完整的单元测试覆盖：
+
+```csharp
+[Theory]
+[InlineData("system", true)]
+[InlineData("business", false)]
+[InlineData("default", false)]
+public void SystemPlatform_ShouldReturnCorrectResult(string tenantId, bool expectedResult)
+{
+    // 测试系统平台权限验证逻辑
+    var result = IsSystemTenant(tenantId);
+    Assert.Equal(expectedResult, result);
+}
+
+[Fact]
+public async Task PlatformAuthorizationHandler_WithSystemTenant_ShouldSucceedForSystemPlatform()
+{
+    // 测试平台权限处理器的完整流程
+    SetupMockUser(isAuthenticated: true, tenantId: "system");
+    var handler = new PlatformAuthorizationHandler(_mockCurrentUser.Object, _mockLogger.Object);
+    var context = new AuthorizationHandlerContext(
+        new[] { new PlatformRequirement(PlatformType.System) },
+        null,
+        null);
+
+    await handler.HandleAsync(context);
+
+    Assert.True(context.HasSucceeded);
+}
 ```
 
 ## 核心组件设计
@@ -955,126 +1345,440 @@ public class PermissionPolicyProvider : IAuthorizationPolicyProvider
 }
 ```
 
-## 使用示例
+## 平台权限验证系统
 
-### 1. 控制器权限配置
+### 1. 平台权限要求 (PlatformRequirement)
+
+平台权限要求定义了基于租户类型的访问控制规则。
 
 ```csharp
 /// <summary>
-/// 用户管理控制器
+/// 平台权限要求
 /// </summary>
-[ApiController]
-[Route("api/[controller]")]
-[Page("UserManagement", Title = "用户管理", Description = "系统用户管理", Icon = "user", Order = 1)]
-[RequirePermission("User.View")]
-public class UsersController : ControllerBase
+public class PlatformRequirement : IAuthorizationRequirement
 {
-    private readonly IUserService _userService;
-
-    public UsersController(IUserService userService)
-    {
-        _userService = userService;
-    }
+    /// <summary>
+    /// 平台类型
+    /// </summary>
+    public PlatformType PlatformType { get; }
 
     /// <summary>
-    /// 获取用户列表
+    /// 构造函数
     /// </summary>
-    [HttpGet]
-    [Operation("查询用户", OperationType.Query)]
-    public async Task<IActionResult> GetUsers([FromQuery] UserQueryDto query)
+    /// <param name="platformType">平台类型</param>
+    public PlatformRequirement(PlatformType platformType)
     {
-        var result = await _userService.GetUsersAsync(query);
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// 创建用户
-    /// </summary>
-    [HttpPost]
-    [RequirePermission("User.Create")]
-    [Operation("创建用户", OperationType.Create)]
-    public async Task<IActionResult> CreateUser(CreateUserDto dto)
-    {
-        var result = await _userService.CreateUserAsync(dto);
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// 更新用户
-    /// </summary>
-    [HttpPut("{id}")]
-    [RequirePermission("User.Update")]
-    [Operation("更新用户", OperationType.Update)]
-    public async Task<IActionResult> UpdateUser(long id, UpdateUserDto dto)
-    {
-        var result = await _userService.UpdateUserAsync(id, dto);
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// 删除用户
-    /// </summary>
-    [HttpDelete("{id}")]
-    [RequirePermission("User.Delete")]
-    [Operation("删除用户", OperationType.Delete)]
-    public async Task<IActionResult> DeleteUser(long id)
-    {
-        var result = await _userService.DeleteUserAsync(id);
-        return Ok(result);
+        PlatformType = platformType;
     }
 }
 ```
 
-### 2. 服务层权限检查
+### 2. 平台类型枚举 (PlatformType)
+
+定义了不同的平台访问级别。
 
 ```csharp
 /// <summary>
-/// 用户服务实现
+/// 平台类型枚举
 /// </summary>
-public class UserService : IUserService
+public enum PlatformType
 {
-    private readonly IPermissionService _permissionService;
+    /// <summary>
+    /// 无平台权限 - 拒绝所有访问
+    /// </summary>
+    None = 0,
+
+    /// <summary>
+    /// 系统平台 - 仅系统租户用户可访问
+    /// </summary>
+    System = 1,
+
+    /// <summary>
+    /// 租户平台 - 仅业务租户用户可访问
+    /// </summary>
+    Tenant = 2,
+
+    /// <summary>
+    /// 双平台 - 系统和业务租户用户都可访问
+    /// </summary>
+    Both = 3
+}
+```
+
+### 3. 平台权限特性 (PlatformAttribute)
+
+用于标记控制器或方法的平台访问权限。
+
+```csharp
+/// <summary>
+/// 平台权限特性
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public class PlatformAttribute : AuthorizeAttribute
+{
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="platformType">平台类型</param>
+    public PlatformAttribute(PlatformType platformType)
+    {
+        Policy = $"Platform_{platformType}";
+    }
+}
+```
+
+### 4. 平台权限验证处理器 (PlatformAuthorizationHandler)
+
+负责执行平台权限验证逻辑。
+
+```csharp
+/// <summary>
+/// 平台权限验证处理器
+/// </summary>
+public class PlatformAuthorizationHandler : AuthorizationHandler<PlatformRequirement>
+{
     private readonly ICurrentUser _currentUser;
+    private readonly ILogger<PlatformAuthorizationHandler> _logger;
 
-    public UserService(IPermissionService permissionService, ICurrentUser currentUser)
+    public PlatformAuthorizationHandler(ICurrentUser currentUser, ILogger<PlatformAuthorizationHandler> logger)
     {
-        _permissionService = permissionService;
         _currentUser = currentUser;
+        _logger = logger;
     }
 
-    public async Task<ApiResponse<UserDto>> GetUserAsync(long id)
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        PlatformRequirement requirement)
     {
-        // 检查数据权限
-        if (!await CheckDataPermissionAsync(id))
-        {
-            return ApiResponse<UserDto>.Error(403, "无权访问该用户数据");
-        }
-
-        // 业务逻辑...
-    }
-
-    private async Task<bool> CheckDataPermissionAsync(long userId)
-    {
-        var userDataScope = _currentUser.GetClaimValue("DataScope");
+        var platformType = requirement.PlatformType;
+        var currentUserTenantId = _currentUser.TenantId;
         
-        switch (userDataScope)
+        // 如果用户未认证，直接拒绝
+        if (!_currentUser.IsAuthenticated)
         {
-            case "1": // 全部数据权限
-                return true;
-            case "2": // 部门数据权限
-                return await CheckDepartmentPermissionAsync(userId);
-            case "3": // 个人数据权限
-                return userId == _currentUser.Id;
-            default:
-                return false;
+            _logger.LogWarning("用户未认证，无法访问 {PlatformType} 平台功能", platformType);
+            return Task.CompletedTask;
         }
+        
+        // 判断用户租户类型
+        var isSystemTenant = currentUserTenantId == "system";
+        var isDefaultTenant = currentUserTenantId == "default";
+        var isBusinessTenant = !string.IsNullOrEmpty(currentUserTenantId) && !isSystemTenant && !isDefaultTenant;
+
+        var hasAccess = platformType switch
+        {
+            PlatformType.System => isSystemTenant,
+            PlatformType.Tenant => isBusinessTenant,
+            PlatformType.Both => isSystemTenant || isBusinessTenant,
+            PlatformType.None => false,
+            _ => false
+        };
+
+        if (hasAccess)
+        {
+            context.Succeed(requirement);
+            _logger.LogDebug("用户 {UserId} (租户: {TenantId}) 成功访问 {PlatformType} 平台功能", 
+                _currentUser.Id, currentUserTenantId, platformType);
+        }
+        else
+        {
+            _logger.LogWarning("用户 {UserId} (租户: {TenantId}) 无权访问 {PlatformType} 平台功能", 
+                _currentUser.Id, currentUserTenantId, platformType);
+        }
+
+        return Task.CompletedTask;
+    }
+}
+```
+
+## 权限验证矩阵
+
+### 平台权限验证矩阵
+
+| 用户租户类型 | PlatformType.System | PlatformType.Tenant | PlatformType.Both | PlatformType.None |
+|-------------|-------------------|-------------------|------------------|------------------|
+| system      | ✅ 允许            | ❌ 拒绝            | ✅ 允许           | ❌ 拒绝           |
+| default     | ❌ 拒绝            | ❌ 拒绝            | ❌ 拒绝           | ❌ 拒绝           |
+| business    | ❌ 拒绝            | ✅ 允许            | ✅ 允许           | ❌ 拒绝           |
+
+### 权限组合验证示例
+
+```csharp
+// 仅平台权限
+[Platform(PlatformType.System)]     // 仅系统租户可访问
+[Platform(PlatformType.Tenant)]     // 仅业务租户可访问
+[Platform(PlatformType.Both)]       // 系统和业务租户都可访问
+
+// 平台权限 + 角色权限组合
+[Platform(PlatformType.Tenant)]
+[Permission(Name = "advanced_operation", DisplayName = "高级操作")]
+// 需要同时满足：业务租户 + 具体权限
+```
+
+## 使用示例
+
+### 1. 平台权限控制器配置
+
+```csharp
+/// <summary>
+/// 系统管理控制器 - 仅系统租户可访问
+/// </summary>
+[ApiController]
+[Route("api/system/[controller]")]
+[Platform(PlatformType.System)]
+[DisplayName("系统管理")]
+public class SystemManagementController : ControllerBase
+{
+    /// <summary>
+    /// 系统用户管理
+    /// </summary>
+    [HttpGet("users")]
+    [Permission(Name = "system_user_management")]
+    public async Task<IActionResult> GetSystemUsers()
+    {
+        // 需要：系统租户 + system_user_management权限
+        return Ok();
     }
 
-    private async Task<bool> CheckDepartmentPermissionAsync(long userId)
+    /// <summary>
+    /// 系统配置管理
+    /// </summary>
+    [HttpGet("config")]
+    [Permission(Name = "system_config_management")]
+    public async Task<IActionResult> GetSystemConfig()
     {
-        // 检查是否为同一部门
-        // 实现部门权限检查逻辑
-        return true;
+        // 需要：系统租户 + system_config_management权限
+        return Ok();
+    }
+}
+
+/// <summary>
+/// 租户业务控制器 - 仅业务租户可访问
+/// </summary>
+[ApiController]
+[Route("api/tenant/[controller]")]
+[Platform(PlatformType.Tenant)]
+[DisplayName("租户业务")]
+public class TenantBusinessController : ControllerBase
+{
+    /// <summary>
+    /// 租户数据查询
+    /// </summary>
+    [HttpGet("data")]
+    public async Task<IActionResult> GetTenantData()
+    {
+        // 仅需要：业务租户身份
+        return Ok();
+    }
+
+    /// <summary>
+    /// 租户高级操作
+    /// </summary>
+    [HttpPost("advanced")]
+    [Permission(Name = "tenant_advanced_operation")]
+    public async Task<IActionResult> AdvancedOperation()
+    {
+        // 需要：业务租户 + tenant_advanced_operation权限
+        return Ok();
+    }
+}
+
+/// <summary>
+/// 通用功能控制器 - 系统和业务租户都可访问
+/// </summary>
+[ApiController]
+[Route("api/common/[controller]")]
+[Platform(PlatformType.Both)]
+[DisplayName("通用功能")]
+public class CommonController : ControllerBase
+{
+    /// <summary>
+    /// 获取个人信息
+    /// </summary>
+    [HttpGet("profile")]
+    public async Task<IActionResult> GetProfile()
+    {
+        // 仅需要：系统或业务租户身份
+        return Ok();
+    }
+
+    /// <summary>
+    /// 审计日志查看
+    /// </summary>
+    [HttpGet("audit-logs")]
+    [Permission(Name = "audit_log_view")]
+    public async Task<IActionResult> GetAuditLogs()
+    {
+        // 需要：(系统或业务租户) + audit_log_view权限
+        return Ok();
+    }
+}
+```
+
+### 2. 方法级别平台权限
+
+```csharp
+/// <summary>
+/// 混合权限控制器
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class MixedController : ControllerBase
+{
+    /// <summary>
+    /// 公开接口 - 无权限要求
+    /// </summary>
+    [HttpGet("public")]
+    public IActionResult PublicInfo()
+    {
+        return Ok();
+    }
+
+    /// <summary>
+    /// 系统专用接口
+    /// </summary>
+    [HttpGet("system-only")]
+    [Platform(PlatformType.System)]
+    public IActionResult SystemOnly()
+    {
+        return Ok();
+    }
+
+    /// <summary>
+    /// 租户专用接口
+    /// </summary>
+    [HttpGet("tenant-only")]
+    [Platform(PlatformType.Tenant)]
+    public IActionResult TenantOnly()
+    {
+        return Ok();
+    }
+
+    /// <summary>
+    /// 通用接口
+    /// </summary>
+    [HttpGet("common")]
+    [Platform(PlatformType.Both)]
+    public IActionResult Common()
+    {
+        return Ok();
+    }
+}
+```
+
+### 3. Navigation组件集成
+
+```csharp
+/// <summary>
+/// 带平台权限的导航控制器
+/// </summary>
+[Navigation(Icon = "fa-solid fa-users", PlatformType = PlatformType.Both)]
+[Platform(PlatformType.Both)]
+public class UsersController : ControllerBase
+{
+    [Navigation(Icon = "fa-solid fa-user-gear", PlatformType = PlatformType.System)]
+    [Platform(PlatformType.System)]
+    public IActionResult SystemUsers() => Ok();
+
+    [Navigation(Icon = "fa-solid fa-user-tag", PlatformType = PlatformType.Tenant)]
+    [Platform(PlatformType.Tenant)]
+    public IActionResult TenantUsers() => Ok();
+}
+```
+
+## 单元测试
+
+### 1. 平台权限验证处理器测试
+
+```csharp
+/// <summary>
+/// 平台权限验证处理器单元测试
+/// </summary>
+public class PlatformAuthorizationHandlerTests
+{
+    private readonly Mock<ICurrentUser> _mockCurrentUser;
+    private readonly Mock<ILogger<PlatformAuthorizationHandler>> _mockLogger;
+    private readonly PlatformAuthorizationHandler _handler;
+
+    public PlatformAuthorizationHandlerTests()
+    {
+        _mockCurrentUser = new Mock<ICurrentUser>();
+        _mockLogger = new Mock<ILogger<PlatformAuthorizationHandler>>();
+        _handler = new PlatformAuthorizationHandler(_mockCurrentUser.Object, _mockLogger.Object);
+    }
+
+    [Theory]
+    [InlineData(PlatformType.System, "system", true)]
+    [InlineData(PlatformType.System, "default", false)]
+    [InlineData(PlatformType.System, "business", false)]
+    [InlineData(PlatformType.Tenant, "system", false)]
+    [InlineData(PlatformType.Tenant, "business", true)]
+    [InlineData(PlatformType.Both, "system", true)]
+    [InlineData(PlatformType.Both, "business", true)]
+    [InlineData(PlatformType.Both, "default", false)]
+    public async Task HandleRequirementAsync_ShouldReturnCorrectResult(
+        PlatformType platformType, string tenantId, bool expectedResult)
+    {
+        // Arrange
+        SetupMockUser(isAuthenticated: true, tenantId: tenantId);
+        var context = new AuthorizationHandlerContext(
+            new[] { new PlatformRequirement(platformType) },
+            null,
+            null);
+
+        // Act
+        await _handler.HandleRequirementAsync(context, new PlatformRequirement(platformType));
+
+        // Assert
+        Assert.Equal(expectedResult, context.HasSucceeded);
+    }
+
+    private void SetupMockUser(bool isAuthenticated, string tenantId, long? userId = null)
+    {
+        _mockCurrentUser.Setup(x => x.IsAuthenticated).Returns(isAuthenticated);
+        _mockCurrentUser.Setup(x => x.TenantId).Returns(tenantId);
+        _mockCurrentUser.Setup(x => x.Id).Returns(userId);
+    }
+}
+```
+
+### 2. 服务注册测试
+
+```csharp
+/// <summary>
+/// 服务集合扩展测试
+/// </summary>
+public class ServiceCollectionExtensionsTests
+{
+    [Fact]
+    public void AddCodeSpiritAuthorization_ShouldRegisterAllRequiredServices()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMemoryCache();
+
+        // Act
+        services.AddCodeSpiritAuthorization();
+
+        // Assert
+        var serviceProvider = services.BuildServiceProvider();
+
+        // 验证权限服务注册
+        Assert.NotNull(serviceProvider.GetService<IPermissionService>());
+        Assert.NotNull(serviceProvider.GetService<IHasPermissionService>());
+
+        // 验证授权处理器注册
+        var authHandlers = serviceProvider.GetServices<IAuthorizationHandler>().ToList();
+        Assert.Contains(authHandlers, h => h.GetType() == typeof(RolePermissionAuthorizationHandler));
+        Assert.Contains(authHandlers, h => h.GetType() == typeof(PlatformAuthorizationHandler));
+
+        // 验证策略注册
+        var authOptions = serviceProvider.GetService<IOptions<AuthorizationOptions>>()?.Value;
+        Assert.NotNull(authOptions);
+        Assert.True(authOptions.GetPolicy("Platform_System") != null);
+        Assert.True(authOptions.GetPolicy("Platform_Tenant") != null);
+        Assert.True(authOptions.GetPolicy("Platform_Both") != null);
     }
 }
 ```
@@ -1083,34 +1787,47 @@ public class UserService : IUserService
 
 ### 1. 权限设计原则
 
-1. **最小权限原则**：用户只获得完成工作所需的最小权限
-2. **权限分离**：将不同类型的权限分开管理
-3. **权限继承**：合理设计权限层次结构
-4. **权限审计**：记录所有权限变更操作
+1. **平台隔离原则**：系统平台和租户平台功能严格隔离
+2. **最小权限原则**：用户只获得完成工作所需的最小权限
+3. **权限分层**：平台权限作为第一层，角色权限作为第二层
+4. **权限组合**：支持平台权限和角色权限的组合使用
 
 ### 2. 性能优化
 
 1. **权限缓存**：使用缓存减少数据库查询
-2. **批量验证**：一次性验证多个权限
-3. **懒加载**：按需加载权限数据
-4. **权限预计算**：预先计算用户的有效权限
+2. **生命周期管理**：
+   - `PermissionService`: Singleton（权限树不变）
+   - `HasPermissionService`: Scoped（用户会话相关）
+   - `PlatformAuthorizationHandler`: Scoped（用户会话相关）
+3. **批量验证**：一次性验证多个权限
+4. **懒加载**：按需加载权限数据
 
 ### 3. 安全考虑
 
-1. **权限验证**：在多个层次进行权限验证
+1. **多层验证**：在多个层次进行权限验证
 2. **权限日志**：记录权限验证失败的情况
-3. **权限更新**：及时更新用户权限缓存
+3. **租户隔离**：确保不同租户间的数据隔离
 4. **权限审查**：定期审查用户权限分配
+
+### 4. 开发规范
+
+1. **控制器级别**：在控制器上使用 `[Platform]` 特性定义整体平台权限
+2. **方法级别**：在特定方法上使用 `[Platform]` 特性覆盖控制器设置
+3. **权限组合**：合理使用 `[Platform]` 和 `[Permission]` 的组合
+4. **文档注释**：为所有权限配置添加清晰的文档注释
 
 ## 总结
 
 CodeSpirit.Authorization权限组件提供了：
 
-1. **灵活的权限模型**：支持RBAC和ABAC混合模型
-2. **细粒度控制**：支持到方法级别的权限控制
-3. **动态权限验证**：支持运行时权限验证
-4. **权限树管理**：支持层次化权限组织
-5. **高性能缓存**：优化权限验证性能
-6. **扩展性设计**：支持自定义权限策略
+1. **完整的权限模型**：支持RBAC、ABAC和平台权限的混合模型
+2. **多租户支持**：基于租户的平台级权限隔离
+3. **灵活的权限组合**：支持平台权限和角色权限的组合使用
+4. **细粒度控制**：支持到方法级别的权限控制
+5. **动态权限验证**：支持运行时权限验证
+6. **权限树管理**：支持层次化权限组织
+7. **高性能缓存**：优化权限验证性能
+8. **扩展性设计**：支持自定义权限策略
+9. **完整的单元测试**：确保权限验证的正确性和稳定性
 
-该组件为CodeSpirit框架提供了强大而灵活的权限管理能力，确保了系统的安全性和可控性。 
+该组件为CodeSpirit框架提供了强大而灵活的多租户权限管理能力，确保了系统的安全性、可控性和租户隔离性。 

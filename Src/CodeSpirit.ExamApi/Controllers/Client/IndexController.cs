@@ -11,6 +11,7 @@ using CodeSpirit.ExamApi.Services;
 using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel;
+using CodeSpirit.Core.Attributes;
 
 namespace CodeSpirit.ExamApi.Controllers.Client;
 

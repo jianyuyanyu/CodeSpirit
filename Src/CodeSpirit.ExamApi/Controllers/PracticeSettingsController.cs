@@ -3,6 +3,7 @@ using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Dtos.PracticeSetting;
 using Microsoft.AspNetCore.Mvc;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -10,7 +11,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 练习管理
 /// </summary>
 [DisplayName("练习管理")]
-[Navigation(Icon = "fa-solid fa-dumbbell")]
+[Navigation(Icon = "fa-solid fa-dumbbell", PlatformType = PlatformType.Tenant)]
 public class PracticeSettingsController : ApiControllerBase
 {
     private readonly IPracticeSettingService _practiceSettingService;

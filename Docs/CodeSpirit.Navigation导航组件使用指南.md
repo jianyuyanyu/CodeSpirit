@@ -6,6 +6,14 @@
 
 **当前版本：2.0.0** - 支持多平台、元数据丰富、上下文感知的高级导航框架
 
+### 🎯 核心亮点
+
+- **智能属性优先级策略**：`NavigationAttribute` 优先于 `ModuleAttribute`，提供从简单到复杂的渐进式开发体验
+- **多平台支持**：系统平台、租户平台的独立管理和缓存
+- **权限深度集成**：自动权限生成和过滤，支持多级权限检查
+- **高性能缓存**：分布式缓存，按平台独立存储，支持局部更新
+- **扩展属性丰富**：15+ 个导航属性，支持分组、标签、版本约束、设备适配等
+
 ## 主要特性
 
 ### 核心功能 ✅
@@ -28,6 +36,62 @@
 - **设备类型**：支持按设备类型过滤导航项
 - **实验性功能**：开发环境实验性功能支持
 - **徽章系统**：导航项徽章显示支持
+
+## ⚡ 5分钟快速入门
+
+### 最简单的开始方式
+
+```csharp
+// 🚀 只需要一个 ModuleAttribute，立即拥有导航功能
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+public class UserController : ControllerBase
+{
+    public IActionResult Index() => View();
+}
+```
+
+**结果**：自动生成完整的导航节点，包含标题、图标、权限等。
+
+### 进阶配置
+
+```csharp
+// 🎯 添加 NavigationAttribute 进行精细控制
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(
+    Title = "用户中心",           // 覆盖模块标题
+    Order = 1,                   // 设置排序
+    Group = "Management"         // 添加分组
+)]
+public class UserController : ControllerBase
+{
+    public IActionResult Index() => View();
+}
+```
+
+**结果**：使用 NavigationAttribute 的精确配置，同时保留 ModuleAttribute 未覆盖的属性。
+
+### 开发调试
+
+```csharp
+// 🔧 临时隐藏功能，保留配置
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(Hidden = true)]   // 一键隐藏/显示
+public class UserController : ControllerBase
+{
+    public IActionResult Index() => View();
+}
+```
+
+**结果**：导航被隐藏，但当设置 `Hidden = false` 时，立即恢复显示并使用 ModuleAttribute 的配置。
+
+### 智能优先级一览表
+
+| 你的代码 | 系统行为 | 适用场景 |
+|---------|----------|----------|
+| 只有 `[Module]` | ✅ 自动创建导航 | 快速原型开发 |
+| `[Module]` + `[Navigation]` | ✅ Navigation 优先 | 精细化控制 |
+| `[Module]` + `[Navigation(Hidden=true)]` | ✅ 回退到 Module | 临时隐藏 |
+| 都没有 | ❌ 不显示导航 | 内部API |
 
 ## 项目结构
 
@@ -59,6 +123,253 @@ builder.Services.AddCodeSpiritNavigation();
 // 在应用启动时初始化导航树
 var app = builder.Build();
 await app.UseCodeSpiritNavigationAsync();
+```
+
+### 2. 使用特性定义导航
+
+## 🎯 智能属性优先级策略
+
+### 策略概述
+
+导航组件实现了智能的属性优先级策略，让开发者可以采用渐进式的方式构建导航：
+
+1. **快速原型阶段**：仅使用 `ModuleAttribute` 快速搭建基础导航
+2. **精细化阶段**：添加 `NavigationAttribute` 进行详细配置 
+3. **动态控制阶段**：使用 `Hidden` 属性灵活控制显示/隐藏
+
+### 优先级规则 📋
+
+| 场景 | NavigationAttribute | ModuleAttribute | 结果 |
+|------|-------------------|-----------------|------|
+| 场景1 | ❌ 不存在 | ✅ 存在 | 使用 ModuleAttribute 创建导航 |
+| 场景2 | ✅ 存在且 Hidden=false | ✅ 存在 | 使用 NavigationAttribute（覆盖） |
+| 场景3 | ⚠️ 存在但 Hidden=true | ✅ 存在 | 回退到 ModuleAttribute |
+| 场景4 | ❌ 不存在 | ❌ 不存在 | 控制器不出现在导航中 |
+
+### 详细示例 📝
+
+#### 场景1：只有 ModuleAttribute - 自动创建导航
+
+```csharp
+/// <summary>
+/// 只有模块属性，系统会自动创建导航节点
+/// </summary>
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+public class UserController : ControllerBase
+{
+    // ✅ 控制器会自动出现在导航中
+    // 标题：用户管理 (来自 ModuleAttribute.DisplayName)
+    // 图标：fa-solid fa-users (来自 ModuleAttribute.Icon)  
+    // 权限：userManagement_user (自动生成)
+    // 其他属性：使用默认值
+
+    public IActionResult Index() => View();
+}
+```
+
+**生成的导航节点属性：**
+```json
+{
+  "name": "user",
+  "title": "用户管理",
+  "icon": "fa-solid fa-users", 
+  "permission": "userManagement_user",
+  "platformType": "Both",
+  "order": 0,
+  "requireAuth": true,
+  "supportedDevices": ["desktop", "tablet", "mobile"]
+}
+```
+
+#### 场景2：NavigationAttribute 优先级覆盖
+
+```csharp
+/// <summary>
+/// 同时存在两种属性，NavigationAttribute 优先
+/// </summary>
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(
+    Title = "用户列表",                    // 🔄 覆盖 ModuleAttribute.DisplayName
+    Icon = "fa-solid fa-user-list",        // 🔄 覆盖 ModuleAttribute.Icon
+    Order = 1,                             // ➕ 新增属性
+    Permission = "user_list_access",       // ➕ 自定义权限
+    PlatformType = PlatformType.System,    // ➕ 平台限制
+    Group = "Management",                  // ➕ 分组
+    Tags = new[] { "admin", "user" },      // ➕ 标签
+    Priority = 10,                         // ➕ 优先级
+    Badge = "NEW",                         // ➕ 徽章
+    BadgeType = "success"                  // ➕ 徽章样式
+)]
+public class UserController : ControllerBase
+{
+    // ✅ 最终使用 NavigationAttribute 的所有配置
+    // 标题：用户列表 (不是"用户管理")
+    // 图标：fa-solid fa-user-list (不是"fa-solid fa-users")
+    
+    public IActionResult Index() => View();
+}
+```
+
+**最终生成的导航节点：**
+```json
+{
+  "name": "user",
+  "title": "用户列表",                    // NavigationAttribute 覆盖
+  "icon": "fa-solid fa-user-list",        // NavigationAttribute 覆盖  
+  "permission": "user_list_access",       // NavigationAttribute 设置
+  "platformType": "System",               // NavigationAttribute 设置
+  "group": "Management",                  // NavigationAttribute 设置
+  "order": 1,
+  "priority": 10,
+  "badge": "NEW",
+  "badgeType": "success"
+}
+```
+
+#### 场景3：隐藏回退策略
+
+```csharp
+/// <summary>
+/// NavigationAttribute 被隐藏时，回退到 ModuleAttribute
+/// </summary>
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(Hidden = true)]  // 🚫 NavigationAttribute 被隐藏
+public class UserController : ControllerBase
+{
+    // ✅ 由于 NavigationAttribute.Hidden = true
+    // 系统检查到 ModuleAttribute 存在，使用其属性创建导航
+    // 标题：用户管理 (来自 ModuleAttribute)
+    // 图标：fa-solid fa-users (来自 ModuleAttribute)
+    
+    public IActionResult Index() => View();
+}
+```
+
+#### 场景4：临时隐藏和恢复
+
+```csharp
+/// <summary>
+/// 开发阶段的导航控制示例
+/// </summary>
+[Module("ExperimentalFeature", "实验性功能", Icon = "fa-solid fa-flask")]
+[Navigation(
+    Hidden = false,                        // 🟢 开发环境显示
+    // Hidden = true,                      // 🔴 生产环境隐藏
+    IsExperimental = true,                 // 标记为实验性功能
+    MinVersion = "2.1.0",                  // 版本限制
+    Badge = "BETA",
+    BadgeType = "warning"
+)]
+public class ExperimentalController : ControllerBase
+{
+    // 通过修改 Hidden 属性可以快速控制导航的显示/隐藏
+    // 而无需删除整个 NavigationAttribute
+}
+```
+
+### 属性映射对照表 📊
+
+| NavigationAttribute | ModuleAttribute | 回退默认值 | 说明 |
+|-------------------|-----------------|-----------|------|
+| `Title` | `DisplayName` | `controllerName` | 显示标题 |
+| `Icon` | `Icon` | `null` | 图标 |
+| `Permission` | - | `moduleName_controllerName` | 权限码 |
+| `Order` | - | `0` | 排序 |
+| `PlatformType` | - | `Both` | 平台类型 |
+| `Group` | - | `null` | 分组 |
+| `Tags` | - | `[]` | 标签数组 |
+| `RequireAuth` | - | `true` | 需要认证 |
+| `Priority` | - | `0` | 优先级 |
+| `Badge` | - | `null` | 徽章 |
+
+### 渐进式开发工作流 🚀
+
+#### 第一阶段：快速搭建
+
+```csharp
+// 1. 快速定义模块，立即可用
+[Module("BlogManagement", "博客管理", Icon = "fa-solid fa-blog")]
+public class BlogController : ControllerBase 
+{
+    public IActionResult Index() => View();
+}
+```
+
+#### 第二阶段：基础优化
+
+```csharp
+// 2. 添加基础的 NavigationAttribute 配置
+[Module("BlogManagement", "博客管理", Icon = "fa-solid fa-blog")]
+[Navigation(
+    Order = 2,                             // 调整排序
+    Permission = "blog_management"         // 自定义权限
+)]
+public class BlogController : ControllerBase 
+{
+    public IActionResult Index() => View();
+}
+```
+
+#### 第三阶段：完整配置
+
+```csharp
+// 3. 完整的导航配置
+[Module("BlogManagement", "博客管理", Icon = "fa-solid fa-blog")]
+[Navigation(
+    Title = "博客文章",                    // 更精确的标题
+    Icon = "fa-solid fa-pen-to-square",    // 更具体的图标
+    Order = 2,
+    Permission = "blog_management",
+    PlatformType = PlatformType.Both,
+    Group = "Content",                     // 内容管理分组
+    Tags = new[] { "content", "cms" },     // 标签
+    Priority = 5,
+    Badge = "HOT",                         // 热门功能
+    BadgeType = "danger",
+    MinVersion = "2.0.0",                  // 版本要求
+    SupportedDevices = new[] { "desktop", "tablet" }  // 设备限制
+)]
+public class BlogController : ControllerBase 
+{
+    public IActionResult Index() => View();
+}
+```
+
+### 最佳实践建议 💡
+
+#### ✅ 推荐做法
+
+```csharp
+// 1. 使用 ModuleAttribute 作为基础导航定义
+[Module("OrderManagement", "订单管理", Icon = "fa-solid fa-shopping-cart")]
+public class OrderController : ControllerBase { }
+
+// 2. 仅在需要时添加 NavigationAttribute 覆盖特定属性
+[Module("OrderManagement", "订单管理", Icon = "fa-solid fa-shopping-cart")]
+[Navigation(Order = 1, Group = "Business")]  // 只覆盖需要的属性
+public class OrderController : ControllerBase { }
+
+// 3. 使用 Hidden 属性进行临时控制
+[Module("OrderManagement", "订单管理", Icon = "fa-solid fa-shopping-cart")]
+[Navigation(Hidden = true)]  // 临时隐藏，保留配置
+public class OrderController : ControllerBase { }
+```
+
+#### ❌ 避免的做法
+
+```csharp
+// 不必要的属性重复
+[Module("OrderManagement", "订单管理", Icon = "fa-solid fa-shopping-cart")]
+[Navigation(
+    Title = "订单管理",                    // ❌ 与 ModuleAttribute 重复
+    Icon = "fa-solid fa-shopping-cart"     // ❌ 与 ModuleAttribute 重复
+)]
+public class OrderController : ControllerBase { }
+
+// 更好的方式：只设置不同的属性
+[Module("OrderManagement", "订单管理", Icon = "fa-solid fa-shopping-cart")]
+[Navigation(Order = 1, Permission = "order_access")]  // ✅ 只设置差异属性
+public class OrderController : ControllerBase { }
 ```
 
 ### 2. 使用特性定义导航
@@ -237,6 +548,224 @@ public class NavigationController : ControllerBase
         return Ok(filteredNodes);
     }
 }
+```
+
+## 🔥 实际应用案例
+
+### 电商管理系统导航示例
+
+以下是一个完整的电商管理系统导航配置示例，展示了智能属性优先级策略的实际应用：
+
+#### 基础模块快速搭建
+
+```csharp
+// 1. 产品管理 - 只使用 ModuleAttribute，快速上线
+[Module("ProductManagement", "产品管理", Icon = "fa-solid fa-box")]
+public class ProductController : ControllerBase
+{
+    // 自动生成导航：
+    // - 标题：产品管理
+    // - 图标：fa-solid fa-box
+    // - 权限：productManagement_product
+    
+    public IActionResult Index() => View();
+    public IActionResult Create() => View();
+}
+
+// 2. 订单管理 - 添加基础配置
+[Module("OrderManagement", "订单管理", Icon = "fa-solid fa-shopping-cart")]
+[Navigation(Order = 2, Group = "Business")]
+public class OrderController : ControllerBase
+{
+    // 使用 ModuleAttribute 的标题和图标
+    // 添加排序和分组
+    
+    public IActionResult Index() => View();
+}
+
+// 3. 用户管理 - 完整配置
+[Module("UserManagement", "用户管理", Icon = "fa-solid fa-users")]
+[Navigation(
+    Title = "用户中心",                     // 覆盖模块标题
+    Icon = "fa-solid fa-user-gear",         // 覆盖模块图标
+    Order = 1,
+    Permission = "user_center_access",
+    PlatformType = PlatformType.System,
+    Group = "Management",
+    Tags = new[] { "admin", "user", "system" },
+    Priority = 10,
+    Badge = "HOT",
+    BadgeType = "danger"
+)]
+public class UserController : ControllerBase
+{
+    // 最终导航配置：
+    // - 标题：用户中心 (NavigationAttribute覆盖)
+    // - 图标：fa-solid fa-user-gear (NavigationAttribute覆盖)
+    // - 其他属性来自 NavigationAttribute
+    
+    [Navigation(Title = "用户列表", Order = 1)]
+    public IActionResult Index() => View();
+    
+    [Navigation(Title = "添加用户", Order = 2)]
+    public IActionResult Create() => View();
+}
+
+// 4. 报表管理 - 临时隐藏
+[Module("ReportManagement", "报表管理", Icon = "fa-solid fa-chart-bar")]
+[Navigation(Hidden = true)]  // 功能开发中，临时隐藏
+public class ReportController : ControllerBase
+{
+    // 虽然隐藏了 NavigationAttribute，但保留了模块信息
+    // 需要时只需要设置 Hidden = false 即可恢复显示
+    
+    public IActionResult Index() => View();
+}
+```
+
+#### 生成的导航树结构
+
+```json
+{
+  "modules": [
+    {
+      "name": "productManagement",
+      "title": "产品管理",
+      "icon": "fa-solid fa-box",
+      "order": 0,
+      "permission": "productManagement",
+      "children": [
+        {
+          "name": "product",
+          "title": "产品管理",           // 来自 ModuleAttribute
+          "icon": "fa-solid fa-box",     // 来自 ModuleAttribute
+          "permission": "productManagement_product",
+          "platformType": "Both",        // 默认值
+          "requireAuth": true            // 默认值
+        }
+      ]
+    },
+    {
+      "name": "orderManagement", 
+      "title": "订单管理",
+      "icon": "fa-solid fa-shopping-cart",
+      "order": 0,
+      "permission": "orderManagement",
+      "children": [
+        {
+          "name": "order",
+          "title": "订单管理",           // 来自 ModuleAttribute
+          "icon": "fa-solid fa-shopping-cart", // 来自 ModuleAttribute
+          "order": 2,                    // 来自 NavigationAttribute
+          "group": "Business",           // 来自 NavigationAttribute
+          "permission": "orderManagement_order"
+        }
+      ]
+    },
+    {
+      "name": "userManagement",
+      "title": "用户管理", 
+      "icon": "fa-solid fa-users",
+      "order": 0,
+      "permission": "userManagement",
+      "children": [
+        {
+          "name": "user",
+          "title": "用户中心",           // NavigationAttribute 覆盖
+          "icon": "fa-solid fa-user-gear", // NavigationAttribute 覆盖
+          "order": 1,
+          "permission": "user_center_access",
+          "platformType": "System",
+          "group": "Management",
+          "tags": ["admin", "user", "system"],
+          "priority": 10,
+          "badge": "HOT",
+          "badgeType": "danger"
+        }
+      ]
+    }
+    // ReportController 被隐藏，不出现在导航中
+  ]
+}
+```
+
+### 开发团队协作场景
+
+#### 场景1：新功能快速迭代
+
+```csharp
+// 开发初期 - 功能原型
+[Module("InventoryManagement", "库存管理", Icon = "fa-solid fa-warehouse")]
+public class InventoryController : ControllerBase
+{
+    // 快速上线，使用默认配置
+}
+
+// 功能稳定后 - 添加精细配置
+[Module("InventoryManagement", "库存管理", Icon = "fa-solid fa-warehouse")]
+[Navigation(
+    Title = "智能库存",               // 产品化的名称
+    Order = 3,
+    Group = "Operations",
+    Badge = "PRO",
+    BadgeType = "success"
+)]
+public class InventoryController : ControllerBase
+{
+    // 保持原有功能，只是导航展示更专业
+}
+```
+
+#### 场景2：A/B测试和功能开关
+
+```csharp
+// 版本A：传统界面
+[Module("Dashboard", "控制台", Icon = "fa-solid fa-gauge")]
+[Navigation(
+    Hidden = false,                    // 当前版本
+    Badge = "V1",
+    BadgeType = "info"
+)]
+public class DashboardController : ControllerBase { }
+
+// 版本B：新界面
+[Module("Dashboard", "控制台", Icon = "fa-solid fa-gauge")]
+[Navigation(
+    Title = "智能控制台",              // 新版本名称
+    Hidden = true,                     // 灰度发布时隐藏
+    IsExperimental = true,
+    Badge = "V2",
+    BadgeType = "warning",
+    MinVersion = "2.1.0"
+)]
+public class DashboardV2Controller : ControllerBase { }
+```
+
+#### 场景3：权限分级管理
+
+```csharp
+// 基础管理员功能
+[Module("SystemManagement", "系统管理", Icon = "fa-solid fa-cog")]
+[Navigation(
+    PlatformType = PlatformType.System,
+    Group = "System",
+    RequireAuth = true
+)]
+public class BasicSystemController : ControllerBase { }
+
+// 高级管理员功能  
+[Module("SystemManagement", "系统管理", Icon = "fa-solid fa-cog")]
+[Navigation(
+    Title = "高级系统管理",
+    Icon = "fa-solid fa-gear",
+    Permission = "advanced_system_admin",
+    PlatformType = PlatformType.System,
+    Group = "System",
+    Priority = 100,                    // 高优先级
+    Badge = "ADMIN",
+    BadgeType = "danger"
+)]
+public class AdvancedSystemController : ControllerBase { }
 ```
 
 ## 扩展的 NavigationAttribute 属性详解
@@ -867,6 +1396,13 @@ dotnet test Tests/Components/CodeSpirit.Navigation.Tests/
 
 #### 新增功能 🎉
 
+**智能属性优先级策略** ⭐
+- 实现 `NavigationAttribute` 与 `ModuleAttribute` 的智能优先级处理
+- 支持渐进式导航开发：从快速原型到精细配置
+- 新增 `CreateNavigationNodeFromModuleAttribute` 方法处理模块属性回退
+- 隐藏的 `NavigationAttribute` 自动回退到 `ModuleAttribute`
+- 完善的属性映射和默认值处理机制
+
 **平台类型支持**
 - 新增 `PlatformType` 枚举（None, System, Tenant, Both）
 - 支持按平台类型独立缓存和过滤
@@ -907,6 +1443,9 @@ dotnet test Tests/Components/CodeSpirit.Navigation.Tests/
 - 改进缓存管理接口
 
 **导航树构建**
+- 智能属性优先级策略：`NavigationAttribute` 优先于 `ModuleAttribute`
+- 支持从 `ModuleAttribute` 创建默认导航节点
+- 完善的属性回退和合并机制
 - 支持元数据JSON解析
 - 完善节点合并逻辑
 - 支持所有新属性的处理

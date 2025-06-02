@@ -1,6 +1,7 @@
 ﻿// Controllers/AuthController.cs
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Dtos.LoginLogs;
 using CodeSpirit.IdentityApi.Services;
@@ -10,7 +11,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("登录日志")]
-    [Navigation(Icon = "fa-solid fa-clock-rotate-left")]
+    [Navigation(Icon = "fa-solid fa-clock-rotate-left", PlatformType = PlatformType.Both)]
     public partial class LoginLogsController : ApiControllerBase
     {
         private readonly ILoginLogService _loginLogService;

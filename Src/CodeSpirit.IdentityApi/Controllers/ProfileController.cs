@@ -1,6 +1,7 @@
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Profile;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +10,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [Module("default", displayName: "默认")]
+    [Navigation(Hidden = true)]
     public class ProfileController : ApiControllerBase
     {
         private readonly IUserService _userService;
@@ -32,7 +34,9 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return Unauthorized(new ApiResponse<ProfileDto>(401, "未登录或登录已过期", null));
             }
 
-            UserDto userDto = await _userService.GetAsync(_currentUser.Id.Value);
+            // 使用专门的方法查询用户信息，避免租户过滤器影响
+            // 对于获取当前用户自己的资料，应该忽略租户过滤器
+            UserDto userDto = await _userService.GetUserByIdIgnoreFiltersAsync(_currentUser.Id.Value);
             if (userDto == null)
             {
                 return NotFound(new ApiResponse<ProfileDto>(404, "用户不存在", null));

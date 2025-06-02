@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.Core.IdGenerator;
+using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
@@ -21,6 +22,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     private readonly ILogger<UserService> _logger;
     private readonly IIdGenerator _idGenerator;
     private readonly ICurrentUser _currentUser;
+    private readonly ApplicationDbContext _dbContext;
 
     public UserService(
         IRepository<ApplicationUser> userRepository,
@@ -29,7 +31,8 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         RoleManager<ApplicationRole> roleManager,
         ILogger<UserService> logger,
         IIdGenerator idGenerator,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        ApplicationDbContext dbContext)
         : base(userRepository, mapper)
     {
         _userRepository = userRepository;
@@ -38,6 +41,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         _logger = logger;
         _idGenerator = idGenerator;
         _currentUser = currentUser;
+        _dbContext = dbContext;
     }
 
     public async Task<PageList<UserDto>> GetUsersAsync(UserQueryDto queryDto)
@@ -963,19 +967,404 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     {
         if (string.IsNullOrWhiteSpace(idNo))
         {
-            throw new AppServiceException(400, "身份证号码不能为空！");
+            throw new ArgumentException("身份证号码不能为空", nameof(idNo));
         }
-        
-        var user = await _userManager.Users
+
+        ApplicationUser? user = await _userManager.Users
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.IdNo == idNo);
-        
+
         if (user == null)
         {
-            return null;
+            throw new AppServiceException(404, "用户不存在！");
         }
-        
+
         return Mapper.Map<UserDto>(user);
     }
+
+    /// <summary>
+    /// 根据用户ID获取用户信息（忽略所有过滤器）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>用户信息</returns>
+    /// <remarks>
+    /// 此方法会忽略租户过滤器和软删除过滤器，主要用于获取当前登录用户自己的信息
+    /// </remarks>
+    public async Task<UserDto> GetUserByIdIgnoreFiltersAsync(long userId)
+    {
+        try
+        {
+            // 直接使用DbContext查询，忽略所有全局过滤器（包括租户过滤器和软删除过滤器）
+            var user = await _dbContext.Set<ApplicationUser>()
+                .IgnoreQueryFilters() // 忽略所有全局过滤器
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+            {
+                return null;
+            }
+
+            return Mapper.Map<UserDto>(user);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "查询用户信息时发生异常: UserId={UserId}", userId);
+            throw new AppServiceException(500, "查询用户信息失败");
+        }
+    }
+
+    /// <summary>
+    /// 获取用户角色（忽略多租户过滤器）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>角色名称列表</returns>
+    /// <remarks>
+    /// 此方法会忽略租户过滤器，确保系统平台和租户平台都能正确获取到用户角色
+    /// </remarks>
+    public async Task<List<string>> GetUserRolesIgnoreFiltersAsync(long userId)
+    {
+        try
+        {
+            // 直接使用DbContext查询，忽略所有全局过滤器（包括租户过滤器和软删除过滤器）
+            var roles = await _dbContext.UserRoles
+                .IgnoreQueryFilters() // 忽略所有全局过滤器
+                .Where(ur => ur.UserId == userId)
+                .Join(_dbContext.Roles.IgnoreQueryFilters(), // 角色表也要忽略过滤器
+                    ur => ur.RoleId,
+                    r => r.Id,
+                    (ur, r) => new { UserRole = ur, Role = r })
+                .Where(joined => !joined.Role.IsDeleted && joined.Role.IsActive) // 手动过滤无效角色
+                .Select(joined => joined.Role.Name)
+                .ToListAsync();
+
+            _logger.LogDebug("为用户 {UserId} 获取到 {RoleCount} 个角色: {Roles}", 
+                userId, roles.Count, string.Join(", ", roles));
+
+            return roles;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取用户角色时发生异常: UserId={UserId}", userId);
+            return new List<string>();
+        }
+    }
+
+    #region 系统平台专用方法实现
+
+    /// <summary>
+    /// 获取系统用户列表（跨租户查询）
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>系统用户分页列表</returns>
+    public async Task<PageList<UserDto>> GetSystemUsersAsync(SystemUserQueryDto queryDto)
+    {
+        ExpressionStarter<ApplicationUser> predicate = PredicateBuilder.New<ApplicationUser>(true);
+
+        // 应用搜索关键词过滤
+        if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
+        {
+            string searchLower = queryDto.Keywords.ToLower();
+            predicate = predicate.Or(u => u.Name.ToLower().Contains(searchLower));
+            predicate = predicate.Or(u => u.Email.ToLower().Contains(searchLower));
+            predicate = predicate.Or(u => u.IdNo.Contains(queryDto.Keywords));
+            predicate = predicate.Or(u => u.UserName.ToLower().Contains(searchLower));
+        }
+
+        // 应用用户名过滤
+        if (!string.IsNullOrWhiteSpace(queryDto.UserName))
+        {
+            predicate = predicate.And(u => u.UserName.Contains(queryDto.UserName));
+        }
+
+        // 应用邮箱过滤
+        if (!string.IsNullOrWhiteSpace(queryDto.Email))
+        {
+            predicate = predicate.And(u => u.Email.Contains(queryDto.Email));
+        }
+
+        // 应用手机号过滤
+        if (!string.IsNullOrWhiteSpace(queryDto.PhoneNumber))
+        {
+            predicate = predicate.And(u => u.PhoneNumber.Contains(queryDto.PhoneNumber));
+        }
+
+        // 应用激活状态过滤
+        if (queryDto.IsActive.HasValue)
+        {
+            predicate = predicate.And(u => u.IsActive == queryDto.IsActive.Value);
+        }
+
+        // 应用租户ID过滤
+        if (!string.IsNullOrWhiteSpace(queryDto.TenantId))
+        {
+            predicate = predicate.And(u => u.TenantId == queryDto.TenantId);
+        }
+
+        // 应用创建时间过滤
+        if (queryDto.CreatedAtStart.HasValue)
+        {
+            predicate = predicate.And(u => u.CreatedAt >= queryDto.CreatedAtStart.Value);
+        }
+
+        if (queryDto.CreatedAtEnd.HasValue)
+        {
+            predicate = predicate.And(u => u.CreatedAt <= queryDto.CreatedAtEnd.Value);
+        }
+
+        // 应用最后登录时间过滤
+        if (queryDto.LastLoginStart.HasValue)
+        {
+            predicate = predicate.And(u => u.LastLoginTime >= queryDto.LastLoginStart.Value);
+        }
+
+        if (queryDto.LastLoginEnd.HasValue)
+        {
+            predicate = predicate.And(u => u.LastLoginTime <= queryDto.LastLoginEnd.Value);
+        }
+
+        // 创建查询（注意：这里不应用租户过滤，允许跨租户查询）
+        var query = _dbContext.Set<ApplicationUser>()
+            .IgnoreQueryFilters() // 忽略多租户查询过滤器
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .Where(predicate);
+
+        // 执行分页查询
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((queryDto.Page - 1) * queryDto.PerPage)
+            .Take(queryDto.PerPage)
+            .ToListAsync();
+
+        // 映射结果
+        var mappedItems = Mapper.Map<List<UserDto>>(items);
+        
+        return new PageList<UserDto>
+        {
+            Total = totalCount,
+            Items = mappedItems
+        };
+    }
+
+    /// <summary>
+    /// 获取按租户分组的用户统计信息
+    /// </summary>
+    /// <returns>租户用户统计列表</returns>
+    public async Task<List<TenantUserStatisticsDto>> GetUsersByTenantStatisticsAsync()
+    {
+        var now = DateTimeOffset.Now;
+        var startOfMonth = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, now.Offset);
+
+        // 跨租户查询所有用户
+        var users = await _dbContext.Set<ApplicationUser>()
+            .IgnoreQueryFilters()
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .ToListAsync();
+
+        // 按租户分组统计
+        var statistics = users
+            .GroupBy(u => u.TenantId ?? "default")
+            .Select(g => new TenantUserStatisticsDto
+            {
+                TenantId = g.Key,
+                TenantName = g.Key, // 这里可以后续从租户表中获取真实名称
+                TenantDisplayName = g.Key,
+                TotalUsers = g.Count(),
+                ActiveUsers = g.Count(u => u.IsActive),
+                InactiveUsers = g.Count(u => !u.IsActive),
+                AdminUsers = g.Count(u => u.UserRoles.Any(ur => ur.Role.Name.Contains("Admin"))),
+                NormalUsers = g.Count(u => !u.UserRoles.Any(ur => ur.Role.Name.Contains("Admin"))),
+                NewUsersThisMonth = g.Count(u => u.CreatedAt >= startOfMonth),
+                ActiveUsersThisMonth = g.Count(u => u.IsActive && u.LastLoginTime >= startOfMonth),
+                LastActiveTime = g.Where(u => u.LastLoginTime.HasValue).Max(u => u.LastLoginTime),
+                CreatedAt = g.Min(u => u.CreatedAt),
+                GrowthRate = 0, // 待实现增长率计算
+                ActivityRate = g.Any() ? (decimal)g.Count(u => u.IsActive) / g.Count() * 100 : 0
+            })
+            .ToList();
+
+        return statistics;
+    }
+
+    /// <summary>
+    /// 将用户转移到指定租户
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <param name="targetTenantId">目标租户ID</param>
+    /// <returns>转移后的用户信息</returns>
+    public async Task<UserDto> TransferUserToTenantAsync(long userId, string targetTenantId)
+    {
+        if (string.IsNullOrWhiteSpace(targetTenantId))
+        {
+            throw new ArgumentException("目标租户ID不能为空", nameof(targetTenantId));
+        }
+
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+        {
+            throw new AppServiceException(404, "用户不存在！");
+        }
+
+        // 更新用户的租户ID
+        user.TenantId = targetTenantId;
+        var result = await _userManager.UpdateAsync(user);
+        
+        if (!result.Succeeded)
+        {
+            throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+
+        // 重新获取包含角色信息的用户
+        var updatedUser = await _userManager.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        return Mapper.Map<UserDto>(updatedUser);
+    }
+
+    /// <summary>
+    /// 获取跨租户用户增长趋势对比
+    /// </summary>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <returns>各租户用户增长趋势数据</returns>
+    public async Task<IEnumerable<object>> GetCrossTenantUserGrowthTrendAsync(DateTimeOffset startDate, DateTimeOffset endDate)
+    {
+        var users = await _dbContext.Set<ApplicationUser>()
+            .IgnoreQueryFilters()
+            .Where(u => u.CreatedAt >= startDate && u.CreatedAt <= endDate)
+            .ToListAsync();
+
+        var result = users
+            .GroupBy(u => new { u.TenantId, Date = u.CreatedAt.Date })
+            .Select(g => new
+            {
+                Date = g.Key.Date.ToString("yyyy-MM-dd"),
+                TenantName = g.Key.TenantId ?? "default",
+                UserCount = g.Count()
+            })
+            .OrderBy(x => x.Date)
+            .ThenBy(x => x.TenantName);
+
+        return result;
+    }
+
+    /// <summary>
+    /// 获取各租户用户活跃度排行
+    /// </summary>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <returns>租户活跃度排行数据</returns>
+    public async Task<IEnumerable<object>> GetTenantUserActivityRankingAsync(DateTimeOffset startDate, DateTimeOffset endDate)
+    {
+        var users = await _dbContext.Set<ApplicationUser>()
+            .IgnoreQueryFilters()
+            .ToListAsync();
+
+        var result = users
+            .GroupBy(u => u.TenantId ?? "default")
+            .Select(g => new
+            {
+                TenantName = g.Key,
+                TotalUsers = g.Count(),
+                ActiveUsers = g.Count(u => u.IsActive && u.LastLoginTime >= startDate),
+                ActivityScore = g.Any() ? (decimal)g.Count(u => u.IsActive && u.LastLoginTime >= startDate) / g.Count() * 100 : 0
+            })
+            .OrderByDescending(x => x.ActivityScore);
+
+        return result;
+    }
+
+    /// <summary>
+    /// 获取租户用户规模分布统计
+    /// </summary>
+    /// <returns>租户用户规模分布数据</returns>
+    public async Task<IEnumerable<object>> GetTenantUserScaleDistributionAsync()
+    {
+        var users = await _dbContext.Set<ApplicationUser>()
+            .IgnoreQueryFilters()
+            .ToListAsync();
+
+        var tenantUserCounts = users
+            .GroupBy(u => u.TenantId ?? "default")
+            .Select(g => g.Count())
+            .ToList();
+
+        var scaleRanges = new[]
+        {
+            new { Range = "1-10人", Min = 1, Max = 10 },
+            new { Range = "11-50人", Min = 11, Max = 50 },
+            new { Range = "51-100人", Min = 51, Max = 100 },
+            new { Range = "101-500人", Min = 101, Max = 500 },
+            new { Range = "500人以上", Min = 501, Max = int.MaxValue }
+        };
+
+        var result = scaleRanges.Select(range => new
+        {
+            ScaleRange = range.Range,
+            TenantCount = tenantUserCounts.Count(count => count >= range.Min && count <= range.Max)
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// 获取系统整体用户健康度分析
+    /// </summary>
+    /// <returns>用户健康度分析数据</returns>
+    public async Task<object> GetSystemUserHealthAnalysisAsync()
+    {
+        var users = await _dbContext.Set<ApplicationUser>()
+            .IgnoreQueryFilters()
+            .ToListAsync();
+
+        var now = DateTimeOffset.Now;
+        var thirtyDaysAgo = now.AddDays(-30);
+        var sevenDaysAgo = now.AddDays(-7);
+
+        var result = new
+        {
+            TotalUsers = users.Count,
+            ActiveUsers = users.Count(u => u.IsActive),
+            InactiveUsers = users.Count(u => !u.IsActive),
+            RecentlyActiveUsers = users.Count(u => u.LastLoginTime >= sevenDaysAgo),
+            LongInactiveUsers = users.Count(u => !u.LastLoginTime.HasValue || u.LastLoginTime < thirtyDaysAgo),
+            NewUsersLast30Days = users.Count(u => u.CreatedAt >= thirtyDaysAgo),
+            HealthScore = users.Any() ? (decimal)users.Count(u => u.IsActive && u.LastLoginTime >= sevenDaysAgo) / users.Count * 100 : 0,
+            LastUpdated = now
+        };
+
+        return result;
+    }
+
+    /// <summary>
+    /// 获取租户用户迁移历史统计
+    /// </summary>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <returns>用户迁移历史统计数据</returns>
+    public async Task<IEnumerable<object>> GetUserTransferHistoryStatisticsAsync(DateTimeOffset startDate, DateTimeOffset endDate)
+    {
+        // 注意：这里需要实际的用户迁移记录表才能提供准确的数据
+        // 暂时返回模拟数据结构
+        var result = new[]
+        {
+            new
+            {
+                Date = startDate.ToString("yyyy-MM-dd"),
+                TransferCount = 0,
+                SourceTenant = "模拟数据",
+                TargetTenant = "模拟数据"
+            }
+        };
+
+        return await Task.FromResult(result);
+    }
+
+    #endregion
 }

@@ -17,7 +17,7 @@ namespace CodeSpirit.Messaging.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "9.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -38,11 +38,19 @@ namespace CodeSpirit.Messaging.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETDATE()");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Title")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_Conversations_TenantId");
 
                     b.ToTable("Conversations");
                 });
@@ -67,6 +75,11 @@ namespace CodeSpirit.Messaging.Migrations
                     b.Property<DateTime?>("LastReadAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("UserName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -75,6 +88,9 @@ namespace CodeSpirit.Messaging.Migrations
                     b.HasKey("UserId", "ConversationId");
 
                     b.HasIndex("ConversationId");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_ConversationParticipants_TenantId");
 
                     b.ToTable("ConversationParticipants");
                 });
@@ -110,6 +126,11 @@ namespace CodeSpirit.Messaging.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -121,6 +142,9 @@ namespace CodeSpirit.Messaging.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConversationId");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_Messages_TenantId");
 
                     b.ToTable("Messages");
                 });
@@ -140,9 +164,17 @@ namespace CodeSpirit.Messaging.Migrations
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.HasKey("UserId", "MessageId");
 
                     b.HasIndex("MessageId");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_UserMessageReads_TenantId");
 
                     b.ToTable("UserMessageReads");
                 });

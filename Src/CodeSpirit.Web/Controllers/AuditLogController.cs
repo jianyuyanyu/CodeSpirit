@@ -4,6 +4,7 @@ using CodeSpirit.Audit.Services;
 using CodeSpirit.Audit.Services.Dtos;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.Web.Controllers
@@ -12,7 +13,7 @@ namespace CodeSpirit.Web.Controllers
     /// 审计日志控制器
     /// </summary>
     [DisplayName("审计日志")]
-    [Navigation(Icon = "fa-solid fa-clipboard-list")]
+    [Navigation(Icon = "fa-solid fa-clipboard-list", PlatformType = PlatformType.Both)]
     public class AuditLogController : ApiControllerBase
     {
         private readonly IAuditService _auditService;

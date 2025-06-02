@@ -87,6 +87,7 @@ namespace CodeSpirit.IdentityApi.Services
             
             // 缓存未命中，从数据库获取
             var user = await _userRepository.CreateQuery()
+                .IgnoreQueryFilters()
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                         .ThenInclude(r => r.RolePermission)

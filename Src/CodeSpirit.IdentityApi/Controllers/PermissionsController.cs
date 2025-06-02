@@ -2,6 +2,7 @@
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Dtos.Permission;
@@ -12,7 +13,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("权限管理")]
-    [Navigation(Icon = "fa-solid fa-key")]
+    [Navigation(Icon = "fa-solid fa-lock", PlatformType = PlatformType.Tenant)]
     public class PermissionsController : ApiControllerBase
     {
         private readonly IPermissionService _permissionService;

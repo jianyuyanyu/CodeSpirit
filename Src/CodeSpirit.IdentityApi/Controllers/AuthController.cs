@@ -1,5 +1,6 @@
 ﻿// Controllers/AuthController.cs
 using CodeSpirit.Core;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Auth;
 using CodeSpirit.IdentityApi.Services;
@@ -17,6 +18,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     /// 授权控制器，处理用户登录、令牌刷新和登出功能
     /// </summary>
     [AllowAnonymous]
+    [Navigation(Hidden = true)]
     public class AuthController : ApiControllerBase
     {
         private readonly IAuthService _authService;
@@ -140,6 +142,102 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             await _signInManager.SignOutAsync();
             return SuccessResponse("退出登录成功!");
+        }
+
+        /// <summary>
+        /// 系统平台登录接口
+        /// </summary>
+        /// <param name="model">系统平台登录请求</param>
+        /// <returns>登录结果</returns>
+        [HttpPost("system/login")]
+        [AllowAnonymous]
+        [DisplayName("系统平台登录")]
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> SystemLogin([FromBody] SystemLoginModel model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadResponse<AuthTokenResponse>("请求参数验证失败");
+                }
+
+                var ipAddress = _clientIpService.GetClientIpAddress(HttpContext);
+                var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+                var result = await _authService.SystemLoginAsync(model, ipAddress, userAgent);
+                if (!result.Success)
+                {
+                    return BadResponse<AuthTokenResponse>(result.Message);
+                }
+
+                var response = new AuthTokenResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    User = result.UserInfo
+                };
+
+                return SuccessResponse(response, msg: "系统管理员登录成功");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "系统平台登录异常");
+                return BadResponse<AuthTokenResponse>("系统平台登录失败，请检查登录信息或联系管理员！");
+            }
+        }
+
+        /// <summary>
+        /// 租户平台登录接口
+        /// </summary>
+        /// <param name="model">租户平台登录请求</param>
+        /// <returns>登录结果</returns>
+        [HttpPost("tenant/login")]
+        [AllowAnonymous]
+        [DisplayName("租户平台登录")]
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> TenantLogin([FromBody] TenantLoginModel model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadResponse<AuthTokenResponse>("请求参数验证失败");
+                }
+
+                // 从请求头获取租户ID（如果模型中没有提供）
+                if (string.IsNullOrEmpty(model.TenantId))
+                {
+                    model.TenantId = HttpContext.Request.Headers["TenantId"].FirstOrDefault() 
+                                    ?? HttpContext.Items["TenantId"]?.ToString();
+                }
+
+                if (string.IsNullOrEmpty(model.TenantId))
+                {
+                    return BadResponse<AuthTokenResponse>("租户ID不能为空");
+                }
+
+                var ipAddress = _clientIpService.GetClientIpAddress(HttpContext);
+                var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+                var result = await _authService.TenantLoginAsync(model, ipAddress, userAgent);
+                if (!result.Success)
+                {
+                    return BadResponse<AuthTokenResponse>(result.Message);
+                }
+
+                var response = new AuthTokenResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    User = result.UserInfo
+                };
+
+                return SuccessResponse(response, msg: "租户用户登录成功");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "租户平台登录异常");
+                return BadResponse<AuthTokenResponse>("租户平台登录失败，请检查登录信息或联系管理员！");
+            }
         }
     }
 }

@@ -269,7 +269,7 @@
                 }
             ]
         },
-        api: '/api/navigation/site'
+        api: '/api/navigation/site?platformType=System'
     };
 
     /**

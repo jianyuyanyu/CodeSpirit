@@ -112,7 +112,7 @@ namespace CodeSpirit.Navigation.Tests.Services
             var config = new NavigationConfigItem();
 
             // Assert
-            Assert.Equal(PlatformType.Both, config.PlatformType);
+            Assert.Equal(PlatformType.Inherit, config.PlatformType);
             Assert.Empty(config.Tags);
             Assert.Empty(config.MetaData);
             Assert.True(config.RequireAuth);

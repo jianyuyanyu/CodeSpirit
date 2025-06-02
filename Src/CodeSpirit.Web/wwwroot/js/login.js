@@ -3,7 +3,8 @@
     const match = amisRequire('path-to-regexp').match;
     
     TokenManager.clearToken();
-    // 通过替换下面这个配置来生成不同页面
+    
+    // 系统平台登录页面配置
     let amisJSON =
     {
         "type": "page",
@@ -26,9 +27,9 @@
                                 "<div class='login-label'>Welcome</div>" +
                                 "<div class='transverse'></div>" +
                                 "<div class='login-label' style='margin-bottom: 10px;'>欢迎进入</div>" +
-                                "<div class='login-label'>" + (window.siteSettings ? window.siteSettings.topSiteName : 'CodeSpirit') +"</div>" +
+                                "<div class='login-label'>" + (window.siteSettings ? window.siteSettings.topSiteName : 'CodeSpirit 系统管理平台') +"</div>" +
                                 "<div class='transverse'></div>" +
-                                "<div class='login-label-x'>Welcome to "+ (window.siteSettings ? window.siteSettings.siteName : 'CodeSpirit') +"</div>" +
+                                "<div class='login-label-x'>Welcome to "+ (window.siteSettings ? window.siteSettings.siteName : 'CodeSpirit System Management') +"</div>" +
                                 "<div class='carousel'>" +
                                 "<div class='carousel-img'><img src='/public/lb.png' alt='' /></div>" +
                                 "</div></div>",
@@ -41,22 +42,25 @@
                             "lg": "9",
                             "type": "flex",
                             "justify": "center",
+                            "alignItems": "center",
                             "style": {
                                 "backgroundColor": "#eeeff2",
-                                "paddingTop": "100px",
-                                "height": "100vh",
+                                "minHeight": "100vh",
+                                "padding": "20px"
                             },
                             "items": [
                                 {
                                     "style": {
                                         "width": "505px",
-                                        "height": "450px",
+                                        "minHeight": "auto",
+                                        "maxHeight": "90vh",
                                         "borderRadius": "20px",
-                                        "border": "none"
+                                        "border": "none",
+                                        "padding": "20px",
+                                        "overflow": "auto"
                                     },
                                     "className": "form-wrap",
                                     "type": "panel",
-                                    // "api": "/api/auth/login",
                                     "title": "",
                                     "body": [
                                         {
@@ -64,23 +68,75 @@
                                             "linksClassName": "tabs-title-box",
                                             "tabs": [
                                                 {
-                                                    "title": "密码登录",
+                                                    "title": "系统平台登录",
                                                     "body": {
                                                         "type": "form",
                                                         "title": "",
-                                                        "api": "/identity/api/identity/auth/login",
-                                                        "submitText": "登录",
+                                                        "api": {
+                                                            "method": "post",
+                                                            "url": "/identity/api/identity/auth/system/login",
+                                                            "requestAdaptor": function(api) {
+                                                                // 添加请求头
+                                                                api.headers = api.headers || {};
+                                                                api.headers['X-Forwarded-With'] = 'CodeSpirit';
+                                                                api.headers['Content-Type'] = 'application/json';
+                                                                return api;
+                                                            },
+                                                            "adaptor": function(payload, response, api) {
+                                                                if (payload.status === 0) {
+                                                                    // 登录成功，保存token
+                                                                    if (payload.data && payload.data.token) {
+                                                                        TokenManager.setToken(payload.data.token);
+                                                                    }
+                                                                    
+                                                                    // 延迟跳转，让用户看到成功提示
+                                                                    setTimeout(() => {
+                                                                        const urlParams = new URLSearchParams(window.location.search);
+                                                                        const redirectUrl = urlParams.get('redirect');
+                                                                        
+                                                                        /**
+                                                                         * 检查重定向URL是否为登录相关页面
+                                                                         * @param {string} url - 要检查的URL
+                                                                         * @returns {boolean} 如果是登录页面返回true
+                                                                         */
+                                                                        const isLoginPage = (url) => {
+                                                                            if (!url) return false;
+                                                                            const loginPatterns = ['/login', '/system/login', '/tenant/login', 'login.html','#/'];
+                                                                            return loginPatterns.some(pattern => 
+                                                                                url.toLowerCase().includes(pattern.toLowerCase())
+                                                                            );
+                                                                        };
+                                                                        
+                                                                        // 如果有重定向URL且不是登录页面，则跳转到重定向URL
+                                                                        if (redirectUrl && !isLoginPage(redirectUrl)) {
+                                                                            window.location.href = decodeURIComponent(redirectUrl);
+                                                                        } else {
+                                                                            // 否则跳转到系统后台首页
+                                                                            window.location.href = '/'; // 系统后台
+                                                                        }
+                                                                    }, 1000);
+                                                                } else {
+                                                                    // 显示具体的错误信息
+                                                                    console.error('系统平台登录失败:', payload.msg);
+                                                                }
+                                                                return payload;
+                                                            }
+                                                        },
+                                                        "submitText": "登录系统平台",
                                                         "trimValues": true,
                                                         "wrapWithPanel": false,
-                                                        "redirect": "/",
+                                                        //"redirect": "/",
+                                                        "style": {
+                                                            "padding": "0"
+                                                        },
                                                         "body": [
                                                             {
                                                                 "type": "input-text",
-                                                                "label": "账号",
+                                                                "label": "系统平台账号",
                                                                 "name": "userName",
-                                                                "placeholder": "手机号码/账号/邮箱",
+                                                                "placeholder": "请输入系统平台账号",
                                                                 "required": true,
-                                                                "className": "input-field"
+                                                                "className": "input-field mb-3"
                                                             },
                                                             {
                                                                 "type": "input-password",
@@ -88,69 +144,85 @@
                                                                 "name": "password",
                                                                 "placeholder": "请输入密码",
                                                                 "required": true,
-                                                                "className": "input-field"
-                                                            }
-                                                            ,
-                                                            {
-                                                                "type": "button",
-                                                                "label": "登录",
-                                                                "level": "primary",
-                                                                "actionType": "submit",
-                                                                "className": "submit-btn"
-                                                            }
-                                                        ],
-                                                        "onEvent": {
-                                                            "submitSucc": {
-                                                                "actions": [
-                                                                    {
-                                                                        "actionType": "custom",
-                                                                        "script": "TokenManager.setToken(event.data.result.data.token);"
-                                                                    },
-                                                                    {
-                                                                        "actionType": "custom",
-                                                                        "script": "const urlParams = new URLSearchParams(window.location.search); const redirectUrl = urlParams.get('redirect'); if (redirectUrl) { window.location.href = decodeURIComponent(redirectUrl); } else { window.location.href = '/'; }"
-                                                                    }
-                                                                ]
-                                                            }
-                                                        }
-                                                    }
-                                                },
-                                                {
-                                                    "title": "短信登录",
-                                                    "body": {
-                                                        "type": "form",
-                                                        "api": "/identity/api/identity/auth/login",
-                                                        "wrapWithPanel": false,
-                                                        "body": [
-                                                            {
-                                                                "type": "input-text",
-                                                                "label": "用户",
-                                                                "name": "loginName",
-                                                                "placeholder": "手机号码",
-                                                                "required": true,
-                                                                "className": "input-field"
+                                                                "className": "input-field mb-3"
                                                             },
                                                             {
-                                                                "type": "input-text",
-                                                                "label": "验证码",
-                                                                "name": "code",
-                                                                "placeholder": "请输入验证码",
-                                                                "required": true,
-                                                                "className": "input-field"
+                                                                "type": "checkbox",
+                                                                "name": "rememberMe",
+                                                                "option": "记住我",
+                                                                "className": "mb-3"
+                                                            },
+                                                            {
+                                                                "type": "button",
+                                                                "label": "登录系统管理平台",
+                                                                "level": "primary",
+                                                                "actionType": "submit",
+                                                                "className": "submit-btn",
+                                                                "block": true,
+                                                                "style": {
+                                                                    "marginTop": "10px"
+                                                                }
                                                             }
                                                         ]
                                                     }
                                                 },
                                                 {
-                                                    "title": "扫码登录",
-                                                    "body": [
-                                                        {
-                                                            "type": "qrcode",
-                                                            "value": "二维码信息",
-                                                            "label": "请使用App扫码登录",
-                                                            "className": "qr-code"
-                                                        }
-                                                    ]
+                                                    "title": "租户登录入口",
+                                                    "body": {
+                                                        "type": "container",
+                                                        "style": {
+                                                            "padding": "0"
+                                                        },
+                                                        "body": [
+                                                            {
+                                                                "type": "alert",
+                                                                "level": "warning",
+                                                                "body": "如果您是租户用户，请前往租户专属登录页面",
+                                                                "className": "mb-2",
+                                                                "showIcon": true
+                                                            },
+                                                            {
+                                                                "type": "form",
+                                                                "title": "",
+                                                                "wrapWithPanel": false,
+                                                                "style": {
+                                                                    "padding": "0"
+                                                                },
+                                                                "body": [
+                                                                    {
+                                                                        "type": "input-text",
+                                                                        "label": "租户ID",
+                                                                        "name": "tenantId",
+                                                                        "placeholder": "请输入您的租户ID",
+                                                                        "required": true,
+                                                                        "className": "input-field mb-3",
+                                                                        "description": "请联系您的租户管理员获取租户ID"
+                                                                    },
+                                                                    {
+                                                                        "type": "button",
+                                                                        "label": "前往租户登录页",
+                                                                        "level": "info",
+                                                                        "actionType": "submit",
+                                                                        "className": "submit-btn",
+                                                                        "block": true,
+                                                                        "style": {
+                                                                            "marginTop": "10px"
+                                                                        },
+                                                                    }
+                                                                ],
+                                                                "onEvent": {
+                                                                    "submitSucc": {
+                                                                        "actions": [
+                                                                            {
+                                                                                "actionType": "custom",
+                                                                                "script": "const tenantId = event.data.tenantId; if (!tenantId) { amisRequire('amis').toast.error('请输入租户ID'); return; } window.location.href = `/${tenantId}/login`;"
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
                                                 }
                                             ]
                                         }
@@ -163,8 +235,8 @@
                 }
             ]
         }
-    }
-        ;
+    };
+
     let amisScoped = amis.embed('#root', amisJSON, {
         location: history.location,
         data: {},

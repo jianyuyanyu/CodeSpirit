@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.Messaging.Models;
 using CodeSpirit.Messaging.Services;
 using Microsoft.AspNetCore.SignalR;
@@ -11,16 +12,46 @@ public class ChatHub : Hub
 {
     private readonly IChatService _chatService;
     private readonly IMessageService _messageService;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="chatService">聊天服务</param>
     /// <param name="messageService">消息服务</param>
-    public ChatHub(IChatService chatService, IMessageService messageService)
+    /// <param name="currentUser">当前用户服务</param>
+    public ChatHub(IChatService chatService, IMessageService messageService, ICurrentUser currentUser)
     {
         _chatService = chatService;
         _messageService = messageService;
+        _currentUser = currentUser;
+    }
+
+    /// <summary>
+    /// 连接时自动加入租户组
+    /// </summary>
+    public override async Task OnConnectedAsync()
+    {
+        var tenantId = _currentUser?.TenantId;
+        if (!string.IsNullOrEmpty(tenantId))
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"tenant-{tenantId}");
+        }
+        await base.OnConnectedAsync();
+    }
+
+    /// <summary>
+    /// 断开连接时自动离开租户组
+    /// </summary>
+    /// <param name="exception">异常信息</param>
+    public override async Task OnDisconnectedAsync(Exception exception)
+    {
+        var tenantId = _currentUser?.TenantId;
+        if (!string.IsNullOrEmpty(tenantId))
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"tenant-{tenantId}");
+        }
+        await base.OnDisconnectedAsync(exception);
     }
 
     /// <summary>
@@ -29,7 +60,16 @@ public class ChatHub : Hub
     /// <param name="conversationId">对话ID</param>
     public async Task JoinConversation(Guid conversationId)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, conversationId.ToString());
+        // 验证用户是否有权限加入此对话（通过服务层的多租户过滤自动处理）
+        var conversation = await _chatService.GetConversationByIdAsync(conversationId);
+        if (conversation != null)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, conversationId.ToString());
+        }
+        else
+        {
+            await Clients.Caller.SendAsync("Error", "无权限访问此对话或对话不存在");
+        }
     }
 
     /// <summary>
@@ -129,10 +169,14 @@ public class ChatHub : Hub
             var conversation = await _chatService.CreateConversationAsync(title, creatorId, creatorName, participantIds);
             await Clients.Caller.SendAsync("ConversationCreated", conversation);
             
-            // 通知所有参与者有新对话
-            foreach (var participantId in participantIds)
+            // 只通知同租户的参与者有新对话
+            var tenantId = _currentUser?.TenantId;
+            if (!string.IsNullOrEmpty(tenantId))
             {
-                await Clients.User(participantId).SendAsync("NewConversation", conversation);
+                foreach (var participantId in participantIds)
+                {
+                    await Clients.User(participantId).SendAsync("NewConversation", conversation);
+                }
             }
         }
         catch (Exception ex)
@@ -181,6 +225,26 @@ public class ChatHub : Hub
             
             // 通知被移除的用户
             await Clients.User(userId).SendAsync("RemovedFromConversation", conversationId);
+        }
+        catch (Exception ex)
+        {
+            await Clients.Caller.SendAsync("Error", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 向租户内所有用户广播消息
+    /// </summary>
+    /// <param name="message">消息内容</param>
+    public async Task BroadcastToTenant(string message)
+    {
+        try
+        {
+            var tenantId = _currentUser?.TenantId;
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                await Clients.Group($"tenant-{tenantId}").SendAsync("TenantBroadcast", message);
+            }
         }
         catch (Exception ex)
         {

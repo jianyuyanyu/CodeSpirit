@@ -4,6 +4,7 @@ using CodeSpirit.ExamApi.Dtos.Student;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -11,7 +12,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 考生管理控制器
 /// </summary>
 [DisplayName("考生管理")]
-[Navigation(Icon = "fa-solid fa-user-graduate")]
+[Navigation(Icon = "fa-solid fa-user-graduate", PlatformType = PlatformType.Tenant)]
 public class StudentsController : ApiControllerBase
 {
     private readonly IStudentService _studentService;

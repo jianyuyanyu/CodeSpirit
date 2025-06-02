@@ -4,6 +4,7 @@ using CodeSpirit.ExamApi.Dtos.QuestionCategory;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -11,7 +12,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 题目分类管理控制器
 /// </summary>
 [DisplayName("题目分类管理")]
-[Navigation(Icon = "fa-solid fa-folder-tree")]
+[Navigation(Icon = "fa-solid fa-folder-tree", PlatformType = PlatformType.Tenant)]
 public class QuestionCategoriesController : ApiControllerBase
 {
     private readonly IQuestionCategoryService _questionCategoryService;

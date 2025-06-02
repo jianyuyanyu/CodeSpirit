@@ -2,6 +2,7 @@
 using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using CodeSpirit.Core;
 namespace CodeSpirit.IdentityApi.Data.Seeders;
 public class UserSeeder : IScopedDependency
 {
@@ -46,7 +47,7 @@ public class UserSeeder : IScopedDependency
                 Name = "Admin",
                 IsActive = true,
                 Gender = Gender.Unknown,
-                TenantId = "default"
+                TenantId = TenantConstants.DefaultTenantId
             };
 
             IdentityResult result = await _userManager.CreateAsync(adminUser, "123@Admin");
@@ -74,7 +75,7 @@ public class UserSeeder : IScopedDependency
             var adminRole = new ApplicationRole() 
             { 
                 Name = "Admin",
-                TenantId = "default",
+                TenantId = TenantConstants.DefaultTenantId,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = -1L // 系统用户
@@ -166,7 +167,7 @@ public class UserSeeder : IScopedDependency
                 AvatarUrl = avatarUrl,
                 PhoneNumber = GenerateRandomPhoneNumber(random),
                 IdNo = GenerateRandomIdNumber(random),
-                TenantId = "default"
+                TenantId = TenantConstants.DefaultTenantId
             };
 
             if (i > 5)

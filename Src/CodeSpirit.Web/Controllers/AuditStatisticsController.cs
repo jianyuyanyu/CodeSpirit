@@ -5,6 +5,7 @@ using CodeSpirit.Audit.Services;
 using CodeSpirit.Charts.Attributes;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.Web.Controllers
@@ -13,7 +14,7 @@ namespace CodeSpirit.Web.Controllers
     /// 审计统计图表控制器
     /// </summary>
     [DisplayName("审计统计")]
-    [Navigation(Icon = "fa-solid fa-chart-bar")]
+    [Navigation(Icon = "fa-solid fa-chart-bar", PlatformType = PlatformType.Both)]
     public class AuditStatisticsController : ApiControllerBase
     {
         private readonly IAuditService _auditService;

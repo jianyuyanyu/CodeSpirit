@@ -8,6 +8,7 @@ using CodeSpirit.ExamApi.Dtos.PracticeSetting;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.Net;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -15,7 +16,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 试卷管理
 /// </summary>
 [DisplayName("试卷管理")]
-[Navigation(Icon = "fa-solid fa-file-lines")]
+[Navigation(Icon = "fa-solid fa-file-lines", PlatformType = PlatformType.Tenant)]
 public class ExamPapersController : ApiControllerBase
 {
     private readonly IExamPaperService _examPaperService;

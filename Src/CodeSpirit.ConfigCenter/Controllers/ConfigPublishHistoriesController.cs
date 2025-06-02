@@ -5,6 +5,7 @@ using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -15,7 +16,7 @@ namespace CodeSpirit.ConfigCenter.Controllers;
 /// 配置发布历史控制器
 /// </summary>
 [DisplayName("发布历史")]
-[Navigation(Icon = "fa-solid fa-clock-rotate-left")]
+[Navigation(Icon = "fa-solid fa-clock-rotate-left", PlatformType = PlatformType.Inherit)]
 public class ConfigPublishHistoriesController : ApiControllerBase
 {
     private readonly IConfigPublishHistoryService _publishHistoryService;

@@ -1,6 +1,7 @@
 using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.Messaging.Models;
 using CodeSpirit.Messaging.Services;
 using CodeSpirit.MessagingApi.Dtos.Requests;
@@ -14,7 +15,7 @@ namespace CodeSpirit.MessagingApi.Controllers.Admin;
 /// 消息管理
 /// </summary>
 [DisplayName("消息管理")]
-[Navigation(Icon = "fa-solid fa-envelope")]
+[Navigation(Icon = "fa-solid fa-envelope", PlatformType = PlatformType.Both)]
 public class MessagesController : ApiControllerBase
 {
     private readonly IMessageService _messageService;

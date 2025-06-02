@@ -1,5 +1,6 @@
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Dtos.Question;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
@@ -13,7 +14,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 题目管理控制器
 /// </summary>
 [DisplayName("题目管理")]
-[Navigation(Icon = "fa-solid fa-book")]
+[Navigation(Icon = "fa-solid fa-book", PlatformType = PlatformType.Tenant)]
 public class QuestionsController : ApiControllerBase
 {
     private readonly IQuestionService _questionService;

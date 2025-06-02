@@ -221,6 +221,16 @@ namespace CodeSpirit.IdentityApi.Migrations
 
                     b.HasIndex("RoleId");
 
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_ApplicationUserRole_TenantId");
+
+                    b.HasIndex("TenantId", "UserId")
+                        .HasDatabaseName("IX_ApplicationUserRole_TenantId_UserId");
+
+                    b.HasIndex("UserId", "RoleId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ApplicationUserRole_UserId_RoleId_TenantId");
+
                     b.ToTable("ApplicationUserRole", (string)null);
                 });
 
@@ -287,7 +297,7 @@ namespace CodeSpirit.IdentityApi.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.LoginLog", b =>
@@ -342,7 +352,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.HasIndex("UserId", "LoginTime")
                         .HasDatabaseName("IX_LoginLogs_UserId_LoginTime");
 
-                    b.ToTable("LoginLogs");
+                    b.ToTable("LoginLogs", (string)null);
                 });
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.RefreshToken", b =>
@@ -397,7 +407,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.HasIndex("UserId", "Token")
                         .HasDatabaseName("IX_RefreshTokens_UserId_Token");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("CodeSpirit.MultiTenant.Models.TenantInfo", b =>
@@ -499,7 +509,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_Tenants_TenantId");
 
-                    b.ToTable("Tenants");
+                    b.ToTable("Tenants", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<long>", b =>
@@ -615,7 +625,7 @@ namespace CodeSpirit.IdentityApi.Migrations
                     b.HasIndex("RoleId")
                         .IsUnique();
 
-                    b.ToTable("RolePermissions");
+                    b.ToTable("RolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ApplicationUserRole", b =>

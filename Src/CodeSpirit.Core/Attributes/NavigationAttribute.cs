@@ -61,9 +61,9 @@ public class NavigationAttribute : Attribute
     public string Target { get; set; }
 
     /// <summary>
-    /// 平台类型，支持系统平台、租户平台或两者
+    /// 平台类型，支持系统平台、租户平台、两者或继承父级
     /// </summary>
-    public PlatformType PlatformType { get; set; } = PlatformType.Both;
+    public PlatformType PlatformType { get; set; } = PlatformType.Inherit;
 
     /// <summary>
     /// 导航项的分组/分类

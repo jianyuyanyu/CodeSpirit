@@ -1,6 +1,7 @@
 ﻿using CodeSpirit.Amis.Controllers;
 using CodeSpirit.Authorization;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.ConfigCenter.Controllers
@@ -9,6 +10,7 @@ namespace CodeSpirit.ConfigCenter.Controllers
     //[Authorize(policy: "DynamicPermissions")]
     [Route("api/config/[controller]")]
     [Module("config", "配置中心", Icon = "fa-solid fa-sliders")]
+    [Navigation(Icon = "fa-solid fa-sliders", PlatformType = PlatformType.System)]
     public abstract class ApiControllerBase : AmisApiControllerBase
     {
         /// <summary>

@@ -1,6 +1,7 @@
 using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.Messaging.Models;
 using CodeSpirit.Messaging.Services;
 using CodeSpirit.MessagingApi.Dtos.Requests;
@@ -14,7 +15,7 @@ namespace CodeSpirit.MessagingApi.Controllers.Admin;
 /// 会话管理
 /// </summary>
 [DisplayName("会话管理")]
-[Navigation(Icon = "fa-solid fa-comments")]
+[Navigation(Icon = "fa-solid fa-comments", PlatformType = PlatformType.Both)]
 public class ConversationsController : ApiControllerBase
 {
     private readonly IChatService _chatService;

@@ -6,6 +6,7 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq.Expressions;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -13,7 +14,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 考生组管理控制器
 /// </summary>
 [DisplayName("考生组管理")]
-[Navigation(Icon = "fa-solid fa-users-rectangle")]
+[Navigation(Icon = "fa-solid fa-users-rectangle", PlatformType = PlatformType.Tenant)]
 public class StudentGroupsController : ApiControllerBase
 {
     private readonly IStudentGroupService _studentGroupService;

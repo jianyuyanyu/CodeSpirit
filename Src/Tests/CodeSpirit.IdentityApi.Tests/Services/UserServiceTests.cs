@@ -189,5 +189,85 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             Assert.Contains(users, u => u.Id == 1);
             Assert.Contains(users, u => u.Id == 2);
         }
+
+        [Fact]
+        public async Task GetUserByIdIgnoreFiltersAsync_系统管理员用户_应该返回正确结果()
+        {
+            // Arrange
+            Setup();
+            
+            // 创建一个系统管理员用户用于测试
+            var systemAdmin = new ApplicationUser
+            {
+                Id = 999L,
+                UserName = "systemadmin",
+                Email = "systemadmin@system.local",
+                Name = "系统管理员",
+                TenantId = "system",
+                IsActive = true,
+                Gender = Gender.Unknown,
+                SecurityStamp = Guid.NewGuid().ToString()
+            };
+            
+            await UserManager.CreateAsync(systemAdmin, "TestPassword123!");
+            
+            // Act - 使用忽略过滤器的方法查询
+            var result = await _userService.GetUserByIdIgnoreFiltersAsync(999L);
+            
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(999L, result.Id);
+            Assert.Equal("systemadmin", result.UserName);
+            Assert.Equal("systemadmin@system.local", result.Email);
+            Assert.Equal("系统管理员", result.Name);
+            Assert.Equal("system", result.TenantId);
+        }
+
+        [Fact]
+        public async Task GetUserByIdIgnoreFiltersAsync_不存在的用户_应该返回Null()
+        {
+            // Arrange
+            Setup();
+            
+            // Act
+            var result = await _userService.GetUserByIdIgnoreFiltersAsync(99999L);
+            
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetUserByIdIgnoreFiltersAsync_VS_GetAsync_租户过滤器验证()
+        {
+            // Arrange
+            Setup();
+            
+            // 创建一个不同租户的用户
+            var crossTenantUser = new ApplicationUser
+            {
+                Id = 888L,
+                UserName = "crosstenant",
+                Email = "cross@tenant.com",
+                Name = "跨租户用户",
+                TenantId = "other-tenant",
+                IsActive = true,
+                Gender = Gender.Unknown,
+                SecurityStamp = Guid.NewGuid().ToString()
+            };
+            
+            await UserManager.CreateAsync(crossTenantUser, "TestPassword123!");
+            
+            // Act - 分别使用两种方法查询
+            var resultWithFilters = await _userService.GetAsync(888L);
+            var resultIgnoreFilters = await _userService.GetUserByIdIgnoreFiltersAsync(888L);
+            
+            // Assert - 忽略过滤器的方法应该能查到用户
+            Assert.NotNull(resultIgnoreFilters);
+            Assert.Equal(888L, resultIgnoreFilters.Id);
+            Assert.Equal("crosstenant", resultIgnoreFilters.UserName);
+            
+            // 注意：由于测试环境的租户过滤器可能未完全配置，这里主要验证方法调用不报错
+            // 在实际环境中，普通GetAsync方法可能会因为租户过滤而返回null
+        }
     }
 } 

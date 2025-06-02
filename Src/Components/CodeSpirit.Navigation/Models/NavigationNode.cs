@@ -91,6 +91,11 @@ namespace CodeSpirit.Navigation.Models
         public PlatformType PlatformType { get; set; } = PlatformType.Both;
 
         /// <summary>
+        /// 原始平台类型配置（用于调试和诊断）
+        /// </summary>
+        public PlatformType OriginalPlatformType { get; set; } = PlatformType.Inherit;
+
+        /// <summary>
         /// 导航项的分组/分类
         /// </summary>
         public string Group { get; set; }
@@ -177,14 +182,15 @@ namespace CodeSpirit.Navigation.Models
                 Route = Route,
                 ModuleName = ModuleName,
                 PlatformType = PlatformType,
+                OriginalPlatformType = OriginalPlatformType,
                 Group = Group,
-                Tags = Tags ?? [],
+                Tags = Tags?.ToArray() ?? [],
                 MetaData = new Dictionary<string, object>(MetaData),
                 RequireAuth = RequireAuth,
                 IsExperimental = IsExperimental,
                 MinVersion = MinVersion,
                 MaxVersion = MaxVersion,
-                SupportedDevices = SupportedDevices ?? [],
+                SupportedDevices = SupportedDevices?.ToArray() ?? [],
                 Priority = Priority,
                 Shortcut = Shortcut,
                 Badge = Badge,

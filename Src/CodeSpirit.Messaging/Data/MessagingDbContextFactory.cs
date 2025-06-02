@@ -1,6 +1,9 @@
+using CodeSpirit.Core;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.Messaging.Data;
 
@@ -29,6 +32,35 @@ public class MessagingDbContextFactory : IDesignTimeDbContextFactory<MessagingDb
             configuration.GetConnectionString("messaging-api") ?? 
             "Server=(localdb)\\mssqllocaldb;Database=codespirit-messaging;Trusted_Connection=True;MultipleActiveResultSets=true");
 
-        return new MessagingDbContext(optionsBuilder.Options);
+        // 创建服务集合用于设计时
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+        services.AddSingleton<ICurrentUser, DesignTimeCurrentUser>();
+        var serviceProvider = services.BuildServiceProvider();
+
+        return new MessagingDbContext(
+            optionsBuilder.Options, 
+            serviceProvider, 
+            serviceProvider.GetRequiredService<ICurrentUser>(),
+            serviceProvider.GetRequiredService<IHttpContextAccessor>());
     }
+}
+
+/// <summary>
+/// 设计时当前用户实现
+/// </summary>
+public class DesignTimeCurrentUser : ICurrentUser
+{
+    public long? Id => null;
+    public string UserName => "DesignTime";
+    public string[] Roles => Array.Empty<string>();
+    public bool IsAuthenticated => false;
+    public IEnumerable<System.Security.Claims.Claim> Claims => Enumerable.Empty<System.Security.Claims.Claim>();
+    public HashSet<string> Permissions => new HashSet<string>();
+    public string? TenantId => "default";
+    public string? TenantName => "Default Tenant";
+
+    public bool IsInRole(string role) => false;
+    public bool IsInTenant(string tenantId) => tenantId == "default";
 } 

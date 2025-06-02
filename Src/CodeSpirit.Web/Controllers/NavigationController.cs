@@ -181,7 +181,6 @@ namespace CodeSpirit.Web.Controllers
         /// <param name="platformType">平台类型，为空时清除所有平台缓存</param>
         /// <returns></returns>
         [HttpDelete("cache")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> ClearNavigationCache(
             [FromQuery] string moduleName = null,
             [FromQuery] PlatformType? platformType = null)
@@ -214,7 +213,6 @@ namespace CodeSpirit.Web.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpPost("initialize")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> InitializeNavigationTree()
         {
             try

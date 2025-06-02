@@ -1,5 +1,7 @@
 ﻿// Services/AuthService.cs
 using AutoMapper;
+using CodeSpirit.Core;
+using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Auth;
 using CodeSpirit.IdentityApi.Jwt;
@@ -24,6 +26,7 @@ namespace CodeSpirit.IdentityApi.Services
         private readonly IJwtTokenHandler _jwtHandler;
         private readonly ILogger<AuthService> _logger;
         private readonly IRoleService _roleService;
+        private readonly ApplicationDbContext _context;
         private readonly int _refreshTokenExpirationDays;
 
         public AuthService(
@@ -35,7 +38,8 @@ namespace CodeSpirit.IdentityApi.Services
             ILoginLogRepository loginLogRepository,
             IJwtTokenHandler jwtHandler,
             ILogger<AuthService> logger,
-            IRoleService roleService)
+            IRoleService roleService,
+            ApplicationDbContext context)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -46,6 +50,7 @@ namespace CodeSpirit.IdentityApi.Services
             _jwtHandler = jwtHandler;
             _logger = logger;
             _roleService = roleService;
+            _context = context;
 
             // 刷新令牌过期时间，默认7天
             if (!int.TryParse(_configuration["Jwt:RefreshTokenExpirationDays"], out _refreshTokenExpirationDays))
@@ -71,7 +76,19 @@ namespace CodeSpirit.IdentityApi.Services
                     // 在实际应用中，应该验证租户是否存在且处于活跃状态
                 }
 
-                var user = await _userManager.FindByNameAsync(input.UserName);
+                ApplicationUser user = null;
+
+                // 如果指定了租户ID，使用租户特定的查询方法
+                if (!string.IsNullOrEmpty(input.TenantId))
+                {
+                    user = await FindUserByNameAndTenantAsync(input.UserName, input.TenantId);
+                }
+                else
+                {
+                    // 没有指定租户ID时，使用传统的UserManager查询（可能受租户筛选器影响）
+                    user = await _userManager.FindByNameAsync(input.UserName);
+                }
+
                 if (user == null)
                 {
                     await LogLoginAsync(input, null, false, "用户不存在！");
@@ -113,7 +130,7 @@ namespace CodeSpirit.IdentityApi.Services
 
                     // 预热缓存：提前获取并缓存用户权限
                     await _roleService.GetUserPermissionsAsync(user.Id);
-                    
+
                     // 生成令牌
                     var token = await _jwtHandler.GenerateTokenAsync(user);
 
@@ -342,13 +359,24 @@ namespace CodeSpirit.IdentityApi.Services
         /// 模拟用户登录，直接生成JWT Token而不验证密码
         /// </summary>
         /// <param name="userName">用户名</param>
+        /// <param name="tenantId">租户ID（可选）</param>
         /// <returns>返回登录结果</returns>
-        public async Task<(bool Success, string Message, string Token, UserDto UserInfo)> ImpersonateLoginAsync(string userName)
+        public async Task<(bool Success, string Message, string Token, UserDto UserInfo)> ImpersonateLoginAsync(string userName, string tenantId = null)
         {
             try
             {
-                // 查找用户
-                var user = await _userManager.FindByNameAsync(userName);
+                ApplicationUser user = null;
+
+                // 如果指定了租户ID，使用租户特定的查询方法
+                if (!string.IsNullOrEmpty(tenantId))
+                {
+                    user = await FindUserByNameAndTenantAsync(userName, tenantId);
+                }
+                else
+                {
+                    // 没有指定租户ID时，使用传统的UserManager查询
+                    user = await _userManager.FindByNameAsync(userName);
+                }
 
                 // 如果用户不存在，返回失败信息
                 if (user == null)
@@ -378,6 +406,265 @@ namespace CodeSpirit.IdentityApi.Services
                 _logger.LogError(ex, "模拟登录过程发生异常");
                 return (false, "模拟登录失败：系统异常", null, null);
             }
+        }
+
+        /// <summary>
+        /// 查找指定租户中的用户（忽略租户筛选器）
+        /// </summary>
+        /// <param name="userName">用户名</param>
+        /// <param name="tenantId">租户ID</param>
+        /// <returns>用户信息</returns>
+        private async Task<ApplicationUser> FindUserByNameAndTenantAsync(string userName, string tenantId)
+        {
+            try
+            {
+                // 直接使用 DbContext 查询，忽略租户筛选器
+                var user = await _context.Users
+                    .IgnoreQueryFilters() // 忽略所有全局筛选器（包括租户筛选器和软删除筛选器）
+                    .FirstOrDefaultAsync(u =>
+                        u.UserName == userName &&
+                        u.TenantId == tenantId &&
+                        !u.IsDeleted);
+
+                return user;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "查找租户用户时发生异常: {UserName}, TenantId: {TenantId}", userName, tenantId);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 系统平台登录方法
+        /// </summary>
+        /// <param name="model">系统平台登录请求</param>
+        /// <param name="ipAddress">客户端IP地址</param>
+        /// <param name="userAgent">客户端信息</param>
+        /// <returns>登录结果</returns>
+        public async Task<AuthResultDto> SystemLoginAsync(SystemLoginModel model, string ipAddress, string userAgent)
+        {
+            try
+            {
+                var user = await FindUserByNameAndTenantAsync(model.UserName, TenantConstants.SystemTenantId);
+                if (user == null)
+                {
+                    await LogLoginAsync(new LoginDto
+                    {
+                        UserName = model.UserName,
+                        TenantId = "system",
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent
+                    }, null, false, "系统用户不存在");
+                    return AuthResultDto.CreateFailure("系统管理员用户名或密码不正确！");
+                }
+
+                // 验证用户必须属于系统租户（这个检查现在是冗余的，但保留以确保安全）
+                if (user.TenantId != "system")
+                {
+                    await LogLoginAsync(new LoginDto
+                    {
+                        UserName = model.UserName,
+                        TenantId = "system",
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent
+                    }, user.Id, false, "非系统租户用户尝试系统平台登录");
+                    return AuthResultDto.CreateFailure("访问被拒绝：此账号无权限访问系统管理平台，请使用系统管理员账号登录。");
+                }
+
+                // 验证用户是否激活
+                if (!user.IsActive)
+                {
+                    await LogLoginAsync(new LoginDto
+                    {
+                        UserName = model.UserName,
+                        TenantId = "system",
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent
+                    }, user.Id, false, "账号已被禁用");
+                    return AuthResultDto.CreateFailure("账号已被禁用！");
+                }
+
+                // 验证密码
+                var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, true);
+                if (!result.Succeeded)
+                {
+                    string failReason = "密码错误";
+                    if (result.IsLockedOut)
+                    {
+                        failReason = "账号已被锁定";
+                    }
+                    else if (result.IsNotAllowed)
+                    {
+                        failReason = "账号未被授权";
+                    }
+
+                    await LogLoginAsync(new LoginDto
+                    {
+                        UserName = model.UserName,
+                        TenantId = "system",
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent
+                    }, user.Id, false, failReason);
+
+                    return AuthResultDto.CreateFailure(failReason == "密码错误" ? "系统管理员用户名或密码不正确！" : failReason);
+                }
+
+                // 登录成功处理
+                return await ProcessSuccessfulLoginAsync(user, ipAddress, userAgent, "system");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "系统平台登录过程发生异常");
+                return AuthResultDto.CreateFailure("登录失败：系统异常");
+            }
+        }
+
+        /// <summary>
+        /// 租户平台登录方法
+        /// </summary>
+        /// <param name="model">租户平台登录请求</param>
+        /// <param name="ipAddress">客户端IP地址</param>
+        /// <param name="userAgent">客户端信息</param>
+        /// <returns>登录结果</returns>
+        public async Task<AuthResultDto> TenantLoginAsync(TenantLoginModel model, string ipAddress, string userAgent)
+        {
+            try
+            {
+                // 使用专门的租户用户查询方法，避免租户筛选器影响
+                var user = await FindUserByNameAndTenantAsync(model.UserName, model.TenantId);
+                if (user == null)
+                {
+                    await LogLoginAsync(new LoginDto
+                    {
+                        UserName = model.UserName,
+                        TenantId = model.TenantId,
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent
+                    }, null, false, "指定租户中的用户不存在");
+                    return AuthResultDto.CreateFailure("用户名或密码不正确！");
+                }
+
+                // 验证用户必须属于指定租户（这个检查现在是冗余的，但保留以确保安全）
+                if (string.IsNullOrEmpty(user.TenantId) || user.TenantId != model.TenantId)
+                {
+                    var userTenantName = string.IsNullOrEmpty(user.TenantId) ? "未知" : user.TenantId;
+                    await LogLoginAsync(new LoginDto
+                    {
+                        UserName = model.UserName,
+                        TenantId = model.TenantId,
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent
+                    }, user.Id, false, $"用户租户不匹配，用户租户：{userTenantName}，请求租户：{model.TenantId}");
+                    return AuthResultDto.CreateFailure($"访问被拒绝：此账号属于租户\"{userTenantName}\"，无法登录租户\"{model.TenantId}\"的管理平台。请使用正确的租户账号。");
+                }
+
+                // 验证不允许系统管理员通过租户平台登录
+                if (user.TenantId == "system")
+                {
+                    await LogLoginAsync(new LoginDto
+                    {
+                        UserName = model.UserName,
+                        TenantId = model.TenantId,
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent
+                    }, user.Id, false, "系统管理员尝试通过租户平台登录");
+                    return AuthResultDto.CreateFailure("系统管理员账号请前往系统管理平台登录，不能通过租户平台登录。");
+                }
+
+                // 验证用户是否激活
+                if (!user.IsActive)
+                {
+                    await LogLoginAsync(new LoginDto
+                    {
+                        UserName = model.UserName,
+                        TenantId = model.TenantId,
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent
+                    }, user.Id, false, "账号已被禁用");
+                    return AuthResultDto.CreateFailure("账号已被禁用！");
+                }
+
+                // 验证密码
+                var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, true);
+                if (!result.Succeeded)
+                {
+                    string failReason = "密码错误";
+                    if (result.IsLockedOut)
+                    {
+                        failReason = "账号已被锁定";
+                    }
+                    else if (result.IsNotAllowed)
+                    {
+                        failReason = "账号未被授权";
+                    }
+
+                    await LogLoginAsync(new LoginDto
+                    {
+                        UserName = model.UserName,
+                        TenantId = model.TenantId,
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent
+                    }, user.Id, false, failReason);
+
+                    return AuthResultDto.CreateFailure(failReason == "密码错误" ? "用户名或密码不正确！" : failReason);
+                }
+
+                // 登录成功处理
+                return await ProcessSuccessfulLoginAsync(user, ipAddress, userAgent, model.TenantId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "租户平台登录过程发生异常");
+                return AuthResultDto.CreateFailure("登录失败：系统异常");
+            }
+        }
+
+        /// <summary>
+        /// 处理成功登录的通用逻辑
+        /// </summary>
+        /// <param name="user">用户信息</param>
+        /// <param name="ipAddress">客户端IP地址</param>
+        /// <param name="userAgent">客户端信息</param>
+        /// <param name="tenantId">租户ID</param>
+        /// <returns>登录结果</returns>
+        private async Task<AuthResultDto> ProcessSuccessfulLoginAsync(ApplicationUser user, string ipAddress, string userAgent, string tenantId)
+        {
+            // 更新最后登录时间
+            user.LastLoginTime = DateTimeOffset.UtcNow;
+            await _userManager.UpdateAsync(user);
+
+            // 预热缓存：提前获取并缓存用户权限
+            await _roleService.GetUserPermissionsAsync(user.Id);
+
+            // 生成令牌
+            var token = await _jwtHandler.GenerateTokenAsync(user);
+
+            // 从JWT中获取jwtId
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtToken = tokenHandler.ReadJwtToken(token);
+            var jwtId = jwtToken.Id;
+
+            // 生成刷新令牌
+            var refreshToken = await GenerateRefreshTokenAsync(user.Id, jwtId);
+
+            // 记录登录日志
+            var loginLog = new LoginLog
+            {
+                UserId = user.Id,
+                UserName = user.UserName,
+                LoginTime = DateTime.UtcNow,
+                IPAddress = ipAddress,
+                IsSuccess = true,
+                TenantId = tenantId
+            };
+            await _loginLogRepository.AddAsync(loginLog);
+
+            // 准备用户信息
+            var userDto = _mapper.Map<UserDto>(user);
+
+            // 返回成功结果
+            return AuthResultDto.CreateSuccess(token, refreshToken, userDto);
         }
     }
 

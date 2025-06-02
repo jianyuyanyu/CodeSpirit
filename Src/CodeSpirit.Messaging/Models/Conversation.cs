@@ -1,9 +1,11 @@
+using CodeSpirit.Core;
+
 namespace CodeSpirit.Messaging.Models;
 
 /// <summary>
 /// 表示用户之间的对话
 /// </summary>
-public class Conversation
+public class Conversation : IMultiTenant
 {
     /// <summary>
     /// 对话唯一标识
@@ -34,4 +36,9 @@ public class Conversation
     /// 最后活动时间
     /// </summary>
     public DateTime LastActivityAt { get; set; }
+
+    /// <summary>
+    /// 租户ID - 多租户支持
+    /// </summary>
+    public string TenantId { get; set; }
 } 

@@ -4,6 +4,7 @@ using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Dtos.QuestionVersion;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -11,7 +12,7 @@ namespace CodeSpirit.ExamApi.Controllers;
 /// 题目版本管理控制器
 /// </summary>
 [DisplayName("题目版本管理")]
-[Navigation(Icon = "fa-solid fa-code-branch")]
+[Navigation(Icon = "fa-solid fa-code-branch", PlatformType = PlatformType.Tenant)]
 public class QuestionVersionsController : ApiControllerBase
 {
     private readonly IQuestionVersionService _questionVersionService;

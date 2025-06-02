@@ -130,13 +130,20 @@
                                         "wrapWithPanel": false,
                                         "api": {
                                             "method": "post",
-                                            "url": "/identity/api/identity/auth/login",
+                                            "url": "/identity/api/identity/auth/tenant/login",
                                             "requestAdaptor": function(api) {
                                                 // 添加租户信息到请求头
                                                 api.headers = api.headers || {};
                                                 api.headers['TenantId'] = tenant.tenantId;
                                                 api.headers['X-Tenant-Path'] = window.location.pathname;
                                                 api.headers['X-Forwarded-With'] = 'CodeSpirit';
+                                                api.headers['Content-Type'] = 'application/json';
+                                                
+                                                // 确保请求体包含租户ID
+                                                if (api.data && !api.data.tenantId) {
+                                                    api.data.tenantId = tenant.tenantId;
+                                                }
+                                                
                                                 return api;
                                             },
                                             "adaptor": function(payload, response, api) {
@@ -147,15 +154,25 @@
                                                     }
                                                     
                                                     // 登录成功，重定向到租户主页
-                                                    const redirectUrl = `/${tenant.tenantId}/admin` || '/';
+                                                    const redirectUrl = `/${tenant.tenantId}/admin`;
                                                     setTimeout(() => {
                                                         window.location.href = redirectUrl;
                                                     }, 1000);
+                                                } else {
+                                                    // 记录详细错误信息
+                                                    console.error('租户平台登录失败:', payload.msg);
                                                 }
                                                 return payload;
                                             }
                                         },
                                         "body": [
+                                            {
+                                                "type": "alert",
+                                                "level": "info",
+                                                "body": `正在登录租户"${tenant.displayName || tenant.name}"的管理平台`,
+                                                "className": "mb-3",
+                                                "showIcon": true
+                                            },
                                             {
                                                 "type": "hidden",
                                                 "name": "tenantId",
@@ -169,7 +186,8 @@
                                                 "required": true,
                                                 "className": "tenant-input-field",
                                                 "prefixIcon": "fa fa-user",
-                                                "clearable": true
+                                                "clearable": true,
+                                                "description": "请使用本租户下的用户账号"
                                             },
                                             {
                                                 "type": "input-password",

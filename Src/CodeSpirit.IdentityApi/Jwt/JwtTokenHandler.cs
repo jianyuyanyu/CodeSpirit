@@ -8,6 +8,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
+using CodeSpirit.IdentityApi.Data;
 
 namespace CodeSpirit.IdentityApi.Jwt
 {
@@ -20,6 +22,7 @@ namespace CodeSpirit.IdentityApi.Jwt
         private readonly IConfiguration _configuration;
         private readonly ILogger<JwtTokenHandler> _logger;
         private readonly IRoleService _roleService;
+        private readonly IUserService _userService;
         
         private readonly string _issuer;
         private readonly string _audience;
@@ -30,12 +33,14 @@ namespace CodeSpirit.IdentityApi.Jwt
             UserManager<ApplicationUser> userManager, 
             IConfiguration configuration,
             ILogger<JwtTokenHandler> logger,
-            IRoleService roleService)
+            IRoleService roleService,
+            IUserService userService)
         {
             _userManager = userManager;
             _configuration = configuration;
             _logger = logger;
             _roleService = roleService;
+            _userService = userService;
             
             _issuer = _configuration["Jwt:Issuer"];
             _audience = _configuration["Jwt:Audience"];
@@ -87,8 +92,8 @@ namespace CodeSpirit.IdentityApi.Jwt
                     //}
                 }
 
-                // 添加角色声明
-                var roles = await _userManager.GetRolesAsync(user);
+                // 添加角色声明 - 使用UserService的方法忽略多租户过滤器
+                var roles = await _userService.GetUserRolesIgnoreFiltersAsync(user.Id);
                 foreach (var role in roles)
                 {
                     claims.Add(new Claim(ClaimTypes.Role, role));
@@ -119,7 +124,8 @@ namespace CodeSpirit.IdentityApi.Jwt
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "生成JWT令牌时发生错误");
+                _logger.LogError(ex, "生成JWT令牌时发生错误，用户ID: {UserId}, 租户ID: {TenantId}", 
+                    user.Id, user.TenantId);
                 throw;
             }
         }

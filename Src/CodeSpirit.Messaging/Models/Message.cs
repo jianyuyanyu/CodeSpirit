@@ -1,9 +1,11 @@
+using CodeSpirit.Core;
+
 namespace CodeSpirit.Messaging.Models;
 
 /// <summary>
 /// 表示系统中的一条消息
 /// </summary>
-public class Message
+public class Message : IMultiTenant
 {
     /// <summary>
     /// 消息唯一标识
@@ -44,4 +46,9 @@ public class Message
     /// 创建时间
     /// </summary>
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// 租户ID - 多租户支持
+    /// </summary>
+    public string TenantId { get; set; }
 } 

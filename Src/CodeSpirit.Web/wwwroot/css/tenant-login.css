@@ -1,11 +1,22 @@
-/* 租户登录页面全局样式 */
+/* 租户登录页面全局样式 - 现代化设计 */
 :root {
-    --tenant-primary-color: #3f51b5;
-    --tenant-bg-color: #f5f5f5;
-    --tenant-text-color: #333;
-    --tenant-border-color: #ddd;
-    --tenant-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    --tenant-radius: 8px;
+    --tenant-primary-color: #667eea;
+    --tenant-primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --tenant-secondary-color: #764ba2;
+    --tenant-accent-color: #f093fb;
+    --tenant-bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    --tenant-glass-bg: rgba(255, 255, 255, 0.15);
+    --tenant-glass-border: rgba(255, 255, 255, 0.3);
+    --tenant-text-primary: #333;
+    --tenant-text-secondary: #666;
+    --tenant-text-light: rgba(255, 255, 255, 0.9);
+    --tenant-shadow-light: 0 8px 32px rgba(102, 126, 234, 0.1);
+    --tenant-shadow-medium: 0 15px 35px rgba(102, 126, 234, 0.15);
+    --tenant-shadow-heavy: 0 25px 50px rgba(102, 126, 234, 0.25);
+    --tenant-radius-small: 12px;
+    --tenant-radius-medium: 16px;
+    --tenant-radius-large: 24px;
+    --tenant-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 覆盖默认布局样式，实现全屏显示 */
@@ -13,6 +24,7 @@ body.tenant-login-body {
     overflow: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .tenant-login-root {
@@ -22,13 +34,42 @@ body.tenant-login-body {
     width: 100vw !important;
     height: 100vh !important;
     z-index: 9999 !important;
-    background: linear-gradient(135deg, var(--tenant-bg-color) 0%, #e3f2fd 100%);
+    background: var(--tenant-bg-gradient);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 动态背景动画 */
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* 背景装饰元素 */
+.tenant-login-root::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>') repeat;
+    animation: float 20s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes float {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(30px, -30px) rotate(120deg); }
+    66% { transform: translate(-20px, 20px) rotate(240deg); }
 }
 
 /* 隐藏默认布局元素 */
@@ -36,24 +77,39 @@ body.tenant-login-body {
     display: none !important;
 }
 
-/* Loading状态 */
+/* Loading状态 - 现代化设计 */
 .tenant-loading {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     min-height: 50vh;
-    color: var(--tenant-primary-color);
+    color: var(--tenant-text-light);
+    text-align: center;
 }
 
 .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid var(--tenant-primary-color);
+    width: 60px;
+    height: 60px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
+    border-top-color: white;
     animation: spin 1s linear infinite;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.loading-spinner::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes spin {
@@ -61,13 +117,20 @@ body.tenant-login-body {
     100% { transform: rotate(360deg); }
 }
 
-.tenant-loading p {
-    margin: 0;
-    font-size: 14px;
-    color: #666;
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.8); }
 }
 
-/* 错误页面 */
+.tenant-loading p {
+    margin: 0;
+    font-size: 16px;
+    color: var(--tenant-text-light);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* 错误页面 - 玻璃态设计 */
 .tenant-error {
     display: flex;
     align-items: center;
@@ -78,366 +141,17 @@ body.tenant-login-body {
 
 .error-content {
     text-align: center;
-    max-width: 400px;
-    background: white;
-    padding: 40px 30px;
-    border-radius: var(--tenant-radius);
-    box-shadow: var(--tenant-shadow);
+    max-width: 420px;
+    background: var(--tenant-glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--tenant-glass-border);
+    padding: 48px 32px;
+    border-radius: var(--tenant-radius-large);
+    box-shadow: var(--tenant-shadow-heavy);
+    animation: slideUpFade 0.6s ease-out;
 }
 
-.error-icon {
-    color: #ff9800;
-    font-size: 48px;
-    margin-bottom: 20px;
-}
-
-.error-content h3 {
-    color: var(--tenant-text-color);
-    margin-bottom: 10px;
-    font-size: 20px;
-}
-
-.error-content p {
-    color: #666;
-    margin-bottom: 30px;
-    line-height: 1.5;
-}
-
-.error-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.error-actions .btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.error-actions .btn-primary {
-    background: var(--tenant-primary-color);
-    color: white;
-}
-
-.error-actions .btn-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.error-actions .btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* 登录页面容器 */
-.tenant-login-page {
-    background: transparent !important;
-    min-height: 100vh;
-}
-
-.tenant-login-container {
-    min-height: 100vh;
-    padding: 20px;
-}
-
-.tenant-login-content {
-    background: white;
-    border-radius: var(--tenant-radius);
-    box-shadow: var(--tenant-shadow);
-    overflow: hidden;
-    max-width: 500px;
-    width: 100%;
-}
-
-/* 租户品牌区域 */
-.tenant-branding {
-    background: linear-gradient(135deg, var(--tenant-primary-color) 0%, #5c6bc0 100%);
-    color: white;
-    padding: 40px 30px;
-    text-align: center;
-}
-
-.tenant-logo-container {
-    margin-bottom: 20px;
-}
-
-.tenant-logo {
-    max-width: 80px;
-    max-height: 80px;
-    width: auto;
-    height: auto;
-    border-radius: 8px;
-    background: white;
-    padding: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.tenant-title {
-    font-size: 24px;
-    font-weight: 600;
-    margin: 0 0 10px 0;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.tenant-description {
-    font-size: 14px;
-    opacity: 0.9;
-    margin: 0 0 20px 0;
-    line-height: 1.4;
-}
-
-.login-welcome h3 {
-    font-size: 18px;
-    margin: 0 0 5px 0;
-    font-weight: 500;
-}
-
-.login-welcome p {
-    font-size: 13px;
-    opacity: 0.8;
-    margin: 0;
-}
-
-/* 登录表单区域 */
-.tenant-login-panel {
-    background: white;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-.tenant-login-form {
-    padding: 40px 30px 30px;
-}
-
-.tenant-input-field .cxd-Form-item {
-    margin-bottom: 20px;
-}
-
-.tenant-input-field .cxd-Form-label {
-    color: var(--tenant-text-color);
-    font-weight: 500;
-    margin-bottom: 8px;
-}
-
-.tenant-input-field .cxd-TextControl-input {
-    border: 2px solid var(--tenant-border-color);
-    border-radius: 6px;
-    padding: 12px 40px 12px 12px;
-    font-size: 14px;
-    transition: all 0.3s ease;
-}
-
-.tenant-input-field .cxd-TextControl-input:focus {
-    border-color: var(--tenant-primary-color);
-    box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.1);
-}
-
-.tenant-input-field .cxd-TextControl-input-prefix {
-    color: #999;
-    left: 12px;
-}
-
-/* 登录选项 */
-.login-options {
-    margin: 20px 0;
-}
-
-.remember-checkbox .cxd-Checkbox-wrap {
-    color: var(--tenant-text-color);
-    font-size: 14px;
-}
-
-.forgot-password-link {
-    color: var(--tenant-primary-color) !important;
-    font-size: 14px;
-    text-decoration: none;
-}
-
-.forgot-password-link:hover {
-    text-decoration: underline;
-}
-
-/* 登录按钮 */
-.tenant-login-btn .cxd-Button {
-    background: var(--tenant-primary-color) !important;
-    border-color: var(--tenant-primary-color) !important;
-    font-size: 16px;
-    font-weight: 500;
-    padding: 14px 30px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-}
-
-.tenant-login-btn .cxd-Button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(63, 81, 181, 0.3);
-}
-
-/* 其他登录选项 */
-.alternative-login-options {
-    padding: 0 30px 20px;
-}
-
-.alternative-login-options .cxd-Divider {
-    margin: 20px 0;
-    color: #999;
-    font-size: 13px;
-}
-
-.sso-login-btn .cxd-Button,
-.sms-login-btn .cxd-Button {
-    border: 2px solid var(--tenant-border-color) !important;
-    background: white !important;
-    color: var(--tenant-text-color) !important;
-    font-size: 14px;
-    padding: 12px 20px;
-    transition: all 0.3s ease;
-}
-
-.sso-login-btn .cxd-Button:hover,
-.sms-login-btn .cxd-Button:hover {
-    border-color: var(--tenant-primary-color) !important;
-    color: var(--tenant-primary-color) !important;
-    transform: translateY(-1px);
-}
-
-/* 页脚 */
-.tenant-login-footer {
-    background: #f8f9fa;
-    padding: 20px 30px;
-    text-align: center;
-    border-top: 1px solid var(--tenant-border-color);
-}
-
-.footer-links {
-    margin-bottom: 10px;
-}
-
-.footer-links a {
-    color: var(--tenant-primary-color);
-    text-decoration: none;
-    font-size: 13px;
-    margin: 0 5px;
-}
-
-.footer-links a:hover {
-    text-decoration: underline;
-}
-
-.footer-links .separator {
-    color: #ccc;
-    margin: 0 5px;
-}
-
-.footer-copyright p {
-    margin: 0;
-    color: #666;
-    font-size: 12px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-    .tenant-login-root {
-        padding: 10px;
-    }
-    
-    .tenant-login-container {
-        padding: 10px;
-        min-height: auto;
-    }
-    
-    .tenant-login-content {
-        margin: 0;
-        max-width: none;
-    }
-    
-    .tenant-branding {
-        padding: 30px 20px;
-    }
-    
-    .tenant-title {
-        font-size: 20px;
-    }
-    
-    .tenant-login-form {
-        padding: 30px 20px 20px;
-    }
-    
-    .alternative-login-options {
-        padding: 0 20px 15px;
-    }
-    
-    .tenant-login-footer {
-        padding: 15px 20px;
-    }
-    
-    .footer-links {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-    
-    .footer-links .separator {
-        display: none;
-    }
-    
-    .error-actions {
-        flex-direction: column;
-    }
-    
-    .error-actions .btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .tenant-login-root {
-        padding: 5px;
-    }
-    
-    .tenant-branding {
-        padding: 25px 15px;
-    }
-    
-    .tenant-logo {
-        max-width: 60px;
-        max-height: 60px;
-    }
-    
-    .tenant-title {
-        font-size: 18px;
-    }
-    
-    .tenant-login-form {
-        padding: 25px 15px 15px;
-    }
-    
-    .tenant-input-field .cxd-TextControl-input {
-        padding: 10px 35px 10px 10px;
-    }
-    
-    .tenant-login-btn .cxd-Button {
-        padding: 12px 20px;
-        font-size: 15px;
-    }
-}
-
-/* 动画效果 */
-.tenant-login-content {
-    animation: slideUp 0.5s ease-out;
-}
-
-@keyframes slideUp {
+@keyframes slideUpFade {
     from {
         opacity: 0;
         transform: translateY(30px);
@@ -448,80 +162,842 @@ body.tenant-login-body {
     }
 }
 
-/* 深色主题支持 */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --tenant-bg-color: #1a1a1a;
-        --tenant-text-color: #e0e0e0;
-        --tenant-border-color: #333;
-    }
-    
-    .tenant-login-content {
-        background: #2d2d2d;
-        color: var(--tenant-text-color);
-    }
-    
-    .tenant-login-footer {
-        background: #1e1e1e;
-        border-top-color: #333;
-    }
-    
-    .error-content {
-        background: #2d2d2d;
-        color: var(--tenant-text-color);
-    }
+.error-icon {
+    color: #ff6b6b;
+    font-size: 64px;
+    margin-bottom: 24px;
+    animation: bounce 2s ease-in-out infinite;
 }
 
-/* AMIS组件覆盖样式 */
-.tenant-login-root .amis-scope {
-    height: 100vh;
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
 }
 
-.tenant-login-root .cxd-Page {
-    padding: 0 !important;
+.error-content h3 {
+    color: var(--tenant-text-light);
+    margin-bottom: 12px;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.error-content p {
+    color: var(--tenant-text-light);
+    margin-bottom: 32px;
+    line-height: 1.6;
+    font-size: 16px;
+    opacity: 0.9;
+}
+
+.error-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.error-actions .btn {
+    padding: 14px 24px;
+    border: none;
+    border-radius: var(--tenant-radius-small);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--tenant-transition);
+    backdrop-filter: blur(10px);
+    letter-spacing: 0.3px;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.error-actions .btn-primary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.error-actions .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.error-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 登录页面容器 - 现代化布局 */
+.tenant-login-page {
+    background: transparent !important;
     min-height: 100vh;
 }
 
-.tenant-login-root .cxd-Page-body {
-    padding: 0 !important;
+.tenant-login-container {
+    min-height: 100vh;
+    padding: 20px;
+    position: relative;
 }
 
-/* 表单输入框样式增强 */
-.tenant-input-field .cxd-TextControl-input {
-    font-size: 1rem;
-    line-height: 1.5;
+.tenant-login-content {
+    background: var(--tenant-glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--tenant-glass-border);
+    border-radius: var(--tenant-radius-large);
+    box-shadow: var(--tenant-shadow-heavy);
+    overflow: hidden;
+    max-width: 480px;
+    width: 100%;
+    animation: slideUpFade 0.8s ease-out;
+    position: relative;
 }
 
-.tenant-input-field .cxd-FormItem-label {
-    font-weight: 500;
-    color: var(--tenant-text-color);
-    margin-bottom: 8px;
+.tenant-login-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
 }
 
-/* 焦点指示器 */
-.tenant-input-field .cxd-TextControl:focus-within::after {
+/* 租户品牌区域 - 现代化设计 */
+.tenant-branding {
+    background: transparent;
+    color: var(--tenant-text-light);
+    padding: 48px 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.tenant-branding::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    border: 2px solid var(--tenant-primary-color);
-    border-radius: 8px;
-    pointer-events: none;
-    opacity: 0.3;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    border-radius: var(--tenant-radius-large) var(--tenant-radius-large) 0 0;
 }
 
-/* 页面进入动画 */
-.tenant-login-root {
-    animation: fadeIn 0.3s ease-out;
+.tenant-branding > * {
+    position: relative;
+    z-index: 1;
 }
 
-@keyframes fadeIn {
+.tenant-logo-container {
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.tenant-logo {
+    max-width: 80px;
+    max-height: 80px;
+    width: auto;
+    height: auto;
+    border-radius: var(--tenant-radius-medium);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 12px;
+    box-shadow: var(--tenant-shadow-medium);
+    transition: var(--tenant-transition);
+    animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+}
+
+.tenant-logo:hover {
+    transform: scale(1.05);
+    box-shadow: var(--tenant-shadow-heavy);
+}
+
+.tenant-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.tenant-description {
+    font-size: 14px;
+    opacity: 0.9;
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+    color: var(--tenant-text-light);
+}
+
+.login-welcome h3 {
+    font-size: 20px;
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    color: var(--tenant-text-light);
+}
+
+.login-welcome p {
+    font-size: 14px;
+    margin: 0;
+    opacity: 0.8;
+    color: var(--tenant-text-light);
+}
+
+/* 登录表单面板 */
+.tenant-login-panel {
+    background: transparent;
+    padding: 32px;
+    border: none;
+}
+
+.tenant-login-form {
+    background: transparent;
+}
+
+/* 输入字段现代化样式 */
+.tenant-input-field .cxd-Form-item {
+    margin-bottom: 24px;
+}
+
+.tenant-input-field .cxd-Form-label {
+    color: var(--tenant-text-primary);
+    font-weight: 500;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.tenant-input-field .cxd-TextControl-input {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--tenant-radius-small);
+    padding: 16px 48px 16px 16px;
+    font-size: 16px;
+    transition: var(--tenant-transition);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(10px);
+}
+
+.tenant-input-field .cxd-TextControl-input:focus {
+    border-color: var(--tenant-primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.tenant-input-field .cxd-TextControl-input-prefix {
+    color: var(--tenant-primary-color);
+    font-size: 16px;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* 登录选项 */
+.login-options {
+    margin: 24px 0;
+    align-items: center;
+}
+
+.remember-checkbox .cxd-Checkbox-wrap {
+    color: var(--tenant-text-primary);
+    font-size: 14px;
+}
+
+.forgot-password-link {
+    color: var(--tenant-primary-color) !important;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--tenant-transition);
+}
+
+.forgot-password-link:hover {
+    color: var(--tenant-secondary-color) !important;
+    text-decoration: underline;
+}
+
+/* 登录按钮现代化设计 */
+.tenant-login-btn .cxd-Button {
+    background: var(--tenant-primary-gradient) !important;
+    border: none !important;
+    border-radius: var(--tenant-radius-small) !important;
+    padding: 16px 24px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    color: white !important;
+    box-shadow: var(--tenant-shadow-medium) !important;
+    transition: var(--tenant-transition) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.tenant-login-btn .cxd-Button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.tenant-login-btn .cxd-Button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--tenant-shadow-heavy) !important;
+}
+
+.tenant-login-btn .cxd-Button:hover::before {
+    left: 100%;
+}
+
+.tenant-login-btn .cxd-Button:active {
+    transform: translateY(0) !important;
+}
+
+/* 其他登录选项 */
+.alternative-login-options {
+    margin-top: 24px;
+    padding-top: 24px;
+}
+
+.alternative-login-options .cxd-Divider {
+    color: var(--tenant-text-secondary);
+    font-size: 14px;
+    margin: 0 0 20px 0;
+}
+
+.sso-login-btn .cxd-Button,
+.sms-login-btn .cxd-Button {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: var(--tenant-text-primary) !important;
+    border-radius: var(--tenant-radius-small) !important;
+    padding: 14px 20px !important;
+    font-weight: 500 !important;
+    transition: var(--tenant-transition) !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+.sso-login-btn .cxd-Button:hover,
+.sms-login-btn .cxd-Button:hover {
+    background: rgba(255, 255, 255, 0.95) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: var(--tenant-shadow-medium) !important;
+}
+
+/* 页脚现代化设计 */
+.tenant-login-footer {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 24px 32px;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.footer-links {
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.footer-links a {
+    color: var(--tenant-text-light);
+    text-decoration: none;
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: var(--tenant-transition);
+}
+
+.footer-links a:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.footer-links .separator {
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0 4px;
+}
+
+.footer-copyright p {
+    margin: 0;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.3px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .tenant-login-root {
+        padding: 16px;
+    }
+
+    .tenant-login-container {
+        padding: 16px;
+    }
+
+    .tenant-login-content {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .tenant-branding {
+        padding: 32px 24px;
+    }
+
+    .tenant-title {
+        font-size: 24px;
+    }
+
+    .tenant-login-panel {
+        padding: 24px;
+    }
+
+    .tenant-login-footer {
+        padding: 20px 24px;
+    }
+
+    .footer-links {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .footer-links .separator {
+        display: none;
+    }
+
+    .error-actions {
+        flex-direction: column;
+    }
+
+    .error-actions .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .tenant-login-root {
+        padding: 12px;
+    }
+
+    .tenant-branding {
+        padding: 24px 20px;
+    }
+
+    .tenant-logo {
+        max-width: 60px;
+        max-height: 60px;
+    }
+
+    .tenant-title {
+        font-size: 20px;
+    }
+
+    .tenant-login-panel {
+        padding: 20px;
+    }
+
+    .tenant-input-field .cxd-TextControl-input {
+        padding: 14px 40px 14px 14px;
+        font-size: 16px; /* 防止iOS缩放 */
+    }
+
+    .tenant-login-btn .cxd-Button {
+        padding: 14px 20px !important;
+        font-size: 16px !important;
+    }
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+    .tenant-login-content {
+        background: rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .tenant-input-field .cxd-TextControl-input {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+
+    .tenant-input-field .cxd-TextControl-input::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .error-content {
+        background: rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* Amis框架特定样式覆盖 */
+.tenant-login-root .amis-scope {
+    background: transparent !important;
+}
+
+.tenant-login-root .cxd-Page {
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+.tenant-login-root .cxd-Page-body {
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+/* 增强输入框样式 */
+.tenant-input-field .cxd-TextControl-input {
+    border: 2px solid transparent !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+}
+
+.tenant-input-field .cxd-FormItem-label {
+    color: var(--tenant-text-primary) !important;
+    font-weight: 500 !important;
+    margin-bottom: 8px !important;
+}
+
+/* 焦点状态增强 */
+.tenant-input-field .cxd-TextControl:focus-within .cxd-TextControl-input {
+    border-color: var(--tenant-primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+}
+
+/* 添加微妙的动画效果 */
+.tenant-login-content {
+    animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeInUp {
     from {
         opacity: 0;
+        transform: translateY(30px);
     }
     to {
         opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Alert组件样式优化 */
+.tenant-login-form .cxd-Alert {
+    background: rgba(102, 126, 234, 0.1) !important;
+    border: 1px solid rgba(102, 126, 234, 0.2) !important;
+    border-radius: var(--tenant-radius-small) !important;
+    color: var(--tenant-primary-color) !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+.tenant-login-form .cxd-Alert-icon {
+    color: var(--tenant-primary-color) !important;
+}
+
+/* 表单验证增强样式 */
+.field-validation-message {
+    margin-top: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: fadeInMessage 0.3s ease-out;
+    backdrop-filter: blur(10px);
+}
+
+@keyframes fadeInMessage {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.field-validation-message.error-message {
+    background: rgba(255, 77, 79, 0.1);
+    border: 1px solid rgba(255, 77, 79, 0.2);
+    color: #ff4d4f;
+}
+
+.field-validation-message.success-message {
+    background: rgba(82, 196, 26, 0.1);
+    border: 1px solid rgba(82, 196, 26, 0.2);
+    color: #52c41a;
+}
+
+.field-validation-message.strength-message {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--tenant-text-light);
+    padding: 8px 12px;
+}
+
+/* 密码强度指示器 */
+.password-strength-indicator {
+    width: 100%;
+}
+
+.strength-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+.strength-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+
+.strength-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    position: relative;
+}
+
+.strength-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* 输入框验证状态样式 */
+.tenant-input-field.valid .cxd-TextControl-input {
+    border-color: #52c41a !important;
+    box-shadow: 0 0 0 3px rgba(82, 196, 26, 0.1) !important;
+}
+
+.tenant-input-field.invalid .cxd-TextControl-input {
+    border-color: #ff4d4f !important;
+    box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.1) !important;
+}
+
+.tenant-input-field.valid .cxd-TextControl-input-prefix {
+    color: #52c41a !important;
+}
+
+.tenant-input-field.invalid .cxd-TextControl-input-prefix {
+    color: #ff4d4f !important;
+}
+
+/* 验证震动动画 */
+@keyframes validationShake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+    20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+.validation-shake {
+    animation: validationShake 0.6s ease-in-out;
+}
+
+/* 提交按钮状态 */
+.tenant-login-btn .cxd-Button.submitting {
+    pointer-events: none;
+    opacity: 0.8;
+    position: relative;
+    overflow: hidden;
+}
+
+.tenant-login-btn .cxd-Button.submitting::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: submitShimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes submitShimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* 密码强度等级样式 */
+.tenant-input-field.weak .strength-fill {
+    background: #ff4d4f !important;
+}
+
+.tenant-input-field.medium .strength-fill {
+    background: #faad14 !important;
+}
+
+.tenant-input-field.strong .strength-fill {
+    background: #52c41a !important;
+}
+
+/* 增强的焦点状态 */
+.tenant-input-field.focused {
+    transform: translateY(-2px);
+    transition: var(--tenant-transition);
+}
+
+.tenant-input-field.focused .cxd-TextControl-input {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15), 0 8px 25px rgba(102, 126, 234, 0.1) !important;
+}
+
+.tenant-input-field.has-value .cxd-FormItem-label {
+    color: var(--tenant-primary-color) !important;
+    font-weight: 600 !important;
+    transform: scale(0.95);
+    transition: var(--tenant-transition);
+}
+
+/* 表单整体验证状态 */
+.tenant-login-form.form-valid {
+    animation: formSuccess 0.5s ease-out;
+}
+
+.tenant-login-form.form-invalid {
+    animation: formError 0.5s ease-out;
+}
+
+@keyframes formSuccess {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+@keyframes formError {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* 实时验证提示动画 */
+.tenant-input-field .cxd-TextControl-input::placeholder {
+    transition: color 0.3s ease;
+}
+
+.tenant-input-field.focused .cxd-TextControl-input::placeholder {
+    color: rgba(102, 126, 234, 0.6);
+}
+
+.tenant-input-field.valid .cxd-TextControl-input::placeholder {
+    color: rgba(82, 196, 26, 0.6);
+}
+
+.tenant-input-field.invalid .cxd-TextControl-input::placeholder {
+    color: rgba(255, 77, 79, 0.6);
+}
+
+/* 输入框图标动画 */
+.tenant-input-field .cxd-TextControl-input-prefix {
+    transition: var(--tenant-transition);
+}
+
+.tenant-input-field.focused .cxd-TextControl-input-prefix {
+    transform: translateY(-50%) scale(1.1);
+}
+
+.tenant-input-field.valid .cxd-TextControl-input-prefix {
+    animation: iconBounce 0.5s ease-out;
+}
+
+@keyframes iconBounce {
+    0%, 100% { transform: translateY(-50%) scale(1); }
+    50% { transform: translateY(-50%) scale(1.2); }
+}
+
+/* 修复 [object Object] 错误显示 */
+.cxd-Form-feedback:has-text("[object Object]") {
+    display: none;
+}
+
+.cxd-Form-feedback[data-error*="[object Object]"] {
+    display: none;
+}
+
+/* 自定义错误提示样式 */
+.enhanced-error-message {
+    background: rgba(255, 77, 79, 0.1);
+    border: 1px solid rgba(255, 77, 79, 0.2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 6px;
+    color: #ff4d4f;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 50px;
+    }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .field-validation-message {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+    
+    .password-strength-indicator {
+        font-size: 11px;
+    }
+    
+    .strength-bar {
+        height: 3px;
+    }
+}
+
+@media (max-width: 480px) {
+    .field-validation-message {
+        font-size: 10px;
+        padding: 3px 6px;
+        margin-top: 4px;
+    }
+    
+    .tenant-input-field.focused {
+        transform: translateY(-1px);
     }
 } 

@@ -101,7 +101,7 @@
                         "type": "container",
                         "className": "tenant-login-content",
                         "style": {
-                            "maxWidth": "500px",
+                            "maxWidth": "480px",
                             "width": "100%",
                             "margin": "0 auto"
                         },
@@ -148,6 +148,9 @@
                                             },
                                             "adaptor": function(payload, response, api) {
                                                 if (payload.status === 0) {
+                                                    // 显示成功动画
+                                                    showSuccessAnimation();
+                                                    
                                                     // 保存token
                                                     if (payload.data && payload.data.token) {
                                                         TokenManager.setToken(payload.data.token);
@@ -157,10 +160,12 @@
                                                     const redirectUrl = `/${tenant.tenantId}/admin`;
                                                     setTimeout(() => {
                                                         window.location.href = redirectUrl;
-                                                    }, 1000);
+                                                    }, 1500);
                                                 } else {
                                                     // 记录详细错误信息
                                                     console.error('租户平台登录失败:', payload.msg);
+                                                    // 显示错误动画
+                                                    showErrorAnimation();
                                                 }
                                                 return payload;
                                             }
@@ -170,8 +175,9 @@
                                                 "type": "alert",
                                                 "level": "info",
                                                 "body": `正在登录租户"${tenant.displayName || tenant.name}"的管理平台`,
-                                                "className": "mb-3",
-                                                "showIcon": true
+                                                "className": "mb-3 tenant-info-alert",
+                                                "showIcon": true,
+                                                "icon": "fa fa-info-circle"
                                             },
                                             {
                                                 "type": "hidden",
@@ -187,7 +193,18 @@
                                                 "className": "tenant-input-field",
                                                 "prefixIcon": "fa fa-user",
                                                 "clearable": true,
-                                                "description": "请使用本租户下的用户账号"
+                                                "description": "请使用本租户下的用户账号",
+                                                "validationApi": "",
+                                                "validations": {
+                                                    "minLength": 2,
+                                                    "maxLength": 50
+                                                },
+                                                "validateOnChange": false,
+                                                "validationErrors": {
+                                                    "minLength": "用户名至少需要2个字符",
+                                                    "maxLength": "用户名最多50个字符",
+                                                    "isRequired": "请输入用户名"
+                                                }
                                             },
                                             {
                                                 "type": "input-password",
@@ -197,7 +214,19 @@
                                                 "required": true,
                                                 "className": "tenant-input-field",
                                                 "prefixIcon": "fa fa-lock",
-                                                "clearable": true
+                                                "clearable": true,
+                                                "revealPassword": true,
+                                                "validationApi": "",
+                                                "validations": {
+                                                    "minLength": 6,
+                                                    "maxLength": 128
+                                                },
+                                                "validateOnChange": false,
+                                                "validationErrors": {
+                                                    "minLength": "密码至少需要6个字符",
+                                                    "maxLength": "密码最多128个字符",
+                                                    "isRequired": "请输入密码"
+                                                }
                                             },
                                             {
                                                 "type": "flex",
@@ -208,7 +237,7 @@
                                                     {
                                                         "type": "checkbox",
                                                         "name": "rememberMe",
-                                                        "option": "记住我",
+                                                        "option": "记住登录状态",
                                                         "className": "remember-checkbox"
                                                     },
                                                     {
@@ -218,18 +247,22 @@
                                                         "size": "sm",
                                                         "className": "forgot-password-link",
                                                         "actionType": "url",
-                                                        "url": `/${tenant.tenantId}/forgot-password`
+                                                        "url": `/${tenant.tenantId}/forgot-password`,
+                                                        "icon": "fa fa-question-circle"
                                                     }
                                                 ]
                                             },
                                             {
                                                 "type": "button",
-                                                "label": "登录",
+                                                "label": "立即登录",
                                                 "level": "primary",
                                                 "block": true,
                                                 "actionType": "submit",
                                                 "className": "tenant-login-btn",
-                                                "size": "lg"
+                                                "size": "lg",
+                                                "icon": "fa fa-sign-in-alt",
+                                                "loadingOn": "${formSubmitting}",
+                                                "disabledOn": "${formSubmitting}"
                                             }
                                         ]
                                     }
@@ -275,6 +308,18 @@
             theme: 'antd',
             locale: 'zh-CN'
         });
+        
+        // 添加键盘事件监听
+        addKeyboardListeners();
+        
+        // 添加输入框焦点动画
+        addInputAnimations();
+        
+        // 添加页面滚动动画
+        addScrollAnimations();
+        
+        // 添加表单验证增强
+        addFormValidationEnhancements();
     }
     
     /**
@@ -291,13 +336,14 @@
             <div class="tenant-brand-header">
                 <div class="tenant-logo-container">
                     <img src="${logoUrl}" alt="${displayName}" class="tenant-logo" 
-                         onerror="this.src='/logo.png'" />
+                         onerror="this.src='/logo.png'" 
+                         loading="lazy" />
                 </div>
                 <h1 class="tenant-title">${displayName}</h1>
                 ${description ? `<p class="tenant-description">${description}</p>` : ''}
                 <div class="login-welcome">
-                    <h3>欢迎登录</h3>
-                    <p>请使用您的账户凭据登录系统</p>
+                    <h3>🔐 安全登录</h3>
+                    <p>请使用您的账户凭据安全登录系统</p>
                 </div>
             </div>
         `;
@@ -316,26 +362,42 @@
         if (config.enableSsoLogin) {
             options.push({
                 "type": "button",
-                "label": "单点登录(SSO)",
+                "label": "企业单点登录(SSO)",
                 "level": "default",
                 "block": true,
                 "className": "sso-login-btn mt-3",
-                "icon": "fa fa-sign-in-alt",
+                "icon": "fa fa-building",
                 "actionType": "url",
-                "url": `/${tenant.tenantId}/sso/login`
+                "url": `/${tenant.tenantId}/sso/login`,
+                "tooltip": "通过企业统一身份认证登录"
             });
         }
         
         if (config.enableSmsLogin) {
             options.push({
                 "type": "button",
-                "label": "短信验证码登录",
+                "label": "手机验证码登录",
                 "level": "default",
                 "block": true,
                 "className": "sms-login-btn mt-2",
                 "icon": "fa fa-mobile-alt",
                 "actionType": "url",
-                "url": `/${tenant.tenantId}/sms-login`
+                "url": `/${tenant.tenantId}/sms-login`,
+                "tooltip": "通过手机短信验证码登录"
+            });
+        }
+        
+        if (config.enableQrLogin) {
+            options.push({
+                "type": "button",
+                "label": "扫码登录",
+                "level": "default",
+                "block": true,
+                "className": "qr-login-btn mt-2",
+                "icon": "fa fa-qrcode",
+                "actionType": "url",
+                "url": `/${tenant.tenantId}/qr-login`,
+                "tooltip": "使用移动端APP扫码登录"
             });
         }
         
@@ -349,7 +411,8 @@
             "body": [
                 {
                     "type": "divider",
-                    "title": "其他登录方式"
+                    "title": "或使用其他方式",
+                    "titleClassName": "text-center"
                 },
                 ...options
             ]
@@ -368,14 +431,20 @@
         return `
             <div class="tenant-footer">
                 <div class="footer-links">
-                    <a href="/${tenant.tenantId}/help">帮助中心</a>
+                    <a href="/${tenant.tenantId}/help" title="查看帮助文档">
+                        <i class="fa fa-question-circle"></i> 帮助中心
+                    </a>
                     <span class="separator">|</span>
-                    <a href="/${tenant.tenantId}/contact">联系我们</a>
+                    <a href="/${tenant.tenantId}/contact" title="联系技术支持">
+                        <i class="fa fa-headset"></i> 联系我们
+                    </a>
                     <span class="separator">|</span>
-                    <a href="/login">主站登录</a>
+                    <a href="/login" title="返回主站登录">
+                        <i class="fa fa-home"></i> 主站登录
+                    </a>
                 </div>
                 <div class="footer-copyright">
-                    <p>&copy; ${currentYear} ${companyName}. All rights reserved.</p>
+                    <p>&copy; ${currentYear} ${companyName}. All rights reserved. | Powered by CodeSpirit</p>
                 </div>
             </div>
         `;
@@ -395,39 +464,271 @@
             // 应用主题颜色
             if (theme.primaryColor) {
                 root.style.setProperty('--tenant-primary-color', theme.primaryColor);
+                root.style.setProperty('--tenant-primary-gradient', 
+                    `linear-gradient(135deg, ${theme.primaryColor} 0%, ${theme.secondaryColor || theme.primaryColor} 100%)`);
+            }
+            
+            if (theme.secondaryColor) {
+                root.style.setProperty('--tenant-secondary-color', theme.secondaryColor);
+            }
+            
+            if (theme.accentColor) {
+                root.style.setProperty('--tenant-accent-color', theme.accentColor);
             }
             
             if (theme.backgroundColor) {
-                root.style.setProperty('--tenant-bg-color', theme.backgroundColor);
+                root.style.setProperty('--tenant-bg-gradient', 
+                    `linear-gradient(135deg, ${theme.backgroundColor} 0%, ${theme.primaryColor || '#667eea'} 100%)`);
             }
             
-            if (theme.textColor) {
-                root.style.setProperty('--tenant-text-color', theme.textColor);
-            }
-            
-            if (theme.borderColor) {
-                root.style.setProperty('--tenant-border-color', theme.borderColor);
-            }
-            
-            if (theme.logoUrl) {
-                root.style.setProperty('--tenant-logo-url', `url('${theme.logoUrl}')`);
+            if (theme.borderRadius) {
+                root.style.setProperty('--tenant-radius-small', `${theme.borderRadius}px`);
+                root.style.setProperty('--tenant-radius-medium', `${theme.borderRadius + 4}px`);
+                root.style.setProperty('--tenant-radius-large', `${theme.borderRadius + 8}px`);
             }
             
             // 应用自定义CSS
             if (theme.customCss) {
-                const style = document.createElement('style');
+                let style = document.getElementById('tenant-custom-style');
+                if (style) {
+                    style.remove();
+                }
+                style = document.createElement('style');
                 style.id = 'tenant-custom-style';
                 style.textContent = theme.customCss;
                 document.head.appendChild(style);
             }
             
-            // 更新页面标题
+            // 更新页面标题和图标
             if (theme.title) {
-                document.title = theme.title;
+                document.title = `${theme.title} - 登录`;
             }
+            
+            if (theme.favicon) {
+                updateFavicon(theme.favicon);
+            }
+            
+            console.log('租户主题应用成功');
             
         } catch (error) {
             console.warn('应用租户主题失败:', error);
+        }
+    }
+    
+    /**
+     * 更新网站图标
+     * @param {string} faviconUrl 图标URL
+     */
+    function updateFavicon(faviconUrl) {
+        const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        link.href = faviconUrl;
+        document.getElementsByTagName('head')[0].appendChild(link);
+    }
+    
+    /**
+     * 添加键盘事件监听
+     */
+    function addKeyboardListeners() {
+        document.addEventListener('keydown', function(e) {
+            // 按ESC键清空表单
+            if (e.key === 'Escape') {
+                const inputs = document.querySelectorAll('.tenant-input-field input');
+                inputs.forEach(input => {
+                    if (input.type !== 'hidden') {
+                        input.value = '';
+                    }
+                });
+            }
+        });
+    }
+    
+    /**
+     * 添加输入框动画效果
+     */
+    function addInputAnimations() {
+        // 使用事件代理，因为输入框是动态生成的
+        document.addEventListener('focus', function(e) {
+            if (e.target.matches('.tenant-input-field input')) {
+                e.target.closest('.tenant-input-field').classList.add('focused');
+            }
+        }, true);
+        
+        document.addEventListener('blur', function(e) {
+            if (e.target.matches('.tenant-input-field input')) {
+                e.target.closest('.tenant-input-field').classList.remove('focused');
+            }
+        }, true);
+        
+        // 输入值变化时的动画
+        document.addEventListener('input', function(e) {
+            if (e.target.matches('.tenant-input-field input')) {
+                const field = e.target.closest('.tenant-input-field');
+                if (e.target.value) {
+                    field.classList.add('has-value');
+                } else {
+                    field.classList.remove('has-value');
+                }
+            }
+        });
+    }
+    
+    /**
+     * 添加滚动动画效果
+     */
+    function addScrollAnimations() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        });
+        
+        // 观察需要动画的元素
+        setTimeout(() => {
+            const animatedElements = document.querySelectorAll('.tenant-branding, .tenant-login-panel, .alternative-login-options');
+            animatedElements.forEach(el => observer.observe(el));
+        }, 100);
+    }
+    
+    /**
+     * 显示成功登录动画
+     */
+    function showSuccessAnimation() {
+        const successOverlay = document.createElement('div');
+        successOverlay.className = 'login-success-overlay';
+        successOverlay.innerHTML = `
+            <div class="success-content">
+                <div class="success-icon">
+                    <i class="fa fa-check-circle"></i>
+                </div>
+                <h3>登录成功！</h3>
+                <p>正在跳转到管理平台...</p>
+                <div class="success-spinner">
+                    <div class="spinner-dot"></div>
+                    <div class="spinner-dot"></div>
+                    <div class="spinner-dot"></div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(successOverlay);
+        
+        // 添加成功动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .login-success-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: var(--tenant-primary-gradient);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeInSuccess 0.5s ease-out;
+            }
+            
+            .success-content {
+                text-align: center;
+                color: white;
+                animation: slideUpSuccess 0.8s ease-out;
+            }
+            
+            .success-icon {
+                font-size: 80px;
+                margin-bottom: 20px;
+                animation: bounceSuccess 1s ease-out;
+            }
+            
+            .success-content h3 {
+                font-size: 28px;
+                margin: 0 0 10px 0;
+                font-weight: 600;
+            }
+            
+            .success-content p {
+                font-size: 16px;
+                margin: 0 0 20px 0;
+                opacity: 0.9;
+            }
+            
+            .success-spinner {
+                display: flex;
+                justify-content: center;
+                gap: 5px;
+            }
+            
+            .spinner-dot {
+                width: 8px;
+                height: 8px;
+                background: white;
+                border-radius: 50%;
+                animation: pulseSuccess 1.4s ease-in-out infinite both;
+            }
+            
+            .spinner-dot:nth-child(1) { animation-delay: -0.32s; }
+            .spinner-dot:nth-child(2) { animation-delay: -0.16s; }
+            
+            @keyframes fadeInSuccess {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            @keyframes slideUpSuccess {
+                from { transform: translateY(30px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            
+            @keyframes bounceSuccess {
+                0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+                40% { transform: translateY(-20px); }
+                60% { transform: translateY(-10px); }
+            }
+            
+            @keyframes pulseSuccess {
+                0%, 80%, 100% { transform: scale(0); }
+                40% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    /**
+     * 显示错误动画
+     */
+    function showErrorAnimation() {
+        const loginForm = document.querySelector('.tenant-login-form');
+        if (loginForm) {
+            loginForm.classList.add('shake-error');
+            setTimeout(() => {
+                loginForm.classList.remove('shake-error');
+            }, 600);
+        }
+        
+        // 添加错误动画样式
+        if (!document.getElementById('error-animation-style')) {
+            const style = document.createElement('style');
+            style.id = 'error-animation-style';
+            style.textContent = `
+                @keyframes shakeError {
+                    0%, 100% { transform: translateX(0); }
+                    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                    20%, 40%, 60%, 80% { transform: translateX(5px); }
+                }
+                
+                .shake-error {
+                    animation: shakeError 0.6s ease-in-out;
+                }
+            `;
+            document.head.appendChild(style);
         }
     }
     
@@ -439,6 +740,43 @@
         const loadingEl = document.getElementById('loading');
         if (loadingEl) {
             loadingEl.style.display = show ? 'flex' : 'none';
+        }
+        
+        // 添加页面加载进度效果
+        if (show) {
+            const progressBar = document.createElement('div');
+            progressBar.id = 'loading-progress';
+            progressBar.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 0%;
+                height: 3px;
+                background: linear-gradient(90deg, var(--tenant-primary-color), var(--tenant-accent-color));
+                z-index: 10001;
+                transition: width 0.3s ease;
+            `;
+            document.body.appendChild(progressBar);
+            
+            // 模拟加载进度
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 30;
+                if (progress > 90) progress = 90;
+                progressBar.style.width = progress + '%';
+            }, 200);
+            
+            // 保存interval用于清理
+            progressBar._interval = interval;
+        } else {
+            const progressBar = document.getElementById('loading-progress');
+            if (progressBar) {
+                clearInterval(progressBar._interval);
+                progressBar.style.width = '100%';
+                setTimeout(() => {
+                    progressBar.remove();
+                }, 300);
+            }
         }
     }
     
@@ -455,20 +793,286 @@
                     <div class="error-icon">
                         <i class="fa fa-exclamation-triangle"></i>
                     </div>
-                    <h3>访问受限</h3>
+                    <h3>🚫 访问受限</h3>
                     <p>${message}</p>
                     <div class="error-actions">
                         <button onclick="location.reload()" class="btn btn-primary">
-                            <i class="fa fa-refresh"></i> 重试
+                            <i class="fa fa-refresh"></i> 重新加载
                         </button>
                         <a href="/login" class="btn btn-secondary">
                             <i class="fa fa-home"></i> 返回主登录页
                         </a>
+                    </div>
+                    <div class="error-tips">
+                        <p>💡 遇到问题？</p>
+                        <ul>
+                            <li>检查网络连接是否正常</li>
+                            <li>确认租户地址是否正确</li>
+                            <li>联系管理员获取帮助</li>
+                        </ul>
                     </div>
                 </div>
             </div>
         `;
         
         document.getElementById('root').innerHTML = errorHTML;
+        
+        // 添加错误页面样式
+        if (!document.getElementById('error-page-style')) {
+            const style = document.createElement('style');
+            style.id = 'error-page-style';
+            style.textContent = `
+                .error-tips {
+                    margin-top: 30px;
+                    padding-top: 20px;
+                    border-top: 1px solid rgba(255, 255, 255, 0.2);
+                    text-align: left;
+                }
+                
+                .error-tips p {
+                    margin: 0 0 10px 0;
+                    font-weight: 500;
+                    color: var(--tenant-text-light);
+                }
+                
+                .error-tips ul {
+                    margin: 0;
+                    padding-left: 20px;
+                    color: var(--tenant-text-light);
+                    opacity: 0.8;
+                }
+                
+                .error-tips li {
+                    margin-bottom: 5px;
+                    font-size: 14px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+    
+    /**
+     * 添加表单验证增强功能
+     */
+    function addFormValidationEnhancements() {
+        // 监听表单提交事件
+        document.addEventListener('submit', function(e) {
+            const form = e.target.closest('form');
+            if (form && form.classList.contains('tenant-login-form')) {
+                // 添加提交动画
+                addSubmitAnimation(form);
+            }
+        });
+        
+        // 实时验证用户名格式
+        document.addEventListener('input', function(e) {
+            if (e.target.matches('input[name="userName"]')) {
+                validateUserName(e.target);
+            }
+            
+            if (e.target.matches('input[name="password"]')) {
+                validatePassword(e.target);
+            }
+        });
+        
+        // 监听表单错误事件
+        document.addEventListener('DOMNodeInserted', function(e) {
+            if (e.target.classList && e.target.classList.contains('cxd-Form-feedback')) {
+                enhanceErrorMessage(e.target);
+            }
+        });
+    }
+    
+    /**
+     * 验证用户名格式
+     * @param {HTMLElement} input 输入框元素
+     */
+    function validateUserName(input) {
+        const value = input.value.trim();
+        const container = input.closest('.tenant-input-field');
+        
+        // 清除之前的状态
+        container.classList.remove('valid', 'invalid');
+        
+        if (value.length === 0) {
+            return;
+        }
+        
+        // 用户名格式验证
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        const isPhone = /^1[3-9]\d{9}$/.test(value);
+        const isUsername = /^[a-zA-Z0-9_\u4e00-\u9fa5]{2,50}$/.test(value);
+        
+        if (isEmail || isPhone || isUsername) {
+            container.classList.add('valid');
+            showFieldSuccess(container, getValidationSuccessMessage(value, isEmail, isPhone));
+        } else {
+            container.classList.add('invalid');
+            showFieldError(container, '请输入有效的用户名、手机号或邮箱地址');
+        }
+    }
+    
+    /**
+     * 验证密码强度
+     * @param {HTMLElement} input 输入框元素
+     */
+    function validatePassword(input) {
+        const value = input.value;
+        const container = input.closest('.tenant-input-field');
+        
+        // 清除之前的状态
+        container.classList.remove('valid', 'invalid', 'weak', 'medium', 'strong');
+        
+        if (value.length === 0) {
+            return;
+        }
+        
+        const strength = calculatePasswordStrength(value);
+        
+        if (value.length < 6) {
+            container.classList.add('invalid');
+            showFieldError(container, '密码至少需要6个字符');
+            return;
+        }
+        
+        container.classList.add('valid', strength.level);
+        showPasswordStrength(container, strength);
+    }
+    
+    /**
+     * 计算密码强度
+     * @param {string} password 密码
+     * @returns {Object} 强度信息
+     */
+    function calculatePasswordStrength(password) {
+        let score = 0;
+        const checks = {
+            length: password.length >= 8,
+            lowercase: /[a-z]/.test(password),
+            uppercase: /[A-Z]/.test(password),
+            numbers: /\d/.test(password),
+            symbols: /[^A-Za-z0-9]/.test(password)
+        };
+        
+        Object.values(checks).forEach(check => check && score++);
+        
+        if (score >= 4) return { level: 'strong', text: '强', color: '#52c41a', score };
+        if (score >= 3) return { level: 'medium', text: '中', color: '#faad14', score };
+        return { level: 'weak', text: '弱', color: '#ff4d4f', score };
+    }
+    
+    /**
+     * 获取验证成功消息
+     * @param {string} value 输入值
+     * @param {boolean} isEmail 是否为邮箱
+     * @param {boolean} isPhone 是否为手机号
+     * @returns {string} 成功消息
+     */
+    function getValidationSuccessMessage(value, isEmail, isPhone) {
+        if (isEmail) return '✓ 邮箱格式正确';
+        if (isPhone) return '✓ 手机号格式正确';
+        return '✓ 用户名格式正确';
+    }
+    
+    /**
+     * 显示字段错误
+     * @param {HTMLElement} container 容器元素
+     * @param {string} message 错误消息
+     */
+    function showFieldError(container, message) {
+        removeFieldMessage(container);
+        
+        const errorEl = document.createElement('div');
+        errorEl.className = 'field-validation-message error-message';
+        errorEl.innerHTML = `<i class="fa fa-exclamation-circle"></i> ${message}`;
+        container.appendChild(errorEl);
+        
+        // 添加震动动画
+        container.classList.add('validation-shake');
+        setTimeout(() => container.classList.remove('validation-shake'), 600);
+    }
+    
+    /**
+     * 显示字段成功
+     * @param {HTMLElement} container 容器元素
+     * @param {string} message 成功消息
+     */
+    function showFieldSuccess(container, message) {
+        removeFieldMessage(container);
+        
+        const successEl = document.createElement('div');
+        successEl.className = 'field-validation-message success-message';
+        successEl.innerHTML = `<i class="fa fa-check-circle"></i> ${message}`;
+        container.appendChild(successEl);
+    }
+    
+    /**
+     * 显示密码强度
+     * @param {HTMLElement} container 容器元素
+     * @param {Object} strength 强度信息
+     */
+    function showPasswordStrength(container, strength) {
+        removeFieldMessage(container);
+        
+        const strengthEl = document.createElement('div');
+        strengthEl.className = 'field-validation-message strength-message';
+        strengthEl.innerHTML = `
+            <div class="password-strength-indicator">
+                <span class="strength-text" style="color: ${strength.color}">
+                    <i class="fa fa-shield-alt"></i> 密码强度: ${strength.text}
+                </span>
+                <div class="strength-bar">
+                    <div class="strength-fill ${strength.level}" style="width: ${(strength.score / 5) * 100}%; background: ${strength.color}"></div>
+                </div>
+            </div>
+        `;
+        container.appendChild(strengthEl);
+    }
+    
+    /**
+     * 移除字段消息
+     * @param {HTMLElement} container 容器元素
+     */
+    function removeFieldMessage(container) {
+        const existing = container.querySelector('.field-validation-message');
+        if (existing) {
+            existing.remove();
+        }
+    }
+    
+    /**
+     * 增强错误消息显示
+     * @param {HTMLElement} errorElement 错误元素
+     */
+    function enhanceErrorMessage(errorElement) {
+        if (errorElement.textContent.includes('[object Object]')) {
+            errorElement.textContent = '输入格式不正确，请检查后重试';
+            errorElement.style.color = '#ff4d4f';
+            errorElement.style.fontSize = '12px';
+            errorElement.style.marginTop = '4px';
+        }
+    }
+    
+    /**
+     * 添加提交动画
+     * @param {HTMLElement} form 表单元素
+     */
+    function addSubmitAnimation(form) {
+        const submitBtn = form.querySelector('.tenant-login-btn .cxd-Button');
+        if (submitBtn) {
+            submitBtn.classList.add('submitting');
+            
+            // 添加加载动画
+            const originalText = submitBtn.textContent;
+            submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 登录中...';
+            
+            // 5秒后恢复（防止卡死）
+            setTimeout(() => {
+                if (submitBtn.classList.contains('submitting')) {
+                    submitBtn.classList.remove('submitting');
+                    submitBtn.innerHTML = originalText;
+                }
+            }, 5000);
+        }
     }
 })(); 

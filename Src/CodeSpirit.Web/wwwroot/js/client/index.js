@@ -1,4 +1,7 @@
 ﻿(function () {
+    // 初始化为系统模式
+    TokenManager.initSystemMode();
+    
     let amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
     const history = History.createHashHistory();
@@ -1174,12 +1177,12 @@
         },
         {
             requestAdaptor: (api) => {
-                const token = localStorage.getItem('token');
+                const token = TokenManager.getToken();
                 return {
                     ...api,
                     headers: {
                         ...api.headers,
-                        'Authorization': 'Bearer ' + token,
+                        'Authorization': token ? 'Bearer ' + token : '',
                         'X-Forwarded-With': 'CodeSpirit'
                     }
                 };

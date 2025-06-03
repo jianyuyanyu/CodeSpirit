@@ -3,6 +3,9 @@
  * 基于AMIS框架构建的后台UI系统
  */
 (function () {
+    // 初始化为系统模式
+    TokenManager.initSystemMode();
+    
     // 基础依赖
     const amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
@@ -408,12 +411,12 @@
         isCurrentUrl: (to, ctx) => routerUtils.isCurrentUrl(to, ctx),
         
         requestAdaptor: (api) => {
-            const token = localStorage.getItem('token');
+            const token = TokenManager.getToken();
             return {
                 ...api,
                 headers: {
                     ...api.headers,
-                    'Authorization': 'Bearer ' + token,
+                    'Authorization': token ? 'Bearer ' + token : '',
                     'X-Forwarded-With': 'CodeSpirit'
                 }
             };
@@ -495,11 +498,11 @@
 
     // 获取未读通知数
     window.fetchUnreadNotificationCount = function () {
-        const token = localStorage.getItem('token');                
+        const token = TokenManager.getToken();                
         // 发起AJAX请求获取未读消息数
         fetch(`/messaging/api/messaging/messages/my/unread/count`, {
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': token ? `Bearer ${token}` : '',
                 'X-Forwarded-With': 'CodeSpirit'
             }
         })

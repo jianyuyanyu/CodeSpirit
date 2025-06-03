@@ -1,12 +1,6 @@
 (function () {
     let amis = amisRequire('amis/embed');
     
-    // 清除之前的token
-    TokenManager.clearToken();
-    
-    // 添加全屏样式类
-    document.body.classList.add('tenant-login-body');
-    
     // 获取租户ID
     const tenantId = window.tenantId;
     if (!tenantId) {
@@ -14,6 +8,15 @@
         showError('租户ID不存在，请检查URL');
         return;
     }
+    
+    // 初始化为租户模式
+    TokenManager.initTenantMode(tenantId);
+    
+    // 清除之前的token
+    TokenManager.clearToken();
+    
+    // 添加全屏样式类
+    document.body.classList.add('tenant-login-body');
     
     // 初始化页面
     initializeTenantLogin();
@@ -151,9 +154,19 @@
                                                     // 显示成功动画
                                                     showSuccessAnimation();
                                                     
-                                                    // 保存token
+                                                    // 保存token（使用租户专用的TokenManager）
                                                     if (payload.data && payload.data.token) {
-                                                        TokenManager.setToken(payload.data.token);
+                                                        TokenManager.setTokenExtended(
+                                                            payload.data.token,
+                                                            payload.data.refreshToken,
+                                                            payload.data.expiresIn,
+                                                            tenant.tenantId
+                                                        );
+                                                        
+                                                        // 同时保存用户信息
+                                                        if (payload.data.user) {
+                                                            TokenManager.setUserInfo(payload.data.user);
+                                                        }
                                                     }
                                                     
                                                     // 登录成功，重定向到租户主页
@@ -174,7 +187,7 @@
                                             {
                                                 "type": "alert",
                                                 "level": "info",
-                                                "body": `正在登录租户"${tenant.displayName || tenant.name}"的管理平台`,
+                                                "body": `正在登录"${tenant.displayName || tenant.name}"的管理平台`,
                                                 "className": "mb-3 tenant-info-alert",
                                                 "showIcon": true,
                                                 "icon": "fa fa-info-circle"

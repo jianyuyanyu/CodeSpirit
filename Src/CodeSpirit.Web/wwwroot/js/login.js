@@ -1,4 +1,7 @@
 ﻿(function () {
+    // 初始化为系统模式
+    TokenManager.initSystemMode();
+    
     let amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
     
@@ -86,7 +89,7 @@
                                                                 if (payload.status === 0) {
                                                                     // 登录成功，保存token
                                                                     if (payload.data && payload.data.token) {
-                                                                        TokenManager.setToken(payload.data.token);
+                                                                        TokenManager.setToken(payload.data.token, 24);
                                                                     }
                                                                     
                                                                     // 延迟跳转，让用户看到成功提示

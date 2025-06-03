@@ -1,4 +1,7 @@
 ﻿(function () {
+    // 初始化为系统模式
+    TokenManager.initSystemMode();
+    
     let amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
 
@@ -100,7 +103,7 @@
                                             "actions": [
                                                 {
                                                     "actionType": "custom",
-                                                    "script": "TokenManager.setToken(event.data.result.data.token);"
+                                                    "script": "TokenManager.setToken(event.data.result.data.token, 24);"
                                                 },
                                                 {
                                                     "actionType": "custom",

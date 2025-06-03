@@ -4,11 +4,6 @@
  * 增强功能：预加载器、错误处理
  */
 (function () {
-    // 基础依赖
-    const amis = amisRequire('amis/embed');
-    const match = amisRequire('path-to-regexp').match;
-    const history = History.createHashHistory();
-
     // 获取租户ID
     const tenantId = window.tenantId;
     if (!tenantId) {
@@ -16,6 +11,14 @@
         window.location.href = '/login';
         return;
     }
+    
+    // 初始化为租户模式
+    TokenManager.initTenantMode(tenantId);
+    
+    // 基础依赖
+    const amis = amisRequire('amis/embed');
+    const match = amisRequire('path-to-regexp').match;
+    const history = History.createHashHistory();
 
     /**
      * 全局数据存储（租户相关）
@@ -186,12 +189,12 @@
         },
         
         requestAdaptor: (api) => {
-            const token = localStorage.getItem('token');
+            const token = TokenManager.getToken();
             return {
                 ...api,
                 headers: {
                     ...api.headers,
-                    'Authorization': 'Bearer ' + token,
+                    'Authorization': token ? 'Bearer ' + token : '',
                     'X-Forwarded-With': 'CodeSpirit',
                     'X-Tenant-Id': tenantId // 添加租户ID到请求头
                 }
@@ -525,11 +528,11 @@
      * 获取租户信息
      */
     window.fetchTenantInfo = withErrorHandling(async function() {
-        const token = localStorage.getItem('token');
+        const token = TokenManager.getToken();
         
         const response = await fetch(`/identity/api/identity/tenants/${tenantId}`, {
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': token ? `Bearer ${token}` : '',
                 'X-Forwarded-With': 'CodeSpirit',
                 'X-Tenant-Id': tenantId
             }
@@ -630,10 +633,10 @@
     };
 
     window.fetchUnreadNotificationCount = function () {
-        const token = localStorage.getItem('token');                
+        const token = TokenManager.getToken();                
         fetch(`/messaging/api/messaging/messages/my/unread/count`, {
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': token ? `Bearer ${token}` : '',
                 'X-Forwarded-With': 'CodeSpirit',
                 'X-Tenant-Id': tenantId
             }
@@ -660,32 +663,30 @@
      * 退出登录
      */
     window.logout = function() {
-        const token = localStorage.getItem('token');
+        const token = TokenManager.getToken();
         
         // 调用登出API
         fetch('/identity/api/identity/auth/logout', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': token ? `Bearer ${token}` : '',
                 'Content-Type': 'application/json',
                 'X-Forwarded-With': 'CodeSpirit',
                 'X-Tenant-Id': tenantId
             }
         })
         .then(() => {
-            // 清除本地存储
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            // 清除租户本地存储
+            TokenManager.clearToken();
             
-            // 重定向到登录页
-            window.location.href = '/login';
+            // 重定向到租户登录页
+            window.location.href = `/${tenantId}/login`;
         })
         .catch(error => {
             console.error('退出登录失败:', error);
             // 即使API失败也清除本地存储并跳转
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+            TokenManager.clearToken();
+            window.location.href = `/${tenantId}/login`;
         });
     };
 
@@ -693,11 +694,11 @@
      * 获取未读通知数量
      */
     window.fetchUnreadNotificationCount = function() {
-        const token = localStorage.getItem('token');
+        const token = TokenManager.getToken();
         
         fetch('/messaging/api/messaging/messages/my/unread-count', {
             headers: {
-                'Authorization': `Bearer ${token}`,
+                'Authorization': token ? `Bearer ${token}` : '',
                 'X-Forwarded-With': 'CodeSpirit',
                 'X-Tenant-Id': tenantId
             }

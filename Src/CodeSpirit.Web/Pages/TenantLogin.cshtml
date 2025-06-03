@@ -98,13 +98,13 @@
             box-shadow: var(--tenant-shadow-heavy);
         }
         
-        @keyframes gradientShift {
+        @@keyframes gradientShift {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
         
-        @keyframes logoSpin {
+        @@keyframes logoSpin {
             0%, 100% { transform: rotate(0deg) scale(1); }
             50% { transform: rotate(180deg) scale(1.1); }
         }
@@ -132,7 +132,7 @@
         }
         
         /* 移动端优化 */
-        @media (max-width: 768px) {
+        @@media (max-width: 768px) {
             .preloader-logo {
                 width: 60px;
                 height: 60px;

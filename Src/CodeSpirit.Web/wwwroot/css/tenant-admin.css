@@ -1,15 +1,40 @@
-/* 租户后台管理样式 */
+/* 租户后台管理样式 - 现代化主题 */
 :root {
-    --tenant-primary-color: #1976d2;
-    --tenant-secondary-color: #424242;
-    --tenant-bg-color: #fafafa;
+    /* 主题色彩系统 */
+    --tenant-primary-color: #6366f1;
+    --tenant-primary-hover: #5855eb;
+    --tenant-primary-light: #a5b4fc;
+    --tenant-secondary-color: #64748b;
+    --tenant-accent-color: #06b6d4;
+    --tenant-success-color: #10b981;
+    --tenant-warning-color: #f59e0b;
+    --tenant-danger-color: #ef4444;
+    
+    /* 背景色彩 */
+    --tenant-bg-color: #f8fafc;
     --tenant-sidebar-bg: #ffffff;
     --tenant-header-bg: #ffffff;
-    --tenant-border-color: #e0e0e0;
-    --tenant-text-primary: #212121;
-    --tenant-text-secondary: #757575;
-    --tenant-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    --tenant-radius: 6px;
+    --tenant-surface-bg: #ffffff;
+    
+    /* 文字色彩 */
+    --tenant-text-primary: #1e293b;
+    --tenant-text-secondary: #64748b;
+    --tenant-text-tertiary: #94a3b8;
+    
+    /* 边框和阴影 */
+    --tenant-border-color: #e2e8f0;
+    --tenant-border-light: #f1f5f9;
+    --tenant-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --tenant-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --tenant-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    
+    /* 圆角 */
+    --tenant-radius: 8px;
+    --tenant-radius-sm: 6px;
+    --tenant-radius-lg: 12px;
+    
+    /* 动画 */
+    --tenant-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 租户后台主容器 */
@@ -18,13 +43,14 @@
     min-height: 100vh;
 }
 
-/* 租户品牌区域 */
+/* 租户品牌区域 - 现代化设计 */
 .tenant-brand {
     display: flex;
     align-items: center;
-    padding: 10px 15px;
+    padding: 12px 20px;
     border-bottom: 1px solid var(--tenant-border-color);
-    background-color: var(--tenant-header-bg);
+    background: var(--tenant-header-bg);
+    position: relative;
 }
 
 /* 租户头部信息区域 */
@@ -37,13 +63,15 @@
 .tenant-brand-container {
     display: flex;
     align-items: center;
-    padding: 12px 20px;
-    background: linear-gradient(135deg, var(--tenant-primary-color), #1565c0);
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(25, 118, 210, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 14px 24px;
+    background: linear-gradient(135deg, var(--tenant-primary-color) 0%, var(--tenant-primary-hover) 100%);
+    border-radius: var(--tenant-radius-lg);
+    box-shadow: var(--tenant-shadow-lg);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     position: relative;
     overflow: hidden;
+    transition: var(--tenant-transition);
+    max-width: 320px;
 }
 
 .tenant-brand-container::before {
@@ -54,10 +82,15 @@
     right: 0;
     bottom: 0;
     background: linear-gradient(135deg, 
-        rgba(255, 255, 255, 0.1) 0%, 
-        rgba(255, 255, 255, 0.05) 50%, 
-        rgba(255, 255, 255, 0) 100%);
+        rgba(255, 255, 255, 0.15) 0%, 
+        rgba(255, 255, 255, 0.08) 50%, 
+        rgba(255, 255, 255, 0.02) 100%);
     pointer-events: none;
+}
+
+.tenant-brand-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(99, 102, 241, 0.3);
 }
 
 .tenant-info {
@@ -65,142 +98,435 @@
     flex-direction: column;
     position: relative;
     z-index: 1;
+    min-width: 0;
 }
 
 .tenant-name {
     color: white !important;
     font-weight: 600;
     font-size: 18px;
-    line-height: 1.2;
-    margin-bottom: 4px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    line-height: 1.3;
+    margin: 0 0 4px 0;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .tenant-id {
     color: rgba(255, 255, 255, 0.85) !important;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 400;
     letter-spacing: 0.5px;
     opacity: 0.9;
+    font-family: 'Consolas', 'Monaco', monospace;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    display: inline-block;
 }
 
 .tenant-logo {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     margin-right: 16px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     position: relative;
     z-index: 1;
-    transition: transform 0.2s ease;
+    transition: var(--tenant-transition);
+    background: var(--tenant-surface-bg);
 }
 
 .tenant-logo:hover {
-    transform: scale(1.05);
+    transform: scale(1.05) rotate(5deg);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* 覆盖AMIS默认样式，适配租户主题 */
+/* 覆盖AMIS默认样式，适配租户主题 - 现代化设计 */
 .tenant-admin-wrapper .cxd-Layout-brand {
-    background-color: var(--tenant-header-bg) !important;
+    background: var(--tenant-header-bg) !important;
     border-bottom: 1px solid var(--tenant-border-color) !important;
+    box-shadow: var(--tenant-shadow) !important;
 }
 
 .tenant-admin-wrapper .cxd-Layout-aside {
-    background-color: var(--tenant-sidebar-bg) !important;
+    background: var(--tenant-sidebar-bg) !important;
     border-right: 1px solid var(--tenant-border-color) !important;
+    box-shadow: var(--tenant-shadow) !important;
+    transition: var(--tenant-transition) !important;
+}
+
+.tenant-admin-wrapper .cxd-Layout-aside:hover {
+    box-shadow: var(--tenant-shadow-md) !important;
 }
 
 .tenant-admin-wrapper .cxd-Layout-header {
-    background: linear-gradient(90deg, #fafafa 0%, #ffffff 100%) !important;
-    border-bottom: 1px solid #e8e8e8 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
-    padding: 12px 24px !important;
+    background: linear-gradient(135deg, var(--tenant-header-bg) 0%, var(--tenant-bg-color) 100%) !important;
+    border-bottom: 1px solid var(--tenant-border-color) !important;
+    box-shadow: var(--tenant-shadow) !important;
+    padding: 16px 24px !important;
+    backdrop-filter: blur(8px) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
 }
 
 .tenant-admin-wrapper .cxd-Layout-body {
-    background-color: var(--tenant-bg-color) !important;
+    background: var(--tenant-bg-color) !important;
+    padding: 24px !important;
+    min-height: calc(100vh - 60px) !important;
 }
 
-/* 租户侧边栏导航样式 */
+/* 租户侧边栏导航样式 - 现代化设计 */
+.tenant-admin-wrapper .cxd-AsideNav {
+    padding: 16px 12px !important;
+}
+
+.tenant-admin-wrapper .cxd-AsideNav-item {
+    margin-bottom: 4px !important;
+}
+
 .tenant-admin-wrapper .cxd-AsideNav-item > a {
     color: var(--tenant-text-primary) !important;
     border-radius: var(--tenant-radius) !important;
-    margin: 2px 8px !important;
+    margin: 0 !important;
+    padding: 12px 16px !important;
+    transition: var(--tenant-transition) !important;
+    border: 1px solid transparent !important;
+    position: relative !important;
+    font-weight: 500 !important;
+}
+
+.tenant-admin-wrapper .cxd-AsideNav-item > a::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 0;
+    background: var(--tenant-primary-color);
+    border-radius: 2px;
+    transition: var(--tenant-transition);
 }
 
 .tenant-admin-wrapper .cxd-AsideNav-item > a:hover {
-    background-color: rgba(25, 118, 210, 0.08) !important;
+    background: rgba(99, 102, 241, 0.08) !important;
     color: var(--tenant-primary-color) !important;
+    border-color: var(--tenant-border-color) !important;
+    transform: translateX(4px) !important;
+}
+
+.tenant-admin-wrapper .cxd-AsideNav-item > a:hover::before {
+    height: 20px;
 }
 
 .tenant-admin-wrapper .cxd-AsideNav-item.is-active > a {
-    background-color: var(--tenant-primary-color) !important;
+    background: linear-gradient(135deg, var(--tenant-primary-color) 0%, var(--tenant-primary-hover) 100%) !important;
     color: white !important;
+    border-color: var(--tenant-primary-color) !important;
+    box-shadow: var(--tenant-shadow-md) !important;
+    transform: translateX(6px) !important;
 }
 
-/* 租户按钮样式 */
+.tenant-admin-wrapper .cxd-AsideNav-item.is-active > a::before {
+    height: 24px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 租户按钮样式 - 现代化设计 */
 .tenant-admin-wrapper .cxd-Button--primary {
-    background-color: var(--tenant-primary-color) !important;
-    border-color: var(--tenant-primary-color) !important;
+    background: linear-gradient(135deg, var(--tenant-primary-color) 0%, var(--tenant-primary-hover) 100%) !important;
+    border: none !important;
+    border-radius: var(--tenant-radius) !important;
+    box-shadow: var(--tenant-shadow) !important;
+    transition: var(--tenant-transition) !important;
+    font-weight: 500 !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.tenant-admin-wrapper .cxd-Button--primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.5s ease;
 }
 
 .tenant-admin-wrapper .cxd-Button--primary:hover {
-    background-color: #1565c0 !important;
-    border-color: #1565c0 !important;
+    background: linear-gradient(135deg, var(--tenant-primary-hover) 0%, #4338ca 100%) !important;
+    box-shadow: var(--tenant-shadow-md) !important;
+    transform: translateY(-1px) !important;
+}
+
+.tenant-admin-wrapper .cxd-Button--primary:hover::before {
+    left: 100%;
+}
+
+.tenant-admin-wrapper .cxd-Button--primary:active {
+    transform: translateY(0) !important;
+}
+
+.tenant-admin-wrapper .cxd-Button--secondary {
+    background: var(--tenant-surface-bg) !important;
+    border: 1px solid var(--tenant-border-color) !important;
+    color: var(--tenant-text-primary) !important;
+    border-radius: var(--tenant-radius) !important;
+    transition: var(--tenant-transition) !important;
+    font-weight: 500 !important;
+}
+
+.tenant-admin-wrapper .cxd-Button--secondary:hover {
+    background: var(--tenant-primary-light) !important;
+    border-color: var(--tenant-primary-color) !important;
+    color: var(--tenant-primary-color) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: var(--tenant-shadow) !important;
 }
 
 /* 租户表格样式 */
 .tenant-admin-wrapper .cxd-Table-table {
-    background-color: white !important;
-    border-radius: var(--tenant-radius) !important;
+    background: var(--tenant-surface-bg) !important;
+    border-radius: var(--tenant-radius-lg) !important;
     box-shadow: var(--tenant-shadow) !important;
+    border: 1px solid var(--tenant-border-color) !important;
+    overflow: hidden !important;
+}
+
+.tenant-admin-wrapper .cxd-Table-table thead {
+    background: linear-gradient(135deg, var(--tenant-bg-color) 0%, var(--tenant-border-light) 100%) !important;
+    border-bottom: 2px solid var(--tenant-border-color) !important;
 }
 
 .tenant-admin-wrapper .cxd-Table-table thead th {
-    background-color: #f5f5f5 !important;
-    border-bottom: 1px solid var(--tenant-border-color) !important;
+    background: transparent !important;
+    color: var(--tenant-text-primary) !important;
+    font-weight: 600 !important;
+    padding: 16px 20px !important;
+    border: none !important;
+    font-size: 14px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
 }
 
-/* 租户表单样式 */
+.tenant-admin-wrapper .cxd-Table-table tbody tr {
+    transition: var(--tenant-transition) !important;
+    border-bottom: 1px solid var(--tenant-border-light) !important;
+}
+
+.tenant-admin-wrapper .cxd-Table-table tbody tr:hover {
+    background: rgba(99, 102, 241, 0.04) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.tenant-admin-wrapper .cxd-Table-table tbody td {
+    padding: 16px 20px !important;
+    border: none !important;
+    vertical-align: middle !important;
+}
+
+/* 租户表单样式 - 现代化设计 */
 .tenant-admin-wrapper .cxd-Form {
-    background-color: white !important;
-    border-radius: var(--tenant-radius) !important;
+    background: var(--tenant-surface-bg) !important;
+    border-radius: var(--tenant-radius-lg) !important;
     box-shadow: var(--tenant-shadow) !important;
+    border: 1px solid var(--tenant-border-color) !important;
+    overflow: hidden !important;
+}
+
+.tenant-admin-wrapper .cxd-Form-item {
+    margin-bottom: 20px !important;
 }
 
 .tenant-admin-wrapper .cxd-Form-item > .cxd-Form-label {
     color: var(--tenant-text-primary) !important;
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    font-size: 14px !important;
+}
+
+.tenant-admin-wrapper .cxd-Form-item > .cxd-Form-label.is-required::before {
+    color: var(--tenant-danger-color) !important;
+    content: '* ' !important;
+}
+
+/* 租户输入框样式 - 现代化设计 */
+.tenant-admin-wrapper .cxd-Form-control {
+    border: 1px solid var(--tenant-border-color) !important;
+    border-radius: var(--tenant-radius) !important;
+    background: var(--tenant-surface-bg) !important;
+    color: var(--tenant-text-primary) !important;
+    transition: var(--tenant-transition) !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+}
+
+.tenant-admin-wrapper .cxd-Form-control:focus {
+    border-color: var(--tenant-primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+    outline: none !important;
+    background: white !important;
+}
+
+.tenant-admin-wrapper .cxd-Form-control:hover:not(:focus) {
+    border-color: var(--tenant-primary-light) !important;
+}
+
+.tenant-admin-wrapper .cxd-Form-control.is-error {
+    border-color: var(--tenant-danger-color) !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+/* 租户选择器样式 - 现代化设计 */
+.tenant-admin-wrapper .cxd-Select {
+    border-radius: var(--tenant-radius) !important;
+}
+
+.tenant-admin-wrapper .cxd-Select-control {
+    border: 1px solid var(--tenant-border-color) !important;
+    border-radius: var(--tenant-radius) !important;
+    background: var(--tenant-surface-bg) !important;
+    transition: var(--tenant-transition) !important;
+    min-height: 44px !important;
+}
+
+.tenant-admin-wrapper .cxd-Select-control:hover {
+    border-color: var(--tenant-primary-light) !important;
+}
+
+.tenant-admin-wrapper .cxd-Select-control.is-focused {
+    border-color: var(--tenant-primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+.tenant-admin-wrapper .cxd-Select-option.is-highlight,
+.tenant-admin-wrapper .cxd-Select-option:hover {
+    background: rgba(99, 102, 241, 0.1) !important;
+    color: var(--tenant-primary-color) !important;
+}
+
+.tenant-admin-wrapper .cxd-Select-option.is-selected {
+    background: var(--tenant-primary-color) !important;
+    color: white !important;
+}
+
+/* 租户日期选择器样式 - 现代化设计 */
+.tenant-admin-wrapper .cxd-DatePicker-toggler {
+    border: 1px solid var(--tenant-border-color) !important;
+    border-radius: var(--tenant-radius) !important;
+    background: var(--tenant-surface-bg) !important;
+    padding: 12px 16px !important;
+    transition: var(--tenant-transition) !important;
+    min-height: 44px !important;
+}
+
+.tenant-admin-wrapper .cxd-DatePicker-toggler:hover {
+    border-color: var(--tenant-primary-light) !important;
+}
+
+.tenant-admin-wrapper .cxd-DatePicker-toggler.is-focused {
+    border-color: var(--tenant-primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
 }
 
 /* 租户卡片样式 */
 .tenant-admin-wrapper .cxd-Panel {
-    background-color: white !important;
-    border-radius: var(--tenant-radius) !important;
+    background: var(--tenant-surface-bg) !important;
+    border-radius: var(--tenant-radius-lg) !important;
     box-shadow: var(--tenant-shadow) !important;
     border: 1px solid var(--tenant-border-color) !important;
+    overflow: hidden !important;
+    transition: var(--tenant-transition) !important;
+}
+
+.tenant-admin-wrapper .cxd-Panel:hover {
+    box-shadow: var(--tenant-shadow-md) !important;
+    transform: translateY(-2px) !important;
 }
 
 .tenant-admin-wrapper .cxd-Panel-heading {
-    background-color: #f8f9fa !important;
+    background: linear-gradient(135deg, var(--tenant-bg-color) 0%, var(--tenant-border-light) 100%) !important;
     border-bottom: 1px solid var(--tenant-border-color) !important;
-    border-radius: var(--tenant-radius) var(--tenant-radius) 0 0 !important;
+    border-radius: 0 !important;
+    padding: 16px 24px !important;
+}
+
+.tenant-admin-wrapper .cxd-Panel-title {
+    color: var(--tenant-text-primary) !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+}
+
+.tenant-admin-wrapper .cxd-Panel-body {
+    padding: 24px !important;
 }
 
 /* 租户徽章样式 */
 .tenant-admin-wrapper .cxd-Badge {
-    background-color: var(--tenant-primary-color) !important;
+    background: var(--tenant-primary-color) !important;
+    border-radius: var(--tenant-radius) !important;
+    font-weight: 500 !important;
+    font-size: 12px !important;
+    padding: 4px 8px !important;
+    letter-spacing: 0.5px !important;
+}
+
+.tenant-admin-wrapper .cxd-Badge--success {
+    background: var(--tenant-success-color) !important;
+}
+
+.tenant-admin-wrapper .cxd-Badge--warning {
+    background: var(--tenant-warning-color) !important;
+}
+
+.tenant-admin-wrapper .cxd-Badge--danger {
+    background: var(--tenant-danger-color) !important;
 }
 
 /* 租户标签样式 */
 .tenant-admin-wrapper .cxd-Tag {
     border-radius: var(--tenant-radius) !important;
+    font-weight: 500 !important;
+    transition: var(--tenant-transition) !important;
+}
+
+.tenant-admin-wrapper .cxd-Tag:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: var(--tenant-shadow) !important;
 }
 
 .tenant-admin-wrapper .cxd-Tag--primary {
-    background-color: var(--tenant-primary-color) !important;
-    border-color: var(--tenant-primary-color) !important;
+    background: linear-gradient(135deg, var(--tenant-primary-color) 0%, var(--tenant-primary-hover) 100%) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.tenant-admin-wrapper .cxd-Tag--success {
+    background: linear-gradient(135deg, var(--tenant-success-color) 0%, #059669 100%) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.tenant-admin-wrapper .cxd-Tag--warning {
+    background: linear-gradient(135deg, var(--tenant-warning-color) 0%, #d97706 100%) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.tenant-admin-wrapper .cxd-Tag--danger {
+    background: linear-gradient(135deg, var(--tenant-danger-color) 0%, #dc2626 100%) !important;
+    border: none !important;
+    color: white !important;
 }
 
 /* 租户分页样式 */
@@ -226,24 +552,6 @@
 
 .tenant-admin-wrapper .cxd-Button--link:hover {
     color: #1565c0 !important;
-}
-
-/* 租户选择器样式 */
-.tenant-admin-wrapper .cxd-Select-option.is-highlight,
-.tenant-admin-wrapper .cxd-Select-option:hover {
-    background-color: rgba(25, 118, 210, 0.08) !important;
-}
-
-/* 租户日期选择器样式 */
-.tenant-admin-wrapper .cxd-DatePicker-toggler.is-focused {
-    border-color: var(--tenant-primary-color) !important;
-    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2) !important;
-}
-
-/* 租户输入框样式 */
-.tenant-admin-wrapper .cxd-Form-control:focus {
-    border-color: var(--tenant-primary-color) !important;
-    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2) !important;
 }
 
 /* 租户面包屑样式 */
@@ -386,12 +694,17 @@
 /* 暗色主题支持 */
 @media (prefers-color-scheme: dark) {
     :root {
-        --tenant-bg-color: #121212;
-        --tenant-sidebar-bg: #1e1e1e;
-        --tenant-header-bg: #1e1e1e;
-        --tenant-border-color: #333;
-        --tenant-text-primary: #ffffff;
-        --tenant-text-secondary: #b3b3b3;
+        --tenant-bg-color: #0f172a;
+        --tenant-sidebar-bg: #1e293b;
+        --tenant-header-bg: #1e293b;
+        --tenant-surface-bg: #1e293b;
+        
+        --tenant-text-primary: #f8fafc;
+        --tenant-text-secondary: #cbd5e1;
+        --tenant-text-tertiary: #94a3b8;
+        
+        --tenant-border-color: #334155;
+        --tenant-border-light: #475569;
     }
 }
 

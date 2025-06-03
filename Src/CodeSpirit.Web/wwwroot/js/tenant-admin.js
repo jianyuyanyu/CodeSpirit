@@ -100,75 +100,6 @@
     };
 
     /**
-     * 路由工具函数
-     */
-    const routerUtils = {
-        normalizeLink: function(to, location = history.location) {
-            to = to || '';
-            
-            // 为租户路径添加租户ID前缀
-            if (to && !to.startsWith('http') && !to.startsWith('/') && !to.startsWith('#')) {
-                to = `/${tenantId}/${to}`;
-            } else if (to && to.startsWith('/') && !to.startsWith(`/${tenantId}/`) && !to.startsWith('/api/')) {
-                to = `/${tenantId}${to}`;
-            }
-            
-            if (to && to[0] === '#') {
-                to = location.pathname + location.search + to;
-            } else if (to && to[0] === '?') {
-                to = location.pathname + to;
-            }
-
-            const idx = to.indexOf('?');
-            const idx2 = to.indexOf('#');
-            let pathname = ~idx ? to.substring(0, idx) : ~idx2 ? to.substring(0, idx2) : to;
-            let search = ~idx ? to.substring(idx, ~idx2 ? idx2 : undefined) : '';
-            let hash = ~idx2 ? to.substring(idx2) : location.hash;
-
-            if (!pathname) {
-                pathname = location.pathname;
-            } else if (pathname[0] != '/' && !/^https?\:\/\//.test(pathname)) {
-                let relativeBase = location.pathname;
-                const paths = relativeBase.split('/');
-                paths.pop();
-                let m;
-                while ((m = /^\.\.?\//.exec(pathname))) {
-                    if (m[0] === '../') {
-                        paths.pop();
-                    }
-                    pathname = pathname.substring(m[0].length);
-                }
-                pathname = paths.concat(pathname).join('/');
-            }
-
-            return pathname + search + hash;
-        },
-
-        isCurrentUrl: function(to, ctx) {
-            if (!to) {
-                return false;
-            }
-
-            const pathname = history.location.pathname;
-            const link = this.normalizeLink(to, {
-                ...location,
-                pathname,
-                hash: ''
-            });
-
-            if (!~link.indexOf('http') && ~link.indexOf(':')) {
-                let strict = ctx && ctx.strict;
-                return match(link, {
-                    decode: decodeURIComponent,
-                    strict: typeof strict !== 'undefined' ? strict : true
-                })(pathname);
-            }
-
-            return decodeURI(pathname) === link;
-        }
-    };
-
-    /**
      * AMIS实例配置
      */
     let amisOptions = {
@@ -197,16 +128,8 @@
      */
     const amisHandlers = {
         updateLocation: (location, replace) => {
-            location = routerUtils.normalizeLink(location);
             if (location === 'goBack') {
                 return history.goBack();
-            } else if (
-                (!/^https?\:\/\//.test(location) &&
-                    location ===
-                    history.location.pathname + history.location.search) ||
-                location === history.location.href
-            ) {
-                return;
             } else if (/^https?\:\/\//.test(location) || !history) {
                 return (window.location.href = location);
             }
@@ -217,12 +140,6 @@
         jumpTo: (to, action) => {
             if (to === 'goBack') {
                 return history.goBack();
-            }
-
-            to = routerUtils.normalizeLink(to);
-
-            if (routerUtils.isCurrentUrl(to)) {
-                return;
             }
 
             // 特殊路径处理
@@ -243,18 +160,29 @@
 
             if (/^https?:\/\//.test(to)) {
                 window.location.href = to;
-            } else if (
-                (!/^https?\:\/\//.test(to) &&
-                    to === history.pathname + history.location.search) ||
-                to === history.location.href
-            ) {
-                // do nothing
             } else {
                 history.push(to);
             }
         },
         
-        isCurrentUrl: (to, ctx) => routerUtils.isCurrentUrl(to, ctx),
+        isCurrentUrl: (to, ctx) => {
+            if (!to) {
+                return false;
+            }
+
+            const pathname = history.location.pathname;
+            const link = to;
+
+            if (!~link.indexOf('http') && ~link.indexOf(':')) {
+                let strict = ctx && ctx.strict;
+                return match(link, {
+                    decode: decodeURIComponent,
+                    strict: typeof strict !== 'undefined' ? strict : true
+                })(pathname);
+            }
+
+            return decodeURI(pathname) === link;
+        },
         
         requestAdaptor: (api) => {
             const token = localStorage.getItem('token');

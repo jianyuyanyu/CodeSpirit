@@ -1,3 +1,12 @@
+/* 基础样式 */
+html, body, .app-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
 /* 租户后台管理样式 - 现代化主题 */
 :root {
     /* 主题色彩系统 */

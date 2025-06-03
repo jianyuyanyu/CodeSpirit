@@ -9,7 +9,7 @@ namespace CodeSpirit.ExamApi.Controllers.Dashboard;
 /// 监考大屏控制器
 /// </summary>
 [DisplayName("监考大屏")]
-//[Navigation(Icon = "fa-solid fa-desktop")]
+[Navigation(Icon = "fa-solid fa-desktop", Hidden = true)]
 public class MonitorController : ApiControllerBase
 {
     private readonly IMonitorService _monitorService;
@@ -108,4 +108,4 @@ public class MonitorController : ApiControllerBase
             return BadRequest(new ApiResponse(-1, ex.Message));
         }
     }
-} 
+}

@@ -1,0 +1,507 @@
+/**
+ * CodeSpirit 租户后台主题样式
+ * 基于 Amis CSS 变量系统的深色优雅主题
+ * 
+ * @version 1.0.0
+ * @description 现代化深色优雅主题，结合紫色渐变和玻璃态效果
+ * @author CodeSpirit Team
+ */
+
+/* ===== Amis Antd 主题变量重写 ===== */
+:root {
+    /* ===== 核心色彩系统 ===== */
+    /* 基于 Amis antd 主题的主要颜色变量 */
+    --antd-primary: #6366f1;
+    --antd-primary-1: #eef2ff;
+    --antd-primary-2: #e0e7ff;
+    --antd-primary-3: #c7d2fe;
+    --antd-primary-4: #a5b4fc;
+    --antd-primary-5: #8b5cf6;
+    --antd-primary-6: #6366f1;
+    --antd-primary-7: #4f46e5;
+    --antd-primary-8: #4338ca;
+    --antd-primary-9: #3730a3;
+    --antd-primary-10: #312e81;
+    
+    /* 成功色系 - 翠绿色调 */
+    --antd-success: #10b981;
+    --antd-success-1: #ecfdf5;
+    --antd-success-2: #d1fae5;
+    --antd-success-3: #a7f3d0;
+    --antd-success-4: #6ee7b7;
+    --antd-success-5: #34d399;
+    --antd-success-6: #10b981;
+    --antd-success-7: #059669;
+    --antd-success-8: #047857;
+    --antd-success-9: #065f46;
+    --antd-success-10: #064e3b;
+    
+    /* 警告色系 - 琥珀色调 */
+    --antd-warning: #f59e0b;
+    --antd-warning-1: #fffbeb;
+    --antd-warning-2: #fef3c7;
+    --antd-warning-3: #fde68a;
+    --antd-warning-4: #fcd34d;
+    --antd-warning-5: #fbbf24;
+    --antd-warning-6: #f59e0b;
+    --antd-warning-7: #d97706;
+    --antd-warning-8: #b45309;
+    --antd-warning-9: #92400e;
+    --antd-warning-10: #78350f;
+    
+    /* 危险色系 - 红色调 */
+    --antd-error: #ef4444;
+    --antd-error-1: #fef2f2;
+    --antd-error-2: #fecaca;
+    --antd-error-3: #fca5a5;
+    --antd-error-4: #f87171;
+    --antd-error-5: #ef4444;
+    --antd-error-6: #dc2626;
+    --antd-error-7: #b91c1c;
+    --antd-error-8: #991b1b;
+    --antd-error-9: #7f1d1d;
+    --antd-error-10: #7f1d1d;
+    
+    /* 信息色系 - 青色调 */
+    --antd-info: #06b6d4;
+    --antd-info-1: #ecfeff;
+    --antd-info-2: #cffafe;
+    --antd-info-3: #a5f3fc;
+    --antd-info-4: #67e8f9;
+    --antd-info-5: #22d3ee;
+    --antd-info-6: #06b6d4;
+    --antd-info-7: #0891b2;
+    --antd-info-8: #0e7490;
+    --antd-info-9: #155e75;
+    --antd-info-10: #164e63;
+    
+    /* ===== 灰度色阶系统 ===== */
+    --antd-gray-1: #fafafa;
+    --antd-gray-2: #f5f5f5;
+    --antd-gray-3: #f0f0f0;
+    --antd-gray-4: #d9d9d9;
+    --antd-gray-5: #bfbfbf;
+    --antd-gray-6: #8c8c8c;
+    --antd-gray-7: #595959;
+    --antd-gray-8: #434343;
+    --antd-gray-9: #262626;
+    --antd-gray-10: #1f1f1f;
+    --antd-gray-11: #141414;
+    --antd-gray-12: #000000;
+    
+    /* ===== 深色系统色阶 ===== */
+    --antd-dark-1: #141414;
+    --antd-dark-2: #1f1f1f;
+    --antd-dark-3: #262626;
+    --antd-dark-4: #434343;
+    --antd-dark-5: #595959;
+    --antd-dark-6: #8c8c8c;
+    --antd-dark-7: #bfbfbf;
+    --antd-dark-8: #d9d9d9;
+    --antd-dark-9: #f0f0f0;
+    --antd-dark-10: #f5f5f5;
+    --antd-dark-11: #fafafa;
+    --antd-dark-12: #ffffff;
+    
+    /* ===== 背景色系统 ===== */
+    --antd-background-color: #f8fafc;
+    --antd-background-color-light: #ffffff;
+    --antd-background-color-base: #fafbfc;
+    --antd-background-color-dark: #f1f5f9;
+    
+    /* ===== 组件背景色 ===== */
+    --antd-component-background: #ffffff;
+    --antd-layout-body-background: #f8fafc;
+    --antd-layout-header-background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    --antd-layout-sider-background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    --antd-layout-trigger-background: #334155;
+    
+    /* ===== 文本色彩系统 ===== */
+    --antd-text-color: #1f2937;
+    --antd-text-color-secondary: #6b7280;
+    --antd-text-color-light: #9ca3af;
+    --antd-text-color-dark: #111827;
+    --antd-text-color-inverse: #ffffff;
+    
+    /* ===== 标题色彩 ===== */
+    --antd-heading-color: #111827;
+    --antd-heading-color-dark: #1f2937;
+    
+    /* ===== 链接色彩 ===== */
+    --antd-link-color: var(--antd-primary);
+    --antd-link-hover-color: var(--antd-primary-5);
+    --antd-link-active-color: var(--antd-primary-7);
+    
+    /* ===== 边框和分割线 ===== */
+    --antd-border-color-base: #e5e7eb;
+    --antd-border-color-light: #f3f4f6;
+    --antd-border-color-dark: #d1d5db;
+    --antd-border-color-split: #f9fafb;
+    --antd-border-width-base: 1px;
+    --antd-border-style-base: solid;
+    --antd-border-radius-base: 8px;
+    --antd-border-radius-sm: 4px;
+    --antd-border-radius-lg: 12px;
+    
+    /* ===== 阴影系统 ===== */
+    --antd-box-shadow-base: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    --antd-box-shadow-card: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --antd-box-shadow-elevated: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    --antd-box-shadow-drawer: 0 20px 25px rgba(0, 0, 0, 0.1), 0 8px 10px rgba(0, 0, 0, 0.04);
+    
+    /* ===== 深色导航系统 ===== */
+    --antd-layout-sider-background-light: rgba(255, 255, 255, 0.08);
+    --antd-menu-dark-bg: transparent;
+    --antd-menu-dark-submenu-bg: rgba(0, 0, 0, 0.3);
+    --antd-menu-dark-color: #f1f5f9;
+    --antd-menu-dark-highlight-color: #ffffff;
+    --antd-menu-dark-arrow-color: #94a3b8;
+    --antd-menu-dark-item-active-bg: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+    --antd-menu-dark-selected-item-icon-color: #ffffff;
+    --antd-menu-dark-selected-item-text-color: #ffffff;
+    
+    /* ===== 渐变色系统 ===== */
+    --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+    --gradient-secondary: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+    --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    --gradient-error: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    --gradient-dark: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    --gradient-overlay: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    
+    /* ===== 玻璃态效果 ===== */
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-hover-bg: rgba(255, 255, 255, 0.12);
+    --glass-active-bg: rgba(255, 255, 255, 0.16);
+    
+    /* ===== 动画和过渡 ===== */
+    --antd-animation-duration-slow: 0.6s;
+    --antd-animation-duration-base: 0.3s;
+    --antd-animation-duration-fast: 0.2s;
+    --antd-ease-base-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --antd-ease-base-in: cubic-bezier(0.4, 0, 1, 1);
+    --antd-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --antd-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --antd-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --antd-ease-out-back: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --antd-ease-in-back: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --antd-ease-in-out-back: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    /* ===== 尺寸系统 ===== */
+    --antd-height-base: 40px;
+    --antd-height-lg: 48px;
+    --antd-height-sm: 32px;
+    --antd-padding-base: 12px 16px;
+    --antd-padding-lg: 16px 24px;
+    --antd-padding-sm: 8px 12px;
+    --antd-margin-base: 16px;
+    --antd-margin-lg: 24px;
+    --antd-margin-sm: 8px;
+    
+    /* ===== 字体系统 ===== */
+    --antd-font-size-base: 14px;
+    --antd-font-size-lg: 16px;
+    --antd-font-size-sm: 12px;
+    --antd-font-size-xl: 20px;
+    --antd-font-size-xxl: 24px;
+    --antd-line-height-base: 1.5715;
+    --antd-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --antd-font-family-code: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    --antd-font-weight-normal: 400;
+    --antd-font-weight-medium: 500;
+    --antd-font-weight-semibold: 600;
+    --antd-font-weight-bold: 700;
+    
+    /* ===== 特殊效果 ===== */
+    --glow-primary: 0 0 30px rgba(99, 102, 241, 0.4);
+    --glow-primary-active: 0 0 40px rgba(99, 102, 241, 0.6);
+    --glow-success: 0 0 20px rgba(16, 185, 129, 0.4);
+    --glow-warning: 0 0 20px rgba(245, 158, 11, 0.4);
+    --glow-error: 0 0 20px rgba(239, 68, 68, 0.4);
+    
+    /* ===== 响应式断点 ===== */
+    --screen-xs: 480px;
+    --screen-sm: 768px;
+    --screen-md: 992px;
+    --screen-lg: 1200px;
+    --screen-xl: 1600px;
+    --screen-xxl: 1920px;
+}
+
+/* ===== 深色主题变量 ===== */
+:root[data-theme="dark"] {
+    /* 重写深色主题下的变量 */
+    --antd-background-color: #0f172a;
+    --antd-background-color-light: #1e293b;
+    --antd-background-color-base: #334155;
+    --antd-background-color-dark: #020617;
+    
+    --antd-component-background: #1e293b;
+    --antd-layout-body-background: #0f172a;
+    
+    --antd-text-color: #f1f5f9;
+    --antd-text-color-secondary: #94a3b8;
+    --antd-text-color-light: #64748b;
+    --antd-text-color-dark: #ffffff;
+    
+    --antd-heading-color: #ffffff;
+    --antd-heading-color-dark: #f1f5f9;
+    
+    --antd-border-color-base: #334155;
+    --antd-border-color-light: #475569;
+    --antd-border-color-dark: #1e293b;
+    --antd-border-color-split: #0f172a;
+    
+    /* 深色下的玻璃态效果 */
+    --glass-bg: rgba(0, 0, 0, 0.3);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-hover-bg: rgba(255, 255, 255, 0.08);
+    --glass-active-bg: rgba(255, 255, 255, 0.12);
+}
+
+/* ===== 全局基础样式 ===== */
+.tenant-admin-wrapper {
+    /* 使用 Amis 变量系统 */
+    background: var(--antd-layout-body-background);
+    color: var(--antd-text-color);
+    font-family: var(--antd-font-family);
+    font-size: var(--antd-font-size-base);
+    line-height: var(--antd-line-height-base);
+    min-height: 100vh;
+    transition: all var(--antd-animation-duration-base) var(--antd-ease-base-out);
+}
+
+/* ===== 滚动条美化 ===== */
+.tenant-admin-wrapper ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.tenant-admin-wrapper ::-webkit-scrollbar-track {
+    background: var(--antd-gray-2);
+    border-radius: var(--antd-border-radius-sm);
+}
+
+.tenant-admin-wrapper ::-webkit-scrollbar-thumb {
+    background: var(--gradient-primary);
+    border-radius: var(--antd-border-radius-sm);
+    border: 1px solid var(--glass-border);
+    transition: all var(--antd-animation-duration-fast) var(--antd-ease-base-out);
+}
+
+.tenant-admin-wrapper ::-webkit-scrollbar-thumb:hover {
+    background: var(--gradient-secondary);
+    box-shadow: var(--glow-primary);
+}
+
+/* ===== 选中文本样式 ===== */
+.tenant-admin-wrapper ::selection {
+    background: var(--antd-primary-3);
+    color: var(--antd-primary-10);
+}
+
+.tenant-admin-wrapper ::-moz-selection {
+    background: var(--antd-primary-3);
+    color: var(--antd-primary-10);
+}
+
+/* ===== 焦点样式增强 ===== */
+.tenant-admin-wrapper *:focus {
+    outline: 2px solid var(--antd-primary);
+    outline-offset: 2px;
+    border-radius: var(--antd-border-radius-sm);
+}
+
+.tenant-admin-wrapper *:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ===== 打印样式 ===== */
+@media print {
+    .tenant-admin-wrapper {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .tenant-admin-wrapper * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        background: transparent !important;
+    }
+}
+
+/* ===== 高对比度支持 ===== */
+@media (prefers-contrast: high) {
+    .tenant-admin-wrapper {
+        --antd-border-width-base: 2px;
+    }
+    
+    .tenant-admin-wrapper .antd-AsideNav-item {
+        border: 2px solid var(--antd-border-color-dark) !important;
+    }
+    
+    .tenant-admin-wrapper .antd-AsideNav-item.is-active {
+        border-color: var(--antd-primary) !important;
+        outline: 2px solid var(--antd-primary) !important;
+    }
+}
+
+/* ===== 减少动画支持 ===== */
+@media (prefers-reduced-motion: reduce) {
+    .tenant-admin-wrapper * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ===== 强制颜色模式支持 ===== */
+@media (forced-colors: active) {
+    .tenant-admin-wrapper {
+        background: Canvas !important;
+        color: CanvasText !important;
+    }
+    
+    .tenant-admin-wrapper .antd-AsideNav-item {
+        border: 1px solid ButtonBorder !important;
+        background: ButtonFace !important;
+        color: ButtonText !important;
+    }
+    
+    .tenant-admin-wrapper .antd-AsideNav-item.is-active {
+        background: Highlight !important;
+        color: HighlightText !important;
+        border-color: Highlight !important;
+    }
+}
+
+/* ===== 实用工具类 ===== */
+.tenant-admin-wrapper .glass-effect {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.tenant-admin-wrapper .gradient-primary {
+    background: var(--gradient-primary);
+}
+
+.tenant-admin-wrapper .gradient-secondary {
+    background: var(--gradient-secondary);
+}
+
+.tenant-admin-wrapper .glow-effect {
+    box-shadow: var(--glow-primary);
+}
+
+.tenant-admin-wrapper .glow-effect:hover {
+    box-shadow: var(--glow-primary-active);
+}
+
+.tenant-admin-wrapper .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
+/* ===== 布局增强 ===== */
+.tenant-admin-wrapper .flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tenant-admin-wrapper .flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tenant-admin-wrapper .full-height {
+    height: 100vh;
+}
+
+.tenant-admin-wrapper .smooth-transition {
+    transition: all var(--antd-animation-duration-base) var(--antd-ease-base-out);
+}
+
+/* ===== 响应式网格系统 ===== */
+.tenant-admin-wrapper .grid {
+    display: grid;
+    gap: var(--antd-margin-base);
+}
+
+.tenant-admin-wrapper .grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
+.tenant-admin-wrapper .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+.tenant-admin-wrapper .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+.tenant-admin-wrapper .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 768px) {
+    .tenant-admin-wrapper .grid-cols-2,
+    .tenant-admin-wrapper .grid-cols-3,
+    .tenant-admin-wrapper .grid-cols-4 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== 间距工具类 ===== */
+.tenant-admin-wrapper .m-0 { margin: 0; }
+.tenant-admin-wrapper .m-1 { margin: var(--antd-margin-sm); }
+.tenant-admin-wrapper .m-2 { margin: var(--antd-margin-base); }
+.tenant-admin-wrapper .m-3 { margin: var(--antd-margin-lg); }
+
+.tenant-admin-wrapper .p-0 { padding: 0; }
+.tenant-admin-wrapper .p-1 { padding: var(--antd-margin-sm); }
+.tenant-admin-wrapper .p-2 { padding: var(--antd-margin-base); }
+.tenant-admin-wrapper .p-3 { padding: var(--antd-margin-lg); }
+
+/* ===== 文本工具类 ===== */
+.tenant-admin-wrapper .text-primary { color: var(--antd-primary); }
+.tenant-admin-wrapper .text-success { color: var(--antd-success); }
+.tenant-admin-wrapper .text-warning { color: var(--antd-warning); }
+.tenant-admin-wrapper .text-error { color: var(--antd-error); }
+.tenant-admin-wrapper .text-info { color: var(--antd-info); }
+
+.tenant-admin-wrapper .text-xs { font-size: 12px; }
+.tenant-admin-wrapper .text-sm { font-size: var(--antd-font-size-sm); }
+.tenant-admin-wrapper .text-base { font-size: var(--antd-font-size-base); }
+.tenant-admin-wrapper .text-lg { font-size: var(--antd-font-size-lg); }
+.tenant-admin-wrapper .text-xl { font-size: var(--antd-font-size-xl); }
+
+.tenant-admin-wrapper .font-normal { font-weight: var(--antd-font-weight-normal); }
+.tenant-admin-wrapper .font-medium { font-weight: var(--antd-font-weight-medium); }
+.tenant-admin-wrapper .font-semibold { font-weight: var(--antd-font-weight-semibold); }
+.tenant-admin-wrapper .font-bold { font-weight: var(--antd-font-weight-bold); }
+
+/* ===== 主题切换动画 ===== */
+.tenant-admin-wrapper.theme-transition * {
+    transition: background-color var(--antd-animation-duration-base) var(--antd-ease-base-out),
+                border-color var(--antd-animation-duration-base) var(--antd-ease-base-out),
+                color var(--antd-animation-duration-base) var(--antd-ease-base-out),
+                box-shadow var(--antd-animation-duration-base) var(--antd-ease-base-out);
+}
+
+/* ===== DEBUG 模式样式 ===== */
+.tenant-admin-wrapper[data-debug="true"] {
+    position: relative;
+}
+
+.tenant-admin-wrapper[data-debug="true"]::after {
+    content: 'DEBUG MODE';
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: var(--antd-error);
+    color: white;
+    padding: 4px 8px;
+    border-radius: var(--antd-border-radius-sm);
+    font-size: 10px;
+    font-weight: var(--antd-font-weight-bold);
+    z-index: 9999;
+    pointer-events: none;
+} 

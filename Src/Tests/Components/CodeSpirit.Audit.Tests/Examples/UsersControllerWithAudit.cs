@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 
-namespace CodeSpirit.Audit.Examples;
+namespace CodeSpirit.Audit.Tests.Examples;
 
 /// <summary>
 /// 用户管理控制器审计使用示例
@@ -209,7 +209,7 @@ public class UsersControllerWithAudit : ControllerBase
     {
         // 模拟业务逻辑
         await Task.Delay(100);
-        return Ok(new { Success = true, Message = "批量删除成功", Count = request.Ids.Count });
+        return Ok(new { Success = true, Message = "批量删除成功", request.Ids.Count });
     }
 }
 

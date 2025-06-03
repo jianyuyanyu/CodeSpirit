@@ -691,20 +691,68 @@
     }
 }
 
-/* 暗色主题支持 */
+/* 现代化深色主题 */
 @media (prefers-color-scheme: dark) {
-    :root {
-        --tenant-bg-color: #0f172a;
-        --tenant-sidebar-bg: #1e293b;
-        --tenant-header-bg: #1e293b;
-        --tenant-surface-bg: #1e293b;
-        
-        --tenant-text-primary: #f8fafc;
-        --tenant-text-secondary: #cbd5e1;
-        --tenant-text-tertiary: #94a3b8;
-        
-        --tenant-border-color: #334155;
-        --tenant-border-light: #475569;
+    .tenant-preloader {
+        background: radial-gradient(ellipse at center, 
+            rgba(15, 23, 42, 0.94) 0%, 
+            rgba(2, 6, 23, 0.97) 35%, 
+            rgba(0, 0, 0, 1) 100%);
+    }
+    
+    .tenant-preloader::before {
+        background: conic-gradient(
+            transparent,
+            rgba(99, 102, 241, 0.06),
+            transparent,
+            rgba(139, 92, 246, 0.04),
+            transparent
+        );
+    }
+    
+    .preloader-content {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(99, 102, 241, 0.2);
+        box-shadow: 
+            0 32px 64px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(148, 163, 184, 0.1);
+    }
+    
+    .logo-placeholder {
+        background: linear-gradient(135deg, 
+            rgba(99, 102, 241, 0.15) 0%, 
+            rgba(139, 92, 246, 0.1) 100%);
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 
+            0 8px 32px rgba(99, 102, 241, 0.2),
+            inset 0 1px 0 rgba(148, 163, 184, 0.1);
+    }
+    
+    .logo-placeholder i {
+        color: #a5b4fc;
+        filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.3));
+    }
+    
+    .loading-title {
+        color: white;
+        background: linear-gradient(135deg, 
+            rgba(255, 255, 255, 1) 0%, 
+            rgba(203, 213, 225, 0.9) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .progress-text {
+        color: #cbd5e1;
+    }
+    
+    .progress-percent {
+        color: #a5b4fc;
+    }
+    
+    .loading-tips .tip {
+        color: #94a3b8;
     }
 }
 
@@ -760,4 +808,454 @@
     background: rgba(25, 118, 210, 0.05) !important;
     border-color: var(--tenant-primary-color) !important;
     color: var(--tenant-primary-color) !important;
+}
+
+/* ===== 租户预加载器样式 - 现代化设计 v2.0 ===== */
+.tenant-preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, 
+        rgba(248, 250, 252, 0.95) 0%, 
+        rgba(241, 245, 249, 0.97) 35%, 
+        rgba(226, 232, 240, 1) 100%);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+}
+
+.tenant-preloader::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(
+        transparent,
+        rgba(99, 102, 241, 0.08),
+        transparent,
+        rgba(139, 92, 246, 0.06),
+        transparent
+    );
+    animation: rotateBackground 25s linear infinite;
+    opacity: 0.6;
+}
+
+@keyframes rotateBackground {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.tenant-preloader.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.tenant-preloader.fade-out {
+    opacity: 0;
+    transform: scale(1.05);
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.preloader-container {
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.preloader-content {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(30px);
+    border-radius: 24px;
+    padding: 48px 36px;
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    box-shadow: 
+        0 32px 64px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    position: relative;
+    overflow: hidden;
+    transform: perspective(1000px) rotateX(2deg);
+    transition: transform 0.3s ease;
+}
+
+.preloader-content:hover {
+    transform: perspective(1000px) rotateX(0deg) translateY(-2px);
+}
+
+.preloader-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(99, 102, 241, 0.08), 
+        transparent);
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* 现代化Logo区域 */
+.tenant-logo-loading {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 32px;
+}
+
+.logo-placeholder {
+    width: 96px;
+    height: 96px;
+    background: linear-gradient(135deg, 
+        rgba(99, 102, 241, 0.1) 0%, 
+        rgba(139, 92, 246, 0.08) 100%);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    position: relative;
+    z-index: 3;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    box-shadow: 
+        0 8px 32px rgba(99, 102, 241, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    animation: logoFloat 4s ease-in-out infinite;
+    overflow: hidden;
+}
+
+.logo-placeholder::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(
+        transparent,
+        rgba(99, 102, 241, 0.1),
+        transparent
+    );
+    animation: logoRotate 8s linear infinite;
+}
+
+@keyframes logoRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.logo-placeholder i {
+    font-size: 36px;
+    color: #6366f1;
+    text-shadow: 0 2px 20px rgba(99, 102, 241, 0.3);
+    z-index: 2;
+    position: relative;
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.2));
+}
+
+@keyframes logoFloat {
+    0%, 100% { 
+        transform: translateY(0px) scale(1);
+        filter: drop-shadow(0 8px 16px rgba(99, 102, 241, 0.1));
+    }
+    50% { 
+        transform: translateY(-12px) scale(1.02);
+        filter: drop-shadow(0 16px 32px rgba(99, 102, 241, 0.15));
+    }
+}
+
+.loading-spinner {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    border: 3px solid transparent;
+    border-top: 3px solid rgba(99, 102, 241, 0.6);
+    border-right: 3px solid rgba(139, 92, 246, 0.4);
+    border-bottom: 3px solid rgba(99, 102, 241, 0.2);
+    border-radius: 24px;
+    animation: modernSpin 2s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.2));
+}
+
+@keyframes modernSpin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.05); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* 现代化标题 */
+.loading-title {
+    color: #1e293b;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 36px 0;
+    text-shadow: 0 4px 20px rgba(99, 102, 241, 0.1);
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    background: linear-gradient(135deg, 
+        #1e293b 0%, 
+        #475569 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* 现代化进度系统 */
+.progress-container {
+    margin-bottom: 32px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    position: relative;
+    box-shadow: inset 0 2px 4px rgba(99, 102, 241, 0.05);
+}
+
+.progress-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        rgba(99, 102, 241, 0.05), 
+        rgba(139, 92, 246, 0.1), 
+        rgba(99, 102, 241, 0.05));
+    animation: progressShimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes progressShimmer {
+    0%, 100% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, 
+        #6366f1 0%, 
+        #8b5cf6 50%, 
+        #6366f1 100%);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    box-shadow: 
+        0 0 16px rgba(99, 102, 241, 0.3),
+        0 2px 8px rgba(99, 102, 241, 0.1);
+    overflow: hidden;
+}
+
+.progress-fill::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.3) 50%, 
+        transparent 100%);
+    animation: progressFlow 2s linear infinite;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 24px;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 255, 255, 0.4),
+        rgba(255, 255, 255, 0.6));
+    animation: progressGlow 1.8s ease-in-out infinite;
+    border-radius: 0 4px 4px 0;
+}
+
+@keyframes progressFlow {
+    0%, 100% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+}
+
+@keyframes progressGlow {
+    0%, 100% { 
+        opacity: 0.7; 
+        transform: scaleX(1);
+    }
+    50% { 
+        opacity: 1; 
+        transform: scaleX(1.2);
+    }
+}
+
+/* 现代化文本样式 */
+.progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #475569;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.progress-stage {
+    text-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    opacity: 0.95;
+    transition: all 0.3s ease;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+}
+
+.progress-percent {
+    font-weight: 700;
+    text-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    font-family: 'Monaco', 'Consolas', 'SF Mono', monospace;
+    font-size: 16px;
+    color: #6366f1;
+}
+
+/* 现代化提示区域 */
+.loading-tips {
+    position: relative;
+    min-height: 28px;
+}
+
+.loading-tips .tip {
+    color: #64748b;
+    font-size: 15px;
+    font-weight: 400;
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    text-shadow: 0 2px 8px rgba(99, 102, 241, 0.05);
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    letter-spacing: 0.2px;
+    line-height: 1.4;
+}
+
+.loading-tips .tip.active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* 现代化响应式设计 */
+@media (max-width: 768px) {
+    .preloader-content {
+        padding: 36px 24px;
+        margin: 0 20px;
+        border-radius: 20px;
+    }
+    
+    .logo-placeholder {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+    }
+    
+    .logo-placeholder i {
+        font-size: 28px;
+    }
+    
+    .loading-title {
+        font-size: 24px;
+        margin-bottom: 28px;
+    }
+    
+    .progress-text {
+        font-size: 14px;
+    }
+    
+    .loading-tips .tip {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .preloader-content {
+        padding: 28px 20px;
+        border-radius: 16px;
+    }
+    
+    .logo-placeholder {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .logo-placeholder i {
+        font-size: 24px;
+    }
+    
+    .loading-title {
+        font-size: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .progress-container {
+        margin-bottom: 24px;
+    }
+    
+    .progress-bar {
+        height: 6px;
+        margin-bottom: 12px;
+    }
+}
+
+/* 高性能动画优化 */
+@media (prefers-reduced-motion: reduce) {
+    .tenant-preloader,
+    .preloader-content,
+    .logo-placeholder,
+    .loading-spinner,
+    .progress-fill,
+    .loading-tips .tip,
+    .tenant-preloader::before,
+    .logo-placeholder::before {
+        animation: none !important;
+        transition: opacity 0.3s ease !important;
+    }
+    
+    .tenant-preloader.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .tenant-preloader.fade-out {
+        opacity: 0;
+    }
+    
+    .loading-tips .tip.active {
+        opacity: 1;
+        transform: none;
+    }
 } 

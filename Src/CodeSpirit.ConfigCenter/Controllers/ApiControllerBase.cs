@@ -11,6 +11,7 @@ namespace CodeSpirit.ConfigCenter.Controllers
     [Route("api/config/[controller]")]
     [Module("config", "配置中心", Icon = "fa-solid fa-sliders")]
     [Navigation(Icon = "fa-solid fa-sliders", PlatformType = PlatformType.System)]
+    [Platform(PlatformType.System)]
     public abstract class ApiControllerBase : AmisApiControllerBase
     {
         /// <summary>

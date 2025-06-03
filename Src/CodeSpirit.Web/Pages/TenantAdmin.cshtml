@@ -7,58 +7,24 @@
 @section Head
 {
     <style>
-        /* 租户后台主题变量 */
         :root {
             --tenant-primary-color: #1976d2;
-            --tenant-secondary-color: #424242;
-            --tenant-bg-color: #fafafa;
-            --tenant-sidebar-bg: #ffffff;
-            --tenant-header-bg: #ffffff;
         }
-        
-        /* 隐藏系统级别的导航元素 */
-        .system-only {
-            display: none !important;
-        }
-        
-        /* 租户特定样式 */
-        .tenant-admin-wrapper {
-            background-color: var(--tenant-bg-color);
-        }
-        
-        /* 租户Logo区域 */
-        .tenant-brand {
-            display: flex;
-            align-items: center;
-            padding: 10px 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .tenant-logo {
-            width: 32px;
-            height: 32px;
-            margin-right: 10px;
-            border-radius: 4px;
-        }
-        
-        .tenant-name {
-            font-weight: 500;
-            color: var(--tenant-primary-color);
-        }
+        .system-only { display: none !important; }
+        .tenant-admin-wrapper { background-color: #fafafa; }
     </style>
+    <resource path="css/tenant-admin-theme.css" type="css" />
     <resource path="css/tenant-admin.css" type="css" />
 }
 
 <div id="root" class="tenant-admin-wrapper"></div>
 
-@section Scripts 
+@section Scripts
 {
-    <!-- 全局变量 -->
     <script>
-        window.webHost = '@(HttpContext.Request.Scheme + "://" + HttpContext.Request.Host)';
-        window.tenantId = '@Model.TenantId';
-        window.platformType = 'tenant';
+        window.webHost = "@(HttpContext.Request.Scheme + "://" + HttpContext.Request.Host)";
+        window.tenantId = "@Model.TenantId";
+        window.platformType = "tenant";
     </script>
-    
     <resource path="js/tenant-admin.js" type="js" />
-} 
+}

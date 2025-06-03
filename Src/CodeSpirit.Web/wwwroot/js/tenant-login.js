@@ -185,14 +185,6 @@
                                         },
                                         "body": [
                                             {
-                                                "type": "alert",
-                                                "level": "info",
-                                                "body": `正在登录"${tenant.displayName || tenant.name}"的管理平台`,
-                                                "className": "mb-3 tenant-info-alert",
-                                                "showIcon": true,
-                                                "icon": "fa fa-info-circle"
-                                            },
-                                            {
                                                 "type": "hidden",
                                                 "name": "tenantId",
                                                 "value": tenant.tenantId
@@ -206,7 +198,6 @@
                                                 "className": "tenant-input-field",
                                                 "prefixIcon": "fa fa-user",
                                                 "clearable": true,
-                                                "description": "请使用本租户下的用户账号",
                                                 "validationApi": "",
                                                 "validations": {
                                                     "minLength": 2,
@@ -353,7 +344,6 @@
                          loading="lazy" />
                 </div>
                 <h1 class="tenant-title">${displayName}</h1>
-                ${description ? `<p class="tenant-description">${description}</p>` : ''}
                 <div class="login-welcome">
                     <h3>🔐 安全登录</h3>
                     <p>请使用您的账户凭据安全登录系统</p>

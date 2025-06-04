@@ -66,23 +66,62 @@ namespace CodeSpirit.Navigation
                     return allModuleNodes;
                 }
 
+                // 根据查询的平台类型确定需要查询的缓存键列表
+                var cacheKeysToQuery = new List<(string moduleName, PlatformType platform)>();
+                
                 foreach (var moduleName in moduleNames)
+                {
+                    switch (platformType)
+                    {
+                        case PlatformType.Both:
+                            // 查询Both时，从所有平台缓存中聚合结果
+                            cacheKeysToQuery.Add((moduleName, PlatformType.System));
+                            cacheKeysToQuery.Add((moduleName, PlatformType.Tenant));
+                            cacheKeysToQuery.Add((moduleName, PlatformType.Both));
+                            break;
+                        case PlatformType.System:
+                        case PlatformType.Tenant:
+                        case PlatformType.None:
+                        default:
+                            // 查询特定平台时，只查询对应的缓存
+                            cacheKeysToQuery.Add((moduleName, platformType));
+                            break;
+                    }
+                }
+
+                // 并发查询所有缓存键
+                var queryTasks = cacheKeysToQuery.Select(async item =>
                 {
                     try
                     {
-                        var cacheKey = GetModuleCacheKey(moduleName, platformType);
+                        var cacheKey = GetModuleCacheKey(item.moduleName, item.platform);
                         var moduleNodes = await _cache.GetAsync<List<NavigationNode>>(cacheKey);
-                        if (moduleNodes != null)
-                        {
-                            allModuleNodes.AddRange(moduleNodes);
-                        }
+                        return moduleNodes ?? new List<NavigationNode>();
                     }
                     catch (Exception ex)
                     {
-                        // 优雅处理单个模块缓存异常，记录错误并继续处理下一个模块
-                        _logger.LogError(ex, $"Failed to retrieve navigation for module '{moduleName}' on platform '{platformType}'. This module will be skipped.");
+                        _logger.LogError(ex, $"Failed to retrieve navigation for module '{item.moduleName}' on platform '{item.platform}'. This module will be skipped.");
+                        return new List<NavigationNode>();
+                    }
+                });
+
+                var allResults = await Task.WhenAll(queryTasks);
+                
+                // 合并所有结果，去重（同一个模块可能从多个缓存中获取到）
+                var moduleDict = new Dictionary<string, NavigationNode>();
+                foreach (var moduleNodes in allResults)
+                {
+                    foreach (var node in moduleNodes)
+                    {
+                        // 使用模块名作为键，避免重复
+                        if (!moduleDict.ContainsKey(node.Name))
+                        {
+                            moduleDict[node.Name] = node;
+                        }
                     }
                 }
+                
+                allModuleNodes.AddRange(moduleDict.Values);
             }
             catch (Exception ex)
             {

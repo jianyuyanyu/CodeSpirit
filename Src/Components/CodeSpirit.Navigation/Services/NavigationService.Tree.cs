@@ -80,32 +80,61 @@ namespace CodeSpirit.Navigation
             // 推断模块级别的平台类型：优先使用最具体的平台类型
             var inferredPlatformType = PlatformType.Both; // 默认为Both，支持所有平台
             
-            // 收集所有控制器的平台类型
-            var controllerPlatformTypes = controllers
-                .Select(c => c.Key.GetCustomAttribute<NavigationAttribute>()?.PlatformType)
-                .Where(pt => pt.HasValue && pt.Value != PlatformType.Inherit)
-                .Select(pt => pt.Value)
-                .Distinct()
-                .ToList();
+            // 收集所有控制器的平台类型，包括从基类继承的平台类型
+            var controllerPlatformTypes = new List<PlatformType>();
+            
+            foreach (var controller in controllers)
+            {
+                var navAttr = controller.Key.GetCustomAttribute<NavigationAttribute>();
+                var platformType = navAttr?.PlatformType ?? PlatformType.Inherit;
+                
+                // 如果控制器设置为继承，则查找基类的平台类型
+                if (platformType == PlatformType.Inherit)
+                {
+                    // 从控制器的基类层次结构中查找平台类型
+                    var baseType = controller.Key.BaseType;
+                    while (baseType != null && baseType != typeof(object))
+                    {
+                        var baseNavAttr = baseType.GetCustomAttribute<NavigationAttribute>();
+                        if (baseNavAttr != null && baseNavAttr.PlatformType != PlatformType.Inherit)
+                        {
+                            platformType = baseNavAttr.PlatformType;
+                            break;
+                        }
+                        baseType = baseType.BaseType;
+                    }
+                    
+                    // 如果仍然没有找到，使用默认值Both
+                    if (platformType == PlatformType.Inherit)
+                    {
+                        platformType = PlatformType.Both;
+                    }
+                }
+                
+                controllerPlatformTypes.Add(platformType);
+            }
 
             if (controllerPlatformTypes.Any())
             {
+                // 去重后的平台类型
+                var distinctPlatformTypes = controllerPlatformTypes.Distinct().ToList();
+                
                 // 如果所有控制器都是同一个平台类型，使用该平台类型
-                if (controllerPlatformTypes.Count == 1)
+                if (distinctPlatformTypes.Count == 1)
                 {
-                    inferredPlatformType = controllerPlatformTypes.First();
+                    inferredPlatformType = distinctPlatformTypes.First();
                 }
                 // 如果包含多种平台类型，使用 Both 表示支持多平台
-                else if (controllerPlatformTypes.Contains(PlatformType.System) && controllerPlatformTypes.Contains(PlatformType.Tenant))
+                else if (distinctPlatformTypes.Contains(PlatformType.System) && distinctPlatformTypes.Contains(PlatformType.Tenant))
                 {
                     inferredPlatformType = PlatformType.Both;
                 }
                 // 如果只有 System 或 Tenant 控制器（没有 Both），使用对应的平台类型
-                else if (controllerPlatformTypes.Contains(PlatformType.System) && !controllerPlatformTypes.Contains(PlatformType.Both))
+                else if (distinctPlatformTypes.Contains(PlatformType.System) && !distinctPlatformTypes.Contains(PlatformType.Both))
                 {
                     inferredPlatformType = PlatformType.System;
                 }
-                else if (controllerPlatformTypes.Contains(PlatformType.Tenant) && !controllerPlatformTypes.Contains(PlatformType.Both))
+                else if (distinctPlatformTypes.Contains(PlatformType.Tenant) && !distinctPlatformTypes.Contains(PlatformType.Both))
                 {
                     inferredPlatformType = PlatformType.Tenant;
                 }

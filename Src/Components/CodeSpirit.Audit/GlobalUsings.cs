@@ -10,6 +10,8 @@ global using Microsoft.AspNetCore.Mvc;
 global using CodeSpirit.Core;
 global using CodeSpirit.Core.Attributes;
 global using CodeSpirit.Shared;
+global using CodeSpirit.Shared.Services;
+global using CodeSpirit.MultiTenant.Abstractions;
 global using CodeSpirit.Audit.Models;
 global using CodeSpirit.Audit.Services;
 global using CodeSpirit.Audit.Services.Implementation;

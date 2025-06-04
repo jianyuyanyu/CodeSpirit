@@ -125,8 +125,8 @@ public class Program
             clientSettings.ServerCertificateValidationCallback((_, _, _, _) => true); // 禁用SSL验证
         });
 
-        // 添加审计组件配置
-        builder.Services.AddAuditServices(builder.Configuration.GetSection("Audit"));
+        // 添加审计组件配置 - 使用原始扩展方法避免冲突
+        AuditExtensions.AddAuditServices(builder.Services, builder.Configuration);
 
         //注册 AMIS 服务
         builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);

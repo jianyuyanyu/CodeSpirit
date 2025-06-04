@@ -26,6 +26,19 @@ public static class AuditQueryHelper
     }
     
     /// <summary>
+    /// 创建租户查询
+    /// </summary>
+    public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateTenantQuery(string tenantId)
+    {
+        return s => s.Query(q => q
+            .Term(t => t
+                .Field(f => f.TenantId)
+                .Value(tenantId)
+            )
+        );
+    }
+    
+    /// <summary>
     /// 创建操作类型查询
     /// </summary>
     public static Func<SearchRequestDescriptor<AuditLog>, SearchRequestDescriptor<AuditLog>> CreateOperationQuery(string operation)

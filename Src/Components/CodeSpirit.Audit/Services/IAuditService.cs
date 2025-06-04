@@ -33,8 +33,9 @@ public interface IAuditService
     /// </summary>
     /// <param name="startTime">开始时间</param>
     /// <param name="endTime">结束时间</param>
+    /// <param name="tenantId">租户ID（可选）</param>
     /// <returns>统计信息</returns>
-    Task<Dictionary<string, long>> GetOperationStatsAsync(DateTime startTime, DateTime endTime);
+    Task<Dictionary<string, long>> GetOperationStatsAsync(DateTime startTime, DateTime endTime, string? tenantId = null);
     
     /// <summary>
     /// 获取用户操作统计信息
@@ -42,8 +43,9 @@ public interface IAuditService
     /// <param name="startTime">开始时间</param>
     /// <param name="endTime">结束时间</param>
     /// <param name="topN">前N个用户</param>
+    /// <param name="tenantId">租户ID（可选）</param>
     /// <returns>用户统计信息</returns>
-    Task<Dictionary<string, long>> GetUserStatsAsync(DateTime startTime, DateTime endTime, int topN = 10);
+    Task<Dictionary<string, long>> GetUserStatsAsync(DateTime startTime, DateTime endTime, int topN = 10, string? tenantId = null);
     
     /// <summary>
     /// 根据时间获取操作趋势
@@ -51,6 +53,7 @@ public interface IAuditService
     /// <param name="startTime">开始时间</param>
     /// <param name="endTime">结束时间</param>
     /// <param name="interval">时间间隔(小时)</param>
+    /// <param name="tenantId">租户ID（可选）</param>
     /// <returns>操作趋势</returns>
-    Task<Dictionary<DateTime, long>> GetOperationTrendAsync(DateTime startTime, DateTime endTime, int interval = 24);
+    Task<Dictionary<DateTime, long>> GetOperationTrendAsync(DateTime startTime, DateTime endTime, int interval = 24, string? tenantId = null);
 }

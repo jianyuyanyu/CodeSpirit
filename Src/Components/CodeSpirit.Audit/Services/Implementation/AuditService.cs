@@ -146,6 +146,12 @@ public class AuditService : IAuditService
     {
         var queries = new List<Func<SearchRequestDescriptor<Models.AuditLog>, SearchRequestDescriptor<Models.AuditLog>>>();
         
+        // 租户ID查询
+        if (!string.IsNullOrEmpty(query.TenantId))
+        {
+            queries.Add(AuditQueryHelper.CreateTenantQuery(query.TenantId));
+        }
+        
         // 用户ID查询
         if (!string.IsNullOrEmpty(query.UserId))
         {
@@ -182,13 +188,17 @@ public class AuditService : IAuditService
     }
     
     /// <summary>
-    /// 获取操作统计
+    /// 获取操作统计信息
     /// </summary>
-    public async Task<Dictionary<string, long>> GetOperationStatsAsync(DateTime startTime, DateTime endTime)
+    /// <param name="startTime">开始时间</param>
+    /// <param name="endTime">结束时间</param>
+    /// <param name="tenantId">租户ID（可选）</param>
+    /// <returns>统计信息</returns>
+    public async Task<Dictionary<string, long>> GetOperationStatsAsync(DateTime startTime, DateTime endTime, string? tenantId = null)
     {
         try
         {
-            var aggregationFunc = CreateOperationStatsAggregation(startTime, endTime);
+            var aggregationFunc = CreateOperationStatsAggregation(startTime, endTime, tenantId);
             var result = await _elasticsearchService.AggregateAsync<Models.AuditLog>(aggregationFunc);
             
             if (result != null)
@@ -208,20 +218,48 @@ public class AuditService : IAuditService
     /// <summary>
     /// 创建操作统计聚合查询
     /// </summary>
-    private Func<SearchRequestDescriptor<Models.AuditLog>, SearchRequestDescriptor<Models.AuditLog>> CreateOperationStatsAggregation(DateTime startTime, DateTime endTime)
+    private Func<SearchRequestDescriptor<Models.AuditLog>, SearchRequestDescriptor<Models.AuditLog>> CreateOperationStatsAggregation(DateTime startTime, DateTime endTime, string? tenantId = null)
     {
-        return s => s
-            .Size(0) // 不返回具体文档，只返回聚合结果
-            .Query(q => q
-                .Range(r => r
-                    .DateRange(dr => dr
-                        .Field(f => f.OperationTime)
-                        .Gte(startTime)
-                        .Lte(endTime)
+        return s =>
+        {
+            var searchRequest = s.Size(0); // 不返回具体文档，只返回聚合结果
+            
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                searchRequest = searchRequest.Query(q => q
+                    .Bool(b => b
+                        .Must(m => m
+                            .Range(r => r
+                                .DateRange(dr => dr
+                                    .Field(f => f.OperationTime)
+                                    .Gte(startTime)
+                                    .Lte(endTime)
+                                )
+                            )
+                        )
+                        .Must(m => m
+                            .Term(t => t
+                                .Field(f => f.TenantId)
+                                .Value(tenantId)
+                            )
+                        )
                     )
-                )
-            )
-            .Aggregations(a => a
+                );
+            }
+            else
+            {
+                searchRequest = searchRequest.Query(q => q
+                    .Range(r => r
+                        .DateRange(dr => dr
+                            .Field(f => f.OperationTime)
+                            .Gte(startTime)
+                            .Lte(endTime)
+                        )
+                    )
+                );
+            }
+            
+            return searchRequest.Aggregations(a => a
                 .Add("operations", agg => agg
                     .Terms(t => t
                         .Field(f => f.OperationType)
@@ -229,6 +267,7 @@ public class AuditService : IAuditService
                     )
                 )
             );
+        };
     }
     
     /// <summary>
@@ -277,13 +316,18 @@ public class AuditService : IAuditService
     }
     
     /// <summary>
-    /// 获取用户统计
+    /// 获取用户操作统计信息
     /// </summary>
-    public async Task<Dictionary<string, long>> GetUserStatsAsync(DateTime startTime, DateTime endTime, int topN = 10)
+    /// <param name="startTime">开始时间</param>
+    /// <param name="endTime">结束时间</param>
+    /// <param name="topN">前N个用户</param>
+    /// <param name="tenantId">租户ID（可选）</param>
+    /// <returns>用户统计信息</returns>
+    public async Task<Dictionary<string, long>> GetUserStatsAsync(DateTime startTime, DateTime endTime, int topN = 10, string? tenantId = null)
     {
         try
         {
-            var aggregationFunc = CreateUserStatsAggregation(startTime, endTime, topN);
+            var aggregationFunc = CreateUserStatsAggregation(startTime, endTime, topN, tenantId);
             var result = await _elasticsearchService.AggregateAsync<Models.AuditLog>(aggregationFunc);
             
             if (result != null)
@@ -303,20 +347,48 @@ public class AuditService : IAuditService
     /// <summary>
     /// 创建用户统计聚合查询
     /// </summary>
-    private Func<SearchRequestDescriptor<Models.AuditLog>, SearchRequestDescriptor<Models.AuditLog>> CreateUserStatsAggregation(DateTime startTime, DateTime endTime, int topN)
+    private Func<SearchRequestDescriptor<Models.AuditLog>, SearchRequestDescriptor<Models.AuditLog>> CreateUserStatsAggregation(DateTime startTime, DateTime endTime, int topN, string? tenantId = null)
     {
-        return s => s
-            .Size(0)
-            .Query(q => q
-                .Range(r => r
-                    .DateRange(dr => dr
-                        .Field(f => f.OperationTime)
-                        .Gte(startTime)
-                        .Lte(endTime)
+        return s =>
+        {
+            var searchRequest = s.Size(0);
+            
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                searchRequest = searchRequest.Query(q => q
+                    .Bool(b => b
+                        .Must(m => m
+                            .Range(r => r
+                                .DateRange(dr => dr
+                                    .Field(f => f.OperationTime)
+                                    .Gte(startTime)
+                                    .Lte(endTime)
+                                )
+                            )
+                        )
+                        .Must(m => m
+                            .Term(t => t
+                                .Field(f => f.TenantId)
+                                .Value(tenantId)
+                            )
+                        )
                     )
-                )
-            )
-            .Aggregations(a => a
+                );
+            }
+            else
+            {
+                searchRequest = searchRequest.Query(q => q
+                    .Range(r => r
+                        .DateRange(dr => dr
+                            .Field(f => f.OperationTime)
+                            .Gte(startTime)
+                            .Lte(endTime)
+                        )
+                    )
+                );
+            }
+            
+            return searchRequest.Aggregations(a => a
                 .Add("users", agg => agg
                     .Terms(t => t
                         .Field(f => f.UserId)
@@ -324,6 +396,7 @@ public class AuditService : IAuditService
                     )
                 )
             );
+        };
     }
     
     /// <summary>
@@ -372,13 +445,18 @@ public class AuditService : IAuditService
     }
     
     /// <summary>
-    /// 获取操作趋势
+    /// 根据时间获取操作趋势
     /// </summary>
-    public async Task<Dictionary<DateTime, long>> GetOperationTrendAsync(DateTime startTime, DateTime endTime, int interval = 24)
+    /// <param name="startTime">开始时间</param>
+    /// <param name="endTime">结束时间</param>
+    /// <param name="interval">时间间隔(小时)</param>
+    /// <param name="tenantId">租户ID（可选）</param>
+    /// <returns>操作趋势</returns>
+    public async Task<Dictionary<DateTime, long>> GetOperationTrendAsync(DateTime startTime, DateTime endTime, int interval = 24, string? tenantId = null)
     {
         try
         {
-            var aggregationFunc = CreateOperationTrendAggregation(startTime, endTime, interval);
+            var aggregationFunc = CreateOperationTrendAggregation(startTime, endTime, interval, tenantId);
             var result = await _elasticsearchService.AggregateAsync<Models.AuditLog>(aggregationFunc);
             
             if (result != null)
@@ -398,27 +476,57 @@ public class AuditService : IAuditService
     /// <summary>
     /// 创建操作趋势聚合查询
     /// </summary>
-    private Func<SearchRequestDescriptor<Models.AuditLog>, SearchRequestDescriptor<Models.AuditLog>> CreateOperationTrendAggregation(DateTime startTime, DateTime endTime, int interval)
+    private Func<SearchRequestDescriptor<Models.AuditLog>, SearchRequestDescriptor<Models.AuditLog>> CreateOperationTrendAggregation(DateTime startTime, DateTime endTime, int interval, string? tenantId = null)
     {
-        return s => s
-            .Size(0)
-            .Query(q => q
-                .Range(r => r
-                    .DateRange(dr => dr
-                        .Field(f => f.OperationTime)
-                        .Gte(startTime)
-                        .Lte(endTime)
+        return s =>
+        {
+            var searchRequest = s.Size(0);
+            
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                searchRequest = searchRequest.Query(q => q
+                    .Bool(b => b
+                        .Must(m => m
+                            .Range(r => r
+                                .DateRange(dr => dr
+                                    .Field(f => f.OperationTime)
+                                    .Gte(startTime)
+                                    .Lte(endTime)
+                                )
+                            )
+                        )
+                        .Must(m => m
+                            .Term(t => t
+                                .Field(f => f.TenantId)
+                                .Value(tenantId)
+                            )
+                        )
                     )
-                )
-            )
-            .Aggregations(a => a
+                );
+            }
+            else
+            {
+                searchRequest = searchRequest.Query(q => q
+                    .Range(r => r
+                        .DateRange(dr => dr
+                            .Field(f => f.OperationTime)
+                            .Gte(startTime)
+                            .Lte(endTime)
+                        )
+                    )
+                );
+            }
+            
+            return searchRequest.Aggregations(a => a
                 .Add("trend", agg => agg
                     .DateHistogram(dh => dh
                         .Field(f => f.OperationTime)
-                        .FixedInterval("1h")
+                        .FixedInterval($"{interval}h")
+                        .MinDocCount(0)
                     )
                 )
             );
+        };
     }
     
     /// <summary>

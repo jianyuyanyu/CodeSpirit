@@ -54,6 +54,13 @@ public class AuditLogQueryDto : QueryDtoBase
     }
     
     /// <summary>
+    /// 租户ID
+    /// </summary>
+    [DisplayName("租户ID")]
+    [StringLength(50, ErrorMessage = "租户ID长度不能超过50个字符")]
+    public string TenantId { get; set; } = string.Empty;
+    
+    /// <summary>
     /// 用户ID
     /// </summary>
     [DisplayName("用户ID")]

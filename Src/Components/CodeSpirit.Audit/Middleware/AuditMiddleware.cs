@@ -12,6 +12,8 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using MvcControllerActionDescriptor = Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor;
+using CodeSpirit.Core;
+using CodeSpirit.MultiTenant.Extensions;
 
 namespace CodeSpirit.Audit.Middleware;
 
@@ -104,7 +106,7 @@ public class AuditMiddleware
         }
     }
 
-    public async Task InvokeAsync(HttpContext context, IAuditService auditService, IClientIpService clientIpService)
+    public async Task InvokeAsync(HttpContext context, IAuditService auditService, IClientIpService clientIpService, ICurrentUser currentUser)
     {
         // 检查是否启用审计
         if (!_options.Enabled)
@@ -138,8 +140,12 @@ public class AuditMiddleware
         // 获取用户代理信息
         var userAgent = GetUserAgent(context);
 
+        // 获取租户ID
+        var tenantId = GetTenantId(context, currentUser);
+
         var auditLog = new Models.AuditLog
         {
+            TenantId = tenantId,
             RequestPath = context.Request.GetDisplayUrl(),
             RequestMethod = context.Request.Method,
             IpAddress = ipAddress,
@@ -673,6 +679,60 @@ public class AuditMiddleware
         }
 
         return "未知";
+    }
+
+    /// <summary>
+    /// 获取租户ID
+    /// </summary>
+    private string GetTenantId(HttpContext context, ICurrentUser currentUser)
+    {
+        try
+        {
+            // 1. 优先从当前用户获取租户ID
+            var tenantId = currentUser?.TenantId;
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                return tenantId;
+            }
+
+            // 2. 从HttpContext Items获取（多租户中间件可能已设置）
+            if (context.Items.ContainsKey("TenantId"))
+            {
+                tenantId = context.Items["TenantId"] as string;
+                if (!string.IsNullOrEmpty(tenantId))
+                {
+                    return tenantId;
+                }
+            }
+
+            // 3. 从Header获取
+            if (context.Request.Headers.TryGetValue("TenantId", out var headerValue))
+            {
+                tenantId = headerValue.FirstOrDefault();
+                if (!string.IsNullOrEmpty(tenantId))
+                {
+                    return tenantId;
+                }
+            }
+
+            // 4. 从Query参数获取
+            if (context.Request.Query.TryGetValue("tenantId", out var queryValue))
+            {
+                tenantId = queryValue.FirstOrDefault();
+                if (!string.IsNullOrEmpty(tenantId))
+                {
+                    return tenantId;
+                }
+            }
+
+            
+            return string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取租户ID时发生异常，使用默认租户ID");
+            return string.Empty;
+        }
     }
 
     /// <summary>

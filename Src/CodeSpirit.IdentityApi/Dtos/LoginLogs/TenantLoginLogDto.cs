@@ -1,12 +1,12 @@
-﻿// Controllers/AuthController.cs
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Dtos.LoginLogs
 {
     /// <summary>
-    /// 登录日志数据传输对象。
+    /// 租户平台登录日志数据传输对象（不包含租户信息）
     /// </summary>
-    public class LoginLogDto
+    public class TenantLoginLogDto
     {
         public int Id { get; set; }
 
@@ -31,11 +31,5 @@ namespace CodeSpirit.IdentityApi.Dtos.LoginLogs
 
         [DisplayName("失败原因")]
         public string FailureReason { get; set; }
-
-        [DisplayName("租户ID")]
-        public string TenantId { get; set; }
-
-        [DisplayName("租户名称")]
-        public string TenantName { get; set; }
     }
-}
+} 

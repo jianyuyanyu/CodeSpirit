@@ -38,10 +38,24 @@ namespace CodeSpirit.Shared.Data
         private IDataFilter<TFilter> GetFilter<TFilter>()
             where TFilter : class
         {
-            return _filters.GetOrAdd(
-                typeof(TFilter),
-                 factory: () => _serviceProvider.GetRequiredService<IDataFilter<TFilter>>()
-            ) as IDataFilter<TFilter>;
+            try
+            {
+                return _filters.GetOrAdd(
+                    typeof(TFilter),
+                    factory: _ =>
+                    {
+                        var filter = _serviceProvider.GetRequiredService<IDataFilter<TFilter>>();
+                        // 可以添加日志记录
+                        return filter;
+                    }
+                ) as IDataFilter<TFilter> ?? 
+                   throw new InvalidOperationException($"无法创建过滤器实例：{typeof(TFilter).Name}");
+            }
+            catch (Exception ex)
+            {
+                // 记录日志并抛出更有意义的异常
+                throw new InvalidOperationException($"创建数据过滤器失败：{typeof(TFilter).Name}", ex);
+            }
         }
     }
 
@@ -52,7 +66,12 @@ namespace CodeSpirit.Shared.Data
         {
             get
             {
-                EnsureInitialized();
+                if (_filter.Value == null)
+                {
+                    // 延迟初始化，使用配置的默认值
+                    var defaultState = _options.DefaultStates.GetOrDefault(typeof(TFilter));
+                    _filter.Value = defaultState?.Clone() ?? new DataFilterState(false); // 使用更安全的默认值
+                }
                 return _filter.Value.IsEnabled;
             }
         }
@@ -69,26 +88,30 @@ namespace CodeSpirit.Shared.Data
 
         public IDisposable Enable()
         {
-            if (IsEnabled)
+            EnsureInitialized();
+            var previousState = _filter.Value.IsEnabled;
+            
+            if (previousState)
             {
                 return NullDisposable.Instance;
             }
 
             _filter.Value.IsEnabled = true;
-
-            return new DisposeAction(() => Disable());
+            return new DisposeAction(() => { _filter.Value.IsEnabled = previousState; });
         }
 
         public IDisposable Disable()
         {
-            if (!IsEnabled)
+            EnsureInitialized();
+            var previousState = _filter.Value.IsEnabled;
+            
+            if (!previousState)
             {
                 return NullDisposable.Instance;
             }
 
             _filter.Value.IsEnabled = false;
-
-            return new DisposeAction(() => Enable());
+            return new DisposeAction(() => { _filter.Value.IsEnabled = previousState; });
         }
 
         private void EnsureInitialized()

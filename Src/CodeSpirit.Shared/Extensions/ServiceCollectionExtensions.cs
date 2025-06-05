@@ -48,12 +48,13 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddDataFilters(this IServiceCollection services)
     {
-        services.AddSingleton<IDataFilter, DataFilter>();
-        services.AddSingleton(typeof(IDataFilter<>), typeof(DataFilter<>));
+        services.AddScoped<IDataFilter, DataFilter>();
+        services.AddScoped(typeof(IDataFilter<>), typeof(DataFilter<>));
         services.Configure<DataFilterOptions>(options =>
         {
             options.DefaultStates[typeof(ISoftDeleteAuditable)] = new DataFilterState(isEnabled: true);
             options.DefaultStates[typeof(IIsActive)] = new DataFilterState(isEnabled: true);
+            options.DefaultStates[typeof(IMultiTenant)] = new DataFilterState(isEnabled: true);
         });
 
         return services;

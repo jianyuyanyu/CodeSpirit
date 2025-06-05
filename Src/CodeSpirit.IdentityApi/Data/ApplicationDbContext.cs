@@ -57,7 +57,7 @@ namespace CodeSpirit.IdentityApi.Data
         /// <summary>
         /// 是否启用多租户过滤
         /// </summary>
-        protected virtual bool IsMultiTenantFilterEnabled => true; // 可以从配置中读取
+        protected virtual bool IsMultiTenantFilterEnabled => DataFilter?.IsEnabled<IMultiTenant>() ?? true;
 
         /// <summary>
         /// 数据筛选器
@@ -490,45 +490,116 @@ namespace CodeSpirit.IdentityApi.Data
                 expression = e => !IsSoftDeleteFilterEnabled || !EF.Property<bool>(e, "IsDeleted");
             }
 
-            // 多租户过滤 - 使用更安全的方式获取租户ID
-            if (typeof(IMultiTenant).IsAssignableFrom(typeof(TEntity)) && IsMultiTenantFilterEnabled)
+            // 多租户过滤 - 修复：在查询执行时动态检查过滤器状态和租户ID
+            if (typeof(IMultiTenant).IsAssignableFrom(typeof(TEntity)))
             {
-                var currentTenantId = GetCurrentTenantId();
-
-                if (!string.IsNullOrEmpty(currentTenantId))
+                // 使用方法调用表达式，确保在查询执行时动态检查过滤器状态和获取租户ID
+                Expression<Func<TEntity, bool>> tenantFilter = e => 
+                    !IsMultiTenantFilterEnabledForQuery() || 
+                    ApplyTenantFilterForQuery(EF.Property<string>(e, "TenantId"));
+                
+                if (expression != null)
                 {
-                    Expression<Func<TEntity, bool>> tenantFilter = e => EF.Property<string>(e, "TenantId") == currentTenantId;
-                    
-                    if (expression != null)
-                    {
-                        expression = CombineExpressions(expression, tenantFilter);
-                    }
-                    else
-                    {
-                        expression = tenantFilter;
-                    }
+                    expression = CombineExpressions(expression, tenantFilter);
                 }
                 else
                 {
-                    // 如果无法获取租户ID，为了安全起见，返回空结果
-                    // 在生产环境中，这种情况应该被记录并处理
-                    Expression<Func<TEntity, bool>> noDataFilter = e => false;
-                    
-                    if (expression != null)
-                    {
-                        expression = CombineExpressions(expression, noDataFilter);
-                    }
-                    else
-                    {
-                        expression = noDataFilter;
-                    }
-                    
-                    // 记录警告日志
-                    logger?.LogWarning("无法确定租户ID，多租户实体 {EntityType} 查询将返回空结果", typeof(TEntity).Name);
+                    expression = tenantFilter;
                 }
             }
 
             return expression;
+        }
+
+        /// <summary>
+        /// 获取查询时的当前租户ID
+        /// 此方法会在每次查询执行时调用，确保租户ID的动态性
+        /// </summary>
+        /// <returns>当前租户ID</returns>
+        protected virtual string GetCurrentTenantIdForQuery()
+        {
+            try
+            {
+                // 设计时检查 - 如果是设计时上下文，返回默认值
+                if (_currentUser == null && httpContextAccessor == null)
+                {
+                    return _defaultTenantId?.Value ?? "default";
+                }
+
+                // 优先从CurrentUser获取租户ID（更安全，避免异步调用）
+                var tenantId = _currentUser?.TenantId;
+                
+                // 如果CurrentUser中没有，尝试从HttpContext获取
+                if (string.IsNullOrEmpty(tenantId))
+                {
+                    tenantId = httpContextAccessor?.HttpContext?.Items["TenantId"] as string;
+                }
+                
+                // 如果仍然没有，使用默认租户ID（可配置）
+                if (string.IsNullOrEmpty(tenantId))
+                {
+                    tenantId = _defaultTenantId?.Value ?? "default";
+                    
+                    // 记录调试日志而不是警告，因为使用默认租户可能是正常行为
+                    logger?.LogDebug("未找到当前租户ID，使用默认租户: {DefaultTenantId}", tenantId);
+                }
+                
+                return tenantId;
+            }
+            catch (Exception ex)
+            {
+                // 异常情况下不使用默认租户ID，而是返回特殊值表示拒绝访问
+                logger?.LogError(ex, "获取查询租户ID时发生异常，拒绝数据访问以确保安全");
+                return "::ACCESS_DENIED::"; // 使用特殊值表示访问被拒绝
+            }
+        }
+
+        /// <summary>
+        /// 获取查询时的多租户过滤器启用状态
+        /// 此方法会在每次查询执行时调用，确保过滤器状态的动态性
+        /// </summary>
+        /// <returns>多租户过滤器是否启用</returns>
+        protected virtual bool IsMultiTenantFilterEnabledForQuery()
+        {
+            try
+            {
+                return DataFilter?.IsEnabled<IMultiTenant>() ?? true;
+            }
+            catch (Exception ex)
+            {
+                // 异常情况下默认启用多租户过滤以确保数据安全
+                logger?.LogWarning(ex, "检查多租户过滤器状态时发生异常，默认启用过滤器");
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// 应用租户过滤器逻辑
+        /// 此方法会在查询执行时调用，处理特殊租户ID和正常比较
+        /// </summary>
+        /// <param name="entityTenantId">实体的租户ID</param>
+        /// <returns>是否允许访问该实体</returns>
+        protected virtual bool ApplyTenantFilterForQuery(string entityTenantId)
+        {
+            try
+            {
+                var currentTenantId = GetCurrentTenantIdForQuery();
+
+                // 处理特殊值：拒绝访问
+                if (currentTenantId == "::ACCESS_DENIED::")
+                {
+                    return false; // 拒绝访问所有数据
+                }
+
+                // 正常租户ID比较
+                return entityTenantId == currentTenantId;
+            }
+            catch (Exception ex)
+            {
+                // 异常情况下拒绝访问以确保安全
+                logger?.LogError(ex, "应用租户过滤器时发生异常，拒绝访问以确保数据安全");
+                return false;
+            }
         }
 
         protected virtual Expression<Func<T, bool>> CombineExpressions<T>(Expression<Func<T, bool>> expression1, Expression<Func<T, bool>> expression2)

@@ -290,7 +290,8 @@ namespace CodeSpirit.IdentityApi.Services
                     LoginTime = DateTime.UtcNow,
                     IPAddress = input.IpAddress,
                     IsSuccess = isSuccess,
-                    FailureReason = failReason
+                    FailureReason = failReason,
+                    TenantId = input.TenantId // 🔥 关键修复：使用传入的租户ID
                 };
 
                 await _loginLogRepository.AddAsync(loginLog);

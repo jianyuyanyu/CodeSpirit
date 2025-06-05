@@ -161,6 +161,9 @@ namespace CodeSpirit.IdentityApi.Controllers
                     return BadResponse<AuthTokenResponse>("请求参数验证失败");
                 }
 
+                // 🔥 设置系统登录的租户上下文
+                HttpContext.Items["TenantId"] = TenantConstants.SystemTenantId;
+
                 var ipAddress = _clientIpService.GetClientIpAddress(HttpContext);
                 var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
 

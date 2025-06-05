@@ -2,6 +2,7 @@ using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.MultiTenant.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace CodeSpirit.MultiTenant.Services;
@@ -48,7 +49,8 @@ public class TenantResolver : ITenantResolver
         var httpContext = _httpContextAccessor.HttpContext;
         if (httpContext == null)
         {
-            return _options.DefaultTenantId;
+            _logger.LogWarning("HTTP上下文为空，无法解析租户ID");
+            return await HandleTenantResolutionFailureAsync();
         }
 
         string? tenantId = null;
@@ -60,7 +62,16 @@ public class TenantResolver : ITenantResolver
             if (!string.IsNullOrEmpty(tenantId))
             {
                 _logger.LogDebug("从Header解析到租户ID: {TenantId}", tenantId);
-                return tenantId;
+                
+                if (await ValidateTenantIdAsync(tenantId))
+                {
+                    return tenantId;
+                }
+                else
+                {
+                    _logger.LogWarning("从Header解析的租户ID无效: {TenantId}", tenantId);
+                    tenantId = null;
+                }
             }
         }
 
@@ -71,7 +82,16 @@ public class TenantResolver : ITenantResolver
             if (!string.IsNullOrEmpty(tenantId))
             {
                 _logger.LogDebug("从Query解析到租户ID: {TenantId}", tenantId);
-                return tenantId;
+                
+                if (await ValidateTenantIdAsync(tenantId))
+                {
+                    return tenantId;
+                }
+                else
+                {
+                    _logger.LogWarning("从Query解析的租户ID无效: {TenantId}", tenantId);
+                    tenantId = null;
+                }
             }
         }
 
@@ -84,7 +104,16 @@ public class TenantResolver : ITenantResolver
             {
                 tenantId = parts[0];
                 _logger.LogDebug("从子域名解析到租户ID: {TenantId}", tenantId);
-                return tenantId;
+                
+                if (await ValidateTenantIdAsync(tenantId))
+                {
+                    return tenantId;
+                }
+                else
+                {
+                    _logger.LogWarning("从子域名解析的租户ID无效: {TenantId}", tenantId);
+                    tenantId = null;
+                }
             }
         }
 
@@ -99,13 +128,96 @@ public class TenantResolver : ITenantResolver
                 {
                     tenantId = segments[0].Substring(_options.TenantPathPrefix.Length);
                     _logger.LogDebug("从路径解析到租户ID: {TenantId}", tenantId);
-                    return tenantId;
+                    
+                    if (await ValidateTenantIdAsync(tenantId))
+                    {
+                        return tenantId;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("从路径解析的租户ID无效: {TenantId}", tenantId);
+                        tenantId = null;
+                    }
                 }
             }
         }
 
-        // 5. 返回默认租户ID
-        return _options.DefaultTenantId;
+        // 根据配置的失败策略处理无法解析租户ID的情况
+        return await HandleTenantResolutionFailureAsync();
+    }
+
+    /// <summary>
+    /// 验证租户ID是否有效
+    /// </summary>
+    /// <param name="tenantId">要验证的租户ID</param>
+    /// <returns>租户ID是否有效</returns>
+    private async Task<bool> ValidateTenantIdAsync(string tenantId)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(tenantId))
+            {
+                return false;
+            }
+
+            // 如果禁用了租户验证，则认为任何非空租户ID都是有效的
+            if (!_options.EnableTenantValidation)
+            {
+                return true;
+            }
+
+            var tenantInfo = await GetTenantInfoAsync(tenantId);
+            if (tenantInfo == null)
+            {
+                _logger.LogWarning("租户不存在: {TenantId}", tenantId);
+                return false;
+            }
+
+            if (!tenantInfo.IsActive)
+            {
+                _logger.LogWarning("租户已禁用: {TenantId}", tenantId);
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "验证租户ID时发生异常: {TenantId}", tenantId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 处理租户解析失败的情况
+    /// </summary>
+    /// <returns>根据策略返回的租户ID或null</returns>
+    private async Task<string?> HandleTenantResolutionFailureAsync()
+    {
+        _logger.LogWarning("无法从任何来源解析到有效的租户ID，使用失败策略: {Strategy}", _options.FailureStrategy);
+
+        switch (_options.FailureStrategy)
+        {
+            case TenantResolutionFailureStrategy.UseDefault:
+                // 只有在明确配置为UseDefault时才使用默认租户
+                _logger.LogInformation("使用默认租户ID: {DefaultTenantId}", _options.DefaultTenantId);
+                return _options.DefaultTenantId;
+
+            case TenantResolutionFailureStrategy.ThrowException:
+                var exception = new InvalidOperationException("无法解析租户ID，且配置为抛出异常策略");
+                _logger.LogError(exception, "租户解析失败，抛出异常");
+                throw exception;
+
+            case TenantResolutionFailureStrategy.Return404:
+                // 返回null，让上层处理为404
+                _logger.LogWarning("租户解析失败，返回null以触发404响应");
+                return null;
+
+            default:
+                // 默认情况下采用最安全的策略：返回null
+                _logger.LogWarning("未知的失败策略，返回null以确保安全");
+                return null;
+        }
     }
 
     /// <summary>
@@ -161,6 +273,8 @@ public class TenantResolver : ITenantResolver
         var tenantId = await ResolveTenantIdAsync();
         if (string.IsNullOrEmpty(tenantId))
         {
+            // 修复：无法解析租户ID时记录警告并返回null
+            _logger.LogWarning("无法解析当前租户ID，返回null");
             return null;
         }
 

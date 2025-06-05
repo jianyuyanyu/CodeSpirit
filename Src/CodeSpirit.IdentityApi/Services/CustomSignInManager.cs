@@ -40,7 +40,8 @@ namespace CodeSpirit.IdentityApi.Services
                 LoginTime = DateTime.UtcNow,
                 IPAddress = _clientIpService.GetClientIpAddress(Context),
                 IsSuccess = result.Succeeded,
-                FailureReason = result.IsLockedOut ? "账户被锁定。" : !result.Succeeded ? "密码不正确。" : null
+                FailureReason = result.IsLockedOut ? "账户被锁定。" : !result.Succeeded ? "密码不正确。" : null,
+                TenantId = user.TenantId
             };
 
             _context.LoginLogs.Add(loginLog);

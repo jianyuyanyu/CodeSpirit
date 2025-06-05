@@ -19,7 +19,7 @@ namespace CodeSpirit.IdentityApi.Controllers.System;
 /// <summary>
 /// 系统平台用户统计控制器
 /// </summary>
-[DisplayName("系统用户统计")]
+[DisplayName("用户统计")]
 [Navigation(Icon = "fa-solid fa-chart-line", PlatformType = PlatformType.System)]
 public class SystemUserStatisticsController : ApiControllerBase
 {

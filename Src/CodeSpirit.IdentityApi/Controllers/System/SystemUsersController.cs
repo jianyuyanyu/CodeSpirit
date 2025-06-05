@@ -15,7 +15,7 @@ namespace CodeSpirit.IdentityApi.Controllers.System;
 /// <summary>
 /// 系统平台用户管理控制器
 /// </summary>
-[DisplayName("系统用户管理")]
+[DisplayName("用户管理")]
 [Navigation(Icon = "fa-solid fa-users-gear", PlatformType = PlatformType.System)]
 public class SystemUsersController : ApiControllerBase
 {

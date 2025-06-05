@@ -1,6 +1,9 @@
-﻿/// <summary>
+﻿using CodeSpirit.Core.Enums;
+
+/// <summary>
 /// 权限节点类，用于描述权限树中的一个节点（既可以表示控制器，也可以表示动作）。
 /// 新增 RequestMethod 属性，用于记录动作所支持的 HTTP 请求方法。
+/// 新增 PlatformType 属性，用于记录权限所属的平台类型。
 /// </summary>
 public class PermissionNode
 {
@@ -35,6 +38,11 @@ public class PermissionNode
     public string RequestMethod { get; set; }
 
     /// <summary>
+    /// 平台类型（表示权限所属的平台：系统平台、租户平台或两者）
+    /// </summary>
+    public PlatformType PlatformType { get; set; } = PlatformType.Both;
+
+    /// <summary>
     /// 子节点集合
     /// </summary>
     public List<PermissionNode> Children { get; set; } = [];
@@ -43,12 +51,13 @@ public class PermissionNode
     /// 构造函数
     /// </summary>
     /// <param name="name">节点名称</param>
-
     /// <param name="description">节点描述</param>
     /// <param name="parent">父节点名称</param>
     /// <param name="path">请求路径</param>
     /// <param name="requestMethod">请求方法</param>
-    public PermissionNode(string name, string description, string parent = "", string path = "", string requestMethod = "", string displayName = null)
+    /// <param name="displayName">显示名称</param>
+    /// <param name="platformType">平台类型</param>
+    public PermissionNode(string name, string description, string parent = "", string path = "", string requestMethod = "", string displayName = null, PlatformType platformType = PlatformType.Both)
     {
         Name = name;
         Description = description;
@@ -56,5 +65,6 @@ public class PermissionNode
         Path = path;
         RequestMethod = requestMethod;
         DisplayName = displayName;
+        PlatformType = platformType;
     }
 }

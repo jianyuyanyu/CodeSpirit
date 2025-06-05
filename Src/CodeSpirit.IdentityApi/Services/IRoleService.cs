@@ -18,6 +18,20 @@ public interface IRoleService : IBaseCRUDIService<ApplicationRole, RoleDto, long
     Task<PageList<RoleDto>> GetRolesAsync(RoleQueryDto queryDto);
 
     /// <summary>
+    /// 获取系统角色列表（分页，仅系统租户的角色）
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>分页后的系统角色列表</returns>
+    Task<PageList<RoleDto>> GetSystemRolesAsync(RoleQueryDto queryDto);
+
+    /// <summary>
+    /// 创建系统角色（在系统租户下创建）
+    /// </summary>
+    /// <param name="createDto">创建角色DTO</param>
+    /// <returns>创建的角色</returns>
+    Task<RoleDto> CreateSystemRoleAsync(RoleCreateDto createDto);
+
+    /// <summary>
     /// 批量导入角色
     /// </summary>
     /// <param name="importDtos">要导入的角色列表</param>

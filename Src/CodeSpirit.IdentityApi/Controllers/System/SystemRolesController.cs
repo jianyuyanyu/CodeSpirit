@@ -13,7 +13,7 @@ namespace CodeSpirit.IdentityApi.Controllers.System;
 /// <summary>
 /// 系统平台角色管理控制器
 /// </summary>
-[DisplayName("系统角色管理")]
+[DisplayName("角色管理")]
 [Navigation(Icon = "fa-solid fa-user-shield", PlatformType = PlatformType.System)]
 public class SystemRolesController : ApiControllerBase
 {
@@ -37,9 +37,8 @@ public class SystemRolesController : ApiControllerBase
     [DisplayName("获取系统角色列表")]
     public async Task<ActionResult<ApiResponse<PageList<RoleDto>>>> GetSystemRoles([FromQuery] RoleQueryDto queryDto)
     {
-        // 限制查询条件为系统租户
-        // 注意：这里需要在服务层实现对系统租户角色的过滤
-        PageList<RoleDto> result = await _roleService.GetRolesAsync(queryDto);
+        // 调用专门的系统角色查询方法，确保只查询系统平台的角色
+        PageList<RoleDto> result = await _roleService.GetSystemRolesAsync(queryDto);
         return SuccessResponse(result);
     }
 
@@ -65,8 +64,8 @@ public class SystemRolesController : ApiControllerBase
     [DisplayName("创建系统角色")]
     public async Task<ActionResult<ApiResponse<RoleDto>>> CreateSystemRole(RoleCreateDto createDto)
     {
-        // 确保在系统租户下创建角色
-        RoleDto roleDto = await _roleService.CreateAsync(createDto);
+        // 调用专门的系统角色创建方法，确保在系统租户下创建角色
+        RoleDto roleDto = await _roleService.CreateSystemRoleAsync(createDto);
         return SuccessResponseWithCreate<RoleDto>(nameof(GetSystemRole), roleDto);
     }
 

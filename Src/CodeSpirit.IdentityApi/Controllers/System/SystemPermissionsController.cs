@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Authorization;
+using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
@@ -15,7 +16,7 @@ namespace CodeSpirit.IdentityApi.Controllers.System;
 /// <summary>
 /// 系统平台权限管理控制器
 /// </summary>
-[DisplayName("系统权限管理")]
+[DisplayName("权限管理")]
 [Navigation(Icon = "fa-solid fa-key", PlatformType = PlatformType.System)]
 public class SystemPermissionsController : ApiControllerBase
 {
@@ -43,8 +44,8 @@ public class SystemPermissionsController : ApiControllerBase
     {
         List<PermissionNode> permissions = _permissionService.GetPermissionTree();
 
-        // 过滤出系统级权限（PlatformType为System的权限节点）
-        List<PermissionNode> systemPermissions = FilterSystemPermissions(permissions);
+        // 使用扩展方法过滤出系统级权限
+        List<PermissionNode> systemPermissions = permissions.GetSystemPermissions();
 
         List<PermissionDto> permissionDtos = _mapper.Map<List<PermissionDto>>(systemPermissions);
 
@@ -63,8 +64,8 @@ public class SystemPermissionsController : ApiControllerBase
     {
         var permissions = _permissionService.GetPermissionTree();
         
-        // 过滤出系统级权限
-        var systemPermissions = FilterSystemPermissions(permissions);
+        // 使用扩展方法过滤出系统级权限
+        var systemPermissions = permissions.GetSystemPermissions();
 
         var treeNodes = systemPermissions.Where(p => p.Name != "default").Select(p => new PermissionTreeDto
         {
@@ -93,7 +94,7 @@ public class SystemPermissionsController : ApiControllerBase
         }
 
         var allPermissions = _permissionService.GetPermissionTree();
-        var systemPermissions = FilterSystemPermissions(allPermissions);
+        var systemPermissions = allPermissions.GetSystemPermissions();
         var node = FindNode(systemPermissions, id);
         
         if (node == null)
@@ -124,7 +125,7 @@ public class SystemPermissionsController : ApiControllerBase
         try
         {
             var permissions = _permissionService.GetPermissionTree();
-            var systemPermissions = FilterSystemPermissions(permissions);
+            var systemPermissions = permissions.GetSystemPermissions();
 
             object statistics = new
             {
@@ -143,41 +144,7 @@ public class SystemPermissionsController : ApiControllerBase
         }
     }
 
-    /// <summary>
-    /// 过滤出系统级权限节点
-    /// </summary>
-    /// <param name="permissions">所有权限节点</param>
-    /// <returns>系统级权限节点</returns>
-    private List<PermissionNode> FilterSystemPermissions(List<PermissionNode> permissions)
-    {
-        var systemPermissions = new List<PermissionNode>();
 
-        foreach (var permission in permissions)
-        {
-            // 这里需要根据实际的权限结构来判断哪些是系统级权限
-            // 暂时返回包含"System"关键字的权限模块，或者特定的系统模块
-            if (IsSystemPermission(permission))
-            {
-                systemPermissions.Add(permission);
-            }
-        }
-
-        return systemPermissions;
-    }
-
-    /// <summary>
-    /// 判断是否为系统级权限
-    /// </summary>
-    /// <param name="permission">权限节点</param>
-    /// <returns>是否为系统级权限</returns>
-    private bool IsSystemPermission(PermissionNode permission)
-    {
-        // 基于权限名称或其他属性判断是否为系统级权限
-        // 这里可以根据实际需求调整判断逻辑
-        return permission.Name.Contains("System", StringComparison.OrdinalIgnoreCase) ||
-               permission.Name.Contains("Tenant", StringComparison.OrdinalIgnoreCase) ||
-               permission.Name.Contains("Admin", StringComparison.OrdinalIgnoreCase);
-    }
 
     /// <summary>
     /// 在权限树中查找指定节点

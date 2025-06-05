@@ -55,6 +55,72 @@ namespace CodeSpirit.IdentityApi.Services
             );
         }
 
+        public async Task<PageList<RoleDto>> GetSystemRolesAsync(RoleQueryDto queryDto)
+        {
+            ExpressionStarter<ApplicationRole> predicate = PredicateBuilder.New<ApplicationRole>(true);
+
+            // 限制查询条件为系统租户
+            predicate = predicate.And(x => x.TenantId == TenantConstants.SystemTenantId);
+
+            if (!string.IsNullOrEmpty(queryDto.Keywords))
+            {
+                predicate = predicate.Or(x => x.Name.Contains(queryDto.Keywords));
+                predicate = predicate.Or(x => x.Description.Contains(queryDto.Keywords));
+            }
+
+            // 使用忽略多租户过滤器的查询方式
+            var query = _roleRepository.CreateQuery()
+                .IgnoreQueryFilters() // 忽略多租户过滤器
+                .Include(r => r.RolePermission)
+                .Where(predicate);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((queryDto.Page - 1) * queryDto.PerPage)
+                .Take(queryDto.PerPage)
+                .ToListAsync();
+
+            var mappedItems = Mapper.Map<List<RoleDto>>(items);
+
+            return new PageList<RoleDto>
+            {
+                Total = totalCount,
+                Items = mappedItems
+            };
+        }
+
+        public async Task<RoleDto> CreateSystemRoleAsync(RoleCreateDto createDto)
+        {
+            // 检查系统租户下是否已存在同名角色
+            var existingRole = await _roleRepository.CreateQuery()
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(r => r.Name == createDto.Name && r.TenantId == TenantConstants.SystemTenantId);
+
+            if (existingRole != null)
+            {
+                throw new AppServiceException(400, "系统角色名称已存在！");
+            }
+
+            ApplicationRole role = Mapper.Map<ApplicationRole>(createDto);
+            role.TenantId = TenantConstants.SystemTenantId; // 确保在系统租户下创建
+            role.NormalizedName = role.Name.ToUpperInvariant();
+            role.Id = idGenerator.NewId();
+
+            if (createDto.PermissionAssignments != null && createDto.PermissionAssignments.Any())
+            {
+                role.RolePermission = new RolePermission
+                {
+                    RoleId = role.Id,
+                    TenantId = TenantConstants.SystemTenantId,
+                    PermissionIds = createDto.PermissionAssignments.Distinct().ToArray()
+                };
+            }
+
+            // 使用 DbContext 直接添加，绕过多租户过滤器
+            ApplicationRole createdEntity = await Repository.AddAsync(role);
+            return Mapper.Map<RoleDto>(createdEntity);
+        }
+
         public async Task<(int successCount, List<string> failedIds)> BatchImportRolesAsync(List<RoleBatchImportItemDto> importDtos)
         {
             // 去重处理

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CodeSpirit.Authorization;
+using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
@@ -32,7 +33,10 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             List<PermissionNode> permissions = _permissionService.GetPermissionTree();
 
-            List<PermissionDto> permissionDtos = _mapper.Map<List<PermissionDto>>(permissions);
+            // 使用扩展方法过滤出租户平台权限
+            List<PermissionNode> tenantPermissions = permissions.GetTenantPermissions();
+
+            List<PermissionDto> permissionDtos = _mapper.Map<List<PermissionDto>>(tenantPermissions);
 
             PageList<PermissionDto> listData = new(permissionDtos, permissionDtos.Count);
 
@@ -49,7 +53,10 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             var permissions = _permissionService.GetPermissionTree();
 
-            var treeNodes = permissions.Where(p => p.Name != "default").Select(p => new PermissionTreeDto
+            // 使用扩展方法过滤出租户平台权限
+            var tenantPermissions = permissions.GetTenantPermissions();
+
+            var treeNodes = tenantPermissions.Where(p => p.Name != "default").Select(p => new PermissionTreeDto
             {
                 Id = p.Name,
                 Label = p.DisplayName,
@@ -76,7 +83,9 @@ namespace CodeSpirit.IdentityApi.Controllers
             }
 
             var allPermissions = _permissionService.GetPermissionTree();
-            var node = FindNode(allPermissions, id);
+            // 使用扩展方法过滤出租户平台权限
+            var tenantPermissions = allPermissions.GetTenantPermissions();
+            var node = FindNode(tenantPermissions, id);
             if (node == null)
             {
                 return NotFound("未找到指定权限");

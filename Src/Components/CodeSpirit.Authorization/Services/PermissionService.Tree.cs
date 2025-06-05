@@ -1,4 +1,5 @@
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 
@@ -39,11 +40,15 @@ namespace CodeSpirit.Authorization
             var moduleAttr = moduleGroup.First().GetCustomAttribute<ModuleAttribute>();
             var moduleDisplayName = moduleAttr?.DisplayName ?? moduleName;
 
+            // 推断模块级别的平台类型：基于模块内控制器的平台类型
+            var modulePlatformType = InferModulePlatformType(moduleGroup);
+
             return new PermissionNode(
                 moduleName,
                 moduleName,
                 path: string.Empty,
-                displayName: moduleDisplayName);
+                displayName: moduleDisplayName,
+                platformType: modulePlatformType);
         }
 
         /// <summary>
@@ -85,6 +90,56 @@ namespace CodeSpirit.Authorization
         }
 
         /// <summary>
+        /// 推断模块的平台类型
+        /// </summary>
+        /// <param name="moduleGroup">模块分组信息</param>
+        /// <returns>推断出的平台类型</returns>
+        private PlatformType InferModulePlatformType(IGrouping<string, TypeInfo> moduleGroup)
+        {
+            // 收集所有控制器的平台类型
+            var controllerPlatformTypes = new List<PlatformType>();
+            
+            foreach (var controller in moduleGroup)
+            {
+                var platformType = GetControllerPlatformType(controller);
+                controllerPlatformTypes.Add(platformType);
+            }
+
+            if (!controllerPlatformTypes.Any())
+            {
+                return PlatformType.Both;
+            }
+
+            // 去重后的平台类型
+            var distinctPlatformTypes = controllerPlatformTypes.Distinct().ToList();
+            
+            // 如果所有控制器都是同一个平台类型，使用该平台类型
+            if (distinctPlatformTypes.Count == 1)
+            {
+                return distinctPlatformTypes.First();
+            }
+            
+            // 如果包含多种平台类型，使用 Both 表示支持多平台
+            if (distinctPlatformTypes.Contains(PlatformType.System) && distinctPlatformTypes.Contains(PlatformType.Tenant))
+            {
+                return PlatformType.Both;
+            }
+            
+            // 如果只有 System 或 Tenant 控制器（没有 Both），使用对应的平台类型
+            if (distinctPlatformTypes.Contains(PlatformType.System) && !distinctPlatformTypes.Contains(PlatformType.Both))
+            {
+                return PlatformType.System;
+            }
+            
+            if (distinctPlatformTypes.Contains(PlatformType.Tenant) && !distinctPlatformTypes.Contains(PlatformType.Both))
+            {
+                return PlatformType.Tenant;
+            }
+
+            return PlatformType.Both;
+        }
+
+        /// <summary>
         /// 构建指定模块的权限树
         /// </summary>
         private List<PermissionNode> BuildModulePermissionTree(string targetModule)
@@ -96,11 +151,17 @@ namespace CodeSpirit.Authorization
             var moduleAttr = controllers.FirstOrDefault()?.GetCustomAttribute<ModuleAttribute>();
             var moduleDisplayName = moduleAttr?.DisplayName ?? targetModule;
 
+            // 推断模块平台类型
+            var controllerArray = controllers.ToArray();
+            var moduleGroup = controllerArray.GroupBy(c => c.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default").First();
+            var modulePlatformType = InferModulePlatformType(moduleGroup);
+
             var moduleNode = new PermissionNode(
                 targetModule,
                 targetModule,
                 path: string.Empty,
-                displayName: moduleDisplayName);
+                displayName: moduleDisplayName,
+                platformType: modulePlatformType);
 
             foreach (var controller in controllers)
             {

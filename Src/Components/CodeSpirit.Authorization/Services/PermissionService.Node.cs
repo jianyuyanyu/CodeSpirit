@@ -1,4 +1,5 @@
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -41,12 +42,16 @@ namespace CodeSpirit.Authorization
             string route = routeAttr?.Template ?? string.Empty;
             string path = RouteHelper.CombineRoutes(route, null, controllerName);
 
+            // 获取平台类型
+            PlatformType platformType = GetControllerPlatformType(controller);
+
             return new PermissionNode(
                 $"{moduleName}_{name}",
                 description,
                 moduleName,
                 path,
-                displayName: displayName);
+                displayName: displayName,
+                platformType: platformType);
         }
 
         /// <summary>
@@ -82,13 +87,17 @@ namespace CodeSpirit.Authorization
             string path = RouteHelper.CombineRoutes(controllerRoute, actionRoute, controllerNode.Name);
             string requestMethod = HttpMethodHelper.GetRequestMethod(action);
 
+            // 动作节点继承控制器的平台类型
+            PlatformType platformType = controllerNode.PlatformType;
+
             return new PermissionNode(
                 $"{controllerNode.Name}_{name}",
                 description,
                 controllerNode.Name,
                 path,
                 requestMethod,
-                displayName: displayName);
+                displayName: displayName,
+                platformType: platformType);
         }
 
         /// <summary>
@@ -111,6 +120,42 @@ namespace CodeSpirit.Authorization
         /// <returns>是否允许匿名访问</returns>
         private bool IsAnonymousAction(MethodInfo action) =>
             action.GetCustomAttribute<AllowAnonymousAttribute>() != null;
+
+        /// <summary>
+        /// 获取控制器的平台类型
+        /// </summary>
+        /// <param name="controller">控制器类型信息</param>
+        /// <returns>平台类型</returns>
+        private PlatformType GetControllerPlatformType(TypeInfo controller)
+        {
+            // 优先检查控制器自身的NavigationAttribute特性
+            var navigationAttr = controller.GetCustomAttribute<NavigationAttribute>();
+            if (navigationAttr != null && navigationAttr.PlatformType != PlatformType.Inherit)
+            {
+                return navigationAttr.PlatformType;
+            }
+
+            // 如果控制器设置为继承或没有NavigationAttribute，则查找基类的NavigationAttribute
+            var baseType = controller.BaseType;
+            while (baseType != null && baseType != typeof(object))
+            {
+                var baseNavigationAttr = baseType.GetCustomAttribute<NavigationAttribute>();
+                if (baseNavigationAttr != null && baseNavigationAttr.PlatformType != PlatformType.Inherit)
+                {
+                    return baseNavigationAttr.PlatformType;
+                }
+                baseType = baseType.BaseType;
+            }
+
+            // 检查是否在System命名空间下
+            if (controller.Namespace?.Contains(".System", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return PlatformType.System;
+            }
+
+            // 默认返回Both，表示系统和租户都可用
+            return PlatformType.Both;
+        }
 
         /// <summary>
         /// 处理控制器的所有动作方法

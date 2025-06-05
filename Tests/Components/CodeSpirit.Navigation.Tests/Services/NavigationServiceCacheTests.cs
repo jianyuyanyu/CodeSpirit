@@ -217,5 +217,55 @@ namespace CodeSpirit.Navigation.Tests.Services
                     It.IsAny<System.Func<It.IsAnyType, System.Exception, string>>()),
                 Times.Once);
         }
+
+        [Fact]
+        public async Task GetNavigationTreeAsync_TenantPlatform_ShouldIncludeBothPlatformModules()
+        {
+            // Arrange
+            var tenantModules = new List<NavigationNode>
+            {
+                new NavigationNode("tenantModule", "租户模块", "/tenant")
+                {
+                    PlatformType = PlatformType.Tenant
+                }
+            };
+            
+            var bothModules = new List<NavigationNode>
+            {
+                new NavigationNode("identity", "用户中心", "/identity")
+                {
+                    PlatformType = PlatformType.Both
+                }
+            };
+
+            var moduleNames = new List<string> { "tenantModule", "identity" };
+
+            MockCache.Setup(x => x.GetAsync("CodeSpirit:Navigation:ModuleNames", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(moduleNames));
+
+            MockCache.Setup(x => x.GetAsync("CodeSpirit:Navigation:Module:tenantModule:Tenant", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(tenantModules));
+
+            MockCache.Setup(x => x.GetAsync("CodeSpirit:Navigation:Module:tenantModule:Both", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((byte[])null);
+
+            MockCache.Setup(x => x.GetAsync("CodeSpirit:Navigation:Module:identity:Tenant", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((byte[])null);
+
+            MockCache.Setup(x => x.GetAsync("CodeSpirit:Navigation:Module:identity:Both", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(bothModules));
+
+            // Act
+            var result = await NavigationService.GetNavigationTreeAsync(PlatformType.Tenant);
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Contains(result, x => x.Name == "tenantModule");
+            Assert.Contains(result, x => x.Name == "identity");
+            
+            // 验证Both缓存被查询
+            MockCache.Verify(x => x.GetAsync("CodeSpirit:Navigation:Module:tenantModule:Both", It.IsAny<CancellationToken>()), Times.Once);
+            MockCache.Verify(x => x.GetAsync("CodeSpirit:Navigation:Module:identity:Both", It.IsAny<CancellationToken>()), Times.Once);
+        }
     }
 } 

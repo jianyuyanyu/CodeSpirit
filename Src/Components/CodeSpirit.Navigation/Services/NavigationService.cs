@@ -80,10 +80,18 @@ namespace CodeSpirit.Navigation
                             cacheKeysToQuery.Add((moduleName, PlatformType.Both));
                             break;
                         case PlatformType.System:
+                            // 查询System平台时，包含System和Both缓存
+                            cacheKeysToQuery.Add((moduleName, PlatformType.System));
+                            cacheKeysToQuery.Add((moduleName, PlatformType.Both));
+                            break;
                         case PlatformType.Tenant:
+                            // 查询Tenant平台时，包含Tenant和Both缓存
+                            cacheKeysToQuery.Add((moduleName, PlatformType.Tenant));
+                            cacheKeysToQuery.Add((moduleName, PlatformType.Both));
+                            break;
                         case PlatformType.None:
                         default:
-                            // 查询特定平台时，只查询对应的缓存
+                            // 查询None或其他类型时，只查询对应的缓存
                             cacheKeysToQuery.Add((moduleName, platformType));
                             break;
                     }

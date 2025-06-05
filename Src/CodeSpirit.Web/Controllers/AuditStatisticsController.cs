@@ -4,6 +4,7 @@ using CodeSpirit.Audit.Models;
 using CodeSpirit.Audit.Services;
 using CodeSpirit.Charts.Attributes;
 using CodeSpirit.Charts.Extensions;
+using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,7 @@ namespace CodeSpirit.Web.Controllers
     {
         private readonly IAuditService _auditService;
         private readonly ILogger<AuditStatisticsController> _logger;
+        private readonly ICurrentUser currentUser;
 
         /// <summary>
         /// 构造函数
@@ -27,10 +29,12 @@ namespace CodeSpirit.Web.Controllers
         /// <param name="logger">日志记录器</param>
         public AuditStatisticsController(
             IAuditService auditService,
-            ILogger<AuditStatisticsController> logger)
+            ILogger<AuditStatisticsController> logger,
+            ICurrentUser currentUser)
         {
             _auditService = auditService;
             _logger = logger;
+            this.currentUser = currentUser;
         }
 
         /// <summary>
@@ -54,12 +58,12 @@ namespace CodeSpirit.Web.Controllers
                 _logger.LogInformation("获取操作类型统计，时间范围: {StartDate} 到 {EndDate}", startDate, endDate);
 
                 // 获取操作统计数据
-                var stats = await _auditService.GetOperationStatsAsync(startDate, endDate);
-                
+                var stats = await _auditService.GetOperationStatsAsync(startDate, endDate, currentUser.TenantId);
+
                 _logger.LogInformation("获取到 {Count} 种操作类型的统计数据", stats?.Count ?? 0);
-                
+
                 // 转换为图表数据格式
-                var chartData = stats?.Select(kvp => new 
+                var chartData = stats?.Select(kvp => new
                 {
                     OperationType = kvp.Key,
                     Count = kvp.Value
@@ -80,7 +84,7 @@ namespace CodeSpirit.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "获取操作类型统计时发生错误");
-                
+
                 return BadRequest(new
                 {
                     error = "获取操作类型统计失败",
@@ -110,10 +114,10 @@ namespace CodeSpirit.Web.Controllers
             DateTime endDate = dateRange?.Length > 1 ? dateRange[1] : DateTime.UtcNow;
 
             // 获取用户操作统计数据
-            var stats = await _auditService.GetUserStatsAsync(startDate, endDate, topN);
-            
+            var stats = await _auditService.GetUserStatsAsync(startDate, endDate, topN, currentUser.TenantId);
+
             // 转换为图表数据格式
-            var chartData = stats.Select(kvp => new 
+            var chartData = stats.Select(kvp => new
             {
                 UserName = kvp.Key,
                 Count = kvp.Value
@@ -142,10 +146,10 @@ namespace CodeSpirit.Web.Controllers
             DateTime endDate = dateRange?.Length > 1 ? dateRange[1] : DateTime.UtcNow;
 
             // 获取操作趋势数据
-            var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, interval);
-            
+            var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, interval, currentUser.TenantId);
+
             // 转换为图表数据格式
-            var chartData = trend.Select(kvp => new 
+            var chartData = trend.Select(kvp => new
             {
                 Date = kvp.Key.ToString("yyyy-MM-dd HH:mm"),
                 Count = kvp.Value
@@ -166,32 +170,32 @@ namespace CodeSpirit.Web.Controllers
         public async Task<IActionResult> GetOperationSummaryAsync()
         {
             DateTime now = DateTime.UtcNow;
-            
+
             // 今日
             var todayStart = DateTime.UtcNow.Date;
             var todayEnd = todayStart.AddDays(1).AddSeconds(-1);
-            var todayTrend = await _auditService.GetOperationTrendAsync(todayStart, todayEnd, 24);
+            var todayTrend = await _auditService.GetOperationTrendAsync(todayStart, todayEnd, 24, currentUser.TenantId);
             var todayCount = todayTrend.Values.Sum();
-            
+
             // 本周
             var weekStart = DateTime.UtcNow.Date.AddDays(-(int)DateTime.UtcNow.DayOfWeek);
             var weekEnd = weekStart.AddDays(7).AddSeconds(-1);
-            var weekTrend = await _auditService.GetOperationTrendAsync(weekStart, weekEnd, 24);
+            var weekTrend = await _auditService.GetOperationTrendAsync(weekStart, weekEnd, 24, currentUser.TenantId);
             var weekCount = weekTrend.Values.Sum();
-            
+
             // 本月
             var monthStart = new DateTime(now.Year, now.Month, 1);
             var monthEnd = monthStart.AddMonths(1).AddSeconds(-1);
-            var monthTrend = await _auditService.GetOperationTrendAsync(monthStart, monthEnd, 24);
+            var monthTrend = await _auditService.GetOperationTrendAsync(monthStart, monthEnd, 24, currentUser.TenantId);
             var monthCount = monthTrend.Values.Sum();
-            
+
             var summaryData = new List<object>
             {
                 new { Period = "今日", Count = todayCount },
                 new { Period = "本周", Count = weekCount },
                 new { Period = "本月", Count = monthCount }
             };
-            
+
             return await this.AutoChartResult(summaryData);
         }
 
@@ -212,14 +216,14 @@ namespace CodeSpirit.Web.Controllers
             {
                 DateTime endDate = DateTime.UtcNow;
                 DateTime startDate = endDate.AddDays(-days);
-                
+
                 _logger.LogInformation("获取每日操作统计，时间范围: {StartDate} 到 {EndDate}", startDate, endDate);
-                
+
                 // 获取操作趋势数据
-                var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, 24);
-                
+                var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, 24, currentUser.TenantId);
+
                 _logger.LogInformation("获取到 {Count} 条趋势数据", trend?.Count ?? 0);
-                
+
                 // 按天聚合数据
                 var dailyData = trend?
                     .GroupBy(kvp => kvp.Key.Date)
@@ -231,14 +235,14 @@ namespace CodeSpirit.Web.Controllers
                     .OrderBy(item => item.Date)
                     .Cast<object>()
                     .ToList() ?? new List<object>();
-                
+
                 _logger.LogInformation("聚合后的每日数据: {Count} 条", dailyData.Count);
-                
+
                 // 如果没有数据，创建一个空的数据集合以便图表组件能够正确处理
                 if (!dailyData.Any())
                 {
                     _logger.LogWarning("没有找到指定时间范围内的操作数据");
-                    
+
                     // 生成空的日期范围数据，以便显示空图表
                     dailyData = Enumerable.Range(0, days)
                         .Select(i => new
@@ -249,13 +253,13 @@ namespace CodeSpirit.Web.Controllers
                         .Cast<object>()
                         .ToList();
                 }
-                
+
                 return await this.AutoChartResult(dailyData);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "获取每日操作统计时发生错误");
-                
+
                 // 返回错误信息
                 return BadRequest(new
                 {
@@ -286,21 +290,21 @@ namespace CodeSpirit.Web.Controllers
                 _logger.LogInformation("获取操作成功率统计，时间范围: {StartDate} 到 {EndDate}", startDate, endDate);
 
                 // 获取操作趋势数据
-                var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, 24);
-                
+                var trend = await _auditService.GetOperationTrendAsync(startDate, endDate, 24, currentUser.TenantId);
+
                 _logger.LogInformation("获取到 {Count} 条趋势数据", trend?.Count ?? 0);
-                
+
                 // 计算成功率数据
                 var totalCount = trend?.Values.Sum() ?? 0;
-                
+
                 double successPercentage;
                 if (totalCount > 0)
                 {
                     // 模拟成功率数据（实际项目中应该从AuditLog中获取）
                     var successCount = (long)(totalCount * 0.95); // 假设95%成功率
                     successPercentage = Math.Round((double)successCount / totalCount * 100, 2);
-                    
-                    _logger.LogInformation("总操作数: {TotalCount}, 成功操作数: {SuccessCount}, 成功率: {SuccessPercentage}%", 
+
+                    _logger.LogInformation("总操作数: {TotalCount}, 成功操作数: {SuccessCount}, 成功率: {SuccessPercentage}%",
                         totalCount, successCount, successPercentage);
                 }
                 else
@@ -309,18 +313,18 @@ namespace CodeSpirit.Web.Controllers
                     successPercentage = 0.0;
                     _logger.LogWarning("指定时间范围内没有操作数据，成功率设置为0%");
                 }
-                
+
                 var chartData = new List<object>
                 {
                     new { Status = "成功", Percentage = successPercentage }
                 };
-                
+
                 return await this.AutoChartResult(chartData);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "获取操作成功率统计时发生错误");
-                
+
                 // 返回错误信息
                 return BadRequest(new
                 {
@@ -331,4 +335,4 @@ namespace CodeSpirit.Web.Controllers
             }
         }
     }
-} 
+}

@@ -149,20 +149,22 @@ public class InMemoryAuditService : IAuditService
         return Task.FromResult((logs, (long)total));
     }
     
-    public Task<Dictionary<string, long>> GetOperationStatsAsync(DateTime startTime, DateTime endTime)
+    public Task<Dictionary<string, long>> GetOperationStatsAsync(DateTime startTime, DateTime endTime, string? tenantId = null)
     {
         var stats = _auditLogs
             .Where(l => l.OperationTime >= startTime && l.OperationTime <= endTime)
+            .Where(l => tenantId == null || l.TenantId == tenantId)
             .GroupBy(l => l.OperationType ?? "Unknown")
             .ToDictionary(g => g.Key, g => (long)g.Count());
         
         return Task.FromResult(stats);
     }
     
-    public Task<Dictionary<string, long>> GetUserStatsAsync(DateTime startTime, DateTime endTime, int topN = 10)
+    public Task<Dictionary<string, long>> GetUserStatsAsync(DateTime startTime, DateTime endTime, int topN = 10, string? tenantId = null)
     {
         var stats = _auditLogs
             .Where(l => l.OperationTime >= startTime && l.OperationTime <= endTime)
+            .Where(l => tenantId == null || l.TenantId == tenantId)
             .GroupBy(l => l.UserId ?? "Anonymous")
             .OrderByDescending(g => g.Count())
             .Take(topN)
@@ -171,7 +173,7 @@ public class InMemoryAuditService : IAuditService
         return Task.FromResult(stats);
     }
     
-    public Task<Dictionary<DateTime, long>> GetOperationTrendAsync(DateTime startTime, DateTime endTime, int interval = 24)
+    public Task<Dictionary<DateTime, long>> GetOperationTrendAsync(DateTime startTime, DateTime endTime, int interval = 24, string? tenantId = null)
     {
         var trend = new Dictionary<DateTime, long>();
         var current = startTime;
@@ -179,7 +181,9 @@ public class InMemoryAuditService : IAuditService
         while (current <= endTime)
         {
             var next = current.AddHours(interval);
-            var count = _auditLogs.Count(l => l.OperationTime >= current && l.OperationTime < next);
+            var count = _auditLogs
+                .Where(l => tenantId == null || l.TenantId == tenantId)
+                .Count(l => l.OperationTime >= current && l.OperationTime < next);
             trend[current] = count;
             current = next;
         }

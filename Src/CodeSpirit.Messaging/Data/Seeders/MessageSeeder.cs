@@ -1,4 +1,5 @@
 using CodeSpirit.Messaging.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -35,8 +36,13 @@ namespace CodeSpirit.Messaging.Data.Seeders
         {
             try
             {
-                // 检查是否已经有数据
-                if (_dbContext.Messages.Any(m => m.Type == MessageType.SystemNotification))
+                // 检查是否已经有数据 - 在没有多租户过滤器的情况下检查
+                var hasSystemNotifications = await _dbContext.WithoutMultiTenantFilterAsync(async () =>
+                {
+                    return await _dbContext.Messages.AnyAsync(m => m.Type == MessageType.SystemNotification);
+                });
+
+                if (hasSystemNotifications)
                 {
                     _logger.LogInformation("系统通知已存在，跳过初始化");
                     return;
@@ -54,7 +60,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                         RecipientId = "all",
                         SenderId = "system",
                         SenderName = "系统管理员",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTime.Now,
+                        TenantId = "default" // 设置默认租户ID
                     },
                     new Message
                     {
@@ -65,7 +72,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                         RecipientId = "all",
                         SenderId = "system",
                         SenderName = "系统管理员",
-                        CreatedAt = DateTime.Now.AddDays(-1)
+                        CreatedAt = DateTime.Now.AddDays(-1),
+                        TenantId = "default" // 设置默认租户ID
                     },
                     new Message
                     {
@@ -76,13 +84,18 @@ namespace CodeSpirit.Messaging.Data.Seeders
                         RecipientId = "all",
                         SenderId = "system",
                         SenderName = "系统管理员",
-                        CreatedAt = DateTime.Now.AddDays(-2)
+                        CreatedAt = DateTime.Now.AddDays(-2),
+                        TenantId = "default" // 设置默认租户ID
                     }
                 };
 
-                // 添加到数据库
-                await _dbContext.Messages.AddRangeAsync(systemNotifications);
-                await _dbContext.SaveChangesAsync();
+                // 在没有多租户过滤器的情况下添加到数据库
+                await _dbContext.WithoutMultiTenantFilterAsync(async () =>
+                {
+                    await _dbContext.Messages.AddRangeAsync(systemNotifications);
+                    await _dbContext.SaveChangesAsync();
+                    return true;
+                });
                 _logger.LogInformation("成功初始化 {Count} 条系统通知", systemNotifications.Count);
             }
             catch (Exception ex)

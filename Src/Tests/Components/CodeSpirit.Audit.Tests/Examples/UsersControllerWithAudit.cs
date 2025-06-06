@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CodeSpirit.Audit.Attributes;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 

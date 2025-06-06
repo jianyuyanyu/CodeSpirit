@@ -113,4 +113,130 @@ MultiTenantExample.ConfigureMiddleware(app);
 - 自定义租户存储实现
 - 多数据库租户策略
 - 租户级别的配置管理
-- 租户数据迁移工具 
+- 租户数据迁移工具
+
+# API租户存储配置示例
+
+本目录包含了使用 API 存储作为租户数据源的配置示例。
+
+## 配置文件
+
+### appsettings.development.example.json
+
+开发环境配置示例，使用内存存储，简化配置便于快速开发。
+
+### appsettings.api-store.example.json
+
+基于 `CodeSpirit.IdentityApi.Controllers.TenantsController` 的端点配置示例，适用于集成测试和开发环境。
+
+### appsettings.aspire.example.json
+
+.NET Aspire 环境配置示例，使用服务发现进行内部通信。
+
+### appsettings.k8s.example.json
+
+Kubernetes 环境配置示例，使用集群内服务发现。
+
+### appsettings.production.example.json
+
+生产环境配置示例，包含性能优化配置。
+
+## 端点映射
+
+基于 `TenantsController` 中的实际端点，API租户存储的端点映射如下：
+
+| 功能 | HTTP方法 | 端点 | Controller方法 |
+|------|----------|------|----------------|
+| 获取租户详情 | GET | `/api/tenants/{tenantId}` | `GetTenant` |
+| 获取活跃租户列表 | GET | `/api/tenants/active` | `GetActiveTenants` |
+| 创建租户 | POST | `/api/tenants` | `CreateTenant` |
+| 更新租户 | PUT | `/api/tenants/{tenantId}` | `UpdateTenant` |
+| 删除租户 | DELETE | `/api/tenants/{tenantId}` | `DeleteTenant` |
+| 检查租户是否存在 | HEAD | `/api/tenants/{tenantId}` | `GetTenant` (使用HEAD请求) |
+
+## 响应格式
+
+所有端点都使用标准的 `ApiResponse<T>` 格式：
+
+```json
+{
+  "status": 0,
+  "msg": "操作成功！",
+  "data": {
+    // 租户数据
+  }
+}
+```
+
+- `status`: 0表示成功，非0表示错误
+- `msg`: 响应消息
+- `data`: 实际数据
+
+## 租户数据格式
+
+获取租户详情返回的数据格式：
+
+```json
+{
+  "tenantId": "tenant-001",
+  "name": "租户名称",
+  "displayName": "租户显示名称",
+  "description": "租户描述",
+  "strategy": "SharedDatabase",
+  "isActive": true,
+  "domain": "tenant001.example.com",
+  "maxUsers": 100,
+  "storageLimit": 1073741824,
+  "expiresAt": "2024-12-31T23:59:59Z",
+  "createdAt": "2024-01-01T00:00:00Z"
+}
+```
+
+获取活跃租户列表返回的数据格式：
+
+```json
+[
+  {
+    "tenantId": "tenant-001",
+    "name": "租户名称",
+    "displayName": "租户显示名称",
+    "description": "租户描述",
+    "logoUrl": "https://example.com/logo.png"
+  }
+]
+```
+
+## 使用说明
+
+1. 将示例配置复制到你的应用程序的 `appsettings.json` 中
+2. 根据部署环境选择合适的 `BaseUrl` 配置：
+   - **开发环境**: `http://localhost:5001` 或 `https://localhost:5001`
+   - **.NET Aspire**: `http://identityapi` (使用服务名称)
+   - **Kubernetes**: `http://identity-api.default.svc.cluster.local` (使用FQDN)
+   - **Docker Compose**: `http://identity-api` (使用服务名称)
+3. 根据需要调整其他配置项
+
+## 内网部署配置
+
+API存储专门为内部网络通信设计，无需API密钥认证：
+
+- **网络隔离**: 通过容器网络或Kubernetes网络策略实现安全隔离
+- **服务发现**: 支持.NET Aspire、Kubernetes、Docker Compose等服务发现机制
+- **简化配置**: 无需管理API密钥，降低配置复杂性
+- **高性能**: 内网通信延迟低，适合高频租户信息查询
+
+## 故障处理
+
+API租户存储具有以下故障处理机制：
+
+1. **网络超时**: 可配置超时时间，默认30秒
+2. **API错误**: 会记录详细的错误日志
+3. **缓存机制**: 启用缓存可减少API调用次数
+4. **失败策略**: 可配置失败时的处理策略（使用默认租户、抛出异常、返回404）
+
+## 性能优化
+
+1. **启用缓存**: 设置 `EnableTenantCache: true`
+2. **合理的缓存过期时间**: 根据租户数据变更频率设置
+3. **连接池**: HttpClient会自动使用连接池
+4. **压缩**: 如果API支持，可以启用GZIP压缩 

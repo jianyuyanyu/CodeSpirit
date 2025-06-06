@@ -79,6 +79,7 @@ public class TenantOptions
 
     /// <summary>
     /// 是否启用租户缓存
+
     /// </summary>
     public bool EnableTenantCache { get; set; } = true;
 
@@ -109,7 +110,13 @@ public enum TenantStoreType
     /// 内存存储
     /// </summary>
     [Display(Name = "内存存储")]
-    Memory
+    Memory,
+    
+    /// <summary>
+    /// API存储
+    /// </summary>
+    [Display(Name = "API存储")]
+    Api
 }
 
 /// <summary>
@@ -134,4 +141,4 @@ public enum TenantResolutionFailureStrategy
     /// </summary>
     [Display(Name = "返回404错误")]
     Return404
-} 
+}

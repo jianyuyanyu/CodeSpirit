@@ -1,10 +1,11 @@
 using CodeSpirit.Messaging.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Linq;
-using Microsoft.Extensions.Hosting;
+using System.Threading.Tasks;
 
 namespace CodeSpirit.Messaging.Data.Seeders
 {
@@ -44,8 +45,13 @@ namespace CodeSpirit.Messaging.Data.Seeders
                     return;
                 }
 
-                // 检查是否已经有数据
-                if (_dbContext.Conversations.Any())
+                // 检查是否已经有数据 - 在没有多租户过滤器的情况下检查
+                var hasConversations = await _dbContext.WithoutMultiTenantFilterAsync(async () =>
+                {
+                    return await _dbContext.Conversations.AnyAsync();
+                });
+
+                if (hasConversations)
                 {
                     _logger.LogInformation("对话数据已存在，跳过初始化");
                     return;
@@ -63,19 +69,22 @@ namespace CodeSpirit.Messaging.Data.Seeders
                     Title = "系统通知",
                     CreatedAt = DateTime.Now.AddDays(-5),
                     LastActivityAt = DateTime.Now.AddDays(-1),
+                    TenantId = "default", // 设置默认租户ID
                     Participants = new List<ConversationParticipant>
                     {
                         new ConversationParticipant
                         {
                             UserId = systemUserId,
                             UserName = "系统",
-                            JoinedAt = DateTime.Now.AddDays(-5)
+                            JoinedAt = DateTime.Now.AddDays(-5),
+                            TenantId = "default" // 设置默认租户ID
                         },
                         new ConversationParticipant
                         {
                             UserId = adminUserId,
                             UserName = "管理员",
-                            JoinedAt = DateTime.Now.AddDays(-5)
+                            JoinedAt = DateTime.Now.AddDays(-5),
+                            TenantId = "default" // 设置默认租户ID
                         }
                     }
                 };
@@ -87,26 +96,33 @@ namespace CodeSpirit.Messaging.Data.Seeders
                     Title = "测试用户对话",
                     CreatedAt = DateTime.Now.AddDays(-3),
                     LastActivityAt = DateTime.Now.AddHours(-12),
+                    TenantId = "default", // 设置默认租户ID
                     Participants = new List<ConversationParticipant>
                     {
                         new ConversationParticipant
                         {
                             UserId = testUser1Id,
                             UserName = "测试用户1",
-                            JoinedAt = DateTime.Now.AddDays(-3)
+                            JoinedAt = DateTime.Now.AddDays(-3),
+                            TenantId = "default" // 设置默认租户ID
                         },
                         new ConversationParticipant
                         {
                             UserId = testUser2Id,
                             UserName = "测试用户2",
-                            JoinedAt = DateTime.Now.AddDays(-3)
+                            JoinedAt = DateTime.Now.AddDays(-3),
+                            TenantId = "default" // 设置默认租户ID
                         }
                     }
                 };
 
-                // 添加对话到数据库
-                await _dbContext.Conversations.AddRangeAsync(conversationSystem, conversationUsers);
-                await _dbContext.SaveChangesAsync();
+                // 在没有多租户过滤器的情况下添加对话到数据库
+                await _dbContext.WithoutMultiTenantFilterAsync(async () =>
+                {
+                    await _dbContext.Conversations.AddRangeAsync(conversationSystem, conversationUsers);
+                    await _dbContext.SaveChangesAsync();
+                    return true;
+                });
                 _logger.LogInformation("成功初始化 2 个示例对话");
 
                 // 为对话添加消息
@@ -139,7 +155,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                         SenderId = "system",
                         SenderName = "系统",
                         RecipientId = "admin",
-                        CreatedAt = now.AddDays(-5)
+                        CreatedAt = now.AddDays(-5),
+                        TenantId = "default" // 设置默认租户ID
                     },
                     new Message
                     {
@@ -150,7 +167,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                         SenderId = "admin",
                         SenderName = "管理员",
                         RecipientId = "system",
-                        CreatedAt = now.AddDays(-5).AddHours(1)
+                        CreatedAt = now.AddDays(-5).AddHours(1),
+                        TenantId = "default" // 设置默认租户ID
                     }
                 };
 
@@ -166,7 +184,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                         SenderId = "user1",
                         SenderName = "测试用户1",
                         RecipientId = "user2",
-                        CreatedAt = now.AddDays(-3)
+                        CreatedAt = now.AddDays(-3),
+                        TenantId = "default" // 设置默认租户ID
                     },
                     new Message
                     {
@@ -177,7 +196,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                         SenderId = "user2",
                         SenderName = "测试用户2",
                         RecipientId = "user1",
-                        CreatedAt = now.AddDays(-3).AddMinutes(10)
+                        CreatedAt = now.AddDays(-3).AddMinutes(10),
+                        TenantId = "default" // 设置默认租户ID
                     },
                     new Message
                     {
@@ -188,7 +208,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                         SenderId = "user1",
                         SenderName = "测试用户1",
                         RecipientId = "user2",
-                        CreatedAt = now.AddDays(-3).AddMinutes(20)
+                        CreatedAt = now.AddDays(-3).AddMinutes(20),
+                        TenantId = "default" // 设置默认租户ID
                     }
                 };
 
@@ -196,11 +217,14 @@ namespace CodeSpirit.Messaging.Data.Seeders
                 systemConversation.Messages.AddRange(systemMessages);
                 userConversation.Messages.AddRange(userMessages);
 
-                // 更新对话
-                _dbContext.Conversations.Update(systemConversation);
-                _dbContext.Conversations.Update(userConversation);
-                
-                await _dbContext.SaveChangesAsync();
+                // 在没有多租户过滤器的情况下更新对话
+                await _dbContext.WithoutMultiTenantFilterAsync(async () =>
+                {
+                    _dbContext.Conversations.Update(systemConversation);
+                    _dbContext.Conversations.Update(userConversation);
+                    await _dbContext.SaveChangesAsync();
+                    return true;
+                });
                 _logger.LogInformation("成功为对话添加 {Count} 条示例消息", systemMessages.Count + userMessages.Count);
 
                 // 创建消息已读状态记录
@@ -212,7 +236,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                     MessageId = systemMessages[0].Id,
                     UserId = "admin",
                     IsRead = true,
-                    ReadAt = now.AddDays(-5).AddHours(1)
+                    ReadAt = now.AddDays(-5).AddHours(1),
+                    TenantId = "default" // 设置默认租户ID
                 });
                 
                 userMessageReads.Add(new UserMessageRead
@@ -220,7 +245,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                     MessageId = systemMessages[1].Id,
                     UserId = "system",
                     IsRead = true,
-                    ReadAt = now.AddDays(-5).AddHours(1)
+                    ReadAt = now.AddDays(-5).AddHours(1),
+                    TenantId = "default" // 设置默认租户ID
                 });
                 
                 // 用户消息已读状态
@@ -229,7 +255,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                     MessageId = userMessages[0].Id,
                     UserId = "user2",
                     IsRead = true,
-                    ReadAt = now.AddDays(-3).AddMinutes(5)
+                    ReadAt = now.AddDays(-3).AddMinutes(5),
+                    TenantId = "default" // 设置默认租户ID
                 });
                 
                 userMessageReads.Add(new UserMessageRead
@@ -237,7 +264,8 @@ namespace CodeSpirit.Messaging.Data.Seeders
                     MessageId = userMessages[1].Id,
                     UserId = "user1",
                     IsRead = true,
-                    ReadAt = now.AddDays(-3).AddMinutes(15)
+                    ReadAt = now.AddDays(-3).AddMinutes(15),
+                    TenantId = "default" // 设置默认租户ID
                 });
                 
                 userMessageReads.Add(new UserMessageRead
@@ -245,12 +273,17 @@ namespace CodeSpirit.Messaging.Data.Seeders
                     MessageId = userMessages[2].Id,
                     UserId = "user2",
                     IsRead = true,
-                    ReadAt = now.AddDays(-3).AddMinutes(25)
+                    ReadAt = now.AddDays(-3).AddMinutes(25),
+                    TenantId = "default" // 设置默认租户ID
                 });
 
-                // 保存用户消息已读记录
-                await _dbContext.UserMessageReads.AddRangeAsync(userMessageReads);
-                await _dbContext.SaveChangesAsync();
+                // 在没有多租户过滤器的情况下保存用户消息已读记录
+                await _dbContext.WithoutMultiTenantFilterAsync(async () =>
+                {
+                    await _dbContext.UserMessageReads.AddRangeAsync(userMessageReads);
+                    await _dbContext.SaveChangesAsync();
+                    return true;
+                });
                 
                 _logger.LogInformation("成功创建 {Count} 条消息已读状态记录", userMessageReads.Count);
             }

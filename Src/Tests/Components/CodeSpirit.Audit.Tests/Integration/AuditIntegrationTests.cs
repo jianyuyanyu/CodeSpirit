@@ -64,8 +64,8 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
         
         services.AddSingleton<IConfiguration>(configuration);
 
-        // 添加审计服务
-        services.AddAuditServices(configuration);
+        // 添加审计服务 (明确指定使用AuditExtensions)
+        AuditExtensions.AddAuditServices(services, configuration);
         
         // 配置审计选项
         services.Configure<AuditOptions>(options => {
@@ -342,13 +342,17 @@ public class InMemoryAuditService : IAuditService
         }
     }
 
-    public Task<Dictionary<string, long>> GetOperationStatsAsync(DateTime startTime, DateTime endTime)
+    public Task<Dictionary<string, long>> GetOperationStatsAsync(DateTime startTime, DateTime endTime, string? tenantId = null)
     {
         Dictionary<string, long> stats = new Dictionary<string, long>();
         
         lock (_logs)
         {
             var logsInRange = _logs.Where(l => l.OperationTime >= startTime && l.OperationTime <= endTime);
+            if (tenantId != null)
+            {
+                logsInRange = logsInRange.Where(l => l.TenantId == tenantId);
+            }
             stats = logsInRange
                 .GroupBy(l => l.OperationType ?? "未知")
                 .ToDictionary(g => g.Key, g => (long)g.Count());
@@ -357,13 +361,17 @@ public class InMemoryAuditService : IAuditService
         return Task.FromResult(stats);
     }
 
-    public Task<Dictionary<string, long>> GetUserStatsAsync(DateTime startTime, DateTime endTime, int topN = 10)
+    public Task<Dictionary<string, long>> GetUserStatsAsync(DateTime startTime, DateTime endTime, int topN = 10, string? tenantId = null)
     {
         Dictionary<string, long> stats = new Dictionary<string, long>();
         
         lock (_logs)
         {
             var logsInRange = _logs.Where(l => l.OperationTime >= startTime && l.OperationTime <= endTime);
+            if (tenantId != null)
+            {
+                logsInRange = logsInRange.Where(l => l.TenantId == tenantId);
+            }
             stats = logsInRange
                 .Where(l => !string.IsNullOrEmpty(l.UserName))
                 .GroupBy(l => l.UserName!)
@@ -375,12 +383,16 @@ public class InMemoryAuditService : IAuditService
         return Task.FromResult(stats);
     }
 
-    public Task<Dictionary<DateTime, long>> GetOperationTrendAsync(DateTime startTime, DateTime endTime, int interval = 24)
+    public Task<Dictionary<DateTime, long>> GetOperationTrendAsync(DateTime startTime, DateTime endTime, int interval = 24, string? tenantId = null)
     {
         var result = new Dictionary<DateTime, long>();
         lock (_logs)
         {
             var logsInRange = _logs.Where(l => l.OperationTime >= startTime && l.OperationTime <= endTime);
+            if (tenantId != null)
+            {
+                logsInRange = logsInRange.Where(l => l.TenantId == tenantId);
+            }
             
             // 按时间分组统计
             var intervalInHours = interval;

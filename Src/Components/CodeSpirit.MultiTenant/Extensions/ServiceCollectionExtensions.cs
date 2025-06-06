@@ -41,6 +41,14 @@ public static class ServiceCollectionExtensions
                 // TODO: 实现配置文件存储
                 services.AddSingleton<ITenantStore, MemoryTenantStore>();
                 break;
+            case TenantStoreType.Api:
+                // 注册API租户存储配置
+                services.Configure<ApiTenantStoreOptions>(configuration.GetSection(ApiTenantStoreOptions.SectionName));
+                // 注册HttpClient
+                services.AddHttpClient<ApiTenantStore>();
+                // 注册API租户存储
+                services.AddScoped<ITenantStore, ApiTenantStore>();
+                break;
             case TenantStoreType.Database:
             default:
                 // TODO: 实现数据库存储

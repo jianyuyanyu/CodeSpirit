@@ -1,7 +1,9 @@
 using CodeSpirit.Audit.Helpers;
 using CodeSpirit.Audit.Models;
+using CodeSpirit.Audit.Services;
 using CodeSpirit.Audit.Services.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 
 namespace CodeSpirit.Audit.Controllers;

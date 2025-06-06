@@ -340,9 +340,20 @@ string cacheKey = $"UserPermissions:{Id.Value}:Tenant:{TenantId}";
 4. **数据过滤**：在数据访问层自动应用租户过滤
 5. **审计日志**：记录跨租户操作的审计信息
 
-## 使用示例
+## 使用示例和配置
 
-完整的使用示例请参考测试项目中的示例代码：
+完整的使用示例和配置请参考测试项目：
+
+### 配置示例
+
+- **开发环境配置**：[appsettings.development.example.json](../../Tests/Components/CodeSpirit.MultiTenant.Tests/Examples/appsettings.development.example.json)
+- **API存储配置**：[appsettings.api-store.example.json](../../Tests/Components/CodeSpirit.MultiTenant.Tests/Examples/appsettings.api-store.example.json)
+- **.NET Aspire配置**：[appsettings.aspire.example.json](../../Tests/Components/CodeSpirit.MultiTenant.Tests/Examples/appsettings.aspire.example.json)
+- **Kubernetes配置**：[appsettings.k8s.example.json](../../Tests/Components/CodeSpirit.MultiTenant.Tests/Examples/appsettings.k8s.example.json)
+- **生产环境配置**：[appsettings.production.example.json](../../Tests/Components/CodeSpirit.MultiTenant.Tests/Examples/appsettings.production.example.json)
+- **详细配置说明**：[配置说明文档](../../Tests/Components/CodeSpirit.MultiTenant.Tests/Examples/README.md)
+
+### 代码示例
 
 - **基础示例**：[MultiTenantExample.cs](../../Tests/Components/CodeSpirit.MultiTenant.Tests/Examples/MultiTenantExample.cs)
 - **单元测试**：[Tests目录](../../Tests/Components/CodeSpirit.MultiTenant.Tests/)
@@ -353,8 +364,48 @@ string cacheKey = $"UserPermissions:{Id.Value}:Tenant:{TenantId}";
 - 多租户数据库上下文
 - 多租户业务服务
 - 多租户控制器
+- API存储配置示例
 
-## 自定义租户存储
+## 租户存储类型
+
+### API存储（推荐）
+
+通过HTTP API调用获取租户信息，适合集中式租户管理和内部服务通信：
+
+```json
+{
+  "MultiTenant": {
+    "StoreType": "Api",
+    "ApiStore": {
+      "BaseUrl": "http://identity-api",
+      "Timeout": 30,
+      "UseApiResponseFormat": true,
+      "GetTenantEndpoint": "api/tenants/{tenantId}",
+      "GetActiveTenantsEndpoint": "api/tenants/active"
+    }
+  }
+}
+```
+
+支持多种部署环境的服务发现：
+- **.NET Aspire**: `http://identityapi`
+- **Kubernetes**: `http://identity-api.default.svc.cluster.local`
+- **Docker Compose**: `http://identity-api`
+- **本地开发**: `http://localhost:5001`
+
+### 内存存储
+
+适合开发和测试环境：
+
+```json
+{
+  "MultiTenant": {
+    "StoreType": "Memory"
+  }
+}
+```
+
+### 自定义租户存储
 
 实现 `ITenantStore` 接口来自定义租户存储：
 
@@ -400,9 +451,12 @@ builder.Services.Replace(ServiceDescriptor.Singleton<ITenantStore, DatabaseTenan
 | `ResolveFromSubdomain` | bool | false | 是否从子域名解析租户 |
 | `ResolveFromPath` | bool | false | 是否从路径解析租户 |
 | `TenantPathPrefix` | string | "tenant-" | 租户路径前缀 |
-| `StoreType` | enum | Database | 租户存储类型 |
+| `StoreType` | enum | Database | 租户存储类型（Memory/ConfigFile/Database/Api） |
 | `EnableTenantCache` | bool | true | 是否启用租户缓存 |
 | `CacheExpirationMinutes` | int | 30 | 缓存过期时间（分钟） |
+| `ApiStore.BaseUrl` | string | "" | API存储基础URL，支持服务发现（当StoreType为Api时使用） |
+| `ApiStore.Timeout` | int | 30 | API请求超时时间（秒） |
+| `ApiStore.UseApiResponseFormat` | bool | true | 是否使用ApiResponse格式 |
 
 ## 最佳实践
 

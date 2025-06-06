@@ -21,9 +21,6 @@ public class MemoryTenantStore : ITenantStore
     {
         _logger = logger;
         _tenants = new ConcurrentDictionary<string, ITenantInfo>();
-        
-        // 初始化默认租户
-        InitializeDefaultTenants();
     }
 
     /// <summary>
@@ -130,33 +127,4 @@ public class MemoryTenantStore : ITenantStore
     {
         return Task.FromResult(_tenants.ContainsKey(tenantId));
     }
-
-    /// <summary>
-    /// 初始化默认租户
-    /// </summary>
-    private void InitializeDefaultTenants()
-    {
-        var defaultTenant = new TenantInfo
-        {
-            Id = "default",
-            TenantId = "default",
-            Name = "默认租户",
-            DisplayName = "默认租户",
-            Description = "系统默认租户",
-            Strategy = TenantStrategy.SharedDatabase,
-            ConnectionString = "",
-            TablePrefix = "",
-            IsActive = true,
-            Configuration = "{}",
-            Domain = "",
-            LogoUrl = "",
-            ThemeConfig = "{}",
-            MaxUsers = 1000,
-            StorageLimit = 10240,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _tenants.TryAdd(defaultTenant.TenantId, defaultTenant);
-        _logger.LogInformation("初始化默认租户完成");
-    }
-} 
+}

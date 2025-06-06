@@ -25,23 +25,23 @@ public class AspireIntegrationTests
         var services = new ServiceCollection();
         var configuration = CreateTestConfiguration();
         
-        // 注册必要的依赖服务
+        // 注册必要的依赖服�?
         RegisterRequiredDependencies(services, configuration);
         
         // Act
-        services.AddAuditServices(configuration);
+        AuditExtensions.AddAuditServices(services, configuration);
         
         // Assert
         var serviceProvider = services.BuildServiceProvider();
         
-        // 验证核心服务已注册（不实际创建实例以避免依赖问题）
+        // 验证核心服务已注册（不实际创建实例以避免依赖问题�?
         Assert.Contains(services, s => s.ServiceType == typeof(CodeSpirit.Audit.Services.IElasticsearchService));
         Assert.Contains(services, s => s.ServiceType == typeof(CodeSpirit.Audit.Services.IRabbitMQService));
         Assert.Contains(services, s => s.ServiceType == typeof(CodeSpirit.Audit.Services.IAuditService));
         Assert.Contains(services, s => s.ServiceType == typeof(CodeSpirit.Audit.Services.IGeoLocationService));
         Assert.Contains(services, s => s.ServiceType == typeof(IAuditErrorHandler));
         
-        // 验证内存缓存已注册
+        // 验证内存缓存已注�?
         Assert.NotNull(serviceProvider.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>());
         
         // 验证HTTP客户端工厂已注册
@@ -49,7 +49,7 @@ public class AspireIntegrationTests
     }
     
     /// <summary>
-    /// 测试添加审计服务 - 使用Audit配置节
+    /// 测试添加审计服务 - 使用Audit配置�?
     /// </summary>
     [Fact]
     public void AddAuditServices_WithAuditSection_ShouldBindCorrectly()
@@ -58,14 +58,14 @@ public class AspireIntegrationTests
         var services = new ServiceCollection();
         var configuration = CreateTestConfigurationWithAuditSection();
         
-        // 注册必要的依赖服务
+        // 注册必要的依赖服�?
         RegisterRequiredDependencies(services, configuration);
         
         // Act
-        services.AddAuditServices(configuration);
+        AuditExtensions.AddAuditServices(services, configuration);
         
         // Assert
-        // 验证服务注册（不实际创建实例）
+        // 验证服务注册（不实际创建实例�?
         Assert.Contains(services, s => s.ServiceType == typeof(CodeSpirit.Audit.Services.IAuditService));
     }
     
@@ -79,14 +79,14 @@ public class AspireIntegrationTests
         var services = new ServiceCollection();
         var configuration = CreateDirectAuditConfiguration();
         
-        // 注册必要的依赖服务
+        // 注册必要的依赖服�?
         RegisterRequiredDependencies(services, configuration);
         
         // Act
-        services.AddAuditServices(configuration);
+        AuditExtensions.AddAuditServices(services, configuration);
         
         // Assert
-        // 验证服务注册（不实际创建实例）
+        // 验证服务注册（不实际创建实例�?
         Assert.Contains(services, s => s.ServiceType == typeof(CodeSpirit.Audit.Services.IAuditService));
     }
     
@@ -101,18 +101,18 @@ public class AspireIntegrationTests
         services.AddMemoryCache(); // 预先注册内存缓存
         var configuration = CreateTestConfiguration();
         
-        // 注册必要的依赖服务
+        // 注册必要的依赖服�?
         RegisterRequiredDependencies(services, configuration);
         
         // Act
-        services.AddAuditServices(configuration);
+        AuditExtensions.AddAuditServices(services, configuration);
         
         // Assert
         var serviceProvider = services.BuildServiceProvider();
         var memoryCache = serviceProvider.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
         Assert.NotNull(memoryCache);
         
-        // 验证只有一个内存缓存服务注册
+        // 验证只有一个内存缓存服务注�?
         var memoryCacheServices = services.Where(s => s.ServiceType == typeof(Microsoft.Extensions.Caching.Memory.IMemoryCache));
         Assert.Single(memoryCacheServices);
     }
@@ -133,7 +133,7 @@ public class AspireIntegrationTests
         var hostedServices = services.Where(s => s.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService));
         Assert.NotEmpty(hostedServices);
         
-        // 验证注册了审计日志消费者服务
+        // 验证注册了审计日志消费者服�?
         var auditConsumerService = hostedServices.FirstOrDefault(s => 
             s.ImplementationType?.Name.Contains("AuditLogConsumerService") == true);
         Assert.NotNull(auditConsumerService);
@@ -148,13 +148,13 @@ public class AspireIntegrationTests
         // Arrange
         var services = new ServiceCollection();
         
-        // Act - 明确使用 AuditExtensions 的方法
+        // Act - 明确使用 AuditExtensions 的方�?
         AuditExtensions.AddAuditPerformanceMonitoring(services);
         
         // Assert
         var serviceProvider = services.BuildServiceProvider();
         
-        // 验证性能监控中间件已注册为瞬态服务
+        // 验证性能监控中间件已注册为瞬态服�?
         var performanceMiddleware = services.FirstOrDefault(s => 
             s.ImplementationType?.Name.Contains("AuditPerformanceMiddleware") == true);
         Assert.NotNull(performanceMiddleware);
@@ -162,7 +162,7 @@ public class AspireIntegrationTests
     }
     
     /// <summary>
-    /// 测试Aspire客户端注册 - 无Aspire配置
+    /// 测试Aspire客户端注�?- 无Aspire配置
     /// </summary>
     [Fact]
     public void TryRegisterAspireElasticsearchClient_WithoutAspireConfig_ShouldNotThrow()
@@ -171,11 +171,11 @@ public class AspireIntegrationTests
         var services = new ServiceCollection();
         var configuration = CreateTestConfiguration(); // 不包含Aspire配置
         
-        // 注册必要的依赖服务
+        // 注册必要的依赖服�?
         RegisterRequiredDependencies(services, configuration);
         
-        // Act & Assert - 应该不抛出异常
-        var exception = Record.Exception(() => services.AddAuditServices(configuration));
+        // Act & Assert - 应该不抛出异�?
+        var exception = Record.Exception(() => AuditExtensions.AddAuditServices(services, configuration));
         Assert.Null(exception);
         
         // 验证服务仍然正常注册
@@ -183,7 +183,7 @@ public class AspireIntegrationTests
     }
     
     /// <summary>
-    /// 测试Aspire客户端注册 - 有Aspire配置但无程序集
+    /// 测试Aspire客户端注�?- 有Aspire配置但无程序�?
     /// </summary>
     [Fact]
     public void TryRegisterAspireElasticsearchClient_WithAspireConfigButNoAssembly_ShouldFallback()
@@ -192,11 +192,11 @@ public class AspireIntegrationTests
         var services = new ServiceCollection();
         var configuration = CreateConfigurationWithAspireSection();
         
-        // 注册必要的依赖服务
+        // 注册必要的依赖服�?
         RegisterRequiredDependencies(services, configuration);
         
         // Act & Assert - 应该优雅降级，不抛出异常
-        var exception = Record.Exception(() => services.AddAuditServices(configuration));
+        var exception = Record.Exception(() => AuditExtensions.AddAuditServices(services, configuration));
         Assert.Null(exception);
         
         // 验证服务仍然正常注册（使用手动配置）
@@ -204,7 +204,7 @@ public class AspireIntegrationTests
     }
     
     /// <summary>
-    /// 测试HTTP客户端配置
+    /// 测试HTTP客户端配�?
     /// </summary>
     [Fact]
     public void AddAuditServices_ShouldConfigureHttpClientCorrectly()
@@ -213,22 +213,22 @@ public class AspireIntegrationTests
         var services = new ServiceCollection();
         var configuration = CreateTestConfiguration();
         
-        // 注册必要的依赖服务
+        // 注册必要的依赖服�?
         RegisterRequiredDependencies(services, configuration);
         
         // Act
-        services.AddAuditServices(configuration);
+        AuditExtensions.AddAuditServices(services, configuration);
         
         // Assert
         var serviceProvider = services.BuildServiceProvider();
         var httpClientFactory = serviceProvider.GetService<System.Net.Http.IHttpClientFactory>();
         Assert.NotNull(httpClientFactory);
         
-        // 验证可以创建GeoLocation客户端
+        // 验证可以创建GeoLocation客户�?
         var geoLocationClient = httpClientFactory.CreateClient("GeoLocation");
         Assert.NotNull(geoLocationClient);
         
-        // 验证客户端配置
+        // 验证客户端配�?
         Assert.Equal(TimeSpan.FromSeconds(5), geoLocationClient.Timeout);
         Assert.Contains("CodeSpirit-Audit", geoLocationClient.DefaultRequestHeaders.UserAgent.ToString());
     }
@@ -243,11 +243,11 @@ public class AspireIntegrationTests
         var services = new ServiceCollection();
         var configuration = CreateTestConfiguration();
         
-        // 注册必要的依赖服务
+        // 注册必要的依赖服�?
         RegisterRequiredDependencies(services, configuration);
         
         // Act
-        services.AddAuditServices(configuration);
+        AuditExtensions.AddAuditServices(services, configuration);
         
         // Assert
         // 验证单例服务
@@ -266,7 +266,7 @@ public class AspireIntegrationTests
             Assert.Equal(ServiceLifetime.Singleton, serviceDescriptor.Lifetime);
         }
         
-        // 验证作用域服务
+        // 验证作用域服�?
         var scopedServices = new[]
         {
             typeof(CodeSpirit.Audit.Services.IAuditService)
@@ -350,7 +350,7 @@ public class AspireIntegrationTests
     }
     
     /// <summary>
-    /// 注册必要的依赖服务
+    /// 注册必要的依赖服�?
     /// </summary>
     private void RegisterRequiredDependencies(ServiceCollection services, IConfiguration? configuration = null)
     {
@@ -360,7 +360,7 @@ public class AspireIntegrationTests
             services.AddSingleton<IConfiguration>(configuration ?? CreateTestConfiguration());
         }
         
-        // 创建模拟的 RabbitMQ 连接和通道
+        // 创建模拟�?RabbitMQ 连接和通道
         var mockConnection = new Mock<IConnection>();
         var mockChannel = new Mock<IModel>();
         
@@ -368,7 +368,7 @@ public class AspireIntegrationTests
         mockConnection.Setup(c => c.CreateModel()).Returns(mockChannel.Object);
         mockChannel.Setup(c => c.IsOpen).Returns(true);
         
-        // 注册模拟的 IRabbitMQServiceFactory
+        // 注册模拟�?IRabbitMQServiceFactory
         services.AddSingleton<IRabbitMQServiceFactory>(sp =>
         {
             var factory = new Mock<IRabbitMQServiceFactory>();

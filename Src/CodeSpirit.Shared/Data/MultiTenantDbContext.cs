@@ -243,156 +243,33 @@ public abstract class MultiTenantDbContext : AuditableDbContext
     {
         var expression = base.CreateFilterExpression<TEntity>();
 
-        // 添加多租户过滤 - 修复：在查询执行时动态检查过滤器状态和租户ID
+        // 添加多租户过滤
         if (typeof(IMultiTenant).IsAssignableFrom(typeof(TEntity)))
         {
-            // 使用方法调用表达式，确保在查询执行时动态检查过滤器状态和获取租户ID
-            Expression<Func<TEntity, bool>> tenantFilter = e => 
-                !IsMultiTenantFilterEnabledForQuery() || 
-                ApplyTenantFilter(EF.Property<string>(e, "TenantId"));
+            // 获取当前租户ID作为编译时常量
+            var currentTenantId = CurrentTenantId;
             
-            expression = expression != null
-                ? CombineExpressions(expression, tenantFilter)
-                : tenantFilter;
+            // 创建简单的字符串比较表达式，EF Core可以转换为SQL
+            Expression<Func<TEntity, bool>> tenantFilter = e => 
+                !IsMultiTenantFilterEnabled || 
+                EF.Property<string>(e, "TenantId") == currentTenantId;
+            
+            if (expression != null)
+            {
+                expression = CombineExpressions(expression, tenantFilter);
+            }
+            else
+            {
+                expression = tenantFilter;
+            }
         }
 
         return expression;
     }
 
-    /// <summary>
-    /// 获取查询时的多租户过滤器启用状态
-    /// 此方法会在每次查询执行时调用，确保过滤器状态的动态性
-    /// </summary>
-    /// <returns>多租户过滤器是否启用</returns>
-    protected virtual bool IsMultiTenantFilterEnabledForQuery()
-    {
-        try
-        {
-            return MultiTenantOptions.Enabled && 
-                   (DataFilter?.IsEnabled<IMultiTenant>() ?? true);
-        }
-        catch (Exception ex)
-        {
-            // 异常情况下默认启用多租户过滤以确保数据安全
-            _multiTenantLogger?.LogWarning(ex, "检查多租户过滤器状态时发生异常，默认启用过滤器");
-            return true;
-        }
-    }
 
-    /// <summary>
-    /// 获取查询时的当前租户ID
-    /// 此方法会在每次查询执行时调用，确保租户ID的动态性
-    /// </summary>
-    /// <returns>当前租户ID</returns>
-    protected virtual string GetCurrentTenantIdForQuery()
-    {
-        try
-        {
-            var currentTenantId = CurrentTenantId;
 
-            if (string.IsNullOrEmpty(currentTenantId))
-            {
-                // 无法确定租户ID时的处理策略
-                switch (MultiTenantOptions.UnknownTenantStrategy)
-                {
-                    case UnknownTenantStrategy.AllowAll:
-                        return string.Empty; // 返回空字符串，让调用方处理
-                    case UnknownTenantStrategy.DenyAll:
-                        _multiTenantLogger?.LogWarning("无法确定租户ID，多租户查询将受限");
-                        return "::DENY_ALL::"; // 使用特殊值表示拒绝所有
-                    case UnknownTenantStrategy.UseDefault:
-                    default:
-                        currentTenantId = MultiTenantOptions.DefaultTenantId;
-                        break;
-                }
-            }
 
-            _multiTenantLogger?.LogDebug("查询时获取租户ID: {TenantId}", currentTenantId);
-            return currentTenantId;
-        }
-        catch (Exception ex)
-        {
-            // 异常情况下不使用默认租户ID，而是返回特殊值表示拒绝访问
-            _multiTenantLogger?.LogError(ex, "获取查询租户ID时发生异常，拒绝数据访问以确保安全");
-            return "::ACCESS_DENIED::"; // 使用特殊值表示访问被拒绝
-        }
-    }
-
-    /// <summary>
-    /// 应用租户过滤器逻辑
-    /// 此方法会在查询执行时调用，根据不同策略处理租户过滤
-    /// </summary>
-    /// <param name="entityTenantId">实体的租户ID</param>
-    /// <returns>是否允许访问该实体</returns>
-    protected virtual bool ApplyTenantFilter(string entityTenantId)
-    {
-        try
-        {
-            var currentTenantId = GetCurrentTenantIdForQuery();
-
-            // 处理特殊策略
-            if (string.IsNullOrEmpty(currentTenantId))
-            {
-                // AllowAll 策略：允许访问所有数据
-                return true;
-            }
-
-            if (currentTenantId == "::DENY_ALL::")
-            {
-                // DenyAll 策略：拒绝访问所有数据
-                return false;
-            }
-
-            if (currentTenantId == "::ACCESS_DENIED::")
-            {
-                // 异常情况：拒绝访问所有数据
-                return false;
-            }
-
-            // 正常租户ID比较
-            return entityTenantId == currentTenantId;
-        }
-        catch (Exception ex)
-        {
-            // 异常情况下拒绝访问以确保安全
-            _multiTenantLogger?.LogError(ex, "应用租户过滤器时发生异常，拒绝访问以确保数据安全");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 创建租户过滤表达式
-    /// 保留此方法以维持向后兼容性，但不再在查询过滤器中使用
-    /// </summary>
-    [Obsolete("此方法已过时，请使用 GetCurrentTenantIdForQuery 和 IsMultiTenantFilterEnabledForQuery 方法")]
-    protected virtual Expression<Func<TEntity, bool>> CreateTenantFilterExpression<TEntity>()
-        where TEntity : class
-    {
-        var currentTenantId = CurrentTenantId;
-
-        if (string.IsNullOrEmpty(currentTenantId))
-        {
-            // 无法确定租户ID时的处理策略
-            switch (MultiTenantOptions.UnknownTenantStrategy)
-            {
-                case UnknownTenantStrategy.AllowAll:
-                    return null; // 不添加过滤器
-                case UnknownTenantStrategy.DenyAll:
-                    _multiTenantLogger?.LogWarning("无法确定租户ID，多租户实体 {EntityType} 查询将返回空结果",
-                        typeof(TEntity).Name);
-                    return e => false;
-                case UnknownTenantStrategy.UseDefault:
-                default:
-                    currentTenantId = MultiTenantOptions.DefaultTenantId;
-                    break;
-            }
-        }
-
-        _multiTenantLogger?.LogDebug("为实体 {EntityType} 应用租户过滤: {TenantId}",
-            typeof(TEntity).Name, currentTenantId);
-
-        return e => EF.Property<string>(e, "TenantId") == currentTenantId;
-    }
 
     #endregion
 
@@ -494,30 +371,4 @@ public class MultiTenantOptions
     /// 默认租户ID
     /// </summary>
     public string DefaultTenantId { get; set; } = "default";
-
-    /// <summary>
-    /// 无法确定租户ID时的处理策略
-    /// </summary>
-    public UnknownTenantStrategy UnknownTenantStrategy { get; set; } = UnknownTenantStrategy.UseDefault;
-}
-
-/// <summary>
-/// 无法确定租户ID时的处理策略
-/// </summary>
-public enum UnknownTenantStrategy
-{
-    /// <summary>
-    /// 使用默认租户
-    /// </summary>
-    UseDefault,
-
-    /// <summary>
-    /// 允许访问所有数据（不安全，慎用）
-    /// </summary>
-    AllowAll,
-
-    /// <summary>
-    /// 拒绝访问所有数据
-    /// </summary>
-    DenyAll
 }

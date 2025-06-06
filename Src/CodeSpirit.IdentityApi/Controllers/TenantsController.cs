@@ -3,6 +3,7 @@ using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Tenant;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Amis.Attributes.FormFields;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -45,13 +46,13 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <summary>
         /// 根据ID获取租户详情
         /// </summary>
-        /// <param name="id">租户ID</param>
+        /// <param name="tenantId">租户ID</param>
         /// <returns>租户详情</returns>
-        [HttpGet("{id}")]
+        [HttpGet("{tenantId}")]
         [DisplayName("获取租户详情")]
-        public async Task<ActionResult<ApiResponse<TenantDto>>> GetTenant(string id)
+        public async Task<ActionResult<ApiResponse<TenantDto>>> GetTenant(string tenantId)
         {
-            var result = await _tenantService.GetByTenantIdAsync(id);
+            var result = await _tenantService.GetByTenantIdAsync(tenantId);
             if (result == null)
             {
                 return NotFound(ApiResponse<TenantDto>.Error(404, "租户不存在"));
@@ -80,77 +81,119 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>创建结果</returns>
         [HttpPost]
         [DisplayName("创建租户")]
-        public ActionResult<ApiResponse<TenantDto>> CreateTenant([FromBody] TenantCreateDto createDto)
+        public async Task<ActionResult<ApiResponse<TenantDto>>> CreateTenant([FromBody] TenantCreateDto createDto)
         {
-            // 这里需要实现创建逻辑
-            return Ok(ApiResponse<TenantDto>.Success(new TenantDto(), "创建成功"));
+            // 检查是否尝试创建系统租户
+            if (string.Equals(createDto.TenantId, "system", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(ApiResponse<TenantDto>.Error(400, "不能创建租户ID为'system'的租户，该ID为系统保留"));
+            }
+
+            var result = await _tenantService.CreateAsync(createDto);
+            return Ok(ApiResponse<TenantDto>.Success(result, "创建成功"));
         }
 
-        /// <summary>
-        /// 更新租户
-        /// </summary>
-        /// <param name="id">租户ID</param>
-        /// <param name="updateDto">更新数据</param>
-        /// <returns>更新结果</returns>
-        [HttpPut("{id}")]
-        [DisplayName("更新租户")]
-        public ActionResult<ApiResponse<TenantDto>> UpdateTenant(string id, [FromBody] TenantUpdateDto updateDto)
-        {
-            // 这里需要实现更新逻辑
-            return Ok(ApiResponse<TenantDto>.Success(new TenantDto(), "更新成功"));
-        }
+        ///// <summary>
+        ///// 更新租户
+        ///// </summary>
+        ///// <param name="tenantId">租户ID</param>
+        ///// <param name="updateDto">更新数据</param>
+        ///// <returns>更新结果</returns>
+        //[HttpPut("{tenantId}")]
+        //[DisplayName("更新租户")]
+        //public async Task<ActionResult<ApiResponse<TenantDto>>> UpdateTenant(string tenantId, [FromBody] TenantUpdateDto updateDto)
+        //{
+        //    // 检查是否为系统租户且尝试禁用
+        //    if (string.Equals(tenantId, "system", StringComparison.OrdinalIgnoreCase) && !updateDto.IsActive)
+        //    {
+        //        return BadRequest(ApiResponse<TenantDto>.Error(400, "系统租户不能被禁用"));
+        //    }
+
+        //    await _tenantService.UpdateAsync(tenantId, updateDto);
+        //    // 重新获取更新后的租户信息
+        //    var updatedTenant = await _tenantService.GetByTenantIdAsync(tenantId);
+        //    var tenantDto = new TenantDto
+        //    {
+        //        TenantId = updatedTenant.TenantId,
+        //        Name = updatedTenant.Name,
+        //        DisplayName = updatedTenant.DisplayName,
+        //        Description = updatedTenant.Description,
+        //        Strategy = updatedTenant.Strategy,
+        //        IsActive = updatedTenant.IsActive,
+        //        Domain = updatedTenant.Domain,
+        //        MaxUsers = updatedTenant.MaxUsers,
+        //        StorageLimit = updatedTenant.StorageLimit,
+        //        ExpiresAt = updatedTenant.ExpiresAt,
+        //        CreatedAt = updatedTenant.CreatedAt
+        //    };
+        //    return Ok(ApiResponse<TenantDto>.Success(tenantDto, "更新成功"));
+        //}
 
         /// <summary>
         /// 删除租户
         /// </summary>
-        /// <param name="id">租户ID</param>
+        /// <param name="tenantId">租户ID</param>
         /// <returns>删除结果</returns>
-        [HttpDelete("{id}")]
+        [HttpDelete("{tenantId}")]
+        [Operation("删除", "ajax", null, "确定要删除该租户吗？删除后将无法恢复！", "tenantId != 'system'")]
         [DisplayName("删除租户")]
-        public ActionResult<ApiResponse> DeleteTenant(string id)
+        public async Task<ActionResult<ApiResponse>> DeleteTenant(string tenantId)
         {
-            // 这里需要实现删除逻辑
-            return Ok(new ApiResponse(0, "删除成功"));
+            // 检查是否为系统租户
+            if (string.Equals(tenantId, "system", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(ApiResponse.Error(400, "系统租户不能被删除"));
+            }
+
+            //TODO:租户数据处理
+            await _tenantService.DeleteAsync(tenantId);
+            return Ok(ApiResponse.Success("删除成功"));
         }
 
         /// <summary>
         /// 启用租户
         /// </summary>
-        /// <param name="id">租户ID</param>
+        /// <param name="tenantId">租户ID</param>
         /// <returns>操作结果</returns>
-        [HttpPut("{id}/enable")]
+        [HttpPut("{tenantId}/enable")]
         [Operation("启用", "ajax", null, "确定要启用该租户吗？", "!isActive")]
         [DisplayName("启用租户")]
-        public async Task<ActionResult<ApiResponse>> EnableTenant(string id)
+        public async Task<ActionResult<ApiResponse>> EnableTenant(string tenantId)
         {
-            var result = await _tenantService.EnableTenantAsync(id);
+            var result = await _tenantService.EnableTenantAsync(tenantId);
             return Ok(result);
         }
 
         /// <summary>
         /// 禁用租户
         /// </summary>
-        /// <param name="id">租户ID</param>
+        /// <param name="tenantId">租户ID</param>
         /// <returns>操作结果</returns>
-        [HttpPut("{id}/disable")]
-        [Operation("禁用", "ajax", null, "确定要禁用该租户吗？", "isActive")]
+        [HttpPut("{tenantId}/disable")]
+        [Operation("禁用", "ajax", null, "确定要禁用该租户吗？", "isActive && tenantId != 'system'")]
         [DisplayName("禁用租户")]
-        public async Task<ActionResult<ApiResponse>> DisableTenant(string id)
+        public async Task<ActionResult<ApiResponse>> DisableTenant(string tenantId)
         {
-            var result = await _tenantService.DisableTenantAsync(id);
+            // 检查是否为系统租户
+            if (string.Equals(tenantId, "system", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(ApiResponse.Error(400, "系统租户不能被禁用"));
+            }
+
+            var result = await _tenantService.DisableTenantAsync(tenantId);
             return Ok(result);
         }
 
         /// <summary>
         /// 获取租户统计信息
         /// </summary>
-        /// <param name="id">租户ID</param>
+        /// <param name="tenantId">租户ID</param>
         /// <returns>统计信息</returns>
-        [HttpGet("{id}/statistics")]
+        [HttpGet("{tenantId}/statistics")]
         [DisplayName("获取租户统计")]
-        public async Task<ActionResult<ApiResponse<object>>> GetTenantStatistics(string id)
+        public async Task<ActionResult<ApiResponse<object>>> GetTenantStatistics(string tenantId)
         {
-            var result = await _tenantService.GetTenantStatisticsAsync(id);
+            var result = await _tenantService.GetTenantStatisticsAsync(tenantId);
             if (result == null)
             {
                 return NotFound(ApiResponse<object>.Error(404, "租户不存在"));
@@ -161,28 +204,34 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <summary>
         /// 检查租户是否过期
         /// </summary>
-        /// <param name="id">租户ID</param>
+        /// <param name="tenantId">租户ID</param>
         /// <returns>是否过期</returns>
-        [HttpGet("{id}/expired")]
+        [HttpGet("{tenantId}/expired")]
         [DisplayName("检查租户过期")]
-        public async Task<ActionResult<ApiResponse<object>>> IsTenantExpired(string id)
+        public async Task<ActionResult<ApiResponse<object>>> IsTenantExpired(string tenantId)
         {
-            var result = await _tenantService.IsTenantExpiredAsync(id);
+            var result = await _tenantService.IsTenantExpiredAsync(tenantId);
             return Ok(ApiResponse<object>.Success(new { IsExpired = result }));
         }
 
         /// <summary>
         /// 续期租户
         /// </summary>
-        /// <param name="id">租户ID</param>
+        /// <param name="tenantId">租户ID</param>
         /// <param name="request">续期请求</param>
         /// <returns>操作结果</returns>
-        [HttpPut("{id}/renew")]
-        [Operation("续期", "form")]
+        [HttpPut("{tenantId}/renew")]
+        [Operation("续期", "form", null, null, "tenantId != 'system'")]
         [DisplayName("续期租户")]
-        public async Task<ActionResult<ApiResponse>> RenewTenant(string id, [FromBody] TenantRenewRequest request)
+        public async Task<ActionResult<ApiResponse>> RenewTenant(string tenantId, [FromBody] TenantRenewRequest request)
         {
-            var result = await _tenantService.RenewTenantAsync(id, request.ExpiresAt);
+            // 检查是否为系统租户
+            if (string.Equals(tenantId, "system", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(ApiResponse.Error(400, "系统租户不需要续期"));
+            }
+
+            var result = await _tenantService.RenewTenantAsync(tenantId, request.ExpiresAt);
             return Ok(result);
         }
 
@@ -195,6 +244,12 @@ namespace CodeSpirit.IdentityApi.Controllers
         [DisplayName("批量删除租户")]
         public async Task<ActionResult<ApiResponse>> BatchDeleteTenants([FromBody] string[] ids)
         {
+            // 检查是否包含系统租户
+            if (ids.Any(id => string.Equals(id, "system", StringComparison.OrdinalIgnoreCase)))
+            {
+                return BadRequest(ApiResponse.Error(400, "批量删除中包含系统租户，系统租户不能被删除"));
+            }
+
             var result = await _tenantService.BatchDeleteAsync(ids);
             return Ok(result);
         }
@@ -285,16 +340,16 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <summary>
         /// 获取租户登录页面配置
         /// </summary>
-        /// <param name="id">租户ID</param>
+        /// <param name="tenantId">租户ID</param>
         /// <returns>登录页面配置</returns>
-        [HttpGet("{id}/login-config")]
+        [HttpGet("{tenantId}/login-config")]
         [AllowAnonymous]
         [DisplayName("获取租户登录配置")]
-        public async Task<ActionResult<ApiResponse<object>>> GetTenantLoginConfig(string id)
+        public async Task<ActionResult<ApiResponse<object>>> GetTenantLoginConfig(string tenantId)
         {
             try
             {
-                var tenant = await _tenantService.GetByTenantIdAsync(id);
+                var tenant = await _tenantService.GetByTenantIdAsync(tenantId);
                 if (tenant == null)
                 {
                     return NotFound(ApiResponse<object>.Error(404, "租户不存在"));
@@ -343,6 +398,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// </summary>
         [Required(ErrorMessage = "过期时间不能为空")]
         [DisplayName("过期时间")]
+        [AmisDatetimeField(RelativeTime = "nextmonth", Placeholder = "请选择新的过期时间")]
         public DateTime ExpiresAt { get; set; }
     }
 } 

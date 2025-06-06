@@ -1,4 +1,5 @@
 using CodeSpirit.MultiTenant.Models;
+using CodeSpirit.Amis.Attributes.FormFields;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -29,6 +30,7 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// </summary>
         [StringLength(500, ErrorMessage = "描述长度不能超过500个字符")]
         [DisplayName("描述")]
+        [AmisTextareaField(Placeholder = "请输入租户描述", MinRows = 3, MaxRows = 5)]
         public string Description { get; set; }
 
         /// <summary>
@@ -43,6 +45,7 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// </summary>
         [StringLength(1000, ErrorMessage = "连接字符串长度不能超过1000个字符")]
         [DisplayName("数据库连接字符串")]
+        [AmisTextareaField(Placeholder = "请输入数据库连接字符串", MinRows = 2, MaxRows = 4, VisibleOn = "strategy == 3")]
         public string ConnectionString { get; set; }
 
         /// <summary>
@@ -50,12 +53,14 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// </summary>
         [StringLength(20, ErrorMessage = "表前缀长度不能超过20个字符")]
         [DisplayName("表前缀")]
+        [AmisFormField(Type = "input-text", Placeholder = "请输入表前缀", VisibleOn = "strategy == 2")]
         public string TablePrefix { get; set; }
 
         /// <summary>
         /// 是否启用
         /// </summary>
         [DisplayName("是否启用")]
+        [AmisFormField(Type = "switch", DefaultValue = true)]
         public bool IsActive { get; set; }
 
         /// <summary>
@@ -63,6 +68,7 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// </summary>
         [StringLength(100, ErrorMessage = "域名长度不能超过100个字符")]
         [DisplayName("租户域名")]
+        [Description("请输入租户域名，如：tenant.example.com")]
         public string Domain { get; set; }
 
         /// <summary>
@@ -70,6 +76,7 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// </summary>
         [StringLength(500, ErrorMessage = "Logo URL长度不能超过500个字符")]
         [DisplayName("Logo URL")]
+        [AmisInputImageField()]
         public string LogoUrl { get; set; }
 
         /// <summary>
@@ -77,6 +84,7 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// </summary>
         [Range(1, int.MaxValue, ErrorMessage = "最大用户数必须大于0")]
         [DisplayName("最大用户数")]
+        [AmisNumberField(Min = 1, Unit = "个", Placeholder = "请设置最大用户数限制")]
         public int MaxUsers { get; set; }
 
         /// <summary>
@@ -84,24 +92,28 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// </summary>
         [Range(1, long.MaxValue, ErrorMessage = "存储限制必须大于0")]
         [DisplayName("存储限制(MB)")]
+        [AmisNumberField(Min = 1, Unit = "MB", Placeholder = "请设置存储空间限制")]
         public long StorageLimit { get; set; }
 
         /// <summary>
         /// 过期时间
         /// </summary>
         [DisplayName("过期时间")]
+        [AmisDatetimeField(Placeholder = "请选择租户过期时间", Clearable = true)]
         public DateTime? ExpiresAt { get; set; }
 
         /// <summary>
         /// 租户配置（JSON格式）
         /// </summary>
         [DisplayName("租户配置")]
+        [AmisFormField(Type = "json-editor", Placeholder = "请输入租户配置（JSON格式）")]
         public string Configuration { get; set; }
 
         /// <summary>
         /// 租户主题配置
         /// </summary>
         [DisplayName("主题配置")]
+        [AmisFormField(Type = "json-editor", Placeholder = "请输入主题配置（JSON格式）")]
         public string ThemeConfig { get; set; }
     }
 } 

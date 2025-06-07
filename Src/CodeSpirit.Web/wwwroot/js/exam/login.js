@@ -49,11 +49,7 @@
                         // 租户信息显示
                         {
                             "type": "tpl",
-                            "tpl": "<div class='tenant-info'><i class='fa fa-building'></i><span>${tenantName}</span></div>",
-                            "data": {
-                                "tenantId": window.tenantId,
-                                "tenantName": window.tenantName
-                            }
+                            "tpl": "<div class='tenant-info'><i class='fa fa-building'></i><span class='tenant-name'>${tenantDisplayName | raw}</span></div>"
                         },
                         // Logo和标题
                         {
@@ -198,404 +194,6 @@
                     ]
                 }
             ]
-        },
-        "css": {
-            // 全局变量
-            ":root": {
-                "--exam-primary-color": "#1e88e5",
-                "--exam-primary-light": "#42a5f5",
-                "--exam-primary-dark": "#1565c0",
-                "--exam-success-color": "#4caf50",
-                "--exam-warning-color": "#ff9800",
-                "--exam-danger-color": "#f44336",
-                "--exam-border-radius": "8px",
-                "--exam-box-shadow": "0 4px 12px rgba(0,0,0,0.1)"
-            },
-            "body": {
-                "background-color": "#e3f2fd",
-                "background-image": "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
-                "min-height": "100vh",
-                "font-family": "'PingFang SC', 'Microsoft YaHei', sans-serif",
-                "color": "#333",
-                "overflow-x": "hidden",
-                "margin": "0",
-                "padding": "0"
-            },
-            "a": {
-                "color": "var(--exam-primary-color)",
-                "text-decoration": "none",
-                "transition": "color 0.3s ease"
-            },
-            "a:hover": {
-                "color": "var(--exam-primary-dark)"
-            },
-            ".exam-login-page-container": {
-                "min-height": "100vh",
-                "background": "var(--exam-bg-gradient)",
-                "background-size": "400% 400%",
-                "animation": "gradientShift 15s ease infinite",
-                "position": "relative",
-                "overflow": "hidden"
-            },
-            // 背景装饰
-            ".exam-decoration": {
-                "position": "absolute",
-                "top": "0",
-                "left": "0",
-                "width": "100%",
-                "height": "100%",
-                "pointer-events": "none",
-                "z-index": "1"
-            },
-            ".circle-1": {
-                "position": "absolute",
-                "width": "200px",
-                "height": "200px",
-                "background": "linear-gradient(135deg, rgba(30, 136, 229, 0.05) 0%, rgba(30, 136, 229, 0.1) 100%)",
-                "border-radius": "50%",
-                "top": "10%",
-                "left": "5%",
-                "animation": "float 20s ease-in-out infinite"
-            },
-            ".circle-2": {
-                "position": "absolute",
-                "width": "150px",
-                "height": "150px",
-                "background": "linear-gradient(135deg, rgba(66, 165, 245, 0.05) 0%, rgba(66, 165, 245, 0.1) 100%)",
-                "border-radius": "50%",
-                "bottom": "15%",
-                "right": "8%",
-                "animation": "float 15s ease-in-out infinite reverse"
-            },
-            ".square-1": {
-                "position": "absolute",
-                "width": "120px",
-                "height": "120px",
-                "background": "linear-gradient(135deg, rgba(21, 101, 192, 0.05) 0%, rgba(21, 101, 192, 0.1) 100%)",
-                "border-radius": "15%",
-                "top": "60%",
-                "left": "8%",
-                "transform": "rotate(45deg)",
-                "z-index": "-1",
-                "animation": "float 25s ease-in-out infinite"
-            },
-            ".square-2": {
-                "position": "absolute",
-                "width": "100px",
-                "height": "100px",
-                "background": "linear-gradient(135deg, rgba(255, 152, 0, 0.05) 0%, rgba(255, 152, 0, 0.1) 100%)",
-                "border-radius": "10%",
-                "bottom": "20%",
-                "right": "15%",
-                "transform": "rotate(30deg)",
-                "z-index": "-1",
-                "animation": "float 18s ease-in-out infinite alternate"
-            },
-            "@keyframes float": {
-                "0%, 100%": { "transform": "translateY(0px)" },
-                "50%": { "transform": "translateY(-20px)" }
-            },
-            // 表单样式
-            ".exam-input": {
-                "background-color": "rgba(255, 255, 255, 0.95)",
-                "border": "2px solid rgba(30, 136, 229, 0.1)",
-                "border-radius": "var(--exam-border-radius)",
-                "padding": "14px 16px",
-                "font-size": "15px",
-                "transition": "all 0.3s ease",
-                "box-shadow": "inset 0 1px 3px rgba(0,0,0,0.05)"
-            },
-            ".exam-input:focus": {
-                "border-color": "var(--exam-primary-color)",
-                "box-shadow": "0 0 0 3px rgba(30, 136, 229, 0.1)",
-                "transform": "translateY(-2px)"
-            },
-            ".exam-login-btn": {
-                "background": "var(--exam-primary-gradient)",
-                "border-color": "var(--exam-primary-color)",
-                "padding": "16px 24px",
-                "font-size": "16px",
-                "border-radius": "var(--exam-border-radius)",
-                "transition": "all 0.3s ease",
-                "margin-top": "20px",
-                "font-weight": "600",
-                "letter-spacing": "0.5px",
-                "box-shadow": "0 4px 6px rgba(30, 136, 229, 0.2)",
-                "text-transform": "uppercase",
-                "position": "relative",
-                "overflow": "hidden"
-            },
-            ".exam-login-btn:hover": {
-                "background": "var(--exam-primary-dark)",
-                "transform": "translateY(-2px)",
-                "box-shadow": "0 6px 15px rgba(30, 136, 229, 0.3)"
-            },
-            ".exam-login-btn:active": {
-                "transform": "translateY(1px)",
-                "box-shadow": "0 2px 8px rgba(30, 136, 229, 0.3)"
-            },
-            ".am-CheckboxControl": {
-                "font-size": "14px"
-            },
-            ".am-CheckboxControl-input:checked + .am-CheckboxControl-icon": {
-                "background-color": "var(--exam-primary-color)",
-                "border-color": "var(--exam-primary-color)"
-            },
-            ".exam-remember-me-checkbox": {
-                "margin-bottom": "0"
-            },
-            ".exam-forgot-link": {
-                "font-size": "14px",
-                "padding-top": "6px"
-            },
-            ".exam-forgot-password": {
-                "color": "#666",
-                "text-decoration": "none",
-                "transition": "all 0.2s ease",
-                "font-size": "14px"
-            },
-            ".exam-forgot-password:hover": {
-                "color": "var(--exam-primary-color)",
-                "text-decoration": "underline"
-            },
-            ".exam-footer": {
-                "color": "rgba(255, 255, 255, 0.8)",
-                "font-size": "13px",
-                "margin-top": "30px",
-                "text-shadow": "0 1px 1px rgba(0,0,0,0.1)"
-            },
-            ".exam-footer-content p": {
-                "margin": "0 0 10px 0",
-                "font-size": "13px"
-            },
-            ".exam-footer-links": {
-                "display": "flex",
-                "justify-content": "center",
-                "align-items": "center",
-                "gap": "10px",
-                "flex-wrap": "wrap"
-            },
-            ".exam-footer-links a": {
-                "color": "rgba(255, 255, 255, 0.7)",
-                "text-decoration": "none",
-                "font-size": "12px",
-                "transition": "color 0.3s ease"
-            },
-            ".exam-footer-links a:hover": {
-                "color": "rgba(255, 255, 255, 0.9)"
-            },
-            ".exam-footer-links .separator": {
-                "color": "rgba(255, 255, 255, 0.4)",
-                "font-size": "12px"
-            },
-            // 响应式样式
-            "@media (max-width: 768px)": {
-                ".exam-login-container": {
-                    "margin": "10px",
-                    "padding": "20px"
-                },
-                ".exam-login-form": {
-                    "padding": "20px !important"
-                },
-                ".exam-input": {
-                    "padding": "12px 14px",
-                    "font-size": "14px"
-                },
-                ".exam-login-btn": {
-                    "padding": "14px 20px",
-                    "font-size": "14px"
-                }
-            },
-            "@media (max-width: 480px)": {
-                ".exam-login-container": {
-                    "margin": "5px",
-                    "padding": "15px"
-                },
-                ".exam-login-form": {
-                    "padding": "15px !important"
-                },
-                ".exam-toast": {
-                    "top": "10px !important",
-                    "right": "10px !important",
-                    "left": "10px !important",
-                    "min-width": "auto !important",
-                    "max-width": "none !important",
-                    "transform": "translateY(-100%) !important"
-                },
-                ".exam-toast.show": {
-                    "transform": "translateY(0) !important"
-                }
-            },
-            // 错误页面样式
-            ".exam-error": {
-                "min-height": "100vh",
-                "display": "flex",
-                "align-items": "center",
-                "justify-content": "center",
-                "background": "var(--exam-bg-gradient)",
-                "padding": "20px"
-            },
-            ".exam-error .error-content": {
-                "background": "rgba(255, 255, 255, 0.95)",
-                "border-radius": "var(--exam-border-radius)",
-                "padding": "40px",
-                "text-align": "center",
-                "max-width": "500px",
-                "width": "100%",
-                "box-shadow": "var(--exam-box-shadow)"
-            },
-            ".exam-error .error-icon": {
-                "font-size": "60px",
-                "color": "var(--exam-danger-color)",
-                "margin-bottom": "20px"
-            },
-            ".exam-error h3": {
-                "color": "#333",
-                "margin-bottom": "15px",
-                "font-size": "24px"
-            },
-            ".exam-error p": {
-                "color": "#666",
-                "margin-bottom": "25px",
-                "font-size": "16px"
-            },
-            ".exam-error .error-actions": {
-                "display": "flex",
-                "gap": "15px",
-                "justify-content": "center",
-                "margin-bottom": "30px",
-                "flex-wrap": "wrap"
-            },
-            ".exam-error .btn": {
-                "padding": "12px 24px",
-                "border-radius": "var(--exam-border-radius)",
-                "text-decoration": "none",
-                "font-size": "14px",
-                "border": "none",
-                "cursor": "pointer",
-                "transition": "all 0.3s ease"
-            },
-            ".exam-error .btn-primary": {
-                "background": "var(--exam-primary-color)",
-                "color": "white"
-            },
-            ".exam-error .btn-primary:hover": {
-                "background": "var(--exam-primary-dark)"
-            },
-            ".exam-error .btn-secondary": {
-                "background": "#6c757d",
-                "color": "white"
-            },
-            ".exam-error .btn-secondary:hover": {
-                "background": "#5a6268"
-            },
-            ".exam-error .error-tips": {
-                "text-align": "left",
-                "background": "#f8f9fa",
-                "padding": "20px",
-                "border-radius": "var(--exam-border-radius)",
-                "border-left": "4px solid var(--exam-primary-color)"
-            },
-            ".exam-error .error-tips p": {
-                "margin": "0 0 10px 0",
-                "font-weight": "500",
-                "color": "#333"
-            },
-            ".exam-error .error-tips ul": {
-                "margin": "0",
-                "padding-left": "20px",
-                "color": "#666"
-            },
-            ".exam-error .error-tips li": {
-                "margin-bottom": "5px",
-                "font-size": "14px"
-            },
-            // Toast 提示框样式
-            ".exam-toast": {
-                "position": "fixed",
-                "top": "20px",
-                "right": "20px",
-                "z-index": "10000",
-                "background": "white",
-                "border-radius": "var(--exam-border-radius)",
-                "box-shadow": "0 6px 16px rgba(0, 0, 0, 0.12)",
-                "padding": "16px 20px",
-                "min-width": "300px",
-                "max-width": "500px",
-                "transform": "translateX(100%)",
-                "transition": "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                "opacity": "0",
-                "pointer-events": "none"
-            },
-            ".exam-toast.show": {
-                "transform": "translateX(0)",
-                "opacity": "1",
-                "pointer-events": "auto"
-            },
-            ".exam-toast-success": {
-                "border-left": "4px solid #52c41a"
-            },
-            ".exam-toast-error": {
-                "border-left": "4px solid #ff4d4f"
-            },
-            ".exam-toast .toast-content": {
-                "display": "flex",
-                "align-items": "center",
-                "font-size": "14px",
-                "color": "#333",
-                "font-weight": "400",
-                "line-height": "1.5"
-            },
-            ".exam-toast .toast-content i": {
-                "font-size": "16px",
-                "margin-right": "8px !important"
-            },
-            // 优化登录按钮样式
-            ".exam-login-btn .cxd-Button": {
-                "background": "linear-gradient(135deg, var(--exam-primary-color) 0%, var(--exam-primary-dark) 100%) !important",
-                "border": "none !important",
-                "box-shadow": "0 4px 12px rgba(30, 136, 229, 0.3) !important",
-                "transition": "all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important",
-                "font-weight": "600 !important",
-                "letter-spacing": "0.5px !important",
-                "text-transform": "none !important",
-                "position": "relative !important",
-                "overflow": "hidden !important"
-            },
-            ".exam-login-btn .cxd-Button:hover": {
-                "transform": "translateY(-2px) !important",
-                "box-shadow": "0 6px 20px rgba(30, 136, 229, 0.4) !important"
-            },
-            ".exam-login-btn .cxd-Button:active": {
-                "transform": "translateY(0) !important",
-                "box-shadow": "0 2px 8px rgba(30, 136, 229, 0.3) !important"
-            },
-            ".exam-login-btn .cxd-Button:disabled": {
-                "opacity": "0.7 !important",
-                "transform": "none !important",
-                "cursor": "not-allowed !important"
-            },
-            // 优化表单验证错误样式
-            ".cxd-Form-feedback": {
-                "font-size": "12px !important",
-                "margin-top": "4px !important",
-                "color": "#ff4d4f !important",
-                "display": "flex !important",
-                "align-items": "center !important"
-            },
-            ".cxd-Form-feedback:before": {
-                "content": "'⚠️' !important",
-                "margin-right": "4px !important",
-                "font-size": "12px !important"
-            },
-            ".has-error .exam-input": {
-                "border-color": "#ff4d4f !important",
-                "box-shadow": "0 0 0 2px rgba(255, 77, 79, 0.2) !important"
-            },
-            ".has-error .exam-input:focus": {
-                "border-color": "#ff4d4f !important",
-                "box-shadow": "0 0 0 3px rgba(255, 77, 79, 0.2) !important"
-            }
         }
     };
 
@@ -795,10 +393,6 @@
                     <a href='/${window.tenantId}/exam/contact' title='技术支持'>
                         <i class='fa fa-headset'></i> 技术支持
                     </a>
-                    <span class='separator'>|</span>
-                    <a href='/${window.tenantId}/admin' title='返回管理平台'>
-                        <i class='fa fa-arrow-left'></i> 返回管理平台
-                    </a>
                 </div>
             </div>
         `;
@@ -812,6 +406,12 @@
         // 隐藏加载状态，显示登录表单
         document.getElementById('loading').style.display = 'none';
         
+        // 准备租户显示名称，确保正确编码
+        let tenantDisplayName = tenantConfig.displayName || 
+                               tenantConfig.name || 
+                               window.tenantName || 
+                               'default';
+        
         // 初始化amis
         let amisInstance = amis.embed(
             '#root',
@@ -821,6 +421,7 @@
                 data: {
                     tenantId: window.tenantId,
                     tenantName: window.tenantName,
+                    tenantDisplayName: tenantDisplayName,
                     tenantConfig: tenantConfig
                 }
             },
@@ -897,8 +498,8 @@
             }
         );
         
-        // 添加考试系统特定的安全检查
-        initExamSecurityEnhancements();
+        // 添加考试系统特定的安全检查 (已禁用)
+        // initExamSecurityEnhancements();
     }
 
     /**
@@ -951,20 +552,22 @@
     }
 
     /**
-     * 初始化考试系统安全增强
+     * 初始化考试系统安全增强 (已禁用)
      */
     function initExamSecurityEnhancements() {
-        // 考试环境特有的安全检查
-        detectDeveloperTools();
-        initFullscreenMonitoring();
-        initFocusMonitoring();
-        initCopyPasteProtection();
+        // 考试环境特有的安全检查 (已禁用)
+        // detectDeveloperTools();
+        // initFullscreenMonitoring();
+        // initFocusMonitoring();
+        // initCopyPasteProtection();
     }
 
     /**
-     * 检测开发者工具
+     * 检测开发者工具 (已禁用)
      */
     function detectDeveloperTools() {
+        // 开发者工具检测已禁用
+        /*
         let devtools = {open: false, orientation: null};
         let threshold = 160;
         
@@ -980,12 +583,15 @@
                 devtools.open = false;
             }
         }, 500);
+        */
     }
 
     /**
-     * 初始化全屏监控
+     * 初始化全屏监控 (已禁用)
      */
     function initFullscreenMonitoring() {
+        // 全屏监控已禁用
+        /*
         let fullscreenWarningShown = false;
         
         document.addEventListener('fullscreenchange', function() {
@@ -997,12 +603,15 @@
                 }, 1000);
             }
         });
+        */
     }
 
     /**
-     * 初始化焦点监控
+     * 初始化焦点监控 (已禁用)
      */
     function initFocusMonitoring() {
+        // 焦点监控已禁用
+        /*
         let focusWarningShown = false;
         
         window.addEventListener('blur', function() {
@@ -1014,12 +623,15 @@
                 }, 1000);
             }
         });
+        */
     }
 
     /**
-     * 初始化复制粘贴保护
+     * 初始化复制粘贴保护 (已禁用)
      */
     function initCopyPasteProtection() {
+        // 复制粘贴保护已禁用
+        /*
         // 禁用选择文本
         document.addEventListener('selectstart', function(e) {
             if (window.isExamLogin) {
@@ -1042,6 +654,7 @@
                 return false;
             }
         });
+        */
     }
 
     // ===== 全局函数定义 (供AMIS事件调用) =====
@@ -1213,8 +826,10 @@
         return toast;
     }
 
-    // 页面安全性检查
+    // 页面安全性检查 (已禁用)
     function initSecurityChecks() {
+        // 安全性检查已禁用
+        /*
         // 禁用右键菜单
         document.addEventListener('contextmenu', function(e) {
             if (window.isExamLogin) {
@@ -1247,9 +862,10 @@
                 }, 1000);
             }
         });
+        */
     }
     
-    // 初始化安全检查
-    initSecurityChecks();
+    // 初始化安全检查 (已禁用)
+    // initSecurityChecks();
     
 })(); 

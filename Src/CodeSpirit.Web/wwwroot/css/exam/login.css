@@ -3,9 +3,16 @@
 /* 全局变量 */
 :root {
     --exam-primary-color: #1e88e5;
+    --exam-primary-light: #42a5f5;
+    --exam-primary-dark: #1565c0;
     --exam-primary-gradient: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
     --exam-secondary-color: #1565c0;
     --exam-accent-color: #42a5f5;
+    --exam-success-color: #4caf50;
+    --exam-warning-color: #ff9800;
+    --exam-danger-color: #f44336;
+    --exam-border-radius: 8px;
+    --exam-box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     --exam-bg-gradient: linear-gradient(135deg, #1e88e5 0%, #1565c0 50%, #42a5f5 100%);
     --exam-glass-bg: rgba(255, 255, 255, 0.15);
     --exam-glass-border: rgba(255, 255, 255, 0.3);
@@ -21,12 +28,35 @@
     --exam-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 基础样式 */
+body {
+    background-color: #e3f2fd;
+    background-image: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    min-height: 100vh;
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    color: #333;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: var(--exam-primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--exam-primary-dark);
+}
+
 /* 页面基础样式 */
-.exam-login-root {
+.exam-login-root,
+.exam-login-page-container {
     min-height: 100vh;
     background: var(--exam-bg-gradient);
     background-size: 400% 400%;
-    animation: gradientShift 8s ease infinite;
+    animation: gradientShift 15s ease infinite;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -122,11 +152,23 @@
     font-size: 14px;
     text-align: center;
     box-shadow: var(--exam-shadow-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .tenant-info i {
-    margin-right: 8px;
     color: var(--exam-accent-color);
+    font-size: 16px;
+}
+
+.tenant-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
 }
 
 /* Logo区域 */
@@ -333,19 +375,91 @@
     color: white;
 }
 
+.loading-content {
+    text-align: center;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.loading-icon {
+    font-size: 48px;
+    color: white;
+    margin-bottom: 24px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.loading-text {
+    font-size: 16px;
+    font-weight: 500;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.loading-subtext {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
 .loading-spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    border-top: 4px solid white;
+    width: 60px;
+    height: 60px;
+    position: relative;
+    margin-bottom: 24px;
+}
+
+.spinner-ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 3px solid transparent;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
+    animation: spin 1.5s linear infinite;
+}
+
+.spinner-ring:nth-child(1) {
+    border-top: 3px solid rgba(255, 255, 255, 0.8);
+    animation-delay: 0s;
+}
+
+.spinner-ring:nth-child(2) {
+    border-right: 3px solid rgba(255, 255, 255, 0.6);
+    animation-delay: 0.15s;
+}
+
+.spinner-ring:nth-child(3) {
+    border-bottom: 3px solid rgba(255, 255, 255, 0.4);
+    animation-delay: 0.3s;
+}
+
+.spinner-ring:nth-child(4) {
+    border-left: 3px solid rgba(255, 255, 255, 0.2);
+    animation-delay: 0.45s;
 }
 
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
 }
 
 /* 响应式设计 */
@@ -397,6 +511,19 @@
     .tenant-info {
         font-size: 13px;
         padding: 10px 14px;
+    }
+    
+    .exam-toast {
+        top: 10px !important;
+        right: 10px !important;
+        left: 10px !important;
+        min-width: auto !important;
+        max-width: none !important;
+        transform: translateY(-100%) !important;
+    }
+    
+    .exam-toast.show {
+        transform: translateY(0) !important;
     }
 }
 
@@ -466,4 +593,344 @@
     .exam-decoration * {
         animation: none;
     }
+}
+
+/* 错误页面样式 */
+.exam-error {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--exam-bg-gradient);
+    padding: 20px;
+}
+
+.exam-error .error-content {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: var(--exam-border-radius);
+    padding: 40px;
+    text-align: center;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: var(--exam-box-shadow);
+}
+
+.exam-error .error-icon {
+    font-size: 60px;
+    color: var(--exam-danger-color);
+    margin-bottom: 20px;
+}
+
+.exam-error h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.exam-error p {
+    color: #666;
+    margin-bottom: 25px;
+    font-size: 16px;
+}
+
+.exam-error .error-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.exam-error .btn {
+    padding: 12px 24px;
+    border-radius: var(--exam-border-radius);
+    text-decoration: none;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.exam-error .btn-primary {
+    background: var(--exam-primary-color);
+    color: white;
+}
+
+.exam-error .btn-primary:hover {
+    background: var(--exam-primary-dark);
+}
+
+.exam-error .btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.exam-error .btn-secondary:hover {
+    background: #5a6268;
+}
+
+.exam-error .error-tips {
+    text-align: left;
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: var(--exam-border-radius);
+    border-left: 4px solid var(--exam-primary-color);
+}
+
+.exam-error .error-tips p {
+    margin: 0 0 10px 0;
+    font-weight: 500;
+    color: #333;
+}
+
+.exam-error .error-tips ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #666;
+}
+
+.exam-error .error-tips li {
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+/* Toast 提示框样式 */
+.exam-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    background: white;
+    border-radius: var(--exam-border-radius);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    padding: 16px 20px;
+    min-width: 300px;
+    max-width: 500px;
+    transform: translateX(100%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.exam-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.exam-toast-success {
+    border-left: 4px solid #52c41a;
+}
+
+.exam-toast-error {
+    border-left: 4px solid #ff4d4f;
+}
+
+.exam-toast .toast-content {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #333;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+.exam-toast .toast-content i {
+    font-size: 16px;
+    margin-right: 8px !important;
+}
+
+/* 优化登录按钮样式 */
+.exam-login-btn .cxd-Button {
+    background: linear-gradient(135deg, var(--exam-primary-color) 0%, var(--exam-primary-dark) 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    text-transform: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 50px !important;
+    line-height: 1 !important;
+}
+
+.exam-login-btn .cxd-Button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(30, 136, 229, 0.4) !important;
+}
+
+.exam-login-btn .cxd-Button:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 8px rgba(30, 136, 229, 0.3) !important;
+}
+
+.exam-login-btn .cxd-Button:disabled {
+    opacity: 0.7 !important;
+    transform: none !important;
+    cursor: not-allowed !important;
+}
+
+/* 按钮内容对齐 */
+.exam-login-btn .cxd-Button-content {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+}
+
+.exam-login-btn .cxd-Button-icon {
+    margin: 0 !important;
+}
+
+.exam-login-btn .cxd-Button-label {
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
+/* 优化表单验证错误样式 */
+.cxd-Form-feedback {
+    font-size: 12px !important;
+    margin-top: 4px !important;
+    color: #ff4d4f !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.cxd-Form-feedback:before {
+    content: '⚠️' !important;
+    margin-right: 4px !important;
+    font-size: 12px !important;
+}
+
+.has-error .exam-input {
+    border-color: #ff4d4f !important;
+    box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2) !important;
+}
+
+.has-error .exam-input:focus {
+    border-color: #ff4d4f !important;
+    box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.2) !important;
+}
+
+/* Amis组件优化 */
+.am-CheckboxControl {
+    font-size: 14px;
+}
+
+.am-CheckboxControl-input:checked + .am-CheckboxControl-icon {
+    background-color: var(--exam-primary-color);
+    border-color: var(--exam-primary-color);
+}
+
+/* 表单基础样式补充 */
+.exam-input {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(30, 136, 229, 0.1) !important;
+    border-radius: var(--exam-border-radius) !important;
+    padding: 14px 16px !important;
+    font-size: 15px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05) !important;
+}
+
+.exam-input:focus {
+    border-color: var(--exam-primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1) !important;
+    transform: translateY(-2px);
+}
+
+.exam-login-btn {
+    background: var(--exam-primary-gradient) !important;
+    border-color: var(--exam-primary-color) !important;
+    padding: 16px 24px !important;
+    font-size: 16px !important;
+    border-radius: var(--exam-border-radius) !important;
+    transition: all 0.3s ease !important;
+    margin-top: 20px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 4px 6px rgba(30, 136, 229, 0.2) !important;
+    text-transform: uppercase !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 50px !important;
+}
+
+.exam-login-btn * {
+    vertical-align: middle !important;
+}
+
+.exam-login-btn:hover {
+    background: var(--exam-primary-dark) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 15px rgba(30, 136, 229, 0.3) !important;
+}
+
+.exam-login-btn:active {
+    transform: translateY(1px) !important;
+    box-shadow: 0 2px 8px rgba(30, 136, 229, 0.3) !important;
+}
+
+.exam-remember-me-checkbox {
+    margin-bottom: 0 !important;
+}
+
+.exam-forgot-link {
+    font-size: 14px !important;
+    padding-top: 6px !important;
+}
+
+.exam-forgot-password {
+    color: #666 !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+    font-size: 14px !important;
+}
+
+.exam-forgot-password:hover {
+    color: var(--exam-primary-color) !important;
+    text-decoration: underline !important;
+}
+
+.exam-footer {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 13px !important;
+    margin-top: 30px !important;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.1) !important;
+}
+
+.exam-footer-content p {
+    margin: 0 0 10px 0 !important;
+    font-size: 13px !important;
+}
+
+.exam-footer-links {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+}
+
+.exam-footer-links a {
+    color: rgba(255, 255, 255, 0.7) !important;
+    text-decoration: none !important;
+    font-size: 12px !important;
+    transition: color 0.3s ease !important;
+}
+
+.exam-footer-links a:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.exam-footer-links .separator {
+    color: rgba(255, 255, 255, 0.4) !important;
+    font-size: 12px !important;
 } 

@@ -1,0 +1,242 @@
+@page "/{tenantId}/exam/login"
+@model CodeSpirit.Web.Pages.Exam.LoginModel
+@{
+    ViewData["Title"] = "考试系统登录";
+}
+
+@section Head {    
+    <!-- SEO 元数据 -->
+    <meta name="keywords" content="考试系统,考试登录,在线考试,安全认证">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="考试系统登录 - 安全可靠的在线考试平台">
+    
+    <!-- PWA 支持 -->
+    <meta name="theme-color" content="#1e88e5">
+    <meta name="msapplication-navbutton-color" content="#1e88e5">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
+    <style>
+        /* 考试系统主题CSS变量 */
+        :root {
+            --exam-primary-color: #1e88e5;
+            --exam-primary-gradient: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
+            --exam-secondary-color: #1565c0;
+            --exam-accent-color: #42a5f5;
+            --exam-bg-gradient: linear-gradient(135deg, #1e88e5 0%, #1565c0 50%, #42a5f5 100%);
+            --exam-glass-bg: rgba(255, 255, 255, 0.15);
+            --exam-glass-border: rgba(255, 255, 255, 0.3);
+            --exam-text-primary: #333;
+            --exam-text-secondary: #666;
+            --exam-text-light: rgba(255, 255, 255, 0.9);
+            --exam-shadow-light: 0 8px 32px rgba(30, 136, 229, 0.1);
+            --exam-shadow-medium: 0 15px 35px rgba(30, 136, 229, 0.15);
+            --exam-shadow-heavy: 0 25px 50px rgba(30, 136, 229, 0.25);
+            --exam-radius-small: 12px;
+            --exam-radius-medium: 16px;
+            --exam-radius-large: 24px;
+            --exam-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 隐藏默认布局的导航等元素 */
+        .navbar, .sidebar, .main-header, .main-sidebar, 
+        .content-header, .main-footer {
+            display: none !important;
+        }
+        
+        /* 确保内容区域全屏显示 */
+        .content-wrapper, .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        body {
+            overflow-x: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        /* 预加载动画 */
+        .page-preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--exam-bg-gradient);
+            background-size: 400% 400%;
+            animation: gradientShift 3s ease infinite;
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        
+        .page-preloader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .preloader-logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: var(--exam-primary-color);
+            animation: logoSpin 2s ease-in-out infinite;
+            box-shadow: var(--exam-shadow-heavy);
+        }
+        
+        @@keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @@keyframes logoSpin {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); }
+        }
+        
+        /* 考试特定样式 */
+        .exam-badge {
+            display: inline-block;
+            background: linear-gradient(45deg, var(--exam-accent-color), var(--exam-primary-color));
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @@keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* 输入框焦点增强动画 */
+        .exam-input-field.focused {
+            transform: translateY(-2px);
+        }
+        
+        .exam-input-field.has-value .cxd-FormItem-label {
+            color: var(--exam-primary-color) !important;
+            font-weight: 600 !important;
+        }
+        
+        /* 安全提示样式 */
+        .security-notice {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: var(--exam-radius-small);
+            padding: 12px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: #856404;
+        }
+        
+        .security-notice i {
+            margin-right: 8px;
+            color: #ff9800;
+        }
+        
+        /* 滚动动画类 */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease-out;
+        }
+        
+        .fade-in-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* 移动端优化 */
+        @@media (max-width: 768px) {
+            .preloader-logo {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+            
+            .security-notice {
+                font-size: 12px;
+                padding: 10px;
+            }
+        }
+    </style>
+    <resource path="css/exam/login.css" type="css" />
+}
+
+<!-- 页面预加载器 -->
+<div id="page-preloader" class="page-preloader">
+    <div class="preloader-logo">
+        <i class="fa fa-graduation-cap"></i>
+    </div>
+</div>
+
+<div id="root" class="exam-login-root">
+    <!-- Loading状态 -->
+    <div id="loading" class="exam-loading">
+        <div class="loading-spinner"></div>
+        <p>正在加载考试系统...</p>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- 全局变量 -->
+    <script>
+        window.webHost = '@(HttpContext.Request.Scheme + "://" + HttpContext.Request.Host)';
+        window.tenantId = '@Model.TenantId';
+        window.tenantName = '@Model.TenantName';
+        window.isExamLogin = true;
+        
+        // 页面加载完成后隐藏预加载器
+        window.addEventListener('load', function() {
+            const preloader = document.getElementById('page-preloader');
+            if (preloader) {
+                setTimeout(() => {
+                    preloader.classList.add('hidden');
+                    setTimeout(() => {
+                        preloader.remove();
+                    }, 500);
+                }, 300);
+            }
+        });
+        
+        // 防止页面缓存问题
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+        
+        // 考试系统安全检查
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检测开发者工具
+            let devtools = {open: false, orientation: null};
+            setInterval(function() {
+                if (window.outerHeight - window.innerHeight > 160) {
+                    if (!devtools.open) {
+                        devtools.open = true;
+                        console.warn('检测到开发者工具已打开，考试过程中请关闭开发者工具以确保考试公平性。');
+                    }
+                } else {
+                    devtools.open = false;
+                }
+            }, 500);
+        });
+    </script>
+
+    <resource path="js/token-manager.js" type="js" />
+    <resource path="js/exam/login.js" type="js" />
+} 

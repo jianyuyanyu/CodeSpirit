@@ -5,6 +5,7 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using CodeSpirit.Core.Enums;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -17,21 +18,26 @@ public class StudentsController : ApiControllerBase
 {
     private readonly IStudentService _studentService;
     private readonly ILogger<StudentsController> _logger;
+    private readonly ICurrentUser _currentUser;
     
     /// <summary>
     /// 初始化考生管理控制器
     /// </summary>
     /// <param name="studentService">考生服务</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="currentUser">当前用户信息</param>
     public StudentsController(
         IStudentService studentService,
-        ILogger<StudentsController> logger)
+        ILogger<StudentsController> logger,
+        ICurrentUser currentUser)
     {
         ArgumentNullException.ThrowIfNull(studentService);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(currentUser);
         
         _studentService = studentService;
         _logger = logger;
+        _currentUser = currentUser;
     }
     
     /// <summary>
@@ -208,5 +214,47 @@ public class StudentsController : ApiControllerBase
         return failedIds.Any()
             ? SuccessResponse($"成功分配 {successCount} 个考生到考生组，但以下考生分配失败: {string.Join(", ", failedIds)}")
             : SuccessResponse($"成功分配 {successCount} 个考生到考生组！");
+    }
+    
+    /// <summary>
+    /// 客户端登录跳转
+    /// </summary>
+    /// <param name="id">考生ID</param>
+    /// <returns>登录跳转结果</returns>
+    [HttpGet("{id}/client-login")]
+    [Operation("客户端登录", "ajax", null, "确定要跳转到考试登录页面吗？")]
+    [DisplayName("客户端登录")]
+    public async Task<ActionResult<ApiResponse>> ClientLogin(long id)
+    {
+        if (id <= 0) return BadRequest("无效的ID");
+
+        // 获取考生信息
+        var student = await _studentService.GetAsync(id);
+        if (student == null)
+        {
+            return BadRequest(ApiResponse.Error(1, "考生不存在"));
+        }
+
+        // 构建登录页面URL，将身份证号码作为用户名参数
+        var tenantId = _currentUser.TenantId;
+        if (string.IsNullOrEmpty(tenantId))
+        {
+            return BadRequest(ApiResponse.Error(1, "无法获取当前租户信息"));
+        }
+
+        var loginUrl = $"/{tenantId}/exam/login";
+
+        // 如果有身份证号码，添加为查询参数
+        if (!string.IsNullOrEmpty(student.IdNo))
+        {
+            loginUrl += $"?username={Uri.EscapeDataString(student.IdNo)}";
+        }
+
+        return Ok(ApiResponse.SuccessWithRedirect(
+            url: loginUrl,
+            msg: "正在跳转到考试登录页面...",
+            redirectType: RedirectType.Blank,
+            delay: 1000
+        ));
     }
 } 

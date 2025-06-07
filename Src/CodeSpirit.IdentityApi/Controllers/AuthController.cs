@@ -242,5 +242,90 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadResponse<AuthTokenResponse>("租户平台登录失败，请检查登录信息或联系管理员！");
             }
         }
+
+        /// <summary>
+        /// 客户端系统登录接口（支持考试系统、培训系统等）
+        /// </summary>
+        /// <param name="model">客户端登录请求</param>
+        /// <returns>登录结果</returns>
+        [HttpPost("client/login")]
+        [AllowAnonymous]
+        [DisplayName("客户端系统登录")]
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> ClientLogin([FromBody] ClientLoginModel model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadResponse<AuthTokenResponse>("请求参数验证失败");
+                }
+
+                // 从请求头获取租户ID（如果模型中没有提供）
+                if (string.IsNullOrEmpty(model.TenantId))
+                {
+                    model.TenantId = HttpContext.Request.Headers["TenantId"].FirstOrDefault() 
+                                    ?? HttpContext.Items["TenantId"]?.ToString();
+                }
+
+                if (string.IsNullOrEmpty(model.TenantId))
+                {
+                    return BadResponse<AuthTokenResponse>("租户ID不能为空");
+                }
+
+                var ipAddress = _clientIpService.GetClientIpAddress(HttpContext);
+                var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+                // 设置客户端系统的租户上下文
+                HttpContext.Items["TenantId"] = model.TenantId;
+                HttpContext.Items["ClientType"] = model.ClientType ?? "exam"; // 默认为考试系统
+                HttpContext.Items["IsClientLogin"] = true;
+
+                // 将ClientLoginModel转换为TenantLoginModel
+                var tenantLoginModel = new TenantLoginModel
+                {
+                    UserName = model.UserName,
+                    Password = model.Password,
+                    TenantId = model.TenantId
+                };
+
+                var result = await _authService.TenantLoginAsync(tenantLoginModel, ipAddress, userAgent);
+                if (!result.Success)
+                {
+                    return BadResponse<AuthTokenResponse>(result.Message);
+                }
+
+                var response = new AuthTokenResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    User = result.UserInfo
+                };
+
+                var clientTypeName = GetClientTypeName(model.ClientType);
+                return SuccessResponse(response, msg: $"{clientTypeName}登录成功");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "客户端系统登录异常，客户端类型: {ClientType}", model.ClientType);
+                return BadResponse<AuthTokenResponse>("客户端系统登录失败，请检查登录信息或联系管理员！");
+            }
+        }
+
+        /// <summary>
+        /// 获取客户端类型显示名称
+        /// </summary>
+        /// <param name="clientType">客户端类型</param>
+        /// <returns>显示名称</returns>
+        private string GetClientTypeName(string clientType)
+        {
+            return clientType?.ToLower() switch
+            {
+                "exam" => "考试系统",
+                "training" => "培训系统",
+                "learning" => "学习系统",
+                "assessment" => "评估系统",
+                _ => "客户端系统"
+            };
+        }
     }
 }

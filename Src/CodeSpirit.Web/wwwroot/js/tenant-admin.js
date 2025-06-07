@@ -213,6 +213,11 @@
                 return { msg: '登录过期！' };
             }
 
+            // 处理 API 响应中的跳转信息
+            if (payload && payload.redirect && payload.redirect.url) {
+                handleApiRedirect(payload.redirect);
+            }
+
             // 如果是获取用户信息的接口,将数据注入到全局
             if (api.url.includes('/identity/api/identity/profile')) {
                 if (payload.status === 0 && payload.data) {
@@ -631,32 +636,68 @@
             }
         });
     };
+    
+    /**
+     * 处理 API 响应中的跳转信息
+     * @param {Object} redirectInfo 跳转信息对象
+     */
+    window.handleApiRedirect = function(redirectInfo) {
+        if (!redirectInfo || !redirectInfo.url) {
+            console.warn('跳转信息无效:', redirectInfo);
+            return;
+        }
 
-    window.fetchUnreadNotificationCount = function () {
-        const token = TokenManager.getToken();                
-        fetch(`/messaging/api/messaging/messages/my/unread/count`, {
-            headers: {
-                'Authorization': token ? `Bearer ${token}` : '',
-                'X-Forwarded-With': 'CodeSpirit',
-                'X-Tenant-Id': tenantId
+        const {
+            url,
+            type = 0, // 默认当前窗口跳转
+            delay = 0,
+            showMessage = true,
+            message = '正在跳转...'
+        } = redirectInfo;
+
+        // 显示跳转提示
+        if (showMessage && message && window.amisInstance) {
+            window.amisInstance.doAction([
+                {
+                    actionType: 'toast',
+                    args: {
+                      msg: message,
+                      timeout: Math.max(delay, 2000)
+                    }
+                }
+            ]);
+        }
+
+        // 执行跳转
+        const doRedirect = () => {
+            try {
+                switch (type) {
+                    case 0: // Self - 当前窗口跳转
+                        window.location.href = url;
+                        break;
+                    case 1: // Blank - 新窗口打开
+                        window.open(url, '_blank');
+                        break;
+                    case 2: // Replace - 替换当前页面
+                        window.location.replace(url);
+                        break;
+                    default:
+                        console.warn('未知的跳转类型:', type);
+                        window.location.href = url;
+                }
+            } catch (error) {
+                console.error('跳转失败:', error);
+                // 回退到默认跳转方式
+                window.location.href = url;
             }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    console.error('获取未读消息数失败:', response);
-                    return null;
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data) {
-                    const count = data.count || data.unreadCount || 0;
-                    window.updateNotificationCount(count);
-                }
-            })
-            .catch(error => {
-                console.error('获取未读消息数失败:', error);
-            });
+        };
+
+        // 延迟跳转
+        if (delay > 0) {
+            setTimeout(doRedirect, delay);
+        } else {
+            doRedirect();
+        }
     };
 
     /**

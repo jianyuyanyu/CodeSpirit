@@ -1,7 +1,8 @@
 /**
  * 通用Token管理器
- * 支持系统平台和租户平台的认证token管理
+ * 支持系统平台、租户平台和客户端平台的认证token管理
  * 根据平台类型使用不同的存储key
+ * 客户端平台支持考试系统、培训系统、学习系统等多种类型
  * 
  * @example 系统平台使用:
  * ```javascript
@@ -26,7 +27,21 @@
  * );
  * ```
  * 
- * @version 2.0.0
+ * @example 客户端平台使用:
+ * ```javascript
+ * // 初始化为客户端模式
+ * TokenManager.initClientMode('tenant-id', 'exam');
+ * 
+ * // 设置完整的客户端token信息
+ * TokenManager.setTokenExtended(
+ *     'access-token',
+ *     'refresh-token', 
+ *     3600,
+ *     'tenant-id'
+ * );
+ * ```
+ * 
+ * @version 2.1.0
  * @author CodeSpirit Team
  * @compatibility 完全兼容 tokenManager.js v1.0
  */
@@ -34,12 +49,21 @@ window.TokenManager = (function() {
     'use strict';
     
     // 平台类型
-    let platformType = 'system'; // 'system' 或 'tenant'
+    let platformType = 'system'; // 'system', 'tenant' 或 'client'
     let currentTenantId = null;
+    let currentClientType = 'exam'; // 客户端类型：exam, training, learning, assessment等
     
     // 获取存储key
     function getStorageKeys() {
-        if (platformType === 'tenant') {
+        if (platformType === 'client') {
+            return {
+                TOKEN_KEY: `client_${currentClientType}_auth_token`,
+                REFRESH_TOKEN_KEY: `client_${currentClientType}_refresh_token`,
+                USER_INFO_KEY: `client_${currentClientType}_user_info`,
+                TOKEN_EXPIRY_KEY: `client_${currentClientType}_token_expiry`,
+                TENANT_INFO_KEY: `client_${currentClientType}_tenant_info`
+            };
+        } else if (platformType === 'tenant') {
             return {
                 TOKEN_KEY: 'tenant_auth_token',
                 REFRESH_TOKEN_KEY: 'tenant_refresh_token',
@@ -65,6 +89,7 @@ window.TokenManager = (function() {
     function initTenantMode(tenantId) {
         platformType = 'tenant';
         currentTenantId = tenantId;
+        currentClientType = null;
         console.log(`TokenManager: 已切换到租户模式 (${tenantId})`);
     }
     
@@ -74,7 +99,47 @@ window.TokenManager = (function() {
     function initSystemMode() {
         platformType = 'system';
         currentTenantId = null;
+        currentClientType = null;
         console.log('TokenManager: 已切换到系统模式');
+    }
+    
+    /**
+     * 初始化客户端模式
+     * @param {string} tenantId 租户ID（可选）
+     * @param {string} clientType 客户端类型 (exam, training, learning, assessment等)
+     */
+    function initClientMode(tenantId = null, clientType = 'exam') {
+        platformType = 'client';
+        currentTenantId = tenantId;
+        currentClientType = clientType;
+        console.log(`TokenManager: 已切换到客户端模式 ${clientType}${tenantId ? ` (租户: ${tenantId})` : ''}`);
+    }
+    
+    /**
+     * 设置客户端类型
+     * @param {string} clientType 客户端类型
+     */
+    function setClientType(clientType) {
+        if (platformType === 'client') {
+            currentClientType = clientType;
+            console.log(`TokenManager: 客户端类型已设置为 ${clientType}`);
+        } else {
+            console.warn('TokenManager: 仅在客户端模式下可以设置客户端类型');
+        }
+    }
+    
+    /**
+     * 获取当前客户端类型显示名称
+     * @returns {string} 客户端类型显示名称
+     */
+    function getClientTypeName() {
+        switch (currentClientType?.toLowerCase()) {
+            case 'exam': return '考试系统';
+            case 'training': return '培训系统';
+            case 'learning': return '学习系统';
+            case 'assessment': return '评估系统';
+            default: return '客户端系统';
+        }
     }
     
     /**
@@ -98,7 +163,8 @@ window.TokenManager = (function() {
             expiryTime.setHours(expiryTime.getHours() + expiryInHours);
             localStorage.setItem(keys.TOKEN_EXPIRY_KEY, expiryTime.getTime().toString());
             
-            console.log(`${platformType === 'tenant' ? '租户' : '系统'}Token已保存`);
+            const platformName = getPlatformName();
+            console.log(`${platformName}Token已保存`);
         } catch (error) {
             console.error('Error saving token:', error);
             throw new Error('Failed to save token');
@@ -134,15 +200,31 @@ window.TokenManager = (function() {
             
             // 保存租户ID或系统信息
             if (tenantId || currentTenantId) {
-                const infoData = platformType === 'tenant' 
-                    ? { tenantId: tenantId || currentTenantId }
-                    : { platformType: 'system' };
+                const infoData = platformType === 'system' 
+                    ? { platformType: 'system' }
+                    : platformType === 'client'
+                    ? { tenantId: tenantId || currentTenantId, clientType: currentClientType }
+                    : { tenantId: tenantId || currentTenantId };
                 localStorage.setItem(keys.TENANT_INFO_KEY, JSON.stringify(infoData));
             }
             
-            console.log(`${platformType === 'tenant' ? '租户' : '系统'}Token已保存（扩展模式）`);
+            const platformName = getPlatformName();
+            console.log(`${platformName}Token已保存（扩展模式）`);
         } catch (error) {
-            console.error(`保存${platformType === 'tenant' ? '租户' : '系统'}Token失败:`, error);
+            const platformName = getPlatformName();
+            console.error(`保存${platformName}Token失败:`, error);
+        }
+    }
+    
+    /**
+     * 获取平台名称（用于日志显示）
+     * @returns {string} 平台名称
+     */
+    function getPlatformName() {
+        switch (platformType) {
+            case 'tenant': return '租户';
+            case 'client': return getClientTypeName();
+            default: return '系统';
         }
     }
     
@@ -157,14 +239,16 @@ window.TokenManager = (function() {
             
             // 检查token是否过期
             if (token && isTokenExpired()) {
-                console.warn(`${platformType === 'tenant' ? '租户' : '系统'}Token已过期`);
+                const platformName = getPlatformName();
+                console.warn(`${platformName}Token已过期`);
                 clearToken();
                 return null;
             }
             
             return token;
         } catch (error) {
-            console.error(`获取${platformType === 'tenant' ? '租户' : '系统'}Token失败:`, error);
+            const platformName = getPlatformName();
+            console.error(`获取${platformName}Token失败:`, error);
             return null;
         }
     }
@@ -178,7 +262,8 @@ window.TokenManager = (function() {
             const keys = getStorageKeys();
             return localStorage.getItem(keys.REFRESH_TOKEN_KEY);
         } catch (error) {
-            console.error(`获取${platformType === 'tenant' ? '租户' : '系统'}刷新Token失败:`, error);
+            const platformName = getPlatformName();
+            console.error(`获取${platformName}刷新Token失败:`, error);
             return null;
         }
     }
@@ -207,7 +292,8 @@ window.TokenManager = (function() {
             
             return Date.now() > expiryTime;
         } catch (error) {
-            console.error(`检查${platformType === 'tenant' ? '租户' : '系统'}Token过期状态失败:`, error);
+            const platformName = getPlatformName();
+            console.error(`检查${platformName}Token过期状态失败:`, error);
             return false;
         }
     }
@@ -233,9 +319,11 @@ window.TokenManager = (function() {
             localStorage.removeItem(keys.TOKEN_EXPIRY_KEY);
             localStorage.removeItem(keys.TENANT_INFO_KEY);
             
-            console.log(`${platformType === 'tenant' ? '租户' : '系统'}Token已清除`);
+            const platformName = getPlatformName();
+            console.log(`${platformName}Token已清除`);
         } catch (error) {
-            console.error(`清除${platformType === 'tenant' ? '租户' : '系统'}Token失败:`, error);
+            const platformName = getPlatformName();
+            console.error(`清除${platformName}Token失败:`, error);
         }
     }
     
@@ -263,9 +351,11 @@ window.TokenManager = (function() {
         try {
             const keys = getStorageKeys();
             localStorage.setItem(keys.USER_INFO_KEY, JSON.stringify(userInfo));
-            console.log(`${platformType === 'tenant' ? '租户' : '系统'}用户信息已保存`);
+            const platformName = getPlatformName();
+            console.log(`${platformName}用户信息已保存`);
         } catch (error) {
-            console.error(`保存${platformType === 'tenant' ? '租户' : '系统'}用户信息失败:`, error);
+            const platformName = getPlatformName();
+            console.error(`保存${platformName}用户信息失败:`, error);
         }
     }
     
@@ -279,7 +369,8 @@ window.TokenManager = (function() {
             const userInfo = localStorage.getItem(keys.USER_INFO_KEY);
             return userInfo ? JSON.parse(userInfo) : null;
         } catch (error) {
-            console.error(`获取${platformType === 'tenant' ? '租户' : '系统'}用户信息失败:`, error);
+            const platformName = getPlatformName();
+            console.error(`获取${platformName}用户信息失败:`, error);
             return null;
         }
     }
@@ -304,7 +395,7 @@ window.TokenManager = (function() {
      * @returns {Object|null} 租户信息对象
      */
     function getTenantInfo() {
-        if (platformType === 'tenant') {
+        if (platformType === 'tenant' || platformType === 'client') {
             return getPlatformInfo();
         }
         return null;
@@ -333,9 +424,14 @@ window.TokenManager = (function() {
             'Authorization': `Bearer ${token}`
         };
         
-        // 如果是租户模式，添加租户ID头
-        if (platformType === 'tenant' && currentTenantId) {
+        // 如果是租户模式或客户端模式，添加租户ID头
+        if ((platformType === 'tenant' || platformType === 'client') && currentTenantId) {
             headers['X-Tenant-Id'] = currentTenantId;
+        }
+        
+        // 如果是客户端模式，添加客户端类型头
+        if (platformType === 'client' && currentClientType) {
+            headers['X-Client-Type'] = currentClientType;
         }
         
         return headers;
@@ -349,15 +445,24 @@ window.TokenManager = (function() {
     async function refreshToken(refreshUrl) {
         const refreshTokenValue = getRefreshToken();
         if (!refreshTokenValue) {
-            console.warn(`没有${platformType === 'tenant' ? '租户' : '系统'}刷新Token`);
+            const platformName = getPlatformName();
+            console.warn(`没有${platformName}刷新Token`);
             return false;
         }
         
         // 根据平台类型确定默认刷新URL
         if (!refreshUrl) {
-            refreshUrl = platformType === 'tenant' 
-                ? '/identity/api/identity/auth/tenant/refresh'
-                : '/identity/api/identity/auth/refresh';
+            switch (platformType) {
+                case 'client':
+                    refreshUrl = '/identity/api/identity/auth/tenant/refresh'; // 客户端使用租户刷新接口
+                    break;
+                case 'tenant':
+                    refreshUrl = '/identity/api/identity/auth/tenant/refresh';
+                    break;
+                default:
+                    refreshUrl = '/identity/api/identity/auth/refresh';
+                    break;
+            }
         }
         
         const platformInfo = getPlatformInfo();
@@ -372,10 +477,16 @@ window.TokenManager = (function() {
                 refreshToken: refreshTokenValue
             };
             
-            // 如果是租户模式，添加租户相关信息
-            if (platformType === 'tenant') {
+            // 如果是租户模式或客户端模式，添加租户相关信息
+            if (platformType === 'tenant' || platformType === 'client') {
                 headers['X-Tenant-Id'] = platformInfo?.tenantId || currentTenantId || '';
                 body.tenantId = platformInfo?.tenantId || currentTenantId;
+                
+                // 如果是客户端模式，添加客户端类型信息
+                if (platformType === 'client') {
+                    headers['X-Client-Type'] = currentClientType;
+                    body.clientType = currentClientType;
+                }
             }
             
             const response = await fetch(refreshUrl, {
@@ -387,7 +498,7 @@ window.TokenManager = (function() {
             if (response.ok) {
                 const result = await response.json();
                 if (result.status === 0 && result.data) {
-                    if (platformType === 'tenant') {
+                    if (platformType === 'tenant' || platformType === 'client') {
                         setTokenExtended(
                             result.data.accessToken,
                             result.data.refreshToken,
@@ -405,11 +516,13 @@ window.TokenManager = (function() {
                 }
             }
             
-            console.warn(`刷新${platformType === 'tenant' ? '租户' : '系统'}Token失败`);
+            const platformName = getPlatformName();
+            console.warn(`刷新${platformName}Token失败`);
             clearToken();
             return false;
         } catch (error) {
-            console.error(`刷新${platformType === 'tenant' ? '租户' : '系统'}Token出错:`, error);
+            const platformName = getPlatformName();
+            console.error(`刷新${platformName}Token出错:`, error);
             clearToken();
             return false;
         }
@@ -435,7 +548,8 @@ window.TokenManager = (function() {
                 // 在过期前5分钟自动刷新
                 if (timeLeft > 0 && timeLeft < 5 * 60 * 1000) {
                     refreshToken().catch(error => {
-                        console.error(`自动刷新${platformType === 'tenant' ? '租户' : '系统'}Token失败:`, error);
+                        const platformName = getPlatformName();
+                        console.error(`自动刷新${platformName}Token失败:`, error);
                     });
                 }
             }
@@ -449,6 +563,9 @@ window.TokenManager = (function() {
     function hasOtherPlatformToken() {
         if (platformType === 'tenant') {
             return !!(localStorage.getItem('token') || localStorage.getItem('auth_token'));
+        } else if (platformType === 'client') {
+            // 检查是否存在系统或租户平台的token
+            return !!(localStorage.getItem('token') || localStorage.getItem('tenant_auth_token'));
         } else {
             return !!(localStorage.getItem('tenant_auth_token'));
         }
@@ -468,6 +585,20 @@ window.TokenManager = (function() {
                 localStorage.removeItem('token_expiry');
                 localStorage.removeItem('system_info');
                 console.log('系统平台Token已清除');
+            } else if (platformType === 'client') {
+                // 清除系统和租户平台Token
+                localStorage.removeItem('token');
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('refresh_token');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('token_expiry');
+                localStorage.removeItem('system_info');
+                localStorage.removeItem('tenant_auth_token');
+                localStorage.removeItem('tenant_refresh_token');
+                localStorage.removeItem('tenant_user_info');
+                localStorage.removeItem('tenant_token_expiry');
+                localStorage.removeItem('tenant_info');
+                console.log('系统和租户平台Token已清除');
             } else {
                 // 清除租户平台Token
                 localStorage.removeItem('tenant_auth_token');
@@ -487,6 +618,8 @@ window.TokenManager = (function() {
         // ===== 平台模式控制 =====
         initTenantMode,
         initSystemMode,
+        initClientMode,
+        setClientType,
         
         // ===== 兼容 tokenManager.js 的属性 =====
         get TOKEN_KEY() { return getStorageKeys().TOKEN_KEY; },
@@ -516,7 +649,9 @@ window.TokenManager = (function() {
         
         // ===== 工具方法 =====
         get platformType() { return platformType; },
-        get currentTenantId() { return currentTenantId; }
+        get currentTenantId() { return currentTenantId; },
+        get currentClientType() { return currentClientType; },
+        getClientTypeName
     };
     
     // ===== 模块化导出支持 =====

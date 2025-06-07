@@ -127,7 +127,7 @@ public class ClientService : IClientService
             var student = await GetStudentByUserIdAsync(userId);
             if (student == null)
             {
-                throw new InvalidOperationException("未找到考生信息");
+                throw new BusinessException("未找到考生信息");
             }
 
             _logger.LogDebug("用户 {UserId} 直接从数据库获取可参加考试列表", userId);

@@ -78,6 +78,82 @@ flowchart TD
     class Cloud cloudLayer
 ```
 
+### UDL集成架构
+
+UDL作为CodeSpirit框架的核心UI描述语言，提供了统一的界面描述和渲染能力：
+
+```mermaid
+graph TB
+    subgraph "CodeSpirit Framework Architecture"
+        subgraph "Frontend Layer"
+            WebApp["Web Application"]
+            MobileApp["Mobile Application"]
+            LargeScreen["Large Screen Display"]
+        end
+        
+        subgraph "UDL Engine Layer"
+            UDLSpec["UDL Specification<br/>规范定义"]
+            UDLParser["UDL Parser<br/>解析器"]
+            MetadataExtractor["Metadata Extractor<br/>元数据提取器"]
+            CardEngine["Card Engine<br/>卡片引擎"]
+        end
+        
+        subgraph "Rendering Layer"
+            AmisRenderer["AMIS Renderer<br/>Web渲染器"]
+            MauiRenderer["MAUI Renderer<br/>桌面/移动渲染器"]
+            CustomRenderer["Custom Renderer<br/>自定义渲染器"]
+        end
+        
+        subgraph "Template Library"
+            StudentCard["Student Profile Card<br/>考生信息卡片"]
+            StatCard["Statistics Card<br/>统计卡片"]
+            ActionCard["Action Card<br/>操作卡片"]
+            AnswerCard["Answer Card<br/>答题卡"]
+        end
+        
+        subgraph "Backend Services"
+            ExamAPI["Exam API<br/>考试服务"]
+            UserAPI["User API<br/>用户服务"]
+            MonitorAPI["Monitor API<br/>监控服务"]
+        end
+    end
+    
+    %% UDL Engine Flow
+    UDLParser --> MetadataExtractor
+    MetadataExtractor --> CardEngine
+    UDLSpec --> UDLParser
+    
+    %% UDL to Renderers
+    CardEngine --> AmisRenderer
+    CardEngine --> MauiRenderer
+    CardEngine --> CustomRenderer
+    
+    %% Template Library
+    CardEngine --> StudentCard
+    CardEngine --> StatCard
+    CardEngine --> ActionCard
+    CardEngine --> AnswerCard
+    
+    %% Renderers to Frontend
+    AmisRenderer --> WebApp
+    MauiRenderer --> MobileApp
+    CustomRenderer --> LargeScreen
+    
+    %% Backend Integration
+    MetadataExtractor --> ExamAPI
+    MetadataExtractor --> UserAPI
+    MetadataExtractor --> MonitorAPI
+    
+    style UDLSpec fill:#ffeb3b
+    style UDLParser fill:#ffeb3b
+    style MetadataExtractor fill:#ffeb3b
+    style CardEngine fill:#ffeb3b
+    style StudentCard fill:#4caf50
+    style StatCard fill:#4caf50
+    style ActionCard fill:#4caf50
+    style AnswerCard fill:#4caf50
+```
+
 ### 核心技术栈
 
 | 类别         | 技术选型                                    |
@@ -87,6 +163,7 @@ flowchart TD
 | **后端架构** | Clean Architecture + DDD                    |
 | **ORM**      | Entity Framework Core（含软删除、审计追踪） |
 | **前端生成** | AMIS（动态表单/表格生成）                   |
+| **UI描述语言** | UDL（统一UI描述语言 + Cards组件库）       |
 | **微服务**   | .NET Aspire（服务发现、健康检查）           |
 | **容器编排** | Kubernetes（支持自动扩缩容）                |
 | **身份认证** | JWT + OAuth2.0（RBAC/ABAC混合模型）         |
@@ -124,6 +201,40 @@ flowchart TD
 
 - 智能表单
 - 智能图表
+
+#### 5. UDL（UI描述语言）引擎 🆕
+
+UDL（UI Description Language）是CodeSpirit框架中的统一UI描述语言，实现"一次定义，处处使用"的跨平台UI一致性开发。
+
+**核心特性**：
+- **统一描述规范**：标准化的UI描述格式，支持Web、移动端、大屏等多模态输出
+- **智能元数据生成**：基于API Controller自动生成UI配置，零前端编码
+- **UDL Cards组件**：预定义卡片模板库，快速构建信息展示、统计分析、操作交互界面
+- **多平台渲染**：统一配置，自动适配AMIS、MAUI等不同渲染引擎
+
+**UDL Cards预定义模板**：
+- 考生信息卡片（student-profile-card）：展示基本信息，支持头像、字段图标
+- 统计卡片（stat-card）：数据统计展示，支持进度条、百分比、状态标识
+- 操作卡片（action-card）：交互操作面板，支持多层级操作和权限控制
+- 答题卡（answer-card）：考试场景专用，答题状态可视化
+
+**技术架构**：
+```mermaid
+graph TB
+    subgraph "UDL架构层次"
+        UDLSpec["UDL规范定义"] --> UDLParser["UDL解析器"]
+        UDLParser --> RenderEngine["渲染引擎"]
+        RenderEngine --> AmisRenderer["AMIS渲染器"]
+        RenderEngine --> MauiRenderer["MAUI渲染器"]
+        ApiMetadata["API元数据"] --> UDLParser
+        CardTemplates["Cards模板库"] --> RenderEngine
+    end
+```
+
+**应用场景**：
+- 监考大屏：实时统计、状态监控、异常预警
+- 考试客户端：学生信息展示、答题进度跟踪
+- 管理后台：数据面板、操作界面自动生成
 
 ### 二、企业级后端架构
 
@@ -196,16 +307,20 @@ sequenceDiagram
 ### Q2 2025
 
 - 智能界面生成引擎
+- UDL Cards 基础实现
 - 码灵Beta版发布
 - H5生成引擎
 
 ### Q3 2025
 
+- UDL 元数据自动生成
+- UDL 多平台渲染支持
 - 可视化分析模块
 - 深度集成LLM代码生成能力
 
 ### Q4 2025
 
+- UDL 生态完善（可视化编辑器、模板市场）
 - 全栈生成引擎
 - 多云部署支持
 - Java支持
@@ -265,27 +380,29 @@ https://codespirit-app.xin-lai.com/
 7. [📝 表单默认值设置](./Docs/CodeSpirit.Amis表单默认值使用指南.md) - 表单默认值配置指南
 8. [📈 智能图表组件](./Docs/CodeSpirit.Charts智能图表使用指南.md) - 数据可视化解决方案
 9. [⏰ 日期时间列优化](./Docs/日期时间列优化功能总结.md) - 时间字段智能处理
+10. [🎨 UDL UI描述语言设计方案](./Docs/UDL-UI描述语言设计方案.md) - 统一UI描述语言架构设计
+11. [🃏 UDL Cards详细实现方案](./Docs/UDL-Cards详细实现方案.md) - 卡片组件库实现指南
 
 ### 🔧 核心组件
 
-10. [🔗 聚合器使用指南](./Docs/CodeSpirit.Aggregator聚合器使用指南.md) - 数据聚合和字段替换
-11. [⚙️ 设置管理组件](./Docs/CodeSpirit.Settings设置管理组件使用指南.md) - 配置管理解决方案
-12. [🔒 分布式锁使用指南](./Docs/CodeSpirit分布式锁使用指南.md) - 分布式锁实现和使用
-13. [🌐 跨域策略配置指南](./Docs/CodeSpirit跨域策略配置指南.md) - CORS跨域资源共享配置和安全策略
-14. [📄 PDF生成组件](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF文档生成服务
-15. [🕒 时间处理机制](./Docs/CodeSpirit时间处理机制.md) - 统一时间处理方案
-16. [🌐 客户端IP服务](./Docs/ClientIpService使用指南.md) - 客户端IP获取和处理
-17. [📋 审计组件集成使用指南](./Docs/CodeSpirit.Audit审计组件集成使用指南.md) - 完整的审计系统集成和使用
+12. [🔗 聚合器使用指南](./Docs/CodeSpirit.Aggregator聚合器使用指南.md) - 数据聚合和字段替换
+13. [⚙️ 设置管理组件](./Docs/CodeSpirit.Settings设置管理组件使用指南.md) - 配置管理解决方案
+14. [🔒 分布式锁使用指南](./Docs/CodeSpirit分布式锁使用指南.md) - 分布式锁实现和使用
+15. [🌐 跨域策略配置指南](./Docs/CodeSpirit跨域策略配置指南.md) - CORS跨域资源共享配置和安全策略
+16. [📄 PDF生成组件](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF文档生成服务
+17. [🕒 时间处理机制](./Docs/CodeSpirit时间处理机制.md) - 统一时间处理方案
+18. [🌐 客户端IP服务](./Docs/ClientIpService使用指南.md) - 客户端IP获取和处理
+19. [📋 审计组件集成使用指南](./Docs/CodeSpirit.Audit审计组件集成使用指南.md) - 完整的审计系统集成和使用
 
 ### 🚀 基础设施
 
-18. [🐰 RabbitMQ集成指南](./Docs/RabbitMQ-Aspire-Integration.md) - 消息队列集成方案
-19. [🔧 RabbitMQ故障排除](./Docs/RabbitMQ故障排除指南.md) - 常见问题解决方案
-20. [🔍 Elasticsearch迁移总结](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - 搜索引擎集成指南
+20. [🐰 RabbitMQ集成指南](./Docs/RabbitMQ-Aspire-Integration.md) - 消息队列集成方案
+21. [🔧 RabbitMQ故障排除](./Docs/RabbitMQ故障排除指南.md) - 常见问题解决方案
+22. [🔍 Elasticsearch迁移总结](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - 搜索引擎集成指南
 
 ### 📊 项目管理
 
-21. [📋 技术债管理文档](./Docs/技术债管理文档.md) - 技术债跟踪和管理规范
+23. [📋 技术债管理文档](./Docs/技术债管理文档.md) - 技术债跟踪和管理规范
 
 ### 💬 技术社区
 

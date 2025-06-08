@@ -60,6 +60,82 @@ flowchart TD
     class Cloud cloudLayer
 ```
 
+### UDL Integration Architecture
+
+UDL serves as the core UI description language of the CodeSpirit framework, providing unified interface description and rendering capabilities:
+
+```mermaid
+graph TB
+    subgraph "CodeSpirit Framework Architecture"
+        subgraph "Frontend Layer"
+            WebApp["Web Application"]
+            MobileApp["Mobile Application"]
+            LargeScreen["Large Screen Display"]
+        end
+        
+        subgraph "UDL Engine Layer"
+            UDLSpec["UDL Specification<br/>规范定义"]
+            UDLParser["UDL Parser<br/>解析器"]
+            MetadataExtractor["Metadata Extractor<br/>元数据提取器"]
+            CardEngine["Card Engine<br/>卡片引擎"]
+        end
+        
+        subgraph "Rendering Layer"
+            AmisRenderer["AMIS Renderer<br/>Web渲染器"]
+            MauiRenderer["MAUI Renderer<br/>桌面/移动渲染器"]
+            CustomRenderer["Custom Renderer<br/>自定义渲染器"]
+        end
+        
+        subgraph "Template Library"
+            StudentCard["Student Profile Card<br/>考生信息卡片"]
+            StatCard["Statistics Card<br/>统计卡片"]
+            ActionCard["Action Card<br/>操作卡片"]
+            AnswerCard["Answer Card<br/>答题卡"]
+        end
+        
+        subgraph "Backend Services"
+            ExamAPI["Exam API<br/>考试服务"]
+            UserAPI["User API<br/>用户服务"]
+            MonitorAPI["Monitor API<br/>监控服务"]
+        end
+    end
+    
+    %% UDL Engine Flow
+    UDLParser --> MetadataExtractor
+    MetadataExtractor --> CardEngine
+    UDLSpec --> UDLParser
+    
+    %% UDL to Renderers
+    CardEngine --> AmisRenderer
+    CardEngine --> MauiRenderer
+    CardEngine --> CustomRenderer
+    
+    %% Template Library
+    CardEngine --> StudentCard
+    CardEngine --> StatCard
+    CardEngine --> ActionCard
+    CardEngine --> AnswerCard
+    
+    %% Renderers to Frontend
+    AmisRenderer --> WebApp
+    MauiRenderer --> MobileApp
+    CustomRenderer --> LargeScreen
+    
+    %% Backend Integration
+    MetadataExtractor --> ExamAPI
+    MetadataExtractor --> UserAPI
+    MetadataExtractor --> MonitorAPI
+    
+    style UDLSpec fill:#ffeb3b
+    style UDLParser fill:#ffeb3b
+    style MetadataExtractor fill:#ffeb3b
+    style CardEngine fill:#ffeb3b
+    style StudentCard fill:#4caf50
+    style StatCard fill:#4caf50
+    style ActionCard fill:#4caf50
+    style AnswerCard fill:#4caf50
+```
+
 ### Core Technology Stack
 
 | Category | Technology Selection |
@@ -69,6 +145,7 @@ flowchart TD
 | **Backend Architecture** | Clean Architecture + DDD |
 | **ORM** | Entity Framework Core (with soft delete, audit tracking) |
 | **Frontend Generation** | AMIS (Dynamic form/table generation) |
+| **UI Description Language** | UDL (Unified UI Description Language + Cards Library) |
 | **Microservices** | .NET Aspire (Service discovery, health checks) |
 | **Container Orchestration** | Kubernetes (Supporting auto-scaling) |
 | **Identity Authentication** | JWT + OAuth2.0 (RBAC/ABAC hybrid model) |
@@ -106,6 +183,40 @@ flowchart TD
 
 - Smart Forms
 - Smart Charts
+
+#### 5. UDL (UI Description Language) Engine 🆕
+
+UDL (UI Description Language) is a unified UI description language in the CodeSpirit framework, achieving "define once, use everywhere" cross-platform UI consistency development.
+
+**Core Features**:
+- **Unified Description Specification**: Standardized UI description format supporting Web, mobile, large screen and other multi-modal outputs
+- **Intelligent Metadata Generation**: Automatically generate UI configuration based on API Controllers with zero frontend coding
+- **UDL Cards Components**: Predefined card template library for rapid construction of information display, statistical analysis, and interactive interfaces
+- **Multi-platform Rendering**: Unified configuration, automatically adapting to different rendering engines like AMIS, MAUI
+
+**UDL Cards Predefined Templates**:
+- Student Profile Card (student-profile-card): Display basic information with avatar and field icons support
+- Statistics Card (stat-card): Data statistics display with progress bars, percentages, and status indicators
+- Action Card (action-card): Interactive operation panels with multi-level operations and permission control
+- Answer Card (answer-card): Exam scenario specific, answer status visualization
+
+**Technical Architecture**:
+```mermaid
+graph TB
+    subgraph "UDL Architecture Layers"
+        UDLSpec["UDL Specification"] --> UDLParser["UDL Parser"]
+        UDLParser --> RenderEngine["Render Engine"]
+        RenderEngine --> AmisRenderer["AMIS Renderer"]
+        RenderEngine --> MauiRenderer["MAUI Renderer"]
+        ApiMetadata["API Metadata"] --> UDLParser
+        CardTemplates["Cards Template Library"] --> RenderEngine
+    end
+```
+
+**Application Scenarios**:
+- Exam Monitoring Dashboard: Real-time statistics, status monitoring, anomaly alerts
+- Exam Client: Student information display, answer progress tracking
+- Management Backend: Data panels, operation interface auto-generation
 
 ### II. Enterprise-Grade Backend Architecture
 
@@ -178,16 +289,20 @@ sequenceDiagram
 ### Q2 2025
 
 - Intelligent UI Generation Engine
+- UDL Cards Basic Implementation
 - CodeSpirit Beta Release
 - H5 Generation Engine
 
 ### Q3 2025
 
+- UDL Metadata Auto-Generation
+- UDL Multi-Platform Rendering Support
 - Visual Analysis Module
 - Deep Integration of LLM Code Generation Capabilities
 
 ### Q4 2025
 
+- UDL Ecosystem Completion (Visual Editor, Template Marketplace)
 - Full-Stack Generation Engine
 - Multi-Cloud Deployment Support
 - Java Support
@@ -246,22 +361,24 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 6. [📝 Form Default Values](./Docs/CodeSpirit.Amis表单默认值使用指南.md) - Form default value configuration guide
 7. [📈 Smart Chart Component](./Docs/CodeSpirit.Charts智能图表使用指南.md) - Data visualization solution
 8. [⏰ Date Time Column Optimization](./Docs/日期时间列优化功能总结.md) - Intelligent time field processing
+9. [🎨 UDL UI Description Language Design](./Docs/UDL-UI描述语言设计方案.md) - Unified UI description language architecture design
+10. [🃏 UDL Cards Detailed Implementation](./Docs/UDL-Cards详细实现方案.md) - Card component library implementation guide
 
 ### 🔧 Core Components
 
-9. [🔗 Aggregator Usage Guide](./Docs/CodeSpirit.Aggregator聚合器使用指南.md) - Data aggregation and field replacement
-10. [⚙️ Settings Management Component](./Docs/CodeSpirit.Settings设置管理组件使用指南.md) - Configuration management solution
-11. [🔒 Distributed Lock Usage Guide](./Docs/CodeSpirit分布式锁使用指南.md) - Distributed lock implementation and usage
-12. [📄 PDF Generation Component](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF document generation service
-13. [🕒 Time Processing Mechanism](./Docs/CodeSpirit时间处理机制.md) - Unified time processing solution
-14. [🌐 Client IP Service](./Docs/ClientIpService使用指南.md) - Client IP acquisition and processing
-15. [📋 Audit Component Integration Guide](./Docs/CodeSpirit.Audit审计组件集成使用指南.md) - Complete audit system integration and usage
+11. [🔗 Aggregator Usage Guide](./Docs/CodeSpirit.Aggregator聚合器使用指南.md) - Data aggregation and field replacement
+12. [⚙️ Settings Management Component](./Docs/CodeSpirit.Settings设置管理组件使用指南.md) - Configuration management solution
+13. [🔒 Distributed Lock Usage Guide](./Docs/CodeSpirit分布式锁使用指南.md) - Distributed lock implementation and usage
+14. [📄 PDF Generation Component](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF document generation service
+15. [🕒 Time Processing Mechanism](./Docs/CodeSpirit时间处理机制.md) - Unified time processing solution
+16. [🌐 Client IP Service](./Docs/ClientIpService使用指南.md) - Client IP acquisition and processing
+17. [📋 Audit Component Integration Guide](./Docs/CodeSpirit.Audit审计组件集成使用指南.md) - Complete audit system integration and usage
 
 ### 🚀 Infrastructure
 
-16. [🐰 RabbitMQ Integration Guide](./Docs/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
-17. [🔧 RabbitMQ Troubleshooting](./Docs/RabbitMQ故障排除指南.md) - Common problem solutions
-18. [🔍 Elasticsearch Migration Summary](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
+18. [🐰 RabbitMQ Integration Guide](./Docs/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
+19. [🔧 RabbitMQ Troubleshooting](./Docs/RabbitMQ故障排除指南.md) - Common problem solutions
+20. [🔍 Elasticsearch Migration Summary](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
 
 ### 💬 Technical Community
 

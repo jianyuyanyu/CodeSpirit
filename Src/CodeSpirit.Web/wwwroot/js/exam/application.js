@@ -29,7 +29,10 @@
             studentId: '', 
             phone: '', 
             avatar: '',
-            displayName: ''
+            displayName: '',
+            studentGroups: [],
+            userId: 0,
+            candidateId: 0
         },
         announcements: []
     };
@@ -98,9 +101,25 @@
                             tpl: "<div class='tenant-name'><i class='fa fa-building'></i> ${tenant.name || '考试平台'}</div>"
                         },
                         {
-                            type: "tpl", 
-                            tpl: "<div class='current-time'><i class='fa fa-clock-o'></i> ${now | date:'HH:mm'}</div>",
-                            className: "current-time"
+                            type: "flex",
+                            justify: "flex-end",
+                            alignItems: "center",
+                            className: "tenant-actions",
+                            items: [
+                                {
+                                    type: "tpl", 
+                                    tpl: "<div class='current-time'><i class='fa fa-clock-o'></i> ${now | date:'HH:mm'}</div>",
+                                    className: "current-time"
+                                },
+                                {
+                                    type: "html",
+                                    html: `
+                                        <div class="logout-btn" onclick="window.handleLogout()" title="退出登录">
+                                            <i class="fa fa-sign-out"></i>
+                                        </div>
+                                    `
+                                }
+                            ]
                         }
                     ]
                 },
@@ -177,7 +196,7 @@
                                                     md: 6,
                                                     body: {
                                                         type: "tpl",
-                                                        tpl: "<div class='student-info-item'><span class='info-label'>身份证:</span><span class='info-value'>\${student.idCard | truncate:10:'***' || '未设置'}</span></div>"
+                                                        tpl: "<div class='student-info-item'><span class='info-label'>身份证:</span><span class='info-value'>\${student.idCard}</span></div>"
                                                     }
                                                 }
                                             ]
@@ -267,21 +286,29 @@
                             type: "html",
                             html: `
                                 <div class="nav-menu-grid">
-                                    <div class="nav-menu-item nav-practice" onclick="window.navigateTo('practice')">
+                                    <div class="nav-menu-item nav-practice" onclick="window.navigateTo('practice')" data-animate="0">
                                         <i class="fa fa-pencil nav-menu-icon"></i>
                                         <div class="nav-menu-text">开始练习</div>
                                     </div>
-                                    <div class="nav-menu-item nav-exam" onclick="window.navigateTo('exam')">
+                                    <div class="nav-menu-item nav-exam" onclick="window.navigateTo('exam')" data-animate="1">
                                         <i class="fa fa-graduation-cap nav-menu-icon"></i>
                                         <div class="nav-menu-text">开始考试</div>
                                     </div>
-                                    <div class="nav-menu-item nav-my-exams" onclick="window.navigateTo('my-exams')">
+                                    <div class="nav-menu-item nav-my-exams" onclick="window.navigateTo('my-exams')" data-animate="2">
                                         <i class="fa fa-file-text nav-menu-icon"></i>
                                         <div class="nav-menu-text">我的考试</div>
                                     </div>
-                                    <div class="nav-menu-item nav-my-practice" onclick="window.navigateTo('my-practice')">
+                                    <div class="nav-menu-item nav-my-practice" onclick="window.navigateTo('my-practice')" data-animate="3">
                                         <i class="fa fa-history nav-menu-icon"></i>
                                         <div class="nav-menu-text">我的练习</div>
+                                    </div>
+                                    <div class="nav-menu-item nav-wrong-questions" onclick="window.navigateTo('wrong-questions')" data-animate="4">
+                                        <i class="fa fa-exclamation-triangle nav-menu-icon"></i>
+                                        <div class="nav-menu-text">错题管理</div>
+                                    </div>
+                                    <div class="nav-menu-item nav-profile" onclick="window.navigateTo('profile')" data-animate="5">
+                                        <i class="fa fa-user nav-menu-icon"></i>
+                                        <div class="nav-menu-text">个人中心</div>
                                     </div>
                                 </div>
                             `
@@ -300,13 +327,125 @@
             'practice': `/${window.tenantId}/exam/practice`,
             'exam': `/${window.tenantId}/exam`,
             'my-exams': `/${window.tenantId}/exam/history`,
-            'my-practice': `/${window.tenantId}/exam/practice-history`
+            'my-practice': `/${window.tenantId}/exam/practice-history`,
+            'wrong-questions': `/${window.tenantId}/exam/wrong-questions`,
+            'profile': `/${window.tenantId}/exam/profile`
         };
         
         if (routes[page]) {
-            window.location.href = routes[page];
+            // 添加点击反馈动画
+            const clickedItem = event.target.closest('.nav-menu-item');
+            if (clickedItem) {
+                clickedItem.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    window.location.href = routes[page];
+                }, 150);
+            } else {
+                window.location.href = routes[page];
+            }
         }
     };
+    
+    /**
+     * 处理退出登录
+     */
+    window.handleLogout = function() {
+        // 显示确认对话框
+        if (confirm('🚪 确定要退出登录吗？\n\n退出后需要重新输入账号密码才能登录。')) {
+            try {
+                // 清除Token
+                TokenManager.clearToken();
+                
+                // 显示退出动画
+                const logoutBtn = document.querySelector('.logout-btn');
+                if (logoutBtn) {
+                    logoutBtn.style.transform = 'scale(0.8) rotate(180deg)';
+                    logoutBtn.style.opacity = '0.5';
+                    logoutBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+                }
+                
+                // 页面渐出效果
+                document.body.style.opacity = '0.7';
+                document.body.style.transform = 'scale(0.95)';
+                document.body.style.filter = 'blur(2px)';
+                
+                // 延迟跳转到登录页
+                setTimeout(() => {
+                    window.location.href = `/${window.tenantId}/exam/login`;
+                }, 500);
+                
+            } catch (error) {
+                console.error('退出登录失败:', error);
+                // 即使出错也要跳转到登录页
+                window.location.href = `/${window.tenantId}/exam/login`;
+            }
+        }
+    };
+    
+    /**
+     * 显示功能提示（用于新功能）
+     */
+    function showFeatureTip() {
+        // 可以在这里添加新功能的介绍提示
+        const isFirstVisit = !localStorage.getItem('exam-app-visited');
+        if (isFirstVisit) {
+            setTimeout(() => {
+                console.log('🎉 欢迎使用考试管理平台！新增了错题管理和个人中心功能。');
+                localStorage.setItem('exam-app-visited', 'true');
+            }, 2000);
+        }
+    }
+    
+    /**
+     * 增强导航菜单动画效果
+     */
+    function enhanceNavigationAnimations() {
+        // 为导航菜单项添加交错动画
+        setTimeout(() => {
+            const menuItems = document.querySelectorAll('[data-animate]');
+            menuItems.forEach((item, index) => {
+                const delay = index * 120; // 稍微延长间隔以适应6个菜单项
+                setTimeout(() => {
+                    item.style.animation = `fadeInUp 0.6s var(--exam-bounce) both`;
+                    item.style.opacity = '1';
+                }, delay);
+            });
+        }, 800);
+        
+        // 初始隐藏菜单项
+        const menuItems = document.querySelectorAll('[data-animate]');
+        menuItems.forEach(item => {
+            item.style.opacity = '0';
+        });
+        
+        // 添加鼠标移动视差效果
+        document.addEventListener('mousemove', handleMouseMove);
+    }
+    
+    /**
+     * 处理鼠标移动视差效果
+     */
+    function handleMouseMove(e) {
+        // 检测是否为触摸设备，如果是则跳过视差效果
+        if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+            return;
+        }
+        
+        const cards = document.querySelectorAll('.student-info-card, .announcement-section');
+        const { clientX: x, clientY: y } = e;
+        const { innerWidth: width, innerHeight: height } = window;
+        
+        cards.forEach(card => {
+            const rect = card.getBoundingClientRect();
+            const cardCenterX = rect.left + rect.width / 2;
+            const cardCenterY = rect.top + rect.height / 2;
+            
+            const deltaX = (x - cardCenterX) / width * 8;
+            const deltaY = (y - cardCenterY) / height * 8;
+            
+            card.style.transform = `translateX(${deltaX}px) translateY(${deltaY}px)`;
+        });
+    }
     
     /**
      * 加载初始数据
@@ -321,7 +460,19 @@
             const [studentInfo, announcements] = await Promise.all([
                 loadStudentInfo().catch(error => {
                     console.warn('加载学生信息失败:', error);
-                    return { name: '未知用户', displayName: '未知用户' };
+                    return { 
+                        name: '未知用户', 
+                        displayName: '未知用户',
+                        idCard: '',
+                        gender: '',
+                        examNumber: '',
+                        studentId: '',
+                        phone: '',
+                        avatar: '',
+                        studentGroups: [],
+                        userId: 0,
+                        candidateId: 0
+                    };
                 }),
                 loadAnnouncements().catch(error => {
                     console.warn('加载公告失败:', error);
@@ -342,6 +493,20 @@
                     }
                 });
             }
+            
+            // 更新页面标题
+            if (studentInfo.name) {
+                document.title = `${studentInfo.name} - 考试管理平台`;
+            }
+            
+            // 在控制台显示考生信息摘要
+            console.log('👤 当前考生信息摘要:');
+            console.log(`   姓名: ${studentInfo.name || '未设置'}`);
+            console.log(`   学号: ${studentInfo.studentId || '未设置'}`);
+            console.log(`   准考证: ${studentInfo.examNumber || '未设置'}`);
+            console.log(`   考生组: ${studentInfo.studentGroups?.length ? studentInfo.studentGroups.join(', ') : '未分组'}`);
+            console.log(`   用户ID: ${studentInfo.userId || '未知'}`);
+            console.log(`   考生ID: ${studentInfo.candidateId || '未知'}`);
             
         } catch (error) {
             console.error('加载初始数据失败:', error);
@@ -407,27 +572,75 @@
     }
     
     /**
-     * 加载考生信息 - 前端获取
+     * 加载考生信息 - 使用考试API获取
      */
     async function loadStudentInfo() {
         try {
-            const profile = await apiRequest('/identity/api/identity/profile');
-            return {
-                name: profile.userName || profile.name || '',
-                displayName: profile.displayName || profile.userName || profile.name || '',
-                idCard: profile.idCard || '',
+            console.log('🔍 正在从考试API获取考生信息...');
+            const profile = await apiRequest('/exam/api/exam/client/profile');
+            console.log('✅ 考生信息获取成功:', profile);
+            
+            const studentInfo = {
+                name: profile.name || '',
+                displayName: profile.name || '',
+                idCard: profile.idNo || '',
                 gender: profile.gender || '',
-                examNumber: profile.examNumber || '',
-                studentId: profile.studentId || profile.employeeId || '',
-                phone: profile.phone || profile.phoneNumber || '',
-                avatar: profile.avatar || ''
+                examNumber: profile.admissionTicket || '',
+                studentId: profile.studentNumber || '',
+                phone: profile.phoneNumber || '',
+                avatar: '', // API中没有头像字段
+                studentGroups: profile.studentGroups || [],
+                userId: profile.userId || 0,
+                candidateId: profile.id || 0
             };
+            
+            console.log('📋 处理后的考生信息:', studentInfo);
+            return studentInfo;
+            
         } catch (error) {
-            console.warn('加载考生信息失败:', error);
-            return { 
-                name: '未知用户',
-                displayName: '未知用户'
-            };
+            console.warn('⚠️ 考试API获取考生信息失败:', error);
+            
+            // 如果考试API失败，尝试使用身份API作为备用
+            try {
+                console.log('🔄 尝试使用身份API作为备用...');
+                const identityProfile = await apiRequest('/identity/api/identity/profile');
+                console.log('✅ 身份API获取成功:', identityProfile);
+                
+                const fallbackInfo = {
+                    name: identityProfile.userName || identityProfile.name || '',
+                    displayName: identityProfile.displayName || identityProfile.userName || identityProfile.name || '',
+                    idCard: identityProfile.idCard || '',
+                    gender: identityProfile.gender || '',
+                    examNumber: identityProfile.examNumber || '',
+                    studentId: identityProfile.studentId || identityProfile.employeeId || '',
+                    phone: identityProfile.phone || identityProfile.phoneNumber || '',
+                    avatar: identityProfile.avatar || '',
+                    studentGroups: [],
+                    userId: identityProfile.id || 0,
+                    candidateId: 0
+                };
+                
+                console.log('📋 备用API处理后的信息:', fallbackInfo);
+                return fallbackInfo;
+                
+            } catch (fallbackError) {
+                console.error('❌ 备用身份API也失败:', fallbackError);
+                console.log('📋 使用默认用户信息');
+                
+                return { 
+                    name: '未知用户',
+                    displayName: '未知用户',
+                    idCard: '',
+                    gender: '',
+                    examNumber: '',
+                    studentId: '',
+                    phone: '',
+                    avatar: '',
+                    studentGroups: [],
+                    userId: 0,
+                    candidateId: 0
+                };
+            }
         }
     }
     
@@ -570,6 +783,12 @@
                     });
                 }
             }, 30000); // 每30秒更新一次时间
+            
+            // 增强导航菜单动画效果
+            enhanceNavigationAnimations();
+            
+            // 显示功能提示
+            showFeatureTip();
             
         } catch (error) {
             console.error('页面初始化失败:', error);

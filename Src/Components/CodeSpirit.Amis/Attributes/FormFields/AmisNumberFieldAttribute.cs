@@ -7,14 +7,19 @@ namespace CodeSpirit.Amis.Attributes.FormFields
     public class AmisNumberFieldAttribute : AmisFormFieldAttribute
     {
         /// <summary>
-        /// 最小值
+        /// 表示未设置值的常量
         /// </summary>
-        public double Min { get; set; }
+        public const double NOT_SET = double.NaN;
 
         /// <summary>
-        /// 最大值
+        /// 最小值，默认为 NaN 表示未设置
         /// </summary>
-        public double Max { get; set; }
+        public double Min { get; set; } = NOT_SET;
+
+        /// <summary>
+        /// 最大值，默认为 NaN 表示未设置
+        /// </summary>
+        public double Max { get; set; } = NOT_SET;
 
         /// <summary>
         /// 步长

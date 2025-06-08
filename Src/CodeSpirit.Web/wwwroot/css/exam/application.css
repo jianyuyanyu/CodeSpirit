@@ -1,0 +1,593 @@
+/**
+ * 考试应用页面样式
+ * 移动端适配的考试管理平台样式
+ */
+
+/* ===== CSS变量定义 ===== */
+:root {
+    --exam-primary: #1e88e5;
+    --exam-secondary: #42a5f5;
+    --exam-success: #10b981;
+    --exam-warning: #f59e0b;
+    --exam-danger: #ef4444;
+    --exam-bg: #f8fafc;
+    --exam-card-bg: #ffffff;
+    --exam-border: #e2e8f0;
+    --exam-text: #334155;
+    --exam-text-secondary: #64748b;
+    --exam-shadow: 0 4px 12px rgba(30, 136, 229, 0.08);
+    --exam-shadow-hover: 0 8px 24px rgba(30, 136, 229, 0.15);
+    --exam-radius: 12px;
+    --exam-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== 基础样式 ===== */
+body {
+    background-color: var(--exam-bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    color: var(--exam-text);
+    line-height: 1.6;
+}
+
+/* 隐藏默认布局元素 */
+.navbar, .sidebar, .main-header, .main-sidebar, 
+.content-header, .main-footer {
+    display: none !important;
+}
+
+.content-wrapper, .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ===== 应用容器 ===== */
+.exam-app-container {
+    min-height: 100vh;
+    background: var(--exam-bg);
+}
+
+/* ===== 租户信息条 ===== */
+.tenant-info-bar {
+    background: linear-gradient(135deg, var(--exam-primary), var(--exam-secondary));
+    color: white;
+    padding: 8px 16px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--exam-shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.tenant-name {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.tenant-name i {
+    margin-right: 6px;
+}
+
+.tenant-logo {
+    height: 18px;
+    width: auto;
+    border-radius: 3px;
+}
+
+.current-time {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.current-time i {
+    margin-right: 4px;
+}
+
+/* ===== 考生信息卡片 ===== */
+.student-info-card {
+    background: var(--exam-card-bg);
+    margin: 12px 16px;
+    border-radius: var(--exam-radius);
+    box-shadow: var(--exam-shadow);
+    padding: 16px;
+    border-left: 4px solid var(--exam-primary);
+}
+
+.student-avatar {
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, var(--exam-primary), var(--exam-secondary)) !important;
+    color: white !important;
+    font-size: 24px !important;
+    font-weight: bold !important;
+    flex-shrink: 0;
+}
+
+.student-info-item {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.student-info-item:last-child {
+    margin-bottom: 0;
+}
+
+.info-label {
+    font-size: 13px;
+    color: var(--exam-text-secondary);
+    min-width: 60px;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 14px;
+    color: var(--exam-text);
+    font-weight: 600;
+}
+
+/* ===== 公告通知区域 ===== */
+.announcement-section {
+    margin: 12px 16px;
+    background: var(--exam-card-bg);
+    border-radius: var(--exam-radius);
+    box-shadow: var(--exam-shadow);
+    overflow: hidden;
+}
+
+.announcement-header {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: white;
+    padding: 12px 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+}
+
+.announcement-header i {
+    margin-right: 8px;
+}
+
+.announcement-content {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.announcement-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--exam-border);
+    transition: var(--exam-transition);
+    cursor: pointer;
+}
+
+.announcement-item:last-child {
+    border-bottom: none;
+}
+
+.announcement-item:hover {
+    background-color: #f8fafc;
+}
+
+.announcement-title {
+    font-weight: 600;
+    color: var(--exam-text);
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+.announcement-content-text {
+    color: var(--exam-text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.announcement-time {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.announcement-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--exam-text-secondary);
+}
+
+.announcement-empty i {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: block;
+    color: #d1d5db;
+}
+
+/* ===== 导航菜单 ===== */
+.nav-menu-section {
+    margin: 12px 16px;
+}
+
+.nav-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.nav-menu-item {
+    background: var(--exam-card-bg);
+    border-radius: var(--exam-radius);
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--exam-shadow);
+    transition: var(--exam-transition);
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-menu-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    opacity: 0;
+    transition: var(--exam-transition);
+}
+
+.nav-menu-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--exam-shadow-hover);
+    border-color: currentColor;
+}
+
+.nav-menu-item:hover::before {
+    opacity: 1;
+}
+
+.nav-menu-item:active {
+    transform: translateY(0);
+}
+
+.nav-menu-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: block;
+    transition: var(--exam-transition);
+}
+
+.nav-menu-item:hover .nav-menu-icon {
+    transform: scale(1.1);
+}
+
+.nav-menu-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--exam-text);
+}
+
+/* 导航菜单颜色主题 */
+.nav-practice {
+    color: var(--exam-success);
+}
+
+.nav-exam {
+    color: var(--exam-primary);
+}
+
+.nav-my-exams {
+    color: var(--exam-warning);
+}
+
+.nav-my-practice {
+    color: var(--exam-danger);
+}
+
+/* ===== 加载状态 ===== */
+.exam-loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.exam-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f4f6;
+    border-top: 4px solid var(--exam-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+.exam-loading-text {
+    color: var(--exam-text-secondary);
+    font-size: 14px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===== 错误页面样式 ===== */
+.exam-error {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--exam-bg);
+    padding: 20px;
+}
+
+.error-content {
+    background: var(--exam-card-bg);
+    border-radius: var(--exam-radius);
+    padding: 40px 30px;
+    text-align: center;
+    box-shadow: var(--exam-shadow);
+    max-width: 500px;
+    width: 100%;
+}
+
+.error-icon {
+    font-size: 48px;
+    color: var(--exam-danger);
+    margin-bottom: 20px;
+}
+
+.error-content h3 {
+    color: var(--exam-text);
+    margin-bottom: 16px;
+    font-size: 20px;
+}
+
+.error-content p {
+    color: var(--exam-text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.error-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.error-actions .btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--exam-transition);
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.error-actions .btn-primary {
+    background: var(--exam-primary);
+    color: white;
+}
+
+.error-actions .btn-primary:hover {
+    background: var(--exam-secondary);
+    transform: translateY(-1px);
+}
+
+.error-actions .btn-secondary {
+    background: #f1f5f9;
+    color: var(--exam-text);
+    border: 1px solid var(--exam-border);
+}
+
+.error-actions .btn-secondary:hover {
+    background: #e2e8f0;
+    transform: translateY(-1px);
+}
+
+.error-tips {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--exam-text-secondary);
+}
+
+.error-tips p {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--exam-text);
+}
+
+.error-tips ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.error-tips li {
+    margin-bottom: 4px;
+}
+
+/* 错误页面移动端适配 */
+@media (max-width: 576px) {
+    .exam-error {
+        padding: 16px;
+    }
+    
+    .error-content {
+        padding: 30px 20px;
+    }
+    
+    .error-icon {
+        font-size: 40px;
+    }
+    
+    .error-content h3 {
+        font-size: 18px;
+    }
+    
+    .error-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .error-actions .btn {
+        width: 100%;
+        max-width: 200px;
+        justify-content: center;
+    }
+}
+
+/* ===== 响应式设计 ===== */
+
+/* 平板设备适配 */
+@media (max-width: 768px) {
+    .student-info-card {
+        padding: 14px;
+    }
+    
+    .nav-menu-item {
+        padding: 18px 16px;
+    }
+    
+    .nav-menu-icon {
+        font-size: 28px;
+    }
+}
+
+/* 手机设备适配 */
+@media (max-width: 576px) {
+    .tenant-info-bar {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .tenant-logo {
+        height: 16px;
+    }
+    
+    .student-info-card {
+        margin: 12px 8px;
+        padding: 12px;
+    }
+    
+    .student-avatar {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 20px !important;
+    }
+    
+    .info-label {
+        min-width: 50px;
+        font-size: 12px;
+    }
+    
+    .info-value {
+        font-size: 13px;
+    }
+    
+    .announcement-section {
+        margin: 12px 8px;
+    }
+    
+    .nav-menu-section {
+        margin: 12px 8px;
+    }
+    
+    .nav-menu-grid {
+        gap: 8px;
+    }
+    
+    .nav-menu-item {
+        padding: 16px 12px;
+    }
+    
+    .nav-menu-icon {
+        font-size: 26px;
+        margin-bottom: 6px;
+    }
+    
+    .nav-menu-text {
+        font-size: 13px;
+    }
+}
+
+/* 小屏手机适配 */
+@media (max-width: 375px) {
+    .nav-menu-grid {
+        gap: 6px;
+    }
+    
+    .nav-menu-item {
+        padding: 14px 10px;
+    }
+    
+    .nav-menu-icon {
+        font-size: 24px;
+    }
+    
+    .nav-menu-text {
+        font-size: 12px;
+    }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+    .nav-menu-item:active {
+        background-color: rgba(30, 136, 229, 0.1);
+        transform: scale(0.98);
+    }
+    
+    .announcement-item:active {
+        background-color: rgba(30, 136, 229, 0.05);
+    }
+}
+
+/* 横屏模式优化 */
+@media (orientation: landscape) and (max-height: 500px) {
+    .student-info-card {
+        margin: 8px 16px;
+    }
+    
+    .nav-menu-item {
+        padding: 12px;
+    }
+    
+    .nav-menu-icon {
+        font-size: 24px;
+        margin-bottom: 4px;
+    }
+}
+
+/* 高分辨率屏幕优化 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .nav-menu-icon,
+    .student-avatar,
+    .announcement-header i {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+} 

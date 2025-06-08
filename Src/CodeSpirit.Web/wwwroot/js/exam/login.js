@@ -364,7 +364,7 @@
                 <img src='${logoUrl}' alt='${displayName}' 
                      onerror="this.src='/logo.png'" 
                      loading="lazy" />
-                <h2>${displayName}<span class='exam-badge'>考试</span></h2>
+                <h2>${displayName}<span class='exam-badge'>2.0</span></h2>
                 <p class='exam-subtitle'>
                     <i class='fa fa-graduation-cap'></i>
                     安全考试环境 - 请使用您的账户凭据登录

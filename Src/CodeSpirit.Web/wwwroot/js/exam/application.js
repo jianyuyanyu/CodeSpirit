@@ -34,7 +34,8 @@
             userId: 0,
             candidateId: 0
         },
-        announcements: []
+        announcements: [],
+        availableExams: []
     };
     
     /**
@@ -88,6 +89,7 @@
                 tenant: appData.tenant,
                 student: appData.student,
                 announcements: appData.announcements,
+                availableExams: appData.availableExams,
                 now: new Date()
             },
             body: [
@@ -202,6 +204,92 @@
                                             ]
                                         }
                                     ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                
+                // 当前考试面板
+                {
+                    type: "container",
+                    className: "current-exams-section",
+                    visibleOn: "${availableExams && availableExams.length > 0}",
+                    body: [
+                        {
+                            type: "container",
+                            className: "current-exams-header",
+                            body: [
+                                {
+                                    type: "tpl",
+                                    tpl: "<i class='fa fa-graduation-cap'></i> 当前考试"
+                                }
+                            ]
+                        },
+                        {
+                            type: "container",
+                            className: "current-exams-content",
+                            body: [
+                                {
+                                    type: "each",
+                                    name: "availableExams",
+                                    items: {
+                                        type: "container",
+                                        className: "exam-item",
+                                        body: [
+                                            {
+                                                type: "flex",
+                                                justify: "space-between",
+                                                alignItems: "center",
+                                                items: [
+                                                    {
+                                                        type: "container",
+                                                        className: "flex-grow-1",
+                                                        body: [
+                                                            {
+                                                                type: "tpl",
+                                                                tpl: "<div class='exam-title'>\${name}</div>"
+                                                            },
+                                                            {
+                                                                type: "tpl",
+                                                                tpl: "<div class='exam-info'><span class='exam-time'><i class='fa fa-clock-o'></i> \${startTime | date:'MM-DD HH:mm'} - \${endTime | date:'MM-DD HH:mm'}</span><span class='exam-duration'><i class='fa fa-hourglass-half'></i> \${duration}分钟</span><span class='exam-score'><i class='fa fa-star'></i> \${totalScore}分</span></div>"
+                                                            },
+                                                            {
+                                                                type: "tpl",
+                                                                tpl: "<div class='exam-description'>\${description || '暂无描述'}</div>",
+                                                                visibleOn: "${description}"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        type: "html",
+                                                        html: `
+                                                            <div class="exam-actions">
+                                                                <div class="exam-status-badge \${status === 'Available' ? 'status-available' : (status === 'InProgress' ? 'status-progress' : 'status-ended')}">
+                                                                    \${status === 'Available' ? '可参加' : (status === 'InProgress' ? '进行中' : '已结束')}
+                                                                </div>
+                                                                <button class="exam-start-btn" onclick="window.goToExamStart(\${id})" 
+                                                                        \${status === 'Available' || status === 'InProgress' ? '' : 'disabled'}>
+                                                                    <i class="fa fa-play"></i>
+                                                                    \${status === 'Available' ? '开始考试' : (status === 'InProgress' ? '继续考试' : '考试已结束')}
+                                                                </button>
+                                                            </div>
+                                                        `
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    placeholder: {
+                                        type: "container",
+                                        className: "exam-empty",
+                                        body: [
+                                            {
+                                                type: "tpl",
+                                                tpl: "<i class='fa fa-calendar-times-o'></i><div>暂无可参加的考试</div>"
+                                            }
+                                        ]
+                                    }
                                 }
                             ]
                         }
@@ -325,7 +413,7 @@
     window.navigateTo = function(page) {
         const routes = {
             'practice': `/${window.tenantId}/exam/practice`,
-            'exam': `/${window.tenantId}/exam`,
+            'exam': `/${window.tenantId}/exam/start`,
             'my-exams': `/${window.tenantId}/exam/history`,
             'my-practice': `/${window.tenantId}/exam/practice-history`,
             'wrong-questions': `/${window.tenantId}/exam/wrong-questions`,
@@ -382,6 +470,24 @@
         }
     };
     
+    /**
+     * 跳转到考试开始页面
+     * @param {number} examId 考试ID
+     */
+    function goToExamStart(examId) {
+        if (!examId) {
+            console.error('考试ID不能为空');
+            return;
+        }
+        
+        const url = `/${window.tenantId}/exam/start/${examId}`;
+        console.log('跳转到考试开始页面:', url);
+        window.location.href = url;
+    }
+
+    // 将函数暴露到全局
+    window.goToExamStart = goToExamStart;
+
     /**
      * 显示功能提示（用于新功能）
      */
@@ -457,7 +563,7 @@
             Object.assign(appData.tenant, tenantInfo);
             
             // 然后并行加载其他数据
-            const [studentInfo, announcements] = await Promise.all([
+            const [studentInfo, announcements, availableExams] = await Promise.all([
                 loadStudentInfo().catch(error => {
                     console.warn('加载学生信息失败:', error);
                     return { 
@@ -477,12 +583,17 @@
                 loadAnnouncements().catch(error => {
                     console.warn('加载公告失败:', error);
                     return [];
+                }),
+                loadAvailableExams().catch(error => {
+                    console.warn('加载可用考试失败:', error);
+                    return [];
                 })
             ]);
             
             // 更新应用数据
             Object.assign(appData.student, studentInfo);
             appData.announcements = announcements;
+            appData.availableExams = availableExams;
             
             // 更新AMIS数据
             if (amisInstance) {
@@ -644,6 +755,19 @@
         }
     }
     
+    /**
+     * 加载可用考试列表
+     */
+    async function loadAvailableExams() {
+        try {
+            const data = await apiRequest('/exam/api/exam/client/available');
+            return data || [];
+        } catch (error) {
+            console.warn('加载可用考试失败:', error);
+            return [];
+        }
+    }
+
     /**
      * 加载公告信息（模拟数据）
      */

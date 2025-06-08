@@ -1,0 +1,32 @@
+@page "/{tenantId}/exam/start/{examId?}"
+@model CodeSpirit.Web.Pages.Exam.StartModel
+@{
+    ViewData["Title"] = "开始考试";
+}
+
+@section Head {
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="考试开始页面 - 考试准备和开始">
+    <meta name="theme-color" content="#1e88e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <resource path="css/exam/start.css" type="css" />
+}
+
+<div id="root" class="exam-start-container">
+    <div id="loading" class="exam-loading">
+        <div class="exam-loading-spinner"></div>
+        <p class="exam-loading-text">正在加载考试信息...</p>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.webHost = '@(HttpContext.Request.Scheme + "://" + HttpContext.Request.Host)';
+        window.tenantId = '@Model.TenantId';
+        window.examId = '@Model.ExamId';
+    </script>
+    
+    <resource path="js/exam/start.js" type="js" />
+} 

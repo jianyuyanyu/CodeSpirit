@@ -1,0 +1,160 @@
+@page "/{tenantId}/exam/{examId:long}"
+@model CodeSpirit.Web.Pages.Exam.ExamModel
+@{
+    ViewData["Title"] = "在线考试";
+}
+
+@section Head {
+    <meta name="description" content="在线考试系统 - 高效、安全的考试平台">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="theme-color" content="#1e88e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <!-- 禁用缓存，确保考试内容及时更新 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <resource path="css/exam/exam.css" type="css" />
+    
+    <!-- 考试页面特定初始化数据 -->
+    <script>
+        // 全局配置对象
+        window.CS_CONFIG = {
+            tenantId: "@Model.TenantId",
+            examId: @Model.ExamId,
+            environment: "@Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")",
+            isDevelopment: @Json.Serialize(Model.IsDevelopment),
+            security: {
+                blockCopy: true,
+                blockPaste: true,
+                blockRightClick: true,
+                blockPrint: true,
+                enableScreenSwitchDetection: true
+            },
+            amisOptions: {
+                theme: 'antd',
+                locale: 'zh-CN'
+            }
+        };
+        
+        // 设置全局变量
+        window.tenantId = "@Model.TenantId";
+        window.examId = @Model.ExamId;
+    </script>
+}
+
+<div id="root" class="exam-wrapper">
+    <div id="loading" class="exam-loading">
+        <div class="exam-loading-spinner"></div>
+        <p class="exam-loading-text">正在加载考试内容...</p>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- 安全和监控模块 -->
+    <resource path="js/exam/screenSwitchDetector.js" type="js" />
+    
+    <!-- 防作弊代码 - 按环境加载 -->
+    <script>
+    (function() {
+        'use strict';
+        
+        const config = window.CS_CONFIG || {};
+        
+        // 仅在非开发环境中应用完整的安全措施
+        if (!config.isDevelopment) {
+            // 检测开发者工具
+            const detectDevTools = () => {
+                const threshold = 160;
+                const widthDiff = window.outerWidth - window.innerWidth > threshold;
+                const heightDiff = window.outerHeight - window.innerHeight > threshold;
+                
+                if (widthDiff || heightDiff) {
+                    console.warn('⚠️ 检测到开发工具可能已打开');
+                }
+            };
+            
+            // 定期检测
+            setInterval(detectDevTools, 1000);
+            
+            // 禁用开发者工具快捷键
+            document.addEventListener('keydown', e => {
+                // F12 或 Ctrl+Shift+I
+                if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && e.keyCode === 73)) {
+                    e.preventDefault();
+                    console.warn('🚫 开发者工具已被禁用');
+                    return false;
+                }
+                
+                // Ctrl+U (查看源代码)
+                if (e.ctrlKey && e.keyCode === 85) {
+                    e.preventDefault();
+                    console.warn('🚫 查看源代码已被禁用');
+                    return false;
+                }
+            });
+        }
+        
+        // 以下安全措施在所有环境中应用
+        if (config.security) {
+            // 禁用右键
+            if (config.security.blockRightClick) {
+                document.addEventListener('contextmenu', e => {
+                    e.preventDefault();
+                    console.warn('🚫 右键菜单已被禁用');
+                });
+            }
+            
+            // 禁用复制粘贴
+            if (config.security.blockCopy || config.security.blockPaste) {
+                ['copy', 'cut', 'paste'].forEach(evt => {
+                    document.addEventListener(evt, e => {
+                        const type = evt === 'paste' ? 'blockPaste' : 'blockCopy';
+                        if (config.security[type]) {
+                            e.preventDefault();
+                            console.warn(`🚫 ${evt === 'paste' ? '粘贴' : '复制'}功能已被禁用`);
+                        }
+                    });
+                });
+            }
+            
+            // 禁用打印
+            if (config.security.blockPrint) {
+                window.addEventListener('beforeprint', e => {
+                    e.preventDefault();
+                    console.warn('🚫 打印功能已被禁用');
+                });
+                
+                // 禁用Ctrl+P
+                document.addEventListener('keydown', e => {
+                    if (e.ctrlKey && e.keyCode === 80) {
+                        e.preventDefault();
+                        console.warn('🚫 打印快捷键已被禁用');
+                        return false;
+                    }
+                });
+            }
+        }
+        
+        // 防止iframe嵌套
+        if (window.self !== window.top) {
+            console.warn('🚫 检测到页面被嵌套，正在跳转...');
+            window.top.location = window.self.location;
+        }
+        
+        // 页面可见性检测
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.warn('⚠️ 页面失去焦点，可能存在切屏行为');
+            }
+        });
+        
+    })();
+    </script>
+    
+    <!-- 考试主模块 -->
+    <resource path="js/exam/exam.js" type="js" />
+} 

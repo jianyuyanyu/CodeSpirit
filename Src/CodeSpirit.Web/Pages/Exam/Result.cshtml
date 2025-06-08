@@ -1,0 +1,52 @@
+@page "/{tenantId}/exam/result/{id:long}"
+@model CodeSpirit.Web.Pages.Exam.ResultModel
+@{
+    ViewData["Title"] = "考试结果";
+}
+
+@section Head {
+    <meta name="description" content="在线考试结果页面 - 查看考试成绩和详细分析">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="theme-color" content="#1e88e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <!-- 禁用缓存，确保结果及时更新 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <resource path="css/exam/result.css" type="css" />
+    
+    <!-- 考试结果页面初始化数据 -->
+    <script>
+        // 全局配置对象
+        window.CS_CONFIG = {
+            tenantId: "@Model.TenantId",
+            recordId: @Model.RecordId,
+            environment: "@Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")",
+            isDevelopment: @Json.Serialize(Model.IsDevelopment),
+            amisOptions: {
+                theme: 'antd',
+                locale: 'zh-CN'
+            }
+        };
+        
+        // 设置全局变量
+        window.tenantId = "@Model.TenantId";
+        window.recordId = @Model.RecordId;
+    </script>
+}
+
+<div id="root" class="result-wrapper">
+    <div id="loading" class="result-loading">
+        <div class="result-loading-spinner"></div>
+        <p class="result-loading-text">正在加载考试结果...</p>
+    </div>
+</div>
+
+@section Scripts {    
+    <!-- 考试结果主模块 -->
+    <resource path="js/exam/result.js" type="js" />
+} 

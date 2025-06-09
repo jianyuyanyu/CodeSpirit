@@ -252,7 +252,7 @@
                                                             },
                                                             {
                                                                 type: "tpl",
-                                                                tpl: "<div class='exam-info'><span class='exam-time'><i class='fa fa-clock-o'></i> \${startTime | date:'MM-DD HH:mm'} - \${endTime | date:'MM-DD HH:mm'}</span><span class='exam-duration'><i class='fa fa-hourglass-half'></i> \${duration}分钟</span><span class='exam-score'><i class='fa fa-star'></i> \${totalScore}分</span></div>"
+                                                                tpl: "<div class='exam-info'><span class='exam-time'><i class='fa fa-clock-o'></i> \${startTimeFormatted || startTime} - \${endTimeFormatted || endTime}</span><span class='exam-duration'><i class='fa fa-hourglass-half'></i> \${duration}分钟</span><span class='exam-score'><i class='fa fa-star'></i> \${totalScore}分</span></div>"
                                                             },
                                                             {
                                                                 type: "tpl",
@@ -265,13 +265,13 @@
                                                         type: "html",
                                                         html: `
                                                             <div class="exam-actions">
-                                                                <div class="exam-status-badge \${status === 'Available' ? 'status-available' : (status === 'InProgress' ? 'status-progress' : 'status-ended')}">
-                                                                    \${status === 'Available' ? '可参加' : (status === 'InProgress' ? '进行中' : '已结束')}
+                                                                <div class="exam-status-badge \${status === '未开始' || status === '进行中' ? 'status-available' : (status === '已结束' ? 'status-ended' : 'status-unknown')}">
+                                                                    \${status}
                                                                 </div>
-                                                                <button class="exam-start-btn" onclick="window.goToExamStart(\${id})" 
-                                                                        \${status === 'Available' || status === 'InProgress' ? '' : 'disabled'}>
+                                                                <button class="exam-start-btn" onclick="window.goToExamStart('\${id}')" 
+                                                                        \${status === '未开始' || status === '进行中' ? '' : 'disabled'}>
                                                                     <i class="fa fa-play"></i>
-                                                                    \${status === 'Available' ? '开始考试' : (status === 'InProgress' ? '继续考试' : '考试已结束')}
+                                                                    \${status === '未开始' ? '开始考试' : (status === '进行中' ? '继续考试' : '考试已结束')}
                                                                 </button>
                                                             </div>
                                                         `
@@ -472,7 +472,7 @@
     
     /**
      * 跳转到考试开始页面
-     * @param {number} examId 考试ID
+     * @param {string|number} examId 考试ID
      */
     function goToExamStart(examId) {
         if (!examId) {
@@ -480,8 +480,10 @@
             return;
         }
         
-        const url = `/${window.tenantId}/exam/start/${examId}`;
-        console.log('跳转到考试开始页面:', url);
+        // 确保examId为字符串类型，去除可能的引号
+        const cleanExamId = String(examId).replace(/['"]/g, '');
+        const url = `/${window.tenantId}/exam/start/${cleanExamId}`;
+        console.log('跳转到考试开始页面:', url, '考试ID:', cleanExamId);
         window.location.href = url;
     }
 
@@ -761,10 +763,50 @@
     async function loadAvailableExams() {
         try {
             const data = await apiRequest('/exam/api/exam/client/available');
-            return data || [];
+            
+            // 处理考试数据，优化时间显示格式
+            const processedData = (data || []).map(exam => ({
+                ...exam,
+                // 格式化时间显示，将"2025-06-09 12:00:00"转换为"06-09 12:00"格式
+                startTimeFormatted: formatExamTime(exam.startTime),
+                endTimeFormatted: formatExamTime(exam.endTime),
+                // 保留原始时间用于比较
+                startTimeOriginal: exam.startTime,
+                endTimeOriginal: exam.endTime
+            }));
+            
+            console.log('📅 处理后的考试数据:', processedData);
+            return processedData;
         } catch (error) {
             console.warn('加载可用考试失败:', error);
             return [];
+        }
+    }
+    
+    /**
+     * 格式化考试时间显示
+     * @param {string} timeString - 时间字符串，格式如"2025-06-09 12:00:00"
+     * @returns {string} 格式化后的时间，如"06-09 12:00"
+     */
+    function formatExamTime(timeString) {
+        if (!timeString) return '';
+        
+        try {
+            // 解析时间字符串
+            const date = new Date(timeString.replace(/-/g, '/'));  // 兼容性处理
+            if (isNaN(date.getTime())) {
+                return timeString; // 如果解析失败，返回原字符串
+            }
+            
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            
+            return `${month}-${day} ${hour}:${minute}`;
+        } catch (error) {
+            console.warn('时间格式化失败:', timeString, error);
+            return timeString;
         }
     }
 

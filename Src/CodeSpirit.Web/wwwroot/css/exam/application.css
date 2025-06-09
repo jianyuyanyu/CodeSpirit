@@ -471,6 +471,12 @@ body::before {
     color: var(--exam-text-secondary);
 }
 
+.status-unknown {
+    background: #f1f5f9;
+    color: var(--exam-text-secondary);
+    border: 1px solid var(--exam-border);
+}
+
 .exam-start-btn {
     background: linear-gradient(135deg, var(--exam-primary), var(--exam-secondary));
     color: white;
@@ -1018,22 +1024,48 @@ body::before {
     
     .student-info-card {
         margin: 12px 8px;
-        padding: 12px;
+        padding: 16px 12px;
+    }
+    
+    .student-info-card .flex {
+        display: block;
+    }
+    
+    .student-info-card .flex-shrink-0 {
+        text-align: center;
+        margin-bottom: 12px;
+    }
+    
+    .student-info-card .ml-3 {
+        margin-left: 0 !important;
     }
     
     .student-avatar {
-        width: 50px !important;
-        height: 50px !important;
-        font-size: 20px !important;
+        width: 60px !important;
+        height: 60px !important;
+        font-size: 24px !important;
+        margin: 0 auto;
     }
     
     .info-label {
-        min-width: 50px;
+        min-width: 55px;
         font-size: 12px;
+        font-weight: 500;
     }
     
     .info-value {
         font-size: 13px;
+        font-weight: 400;
+    }
+    
+    /* 移动端网格布局优化 */
+    .student-info-card .grid {
+        grid-template-columns: 1fr !important;
+        gap: 6px;
+    }
+    
+    .student-info-card .grid > div {
+        grid-column: 1 !important;
     }
     
     .student-groups {
@@ -1053,76 +1085,343 @@ body::before {
     
     .exam-item {
         padding: 16px 12px;
-        flex-direction: column;
-        align-items: stretch;
+        display: block;
+    }
+    
+    .exam-item .flex {
+        display: block;
     }
     
     .exam-title {
         font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 8px;
     }
     
     .exam-info {
-        flex-direction: column;
-        gap: 8px;
         margin-bottom: 12px;
     }
     
+    .exam-info .exam-time,
+    .exam-info .exam-duration,
+    .exam-info .exam-score {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 13px;
+    }
+    
     .exam-actions {
+        display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
+        gap: 12px;
         margin-top: 12px;
     }
     
+    .exam-status-badge {
+        padding: 4px 10px;
+        font-size: 11px;
+        min-width: 50px;
+        order: 1;
+    }
+    
     .exam-start-btn {
-        min-width: 80px;
-        padding: 8px 16px;
+        min-width: 90px;
+        padding: 10px 16px;
         font-size: 13px;
+        order: 2;
+        flex: 1;
+        max-width: 120px;
     }
 
     .announcement-section {
         margin: 12px 8px;
     }
-
-    .nav-menu-section {
-        margin: 12px 8px;
+    
+    .announcement-header {
+        padding: 10px 12px;
+        font-size: 13px;
     }
     
-    .nav-menu-grid {
-        gap: 8px;
-        grid-template-columns: repeat(2, 1fr);
+    .announcement-item {
+        padding: 12px;
     }
     
-    .nav-menu-item {
-        padding: 16px 12px;
+    .announcement-item .flex {
+        display: block;
     }
     
-    .nav-menu-icon {
-        font-size: 26px;
+    .announcement-title {
+        font-size: 13px;
+        margin-bottom: 6px;
+        font-weight: 600;
+    }
+    
+    .announcement-content-text {
+        font-size: 12px;
+        line-height: 1.4;
         margin-bottom: 6px;
     }
     
+    .announcement-time {
+        font-size: 11px;
+        text-align: right;
+        display: block;
+        margin: 0;
+    }
+
+    .nav-menu-section {
+        margin: 20px 8px 24px 8px;
+        background: transparent;
+        padding-top: 16px;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        position: relative;
+    }
+    
+    .nav-menu-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20%;
+        right: 20%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.1), transparent);
+    }
+    
+    .nav-menu-grid {
+        gap: 10px;
+        grid-template-columns: repeat(3, 1fr);
+        padding: 0;
+    }
+    
+    .nav-menu-item {
+        padding: 18px 12px;
+        min-height: 90px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: var(--exam-card-bg);
+        border-radius: 12px;
+        box-shadow: var(--exam-shadow);
+        transition: all 0.3s ease;
+    }
+    
+    .nav-menu-item:active {
+        transform: scale(0.95);
+        box-shadow: var(--exam-shadow-hover);
+    }
+    
+    .nav-menu-icon {
+        font-size: 28px;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+    }
+    
     .nav-menu-text {
-        font-size: 13px;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.2;
+        text-align: center;
+        margin: 0;
+    }
+    
+    /* 优化考试描述在移动端的显示 */
+    .exam-description {
+        font-size: 12px;
+        line-height: 1.4;
+        margin-top: 6px;
+        color: var(--exam-text-secondary);
+    }
+    
+    /* 优化移动端的触摸目标大小 */
+    .exam-start-btn {
+        min-height: 44px; /* iOS推荐的最小触摸目标 */
+    }
+    
+    .logout-btn {
+        min-height: 36px;
+        min-width: 36px;
+    }
+    
+    /* 移动端滚动优化 */
+    .announcement-content {
+        -webkit-overflow-scrolling: touch;
+        max-height: 280px;
+    }
+    
+    /* 移动端页面整体优化 */
+    .exam-app-page {
+        padding-bottom: 20px;
+    }
+    
+    /* 移动端导航菜单颜色优化 */
+    .nav-practice {
+        background: var(--exam-card-bg);
+        color: #16a085;
+        border: 1px solid rgba(22, 160, 133, 0.15);
+        box-shadow: 0 2px 8px rgba(22, 160, 133, 0.1);
+    }
+    
+    .nav-practice .nav-menu-icon {
+        color: #16a085;
+    }
+
+    .nav-exam {
+        background: var(--exam-card-bg);
+        color: var(--exam-primary);
+        border: 1px solid rgba(30, 136, 229, 0.15);
+        box-shadow: 0 2px 8px rgba(30, 136, 229, 0.1);
+    }
+    
+    .nav-exam .nav-menu-icon {
+        color: var(--exam-primary);
+    }
+
+    .nav-my-exams {
+        background: var(--exam-card-bg);
+        color: #f39c12;
+        border: 1px solid rgba(243, 156, 18, 0.15);
+        box-shadow: 0 2px 8px rgba(243, 156, 18, 0.1);
+    }
+    
+    .nav-my-exams .nav-menu-icon {
+        color: #f39c12;
+    }
+
+    .nav-my-practice {
+        background: var(--exam-card-bg);
+        color: #e74c3c;
+        border: 1px solid rgba(231, 76, 60, 0.15);
+        box-shadow: 0 2px 8px rgba(231, 76, 60, 0.1);
+    }
+    
+    .nav-my-practice .nav-menu-icon {
+        color: #e74c3c;
+    }
+
+    .nav-wrong-questions {
+        background: var(--exam-card-bg);
+        color: #dc2626;
+        border: 1px solid rgba(220, 38, 38, 0.15);
+        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
+    }
+    
+    .nav-wrong-questions .nav-menu-icon {
+        color: #dc2626;
+    }
+
+    .nav-profile {
+        background: var(--exam-card-bg);
+        color: #7c3aed;
+        border: 1px solid rgba(124, 58, 237, 0.15);
+        box-shadow: 0 2px 8px rgba(124, 58, 237, 0.1);
+    }
+    
+    .nav-profile .nav-menu-icon {
+        color: #7c3aed;
+    }
+
+    /* 移动端点击效果 */
+    .nav-practice:active {
+        background: rgba(22, 160, 133, 0.1);
+        border-color: rgba(22, 160, 133, 0.3);
+        transform: scale(0.96);
+    }
+    
+    .nav-exam:active {
+        background: rgba(30, 136, 229, 0.1);
+        border-color: rgba(30, 136, 229, 0.3);
+        transform: scale(0.96);
+    }
+    
+    .nav-my-exams:active {
+        background: rgba(243, 156, 18, 0.1);
+        border-color: rgba(243, 156, 18, 0.3);
+        transform: scale(0.96);
+    }
+    
+    .nav-my-practice:active {
+        background: rgba(231, 76, 60, 0.1);
+        border-color: rgba(231, 76, 60, 0.3);
+        transform: scale(0.96);
+    }
+    
+    .nav-wrong-questions:active {
+        background: rgba(220, 38, 38, 0.1);
+        border-color: rgba(220, 38, 38, 0.3);
+        transform: scale(0.96);
+    }
+    
+    .nav-profile:active {
+        background: rgba(124, 58, 237, 0.1);
+        border-color: rgba(124, 58, 237, 0.3);
+        transform: scale(0.96);
     }
 }
 
 /* 小屏手机适配 */
 @media (max-width: 375px) {
     .nav-menu-grid {
-        gap: 6px;
+        gap: 8px;
+        grid-template-columns: repeat(3, 1fr);
     }
     
     .nav-menu-item {
-        padding: 14px 10px;
+        padding: 16px 8px;
+        min-height: 85px;
     }
     
     .nav-menu-icon {
         font-size: 24px;
+        margin-bottom: 6px;
     }
     
     .nav-menu-text {
+        font-size: 11px;
+        line-height: 1.1;
+        font-weight: 500;
+    }
+    
+    /* 进一步优化学生信息卡片 */
+    .student-info-card {
+        padding: 12px 8px;
+    }
+    
+    .student-avatar {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 20px !important;
+    }
+    
+    .info-label {
+        min-width: 50px;
+        font-size: 11px;
+    }
+    
+    .info-value {
         font-size: 12px;
+    }
+    
+    /* 优化考试项目 */
+    .exam-item {
+        padding: 12px 8px;
+    }
+    
+    .exam-title {
+        font-size: 15px;
+    }
+    
+    .exam-start-btn {
+        min-width: 80px;
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+    
+    .exam-status-badge {
+        padding: 3px 8px;
+        font-size: 10px;
     }
 }
 
@@ -1170,6 +1469,115 @@ body::before {
     .nav-menu-icon {
         font-size: 24px;
         margin-bottom: 4px;
+    }
+}
+
+/* 超小屏设备适配 */
+@media (max-width: 320px) {
+    .tenant-info-bar {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+    
+    .student-info-card,
+    .current-exams-section,
+    .announcement-section,
+    .nav-menu-section {
+        margin: 8px 4px;
+    }
+    
+    .nav-menu-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+    
+    .nav-menu-item {
+        padding: 14px 6px;
+        min-height: 80px;
+    }
+    
+    .nav-menu-icon {
+        font-size: 22px;
+        margin-bottom: 5px;
+    }
+    
+    .nav-menu-text {
+        font-size: 10px;
+        line-height: 1.1;
+        font-weight: 500;
+    }
+}
+
+/* Amis组件移动端覆盖样式 */
+@media (max-width: 576px) {
+    /* 覆盖Amis的flex布局 */
+    .exam-app-page .cxd-Flex {
+        display: block !important;
+    }
+    
+    .exam-app-page .cxd-Flex--justify-space-between {
+        display: flex !important;
+        justify-content: space-between !important;
+    }
+    
+    /* Amis网格组件移动端优化 */
+    .exam-app-page .cxd-Grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+    }
+    
+    .exam-app-page .cxd-Grid-col {
+        grid-column: 1 !important;
+    }
+    
+    /* Amis容器组件移动端优化 */
+    .exam-app-page .cxd-Container {
+        padding: 0 !important;
+    }
+    
+    /* 确保flex项目在移动端正确显示 */
+    .exam-app-page .cxd-Flex-item.flex-grow-1 {
+        flex-grow: 0 !important;
+        width: 100% !important;
+    }
+    
+    .exam-app-page .cxd-Flex-item.flex-shrink-0 {
+        flex-shrink: 1 !important;
+        width: 100% !important;
+        margin-bottom: 12px;
+    }
+}
+
+/* iOS设备特殊优化 */
+@supports (-webkit-appearance: none) {
+    .exam-start-btn {
+        -webkit-appearance: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .logout-btn {
+        -webkit-appearance: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .nav-menu-item {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* 避免iOS中的橡皮筋效果 */
+@media (max-width: 576px) {
+    body {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+    
+    .exam-app-container {
+        height: 100vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 }
 

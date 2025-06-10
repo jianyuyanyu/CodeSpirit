@@ -509,6 +509,13 @@ public class ExamRecordsController : ApiControllerBase
             using var scope = serviceScopeFactory.CreateScope();
             var scopedFileService = scope.ServiceProvider.GetRequiredService<ITempFileService>();
             await scopedFileService.UpdateExportTaskAsync(taskInfo);
+            
+            // 设置整体任务超时，防止任务无限期运行
+            using var overallCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            overallCts.CancelAfter(TimeSpan.FromMinutes(30)); // 30分钟整体超时
+            
+            int processedCount = 0; // 移到try块之前，使catch块能够访问
+            
             try
             {
                 // 创建临时目录
@@ -516,13 +523,12 @@ public class ExamRecordsController : ApiControllerBase
                 Directory.CreateDirectory(tempDir);
                 var zipPath = Path.Combine(tempDir, fileName);
 
-                int processedCount = 0;
-
                 using (var zipArchive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
                 {
                     foreach (var recordId in dto.Ids)
                     {
-                        if (cancellationToken.IsCancellationRequested)
+                        // 检查整体任务取消状态
+                        if (overallCts.Token.IsCancellationRequested)
                         {
                             break;
                         }
@@ -534,6 +540,7 @@ public class ExamRecordsController : ApiControllerBase
                             {
                                 var recordExamService = recordScope.ServiceProvider.GetRequiredService<IExamRecordService>();
                                 var recordExamPaperService = recordScope.ServiceProvider.GetRequiredService<IExamPaperService>();
+                                var recordPdfService = recordScope.ServiceProvider.GetRequiredService<IPdfGenerationService>();
 
                                 // 获取考试记录详情
                                 var record = await recordExamService.GetStudentExamPaperDetailAsync(recordId);
@@ -542,8 +549,11 @@ public class ExamRecordsController : ApiControllerBase
                                 var examPaper = await recordExamPaperService.GetAsync(record.ExamPaperId);
                                 if (examPaper == null) continue;
 
-                                // 生成PDF字节数组
-                                var pdfBytes = await GeneratePdfFromHtml(record, examPaper);
+                                // 获取导出设置（在作用域内获取）
+                                var exportSettings = await recordExamService.GetExamPaperExportSettingsAsync();
+
+                                // 生成PDF字节数组（传入作用域内的服务和设置）
+                                var pdfBytes = await GeneratePdfFromHtmlWithScope(record, examPaper, exportSettings, recordPdfService, recordScope.ServiceProvider.GetService<ILogger<ExamRecordsController>>());
 
                                 // 将PDF添加到ZIP
                                 var studentName = record.StudentName ?? "未知学生";
@@ -554,7 +564,38 @@ public class ExamRecordsController : ApiControllerBase
                                 var entry = zipArchive.CreateEntry(entryName, CompressionLevel.Optimal);
                                 using (var entryStream = entry.Open())
                                 {
-                                    await entryStream.WriteAsync(pdfBytes, 0, pdfBytes.Length, cancellationToken);
+                                    // 分块写入大文件，避免超时
+                                    int bufferSize = 8192; // 8KB 缓冲区
+                                    int offset = 0;
+                                    
+                                    while (offset < pdfBytes.Length)
+                                    {
+                                        // 检查取消令牌但不在写入操作中使用，避免取消导致ZIP文件损坏
+                                        if (overallCts.Token.IsCancellationRequested)
+                                        {
+                                            break;
+                                        }
+                                        
+                                        int bytesToWrite = Math.Min(bufferSize, pdfBytes.Length - offset);
+                                        
+                                        // 使用短超时写入，而不是依赖 cancellationToken
+                                        using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                                        {
+                                            try
+                                            {
+                                                await entryStream.WriteAsync(pdfBytes, offset, bytesToWrite, cts.Token);
+                                                await entryStream.FlushAsync(cts.Token);
+                                                offset += bytesToWrite;
+                                            }
+                                            catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+                                            {
+                                                // 写入超时，记录日志但继续处理下一个文件
+                                                var logger = recordScope.ServiceProvider.GetService<ILogger<ExamRecordsController>>();
+                                                logger?.LogWarning("写入ZIP文件超时，跳过记录 {RecordId}", recordId);
+                                                break;
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
@@ -622,6 +663,15 @@ public class ExamRecordsController : ApiControllerBase
                     logger?.LogWarning(ex, "清理临时文件失败: {Message}", ex.Message);
                 }
             }
+            catch (OperationCanceledException) when (overallCts.Token.IsCancellationRequested)
+            {
+                // 整体任务超时或取消
+                var logger = scope.ServiceProvider.GetService<ILogger<ExamRecordsController>>();
+                logger?.LogWarning("批量导出PDF任务被取消或超时，任务ID: {TaskId}", taskId);
+                
+                // 更新任务状态为取消
+                await UpdateExportTaskStatus(taskId, "任务超时或被取消", 0, processedCount, null, scopedFileService);
+            }
             catch (Exception ex)
             {
                 // 记录详细错误日志
@@ -629,7 +679,7 @@ public class ExamRecordsController : ApiControllerBase
                 logger?.LogError(ex, "批量导出PDF任务失败: {Message}", ex.Message);
 
                 // 更新任务状态为失败
-                await UpdateExportTaskStatus(taskId, $"失败: {ex.Message}", 0, 0, null, scopedFileService);
+                await UpdateExportTaskStatus(taskId, $"失败: {ex.Message}", 0, processedCount, null, scopedFileService);
             }
         });
 
@@ -650,21 +700,29 @@ public class ExamRecordsController : ApiControllerBase
     }
 
     /// <summary>
-    /// 生成试卷PDF
+    /// 在独立作用域中生成试卷PDF
     /// </summary>
-    private async Task<byte[]> GeneratePdfFromHtml(ExamPaperDetailDto record, ExamPaperDto examPaper)
+    /// <param name="record">考试记录详情</param>
+    /// <param name="examPaper">试卷信息</param>
+    /// <param name="exportSettings">导出设置</param>
+    /// <param name="pdfService">PDF生成服务</param>
+    /// <param name="logger">日志服务</param>
+    /// <returns>PDF字节数组</returns>
+    private async Task<byte[]> GeneratePdfFromHtmlWithScope(
+        ExamPaperDetailDto record, 
+        ExamPaperDto examPaper, 
+        ExamPaperExportSettingsDto exportSettings,
+        IPdfGenerationService pdfService,
+        ILogger<ExamRecordsController> logger)
     {
         try
         {
             // 确保PDF生成服务已初始化
-            var status = await _pdfGenerationService.GetStatusAsync();
+            var status = await pdfService.GetStatusAsync();
             if (!status.IsInitialized)
             {
-                await _pdfGenerationService.InitializeAsync();
+                await pdfService.InitializeAsync();
             }
-
-            // 获取导出设置
-            var exportSettings = await _examRecordService.GetExamPaperExportSettingsAsync();
 
             // 生成HTML内容
             string htmlContent = await GenerateHtmlContent(record, examPaper, exportSettings);
@@ -692,8 +750,8 @@ public class ExamRecordsController : ApiControllerBase
             };
 
             // 生成PDF
-            var result = await _pdfGenerationService.GeneratePdfAsync(htmlContent, pdfOptions);
-            _logger.LogInformation(
+            var result = await pdfService.GeneratePdfAsync(htmlContent, pdfOptions);
+            logger?.LogInformation(
                 "成功生成PDF，学生：{StudentName}，考试：{ExamName}，大小：{Size:N0} 字节",
                 record.StudentName,
                 record.ExamName,
@@ -703,7 +761,7 @@ public class ExamRecordsController : ApiControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, 
+            logger?.LogError(ex, 
                 "生成PDF失败，学生：{StudentName}，考试：{ExamName}",
                 record.StudentName,
                 record.ExamName);

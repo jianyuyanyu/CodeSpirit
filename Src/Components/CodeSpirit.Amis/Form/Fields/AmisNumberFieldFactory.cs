@@ -26,8 +26,18 @@ namespace CodeSpirit.Amis.Form.Fields
             (JObject field, AmisNumberFieldAttribute attr) = CreateField<AmisNumberFieldAttribute>(member, utilityHelper);
             if (field != null)
             {
-                field["min"] = attr.Min;
-                field["max"] = attr.Max;
+                // 只有当Min被明确设置时才添加min属性（不是NaN）
+                if (!double.IsNaN(attr.Min))
+                {
+                    field["min"] = attr.Min;
+                }
+                
+                // 只有当Max被明确设置时才添加max属性（不是NaN）
+                if (!double.IsNaN(attr.Max))
+                {
+                    field["max"] = attr.Max;
+                }
+                
                 field["step"] = attr.Step;
                 field["precision"] = attr.Precision;
                 field["showSteps"] = attr.ShowSteps;

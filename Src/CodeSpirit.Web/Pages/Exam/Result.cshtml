@@ -24,7 +24,7 @@
         // 全局配置对象
         window.CS_CONFIG = {
             tenantId: "@Model.TenantId",
-            recordId: @Model.RecordId,
+            recordId: "@Model.RecordId",
             environment: "@Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")",
             isDevelopment: @Json.Serialize(Model.IsDevelopment),
             amisOptions: {

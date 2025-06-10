@@ -254,7 +254,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="createDto">创建考试设置DTO</param>
     /// <returns>创建结果</returns>
     [HttpPost("create-examSetting")]
-    [Operation("创建考试", "form", visibleOn: "status === 2", Redirect = "/exam/examSettings?examPaperId=$id", Data = "{\"examPaperId\":\"${id}\"}")]
+    [Operation("创建考试", "form", visibleOn: "status === 2", Redirect = "/exam/examSettings?examPaperId=$examPaperId", Data = "{\"examPaperId\":\"${id}\"}")]
     [DisplayName("创建考试设置")]
     public async Task<ActionResult<ApiResponse<ExamSettingDto>>> CreateExamSetting([FromBody] CreateExamSettingDto createDto)
     {

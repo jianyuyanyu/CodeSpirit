@@ -1,451 +1,353 @@
 /**
- * 屏幕切换检测器
- * 用于监控考试过程中的屏幕切换和焦点丢失等异常行为
+ * 切屏检测模块
+ * 用于监控和记录考试过程中的切屏行为
+ * @module ScreenSwitchDetector
  */
-
-(function(window) {
+(function () {
     'use strict';
 
+    // 创建命名空间
+    const ScreenSwitchDetector = window.ScreenSwitchDetector = {};
+
+    // 私有变量
+    let isInitialized = false;
+    let notificationTimeout = null;
+
+    // 配置项
+    const CONFIG = {
+        warningDuration: 5000,      // 警告显示时间(毫秒)
+        fadeOutDuration: 300,       // 淡出动画时间(毫秒)
+        retryDelay: 3000,           // 初始化重试延迟(毫秒)
+        initialWarningDelay: 5000   // 初始警告显示延迟(毫秒)
+    };
+
     /**
-     * 屏幕切换检测器类
+     * 创建并显示通知
+     * @param {string} title - 通知标题
+     * @param {string} message - 通知消息
+     * @param {string} type - 通知类型 (warning|error|info)
+     * @param {number} [duration=5000] - 显示时间(毫秒)
+     * @returns {HTMLElement} 创建的通知元素
+     * @private
      */
-    class ScreenSwitchDetector {
-        constructor(options = {}) {
-            this.options = {
-                // 是否启用检测
-                enabled: true,
-                // 检测间隔（毫秒）
-                interval: 1000,
-                // 警告阈值（次数）
-                warningThreshold: 3,
-                // 是否自动提交
-                autoSubmit: false,
-                // 自动提交阈值
-                autoSubmitThreshold: 5,
-                // 回调函数
-                onSwitch: null,
-                onWarning: null,
-                onAutoSubmit: null,
-                // Debug模式
-                debug: false,
-                ...options
-            };
-
-            this.switchCount = 0;
-            this.isActive = false;
-            this.lastActiveTime = Date.now();
-            this.detectionTimer = null;
-            this.events = [];
-
-            this.init();
-        }
-
-        /**
-         * 初始化检测器
-         */
-        init() {
-            if (!this.options.enabled) {
-                console.log('📊 屏幕切换检测器已禁用');
-                return;
+    function createNotification(title, message, type = 'warning', duration = CONFIG.warningDuration) {
+        try {
+            // 清除现有通知超时
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+                notificationTimeout = null;
             }
 
-            this.bindEvents();
-            this.startDetection();
-            
-            if (this.options.debug) {
-                console.log('🔍 屏幕切换检测器已启动', this.options);
-            }
-        }
-
-        /**
-         * 绑定事件监听器
-         */
-        bindEvents() {
-            // 页面可见性API
-            document.addEventListener('visibilitychange', () => {
-                this.handleVisibilityChange();
+            // 移除所有现有的通知
+            const existingNotifications = document.querySelectorAll('.custom-notification');
+            existingNotifications.forEach(notification => {
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, CONFIG.fadeOutDuration);
             });
 
-            // 窗口焦点事件
-            window.addEventListener('focus', () => {
-                this.handleWindowFocus();
-            });
+            // 创建新的通知元素
+            const notification = document.createElement('div');
+            notification.className = `custom-notification ${type}`;
+            notification.innerHTML = `
+                <div class="notification-title">${title}</div>
+                <div class="notification-body">${message}</div>
+            `;
 
-            window.addEventListener('blur', () => {
-                this.handleWindowBlur();
-            });
+            // 添加到页面
+            document.body.appendChild(notification);
 
-            // 鼠标离开/进入窗口
-            document.addEventListener('mouseleave', () => {
-                this.handleMouseLeave();
-            });
+            // 添加显示动画
+            setTimeout(() => notification.classList.add('show'), 10);
 
-            document.addEventListener('mouseenter', () => {
-                this.handleMouseEnter();
-            });
+            // 设置自动关闭
+            if (duration > 0) {
+                notificationTimeout = setTimeout(() => {
+                    notification.classList.remove('show');
+                    notification.classList.add('fade-out');
 
-            // 键盘事件（Alt+Tab检测）
-            document.addEventListener('keydown', (e) => {
-                this.handleKeyDown(e);
-            });
-
-            // 页面卸载前
-            window.addEventListener('beforeunload', () => {
-                this.handleBeforeUnload();
-            });
-
-            // 页面隐藏前
-            document.addEventListener('pagehide', () => {
-                this.handlePageHide();
-            });
-        }
-
-        /**
-         * 开始检测
-         */
-        startDetection() {
-            if (this.detectionTimer) {
-                clearInterval(this.detectionTimer);
+                    setTimeout(() => {
+                        if (document.body.contains(notification)) {
+                            document.body.removeChild(notification);
+                        }
+                    }, CONFIG.fadeOutDuration);
+                }, duration);
             }
 
-            this.detectionTimer = setInterval(() => {
-                this.performDetection();
-            }, this.options.interval);
+            return notification;
+        } catch (error) {
+            console.error("[通知系统] 创建通知失败:", error);
+            return null;
+        }
+    }
 
-            this.isActive = true;
-            this.lastActiveTime = Date.now();
+    /**
+     * 更新切屏次数的DOM显示
+     * @private
+     */
+    function updateScreenSwitchCountDisplay() {
+        const count = window.globalData?.exam?.screenSwitchCount || 0;
+        const allowedCount = window.globalData?.exam?.allowedScreenSwitchCount || 0;
+
+        // 更新当前切屏次数显示
+        const countElements = document.querySelectorAll('.screen-switch-value');
+        if (countElements && countElements.length > 0) {
+            countElements.forEach(el => el.textContent = String(count));
         }
 
-        /**
-         * 停止检测
-         */
-        stopDetection() {
-            if (this.detectionTimer) {
-                clearInterval(this.detectionTimer);
-                this.detectionTimer = null;
-            }
-            this.isActive = false;
+        // 更新允许切屏次数显示
+        const allowedElements = document.querySelectorAll('.allowed-switch-value');
+        if (allowedElements && allowedElements.length > 0) {
+            allowedElements.forEach(el => el.textContent = String(allowedCount));
         }
 
-        /**
-         * 执行检测逻辑
-         */
-        performDetection() {
-            const now = Date.now();
-            const timeSinceLastActive = now - this.lastActiveTime;
+        // 根据切屏情况更新图标状态
+        const iconElements = document.querySelectorAll('.screen-switch-icon');
+        if (iconElements && iconElements.length > 0) {
+            iconElements.forEach(el => {
+                // 移除所有状态类
+                el.classList.remove('warning', 'danger', 'normal');
 
-            // 检查页面是否处于非活动状态过长时间
-            if (timeSinceLastActive > 30000) { // 30秒
-                this.recordSuspiciousActivity('长时间非活动状态', {
-                    duration: timeSinceLastActive,
-                    timestamp: now
-                });
-            }
-
-            // 检查窗口尺寸变化（可能的全屏切换）
-            this.checkWindowSizeChange();
-        }
-
-        /**
-         * 处理页面可见性变化
-         */
-        handleVisibilityChange() {
-            const isHidden = document.hidden;
-            const timestamp = Date.now();
-
-            if (isHidden) {
-                this.recordSwitchEvent('页面隐藏', timestamp);
-                this.logDebug('📱 页面已隐藏');
-            } else {
-                this.recordSwitchEvent('页面显示', timestamp);
-                this.lastActiveTime = timestamp;
-                this.logDebug('📱 页面已显示');
-            }
-        }
-
-        /**
-         * 处理窗口获得焦点
-         */
-        handleWindowFocus() {
-            const timestamp = Date.now();
-            this.recordSwitchEvent('窗口获得焦点', timestamp);
-            this.lastActiveTime = timestamp;
-            this.logDebug('🔍 窗口获得焦点');
-        }
-
-        /**
-         * 处理窗口失去焦点
-         */
-        handleWindowBlur() {
-            const timestamp = Date.now();
-            this.recordSwitchEvent('窗口失去焦点', timestamp);
-            this.logDebug('🔍 窗口失去焦点');
-        }
-
-        /**
-         * 处理鼠标离开
-         */
-        handleMouseLeave() {
-            const timestamp = Date.now();
-            this.recordSuspiciousActivity('鼠标离开窗口', { timestamp });
-            this.logDebug('🖱️ 鼠标离开窗口');
-        }
-
-        /**
-         * 处理鼠标进入
-         */
-        handleMouseEnter() {
-            const timestamp = Date.now();
-            this.lastActiveTime = timestamp;
-            this.logDebug('🖱️ 鼠标进入窗口');
-        }
-
-        /**
-         * 处理键盘事件
-         */
-        handleKeyDown(e) {
-            const timestamp = Date.now();
-            
-            // Alt+Tab 检测
-            if (e.altKey && e.keyCode === 9) {
-                this.recordSwitchEvent('Alt+Tab切换', timestamp);
-                this.logDebug('⌨️ 检测到Alt+Tab');
-            }
-
-            // Windows键
-            if (e.keyCode === 91 || e.keyCode === 92) {
-                this.recordSuspiciousActivity('Windows键按下', { timestamp, keyCode: e.keyCode });
-                this.logDebug('⌨️ 检测到Windows键');
-            }
-
-            // Ctrl+Alt+Del (某些情况下能检测到)
-            if (e.ctrlKey && e.altKey && e.keyCode === 46) {
-                this.recordSuspiciousActivity('Ctrl+Alt+Del', { timestamp });
-                this.logDebug('⌨️ 检测到Ctrl+Alt+Del');
-            }
-
-            this.lastActiveTime = timestamp;
-        }
-
-        /**
-         * 处理页面卸载前
-         */
-        handleBeforeUnload() {
-            this.recordSwitchEvent('页面即将卸载', Date.now());
-            this.logDebug('📄 页面即将卸载');
-        }
-
-        /**
-         * 处理页面隐藏
-         */
-        handlePageHide() {
-            this.recordSwitchEvent('页面隐藏事件', Date.now());
-            this.logDebug('📄 页面隐藏事件');
-        }
-
-        /**
-         * 检查窗口尺寸变化
-         */
-        checkWindowSizeChange() {
-            const currentSize = {
-                width: window.innerWidth,
-                height: window.innerHeight,
-                outerWidth: window.outerWidth,
-                outerHeight: window.outerHeight
-            };
-
-            if (!this.lastWindowSize) {
-                this.lastWindowSize = currentSize;
-                return;
-            }
-
-            const sizeChanged = 
-                this.lastWindowSize.width !== currentSize.width ||
-                this.lastWindowSize.height !== currentSize.height;
-
-            if (sizeChanged) {
-                this.recordSuspiciousActivity('窗口尺寸变化', {
-                    before: this.lastWindowSize,
-                    after: currentSize,
-                    timestamp: Date.now()
-                });
-                this.logDebug('📐 窗口尺寸发生变化');
-            }
-
-            this.lastWindowSize = currentSize;
-        }
-
-        /**
-         * 记录切换事件
-         */
-        recordSwitchEvent(type, timestamp) {
-            this.switchCount++;
-            
-            const event = {
-                type: 'switch',
-                subType: type,
-                timestamp: timestamp,
-                count: this.switchCount
-            };
-
-            this.events.push(event);
-            this.checkThresholds();
-
-            // 触发回调
-            if (typeof this.options.onSwitch === 'function') {
-                this.options.onSwitch(event, this.switchCount);
-            }
-
-            console.warn(`⚠️ 屏幕切换检测: ${type} (第${this.switchCount}次)`);
-        }
-
-        /**
-         * 记录可疑活动
-         */
-        recordSuspiciousActivity(type, data) {
-            const event = {
-                type: 'suspicious',
-                subType: type,
-                data: data,
-                timestamp: Date.now()
-            };
-
-            this.events.push(event);
-            this.logDebug(`🚨 可疑活动: ${type}`, data);
-        }
-
-        /**
-         * 检查阈值
-         */
-        checkThresholds() {
-            // 警告阈值
-            if (this.switchCount === this.options.warningThreshold) {
-                this.triggerWarning();
-            }
-
-            // 自动提交阈值
-            if (this.options.autoSubmit && this.switchCount >= this.options.autoSubmitThreshold) {
-                this.triggerAutoSubmit();
-            }
-        }
-
-        /**
-         * 触发警告
-         */
-        triggerWarning() {
-            const message = `您已经切换屏幕${this.switchCount}次！请专注于考试，避免切换到其他应用程序。`;
-            
-            if (typeof this.options.onWarning === 'function') {
-                this.options.onWarning(this.switchCount, message);
-            } else {
-                alert(message);
-            }
-
-            console.warn('⚠️ 触发切换警告', { count: this.switchCount });
-        }
-
-        /**
-         * 触发自动提交
-         */
-        triggerAutoSubmit() {
-            const message = `检测到过多的屏幕切换行为，系统将自动提交您的考试。`;
-            
-            if (typeof this.options.onAutoSubmit === 'function') {
-                this.options.onAutoSubmit(this.switchCount, message);
-            } else {
-                alert(message);
-                // 这里可以调用考试提交逻辑
-            }
-
-            console.error('🚨 触发自动提交', { count: this.switchCount });
-        }
-
-        /**
-         * 获取统计信息
-         */
-        getStatistics() {
-            return {
-                switchCount: this.switchCount,
-                events: this.events,
-                isActive: this.isActive,
-                lastActiveTime: this.lastActiveTime,
-                startTime: this.startTime || Date.now()
-            };
-        }
-
-        /**
-         * 重置计数器
-         */
-        reset() {
-            this.switchCount = 0;
-            this.events = [];
-            this.lastActiveTime = Date.now();
-            this.logDebug('🔄 检测器已重置');
-        }
-
-        /**
-         * 销毁检测器
-         */
-        destroy() {
-            this.stopDetection();
-            // 这里可以移除事件监听器，但由于它们绑定在document和window上，
-            // 在页面卸载时会自动清理，所以暂时不处理
-            this.logDebug('💥 检测器已销毁');
-        }
-
-        /**
-         * Debug日志
-         */
-        logDebug(message, data = null) {
-            if (this.options.debug) {
-                if (data) {
-                    console.log(message, data);
+                // 设置当前状态
+                if (allowedCount > 0) {
+                    if (count > allowedCount) {
+                        el.classList.add('danger');
+                        el.setAttribute('title', `警告：已超出允许的切屏次数(${allowedCount}次)`);
+                    } else if (count > (allowedCount * 0.7)) {
+                        el.classList.add('warning');
+                        el.setAttribute('title', `注意：您的切屏次数已接近限制(${count}/${allowedCount})`);
+                    } else {
+                        el.classList.add('normal');
+                        el.setAttribute('title', `当前切屏次数/允许次数：${count}/${allowedCount}`);
+                    }
                 } else {
-                    console.log(message);
+                    if (count > 3) {
+                        el.classList.add('warning');
+                        el.setAttribute('title', `警告：频繁切屏可能会被判定为作弊行为(${count}次)`);
+                    } else {
+                        el.classList.add('normal');
+                        el.setAttribute('title', `当前切屏次数：${count}次`);
+                    }
                 }
-            }
+            });
         }
     }
 
-    // 导出到全局
-    window.ScreenSwitchDetector = ScreenSwitchDetector;
+    /**
+     * 显示切屏警告
+     * @param {string} message - 警告消息文本
+     * @returns {boolean} - 操作是否成功
+     * @public
+     */
+    ScreenSwitchDetector.showWarning = function (message) {
+        try {
+            // 默认消息
+            const warningMessage = message || "警告：系统已记录您的切屏行为！频繁切屏可能会被判定为作弊行为。";
 
-    // 如果有配置，自动初始化
-    if (window.CS_CONFIG && window.CS_CONFIG.security && window.CS_CONFIG.security.enableScreenSwitchDetection) {
-        window.addEventListener('DOMContentLoaded', () => {
-            const detectorOptions = {
-                enabled: true,
-                debug: window.CS_CONFIG.isDevelopment,
-                onSwitch: (event, count) => {
-                    // 可以在这里发送统计数据到服务器
-                    console.log('屏幕切换事件', { event, count });
-                },
-                onWarning: (count, message) => {
-                    // 使用更友好的提示方式
-                    if (window.amis && window.amis.toast) {
-                        window.amis.toast.warning(message);
-                    } else {
-                        alert(message);
-                    }
-                },
-                onAutoSubmit: (count, message) => {
-                    // 自动提交逻辑
-                    if (window.amis && window.amis.toast) {
-                        window.amis.toast.error(message);
-                    } else {
-                        alert(message);
-                    }
-                    
-                    // 这里可以调用考试提交函数
-                    if (typeof window.submitExam === 'function') {
-                        window.submitExam('auto', '检测到异常切屏行为');
-                    }
+            // 创建警告通知
+            createNotification('切屏警告', warningMessage, 'warning');
+            return true;
+        } catch (error) {
+            console.error("[切屏警告] 显示警告时出错:", error);
+            return false;
+        }
+    };
+
+    /**
+     * 记录切屏事件并发送到服务器
+     * @returns {Promise<boolean>} 操作是否成功的Promise
+     * @public
+     */
+    ScreenSwitchDetector.recordScreenSwitch = function () {
+        return new Promise(async (resolve) => {
+            try {
+                console.log("[切屏检测] 检测到切屏行为");
+
+                // 获取记录ID - 从全局变量获取
+                const recordId = window.globalData?.exam?.recordId;
+                if (!recordId) {
+                    console.error("[切屏检测] 无法获取考试记录ID");
+
+                    // 显示警告
+                    ScreenSwitchDetector.showWarning("警告：系统检测到切屏行为！请勿频繁切换窗口。");
+                    resolve(false);
+                    return;
                 }
-            };
 
-            window.screenSwitchDetector = new ScreenSwitchDetector(detectorOptions);
-            console.log('🔍 屏幕切换检测器已自动初始化');
+                // 获取允许的切屏次数
+                const allowedCount = window.globalData?.exam?.allowedScreenSwitchCount || 0;
+
+                // 更新计数(使用全局变量)
+                window.screenSwitchCount = (window.screenSwitchCount || 0) + 1;
+
+                // 同步到globalData
+                if (window.globalData && window.globalData.exam) {
+                    window.globalData.exam.screenSwitchCount = window.screenSwitchCount;
+                }
+
+                console.log("[切屏检测] 当前切屏次数:", window.screenSwitchCount);
+
+                // 更新DOM显示
+                updateScreenSwitchCountDisplay();
+
+                // 显示警告信息，根据切屏次数和允许次数调整内容
+                if (allowedCount > 0) {
+                    if (window.screenSwitchCount > allowedCount) {
+                        // 超过允许次数
+                        ScreenSwitchDetector.showWarning(`严重警告：您已超出允许的切屏次数(${allowedCount}次)！此行为已被记录为作弊嫌疑。`);
+                    } else {
+                        // 未超过允许次数
+                        ScreenSwitchDetector.showWarning(`警告：系统已记录您的切屏行为！您已切屏 ${window.screenSwitchCount} 次，允许切屏 ${allowedCount} 次。`);
+                    }
+                } else {
+                    // 没有明确的允许次数
+                    ScreenSwitchDetector.showWarning();
+                }
+
+                try {
+                    // 发送切屏记录到服务器
+                    const response = await fetch(`/exam/api/exam/client/${recordId}/screen-switch`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                            'X-Forwarded-With': 'CodeSpirit'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`服务器响应错误：${response.status} ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.status === 0) {
+                        console.log("[切屏检测] 切屏记录已成功发送到服务器");
+
+                        // 如果服务器返回了更新后的切屏次数，更新本地计数
+                        if (data.data && typeof data.data.screenSwitchCount === 'number') {
+                            window.screenSwitchCount = data.data.screenSwitchCount;
+
+                            if (window.globalData && window.globalData.exam) {
+                                window.globalData.exam.screenSwitchCount = data.data.screenSwitchCount;
+                            }
+
+                            // 更新DOM显示
+                            updateScreenSwitchCountDisplay();
+                        }
+
+                        resolve(true);
+                    } else {
+                        console.error("[切屏检测] 记录切屏失败:", data.msg);
+                        resolve(false);
+                    }
+                } catch (error) {
+                    console.error("[切屏检测] 发送切屏记录时出错:", error);
+                    resolve(false);
+                }
+            } catch (error) {
+                console.error("[切屏检测] 记录切屏过程中发生错误:", error);
+                resolve(false);
+            }
         });
-    }
+    };
 
-})(window); 
+    /**
+     * 事件处理函数：visibilitychange事件
+     * @public
+     */
+    ScreenSwitchDetector.handleVisibilityChange = function () {
+        if (document.visibilityState === 'hidden') {
+            ScreenSwitchDetector.recordScreenSwitch();
+        }
+    };
+
+    /**
+     * 事件处理函数：窗口失去焦点事件
+     * @public
+     */
+    ScreenSwitchDetector.handleWindowBlur = function () {
+        ScreenSwitchDetector.recordScreenSwitch();
+    };
+
+    /**
+     * 初始化切屏检测
+     * 设置事件监听并初始化UI
+     * @public
+     */
+    ScreenSwitchDetector.setup = function () {
+        // 避免重复初始化
+        if (isInitialized) {
+            console.warn("[切屏检测] 已经初始化，忽略重复调用");
+            return;
+        }
+
+        console.log("[切屏检测] 正在设置切屏检测...");
+
+        try {
+            // 检查是否已有记录ID
+            if (!window.globalData?.exam?.recordId) {
+                console.warn("[切屏检测] 记录ID未设置，将在3秒后重试");
+                setTimeout(ScreenSwitchDetector.setup, CONFIG.retryDelay);
+                return;
+            }
+
+            // 移除可能存在的旧事件监听器
+            document.removeEventListener('visibilitychange', ScreenSwitchDetector.handleVisibilityChange);
+            window.removeEventListener('blur', ScreenSwitchDetector.handleWindowBlur);
+
+            // 添加事件监听
+            document.addEventListener('visibilitychange', ScreenSwitchDetector.handleVisibilityChange);
+            window.addEventListener('blur', ScreenSwitchDetector.handleWindowBlur);
+
+            // 初始化切屏次数显示
+            window.screenSwitchCount = window.globalData?.exam?.screenSwitchCount || 0;
+
+            // 更新DOM显示
+            updateScreenSwitchCountDisplay();
+
+            // 如果有允许的切屏次数，显示初始提示
+            const allowedCount = window.globalData?.exam?.allowedScreenSwitchCount || 0;
+            if (allowedCount > 0) {
+                // 设定时间后显示切屏限制提示
+                setTimeout(() => {
+                    ScreenSwitchDetector.showWarning(`本次考试允许切屏 ${allowedCount} 次，超过将被记录为作弊嫌疑。当前已切屏 ${window.screenSwitchCount} 次。`);
+                }, CONFIG.initialWarningDelay);
+            }
+
+            // 标记为已初始化
+            isInitialized = true;
+
+            console.log("[切屏检测] 切屏检测已成功启用");
+        } catch (error) {
+            console.error("[切屏检测] 设置切屏检测时发生错误:", error);
+            // 初始化失败，重置标志
+            isInitialized = false;
+        }
+    };
+
+    /**
+     * 创建通知的辅助函数，供其他模块调用
+     * @param {string} title - 通知标题
+     * @param {string} message - 通知消息
+     * @param {string} type - 通知类型 (warning|error|info|success)
+     * @param {number} [duration=5000] - 显示时间(毫秒)，0表示不自动关闭
+     * @returns {HTMLElement} 创建的通知元素
+     * @public
+     */
+    ScreenSwitchDetector.createNotification = function (title, message, type = 'info', duration = CONFIG.warningDuration) {
+        return createNotification(title, message, type, duration);
+    };
+
+    // 对外暴露兼容的全局函数
+    window.showScreenSwitchWarning = ScreenSwitchDetector.showWarning;
+    window.recordScreenSwitch = ScreenSwitchDetector.recordScreenSwitch;
+    window.setupScreenSwitchDetection = ScreenSwitchDetector.setup;
+    window.handleVisibilityChange = ScreenSwitchDetector.handleVisibilityChange;
+    window.handleWindowBlur = ScreenSwitchDetector.handleWindowBlur;
+    window.createCustomNotification = ScreenSwitchDetector.createNotification;
+
+})(); 

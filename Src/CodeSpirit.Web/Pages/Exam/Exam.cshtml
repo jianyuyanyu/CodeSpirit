@@ -1,10 +1,11 @@
 @page "/{tenantId}/exam/{examId:long}"
 @model CodeSpirit.Web.Pages.Exam.ExamModel
 @{
-    ViewData["Title"] = "在线考试";
+    ViewData["Title"] = "在线考试系统";
 }
 
-@section Head {
+@section Head
+{
     <meta name="description" content="在线考试系统 - 高效、安全的考试平台">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no">
@@ -17,6 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
+    <!-- 考试系统专用样式 -->
     <resource path="css/exam/exam.css" type="css" />
     
     <!-- 考试页面特定初始化数据 -->
@@ -24,7 +26,7 @@
         // 全局配置对象
         window.CS_CONFIG = {
             tenantId: "@Model.TenantId",
-            examId: @Model.ExamId,
+            examId: "@Model.ExamId",
             environment: "@Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")",
             isDevelopment: @Json.Serialize(Model.IsDevelopment),
             security: {
@@ -40,13 +42,13 @@
             }
         };
         
-        // 设置全局变量
+        // 设置全局变量（兼容性）
         window.tenantId = "@Model.TenantId";
-        window.examId = @Model.ExamId;
+        window.examId = "@Model.ExamId";
     </script>
 }
 
-<div id="root" class="exam-wrapper">
+<div id="root" class="app-wrapper">
     <div id="loading" class="exam-loading">
         <div class="exam-loading-spinner"></div>
         <p class="exam-loading-text">正在加载考试内容...</p>

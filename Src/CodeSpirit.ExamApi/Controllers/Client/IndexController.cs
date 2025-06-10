@@ -215,6 +215,38 @@ public class IndexController : ApiControllerBase
     }
 
     /// <summary>
+    /// 获取考试轻量信息（用于倒计时页面）
+    /// </summary>
+    /// <param name="id">考试ID</param>
+    /// <returns>考试轻量信息</returns>
+    [HttpGet("{id}/light")]
+    [DisplayName("获取考试轻量信息")]
+    public async Task<ActionResult<ApiResponse<ClientExamLightInfoDto>>> GetExamLightInfo(long id)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!EnsureUserLoggedIn())
+        {
+            return Unauthorized(new ApiResponse(-1, "请先登录"));
+        }
+
+        try
+        {
+            var lightInfo = await _clientService.GetExamLightInfoAsync(id, currentUserId);
+            return SuccessResponse(lightInfo);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "获取考试轻量信息时发生业务逻辑错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试轻量信息时发生未处理错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
+            return StatusCode(500, new ApiResponse(-1, "获取考试信息失败，请稍后重试"));
+        }
+    }
+
+    /// <summary>
     /// 创建考试记录
     /// </summary>
     /// <param name="id">考试ID</param>

@@ -296,7 +296,8 @@
                     ]
                 },
                 
-                // 公告通知区域
+                // 暂时注释掉公告通知区域
+                /*
                 {
                     type: "container",
                     className: "announcement-section",
@@ -364,6 +365,7 @@
                         }
                     ]
                 },
+                */
                 
                 // 导航菜单
                 {
@@ -378,23 +380,27 @@
                                         <i class="fa fa-pencil nav-menu-icon"></i>
                                         <div class="nav-menu-text">开始练习</div>
                                     </div>
+                                    <!-- 暂时注释掉开始考试菜单
                                     <div class="nav-menu-item nav-exam" onclick="window.navigateTo('exam')" data-animate="1">
                                         <i class="fa fa-graduation-cap nav-menu-icon"></i>
                                         <div class="nav-menu-text">开始考试</div>
                                     </div>
+                                    -->
+                                    <!-- 暂时注释掉我的考试菜单
                                     <div class="nav-menu-item nav-my-exams" onclick="window.navigateTo('my-exams')" data-animate="2">
                                         <i class="fa fa-file-text nav-menu-icon"></i>
                                         <div class="nav-menu-text">我的考试</div>
                                     </div>
-                                    <div class="nav-menu-item nav-my-practice" onclick="window.navigateTo('my-practice')" data-animate="3">
+                                    -->
+                                    <div class="nav-menu-item nav-my-practice" onclick="window.navigateTo('my-practice')" data-animate="2">
                                         <i class="fa fa-history nav-menu-icon"></i>
                                         <div class="nav-menu-text">我的练习</div>
                                     </div>
-                                    <div class="nav-menu-item nav-wrong-questions" onclick="window.navigateTo('wrong-questions')" data-animate="4">
+                                    <div class="nav-menu-item nav-wrong-questions" onclick="window.navigateTo('wrong-questions')" data-animate="3">
                                         <i class="fa fa-exclamation-triangle nav-menu-icon"></i>
                                         <div class="nav-menu-text">错题管理</div>
                                     </div>
-                                    <div class="nav-menu-item nav-profile" onclick="window.navigateTo('profile')" data-animate="5">
+                                    <div class="nav-menu-item nav-profile" onclick="window.navigateTo('profile')" data-animate="4">
                                         <i class="fa fa-user nav-menu-icon"></i>
                                         <div class="nav-menu-text">个人中心</div>
                                     </div>

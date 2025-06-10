@@ -607,4 +607,66 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             throw;
         }
     }
+
+    /// <summary>
+    /// 获取考试轻量信息（客户端视图，用于倒计时页面）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>考试轻量信息</returns>
+    public async Task<ClientExamLightInfoDto> GetExamLightInfoForClientAsync(long examId, long studentId)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .ThenInclude(p => p.ExamPaperQuestions)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                throw new ArgumentException("考试不存在", nameof(examId));
+            }
+
+            // 检查是否有权限参加考试
+            var studentGroups = await _context.StudentGroupMappings
+                .Where(m => m.StudentId == studentId)
+                .Select(m => m.StudentGroupId)
+                .ToListAsync();
+
+            var hasPermission = !examSetting.StudentGroups.Any() ||
+                                examSetting.StudentGroups.Any(g => studentGroups.Contains(g.Id));
+
+            if (!hasPermission)
+            {
+                throw new UnauthorizedAccessException("无权参加此考试");
+            }
+
+            // 组装考试轻量信息
+            var lightInfo = new ClientExamLightInfoDto
+            {
+                Id = examSetting.Id,
+                Name = examSetting.Name,
+                Description = examSetting.Description,
+                Duration = examSetting.Duration,
+                StartTime = examSetting.StartTime,
+                EndTime = examSetting.EndTime,
+                TotalScore = examSetting.ExamPaper.TotalScore,
+                QuestionCount = examSetting.ExamPaper.ExamPaperQuestions.Count,
+                ServerTime = DateTime.UtcNow,
+                Status = string.Empty, // 将由ClientService设置
+                CanStart = false // 将由ClientService设置
+            };
+
+            return lightInfo;
+        }
+        catch (Exception ex) when (
+            ex is not ArgumentException &&
+            ex is not UnauthorizedAccessException)
+        {
+            _logger.LogError(ex, "获取考试轻量信息时发生错误");
+            throw;
+        }
+    }
 }

@@ -687,7 +687,7 @@
                 if (redirectUrl) {
                     window.location.href = decodeURIComponent(redirectUrl);
                 } else {
-                    window.location.href = `/${window.tenantId}/exam/`;
+                    window.location.href = `/${window.tenantId}/exam/app`;
                 }
             }, 1500);
             

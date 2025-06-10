@@ -69,6 +69,14 @@ public interface IClientService
     Task<ClientExamBasicInfoDto> GetExamBasicInfoAsync(long examId, long userId);
     
     /// <summary>
+    /// 获取考试轻量信息（用于倒计时页面）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>考试轻量信息</returns>
+    Task<ClientExamLightInfoDto> GetExamLightInfoAsync(long examId, long userId);
+    
+    /// <summary>
     /// 创建考试记录
     /// </summary>
     /// <param name="examId">考试ID</param>

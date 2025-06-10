@@ -62,4 +62,12 @@ public interface IExamSettingService : IBaseCRUDService<ExamSetting, ExamSetting
     /// <param name="recordId">考试记录ID</param>
     /// <returns>考试基本信息</returns>
     Task<ClientExamBasicInfoDto> GetExamBasicInfoForClientAsync(long examId, long studentId, long? recordId = null);
+    
+    /// <summary>
+    /// 获取考试轻量信息（客户端视图，用于倒计时页面）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>考试轻量信息</returns>
+    Task<ClientExamLightInfoDto> GetExamLightInfoForClientAsync(long examId, long studentId);
 } 

@@ -6,6 +6,19 @@
 (function(window) {
     'use strict';
 
+    // 确保TokenManager已初始化
+    TokenManager.initClientMode(window.tenantId, 'exam');
+    
+    // 检查用户认证状态
+    if (!TokenManager.isAuthenticated()) {
+        window.location.href = `/${window.tenantId}/exam/login`;
+        return;
+    }
+
+    // 初始化AMIS
+    let amis = amisRequire('amis/embed');
+    let amisInstance = null;
+
     /**
      * 考试结果管理器类
      */
@@ -61,21 +74,55 @@
          */
         async loadResultData() {
             try {
-                const token = window.TokenManager ? window.TokenManager.getToken() : null;
+                const token = TokenManager.getToken();
                 const response = await fetch(`/exam/api/exam/client/result/${this.options.recordId}`, {
                     headers: {
-                        'Authorization': token ? `Bearer ${token}` : '',
+                        'Authorization': token ? 'Bearer ' + token : '',
+                        'TenantId': this.options.tenantId,
+                        'X-Forwarded-With': 'CodeSpirit',
                         'Content-Type': 'application/json'
                     }
                 });
+
+                if (response.status === 401) {
+                    window.location.href = `/${this.options.tenantId}/exam/login`;
+                    throw new Error('认证失败，请重新登录');
+                }
 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
-                this.resultData = await response.json();
+                const result = await response.json();
+                
+                // 检查业务状态码
+                if (result.status !== undefined && result.status !== 0) {
+                    throw new Error(result.msg || '获取考试结果失败');
+                }
+
+                // 兼容不同的响应格式
+                this.resultData = result.data || result;
                 this.examData = this.resultData.exam || {};
-                this.questionResults = this.resultData.questionResults || [];
+                
+                // 根据旧版本API，题目数据在answers字段中
+                this.questionResults = this.resultData.answers || 
+                                     this.resultData.questionResults || 
+                                     this.resultData.questions || 
+                                     this.resultData.answerResults ||
+                                     this.resultData.details ||
+                                     [];
+
+                // 增强调试信息
+                console.log('🔍 [ResultManager] API原始响应:', result);
+                console.log('📊 [ResultManager] 解析后的resultData:', this.resultData);
+                console.log('📋 [ResultManager] examData:', this.examData);
+                console.log('❓ [ResultManager] questionResults:', this.questionResults);
+                console.log('🔢 [ResultManager] questionResults长度:', this.questionResults ? this.questionResults.length : 0);
+                
+                // 检查题目数据的结构
+                if (this.questionResults && this.questionResults.length > 0) {
+                    console.log('📝 [ResultManager] 第一题示例数据:', this.questionResults[0]);
+                }
 
                 this.logDebug('考试结果数据加载完成', this.resultData);
 
@@ -92,17 +139,39 @@
             const schema = this.buildAmisSchema();
             
             // 渲染AMIS页面
-            const amisScoped = amis.embed('#root', schema, {
-                locale: 'zh-CN',
-                theme: 'antd'
+            amisInstance = amis.embed('#root', schema, {
+                location: history.location,
+                data: {
+                    tenant: { name: '考试平台' },
+                    result: this.resultData,
+                    exam: this.examData,
+                    questions: this.questionResults
+                },
+                context: {
+                    WEB_HOST: window.webHost,
+                    TENANT_ID: window.tenantId,
+                    RECORD_ID: this.options.recordId
+                },
+                requestAdaptor: (api) => {
+                    const token = TokenManager.getToken();
+                    return {
+                        ...api,
+                        headers: {
+                            ...api.headers,
+                            'Authorization': token ? 'Bearer ' + token : '',
+                            'TenantId': window.tenantId,
+                            'X-Forwarded-With': 'CodeSpirit'
+                        }
+                    };
+                }
+            }, {
+                theme: 'antd',
+                locale: 'zh-CN'
             });
 
-            this.amisScoped = amisScoped;
-            
-            // 监听AMIS事件
-            amisScoped.on('action', (event) => {
-                this.handleAction(event);
-            });
+
+
+            this.amisScoped = amisInstance;
         }
 
         /**
@@ -232,8 +301,15 @@
          */
         buildResultDetails() {
             const correctCount = this.questionResults.filter(q => q.isCorrect).length;
-            const incorrectCount = this.questionResults.filter(q => !q.isCorrect && q.score === 0).length;
-            const partialCount = this.questionResults.filter(q => !q.isCorrect && q.score > 0).length;
+            const incorrectCount = this.questionResults.filter(q => {
+                const obtainedScore = q.obtainedScore !== undefined ? q.obtainedScore : q.score;
+                return !q.isCorrect && obtainedScore === 0;
+            }).length;
+            const partialCount = this.questionResults.filter(q => {
+                const obtainedScore = q.obtainedScore !== undefined ? q.obtainedScore : q.score;
+                const totalScore = q.score || q.totalScore || 0;
+                return !q.isCorrect && obtainedScore > 0 && obtainedScore < totalScore;
+            }).length;
             const totalQuestions = this.questionResults.length;
 
             return {
@@ -313,7 +389,12 @@
          * 构建题目分析
          */
         buildQuestionAnalysis() {
+            console.log('🔧 [ResultManager] buildQuestionAnalysis调用');
+            console.log('🔧 [ResultManager] this.questionResults:', this.questionResults);
+            console.log('🔧 [ResultManager] 是否为空判断:', !this.questionResults || this.questionResults.length === 0);
+            
             if (!this.questionResults || this.questionResults.length === 0) {
+                console.log('⚠️ [ResultManager] 显示空状态：暂无题目分析数据');
                 return {
                     type: 'panel',
                     className: 'result-analysis',
@@ -327,10 +408,25 @@
                     }
                 };
             }
+            
+            console.log('✅ [ResultManager] 开始构建题目分析，题目数量:', this.questionResults.length);
 
             const questionItems = this.questionResults.map((question, index) => {
                 const statusClass = this.getQuestionStatusClass(question);
                 const statusText = this.getQuestionStatusText(question);
+                
+                // 兼容新旧API字段名
+                const questionTitle = question.content || question.title || `第${index + 1}题`;
+                const obtainedScore = question.obtainedScore !== undefined ? question.obtainedScore : question.score;
+                const totalScore = question.score || question.totalScore || 0;
+                const userAnswer = question.userAnswer || question.answer || '未作答';
+                const correctAnswer = question.correctAnswer || '暂无';
+                
+                // 状态图标
+                const statusIcon = statusClass === 'correct' ? '✓' : 
+                                 statusClass === 'partial' ? '△' : '✗';
+                const statusIconClass = statusClass === 'correct' ? 'status-icon-correct' : 
+                                      statusClass === 'partial' ? 'status-icon-partial' : 'status-icon-incorrect';
                 
                 return {
                     type: 'html',
@@ -341,14 +437,25 @@
                             </div>
                             <div class="question-result-content">
                                 <div class="question-result-title">
-                                    ${question.title || `第${index + 1}题`}
+                                    ${questionTitle}
                                 </div>
                                 <div class="question-result-score">
-                                    得分：${question.score}/${question.totalScore}分
+                                    得分：${obtainedScore || 0}/${totalScore}分
+                                </div>
+                                <div class="question-result-answers">
+                                    <div class="answer-section">
+                                        <div class="answer-label">你的答案：</div>
+                                        <div class="user-answer">${userAnswer}</div>
+                                    </div>
+                                    <div class="answer-section">
+                                        <div class="answer-label">正确答案：</div>
+                                        <div class="correct-answer">${correctAnswer}</div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="question-result-status ${statusClass}">
-                                ${statusText}
+                                <div class="status-icon ${statusIconClass}">${statusIcon}</div>
+                                <div class="status-text">${statusText}</div>
                             </div>
                         </div>
                     `
@@ -373,54 +480,22 @@
          */
         buildResultActions() {
             return {
-                type: 'panel',
+                type: 'html',
                 className: 'result-actions',
-                body: [
-                    {
-                        type: 'button',
-                        label: '返回首页',
-                        actionType: 'goHome',
-                        className: 'result-btn result-btn-secondary',
-                        icon: 'fa fa-home'
-                    },
-                    {
-                        type: 'button',
-                        label: '查看详情',
-                        actionType: 'viewDetail',
-                        className: 'result-btn result-btn-primary',
-                        icon: 'fa fa-eye'
-                    },
-                    {
-                        type: 'button',
-                        label: '打印结果',
-                        actionType: 'print',
-                        className: 'result-btn result-btn-success',
-                        icon: 'fa fa-print'
-                    }
-                ]
+                html: `
+                    <div class="result-actions-container">
+                        <button type="button" class="result-btn result-btn-secondary" onclick="window.resultManager.goHome()">
+                            <i class="fa fa-home"></i> 返回首页
+                        </button>
+                        <button type="button" class="result-btn result-btn-success" onclick="window.resultManager.printResult()">
+                            <i class="fa fa-print"></i> 打印结果
+                        </button>
+                    </div>
+                `
             };
         }
 
-        /**
-         * 处理操作事件
-         */
-        handleAction(event) {
-            const { actionType } = event;
-            
-            switch (actionType) {
-                case 'goHome':
-                    this.goHome();
-                    break;
-                case 'viewDetail':
-                    this.viewDetail();
-                    break;
-                case 'print':
-                    this.printResult();
-                    break;
-                default:
-                    this.logDebug('未处理的操作', actionType);
-            }
-        }
+
 
         /**
          * 返回首页
@@ -429,17 +504,7 @@
             window.location.href = `/${this.options.tenantId}/exam/application`;
         }
 
-        /**
-         * 查看详情
-         */
-        viewDetail() {
-            // 这里可以跳转到详细的答题记录页面
-            if (window.amis && window.amis.toast) {
-                window.amis.toast.info('详情功能待开发');
-            } else {
-                alert('详情功能待开发');
-            }
-        }
+
 
         /**
          * 打印结果
@@ -448,13 +513,20 @@
             window.print();
         }
 
+
+
         /**
          * 获取题目状态样式类
          */
         getQuestionStatusClass(question) {
-            if (question.isCorrect) {
+            // 兼容新旧API字段
+            const isCorrect = question.isCorrect;
+            const obtainedScore = question.obtainedScore !== undefined ? question.obtainedScore : question.score;
+            const totalScore = question.score || question.totalScore || 0;
+            
+            if (isCorrect) {
                 return 'correct';
-            } else if (question.score > 0) {
+            } else if (obtainedScore > 0 && obtainedScore < totalScore) {
                 return 'partial';
             } else {
                 return 'incorrect';
@@ -465,9 +537,14 @@
          * 获取题目状态文本
          */
         getQuestionStatusText(question) {
-            if (question.isCorrect) {
+            // 兼容新旧API字段
+            const isCorrect = question.isCorrect;
+            const obtainedScore = question.obtainedScore !== undefined ? question.obtainedScore : question.score;
+            const totalScore = question.score || question.totalScore || 0;
+            
+            if (isCorrect) {
                 return '正确';
-            } else if (question.score > 0) {
+            } else if (obtainedScore > 0 && obtainedScore < totalScore) {
                 return '部分正确';
             } else {
                 return '错误';
@@ -491,18 +568,22 @@
 
         /**
          * 格式化持续时间
+         * @param {number} minutes - 时长（分钟）
          */
-        formatDuration(seconds) {
-            if (seconds < 60) {
-                return `${seconds}秒`;
-            } else if (seconds < 3600) {
-                const minutes = Math.floor(seconds / 60);
-                const remainingSeconds = seconds % 60;
-                return remainingSeconds > 0 ? `${minutes}分${remainingSeconds}秒` : `${minutes}分钟`;
+        formatDuration(minutes) {
+            if (!minutes || minutes <= 0) {
+                return '0分钟';
+            }
+            
+            // API返回的是分钟数
+            const totalMinutes = Math.floor(minutes);
+            
+            if (totalMinutes < 60) {
+                return `${totalMinutes}分钟`;
             } else {
-                const hours = Math.floor(seconds / 3600);
-                const minutes = Math.floor((seconds % 3600) / 60);
-                return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`;
+                const hours = Math.floor(totalMinutes / 60);
+                const remainingMinutes = totalMinutes % 60;
+                return remainingMinutes > 0 ? `${hours}小时${remainingMinutes}分钟` : `${hours}小时`;
             }
         }
 
@@ -522,7 +603,9 @@
         showError(message) {
             this.showLoading(false);
             
-            if (window.amis && window.amis.toast) {
+            if (amisInstance && amisInstance.env && amisInstance.env.notify) {
+                amisInstance.env.notify('error', message);
+            } else if (window.amis && window.amis.toast) {
                 window.amis.toast.error(message);
             } else {
                 alert(message);

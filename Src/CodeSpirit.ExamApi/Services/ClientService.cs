@@ -297,6 +297,48 @@ public class ClientService : IClientService
     }
 
     /// <summary>
+    /// 获取考试轻量信息（用于倒计时页面）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>考试轻量信息</returns>
+    public async Task<ClientExamLightInfoDto> GetExamLightInfoAsync(long examId, long userId)
+    {
+        // 获取学生实体
+        var student = await GetStudentByUserIdAsync(userId);
+        if (student == null)
+        {
+            throw new InvalidOperationException("未找到学生信息");
+        }
+
+        // 获取考试轻量信息
+        var lightInfo = await _examSettingService.GetExamLightInfoForClientAsync(examId, student.Id);
+        
+        // 设置服务器当前时间（UTC）
+        lightInfo.ServerTime = DateTime.UtcNow;
+        
+        // 根据时间判断考试状态和是否可以开始
+        var now = DateTime.UtcNow;
+        if (now < lightInfo.StartTime)
+        {
+            lightInfo.Status = "pending";
+            lightInfo.CanStart = false;
+        }
+        else if (now >= lightInfo.StartTime && now < lightInfo.EndTime)
+        {
+            lightInfo.Status = "inProgress";
+            lightInfo.CanStart = true;
+        }
+        else
+        {
+            lightInfo.Status = "ended";
+            lightInfo.CanStart = false;
+        }
+
+        return lightInfo;
+    }
+
+    /// <summary>
     /// 创建考试记录
     /// </summary>
     /// <param name="examId">考试ID</param>

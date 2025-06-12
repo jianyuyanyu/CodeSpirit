@@ -37,11 +37,6 @@ namespace CodeSpirit.Amis.Attributes.FormFields
         public bool Clearable { get; set; } = true;
 
         /// <summary>
-        /// 是否只读
-        /// </summary>
-        public bool ReadOnly { get; set; } = false;
-
-        /// <summary>
         /// 是否使用当前日期作为默认值
         /// </summary>
         public bool UseCurrentDate { get; set; } = false;

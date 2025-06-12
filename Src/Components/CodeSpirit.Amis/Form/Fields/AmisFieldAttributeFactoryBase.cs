@@ -58,6 +58,17 @@ namespace CodeSpirit.Amis.Form.Fields
             // 处理默认值
             HandleDefaultValue(field, fieldAttr);
 
+            // 处理通用状态属性
+            if (fieldAttr.Disabled)
+            {
+                field["disabled"] = fieldAttr.Disabled;
+            }
+
+            if (fieldAttr.Static)
+            {
+                field["static"] = fieldAttr.Static;
+            }
+
             // 处理额外的自定义配置
             utilityHelper.HandleAdditionalConfig(fieldAttr.AdditionalConfig, field);
 

@@ -103,16 +103,49 @@ public class PracticeSettingService : BaseCRUDService<PracticeSetting, PracticeS
 
         var query = _repository.CreateQuery()
             .Include(x => x.ExamPaper)
-            .Where(predicate)
-            .OrderByDescending(x => x.CreatedAt);
+                .ThenInclude(x => x.ExamPaperQuestions)
+            .Where(predicate);
 
-        return await GetPagedListAsync(
-            queryDto.Page,
-            queryDto.PerPage,
-            predicate,
-            queryDto.OrderBy,
-            queryDto.OrderDir,
-            "ExamPaper");
+        // 应用排序
+        if (!string.IsNullOrEmpty(queryDto.OrderBy))
+        {
+            if (queryDto.OrderDir?.ToLower() == "desc")
+            {
+                query = queryDto.OrderBy.ToLower() switch
+                {
+                    "name" => query.OrderByDescending(x => x.Name),
+                    "createdat" => query.OrderByDescending(x => x.CreatedAt),
+                    _ => query.OrderByDescending(x => x.CreatedAt)
+                };
+            }
+            else
+            {
+                query = queryDto.OrderBy.ToLower() switch
+                {
+                    "name" => query.OrderBy(x => x.Name),
+                    "createdat" => query.OrderBy(x => x.CreatedAt),
+                    _ => query.OrderBy(x => x.CreatedAt)
+                };
+            }
+        }
+        else
+        {
+            query = query.OrderByDescending(x => x.CreatedAt);
+        }
+
+        // 获取总数
+        var totalCount = await query.CountAsync();
+
+        // 应用分页
+        var items = await query
+            .Skip((queryDto.Page - 1) * queryDto.PerPage)
+            .Take(queryDto.PerPage)
+            .ToListAsync();
+
+        // 映射到DTO
+        var dtoItems = _mapper.Map<List<PracticeSettingDto>>(items);
+
+        return new PageList<PracticeSettingDto>(dtoItems, totalCount);
     }
 
     /// <summary>
@@ -280,6 +313,7 @@ public class PracticeSettingService : BaseCRUDService<PracticeSetting, PracticeS
     {
         var practiceSettings = await _repository.Find(x => x.ExamPaperId == examPaperId)
             .Include(x => x.ExamPaper)
+                .ThenInclude(x => x.ExamPaperQuestions)
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync();
 

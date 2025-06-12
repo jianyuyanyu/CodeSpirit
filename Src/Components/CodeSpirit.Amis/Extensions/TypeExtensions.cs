@@ -59,7 +59,7 @@ namespace CodeSpirit.Amis.Extensions
         /// 根据类型判断是否必填
         /// </summary>
         public static bool IsTypeRequired(this Type type) =>
-            !type.IsNullable();
+            !type.IsNullable() && type != typeof(bool);
 
         /// <summary>
         /// 判断参数或属性是否为可空类型。
@@ -79,7 +79,7 @@ namespace CodeSpirit.Amis.Extensions
         public static JArray GetEnumOptions(this Type type)
         {
             ArgumentNullException.ThrowIfNull(type);
-            
+
             var enumType = Nullable.GetUnderlyingType(type) ?? type;
             if (!enumType.IsEnum)
             {

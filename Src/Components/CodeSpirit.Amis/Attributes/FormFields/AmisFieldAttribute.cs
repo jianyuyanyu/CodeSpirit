@@ -57,6 +57,16 @@
         public string AdditionalConfig { get; set; }
 
         /// <summary>
+        /// 是否禁用
+        /// </summary>
+        public bool Disabled { get; set; }
+
+        /// <summary>
+        /// 是否为静态模式
+        /// </summary>
+        public bool Static { get; set; }
+
+        /// <summary>
         /// 初始化一个新的 <see cref="AmisFormFieldAttribute"/> 实例。
         /// </summary>
         public AmisFormFieldAttribute()

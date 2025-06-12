@@ -81,14 +81,14 @@ public class CreateExamSettingDto
     /// 是否启用题目乱序
     /// </summary>
     [DisplayName("是否启用题目乱序")]
-    [AmisFormField(Type = "switch", DefaultValue = true)]
+    [AmisSwitchField(DefaultValue = true)]
     public bool EnableRandomQuestionOrder { get; set; }
 
     /// <summary>
     /// 是否启用选项乱序
     /// </summary>
     [DisplayName("是否启用选项乱序")]
-    [AmisFormField(Type = "switch", DefaultValue = true)]
+    [AmisSwitchField(DefaultValue = true)]
     public bool EnableRandomOptionOrder { get; set; }
 
     /// <summary>
@@ -103,7 +103,7 @@ public class CreateExamSettingDto
     /// 提交后是否可以查看考试结果
     /// </summary>
     [DisplayName("提交后是否可以查看考试结果")]
-    [AmisFormField(Type = "switch", DefaultValue = true)]
+    [AmisSwitchField(DefaultValue = true)]
     public bool EnableViewResult { get; set; }
 
     /// <summary>

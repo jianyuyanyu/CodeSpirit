@@ -15,7 +15,7 @@ public class ExamPaperExportSettingsDto
     /// </summary>
     [DisplayName("启用水印")]
     [Description("开启后，导出的PDF答卷将包含水印信息")]
-    [AmisFormField(Type = "switch", DefaultValue = true)]
+    [AmisSwitchField(DefaultValue = true)]
     public bool EnableWatermark { get; set; } = true;
 
     /// <summary>
@@ -68,7 +68,7 @@ public class ExamPaperExportSettingsDto
     /// </summary>
     [DisplayName("显示考生照片")]
     [Description("在答卷中显示考生照片（如果有）")]
-    [AmisFormField(Type = "switch", DefaultValue = false)]
+    [AmisSwitchField(DefaultValue = false)]
     public bool ShowStudentPhoto { get; set; } = false;
 
     /// <summary>
@@ -76,7 +76,7 @@ public class ExamPaperExportSettingsDto
     /// </summary>
     [DisplayName("显示二维码")]
     [Description("在答卷中显示包含考试信息的二维码")]
-    [AmisFormField(Type = "switch", DefaultValue = false)]
+    [AmisSwitchField(DefaultValue = false)]
     public bool ShowQrCode { get; set; } = false;
 
     /// <summary>
@@ -111,7 +111,7 @@ public class ExamPaperExportSettingsDto
     /// </summary>
     [DisplayName("显示答案解析")]
     [Description("在答卷中显示题目的答案解析")]
-    [AmisFormField(Type = "switch", DefaultValue = false)]
+    [AmisSwitchField(DefaultValue = false)]
     public bool ShowAnalysis { get; set; } = false;
 
     /// <summary>
@@ -119,7 +119,7 @@ public class ExamPaperExportSettingsDto
     /// </summary>
     [DisplayName("显示评分详情")]
     [Description("显示每道题的得分情况和评分详情")]
-    [AmisFormField(Type = "switch", DefaultValue = true)]
+    [AmisSwitchField(DefaultValue = true)]
     public bool ShowScoreDetails { get; set; } = true;
 
     /// <summary>

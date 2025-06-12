@@ -59,9 +59,6 @@ namespace CodeSpirit.Amis.Form.Fields
                 // 设置是否可清除
                 field["clearable"] = attr.Clearable;
                 
-                // 设置是否只读
-                field["readOnly"] = attr.ReadOnly;
-                
                 // 设置是否使用当前日期
                 if (attr.UseCurrentDate)
                 {

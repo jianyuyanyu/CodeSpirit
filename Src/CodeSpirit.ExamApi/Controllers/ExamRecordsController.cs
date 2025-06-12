@@ -900,16 +900,22 @@ public class ExamRecordsController : ApiControllerBase
         var startTime = record.StartTime;
         var duration = record.Duration;
 
-        htmlBuilder.AppendLine($"      开始作答时间: {startTime.ToString("yyyy-MM-dd HH:mm:ss")} | ");
-        htmlBuilder.AppendLine($"      提交时间: {submitTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未提交"} | ");
+        // 将UTC时间转换为本地时间
+        var localStartTime = TimeZoneInfo.ConvertTimeFromUtc(startTime, TimeZoneInfo.Local);
+        var localSubmitTime = submitTime.HasValue 
+            ? TimeZoneInfo.ConvertTimeFromUtc(submitTime.Value, TimeZoneInfo.Local) 
+            : (DateTime?)null;
+
+        htmlBuilder.AppendLine($"      开始作答时间: {localStartTime.ToString("yyyy-MM-dd HH:mm:ss")} | ");
+        htmlBuilder.AppendLine($"      提交时间: {localSubmitTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未提交"} | ");
         
         if (duration.HasValue)
         {
             htmlBuilder.AppendLine($"      作答时长: {duration.Value}分钟");
         }
-        else if (submitTime.HasValue)
+        else if (localSubmitTime.HasValue)
         {
-            var actualDuration = (int)Math.Ceiling((submitTime.Value - startTime).TotalMinutes);
+            var actualDuration = (int)Math.Ceiling((localSubmitTime.Value - localStartTime).TotalMinutes);
             htmlBuilder.AppendLine($"      作答时长: {actualDuration}分钟");
         }
         else

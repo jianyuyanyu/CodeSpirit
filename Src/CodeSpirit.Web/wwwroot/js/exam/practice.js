@@ -1,0 +1,1022 @@
+/**
+ * 在线练习系统客户端主模块
+ * 负责单题练习页面渲染、答题和导航功能
+ * @module PracticeClient
+ */
+(function () {
+    'use strict';
+
+    // 确保TokenManager已初始化
+    TokenManager.initClientMode(window.tenantId, 'exam');
+
+    // 检查用户认证状态
+    if (!TokenManager.isAuthenticated()) {
+        window.location.href = `/${window.tenantId}/exam/login`;
+        return;
+    }
+
+    // 引入依赖模块
+    const amis = amisRequire('amis/embed');
+    const match = amisRequire('path-to-regexp').match;
+    const history = History.createHashHistory();
+
+    // 获取练习ID
+    const practiceId = window.practiceId;
+
+    // 调试模式配置
+    window.enableAMISDebug = false;
+
+    // 常量定义
+    const CONSTANTS = {
+        AUTO_SAVE_DELAY: 1000,           // 自动保存延迟(毫秒)
+        MAX_RETRY_COUNT: 3,              // 最大重试次数
+        RETRY_DELAY: 2000,               // 重试延迟基础时间(毫秒)
+        QUESTION_CHANGE_DELAY: 300       // 题目切换延迟(毫秒)
+    };
+
+    // 全局数据对象
+    window.globalData = {
+        user: {
+            id: null,
+            name: '',
+            avatar: '',
+            roles: []
+        },
+        practice: {
+            id: practiceId,
+            name: '',
+            description: '',
+            recordId: null,
+            currentQuestionIndex: 0,
+            totalQuestions: 0,
+            questions: [],
+            answers: new Map()
+        }
+    };
+
+    // 私有状态变量
+    let practiceData = null;
+    let currentQuestion = null;
+    let currentQuestionIndex = 0;
+    let totalQuestions = 0;
+    let practiceAnswers = new Map();
+    let recordId = null;
+    let isInitialized = false;
+
+    // AMIS实例引用
+    window.amisInstance = null;
+
+    /**
+     * 全局数据管理工具
+     * @namespace GlobalData
+     */
+    window.GlobalData = {
+        get: function (path, defaultValue) {
+            if (!path) return defaultValue;
+            const keys = path.split('.');
+            let current = window.globalData;
+            for (const key of keys) {
+                if (current === undefined || current === null) {
+                    return defaultValue;
+                }
+                current = current[key];
+            }
+            return current !== undefined ? current : defaultValue;
+        },
+
+        set: function (path, value) {
+            if (!path) return value;
+            const keys = path.split('.');
+            let current = window.globalData;
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (current[keys[i]] === undefined) {
+                    current[keys[i]] = {};
+                }
+                current = current[keys[i]];
+            }
+            current[keys[keys.length - 1]] = value;
+            return value;
+        },
+
+        syncToAmis: function (amisInstance, selectedPaths) {
+            if (!amisInstance || !amisInstance.updateProps) return;
+            try {
+                const data = {};
+                if (selectedPaths && Array.isArray(selectedPaths)) {
+                    for (const path of selectedPaths) {
+                        const keys = path.split('.');
+                        let current = data;
+                        let source = window.globalData;
+                        let isValid = true;
+                        for (let i = 0; i < keys.length - 1; i++) {
+                            if (source[keys[i]] === undefined) {
+                                isValid = false;
+                                break;
+                            }
+                            if (current[keys[i]] === undefined) {
+                                current[keys[i]] = {};
+                            }
+                            current = current[keys[i]];
+                            source = source[keys[i]];
+                        }
+                        if (isValid) {
+                            const lastKey = keys[keys.length - 1];
+                            current[lastKey] = source[lastKey];
+                        }
+                    }
+                } else {
+                    Object.assign(data, window.globalData);
+                }
+                amisInstance.updateProps({ data });
+            } catch (error) {
+                console.error('[GlobalData] 同步数据到AMIS失败:', error);
+            }
+        },
+
+        update: function (path, value, syncToAmis = true) {
+            this.set(path, value);
+            if (syncToAmis && window.amisInstance) {
+                this.syncToAmis(window.amisInstance, [path]);
+            }
+        }
+    };
+
+    /**
+     * 加载练习数据
+     * @param {string} practiceId - 练习ID
+     * @returns {Promise<boolean>} 加载是否成功
+     */
+    async function loadPractice(practiceId) {
+        console.log('[练习] 开始加载练习数据:', practiceId);
+        
+        try {
+            const response = await fetch(`/exam/api/client/practice/${practiceId}/start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + TokenManager.getToken(),
+                    'X-Forwarded-With': 'CodeSpirit'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('[练习] 服务器响应:', data);
+
+            // 检查标准API响应格式
+            if (data.status === 'success' && data.data) {
+                return await processPracticeData(data.data);
+            } else if (data.status === 0 && data.data) {
+                // 兼容旧格式
+                return await processPracticeData(data.data);
+            } else {
+                console.error('[练习] 服务器返回错误:', data.message || data.msg || '未知错误');
+                return false;
+            }
+        } catch (error) {
+            console.error('[练习] 加载练习数据失败:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 处理练习数据
+     * @param {object} data - 练习数据
+     * @returns {Promise<boolean>} 处理是否成功
+     */
+    async function processPracticeData(data) {
+        try {
+            practiceData = data;
+            recordId = data.recordId;
+            
+            // 更新全局数据
+            window.GlobalData.set('practice.name', data.practiceName || '练习');
+            window.GlobalData.set('practice.description', data.description || '');
+            window.GlobalData.set('practice.recordId', recordId);
+            
+            // 处理题目数据
+            if (data.questions && data.questions.length > 0) {
+                const processedQuestions = await processQuestions(data.questions);
+                totalQuestions = processedQuestions.length;
+                currentQuestionIndex = 0;
+                
+                window.GlobalData.set('practice.questions', processedQuestions);
+                window.GlobalData.set('practice.totalQuestions', totalQuestions);
+                window.GlobalData.set('practice.currentQuestionIndex', currentQuestionIndex);
+                
+                // 加载当前题目
+                await loadCurrentQuestion();
+                
+                console.log('[练习] 练习数据处理完成，题目数量:', totalQuestions);
+                return true;
+            } else {
+                console.error('[练习] 没有找到题目数据');
+                return false;
+            }
+        } catch (error) {
+            console.error('[练习] 处理练习数据失败:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 处理题目数据
+     * @param {Array} questions - 题目数组
+     * @returns {Promise<Array>} 处理后的题目数组
+     */
+    async function processQuestions(questions) {
+        return questions.map(question => {
+            // 确保题目ID是字符串类型
+            const questionId = String(question.id || question.questionId);
+            
+            // 处理题目类型，将数字类型转换为字符串
+            let questionType = 'SingleChoice';
+            if (typeof question.type === 'number') {
+                switch (question.type) {
+                    case 1: questionType = 'SingleChoice'; break;
+                    case 2: questionType = 'MultipleChoice'; break;
+                    case 3: questionType = 'TrueFalse'; break;
+                    case 4: questionType = 'FillInBlank'; break;
+                    case 5: questionType = 'Essay'; break;
+                    default: questionType = 'SingleChoice'; break;
+                }
+            } else {
+                questionType = question.type || 'SingleChoice';
+            }
+            
+            // 处理选项数据
+            let options = [];
+            if (question.options && Array.isArray(question.options)) {
+                options = question.options.map((opt, index) => ({
+                    label: opt.text || opt.label || opt,
+                    value: String(index) // 使用索引作为值
+                }));
+            }
+            
+            return {
+                id: questionId,
+                questionId: questionId,
+                content: question.content || '',
+                type: questionType,
+                score: question.defaultScore || question.score || 0,
+                options: options,
+                answer: question.answer || null,
+                explanation: question.analysis || question.explanation || '',
+                isRequired: question.isRequired || false
+            };
+        });
+    }
+
+    /**
+     * 加载当前题目
+     * @returns {Promise<boolean>} 加载是否成功
+     */
+    async function loadCurrentQuestion() {
+        try {
+            const questions = window.GlobalData.get('practice.questions', []);
+            
+            if (!questions || questions.length === 0) {
+                console.error('[练习] 没有题目数据');
+                return false;
+            }
+
+            if (currentQuestionIndex < 0 || currentQuestionIndex >= questions.length) {
+                console.error('[练习] 题目索引超出范围:', currentQuestionIndex);
+                return false;
+            }
+
+            currentQuestion = questions[currentQuestionIndex];
+            
+            if (!currentQuestion || !currentQuestion.questionId) {
+                console.error('[练习] 当前题目数据无效:', currentQuestion);
+                return false;
+            }
+
+            console.log('[练习] 加载题目:', currentQuestion.questionId, '索引:', currentQuestionIndex + 1);
+            
+            // 更新题目数据到全局
+            await updateCurrentQuestionData();
+            
+            // 更新UI显示
+            updateQuestionUI();
+            
+            return true;
+        } catch (error) {
+            console.error('[练习] 加载当前题目失败:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 更新当前题目数据
+     * @returns {Promise<void>}
+     */
+    async function updateCurrentQuestionData() {
+        try {
+            // 获取之前保存的答案
+            const savedAnswer = practiceAnswers.get(currentQuestion.questionId);
+            
+            // 更新当前题目数据
+            const questionData = {
+                ...currentQuestion,
+                answer: savedAnswer || currentQuestion.answer || null,
+                currentIndex: currentQuestionIndex,
+                totalCount: totalQuestions
+            };
+            
+            window.GlobalData.set('practice.currentQuestion', questionData);
+            window.GlobalData.set('practice.currentQuestionIndex', currentQuestionIndex);
+            
+            // 同步到AMIS
+            if (window.amisInstance) {
+                window.GlobalData.syncToAmis(window.amisInstance);
+            }
+        } catch (error) {
+            console.error('[练习] 更新当前题目数据失败:', error);
+        }
+    }
+
+    /**
+     * 更新题目UI显示
+     */
+    function updateQuestionUI() {
+        try {
+            // 更新题目编号显示
+            const questionNumberElements = document.querySelectorAll('.question-number');
+            questionNumberElements.forEach(el => {
+                el.textContent = `第${currentQuestionIndex + 1}题`;
+            });
+            
+            // 更新进度显示
+            const progressElements = document.querySelectorAll('.question-progress');
+            progressElements.forEach(el => {
+                el.textContent = `${currentQuestionIndex + 1}/${totalQuestions}`;
+            });
+            
+            // 更新导航按钮状态
+            updateNavigationButtons();
+            
+            console.log('[练习] UI更新完成');
+        } catch (error) {
+            console.error('[练习] 更新题目UI失败:', error);
+        }
+    }
+
+    /**
+     * 更新导航按钮状态
+     */
+    function updateNavigationButtons() {
+        try {
+            const prevButtons = document.querySelectorAll('.prev-question-btn');
+            const nextButtons = document.querySelectorAll('.next-question-btn');
+            
+            // 更新上一题按钮
+            prevButtons.forEach(btn => {
+                if (currentQuestionIndex <= 0) {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('disabled');
+                }
+            });
+            
+            // 更新下一题按钮
+            nextButtons.forEach(btn => {
+                if (currentQuestionIndex >= totalQuestions - 1) {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('disabled');
+                }
+            });
+        } catch (error) {
+            console.error('[练习] 更新导航按钮状态失败:', error);
+        }
+    }
+
+    /**
+     * 保存答案
+     * @param {string} questionId - 题目ID
+     * @param {*} answer - 答案
+     * @returns {Promise<boolean>} 保存是否成功
+     */
+    async function saveAnswer(questionId, answer) {
+        try {
+            console.log('[练习] 保存答案:', questionId, answer);
+            
+            // 保存到本地缓存
+            practiceAnswers.set(String(questionId), answer);
+            
+            // 更新全局数据
+            const answers = window.GlobalData.get('practice.answers', new Map());
+            answers.set(String(questionId), answer);
+            window.GlobalData.set('practice.answers', answers);
+            
+            // 发送到服务器
+            if (recordId) {
+                await sendAnswerToServer(recordId, questionId, answer);
+            }
+            
+            // 检查是否为最后一题且已答题，如果是则自动完成练习
+            await checkAutoComplete();
+            
+            return true;
+        } catch (error) {
+            console.error('[练习] 保存答案失败:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 发送答案到服务器
+     * @param {string} recordId - 记录ID
+     * @param {string} questionId - 题目ID
+     * @param {*} answer - 答案
+     * @param {number} retryCount - 重试次数
+     * @returns {Promise<boolean>} 发送是否成功
+     */
+    async function sendAnswerToServer(recordId, questionId, answer, retryCount = 0) {
+        try {
+            const response = await fetch(`/exam/api/client/practice/${recordId}/save-answer`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + TokenManager.getToken(),
+                    'X-Forwarded-With': 'CodeSpirit'
+                },
+                body: JSON.stringify({
+                    questionId: String(questionId),
+                    answer: answer
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.status === 0) {
+                console.log('[练习] 答案已保存到服务器:', questionId);
+                return true;
+            } else {
+                console.error('[练习] 服务器返回错误:', data.msg);
+                if (retryCount < CONSTANTS.MAX_RETRY_COUNT) {
+                    console.log('[练习] 重试保存答案...');
+                    await new Promise(resolve => setTimeout(resolve, CONSTANTS.RETRY_DELAY));
+                    return await sendAnswerToServer(recordId, questionId, answer, retryCount + 1);
+                }
+                return false;
+            }
+        } catch (error) {
+            console.error('[练习] 发送答案到服务器失败:', error);
+            
+            if (retryCount < CONSTANTS.MAX_RETRY_COUNT) {
+                console.log('[练习] 重试保存答案...');
+                await new Promise(resolve => setTimeout(resolve, CONSTANTS.RETRY_DELAY));
+                return await sendAnswerToServer(recordId, questionId, answer, retryCount + 1);
+            }
+            
+            return false;
+        }
+    }
+
+    /**
+     * 上一题
+     * @returns {Promise<boolean>} 切换是否成功
+     */
+    async function previousQuestion() {
+        if (currentQuestionIndex <= 0) {
+            console.log('[练习] 已经是第一题了');
+            return false;
+        }
+        
+        currentQuestionIndex--;
+        window.GlobalData.set('practice.currentQuestionIndex', currentQuestionIndex);
+        
+        return await loadCurrentQuestion();
+    }
+
+    /**
+     * 下一题
+     * @returns {Promise<boolean>} 切换是否成功
+     */
+    async function nextQuestion() {
+        if (currentQuestionIndex >= totalQuestions - 1) {
+            console.log('[练习] 已经是最后一题了');
+            return false;
+        }
+        
+        currentQuestionIndex++;
+        window.GlobalData.set('practice.currentQuestionIndex', currentQuestionIndex);
+        
+        return await loadCurrentQuestion();
+    }
+
+    /**
+     * 检查是否自动完成练习
+     * @returns {Promise<void>}
+     */
+    async function checkAutoComplete() {
+        try {
+            // 检查是否为最后一题
+            if (currentQuestionIndex >= totalQuestions - 1) {
+                console.log('[练习] 当前是最后一题，检查是否已答题');
+                
+                // 检查当前题目是否已答题
+                const currentQuestionId = currentQuestion?.questionId;
+                if (currentQuestionId) {
+                    const answer = practiceAnswers.get(String(currentQuestionId));
+                    if (answer !== undefined && answer !== null && answer !== '') {
+                        console.log('[练习] 最后一题已答题，自动完成练习');
+                        
+                        // 延迟1秒后自动完成，给用户一个反应时间
+                        setTimeout(async () => {
+                            await completePractice();
+                        }, 1000);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[练习] 检查自动完成失败:', error);
+        }
+    }
+
+    /**
+     * 完成练习
+     * @returns {Promise<void>}
+     */
+    async function completePractice() {
+        try {
+            console.log('[练习] 开始完成练习');
+            showLoading('正在提交练习...');
+            
+            // 调用完成练习API
+            const response = await fetch(`/exam/api/client/practice/${recordId}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + TokenManager.getToken(),
+                    'X-Forwarded-With': 'CodeSpirit'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.status === 'success' || data.status === 0) {
+                console.log('[练习] 练习完成成功');
+                
+                // 显示完成提示
+                if (window.amisInstance) {
+                    window.amisInstance.getComponentByName('app')?.dispatchEvent('toast', {
+                        level: 'success',
+                        msg: '练习已完成！'
+                    });
+                }
+                
+                // 延迟2秒后跳转到我的练习界面
+                setTimeout(() => {
+                    window.location.href = `/${window.tenantId}/exam/practice-history`;
+                }, 2000);
+                
+            } else {
+                throw new Error(data.message || '完成练习失败');
+            }
+            
+        } catch (error) {
+            console.error('[练习] 完成练习失败:', error);
+            
+            if (window.amisInstance) {
+                window.amisInstance.getComponentByName('app')?.dispatchEvent('toast', {
+                    level: 'error',
+                    msg: '完成练习失败：' + error.message
+                });
+            }
+        } finally {
+            hideLoading();
+        }
+    }
+
+    /**
+     * 暴露全局方法
+     */
+    function exposeGlobalMethods() {
+        window.saveAnswer = saveAnswer;
+        window.previousQuestion = previousQuestion;
+        window.nextQuestion = nextQuestion;
+        window.loadPractice = loadPractice;
+        window.loadCurrentQuestion = loadCurrentQuestion;
+        window.completePractice = completePractice;
+    }
+
+    // 练习页面配置
+    const practicePage = {
+        type: 'page',
+        className: 'practice-page',
+        body: [
+            // 头部固定区域
+            {
+                type: 'container',
+                className: 'practice-header-container',
+                body: [
+                    {
+                        type: 'service',
+                        api: '/identity/api/identity/profile',
+                        className: 'practice-client-header',
+                        body: [
+                            {
+                                type: 'flex',
+                                justify: 'space-between',
+                                className: 'w-full header-container',
+                                items: [
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="logo"><img src="' + (window.siteSettings ? window.siteSettings.logoUrl : '/logo.png') + '" /><span>' + (window.siteSettings ? window.siteSettings.clientAppName : '考试系统') + '</span></div>',
+                                        className: 'client-logo'
+                                    },
+                                    {
+                                        type: 'flex',
+                                        justify: 'flex-end',
+                                        alignItems: 'center',
+                                        className: 'user-info-container',
+                                        items: [
+                                            {
+                                                type: 'tpl',
+                                                tpl: '<div class="practice-progress"><span class="question-progress">${practice.currentQuestionIndex + 1}/${practice.totalQuestions}</span></div>'
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            // 题目内容区域
+            {
+                type: 'container',
+                className: 'practice-content-container',
+                body: [
+                    {
+                        type: 'panel',
+                        className: 'practice-panel',
+                        header: {
+                            type: 'tpl',
+                            tpl: '<div class="practice-title">${practice.name}</div>'
+                        },
+                        body: [
+                            // 题目显示区域
+                            {
+                                type: 'container',
+                                className: 'question-display-area',
+                                body: [
+                                    {
+                                        type: 'tpl',
+                                        tpl: '<div class="question-number-badge"><span class="question-number">第${practice.currentQuestionIndex + 1}题</span></div>',
+                                        className: 'question-number-container'
+                                    },
+                                    {
+                                        type: 'container',
+                                        className: 'question-content-container',
+                                        body: [
+                                            {
+                                                type: 'tpl',
+                                                tpl: '<div class="question-content"><pre>${practice.currentQuestion.content | raw}</pre><span class="question-score">（${practice.currentQuestion.score}分）</span></div>',
+                                                className: 'question-text'
+                                            },
+                                            // 答题区域
+                                            {
+                                                type: 'container',
+                                                className: 'answer-area',
+                                                body: [
+                                                    // 单选题
+                                                    {
+                                                        type: 'radios',
+                                                        name: 'currentAnswer',
+                                                        source: '${practice.currentQuestion.options}',
+                                                        mode: 'vertical',
+                                                        value: '${practice.currentQuestion.answer}',
+                                                        visibleOn: "${practice.currentQuestion.type === 'SingleChoice'}",
+                                                        className: 'question-options single-choice-options',
+                                                        onEvent: {
+                                                            change: {
+                                                                actions: [
+                                                                    {
+                                                                        actionType: 'custom',
+                                                                        script: 'saveAnswer(event.data.practice.currentQuestion.questionId, event.data.value);'
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    // 多选题
+                                                    {
+                                                        type: 'checkboxes',
+                                                        name: 'currentAnswer',
+                                                        source: '${practice.currentQuestion.options}',
+                                                        mode: 'vertical',
+                                                        value: '${practice.currentQuestion.answer}',
+                                                        visibleOn: "${practice.currentQuestion.type === 'MultipleChoice'}",
+                                                        className: 'question-options multiple-choice-options',
+                                                        onEvent: {
+                                                            change: {
+                                                                actions: [
+                                                                    {
+                                                                        actionType: 'custom',
+                                                                        script: 'saveAnswer(event.data.practice.currentQuestion.questionId, event.data.value);'
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    // 判断题
+                                                    {
+                                                        type: 'radios',
+                                                        name: 'currentAnswer',
+                                                        options: [
+                                                            { label: '正确', value: 'True' },
+                                                            { label: '错误', value: 'False' }
+                                                        ],
+                                                        mode: 'vertical',
+                                                        value: '${practice.currentQuestion.answer}',
+                                                        visibleOn: "${practice.currentQuestion.type === 'TrueFalse'}",
+                                                        className: 'question-options true-false-options',
+                                                        onEvent: {
+                                                            change: {
+                                                                actions: [
+                                                                    {
+                                                                        actionType: 'custom',
+                                                                        script: 'saveAnswer(event.data.practice.currentQuestion.questionId, event.data.value);'
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    // 主观题
+                                                    {
+                                                        type: 'textarea',
+                                                        name: 'currentAnswer',
+                                                        placeholder: '请输入答案',
+                                                        minRows: 4,
+                                                        maxRows: 8,
+                                                        value: '${practice.currentQuestion.answer}',
+                                                        visibleOn: "${practice.currentQuestion.type !== 'SingleChoice' && practice.currentQuestion.type !== 'MultipleChoice' && practice.currentQuestion.type !== 'TrueFalse'}",
+                                                        className: 'question-textarea subjective-answer',
+                                                        onEvent: {
+                                                            change: {
+                                                                actions: [
+                                                                    {
+                                                                        actionType: 'custom',
+                                                                        script: 'saveAnswer(event.data.practice.currentQuestion.questionId, event.data.value);'
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            // 导航按钮区域
+            {
+                type: 'container',
+                className: 'practice-navigation-container',
+                body: [
+                    {
+                        type: 'flex',
+                        justify: 'space-between',
+                        className: 'navigation-buttons',
+                        items: [
+                            {
+                                type: 'button',
+                                label: '上一题',
+                                level: 'default',
+                                size: 'lg',
+                                className: 'prev-question-btn',
+                                disabled: '${practice.currentQuestionIndex <= 0}',
+                                onEvent: {
+                                    click: {
+                                        actions: [
+                                            {
+                                                actionType: 'custom',
+                                                script: 'previousQuestion();'
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                type: 'flex',
+                                className: 'center-buttons',
+                                items: [
+                                    {
+                                        type: 'button',
+                                        label: '完成练习',
+                                        level: 'success',
+                                        size: 'lg',
+                                        className: 'complete-practice-btn',
+                                        onEvent: {
+                                            click: {
+                                                actions: [
+                                                    {
+                                                        actionType: 'dialog',
+                                                        dialog: {
+                                                            title: '确认完成练习',
+                                                            body: '确定要完成当前练习吗？完成后将无法继续答题。',
+                                                            actions: [
+                                                                {
+                                                                    type: 'button',
+                                                                    label: '取消',
+                                                                    level: 'default',
+                                                                    actionType: 'cancel'
+                                                                },
+                                                                {
+                                                                    type: 'button',
+                                                                    label: '确定完成',
+                                                                    level: 'primary',
+                                                                    onEvent: {
+                                                                        click: {
+                                                                            actions: [
+                                                                                {
+                                                                                    actionType: 'custom',
+                                                                                    script: 'completePractice();'
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                type: 'button',
+                                label: '下一题',
+                                level: 'primary',
+                                size: 'lg',
+                                className: 'next-question-btn',
+                                disabled: '${practice.currentQuestionIndex >= practice.totalQuestions - 1}',
+                                onEvent: {
+                                    click: {
+                                        actions: [
+                                            {
+                                                actionType: 'custom',
+                                                script: 'nextQuestion();'
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    };
+
+    // 初始化AMIS
+    let amisInstance = amis.embed(
+        '#root',
+        practicePage,
+        {
+            location: history.location,
+            data: {
+                practice: {
+                    name: '加载中...',
+                    currentQuestionIndex: 0,
+                    totalQuestions: 0,
+                    currentQuestion: {
+                        id: '',
+                        questionId: '',
+                        content: '正在加载题目...',
+                        type: 'SingleChoice',
+                        score: 0,
+                        options: [],
+                        answer: null
+                    },
+                    questions: [],
+                    answers: new Map()
+                }
+            },
+            locale: 'zh-CN',
+            context: {
+                WEB_HOST: webHost || ''
+            }
+        },
+        {
+            updateLocation: (location) => {
+                history.push(location);
+            },
+            jumpTo: (to) => {
+                history.push(to);
+            },
+            requestAdaptor: (api) => {
+                var token = TokenManager.getToken();
+                return {
+                    ...api,
+                    headers: {
+                        ...api.headers,
+                        'Authorization': 'Bearer ' + token,
+                        'X-Forwarded-With': 'CodeSpirit'
+                    }
+                };
+            },
+            responseAdaptor: function (api, payload, query, request, response) {
+                if (response.status === 403) {
+                    alert('您没有权限进行此练习！');
+                    window.location.href = `/${window.tenantId}/exam/app`;
+                    return { msg: '您没有权限访问此页面，请联系管理员！' };
+                }
+                else if (response.status === 401) {
+                    window.location.href = `/${window.tenantId}/exam/login`;
+                    return { msg: '登录过期！' };
+                }
+                return payload;
+            },
+            theme: 'antd'
+        }
+    );
+
+    // 设置全局AMIS实例
+    window.amisInstance = amisInstance;
+
+    // 暴露全局方法
+    exposeGlobalMethods();
+
+    /**
+     * 显示加载状态
+     * @param {string} text - 加载提示文本
+     */
+    function showLoading(text = '正在加载练习...') {
+        const loadingElement = document.getElementById('loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'flex';
+            const textElement = loadingElement.querySelector('.practice-loading-text');
+            if (textElement) {
+                textElement.textContent = text;
+            }
+        }
+    }
+
+    /**
+     * 隐藏加载状态
+     */
+    function hideLoading() {
+        const loadingElement = document.getElementById('loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+
+    // 页面加载完成后初始化
+    window.addEventListener('DOMContentLoaded', function() {
+        console.log('[练习] 页面加载完成，开始初始化...');
+        
+        showLoading('正在加载练习数据...');
+        
+        setTimeout(async () => {
+            try {
+                const success = await loadPractice(practiceId);
+                if (success) {
+                    isInitialized = true;
+                    hideLoading();
+                    console.log('[练习] 初始化完成');
+                } else {
+                    hideLoading();
+                    console.error('[练习] 初始化失败');
+                    alert('练习加载失败，请刷新页面重试');
+                }
+            } catch (error) {
+                hideLoading();
+                console.error('[练习] 初始化过程中出错:', error);
+                alert('练习加载失败，请刷新页面重试');
+            }
+        }, 500);
+    });
+
+    // 页面卸载时的清理
+    window.addEventListener('beforeunload', function() {
+        console.log('[练习] 页面即将卸载，执行清理...');
+    });
+
+})(); 

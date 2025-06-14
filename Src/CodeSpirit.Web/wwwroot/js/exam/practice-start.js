@@ -65,11 +65,21 @@
             }
             
             const result = await response.json();
+            if (!result) {
+                throw new Error('返回数据为空');
+            }
+            
+            // 如果返回的是直接数据，则直接返回
+            if (result.recordId || result.id) {
+                return result;
+            }
+            
+            // 否则检查标准响应格式
             if (result.status !== 0) {
                 throw new Error(result.msg || '请求失败');
             }
             
-            return result.data;
+            return result.data || result;
         } catch (error) {
             console.error('API请求失败:', error);
             throw error;
@@ -251,7 +261,7 @@
                                             <i class="fa fa-calendar"></i>
                                             <span>创建时间: \${createdAtFormatted || '未知'}</span>
                                         </div>
-                                        <button class="practice-start-btn" onclick="window.startPractice(\${id})">
+                                        <button class="practice-start-btn" onclick="window.startPractice('\${id}')">
                                             <i class="fa fa-play"></i>
                                             <span>开始练习</span>
                                         </button>
@@ -274,12 +284,13 @@
                 method: 'POST'
             });
             
-            if (result.recordId) {
-                window.location.href = `/${window.tenantId}/exam/practice/${practiceId}/start?recordId=${result.recordId}`;
+            if (result && result.recordId) {
+                window.location.href = `/${window.tenantId}/exam/practice/${practiceId}?recordId=${result.recordId}`;
             } else {
-                throw new Error('开始练习失败');
+                throw new Error('开始练习失败：未获取到练习记录ID');
             }
         } catch (error) {
+            console.error('开始练习失败:', error);
             alert('开始练习失败: ' + error.message);
         } finally {
             showLoading(false);

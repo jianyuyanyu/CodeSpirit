@@ -29,6 +29,7 @@ public class PracticeController : ApiControllerBase
     /// <param name="practiceSettingService">练习设置服务</param>
     /// <param name="practiceRecordService">练习记录服务</param>
     /// <param name="logger">日志服务</param>
+    /// <param name="currentUser">当前用户</param>
     public PracticeController(
         IPracticeSettingService practiceSettingService,
         IPracticeRecordService practiceRecordService,
@@ -92,18 +93,25 @@ public class PracticeController : ApiControllerBase
     /// <summary>
     /// 开始练习
     /// </summary>
+    /// <param name="id">练习设置ID</param>
+    /// <returns>练习开始结果，包含练习数据和记录ID</returns>
     [HttpPost("{id}/start")]
     [DisplayName("开始练习")]
-    public async Task<ActionResult> StartPractice(long id)
+    public async Task<ActionResult<ApiResponse<PracticeStartResultDto>>> StartPractice(long id)
     {
         long studentId = GetCurrentUserId();
-        var recordId = await _practiceRecordService.StartPracticeAsync(studentId, id);
-        return Ok(new { recordId, id });
+        
+        // 开始练习并获取完整的练习数据
+        var result = await _practiceRecordService.StartPracticeWithDataAsync(studentId, id);
+        
+        return SuccessResponse(result);
     }
 
     /// <summary>
     /// 获取练习基本信息
     /// </summary>
+    /// <param name="id">练习设置ID</param>
+    /// <returns>练习基本信息</returns>
     [HttpGet("{id}/basic")]
     [DisplayName("获取练习基本信息")]
     public async Task<ActionResult<ApiResponse<PracticeBasicInfoDto>>> GetPracticeBasicInfo(long id)
@@ -116,6 +124,9 @@ public class PracticeController : ApiControllerBase
     /// <summary>
     /// 保存答案
     /// </summary>
+    /// <param name="recordId">练习记录ID</param>
+    /// <param name="answerDto">答案数据</param>
+    /// <returns>保存结果</returns>
     [HttpPost("{recordId}/save-answer")]
     [DisplayName("保存答案")]
     public async Task<ActionResult<ApiResponse>> SaveAnswer(long recordId, [FromBody] PracticeAnswerDto answerDto)
@@ -126,14 +137,46 @@ public class PracticeController : ApiControllerBase
     }
 
     /// <summary>
+    /// 批量保存答案
+    /// </summary>
+    /// <param name="recordId">练习记录ID</param>
+    /// <param name="answers">答案列表</param>
+    /// <returns>保存结果</returns>
+    [HttpPost("{recordId}/save-answers")]
+    [DisplayName("批量保存答案")]
+    public async Task<ActionResult<ApiResponse>> SaveAnswers(long recordId, [FromBody] List<PracticeAnswerDto> answers)
+    {
+        long studentId = GetCurrentUserId();
+        await _practiceRecordService.SaveAnswersAsync(recordId, studentId, answers);
+        return SuccessResponse();
+    }
+
+    /// <summary>
     /// 提交练习
     /// </summary>
+    /// <param name="recordId">练习记录ID</param>
+    /// <param name="answers">答案列表</param>
+    /// <returns>提交结果</returns>
     [HttpPost("{recordId}/submit")]
     [DisplayName("提交练习")]
     public async Task<ActionResult<ApiResponse>> SubmitPractice(long recordId, [FromBody] List<PracticeAnswerDto> answers)
     {
         long studentId = GetCurrentUserId();
         await _practiceRecordService.SubmitPracticeAsync(recordId, studentId, answers);
+        return SuccessResponse();
+    }
+
+    /// <summary>
+    /// 完成练习（自动完成或手动完成）
+    /// </summary>
+    /// <param name="recordId">练习记录ID</param>
+    /// <returns>完成结果</returns>
+    [HttpPost("{recordId}/complete")]
+    [DisplayName("完成练习")]
+    public async Task<ActionResult<ApiResponse>> CompletePractice(long recordId)
+    {
+        long studentId = GetCurrentUserId();
+        await _practiceRecordService.CompletePracticeAsync(recordId, studentId);
         return SuccessResponse();
     }
 

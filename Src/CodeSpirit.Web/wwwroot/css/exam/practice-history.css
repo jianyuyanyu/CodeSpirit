@@ -941,4 +941,151 @@
         box-shadow: none;
         border: 1px solid #ccc;
     }
+}
+
+/* 新的按钮组样式 - 防止动画抖动 */
+.cxd-ButtonGroup {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+
+.view-detail-btn,
+.retry-btn {
+    position: relative !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important; /* 缩短动画时间 */
+    overflow: hidden;
+    text-decoration: none;
+    display: inline-block;
+    min-width: 80px;
+    text-align: center;
+    user-select: none !important; /* 防止文本选择 */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    outline: none !important; /* 移除焦点轮廓 */
+    border: none !important;
+    will-change: transform; /* 优化动画性能 */
+}
+
+/* 防止按钮在点击时产生抖动 */
+.view-detail-btn:active,
+.retry-btn:active {
+    transform: scale(0.98) !important; /* 轻微缩放而不是位移 */
+    transition: transform 0.1s ease !important;
+}
+
+/* 查看详情按钮样式 */
+.view-detail-btn {
+    background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.view-detail-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0056b3, #004085) !important;
+    box-shadow: 0 3px 6px rgba(0, 123, 255, 0.4) !important;
+    transform: translateY(-1px) !important; /* 减少位移距离 */
+}
+
+.view-detail-btn:focus {
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25) !important;
+}
+
+/* 重新练习按钮样式 */
+.retry-btn {
+    background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.retry-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1e7e34, #155724) !important;
+    box-shadow: 0 3px 6px rgba(40, 167, 69, 0.4) !important;
+    transform: translateY(-1px) !important; /* 减少位移距离 */
+}
+
+.retry-btn:focus {
+    box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25) !important;
+}
+
+/* 禁用状态 */
+.view-detail-btn:disabled,
+.retry-btn:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+    pointer-events: none; /* 完全禁用交互 */
+}
+
+/* 防止双击选中文本 */
+.view-detail-btn::-moz-selection,
+.retry-btn::-moz-selection {
+    background: transparent;
+}
+
+.view-detail-btn::selection,
+.retry-btn::selection {
+    background: transparent;
+}
+
+/* 按钮加载状态 */
+.view-detail-btn.loading,
+.retry-btn.loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.view-detail-btn.loading::after,
+.retry-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    animation: buttonSpin 0.8s linear infinite;
+}
+
+@keyframes buttonSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 表格中的按钮组样式优化 */
+.practice-records-table .cxd-ButtonGroup {
+    margin: 0;
+    padding: 0;
+}
+
+.practice-records-table .view-detail-btn,
+.practice-records-table .retry-btn {
+    margin: 0 2px;
+    white-space: nowrap;
+}
+
+/* 移动端响应式优化 */
+@media (max-width: 768px) {
+    .cxd-ButtonGroup {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .view-detail-btn,
+    .retry-btn {
+        width: 100%;
+        min-width: auto;
+    }
 } 

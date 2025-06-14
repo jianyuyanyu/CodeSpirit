@@ -374,14 +374,53 @@
         return tenantId ? `/${tenantId}/exam/practice` : '/exam/practice';
     }
 
+    // 防抖处理变量
+    let isProcessingAction = false;
+    const actionDebounceTime = 500; // 防抖时间500ms
+
     /**
      * 查看练习详情
      * @param {string} recordId - 练习记录ID
      */
     function viewPracticeDetail(recordId) {
-        const tenantId = window.tenantId || '';
-        const url = tenantId ? `/${tenantId}/exam/practice-result/${recordId}` : `/exam/practice-result/${recordId}`;
-        window.open(url, '_blank');
+        // 防抖处理
+        if (isProcessingAction) {
+            console.log('[我的练习] 操作进行中，忽略重复点击');
+            return;
+        }
+
+        // 参数验证
+        if (!recordId) {
+            console.error('[我的练习] 查看详情失败：记录ID为空');
+            alert('无法获取练习记录ID');
+            return;
+        }
+
+        try {
+            isProcessingAction = true;
+            console.log('[我的练习] 查看练习详情，记录ID:', recordId);
+            
+            const tenantId = window.tenantId || '';
+            const url = tenantId ? `/${tenantId}/exam/practice-result/${recordId}` : `/exam/practice-result/${recordId}`;
+            
+            console.log('[我的练习] 打开详情页面:', url);
+            const newWindow = window.open(url, '_blank');
+            
+            // 检查弹窗是否被阻止
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                console.warn('[我的练习] 弹窗被阻止，尝试当前窗口打开');
+                window.location.href = url;
+            }
+            
+        } catch (error) {
+            console.error('[我的练习] 查看详情失败:', error);
+            alert('打开详情页面失败，请重试');
+        } finally {
+            // 延迟重置防抖标志
+            setTimeout(() => {
+                isProcessingAction = false;
+            }, actionDebounceTime);
+        }
     }
 
     /**
@@ -389,9 +428,37 @@
      * @param {string} practiceId - 练习设置ID
      */
     function retryPractice(practiceId) {
-        const tenantId = window.tenantId || '';
-        const url = tenantId ? `/${tenantId}/exam/practice/${practiceId}` : `/exam/practice/${practiceId}`;
-        window.location.href = url;
+        // 防抖处理
+        if (isProcessingAction) {
+            console.log('[我的练习] 操作进行中，忽略重复点击');
+            return;
+        }
+
+        // 参数验证
+        if (!practiceId) {
+            console.error('[我的练习] 重新练习失败：练习ID为空');
+            alert('无法获取练习ID');
+            return;
+        }
+
+        try {
+            isProcessingAction = true;
+            console.log('[我的练习] 重新练习，练习ID:', practiceId);
+            
+            const tenantId = window.tenantId || '';
+            const url = tenantId ? `/${tenantId}/exam/practice/${practiceId}` : `/exam/practice/${practiceId}`;
+            
+            console.log('[我的练习] 跳转到练习页面:', url);
+            window.location.href = url;
+            
+        } catch (error) {
+            console.error('[我的练习] 重新练习失败:', error);
+            alert('跳转到练习页面失败，请重试');
+            // 如果跳转失败，重置防抖标志
+            setTimeout(() => {
+                isProcessingAction = false;
+            }, actionDebounceTime);
+        }
     }
 
     /**
@@ -521,6 +588,24 @@
     }
 
     /**
+     * 设置按钮加载状态
+     * @param {string} buttonClass - 按钮类名
+     * @param {boolean} loading - 是否加载中
+     */
+    function setButtonLoading(buttonClass, loading) {
+        const buttons = document.querySelectorAll(`.${buttonClass}`);
+        buttons.forEach(button => {
+            if (loading) {
+                button.classList.add('loading');
+                button.disabled = true;
+            } else {
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+        });
+    }
+
+    /**
      * 暴露全局方法
      */
     function exposeGlobalMethods() {
@@ -532,6 +617,7 @@
         window.changePage = changePage;
         window.viewPracticeDetail = viewPracticeDetail;
         window.retryPractice = retryPractice;
+        window.setButtonLoading = setButtonLoading; // 暴露按钮状态管理方法
     }
 
     // 我的练习历史页面配置
@@ -798,8 +884,101 @@
                                         {
                                             name: 'actions',
                                             label: '操作',
-                                            type: 'tpl',
-                                            tpl: '<div class="action-buttons"><button class="action-btn view" onclick="viewPracticeDetail(\'${id}\')">查看详情</button><button class="action-btn retry" onclick="retryPractice(\'${practiceId}\')">重新练习</button></div>'
+                                            type: 'button-group',
+                                            buttons: [
+                                                {
+                                                    type: 'button',
+                                                    label: '查看详情',
+                                                    level: 'info',
+                                                    size: 'sm',
+                                                    className: 'action-btn view-detail-btn',
+                                                    onEvent: {
+                                                        click: {
+                                                            actions: [
+                                                                {
+                                                                    actionType: 'custom',
+                                                                    script: `
+                                                                        const recordId = event.data.id;
+                                                                        console.log('[我的练习] 点击查看详情按钮，记录ID:', recordId);
+                                                                        
+                                                                        // 设置按钮加载状态
+                                                                        if (window.setButtonLoading) {
+                                                                            window.setButtonLoading('view-detail-btn', true);
+                                                                        }
+                                                                        
+                                                                        // 延迟执行，给用户视觉反馈
+                                                                        setTimeout(() => {
+                                                                            try {
+                                                                                if (window.viewPracticeDetail && recordId) {
+                                                                                    window.viewPracticeDetail(recordId);
+                                                                                } else {
+                                                                                    console.error('[我的练习] 查看详情失败：方法或记录ID不存在');
+                                                                                    alert('查看详情失败，请刷新页面重试');
+                                                                                }
+                                                                            } finally {
+                                                                                // 重置按钮状态
+                                                                                if (window.setButtonLoading) {
+                                                                                    setTimeout(() => {
+                                                                                        window.setButtonLoading('view-detail-btn', false);
+                                                                                    }, 200);
+                                                                                }
+                                                                            }
+                                                                        }, 100);
+                                                                    `
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    type: 'button',
+                                                    label: '重新练习',
+                                                    level: 'primary',
+                                                    size: 'sm',
+                                                    className: 'action-btn retry-btn',
+                                                    onEvent: {
+                                                        click: {
+                                                            actions: [
+                                                                {
+                                                                    actionType: 'custom',
+                                                                    script: `
+                                                                        const practiceId = event.data.practiceId;
+                                                                        console.log('[我的练习] 点击重新练习按钮，练习ID:', practiceId);
+                                                                        
+                                                                        // 设置按钮加载状态
+                                                                        if (window.setButtonLoading) {
+                                                                            window.setButtonLoading('retry-btn', true);
+                                                                        }
+                                                                        
+                                                                        // 延迟执行，给用户视觉反馈
+                                                                        setTimeout(() => {
+                                                                            try {
+                                                                                if (window.retryPractice && practiceId) {
+                                                                                    window.retryPractice(practiceId);
+                                                                                    // 页面即将跳转，不需要重置按钮状态
+                                                                                } else {
+                                                                                    console.error('[我的练习] 重新练习失败：方法或练习ID不存在');
+                                                                                    alert('重新练习失败，请刷新页面重试');
+                                                                                    // 重置按钮状态
+                                                                                    if (window.setButtonLoading) {
+                                                                                        window.setButtonLoading('retry-btn', false);
+                                                                                    }
+                                                                                }
+                                                                            } catch (error) {
+                                                                                console.error('[我的练习] 重新练习出错:', error);
+                                                                                // 重置按钮状态
+                                                                                if (window.setButtonLoading) {
+                                                                                    window.setButtonLoading('retry-btn', false);
+                                                                                }
+                                                                            }
+                                                                        }, 100);
+                                                                    `
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ]
                                         }
                                     ],
                                     placeholder: {

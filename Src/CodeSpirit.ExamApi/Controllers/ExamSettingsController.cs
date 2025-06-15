@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
 
+using Microsoft.Extensions.Logging;
+
 namespace CodeSpirit.ExamApi.Controllers;
 
 /// <summary>
@@ -20,13 +22,20 @@ namespace CodeSpirit.ExamApi.Controllers;
 public class ExamSettingsController : ApiControllerBase
 {
     private readonly IExamSettingService _examSettingService;
+    private readonly ICurrentUser _currentUser;
+    private readonly ILogger<ExamSettingsController> _logger;
 
     /// <summary>
     /// 构造函数
     /// </summary>
-    public ExamSettingsController(IExamSettingService examSettingService)
+    public ExamSettingsController(
+        IExamSettingService examSettingService,
+        ICurrentUser currentUser,
+        ILogger<ExamSettingsController> logger)
     {
         _examSettingService = examSettingService;
+        _currentUser = currentUser;
+        _logger = logger;
     }
 
     /// <summary>
@@ -157,10 +166,47 @@ public class ExamSettingsController : ApiControllerBase
         return SuccessResponse();
     }
 
-    [Operation("监考大屏", "link", "/monitor/dashboard?examId=${id}", null, visibleOn: "status == 1", Blank = true)]
+    /// <summary>
+    /// 跳转到监考大屏
+    /// </summary>
+    /// <param name="id">考试设置ID</param>
+    /// <returns>跳转响应</returns>
+    [HttpGet("{id}/monitor-dashboard")]
+    [Operation("监考大屏", "ajax", null, "确定要打开监考大屏吗？", visibleOn: "status == 1")]
     [DisplayName("监考大屏")]
-    public ActionResult<ApiResponse> Go_Monitor_dashboard()
+    public async Task<ActionResult<ApiResponse>> Go_Monitor_dashboard(long id)
     {
-        return SuccessResponse();
+        try
+        {
+            // 验证考试设置是否存在
+            var examSetting = await _examSettingService.GetAsync(id);
+            if (examSetting == null)
+            {
+                return BadRequest(ApiResponse.Error(1, "考试设置不存在"));
+            }
+
+            // 从当前用户获取租户ID（安全方式）
+            var tenantId = _currentUser.TenantId;
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                return BadRequest(ApiResponse.Error(1, "无法获取当前租户信息"));
+            }
+
+            // 构建监考大屏URL
+            var monitorUrl = $"/{tenantId}/exam/monitor/{id}";
+
+            // 返回跳转响应
+            return Ok(ApiResponse.SuccessWithRedirect(
+                url: monitorUrl,
+                msg: "正在跳转到监考大屏...",
+                redirectType: RedirectType.Blank,
+                delay: 1000
+            ));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "监考大屏跳转失败，考试ID: {ExamId}", id);
+            return BadRequest(ApiResponse.Error(1, "跳转失败，请重试"));
+        }
     }
 }

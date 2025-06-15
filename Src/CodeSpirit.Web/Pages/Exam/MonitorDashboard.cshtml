@@ -1,0 +1,51 @@
+@page "/{tenantId}/exam/monitor/{examId}"
+@model CodeSpirit.Web.Pages.Exam.MonitorDashboardModel
+@{
+    ViewData["Title"] = "监考大屏";
+}
+
+@section Head {
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="考试监控大屏 - 实时监控考试进度">
+    
+    <resource path="css/exam/monitor-dashboard.css" type="css" />
+    
+    <style>
+        /* 隐藏默认布局元素 */
+        .navbar, .sidebar, .main-header, .main-sidebar, 
+        .content-header, .main-footer {
+            display: none !important;
+        }
+        
+        .content-wrapper, .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* 监考大屏容器 */
+        .monitor-dashboard-container {
+            min-height: 100vh;
+            background: transparent;
+        }
+    </style>
+}
+
+<div class="monitor-dashboard-container">
+    <div id="root" class="app-wrapper"></div>
+</div>
+
+@section Scripts {
+    <script>
+        // 全局变量
+        window.webHost = '@(HttpContext.Request.Scheme + "://" + HttpContext.Request.Host)';
+        window.tenantId = '@Model.TenantId';
+        window.examId = '@Model.ExamId';
+        window.tenantName = '@Model.TenantName';
+    </script>
+    <resource path="js/exam/monitor-dashboard.js" type="js" />
+} 

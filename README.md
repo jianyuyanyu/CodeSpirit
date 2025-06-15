@@ -350,35 +350,65 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 
 ### 📘 Core Documentation
 
-1. [📖 Development Guide (Draft)](./Docs/CodeSpirit（码灵）开发指南（初稿）.md) - Complete development guide and best practices
-2. [🏗️ Overall Technical System Description](./Docs/总体技术体系说明.md) - Technical architecture and design philosophy
-3. [🏛️ Backend Architecture](./Docs/后端架构.md) - Backend architecture design description
+1. [📖 Development Guide (Draft)](#) - Complete development guide and best practices (*File not found*)
+2. [🏗️ Overall Technical System Description](./Docs/01-Core-Docs/总体技术体系说明.md) - Technical architecture and design philosophy
+3. [🏛️ Backend Architecture](./Docs/01-Core-Docs/后端架构.md) - Backend architecture design description
+4. [🏗️ Project Architecture Design](./Docs/01-Core-Docs/项目整体架构设计.md) - Overall project architecture design and principles
+5. [🔧 Development Environment Setup Guide](./Docs/01-Core-Docs/开发环境搭建指南.md) - Complete development environment configuration guide
+6. [💎 CodeSpirit.Core Framework](./Docs/01-Core-Docs/CodeSpirit.Core核心框架.md) - Core framework components and architecture
+7. [⚠️ Unified Exception Handling Guide](./Docs/01-Core-Docs/CodeSpirit统一异常处理指南.md) - Enterprise-level exception handling mechanisms and AMIS API compatibility
 
 ### 🎨 UI Generation Engine
 
-4. [🎯 AMIS UI Generation Engine](./Docs/CodeSpirit.Amis.md) - Intelligent UI generation core component
-5. [📊 AMIS Column Auto-Inference](./Docs/AMIS列自动推断功能说明.md) - Intelligent table column generation detailed explanation
-6. [📝 Form Default Values](./Docs/CodeSpirit.Amis表单默认值使用指南.md) - Form default value configuration guide
-7. [📈 Smart Chart Component](./Docs/CodeSpirit.Charts智能图表使用指南.md) - Data visualization solution
-8. [⏰ Date Time Column Optimization](./Docs/日期时间列优化功能总结.md) - Intelligent time field processing
-9. [🎨 UDL UI Description Language Design](./Docs/UDL-UI描述语言设计方案.md) - Unified UI description language architecture design
-10. [🃏 UDL Cards Detailed Implementation](./Docs/UDL-Cards详细实现方案.md) - Card component library implementation guide
+8. [🎯 AMIS UI Generation Engine](./Docs/02-UI-Generation/CodeSpirit.Amis智能界面生成引擎.md) - Intelligent UI generation core component
+9. [📊 AMIS Column Auto-Inference](./Docs/02-UI-Generation/AMIS列自动推断功能说明.md) - Intelligent table column generation detailed explanation
+10. [📝 Form Default Values](./Docs/02-UI-Generation/CodeSpirit.Amis表单默认值使用指南.md) - Form default value configuration guide
+11. [📈 Smart Chart Component](./Docs/02-UI-Generation/CodeSpirit.Charts智能图表使用指南.md) - Data visualization solution
+12. [⏰ Date Time Column Optimization](./Docs/02-UI-Generation/日期时间列优化功能总结.md) - Intelligent time field processing
+13. [🎨 UDL UI Description Language Design](./Docs/02-UI-Generation/UDL-UI描述语言设计方案.md) - Unified UI description language architecture design
+14. [🃏 UDL Cards Detailed Implementation](./Docs/02-UI-Generation/UDL-Cards详细实现方案.md) - Card component library implementation guide
+15. [🎮 UDL Cards Simple Implementation](./Docs/02-UI-Generation/UDL-Cards简易实现方案.md) - Quick implementation guide for UDL Cards
 
 ### 🔧 Core Components
 
-11. [🔗 Aggregator Usage Guide](./Docs/CodeSpirit.Aggregator聚合器使用指南.md) - Data aggregation and field replacement
-12. [⚙️ Settings Management Component](./Docs/CodeSpirit.Settings设置管理组件使用指南.md) - Configuration management solution
-13. [🔒 Distributed Lock Usage Guide](./Docs/CodeSpirit分布式锁使用指南.md) - Distributed lock implementation and usage
-14. [📄 PDF Generation Component](./Docs/CodeSpirit.PdfGeneration使用指南.md) - PDF document generation service
-15. [🕒 Time Processing Mechanism](./Docs/CodeSpirit时间处理机制.md) - Unified time processing solution
-16. [🌐 Client IP Service](./Docs/ClientIpService使用指南.md) - Client IP acquisition and processing
-17. [📋 Audit Component Integration Guide](./Docs/CodeSpirit.Audit审计组件集成使用指南.md) - Complete audit system integration and usage
+16. [🧭 Navigation Component](./Docs/03-Core-Components/CodeSpirit.Navigation导航组件使用指南.md) - Smart navigation system with multi-platform, permission filtering and context awareness
+17. [🔗 Aggregator Usage Guide](./Docs/03-Core-Components/CodeSpirit.Aggregator聚合器使用指南.md) - Data aggregation and field replacement
+18. [⚙️ Settings Management Component](./Docs/03-Core-Components/CodeSpirit.Settings设置管理组件使用指南.md) - Configuration management solution
+19. [🔒 Distributed Lock Usage Guide](./Docs/03-Core-Components/CodeSpirit分布式锁使用指南.md) - Distributed lock implementation and usage
+20. [📄 PDF Generation Component](./Docs/03-Core-Components/CodeSpirit.PdfGeneration使用指南.md) - PDF document generation service
+21. [🕒 Time Processing Mechanism](./Docs/03-Core-Components/CodeSpirit时间处理机制.md) - Unified time processing solution
+22. [🌐 Client IP Service](./Docs/03-Core-Components/ClientIpService使用指南.md) - Client IP acquisition and processing
+23. [📋 Audit Component Integration Guide](./Docs/03-Core-Components/CodeSpirit.Audit审计组件集成使用指南.md) - Complete audit system integration and usage
 
-### 🚀 Infrastructure
+### 🔐 Identity & Authorization
 
-18. [🐰 RabbitMQ Integration Guide](./Docs/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
-19. [🔧 RabbitMQ Troubleshooting](./Docs/RabbitMQ故障排除指南.md) - Common problem solutions
-20. [🔍 Elasticsearch Migration Summary](./Docs/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
+24. [🔑 IdentityApi Identity Service](./Docs/04-Identity-Auth/CodeSpirit.IdentityApi身份认证服务.md) - Complete identity authentication service architecture
+25. [👮 Authorization Component](./Docs/04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md) - Comprehensive permission system with RBAC+ABAC hybrid model
+26. [🎫 TokenManager Frontend Authentication Manager](./Docs/04-Identity-Auth/CodeSpirit.TokenManager前端认证管理器使用指南.md) - Frontend authentication management and token handling
+
+### 🏢 Multi-Tenancy Architecture
+
+27. [🏗️ Multi-Tenant Component Refactoring Plan](./Docs/05-Multi-Tenancy/CodeSpirit多租户组件整改计划.md) - Multi-tenancy architecture improvement and implementation plan
+28. [🎯 TenantResolver Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.TenantResolver租户解析器使用指南.md) - Tenant resolution and context management
+29. [🔍 DataFilter Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.DataFilter数据筛选器使用指南.md) - Data filtering and tenant isolation mechanisms
+30. [🗄️ Multi-Tenant Database Context Architecture](./Docs/05-Multi-Tenancy/CodeSpirit 多租户数据库上下文架构.md) - Database architecture design for multi-tenancy
+31. [✅ ExamApi Multi-Tenant Integration Report](./Docs/05-Multi-Tenancy/ExamApi多租户集成完成报告.md) - Multi-tenant integration completion report for exam system
+32. [🖥️ Multi-Tenant Login Page Usage Guide](./Docs/05-Multi-Tenancy/多租户登录页面使用指南.md) - Multi-tenant login interface implementation
+
+### 🚀 Infrastructure & DevOps
+
+33. [🐰 RabbitMQ Integration Guide](./Docs/06-Infrastructure/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
+34. [🔧 RabbitMQ Troubleshooting](./Docs/06-Infrastructure/RabbitMQ故障排除指南.md) - Common problem solutions
+35. [🔍 Elasticsearch Migration Summary](./Docs/06-Infrastructure/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
+36. [🌐 CORS Policy Configuration Guide](./Docs/06-Infrastructure/CodeSpirit跨域策略配置指南.md) - CORS cross-origin resource sharing configuration and security policies
+
+### 🌐 API & Communication
+
+37. [🔗 Universal API Jump Mechanism Usage Guide](./Docs/07-API-Communication/CodeSpirit通用API跳转机制使用指南.md) - Universal API routing and communication mechanisms
+
+### 📊 Project Management
+
+38. [📋 Technical Debt Management](./Docs/08-Project-Management/技术债管理文档.md) - Technical debt tracking and management standards
 
 ### 💬 Technical Community
 

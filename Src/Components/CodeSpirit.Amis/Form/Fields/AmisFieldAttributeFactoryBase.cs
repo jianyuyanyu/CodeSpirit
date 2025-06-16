@@ -1,9 +1,10 @@
-﻿﻿﻿// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
+﻿﻿// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
 
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.Amis.Form.Fields
 {
@@ -36,8 +37,14 @@ namespace CodeSpirit.Amis.Form.Fields
                 return (null, fieldAttr);
 
             if (fieldAttr == null) return (null, null);
+            
             // 计算是否为必填字段
-            bool isRequired = fieldAttr.Required || !utilityHelper.IsNullable(utilityHelper.GetMemberType(member));
+            // 1. 检查AmisFormFieldAttribute的Required属性
+            // 2. 检查DataAnnotations.RequiredAttribute特性
+            // 3. 检查字段类型是否为非空类型
+            bool isRequired = fieldAttr.Required 
+                || HasRequiredAttribute(member) 
+                || !utilityHelper.IsNullable(utilityHelper.GetMemberType(member));
 
             // 创建字段配置
             JObject field = new JObject
@@ -58,10 +65,36 @@ namespace CodeSpirit.Amis.Form.Fields
             // 处理默认值
             HandleDefaultValue(field, fieldAttr);
 
+            // 处理通用状态属性
+            if (fieldAttr.Disabled)
+            {
+                field["disabled"] = fieldAttr.Disabled;
+            }
+
+            if (fieldAttr.Static)
+            {
+                field["static"] = fieldAttr.Static;
+            }
+
             // 处理额外的自定义配置
             utilityHelper.HandleAdditionalConfig(fieldAttr.AdditionalConfig, field);
 
             return (field, fieldAttr);
+        }
+
+        /// <summary>
+        /// 检查成员是否包含RequiredAttribute特性
+        /// </summary>
+        /// <param name="member">成员信息</param>
+        /// <returns>是否包含Required特性</returns>
+        private bool HasRequiredAttribute(ICustomAttributeProvider member)
+        {
+            return member switch
+            {
+                MemberInfo m => m.GetCustomAttribute<RequiredAttribute>() != null,
+                ParameterInfo p => p.GetCustomAttribute<RequiredAttribute>() != null,
+                _ => false
+            };
         }
 
         /// <summary>

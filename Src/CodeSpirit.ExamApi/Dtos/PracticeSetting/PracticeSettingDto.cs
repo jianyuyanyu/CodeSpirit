@@ -70,4 +70,16 @@ public class PracticeSettingDto
     /// </summary>
     [DisplayName("状态")]
     public PracticeSettingStatus Status { get; set; }
+    
+    /// <summary>
+    /// 创建时间
+    /// </summary>
+    [DisplayName("创建时间")]
+    public DateTime CreatedAt { get; set; }
+    
+    /// <summary>
+    /// 题目数量
+    /// </summary>
+    [DisplayName("题目数量")]
+    public int QuestionCount { get; set; }
 } 

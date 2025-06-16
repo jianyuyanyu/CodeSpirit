@@ -26,7 +26,9 @@ public class PracticeSettingProfile : Profile
 
         // 实体到DTO的详细映射
         CreateMap<PracticeSetting, PracticeSettingDto>()
-            .ForMember(dest => dest.ExamPaperName, opt => opt.MapFrom(src => src.ExamPaper.Name));
+            .ForMember(dest => dest.ExamPaperName, opt => opt.MapFrom(src => src.ExamPaper.Name))
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt))
+            .ForMember(dest => dest.QuestionCount, opt => opt.MapFrom(src => src.ExamPaper.ExamPaperQuestions.Count));
 
         // DTO到实体的映射
         CreateMap<CreatePracticeSettingDto, PracticeSetting>();

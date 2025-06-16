@@ -1,0 +1,46 @@
+@page "/{tenantId}/exam/practice-result/{recordId}"
+@model CodeSpirit.Web.Pages.Exam.PracticeResultModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div id="loading" class="practice-result-loading">
+    <div class="practice-result-loading-spinner"></div>
+    <div class="practice-result-loading-text">正在加载练习详情...</div>
+</div>
+
+<div id="root"></div>
+
+@section Scripts {
+    <resource path="js/exam/practice-result.js" type="js" />
+    <script>
+        // 设置全局变量
+        window.tenantId = '@Model.TenantId';
+        window.recordId = '@Model.RecordId';
+        window.webHost = '@(HttpContext.Request.Scheme)://@(HttpContext.Request.Host)';
+        
+        // 等待TokenManager加载完成后初始化
+        function initializeTokenManager() {
+            if (window.TokenManager) {
+                window.TokenManager.initClientMode(window.tenantId, 'exam');
+                console.log('[练习详情] TokenManager已初始化为客户端模式');
+            } else {
+                console.warn('[练习详情] TokenManager未找到，将在稍后重试');
+                setTimeout(initializeTokenManager, 100);
+            }
+        }
+        
+        // 初始化TokenManager
+        initializeTokenManager();
+        
+        // 初始化页面
+        console.log('[练习详情] 页面初始化开始');
+        console.log('[练习详情] 租户ID:', window.tenantId);
+        console.log('[练习详情] 记录ID:', window.recordId);
+        console.log('[练习详情] Web主机:', window.webHost);
+    </script>
+}
+
+@section Styles {
+    <resource path="css/exam/practice-result.css" type="css" />
+} 

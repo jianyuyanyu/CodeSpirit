@@ -1,0 +1,31 @@
+@page "/{tenantId}/exam/practice"
+@model CodeSpirit.Web.Pages.Exam.PracticeStartModel
+@{
+    ViewData["Title"] = "练习系统";
+}
+
+@section Head {
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="练习系统 - 移动端适配的练习管理平台">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <resource path="css/exam/practice-start.css" type="css" />
+}
+
+<div id="root" class="practice-app-container">
+    <div id="loading" class="practice-loading">
+        <div class="practice-loading-spinner"></div>
+        <p class="practice-loading-text">正在加载练习系统...</p>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.webHost = '@(HttpContext.Request.Scheme + "://" + HttpContext.Request.Host)';
+        window.tenantId = '@Model.TenantId';
+    </script>
+    
+    <resource path="js/exam/practice-start.js" type="js" />
+} 

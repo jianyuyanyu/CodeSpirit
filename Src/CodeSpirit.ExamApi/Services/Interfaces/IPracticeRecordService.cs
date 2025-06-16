@@ -113,6 +113,14 @@ public interface IPracticeRecordService : IBaseCRUDIService<
     Task<long> StartPracticeAsync(long studentId, long practiceSettingId);
     
     /// <summary>
+    /// 开始练习并获取完整数据
+    /// </summary>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="practiceSettingId">练习设置ID</param>
+    /// <returns>练习开始结果，包含题目数据</returns>
+    Task<PracticeStartResultDto> StartPracticeWithDataAsync(long studentId, long practiceSettingId);
+    
+    /// <summary>
     /// 保存答案
     /// </summary>
     /// <param name="recordId">练习记录ID</param>
@@ -121,12 +129,27 @@ public interface IPracticeRecordService : IBaseCRUDIService<
     Task SaveAnswerAsync(long recordId, long studentId, PracticeAnswerDto answerDto);
     
     /// <summary>
+    /// 批量保存答案
+    /// </summary>
+    /// <param name="recordId">练习记录ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <param name="answers">答案列表</param>
+    Task SaveAnswersAsync(long recordId, long studentId, List<PracticeAnswerDto> answers);
+    
+    /// <summary>
     /// 提交练习
     /// </summary>
     /// <param name="recordId">练习会话ID</param>
     /// <param name="studentId">学生ID</param>
     /// <param name="answers">答案列表</param>
     Task SubmitPracticeAsync(long recordId, long studentId, List<PracticeAnswerDto> answers);
+    
+    /// <summary>
+    /// 完成练习（自动完成或手动完成）
+    /// </summary>
+    /// <param name="recordId">练习记录ID</param>
+    /// <param name="studentId">学生ID</param>
+    Task CompletePracticeAsync(long recordId, long studentId);
     
     /// <summary>
     /// 获取练习结果

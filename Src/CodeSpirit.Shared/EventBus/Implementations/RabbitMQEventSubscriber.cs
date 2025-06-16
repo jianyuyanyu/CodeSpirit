@@ -24,6 +24,7 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
     private readonly Dictionary<string, List<Type>> _eventHandlers;
     private readonly List<string> _queueNames = new();
     private readonly Dictionary<string, string> _consumerTags = new();
+    private readonly Dictionary<string, IModel> _consumerChannels = new();
 
     /// <summary>
     /// 构造函数
@@ -1145,6 +1146,20 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
 
             try
             {
+                // 关闭所有消费者通道
+                foreach (var channel in _consumerChannels.Values)
+                {
+                    try
+                    {
+                        channel.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        _subscriberLogger.LogWarning(ex, "关闭消费者通道时出错");
+                    }
+                }
+                _consumerChannels.Clear();
+
                 UnbindAllQueues();
                 base.Dispose();
             }
@@ -1213,19 +1228,31 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
         
         try
         {
-            // 确保通道可用，这里使用最简单的创建方式，避免复杂的逻辑干扰
-            _channel?.Dispose(); // 先释放旧通道
-            _channel = _connection.CreateModel();
+            // 为每个消费者创建独立的通道
+            if (_consumerChannels.TryGetValue(queueName, out var existingChannel))
+            {
+                try
+                {
+                    existingChannel.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _subscriberLogger.LogWarning(ex, "关闭已存在的通道时出错: {QueueName}", queueName);
+                }
+            }
+
+            var channel = _connection.CreateModel();
+            _consumerChannels[queueName] = channel;
             
             // 声明交换机
-            _channel.ExchangeDeclare(
+            channel.ExchangeDeclare(
                 exchange: _exchangeName,
                 type: ExchangeType.Topic, // 或考虑改为 ExchangeType.Fanout
                 durable: true,
                 autoDelete: false);
             
             // 声明死信交换机
-            _channel.ExchangeDeclare(
+            channel.ExchangeDeclare(
                 exchange: _deadLetterExchangeName, 
                 type: ExchangeType.Topic,
                 durable: true,
@@ -1238,7 +1265,7 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
                 {"x-dead-letter-routing-key", eventName}
             };
             
-            _channel.QueueDeclare(
+            channel.QueueDeclare(
                 queue: queueName,
                 durable: true,
                 exclusive: false,
@@ -1246,25 +1273,25 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
                 arguments: arguments);
             
             // 获取队列消息数量
-            var queueInfo = _channel.QueueDeclare(queueName, true, false, false, arguments);
+            var queueInfo = channel.QueueDeclare(queueName, true, false, false, arguments);
             _subscriberLogger.LogInformation("查询队列状态: {QueueName}, 消息数量: {MessageCount}", 
                 queueName, queueInfo.MessageCount);
             
             // 绑定队列到交换机
-            _channel.QueueBind(
+            channel.QueueBind(
                 queue: queueName,
                 exchange: _exchangeName,
                 routingKey: eventName);
-            
+
             // 设置QoS - 非常重要，确保消费者不会一次接收太多消息
-            _channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false); // 降低为1，确保逐条处理
+            channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
             
             // 清除旧消费者（如果有）
             if (_consumerTags.TryGetValue(queueName, out var oldTag))
             {
                 try
                 {
-                    _channel.BasicCancel(oldTag);
+                    channel.BasicCancel(oldTag);
                     _subscriberLogger.LogInformation("已取消旧消费者: {QueueName}, ConsumerTag: {ConsumerTag}", queueName, oldTag);
                 }
                 catch (Exception ex)
@@ -1275,8 +1302,8 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
             }
 
             // 创建消费者 - 使用最简单直接的方式
-            var consumer = new EventingBasicConsumer(_channel); // 使用同步版本，避免异步问题
-            
+            var consumer = new EventingBasicConsumer(channel); // 使用同步版本，避免异步问题
+
             // 注册接收消息事件
             consumer.Received += (sender, args) => {
                 try
@@ -1285,24 +1312,24 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
                     var body = args.Body.ToArray();
                     var message = Encoding.UTF8.GetString(body);
                     var deliveryTag = args.DeliveryTag;
-                    
+
                     // 记录消息接收
                     _subscriberLogger.LogInformation("收到消息: {EventName}, DeliveryTag: {DeliveryTag}, 内容: {MessageContent}", 
                         eventName, deliveryTag, message);
-                    
+
                     // 第二步：处理消息 (同步调用，确保消息被处理)
                     var success = ProcessEventAsync(eventName, message).GetAwaiter().GetResult();
-                    
+
                     // 第三步：确认或拒绝消息
                     if (success)
                     {
-                        _channel.BasicAck(deliveryTag, false);
+                        channel.BasicAck(deliveryTag, false);
                         _subscriberLogger.LogInformation("消息已确认: {EventName}, DeliveryTag: {DeliveryTag}", eventName, deliveryTag);
                     }
                     else
                     {
                         // 如果处理失败，不重新入队，让它进入死信队列
-                        _channel.BasicNack(deliveryTag, false, false);
+                        channel.BasicNack(deliveryTag, false, false);
                         _subscriberLogger.LogWarning("消息处理失败，已拒绝: {EventName}, DeliveryTag: {DeliveryTag}", eventName, deliveryTag);
                     }
                 }
@@ -1312,7 +1339,7 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
                     try
                     {
                         // 出现异常，重新入队
-                        _channel.BasicNack(args.DeliveryTag, false, true);
+                        channel.BasicNack(args.DeliveryTag, false, true);
                     }
                     catch
                     {
@@ -1324,51 +1351,52 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
             // 注册消费者取消事件
             consumer.Shutdown += (sender, args) => {
                 _subscriberLogger.LogWarning("消费者已关闭: {QueueName}, 原因: {Reason}", queueName, args.ReplyText);
+                // 尝试重新创建消费者
+                Task.Run(async () => {
+                    try
+                    {
+                        await Task.Delay(1000); // 等待1秒后重试
+                        await Subscribe<TEvent, THandler>();
+                    }
+                    catch (Exception ex)
+                    {
+                        _subscriberLogger.LogError(ex, "重新创建消费者失败: {QueueName}", queueName);
+                    }
+                });
             };
             
             // 开始消费
-            var consumerTag = _channel.BasicConsume(
+            var consumerTag = channel.BasicConsume(
                 queue: queueName,
                 autoAck: false, // 关键：禁用自动确认，必须手动确认
                 consumer: consumer);
             
             // 保存消费者标签
             _consumerTags[queueName] = consumerTag;
-            
+
             // 记录成功订阅
             _subscriberLogger.LogInformation("成功订阅事件: {EventName}, 处理器: {HandlerType}, 消费者标签: {ConsumerTag}", 
                 eventName, handlerType.Name, consumerTag);
-            
+
             // 确认消费者正在运行
             _subscriberLogger.LogInformation("消费者已启动，正在监听队列: {QueueName}, 消费者标签: {ConsumerTag}, 通道ID: {ChannelId}", 
-                queueName, consumerTag, _channel.ChannelNumber);
-            
-            // 手动获取一条消息测试是否工作 (可选，仅用于调试)
-            var result = _channel.BasicGet(queueName, false); // false = 不自动确认
-            if (result != null)
-            {
-                _subscriberLogger.LogInformation("主动获取到消息: DeliveryTag={DeliveryTag}, 长度={BodyLength}字节", 
-                    result.DeliveryTag, result.Body.Length);
-                
-                // 获取消息内容
-                var messageBody = Encoding.UTF8.GetString(result.Body.ToArray());
-                _subscriberLogger.LogInformation("消息内容: {MessageContent}", messageBody);
-                
-                // 测试完后确认这条消息
-                _channel.BasicAck(result.DeliveryTag, false);
-                _subscriberLogger.LogInformation("已确认测试消息: DeliveryTag={DeliveryTag}", result.DeliveryTag);
-            }
-            else
-            {
-                _subscriberLogger.LogWarning("未能主动获取消息，队列可能为空: {QueueName}", queueName);
-            }
+                queueName, consumerTag, channel.ChannelNumber);
         }
         catch (Exception ex)
         {
             _subscriberLogger.LogError(ex, "订阅事件失败: {EventName}, 队列: {QueueName}", eventName, queueName);
-            // 发生错误时，通道可能需要重新创建
-            _channel?.Dispose();
-            _channel = null;
+            if (_consumerChannels.TryGetValue(queueName, out var channel))
+            {
+                try
+                {
+                    channel.Dispose();
+                }
+                catch
+                {
+                    // 忽略关闭通道时的错误
+                }
+                _consumerChannels.Remove(queueName);
+            }
         }
     }
 }

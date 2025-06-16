@@ -138,6 +138,69 @@ namespace CodeSpirit.ExamApi.Migrations
                 nullable: false,
                 defaultValue: "");
 
+            // 在创建索引之前，先更新所有空值数据
+            // 更新Students表的空TenantId
+            migrationBuilder.Sql(
+                "UPDATE [Students] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            // 更新Students表的空StudentNumber - 为每个空值生成唯一的学号
+            migrationBuilder.Sql(@"
+                WITH EmptyStudentNumbers AS (
+                    SELECT Id, ROW_NUMBER() OVER (ORDER BY Id) as RowNum
+                    FROM [Students] 
+                    WHERE [StudentNumber] = '' OR [StudentNumber] IS NULL
+                )
+                UPDATE s 
+                SET [StudentNumber] = 'STU' + RIGHT('000000' + CAST(e.RowNum as varchar), 6)
+                FROM [Students] s
+                INNER JOIN EmptyStudentNumbers e ON s.Id = e.Id;");
+
+            // 更新其他表的空TenantId值
+            migrationBuilder.Sql(
+                "UPDATE [Questions] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [QuestionCategories] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [QuestionVersions] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [ExamPapers] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [ExamPaperQuestions] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [ExamSettings] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [ExamSettingStudentGroups] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [ExamRecords] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [ExamAnswerRecords] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [StudentGroups] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [StudentGroupMappings] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [WrongQuestions] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [PracticeSettings] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [PracticeRecords] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+            
+            migrationBuilder.Sql(
+                "UPDATE [PracticeSession] SET [TenantId] = 'default' WHERE [TenantId] = '' OR [TenantId] IS NULL;");
+
             migrationBuilder.CreateIndex(
                 name: "IX_WrongQuestions_TenantId",
                 table: "WrongQuestions",

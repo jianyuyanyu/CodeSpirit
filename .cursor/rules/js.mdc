@@ -12,4 +12,19 @@ alwaysApply: false
 6. 界面需要支持响应式布局，支持移动端适配
 7. 本项目支持服务发现，API路径请附带项目短名，比如“/identity/api/identity/profile”
 8. 请求头必须携带验证Token，请使用 [token-manager.js](mdc:Src/CodeSpirit.Web/wwwroot/js/token-manager.js) 根据平台类型管理好Token
-9. 按钮等事件必须符合Amis框架的事件动作 https://aisuda.bce.baidu.com/amis/zh-CN/docs/concepts/event-action#%E8%87%AA%E5%AE%9A%E4%B9%89-js
+9. **按钮事件必须严格遵循Amis事件动作规范**  
+   - 所有交互行为必须通过Amis事件系统实现（如onEvent监听）
+   - 支持click/mouseenter/mouseleave等标准事件
+   - 通过actions配置响应动作，使用${event}获取事件参数  
+   🔗 [Amis事件系统](https://aisuda.bce.baidu.com/amis/zh-CN/components/action#%E4%BA%8B%E4%BB%B6%E8%A1%A8)
+
+10. **优先使用Amis内置行为类型**  
+   - 核心行为：ajax/link/dialog/reload/copy等（通过actionType配置）
+   - 表单行为：reset/clear/submit（专用于表单场景）
+   - 高级功能：倒计时/文件下载/快捷键等  
+   🔗 [Amis行为按钮大全](https://aisuda.bce.baidu.com/amis/zh-CN/components/action)
+
+> 关键要点：  
+> 1. 禁止自定义DOM事件，全部使用Amis事件管道  
+> 2. 常见交互场景均有内置方案（弹窗/跳转/数据刷新等）  
+> 3. 特殊需求可通过`onClick`注入安全脚本实现

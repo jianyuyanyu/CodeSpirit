@@ -169,11 +169,150 @@
                                                         }
                                                     }
                                                     
-                                                    // 登录成功，重定向到租户主页
-                                                    const redirectUrl = `/${tenant.tenantId}/admin`;
+                                                    // 登录成功，处理重定向逻辑
                                                     setTimeout(() => {
-                                                        window.location.href = redirectUrl;
-                                                    }, 1500);
+                                                        const urlParams = new URLSearchParams(window.location.search);
+                                                        const redirectUrl = urlParams.get('redirect');
+                                                        
+                                                        // 调试信息
+                                                        console.log('🔍 ========== 登录跳转调试信息 ==========');
+                                                        console.log('📍 当前位置:', window.location.href);
+                                                        console.log('🏢 租户ID:', tenant.tenantId);
+                                                        console.log('🔗 原始redirectUrl:', redirectUrl);
+                                                        console.log('📝 解码后redirectUrl:', redirectUrl ? decodeURIComponent(redirectUrl) : null);
+                                                        console.log('⚙️ URL搜索参数:', window.location.search);
+                                                        console.log('🌐 URL对象:', new URL(window.location.href));
+                                                        console.log('=======================================');
+                                                        
+                                                        /**
+                                                         * 检查重定向URL是否为登录相关页面
+                                                         * @param {string} url - 要检查的URL
+                                                         * @returns {boolean} 如果是登录页面返回true
+                                                         */
+                                                        const isLoginPage = (url) => {
+                                                            if (!url) return false;
+                                                            
+                                                            const urlLower = url.toLowerCase();
+                                                            
+                                                            // 精确匹配登录页面模式
+                                                            const exactPatterns = [
+                                                                '#/',           // 仅匹配根hash路由
+                                                                '#/login',      // hash登录页
+                                                                '#/auth',       // hash认证页
+                                                            ];
+                                                            
+                                                            // 包含匹配的登录页面模式
+                                                            const containsPatterns = [
+                                                                '/login',
+                                                                '/system/login', 
+                                                                '/tenant/login',
+                                                                'login.html',
+                                                                `/${tenant.tenantId}/login`
+                                                            ];
+                                                            
+                                                            // 检查精确匹配
+                                                            const isExactMatch = exactPatterns.some(pattern => urlLower === pattern);
+                                                            
+                                                            // 检查包含匹配
+                                                            const isContainsMatch = containsPatterns.some(pattern => 
+                                                                urlLower.includes(pattern.toLowerCase())
+                                                            );
+                                                            
+                                                            const result = isExactMatch || isContainsMatch;
+                                                            
+                                                            console.log('🔍 登录页面检查:', {
+                                                                url: url,
+                                                                urlLower: urlLower,
+                                                                isExactMatch: isExactMatch,
+                                                                isContainsMatch: isContainsMatch,
+                                                                result: result
+                                                            });
+                                                            
+                                                            return result;
+                                                        };
+                                                        
+                                                        /**
+                                                         * 构建正确的跳转URL
+                                                         * @param {string} redirectUrl - 重定向URL
+                                                         * @returns {string} 完整的跳转URL
+                                                         */
+                                                        const buildRedirectUrl = (redirectUrl) => {
+                                                            try {
+                                                                const decodedUrl = decodeURIComponent(redirectUrl);
+                                                                const baseUrl = `/${tenant.tenantId}/admin`;
+                                                                
+                                                                console.log('🔨 ========== 构建跳转URL ==========');
+                                                                console.log('📝 输入参数:', redirectUrl);
+                                                                console.log('🔄 解码结果:', decodedUrl);
+                                                                console.log('🏠 基础URL:', baseUrl);
+                                                                
+                                                                // 如果是完整的URL（包含协议或域名），直接使用
+                                                                if (decodedUrl.startsWith('http://') || decodedUrl.startsWith('https://')) {
+                                                                    console.log('✅ 检测到完整URL，直接使用:', decodedUrl);
+                                                                    return decodedUrl;
+                                                                }
+                                                                
+                                                                // 如果是绝对路径且已经包含租户路径，直接使用
+                                                                if (decodedUrl.startsWith(`/${tenant.tenantId}/`)) {
+                                                                    console.log('✅ 检测到已包含租户路径，直接使用:', decodedUrl);
+                                                                    return decodedUrl;
+                                                                }
+                                                                
+                                                                // 如果是hash路由 (以#开头)
+                                                                if (decodedUrl.startsWith('#')) {
+                                                                    const result = baseUrl + decodedUrl;
+                                                                    console.log('✅ 检测到hash路由，拼接结果:', result);
+                                                                    return result;
+                                                                }
+                                                                
+                                                                // 如果是绝对路径且包含admin路径，需要添加租户前缀
+                                                                if (decodedUrl.startsWith('/admin')) {
+                                                                    const result = `/${tenant.tenantId}${decodedUrl}`;
+                                                                    console.log('✅ 检测到admin路径，添加租户前缀:', result);
+                                                                    return result;
+                                                                }
+                                                                
+                                                                // 如果是其他绝对路径，转换为hash路由
+                                                                if (decodedUrl.startsWith('/')) {
+                                                                    const result = `${baseUrl}#${decodedUrl}`;
+                                                                    console.log('✅ 检测到绝对路径，转为hash路由:', result);
+                                                                    return result;
+                                                                }
+                                                                
+                                                                // 如果是相对路径，转换为hash路由
+                                                                const result = `${baseUrl}#/${decodedUrl}`;
+                                                                console.log('✅ 检测到相对路径，转为hash路由:', result);
+                                                                return result;
+                                                                
+                                                            } catch (error) {
+                                                                console.error('构建跳转URL失败:', error);
+                                                                // 发生错误时回退到默认页面
+                                                                return `/${tenant.tenantId}/admin`;
+                                                            }
+                                                        };
+                                                        
+                                                        // 如果有重定向URL且不是登录页面，则跳转到重定向URL
+                                                        if (redirectUrl && !isLoginPage(redirectUrl)) {
+                                                            const targetUrl = buildRedirectUrl(redirectUrl);
+                                                            console.log('🎯 准备跳转到:', targetUrl);
+                                                            
+                                                            // 验证目标URL是否有效
+                                                            try {
+                                                                new URL(targetUrl, window.location.origin);
+                                                                console.log('✅ URL验证通过，执行跳转:', targetUrl);
+                                                                window.location.href = targetUrl;
+                                                            } catch (urlError) {
+                                                                console.error('❌ 目标URL无效:', urlError);
+                                                                console.log('🔄 回退到默认页面');
+                                                                window.location.href = `/${tenant.tenantId}/admin`;
+                                                            }
+                                                        } else {
+                                                            // 否则跳转到租户后台管理页面
+                                                            console.log('🎯 准备跳转到默认页面:', `/${tenant.tenantId}/admin`);
+                                                            console.log('📝 跳转原因:', redirectUrl ? '重定向URL被识别为登录页面' : '没有重定向URL');
+                                                            window.location.href = `/${tenant.tenantId}/admin`;
+                                                        }
+                                                    }, 1500); // 增加延迟时间，确保token保存完成
                                                 } else {
                                                     // 记录详细错误信息
                                                     console.error('租户平台登录失败:', payload.msg);

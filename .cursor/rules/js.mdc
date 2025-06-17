@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 通用要求
+1. 所有函数必须有功能性注释，解释其输入、输出和作用。
+2. 复杂逻辑部分需要详细注释，说明每个步骤的目的。
+3. UI优先使用Amis框架实现布局，默认使用antd主题，必须使用Amis框架中存在的UI组件，官方文档 https://aisuda.bce.baidu.com/amis/zh-CN/docs/index
+4. 一个函数不要超过30行代码
+5. 如果存在样式文件，请将样式写入样式文件
+6. 界面需要支持响应式布局，支持移动端适配
+7. 本项目支持服务发现，API路径请附带项目短名，比如“/identity/api/identity/profile”
+8. 请求头必须携带验证Token，请使用 [token-manager.js](mdc:Src/CodeSpirit.Web/wwwroot/js/token-manager.js) 根据平台类型管理好Token
+9. 按钮等事件必须符合Amis框架的事件动作 https://aisuda.bce.baidu.com/amis/zh-CN/docs/concepts/event-action#%E8%87%AA%E5%AE%9A%E4%B9%89-js

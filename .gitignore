@@ -361,7 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/.cursor/rules
 
 publish.Dockerfile
 publish.ps1

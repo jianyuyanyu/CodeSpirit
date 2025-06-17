@@ -1,0 +1,75 @@
+---
+description: 
+globs: *.cs
+alwaysApply: false
+---
+# 通用要求
+1. 所有公共成员必须添加XML文档注释
+2. 复杂业务逻辑必须添加行内注释
+3. 注释应清晰描述功能、参数和返回
+4. 优先使用UTC时间
+5. 序列化和反序列化请使用 Newtonsoft.Json
+
+# 服务（service）类规则
+1. 确保服务类实现正确的接口和基类
+2. 添加构造函数注释
+3. 服务类必须实现 [BaseCRUDIService.cs](mdc:Src/CodeSpirit.Shared/Services/BaseCRUDIService.cs) 或 [BaseCRUDService.cs](mdc:Src/CodeSpirit.Shared/Services/BaseCRUDService.cs)，应实现常见的查询逻辑
+4. 服务接口必须实现 [IBaseCRUDIService.cs](mdc:Src/CodeSpirit.Shared/Services/IBaseCRUDIService.cs) 或 [IBaseCRUDService.cs](mdc:Src/CodeSpirit.Shared/Services/IBaseCRUDService.cs)
+
+# 数据传输对象(Dto)类规则
+1. Dto的属性必须添加DisplayName特性
+2. Create或Update等Dto必须添加验证特性
+3. 列表Dto应参考 [UserDto.cs](mdc:Src/CodeSpirit.IdentityApi/Dtos/User/UserDto.cs) 添加必要的列特性
+4. 查询Dto必须继承自 [QueryDtoBase.cs](mdc:Src/CodeSpirit.Core/Dtos/QueryDtoBase.cs)，并添加常见的查询逻辑，可以参考 [UserQueryDto.cs](mdc:Src/CodeSpirit.IdentityApi/Dtos/User/UserQueryDto.cs) 
+5. Dto添加完成后，应添加或完善Dto映射文件，处理好映射关系，参考 [UserProfile.cs](mdc:Src/CodeSpirit.IdentityApi/MappingProfiles/UserProfile.cs)
+6. BatchImportItemDto需要添加JsonProperty特性,propertyName与DisplayName一致，参考 [UserBatchImportItemDto.cs](mdc:Src/CodeSpirit.IdentityApi/Dtos/User/UserBatchImportItemDto.cs)
+7. 如果需要显示用户信息，请使用聚合器字段特性 [AggregateFieldAttribute.cs](mdc:Src/CodeSpirit.Core/Attributes/AggregateFieldAttribute.cs) ，参考 [CodeSpirit.Aggregator聚合器使用指南.md](mdc:Docs/CodeSpirit.Aggregator聚合器使用指南.md) 。
+
+# 控制器（Controller）规则
+1. 添加必要的控制器特性，比如DisplayName、 [NavigationAttribute.cs](mdc:Src/CodeSpirit.Core/Attributes/NavigationAttribute.cs)，参考 [UsersController.cs](mdc:Src/CodeSpirit.IdentityApi/Controllers/UsersController.cs)。无需添加ApiController、Route特性。
+例如：
+、、、
+[DisplayName("题目管理")]
+[Navigation(Icon = "fa-solid fa-book")]
+public class QuestionsController : ApiControllerBase
+、、、
+
+2. 确保HTTP方法特性的正确使用
+3. 需继承当前项目中的ApiControllerBase
+4. 所有方法必须返回标准的 [ApiResponse.cs](mdc:Src/CodeSpirit.Core/ApiResponse.cs) 对象
+5. 除了增删改查导入导出等方法，其他操作类均应添加 [OperationAttribute.cs](mdc:Src/Components/CodeSpirit.Amis/Attributes/Buttons/OperationAttribute.cs)
+例如：
+、、、
+[HttpPut("{id}/unlock")]
+[Operation("解锁", "ajax", null, "确定要解除用户锁定吗？", "lockoutEnd != null")]
+[DisplayName("解锁")]
+public async Task<ActionResult<ApiResponse>> UnlockUser(long id)
+、、、
+6. Action中尽量不捕获异常，因为 [HttpResponseExceptionFilter.cs](mdc:Src/CodeSpirit.Shared/Filters/HttpResponseExceptionFilter.cs) 中统一进行了处理
+7. Action方法如果存在多个参数，请使用Dto模型替代。并且将Operation的类型设置为form，以便前端生成对应的表单。
+8. Action方法必须添加DisplayName特性。
+
+# 枚举（Enum）规则
+1. 枚举需添加Display特性，如：
+、、、
+public enum QuestionType
+{
+    /// <summary>
+    /// 单选题
+    /// </summary>
+    [Display(Name = "单选题")]
+    SingleChoice = 1,
+    
+    /// <summary>
+    /// 多选题
+    /// </summary>
+    [Display(Name = "多选题")]
+    MultipleChoice = 2,
+    
+    /// <summary>
+    /// 判断题
+    /// </summary>
+    [Display(Name = "判断题")]
+    TrueFalse = 3
+}
+、、、

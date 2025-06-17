@@ -1,0 +1,10 @@
+---
+description: 
+globs: *.csproj
+alwaysApply: false
+---
+
+# 通用规则
+
+- 请使用.NET 9或以上框架
+- 添加包时，必须和当前解决方案的包版本一致

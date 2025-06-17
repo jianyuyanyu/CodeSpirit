@@ -1,0 +1,42 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# 通用要求
+
+- 请使用.NET 9、.NET Aspired等技术栈
+- 所有公共成员必须添加文档注释
+- 复杂业务逻辑必须添加行内注释
+- 注释应清晰描述功能、参数和返回
+- 请基于下面的项目结构理解当前项目，必须严格遵守下面的项目结构要求及规范
+- 如需调试运行需运行协调程序CodeSpirit.AppHost
+
+# 项目结构
+
+Src/
+├── ApiServices/
+│   ├── CodeSpirit.IdentityApi/           # 身份认证API
+│   ├── CodeSpirit.ExamApi/               # 考试系统API
+│   └── CodeSpirit.ConfigCenter/          # 配置中心
+├── Components/
+│   ├── CodeSpirit.Aggregator/            # 聚合器组件
+│   ├── CodeSpirit.Amis/                  # UI生成引擎
+│   ├── CodeSpirit.Authorization/         # 权限组件
+│   ├── CodeSpirit.Audit/                 # 审计组件
+│   └── CodeSpirit.Navigation/            # 导航组件
+│   └── CodeSpirit.Charts/             # 智能图表组件
+├── CodeSpirit.AppHost/                   # Aspire应用宿主，启动项目
+├── CodeSpirit.Core/                      # 核心定义
+├── CodeSpirit.ServiceDefaults/           # 服务默认配置
+├── CodeSpirit.Shared/                    # 共享库
+├── CodeSpirit.Web/                       # Web项目，包含代理组件
+└── Tests/
+    ├── Components/
+    │   ├── CodeSpirit.Aggregator.Tests/
+    │   ├── CodeSpirit.Authorization.Tests/
+    │   └── CodeSpirit.Components.TestsBase/
+    ├── ApiServices/
+    │   └── CodeSpirit.IdentityApi.Tests/
+    └── CodeSpirit.Tests/                 # 通用测试

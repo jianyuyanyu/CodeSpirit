@@ -1,0 +1,10 @@
+---
+description: 
+globs: *.css
+alwaysApply: false
+---
+
+# 通用要求
+
+- 样式编写时需结合 @https://aisuda.bce.baidu.com/amis/zh-CN/style/index 
+- 可以适当增加动效，动效要自然、高效

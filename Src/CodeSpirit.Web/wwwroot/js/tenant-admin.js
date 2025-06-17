@@ -11,10 +11,14 @@
         window.location.href = '/login';
         return;
     }
-    
+
+    // 将租户ID暴露到全局，供脚本使用
+    window.currentTenantId = tenantId;
+    console.log('租户管理后台初始化 - 租户ID:', tenantId);
+
     // 初始化为租户模式
     TokenManager.initTenantMode(tenantId);
-    
+
     // 基础依赖
     const amis = amisRequire('amis/embed');
     const match = amisRequire('path-to-regexp').match;
@@ -92,8 +96,19 @@
                                     type: 'button',
                                     label: '退出登录',
                                     icon: 'fa fa-sign-out-alt',
+                                    level: 'danger',
                                     actionType: 'custom',
-                                    script: 'window.logout();'
+                                    confirmText: '确认要退出登录？',
+                                    onEvent: {
+                                        click: {
+                                            actions: [
+                                                {
+                                                    "actionType": "custom",
+                                                    "script": "window.logout();"
+                                                }
+                                            ]
+                                        }
+                                    }
                                 }
                             ]
                         }
@@ -140,7 +155,7 @@
 
             history[replace ? 'replace' : 'push'](location);
         },
-        
+
         jumpTo: (to, action) => {
             if (to === 'goBack') {
                 return history.goBack();
@@ -168,7 +183,7 @@
                 history.push(to);
             }
         },
-        
+
         isCurrentUrl: (to, ctx) => {
             if (!to) {
                 return false;
@@ -187,7 +202,7 @@
 
             return decodeURI(pathname) === link;
         },
-        
+
         requestAdaptor: (api) => {
             const token = TokenManager.getToken();
             return {
@@ -200,7 +215,7 @@
                 }
             };
         },
-        
+
         responseAdaptor: function (api, payload, query, request, response) {
             // 处理错误响应
             if (response.status === 403) {
@@ -235,7 +250,7 @@
 
             return payload;
         },
-        
+
         theme: 'antd'
     };
 
@@ -301,7 +316,7 @@
             };
 
             console.error('错误捕获详情:', errorDetails);
-            
+
             this.errors.unshift(errorDetails);
             if (this.errors.length > this.maxErrors) {
                 this.errors = this.errors.slice(0, this.maxErrors);
@@ -320,24 +335,24 @@
             // 判断是否为严重错误
             const criticalMessages = [
                 'Script error',
-                'Network Error', 
+                'Network Error',
                 'ChunkLoadError',
                 'Loading chunk',
                 'Loading CSS chunk'
             ];
-            
-            return error.type === 'javascript' && 
-                   criticalMessages.some(msg => 
-                       (error.message || '').includes(msg)
-                   );
+
+            return error.type === 'javascript' &&
+                criticalMessages.some(msg =>
+                    (error.message || '').includes(msg)
+                );
         }
 
         showErrorNotification(error) {
             if (window.amisInstance) {
-                const shortMessage = error.message.length > 100 
-                    ? error.message.substring(0, 100) + '...' 
+                const shortMessage = error.message.length > 100
+                    ? error.message.substring(0, 100) + '...'
                     : error.message;
-                    
+
                 window.amisInstance.notify('error', `发生错误: ${shortMessage}`, {
                     timeout: 5000
                 });
@@ -451,7 +466,7 @@
 
         setProgress(progress, stageName) {
             this.progress = Math.min(100, Math.max(0, progress));
-            
+
             if (this.element) {
                 const progressFill = this.element.querySelector('.progress-fill');
                 const progressPercent = this.element.querySelector('.progress-percent');
@@ -474,7 +489,7 @@
                 const stage = this.stages[this.currentStageIndex];
                 const baseProgress = this.stages.slice(0, this.currentStageIndex)
                     .reduce((sum, s) => sum + s.weight, 0);
-                
+
                 this.setProgress(baseProgress + stage.weight, stage.name);
                 this.currentStageIndex++;
             }
@@ -488,10 +503,10 @@
                 }
 
                 this.setProgress(100, '加载完成');
-                
+
                 setTimeout(() => {
                     this.element.classList.add('fade-out');
-                    
+
                     setTimeout(() => {
                         if (this.element && this.element.parentNode) {
                             this.element.parentNode.removeChild(this.element);
@@ -513,7 +528,7 @@
 
     // 全局错误处理包装器
     function withErrorHandling(fn, context = 'Unknown') {
-        return async function(...args) {
+        return async function (...args) {
             try {
                 return await fn.apply(this, args);
             } catch (error) {
@@ -532,9 +547,9 @@
     /**
      * 获取租户信息
      */
-    window.fetchTenantInfo = withErrorHandling(async function() {
+    window.fetchTenantInfo = withErrorHandling(async function () {
         const token = TokenManager.getToken();
-        
+
         const response = await fetch(`/identity/api/identity/tenants/${tenantId}`, {
             headers: {
                 'Authorization': token ? `Bearer ${token}` : '',
@@ -548,13 +563,13 @@
         }
 
         const result = await response.json();
-        
+
         if (result.status !== 0) {
             throw new Error(result.message || '获取租户信息失败');
         }
 
         const tenantInfo = result.data;
-        
+
         // 更新全局数据
         window.globalData.tenant = {
             id: tenantInfo.id,
@@ -585,28 +600,28 @@
      */
     function applyTenantTheme(themeConfig) {
         if (!themeConfig) return;
-        
+
         try {
             const theme = typeof themeConfig === 'string' ? JSON.parse(themeConfig) : themeConfig;
             const root = document.documentElement;
-            
+
             // 应用主题颜色
             if (theme.primaryColor) {
                 root.style.setProperty('--tenant-primary-color', theme.primaryColor);
             }
-            
+
             if (theme.backgroundColor) {
                 root.style.setProperty('--tenant-bg-color', theme.backgroundColor);
             }
-            
+
             if (theme.sidebarBg) {
                 root.style.setProperty('--tenant-sidebar-bg', theme.sidebarBg);
             }
-            
+
             if (theme.headerBg) {
                 root.style.setProperty('--tenant-header-bg', theme.headerBg);
             }
-            
+
             // 应用自定义CSS
             if (theme.customCss) {
                 const style = document.createElement('style');
@@ -614,7 +629,7 @@
                 style.textContent = theme.customCss;
                 document.head.appendChild(style);
             }
-            
+
         } catch (error) {
             console.warn('应用租户主题失败:', error);
         }
@@ -636,12 +651,12 @@
             }
         });
     };
-    
+
     /**
      * 处理 API 响应中的跳转信息
      * @param {Object} redirectInfo 跳转信息对象
      */
-    window.handleApiRedirect = function(redirectInfo) {
+    window.handleApiRedirect = function (redirectInfo) {
         if (!redirectInfo || !redirectInfo.url) {
             console.warn('跳转信息无效:', redirectInfo);
             return;
@@ -661,8 +676,8 @@
                 {
                     actionType: 'toast',
                     args: {
-                      msg: message,
-                      timeout: Math.max(delay, 2000)
+                        msg: message,
+                        timeout: Math.max(delay, 2000)
                     }
                 }
             ]);
@@ -701,12 +716,20 @@
     };
 
     /**
-     * 退出登录
+     * 租户退出登录
      */
-    window.logout = function() {
+    window.logout = function () {
+        console.log('开始执行租户退出登录');
+
+        // 获取租户ID
+        const tenantId = window.currentTenantId || window.tenantId;
+        const loginUrl = tenantId ? `/${tenantId}/login` : '/login';
+
+        // 获取Token（在清除之前先获取用于API调用）
         const token = TokenManager.getToken();
-        
-        // 调用登出API
+        console.log('获取到Token:', !!token);
+
+        // 调用退出API（必须携带Token）
         fetch('/identity/api/identity/auth/logout', {
             method: 'POST',
             headers: {
@@ -716,27 +739,35 @@
                 'X-Tenant-Id': tenantId
             }
         })
-        .then(() => {
-            // 清除租户本地存储
-            TokenManager.clearToken();
-            
-            // 重定向到租户登录页
-            window.location.href = `/${tenantId}/login`;
-        })
-        .catch(error => {
-            console.error('退出登录失败:', error);
-            // 即使API失败也清除本地存储并跳转
-            TokenManager.clearToken();
-            window.location.href = `/${tenantId}/login`;
-        });
+            .then(response => {
+                console.log('退出API响应:', response.status);
+                if (response.ok) {
+                    console.log('服务器退出成功');
+                }
+            })
+            .catch(error => {
+                console.error('退出API失败:', error);
+            })
+            .finally(() => {
+                // 无论API成功还是失败，都清除本地Token并跳转
+                try {
+                    TokenManager.clearToken();
+                    console.log('Token已清除');
+                } catch (e) {
+                    console.error('清除Token失败:', e);
+                }
+
+                console.log('跳转到登录页:', loginUrl);
+                window.location.href = loginUrl;
+            });
     };
 
     /**
      * 获取未读通知数量
      */
-    window.fetchUnreadNotificationCount = function() {
+    window.fetchUnreadNotificationCount = function () {
         const token = TokenManager.getToken();
-        
+
         fetch('/messaging/api/messaging/messages/my/unread-count', {
             headers: {
                 'Authorization': token ? `Bearer ${token}` : '',
@@ -744,27 +775,27 @@
                 'X-Tenant-Id': tenantId
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.status === 0) {
-                const count = data.data || 0;
-                
-                // 更新通知数据
-                if (window.amisInstance) {
-                    window.amisInstance.updateProps({
-                        data: {
-                            notifications: {
-                                count: count,
-                                hasUnread: count > 0
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.status === 0) {
+                    const count = data.data || 0;
+
+                    // 更新通知数据
+                    if (window.amisInstance) {
+                        window.amisInstance.updateProps({
+                            data: {
+                                notifications: {
+                                    count: count,
+                                    hasUnread: count > 0
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
-            }
-        })
-        .catch(error => {
-            console.error('获取未读通知数量失败:', error);
-        });
+            })
+            .catch(error => {
+                console.error('获取未读通知数量失败:', error);
+            });
     };
 
     /**
@@ -773,44 +804,44 @@
     async function initializeApp() {
         try {
             preLoader.nextStage(); // 初始化应用
-            
+
             // 先获取租户信息
             preLoader.nextStage(); // 获取租户信息
             await window.fetchTenantInfo();
-            
+
             // 加载用户配置
             preLoader.nextStage(); // 加载用户配置
-            
+
             // 渲染界面
             preLoader.nextStage(); // 渲染界面
-            
+
             // 使用更新后的配置初始化AMIS实例
             window.amisInstance = amis.embed('#root', appConfig, amisOptions, amisHandlers);
-            
+
             // 绑定路由监听
             window.bindRouteListener();
-            
+
             // 完成加载
             preLoader.nextStage(); // 完成加载
-            
+
             // 隐藏预加载器
             await preLoader.hide();
-            
+
             console.log('应用初始化完成');
-            
+
         } catch (error) {
             console.error('应用初始化失败:', error);
-            
+
             errorHandler.handleError({
                 type: 'initialization',
                 message: error.message,
                 stack: error.stack,
                 timestamp: Date.now()
             });
-            
+
             // 隐藏预加载器并显示错误页面
             await preLoader.hide();
-            
+
             // 即使失败也要初始化基本界面
             try {
                 window.amisInstance = amis.embed('#root', appConfig, amisOptions, amisHandlers);
@@ -831,12 +862,12 @@
     let routeUnlisten = null;
 
     // 绑定路由监听函数
-    window.bindRouteListener = function() {
+    window.bindRouteListener = function () {
         // 如果已经有监听器，先解绑
         if (routeUnlisten) {
             routeUnlisten();
         }
-        
+
         // 绑定新的监听器
         routeUnlisten = history.listen(state => {
             if (window.amisInstance) {
@@ -848,10 +879,10 @@
     };
 
     // 页面加载完成后初始化应用
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         initializeApp();
     });
-    
+
     // 如果DOMContentLoaded已经触发，立即执行
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
         initializeApp();

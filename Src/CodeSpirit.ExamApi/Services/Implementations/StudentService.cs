@@ -166,8 +166,10 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
                 .Find(x => x.StudentId == id)
                 .ExecuteDeleteAsync();
 
+            await OnDeleting(student);
             await Repository.DeleteAsync(student);
             await Repository.SaveChangesAsync();
+            await OnDeleted(student);
         }
         catch (Exception ex)
         {
@@ -242,6 +244,13 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         await PublishUserCreatedEventAsync(entity);
     }
 
+    protected override async Task OnDeleted(Student entity)
+    {
+        await base.OnDeleted(entity);
+        // 发布用户删除事件
+        await PublishUserDeletedEventAsync(entity);
+    }
+
     /// <summary>
     /// 发布用户创建事件
     /// </summary>
@@ -267,6 +276,41 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         catch (Exception ex)
         {
             _logger.LogError(ex, "发布用户创建事件失败: {@UserId}", student.UserId);
+        }
+    }
+
+    /// <summary>
+    /// 发布用户删除事件
+    /// </summary>
+    /// <param name="student"></param>
+    /// <returns></returns>
+    private async Task PublishUserDeletedEventAsync(Student student)
+    {
+        try
+        {
+            _logger.LogInformation("准备发布用户删除事件: 学生ID={StudentId}, 用户ID={UserId}", 
+                student.Id, student.UserId);
+
+            if (student.UserId <= 0)
+            {
+                _logger.LogError("无法发布用户删除事件：用户ID无效: {UserId}", student.UserId);
+                return;
+            }
+
+            var @event = new UserDeletedEvent
+            {
+                UserId = student.UserId,
+            };
+
+            _logger.LogInformation("正在发布用户删除事件: {@Event}", @event);
+            await _eventBus.PublishAsync(@event);
+            _logger.LogInformation("用户删除事件发布成功: 用户ID={UserId}", student.UserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "发布用户删除事件失败: 学生ID={StudentId}, 用户ID={UserId}, 错误信息: {ErrorMessage}", 
+                student.Id, student.UserId, ex.Message);
+            throw; // 重新抛出异常，让调用者知道发布失败
         }
     }
 

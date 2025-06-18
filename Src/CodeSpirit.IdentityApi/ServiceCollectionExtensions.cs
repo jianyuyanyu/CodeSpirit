@@ -242,6 +242,7 @@ public static class ServiceCollectionExtensions
 
         // 注册事件处理器
         builder.Services.AddEventHandler<UserCreatedOrUpdatedEvent, UserCreatedOrUpdatedEventHandler>();
+        builder.Services.AddEventHandler<UserDeletedEvent, UserDeletedEventHandler>();
         
         return builder;
     }

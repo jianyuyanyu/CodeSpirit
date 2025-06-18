@@ -319,23 +319,75 @@
             // 获取之前保存的答案
             const savedAnswer = practiceAnswers.get(currentQuestion.questionId);
             
+            // 根据题目类型处理答案格式
+            let displayAnswer = null;
+            if (savedAnswer !== undefined && savedAnswer !== null) {
+                // 如果有保存的答案，使用保存的答案
+                displayAnswer = savedAnswer;
+                console.log('[练习] 加载已保存的答案:', currentQuestion.questionId, displayAnswer);
+            } else {
+                // 如果没有保存的答案，清空答案显示
+                displayAnswer = getEmptyAnswerByType(currentQuestion.type);
+                console.log('[练习] 清空答案显示:', currentQuestion.questionId, currentQuestion.type);
+            }
+            
             // 更新当前题目数据
             const questionData = {
                 ...currentQuestion,
-                answer: savedAnswer || currentQuestion.answer || null,
+                answer: displayAnswer,
                 currentIndex: currentQuestionIndex,
                 totalCount: totalQuestions
             };
             
             window.GlobalData.set('practice.currentQuestion', questionData);
             window.GlobalData.set('practice.currentQuestionIndex', currentQuestionIndex);
+            window.GlobalData.set('practice.totalQuestions', totalQuestions);
             
-            // 同步到AMIS
+            // 强制同步到AMIS并刷新数据
             if (window.amisInstance) {
-                window.GlobalData.syncToAmis(window.amisInstance);
+                // 构建完整的数据结构，确保AMIS表达式能够正确访问
+                const updateData = {
+                    practice: {
+                        ...window.globalData.practice,
+                        currentQuestion: questionData,
+                        currentQuestionIndex: currentQuestionIndex,
+                        totalQuestions: totalQuestions
+                    },
+                    // 直接设置当前答案到根级别，确保表单控件能够正确绑定
+                    currentAnswer: displayAnswer
+                };
+                
+                // 使用 updateProps 方法强制更新数据
+                window.amisInstance.updateProps({ data: updateData });
+                
+                console.log('[练习] 数据已同步到AMIS:', {
+                    currentQuestionIndex,
+                    totalQuestions,
+                    isLastQuestion: currentQuestionIndex >= totalQuestions - 1,
+                    currentAnswer: displayAnswer
+                });
             }
         } catch (error) {
             console.error('[练习] 更新当前题目数据失败:', error);
+        }
+    }
+
+    /**
+     * 根据题目类型获取空答案
+     * @param {string} questionType - 题目类型
+     * @returns {*} 对应类型的空答案
+     */
+    function getEmptyAnswerByType(questionType) {
+        switch (questionType) {
+            case 'SingleChoice':
+            case 'TrueFalse':
+                return null; // 单选题和判断题清空选择
+            case 'MultipleChoice':
+                return []; // 多选题清空为空数组
+            case 'FillInBlank':
+            case 'Essay':
+            default:
+                return ''; // 主观题清空为空字符串
         }
     }
 
@@ -356,46 +408,9 @@
                 el.textContent = `${currentQuestionIndex + 1}/${totalQuestions}`;
             });
             
-            // 更新导航按钮状态
-            updateNavigationButtons();
-            
             console.log('[练习] UI更新完成');
         } catch (error) {
             console.error('[练习] 更新题目UI失败:', error);
-        }
-    }
-
-    /**
-     * 更新导航按钮状态
-     */
-    function updateNavigationButtons() {
-        try {
-            const prevButtons = document.querySelectorAll('.prev-question-btn');
-            const nextButtons = document.querySelectorAll('.next-question-btn');
-            
-            // 更新上一题按钮
-            prevButtons.forEach(btn => {
-                if (currentQuestionIndex <= 0) {
-                    btn.disabled = true;
-                    btn.classList.add('disabled');
-                } else {
-                    btn.disabled = false;
-                    btn.classList.remove('disabled');
-                }
-            });
-            
-            // 更新下一题按钮
-            nextButtons.forEach(btn => {
-                if (currentQuestionIndex >= totalQuestions - 1) {
-                    btn.disabled = true;
-                    btn.classList.add('disabled');
-                } else {
-                    btn.disabled = false;
-                    btn.classList.remove('disabled');
-                }
-            });
-        } catch (error) {
-            console.error('[练习] 更新导航按钮状态失败:', error);
         }
     }
 
@@ -416,6 +431,29 @@
             const answers = window.GlobalData.get('practice.answers', new Map());
             answers.set(String(questionId), answer);
             window.GlobalData.set('practice.answers', answers);
+            
+            // 如果是当前题目，更新当前题目的答案显示
+            if (currentQuestion && String(currentQuestion.questionId) === String(questionId)) {
+                // 更新当前题目数据
+                const updatedQuestionData = {
+                    ...currentQuestion,
+                    answer: answer
+                };
+                window.GlobalData.set('practice.currentQuestion', updatedQuestionData);
+                
+                // 同步到AMIS
+                if (window.amisInstance) {
+                    window.amisInstance.updateProps({ 
+                        data: { 
+                            currentAnswer: answer,
+                            practice: {
+                                ...window.globalData.practice,
+                                currentQuestion: updatedQuestionData
+                            }
+                        } 
+                    });
+                }
+            }
             
             // 发送到服务器
             if (recordId) {
@@ -616,6 +654,36 @@
         window.loadPractice = loadPractice;
         window.loadCurrentQuestion = loadCurrentQuestion;
         window.completePractice = completePractice;
+        
+        // 添加调试方法
+        window.testAnswerState = function() {
+            console.log('[练习] 测试答案状态:');
+            console.log('当前题目ID:', currentQuestion?.questionId);
+            console.log('当前题目类型:', currentQuestion?.type);
+            console.log('本地保存的答案:', practiceAnswers.get(currentQuestion?.questionId));
+            console.log('题目数据中的答案:', currentQuestion?.answer);
+            
+            if (window.amisInstance && window.amisInstance.props && window.amisInstance.props.store) {
+                const storeData = window.amisInstance.props.store.data;
+                console.log('AMIS当前答案:', storeData.currentAnswer);
+                console.log('AMIS题目答案:', storeData.practice?.currentQuestion?.answer);
+            }
+        };
+        
+        window.clearCurrentAnswer = function() {
+            console.log('[练习] 清空当前答案');
+            if (currentQuestion) {
+                practiceAnswers.delete(currentQuestion.questionId);
+                updateCurrentQuestionData();
+            }
+        };
+        
+        window.setTestAnswer = function(answer) {
+            console.log('[练习] 设置测试答案:', answer);
+            if (currentQuestion) {
+                saveAnswer(currentQuestion.questionId, answer);
+            }
+        };
     }
 
     // 练习页面配置
@@ -808,7 +876,7 @@
                                 level: 'default',
                                 size: 'lg',
                                 className: 'prev-question-btn',
-                                disabled: '${practice.currentQuestionIndex <= 0}',
+                                disabledOn: '${practice.currentQuestionIndex <= 0}',
                                 onEvent: {
                                     click: {
                                         actions: [
@@ -875,7 +943,7 @@
                                 level: 'primary',
                                 size: 'lg',
                                 className: 'next-question-btn',
-                                disabled: '${practice.currentQuestionIndex >= practice.totalQuestions - 1}',
+                                disabledOn: '${practice.currentQuestionIndex >= practice.totalQuestions - 1}',
                                 onEvent: {
                                     click: {
                                         actions: [
@@ -916,7 +984,9 @@
                     },
                     questions: [],
                     answers: new Map()
-                }
+                },
+                // 当前答案字段，用于表单控件绑定
+                currentAnswer: null
             },
             locale: 'zh-CN',
             context: {

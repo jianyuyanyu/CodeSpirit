@@ -1,0 +1,569 @@
+@page "/demo/cards-demo"
+@{
+    ViewData["Title"] = "统计卡片SDK演示";
+    Layout = "_Layout";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-chart-bar"></i>
+                    CodeSpirit 统计卡片SDK演示
+                </h1>
+                <div class="page-subtitle text-muted">
+                    展示统计卡片、图表卡片、信息卡片和操作卡片的各种功能
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-cogs"></i>
+                        控制面板
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-primary" onclick="loadExamDashboard()">
+                            <i class="fas fa-graduation-cap"></i>
+                            考试仪表板
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="loadMonitorDashboard()">
+                            <i class="fas fa-eye"></i>
+                            监控仪表板
+                        </button>
+                        <button type="button" class="btn btn-info" onclick="loadSystemDashboard()">
+                            <i class="fas fa-server"></i>
+                            系统仪表板
+                        </button>
+                        <button type="button" class="btn btn-warning" onclick="refreshAllCards()">
+                            <i class="fas fa-sync"></i>
+                            刷新数据
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="clearDashboard()">
+                            <i class="fas fa-trash"></i>
+                            清空面板
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <!-- 卡片容器 -->
+            <div id="cards-dashboard" class="cards-container"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {    
+    <!-- 引入ECharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.0/echarts.min.js"></script>
+    <!-- 引入Cards SDK -->
+    <script src="~/cards-sdk/cards-sdk.js"></script>
+    <script src="~/cards-sdk/amis-integration.js"></script>
+    
+    <script>
+        // 初始化Cards SDK
+        const cardsSDK = new CodeSpiritCards.SDK({
+            container: '#cards-dashboard',
+            baseUrl: '/api',
+            theme: 'default',
+            autoRefresh: false
+        });
+
+        // 模拟数据生成器
+        const MockDataService = {
+            // 生成考试数据
+            generateExamData() {
+                return {
+                    todayExams: Math.floor(Math.random() * 50) + 100,
+                    onlineStudents: Math.floor(Math.random() * 2000) + 3000,
+                    completedExams: Math.floor(Math.random() * 200) + 500,
+                    avgScore: Math.floor(Math.random() * 30) + 70,
+                    examTrend: this.generateChartData('考试趋势', 'line'),
+                    scoreTrend: this.generateChartData('分数趋势', 'bar')
+                };
+            },
+
+            // 生成监控数据
+            generateMonitorData() {
+                return {
+                    systemLoad: (Math.random() * 50 + 30).toFixed(1),
+                    memoryUsage: (Math.random() * 30 + 60).toFixed(1),
+                    diskUsage: (Math.random() * 20 + 40).toFixed(1),
+                    networkSpeed: (Math.random() * 100 + 50).toFixed(1),
+                    performanceChart: this.generateChartData('系统性能', 'line')
+                };
+            },
+
+            // 生成系统数据
+            generateSystemData() {
+                return {
+                    activeUsers: Math.floor(Math.random() * 500) + 1000,
+                    totalExams: Math.floor(Math.random() * 1000) + 5000,
+                    errorCount: Math.floor(Math.random() * 10) + 5,
+                    successRate: (Math.random() * 5 + 95).toFixed(2)
+                };
+            },
+
+            // 生成图表数据
+            generateChartData(title, type) {
+                const categories = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+                const values = categories.map(() => Math.floor(Math.random() * 100) + 50);
+                
+                return {
+                    chartTitle: title,
+                    chartType: type,
+                    xData: categories,
+                    yData: values
+                };
+            },
+
+            // 生成趋势数据
+            generateTrend() {
+                const directions = ['up', 'down', 'stable'];
+                const direction = directions[Math.floor(Math.random() * directions.length)];
+                return {
+                    direction,
+                    value: Math.floor(Math.random() * 50) + 1,
+                    period: '较昨日'
+                };
+            }
+        };
+
+        // 仪表板配置
+        const DashboardConfigs = {
+            // 考试仪表板
+            exam: function() {
+                const data = MockDataService.generateExamData();
+                return [
+                    {
+                        id: 'today-exams',
+                        type: 'stat',
+                        title: '今日考试',
+                        subtitle: '正在进行的考试场次',
+                        size: 'medium',
+                        style: { theme: 'primary' },
+                        data: {
+                            value: data.todayExams,
+                            label: '场次',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'online-students',
+                        type: 'stat',
+                        title: '在线考生',
+                        subtitle: '当前在线参与考试的学生',
+                        size: 'medium',
+                        style: { theme: 'success' },
+                        data: {
+                            value: data.onlineStudents,
+                            label: '人',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'completed-exams',
+                        type: 'stat',
+                        title: '已完成考试',
+                        subtitle: '今日已完成的考试数量',
+                        size: 'medium',
+                        style: { theme: 'warning' },
+                        data: {
+                            value: data.completedExams,
+                            label: '场次',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'avg-score',
+                        type: 'stat',
+                        title: '平均分数',
+                        subtitle: '当前考试的平均得分',
+                        size: 'medium',
+                        style: { theme: 'info' },
+                        data: {
+                            value: data.avgScore,
+                            label: '分',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'exam-trend-chart',
+                        type: 'chart',
+                        title: '考试趋势图',
+                        subtitle: '最近一周的考试数量变化',
+                        size: 'large',
+                        style: { height: 350, theme: 'primary' },
+                        data: data.examTrend
+                    },
+                    {
+                        id: 'exam-actions',
+                        type: 'action',
+                        title: '考试管理',
+                        size: 'medium',
+                        style: { theme: 'default' },
+                        data: {
+                            actions: [
+                                {
+                                    label: '创建考试',
+                                    icon: 'fas fa-plus',
+                                    onclick: 'showMessage("创建考试功能")'
+                                },
+                                {
+                                    label: '考试监控',
+                                    icon: 'fas fa-eye',
+                                    onclick: 'showMessage("考试监控功能")'
+                                },
+                                {
+                                    label: '导出报告',
+                                    icon: 'fas fa-download',
+                                    onclick: 'showMessage("导出报告功能")'
+                                }
+                            ]
+                        }
+                    }
+                ];
+            },
+
+            // 监控仪表板
+            monitor: function() {
+                const data = MockDataService.generateMonitorData();
+                return [
+                    {
+                        id: 'system-load',
+                        type: 'stat',
+                        title: '系统负载',
+                        subtitle: 'CPU使用率',
+                        size: 'medium',
+                        style: { theme: 'warning' },
+                        data: {
+                            value: data.systemLoad,
+                            label: '%',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'memory-usage',
+                        type: 'stat',
+                        title: '内存使用',
+                        subtitle: '当前内存使用率',
+                        size: 'medium',
+                        style: { theme: 'danger' },
+                        data: {
+                            value: data.memoryUsage,
+                            label: '%',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'disk-usage',
+                        type: 'stat',
+                        title: '磁盘使用',
+                        subtitle: '磁盘空间使用率',
+                        size: 'medium',
+                        style: { theme: 'info' },
+                        data: {
+                            value: data.diskUsage,
+                            label: '%',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'network-speed',
+                        type: 'stat',
+                        title: '网络速度',
+                        subtitle: '当前网络传输速度',
+                        size: 'medium',
+                        style: { theme: 'success' },
+                        data: {
+                            value: data.networkSpeed,
+                            label: 'MB/s',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'performance-chart',
+                        type: 'chart',
+                        title: '系统性能趋势',
+                        subtitle: '最近一周的系统性能变化',
+                        size: 'large',
+                        style: { height: 350, theme: 'warning' },
+                        data: data.performanceChart
+                    }
+                ];
+            },
+
+            // 系统仪表板
+            system: function() {
+                const data = MockDataService.generateSystemData();
+                return [
+                    {
+                        id: 'active-users',
+                        type: 'stat',
+                        title: '活跃用户',
+                        subtitle: '当前活跃用户数量',
+                        size: 'medium',
+                        style: { theme: 'primary' },
+                        data: {
+                            value: data.activeUsers,
+                            label: '人',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'total-exams',
+                        type: 'stat',
+                        title: '总考试数',
+                        subtitle: '系统中的总考试数量',
+                        size: 'medium',
+                        style: { theme: 'success' },
+                        data: {
+                            value: data.totalExams,
+                            label: '场',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'error-count',
+                        type: 'stat',
+                        title: '错误计数',
+                        subtitle: '今日系统错误数量',
+                        size: 'medium',
+                        style: { theme: 'danger' },
+                        data: {
+                            value: data.errorCount,
+                            label: '次',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'success-rate',
+                        type: 'stat',
+                        title: '成功率',
+                        subtitle: '系统操作成功率',
+                        size: 'medium',
+                        style: { theme: 'info' },
+                        data: {
+                            value: data.successRate,
+                            label: '%',
+                            trend: MockDataService.generateTrend()
+                        }
+                    },
+                    {
+                        id: 'system-info',
+                        type: 'info',
+                        title: '系统信息',
+                        size: 'large',
+                        style: { theme: 'default' },
+                        data: {
+                            content: `
+                                <div style="text-align: center; padding: 30px;">
+                                    <i class="fas fa-server" style="font-size: 64px; color: #1890ff; margin-bottom: 20px;"></i>
+                                    <h4>CodeSpirit 考试系统</h4>
+                                    <p><strong>版本:</strong> v2.0.1</p>
+                                    <p><strong>运行时间:</strong> 365 天</p>
+                                    <p><strong>最后更新:</strong> ${new Date().toLocaleString()}</p>
+                                    <hr style="margin: 20px 0;">
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <i class="fas fa-users text-primary"></i><br>
+                                            <small>用户管理</small>
+                                        </div>
+                                        <div class="col-4">
+                                            <i class="fas fa-chart-bar text-success"></i><br>
+                                            <small>数据统计</small>
+                                        </div>
+                                        <div class="col-4">
+                                            <i class="fas fa-shield-alt text-warning"></i><br>
+                                            <small>安全保护</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            `
+                        }
+                    }
+                ];
+            }
+        };
+
+        // 加载考试仪表板
+        async function loadExamDashboard() {
+            setActiveButton('loadExamDashboard');
+            const cards = DashboardConfigs.exam();
+            await cardsSDK.render('#cards-dashboard', cards);
+        }
+
+        // 加载监控仪表板
+        async function loadMonitorDashboard() {
+            setActiveButton('loadMonitorDashboard');
+            const cards = DashboardConfigs.monitor();
+            await cardsSDK.render('#cards-dashboard', cards);
+        }
+
+        // 加载系统仪表板
+        async function loadSystemDashboard() {
+            setActiveButton('loadSystemDashboard');
+            const cards = DashboardConfigs.system();
+            await cardsSDK.render('#cards-dashboard', cards);
+        }
+
+        // 刷新所有卡片
+        async function refreshAllCards() {
+            if (cardsSDK.cards.size === 0) {
+                return;
+            }
+
+            try {
+                for (const [cardId, card] of cardsSDK.cards) {
+                    if (card.config.type === 'stat') {
+                        await cardsSDK.update(cardId, {
+                            value: Math.floor(Math.random() * 1000) + 100,
+                            trend: MockDataService.generateTrend()
+                        });
+                    } else if (card.config.type === 'chart') {
+                        await cardsSDK.update(cardId, MockDataService.generateChartData('刷新数据', 'line'));
+                    }
+                }
+            } catch (error) {
+                console.error('刷新失败:', error);
+            }
+        }
+
+        // 清空仪表板
+        function clearDashboard() {
+            const container = document.querySelector('#cards-dashboard');
+            container.innerHTML = '';
+            cardsSDK.cards.clear();
+            clearActiveButton();
+            
+            // 简单的视觉反馈
+            const clearButton = event.target.closest('.btn');
+            if (clearButton) {
+                clearButton.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    clearButton.style.transform = '';
+                }, 150);
+            }
+        }
+
+        // 设置活动按钮样式
+        function setActiveButton(functionName) {
+            // 清除所有按钮的活动状态
+            clearActiveButton();
+            
+            // 根据函数名找到对应的按钮并设置活动状态
+            const buttonMap = {
+                'loadExamDashboard': 'btn-primary',
+                'loadMonitorDashboard': 'btn-success', 
+                'loadSystemDashboard': 'btn-info'
+            };
+            
+            const buttons = document.querySelectorAll('.btn-group .btn');
+            buttons.forEach(button => {
+                const onclick = button.getAttribute('onclick');
+                if (onclick && onclick.includes(functionName)) {
+                    button.classList.add('active');
+                    // 为活动按钮添加更明显的样式
+                    button.style.boxShadow = '0 0 0 0.2rem rgba(0,123,255,.25)';
+                }
+            });
+        }
+
+        // 清除所有按钮的活动状态
+        function clearActiveButton() {
+            const buttons = document.querySelectorAll('.btn-group .btn');
+            buttons.forEach(button => {
+                button.classList.remove('active');
+                button.style.boxShadow = '';
+            });
+        }
+
+        // 演示操作函数（简化版，仅用于控制台输出）
+        window.showMessage = function(message) {
+            console.log('操作:', message);
+        };
+
+        // 监听卡片事件
+        cardsSDK.eventBus.on('card-rendered', (data) => {
+            console.log('卡片渲染完成:', data);
+        });
+
+        cardsSDK.eventBus.on('card-updated', (data) => {
+            console.log('卡片数据更新:', data);
+        });
+
+        // 页面加载完成后自动加载考试仪表板
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                loadExamDashboard();
+            }, 1000);
+        });
+    </script>
+}
+
+<style>
+    .page-header {
+        background: #fff;
+        padding: 24px;
+        margin-bottom: 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .page-title {
+        margin: 0;
+        color: #262626;
+        font-size: 24px;
+        font-weight: 600;
+    }
+    
+    .page-subtitle {
+        margin-top: 8px;
+        font-size: 14px;
+    }
+    
+    .cards-container {
+        min-height: 400px;
+    }
+    
+    .btn-group .btn {
+        margin-right: 8px;
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .btn-group .btn:last-child {
+        margin-right: 0;
+    }
+    
+    .btn-group .btn.active {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+    }
+    
+    .btn-group .btn:hover {
+        transform: translateY(-1px);
+    }
+    
+    @@media (max-width: 768px) {
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .btn-group .btn {
+            margin-right: 0;
+        }
+    }
+</style> 

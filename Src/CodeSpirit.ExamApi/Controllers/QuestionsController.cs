@@ -397,15 +397,13 @@ public class QuestionsController : ApiControllerBase
             ["data"] = new JObject
             {
                 ["content"] = question.Content,
-                ["score"] = 1,
-                ["answer"] = 3,
+                ["score"] = question.DefaultScore,
+                ["answer"] = question.CorrectAnswer,
                 ["analysis"] = question.Analysis
             },
             ["body"] = formItems,
             ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
         };
-
-        var xx= JsonConvert.SerializeObject(amisConfig);
         return SuccessResponse(amisConfig);
     }
 

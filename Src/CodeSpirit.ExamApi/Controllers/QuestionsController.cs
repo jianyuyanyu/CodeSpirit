@@ -269,18 +269,6 @@ public class QuestionsController : ApiControllerBase
 
         // 使用JObject/JArray构建表单
         var formItems = new JArray();
-
-        var objData = new JObject
-        {
-            ["data"] = new JObject
-            {
-                ["content"] = question.Content,
-                ["score"] = 1,
-                ["answer"] = 3,
-                ["analysis"] = question.Analysis
-            }
-        };
-        formItems.Add(objData);
         // 问题标题
         var titleObj = new JObject
         {
@@ -406,6 +394,13 @@ public class QuestionsController : ApiControllerBase
             ["type"] = "form",
             ["title"] = "",
             ["id"] = "questionPreviewForm",
+            ["data"] = new JObject
+            {
+                ["content"] = question.Content,
+                ["score"] = 1,
+                ["answer"] = 3,
+                ["analysis"] = question.Analysis
+            },
             ["body"] = formItems,
             ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
         };

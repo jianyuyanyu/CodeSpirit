@@ -270,18 +270,25 @@ public class QuestionsController : ApiControllerBase
         // 使用JObject/JArray构建表单
         var formItems = new JArray();
 
+        var objData = new JObject
+        {
+            ["data"] = new JObject
+            {
+                ["content"] = question.Content,
+                ["score"] = 1,
+                ["answer"] = 3,
+                ["analysis"] = question.Analysis
+            }
+        };
+        formItems.Add(objData);
         // 问题标题
         var titleObj = new JObject
         {
             ["type"] = "tpl",
-            ["tpl"] = "<div class=\"question-label\"><pre>1. ${content | raw} </pre><span style=\"color:#999\">（${score}分）</span></div>",
-            ["data"] = new JObject
-            {
-                ["content"] = question.Content,
-                ["score"] = question.DefaultScore
-            },
+            ["tpl"] = "<div class=\"question-label\"><pre>1. ${content | raw} </pre><span style=\"color:#999\">（${score}分）</span></div>",            
             ["inline"] = false
         };
+
         formItems.Add(titleObj);
 
         // 根据题目类型添加不同的表单控件
@@ -379,10 +386,6 @@ public class QuestionsController : ApiControllerBase
         {
             ["type"] = "tpl",
             ["tpl"] = "<div style=\"color:#009900; font-weight:bold;\">正确答案：${answer | raw}</div>",
-            ["data"] = new JObject
-            {
-                ["answer"] = question.CorrectAnswer
-            },
             ["inline"] = false
         });
 
@@ -393,10 +396,6 @@ public class QuestionsController : ApiControllerBase
             {
                 ["type"] = "tpl",
                 ["tpl"] = "<div style=\"margin-top:10px;\"><b>解析：</b>${analysis | raw}</div>",
-                ["data"] = new JObject
-                {
-                    ["analysis"] = question.Analysis
-                },
                 ["inline"] = false
             });
         }
@@ -411,6 +410,7 @@ public class QuestionsController : ApiControllerBase
             ["actions"] = new JArray()  // 添加空的actions数组，隐藏表单自带的提交按钮
         };
 
+        var xx= JsonConvert.SerializeObject(amisConfig);
         return SuccessResponse(amisConfig);
     }
 

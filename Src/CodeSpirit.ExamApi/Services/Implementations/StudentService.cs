@@ -94,7 +94,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         var query = _repository.CreateQuery()
             .Include(x => x.StudentGroups)
                 .ThenInclude(x => x.StudentGroup)
-            .Where(predicate);
+            .Where(predicate).OrderByDescending(x=>x.CreatedAt);
 
         // 执行分页查询
         var totalCount = await query.CountAsync();

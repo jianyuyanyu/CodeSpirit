@@ -21,10 +21,12 @@ public abstract class MultiTenantDbContext : AuditableDbContext
 
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<MultiTenantDbContext> _multiTenantLogger;
-    private readonly Lazy<MultiTenantOptions> _multiTenantOptions;
+    private Lazy<MultiTenantOptions> _multiTenantOptions;
     private readonly object _tenantCacheLock = new();
     private string _currentTenantId;
     private readonly ICurrentUser _currentUser;
+    private MultiTenantOptions _cachedDefaultOptions;
+    private readonly IServiceProvider _serviceProvider;
 
     #endregion
 
@@ -37,14 +39,24 @@ public abstract class MultiTenantDbContext : AuditableDbContext
     {
         get
         {
+            // 防止在构造函数执行过程中访问未初始化的 _multiTenantOptions
+            if (_multiTenantOptions == null)
+            {
+                _multiTenantLogger?.LogWarning("多租户配置尚未初始化，使用默认配置");
+                return _cachedDefaultOptions ??= CreateDefaultMultiTenantOptions();
+            }
+
             try
             {
                 return _multiTenantOptions.Value;
             }
-            catch
+            catch (Exception ex)
             {
-                // 在设计时或配置缺失时返回默认配置
-                return new MultiTenantOptions { Enabled = false, DefaultTenantId = "default" };
+                // 记录异常信息便于排查问题
+                _multiTenantLogger?.LogWarning(ex, "获取多租户配置失败，使用默认配置。异常信息: {Message}", ex.Message);
+                
+                // 缓存默认配置，避免重复创建对象
+                return _cachedDefaultOptions ??= CreateDefaultMultiTenantOptions();
             }
         }
     }
@@ -79,6 +91,24 @@ public abstract class MultiTenantDbContext : AuditableDbContext
 
     #endregion
 
+    #region 配置方法
+
+    /// <summary>
+    /// 创建默认的多租户配置选项
+    /// 可在派生类中重写以提供自定义的默认配置
+    /// </summary>
+    /// <returns>默认的多租户配置选项</returns>
+    protected virtual MultiTenantOptions CreateDefaultMultiTenantOptions()
+    {
+        return new MultiTenantOptions 
+        { 
+            Enabled = false, 
+            DefaultTenantId = "default" 
+        };
+    }
+
+    #endregion
+
     #region 构造函数
 
     /// <summary>
@@ -94,17 +124,59 @@ public abstract class MultiTenantDbContext : AuditableDbContext
         ICurrentUser currentUser,
         IHttpContextAccessor httpContextAccessor) : base(options, serviceProvider, currentUser)
     {
+        _serviceProvider = serviceProvider;
         _httpContextAccessor = httpContextAccessor;
         _multiTenantLogger = serviceProvider.GetService<ILogger<MultiTenantDbContext>>();
         _currentUser = currentUser;
 
-        // 延迟初始化多租户配置
+        // 立即初始化多租户配置，避免在基类构造函数执行期间访问时出现空引用
+        InitializeMultiTenantOptions();
+    }
+
+    /// <summary>
+    /// 初始化多租户配置选项
+    /// </summary>
+    private void InitializeMultiTenantOptions()
+    {
         _multiTenantOptions = new Lazy<MultiTenantOptions>(() =>
         {
-            var configuration = serviceProvider.GetService<IConfiguration>();
-            var options = new MultiTenantOptions();
-            configuration?.GetSection("MultiTenant").Bind(options);
-            return options;
+            try
+            {
+                var configuration = _serviceProvider.GetService<IConfiguration>();
+                if (configuration == null)
+                {
+                    _multiTenantLogger?.LogWarning("无法获取IConfiguration服务，使用默认多租户配置");
+                    return CreateDefaultMultiTenantOptions();
+                }
+
+                var options = new MultiTenantOptions();
+                var section = configuration.GetSection("MultiTenant");
+                
+                if (!section.Exists())
+                {
+                    _multiTenantLogger?.LogInformation("未找到MultiTenant配置节，使用默认配置");
+                    return CreateDefaultMultiTenantOptions();
+                }
+
+                section.Bind(options);
+                
+                // 验证配置的有效性
+                if (string.IsNullOrEmpty(options.DefaultTenantId))
+                {
+                    _multiTenantLogger?.LogWarning("DefaultTenantId配置为空，使用默认值");
+                    options.DefaultTenantId = "default";
+                }
+
+                _multiTenantLogger?.LogInformation("成功加载多租户配置: Enabled={Enabled}, DefaultTenantId={DefaultTenantId}", 
+                    options.Enabled, options.DefaultTenantId);
+                
+                return options;
+            }
+            catch (Exception ex)
+            {
+                _multiTenantLogger?.LogError(ex, "初始化多租户配置时发生异常，使用默认配置");
+                return CreateDefaultMultiTenantOptions();
+            }
         });
     }
 
@@ -141,15 +213,32 @@ public abstract class MultiTenantDbContext : AuditableDbContext
                 }
             }
 
-            // 3. 使用默认租户ID
-            tenantId = MultiTenantOptions.DefaultTenantId;
+            // 3. 使用默认租户ID（安全获取，避免循环调用）
+            tenantId = GetDefaultTenantIdSafely();
             _multiTenantLogger?.LogDebug("使用默认租户ID: {TenantId}", tenantId);
             return tenantId;
         }
         catch (Exception ex)
         {
             _multiTenantLogger?.LogError(ex, "解析租户ID时发生异常，使用默认租户ID");
-            return MultiTenantOptions.DefaultTenantId;
+            return GetDefaultTenantIdSafely();
+        }
+    }
+
+    /// <summary>
+    /// 安全获取默认租户ID，避免循环调用
+    /// </summary>
+    /// <returns>默认租户ID</returns>
+    private string GetDefaultTenantIdSafely()
+    {
+        // 直接从懒加载配置获取，如果初始化失败则使用硬编码默认值
+        try
+        {
+            return _multiTenantOptions?.Value?.DefaultTenantId ?? "default";
+        }
+        catch
+        {
+            return "default";
         }
     }
 

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Dtos.PracticeSetting;
@@ -27,10 +28,21 @@ public class CreatePracticeSettingDto
     /// <summary>
     /// 试卷ID
     /// </summary>
-    [Required(ErrorMessage = "试卷ID不能为空")]
-    [DisplayName("试卷ID")]
+    [DisplayName("试卷")]
+    [Required(ErrorMessage = "请选择试卷")]
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/exam/ExamPapers/select-published",
+        ValueField = "id",
+        LabelField = "name",
+        Multiple = false,
+        JoinValues = false,
+        ExtractValue = true,
+        Searchable = true,
+        Clearable = true,
+        Placeholder = "请选择试卷"
+    )]
     public long ExamPaperId { get; set; }
-    
+
     /// <summary>
     /// 练习模式
     /// </summary>
@@ -56,11 +68,11 @@ public class CreatePracticeSettingDto
     /// 是否显示答案解析
     /// </summary>
     [DisplayName("显示答案解析")]
-    public bool ShowAnalysis { get; set; } = true;
+    public bool? ShowAnalysis { get; set; } = false;
     
     /// <summary>
     /// 是否随机排序题目
     /// </summary>
     [DisplayName("随机排序题目")]
-    public bool RandomizeQuestions { get; set; } = false;
+    public bool? RandomizeQuestions { get; set; } = false;
 } 

@@ -31,5 +31,10 @@ namespace CodeSpirit.Web.Options
         public string CdnUrl { get; set; } = "";
 
         public string WebHost { get; set; } = "https://codespirit-app.xin-lai.com";
+
+        /// <summary>
+        /// 资源版本号，用于CDN缓存控制
+        /// </summary>
+        public string ResourceVersion { get; set; } = "";
     }
 } 

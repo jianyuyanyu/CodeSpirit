@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 using Microsoft.Extensions.Options;
 using CodeSpirit.Web.Options;
 using System;
+using System.Reflection;
 
 namespace CodeSpirit.Web.TagHelpers
 {
@@ -12,6 +13,11 @@ namespace CodeSpirit.Web.TagHelpers
     public class ResourceTagHelper : TagHelper
     {
         private readonly SiteSettings _siteSettings;
+        
+        /// <summary>
+        /// 应用程序启动时间，用作默认版本号
+        /// </summary>
+        private static readonly string ApplicationStartTimeVersion = DateTime.UtcNow.ToString("yyyyMMddHHmm");
 
         /// <summary>
         /// 资源路径
@@ -56,8 +62,11 @@ namespace CodeSpirit.Web.TagHelpers
             // 添加版本号
             if (cdnEnabled)
             {
-                var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-                url += $"?v={timestamp}";
+                // 优先使用配置的版本号，否则使用应用启动时间版本
+                var version = !string.IsNullOrEmpty(_siteSettings.ResourceVersion) 
+                    ? _siteSettings.ResourceVersion 
+                    : ApplicationStartTimeVersion;
+                url += $"?v={version}";
             }
             
             // 根据类型输出不同的HTML

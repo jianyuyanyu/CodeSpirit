@@ -159,9 +159,9 @@ public class PracticeSettingsController : ApiControllerBase
     [HttpPost("batch-delete")]
     [Operation("批量删除", "ajax", null, "确定要批量删除选中的练习吗？", isBulkOperation: true)]
     [DisplayName("批量删除练习")]
-    public async Task<ActionResult<ApiResponse>> BatchDeletePracticeSettings([FromBody] IEnumerable<long> ids)
+    public async Task<ActionResult<ApiResponse>> BatchDeletePracticeSettings([FromBody] BatchOperationDto<long> request)
     {
-        var result = await _practiceSettingService.BatchDeleteAsync(ids);
+        var result = await _practiceSettingService.BatchDeleteAsync(request.Ids);
         return SuccessResponse($"成功删除{result.successCount}个练习，失败{result.failedIds.Count}个");
     }
 } 

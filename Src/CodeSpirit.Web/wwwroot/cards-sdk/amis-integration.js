@@ -1,9 +1,25 @@
 /**
  * CodeSpirit Cards SDK - AMIS集成适配器
  * 用于将Cards SDK与现有的AMIS系统集成
+ * @version 1.0.1 - 修复潜在问题
  */
 (function(global) {
     'use strict';
+    
+    // 🔧 修复1: 改进初始化时机判断，不直接退出
+    const isAmisAvailable = () => {
+        return typeof global.amisRequire !== 'undefined' || typeof global.amis !== 'undefined';
+    };
+    
+    // 🔧 修复2: 添加延迟初始化机制
+    const delayedInitCallbacks = [];
+    const addDelayedInitCallback = (callback) => {
+        if (isAmisAvailable()) {
+            callback();
+        } else {
+            delayedInitCallbacks.push(callback);
+        }
+    };
 
     /**
      * AMIS Cards适配器类
@@ -13,31 +29,55 @@
             this.options = {
                 amisScope: global.amisScope || global.amis,
                 cardsSDK: null,
+                maxRetries: 3, // 🔧 添加重试机制
+                retryDelay: 1000,
                 ...options
             };
             
+            this.initAttempts = 0;
+            this.initialized = false;
             this.init();
         }
 
         /**
          * 初始化适配器
          */
-        init() {
-            if (typeof CodeSpiritCards !== 'undefined') {
+        async init() {
+            if (this.initialized) {
+                return;
+            }
+            
+            try {
+                // 🔧 修复3: 改进Cards SDK依赖检查
+                if (typeof CodeSpiritCards === 'undefined') {
+                    if (this.initAttempts < this.options.maxRetries) {
+                        this.initAttempts++;
+                        console.warn(`CodeSpirit Cards SDK未找到，第${this.initAttempts}次重试...`);
+                        setTimeout(() => this.init(), this.options.retryDelay);
+                        return;
+                    }
+                    throw new Error('CodeSpirit Cards SDK未找到，已达到最大重试次数');
+                }
+                
                 this.cardsSDK = new CodeSpiritCards.SDK(this.options);
-                this.registerAmisRenderer();
+                
+                // 🔧 修复4: 异步注册渲染器
+                await this.registerAmisRenderer();
+                
+                this.initialized = true;
                 console.log('AMIS Cards适配器初始化完成');
-            } else {
-                console.error('CodeSpirit Cards SDK未找到');
+            } catch (error) {
+                console.error('AMIS Cards适配器初始化失败:', error);
+                throw error;
             }
         }
 
         /**
          * 注册AMIS渲染器
          */
-        registerAmisRenderer() {
-            // 检查 Amis 是否可用
-            if (typeof global.amisRequire === 'undefined' && typeof global.amis === 'undefined') {
+        async registerAmisRenderer() {
+            // 🔧 修复5: 更完善的Amis可用性检查
+            if (!isAmisAvailable()) {
                 console.warn('AMIS未找到，跳过渲染器注册');
                 return;
             }
@@ -49,7 +89,7 @@
                     const amisCore = global.amisRequire('@fex/amis-core');
                     
                     if (amisCore && amisCore.Renderer && React) {
-                        this.registerWithAmisCore(amisCore, React);
+                        await this.registerWithAmisCore(amisCore, React);
                         return;
                     }
                 } catch (error) {
@@ -59,7 +99,7 @@
 
             // 备用方式：使用全局 amis 对象
             if (typeof global.amis !== 'undefined') {
-                this.registerWithAmisGlobal(global.amis);
+                await this.registerWithAmisGlobal(global.amis);
                 return;
             }
 
@@ -69,8 +109,10 @@
         /**
          * 使用 amisCore 注册渲染器（推荐方式）
          */
-        registerWithAmisCore(amisCore, React) {
+        async registerWithAmisCore(amisCore, React) {
+            console.log('开始注册AmisCore渲染器');
 
+            // 🔧 修复6: 改进React组件实现
             // 注册统计卡片渲染器
             amisCore.Renderer({
                 type: 'codespirit-cards',
@@ -80,22 +122,49 @@
 
                 constructor(props) {
                     super(props);
+                    this.state = {
+                        isRendering: false,
+                        renderError: null
+                    };
                     this.cardsContainer = null;
                     this.cardInstances = new Map();
+                    // 🔧 修复7: 绑定方法上下文
+                    this.renderCards = this.renderCards.bind(this);
+                    this.destroyCards = this.destroyCards.bind(this);
                 }
 
-                componentDidMount() {
-                    this.renderCards();
+                async componentDidMount() {
+                    // 🔧 修复8: 添加错误处理
+                    try {
+                        await this.renderCards();
+                    } catch (error) {
+                        console.error('componentDidMount渲染失败:', error);
+                        this.setState({ renderError: error });
+                    }
                 }
 
-                componentDidUpdate(prevProps) {
-                    if (prevProps.cards !== this.props.cards) {
-                        this.renderCards();
+                async componentDidUpdate(prevProps) {
+                    // 🔧 修复9: 改进更新条件判断，避免无限循环
+                    const cardsChanged = JSON.stringify(prevProps.cards) !== JSON.stringify(this.props.cards);
+                    const dataChanged = JSON.stringify(prevProps.data) !== JSON.stringify(this.props.data);
+                    
+                    if ((cardsChanged || dataChanged) && !this.state.isRendering) {
+                        try {
+                            await this.renderCards();
+                        } catch (error) {
+                            console.error('componentDidUpdate渲染失败:', error);
+                            this.setState({ renderError: error });
+                        }
                     }
                 }
 
                 componentWillUnmount() {
-                    this.destroyCards();
+                    // 🔧 修复10: 安全的清理
+                    try {
+                        this.destroyCards();
+                    } catch (error) {
+                        console.error('组件清理失败:', error);
+                    }
                 }
 
                 async renderCards() {
@@ -105,16 +174,26 @@
                         return;
                     }
 
-                    // 处理卡片配置
-                    const processedCards = this.processCardConfigs(cards, data);
-                    
-                    // 渲染到容器
-                    if (this.cardsContainer && this.cardsSDK) {
-                        try {
-                            await this.cardsSDK.render(this.cardsContainer, processedCards);
-                        } catch (error) {
-                            console.error('渲染Cards失败:', error);
+                    // 🔧 修复11: 防止并发渲染
+                    if (this.state.isRendering) {
+                        return;
+                    }
+
+                    this.setState({ isRendering: true, renderError: null });
+
+                    try {
+                        // 处理卡片配置
+                        const processedCards = this.processCardConfigs(cards, data);
+                        
+                        // 渲染到容器
+                        if (this.cardsContainer && window.amisCardsAdapter?.cardsSDK) {
+                            await window.amisCardsAdapter.cardsSDK.render(this.cardsContainer, processedCards);
                         }
+                    } catch (error) {
+                        console.error('渲染Cards失败:', error);
+                        this.setState({ renderError: error });
+                    } finally {
+                        this.setState({ isRendering: false });
                     }
                 }
 
@@ -128,9 +207,9 @@
                             processedCard.id = `card-${index}-${Date.now()}`;
                         }
 
-                        // 数据模板替换
+                        // 🔧 修复12: 安全的数据模板替换
                         if (processedCard.data && data) {
-                            processedCard.data = this.replaceDataTemplates(processedCard.data, data);
+                            processedCard.data = this.safeReplaceDataTemplates(processedCard.data, data);
                         }
 
                         // API路径处理
@@ -142,17 +221,38 @@
                     });
                 }
 
-                replaceDataTemplates(cardData, contextData) {
-                    const result = { ...cardData };
+                // 🔧 修复13: 防止循环引用的安全模板替换
+                safeReplaceDataTemplates(cardData, contextData, depth = 0) {
+                    // 防止深度递归
+                    if (depth > 10) {
+                        console.warn('模板替换深度过深，停止递归');
+                        return cardData;
+                    }
                     
-                    // 简单模板替换
-                    Object.keys(result).forEach(key => {
-                        if (typeof result[key] === 'string' && result[key].includes('${')) {
-                            result[key] = result[key].replace(/\$\{(\w+)\}/g, (match, prop) => {
+                    // 防止循环引用
+                    if (typeof cardData !== 'object' || cardData === null) {
+                        return cardData;
+                    }
+                    
+                    // 检查是否为循环引用
+                    if (cardData === contextData) {
+                        console.warn('检测到循环引用，跳过处理');
+                        return cardData;
+                    }
+                    
+                    const result = Array.isArray(cardData) ? [] : {};
+                    
+                    Object.keys(cardData).forEach(key => {
+                        const value = cardData[key];
+                        
+                        if (typeof value === 'string' && value.includes('${')) {
+                            result[key] = value.replace(/\$\{(\w+)\}/g, (match, prop) => {
                                 return contextData[prop] || match;
                             });
-                        } else if (typeof result[key] === 'object' && result[key] !== null) {
-                            result[key] = this.replaceDataTemplates(result[key], contextData);
+                        } else if (typeof value === 'object' && value !== null) {
+                            result[key] = this.safeReplaceDataTemplates(value, contextData, depth + 1);
+                        } else {
+                            result[key] = value;
                         }
                     });
                     
@@ -166,17 +266,35 @@
                     });
                 }
 
+                // 🔧 修复14: 安全的实例销毁
                 destroyCards() {
-                    if (this.cardsSDK) {
-                        this.cardInstances.forEach((card, id) => {
-                            this.cardsSDK.destroy(id);
-                        });
+                    try {
+                        if (window.amisCardsAdapter?.cardsSDK && this.cardInstances.size > 0) {
+                            this.cardInstances.forEach((card, id) => {
+                                try {
+                                    window.amisCardsAdapter.cardsSDK.destroy(id);
+                                } catch (error) {
+                                    console.warn(`销毁卡片${id}失败:`, error);
+                                }
+                            });
+                        }
                         this.cardInstances.clear();
+                    } catch (error) {
+                        console.error('销毁卡片实例失败:', error);
                     }
                 }
 
                 render() {
                     const { className, style } = this.props;
+                    const { renderError } = this.state;
+                    
+                    // 🔧 修复15: 添加错误状态渲染
+                    if (renderError) {
+                        return React.createElement('div', {
+                            className: `codespirit-cards-error ${className || ''}`,
+                            style: style || {}
+                        }, `渲染失败: ${renderError.message}`);
+                    }
                     
                     return React.createElement('div', {
                         ref: (ref) => { this.cardsContainer = ref; },
@@ -186,6 +304,7 @@
                 }
             });
 
+            // 🔧 修复16: 改进单个卡片渲染器
             // 注册单个卡片渲染器
             amisCore.Renderer({
                 type: 'codespirit-stat-card'
@@ -194,40 +313,62 @@
 
                 constructor(props) {
                     super(props);
+                    this.state = {
+                        isRendering: false,
+                        renderError: null
+                    };
                     this.cardRef = null;
+                    this.renderStatCard = this.renderStatCard.bind(this);
                 }
 
-                componentDidMount() {
-                    this.renderStatCard();
+                async componentDidMount() {
+                    try {
+                        await this.renderStatCard();
+                    } catch (error) {
+                        console.error('统计卡片componentDidMount失败:', error);
+                        this.setState({ renderError: error });
+                    }
                 }
 
-                componentDidUpdate(prevProps) {
-                    if (JSON.stringify(prevProps.data) !== JSON.stringify(this.props.data)) {
-                        this.renderStatCard();
+                async componentDidUpdate(prevProps) {
+                    if (JSON.stringify(prevProps.data) !== JSON.stringify(this.props.data) && 
+                        !this.state.isRendering) {
+                        try {
+                            await this.renderStatCard();
+                        } catch (error) {
+                            console.error('统计卡片更新失败:', error);
+                            this.setState({ renderError: error });
+                        }
                     }
                 }
 
                 async renderStatCard() {
                     const { data, title, subtitle, theme, size } = this.props;
                     
-                    if (!this.cardRef || !data) return;
+                    if (!this.cardRef || !data || this.state.isRendering) return;
 
-                    const cardConfig = {
-                        id: `stat-card-${Date.now()}`,
-                        type: 'stat',
-                        title: title || '统计卡片',
-                        subtitle: subtitle,
-                        size: size || 'medium',
-                        style: { theme: theme || 'default' },
-                        data: {
-                            value: data.value || 0,
-                            label: data.label || '',
-                            unit: data.unit,
-                            trend: data.trend
-                        }
-                    };
+                    this.setState({ isRendering: true, renderError: null });
 
                     try {
+                        const cardConfig = {
+                            id: `stat-card-${Date.now()}`,
+                            type: 'stat',
+                            title: title || '统计卡片',
+                            subtitle: subtitle,
+                            size: size || 'medium',
+                            style: { theme: theme || 'default' },
+                            data: {
+                                value: data.value || 0,
+                                label: data.label || '',
+                                unit: data.unit,
+                                trend: data.trend
+                            }
+                        };
+
+                        if (!CodeSpiritCards?.StatCardRenderer) {
+                            throw new Error('StatCardRenderer未找到');
+                        }
+
                         const renderer = new CodeSpiritCards.StatCardRenderer();
                         const cardElement = await renderer.render(cardConfig);
                         
@@ -236,11 +377,22 @@
                         this.cardRef.appendChild(cardElement);
                     } catch (error) {
                         console.error('渲染统计卡片失败:', error);
+                        this.setState({ renderError: error });
+                    } finally {
+                        this.setState({ isRendering: false });
                     }
                 }
 
                 render() {
                     const { className, style } = this.props;
+                    const { renderError } = this.state;
+                    
+                    if (renderError) {
+                        return React.createElement('div', {
+                            className: `codespirit-stat-card-error ${className || ''}`,
+                            style: style || {}
+                        }, `统计卡片渲染失败: ${renderError.message}`);
+                    }
                     
                     return React.createElement('div', {
                         ref: (ref) => { this.cardRef = ref; },
@@ -250,6 +402,7 @@
                 }
             });
 
+            // 🔧 修复17: 改进Amis Chart卡片渲染器
             // 注册Amis Chart卡片渲染器（直接使用）
             amisCore.Renderer({
                 type: 'codespirit-amis-chart'
@@ -258,38 +411,61 @@
 
                 constructor(props) {
                     super(props);
+                    this.state = {
+                        isRendering: false,
+                        renderError: null
+                    };
                     this.chartRef = null;
+                    this.renderAmisChart = this.renderAmisChart.bind(this);
                 }
 
-                componentDidMount() {
-                    this.renderAmisChart();
+                async componentDidMount() {
+                    try {
+                        await this.renderAmisChart();
+                    } catch (error) {
+                        console.error('Amis图表componentDidMount失败:', error);
+                        this.setState({ renderError: error });
+                    }
                 }
 
-                componentDidUpdate(prevProps) {
-                    if (JSON.stringify(prevProps.data) !== JSON.stringify(this.props.data) ||
-                        prevProps.chartType !== this.props.chartType) {
-                        this.renderAmisChart();
+                async componentDidUpdate(prevProps) {
+                    const dataChanged = JSON.stringify(prevProps.data) !== JSON.stringify(this.props.data);
+                    const chartTypeChanged = prevProps.chartType !== this.props.chartType;
+                    
+                    if ((dataChanged || chartTypeChanged) && !this.state.isRendering) {
+                        try {
+                            await this.renderAmisChart();
+                        } catch (error) {
+                            console.error('Amis图表更新失败:', error);
+                            this.setState({ renderError: error });
+                        }
                     }
                 }
 
                 async renderAmisChart() {
                     const { data, title, subtitle, chartType, height, theme } = this.props;
                     
-                    if (!this.chartRef || !data) return;
+                    if (!this.chartRef || !data || this.state.isRendering) return;
 
-                    const cardConfig = {
-                        id: `amis-chart-${Date.now()}`,
-                        type: 'amis-chart',
-                        title: title || 'Amis图表',
-                        subtitle: subtitle,
-                        style: { 
-                            height: height || 300, 
-                            theme: theme || 'default' 
-                        },
-                        data: data
-                    };
+                    this.setState({ isRendering: true, renderError: null });
 
                     try {
+                        const cardConfig = {
+                            id: `amis-chart-${Date.now()}`,
+                            type: 'amis-chart',
+                            title: title || 'Amis图表',
+                            subtitle: subtitle,
+                            style: { 
+                                height: height || 300, 
+                                theme: theme || 'default' 
+                            },
+                            data: data
+                        };
+
+                        if (!CodeSpiritCards?.AmisChartCardRenderer) {
+                            throw new Error('AmisChartCardRenderer未找到');
+                        }
+
                         const renderer = new CodeSpiritCards.AmisChartCardRenderer();
                         const cardElement = await renderer.render(cardConfig);
                         
@@ -298,11 +474,22 @@
                         this.chartRef.appendChild(cardElement);
                     } catch (error) {
                         console.error('渲染Amis图表卡片失败:', error);
+                        this.setState({ renderError: error });
+                    } finally {
+                        this.setState({ isRendering: false });
                     }
                 }
 
                 render() {
                     const { className, style } = this.props;
+                    const { renderError } = this.state;
+                    
+                    if (renderError) {
+                        return React.createElement('div', {
+                            className: `codespirit-amis-chart-error ${className || ''}`,
+                            style: style || {}
+                        }, `Amis图表渲染失败: ${renderError.message}`);
+                    }
                     
                     return React.createElement('div', {
                         ref: (ref) => { this.chartRef = ref; },
@@ -318,21 +505,22 @@
         /**
          * 使用全局 amis 对象注册渲染器（备用方式）
          */
-        registerWithAmisGlobal(amis) {
+        async registerWithAmisGlobal(amis) {
             if (!amis.Renderer) {
                 console.warn('amis.Renderer 方法不存在，跳过渲染器注册');
                 return;
             }
 
             try {
-                // 尝试使用全局 amis 对象注册
-                const React = window.React || amis.React;
+                // 🔧 修复18: 改进React依赖检查
+                const React = window.React || amis.React || global.React;
                 
                 if (!React) {
                     console.warn('React 未找到，无法注册渲染器');
                     return;
                 }
 
+                // 🔧 修复19: 使用与amisCore相同的组件实现
                 // 注册统计卡片渲染器
                 amis.Renderer({
                     type: 'codespirit-cards',
@@ -342,12 +530,157 @@
 
                     constructor(props) {
                         super(props);
+                        this.state = {
+                            isRendering: false,
+                            renderError: null
+                        };
                         this.cardsContainer = null;
                         this.cardInstances = new Map();
+                        this.renderCards = this.renderCards.bind(this);
+                        this.destroyCards = this.destroyCards.bind(this);
+                    }
+
+                    async componentDidMount() {
+                        try {
+                            await this.renderCards();
+                        } catch (error) {
+                            console.error('全局amis组件componentDidMount失败:', error);
+                            this.setState({ renderError: error });
+                        }
+                    }
+
+                    async componentDidUpdate(prevProps) {
+                        const cardsChanged = JSON.stringify(prevProps.cards) !== JSON.stringify(this.props.cards);
+                        const dataChanged = JSON.stringify(prevProps.data) !== JSON.stringify(this.props.data);
+                        
+                        if ((cardsChanged || dataChanged) && !this.state.isRendering) {
+                            try {
+                                await this.renderCards();
+                            } catch (error) {
+                                console.error('全局amis组件更新失败:', error);
+                                this.setState({ renderError: error });
+                            }
+                        }
+                    }
+
+                    componentWillUnmount() {
+                        try {
+                            this.destroyCards();
+                        } catch (error) {
+                            console.error('全局amis组件清理失败:', error);
+                        }
+                    }
+
+                    async renderCards() {
+                        const { cards, data } = this.props;
+                        
+                        if (!cards || !Array.isArray(cards) || this.state.isRendering) {
+                            return;
+                        }
+
+                        this.setState({ isRendering: true, renderError: null });
+
+                        try {
+                            const processedCards = this.processCardConfigs(cards, data);
+                            
+                            if (this.cardsContainer && window.amisCardsAdapter?.cardsSDK) {
+                                await window.amisCardsAdapter.cardsSDK.render(this.cardsContainer, processedCards);
+                            }
+                        } catch (error) {
+                            console.error('全局amis方式渲染Cards失败:', error);
+                            this.setState({ renderError: error });
+                        } finally {
+                            this.setState({ isRendering: false });
+                        }
+                    }
+
+                    processCardConfigs(cards, data) {
+                        return cards.map((card, index) => {
+                            const processedCard = { ...card };
+                            
+                            if (!processedCard.id) {
+                                processedCard.id = `global-card-${index}-${Date.now()}`;
+                            }
+
+                            if (processedCard.data && data) {
+                                processedCard.data = this.safeReplaceDataTemplates(processedCard.data, data);
+                            }
+
+                            if (processedCard.dataSource) {
+                                processedCard.dataSource = this.resolveApiPath(processedCard.dataSource, data);
+                            }
+
+                            return processedCard;
+                        });
+                    }
+
+                    safeReplaceDataTemplates(cardData, contextData, depth = 0) {
+                        if (depth > 10) {
+                            console.warn('全局amis模板替换深度过深，停止递归');
+                            return cardData;
+                        }
+                        
+                        if (typeof cardData !== 'object' || cardData === null) {
+                            return cardData;
+                        }
+                        
+                        if (cardData === contextData) {
+                            console.warn('全局amis检测到循环引用，跳过处理');
+                            return cardData;
+                        }
+                        
+                        const result = Array.isArray(cardData) ? [] : {};
+                        
+                        Object.keys(cardData).forEach(key => {
+                            const value = cardData[key];
+                            
+                            if (typeof value === 'string' && value.includes('${')) {
+                                result[key] = value.replace(/\$\{(\w+)\}/g, (match, prop) => {
+                                    return contextData[prop] || match;
+                                });
+                            } else if (typeof value === 'object' && value !== null) {
+                                result[key] = this.safeReplaceDataTemplates(value, contextData, depth + 1);
+                            } else {
+                                result[key] = value;
+                            }
+                        });
+                        
+                        return result;
+                    }
+
+                    resolveApiPath(path, data) {
+                        return path.replace(/\$\{(\w+)\}/g, (match, prop) => {
+                            return data[prop] || match;
+                        });
+                    }
+
+                    destroyCards() {
+                        try {
+                            if (window.amisCardsAdapter?.cardsSDK && this.cardInstances.size > 0) {
+                                this.cardInstances.forEach((card, id) => {
+                                    try {
+                                        window.amisCardsAdapter.cardsSDK.destroy(id);
+                                    } catch (error) {
+                                        console.warn(`全局amis销毁卡片${id}失败:`, error);
+                                    }
+                                });
+                            }
+                            this.cardInstances.clear();
+                        } catch (error) {
+                            console.error('全局amis销毁卡片实例失败:', error);
+                        }
                     }
 
                     render() {
                         const { className, style } = this.props;
+                        const { renderError } = this.state;
+                        
+                        if (renderError) {
+                            return React.createElement('div', {
+                                className: `codespirit-cards-error ${className || ''}`,
+                                style: style || {}
+                            }, `全局amis渲染失败: ${renderError.message}`);
+                        }
                         
                         return React.createElement('div', {
                             ref: (ref) => { this.cardsContainer = ref; },
@@ -360,6 +693,7 @@
                 console.log('AMIS Cards渲染器注册完成（全局amis方式）');
             } catch (error) {
                 console.error('注册AMIS渲染器失败:', error);
+                throw error;
             }
         }
 
@@ -465,38 +799,112 @@
         }
     };
 
+    // 🔧 修复20: 改进全局暴露和初始化逻辑
     // 全局暴露
     if (typeof window !== 'undefined') {
         window.AmisCardsAdapter = AmisCardsAdapter;
         window.AmisCardsUtils = AmisCardsUtils;
+        
+        // 触发延迟初始化回调
+        if (isAmisAvailable()) {
+            delayedInitCallbacks.forEach(callback => {
+                try {
+                    callback();
+                } catch (error) {
+                    console.error('延迟初始化回调执行失败:', error);
+                }
+            });
+            delayedInitCallbacks.length = 0;
+        }
     }
 
-    // 自动初始化（如果环境允许）
-    if (typeof window !== 'undefined') {
-        // 延迟初始化函数
-        const initializeAdapter = () => {
-            if (typeof CodeSpiritCards !== 'undefined' && 
-                (typeof window.amisRequire !== 'undefined' || typeof window.amis !== 'undefined')) {
-                try {
-                    window.amisCardsAdapter = new AmisCardsAdapter();
-                    console.log('AmisCardsAdapter 自动初始化成功');
-                } catch (error) {
-                    console.error('AmisCardsAdapter 自动初始化失败:', error);
-                }
-            } else {
-                console.warn('AmisCardsAdapter 初始化条件不满足，将在稍后重试');
-                // 如果条件不满足，延迟重试
-                setTimeout(initializeAdapter, 1000);
-            }
-        };
+    // 🔧 修复21: 改进初始化策略
+    const initializeAdapter = () => {
+        if (typeof window === 'undefined') {
+            return;
+        }
 
-        // 等待DOM加载完成后初始化
+        try {
+            // 检查必要条件
+            const hasCodeSpiritCards = typeof CodeSpiritCards !== 'undefined';
+            const hasAmis = isAmisAvailable();
+            
+            console.log('AmisCardsAdapter 初始化条件检查:', {
+                hasCodeSpiritCards,
+                hasAmis,
+                hasWindow: typeof window !== 'undefined'
+            });
+
+            if (hasCodeSpiritCards && hasAmis) {
+                // 条件满足，立即初始化
+                window.amisCardsAdapter = new AmisCardsAdapter();
+                console.log('✅ AmisCardsAdapter 初始化成功');
+            } else {
+                // 条件不满足，设置延迟初始化
+                const missingDeps = [];
+                if (!hasCodeSpiritCards) missingDeps.push('CodeSpiritCards');
+                if (!hasAmis) missingDeps.push('Amis');
+                
+                console.warn(`⚠️ AmisCardsAdapter: 缺少依赖 [${missingDeps.join(', ')}]，添加到延迟初始化队列`);
+                
+                addDelayedInitCallback(() => {
+                    if (!window.amisCardsAdapter) {
+                        window.amisCardsAdapter = new AmisCardsAdapter();
+                        console.log('✅ AmisCardsAdapter 延迟初始化成功');
+                    }
+                });
+                
+                // 设置轮询检查机制，最多检查10次
+                let attempts = 0;
+                const maxAttempts = 10;
+                const checkInterval = 1000; // 1秒
+                
+                const pollForDependencies = () => {
+                    attempts++;
+                    const nowHasCodeSpiritCards = typeof CodeSpiritCards !== 'undefined';
+                    const nowHasAmis = isAmisAvailable();
+                    
+                    if (nowHasCodeSpiritCards && nowHasAmis && !window.amisCardsAdapter) {
+                        try {
+                            window.amisCardsAdapter = new AmisCardsAdapter();
+                            console.log(`✅ AmisCardsAdapter 轮询初始化成功 (第${attempts}次尝试)`);
+                        } catch (error) {
+                            console.error(`❌ AmisCardsAdapter 轮询初始化失败 (第${attempts}次尝试):`, error);
+                        }
+                    } else if (attempts < maxAttempts) {
+                        setTimeout(pollForDependencies, checkInterval);
+                    } else {
+                        console.warn(`⚠️ AmisCardsAdapter: 已达到最大尝试次数 (${maxAttempts})，停止轮询`);
+                    }
+                };
+                
+                // 如果有任何依赖缺失，开始轮询
+                if (!hasCodeSpiritCards || !hasAmis) {
+                    setTimeout(pollForDependencies, checkInterval);
+                }
+            }
+        } catch (error) {
+            console.error('❌ AmisCardsAdapter 初始化失败:', error);
+        }
+    };
+
+    // 🔧 修复22: 确保在合适的时机初始化
+    if (typeof window !== 'undefined') {
         if (document.readyState === 'loading') {
+            // 文档还在加载中，等待DOM加载完成
             document.addEventListener('DOMContentLoaded', initializeAdapter);
         } else {
-            // DOM已经加载完成，延迟一段时间后初始化
-            setTimeout(initializeAdapter, 500);
+            // 文档已加载完成，立即初始化
+            initializeAdapter();
         }
+        
+        // 也监听window.load事件作为备用
+        window.addEventListener('load', () => {
+            if (!window.amisCardsAdapter) {
+                console.log('window.load 事件触发，尝试初始化 AmisCardsAdapter');
+                initializeAdapter();
+            }
+        });
     }
 
 })(typeof window !== 'undefined' ? window : global); 

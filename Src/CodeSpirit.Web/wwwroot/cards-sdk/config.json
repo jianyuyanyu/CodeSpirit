@@ -37,6 +37,12 @@
       "name": "操作卡片",
       "description": "用于展示快速操作按钮",
       "renderer": "ActionCardRenderer"
+    },
+    {
+      "type": "table",
+      "name": "表格卡片",
+      "description": "基于Amis Table组件的数据表格展示",
+      "renderer": "TableCardRenderer"
     }
   ],
   

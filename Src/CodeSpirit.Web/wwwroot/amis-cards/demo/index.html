@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSpirit Amis Cards V2.0 - 演示</title>
+    
+    <!-- 本地 Amis CSS（参考 _Layout.cshtml 的方式）-->
+    <link rel="stylesheet" href="/sdk/6.12.0/antd.css">
+    <link rel="stylesheet" href="/sdk/6.12.0/helper.css">
+    <link rel="stylesheet" href="/sdk/6.12.0/iconfont.css">
+    
+    <!-- 使用 Amis 内置图标，无需额外引用 -->
+    
+    <!-- AmisCards CSS -->
+    <link rel="stylesheet" href="../styles/amis-cards.css">
+    <link rel="stylesheet" href="../styles/themes/default.css">
+    <link rel="stylesheet" href="../styles/themes/dark.css">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .demo-header {
+            background: #fff;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .demo-title {
+            margin: 0;
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .demo-subtitle {
+            margin: 0.5rem 0 0 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .demo-section {
+            margin-bottom: 3rem;
+        }
+        
+        .demo-section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 1rem 0;
+            padding: 0 1.5rem;
+        }
+        
+        .demo-controls {
+            background: #fff;
+            padding: 1rem 2rem;
+            margin-bottom: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .demo-controls button {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-controls button:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+        
+        .demo-controls button.active {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+        
+        .demo-info {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 1.5rem;
+            font-size: 0.9rem;
+            color: #1565c0;
+        }
+        
+        #cards-container {
+            min-height: 400px;
+            padding: 0 1.5rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 演示头部 -->
+    <div class="demo-header">
+        <h1 class="demo-title">CodeSpirit UDL Cards</h1>
+        <p class="demo-subtitle">当前为演示系统，以验证自适应卡的正常展示以及自适应情况</p>
+    </div>
+    
+    <!-- 演示控制面板 -->
+    <div class="demo-controls">
+        <strong>演示控制：</strong>
+        <button onclick="loadBasicStats()" class="active">基础统计</button>
+        <button onclick="loadAdvancedStats()">高级统计</button>
+        <button onclick="loadMixedCards()">混合卡片</button>
+        <button onclick="loadIconExamples()">图标演示</button>
+        <button onclick="loadTemplateExamples()">模板示例</button>
+        <button onclick="toggleTheme()">切换主题</button>
+        <button onclick="showDebugInfo()">调试信息</button>
+    </div>
+    
+    <!-- 信息提示 -->
+    <div class="demo-info">
+        <i class="fa fa-info-circle"></i>
+        <strong>提示：</strong>这是 UDL Cards 的演示页面。当前演示使用模拟数据，实际使用时需要配置相应的 API 接口。
+    </div>
+    
+    <!-- 卡片容器 -->
+    <div id="cards-container">
+        <div class="loading">
+            <div><i class="fa fa-spinner"></i></div>
+            <div>正在加载演示数据...</div>
+        </div>
+    </div>
+    
+    <!-- 本地 Amis JavaScript-->
+    <script src="/sdk/6.12.0/sdk.js"></script>
+    
+    <!-- AmisCards JavaScript -->
+    <script src="../core/utils.js"></script>
+    <script src="../core/data-service.js"></script>
+    <script src="../core/amis-cards-core.js"></script>
+    <script src="../renderers/base-renderer.js"></script>
+    <script src="../renderers/stat-renderer.js"></script>
+    <script src="../renderers/chart-renderer.js"></script>
+    <script src="../renderers/table-renderer.js"></script>
+    <script src="../renderers/info-renderer.js"></script>
+    <script src="../configs/card-configs.js"></script>
+    <script src="../configs/theme-configs.js"></script>
+    
+    <script>
+        
+        // 全局变量
+        let cardsInstance = null;
+        let currentTheme = 'default';
+        
+        /**
+         * 显示错误信息
+         * @param {string} title 错误标题
+         * @param {string} message 错误消息
+         */
+        function showError(title, message) {
+            const container = document.getElementById('cards-container');
+            const errorHtml = `
+                <div style="text-align: center; padding: 3rem; color: #dc3545;">
+                    <i class="fa fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem;">${title}</div>
+                    <div style="font-size: 0.9rem; margin-bottom: 1rem; color: #666;">${message}</div>
+                    <button onclick="location.reload()" style="margin-right: 0.5rem; padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">重新加载</button>
+                </div>
+            `;
+            container.innerHTML = errorHtml;
+        }
+        
+        /**
+         * 检查依赖是否全部加载
+         */
+        function checkDependencies() {
+            const dependencies = [
+                { name: 'Amis', check: () => typeof window.amis !== 'undefined' },
+                { name: 'AmisCards', check: () => typeof window.AmisCards !== 'undefined' },
+                { name: 'AmisCards.Utils', check: () => typeof window.AmisCards.Utils !== 'undefined' },
+                { name: 'AmisCards.StatRenderer', check: () => typeof window.AmisCards.StatRenderer !== 'undefined' },
+                { name: 'AmisCards.ChartRenderer', check: () => typeof window.AmisCards.ChartRenderer !== 'undefined' },
+                { name: 'AmisCards.TableRenderer', check: () => typeof window.AmisCards.TableRenderer !== 'undefined' },
+                { name: 'AmisCards.InfoRenderer', check: () => typeof window.AmisCards.InfoRenderer !== 'undefined' }
+            ];
+            
+            const missing = dependencies.filter(dep => !dep.check());
+            
+            if (missing.length > 0) {
+                console.error('[Demo] 缺少依赖:', missing.map(dep => dep.name));
+                return false;
+            }
+            
+            console.log('[Demo] 所有依赖检查通过');
+            return true;
+        }
+        
+        /**
+         * 初始化演示
+         */
+        function initDemo() {
+            try {
+                console.log('[Demo] 开始初始化演示');
+                
+                // 创建 AmisCards 实例
+                cardsInstance = window.AmisCards.create({
+                    container: '#cards-container',
+                    theme: currentTheme,
+                    config: {
+                        pageTitle: 'UDL Cards'
+                    }
+                });
+                
+                console.log('[Demo] AmisCards 实例已创建:', cardsInstance);
+                
+                // 等待一下，确保全局渲染器都已注册
+                setTimeout(() => {
+                    try {
+                        // 手动注册渲染器到实例（防止初始化时全局注册表为空）
+                        let registeredCount = 0;
+                        
+                        if (window.AmisCards.StatRenderer) {
+                            cardsInstance.registerRenderer('stat', window.AmisCards.StatRenderer);
+                            registeredCount++;
+                            console.log('[Demo] 已注册 StatRenderer');
+                        }
+                        if (window.AmisCards.ChartRenderer) {
+                            cardsInstance.registerRenderer('chart', window.AmisCards.ChartRenderer);
+                            registeredCount++;
+                            console.log('[Demo] 已注册 ChartRenderer');
+                        }
+                        if (window.AmisCards.TableRenderer) {
+                            cardsInstance.registerRenderer('table', window.AmisCards.TableRenderer);
+                            registeredCount++;
+                            console.log('[Demo] 已注册 TableRenderer');
+                        }
+                        if (window.AmisCards.InfoRenderer) {
+                            cardsInstance.registerRenderer('info', window.AmisCards.InfoRenderer);
+                            registeredCount++;
+                            console.log('[Demo] 已注册 InfoRenderer');
+                        }
+                        
+                        console.log(`[Demo] 总计注册了 ${registeredCount} 个渲染器`);
+                        console.log('[Demo] AmisCards 实例创建完成');
+                        
+                        // 加载默认演示
+                        loadBasicStats();
+                        
+                    } catch (error) {
+                        console.error('[Demo] 渲染器注册失败:', error);
+                        showError('渲染器注册失败', error.message);
+                    }
+                }, 100);
+                
+            } catch (error) {
+                console.error('[Demo] 初始化失败:', error);
+                showError('初始化失败', error.message);
+            }
+        }
+        
+        /**
+         * 加载基础统计演示
+         */
+        async function loadBasicStats() {
+            try {
+                console.log('[Demo] 加载基础统计演示');
+                setActiveButton(0);
+                
+                // 恢复完整的演示卡片，添加图标支持
+                const cards = [
+                    {
+                        id: 'users-total',
+                        type: 'stat',
+                        title: '总用户数',
+                        subtitle: '系统注册用户统计',
+                        theme: 'primary',
+                        data: {
+                            value: 12580,
+                            label: '注册用户',
+                            unit: '人',
+                            formatter: 'integer',
+                            icon: 'users',
+                            iconColor: '#007bff',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(0, 123, 255, 0.1)',
+                            iconBorder: false
+                        }
+                    },
+                    {
+                        id: 'revenue-today',
+                        type: 'stat',
+                        title: '今日收入',
+                        subtitle: '实时收入统计',
+                        theme: 'success',
+                        data: {
+                            value: 98765.43,
+                            label: '收入金额',
+                            formatter: 'currency',
+                            icon: 'dollar-sign',
+                            iconColor: '#28a745',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(40, 167, 69, 0.1)',
+                            iconBorder: false
+                        }
+                    },
+                    {
+                        id: 'completion-rate',
+                        type: 'stat',
+                        title: '任务完成率',
+                        subtitle: '今日任务执行情况',
+                        theme: 'info',
+                        data: {
+                            value: 87.5,
+                            label: '完成率',
+                            formatter: 'percentage',
+                            icon: 'check-circle',
+                            iconColor: '#17a2b8',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(23, 162, 184, 0.1)',
+                            iconBorder: false
+                        }
+                    },
+                    {
+                        id: 'active-sessions',
+                        type: 'stat',
+                        title: '活跃会话',
+                        subtitle: '当前在线用户数',
+                        theme: 'warning',
+                        data: {
+                            value: 1337,
+                            label: '在线用户',
+                            unit: '个',
+                            formatter: 'integer',
+                            icon: 'wifi',
+                            iconColor: '#ffc107',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(255, 193, 7, 0.1)',
+                            iconBorder: false
+                        }
+                    }
+                ];
+                
+                console.log('[Demo] 准备渲染卡片，数量:', cards.length);
+                console.log('[Demo] 卡片配置:', cards);
+                
+                // 特别输出表格卡片的调试信息
+                const tableCard = cards.find(card => card.type === 'table');
+                if (tableCard) {
+                    console.log('[Demo] 表格卡片配置:', tableCard);
+                    console.log('[Demo] 表格数据:', tableCard.data);
+                }
+                
+                // 检查cardsInstance是否有效
+                if (!cardsInstance) {
+                    throw new Error('cardsInstance 未初始化');
+                }
+                
+                if (typeof cardsInstance.render !== 'function') {
+                    throw new Error('cardsInstance.render 不是一个函数');
+                }
+                
+                // 检查渲染器是否已注册
+                console.log('[Demo] 检查已注册的渲染器:', cardsInstance.renderers);
+                
+                await cardsInstance.render(cards);
+                console.log('[Demo] 基础统计卡片渲染完成');
+                
+            } catch (error) {
+                console.error('[Demo] 加载基础统计失败:', error);
+                console.error('[Demo] 错误详情:', error.stack);
+                showError('基础统计加载失败', error.message);
+            }
+        }
+        
+        /**
+         * 加载高级统计演示
+         */
+        async function loadAdvancedStats() {
+            console.log('[Demo] 加载高级统计演示');
+            setActiveButton(1);
+            
+            const cards = [
+                {
+                    id: 'user-growth',
+                    type: 'stat',
+                    title: '用户增长',
+                    subtitle: '新用户注册趋势',
+                    theme: 'primary',
+                    size: 'large',
+                    data: {
+                        value: 2468,
+                        label: '新增用户',
+                        unit: '人',
+                        formatter: 'integer',
+                        trend: {
+                            direction: 'up',
+                            value: 12.5,
+                            period: '较昨日',
+                            percentage: true
+                        },
+                        icon: 'user-plus',
+                        iconColor: '#007bff',
+                        iconSize: 'xl',
+                        iconPosition: 'top',
+                        iconBackground: 'rgba(0, 123, 255, 0.1)',
+                        iconBorder: true
+                    }
+                },
+                {
+                    id: 'sales-target',
+                    type: 'stat',
+                    title: '销售目标',
+                    subtitle: '月度销售完成情况',
+                    theme: 'success',
+                    size: 'large',
+                    data: {
+                        value: 750000,
+                        label: '当前销售额',
+                        formatter: 'currency',
+                        target: 1000000,
+                        showProgress: true,
+                        description: '距离月度目标还需努力！',
+                        icon: 'chart-line',
+                        iconColor: '#28a745',
+                        iconSize: 'lg',
+                        iconPosition: 'right',
+                        iconBackground: 'rgba(40, 167, 69, 0.1)',
+                        iconBorder: false
+                    }
+                },
+                {
+                    id: 'error-rate',
+                    type: 'stat',
+                    title: '系统错误率',
+                    subtitle: '24小时错误统计',
+                    theme: 'danger',
+                    data: {
+                        value: 0.05,
+                        label: '错误率',
+                        formatter: 'percentage',
+                        trend: {
+                            direction: 'down',
+                            value: 0.02,
+                            period: '较昨日',
+                            percentage: true
+                        },
+                        icon: 'exclamation-triangle',
+                        iconColor: '#dc3545',
+                        iconSize: 'md',
+                        iconPosition: 'left',
+                        iconBackground: 'rgba(220, 53, 69, 0.1)',
+                        iconBorder: false
+                    }
+                },
+                {
+                    id: 'storage-usage',
+                    type: 'stat',
+                    title: '存储使用量',
+                    subtitle: '系统存储空间统计',
+                    theme: 'info',
+                    data: {
+                        value: 2684354560, // 2.5GB
+                        label: '已使用',
+                        formatter: 'fileSize',
+                        target: 5368709120, // 5GB
+                        showProgress: true,
+                        icon: 'hdd',
+                        iconColor: '#17a2b8',
+                        iconSize: 'lg',
+                        iconPosition: 'bottom',
+                        iconBackground: 'rgba(23, 162, 184, 0.1)',
+                        iconBorder: true
+                    }
+                }
+            ];
+            
+            await cardsInstance.render(cards);
+        }
+        
+        /**
+         * 加载混合卡片演示
+         */
+        async function loadMixedCards() {
+            console.log('[Demo] 加载混合卡片演示');
+            setActiveButton(2);
+            
+            const cards = [
+                // 统计卡片
+                {
+                    id: 'quick-stats',
+                    type: 'stat',
+                    title: '访问量',
+                    theme: 'primary',
+                    data: {
+                        value: 15678,
+                        label: '今日访问',
+                        unit: '次',
+                        formatter: 'integer'
+                    }
+                },
+                // 图表卡片
+                {
+                    id: 'traffic-chart',
+                    type: 'chart',
+                    title: '访问量趋势',
+                    chartType: 'line',
+                    height: 300,
+                    series: [
+                        {
+                            name: '访问量',
+                            data: [120, 132, 101, 134, 90, 230, 210]
+                        }
+                    ],
+                    xAxisData: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+                },
+                // 信息卡片
+                {
+                    id: 'system-info',
+                    type: 'info',
+                    title: '系统信息',
+                    infoType: 'properties',
+                    properties: [
+                        {
+                            label: '系统版本',
+                            content: 'CodeSpirit v2.0'
+                        },
+                        {
+                            label: '运行环境',
+                            content: '.NET 9.0'
+                        },
+                        {
+                            label: '启动时间',
+                            content: '2024-01-15 09:30:00'
+                        },
+                        {
+                            label: '运行时长',
+                            content: '15天 8小时'
+                        }
+                    ]
+                },
+                // 表格卡片（简单示例）
+                {
+                    id: 'recent-users',
+                    type: 'table',
+                    title: '最近用户',
+                    columns: [
+                        {
+                            name: 'name',
+                            label: '用户名',
+                            type: 'text'
+                        },
+                        {
+                            name: 'email',
+                            label: '邮箱',
+                            type: 'text'
+                        },
+                        {
+                            name: 'status',
+                            label: '状态',
+                            type: 'status',
+                            statusMap: {
+                                1: '<span class="label label-success">正常</span>',
+                                0: '<span class="label label-danger">禁用</span>'
+                            }
+                        },
+                        {
+                            name: 'createTime',
+                            label: '注册时间',
+                            type: 'datetime'
+                        }
+                    ],
+                    // 使用静态数据，而不是API
+                    data: {
+                        items: [
+                            {
+                                name: '张三',
+                                email: 'zhangsan@example.com',
+                                status: 1,
+                                createTime: '2024-01-15 10:30:00'
+                            },
+                            {
+                                name: '李四',
+                                email: 'lisi@example.com',
+                                status: 1,
+                                createTime: '2024-01-14 15:20:00'
+                            },
+                            {
+                                name: '王五',
+                                email: 'wangwu@example.com',
+                                status: 0,
+                                createTime: '2024-01-13 09:15:00'
+                            }
+                        ],
+                        total: 3
+                    },
+                    showPager: false
+                },
+                {
+                    id: 'cpu-usage',
+                    type: 'stat',
+                    title: 'CPU 使用率',
+                    subtitle: '服务器资源监控',
+                    theme: 'warning',
+                    size: 'medium',
+                    data: {
+                        value: 65.8,
+                        label: 'CPU',
+                        formatter: 'percentage',
+                        trend: {
+                            direction: 'up',
+                            value: 5.2,
+                            period: '5分钟内'
+                        }
+                    }
+                },
+                {
+                    id: 'memory-usage',
+                    type: 'stat',
+                    title: '内存使用',
+                    subtitle: '系统内存占用情况',
+                    theme: 'info',
+                    size: 'medium',
+                    data: {
+                        value: 8589934592, // 8GB
+                        label: '已使用内存',
+                        formatter: 'fileSize',
+                        target: 17179869184, // 16GB
+                        showProgress: true
+                    }
+                }
+            ];
+            
+            await cardsInstance.render(cards);
+        }
+        
+        /**
+         * 加载图标演示
+         */
+        async function loadIconExamples() {
+            console.log('[Demo] 加载图标演示');
+            setActiveButton(3);
+            
+            const cards = [
+                // 不同位置的图标
+                {
+                    id: 'icon-left',
+                    type: 'stat',
+                    title: '左侧图标',
+                    subtitle: '图标在左边',
+                    theme: 'primary',
+                    data: {
+                        value: 1234,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'arrow-left',
+                        iconColor: '#007bff',
+                        iconSize: 'lg',
+                        iconPosition: 'left',
+                        iconBackground: 'rgba(0, 123, 255, 0.1)',
+                        iconBorder: false
+                    }
+                },
+                {
+                    id: 'icon-right',
+                    type: 'stat',
+                    title: '右侧图标',
+                    subtitle: '图标在右边',
+                    theme: 'success',
+                    data: {
+                        value: 5678,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'arrow-right',
+                        iconColor: '#28a745',
+                        iconSize: 'lg',
+                        iconPosition: 'right',
+                        iconBackground: 'rgba(40, 167, 69, 0.1)',
+                        iconBorder: false
+                    }
+                },
+                {
+                    id: 'icon-top',
+                    type: 'stat',
+                    title: '顶部图标',
+                    subtitle: '图标在上方',
+                    theme: 'info',
+                    data: {
+                        value: 9012,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'arrow-up',
+                        iconColor: '#17a2b8',
+                        iconSize: 'xl',
+                        iconPosition: 'top',
+                        iconBackground: 'rgba(23, 162, 184, 0.1)',
+                        iconBorder: true
+                    }
+                },
+                {
+                    id: 'icon-bottom',
+                    type: 'stat',
+                    title: '底部图标',
+                    subtitle: '图标在下方',
+                    theme: 'warning',
+                    data: {
+                        value: 3456,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'arrow-down',
+                        iconColor: '#ffc107',
+                        iconSize: 'lg',
+                        iconPosition: 'bottom',
+                        iconBackground: 'rgba(255, 193, 7, 0.1)',
+                        iconBorder: true
+                    }
+                },
+                // 不同尺寸的图标
+                {
+                    id: 'icon-xs',
+                    type: 'stat',
+                    title: '超小图标',
+                    subtitle: 'XS 尺寸',
+                    theme: 'primary',
+                    data: {
+                        value: 100,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'star',
+                        iconColor: '#007bff',
+                        iconSize: 'xs',
+                        iconPosition: 'left',
+                        iconBackground: 'rgba(0, 123, 255, 0.1)',
+                        iconBorder: false
+                    }
+                },
+                {
+                    id: 'icon-sm',
+                    type: 'stat',
+                    title: '小图标',
+                    subtitle: 'SM 尺寸',
+                    theme: 'success',
+                    data: {
+                        value: 200,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'star',
+                        iconColor: '#28a745',
+                        iconSize: 'sm',
+                        iconPosition: 'left',
+                        iconBackground: 'rgba(40, 167, 69, 0.1)',
+                        iconBorder: false
+                    }
+                },
+                {
+                    id: 'icon-md',
+                    type: 'stat',
+                    title: '中等图标',
+                    subtitle: 'MD 尺寸',
+                    theme: 'info',
+                    data: {
+                        value: 300,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'star',
+                        iconColor: '#17a2b8',
+                        iconSize: 'md',
+                        iconPosition: 'left',
+                        iconBackground: 'rgba(23, 162, 184, 0.1)',
+                        iconBorder: false
+                    }
+                },
+                {
+                    id: 'icon-lg',
+                    type: 'stat',
+                    title: '大图标',
+                    subtitle: 'LG 尺寸',
+                    theme: 'warning',
+                    data: {
+                        value: 400,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'star',
+                        iconColor: '#ffc107',
+                        iconSize: 'lg',
+                        iconPosition: 'left',
+                        iconBackground: 'rgba(255, 193, 7, 0.1)',
+                        iconBorder: false
+                    }
+                },
+                {
+                    id: 'icon-xl',
+                    type: 'stat',
+                    title: '超大图标',
+                    subtitle: 'XL 尺寸',
+                    theme: 'danger',
+                    data: {
+                        value: 500,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'star',
+                        iconColor: '#dc3545',
+                        iconSize: 'xl',
+                        iconPosition: 'left',
+                        iconBackground: 'rgba(220, 53, 69, 0.1)',
+                        iconBorder: false
+                    }
+                },
+                // 不同样式的图标
+                {
+                    id: 'icon-with-border',
+                    type: 'stat',
+                    title: '带边框图标',
+                    subtitle: '圆形边框',
+                    theme: 'primary',
+                    data: {
+                        value: 1000,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'shield-alt',
+                        iconColor: '#007bff',
+                        iconSize: 'lg',
+                        iconPosition: 'left',
+                        iconBackground: 'rgba(0, 123, 255, 0.1)',
+                        iconBorder: true
+                    }
+                },
+                {
+                    id: 'icon-url',
+                    type: 'stat',
+                    title: 'URL图标',
+                    subtitle: 'SVG图标',
+                    theme: 'success',
+                    data: {
+                        value: 2000,
+                        label: '数值',
+                        formatter: 'integer',
+                        icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjMjhhNzQ1Ii8+Cjwvc3ZnPgo=',
+                        iconSize: 'lg',
+                        iconPosition: 'left',
+                        iconBackground: 'rgba(40, 167, 69, 0.1)',
+                        iconBorder: false
+                    }
+                }
+            ];
+            
+            await cardsInstance.render(cards);
+        }
+        
+        /**
+         * 加载模板示例
+         */
+        async function loadTemplateExamples() {
+            console.log('[Demo] 加载模板示例');
+            setActiveButton(4);
+            
+            const cards = [
+                // 使用预设模板
+                window.AmisCards.getTemplate('stat', 'basicNumber'),
+                window.AmisCards.getTemplate('stat', 'currency'),
+                window.AmisCards.getTemplate('stat', 'percentage'),
+                window.AmisCards.getTemplate('stat', 'withTrend'),
+                window.AmisCards.getTemplate('stat', 'withProgress')
+            ];
+            
+            // 自定义一些属性
+            cards[0].id = 'template-basic';
+            cards[0].title = '基础模板';
+            
+            cards[1].id = 'template-currency';
+            cards[1].title = '货币模板';
+            
+            cards[2].id = 'template-percentage';
+            cards[2].title = '百分比模板';
+            
+            cards[3].id = 'template-trend';
+            cards[3].title = '趋势模板';
+            
+            cards[4].id = 'template-progress';
+            cards[4].title = '进度模板';
+            
+            await cardsInstance.render(cards);
+        }
+        
+        /**
+         * 切换主题
+         */
+        async function toggleTheme() {
+            console.log('[Demo] 切换主题');
+            
+            const pageThemes = ['default', 'dark'];
+            const currentIndex = pageThemes.indexOf(currentTheme);
+            const nextIndex = (currentIndex + 1) % pageThemes.length;
+            const newTheme = pageThemes[nextIndex];
+            
+            console.log(`[Demo] 从 ${currentTheme} 切换到 ${newTheme}`);
+            
+            try {
+                // 1. 应用页面主题
+                if (window.AmisCards.ThemeUtils) {
+                    window.AmisCards.ThemeUtils.switchTheme(currentTheme, newTheme, document.body, {
+                        duration: 300,
+                        easing: 'ease'
+                    });
+                } else {
+                    // 备用方案：直接切换CSS类
+                    document.body.classList.remove(`amis-cards-theme-${currentTheme}`);
+                    document.body.classList.add(`amis-cards-theme-${newTheme}`);
+                }
+                
+                // 2. 更新 AmisCards 实例主题（包含重新渲染）
+                if (cardsInstance && typeof cardsInstance.setTheme === 'function') {
+                    await cardsInstance.setTheme(newTheme, true);
+                }
+                
+                // 3. 更新全局主题变量
+                const oldTheme = currentTheme;
+                currentTheme = newTheme;
+                
+                // 4. 更新按钮文本
+                updateThemeButtonText();
+                
+                console.log(`[Demo] 主题切换完成: ${oldTheme} -> ${currentTheme}`);
+                
+            } catch (error) {
+                console.error('[Demo] 主题切换失败:', error);
+                // 恢复原主题
+                currentTheme = pageThemes[currentIndex];
+                alert('主题切换失败，请重试');
+            }
+        }
+        
+        /**
+         * 重新加载当前卡片
+         */
+        async function reloadCurrentCards() {
+            if (!cardsInstance) {
+                console.warn('[Demo] cardsInstance 不存在，跳过重新渲染');
+                return;
+            }
+            
+            // 获取当前激活的按钮，确定当前显示的卡片类型
+            const activeButton = document.querySelector('.demo-controls button.active');
+            if (!activeButton) {
+                console.warn('[Demo] 找不到激活的按钮，使用默认演示');
+                await loadBasicStats();
+                return;
+            }
+            
+            const buttonText = activeButton.textContent.trim();
+            console.log('[Demo] 重新加载卡片类型:', buttonText);
+            
+            // 根据按钮文本确定要重新加载的卡片类型
+            switch (buttonText) {
+                case '基础统计':
+                    await loadBasicStats();
+                    break;
+                case '高级统计':
+                    await loadAdvancedStats();
+                    break;
+                case '混合卡片':
+                    await loadMixedCards();
+                    break;
+                case '图标演示':
+                    await loadIconExamples();
+                    break;
+                case '模板示例':
+                    await loadTemplateExamples();
+                    break;
+                default:
+                    console.warn('[Demo] 未知的卡片类型，使用基础统计');
+                    await loadBasicStats();
+                    break;
+            }
+        }
+        
+        /**
+         * 更新主题按钮文本
+         */
+        function updateThemeButtonText() {
+            const buttons = document.querySelectorAll('.demo-controls button');
+            const themeButton = Array.from(buttons).find(btn => 
+                btn.textContent.includes('主题') || btn.textContent.includes('切换')
+            );
+            
+            if (themeButton) {
+                const newText = currentTheme === 'dark' ? '切换到浅色主题' : '切换到深色主题';
+                themeButton.textContent = newText;
+                console.log('[Demo] 主题按钮文本已更新:', newText);
+            }
+        }
+        
+        /**
+         * 显示调试信息
+         */
+        function showDebugInfo() {
+            if (!cardsInstance) {
+                alert('AmisCards 实例未初始化');
+                return;
+            }
+            
+            const debugInfo = {
+                version: window.AmisCards.version,
+                instance: cardsInstance.getState ? cardsInstance.getState() : 'No state method',
+                theme: currentTheme,
+                container: cardsInstance.container ? cardsInstance.container.tagName : 'Unknown',
+                renderers: cardsInstance.renderers ? Array.from(cardsInstance.renderers.keys()) : []
+            };
+            
+            console.log('[Demo] 调试信息:', debugInfo);
+            alert('调试信息已输出到控制台，请按F12查看');
+        }
+        
+        /**
+         * 设置活动按钮
+         */
+        function setActiveButton(index) {
+            const buttons = document.querySelectorAll('.demo-controls button');
+            buttons.forEach((btn, i) => {
+                if (i === index) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
+        /**
+         * 错误处理
+         */
+        window.addEventListener('error', function(e) {
+            console.error('[Demo] JavaScript 错误:', e.error);
+            const container = document.getElementById('cards-container');
+            const errorHtml = `
+                <div style="text-align: center; padding: 3rem; color: #dc3545;">
+                    <i class="fa fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <div>演示加载失败</div>
+                    <div style="font-size: 0.9rem; margin-top: 0.5rem;">错误信息: ${e.message}</div>
+                    <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">重新加载</button>
+                </div>
+            `;
+            container.innerHTML = errorHtml;
+        });
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[Demo] 页面加载完成，开始初始化');
+            
+            // 使用轮询检查依赖
+            let checkCount = 0;
+            const maxChecks = 20; // 最多检查20次
+            
+            const checkAndInit = () => {
+                checkCount++;
+                
+                if (checkDependencies()) {
+                    // 应用默认主题
+                    if (window.AmisCards.ThemeUtils) {
+                        window.AmisCards.ThemeUtils.applyTheme(currentTheme, document.body);
+                    } else {
+                        document.body.classList.add(`amis-cards-theme-${currentTheme}`);
+                    }
+                    
+                    // 初始化演示
+                    initDemo();
+                } else if (checkCount < maxChecks) {
+                    // 继续等待
+                    setTimeout(checkAndInit, 200);
+                } else {
+                    // 超时处理
+                    console.error('[Demo] 依赖加载超时');
+                    const container = document.getElementById('cards-container');
+                    const timeoutHtml = `
+                        <div style="text-align: center; padding: 3rem; color: #dc3545;">
+                            <i class="fa fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                            <div>依赖加载失败</div>
+                            <div style="font-size: 0.9rem; margin-top: 0.5rem;">请检查网络连接或脚本加载情况</div>
+                            <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">重新加载</button>
+                        </div>
+                    `;
+                    container.innerHTML = timeoutHtml;
+                }
+            };
+            
+            // 开始检查
+            checkAndInit();
+        });
+    </script>
+</body>
+</html> 

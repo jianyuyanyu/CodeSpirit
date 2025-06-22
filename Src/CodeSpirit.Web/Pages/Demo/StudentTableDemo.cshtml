@@ -1,0 +1,1060 @@
+@page "/demo/student-table-demo"
+@{
+    ViewData["Title"] = "学生数据表格演示";
+    Layout = "_Layout";
+}
+
+<style>
+    .demo-container {
+        padding: 20px;
+        background: #f8f9fa;
+        min-height: 100vh;
+    }
+    
+    .demo-header {
+        background: white;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 24px;
+    }
+    
+    .demo-section {
+        background: white;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 24px;
+    }
+    
+    .demo-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    
+    .demo-title h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+        color: #343a40;
+    }
+    
+    .demo-badge {
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background: linear-gradient(135deg, #4834d4, #686de0);
+        color: white;
+    }
+    
+    .demo-description {
+        color: #666;
+        line-height: 1.6;
+        margin-bottom: 20px;
+    }
+    
+    .controls-panel {
+        background: #f8f9fa;
+        padding: 16px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        border: 1px solid #e9ecef;
+    }
+    
+    .btn-group {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-demo {
+        padding: 8px 16px;
+        border: 1px solid #dee2e6;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+    
+    .btn-demo:hover {
+        background: #f8f9fa;
+        border-color: #adb5bd;
+    }
+    
+    .btn-demo.btn-primary {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    
+    .btn-demo.btn-success {
+        background: #28a745;
+        color: white;
+        border-color: #28a745;
+    }
+    
+    .btn-demo.btn-info {
+        background: #17a2b8;
+        color: white;
+        border-color: #17a2b8;
+    }
+    
+    .btn-demo.btn-warning {
+        background: #ffc107;
+        color: #212529;
+        border-color: #ffc107;
+    }
+    
+    /* 自定义表格样式 */
+    .table-card-table {
+        font-size: 14px;
+    }
+    
+    .table-card-table .label {
+        display: inline-block;
+        padding: 0.25em 0.6em;
+        font-size: 75%;
+        font-weight: 700;
+        line-height: 1;
+        color: #fff;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 0.25rem;
+    }
+    
+    .table-card-table .label-success {
+        background-color: #28a745;
+    }
+    
+    .table-card-table .label-danger {
+        background-color: #dc3545;
+    }
+    
+    .table-card-table .label-info {
+        background-color: #17a2b8;
+    }
+    
+    .amis-render-container {
+        min-height: 400px;
+    }
+    
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #28a745;
+        animation: pulse 2s infinite;
+    }
+    
+    @@keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    .feature-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+    }
+    
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .feature-icon {
+        color: #28a745;
+        font-size: 16px;
+    }
+</style>
+
+<div class="demo-container">
+    <!-- 页面标题 -->
+    <div class="demo-header">
+        <div class="demo-title">
+            <h2>
+                <i class="fas fa-table" style="color: #4834d4;"></i>
+                学生数据表格演示
+            </h2>
+            <span class="demo-badge">Amis Table</span>
+        </div>
+        
+        <div class="demo-description">
+            基于Amis框架的高性能学生数据表格演示，展示实时状态监控、响应式设计和丰富的数据交互功能。
+            表格包含学号、姓名、班级、状态、成绩和最后活跃时间等信息，支持排序、筛选和移动端适配。
+        </div>
+        
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>表格实时渲染 - 共50条学生记录</span>
+        </div>
+        
+        <div class="feature-list">
+            <div class="feature-item">
+                <i class="fas fa-sort feature-icon"></i>
+                <span>多列排序</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-mobile-alt feature-icon"></i>
+                <span>响应式设计</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-tags feature-icon"></i>
+                <span>状态标签映射</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-clock feature-icon"></i>
+                <span>时间格式化</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 控制面板 -->
+    <div class="demo-section">
+        <h3>
+            <i class="fas fa-cogs"></i>
+            控制面板
+        </h3>
+        
+        <div class="controls-panel">
+            <div class="btn-group">
+                <button type="button" class="btn-demo btn-primary" onclick="loadStudentTable()">
+                    <i class="fas fa-play"></i>
+                    加载学生表格
+                </button>
+                <button type="button" class="btn-demo btn-success" onclick="refreshTable()">
+                    <i class="fas fa-sync-alt"></i>
+                    刷新数据
+                </button>
+                <button type="button" class="btn-demo btn-info" onclick="toggleMobileView()">
+                    <i class="fas fa-mobile-alt"></i>
+                    切换移动端视图
+                </button>
+                <button type="button" class="btn-demo btn-warning" onclick="clearTable()">
+                    <i class="fas fa-trash"></i>
+                    清空表格
+                </button>
+            </div>
+            
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <label>
+                    <input type="checkbox" id="enableStriped" checked onchange="updateTableStyle()">
+                    斑马纹
+                </label>
+                <label>
+                    <input type="checkbox" id="enableBordered" checked onchange="updateTableStyle()">
+                    边框
+                </label>
+                <label>
+                    <input type="checkbox" id="enableHover" checked onchange="updateTableStyle()">
+                    悬停效果
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 表格渲染区域 -->
+    <div class="demo-section">
+        <h3>
+            <i class="fas fa-users"></i>
+            学生数据表格
+        </h3>
+        
+        <div id="student-table-container" class="amis-render-container">
+            <div style="text-align: center; padding: 40px; color: #666;">
+                <i class="fas fa-table" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                <p>点击"加载学生表格"按钮开始演示</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 确保页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('学生表格Demo页面初始化');
+        
+        // 检查Amis是否可用
+        if (typeof amisRequire === 'undefined') {
+            console.error('Amis未正确加载');
+            document.getElementById('student-table-container').innerHTML = 
+                '<div class="alert alert-danger">Amis框架未正确加载，请检查相关资源文件。</div>';
+            return;
+        }
+        
+        // 自动加载表格（可选）
+        // loadStudentTable();
+    });
+    
+    let currentAmisInstance = null;
+    let isMobileView = false;
+    
+    /**
+     * 学生数据
+     */
+    const studentData = {
+        "items": [
+            {
+                "id": 1,
+                "studentNumber": "STU0001",
+                "studentName": "赵六",
+                "grade": "计算机4班",
+                "status": "offline",
+                "progress": 20,
+                "score": 32,
+                "lastActiveTime": "2025-06-21T14:16:38.388Z",
+                "suspiciousCount": 4
+            },
+            {
+                "id": 2,
+                "studentNumber": "STU0002",
+                "studentName": "王五",
+                "grade": "计算机4班",
+                "status": "submitted",
+                "progress": 91,
+                "score": 52,
+                "lastActiveTime": "2025-06-21T14:51:17.500Z",
+                "suspiciousCount": 1
+            },
+            {
+                "id": 3,
+                "studentNumber": "STU0003",
+                "studentName": "王五",
+                "grade": "计算机1班",
+                "status": "submitted",
+                "progress": 1,
+                "score": 1,
+                "lastActiveTime": "2025-06-21T14:24:33.227Z",
+                "suspiciousCount": 3
+            },
+            {
+                "id": 4,
+                "studentNumber": "STU0004",
+                "studentName": "赵六",
+                "grade": "计算机3班",
+                "status": "offline",
+                "progress": 32,
+                "score": 92,
+                "lastActiveTime": "2025-06-21T14:02:51.508Z",
+                "suspiciousCount": 3
+            },
+            {
+                "id": 5,
+                "studentNumber": "STU0005",
+                "studentName": "赵六",
+                "grade": "计算机4班",
+                "status": "submitted",
+                "progress": 63,
+                "score": 97,
+                "lastActiveTime": "2025-06-21T14:33:43.221Z",
+                "suspiciousCount": 1
+            },
+            {
+                "id": 6,
+                "studentNumber": "STU0006",
+                "studentName": "王五",
+                "grade": "计算机3班",
+                "status": "submitted",
+                "progress": 13,
+                "score": 61,
+                "lastActiveTime": "2025-06-21T14:29:27.176Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 7,
+                "studentNumber": "STU0007",
+                "studentName": "李四",
+                "grade": "计算机2班",
+                "status": "submitted",
+                "progress": 66,
+                "score": 3,
+                "lastActiveTime": "2025-06-21T14:07:27.730Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 8,
+                "studentNumber": "STU0008",
+                "studentName": "刘八",
+                "grade": "计算机4班",
+                "status": "online",
+                "progress": 68,
+                "score": 8,
+                "lastActiveTime": "2025-06-21T14:13:27.123Z",
+                "suspiciousCount": 3
+            },
+            {
+                "id": 9,
+                "studentNumber": "STU0009",
+                "studentName": "王五",
+                "grade": "计算机3班",
+                "status": "online",
+                "progress": 5,
+                "score": 89,
+                "lastActiveTime": "2025-06-21T14:36:44.003Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 10,
+                "studentNumber": "STU0010",
+                "studentName": "杨九",
+                "grade": "计算机3班",
+                "status": "online",
+                "progress": 83,
+                "score": 16,
+                "lastActiveTime": "2025-06-21T14:37:41.121Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 11,
+                "studentNumber": "STU0011",
+                "studentName": "杨九",
+                "grade": "计算机3班",
+                "status": "submitted",
+                "progress": 27,
+                "score": 74,
+                "lastActiveTime": "2025-06-21T14:05:14.917Z",
+                "suspiciousCount": 4
+            },
+            {
+                "id": 12,
+                "studentNumber": "STU0012",
+                "studentName": "杨九",
+                "grade": "计算机4班",
+                "status": "offline",
+                "progress": 27,
+                "score": 58,
+                "lastActiveTime": "2025-06-21T14:25:27.979Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 13,
+                "studentNumber": "STU0013",
+                "studentName": "杨九",
+                "grade": "计算机3班",
+                "status": "submitted",
+                "progress": 97,
+                "score": 29,
+                "lastActiveTime": "2025-06-21T14:53:47.999Z",
+                "suspiciousCount": 4
+            },
+            {
+                "id": 14,
+                "studentNumber": "STU0014",
+                "studentName": "杨九",
+                "grade": "计算机3班",
+                "status": "online",
+                "progress": 39,
+                "score": 81,
+                "lastActiveTime": "2025-06-21T14:00:09.598Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 15,
+                "studentNumber": "STU0015",
+                "studentName": "刘八",
+                "grade": "计算机1班",
+                "status": "online",
+                "progress": 79,
+                "score": 97,
+                "lastActiveTime": "2025-06-21T14:15:57.760Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 16,
+                "studentNumber": "STU0016",
+                "studentName": "陈七",
+                "grade": "计算机2班",
+                "status": "online",
+                "progress": 32,
+                "score": 80,
+                "lastActiveTime": "2025-06-21T14:05:25.408Z",
+                "suspiciousCount": 3
+            },
+            {
+                "id": 17,
+                "studentNumber": "STU0017",
+                "studentName": "黄十",
+                "grade": "计算机3班",
+                "status": "offline",
+                "progress": 99,
+                "score": 56,
+                "lastActiveTime": "2025-06-21T14:36:08.089Z",
+                "suspiciousCount": 3
+            },
+            {
+                "id": 18,
+                "studentNumber": "STU0018",
+                "studentName": "李四",
+                "grade": "计算机3班",
+                "status": "submitted",
+                "progress": 12,
+                "score": 58,
+                "lastActiveTime": "2025-06-21T14:17:06.001Z",
+                "suspiciousCount": 3
+            },
+            {
+                "id": 19,
+                "studentNumber": "STU0019",
+                "studentName": "刘八",
+                "grade": "计算机2班",
+                "status": "offline",
+                "progress": 43,
+                "score": 67,
+                "lastActiveTime": "2025-06-21T14:43:27.246Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 20,
+                "studentNumber": "STU0020",
+                "studentName": "陈七",
+                "grade": "计算机4班",
+                "status": "offline",
+                "progress": 15,
+                "score": 68,
+                "lastActiveTime": "2025-06-21T14:24:59.090Z",
+                "suspiciousCount": 4
+            },
+            {
+                "id": 21,
+                "studentNumber": "STU0021",
+                "studentName": "赵六",
+                "grade": "计算机4班",
+                "status": "offline",
+                "progress": 51,
+                "score": 2,
+                "lastActiveTime": "2025-06-21T14:08:39.362Z",
+                "suspiciousCount": 1
+            },
+            {
+                "id": 22,
+                "studentNumber": "STU0022",
+                "studentName": "陈七",
+                "grade": "计算机2班",
+                "status": "online",
+                "progress": 4,
+                "score": 74,
+                "lastActiveTime": "2025-06-21T14:18:05.632Z",
+                "suspiciousCount": 4
+            },
+            {
+                "id": 23,
+                "studentNumber": "STU0023",
+                "studentName": "张三",
+                "grade": "计算机2班",
+                "status": "offline",
+                "progress": 66,
+                "score": 37,
+                "lastActiveTime": "2025-06-21T14:33:18.408Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 24,
+                "studentNumber": "STU0024",
+                "studentName": "赵六",
+                "grade": "计算机4班",
+                "status": "submitted",
+                "progress": 88,
+                "score": 80,
+                "lastActiveTime": "2025-06-21T14:11:03.963Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 25,
+                "studentNumber": "STU0025",
+                "studentName": "黄十",
+                "grade": "计算机1班",
+                "status": "submitted",
+                "progress": 0,
+                "score": 91,
+                "lastActiveTime": "2025-06-21T14:28:07.272Z",
+                "suspiciousCount": 3
+            },
+            {
+                "id": 26,
+                "studentNumber": "STU0026",
+                "studentName": "陈七",
+                "grade": "计算机2班",
+                "status": "online",
+                "progress": 23,
+                "score": 83,
+                "lastActiveTime": "2025-06-21T14:12:06.777Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 27,
+                "studentNumber": "STU0027",
+                "studentName": "王五",
+                "grade": "计算机1班",
+                "status": "offline",
+                "progress": 92,
+                "score": 78,
+                "lastActiveTime": "2025-06-21T14:16:16.535Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 28,
+                "studentNumber": "STU0028",
+                "studentName": "黄十",
+                "grade": "计算机4班",
+                "status": "submitted",
+                "progress": 56,
+                "score": 30,
+                "lastActiveTime": "2025-06-21T14:37:02.039Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 29,
+                "studentNumber": "STU0029",
+                "studentName": "李四",
+                "grade": "计算机2班",
+                "status": "submitted",
+                "progress": 76,
+                "score": 29,
+                "lastActiveTime": "2025-06-21T14:38:45.295Z",
+                "suspiciousCount": 1
+            },
+            {
+                "id": 30,
+                "studentNumber": "STU0030",
+                "studentName": "杨九",
+                "grade": "计算机2班",
+                "status": "online",
+                "progress": 89,
+                "score": 81,
+                "lastActiveTime": "2025-06-21T14:25:21.247Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 31,
+                "studentNumber": "STU0031",
+                "studentName": "李四",
+                "grade": "计算机1班",
+                "status": "offline",
+                "progress": 83,
+                "score": 49,
+                "lastActiveTime": "2025-06-21T14:12:48.363Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 32,
+                "studentNumber": "STU0032",
+                "studentName": "杨九",
+                "grade": "计算机3班",
+                "status": "submitted",
+                "progress": 58,
+                "score": 93,
+                "lastActiveTime": "2025-06-21T14:13:50.542Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 33,
+                "studentNumber": "STU0033",
+                "studentName": "张三",
+                "grade": "计算机4班",
+                "status": "submitted",
+                "progress": 44,
+                "score": 53,
+                "lastActiveTime": "2025-06-21T14:30:04.357Z",
+                "suspiciousCount": 1
+            },
+            {
+                "id": 34,
+                "studentNumber": "STU0034",
+                "studentName": "黄十",
+                "grade": "计算机3班",
+                "status": "submitted",
+                "progress": 79,
+                "score": 89,
+                "lastActiveTime": "2025-06-21T14:50:35.782Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 35,
+                "studentNumber": "STU0035",
+                "studentName": "刘八",
+                "grade": "计算机2班",
+                "status": "online",
+                "progress": 61,
+                "score": 34,
+                "lastActiveTime": "2025-06-21T14:19:47.383Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 36,
+                "studentNumber": "STU0036",
+                "studentName": "杨九",
+                "grade": "计算机1班",
+                "status": "submitted",
+                "progress": 68,
+                "score": 39,
+                "lastActiveTime": "2025-06-21T14:36:38.153Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 37,
+                "studentNumber": "STU0037",
+                "studentName": "李四",
+                "grade": "计算机3班",
+                "status": "submitted",
+                "progress": 97,
+                "score": 30,
+                "lastActiveTime": "2025-06-21T14:15:10.028Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 38,
+                "studentNumber": "STU0038",
+                "studentName": "张三",
+                "grade": "计算机3班",
+                "status": "online",
+                "progress": 38,
+                "score": 11,
+                "lastActiveTime": "2025-06-21T14:36:33.854Z",
+                "suspiciousCount": 1
+            },
+            {
+                "id": 39,
+                "studentNumber": "STU0039",
+                "studentName": "李四",
+                "grade": "计算机4班",
+                "status": "submitted",
+                "progress": 5,
+                "score": 34,
+                "lastActiveTime": "2025-06-21T14:11:14.141Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 40,
+                "studentNumber": "STU0040",
+                "studentName": "张三",
+                "grade": "计算机4班",
+                "status": "online",
+                "progress": 40,
+                "score": 28,
+                "lastActiveTime": "2025-06-21T14:20:34.501Z",
+                "suspiciousCount": 1
+            },
+            {
+                "id": 41,
+                "studentNumber": "STU0041",
+                "studentName": "张三",
+                "grade": "计算机3班",
+                "status": "offline",
+                "progress": 33,
+                "score": 31,
+                "lastActiveTime": "2025-06-21T14:21:59.125Z",
+                "suspiciousCount": 1
+            },
+            {
+                "id": 42,
+                "studentNumber": "STU0042",
+                "studentName": "陈七",
+                "grade": "计算机4班",
+                "status": "submitted",
+                "progress": 62,
+                "score": 80,
+                "lastActiveTime": "2025-06-21T14:01:39.762Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 43,
+                "studentNumber": "STU0043",
+                "studentName": "李四",
+                "grade": "计算机4班",
+                "status": "offline",
+                "progress": 82,
+                "score": 82,
+                "lastActiveTime": "2025-06-21T14:21:09.933Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 44,
+                "studentNumber": "STU0044",
+                "studentName": "李四",
+                "grade": "计算机2班",
+                "status": "offline",
+                "progress": 81,
+                "score": 6,
+                "lastActiveTime": "2025-06-21T14:54:11.639Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 45,
+                "studentNumber": "STU0045",
+                "studentName": "李四",
+                "grade": "计算机2班",
+                "status": "online",
+                "progress": 70,
+                "score": 62,
+                "lastActiveTime": "2025-06-21T14:00:37.402Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 46,
+                "studentNumber": "STU0046",
+                "studentName": "陈七",
+                "grade": "计算机4班",
+                "status": "submitted",
+                "progress": 0,
+                "score": 62,
+                "lastActiveTime": "2025-06-21T14:59:42.843Z",
+                "suspiciousCount": 3
+            },
+            {
+                "id": 47,
+                "studentNumber": "STU0047",
+                "studentName": "王五",
+                "grade": "计算机1班",
+                "status": "submitted",
+                "progress": 3,
+                "score": 13,
+                "lastActiveTime": "2025-06-21T14:26:14.004Z",
+                "suspiciousCount": 0
+            },
+            {
+                "id": 48,
+                "studentNumber": "STU0048",
+                "studentName": "赵六",
+                "grade": "计算机2班",
+                "status": "online",
+                "progress": 13,
+                "score": 73,
+                "lastActiveTime": "2025-06-21T14:48:18.672Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 49,
+                "studentNumber": "STU0049",
+                "studentName": "陈七",
+                "grade": "计算机1班",
+                "status": "submitted",
+                "progress": 3,
+                "score": 65,
+                "lastActiveTime": "2025-06-21T14:08:23.058Z",
+                "suspiciousCount": 2
+            },
+            {
+                "id": 50,
+                "studentNumber": "STU0050",
+                "studentName": "李四",
+                "grade": "计算机3班",
+                "status": "offline",
+                "progress": 95,
+                "score": 47,
+                "lastActiveTime": "2025-06-21T14:46:00.327Z",
+                "suspiciousCount": 4
+            }
+        ]
+    };
+    
+    /**
+     * 获取表格配置
+     */
+    function getTableSchema() {
+        const enableStriped = document.getElementById('enableStriped').checked;
+        const enableBordered = document.getElementById('enableBordered').checked;
+        const enableHover = document.getElementById('enableHover').checked;
+        
+        return {
+            "type": "table",
+            "className": "table-card-table table-responsive",
+            "affixHeader": false,
+            "columns": [
+                {
+                    "name": "studentNumber",
+                    "label": "学号",
+                    "type": "text",
+                    "sortable": true,
+                    "width": 120
+                },
+                {
+                    "name": "studentName",
+                    "label": "姓名",
+                    "type": "text",
+                    "sortable": true,
+                    "width": 100
+                },
+                {
+                    "name": "grade",
+                    "label": "班级",
+                    "type": "text",
+                    "hideOnMobile": isMobileView,
+                    "width": 120
+                },
+                {
+                    "name": "status",
+                    "label": "状态",
+                    "type": "mapping",
+                    "sortable": true,
+                    "width": 80,
+                    "map": {
+                        "online": "<span class=\"label label-success\">在线</span>",
+                        "offline": "<span class=\"label label-danger\">离线</span>",
+                        "submitted": "<span class=\"label label-info\">已提交</span>"
+                    }
+                },
+                {
+                    "name": "score",
+                    "label": "成绩",
+                    "type": "text",
+                    "precision": 0,
+                    "width": 80,
+                    "hideOnMobile": isMobileView,
+                    "tpl": "${score | number:0}"
+                },
+                {
+                    "name": "lastActiveTime",
+                    "label": "最后活跃",
+                    "type": "datetime",
+                    "format": "MM-DD HH:mm",
+                    "width": 120
+                }
+            ],
+            "bordered": enableBordered,
+            "striped": enableStriped,
+            "hover": enableHover,
+            "data": studentData
+        };
+    }
+    
+    /**
+     * 加载学生表格
+     */
+    function loadStudentTable() {
+        console.log('加载学生表格...');
+        
+        try {
+            amisRequire(['amis/embed'], function(amis) {
+                const schema = getTableSchema();
+                console.log('表格配置:', schema);
+                
+                // 清理之前的实例
+                if (currentAmisInstance) {
+                    currentAmisInstance.unmount();
+                }
+                
+                // 创建新的Amis实例
+                currentAmisInstance = amis.embed('#student-table-container', schema, {
+                    locale: 'zh-CN',
+                    theme: 'antd'
+                });
+                
+                console.log('学生表格加载成功');
+                
+                // 更新状态指示器
+                const statusIndicator = document.querySelector('.status-indicator span');
+                if (statusIndicator) {
+                    statusIndicator.textContent = `表格已加载 - 共${studentData.items.length}条学生记录`;
+                }
+                
+            });
+        } catch (error) {
+            console.error('加载学生表格失败:', error);
+            document.getElementById('student-table-container').innerHTML = 
+                '<div class="alert alert-danger">表格加载失败: ' + error.message + '</div>';
+        }
+    }
+    
+    /**
+     * 刷新表格数据
+     */
+    function refreshTable() {
+        console.log('刷新表格数据...');
+        
+        // 模拟数据更新
+        const now = new Date();
+        studentData.items.forEach(item => {
+            // 随机更新最后活跃时间
+            if (Math.random() > 0.7) {
+                item.lastActiveTime = now.toISOString();
+            }
+            
+            // 随机更新状态
+            if (Math.random() > 0.8) {
+                const statuses = ['online', 'offline', 'submitted'];
+                item.status = statuses[Math.floor(Math.random() * statuses.length)];
+            }
+        });
+        
+        // 重新加载表格
+        loadStudentTable();
+        
+        // 显示刷新提示
+        console.log('数据刷新完成');
+    }
+    
+    /**
+     * 切换移动端视图
+     */
+    function toggleMobileView() {
+        isMobileView = !isMobileView;
+        console.log('切换移动端视图:', isMobileView);
+        
+        // 重新加载表格以应用新设置
+        if (currentAmisInstance) {
+            loadStudentTable();
+        }
+        
+        // 更新按钮文本
+        const button = event.target;
+        button.innerHTML = isMobileView ? 
+            '<i class="fas fa-desktop"></i> 切换桌面端视图' : 
+            '<i class="fas fa-mobile-alt"></i> 切换移动端视图';
+    }
+    
+    /**
+     * 更新表格样式
+     */
+    function updateTableStyle() {
+        console.log('更新表格样式...');
+        if (currentAmisInstance) {
+            loadStudentTable();
+        }
+    }
+    
+    /**
+     * 清空表格
+     */
+    function clearTable() {
+        console.log('清空表格...');
+        
+        if (currentAmisInstance) {
+            currentAmisInstance.unmount();
+            currentAmisInstance = null;
+        }
+        
+        document.getElementById('student-table-container').innerHTML = 
+            '<div style="text-align: center; padding: 40px; color: #666;">' +
+            '<i class="fas fa-table" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>' +
+            '<p>表格已清空，点击"加载学生表格"重新加载</p>' +
+            '</div>';
+        
+        // 重置状态指示器
+        const statusIndicator = document.querySelector('.status-indicator span');
+        if (statusIndicator) {
+            statusIndicator.textContent = '表格已清空';
+        }
+    }
+</script> 

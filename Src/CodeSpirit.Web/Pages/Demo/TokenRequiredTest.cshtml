@@ -1,0 +1,279 @@
+@page "/demo/token-required-test"
+@{
+    ViewData["Title"] = "TokenManager强制集成测试";
+    Layout = "_Layout";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-shield-alt"></i>
+                    TokenManager强制集成测试
+                </h1>
+                <div class="page-subtitle text-muted">
+                    验证Cards SDK强制要求TokenManager的功能
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        测试场景1：TokenManager未加载
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">此测试将演示当TokenManager未加载时SDK的行为</p>
+                    <button type="button" class="btn btn-danger" onclick="testWithoutTokenManager()">
+                        <i class="fas fa-times"></i>
+                        测试无TokenManager初始化
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-check-circle text-success"></i>
+                        测试场景2：TokenManager正常加载
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">此测试将演示TokenManager正常工作时的情况</p>
+                    <button type="button" class="btn btn-success" onclick="testWithTokenManager()">
+                        <i class="fas fa-check"></i>
+                        测试正常初始化
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-terminal"></i>
+                        测试结果
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="clearResults()">
+                            <i class="fas fa-eraser"></i>
+                            清空结果
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="testResults" class="test-results">
+                        <p class="text-muted">点击上方按钮开始测试...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.test-results {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.test-results .result-item {
+    margin-bottom: 10px;
+    padding: 8px;
+    border-radius: 3px;
+}
+
+.test-results .result-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.test-results .result-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.test-results .result-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.test-results .result-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.timestamp {
+    font-size: 11px;
+    color: #6c757d;
+}
+</style>
+
+@section Scripts {
+    <!-- 引入Cards SDK -->
+    <resource path="cards-sdk/cards-sdk.js" type="js" />
+    
+    <script>
+        function addResult(message, type = 'info') {
+            const resultsContainer = document.getElementById('testResults');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const resultItem = document.createElement('div');
+            resultItem.className = `result-item result-${type}`;
+            resultItem.innerHTML = `
+                <div class="timestamp">[${timestamp}]</div>
+                <div>${message}</div>
+            `;
+            
+            resultsContainer.appendChild(resultItem);
+            resultsContainer.scrollTop = resultsContainer.scrollHeight;
+        }
+        
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '<p class="text-muted">点击上方按钮开始测试...</p>';
+        }
+        
+        function testWithoutTokenManager() {
+            addResult('🧪 开始测试场景1：TokenManager未加载', 'info');
+            
+            // 临时隐藏TokenManager
+            const originalTokenManager = window.TokenManager;
+            window.TokenManager = undefined;
+            
+            try {
+                addResult('🔄 尝试初始化Cards SDK（应该失败）...', 'info');
+                
+                const testSDK = new window.CodeSpiritCards.SDK({
+                    container: '#test-container',
+                    baseUrl: '/api'
+                });
+                
+                addResult('❌ 测试失败：SDK初始化应该抛出错误但没有', 'error');
+                
+            } catch (error) {
+                addResult(`✅ 测试成功：SDK正确抛出错误 - ${error.message}`, 'success');
+            } finally {
+                // 恢复TokenManager
+                window.TokenManager = originalTokenManager;
+            }
+            
+            // 测试DataService
+            try {
+                addResult('🔄 尝试使用DataService（应该失败）...', 'info');
+                
+                const dataService = new window.CodeSpiritCards.DataService('/api');
+                dataService.fetchData('/test').catch(error => {
+                    addResult(`✅ DataService正确抛出错误 - ${error.message}`, 'success');
+                });
+                
+            } catch (error) {
+                addResult(`✅ DataService正确抛出错误 - ${error.message}`, 'success');
+            }
+            
+            addResult('🏁 测试场景1完成', 'info');
+        }
+        
+        function testWithTokenManager() {
+            addResult('🧪 开始测试场景2：TokenManager正常加载', 'info');
+            
+            if (!window.TokenManager) {
+                addResult('❌ TokenManager未找到，无法进行测试', 'error');
+                return;
+            }
+            
+            try {
+                addResult('🔄 初始化TokenManager为系统模式...', 'info');
+                
+                // 初始化TokenManager
+                window.TokenManager.initSystemMode();
+                const mockToken = 'test-token-' + Date.now();
+                window.TokenManager.setToken(mockToken, 24);
+                window.TokenManager.setUserInfo({
+                    id: 'test-user',
+                    name: '测试用户',
+                    role: 'admin'
+                });
+                
+                addResult('✅ TokenManager初始化成功', 'success');
+                
+                // 测试SDK初始化
+                addResult('🔄 尝试初始化Cards SDK...', 'info');
+                
+                const testSDK = new window.CodeSpiritCards.SDK({
+                    container: '#test-container',
+                    baseUrl: '/api'
+                });
+                
+                addResult('✅ Cards SDK初始化成功', 'success');
+                
+                // 测试认证头获取
+                const authHeaders = window.TokenManager.getAuthHeaders();
+                addResult(`✅ 认证头获取成功: ${JSON.stringify(authHeaders)}`, 'success');
+                
+                // 测试平台信息
+                const platformInfo = window.TokenManager.getPlatformInfo();
+                addResult(`✅ 平台信息: ${JSON.stringify(platformInfo)}`, 'success');
+                
+                // 测试API请求配置
+                addResult('🔄 测试API请求配置...', 'info');
+                
+                const globalConfig = testSDK.getGlobalAmisConfig();
+                if (globalConfig.requestAdaptor) {
+                    const mockApi = {
+                        url: '/test/api',
+                        method: 'GET',
+                        headers: {}
+                    };
+                    
+                    const processedApi = globalConfig.requestAdaptor(mockApi, {}, {}, { id: 'test-request' });
+                    addResult(`✅ API请求配置成功: ${JSON.stringify(processedApi.headers)}`, 'success');
+                } else {
+                    addResult('⚠️ 请求适配器未找到', 'warning');
+                }
+                
+            } catch (error) {
+                addResult(`❌ 测试失败: ${error.message}`, 'error');
+            }
+            
+            addResult('🏁 测试场景2完成', 'info');
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            addResult('📋 页面加载完成，准备开始测试', 'info');
+            
+            if (window.TokenManager) {
+                addResult('✅ TokenManager已加载', 'success');
+            } else {
+                addResult('❌ TokenManager未加载', 'error');
+            }
+            
+            if (window.CodeSpiritCards) {
+                addResult('✅ Cards SDK已加载', 'success');
+            } else {
+                addResult('❌ Cards SDK未加载', 'error');
+            }
+        });
+    </script>
+} 

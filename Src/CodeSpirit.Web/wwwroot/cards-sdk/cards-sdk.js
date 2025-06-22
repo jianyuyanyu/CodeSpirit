@@ -1,7 +1,13 @@
 /**
  * CodeSpirit 统计卡片前端SDK
- * @version 1.0.0
+ * @version 1.0.3
  * @author CodeSpirit Team
+ * 
+ * 修复说明 v1.0.3:
+ * - 图表渲染器已剥离到独立的 chart-renderers.js 文件
+ * - 表格渲染器已剥离到独立的 table-card-renderer.js 文件
+ * - 核心SDK只保留基础渲染器和管理功能
+ * - 支持智能延迟注册机制
  */
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -20,6 +26,10 @@
                 theme: 'default',
                 autoRefresh: true,
                 refreshInterval: 30000,
+                // 可选渲染器配置
+                enableTableRenderer: options.enableTableRenderer !== false, // 默认启用
+                enableChartRenderers: options.enableChartRenderers !== false, // 默认启用
+                silentMode: options.silentMode || false, // 静默模式，减少警告日志
                 ...options
             };
             
@@ -28,6 +38,20 @@
             this.eventBus = new EventBus();
             this.dataService = new DataService(this.options.baseUrl);
             
+            // 全局AMIS配置
+            this.globalAmisConfig = {
+                theme: 'antd',
+                locale: 'zh-CN',
+                debug: true,
+                apiBaseUrl: this.options.baseUrl,
+                // 全局请求拦截器
+                requestInterceptor: null,
+                // 全局响应拦截器  
+                responseInterceptor: null,
+                // 全局错误处理器
+                errorHandler: null
+            };
+            
             this.init();
         }
 
@@ -35,17 +59,58 @@
          * 初始化SDK
          */
         init() {
+            // 检查TokenManager依赖 - 必须存在
+            if (!window.TokenManager) {
+                const errorMsg = 'TokenManager is required but not found. Please ensure TokenManager.js is loaded before Cards SDK.';
+                console.error('❌', errorMsg);
+                throw new Error(errorMsg);
+            }
+            
+            const platformType = window.TokenManager.platformType;
+            const platformName = window.TokenManager.getClientTypeName ? 
+                window.TokenManager.getClientTypeName() : '系统';
+            console.log(`🔐 TokenManager已就绪 - 平台类型: ${platformType} (${platformName})`);
+            
+            // 输出当前认证状态
+            if (window.TokenManager.isAuthenticated && window.TokenManager.isAuthenticated()) {
+                console.log('✅ 用户已认证');
+                const platformInfo = window.TokenManager.getPlatformInfo();
+                if (platformInfo) {
+                    console.log('📋 平台信息:', platformInfo);
+                }
+            } else {
+                console.warn('⚠️ 用户未认证或Token已过期');
+            }
+            
             // 注册默认渲染器
             this.registerRenderer('stat', new StatCardRenderer());
-            this.registerRenderer('chart', new ChartCardRenderer());
-            this.registerRenderer('amis-chart', new AmisChartCardRenderer());
             this.registerRenderer('info', new InfoCardRenderer());
             this.registerRenderer('action', new ActionCardRenderer());
             
+            // 根据配置决定是否启用可选渲染器
+            if (this.options.enableTableRenderer) {
+                this.registerTableRenderer();
+            }
+            
+            if (this.options.enableChartRenderers) {
+                this.registerChartRenderers();
+            }
+            
             // 初始化样式
             this.loadStyles();
+            this.loadTableStyles();
             window.amis = amisRequire('amis/embed');
-            console.log('CodeSpirit Cards SDK 初始化完成');
+            console.log('✅ CodeSpirit Cards SDK 初始化完成');
+        }
+
+        /**
+         * 加载表格样式
+         */
+        loadTableStyles() {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = '/cards-sdk/table-card.css';
+            document.head.appendChild(link);
         }
 
         /**
@@ -150,12 +215,8 @@
             } else {
                 for (const [id, card] of this.cards) {
                     if (card.config.dataSource) {
-                        try {
-                            const newData = await this.dataService.fetchData(card.config.dataSource);
-                            await this.update(id, newData);
-                        } catch (error) {
-                            console.error(`刷新卡片 ${id} 失败:`, error);
-                        }
+                        const newData = await this.dataService.fetchData(card.config.dataSource);
+                        await this.update(id, newData);
                     }
                 }
             }
@@ -176,11 +237,149 @@
 
         /**
          * 注册渲染器
-         * @param {string} type 类型
-         * @param {Object} renderer 渲染器
+         * @param {string} type 渲染器类型
+         * @param {Object} renderer 渲染器实例
          */
         registerRenderer(type, renderer) {
             this.renderers.set(type, renderer);
+            console.log(`✅ 渲染器 ${type} 注册成功`);
+        }
+
+        /**
+         * 注册表格渲染器
+         * 支持延迟注册机制，确保table-card-renderer.js正确加载
+         */
+        registerTableRenderer() {
+            // 检查TableCardRenderer是否已加载
+            if (typeof window.TableCardRenderer !== 'undefined') {
+                console.log('✅ 发现TableCardRenderer，立即注册');
+                this.registerRenderer('table', new window.TableCardRenderer());
+                return;
+            }
+            
+            // 延迟注册机制 - 等待table-card-renderer.js加载
+            console.log('⏳ TableCardRenderer未就绪，启动延迟注册机制...');
+            
+            let attempts = 0;
+            const maxAttempts = 50; // 5秒超时
+            const checkInterval = 100; // 100ms间隔
+            
+            const checkAndRegister = () => {
+                attempts++;
+                
+                if (typeof window.TableCardRenderer !== 'undefined') {
+                    console.log(`✅ TableCardRenderer已加载，延迟注册成功 (尝试 ${attempts}/${maxAttempts})`);
+                    this.registerRenderer('table', new window.TableCardRenderer());
+                    return;
+                }
+                
+                if (attempts >= maxAttempts) {
+                    if (!this.options.silentMode) {
+                        console.warn(`⚠️ TableCardRenderer注册超时 (${attempts}次尝试)`);
+                        console.warn('请确保table-card-renderer.js在cards-sdk.js之后正确加载');
+                    }
+                    return;
+                }
+                
+                setTimeout(checkAndRegister, checkInterval);
+            };
+            
+            checkAndRegister();
+        }
+
+        /**
+         * 注册图表渲染器
+         * 支持延迟注册机制，确保chart-renderers.js正确加载
+         */
+        registerChartRenderers() {
+            // 检查图表渲染器是否已加载
+            const hasChartRenderer = typeof window.ChartCardRenderer !== 'undefined';
+            const hasAmisChartRenderer = typeof window.AmisChartCardRenderer !== 'undefined';
+            
+            if (hasChartRenderer && hasAmisChartRenderer) {
+                console.log('✅ 发现图表渲染器，立即注册');
+                this.registerRenderer('chart', new window.ChartCardRenderer());
+                this.registerRenderer('amis-chart', new window.AmisChartCardRenderer());
+                return;
+            }
+            
+            // 延迟注册机制 - 等待chart-renderers.js加载
+            console.log('⏳ 图表渲染器未就绪，启动延迟注册机制...');
+            
+            let attempts = 0;
+            const maxAttempts = 50; // 5秒超时
+            const checkInterval = 100; // 100ms间隔
+            
+            const checkAndRegister = () => {
+                attempts++;
+                
+                const chartReady = typeof window.ChartCardRenderer !== 'undefined';
+                const amisChartReady = typeof window.AmisChartCardRenderer !== 'undefined';
+                
+                if (chartReady && amisChartReady) {
+                    console.log(`✅ 图表渲染器已加载，延迟注册成功 (尝试 ${attempts}/${maxAttempts})`);
+                    this.registerRenderer('chart', new window.ChartCardRenderer());
+                    this.registerRenderer('amis-chart', new window.AmisChartCardRenderer());
+                    return;
+                }
+                
+                if (attempts >= maxAttempts) {
+                    if (!this.options.silentMode) {
+                        console.warn(`⚠️ 图表渲染器注册超时 (${attempts}次尝试)`);
+                        console.warn('请确保chart-renderers.js在cards-sdk.js之后正确加载');
+                        console.warn(`状态: ChartCardRenderer=${chartReady}, AmisChartCardRenderer=${amisChartReady}`);
+                    }
+                    return;
+                }
+                
+                setTimeout(checkAndRegister, checkInterval);
+            };
+            
+            checkAndRegister();
+        }
+
+        /**
+         * 设置全局AMIS配置
+         * @param {Object} config AMIS配置
+         */
+        setGlobalAmisConfig(config) {
+            Object.assign(this.globalAmisConfig, config);
+            console.log('🔧 更新全局AMIS配置:', this.globalAmisConfig);
+        }
+
+        /**
+         * 获取全局AMIS配置
+         * @returns {Object} 全局AMIS配置
+         */
+        getGlobalAmisConfig() {
+            return { ...this.globalAmisConfig };
+        }
+
+        /**
+         * 设置全局请求拦截器
+         * @param {Function} interceptor 拦截器函数
+         */
+        setRequestInterceptor(interceptor) {
+            this.globalAmisConfig.requestInterceptor = interceptor;
+            console.log('🔧 设置全局请求拦截器');
+        }
+
+        /**
+         * 设置全局响应拦截器
+         * @param {Function} interceptor 拦截器函数
+         */
+        setResponseInterceptor(interceptor) {
+            this.globalAmisConfig.responseInterceptor = interceptor;
+            console.log('🔧 设置全局响应拦截器');
+        }
+
+        /**
+         * 设置全局错误处理器
+         * @param {Function} handler 错误处理函数
+         */
+        setErrorHandler(handler) {
+            this.globalAmisConfig.errorHandler = handler;
+            console.log('🔧 设置全局错误处理器');
         }
 
         /**
@@ -306,9 +505,23 @@
             const queryString = new URLSearchParams(params).toString();
             const fullUrl = `${this.baseUrl}${url}${queryString ? '?' + queryString : ''}`;
             
-            const response = await fetch(fullUrl);
+            // 构建请求头 - 必须使用TokenManager
+            if (!window.TokenManager) {
+                throw new Error('TokenManager is required but not found. Cannot make authenticated requests.');
+            }
+            
+            const authHeaders = window.TokenManager.getAuthHeaders();
+            
+            const response = await fetch(fullUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...authHeaders
+                }
+            });
+            
             if (!response.ok) {
-                throw new Error(`请求失败: ${response.status}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             return await response.json();
@@ -331,12 +544,13 @@
                 <div class="card-body">
                     <div class="stat-content">
                         <div class="stat-value">${this.formatValue(config.data.value)}</div>
-                        <div class="stat-label">${config.data.label}</div>
                         ${config.data.unit ? `<div class="stat-unit">${config.data.unit}</div>` : ''}
                         ${config.data.trend ? this.renderTrend(config.data.trend) : ''}
                     </div>
+                    <div class="stat-actions">
+                        ${config.actions ? this.renderActions(config.actions) : ''}
+                    </div>
                 </div>
-                ${config.actions ? this.renderActions(config.actions) : ''}
             `;
             
             return card;
@@ -344,14 +558,8 @@
 
         async update(element, config) {
             const valueElement = element.querySelector('.stat-value');
-            const labelElement = element.querySelector('.stat-label');
-            const trendElement = element.querySelector('.stat-trend');
-            
-            if (valueElement) valueElement.textContent = this.formatValue(config.data.value);
-            if (labelElement) labelElement.textContent = config.data.label;
-            
-            if (config.data.trend && trendElement) {
-                trendElement.outerHTML = this.renderTrend(config.data.trend);
+            if (valueElement) {
+                valueElement.textContent = this.formatValue(config.data.value);
             }
         }
 
@@ -363,109 +571,23 @@
         }
 
         renderTrend(trend) {
-            const direction = trend.direction || 'stable';
-            const icon = {
-                up: 'fas fa-arrow-up',
-                down: 'fas fa-arrow-down',
-                stable: 'fas fa-minus'
-            }[direction];
-            
+            const trendClass = trend > 0 ? 'trend-up' : trend < 0 ? 'trend-down' : 'trend-stable';
+            const trendIcon = trend > 0 ? '↗' : trend < 0 ? '↘' : '→';
             return `
-                <div class="stat-trend trend-${direction}">
-                    <i class="${icon}"></i>
-                    <span>${trend.value}</span>
-                    <small>${trend.period}</small>
+                <div class="stat-trend ${trendClass}">
+                    <span class="trend-icon">${trendIcon}</span>
+                    <span class="trend-value">${Math.abs(trend)}%</span>
                 </div>
             `;
         }
 
         renderActions(actions) {
-            return `
-                <div class="card-actions">
-                    ${actions.map(action => `
-                        <button class="btn btn-sm btn-outline-primary" onclick="${action.onclick}">
-                            ${action.icon ? `<i class="${action.icon}"></i>` : ''}
-                            ${action.label}
-                        </button>
-                    `).join('')}
-                </div>
-            `;
-        }
-    }
-
-    /**
-     * 图表卡片渲染器
-     */
-    class ChartCardRenderer {
-        async render(config) {
-            const card = document.createElement('div');
-            card.className = `card chart-card theme-${config.style?.theme || 'default'}`;
-            
-            const chartId = `chart-${config.id}`;
-            
-            card.innerHTML = `
-                <div class="card-header">
-                    ${config.title ? `<h4 class="card-title">${config.title}</h4>` : ''}
-                    ${config.subtitle ? `<p class="card-subtitle">${config.subtitle}</p>` : ''}
-                </div>
-                <div class="card-body">
-                    <div id="${chartId}" class="chart-container" style="height: ${config.style?.height || 300}px;"></div>
-                </div>
-            `;
-            
-            // 初始化图表
-            setTimeout(() => {
-                this.initChart(chartId, config);
-            }, 100);
-            
-            return card;
-        }
-
-        async update(element, config) {
-            const chartContainer = element.querySelector('.chart-container');
-            if (chartContainer && window.echarts) {
-                const chart = window.echarts.getInstanceByDom(chartContainer);
-                if (chart) {
-                    chart.setOption(this.getChartOption(config));
-                }
-            }
-        }
-
-        initChart(chartId, config) {
-            if (!window.echarts) {
-                console.error('ECharts 未加载');
-                return;
-            }
-            
-            const container = document.getElementById(chartId);
-            if (!container) return;
-            
-            const chart = window.echarts.init(container);
-            chart.setOption(this.getChartOption(config));
-        }
-
-        getChartOption(config) {
-            // 基础配置
-            return {
-                title: {
-                    text: config.data.chartTitle || '',
-                    left: 'center'
-                },
-                tooltip: {
-                    trigger: 'axis'
-                },
-                xAxis: {
-                    type: 'category',
-                    data: config.data.xData || []
-                },
-                yAxis: {
-                    type: 'value'
-                },
-                series: [{
-                    type: config.data.chartType || 'line',
-                    data: config.data.yData || []
-                }]
-            };
+            return actions.map(action => `
+                <button class="btn btn-sm btn-outline-primary" onclick="${action.onclick}">
+                    ${action.icon ? `<i class="${action.icon}"></i>` : ''}
+                    ${action.label}
+                </button>
+            `).join('');
         }
     }
 
@@ -538,457 +660,27 @@
         }
     }
 
-    /**
-     * Amis图表卡片渲染器
-     * 使用Amis Chart组件渲染图表，提供与Amis主题一致的样式
-     * 参考文档: https://aisuda.bce.baidu.com/amis/zh-CN/components/chart
-     */
-    class AmisChartCardRenderer {
-        async render(config) {
-            const card = document.createElement('div');
-            card.className = `card amis-chart-card theme-${config.style?.theme || 'default'}`;
-            
-            const chartId = `amis-chart-${config.id}`;
-            
-            card.innerHTML = `
-                <div class="card-header">
-                    ${config.title ? `<h4 class="card-title">${config.title}</h4>` : ''}
-                    ${config.subtitle ? `<p class="card-subtitle">${config.subtitle}</p>` : ''}
-                    <div class="card-badge">Amis Chart</div>
-                </div>
-                <div class="card-body">
-                    <div id="${chartId}" class="amis-chart-container" style="height: ${config.style?.height || 300}px;"></div>
-                </div>
-            `;
-            
-            // 初始化Amis图表
-            setTimeout(() => {
-                this.initAmisChart(chartId, config);
-            }, 100);
-            
-            return card;
-        }
-
-        async update(element, config) {
-            const chartContainer = element.querySelector('.amis-chart-container');
-            if (chartContainer) {
-                // 重新渲染Amis图表
-                this.initAmisChart(chartContainer.id, config);
-            }
-        }
-
-        /**
-         * 初始化Amis图表
-         */
-        initAmisChart(chartId, config) {
-            const container = document.getElementById(chartId);
-            if (!container) {
-                console.error(`图表容器 ${chartId} 未找到`);
-                return;
-            }
-
-            console.log('初始化Amis图表:', chartId, config);
-
-            try {
-                console.log('使用Amis图表渲染');
-                const amisConfig = this.getAmisChartConfig(config);
-                this.renderAmisChart(container, amisConfig);
-            } catch (error) {
-                console.error('渲染Amis图表失败:', error);
-                this.renderError(container, '图表渲染失败');
-            }
-        }
-
-
-
-        /**
-         * 生成Amis Chart配置
-         * 参考Amis Chart组件文档: https://aisuda.bce.baidu.com/amis/zh-CN/components/chart
-         */
-        getAmisChartConfig(config) {
-            const chartData = config.data || {};
-            const chartType = chartData.chartType || 'line';
-            const themeColor = this.getThemeColor(config.style?.theme);
-            
-            // 标准Amis Chart组件配置
-            const amisConfig = {
-                type: 'chart',
-                height: config.style?.height || 300,
-                config: this.getEChartsConfig(chartData, chartType, themeColor),
-                // 数据源配置 - 如果有API数据源
-                api: chartData.api || undefined,
-                // 静态数据
-                data: chartData.data || undefined
-            };
-
-            return amisConfig;
-        }
-
-        /**
-         * 生成标准ECharts配置
-         * 确保与ECharts官方配置格式一致
-         */
-        getEChartsConfig(chartData, chartType, themeColor) {
-            const config = {
-                // 标题配置
-                title: {
-                    text: chartData.chartTitle || '',
-                    left: 'center',
-                    textStyle: {
-                        fontSize: 16,
-                        fontWeight: 'normal',
-                        color: '#333'
-                    }
-                },
-                
-                // 工具提示
-                tooltip: {
-                    trigger: chartType === 'pie' ? 'item' : 'axis',
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    borderColor: 'transparent',
-                    textStyle: {
-                        color: '#fff'
-                    },
-                    formatter: chartType === 'pie' ? '{a} <br/>{b}: {c} ({d}%)' : undefined
-                },
-                
-                // 图例
-                legend: {
-                    show: chartType === 'pie' || (chartData.series && chartData.series.length > 1),
-                    orient: 'horizontal',
-                    x: 'center',
-                    y: 'bottom',
-                    data: this.getLegendData(chartData, chartType)
-                },
-                
-                // 网格配置
-                grid: chartType !== 'pie' ? {
-                    left: '3%',
-                    right: '4%',
-                    bottom: '3%',
-                    top: chartData.chartTitle ? '15%' : '3%',
-                    containLabel: true
-                } : undefined
-            };
-
-            // 根据图表类型添加坐标轴配置
-            if (chartType !== 'pie') {
-                config.xAxis = this.getXAxisConfig(chartData);
-                config.yAxis = this.getYAxisConfig(chartData);
-            }
-
-            // 配置数据系列
-            config.series = this.getSeriesConfig(chartData, chartType, themeColor);
-
-            return config;
-        }
-
-        /**
-         * 获取X轴配置
-         */
-        getXAxisConfig(chartData) {
-            return {
-                type: 'category',
-                data: chartData.xData || [],
-                axisTick: {
-                    alignWithLabel: true
-                },
-                axisLine: {
-                    lineStyle: {
-                        color: '#e1e4e8'
-                    }
-                },
-                axisLabel: {
-                    color: '#666'
-                }
-            };
-        }
-
-        /**
-         * 获取Y轴配置
-         */
-        getYAxisConfig(chartData) {
-            return {
-                type: 'value',
-                axisLine: {
-                    show: false
-                },
-                axisTick: {
-                    show: false
-                },
-                axisLabel: {
-                    color: '#666'
-                },
-                splitLine: {
-                    lineStyle: {
-                        color: '#f0f0f0',
-                        type: 'dashed'
-                    }
-                }
-            };
-        }
-
-        /**
-         * 获取图例数据
-         */
-        getLegendData(chartData, chartType) {
-            if (chartType === 'pie') {
-                return chartData.pieData ? chartData.pieData.map(item => item.name) : [];
-            }
-            
-            if (chartData.series && chartData.series.length > 1) {
-                return chartData.series.map(series => series.name);
-            }
-            
-            return [];
-        }
-
-        /**
-         * 获取数据系列配置
-         */
-        getSeriesConfig(chartData, chartType, themeColor) {
-            switch (chartType) {
-                case 'pie':
-                    return this.getPieSeriesConfig(chartData, themeColor);
-                case 'bar':
-                    return this.getBarSeriesConfig(chartData, themeColor);
-                case 'line':
-                    return this.getLineSeriesConfig(chartData, themeColor);
-                case 'area':
-                    return this.getAreaSeriesConfig(chartData, themeColor);
-                default:
-                    return this.getLineSeriesConfig(chartData, themeColor);
-            }
-        }
-
-        /**
-         * 饼图系列配置
-         */
-        getPieSeriesConfig(chartData, themeColor) {
-            return [{
-                type: 'pie',
-                radius: ['40%', '70%'],
-                center: ['50%', '45%'],
-                data: chartData.pieData || [],
-                emphasis: {
-                    itemStyle: {
-                        shadowBlur: 10,
-                        shadowOffsetX: 0,
-                        shadowColor: 'rgba(0, 0, 0, 0.5)'
-                    }
-                },
-                itemStyle: {
-                    borderRadius: 5,
-                    borderColor: '#fff',
-                    borderWidth: 2
-                }
-            }];
-        }
-
-        /**
-         * 柱状图系列配置
-         */
-        getBarSeriesConfig(chartData, themeColor) {
-            if (chartData.series && chartData.series.length > 0) {
-                return chartData.series.map((series, index) => ({
-                    name: series.name,
-                    type: 'bar',
-                    data: series.data,
-                    itemStyle: {
-                        borderRadius: [4, 4, 0, 0],
-                        color: this.getSeriesColor(themeColor, index)
-                    }
-                }));
-            }
-            
-            return [{
-                name: chartData.chartTitle || '数据',
-                type: 'bar',
-                data: chartData.yData || [],
-                itemStyle: {
-                    borderRadius: [4, 4, 0, 0],
-                    color: themeColor
-                }
-            }];
-        }
-
-        /**
-         * 折线图系列配置
-         */
-        getLineSeriesConfig(chartData, themeColor) {
-            if (chartData.series && chartData.series.length > 0) {
-                return chartData.series.map((series, index) => ({
-                    name: series.name,
-                    type: 'line',
-                    data: series.data,
-                    smooth: true,
-                    lineStyle: {
-                        width: 3,
-                        color: this.getSeriesColor(themeColor, index)
-                    },
-                    itemStyle: {
-                        color: this.getSeriesColor(themeColor, index)
-                    }
-                }));
-            }
-            
-            return [{
-                name: chartData.chartTitle || '数据',
-                type: 'line',
-                data: chartData.yData || [],
-                smooth: true,
-                lineStyle: {
-                    width: 3,
-                    color: themeColor
-                },
-                itemStyle: {
-                    color: themeColor
-                }
-            }];
-        }
-
-        /**
-         * 面积图系列配置
-         */
-        getAreaSeriesConfig(chartData, themeColor) {
-            const lineConfig = this.getLineSeriesConfig(chartData, themeColor);
-            return lineConfig.map(series => ({
-                ...series,
-                areaStyle: {
-                    opacity: 0.3,
-                    color: {
-                        type: 'linear',
-                        x: 0, y: 0, x2: 0, y2: 1,
-                        colorStops: [
-                            { offset: 0, color: series.itemStyle.color + '4D' },
-                            { offset: 1, color: series.itemStyle.color + '1A' }
-                        ]
-                    }
-                }
-            }));
-        }
-
-        /**
-         * 获取系列颜色
-         */
-        getSeriesColor(baseColor, index) {
-            const colors = [
-                baseColor,
-                '#52c41a',
-                '#faad14',
-                '#ff4d4f',
-                '#13c2c2',
-                '#722ed1',
-                '#eb2f96'
-            ];
-            return colors[index % colors.length];
-        }
-
-        /**
-         * 获取主题颜色
-         */
-        getThemeColor(theme) {
-            const colors = {
-                'default': '#1890ff',
-                'primary': '#1890ff',
-                'success': '#52c41a',
-                'warning': '#faad14',
-                'danger': '#ff4d4f',
-                'info': '#13c2c2'
-            };
-            return colors[theme] || colors.default;
-        }
-
-
-
-        /**
-         * 渲染Amis图表
-         * 使用标准的Amis Chart组件渲染方式
-         */
-        renderAmisChart(container, config) {
-            console.log('开始渲染Amis图表:', { container, config });
-            
-            try {
-                // 方式1: 使用amis.render渲染Chart组件
-                if (window.amis && typeof window.amis.render === 'function') {
-                    console.log('使用 amis.render 方法渲染Chart组件');
-                    
-                    // 清空容器
-                    container.innerHTML = '';
-                    
-                    // 使用Amis render方法
-                    const amisInstance = window.amis.render(config, {
-                        // 数据上下文
-                        data: config.data || {}
-                    }, container);
-                    
-                    console.log('Amis Chart渲染成功:', amisInstance);
-                    return amisInstance;
-                }
-                
-                // 方式2: 使用amis.embed方法
-                if (window.amis && typeof window.amis.embed === 'function') {
-                    console.log('使用 amis.embed 方法');
-                    container.innerHTML = '';
-                    window.amis.embed(container, config);
-                    return;
-                }
-                
-                // 方式3: 通过amisRequire加载
-                if (window.amisRequire) {
-                    console.log('使用 amisRequire 方法');
-                    const amis = window.amisRequire('amis/embed');
-                    if (amis && amis.render) {
-                        const amisInstance = amis.render(config, {}, container);
-                        console.log('Amis图表渲染成功 (amisRequire):', amisInstance);
-                        return amisInstance;
-                    } else if (amis && amis.embed) {
-                        amis.embed(container, config);
-                        return;
-                    }
-                }
-                
-                throw new Error('未找到可用的Amis渲染方法，请确保已正确加载Amis');
-                
-            } catch (error) {
-                console.error('Amis图表渲染失败:', error);
-                console.error('配置信息:', JSON.stringify(config, null, 2));
-                throw error;
-            }
-        }
-
-        /**
-         * 渲染错误信息
-         */
-        renderError(container, message) {
-            container.innerHTML = `
-                <div class="amis-chart-error">
-                    <div class="error-content">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>${message}</p>
-                    </div>
-                </div>
-            `;
-        }
-    }
+    // 图表渲染器已移至独立文件 chart-renderers.js
+    // 表格渲染器已移至独立文件 table-card-renderer.js
+    // 避免代码重复，提高模块化程度
 
     // 导出模块
     exports.CodeSpiritCardsSDK = CodeSpiritCardsSDK;
     exports.StatCardRenderer = StatCardRenderer;
-    exports.ChartCardRenderer = ChartCardRenderer;
-    exports.AmisChartCardRenderer = AmisChartCardRenderer;
     exports.InfoCardRenderer = InfoCardRenderer;
     exports.ActionCardRenderer = ActionCardRenderer;
+    // ChartCardRenderer 和 AmisChartCardRenderer 现在从独立的 chart-renderers.js 文件中导出
+    // TableCardRenderer 现在从独立的 table-card-renderer.js 文件中导出
 
     // 全局访问
     if (typeof window !== 'undefined') {
         window.CodeSpiritCards = window.CodeSpiritCards || {};
         window.CodeSpiritCards.SDK = CodeSpiritCardsSDK;
         window.CodeSpiritCards.StatCardRenderer = StatCardRenderer;
-        window.CodeSpiritCards.ChartCardRenderer = ChartCardRenderer;
-        window.CodeSpiritCards.AmisChartCardRenderer = AmisChartCardRenderer;
         window.CodeSpiritCards.InfoCardRenderer = InfoCardRenderer;
         window.CodeSpiritCards.ActionCardRenderer = ActionCardRenderer;
+        // ChartCardRenderer 和 AmisChartCardRenderer 现在从独立的 chart-renderers.js 文件中注册
+        // TableCardRenderer 现在从独立的 table-card-renderer.js 文件中注册
     }
 
 }))); 

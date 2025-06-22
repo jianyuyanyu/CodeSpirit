@@ -1,0 +1,334 @@
+/* 表格卡片样式 */
+.table-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.table-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 卡片头部样式 */
+.table-card .card-header {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 1.25rem;
+}
+
+.table-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.table-card .card-subtitle {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* 表格内容样式 */
+.table-card .table-content {
+    min-height: 200px;
+}
+
+.table-card .table-card-crud {
+    border: none;
+}
+
+.table-card .table-card-crud .cxd-Table {
+    margin-bottom: 0;
+}
+
+.table-card .table-card-crud .cxd-Table-content {
+    border: none;
+}
+
+.table-card .table-card-crud .cxd-Table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+
+.table-card .table-card-crud .cxd-Table td {
+    border-top: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+/* 主题样式 */
+.table-card.theme-primary .card-header {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+.table-card.theme-primary .card-title,
+.table-card.theme-primary .card-subtitle {
+    color: white;
+}
+
+.table-card.theme-success .card-header {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+    color: white;
+}
+
+.table-card.theme-success .card-title,
+.table-card.theme-success .card-subtitle {
+    color: white;
+}
+
+.table-card.theme-warning .card-header {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    color: #212529;
+}
+
+.table-card.theme-danger .card-header {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.table-card.theme-danger .card-title,
+.table-card.theme-danger .card-subtitle {
+    color: white;
+}
+
+.table-card.theme-info .card-header {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: white;
+}
+
+.table-card.theme-info .card-title,
+.table-card.theme-info .card-subtitle {
+    color: white;
+}
+
+/* 响应式样式 */
+@media (max-width: 768px) {
+    .table-card .table-card-crud .cxd-Table {
+        font-size: 0.875rem;
+    }
+    
+    .table-card .card-header {
+        padding: 0.75rem 1rem;
+    }
+    
+    .table-card .card-title {
+        font-size: 1rem;
+    }
+    
+    .table-card .card-subtitle {
+        font-size: 0.8rem;
+    }
+}
+
+/* 加载状态 */
+.table-card .loading-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: #6c757d;
+}
+
+.table-card .loading-placeholder .spinner {
+    margin-right: 0.5rem;
+}
+
+/* 错误状态 */
+.table-card.error-card {
+    border-color: #dc3545;
+}
+
+.table-card.error-card .card-header {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+/* 空数据状态 */
+.table-card .empty-data {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+}
+
+.table-card .empty-data i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* 表格工具栏样式 */
+.table-card .table-card-crud .cxd-Crud-toolbar {
+    padding: 0.75rem 1.25rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.table-card .table-card-crud .cxd-Crud-filter {
+    padding: 0.75rem 1.25rem;
+    background-color: #fff;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* 分页样式 */
+.table-card .table-card-crud .cxd-Crud-footToolbar {
+    padding: 0.75rem 1.25rem;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+/* 状态标签样式 */
+.table-card .label {
+    display: inline-block;
+    padding: 0.25em 0.6em;
+    font-size: 0.75em;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.375rem;
+}
+
+.table-card .label-success {
+    color: #fff;
+    background-color: #28a745;
+}
+
+.table-card .label-danger {
+    color: #fff;
+    background-color: #dc3545;
+}
+
+.table-card .label-warning {
+    color: #212529;
+    background-color: #ffc107;
+}
+
+.table-card .label-info {
+    color: #fff;
+    background-color: #17a2b8;
+}
+
+.table-card .label-default {
+    color: #495057;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+/* 进度条样式 */
+.table-card .cxd-Progress {
+    margin-bottom: 0;
+}
+
+.table-card .cxd-Progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* 操作按钮样式 */
+.table-card .cxd-Table-operation .cxd-Button {
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.table-card .cxd-Table-operation .cxd-Button:last-child {
+    margin-right: 0;
+}
+
+/* 表格选择样式 */
+.table-card .cxd-Table-checkCell {
+    width: 40px;
+    text-align: center;
+}
+
+/* 表格排序样式 */
+.table-card .cxd-Table-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.table-card .cxd-Table-sortable:hover {
+    background-color: #f8f9fa;
+}
+
+/* 表格展开行样式 */
+.table-card .cxd-Table-expandBtn {
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.table-card .cxd-Table-expandBtn:hover {
+    background-color: #e9ecef;
+}
+
+/* 表格搜索高亮 */
+.table-card .cxd-Table-searchKeyword {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+/* 表格加载覆盖层 */
+.table-card .cxd-Spinner-overlay {
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(2px);
+}
+
+/* 表格无数据样式 */
+.table-card .cxd-Table-placeholder {
+    padding: 2rem;
+    text-align: center;
+    color: #6c757d;
+}
+
+.table-card .cxd-Table-placeholder i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* 表格列宽度调整 */
+.table-card .cxd-Table-content th {
+    position: relative;
+}
+
+.table-card .cxd-Table-content th:hover .cxd-Table-resize {
+    opacity: 1;
+}
+
+.table-card .cxd-Table-resize {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+/* 表格固定列样式 */
+.table-card .cxd-Table-fixedLeft,
+.table-card .cxd-Table-fixedRight {
+    position: sticky;
+    z-index: 1;
+    background-color: inherit;
+}
+
+.table-card .cxd-Table-fixedLeft {
+    left: 0;
+}
+
+.table-card .cxd-Table-fixedRight {
+    right: 0;
+}
+
+/* 表格斑马纹样式 */
+.table-card .cxd-Table-content tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.table-card .cxd-Table-content tbody tr:hover {
+    background-color: #e9ecef;
+} 

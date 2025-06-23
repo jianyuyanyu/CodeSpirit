@@ -383,6 +383,11 @@ class StatRenderer extends window.AmisCards.BaseRenderer {
         const progressColor = this.getProgressColor(percentage);
         const targetLabel = `目标: ${this.formatValue(this.target)}`;
         
+        // 格式化百分比显示，最多保留1位小数
+        const formattedPercentage = percentage % 1 === 0 ? 
+            Math.round(percentage) : 
+            Math.round(percentage * 10) / 10;
+        
         return {
             type: 'container',
             className: 'amis-cards-stat-progress',
@@ -392,7 +397,7 @@ class StatRenderer extends window.AmisCards.BaseRenderer {
                     value: percentage,
                     strokeWidth: 8,
                     showText: true,
-                    textTemplate: '${value}%',
+                    textTemplate: `${formattedPercentage}%`,
                     className: 'stat-progress',
                     mode: 'line',
                     animate: true,
@@ -446,7 +451,7 @@ class StatRenderer extends window.AmisCards.BaseRenderer {
                     });
                 case 'percentage':
                     return window.AmisCards.Utils.formatNumber(value, {
-                        decimals: 1,
+                        decimals: 0,
                         suffix: '%'
                     });
                 case 'decimal':
@@ -542,7 +547,9 @@ class StatRenderer extends window.AmisCards.BaseRenderer {
         if (!this.target || this.target === 0) return 0;
         
         const percentage = (this.value / this.target) * 100;
-        return Math.min(100, Math.max(0, percentage));
+        // 四舍五入到2位小数，避免显示过多小数位
+        const roundedPercentage = Math.round(percentage * 100) / 100;
+        return Math.min(100, Math.max(0, roundedPercentage));
     }
 
     /**

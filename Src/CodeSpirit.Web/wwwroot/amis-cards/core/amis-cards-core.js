@@ -203,16 +203,108 @@ class AmisCardsCore {
         // 检测是否为混合卡片布局
         const isMixedLayout = this.detectMixedLayout(cards);
         
-        // 生成完整的页面配置
-        return {
+        // 如果配置中有自定义的 pageSchema，使用它
+        if (this.config.pageSchema) {
+            console.log('[AmisCards] 使用自定义 pageSchema');
+            const customPageConfig = { ...this.config.pageSchema };
+            
+            // 将卡片内容添加到自定义页面配置的 body 中
+            const cardsBody = isMixedLayout ? this.generateMixedLayout(bodyItems) : this.generateUniformLayout(bodyItems);
+            
+            if (customPageConfig.body) {
+                // 如果自定义配置已有 body，将卡片内容追加到其中
+                if (Array.isArray(customPageConfig.body)) {
+                    customPageConfig.body.push(...cardsBody);
+                } else {
+                    customPageConfig.body = [customPageConfig.body, ...cardsBody];
+                }
+            } else {
+                // 如果没有 body，直接设置
+                customPageConfig.body = cardsBody;
+            }
+            
+            // 确保主题类名被应用
+            if (!customPageConfig.className || !customPageConfig.className.includes('amis-cards-theme-')) {
+                customPageConfig.className = `${customPageConfig.className || ''} amis-cards-page amis-cards-theme-${this.theme}`.trim();
+            }
+            
+            // 为页面配置添加初始数据（用于 title、subTitle、remark 中的模板变量）
+            if (!customPageConfig.data) {
+                customPageConfig.data = {};
+            }
+            
+            // 添加当前时间，用于 lastUpdate 等动态显示
+            customPageConfig.data.lastUpdate = new Date().toLocaleTimeString();
+            customPageConfig.data.now = new Date();
+            
+            // 支持自动刷新配置
+            if (this.config.autoRefresh) {
+                // 添加刷新状态数据
+                customPageConfig.data.refreshStatus = '准备就绪';
+                customPageConfig.data.isRefreshing = false;
+                customPageConfig.data.refreshCount = 0;
+                
+                // 配置定时刷新
+                if (this.config.refreshInterval) {
+                    customPageConfig.interval = this.config.refreshInterval;
+                    customPageConfig.silentPolling = true;
+                    customPageConfig.stopAutoRefreshWhen = '${autoRefreshEnabled === false}';
+                    
+                    // 添加刷新前后的事件处理
+                    customPageConfig.onEvent = customPageConfig.onEvent || {};
+                    customPageConfig.onEvent.fetchInited = customPageConfig.onEvent.fetchInited || {};
+                    customPageConfig.onEvent.fetchInited.actions = customPageConfig.onEvent.fetchInited.actions || [];
+                    customPageConfig.onEvent.fetchInited.actions.push({
+                        actionType: 'setValue',
+                        args: {
+                            value: {
+                                isRefreshing: false,
+                                refreshStatus: '数据已更新',
+                                lastUpdate: new Date().toLocaleTimeString(),
+                                refreshCount: '${refreshCount + 1}'
+                            }
+                        }
+                    });
+                    
+                    customPageConfig.onEvent.fetchSchemaInited = customPageConfig.onEvent.fetchSchemaInited || {};
+                    customPageConfig.onEvent.fetchSchemaInited.actions = customPageConfig.onEvent.fetchSchemaInited.actions || [];
+                    customPageConfig.onEvent.fetchSchemaInited.actions.push({
+                        actionType: 'setValue',
+                        args: {
+                            value: {
+                                isRefreshing: true,
+                                refreshStatus: '正在刷新...'
+                            }
+                        }
+                    });
+                }
+            }
+            
+            return customPageConfig;
+        }
+        
+        // 生成默认的页面配置
+        const defaultConfig = {
             type: 'page',
             title: this.config.pageTitle || 'AmisCards 仪表板',
             className: `amis-cards-page amis-cards-theme-${this.theme}`,
             body: isMixedLayout ? this.generateMixedLayout(bodyItems) : this.generateUniformLayout(bodyItems)
         };
+        
+        // 如果启用自动刷新，添加相关配置
+        if (this.config.autoRefresh && this.config.refreshInterval) {
+            defaultConfig.interval = this.config.refreshInterval;
+            defaultConfig.silentPolling = true;
+            defaultConfig.data = {
+                refreshStatus: '准备就绪',
+                isRefreshing: false,
+                refreshCount: 0,
+                lastUpdate: new Date().toLocaleTimeString()
+            };
+        }
+        
+        return defaultConfig;
     }
-
-
 
     /**
      * 从卡片配置中获取卡片类型
@@ -264,8 +356,6 @@ class AmisCardsCore {
         console.log('[AmisCards] 使用默认类型');
         return 'default';
     }
-
-
 
     /**
      * 检测是否为混合布局
@@ -493,6 +583,37 @@ class AmisCardsCore {
             
             throw error;
         }
+    }
+
+    /**
+     * 更新工具栏按钮状态
+     * @param {string} buttonClass 按钮的类名
+     * @param {boolean} active 是否激活
+     */
+    updateToolbarButton(buttonClass, active = true) {
+        if (this.container) {
+            const buttons = this.container.querySelectorAll(`.${buttonClass}`);
+            buttons.forEach(button => {
+                if (active) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+        }
+    }
+
+    /**
+     * 获取实例状态信息
+     * @returns {Object} 状态信息
+     */
+    getState() {
+        return {
+            theme: this.theme,
+            cardsCount: this.currentCards ? this.currentCards.length : 0,
+            renderersCount: this.renderers.size,
+            hasAmisInstance: !!this.amisInstance
+        };
     }
 
     /**

@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSpirit 监考大屏 - UDL Cards</title>
+    
+    <!-- 本地 Amis CSS -->
+    <link rel="stylesheet" href="/sdk/6.12.0/antd.css">
+    <link rel="stylesheet" href="/sdk/6.12.0/helper.css">
+    <link rel="stylesheet" href="/sdk/6.12.0/iconfont.css">
+    
+    <!-- AmisCards CSS -->
+    <link rel="stylesheet" href="../styles/amis-cards.css">
+    <link rel="stylesheet" href="../styles/themes/default.css">
+    <link rel="stylesheet" href="../styles/themes/dark.css">
+    
+    <style>
+        /* 监考大屏专用样式 - 最小化自定义样式，优先使用 amis-cards 样式 */
+        
+        /* 标题和信息项样式 */
+        .monitor-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .monitor-page-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        
+        .monitor-info-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .info-highlight {
+            color: #ffd700 !important;
+            font-weight: 600;
+        }
+        
+        .amis-cards-theme-dark .info-highlight {
+            color: #f39c12 !important;
+        }
+        
+        /* 全屏模式 */
+        .fullscreen-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>    
+    <!-- 监控数据容器 -->
+    <div id="monitor-container" class="amis-cards-container">
+        <div class="amis-cards-loading">
+            <div><i class="fa fa-spinner fa-spin"></i></div>
+            <div>正在加载监控数据...</div>
+        </div>
+    </div>
+    
+    <!-- 本地 Amis JavaScript -->
+    <script src="/sdk/6.12.0/sdk.js"></script>
+    
+    <!-- AmisCards JavaScript -->
+    <script src="../core/utils.js"></script>
+    <script src="../core/data-service.js"></script>
+    <script src="../core/amis-cards-core.js"></script>
+    <script src="../renderers/base-renderer.js"></script>
+    <script src="../renderers/stat-renderer.js"></script>
+    <script src="../renderers/chart-renderer.js"></script>
+    <script src="../renderers/table-renderer.js"></script>
+    <script src="../renderers/info-renderer.js"></script>
+    <script src="../configs/card-configs.js"></script>
+    <script src="../configs/theme-configs.js"></script>
+    
+    <script>
+        // 全局变量
+        let cardsInstance = null;
+        let currentTheme = 'default';
+        let isFullscreen = false;
+        
+        // 自动刷新配置
+        const REFRESH_INTERVAL = 30000; // 30秒刷新间隔
+        
+        // 模拟数据 - 实际使用时从API获取
+        const mockExamData = {
+            examId: 'EX001',
+            examName: 'CodeSpirit 监考大屏 - UDL Cards',
+            tenantName: 'CodeSpirit 教育',
+            totalParticipants: 145,
+            onlineCount: 138,
+            submittedCount: 32,
+            suspiciousCount: 5,
+            students: generateMockStudents(145)
+        };
+        
+        /**
+         * 生成模拟学生数据
+         */
+        function generateMockStudents(count) {
+            const students = [];
+            const names = ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十'];
+            const statuses = ['考试中', '已提交', '未开始'];
+            
+            for (let i = 1; i <= count; i++) {
+                const randomName = names[Math.floor(Math.random() * names.length)];
+                const studentNumber = `STU${String(i).padStart(4, '0')}`;
+                const status = statuses[Math.floor(Math.random() * statuses.length)];
+                const progress = Math.floor(Math.random() * 100);
+                const switchCount = Math.floor(Math.random() * 10);
+                
+                students.push({
+                    id: i,
+                    name: `${randomName}${i}`,
+                    studentNumber: studentNumber,
+                    ipAddress: `192.168.1.${100 + (i % 155)}`,
+                    status: status,
+                    progress: progress,
+                    screenSwitchCount: switchCount,
+                    startTime: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+                    deviceInfo: `Windows 10 Chrome ${90 + Math.floor(Math.random() * 10)}`
+                });
+            }
+            
+            return students;
+        }
+        
+        /**
+         * 显示错误信息
+         */
+        function showError(title, message) {
+            const container = document.getElementById('monitor-container');
+            const errorHtml = `
+                <div class="amis-cards-error" style="text-align: center; padding: 4rem;">
+                    <i class="fa fa-exclamation-triangle" style="font-size: 2.5rem; margin-bottom: 1rem; color: #dc3545;"></i>
+                    <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem;">${title}</div>
+                    <div style="font-size: 0.9rem; margin-bottom: 1rem; color: #666;">${message}</div>
+                    <button class="cxd-Button cxd-Button--danger" onclick="location.reload()">重新加载</button>
+                </div>
+            `;
+            container.innerHTML = errorHtml;
+        }
+        
+        /**
+         * 更新页面数据
+         */
+        function updatePageData() {
+            // 更新页面标题
+            document.title = `${mockExamData.examName} - 监考大屏`;
+            
+            // 更新页面数据会在重新渲染时自动传递给 pageSchema
+            if (cardsInstance && cardsInstance.config && cardsInstance.config.pageSchema) {
+                cardsInstance.config.pageSchema.data = {
+                    ...cardsInstance.config.pageSchema.data,
+                    examId: mockExamData.examId,
+                    examName: mockExamData.examName,
+                    tenantName: mockExamData.tenantName,
+                    totalParticipants: mockExamData.totalParticipants,
+                    onlineCount: mockExamData.onlineCount,
+                    submittedCount: mockExamData.submittedCount,
+                    suspiciousCount: mockExamData.suspiciousCount,
+                    lastUpdate: new Date().toLocaleTimeString(),
+                    now: new Date()
+                };
+            }
+        }
+        
+        /**
+         * 更新刷新状态指示器
+         */
+        function updateRefreshIndicator(status) {
+            try {
+                if (cardsInstance && cardsInstance.config && cardsInstance.config.pageSchema) {
+                    cardsInstance.config.pageSchema.data = {
+                        ...cardsInstance.config.pageSchema.data,
+                        refreshStatus: status || '准备就绪'
+                    };
+                    
+                    // 如果需要立即更新UI，可以触发重新渲染
+                    console.log('[监考大屏] 状态指示器已更新:', status);
+                }
+            } catch (error) {
+                console.warn('[监考大屏] 更新状态指示器失败:', error);
+            }
+        }
+        
+        /**
+         * 检查依赖是否全部加载
+         */
+        function checkDependencies() {
+            const dependencies = [
+                { name: 'Amis', check: () => typeof window.amis !== 'undefined' },
+                { name: 'AmisCards', check: () => typeof window.AmisCards !== 'undefined' },
+                { name: 'AmisCards.StatRenderer', check: () => typeof window.AmisCards.StatRenderer !== 'undefined' }
+            ];
+            
+            const missing = dependencies.filter(dep => !dep.check());
+            
+            if (missing.length > 0) {
+                console.error('[监考大屏] 缺少依赖:', missing.map(dep => dep.name));
+                return false;
+            }
+            
+            console.log('[监考大屏] 所有依赖检查通过');
+            return true;
+        }
+        
+        /**
+         * 初始化监考大屏
+         */
+        function initMonitorDashboard() {
+            try {
+                console.log('[监考大屏] 开始初始化');
+                
+                // 定义自定义页面配置
+                const pageSchema = {
+                    type: 'page',
+                    title: {
+                        type: 'tpl',
+                        tpl: '<div class="monitor-title"><i class="fa fa-desktop"></i> ${examName || "CodeSpirit 监考大屏"}</div>',
+                        className: 'monitor-page-title'
+                    },
+                    subTitle: {
+                        type: 'tpl',
+                        tpl: '<div class="monitor-page-subtitle">实时监控考试进度 · 智能防作弊检测 · 数据可视化分析</div><div class="monitor-page-info"><span class="monitor-info-item"><i class="fa fa-calendar"></i> 考试ID: <span class="info-value">${examId || "--"}</span></span><span class="monitor-info-item"><i class="fa fa-building"></i> 学校: <span class="info-value">${tenantName || "--"}</span></span><span class="monitor-info-item"><i class="fa fa-clock"></i> 更新时间: <span class="info-value">${lastUpdate || "--"}</span></span><span class="monitor-info-item"><i class="fa fa-users"></i> 在线: <span class="info-value info-highlight">${onlineCount || 0}/${totalParticipants || 0}</span></span></div>',
+                        className: 'monitor-page-subtitle-wrapper'
+                    },
+                    className: 'monitor-dashboard-page amis-cards-page',
+                    toolbar: [
+                        {
+                            type: 'status',
+                            className: 'amis-cards-status-indicator',
+                            value: '${refreshStatus || "准备就绪"}',
+                            source: {
+                                '准备就绪': {
+                                    label: '准备就绪',
+                                    icon: 'fa fa-check-circle',
+                                    color: '#28a745'
+                                },
+                                '正在刷新...': {
+                                    label: '正在刷新...',
+                                    icon: 'fa fa-sync fa-spin',
+                                    color: '#007bff'
+                                },
+                                '数据已更新': {
+                                    label: '数据已更新',
+                                    icon: 'fa fa-check',
+                                    color: '#28a745'
+                                },
+                                '加载失败': {
+                                    label: '加载失败',
+                                    icon: 'fa fa-exclamation-triangle',
+                                    color: '#dc3545'
+                                }
+                            },
+                            style: {
+                                marginRight: '1rem'
+                            }
+                        },
+                        {
+                            type: 'button',
+                            icon: 'fa fa-expand',
+                            tooltip: '全屏模式',
+                            onEvent: {
+                                click: {
+                                    actions: [
+                                        {
+                                            actionType: 'custom',
+                                            script: 'window.toggleFullscreen && window.toggleFullscreen()'
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            type: 'button',
+                            icon: 'fa fa-sync',
+                            tooltip: '手动刷新',
+                            onEvent: {
+                                click: {
+                                    actions: [
+                                        {
+                                            actionType: 'custom',
+                                            script: 'window.location.reload()'
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            type: 'button',
+                            icon: 'fa fa-palette',
+                            tooltip: '切换主题',
+                            onEvent: {
+                                click: {
+                                    actions: [
+                                        {
+                                            actionType: 'custom',
+                                            script: 'window.toggleTheme && window.toggleTheme()'
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            type: 'button',
+                            icon: 'fa fa-download',
+                            tooltip: '导出数据',
+                            onEvent: {
+                                click: {
+                                    actions: [
+                                        {
+                                            actionType: 'custom',
+                                            script: 'window.exportData && window.exportData()'
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    body: [] // 卡片内容将由 AmisCards 自动添加
+                };
+                
+                // 为 pageSchema 添加初始数据
+                pageSchema.data = {
+                    examId: mockExamData.examId,
+                    examName: mockExamData.examName,
+                    tenantName: mockExamData.tenantName,
+                    totalParticipants: mockExamData.totalParticipants,
+                    onlineCount: mockExamData.onlineCount,
+                    submittedCount: mockExamData.submittedCount,
+                    suspiciousCount: mockExamData.suspiciousCount,
+                    lastUpdate: new Date().toLocaleTimeString(),
+                    now: new Date(),
+                    refreshStatus: '准备就绪',
+                    autoRefreshEnabled: true
+                };
+                
+                // 创建 AmisCards 实例，传递 pageSchema 和自动刷新配置
+                cardsInstance = window.AmisCards.create({
+                    container: '#monitor-container',
+                    theme: currentTheme,
+                    config: {
+                        pageTitle: '监考大屏',
+                        pageSchema: pageSchema,
+                        autoRefresh: true,
+                        refreshInterval: REFRESH_INTERVAL
+                    }
+                });
+                
+                console.log('[监考大屏] AmisCards 实例已创建');
+                
+                // 注册渲染器
+                setTimeout(() => {
+                    try {
+                        if (window.AmisCards.StatRenderer) {
+                            cardsInstance.registerRenderer('stat', window.AmisCards.StatRenderer);
+                            console.log('[监考大屏] 已注册 StatRenderer');
+                        }
+                        if (window.AmisCards.ChartRenderer) {
+                            cardsInstance.registerRenderer('chart', window.AmisCards.ChartRenderer);
+                            console.log('[监考大屏] 已注册 ChartRenderer');
+                        }
+                        if (window.AmisCards.TableRenderer) {
+                            cardsInstance.registerRenderer('table', window.AmisCards.TableRenderer);
+                            console.log('[监考大屏] 已注册 TableRenderer');
+                        }
+                        if (window.AmisCards.InfoRenderer) {
+                            cardsInstance.registerRenderer('info', window.AmisCards.InfoRenderer);
+                            console.log('[监考大屏] 已注册 InfoRenderer');
+                        }
+                        
+                        // 更新页面数据
+                        updatePageData();
+                        
+                        // 加载完整监控视图
+                        loadFullMonitorView();
+                        
+                        // 自动刷新由 Amis Page 组件内置的 interval 机制处理
+                        console.log('[监考大屏] 自动刷新已启用，间隔:', REFRESH_INTERVAL, 'ms');
+                        
+                    } catch (error) {
+                        console.error('[监考大屏] 渲染器注册失败:', error);
+                        showError('渲染器注册失败', error.message);
+                    }
+                }, 100);
+                
+            } catch (error) {
+                console.error('[监考大屏] 初始化失败:', error);
+                showError('初始化失败', error.message);
+            }
+        }
+        
+        /**
+         * 加载完整监控视图
+         */
+        async function loadFullMonitorView() {
+            try {
+                console.log('[监考大屏] 加载完整监控视图');
+                
+                // 更新页面数据（包括头部显示的实时信息）
+                updatePageData();
+                
+                // 计算统计数据
+                const examingCount = mockExamData.students.filter(s => s.status === '考试中').length;
+                const avgProgress = Math.round(mockExamData.students.reduce((sum, s) => sum + s.progress, 0) / mockExamData.students.length);
+                const highSwitchCount = mockExamData.students.filter(s => s.screenSwitchCount > 5).length;
+                const riskLevels = {
+                    high: mockExamData.students.filter(s => s.screenSwitchCount > 8).length,
+                    medium: mockExamData.students.filter(s => s.screenSwitchCount >= 6 && s.screenSwitchCount <= 8).length,
+                    low: mockExamData.students.filter(s => s.screenSwitchCount === 5).length
+                };
+                
+                const cards = [
+                    // 第一行：基础统计
+                    {
+                        id: 'total-participants',
+                        type: 'stat',
+                        title: '参考人数',
+                        subtitle: '总体参与统计',
+                        theme: 'info',
+                        data: {
+                            value: mockExamData.totalParticipants,
+                            label: '总人数',
+                            unit: '人',
+                            formatter: 'integer',
+                            icon: 'users',
+                            iconColor: '#17a2b8',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(23, 162, 184, 0.1)',
+                            iconBorder: true
+                        }
+                    },
+                    {
+                        id: 'online-count',
+                        type: 'stat',
+                        title: '在线人数',
+                        subtitle: '实时在线统计',
+                        theme: 'success',
+                        data: {
+                            value: mockExamData.onlineCount,
+                            label: '在线',
+                            unit: '人',
+                            formatter: 'integer',
+                            target: mockExamData.totalParticipants,
+                            showProgress: true,
+                            icon: 'wifi',
+                            iconColor: '#28a745',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(40, 167, 69, 0.1)',
+                            iconBorder: true,
+                            description: `在线率: ${Math.round(mockExamData.onlineCount/mockExamData.totalParticipants*100)}%`
+                        }
+                    },
+                    {
+                        id: 'submitted-count',
+                        type: 'stat',
+                        title: '已交卷',
+                        subtitle: '提交情况统计',
+                        theme: 'warning',
+                        data: {
+                            value: mockExamData.submittedCount,
+                            label: '已提交',
+                            unit: '人',
+                            formatter: 'integer',
+                            target: mockExamData.totalParticipants,
+                            showProgress: true,
+                            icon: 'check-circle',
+                            iconColor: '#ffc107',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(255, 193, 7, 0.1)',
+                            iconBorder: true,
+                            description: `提交率: ${Math.round(mockExamData.submittedCount/mockExamData.totalParticipants*100)}%`
+                        }
+                    },
+                    {
+                        id: 'suspicious-count',
+                        type: 'stat',
+                        title: '作弊嫌疑',
+                        subtitle: '异常行为检测',
+                        theme: 'danger',
+                        data: {
+                            value: mockExamData.suspiciousCount,
+                            label: '疑似作弊',
+                            unit: '人',
+                            formatter: 'integer',
+                            icon: 'exclamation-triangle',
+                            iconColor: '#dc3545',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(220, 53, 69, 0.1)',
+                            iconBorder: true,
+                            description: mockExamData.suspiciousCount > 0 ? '需要关注异常行为' : '暂无异常'
+                        }
+                    },
+                    
+                    // 第二行：详细监控
+                    {
+                        id: 'exam-status',
+                        type: 'stat',
+                        title: '正在考试',
+                        subtitle: '当前答题人数',
+                        theme: 'primary',
+                        data: {
+                            value: examingCount,
+                            label: '正在考试',
+                            unit: '人',
+                            formatter: 'integer',
+                            icon: 'play-circle',
+                            iconColor: '#007bff',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(0, 123, 255, 0.1)'
+                        }
+                    },
+                    {
+                        id: 'avg-progress',
+                        type: 'stat',
+                        title: '平均进度',
+                        subtitle: '整体答题进度',
+                        theme: 'info',
+                        data: {
+                            value: avgProgress,
+                            label: '平均进度',
+                            formatter: 'percentage',
+                            icon: 'chart-bar',
+                            iconColor: '#17a2b8',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(23, 162, 184, 0.1)',
+                            showProgress: true,
+                            target: 100
+                        }
+                    },
+                    {
+                        id: 'switch-violations',
+                        type: 'stat',
+                        title: '切屏预警',
+                        subtitle: '异常切屏行为',
+                        theme: 'warning',
+                        data: {
+                            value: highSwitchCount,
+                            label: '高频切屏',
+                            unit: '人',
+                            formatter: 'integer',
+                            icon: 'window-maximize',
+                            iconColor: '#ffc107',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(255, 193, 7, 0.1)'
+                        }
+                    },
+                    {
+                        id: 'exam-time',
+                        type: 'stat',
+                        title: '考试时长',
+                        subtitle: '已进行时间',
+                        theme: 'success',
+                        data: {
+                            value: 78,
+                            label: '已用时间',
+                            unit: '分钟',
+                            formatter: 'integer',
+                            icon: 'clock',
+                            iconColor: '#28a745',
+                            iconSize: 'lg',
+                            iconPosition: 'left',
+                            iconBackground: 'rgba(40, 167, 69, 0.1)'
+                        }
+                    },
+                    
+                    // 考生监控表格
+                    {
+                        id: 'students-table',
+                        type: 'table',
+                        title: '考生监控',
+                        subtitle: '实时监控考生状态',
+                        columns: [
+                            {
+                                name: 'name',
+                                label: '姓名',
+                                width: 100,
+                                type: 'text'
+                            },
+                            {
+                                name: 'studentNumber',
+                                label: '学号',
+                                width: 120,
+                                type: 'text'
+                            },
+                            {
+                                name: 'ipAddress',
+                                label: 'IP地址',
+                                width: 130,
+                                type: 'text'
+                            },
+                            {
+                                name: 'status',
+                                label: '状态',
+                                width: 100,
+                                type: 'mapping',
+                                map: {
+                                    '考试中': '<span class="label label-info">考试中</span>',
+                                    '已提交': '<span class="label label-success">已提交</span>',
+                                    '未开始': '<span class="label label-secondary">未开始</span>'
+                                }
+                            },
+                            {
+                                name: 'progress',
+                                label: '进度',
+                                width: 120,
+                                type: 'progress',
+                                showLabel: true,
+                                stripe: true
+                            },
+                            {
+                                name: 'screenSwitchCount',
+                                label: '切屏次数',
+                                width: 100,
+                                type: 'text',
+                                className: '${screenSwitchCount > 5 ? "text-danger" : screenSwitchCount > 2 ? "text-warning" : "text-success"}'
+                            },
+                            {
+                                name: 'startTime',
+                                label: '开始时间',
+                                width: 160,
+                                type: 'datetime',
+                                format: 'MM-DD HH:mm'
+                            }
+                        ],
+                        data: {
+                            items: mockExamData.students.slice(0, 10), // 显示前10个学生
+                            total: mockExamData.students.length
+                        },
+                        showPager: true,
+                        pageSize: 10
+                    }
+                ];
+                
+                await cardsInstance.render(cards);
+                console.log('[监考大屏] 监控视图加载完成');
+                
+            } catch (error) {
+                console.error('[监考大屏] 加载完整监控视图失败:', error);
+                showError('监控视图加载失败', error.message);
+            }
+        }
+        
+        /**
+         * 切换全屏模式
+         */
+        function toggleFullscreen() {
+            isFullscreen = !isFullscreen;
+            
+            if (isFullscreen) {
+                document.body.classList.add('fullscreen-mode');
+                updateRefreshIndicator('全屏模式');
+                console.log('[监考大屏] 已进入全屏模式');
+            } else {
+                document.body.classList.remove('fullscreen-mode');
+                updateRefreshIndicator('退出全屏');
+                console.log('[监考大屏] 已退出全屏模式');
+            }
+        }
+        
+        /**
+         * 切换主题
+         */
+        async function toggleTheme() {
+            const themes = ['default', 'dark'];
+            const currentIndex = themes.indexOf(currentTheme);
+            const nextIndex = (currentIndex + 1) % themes.length;
+            const newTheme = themes[nextIndex];
+            
+            try {
+                // 应用页面主题
+                if (window.AmisCards.ThemeUtils) {
+                    window.AmisCards.ThemeUtils.switchTheme(currentTheme, newTheme, document.body, {
+                        duration: 300,
+                        easing: 'ease'
+                    });
+                } else {
+                    document.body.classList.remove(`monitor-theme-${currentTheme}`);
+                    document.body.classList.add(`monitor-theme-${newTheme}`);
+                }
+                
+                // 更新 AmisCards 实例主题
+                if (cardsInstance && typeof cardsInstance.setTheme === 'function') {
+                    await cardsInstance.setTheme(newTheme, true);
+                }
+                
+                currentTheme = newTheme;
+                console.log('[监考大屏] 主题已切换到', currentTheme);
+                
+            } catch (error) {
+                console.error('[监考大屏] 主题切换失败:', error);
+            }
+        }
+        
+        /**
+         * 导出数据
+         */
+        function exportData() {
+            try {
+                const exportData = {
+                    timestamp: new Date().toISOString(),
+                    examInfo: {
+                        examId: mockExamData.examId,
+                        examName: mockExamData.examName,
+                        tenantName: mockExamData.tenantName
+                    },
+                    statistics: {
+                        totalParticipants: mockExamData.totalParticipants,
+                        onlineCount: mockExamData.onlineCount,
+                        submittedCount: mockExamData.submittedCount,
+                        suspiciousCount: mockExamData.suspiciousCount
+                    },
+                    students: mockExamData.students.map(s => ({
+                        name: s.name,
+                        studentNumber: s.studentNumber,
+                        status: s.status,
+                        progress: s.progress,
+                        screenSwitchCount: s.screenSwitchCount,
+                        startTime: s.startTime
+                    }))
+                };
+                
+                const dataStr = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `monitor-data-${mockExamData.examId}-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                console.log('[监考大屏] 数据导出成功');
+                
+            } catch (error) {
+                console.error('[监考大屏] 导出失败:', error);
+                alert('数据导出失败，请重试');
+            }
+        }
+        
+        /**
+         * 全局工具栏函数 - 提供给 AmisCards 页面工具栏调用
+         */
+        window.toggleFullscreen = toggleFullscreen;
+        window.toggleTheme = toggleTheme;
+        window.exportData = exportData;
+        
+        /**
+         * 错误处理
+         */
+        window.addEventListener('error', function(e) {
+            console.error('[监考大屏] JavaScript 错误:', e.error);
+        });
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[监考大屏] 页面加载完成，开始初始化');
+            
+            // 使用轮询检查依赖
+            let checkCount = 0;
+            const maxChecks = 20;
+            
+            const checkAndInit = () => {
+                checkCount++;
+                
+                if (checkDependencies()) {
+                    // 应用默认主题
+                    if (window.AmisCards.ThemeUtils) {
+                        window.AmisCards.ThemeUtils.applyTheme(currentTheme, document.body);
+                    } else {
+                        document.body.classList.add(`monitor-theme-${currentTheme}`);
+                    }
+                    
+                    // 初始化监考大屏
+                    initMonitorDashboard();
+                } else if (checkCount < maxChecks) {
+                    setTimeout(checkAndInit, 200);
+                } else {
+                    console.error('[监考大屏] 依赖加载超时');
+                    showError('依赖加载失败', '请检查网络连接或脚本加载情况');
+                }
+            };
+            
+            checkAndInit();
+        });
+    </script>
+</body>
+</html> 

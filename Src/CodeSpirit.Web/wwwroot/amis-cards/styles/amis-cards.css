@@ -149,6 +149,11 @@
     min-height: 180px;
 }
 
+.amis-cards-stats-row > div
+{
+    margin-top: 5px;
+}
+
 /* 混合行：图表和信息卡片的高度协调 */
 .amis-cards-mixed-row .amis-cards-chart-item,
 .amis-cards-mixed-row .amis-cards-info-item {

@@ -519,7 +519,10 @@ class AmisCardsCore {
                 this.amisInstance = amisEmbed.embed(this.container, pageConfig, {
                     data: {
                         now: new Date()
-                    },
+                    }
+                }, {
+                    theme: 'antd',
+                    locale: 'zh-CN',
                     requestAdaptor: (api) => {
                         // 检查TokenManager是否存在
                         const token = window.TokenManager ? window.TokenManager.getToken() : null;
@@ -532,36 +535,7 @@ class AmisCardsCore {
                             }
                         };
                     }
-                }, {
-                    theme: 'antd',
-                    locale: 'zh-CN'
                 });
-            } else if (window.amis && window.amis.embed) {
-                // 新版本 Amis (6.x)
-                console.log('[AmisCards] 使用 amis.embed 渲染');
-                this.amisInstance = window.amis.embed(this.container, pageConfig, {
-                    data: {
-                        now: new Date()
-                    },
-                    requestAdaptor: (api) => {
-                        const token = window.TokenManager ? window.TokenManager.getToken() : null;
-                        return {
-                            ...api,
-                            headers: {
-                                ...api.headers,
-                                'Authorization': token ? 'Bearer ' + token : '',
-                                'X-Forwarded-With': 'CodeSpirit'
-                            }
-                        };
-                    }
-                }, {
-                    theme: 'antd',
-                    locale: 'zh-CN'
-                });
-            } else if (window.amis && window.amis.render) {
-                // 备用渲染方法
-                console.log('[AmisCards] 使用 amis.render 渲染');
-                this.amisInstance = window.amis.render(pageConfig, this.container);
             } else {
                 throw new Error('[AmisCards] 无法找到有效的 Amis 渲染方法');
             }

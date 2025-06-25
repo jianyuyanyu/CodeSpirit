@@ -2,8 +2,13 @@
  * 表格卡片渲染器
  * 支持数据表格展示、搜索、分页、排序等功能
  * 
+ * 数据源支持：
+ * - source: 从上下文中获取数据，支持变量表达式如 ${items} 或 ${data.list}
+ * - api: API接口地址，用于获取远程数据
+ * - data: 静态数据数组
+ * 
  * @author CodeSpirit
- * @version 2.0
+ * @version 2.1
  */
 
 (function() {
@@ -184,8 +189,12 @@
                 ...this.config.tableConfig
             };
             
-            // 处理数据源：优先使用静态数据，其次使用API
-            if (this.config.data) {
+            // 处理数据源：优先级顺序为 source > 静态数据 > API
+            if (this.config.source) {
+                // source属性：从上下文中获取数据
+                console.log('[TableRenderer] 使用source数据源:', this.config.source);
+                tableConfig.source = this.config.source;
+            } else if (this.config.data) {
                 // 静态数据
                 console.log('[TableRenderer] 使用静态数据:', this.config.data);
                 tableConfig.data = this.config.data;
@@ -354,6 +363,27 @@
                     ...super.getSettingsForm().body,
                     {
                         type: 'divider',
+                        title: '数据源配置'
+                    },
+                    {
+                        type: 'input-text',
+                        name: 'source',
+                        label: '数据源路径',
+                        placeholder: '如：${items} 或 ${data.list}',
+                        description: '从上下文中获取数据的路径，支持变量表达式',
+                        value: this.config.source || ''
+                    },
+                    {
+                        type: 'input-text',
+                        name: 'api',
+                        label: 'API接口',
+                        placeholder: '如：/api/table/data',
+                        description: '数据接口地址，用于获取远程数据',
+                        value: this.config.api || '',
+                        visibleOn: '!${source}'
+                    },
+                    {
+                        type: 'divider',
                         title: '表格配置'
                     },
                     {
@@ -427,6 +457,8 @@
             return {
                 ...super.getDebugInfo(),
                 columnsCount: this.config.columns?.length || 0,
+                dataSource: this.config.source ? 'source' : (this.config.api ? 'api' : 'static'),
+                sourceValue: this.config.source || null,
                 hasSearch: !!this.config.showSearch,
                 hasPager: this.config.showPager !== false,
                 perPage: this.config.perPage || 20,
@@ -443,8 +475,13 @@
             const result = super.validateConfig();
             
             // 验证数据源
-            if (!this.config.data?.api && !this.config.api) {
-                result.errors.push('表格需要配置数据源API');
+            if (!this.config.source && !this.config.data?.api && !this.config.api && !this.config.data) {
+                result.errors.push('表格需要配置数据源（source、api、或静态data）');
+            }
+            
+            // 验证source格式
+            if (this.config.source && typeof this.config.source !== 'string') {
+                result.errors.push('source属性必须是字符串类型');
             }
             
             // 验证列配置

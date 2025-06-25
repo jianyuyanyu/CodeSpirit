@@ -84,10 +84,11 @@ class BaseRenderer {
             className: this.buildClassName(),
             title: this.config.title,
             subTitle: this.config.subtitle,
-            headerToolbar: this.buildHeaderToolbar(),
+            headerToolBar: this.buildHeaderToolbar(),
             body: this.getCardBody(),
             actions: this.buildActions()
         };
+        //TODO: 实现headerToolBar以及subTitle，优化actions
     }
 
     /**
@@ -125,7 +126,7 @@ class BaseRenderer {
         const toolbar = [];
         
         // 刷新按钮
-        if (this.autoRefresh || this.config.showRefreshButton !== false) {
+        if (this.autoRefresh && this.config.showRefreshButton !== false) {
             toolbar.push({
                 type: 'button',
                 icon: 'fa fa-refresh',
@@ -205,7 +206,6 @@ class BaseRenderer {
         if (this.config.actions && Array.isArray(this.config.actions)) {
             actions.push(...this.config.actions);
         }
-        
         return actions;
     }
 

@@ -1,8 +1,13 @@
 /**
- * CodeSpirit Amis Cards V2.0 - 卡片配置
+ * CodeSpirit Amis Cards V2.1 - 卡片配置
  * 定义各种卡片类型的默认配置和预设模板
  * 
- * @version 2.0.0
+ * 更新日志 v2.1.0:
+ * - 新增表格卡片source属性支持，可从上下文获取数据
+ * - 完善表格卡片配置项，支持搜索、分页、批量操作等
+ * - 新增表格卡片预设模板：基础表格、source表格、静态表格、高级表格
+ * 
+ * @version 2.1.0
  * @author CodeSpirit Team
  */
 
@@ -22,7 +27,7 @@ const CardConfigs = {
         theme: 'default',
         autoRefresh: false,
         refreshInterval: 30000,
-        showRefreshButton: true,
+        showRefreshButton: false,
         showFullscreenButton: false,
         showSettingsButton: false,
         
@@ -171,19 +176,30 @@ const CardConfigs = {
         subtitle: '',
         size: 'large',
         theme: 'default',
-        data: {
-            api: null,
-            columns: [],
-            pagination: true,
-            pageSize: 10,
-            showHeader: true,
-            striped: true,
-            bordered: false,
-            hover: true,
-            selectable: false,
-            searchable: true,
-            sortable: true
-        }
+        // 数据源配置（优先级：source > api > data）
+        source: null,               // 从上下文获取数据，如：${items} 或 ${data.list}
+        api: null,                  // API接口地址
+        data: null,                 // 静态数据数组
+        // 表格配置
+        columns: [],                // 表格列配置
+        showSearch: false,          // 是否显示搜索栏
+        searchFields: [],           // 搜索字段配置
+        showPager: true,            // 是否显示分页
+        perPage: 20,                // 每页显示条数
+        perPageAvailable: [10, 20, 50, 100], // 可选择的每页条数
+        // 表格样式配置
+        tableConfig: {
+            striped: true,          // 是否显示斑马纹
+            bordered: false,        // 是否显示边框
+            size: 'sm',            // 表格大小：sm、md、lg
+            resizable: true,        // 是否可调整列宽
+            columnsTogglable: false // 是否可切换列显示
+        },
+        // 工具栏和操作
+        tableToolbar: [],           // 表格工具栏按钮
+        bulkActions: [],            // 批量操作按钮
+        rowActions: [],             // 行操作按钮
+        operationWidth: 120         // 操作列宽度
     }
 };
 
@@ -476,6 +492,131 @@ const CardTemplates = {
                     }
                 ]
             }
+        }
+    },
+
+    /**
+     * 表格卡片模板
+     */
+    tableTemplates: {
+        // 基础数据表格（使用API）
+        basicTable: {
+            ...CardConfigs.table,
+            title: '用户列表',
+            api: '/api/users',
+            columns: [
+                { name: 'id', label: 'ID', width: 80 },
+                { name: 'name', label: '姓名', sortable: true },
+                { name: 'email', label: '邮箱', copyable: true },
+                { name: 'status', label: '状态', type: 'status', statusMap: {
+                    1: '<span class="label label-success">正常</span>',
+                    0: '<span class="label label-danger">禁用</span>'
+                }},
+                { name: 'created_at', label: '创建时间', type: 'datetime', sortable: true }
+            ],
+            showSearch: true,
+            searchFields: [
+                { name: 'name', label: '姓名', type: 'input-text', placeholder: '请输入姓名' },
+                { name: 'status', label: '状态', type: 'select', options: [
+                    { label: '全部', value: '' },
+                    { label: '正常', value: 1 },
+                    { label: '禁用', value: 0 }
+                ]}
+            ],
+            rowActions: [
+                { type: 'button', label: '编辑', level: 'link', actionType: 'dialog' },
+                { type: 'button', label: '删除', level: 'link', className: 'text-danger' }
+            ]
+        },
+
+        // 使用source的表格（从上下文获取数据）
+        sourceTable: {
+            ...CardConfigs.table,
+            title: '商品列表',
+            source: '${products}',
+            columns: [
+                { name: 'id', label: '商品ID', width: 100 },
+                { name: 'name', label: '商品名称', sortable: true },
+                { name: 'category', label: '分类', type: 'mapping', map: {
+                    'electronics': '电子产品',
+                    'clothing': '服装',
+                    'books': '图书'
+                }},
+                { name: 'price', label: '价格', type: 'tpl', tpl: '￥${price}' },
+                { name: 'inventory', label: '库存', sortable: true },
+                { name: 'image', label: '图片', type: 'image', width: 100 }
+            ],
+            showPager: true,
+            perPage: 15
+        },
+
+        // 静态数据表格
+        staticTable: {
+            ...CardConfigs.table,
+            title: '销售报表',
+            data: [
+                { month: '2024-01', sales: 120000, target: 100000, growth: '+20%' },
+                { month: '2024-02', sales: 150000, target: 120000, growth: '+25%' },
+                { month: '2024-03', sales: 98000, target: 110000, growth: '-10%' },
+                { month: '2024-04', sales: 180000, target: 150000, growth: '+20%' }
+            ],
+            columns: [
+                { name: 'month', label: '月份', type: 'date', format: 'YYYY-MM' },
+                { name: 'sales', label: '销售额', type: 'tpl', tpl: '￥${sales | number}' },
+                { name: 'target', label: '目标', type: 'tpl', tpl: '￥${target | number}' },
+                { name: 'growth', label: '增长率', type: 'tpl', tpl: '<span class="${growth|startsWith:\'+\'?\'text-success\':\'text-danger\'}">${growth}</span>' }
+            ],
+            showPager: false,
+            tableConfig: {
+                striped: true,
+                bordered: true,
+                size: 'md'
+            }
+        },
+
+        // 高级表格（带搜索、批量操作）
+        advancedTable: {
+            ...CardConfigs.table,
+            title: '订单管理',
+            api: '/api/orders',
+            columns: [
+                { name: 'order_no', label: '订单号', sortable: true, copyable: true },
+                { name: 'customer_name', label: '客户', searchable: true },
+                { name: 'amount', label: '金额', type: 'tpl', tpl: '￥${amount}', sortable: true },
+                { name: 'status', label: '状态', type: 'mapping', map: {
+                    'pending': '<span class="label label-warning">待处理</span>',
+                    'processing': '<span class="label label-info">处理中</span>',
+                    'completed': '<span class="label label-success">已完成</span>',
+                    'cancelled': '<span class="label label-danger">已取消</span>'
+                }},
+                { name: 'created_at', label: '下单时间', type: 'datetime', sortable: true }
+            ],
+            showSearch: true,
+            searchFields: [
+                { name: 'order_no', label: '订单号', type: 'input-text' },
+                { name: 'customer_name', label: '客户名称', type: 'input-text' },
+                { name: 'status', label: '状态', type: 'select', options: [
+                    { label: '全部', value: '' },
+                    { label: '待处理', value: 'pending' },
+                    { label: '处理中', value: 'processing' },
+                    { label: '已完成', value: 'completed' },
+                    { label: '已取消', value: 'cancelled' }
+                ]},
+                { name: 'date_range', label: '下单时间', type: 'date-range' }
+            ],
+            bulkActions: [
+                { type: 'button', label: '批量审核', level: 'primary' },
+                { type: 'button', label: '批量导出', level: 'default' }
+            ],
+            rowActions: [
+                { type: 'button', label: '查看', level: 'link', icon: 'fa fa-eye' },
+                { type: 'button', label: '编辑', level: 'link', icon: 'fa fa-edit' },
+                { type: 'button', label: '删除', level: 'link', className: 'text-danger', icon: 'fa fa-trash' }
+            ],
+            tableToolbar: [
+                { type: 'button', label: '新建订单', level: 'primary', icon: 'fa fa-plus' },
+                { type: 'button', label: '导出数据', level: 'default', icon: 'fa fa-download' }
+            ]
         }
     }
 };

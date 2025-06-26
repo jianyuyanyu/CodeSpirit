@@ -1,8 +1,8 @@
-# CodeSpirit Amis Cards 卡片使用指南
+# CodeSpirit UDL Cards（Amis Cards）使用指南
 
 ## 概述
 
-CodeSpirit Amis Cards 是UDL Cards基于Amis 框架构建的统一卡片系统，提供丰富的卡片类型和灵活的配置选项。本指南详细介绍各种卡片的使用方法、配置参数和实际应用场景。
+CodeSpirit Amis Cards 是根据CodeSpirit UDL Cards的设计基于Amis 框架构建的统一卡片系统，提供丰富的卡片类型和灵活的配置选项。本指南详细介绍各种卡片的使用方法、配置参数和实际应用场景。
 
 ## 支持的卡片类型
 

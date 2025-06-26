@@ -1,0 +1,135 @@
+{
+  "name": "CodeSpirit Cards SDK",
+  "version": "1.0.0",
+  "description": "统计卡片前端SDK，支持多种卡片类型和实时数据更新",
+  "author": "CodeSpirit Team",
+  "license": "MIT",
+  
+  "defaultOptions": {
+    "container": "#cards-container",
+    "baseUrl": "/api",
+    "theme": "default",
+    "autoRefresh": true,
+    "refreshInterval": 30000
+  },
+  
+  "supportedCardTypes": [
+    {
+      "type": "stat",
+      "name": "统计卡片",
+      "description": "用于展示数值统计信息，支持趋势显示",
+      "renderer": "StatCardRenderer"
+    },
+    {
+      "type": "chart",
+      "name": "图表卡片", 
+      "description": "用于展示图表数据，基于ECharts",
+      "renderer": "ChartCardRenderer"
+    },
+    {
+      "type": "info",
+      "name": "信息卡片",
+      "description": "用于展示静态信息内容",
+      "renderer": "InfoCardRenderer"
+    },
+    {
+      "type": "action",
+      "name": "操作卡片",
+      "description": "用于展示快速操作按钮",
+      "renderer": "ActionCardRenderer"
+    },
+    {
+      "type": "table",
+      "name": "表格卡片",
+      "description": "基于Amis Table组件的数据表格展示",
+      "renderer": "TableCardRenderer"
+    }
+  ],
+  
+  "themes": [
+    {
+      "name": "default",
+      "displayName": "默认主题",
+      "primaryColor": "#1890ff"
+    },
+    {
+      "name": "primary",
+      "displayName": "主要蓝色",
+      "primaryColor": "#1890ff"
+    },
+    {
+      "name": "success",
+      "displayName": "成功绿色",
+      "primaryColor": "#52c41a"
+    },
+    {
+      "name": "warning",
+      "displayName": "警告橙色",
+      "primaryColor": "#faad14"
+    },
+    {
+      "name": "danger",
+      "displayName": "危险红色",
+      "primaryColor": "#ff4d4f"
+    },
+    {
+      "name": "info",
+      "displayName": "信息青色",
+      "primaryColor": "#13c2c2"
+    }
+  ],
+  
+  "sizes": [
+    {
+      "name": "small",
+      "gridColumns": 1,
+      "minWidth": "250px"
+    },
+    {
+      "name": "medium",
+      "gridColumns": 1,
+      "minWidth": "300px"
+    },
+    {
+      "name": "large",
+      "gridColumns": 2,
+      "minWidth": "600px"
+    }
+  ],
+  
+  "dependencies": [
+    {
+      "name": "ECharts",
+      "version": "5.4.0+",
+      "url": "https://echarts.apache.org/",
+      "required": false,
+      "description": "图表卡片功能需要"
+    },
+    {
+      "name": "Font Awesome",
+      "version": "6.0.0+",
+      "url": "https://fontawesome.com/",
+      "required": false,
+      "description": "图标显示需要"
+    }
+  ],
+  
+  "apiEndpoints": {
+    "examples": {
+      "stat": "/api/statistics/cards",
+      "chart": "/api/charts/data",
+      "info": "/api/system/info",
+      "action": "/api/actions/available"
+    }
+  },
+  
+  "events": [
+    "card-rendered",
+    "card-updated", 
+    "card-destroyed",
+    "card-error",
+    "sdk-initialized",
+    "refresh-started",
+    "refresh-completed"
+  ]
+} 

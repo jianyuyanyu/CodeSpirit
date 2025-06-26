@@ -1,0 +1,377 @@
+/**
+ * CodeSpirit Amis Cards V2.0 - 暗色主题样式
+ * 
+ * @version 2.0.0
+ * @author CodeSpirit Team
+ */
+
+/* 暗色主题根样式 */
+.amis-cards-theme-dark {
+    /* 主色调 */
+    --amis-cards-primary: #0d6efd;
+    --amis-cards-secondary: #6c757d;
+    --amis-cards-success: #198754;
+    --amis-cards-info: #0dcaf0;
+    --amis-cards-warning: #fd7e14;
+    --amis-cards-danger: #dc3545;
+    --amis-cards-light: #212529;
+    --amis-cards-dark: #f8f9fa;
+    --amis-cards-white: #212529;
+    --amis-cards-black: #ffffff;
+    
+    /* 灰色色阶 - 深色主题反转，优化对比度 */
+    --amis-cards-gray-100: #212529;
+    --amis-cards-gray-200: #343a40;
+    --amis-cards-gray-300: #495057;
+    --amis-cards-gray-400: #6c757d;
+    --amis-cards-gray-500: #adb5bd;
+    --amis-cards-gray-600: #ced4da;
+    --amis-cards-gray-700: #e9ecef;
+    --amis-cards-gray-800: #f8f9fa;
+    --amis-cards-gray-900: #ffffff;
+    
+    /* 卡片样式变量 */
+    --amis-cards-card-bg: #2c3e50;
+    --amis-cards-card-border: #495057;
+    --amis-cards-card-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.3);
+    --amis-cards-card-radius: 0.375rem;
+    --amis-cards-card-padding: 1rem;
+    
+    /* 边框 */
+    --amis-cards-border-color: #495057;
+    --amis-cards-border-width: 1px;
+    --amis-cards-border-radius: 0.375rem;
+    --amis-cards-border-radius-sm: 0.25rem;
+    --amis-cards-border-radius-lg: 0.5rem;
+    
+    /* 阴影系统 */
+    --amis-cards-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
+    --amis-cards-shadow-md: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.4);
+    --amis-cards-shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.5);
+    --amis-cards-shadow-xl: 0 1rem 3rem rgba(0, 0, 0, 0.6);
+    
+    /* 间距系统 */
+    --amis-cards-spacing-xs: 0.25rem;
+    --amis-cards-spacing-sm: 0.5rem;
+    --amis-cards-spacing-md: 1rem;
+    --amis-cards-spacing-lg: 1.5rem;
+    --amis-cards-spacing-xl: 3rem;
+    
+    /* 字体系统 */
+    --amis-cards-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --amis-cards-font-size-xs: 0.75rem;
+    --amis-cards-font-size-sm: 0.875rem;
+    --amis-cards-font-size-md: 1rem;
+    --amis-cards-font-size-lg: 1.125rem;
+    --amis-cards-font-size-xl: 1.25rem;
+    --amis-cards-font-size-xxl: 1.5rem;
+    --amis-cards-font-size-xxxl: 2rem;
+    
+    /* 过渡动画 */
+    --amis-cards-transition: all 0.3s ease;
+    --amis-cards-transition-fast: all 0.15s ease;
+    --amis-cards-transition-slow: all 0.5s ease;
+    --amis-cards-transition-theme: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 页面和基础样式覆盖 */
+.amis-cards-theme-dark {
+    background-color: var(--amis-cards-gray-100) !important;
+    color: var(--amis-cards-gray-800) !important;
+}
+
+/* 确保页面根元素应用深色背景 */
+html.amis-cards-theme-dark,
+body.amis-cards-theme-dark {
+    background-color: var(--amis-cards-gray-100) !important;
+    color: var(--amis-cards-gray-800) !important;
+}
+
+/* 容器样式 */
+.amis-cards-theme-dark .amis-cards-container {
+    background-color: var(--amis-cards-gray-100);
+    color: var(--amis-cards-gray-800);
+}
+
+/* 卡片基础样式覆盖 */
+.amis-cards-theme-dark .amis-cards-card {
+    background: var(--amis-cards-card-bg) !important;
+    border-color: var(--amis-cards-card-border) !important;
+    color: var(--amis-cards-gray-800) !important;
+}
+
+.amis-cards-theme-dark .amis-cards-card:hover {
+    box-shadow: var(--amis-cards-shadow-lg) !important;
+    border-color: var(--amis-cards-gray-400) !important;
+}
+
+/* 确保所有卡片类型都应用深色背景 */
+.amis-cards-theme-dark .amis-cards-card.amis-cards-stat,
+.amis-cards-theme-dark .amis-cards-card.amis-cards-chart,
+.amis-cards-theme-dark .amis-cards-card.amis-cards-table,
+.amis-cards-theme-dark .amis-cards-card.amis-cards-info {
+    background: var(--amis-cards-card-bg) !important;
+    color: var(--amis-cards-gray-800) !important;
+}
+
+/* Amis Panel 组件样式覆盖 */
+.amis-cards-theme-dark .cxd-Panel {
+    background: var(--amis-cards-card-bg) !important;
+    border-color: var(--amis-cards-card-border) !important;
+    color: var(--amis-cards-gray-800) !important;
+}
+
+.amis-cards-theme-dark .cxd-Panel-header {
+    background: var(--amis-cards-gray-200) !important;
+    border-bottom-color: var(--amis-cards-gray-300) !important;
+    color: var(--amis-cards-gray-800) !important;
+}
+
+.amis-cards-theme-dark .cxd-Panel-title {
+    color: var(--amis-cards-gray-800) !important;
+}
+
+.amis-cards-theme-dark .cxd-Panel-body {
+    background: var(--amis-cards-card-bg) !important;
+    color: var(--amis-cards-gray-700) !important;
+}
+
+/* Amis Page 组件样式覆盖 */
+.amis-cards-theme-dark .cxd-Page {
+    background: var(--amis-cards-gray-100) !important;
+    color: var(--amis-cards-gray-800) !important;
+}
+
+.amis-cards-theme-dark .cxd-Page-body {
+    background: transparent !important;
+    color: var(--amis-cards-gray-800) !important;
+}
+
+/* Amis 通用文本样式 */
+.amis-cards-theme-dark .cxd-PlainText {
+    color: var(--amis-cards-gray-700) !important;
+    background: transparent !important;
+}
+
+.amis-cards-theme-dark .cxd-Tpl {
+    color: var(--amis-cards-gray-700) !important;
+    background: transparent !important;
+}
+
+/* Amis 容器组件样式覆盖 */
+.amis-cards-theme-dark .cxd-Container {
+    background: transparent !important;
+    color: var(--amis-cards-gray-700) !important;
+}
+
+.amis-cards-theme-dark .cxd-Wrapper {
+    background: transparent !important;
+    color: var(--amis-cards-gray-700) !important;
+}
+
+.amis-cards-theme-dark .cxd-Grid {
+    background: transparent !important;
+}
+
+.amis-cards-theme-dark .cxd-Grid-col {
+    background: transparent !important;
+}
+
+/* Amis 卡片组件样式覆盖 */
+.amis-cards-theme-dark .cxd-Card {
+    background: var(--amis-cards-card-bg) !important;
+    border-color: var(--amis-cards-card-border) !important;
+    color: var(--amis-cards-gray-700) !important;
+}
+
+.amis-cards-theme-dark .cxd-Card-header {
+    background: var(--amis-cards-gray-200) !important;
+    color: var(--amis-cards-gray-800) !important;
+    border-bottom-color: var(--amis-cards-gray-300) !important;
+}
+
+.amis-cards-theme-dark .cxd-Card-body {
+    background: transparent !important;
+    color: var(--amis-cards-gray-700) !important;
+}
+
+/* 强制覆盖所有可能的白色背景 */
+.amis-cards-theme-dark [class*="cxd-"]:not([class*="Button"]):not([class*="Icon"]) {
+    background-color: transparent !important;
+}
+
+.amis-cards-theme-dark [style*="background-color: white"],
+.amis-cards-theme-dark [style*="background-color: #fff"],
+.amis-cards-theme-dark [style*="background-color: #ffffff"],
+.amis-cards-theme-dark [style*="background: white"],
+.amis-cards-theme-dark [style*="background: #fff"],
+.amis-cards-theme-dark [style*="background: #ffffff"] {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
+/* 表格组件样式覆盖 */
+.amis-cards-theme-dark .cxd-Table {
+    background: transparent !important;
+    color: var(--amis-cards-gray-700) !important;
+}
+
+.amis-cards-theme-dark .cxd-Table-header {
+    background: var(--amis-cards-gray-200) !important;
+    color: var(--amis-cards-gray-800) !important;
+    border-bottom-color: var(--amis-cards-gray-300) !important;
+}
+
+.amis-cards-theme-dark .cxd-Table-cell {
+    border-bottom-color: var(--amis-cards-gray-300) !important;
+    color: var(--amis-cards-gray-700) !important;
+    background: transparent !important;
+}
+
+.amis-cards-theme-dark .cxd-Table-row {
+    background: transparent !important;
+    color: var(--amis-cards-gray-700) !important;
+}
+
+.amis-cards-theme-dark .cxd-Table-row:hover {
+    background: var(--amis-cards-gray-200) !important;
+}
+
+.amis-cards-theme-dark .cxd-Table-body {
+    background: transparent !important;
+}
+
+/* 表格容器强制深色背景 */
+.amis-cards-theme-dark .cxd-Table-wrapper {
+    background: transparent !important;
+}
+
+.amis-cards-theme-dark .cxd-Table-content {
+    background: transparent !important;
+}
+
+/* 图表组件样式覆盖 */
+.amis-cards-theme-dark .cxd-Chart {
+    background: transparent;
+}
+
+/* 统计值样式覆盖 */
+.amis-cards-theme-dark .stat-value {
+    color: var(--amis-cards-gray-800);
+}
+
+.amis-cards-theme-dark .stat-label {
+    color: var(--amis-cards-gray-600);
+}
+
+.amis-cards-theme-dark .stat-unit,
+.amis-cards-theme-dark .stat-prefix {
+    color: var(--amis-cards-gray-600);
+}
+
+/* 主题色彩覆盖 */
+.amis-cards-theme-dark .amis-cards-theme-primary .stat-value {
+    color: var(--amis-cards-primary);
+}
+
+.amis-cards-theme-dark .amis-cards-theme-success .stat-value {
+    color: var(--amis-cards-success);
+}
+
+.amis-cards-theme-dark .amis-cards-theme-info .stat-value {
+    color: var(--amis-cards-info);
+}
+
+.amis-cards-theme-dark .amis-cards-theme-warning .stat-value {
+    color: var(--amis-cards-warning);
+}
+
+.amis-cards-theme-dark .amis-cards-theme-danger .stat-value {
+    color: var(--amis-cards-danger);
+}
+
+/* 进度条样式覆盖 */
+.amis-cards-theme-dark .cxd-Progress {
+    background: var(--amis-cards-gray-300);
+}
+
+.amis-cards-theme-dark .cxd-Progress-bar {
+    background: var(--amis-cards-primary);
+}
+
+/* 趋势指示器样式 */
+.amis-cards-theme-dark .trend-container {
+    color: var(--amis-cards-gray-600);
+}
+
+.amis-cards-theme-dark .trend-container.up {
+    color: var(--amis-cards-success);
+}
+
+.amis-cards-theme-dark .trend-container.down {
+    color: var(--amis-cards-danger);
+}
+
+/* 滚动条样式 */
+.amis-cards-theme-dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.amis-cards-theme-dark ::-webkit-scrollbar-track {
+    background: var(--amis-cards-gray-200);
+}
+
+.amis-cards-theme-dark ::-webkit-scrollbar-thumb {
+    background: var(--amis-cards-gray-400);
+    border-radius: 4px;
+}
+
+.amis-cards-theme-dark ::-webkit-scrollbar-thumb:hover {
+    background: var(--amis-cards-gray-500);
+}
+
+/* 选择样式 */
+.amis-cards-theme-dark ::selection {
+    background: var(--amis-cards-primary);
+    color: var(--amis-cards-white);
+}
+
+/* 深度强制样式覆盖 - 处理可能的内联样式 */
+.amis-cards-theme-dark * {
+    /* 只对没有明确颜色设置的元素应用默认文字颜色 */
+}
+
+.amis-cards-theme-dark div:not([style*="color"]):not([class*="Button"]):not([class*="Icon"]) {
+    color: var(--amis-cards-gray-700) !important;
+}
+
+.amis-cards-theme-dark span:not([style*="color"]):not([class*="Button"]):not([class*="Icon"]) {
+    color: var(--amis-cards-gray-700) !important;
+}
+
+.amis-cards-theme-dark p:not([style*="color"]) {
+    color: var(--amis-cards-gray-700) !important;
+}
+
+/* 表格单元格内容强制深色主题 */
+.amis-cards-theme-dark td {
+    background: transparent !important;
+    color: var(--amis-cards-gray-700) !important;
+}
+
+.amis-cards-theme-dark th {
+    background: var(--amis-cards-gray-200) !important;
+    color: var(--amis-cards-gray-800) !important;
+}
+
+.amis-cards-theme-dark table {
+    background: transparent !important;
+    color: var(--amis-cards-gray-700) !important;
+}
+
+/* 修复可能的白色背景元素 */
+.amis-cards-theme-dark .bg-white,
+.amis-cards-theme-dark [class*="bg-white"] {
+    background-color: transparent !important;
+} 

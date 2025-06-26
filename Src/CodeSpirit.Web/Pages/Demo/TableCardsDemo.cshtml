@@ -1,0 +1,949 @@
+@page "/demo/table-cards-demo"
+@{
+    ViewData["Title"] = "表格卡片SDK演示";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <!-- 引入表格卡片样式 -->
+    <resource path="cards-sdk/table-card.css" type="css" />
+    <resource path="css/table-cards-demo.css" type="css" />
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-table"></i>
+                    CodeSpirit 表格卡片SDK演示
+                </h1>
+                <div class="page-subtitle text-muted">
+                    展示基于Amis Table组件的表格卡片功能，支持实时数据、响应式设计和丰富的交互功能
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-cogs"></i>
+                        表格卡片控制面板
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-primary" onclick="loadStudentTable()">
+                                    <i class="fas fa-users"></i>
+                                    学生列表
+                                </button>
+                                <button type="button" class="btn btn-success" onclick="loadExamMonitorTable()">
+                                    <i class="fas fa-eye"></i>
+                                    考试监控
+                                </button>
+                                <button type="button" class="btn btn-info" onclick="loadStatisticsTable()">
+                                    <i class="fas fa-chart-line"></i>
+                                    统计报表
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="loadOperationalTable()">
+                                    <i class="fas fa-tools"></i>
+                                    操作表格
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="clearTables()">
+                                    <i class="fas fa-trash"></i>
+                                    清空
+                                </button>
+                                <button type="button" class="btn btn-outline-info" onclick="debugRenderers()">
+                                    <i class="fas fa-bug"></i>
+                                    调试渲染器
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="refreshInterval">自动刷新间隔(秒):</label>
+                                <select class="form-control" id="refreshInterval" onchange="updateRefreshInterval()">
+                                    <option value="0">关闭自动刷新</option>
+                                    <option value="5">5秒</option>
+                                    <option value="10" selected>10秒</option>
+                                    <option value="30">30秒</option>
+                                    <option value="60">60秒</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <!-- 表格卡片容器 -->
+            <div id="table-cards-dashboard" class="cards-container"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    
+    <!-- 引入Cards SDK -->
+    <resource path="cards-sdk/cards-sdk.js" type="js" />
+    <resource path="cards-sdk/table-card-renderer.js" type="js" />
+    <resource path="cards-sdk/chart-renderers.js" type="js" />
+    <resource path="cards-sdk/amis-integration.js" type="js" />
+    
+    <script>
+        // 参考其他JS文件的初始化模式
+        (function() {
+            // 确保amisRequire可用
+            if (typeof amisRequire === 'undefined') {
+                console.error('amisRequire未定义，无法初始化表格卡片Demo');
+                return;
+            }
+            
+            // 表格卡片SDK实例
+            let tableCardsSDK = null;
+            
+            /**
+             * 初始化表格卡片SDK
+             */
+            function initializeTableCardsSDK() {
+                // 检查核心依赖
+                if (typeof CodeSpiritCards === 'undefined') {
+                    console.error('CodeSpiritCards SDK未加载');
+                    return false;
+                }
+                
+                if (typeof window.amisCardsAdapter === 'undefined') {
+                    console.error('AmisCardsAdapter未初始化');
+                    return false;
+                }
+
+                try {
+                    tableCardsSDK = new CodeSpiritCards.SDK({
+                        container: '#table-cards-dashboard',
+                        baseUrl: '/api',
+                        theme: 'default',
+                        autoRefresh: false
+                    });
+                    
+                    // 配置全局AMIS设置
+                    tableCardsSDK.setGlobalAmisConfig({
+                        theme: 'antd',
+                        locale: 'zh-CN',
+                        debug: true,
+                        apiBaseUrl: '/api'
+                    });
+                    
+                    // 设置全局请求拦截器
+                    tableCardsSDK.setRequestInterceptor((api, config) => {
+                        console.log(`🌐 全局请求拦截器 [${config.id}]:`, api);
+                        
+                        // 添加时间戳防止缓存
+                        if (api.url && api.method?.toLowerCase() === 'get') {
+                            const separator = api.url.includes('?') ? '&' : '?';
+                            api.url += `${separator}_t=${Date.now()}`;
+                        }
+                        
+                        // 添加自定义请求头
+                        api.headers = {
+                            ...api.headers,
+                            'X-App-Name': 'CodeSpirit-TableCards',
+                            'X-Request-Time': new Date().toISOString()
+                        };
+                        
+                        return api;
+                    });
+                    
+                    // 设置全局响应拦截器
+                    tableCardsSDK.setResponseInterceptor((api, payload, query, request, response, config) => {
+                        console.log(`🔍 全局响应拦截器 [${config.id}]:`, {
+                            url: api.url,
+                            status: response?.status,
+                            payload
+                        });
+                        
+                        // 处理特殊业务逻辑
+                        if (payload && payload.data && Array.isArray(payload.data.rows)) {
+                            // 为每行数据添加序号
+                            payload.data.rows.forEach((row, index) => {
+                                row._index = index + 1;
+                            });
+                        }
+                        
+                        return payload;
+                    });
+                    
+                    // 设置全局错误处理器
+                    tableCardsSDK.setErrorHandler((errorType, errorData, config) => {
+                        console.error(`🚨 全局错误处理器 [${config.id}]:`, errorType, errorData);
+                        
+                        switch (errorType) {
+                            case 'AUTH_FAILED':
+                                // 认证失败处理
+                                console.warn('用户认证失败，建议重新登录');
+                                // 可以在这里添加重定向逻辑
+                                break;
+                            case 'SERVER_ERROR':
+                                // 服务器错误处理
+                                console.error('服务器错误，请联系管理员');
+                                break;
+                            default:
+                                console.error('未知错误类型:', errorType);
+                        }
+                    });
+                    
+                    console.log('表格卡片SDK初始化成功');
+                    console.log('🎯 当前全局AMIS配置:', tableCardsSDK.getGlobalAmisConfig());
+                    
+                    return true;
+                } catch (error) {
+                    console.error('表格卡片SDK初始化失败:', error);
+                    return false;
+                }
+            }
+
+            // 模拟数据生成器
+            const MockTableDataService = {
+                // 生成学生数据
+                generateStudentData() {
+                    const students = [];
+                    const statuses = ['online', 'offline', 'submitted'];
+                    const names = ['张三', '李四', '王五', '赵六', '陈七', '刘八', '杨九', '黄十'];
+                    
+                    for (let i = 1; i <= 50; i++) {
+                        students.push({
+                            id: i,
+                            studentNumber: `STU${String(i).padStart(4, '0')}`,
+                            studentName: names[Math.floor(Math.random() * names.length)],
+                            grade: `计算机${Math.floor(Math.random() * 4) + 1}班`,
+                            status: statuses[Math.floor(Math.random() * statuses.length)],
+                            progress: Math.floor(Math.random() * 100),
+                            score: Math.floor(Math.random() * 100),
+                            lastActiveTime: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+                            suspiciousCount: Math.floor(Math.random() * 5)
+                        });
+                    }
+                    return students;
+                },
+
+                // 生成考试监控数据
+                generateExamMonitorData() {
+                    const data = this.generateStudentData();
+                    return data.map(student => ({
+                        ...student,
+                        examProgress: Math.floor(Math.random() * 100),
+                        currentQuestion: Math.floor(Math.random() * 50) + 1,
+                        timeRemaining: Math.floor(Math.random() * 7200), // 秒
+                        violationCount: Math.floor(Math.random() * 3),
+                        ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`
+                    }));
+                },
+
+                // 生成统计报表数据
+                generateStatisticsData() {
+                    const subjects = ['数学', '语文', '英语', '物理', '化学', '生物'];
+                    const stats = [];
+                    
+                    subjects.forEach((subject, index) => {
+                        stats.push({
+                            id: index + 1,
+                            subject: subject,
+                            totalExams: Math.floor(Math.random() * 50) + 20,
+                            passCount: Math.floor(Math.random() * 30) + 15,
+                            avgScore: (Math.random() * 30 + 70).toFixed(1),
+                            maxScore: Math.floor(Math.random() * 20 + 80),
+                            minScore: Math.floor(Math.random() * 40 + 30),
+                            passRate: (Math.random() * 30 + 70).toFixed(1)
+                        });
+                    });
+                    
+                    return stats;
+                },
+
+                // 生成操作表格数据
+                generateOperationalData() {
+                    const users = [];
+                    const roles = ['管理员', '教师', '学生', '监考员'];
+                    const statuses = ['active', 'inactive', 'pending'];
+                    
+                    for (let i = 1; i <= 30; i++) {
+                        users.push({
+                            id: i,
+                            username: `user${i}`,
+                            realName: `用户${i}`,
+                            email: `user${i}@@example.com`,
+                            role: roles[Math.floor(Math.random() * roles.length)],
+                            status: statuses[Math.floor(Math.random() * statuses.length)],
+                            lastLogin: new Date(Date.now() - Math.random() * 7200000).toISOString(),
+                            createTime: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString()
+                        });
+                    }
+                    
+                    return users;
+                }
+            };
+
+            // 表格配置生成器
+            const TableConfigGenerator = {
+                // 学生列表表格
+                studentTable() {
+                    return {
+                        id: 'student-table',
+                        type: 'table',
+                        title: '学生信息列表',
+                        subtitle: '展示所有学生的基本信息和状态',
+                        size: 'large',
+                        style: { theme: 'primary', height: 500 },
+                        data: {
+                            source: null, // 不使用API数据源
+                            api: null,    // 不使用API
+                            initialData: { items: MockTableDataService.generateStudentData() },
+                            columns: [
+                                {
+                                    name: 'studentNumber',
+                                    label: '学号',
+                                    type: 'text',
+                                    sortable: true,
+                                    width: 120
+                                },
+                                {
+                                    name: 'studentName',
+                                    label: '姓名',
+                                    type: 'text',
+                                    sortable: true,
+                                    width: 100
+                                },
+                                {
+                                    name: 'grade',
+                                    label: '班级',
+                                    type: 'text',
+                                    hideOnMobile: true,
+                                    width: 120
+                                },
+                                {
+                                    name: 'status',
+                                    label: '状态',
+                                    type: 'status',
+                                    sortable: true,
+                                    width: 80,
+                                    map: {
+                                        'online': '<span class="label label-success">在线</span>',
+                                        'offline': '<span class="label label-danger">离线</span>',
+                                        'submitted': '<span class="label label-info">已提交</span>'
+                                    }
+                                },
+                                {
+                                    name: 'score',
+                                    label: '成绩',
+                                    type: 'number',
+                                    precision: 0,
+                                    width: 80,
+                                    hideOnMobile: true
+                                },
+                                {
+                                    name: 'lastActiveTime',
+                                    label: '最后活跃',
+                                    type: 'datetime',
+                                    format: 'MM-DD HH:mm',
+                                    width: 120
+                                }
+                            ]
+                        }
+                    };
+                },
+
+                // 考试监控表格
+                examMonitorTable() {
+                    return {
+                        id: 'exam-monitor-table',
+                        type: 'table',
+                        title: '考试实时监控',
+                        subtitle: '实时监控考试进行状态和学生行为',
+                        size: 'large',
+                        style: { theme: 'success', height: 600 },
+                        data: {
+                            source: null, // 不使用API数据源
+                            api: null,    // 不使用API
+                            initialData: { items: MockTableDataService.generateExamMonitorData() },
+                            columns: [
+                                {
+                                    name: 'studentName',
+                                    label: '考生',
+                                    type: 'text',
+                                    width: 100
+                                },
+                                {
+                                    name: 'examProgress',
+                                    label: '答题进度',
+                                    type: 'progress',
+                                    showLabel: true,
+                                    width: 120
+                                },
+                                {
+                                    name: 'currentQuestion',
+                                    label: '当前题号',
+                                    type: 'text',
+                                    width: 80,
+                                    hideOnMobile: true
+                                },
+                                {
+                                    name: 'timeRemaining',
+                                    label: '剩余时间',
+                                    type: 'text',
+                                    width: 100,
+                                    tpl: '${timeRemaining | duration}'
+                                },
+                                {
+                                    name: 'status',
+                                    label: '状态',
+                                    type: 'status',
+                                    width: 80
+                                },
+                                {
+                                    name: 'violationCount',
+                                    label: '违规次数',
+                                    type: 'text',
+                                    width: 80,
+                                    className: 'text-center',
+                                    tpl: '<span class="${violationCount > 0 ? "text-danger" : "text-success"}">${violationCount}</span>'
+                                },
+                                {
+                                    type: 'operation',
+                                    label: '操作',
+                                    width: 150,
+                                    buttons: [
+                                        {
+                                            type: 'button',
+                                            label: '详情',
+                                            size: 'sm',
+                                            actionType: 'dialog',
+                                            dialog: {
+                                                title: '考生详情',
+                                                body: '考生详细信息...'
+                                            }
+                                        },
+                                        {
+                                            type: 'button',
+                                            label: '警告',
+                                            size: 'sm',
+                                            level: 'warning',
+                                            actionType: 'ajax',
+                                            confirmText: '确定要向该考生发送警告吗？'
+                                        }
+                                    ]
+                                }
+                            ],
+                            headerToolbar: [
+                                'filter-toggler',
+                                {
+                                    type: 'button',
+                                    label: '强制提交全部',
+                                    level: 'danger',
+                                    confirmText: '确定要强制所有考生提交试卷吗？'
+                                }
+                            ]
+                        },
+                        autoRefresh: true,
+                        refreshInterval: currentRefreshInterval
+                    };
+                },
+
+                // 统计报表表格
+                statisticsTable() {
+                    return {
+                        id: 'statistics-table',
+                        type: 'table',
+                        title: '考试统计报表',
+                        subtitle: '各科目考试数据统计分析',
+                        size: 'medium',
+                        style: { theme: 'info', height: 400 },
+                        data: {
+                            source: null, // 不使用API数据源
+                            api: null,    // 不使用API
+                            initialData: { items: MockTableDataService.generateStatisticsData() },
+                            columns: [
+                                {
+                                    name: 'subject',
+                                    label: '科目',
+                                    type: 'text',
+                                    width: 100
+                                },
+                                {
+                                    name: 'totalExams',
+                                    label: '考试场次',
+                                    type: 'number',
+                                    width: 80,
+                                    className: 'text-center'
+                                },
+                                {
+                                    name: 'passCount',
+                                    label: '及格人数',
+                                    type: 'number',
+                                    width: 80,
+                                    className: 'text-center'
+                                },
+                                {
+                                    name: 'passRate',
+                                    label: '及格率',
+                                    type: 'progress',
+                                    showLabel: true,
+                                    width: 120
+                                },
+                                {
+                                    name: 'avgScore',
+                                    label: '平均分',
+                                    type: 'number',
+                                    precision: 1,
+                                    width: 80,
+                                    className: 'text-center'
+                                },
+                                {
+                                    name: 'maxScore',
+                                    label: '最高分',
+                                    type: 'number',
+                                    width: 80,
+                                    className: 'text-center',
+                                    hideOnMobile: true
+                                },
+                                {
+                                    name: 'minScore',
+                                    label: '最低分',
+                                    type: 'number',
+                                    width: 80,
+                                    className: 'text-center',
+                                    hideOnMobile: true
+                                }
+                            ],
+                            headerToolbar: [
+                                {
+                                    type: 'export-excel',
+                                    label: '导出报表'
+                                },
+                                {
+                                    type: 'button',
+                                    label: '生成图表',
+                                    actionType: 'url',
+                                    url: '/demo/amis-charts-demo'
+                                }
+                            ]
+                        }
+                    };
+                },
+
+                // 操作表格
+                operationalTable() {
+                    return {
+                        id: 'operational-table',
+                        type: 'table',
+                        title: '用户管理表格',
+                        subtitle: '展示丰富的操作功能和批量处理',
+                        size: 'large',
+                        style: { theme: 'warning', height: 500 },
+                        data: {
+                            source: null, // 不使用API数据源
+                            api: null,    // 不使用API
+                            initialData: { items: MockTableDataService.generateOperationalData() },
+                            selectable: true,
+                            multiple: true,
+                            columns: [
+                                {
+                                    name: 'username',
+                                    label: '用户名',
+                                    type: 'text',
+                                    width: 120
+                                },
+                                {
+                                    name: 'realName',
+                                    label: '真实姓名',
+                                    type: 'text',
+                                    width: 100
+                                },
+                                {
+                                    name: 'email',
+                                    label: '邮箱',
+                                    type: 'text',
+                                    width: 180,
+                                    hideOnMobile: true
+                                },
+                                {
+                                    name: 'role',
+                                    label: '角色',
+                                    type: 'text',
+                                    width: 80
+                                },
+                                {
+                                    name: 'status',
+                                    label: '状态',
+                                    type: 'status',
+                                    width: 80,
+                                    map: {
+                                        'active': '<span class="label label-success">激活</span>',
+                                        'inactive': '<span class="label label-danger">禁用</span>',
+                                        'pending': '<span class="label label-warning">待审核</span>'
+                                    }
+                                },
+                                {
+                                    name: 'lastLogin',
+                                    label: '最后登录',
+                                    type: 'datetime',
+                                    format: 'MM-DD HH:mm',
+                                    width: 120,
+                                    hideOnMobile: true
+                                },
+                                {
+                                    type: 'operation',
+                                    label: '操作',
+                                    width: 200,
+                                    buttons: [
+                                        {
+                                            type: 'button',
+                                            label: '编辑',
+                                            size: 'sm',
+                                            actionType: 'dialog',
+                                            dialog: {
+                                                title: '编辑用户',
+                                                body: '编辑用户信息表单...'
+                                            }
+                                        },
+                                        {
+                                            type: 'button',
+                                            label: '重置密码',
+                                            size: 'sm',
+                                            level: 'info',
+                                            confirmText: '确定要重置该用户的密码吗？'
+                                        },
+                                        {
+                                            type: 'button',
+                                            label: '删除',
+                                            size: 'sm',
+                                            level: 'danger',
+                                            confirmText: '确定要删除该用户吗？此操作不可恢复！'
+                                        }
+                                    ]
+                                }
+                            ],
+                            headerToolbar: [
+                                {
+                                    type: 'bulk-actions',
+                                    align: 'left',
+                                    buttons: [
+                                        {
+                                            label: '批量激活',
+                                            confirmText: '确定要激活选中的用户吗？'
+                                        },
+                                        {
+                                            label: '批量禁用',
+                                            level: 'danger',
+                                            confirmText: '确定要禁用选中的用户吗？'
+                                        }
+                                    ]
+                                },
+                                'filter-toggler',
+                                'columns-toggler',
+                                {
+                                    type: 'button',
+                                    label: '新增用户',
+                                    level: 'primary',
+                                    actionType: 'dialog',
+                                    dialog: {
+                                        title: '新增用户',
+                                        body: '新增用户表单...'
+                                    }
+                                }
+                            ],
+                            filter: {
+                                title: '',
+                                body: [
+                                    {
+                                        type: 'input-text',
+                                        name: 'keywords',
+                                        placeholder: '搜索用户名或姓名...'
+                                    },
+                                    {
+                                        type: 'select',
+                                        name: 'role',
+                                        placeholder: '筛选角色',
+                                        options: [
+                                            { label: '全部', value: '' },
+                                            { label: '管理员', value: '管理员' },
+                                            { label: '教师', value: '教师' },
+                                            { label: '学生', value: '学生' },
+                                            { label: '监考员', value: '监考员' }
+                                        ]
+                                    },
+                                    {
+                                        type: 'select',
+                                        name: 'status',
+                                        placeholder: '筛选状态',
+                                        options: [
+                                            { label: '全部', value: '' },
+                                            { label: '激活', value: 'active' },
+                                            { label: '禁用', value: 'inactive' },
+                                            { label: '待审核', value: 'pending' }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    };
+                }
+            };
+
+            /**
+             * 确保SDK已初始化的辅助函数
+             */
+            function ensureSDKInitialized() {
+                if (!tableCardsSDK) {
+                    const success = initializeTableCardsSDK();
+                    if (!success) {
+                        throw new Error('表格卡片SDK初始化失败，请确保所有依赖已正确加载');
+                    }
+                }
+                return tableCardsSDK;
+            }
+
+            // 当前刷新间隔
+            let currentRefreshInterval = 10000;
+
+            // 加载学生表格
+            async function loadStudentTable() {
+                try {
+                    const sdk = ensureSDKInitialized();
+                    setActiveButton('loadStudentTable');
+                    const tableConfig = TableConfigGenerator.studentTable();
+                    await sdk.render('#table-cards-dashboard', [tableConfig]);
+                } catch (error) {
+                    console.error('加载学生表格失败:', error);
+                    showErrorMessage(error.message);
+                }
+            }
+
+            // 加载考试监控表格
+            async function loadExamMonitorTable() {
+                try {
+                    const sdk = ensureSDKInitialized();
+                    setActiveButton('loadExamMonitorTable');
+                    const tableConfig = TableConfigGenerator.examMonitorTable();
+                    await sdk.render('#table-cards-dashboard', [tableConfig]);
+                } catch (error) {
+                    console.error('加载考试监控表格失败:', error);
+                    showErrorMessage(error.message);
+                }
+            }
+
+            // 加载统计表格
+            async function loadStatisticsTable() {
+                try {
+                    const sdk = ensureSDKInitialized();
+                    setActiveButton('loadStatisticsTable');
+                    const tableConfig = TableConfigGenerator.statisticsTable();
+                    await sdk.render('#table-cards-dashboard', [tableConfig]);
+                } catch (error) {
+                    console.error('加载统计表格失败:', error);
+                    showErrorMessage(error.message);
+                }
+            }
+
+            // 加载操作表格
+            async function loadOperationalTable() {
+                try {
+                    const sdk = ensureSDKInitialized();
+                    setActiveButton('loadOperationalTable');
+                    const tableConfig = TableConfigGenerator.operationalTable();
+                    await sdk.render('#table-cards-dashboard', [tableConfig]);
+                } catch (error) {
+                    console.error('加载操作表格失败:', error);
+                    showErrorMessage(error.message);
+                }
+            }
+
+            // 清空表格
+            function clearTables() {
+                const container = document.querySelector('#table-cards-dashboard');
+                container.innerHTML = '';
+                if (tableCardsSDK && tableCardsSDK.cards) {
+                    tableCardsSDK.cards.clear();
+                }
+                clearActiveButton();
+            }
+
+            /**
+             * 显示错误消息
+             */
+            function showErrorMessage(message) {
+                const container = document.querySelector('#table-cards-dashboard');
+                container.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        ${message}
+                    </div>
+                `;
+                clearActiveButton();
+            }
+
+            // 更新刷新间隔
+            function updateRefreshInterval() {
+                const interval = parseInt(document.getElementById('refreshInterval').value);
+                currentRefreshInterval = interval * 1000;
+                
+                // 如果当前有监控表格，更新其刷新间隔
+                if (tableCardsSDK && tableCardsSDK.cards && tableCardsSDK.cards.has('exam-monitor-table')) {
+                    tableCardsSDK.stopAutoRefresh();
+                    if (interval > 0) {
+                        tableCardsSDK.options.refreshInterval = currentRefreshInterval;
+                        tableCardsSDK.startAutoRefresh();
+                    }
+                }
+            }
+
+            // 设置活动按钮样式
+            function setActiveButton(functionName) {
+                clearActiveButton();
+                
+                const buttons = document.querySelectorAll('.btn-group .btn');
+                buttons.forEach(button => {
+                    const onclick = button.getAttribute('onclick');
+                    if (onclick && onclick.includes(functionName)) {
+                        button.classList.add('active');
+                        button.style.boxShadow = '0 0 0 0.2rem rgba(0,123,255,.25)';
+                    }
+                });
+            }
+
+            // 清除所有按钮的活动状态
+            function clearActiveButton() {
+                const buttons = document.querySelectorAll('.btn-group .btn');
+                buttons.forEach(button => {
+                    button.classList.remove('active');
+                    button.style.boxShadow = '';
+                });
+            }
+
+            /**
+             * 绑定表格卡片事件
+             */
+            function bindTableCardEvents() {
+                if (tableCardsSDK && tableCardsSDK.eventBus) {
+                    tableCardsSDK.eventBus.on('card-rendered', (data) => {
+                        console.log('表格卡片渲染完成:', data);
+                    });
+
+                    tableCardsSDK.eventBus.on('card-updated', (data) => {
+                        console.log('表格卡片数据更新:', data);
+                    });
+                }
+            }
+
+            /**
+             * 页面初始化完成后的处理
+             */
+            function handlePageReady() {
+                console.log('页面加载完成，开始初始化表格卡片Demo');
+                
+                // 尝试初始化SDK
+                try {
+                    if (initializeTableCardsSDK()) {
+                        bindTableCardEvents();
+                        console.log('表格卡片SDK准备就绪');
+                        // 自动加载默认表格
+                        loadStudentTable();
+                    } else {
+                        showErrorMessage('表格卡片SDK初始化失败，请确保所有依赖已正确加载');
+                    }
+                } catch (error) {
+                    console.error('页面初始化失败:', error);
+                    showErrorMessage('页面初始化失败: ' + error.message);
+                }
+            }
+
+            // 页面加载完成后的初始化逻辑
+            if (document.readyState === 'complete') {
+                // 如果页面已经完全加载，直接初始化
+                handlePageReady();
+            } else {
+                // 等待页面完全加载
+                window.addEventListener('load', handlePageReady, { once: true });
+            }
+            
+            /**
+             * 调试渲染器状态
+             */
+            function debugRenderers() {
+                console.log('=== 渲染器调试信息 ===');
+                
+                // 基础检查
+                const checks = [
+                    { name: 'window.TableCardRenderer', value: window.TableCardRenderer },
+                    { name: 'window.CodeSpiritCards', value: window.CodeSpiritCards },
+                    { name: 'window.TokenManager', value: window.TokenManager },
+                    { name: 'window.amisCardsAdapter', value: window.amisCardsAdapter }
+                ];
+                
+                checks.forEach(check => {
+                    const status = typeof check.value !== 'undefined' ? '✅ 已加载' : '❌ 未加载';
+                    console.log(`${check.name}: ${status}`);
+                });
+                
+                // SDK状态检查
+                if (tableCardsSDK) {
+                    console.log('SDK实例:', tableCardsSDK);
+                    console.log('已注册的渲染器:');
+                    if (tableCardsSDK.renderers) {
+                        for (const [type, renderer] of tableCardsSDK.renderers) {
+                            console.log(`  - ${type}: ${renderer.constructor.name}`);
+                        }
+                    }
+                } else {
+                    console.log('SDK实例: ❌ 未初始化');
+                }
+                
+                // 显示调试信息到页面
+                const container = document.querySelector('#table-cards-dashboard');
+                let debugHtml = '<div class="card"><div class="card-header"><h5>渲染器调试信息</h5></div><div class="card-body">';
+                
+                debugHtml += '<h6>基础组件状态:</h6><ul class="list-group mb-3">';
+                checks.forEach(check => {
+                    const isLoaded = typeof check.value !== 'undefined';
+                    const statusClass = isLoaded ? 'success' : 'danger';
+                    const statusIcon = isLoaded ? 'check' : 'times';
+                    debugHtml += `<li class="list-group-item list-group-item-${statusClass}"><i class="fas fa-${statusIcon}"></i> ${check.name}: ${isLoaded ? '已加载' : '未加载'}</li>`;
+                });
+                debugHtml += '</ul>';
+                
+                if (tableCardsSDK && tableCardsSDK.renderers) {
+                    debugHtml += '<h6>SDK渲染器状态:</h6><ul class="list-group mb-3">';
+                    const expectedRenderers = ['stat', 'info', 'action', 'table', 'chart', 'amis-chart'];
+                    expectedRenderers.forEach(type => {
+                        const hasRenderer = tableCardsSDK.renderers.has(type);
+                        const statusClass = hasRenderer ? 'success' : 'danger';
+                        const statusIcon = hasRenderer ? 'check' : 'times';
+                        debugHtml += `<li class="list-group-item list-group-item-${statusClass}"><i class="fas fa-${statusIcon}"></i> 渲染器 "${type}": ${hasRenderer ? '已注册' : '未注册'}</li>`;
+                    });
+                    debugHtml += '</ul>';
+                }
+                
+                debugHtml += '<button class="btn btn-primary" onclick="clearTables()">关闭调试信息</button>';
+                debugHtml += '</div></div>';
+                
+                container.innerHTML = debugHtml;
+            }
+
+            // 将函数暴露到全局作用域，以便按钮调用
+            window.loadStudentTable = loadStudentTable;
+            window.loadExamMonitorTable = loadExamMonitorTable;
+            window.loadStatisticsTable = loadStatisticsTable;
+            window.loadOperationalTable = loadOperationalTable;
+            window.clearTables = clearTables;
+            window.updateRefreshInterval = updateRefreshInterval;
+            window.debugRenderers = debugRenderers;
+            
+        })(); // 结束IIFE
+    </script>
+}

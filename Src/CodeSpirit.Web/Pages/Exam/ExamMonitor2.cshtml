@@ -1,0 +1,41 @@
+@page "/{tenantId}/exam/monitor2/{examId}"
+@model CodeSpirit.Web.Pages.Exam.ExamMonitorModel
+@{
+    Layout = "_AmisCardsLayout";
+    ViewData["Title"] = "考试监控大屏";
+    ViewData["Description"] = "考试监控大屏";
+    ViewData["EnableFullscreen"] = "true";
+    ViewData["AutoRefresh"] = "true";
+    ViewData["RefreshInterval"] = "30000";
+    ViewData["Theme"] = "default";
+    ViewData["BackgroundGradient"] = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+}
+
+@section PageConfig {
+    // 考试监控专用配置
+    window.tenantId = '@Model.TenantId';
+    window.examId = '@Model.ExamId';
+    window.tenantName = '@Html.Raw(Model.TenantName)';
+    window.examName = '@Html.Raw(Model.ExamName)';
+    
+    // 覆盖默认容器ID
+    window.AmisCardsConfig.container = '#exam-monitor-root';
+}
+
+@section Styles {
+    <resource path="css/exam/exam-monitor.css" type="css" />
+}
+
+<!-- 页面主体内容 -->
+<div class="exam-monitor-container">
+    <div id="exam-monitor-root" class="amis-cards-container">
+        <div class="amis-cards-loading">
+            <div><i class="fa fa-spinner fa-spin"></i></div>
+            <div>正在加载考试监控数据...</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <resource path="js/exam/exam-monitor2.js" type="js" />
+} 

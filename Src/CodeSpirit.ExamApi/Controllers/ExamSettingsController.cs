@@ -193,7 +193,7 @@ public class ExamSettingsController : ApiControllerBase
             }
 
             // 构建监考大屏URL
-            var monitorUrl = $"/{tenantId}/exam/monitor/{id}";
+            var monitorUrl = $"/{tenantId}/exam/monitor2/{id}";
 
             // 返回跳转响应
             return Ok(ApiResponse.SuccessWithRedirect(

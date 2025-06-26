@@ -1,0 +1,253 @@
+@using Microsoft.Extensions.Options
+@using CodeSpirit.Web.Options
+@inject IOptions<SiteSettings> SiteOptions
+@{
+    var cdnEnabled = SiteOptions.Value.EnableCdn;
+    var resourceBase = cdnEnabled ? SiteOptions.Value.CdnUrl : "";
+    var sdkVersion = "6.12.0";
+    var pageTitle = ViewData["Title"]?.ToString() ?? "AmisCards 应用";
+    var pageDescription = ViewData["Description"]?.ToString() ?? "基于 AmisCards 框架的智能界面";
+    var enableFullscreen = ViewData["EnableFullscreen"]?.ToString() == "true";
+    var autoRefresh = ViewData["AutoRefresh"]?.ToString() == "true";
+    var refreshInterval = ViewData["RefreshInterval"]?.ToString() ?? "30000";
+    var theme = ViewData["Theme"]?.ToString() ?? "default";
+}
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="@pageDescription">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <title>@pageTitle - @Html.Raw(SiteOptions.Value.SiteName)</title>
+    
+    <!-- Amis CSS 资源 -->
+    <resource path="sdk/@(sdkVersion)/antd.css" type="css" />
+    <resource path="sdk/@(sdkVersion)/helper.css" type="css" />
+    <resource path="sdk/@(sdkVersion)/iconfont.css" type="css" />
+    
+    <!-- AmisCards CSS 资源 -->
+    <resource path="amis-cards/styles/amis-cards.css" type="css" />
+    <resource path="amis-cards/styles/themes/default.css" type="css" />
+    <resource path="amis-cards/styles/themes/dark.css" type="css" />
+    
+    <!-- 页面专用样式 -->
+    @await RenderSectionAsync("Styles", required: false)
+    
+    <!-- 全局样式配置 -->
+    <style>
+        /* 基础样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* AmisCards 容器基础样式 */
+        .amis-cards-layout {
+            min-height: 100vh;
+            background: @(ViewData["BackgroundGradient"]?.ToString() ?? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)");
+        }
+        
+        .amis-cards-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* 加载状态样式 */
+        .amis-cards-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #ffffff;
+            gap: 1rem;
+        }
+        
+        .amis-cards-loading .spinner {
+            animation: spin 1s linear infinite;
+            font-size: 2.5rem;
+            color: #ffd700;
+        }
+        
+        @@keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 错误状态样式 */
+        .amis-cards-error {
+            background: rgba(220, 53, 69, 0.1);
+            border: 2px solid rgba(220, 53, 69, 0.3);
+            border-radius: 1rem;
+            padding: 3rem;
+            text-align: center;
+            color: #ffffff;
+            margin: 2rem;
+        }
+        
+        .amis-cards-error i {
+            color: #dc3545;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+        
+                 /* 全屏模式支持 */
+         @if (enableFullscreen)
+         {
+         <text>.fullscreen-mode {
+             position: fixed;
+             top: 0;
+             left: 0;
+             width: 100vw;
+             height: 100vh;
+             z-index: 9999;
+             overflow-y: auto;
+         }</text>
+         }
+        
+        /* 响应式设计 */
+        @@media (max-width: 768px) {
+            .amis-cards-layout {
+                padding: 0.5rem;
+            }
+        }
+        
+        /* 自定义页面样式 */
+        @await RenderSectionAsync("CustomStyles", required: false)
+    </style>
+    
+    <!-- 全局变量配置 -->
+    <script>
+        @{
+            var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+        }
+        // 初始化全局命名空间
+        window.CodeSpirit = window.CodeSpirit || {};
+        window.AmisCardsConfig = window.AmisCardsConfig || {};
+
+        // 基础配置
+        window.webHost = '@(isDevelopment ? "https://localhost:7120" : SiteOptions.Value.WebHost)';
+        
+        // 站点配置
+        window.siteSettings = {
+            siteName: '@Html.Raw(SiteOptions.Value.SiteName)',
+            topSiteName: '@Html.Raw(SiteOptions.Value.TopSiteName)',
+            clientAppName: '@Html.Raw(SiteOptions.Value.TopSiteName) | @Html.Raw(SiteOptions.Value.SiteName)',
+            logoUrl: '@SiteOptions.Value.LogoUrl',
+            cdnEnabled: @(cdnEnabled ? "true" : "false"),
+            cdnUrl: '@SiteOptions.Value.CdnUrl',
+            resourceBase: '@resourceBase'
+        };
+        
+        // AmisCards 全局配置
+        window.AmisCardsConfig = {
+            theme: '@theme',
+            autoRefresh: @(autoRefresh ? "true" : "false"),
+            refreshInterval: @refreshInterval,
+            enableFullscreen: @(enableFullscreen ? "true" : "false"),
+            container: '#amis-cards-root',
+            apiBase: window.webHost + '/api'
+        };
+        
+        // 页面特定配置
+        @await RenderSectionAsync("PageConfig", required: false)
+    </script>
+    
+    <!-- 页面头部扩展 -->
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body class="amis-cards-theme-@theme">
+    <!-- AmisCards 主容器 -->
+    <div class="amis-cards-layout">
+        <div id="amis-cards-root" class="amis-cards-container">
+            <!-- 默认加载状态 -->
+            <div class="amis-cards-loading">
+                <div class="spinner">
+                    <i class="fa fa-spinner fa-spin"></i>
+                </div>
+                <div>正在加载应用...</div>
+            </div>
+        </div>
+        
+        <!-- 页面主体内容 -->
+        @RenderBody()
+    </div>
+    
+    <!-- Amis JavaScript 资源 -->
+    <resource path="sdk/@(sdkVersion)/sdk.js" type="js" />
+    
+    <!-- AmisCards JavaScript 资源 -->
+    <resource path="amis-cards/core/utils.js" type="js" />
+    <resource path="amis-cards/core/data-service.js" type="js" />
+    <resource path="amis-cards/core/amis-cards-core.js" type="js" />
+    <resource path="amis-cards/renderers/base-renderer.js" type="js" />
+    <resource path="amis-cards/renderers/stat-renderer.js" type="js" />
+    <resource path="amis-cards/renderers/chart-renderer.js" type="js" />
+    <resource path="amis-cards/renderers/table-renderer.js" type="js" />
+    <resource path="amis-cards/renderers/info-renderer.js" type="js" />
+    <resource path="amis-cards/renderers/info-grid-renderer.js" type="js" />
+    <resource path="amis-cards/configs/card-configs.js" type="js" />
+    <resource path="amis-cards/configs/theme-configs.js" type="js" />
+    
+    <!-- 通用认证管理器 -->
+    <resource path="js/token-manager.js" type="js" />
+    
+    <!-- AmisCards 布局通用脚本 -->
+    <resource path="js/amis-cards-layout.js" type="js" />
+    
+    <!-- 页面特定配置脚本 -->
+    <script>
+        // 扩展全屏模式配置
+        @if (enableFullscreen)
+        {
+        <text>
+        // 增强全屏模式功能
+        if (window.AmisCardsLayout) {
+            const originalToggleFullscreen = window.AmisCardsLayout.toggleFullscreen;
+            window.AmisCardsLayout.toggleFullscreen = function() {
+                const body = document.body;
+                const isFullscreen = body.classList.contains('fullscreen-mode');
+                
+                if (isFullscreen) {
+                    body.classList.remove('fullscreen-mode');
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                    console.log('[AmisCards布局] 已退出全屏模式');
+                } else {
+                    body.classList.add('fullscreen-mode');
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen();
+                    }
+                    console.log('[AmisCards布局] 已进入全屏模式');
+                }
+            };
+        }
+        </text>
+        }
+        else
+        {
+        <text>
+        // 全屏模式未启用
+        if (window.AmisCardsLayout) {
+            window.AmisCardsLayout.toggleFullscreen = function() {
+                console.warn('[AmisCards布局] 全屏模式未启用');
+            };
+        }
+        </text>
+        }
+    </script>
+    
+    <!-- 页面脚本 -->
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html> 

@@ -1,0 +1,525 @@
+@page
+@{
+    ViewData["Title"] = "AmisCards V2.0 演示";
+}
+
+@section Styles {
+    <!-- AmisCards 样式文件 -->
+    <resource path="amis-cards/styles/amis-cards.css" type="css" />
+    <resource path="amis-cards/styles/themes/default.css" type="css" />
+    <resource path="amis-cards/styles/themes/dark.css" type="css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        
+        .demo-header {
+            background: #fff;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .demo-title {
+            margin: 0;
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .demo-subtitle {
+            margin: 0.5rem 0 0 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .demo-controls {
+            background: #fff;
+            padding: 1rem 2rem;
+            margin-bottom: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .demo-controls button {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-controls button:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+        
+        .demo-controls button.active {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+        
+        .demo-info {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 1.5rem;
+            font-size: 0.9rem;
+            color: #1565c0;
+        }
+        
+        #cards-container {
+            min-height: 400px;
+            padding: 0 1.5rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            animation: spin 1s linear infinite;
+        }
+        
+        @@keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+}
+
+<!-- 演示头部 -->
+<div class="demo-header">
+    <h1 class="demo-title">CodeSpirit Amis Cards V2.0</h1>
+    <p class="demo-subtitle">基于 Amis Page 组件的统一表格卡片系统演示</p>
+</div>
+
+<!-- 演示控制面板 -->
+<div class="demo-controls">
+    <strong>演示控制：</strong>
+    <button onclick="loadBasicStats()" class="active">基础统计</button>
+    <button onclick="loadAdvancedStats()">高级统计</button>
+    <button onclick="loadMixedCards()">混合卡片</button>
+    <button onclick="loadTemplateExamples()">模板示例</button>
+    <button onclick="toggleTheme()">切换主题</button>
+    <button onclick="showDebugInfo()">调试信息</button>
+</div>
+
+<!-- 信息提示 -->
+<div class="demo-info">
+    <i class="fa fa-info-circle"></i>
+    <strong>提示：</strong>这是 AmisCards V2.0 的演示页面。该系统与现有的 cards-sdk 完全独立，使用独立的命名空间和样式。
+    当前演示使用模拟数据，实际使用时需要配置相应的 API 接口。
+</div>
+
+<!-- 卡片容器 -->
+<div id="cards-container">
+    <div class="loading">
+        <div><i class="fa fa-spinner"></i></div>
+        <div>正在加载演示数据...</div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- AmisCards JavaScript 文件 -->
+    <resource path="amis-cards/core/utils.js" type="js" />
+    <resource path="amis-cards/core/data-service.js" type="js" />
+    <resource path="amis-cards/core/amis-cards-core.js" type="js" />
+    <resource path="amis-cards/renderers/base-renderer.js" type="js" />
+    <resource path="amis-cards/renderers/stat-renderer.js" type="js" />
+    <resource path="amis-cards/renderers/chart-renderer.js" type="js" />
+    <resource path="amis-cards/renderers/table-renderer.js" type="js" />
+    <resource path="amis-cards/renderers/info-renderer.js" type="js" />
+    <resource path="amis-cards/configs/card-configs.js" type="js" />
+    <resource path="amis-cards/configs/theme-configs.js" type="js" />
+    
+    <script>
+        // 全局变量
+        let cardsInstance = null;
+        let currentTheme = 'default';
+        
+        /**
+         * 初始化演示
+         */
+        function initDemo() {
+            console.log('[Demo] 开始初始化演示');
+            
+            // 检查 Amis 是否可用（从_Layout.cshtml引入）
+            if (typeof window.amis === 'undefined') {
+                console.error('[Demo] Amis SDK 未加载，请检查_Layout.cshtml');
+                showError('Amis SDK 未正确加载');
+                return;
+            }
+            
+            // 检查 AmisCards 是否可用
+            if (typeof window.AmisCards === 'undefined') {
+                console.error('[Demo] AmisCards 未加载');
+                showError('AmisCards 系统未正确加载');
+                return;
+            }
+            
+            // 创建 AmisCards 实例
+            cardsInstance = window.AmisCards.create({
+                container: '#cards-container',
+                theme: currentTheme,
+                config: {
+                    pageTitle: 'AmisCards 演示'
+                }
+            });
+            
+            // 注册所有渲染器
+            cardsInstance.registerRenderer('stat', window.AmisCards.StatRenderer);
+            cardsInstance.registerRenderer('chart', window.AmisCards.ChartRenderer);
+            cardsInstance.registerRenderer('table', window.AmisCards.TableRenderer);
+            cardsInstance.registerRenderer('info', window.AmisCards.InfoRenderer);
+            
+            console.log('[Demo] AmisCards 实例创建完成');
+            
+            // 加载默认演示
+            loadBasicStats();
+        }
+        
+        /**
+         * 显示错误信息
+         */
+        function showError(message) {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: #dc3545;">
+                    <i class="fa fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">初始化失败</div>
+                    <div style="font-size: 0.9rem;">${message}</div>
+                    <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">重新加载</button>
+                </div>
+            `;
+        }
+        
+        /**
+         * 加载基础统计演示
+         */
+        async function loadBasicStats() {
+            console.log('[Demo] 加载基础统计演示');
+            setActiveButton(0);
+            
+            const cards = [
+                {
+                    id: 'users-total',
+                    type: 'stat',
+                    title: '总用户数',
+                    subtitle: '系统注册用户统计',
+                    theme: 'primary',
+                    data: {
+                        value: 12580,
+                        label: '注册用户',
+                        unit: '人',
+                        formatter: 'integer'
+                    }
+                },
+                {
+                    id: 'revenue-today',
+                    type: 'stat',
+                    title: '今日收入',
+                    subtitle: '实时收入统计',
+                    theme: 'success',
+                    data: {
+                        value: 98765.43,
+                        label: '收入金额',
+                        formatter: 'currency'
+                    }
+                },
+                {
+                    id: 'completion-rate',
+                    type: 'stat',
+                    title: '任务完成率',
+                    subtitle: '今日任务执行情况',
+                    theme: 'info',
+                    data: {
+                        value: 87.5,
+                        label: '完成率',
+                        formatter: 'percentage'
+                    }
+                },
+                {
+                    id: 'active-sessions',
+                    type: 'stat',
+                    title: '活跃会话',
+                    subtitle: '当前在线用户数',
+                    theme: 'warning',
+                    data: {
+                        value: 1337,
+                        label: '在线用户',
+                        unit: '个',
+                        formatter: 'integer'
+                    }
+                }
+            ];
+            
+            await cardsInstance.render(cards);
+        }
+        
+        /**
+         * 加载高级统计演示
+         */
+        async function loadAdvancedStats() {
+            console.log('[Demo] 加载高级统计演示');
+            setActiveButton(1);
+            
+            const cards = [
+                {
+                    id: 'user-growth',
+                    type: 'stat',
+                    title: '用户增长',
+                    subtitle: '新用户注册趋势',
+                    theme: 'primary',
+                    size: 'large',
+                    data: {
+                        value: 2468,
+                        label: '新增用户',
+                        unit: '人',
+                        formatter: 'integer',
+                        trend: {
+                            direction: 'up',
+                            value: 12.5,
+                            period: '较昨日',
+                            percentage: true
+                        }
+                    }
+                },
+                {
+                    id: 'sales-target',
+                    type: 'stat',
+                    title: '销售目标',
+                    subtitle: '月度销售完成情况',
+                    theme: 'success',
+                    size: 'large',
+                    data: {
+                        value: 750000,
+                        label: '当前销售额',
+                        formatter: 'currency',
+                        target: 1000000,
+                        showProgress: true,
+                        description: '距离月度目标还需努力！'
+                    }
+                },
+                {
+                    id: 'error-rate',
+                    type: 'stat',
+                    title: '系统错误率',
+                    subtitle: '24小时错误统计',
+                    theme: 'danger',
+                    data: {
+                        value: 0.05,
+                        label: '错误率',
+                        formatter: 'percentage',
+                        trend: {
+                            direction: 'down',
+                            value: 0.02,
+                            period: '较昨日',
+                            percentage: true
+                        }
+                    }
+                },
+                {
+                    id: 'storage-usage',
+                    type: 'stat',
+                    title: '存储使用量',
+                    subtitle: '系统存储空间统计',
+                    theme: 'info',
+                    data: {
+                        value: 2684354560, // 2.5GB
+                        label: '已使用',
+                        formatter: 'fileSize',
+                        target: 5368709120, // 5GB
+                        showProgress: true
+                    }
+                }
+            ];
+            
+            await cardsInstance.render(cards);
+        }
+        
+        /**
+         * 加载混合卡片演示
+         */
+        async function loadMixedCards() {
+            console.log('[Demo] 加载混合卡片演示');
+            setActiveButton(2);
+            
+            const cards = [
+                // 统计卡片
+                {
+                    id: 'quick-stats',
+                    type: 'stat',
+                    title: '访问量',
+                    theme: 'primary',
+                    data: {
+                        value: 15678,
+                        label: '今日访问',
+                        unit: '次',
+                        formatter: 'integer'
+                    }
+                },
+                // 图表卡片
+                {
+                    id: 'traffic-chart',
+                    type: 'chart',
+                    title: '访问量趋势',
+                    chartType: 'line',
+                    height: 300,
+                    series: [
+                        {
+                            name: '访问量',
+                            data: [120, 132, 101, 134, 90, 230, 210]
+                        }
+                    ],
+                    xAxisData: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+                },
+                // 信息卡片
+                {
+                    id: 'system-info',
+                    type: 'info',
+                    title: '系统信息',
+                    infoType: 'properties',
+                    properties: [
+                        {
+                            label: '系统版本',
+                            content: 'CodeSpirit v2.0'
+                        },
+                        {
+                            label: '运行环境',
+                            content: '.NET 9.0'
+                        },
+                        {
+                            label: '启动时间',
+                            content: '2024-01-15 09:30:00'
+                        },
+                        {
+                            label: '运行时长',
+                            content: '15天 8小时'
+                        }
+                    ]
+                }
+            ];
+            
+            await cardsInstance.render(cards);
+        }
+        
+        /**
+         * 加载模板示例
+         */
+        async function loadTemplateExamples() {
+            console.log('[Demo] 加载模板示例');
+            setActiveButton(3);
+            
+            // 使用基础示例作为模板展示
+            await loadBasicStats();
+        }
+        
+        /**
+         * 切换主题
+         */
+        function toggleTheme() {
+            console.log('[Demo] 切换主题');
+            
+            const pageThemes = ['default', 'dark'];
+            const currentIndex = pageThemes.indexOf(currentTheme);
+            const nextIndex = (currentIndex + 1) % pageThemes.length;
+            const newTheme = pageThemes[nextIndex];
+            
+            // 应用页面主题
+            if (window.AmisCards && window.AmisCards.ThemeUtils) {
+                window.AmisCards.ThemeUtils.switchTheme(currentTheme, newTheme, document.body, {
+                    duration: 300,
+                    easing: 'ease'
+                });
+            } else {
+                // 备用方案：直接切换CSS类
+                document.body.classList.remove(`amis-cards-theme-${currentTheme}`);
+                document.body.classList.add(`amis-cards-theme-${newTheme}`);
+            }
+            
+            // 更新全局主题
+            currentTheme = newTheme;
+            
+            // 更新按钮文本
+            const buttons = document.querySelectorAll('.demo-controls button');
+            const themeButton = Array.from(buttons).find(btn => btn.textContent.includes('主题'));
+            if (themeButton) {
+                themeButton.textContent = currentTheme === 'dark' ? '切换到浅色主题' : '切换到深色主题';
+            }
+            
+            console.log(`[Demo] 已切换到页面主题: ${currentTheme}`);
+        }
+        
+        /**
+         * 显示调试信息
+         */
+        function showDebugInfo() {
+            if (!cardsInstance) {
+                alert('AmisCards 实例未初始化');
+                return;
+            }
+            
+            const debugInfo = {
+                version: window.AmisCards.version || 'Unknown',
+                instance: cardsInstance.getState ? cardsInstance.getState() : 'No state method',
+                theme: currentTheme,
+                container: cardsInstance.container ? cardsInstance.container.tagName : 'Unknown',
+                renderers: cardsInstance.renderers ? Array.from(cardsInstance.renderers.keys()) : [],
+                amisAvailable: typeof window.amis !== 'undefined',
+                amisVersion: window.amis ? window.amis.version || 'Unknown' : 'Not loaded'
+            };
+            
+            console.log('[Demo] 调试信息:', debugInfo);
+            alert('调试信息已输出到控制台，请按F12查看');
+        }
+        
+        /**
+         * 设置活动按钮
+         */
+        function setActiveButton(index) {
+            const buttons = document.querySelectorAll('.demo-controls button');
+            buttons.forEach((btn, i) => {
+                if (i === index) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
+        /**
+         * 错误处理
+         */
+        window.addEventListener('error', function(e) {
+            console.error('[Demo] JavaScript 错误:', e.error);
+            showError(`JavaScript 错误: ${e.message}`);
+        });
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[Demo] 页面加载完成，开始初始化');
+            
+            // 应用默认主题
+            if (window.AmisCards && window.AmisCards.ThemeUtils) {
+                window.AmisCards.ThemeUtils.applyTheme(currentTheme, document.body);
+            } else {
+                document.body.classList.add(`amis-cards-theme-${currentTheme}`);
+            }
+            
+            // 延迟初始化，确保所有脚本都已加载
+            setTimeout(initDemo, 500);
+        });
+    </script>
+} 

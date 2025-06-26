@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSpirit Amis Cards V2.0 - 性能测试</title>
+     <!-- 本地 Amis CSS（参考 _Layout.cshtml 的方式）-->
+     <link rel="stylesheet" href="/sdk/6.12.0/antd.css">
+     <link rel="stylesheet" href="/sdk/6.12.0/helper.css">
+     <link rel="stylesheet" href="/sdk/6.12.0/iconfont.css">
+    <script src="/sdk/6.12.0/sdk.js"></script>
+    <script src="../core/amis-cards-core.js"></script>
+    <script src="../core/data-service.js"></script>
+    <script src="../core/utils.js"></script>
+    <script src="../renderers/base-renderer.js"></script>
+    <script src="../renderers/stat-renderer.js"></script>
+    <script src="../renderers/chart-renderer.js"></script>
+    <script src="../renderers/table-renderer.js"></script>
+    <script src="../renderers/info-renderer.js"></script>
+    <script src="../configs/card-configs.js"></script>
+    <script src="../configs/theme-configs.js"></script>
+    <link rel="stylesheet" href="../styles/amis-cards.css">
+    <link rel="stylesheet" href="../styles/themes/default.css">
+    <style>
+        .test-container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-results {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .test-status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-status.success { background: #d4edda; color: #155724; }
+        .test-status.warning { background: #fff3cd; color: #856404; }
+        .test-status.error { background: #f8d7da; color: #721c24; }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .performance-chart {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>CodeSpirit Amis Cards V2.0 - 性能测试</h1>
+        <p>本页面用于测试 Amis Cards 系统的性能指标，包括初始化时间、渲染性能、内存使用等。</p>
+        
+        <div class="test-controls">
+            <button onclick="runAllTests()" class="btn btn-primary">运行所有测试</button>
+            <button onclick="runInitTest()" class="btn btn-secondary">初始化测试</button>
+            <button onclick="runRenderTest()" class="btn btn-secondary">渲染性能测试</button>
+            <button onclick="runMemoryTest()" class="btn btn-secondary">内存测试</button>
+            <button onclick="runStressTest()" class="btn btn-warning">压力测试</button>
+            <button onclick="clearResults()" class="btn btn-outline-secondary">清除结果</button>
+        </div>
+
+        <div id="test-results" class="test-results">
+            <h3>测试结果</h3>
+            <div id="results-content">点击上方按钮开始测试...</div>
+        </div>
+
+        <div id="test-container-cards" class="test-grid"></div>
+    </div>
+
+    <script>
+        // 性能测试类
+        class PerformanceTest {
+            constructor() {
+                this.results = [];
+                this.testStartTime = 0;
+                this.memoryBaseline = 0;
+            }
+
+            // 记录测试结果
+            logResult(test, status, duration, details = '') {
+                const result = {
+                    test,
+                    status,
+                    duration,
+                    details,
+                    timestamp: new Date().toISOString()
+                };
+                this.results.push(result);
+                this.displayResults();
+            }
+
+            // 显示测试结果
+            displayResults() {
+                const container = document.getElementById('results-content');
+                let html = '<div class="results-summary">';
+                
+                // 统计
+                const passed = this.results.filter(r => r.status === 'success').length;
+                const failed = this.results.filter(r => r.status === 'error').length;
+                const warnings = this.results.filter(r => r.status === 'warning').length;
+                
+                html += `<p><strong>测试总结:</strong> 通过 ${passed}, 警告 ${warnings}, 失败 ${failed}</p>`;
+                html += '</div>';
+                
+                // 详细结果
+                this.results.forEach(result => {
+                    const statusClass = result.status;
+                    html += `<div class="test-status ${statusClass}">`;
+                    html += `<strong>${result.test}</strong> - ${result.status.toUpperCase()}`;
+                    if (result.duration !== undefined) {
+                        html += ` (${result.duration}ms)`;
+                    }
+                    if (result.details) {
+                        html += `<br><small>${result.details}</small>`;
+                    }
+                    html += '</div>';
+                });
+                
+                container.innerHTML = html;
+            }
+
+            // 获取内存使用情况
+            getMemoryUsage() {
+                if (performance.memory) {
+                    return {
+                        used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
+                        total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024)
+                    };
+                }
+                return null;
+            }
+
+            // 初始化测试
+            async runInitTest() {
+                const startTime = performance.now();
+                
+                try {
+                    // 记录基线内存
+                    const memoryBefore = this.getMemoryUsage();
+                    
+                    // 初始化 AmisCards
+                    if (!window.AmisCards) {
+                        throw new Error('AmisCards 未正确加载');
+                    }
+                    
+                    // 注册渲染器
+                    window.AmisCards.registerRenderer('stat', window.AmisCards.StatRenderer);
+                    window.AmisCards.registerRenderer('chart', window.AmisCards.ChartRenderer);
+                    window.AmisCards.registerRenderer('table', window.AmisCards.TableRenderer);
+                    window.AmisCards.registerRenderer('info', window.AmisCards.InfoRenderer);
+                    
+                    const endTime = performance.now();
+                    const duration = Math.round(endTime - startTime);
+                    
+                    const memoryAfter = this.getMemoryUsage();
+                    const memoryDetails = memoryAfter ? 
+                        `内存使用: ${memoryAfter.used}MB (增加 ${memoryAfter.used - (memoryBefore?.used || 0)}MB)` : 
+                        '无法获取内存信息';
+                    
+                    // 判断是否通过
+                    if (duration < 500) {
+                        this.logResult('初始化测试', 'success', duration, memoryDetails);
+                    } else if (duration < 1000) {
+                        this.logResult('初始化测试', 'warning', duration, `超过目标时间但可接受。${memoryDetails}`);
+                    } else {
+                        this.logResult('初始化测试', 'error', duration, `初始化时间过长。${memoryDetails}`);
+                    }
+                    
+                } catch (error) {
+                    const endTime = performance.now();
+                    const duration = Math.round(endTime - startTime);
+                    this.logResult('初始化测试', 'error', duration, `错误: ${error.message}`);
+                }
+            }
+
+            // 渲染性能测试
+            async runRenderTest() {
+                const container = document.getElementById('test-container-cards');
+                const cardCount = 20;
+                
+                try {
+                    // 清空容器
+                    container.innerHTML = '';
+                    
+                    const startTime = performance.now();
+                    
+                    // 生成测试卡片配置
+                    const cards = this.generateTestCards(cardCount);
+                    
+                    // 渲染所有卡片
+                    for (let i = 0; i < cards.length; i++) {
+                        const card = cards[i];
+                        const cardStartTime = performance.now();
+                        
+                        const renderer = window.AmisCards.getRenderer(card.type);
+                        if (renderer) {
+                            const amisConfig = renderer.render(card);
+                            const cardElement = document.createElement('div');
+                            cardElement.className = 'amis-cards-grid-item';
+                            container.appendChild(cardElement);
+                            
+                            // 使用 amis 渲染
+                            const amis = window.amisRequire('amis/embed');
+                            amis.embed(cardElement, amisConfig);
+                        }
+                        
+                        const cardEndTime = performance.now();
+                        const cardDuration = Math.round(cardEndTime - cardStartTime);
+                        
+                        // 检查单个卡片渲染时间
+                        if (cardDuration > 300) {
+                            this.logResult(`卡片渲染测试 #${i+1}`, 'warning', cardDuration, 
+                                `单个卡片渲染时间过长 (${card.type})`);
+                        }
+                    }
+                    
+                    const endTime = performance.now();
+                    const totalDuration = Math.round(endTime - startTime);
+                    const avgDuration = Math.round(totalDuration / cardCount);
+                    
+                    // 判断结果
+                    if (avgDuration < 300) {
+                        this.logResult('批量渲染测试', 'success', totalDuration, 
+                            `${cardCount}张卡片，平均 ${avgDuration}ms/张`);
+                    } else if (avgDuration < 500) {
+                        this.logResult('批量渲染测试', 'warning', totalDuration, 
+                            `${cardCount}张卡片，平均 ${avgDuration}ms/张 - 超过目标但可接受`);
+                    } else {
+                        this.logResult('批量渲染测试', 'error', totalDuration, 
+                            `${cardCount}张卡片，平均 ${avgDuration}ms/张 - 性能不达标`);
+                    }
+                    
+                } catch (error) {
+                    this.logResult('渲染性能测试', 'error', undefined, `错误: ${error.message}`);
+                }
+            }
+
+            // 内存测试
+            async runMemoryTest() {
+                if (!performance.memory) {
+                    this.logResult('内存测试', 'warning', undefined, '浏览器不支持内存监控');
+                    return;
+                }
+                
+                const memoryBefore = this.getMemoryUsage();
+                
+                try {
+                    // 创建大量卡片测试内存使用
+                    const container = document.getElementById('test-container-cards');
+                    container.innerHTML = '';
+                    
+                    const cardCount = 50;
+                    const cards = this.generateTestCards(cardCount);
+                    
+                    // 渲染卡片
+                    for (const card of cards) {
+                        const renderer = window.AmisCards.getRenderer(card.type);
+                        if (renderer) {
+                            const amisConfig = renderer.render(card);
+                            const cardElement = document.createElement('div');
+                            container.appendChild(cardElement);
+                            
+                            const amis = window.amisRequire('amis/embed');
+                            amis.embed(cardElement, amisConfig);
+                        }
+                    }
+                    
+                    // 强制垃圾回收（如果支持）
+                    if (window.gc) {
+                        window.gc();
+                    }
+                    
+                    // 等待一段时间让内存稳定
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    const memoryAfter = this.getMemoryUsage();
+                    const memoryUsed = memoryAfter.used - memoryBefore.used;
+                    
+                    // 判断内存使用
+                    if (memoryAfter.used < 50) {
+                        this.logResult('内存使用测试', 'success', undefined, 
+                            `总内存: ${memoryAfter.used}MB, 增加: ${memoryUsed}MB`);
+                    } else if (memoryAfter.used < 100) {
+                        this.logResult('内存使用测试', 'warning', undefined, 
+                            `总内存: ${memoryAfter.used}MB, 增加: ${memoryUsed}MB - 接近上限`);
+                    } else {
+                        this.logResult('内存使用测试', 'error', undefined, 
+                            `总内存: ${memoryAfter.used}MB, 增加: ${memoryUsed}MB - 超过预期`);
+                    }
+                    
+                } catch (error) {
+                    this.logResult('内存测试', 'error', undefined, `错误: ${error.message}`);
+                }
+            }
+
+            // 压力测试
+            async runStressTest() {
+                const container = document.getElementById('test-container-cards');
+                container.innerHTML = '';
+                
+                try {
+                    const startTime = performance.now();
+                    const cardCount = 100;
+                    const cards = this.generateTestCards(cardCount);
+                    
+                    // 批量快速渲染
+                    const renderPromises = cards.map(async (card, index) => {
+                        return new Promise((resolve) => {
+                            setTimeout(() => {
+                                const renderer = window.AmisCards.getRenderer(card.type);
+                                if (renderer) {
+                                    const amisConfig = renderer.render(card);
+                                    const cardElement = document.createElement('div');
+                                    cardElement.className = 'amis-cards-grid-item';
+                                    container.appendChild(cardElement);
+                                    
+                                    const amis = window.amisRequire('amis/embed');
+                                    amis.embed(cardElement, amisConfig);
+                                }
+                                resolve();
+                            }, index * 10); // 每10ms渲染一个
+                        });
+                    });
+                    
+                    await Promise.all(renderPromises);
+                    
+                    const endTime = performance.now();
+                    const duration = Math.round(endTime - startTime);
+                    
+                    const memory = this.getMemoryUsage();
+                    const memoryDetails = memory ? `内存使用: ${memory.used}MB` : '';
+                    
+                    // 判断压力测试结果
+                    if (duration < 5000 && (!memory || memory.used < 100)) {
+                        this.logResult('压力测试', 'success', duration, 
+                            `${cardCount}张卡片并发渲染。${memoryDetails}`);
+                    } else {
+                        this.logResult('压力测试', 'warning', duration, 
+                            `${cardCount}张卡片并发渲染 - 性能有限。${memoryDetails}`);
+                    }
+                    
+                } catch (error) {
+                    this.logResult('压力测试', 'error', undefined, `错误: ${error.message}`);
+                }
+            }
+
+            // 生成测试卡片数据
+            generateTestCards(count) {
+                const cardTypes = ['stat', 'chart', 'table', 'info'];
+                const cards = [];
+                
+                for (let i = 0; i < count; i++) {
+                    const type = cardTypes[i % cardTypes.length];
+                    const card = {
+                        id: `test-card-${i}`,
+                        type: type,
+                        title: `测试卡片 ${i + 1}`,
+                        theme: ['default', 'primary', 'success', 'warning'][i % 4]
+                    };
+                    
+                    // 根据类型添加特定配置
+                    switch (type) {
+                        case 'stat':
+                            card.value = Math.floor(Math.random() * 10000);
+                            card.label = '测试指标';
+                            card.trend = {
+                                value: (Math.random() - 0.5) * 100,
+                                period: '环比上月'
+                            };
+                            break;
+                        case 'chart':
+                            card.chartType = ['line', 'bar', 'pie'][i % 3];
+                            card.data = this.generateChartData();
+                            break;
+                        case 'table':
+                            card.data = this.generateTableData();
+                            card.columns = [
+                                { name: 'name', label: '姓名' },
+                                { name: 'age', label: '年龄' },
+                                { name: 'city', label: '城市' }
+                            ];
+                            break;
+                        case 'info':
+                            card.infoType = 'text';
+                            card.content = `这是第 ${i + 1} 个测试信息卡片的内容。`;
+                            break;
+                    }
+                    
+                    cards.push(card);
+                }
+                
+                return cards;
+            }
+
+            generateChartData() {
+                const data = [];
+                for (let i = 0; i < 12; i++) {
+                    data.push({
+                        month: `${i + 1}月`,
+                        value: Math.floor(Math.random() * 1000)
+                    });
+                }
+                return data;
+            }
+
+            generateTableData() {
+                const data = [];
+                const names = ['张三', '李四', '王五', '赵六', '孙七'];
+                const cities = ['北京', '上海', '广州', '深圳', '杭州'];
+                
+                for (let i = 0; i < 10; i++) {
+                    data.push({
+                        name: names[i % names.length] + i,
+                        age: 20 + Math.floor(Math.random() * 40),
+                        city: cities[i % cities.length]
+                    });
+                }
+                return data;
+            }
+
+            // 清除结果
+            clearResults() {
+                this.results = [];
+                document.getElementById('results-content').innerHTML = '结果已清除，点击测试按钮重新开始...';
+                document.getElementById('test-container-cards').innerHTML = '';
+            }
+
+            // 运行所有测试
+            async runAllTests() {
+                this.clearResults();
+                
+                this.logResult('开始测试', 'success', undefined, '正在运行完整测试套件...');
+                
+                await this.runInitTest();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                await this.runRenderTest();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                await this.runMemoryTest();
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                this.logResult('测试完成', 'success', undefined, '所有测试已完成，请查看上述结果。');
+            }
+        }
+
+        // 全局测试实例
+        const performanceTest = new PerformanceTest();
+
+        // 测试函数
+        function runAllTests() {
+            performanceTest.runAllTests();
+        }
+
+        function runInitTest() {
+            performanceTest.runInitTest();
+        }
+
+        function runRenderTest() {
+            performanceTest.runRenderTest();
+        }
+
+        function runMemoryTest() {
+            performanceTest.runMemoryTest();
+        }
+
+        function runStressTest() {
+            performanceTest.runStressTest();
+        }
+
+        function clearResults() {
+            performanceTest.clearResults();
+        }
+
+        // 页面加载完成后自动运行基础测试
+        window.addEventListener('load', () => {
+            console.log('性能测试页面已加载');
+        });
+    </script>
+</body>
+</html> 

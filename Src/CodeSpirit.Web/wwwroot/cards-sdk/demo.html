@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSpirit 统计卡片SDK演示</title>
+    
+    <!-- 引入ECharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.0/echarts.min.js"></script>
+    
+    <!-- 引入Cards SDK -->
+    <link rel="stylesheet" href="./cards-sdk.css">
+    <script src="./cards-sdk.js"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        
+        .demo-header {
+            background: #fff;
+            padding: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .demo-title {
+            text-align: center;
+            color: #262626;
+            margin-bottom: 10px;
+        }
+        
+        .demo-description {
+            text-align: center;
+            color: #8c8c8c;
+            margin-bottom: 20px;
+        }
+        
+        .demo-controls {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .control-btn {
+            padding: 8px 16px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            border-color: #1890ff;
+            color: #1890ff;
+        }
+        
+        .control-btn.primary {
+            background: #1890ff;
+            color: #fff;
+            border-color: #1890ff;
+        }
+        
+        .demo-footer {
+            background: #fff;
+            padding: 20px;
+            text-align: center;
+            margin-top: 40px;
+            color: #8c8c8c;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        /* 响应式优化 */
+        @media (max-width: 768px) {
+            .demo-container {
+                padding: 0 10px;
+            }
+            
+            .control-group {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-header">
+        <div class="demo-container">
+            <h1 class="demo-title">CodeSpirit 统计卡片SDK演示</h1>
+            <p class="demo-description">展示统计卡片、图表卡片、信息卡片和操作卡片的各种功能</p>
+        </div>
+    </div>
+    
+    <div class="demo-container">
+        <!-- 控制面板 -->
+        <div class="demo-controls">
+            <div class="control-group">
+                <button class="control-btn primary" onclick="loadDefaultCards()">
+                    <i class="fas fa-refresh"></i> 加载默认卡片
+                </button>
+                <button class="control-btn" onclick="addStatCard()">
+                    <i class="fas fa-plus"></i> 添加统计卡片
+                </button>
+                <button class="control-btn" onclick="addChartCard()">
+                    <i class="fas fa-chart-line"></i> 添加图表卡片
+                </button>
+                <button class="control-btn" onclick="refreshCards()">
+                    <i class="fas fa-sync"></i> 刷新所有卡片
+                </button>
+                <button class="control-btn" onclick="clearCards()">
+                    <i class="fas fa-trash"></i> 清空卡片
+                </button>
+            </div>
+        </div>
+        
+        <!-- 卡片容器 -->
+        <div id="cards-container"></div>
+    </div>
+    
+    <div class="demo-footer">
+        <p>© 2024 CodeSpirit Team. 统计卡片前端SDK演示</p>
+    </div>
+
+    <script>
+        // 初始化SDK
+        const cardsSDK = new CodeSpiritCards.SDK({
+            container: '#cards-container',
+            baseUrl: '/api',
+            theme: 'default',
+            autoRefresh: false // 演示中关闭自动刷新
+        });
+
+        // 模拟数据生成器
+        const DataGenerator = {
+            // 生成随机数值
+            randomValue: (min = 0, max = 1000) => Math.floor(Math.random() * (max - min) + min),
+            
+            // 生成随机趋势
+            randomTrend: () => {
+                const directions = ['up', 'down', 'stable'];
+                const direction = directions[Math.floor(Math.random() * directions.length)];
+                return {
+                    direction,
+                    value: Math.floor(Math.random() * 50) + 1,
+                    period: '较昨日'
+                };
+            },
+            
+            // 生成图表数据
+            chartData: () => {
+                const months = ['1月', '2月', '3月', '4月', '5月', '6月'];
+                const values = months.map(() => Math.floor(Math.random() * 500) + 100);
+                return {
+                    xData: months,
+                    yData: values,
+                    chartType: 'line',
+                    chartTitle: '月度趋势'
+                };
+            }
+        };
+
+        // 卡片配置模板
+        const cardTemplates = {
+            // 统计卡片配置
+            statCards: [
+                {
+                    id: 'exam-count',
+                    type: 'stat',
+                    title: '今日考试',
+                    subtitle: '正在进行的考试场次',
+                    size: 'medium',
+                    style: { theme: 'primary' },
+                    data: {
+                        value: DataGenerator.randomValue(50, 200),
+                        label: '场次',
+                        unit: '场',
+                        trend: DataGenerator.randomTrend()
+                    }
+                },
+                {
+                    id: 'student-online',
+                    type: 'stat',
+                    title: '在线考生',
+                    subtitle: '当前在线参与考试的学生',
+                    size: 'medium',
+                    style: { theme: 'success' },
+                    data: {
+                        value: DataGenerator.randomValue(1000, 5000),
+                        label: '人',
+                        trend: DataGenerator.randomTrend()
+                    }
+                },
+                {
+                    id: 'completed-exams',
+                    type: 'stat',
+                    title: '已完成考试',
+                    subtitle: '今日已完成的考试数量',
+                    size: 'medium',
+                    style: { theme: 'warning' },
+                    data: {
+                        value: DataGenerator.randomValue(100, 500),
+                        label: '场次',
+                        trend: DataGenerator.randomTrend()
+                    }
+                },
+                {
+                    id: 'avg-score',
+                    type: 'stat',
+                    title: '平均分数',
+                    subtitle: '当前考试的平均得分',
+                    size: 'medium',
+                    style: { theme: 'info' },
+                    data: {
+                        value: DataGenerator.randomValue(60, 95),
+                        label: '分',
+                        trend: DataGenerator.randomTrend()
+                    }
+                }
+            ],
+            
+            // 图表卡片配置
+            chartCard: {
+                id: 'exam-trend-chart',
+                type: 'chart',
+                title: '考试趋势图',
+                subtitle: '最近6个月的考试数量变化',
+                size: 'large',
+                style: { 
+                    theme: 'default',
+                    height: 350
+                },
+                data: DataGenerator.chartData()
+            },
+            
+            // 信息卡片配置
+            infoCard: {
+                id: 'system-info',
+                type: 'info',
+                title: '系统信息',
+                size: 'medium',
+                style: { theme: 'default' },
+                data: {
+                    content: `
+                        <div style="text-align: center; padding: 20px;">
+                            <i class="fas fa-server" style="font-size: 48px; color: #1890ff; margin-bottom: 16px;"></i>
+                            <p><strong>系统状态:</strong> 正常运行</p>
+                            <p><strong>服务器负载:</strong> 正常</p>
+                            <p><strong>最后更新:</strong> ${new Date().toLocaleString()}</p>
+                        </div>
+                    `
+                }
+            },
+            
+            // 操作卡片配置
+            actionCard: {
+                id: 'quick-actions',
+                type: 'action',
+                title: '快速操作',
+                size: 'medium',
+                style: { theme: 'default' },
+                data: {
+                    actions: [
+                        {
+                            label: '创建考试',
+                            icon: 'fas fa-plus',
+                            onclick: 'showMessage("创建考试功能")'
+                        },
+                        {
+                            label: '导出报告',
+                            icon: 'fas fa-download',
+                            onclick: 'showMessage("导出报告功能")'
+                        },
+                        {
+                            label: '系统设置',
+                            icon: 'fas fa-cog',
+                            onclick: 'showMessage("系统设置功能")'
+                        }
+                    ]
+                }
+            }
+        };
+
+        // 加载默认卡片
+        async function loadDefaultCards() {
+            const allCards = [
+                ...cardTemplates.statCards,
+                cardTemplates.chartCard,
+                cardTemplates.infoCard,
+                cardTemplates.actionCard
+            ];
+            
+            await cardsSDK.render('#cards-container', allCards);
+            showMessage('默认卡片加载完成！');
+        }
+
+        // 添加统计卡片
+        async function addStatCard() {
+            const newCard = {
+                id: `stat-${Date.now()}`,
+                type: 'stat',
+                title: '新统计卡片',
+                subtitle: '动态添加的卡片',
+                size: 'medium',
+                style: { theme: 'danger' },
+                data: {
+                    value: DataGenerator.randomValue(),
+                    label: '数量',
+                    trend: DataGenerator.randomTrend()
+                }
+            };
+            
+            await cardsSDK.renderCard(document.querySelector('.cards-grid'), newCard);
+            showMessage('新统计卡片添加成功！');
+        }
+
+        // 添加图表卡片
+        async function addChartCard() {
+            const newChart = {
+                id: `chart-${Date.now()}`,
+                type: 'chart',
+                title: '动态图表',
+                subtitle: '实时生成的图表数据',
+                size: 'large',
+                style: { 
+                    theme: 'primary',
+                    height: 300
+                },
+                data: DataGenerator.chartData()
+            };
+            
+            await cardsSDK.renderCard(document.querySelector('.cards-grid'), newChart);
+            showMessage('新图表卡片添加成功！');
+        }
+
+        // 刷新所有卡片
+        async function refreshCards() {
+            // 更新所有统计卡片的数据
+            for (const [cardId, card] of cardsSDK.cards) {
+                if (card.config.type === 'stat') {
+                    await cardsSDK.update(cardId, {
+                        value: DataGenerator.randomValue(50, 1000),
+                        trend: DataGenerator.randomTrend()
+                    });
+                } else if (card.config.type === 'chart') {
+                    await cardsSDK.update(cardId, DataGenerator.chartData());
+                }
+            }
+            showMessage('所有卡片数据已刷新！');
+        }
+
+        // 清空卡片
+        function clearCards() {
+            const container = document.querySelector('#cards-container');
+            container.innerHTML = '';
+            cardsSDK.cards.clear();
+            showMessage('所有卡片已清空！');
+        }
+
+        // 显示消息
+        function showMessage(message) {
+            // 创建消息提示
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #52c41a;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 4px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1000;
+                font-size: 14px;
+            `;
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 3000);
+        }
+
+        // 监听卡片事件
+        cardsSDK.eventBus.on('card-rendered', (data) => {
+            console.log('卡片渲染完成:', data);
+        });
+
+        cardsSDK.eventBus.on('card-updated', (data) => {
+            console.log('卡片数据更新:', data);
+        });
+
+        // 页面加载完成后自动加载默认卡片
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(loadDefaultCards, 500);
+        });
+
+        // 演示用的操作函数
+        window.showMessage = showMessage;
+    </script>
+</body>
+</html> 

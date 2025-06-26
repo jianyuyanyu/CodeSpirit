@@ -1,0 +1,1589 @@
+/**
+ * CodeSpirit Amis Cards V2.0 - 主样式文件
+ * 包含所有卡片的基础样式、主题样式和响应式设计
+ * 
+ * @version 2.0.0
+ * @author CodeSpirit Team
+ */
+
+/* =============================================================================
+   CSS变量定义 - 统一的设计令牌
+   ============================================================================= */
+:root {
+    /* 颜色系统 */
+    --amis-cards-primary: #007bff;
+    --amis-cards-secondary: #6c757d;
+    --amis-cards-success: #28a745;
+    --amis-cards-info: #17a2b8;
+    --amis-cards-warning: #ffc107;
+    --amis-cards-danger: #dc3545;
+    --amis-cards-light: #f8f9fa;
+    --amis-cards-dark: #343a40;
+    --amis-cards-white: #ffffff;
+    
+    /* 灰色色阶 */
+    --amis-cards-gray-100: #f8f9fa;
+    --amis-cards-gray-200: #e9ecef;
+    --amis-cards-gray-300: #dee2e6;
+    --amis-cards-gray-400: #ced4da;
+    --amis-cards-gray-500: #adb5bd;
+    --amis-cards-gray-600: #6c757d;
+    --amis-cards-gray-700: #495057;
+    --amis-cards-gray-800: #343a40;
+    --amis-cards-gray-900: #212529;
+    
+    /* 间距系统 */
+    --amis-cards-spacing-xs: 0.25rem;   /* 4px */
+    --amis-cards-spacing-sm: 0.5rem;    /* 8px */
+    --amis-cards-spacing-md: 1rem;      /* 16px */
+    --amis-cards-spacing-lg: 1.5rem;    /* 24px */
+    --amis-cards-spacing-xl: 3rem;      /* 48px */
+    
+    /* 字体系统 */
+    --amis-cards-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --amis-cards-font-size-xs: 0.75rem;   /* 12px */
+    --amis-cards-font-size-sm: 0.875rem;  /* 14px */
+    --amis-cards-font-size-md: 1rem;      /* 16px */
+    --amis-cards-font-size-lg: 1.125rem;  /* 18px */
+    --amis-cards-font-size-xl: 1.25rem;   /* 20px */
+    --amis-cards-font-size-xxl: 1.5rem;   /* 24px */
+    --amis-cards-font-size-xxxl: 2rem;    /* 32px */
+    
+    /* 阴影系统 */
+    --amis-cards-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --amis-cards-shadow-md: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    --amis-cards-shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    --amis-cards-shadow-xl: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+    
+    /* 边框系统 */
+    --amis-cards-border-width: 1px;
+    --amis-cards-border-color: var(--amis-cards-gray-300);
+    --amis-cards-border-radius: 0.375rem;   /* 6px */
+    --amis-cards-border-radius-sm: 0.25rem; /* 4px */
+    --amis-cards-border-radius-lg: 0.5rem;  /* 8px */
+    
+    /* 过渡动画 */
+    --amis-cards-transition: all 0.3s ease;
+    --amis-cards-transition-fast: all 0.15s ease;
+    --amis-cards-transition-slow: all 0.5s ease;
+    --amis-cards-transition-theme: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    
+    /* 卡片默认样式 */
+    --amis-cards-card-bg: var(--amis-cards-white);
+    --amis-cards-card-border: var(--amis-cards-border-color);
+    --amis-cards-card-shadow: var(--amis-cards-shadow-md);
+    --amis-cards-card-radius: var(--amis-cards-border-radius);
+    --amis-cards-card-padding: var(--amis-cards-spacing-md);
+}
+
+/* =============================================================================
+   基础样式
+   ============================================================================= */
+
+/* 页面容器 */
+.amis-cards-page {
+    font-family: var(--amis-cards-font-family);
+    line-height: 1.5;
+    color: var(--amis-cards-gray-800);
+    background-color: var(--amis-cards-gray-100);
+    min-height: 100vh;
+    padding: var(--amis-cards-spacing-lg);
+    transition: var(--amis-cards-transition-theme);
+}
+
+/* 网格系统 */
+.amis-cards-grid {
+    display: grid;
+    gap: var(--amis-cards-spacing-lg);
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+/* 自适应网格 - 基于Amis Grid组件的响应式布局 */
+.amis-cards-adaptive-grid {
+    /* 使用Amis的Grid组件布局，不需要自定义grid-template-columns */
+    display: block !important;
+}
+
+.amis-cards-grid-item {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* 不同类型卡片的特殊样式 */
+.amis-cards-stat-item {
+    min-height: 200px;
+}
+
+.amis-cards-chart-item {
+    min-height: 350px;
+}
+
+.amis-cards-table-item {
+    min-height: 400px;
+}
+
+.amis-cards-info-item {
+    min-height: 250px;
+}
+
+/* 混合卡片布局优化 */
+.amis-cards-stats-row {
+    margin-bottom: var(--amis-cards-spacing-lg);
+}
+
+.amis-cards-mixed-row {
+    margin-bottom: var(--amis-cards-spacing-lg);
+}
+
+.amis-cards-table-row {
+    margin-bottom: var(--amis-cards-spacing-lg);
+}
+
+.amis-cards-other-row {
+    margin-bottom: var(--amis-cards-spacing-lg);
+}
+
+/* 统计卡片行：紧凑布局 */
+.amis-cards-stats-row .amis-cards-stat-item {
+    min-height: 180px;
+}
+
+.amis-cards-stats-row > div
+{
+    margin-top: 5px;
+}
+
+/* 混合行：图表和信息卡片的高度协调 */
+.amis-cards-mixed-row .amis-cards-chart-item,
+.amis-cards-mixed-row .amis-cards-info-item {
+    min-height: 320px;
+    display: flex;
+    align-items: stretch;
+}
+
+/* 表格行：给予充足空间 */
+.amis-cards-table-row .amis-cards-table-item {
+    min-height: 400px;
+}
+
+/* 确保卡片内容填满容器 */
+.amis-cards-stat-item .amis-cards-card,
+.amis-cards-chart-item .amis-cards-card,
+.amis-cards-table-item .amis-cards-card,
+.amis-cards-info-item .amis-cards-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.amis-cards-stat-item .cxd-Panel-body,
+.amis-cards-chart-item .cxd-Panel-body,
+.amis-cards-table-item .cxd-Panel-body,
+.amis-cards-info-item .cxd-Panel-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 基础卡片样式 - 与Amis Panel组件融合 */
+.amis-cards-card {
+    background: var(--amis-cards-card-bg);
+    border: var(--amis-cards-border-width) solid var(--amis-cards-card-border);
+    border-radius: var(--amis-cards-card-radius);
+    box-shadow: var(--amis-cards-card-shadow);
+    transition: var(--amis-cards-transition), var(--amis-cards-transition-theme);
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    will-change: transform, box-shadow, background-color, border-color;
+    backface-visibility: hidden;
+}
+
+.amis-cards-card:hover {
+    box-shadow: var(--amis-cards-shadow-lg);
+    transform: translateY(-3px) scale(1.01);
+}
+
+/* 微妙的入场动画 */
+.amis-cards-card {
+    animation: amis-cards-fade-in 0.6s ease-out;
+}
+
+@keyframes amis-cards-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 增强的交互反馈 */
+.amis-cards-card:active {
+    transform: translateY(-1px) scale(0.99);
+    transition: var(--amis-cards-transition-fast);
+}
+
+/* 卡片头部 */
+.amis-cards-card .cxd-Panel-header {
+    padding: var(--amis-cards-spacing-md);
+    border-bottom: var(--amis-cards-border-width) solid var(--amis-cards-gray-200);
+    background: var(--amis-cards-gray-50);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--amis-cards-transition-theme);
+}
+
+.amis-cards-card .cxd-Panel-title {
+    font-weight: 600;
+    font-size: var(--amis-cards-font-size-lg);
+    color: var(--amis-cards-gray-800);
+    margin: 0;
+}
+
+.amis-cards-card .cxd-Panel-subTitle {
+    font-size: var(--amis-cards-font-size-sm);
+    color: var(--amis-cards-gray-600);
+    margin-top: var(--amis-cards-spacing-xs);
+}
+
+/* 卡片主体 */
+.amis-cards-card .cxd-Panel-body {
+    padding: var(--amis-cards-spacing-md);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    transition: var(--amis-cards-transition-theme);
+}
+
+/* 卡片底部 */
+.amis-cards-card .cxd-Panel-footer {
+    padding: var(--amis-cards-spacing-md);
+    border-top: var(--amis-cards-border-width) solid var(--amis-cards-gray-200);
+    background: var(--amis-cards-gray-50);
+}
+
+/* =============================================================================
+   卡片大小变体
+   ============================================================================= */
+
+/* 小尺寸卡片 */
+.amis-cards-size-small {
+    font-size: var(--amis-cards-font-size-sm);
+}
+
+.amis-cards-size-small .cxd-Panel-header,
+.amis-cards-size-small .cxd-Panel-body,
+.amis-cards-size-small .cxd-Panel-footer {
+    padding: var(--amis-cards-spacing-sm);
+}
+
+.amis-cards-size-small .cxd-Panel-title {
+    font-size: var(--amis-cards-font-size-md);
+}
+
+/* 中等尺寸卡片（默认） */
+.amis-cards-size-medium {
+    /* 使用默认样式 */
+}
+
+/* 大尺寸卡片 */
+.amis-cards-size-large {
+    font-size: var(--amis-cards-font-size-lg);
+}
+
+.amis-cards-size-large .cxd-Panel-header,
+.amis-cards-size-large .cxd-Panel-body,
+.amis-cards-size-large .cxd-Panel-footer {
+    padding: var(--amis-cards-spacing-lg);
+}
+
+.amis-cards-size-large .cxd-Panel-title {
+    font-size: var(--amis-cards-font-size-xl);
+}
+
+/* =============================================================================
+   统计卡片专用样式
+   ============================================================================= */
+
+/* 统计卡片容器 */
+.amis-cards-stat {
+    /* 统计卡片的基础样式 */
+}
+
+.amis-cards-stat-main {
+    padding: var(--amis-cards-spacing-md);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--amis-cards-spacing-sm);
+}
+
+/* 图标布局样式 */
+.stat-icon-top .amis-cards-stat-main {
+    align-items: center;
+    text-align: center;
+}
+
+.stat-icon-bottom .amis-cards-stat-main {
+    align-items: center;
+    text-align: center;
+}
+
+.stat-icon-left .amis-cards-stat-main,
+.stat-icon-right .amis-cards-stat-main {
+    align-items: stretch;
+}
+
+/* 水平布局容器 */
+.stat-horizontal-container {
+    display: flex;
+    align-items: center;
+    gap: var(--amis-cards-spacing-md);
+    width: 100%;
+}
+
+.stat-icon-right .stat-horizontal-container {
+    justify-content: space-between;
+}
+
+.stat-icon-left .stat-horizontal-container {
+    justify-content: flex-start;
+}
+
+/* 内容容器 */
+.stat-content-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--amis-cards-spacing-xs);
+}
+
+/* 图标容器基础样式 */
+.stat-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--amis-cards-border-radius);
+    transition: var(--amis-cards-transition);
+    flex-shrink: 0;
+}
+
+/* 图标尺寸 */
+.stat-icon-xs {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+}
+
+.stat-icon-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+}
+
+.stat-icon-md {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+}
+
+.stat-icon-lg {
+    width: 64px;
+    height: 64px;
+    font-size: 32px;
+}
+
+.stat-icon-xl {
+    width: 80px;
+    height: 80px;
+    font-size: 40px;
+}
+
+/* 图标背景样式 */
+.stat-icon-with-bg {
+    background-color: var(--amis-cards-gray-100);
+    border-radius: 50%;
+}
+
+.stat-icon-with-border {
+    border-radius: 50%;
+}
+
+/* 图标图片样式 */
+.stat-icon-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: inherit;
+}
+
+/* 主题相关的图标背景色 */
+.amis-cards-theme-primary .stat-icon-with-bg {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: var(--amis-cards-primary);
+}
+
+.amis-cards-theme-success .stat-icon-with-bg {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: var(--amis-cards-success);
+}
+
+.amis-cards-theme-warning .stat-icon-with-bg {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: var(--amis-cards-warning);
+}
+
+.amis-cards-theme-danger .stat-icon-with-bg {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--amis-cards-danger);
+}
+
+.amis-cards-theme-info .stat-icon-with-bg {
+    background-color: rgba(23, 162, 184, 0.1);
+    color: var(--amis-cards-info);
+}
+
+/* 图标动画效果 */
+.stat-icon-container:hover {
+    transform: scale(1.05);
+}
+
+.stat-icon-with-bg:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 响应式图标尺寸调整 */
+@media (max-width: 575.98px) {
+    .stat-icon-xl {
+        width: 64px;
+        height: 64px;
+        font-size: 32px;
+    }
+    
+    .stat-icon-lg {
+        width: 48px;
+        height: 48px;
+        font-size: 24px;
+    }
+    
+    .stat-horizontal-container {
+        gap: var(--amis-cards-spacing-sm);
+    }
+}
+
+.stat-value-container {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    justify-content: inherit;
+}
+
+/* 统计数值样式 */
+.stat-value {
+    font-size: var(--amis-cards-font-size-xxxl);
+    font-weight: 700;
+    color: var(--amis-cards-gray-800);
+    line-height: 1;
+}
+
+.stat-prefix,
+.stat-suffix {
+    font-size: var(--amis-cards-font-size-lg);
+    font-weight: 600;
+    color: var(--amis-cards-gray-600);
+}
+
+.stat-unit {
+    font-size: var(--amis-cards-font-size-md);
+    font-weight: 500;
+    color: var(--amis-cards-gray-500);
+}
+
+.stat-label {
+    font-size: var(--amis-cards-font-size-md);
+    color: var(--amis-cards-gray-600);
+    font-weight: 500;
+}
+
+/* 趋势信息 */
+.amis-cards-stat-trend {
+    text-align: center;
+    padding: var(--amis-cards-spacing-sm) 0;
+    border-top: 1px solid var(--amis-cards-gray-200);
+    margin-top: var(--amis-cards-spacing-sm);
+}
+
+.trend-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--amis-cards-spacing-xs);
+}
+
+.trend-icon {
+    font-size: var(--amis-cards-font-size-sm);
+}
+
+.trend-value {
+    font-weight: 600;
+    font-size: var(--amis-cards-font-size-sm);
+}
+
+.trend-period {
+    font-size: var(--amis-cards-font-size-xs);
+    color: var(--amis-cards-gray-500);
+    margin-left: var(--amis-cards-spacing-xs);
+}
+
+/* 进度条 */
+.amis-cards-stat-progress {
+    margin-top: var(--amis-cards-spacing-md);
+}
+
+.progress-label {
+    text-align: center;
+    font-size: var(--amis-cards-font-size-xs);
+    color: var(--amis-cards-gray-500);
+    margin-top: var(--amis-cards-spacing-xs);
+}
+
+/* 数值动画 - 更自然的弹性效果 */
+.animated-value {
+    transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: inline-block;
+}
+
+@keyframes countUp {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.8);
+    }
+    60% {
+        opacity: 0.8;
+        transform: translateY(-8px) scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.stat-value.animating {
+    animation: countUp 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 趋势指示器动画 */
+.amis-cards-stat-trend {
+    animation: trend-slide-in 0.8s ease-out 0.3s both;
+}
+
+@keyframes trend-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 进度条动画增强 */
+.amis-cards-stat-progress .cxd-Progress-bar {
+    position: relative;
+    overflow: hidden;
+    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.amis-cards-stat-progress .cxd-Progress-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: progress-shimmer 2s infinite;
+}
+
+@keyframes progress-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* =============================================================================
+   主题系统
+   ============================================================================= */
+
+/* 默认主题 */
+.amis-cards-theme-default {
+    --amis-cards-theme-color: var(--amis-cards-gray-800);
+    --amis-cards-theme-bg: var(--amis-cards-white);
+    --amis-cards-theme-border: var(--amis-cards-gray-300);
+}
+
+/* 主要主题 */
+.amis-cards-theme-primary {
+    --amis-cards-theme-color: var(--amis-cards-primary);
+    --amis-cards-theme-bg: var(--amis-cards-white);
+    --amis-cards-theme-border: var(--amis-cards-primary);
+}
+
+.amis-cards-theme-primary .cxd-Panel-header {
+    background: rgba(0, 123, 255, 0.1);
+    border-bottom-color: var(--amis-cards-primary);
+}
+
+.amis-cards-theme-primary .stat-value {
+    color: var(--amis-cards-primary);
+}
+
+/* 成功主题 */
+.amis-cards-theme-success {
+    --amis-cards-theme-color: var(--amis-cards-success);
+    --amis-cards-theme-bg: var(--amis-cards-white);
+    --amis-cards-theme-border: var(--amis-cards-success);
+}
+
+.amis-cards-theme-success .cxd-Panel-header {
+    background: rgba(40, 167, 69, 0.1);
+    border-bottom-color: var(--amis-cards-success);
+}
+
+.amis-cards-theme-success .stat-value {
+    color: var(--amis-cards-success);
+}
+
+/* 警告主题 */
+.amis-cards-theme-warning {
+    --amis-cards-theme-color: var(--amis-cards-warning);
+    --amis-cards-theme-bg: var(--amis-cards-white);
+    --amis-cards-theme-border: var(--amis-cards-warning);
+}
+
+.amis-cards-theme-warning .cxd-Panel-header {
+    background: rgba(255, 193, 7, 0.1);
+    border-bottom-color: var(--amis-cards-warning);
+}
+
+.amis-cards-theme-warning .stat-value {
+    color: #e6a23c; /* 更深的黄色，提高可读性 */
+}
+
+/* 危险主题 */
+.amis-cards-theme-danger {
+    --amis-cards-theme-color: var(--amis-cards-danger);
+    --amis-cards-theme-bg: var(--amis-cards-white);
+    --amis-cards-theme-border: var(--amis-cards-danger);
+}
+
+.amis-cards-theme-danger .cxd-Panel-header {
+    background: rgba(220, 53, 69, 0.1);
+    border-bottom-color: var(--amis-cards-danger);
+}
+
+.amis-cards-theme-danger .stat-value {
+    color: var(--amis-cards-danger);
+}
+
+/* 信息主题 */
+.amis-cards-theme-info {
+    --amis-cards-theme-color: var(--amis-cards-info);
+    --amis-cards-theme-bg: var(--amis-cards-white);
+    --amis-cards-theme-border: var(--amis-cards-info);
+}
+
+.amis-cards-theme-info .cxd-Panel-header {
+    background: rgba(23, 162, 184, 0.1);
+    border-bottom-color: var(--amis-cards-info);
+}
+
+.amis-cards-theme-info .stat-value {
+    color: var(--amis-cards-info);
+}
+
+/* =============================================================================
+   状态样式
+   ============================================================================= */
+
+/* 加载状态 */
+.amis-cards-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.amis-cards-loading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.amis-cards-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 2px solid var(--amis-cards-gray-300);
+    border-top-color: var(--amis-cards-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 11;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 错误状态 */
+.amis-cards-error {
+    border-color: var(--amis-cards-danger);
+}
+
+.amis-cards-error .cxd-Panel-header {
+    background: rgba(220, 53, 69, 0.1);
+    border-bottom-color: var(--amis-cards-danger);
+}
+
+/* =============================================================================
+   响应式设计
+   ============================================================================= */
+
+/* 超小屏幕 (< 576px) */
+@media (max-width: 575.98px) {
+    .amis-cards-page {
+        padding: var(--amis-cards-spacing-sm);
+    }
+    
+    .amis-cards-grid {
+        grid-template-columns: 1fr;
+        gap: var(--amis-cards-spacing-sm);
+    }
+    
+    .stat-value {
+        font-size: var(--amis-cards-font-size-xxl);
+    }
+    
+    .amis-cards-card .cxd-Panel-header,
+    .amis-cards-card .cxd-Panel-body,
+    .amis-cards-card .cxd-Panel-footer {
+        padding: var(--amis-cards-spacing-sm);
+    }
+    
+    /* 移动端：所有卡片都使用紧凑高度 */
+    .amis-cards-stat-item,
+    .amis-cards-chart-item,
+    .amis-cards-table-item,
+    .amis-cards-info-item {
+        min-height: 180px;
+    }
+}
+
+/* 小屏幕 (576px - 768px) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .amis-cards-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+    
+    /* 小屏幕平板：适度调整高度 */
+    .amis-cards-stat-item {
+        min-height: 180px;
+    }
+    
+    .amis-cards-chart-item {
+        min-height: 300px;
+    }
+    
+    .amis-cards-table-item {
+        min-height: 350px;
+    }
+    
+    .amis-cards-info-item {
+        min-height: 220px;
+    }
+}
+
+/* 中等屏幕 (768px - 992px) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .amis-cards-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+    
+    /* 中等屏幕：标准高度 */
+    .amis-cards-stat-item {
+        min-height: 200px;
+    }
+    
+    .amis-cards-chart-item {
+        min-height: 320px;
+    }
+    
+    .amis-cards-table-item {
+        min-height: 380px;
+    }
+    
+    .amis-cards-info-item {
+        min-height: 240px;
+    }
+}
+
+/* 大屏幕 (992px - 1200px) */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .amis-cards-grid {
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    }
+    
+    /* 大屏幕：增加高度 */
+    .amis-cards-stat-item {
+        min-height: 220px;
+    }
+    
+    .amis-cards-chart-item {
+        min-height: 350px;
+    }
+    
+    .amis-cards-table-item {
+        min-height: 400px;
+    }
+    
+    .amis-cards-info-item {
+        min-height: 260px;
+    }
+}
+
+/* 超大屏幕 (≥ 1200px) */
+@media (min-width: 1200px) {
+    .amis-cards-grid {
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    }
+    
+    /* 超大屏幕：最大高度 */
+    .amis-cards-stat-item {
+        min-height: 240px;
+    }
+    
+    .amis-cards-chart-item {
+        min-height: 380px;
+    }
+    
+    .amis-cards-table-item {
+        min-height: 450px;
+    }
+    
+    .amis-cards-info-item {
+        min-height: 280px;
+    }
+}
+
+/* =============================================================================
+   InfoGrid 渲染器样式
+   ============================================================================= */
+
+/* InfoGrid 卡片容器 */
+.amis-cards-info-grid {
+    /* InfoGrid 特有的卡片样式 */
+}
+
+.amis-cards-info-grid .amis-cards-info-grid-container {
+    padding: 0;
+}
+
+/* InfoGrid 内部网格布局 */
+.amis-cards-info-grid .exam-monitor-info {
+    display: grid !important;
+    max-width: none;
+    gap: 1.25rem;
+    width: 100%;
+    align-items: start;
+    justify-items: stretch;
+}
+
+/* InfoGrid 动态配置支持 */
+.amis-cards-info-grid .exam-monitor-info.info-grid-dynamic {
+    /* 使用动态配置，grid-template-columns 会在 buildCssVariables 中设置 */
+}
+
+/* InfoGrid 默认配置回退 */
+.amis-cards-info-grid .exam-monitor-info:not(.info-grid-dynamic) {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+}
+
+/* InfoGrid 信息项基础样式 */
+.amis-cards-info-grid .exam-monitor-info-item {
+    min-width: 200px;
+    max-width: none;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 252, 254, 0.95) 100%);
+    border: 1px solid rgba(52, 152, 219, 0.12);
+    border-radius: 12px;
+    padding: 1.5rem;
+    color: #2c3e50;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        0 2px 12px rgba(52, 152, 219, 0.04),
+        0 1px 3px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: hidden;
+}
+
+.amis-cards-info-grid .exam-monitor-info-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(52, 152, 219, 0.3) 50%, 
+        transparent 100%);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.amis-cards-info-grid .exam-monitor-info-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 8px 25px rgba(52, 152, 219, 0.12),
+        0 4px 10px rgba(0, 0, 0, 0.06);
+    border-color: rgba(52, 152, 219, 0.25);
+}
+
+.amis-cards-info-grid .exam-monitor-info-item:hover::before {
+    opacity: 1;
+}
+
+/* InfoGrid 图标样式 */
+.amis-cards-info-grid .exam-monitor-info-item i {
+    font-size: 1.375rem;
+    color: #3498db;
+    min-width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+    text-shadow: 0 1px 2px rgba(52, 152, 219, 0.15);
+}
+
+/* 特定图标的个性化颜色 */
+.amis-cards-info-grid .exam-monitor-info-item i.fa-id-card {
+    color: #9b59b6;
+    text-shadow: 0 1px 2px rgba(155, 89, 182, 0.15);
+}
+
+.amis-cards-info-grid .exam-monitor-info-item i.fa-university {
+    color: #f39c12;
+    text-shadow: 0 1px 2px rgba(243, 156, 18, 0.15);
+}
+
+.amis-cards-info-grid .exam-monitor-info-item i.fa-play-circle {
+    color: #27ae60;
+    text-shadow: 0 1px 2px rgba(39, 174, 96, 0.15);
+}
+
+.amis-cards-info-grid .exam-monitor-info-item i.fa-users {
+    color: #e67e22;
+    text-shadow: 0 1px 2px rgba(230, 126, 34, 0.15);
+}
+
+.amis-cards-info-grid .exam-monitor-info-item i.fa-stop-circle {
+    color: #e74c3c;
+    text-shadow: 0 1px 2px rgba(231, 76, 60, 0.15);
+}
+
+.amis-cards-info-grid .exam-monitor-info-item i.fa-hourglass-half {
+    color: #f1c40f;
+    text-shadow: 0 1px 2px rgba(241, 196, 15, 0.15);
+}
+
+.amis-cards-info-grid .exam-monitor-info-item i.fa-sync-alt {
+    color: #16a085;
+    text-shadow: 0 1px 2px rgba(22, 160, 133, 0.15);
+}
+
+.amis-cards-info-grid .exam-monitor-info-item i.fa-chart-bar {
+    color: #3498db;
+    text-shadow: 0 1px 2px rgba(52, 152, 219, 0.15);
+}
+
+/* InfoGrid 信息项内容容器 */
+.amis-cards-info-grid .exam-monitor-info-item > div {
+    flex: 1;
+    min-width: 0; /* 允许内容收缩 */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* InfoGrid 标签和数值样式 */
+.amis-cards-info-grid .info-label {
+    font-size: 0.8rem;
+    color: #7f8c8d;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    line-height: 1.2;
+    margin: 0;
+    word-break: break-all;
+}
+
+.amis-cards-info-grid .info-value {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 1.1rem;
+    line-height: 1.3;
+    letter-spacing: -0.2px;
+    word-break: break-all;
+    hyphens: auto;
+    margin: 0;
+}
+
+.amis-cards-info-grid .info-highlight {
+    color: #e74c3c !important;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(231, 76, 60, 0.1);
+}
+
+/* InfoGrid 描述信息 */
+.amis-cards-info-grid .info-description {
+    font-size: 0.75rem;
+    color: #95a5a6;
+    margin-top: 0.25rem;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+/* InfoGrid 布局行样式 */
+.amis-cards-info-grid-row {
+    width: 100% !important;
+    margin-bottom: 2rem;
+}
+
+.amis-cards-info-grid-item {
+    width: 100% !important;
+}
+
+/* InfoGrid 响应式设计 */
+@media (max-width: 1400px) {
+    .amis-cards-info-grid .exam-monitor-info:not(.info-grid-dynamic) {
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important;
+    }
+    
+    /* 动态配置的 InfoGrid 在中等屏幕上稍微减小最小宽度 */
+    .amis-cards-info-grid .exam-monitor-info.info-grid-dynamic {
+        --info-grid-min-width: max(190px, calc(var(--info-grid-min-width, 240px) * 0.85));
+    }
+}
+
+@media (max-width: 1200px) {
+    .amis-cards-info-grid .exam-monitor-info:not(.info-grid-dynamic) {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+    }
+    
+    /* 动态配置的 InfoGrid 在小屏幕上进一步减小最小宽度 */
+    .amis-cards-info-grid .exam-monitor-info.info-grid-dynamic {
+        --info-grid-min-width: max(180px, calc(var(--info-grid-min-width, 240px) * 0.75));
+    }
+    
+    .amis-cards-info-grid .exam-monitor-info-item {
+        padding: 1.25rem;
+        font-size: 0.875rem;
+    }
+    
+    .amis-cards-info-grid .exam-monitor-info-item i {
+        font-size: 1.25rem;
+    }
+    
+    .amis-cards-info-grid .info-value {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .amis-cards-info-grid .exam-monitor-info:not(.info-grid-dynamic) {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+    }
+    
+    /* 动态配置的 InfoGrid 在平板设备上的适配 */
+    .amis-cards-info-grid .exam-monitor-info.info-grid-dynamic {
+        --info-grid-min-width: max(160px, calc(var(--info-grid-min-width, 240px) * 0.65));
+    }
+    
+    .amis-cards-info-grid .exam-monitor-info-item {
+        padding: 1.25rem;
+        font-size: 0.85rem;
+        border-radius: 10px;
+    }
+    
+    .amis-cards-info-grid .exam-monitor-info-item i {
+        font-size: 1.2rem;
+    }
+    
+    .amis-cards-info-grid .info-value {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .amis-cards-info-grid .exam-monitor-info:not(.info-grid-dynamic) {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    /* 动态配置的 InfoGrid 在手机端强制使用2列布局 */
+    .amis-cards-info-grid .exam-monitor-info.info-grid-dynamic {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .amis-cards-info-grid .exam-monitor-info {
+        gap: 0.75rem;
+    }
+    
+    .amis-cards-info-grid .exam-monitor-info-item {
+        padding: 1rem;
+        gap: 0.875rem;
+    }
+    
+    .amis-cards-info-grid .exam-monitor-info-item i {
+        font-size: 1.125rem;
+        min-width: 18px;
+    }
+    
+    .amis-cards-info-grid .info-label {
+        font-size: 0.7rem;
+    }
+    
+    .amis-cards-info-grid .info-value {
+        font-size: 0.9rem;
+    }
+}
+
+/* =============================================================================
+   InfoGrid 暗色主题支持
+   ============================================================================= */
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item {
+    background: rgba(52, 73, 94, 0.9);
+    border-color: rgba(52, 152, 219, 0.15);
+    color: #ecf0f1;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item:hover {
+    background: rgba(69, 90, 120, 0.9);
+    border-color: rgba(52, 152, 219, 0.3);
+    box-shadow: 0 4px 16px rgba(52, 152, 219, 0.15);
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item::before {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(116, 185, 255, 0.3) 50%, 
+        transparent 100%);
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .info-label {
+    color: #95a5a6;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .info-value {
+    color: #ecf0f1;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .info-highlight {
+    color: #e74c3c !important;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .info-description {
+    color: #7f8c8d;
+}
+
+/* 暗色主题下的特定图标颜色 */
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item i.fa-id-card {
+    color: #c39bd3;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item i.fa-university {
+    color: #f8c471;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item i.fa-play-circle {
+    color: #58d68d;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item i.fa-users {
+    color: #f0b27a;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item i.fa-stop-circle {
+    color: #ec7063;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item i.fa-hourglass-half {
+    color: #f7dc6f;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item i.fa-sync-alt {
+    color: #76d7c4;
+}
+
+.amis-cards-theme-dark .amis-cards-info-grid .exam-monitor-info-item i.fa-chart-bar {
+    color: #74b9ff;
+}
+
+/* =============================================================================
+   工具类
+   ============================================================================= */
+
+/* 文本对齐 */
+.amis-cards-text-left { text-align: left !important; }
+.amis-cards-text-center { text-align: center !important; }
+.amis-cards-text-right { text-align: right !important; }
+
+/* 显示/隐藏 */
+.amis-cards-d-none { display: none !important; }
+.amis-cards-d-block { display: block !important; }
+.amis-cards-d-flex { display: flex !important; }
+
+/* 边距 */
+.amis-cards-m-0 { margin: 0 !important; }
+.amis-cards-mt-1 { margin-top: var(--amis-cards-spacing-xs) !important; }
+.amis-cards-mb-1 { margin-bottom: var(--amis-cards-spacing-xs) !important; }
+.amis-cards-mt-2 { margin-top: var(--amis-cards-spacing-sm) !important; }
+.amis-cards-mb-2 { margin-bottom: var(--amis-cards-spacing-sm) !important; }
+.amis-cards-mt-3 { margin-top: var(--amis-cards-spacing-md) !important; }
+.amis-cards-mb-3 { margin-bottom: var(--amis-cards-spacing-md) !important; }
+
+/* 内边距 */
+.amis-cards-p-0 { padding: 0 !important; }
+.amis-cards-pt-1 { padding-top: var(--amis-cards-spacing-xs) !important; }
+.amis-cards-pb-1 { padding-bottom: var(--amis-cards-spacing-xs) !important; }
+.amis-cards-pt-2 { padding-top: var(--amis-cards-spacing-sm) !important; }
+.amis-cards-pb-2 { padding-bottom: var(--amis-cards-spacing-sm) !important; }
+.amis-cards-pt-3 { padding-top: var(--amis-cards-spacing-md) !important; }
+.amis-cards-pb-3 { padding-bottom: var(--amis-cards-spacing-md) !important; }
+
+/* =============================================================================
+   暗色主题支持
+   ============================================================================= */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --amis-cards-card-bg: #1f2937;
+        --amis-cards-card-border: #374151;
+        --amis-cards-gray-100: #111827;
+        --amis-cards-gray-200: #1f2937;
+        --amis-cards-gray-300: #374151;
+        --amis-cards-gray-400: #4b5563;
+        --amis-cards-gray-500: #6b7280;
+        --amis-cards-gray-600: #9ca3af;
+        --amis-cards-gray-700: #d1d5db;
+        --amis-cards-gray-800: #e5e7eb;
+        --amis-cards-gray-900: #f9fafb;
+    }
+}
+
+/* 强制暗色主题 */
+.amis-cards-theme-dark {
+    --amis-cards-card-bg: #1f2937;
+    --amis-cards-card-border: #374151;
+    color: #e5e7eb;
+}
+
+.amis-cards-theme-dark .cxd-Panel-header {
+    background: #111827;
+    color: #e5e7eb;
+}
+
+.amis-cards-theme-dark .cxd-Panel-body {
+    background: #1f2937;
+    color: #e5e7eb;
+}
+
+.amis-cards-theme-dark .amis-cards-card {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+}
+
+/* =============================================================================
+   表格暗色主题支持
+   ============================================================================= */
+
+/* 表格容器暗色主题 */
+.amis-cards-theme-dark .antd-Table,
+.amis-cards-theme-dark .antd-Table-table {
+    background: transparent;
+    color: #e5e7eb;
+}
+
+.amis-cards-theme-dark .antd-Table-table--affixHeader {
+    background: transparent;
+}
+
+.amis-cards-theme-dark .antd-Table-content {
+    background: transparent;
+}
+
+.amis-cards-theme-dark .antd-Table-wrapper {
+    background: transparent;
+}
+
+/* 表格表头暗色主题 */
+.amis-cards-theme-dark .antd-Table-table thead th {
+    background: #374151 !important;
+    color: #f3f4f6 !important;
+    border-bottom: 1px solid #4b5563 !important;
+    border-right: 1px solid #4b5563 !important;
+}
+
+.amis-cards-theme-dark .antd-Table-table thead th:last-child {
+    border-right: none !important;
+}
+
+.amis-cards-theme-dark .antd-TableCell--title {
+    color: #f3f4f6 !important;
+}
+
+.amis-cards-theme-dark .antd-TplField {
+    color: #f3f4f6 !important;
+}
+
+/* 表格数据行暗色主题 */
+.amis-cards-theme-dark .antd-Table-table tbody tr,
+.amis-cards-theme-dark .antd-Table-table-tr {
+    background: #1f2937 !important;
+    color: #e5e7eb !important;
+    border-bottom: 1px solid #374151 !important;
+}
+
+.amis-cards-theme-dark .antd-Table-table tbody tr:nth-child(even),
+.amis-cards-theme-dark .antd-Table-tr--even {
+    background: #111827 !important;
+}
+
+.amis-cards-theme-dark .antd-Table-table tbody tr:nth-child(odd),
+.amis-cards-theme-dark .antd-Table-tr--odd {
+    background: #1f2937 !important;
+}
+
+.amis-cards-theme-dark .antd-Table-table tbody tr:hover,
+.amis-cards-theme-dark .antd-Table-table-tr:hover {
+    background: #374151 !important;
+}
+
+/* 表格单元格暗色主题 */
+.amis-cards-theme-dark .antd-Table-table tbody td {
+    background: transparent !important;
+    color: #e5e7eb !important;
+    border-right: 1px solid #374151 !important;
+}
+
+.amis-cards-theme-dark .antd-Table-table tbody td:last-child {
+    border-right: none !important;
+}
+
+/* 表格内容字段暗色主题 */
+.amis-cards-theme-dark .antd-PlainField {
+    color: #e5e7eb !important;
+}
+
+.amis-cards-theme-dark .antd-DateField {
+    color: #e5e7eb !important;
+}
+
+.amis-cards-theme-dark .antd-MappingField {
+    color: #e5e7eb !important;
+}
+
+/* 进度条暗色主题 */
+.amis-cards-theme-dark .antd-Progress {
+    background: #374151;
+}
+
+.amis-cards-theme-dark .antd-Progress-line {
+    background: #374151;
+}
+
+.amis-cards-theme-dark .antd-Progress-line-inter {
+    background: #4b5563;
+}
+
+.amis-cards-theme-dark .antd-Progress-line-text {
+    color: #e5e7eb !important;
+}
+
+.amis-cards-theme-dark .antd-Progress-line-text .antd-TplField {
+    color: #e5e7eb !important;
+}
+
+/* 状态标签暗色主题 */
+.amis-cards-theme-dark .label {
+    border: 1px solid transparent;
+}
+
+.amis-cards-theme-dark .label-info {
+    background-color: #1e40af !important;
+    color: #ffffff !important;
+}
+
+.amis-cards-theme-dark .label-success {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+}
+
+.amis-cards-theme-dark .label-warning {
+    background-color: #d97706 !important;
+    color: #ffffff !important;
+}
+
+.amis-cards-theme-dark .label-danger {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+}
+
+.amis-cards-theme-dark .label-secondary {
+    background-color: #6b7280 !important;
+    color: #ffffff !important;
+}
+
+.amis-cards-theme-dark .label-light {
+    background-color: #4b5563 !important;
+    color: #e5e7eb !important;
+}
+
+/* 条件格式化文本颜色暗色主题 */
+.amis-cards-theme-dark .text-success {
+    color: #10b981 !important;
+}
+
+.amis-cards-theme-dark .text-warning {
+    color: #f59e0b !important;
+}
+
+.amis-cards-theme-dark .text-danger {
+    color: #ef4444 !important;
+}
+
+.amis-cards-theme-dark .text-info {
+    color: #3b82f6 !important;
+}
+
+/* 表格分页暗色主题 */
+.amis-cards-theme-dark .cxd-Pagination {
+    background: transparent;
+    color: #e5e7eb;
+}
+
+.amis-cards-theme-dark .cxd-Pagination-item {
+    background: #374151;
+    color: #e5e7eb;
+    border-color: #4b5563;
+}
+
+.amis-cards-theme-dark .cxd-Pagination-item:hover {
+    background: #4b5563;
+    border-color: #6b7280;
+}
+
+.amis-cards-theme-dark .cxd-Pagination-item--active {
+    background: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    color: #ffffff !important;
+}
+
+/* 表格工具栏暗色主题 */
+.amis-cards-theme-dark .cxd-Table-toolbar {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+.amis-cards-theme-dark .cxd-Table-toolbar .cxd-Button {
+    background: #4b5563;
+    color: #e5e7eb;
+    border-color: #6b7280;
+}
+
+.amis-cards-theme-dark .cxd-Table-toolbar .cxd-Button:hover {
+    background: #6b7280;
+    border-color: #9ca3af;
+}
+
+/* 表格列拖拽线暗色主题 */
+.amis-cards-theme-dark .antd-Table-content-colDragLine {
+    background: #4b5563;
+}
+
+/* 表格边框暗色主题 */
+.amis-cards-theme-dark .antd-Table-table {
+    border-color: #374151;
+}
+
+.amis-cards-theme-dark .antd-Table-table thead,
+.amis-cards-theme-dark .antd-Table-table tbody {
+    border-color: #374151;
+}
+
+/* 表格空状态暗色主题 */
+.amis-cards-theme-dark .antd-Table-empty {
+    background: #1f2937;
+    color: #9ca3af;
+}
+
+/* 表格加载状态暗色主题 */
+.amis-cards-theme-dark .antd-Table-loading {
+    background: rgba(31, 41, 55, 0.8);
+    color: #e5e7eb;
+}
+
+/* =============================================================================
+   打印样式
+   ============================================================================= */
+
+@media print {
+    .amis-cards-page {
+        background: white;
+        color: black;
+    }
+    
+    .amis-cards-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+    
+    .amis-cards-grid {
+        display: block;
+    }
+    
+    .amis-cards-grid-item {
+        margin-bottom: 1rem;
+    }
+} 

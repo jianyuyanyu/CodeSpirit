@@ -68,6 +68,9 @@ public class MonitorService : IMonitorService
         var totalQuestions = await _examPaperQuestionRepository.CreateQuery()
             .CountAsync(q => q.ExamPaperId == examSetting.ExamPaperId);
 
+        // 获取服务器当前时间（本地时间）
+        var serverTime = DateTime.Now;
+        
         // 构建考试监控信息
         var monitorDto = new ExamMonitorDto
         {
@@ -84,7 +87,9 @@ public class MonitorService : IMonitorService
             SubmittedCount = examRecords.Count(r => r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.Graded),
             SuspiciousCount = examRecords.Count(r => r.CheatingSuspicionLevel > 50),
             Status = GetExamStatusText(examSetting),
-            Students = new List<ExamStudentMonitorDto>()
+            Students = new List<ExamStudentMonitorDto>(),
+            ServerTime = serverTime,
+            LastUpdate = serverTime.ToString("yyyy-MM-dd HH:mm:ss")
         };
 
         // 构建考生信息

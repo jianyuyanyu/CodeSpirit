@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfoGrid 渲染器测试</title>
+    
+    <!-- 本地 Amis CSS -->
+    <link rel="stylesheet" href="/sdk/6.12.0/antd.css">
+    <link rel="stylesheet" href="/sdk/6.12.0/helper.css">
+    <link rel="stylesheet" href="/sdk/6.12.0/iconfont.css">
+    
+    <!-- AmisCards CSS -->
+    <link rel="stylesheet" href="../styles/amis-cards.css">
+    <link rel="stylesheet" href="../styles/themes/default.css">
+    
+    <!-- 考试监控样式 -->
+    <link rel="stylesheet" href="../../css/exam/exam-monitor.css">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 2rem;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f8f9fa;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-title {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #2c3e50;
+        }
+        
+        .test-section {
+            margin-bottom: 3rem;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #34495e;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+        
+        .test-status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .loading {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #bbdefb;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="test-title">InfoGrid 渲染器测试页面</h1>
+        
+        <!-- 测试状态 -->
+        <div id="test-status" class="test-status loading">
+            <i class="fa fa-spinner fa-spin"></i> 正在加载测试...
+        </div>
+        
+        <!-- 基础测试 -->
+        <div class="test-section">
+            <h3>1. 基础功能测试</h3>
+            <div id="basic-test"></div>
+        </div>
+        
+        <!-- 考试监控模拟测试 -->
+        <div class="test-section">
+            <h3>2. 考试监控信息测试</h3>
+            <div id="exam-test"></div>
+        </div>
+        
+        <!-- 自适应布局测试 -->
+        <div class="test-section">
+            <h3>3. 自适应布局测试</h3>
+            <div id="responsive-test"></div>
+        </div>
+    </div>
+    
+    <!-- 本地 Amis JavaScript -->
+    <script src="/sdk/6.12.0/sdk.js"></script>
+    
+    <!-- AmisCards JavaScript -->
+    <script src="../core/utils.js"></script>
+    <script src="../core/data-service.js"></script>
+    <script src="../core/amis-cards-core.js"></script>
+    <script src="../renderers/base-renderer.js"></script>
+    <script src="../renderers/info-grid-renderer.js"></script>
+    
+    <script>
+        // 测试实例
+        let testInstances = {};
+        
+        /**
+         * 更新测试状态
+         */
+        function updateTestStatus(status, message) {
+            const statusEl = document.getElementById('test-status');
+            statusEl.className = `test-status ${status}`;
+            
+            let icon;
+            switch (status) {
+                case 'success':
+                    icon = 'fa-check-circle';
+                    break;
+                case 'error':
+                    icon = 'fa-exclamation-triangle';
+                    break;
+                default:
+                    icon = 'fa-spinner fa-spin';
+            }
+            
+            statusEl.innerHTML = `<i class="fa ${icon}"></i> ${message}`;
+        }
+        
+        /**
+         * 运行基础测试
+         */
+        async function runBasicTest() {
+            try {
+                console.log('[测试] 开始基础功能测试');
+                
+                const instance = window.AmisCards.create({
+                    container: '#basic-test',
+                    theme: 'default'
+                });
+                
+                instance.registerRenderer('info-grid', window.AmisCards.InfoGridRenderer);
+                testInstances.basic = instance;
+                
+                const card = {
+                    id: 'basic-info-grid',
+                    type: 'info-grid',
+                    title: '基础测试',
+                    subtitle: '验证信息网格渲染器基本功能',
+                    theme: 'primary',
+                    items: [
+                        {
+                            label: '静态数值',
+                            value: '12,345',
+                            unit: '个',
+                            icon: 'cube',
+                            iconColor: '#3498db'
+                        },
+                        {
+                            label: '百分比',
+                            value: '85.6%',
+                            icon: 'percent',
+                            iconColor: '#27ae60'
+                        },
+                        {
+                            label: '状态',
+                            value: '正常',
+                            icon: 'check-circle',
+                            iconColor: '#28a745',
+                            highlight: false
+                        },
+                        {
+                            label: '文件大小',
+                            value: '2.5GB',
+                            icon: 'hdd',
+                            iconColor: '#17a2b8',
+                            description: '存储空间使用情况'
+                        }
+                    ]
+                };
+                
+                await instance.render([card]);
+                console.log('[测试] 基础功能测试完成');
+                return true;
+                
+            } catch (error) {
+                console.error('[测试] 基础功能测试失败:', error);
+                throw error;
+            }
+        }
+        
+        /**
+         * 运行考试监控测试
+         */
+        async function runExamTest() {
+            try {
+                console.log('[测试] 开始考试监控测试');
+                
+                const instance = window.AmisCards.create({
+                    container: '#exam-test',
+                    theme: 'default'
+                });
+                
+                instance.registerRenderer('info-grid', window.AmisCards.InfoGridRenderer);
+                testInstances.exam = instance;
+                
+                // 模拟考试数据
+                const examData = {
+                    id: '193191665020536',
+                    tenantName: 'CodeSpirit 教育',
+                    status: '已结束',
+                    onlineCount: 0,
+                    totalParticipants: 2,
+                    startTime: '2025-06-09 12:00:00',
+                    endTime: '2025-06-12 00:00:00',
+                    duration: 120,
+                    lastUpdate: new Date().toLocaleTimeString()
+                };
+                
+                const card = {
+                    id: 'exam-monitor-test',
+                    type: 'info-grid',
+                    title: '考试监控信息',
+                    subtitle: '模拟 ExamMonitor2 页面的信息网格',
+                    theme: 'info',
+                    grid: {
+                        columns: 'auto-fit',
+                        minItemWidth: '180px',
+                        gap: '1.25rem'
+                    },
+                    items: [
+                        {
+                            label: '考试编号',
+                            value: examData.id,
+                            icon: 'id-card',
+                            iconColor: '#9b59b6'
+                        },
+                        {
+                            label: '学校机构',
+                            value: examData.tenantName,
+                            icon: 'university',
+                            iconColor: '#f39c12'
+                        },
+                        {
+                            label: '考试状态',
+                            value: examData.status,
+                            icon: 'stop-circle',
+                            iconColor: '#e74c3c',
+                            highlight: true
+                        },
+                        {
+                            label: '在线情况',
+                            value: `${examData.onlineCount}/${examData.totalParticipants}`,
+                            icon: 'users',
+                            iconColor: '#e67e22',
+                            highlight: true
+                        },
+                        {
+                            label: '开始时间',
+                            value: examData.startTime,
+                            icon: 'play-circle',
+                            iconColor: '#27ae60'
+                        },
+                        {
+                            label: '结束时间',
+                            value: examData.endTime,
+                            icon: 'stop-circle',
+                            iconColor: '#e74c3c'
+                        },
+                        {
+                            label: '考试时长',
+                            value: `${examData.duration}分钟`,
+                            icon: 'hourglass-half',
+                            iconColor: '#f1c40f'
+                        },
+                        {
+                            label: '最近更新',
+                            value: examData.lastUpdate,
+                            icon: 'sync-alt',
+                            iconColor: '#16a085'
+                        }
+                    ]
+                };
+                
+                await instance.render([card]);
+                console.log('[测试] 考试监控测试完成');
+                return true;
+                
+            } catch (error) {
+                console.error('[测试] 考试监控测试失败:', error);
+                throw error;
+            }
+        }
+        
+        /**
+         * 运行响应式测试
+         */
+        async function runResponsiveTest() {
+            try {
+                console.log('[测试] 开始响应式布局测试');
+                
+                const instance = window.AmisCards.create({
+                    container: '#responsive-test',
+                    theme: 'default'
+                });
+                
+                instance.registerRenderer('info-grid', window.AmisCards.InfoGridRenderer);
+                testInstances.responsive = instance;
+                
+                const card = {
+                    id: 'responsive-test-grid',
+                    type: 'info-grid',
+                    title: '响应式布局测试',
+                    subtitle: '测试不同列数和布局配置',
+                    theme: 'warning',
+                    grid: {
+                        columns: 4,
+                        gap: '1.5rem'
+                    },
+                    items: [
+                        {
+                            label: '列1',
+                            value: 'A',
+                            icon: 'square',
+                            iconColor: '#e74c3c'
+                        },
+                        {
+                            label: '列2',
+                            value: 'B',
+                            icon: 'square',
+                            iconColor: '#f39c12'
+                        },
+                        {
+                            label: '列3',
+                            value: 'C',
+                            icon: 'square',
+                            iconColor: '#f1c40f'
+                        },
+                        {
+                            label: '列4',
+                            value: 'D',
+                            icon: 'square',
+                            iconColor: '#27ae60'
+                        },
+                        {
+                            label: '列5',
+                            value: 'E',
+                            icon: 'square',
+                            iconColor: '#17a2b8'
+                        },
+                        {
+                            label: '列6',
+                            value: 'F',
+                            icon: 'square',
+                            iconColor: '#6c757d'
+                        }
+                    ]
+                };
+                
+                await instance.render([card]);
+                console.log('[测试] 响应式布局测试完成');
+                return true;
+                
+            } catch (error) {
+                console.error('[测试] 响应式布局测试失败:', error);
+                throw error;
+            }
+        }
+        
+        /**
+         * 运行所有测试
+         */
+        async function runAllTests() {
+            try {
+                updateTestStatus('loading', '正在检查依赖...');
+                
+                // 检查依赖
+                if (typeof window.AmisCards === 'undefined') {
+                    throw new Error('AmisCards 核心库未加载');
+                }
+                
+                if (typeof window.AmisCards.InfoGridRenderer === 'undefined') {
+                    throw new Error('InfoGridRenderer 未加载');
+                }
+                
+                updateTestStatus('loading', '开始运行测试...');
+                
+                // 运行所有测试
+                await runBasicTest();
+                await runExamTest();
+                await runResponsiveTest();
+                
+                updateTestStatus('success', '所有测试通过！InfoGrid 渲染器工作正常。');
+                
+            } catch (error) {
+                console.error('[测试] 测试失败:', error);
+                updateTestStatus('error', `测试失败: ${error.message}`);
+            }
+        }
+        
+        // 页面加载完成后运行测试
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[测试] 页面加载完成');
+            
+            // 等待所有脚本加载
+            setTimeout(() => {
+                runAllTests();
+            }, 500);
+        });
+    </script>
+</body>
+</html> 

@@ -688,24 +688,16 @@
             const newTheme = themes[nextIndex];
             
             try {
-                // 应用页面主题
-                if (window.AmisCards.ThemeUtils) {
-                    window.AmisCards.ThemeUtils.switchTheme(currentTheme, newTheme, document.body, {
-                        duration: 300,
-                        easing: 'ease'
-                    });
-                } else {
-                    document.body.classList.remove(`monitor-theme-${currentTheme}`);
-                    document.body.classList.add(`monitor-theme-${newTheme}`);
-                }
+                console.log(`[监考大屏] 切换主题: ${currentTheme} -> ${newTheme}`);
                 
-                // 更新 AmisCards 实例主题
+                // 只调用 AmisCards 实例的 setTheme 方法，让其内部处理所有逻辑
+                // 设置 rerender=false，因为主题切换不需要重新渲染卡片数据，只需要更新样式
                 if (cardsInstance && typeof cardsInstance.setTheme === 'function') {
-                    await cardsInstance.setTheme(newTheme, true);
+                    await cardsInstance.setTheme(newTheme, false);
                 }
                 
                 currentTheme = newTheme;
-                console.log('[监考大屏] 主题已切换到', currentTheme);
+                console.log('[监考大屏] 主题已切换到:', currentTheme);
                 
             } catch (error) {
                 console.error('[监考大屏] 主题切换失败:', error);

@@ -289,6 +289,10 @@
                     instance.registerRenderer('info', window.AmisCards.InfoRenderer);
                     console.log('[AmisCards布局] 已注册 InfoRenderer');
                 }
+                if (window.AmisCards.InfoGridRenderer) {
+                    instance.registerRenderer('info-grid', window.AmisCards.InfoGridRenderer);
+                    console.log('[AmisCards布局] 已注册 InfoGridRenderer');
+                }
             } catch (error) {
                 console.warn('[AmisCards布局] 渲染器注册失败:', error);
             }
@@ -370,6 +374,41 @@
             } catch (error) {
                 console.error('[AmisCards布局] 主题切换失败:', error);
                 throw error;
+            }
+        },
+        
+        /**
+         * 切换主题（在 default 和 dark 之间）
+         * @param {Object} instance AmisCards 实例（可选）
+         * @returns {Promise<void>} 切换完成的 Promise
+         */
+        toggleTheme: async function(instance = null) {
+            const themes = ['default', 'dark'];
+            const currentTheme = this.getCurrentTheme();
+            const currentIndex = themes.indexOf(currentTheme);
+            const nextIndex = (currentIndex + 1) % themes.length;
+            const newTheme = themes[nextIndex];
+            
+            try {
+                // 如果传入了 AmisCards 实例，使用其 setTheme 方法
+                if (instance && typeof instance.setTheme === 'function') {
+                    await instance.setTheme(newTheme, false);
+                    console.log('[AmisCards布局] 使用实例方法切换主题:', currentTheme, '->', newTheme);
+                } else {
+                    // 否则使用布局工具的主题切换
+                    this.switchTheme(newTheme);
+                    console.log('[AmisCards布局] 使用布局工具切换主题:', currentTheme, '->', newTheme);
+                }
+            } catch (error) {
+                console.error('[AmisCards布局] 主题切换失败:', error);
+                // 如果实例方法失败，尝试使用布局工具
+                try {
+                    this.switchTheme(newTheme);
+                    console.log('[AmisCards布局] 降级到布局工具切换主题:', currentTheme, '->', newTheme);
+                } catch (fallbackError) {
+                    console.error('[AmisCards布局] 布局工具主题切换也失败:', fallbackError);
+                    throw error;
+                }
             }
         },
         
@@ -488,6 +527,173 @@
                 clearTimeout(timeout);
                 timeout = setTimeout(later, wait);
             };
+        },
+        
+        /**
+         * 创建默认页面配置 Schema
+         * @param {Object} options 页面配置选项
+         * @returns {Object} 页面配置对象
+         */
+        createDefaultPageSchema: function(options = {}) {
+            const defaultOptions = {
+                // 基础配置
+                pageId: 'amis-cards-page',
+                pageTitle: '数据监控大屏',
+                pageIcon: 'fa fa-desktop',
+                pageTitleClass: 'amis-cards-page-title',
+                pageClass: 'amis-cards-dashboard-page amis-cards-page',
+                
+                // API 配置
+                initApi: null,
+                
+                // 初始数据
+                initialData: {
+                    lastUpdate: new Date().toLocaleTimeString()
+                },
+                
+                // 副标题功能特性
+                features: [
+                    { icon: 'fa fa-chart-line', text: '实时数据监控' },
+                    { icon: 'fa fa-dashboard', text: '可视化展示' },
+                    { icon: 'fa fa-refresh', text: '自动刷新' },
+                    { icon: 'fa fa-sync-alt', text: '最近更新: ${lastUpdate}' }
+                ],
+                subTitleClass: 'amis-cards-page-subtitle-wrapper',
+                
+                // 工具栏配置
+                enableFullscreen: true,
+                enableRefresh: true,
+                enableThemeToggle: true,
+                customToolbarButtons: [],
+                
+                // 实例引用（用于主题切换）
+                instanceReference: 'window.amisCardsInstance'
+            };
+            
+            // 合并配置
+            const config = this.deepMerge(defaultOptions, options);
+            
+            // 检测 pageTitle 是否为 HTML 模板
+            const isHtmlTemplate = typeof config.pageTitle === 'string' && 
+                                   (config.pageTitle.includes('<') || config.pageTitle.includes('${'));
+            
+            // 构建页面标题
+            let titleConfig;
+            if (isHtmlTemplate) {
+                // 如果是 HTML 模板，直接使用
+                titleConfig = {
+                    type: 'tpl',
+                    tpl: config.pageTitle,
+                    className: config.pageTitleClass
+                };
+            } else {
+                // 如果是纯文本，使用默认格式
+                titleConfig = {
+                    type: 'tpl',
+                    tpl: `<div class="${config.pageTitleClass}"><i class="${config.pageIcon}"></i> \${name || "${config.pageTitle}"}</div>`,
+                    className: config.pageTitleClass
+                };
+            }
+            
+            // 构建页面配置
+            const pageSchema = {
+                type: 'page',
+                id: config.pageId,
+                title: titleConfig,
+                data: config.initialData,
+                className: config.pageClass,
+                toolbar: [],
+                body: []
+            };
+            
+            // 设置 API
+            if (config.initApi) {
+                pageSchema.initApi = config.initApi;
+            }
+            
+            // 构建副标题
+            if (config.features && config.features.length > 0) {
+                const featureItems = config.features.map(feature => 
+                    `<div class="feature-item"><i class="${feature.icon}"></i><span>${feature.text}</span></div>`
+                ).join('');
+                
+                pageSchema.subTitle = {
+                    type: 'tpl',
+                    tpl: `<div class="exam-monitor-subtitle">${featureItems}</div>`,
+                    className: config.subTitleClass
+                };
+            }
+            
+            // 构建工具栏
+            const toolbar = [];
+            
+            // 全屏按钮
+            if (config.enableFullscreen) {
+                toolbar.push({
+                    type: 'button',
+                    icon: 'fa fa-expand',
+                    tooltip: '全屏模式',
+                    className: 'mr-2',
+                    onEvent: {
+                        click: {
+                            actions: [
+                                {
+                                    actionType: 'custom',
+                                    script: 'window.AmisCardsLayout.toggleFullscreen()'
+                                }
+                            ]
+                        }
+                    }
+                });
+            }
+            
+            // 刷新按钮
+            if (config.enableRefresh) {
+                toolbar.push({
+                    type: 'button',
+                    icon: 'fa fa-sync',
+                    tooltip: '手动刷新',
+                    className: 'mr-2',
+                    onEvent: {
+                        click: {
+                            actions: [
+                                {
+                                    componentId: config.pageId,
+                                    actionType: 'reload'
+                                }
+                            ]
+                        }
+                    }
+                });
+            }
+            
+            // 主题切换按钮
+            if (config.enableThemeToggle) {
+                toolbar.push({
+                    type: 'button',
+                    icon: 'fa fa-palette',
+                    tooltip: '切换主题',
+                    onEvent: {
+                        click: {
+                            actions: [
+                                {
+                                    actionType: 'custom',
+                                    script: `window.AmisCardsLayout.toggleTheme(${config.instanceReference} || null)`
+                                }
+                            ]
+                        }
+                    }
+                });
+            }
+            
+            // 添加自定义工具栏按钮
+            if (config.customToolbarButtons && config.customToolbarButtons.length > 0) {
+                toolbar.push(...config.customToolbarButtons);
+            }
+            
+            pageSchema.toolbar = toolbar;
+            
+            return pageSchema;
         },
         
         /**

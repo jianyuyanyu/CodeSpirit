@@ -92,4 +92,16 @@ public class ExamMonitorDto
     /// </summary>
     [DisplayName("考生列表")]
     public List<ExamStudentMonitorDto> Students { get; set; } = new List<ExamStudentMonitorDto>();
+    
+    /// <summary>
+    /// 服务器当前时间（本地时间）
+    /// </summary>
+    [DisplayName("服务器时间")]
+    public DateTime ServerTime { get; set; }
+    
+    /// <summary>
+    /// 最近更新时间（用于前端显示）
+    /// </summary>
+    [DisplayName("最近更新")]
+    public string LastUpdate { get; set; } = string.Empty;
 } 

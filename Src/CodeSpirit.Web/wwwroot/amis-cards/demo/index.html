@@ -132,6 +132,7 @@
         <button onclick="loadBasicStats()" class="active">基础统计</button>
         <button onclick="loadAdvancedStats()">高级统计</button>
         <button onclick="loadMixedCards()">混合卡片</button>
+        <button onclick="loadInfoGridExample()">信息网格</button>
         <button onclick="loadIconExamples()">图标演示</button>
         <button onclick="loadTemplateExamples()">模板示例</button>
         <button onclick="toggleTheme()">切换主题</button>
@@ -164,6 +165,7 @@
     <script src="../renderers/chart-renderer.js"></script>
     <script src="../renderers/table-renderer.js"></script>
     <script src="../renderers/info-renderer.js"></script>
+    <script src="../renderers/info-grid-renderer.js"></script>
     <script src="../configs/card-configs.js"></script>
     <script src="../configs/theme-configs.js"></script>
     
@@ -202,7 +204,8 @@
                 { name: 'AmisCards.StatRenderer', check: () => typeof window.AmisCards.StatRenderer !== 'undefined' },
                 { name: 'AmisCards.ChartRenderer', check: () => typeof window.AmisCards.ChartRenderer !== 'undefined' },
                 { name: 'AmisCards.TableRenderer', check: () => typeof window.AmisCards.TableRenderer !== 'undefined' },
-                { name: 'AmisCards.InfoRenderer', check: () => typeof window.AmisCards.InfoRenderer !== 'undefined' }
+                { name: 'AmisCards.InfoRenderer', check: () => typeof window.AmisCards.InfoRenderer !== 'undefined' },
+                { name: 'AmisCards.InfoGridRenderer', check: () => typeof window.AmisCards.InfoGridRenderer !== 'undefined' }
             ];
             
             const missing = dependencies.filter(dep => !dep.check());
@@ -259,6 +262,11 @@
                             cardsInstance.registerRenderer('info', window.AmisCards.InfoRenderer);
                             registeredCount++;
                             console.log('[Demo] 已注册 InfoRenderer');
+                        }
+                        if (window.AmisCards.InfoGridRenderer) {
+                            cardsInstance.registerRenderer('info-grid', window.AmisCards.InfoGridRenderer);
+                            registeredCount++;
+                            console.log('[Demo] 已注册 InfoGridRenderer');
                         }
                         
                         console.log(`[Demo] 总计注册了 ${registeredCount} 个渲染器`);
@@ -659,11 +667,164 @@
         }
         
         /**
+         * 加载信息网格演示
+         */
+        async function loadInfoGridExample() {
+            console.log('[Demo] 加载信息网格演示');
+            setActiveButton(3);
+            
+            const cards = [
+                // 基础信息网格
+                {
+                    id: 'basic-info-grid',
+                    type: 'info-grid',
+                    title: '系统概览信息',
+                    subtitle: '基础信息网格展示',
+                    theme: 'primary',
+                    items: [
+                        {
+                            label: '用户总数',
+                            value: '12,580',
+                            unit: '人',
+                            icon: 'users',
+                            iconColor: '#17a2b8'
+                        },
+                        {
+                            label: '活跃用户',
+                            value: '8,432',
+                            unit: '人',
+                            icon: 'user-check',
+                            iconColor: '#28a745'
+                        },
+                        {
+                            label: '今日访问',
+                            value: '15,678',
+                            unit: '次',
+                            icon: 'eye',
+                            iconColor: '#007bff'
+                        },
+                        {
+                            label: '系统状态',
+                            value: '正常运行',
+                            icon: 'check-circle',
+                            iconColor: '#28a745',
+                            highlight: false
+                        }
+                    ]
+                },
+                // 考试监控信息网格（模拟监控大屏的样式）
+                {
+                    id: 'exam-monitor-info-grid',
+                    type: 'info-grid',
+                    title: '考试监控信息',
+                    subtitle: '模拟考试监控大屏的顶部信息卡片',
+                    theme: 'info',
+                    grid: {
+                        columns: 'auto-fit',
+                        minItemWidth: '180px',
+                        gap: '1rem'
+                    },
+                    items: [
+                        {
+                            label: '考试编号',
+                            value: '193191665020536',
+                            icon: 'id-card',
+                            iconColor: '#9b59b6'
+                        },
+                        {
+                            label: '学校机构',
+                            value: 'CodeSpirit 教育',
+                            icon: 'university',
+                            iconColor: '#f39c12'
+                        },
+                        {
+                            label: '考试状态',
+                            value: '已结束',
+                            icon: 'stop-circle',
+                            iconColor: '#e74c3c',
+                            highlight: true
+                        },
+                        {
+                            label: '在线情况',
+                            value: '0/2',
+                            icon: 'users',
+                            iconColor: '#e67e22',
+                            highlight: true
+                        },
+                        {
+                            label: '开始时间',
+                            value: '2025-06-09 12:00:00',
+                            icon: 'play-circle',
+                            iconColor: '#27ae60'
+                        },
+                        {
+                            label: '结束时间',
+                            value: '2025-06-12 00:00:00',
+                            icon: 'stop-circle',
+                            iconColor: '#e74c3c'
+                        },
+                        {
+                            label: '考试时长',
+                            value: '120分钟',
+                            icon: 'hourglass-half',
+                            iconColor: '#f1c40f'
+                        },
+                        {
+                            label: '最近更新',
+                            value: '12:00:30',
+                            icon: 'sync-alt',
+                            iconColor: '#16a085'
+                        }
+                    ]
+                },
+                // 服务器状态信息网格
+                {
+                    id: 'server-status-grid',
+                    type: 'info-grid',
+                    title: '服务器状态',
+                    subtitle: '系统资源使用情况',
+                    theme: 'warning',
+                    grid: {
+                        columns: 3,
+                        gap: '1.5rem'
+                    },
+                    items: [
+                        {
+                            label: 'CPU 使用率',
+                            value: '65.8%',
+                            icon: 'microchip',
+                            iconColor: '#e67e22',
+                            description: '当前负载较高'
+                        },
+                        {
+                            label: '内存使用',
+                            value: '8.2GB',
+                            unit: ' / 16GB',
+                            icon: 'memory',
+                            iconColor: '#3498db',
+                            description: '使用率 51%'
+                        },
+                        {
+                            label: '磁盘空间',
+                            value: '256GB',
+                            unit: ' / 512GB',
+                            icon: 'hdd',
+                            iconColor: '#27ae60',
+                            description: '剩余空间充足'
+                        }
+                    ]
+                }
+            ];
+            
+            await cardsInstance.render(cards);
+        }
+        
+        /**
          * 加载图标演示
          */
         async function loadIconExamples() {
             console.log('[Demo] 加载图标演示');
-            setActiveButton(3);
+            setActiveButton(4);
             
             const cards = [
                 // 不同位置的图标
@@ -876,7 +1037,7 @@
          */
         async function loadTemplateExamples() {
             console.log('[Demo] 加载模板示例');
-            setActiveButton(4);
+            setActiveButton(5);
             
             const cards = [
                 // 使用预设模板
@@ -984,6 +1145,9 @@
                     break;
                 case '混合卡片':
                     await loadMixedCards();
+                    break;
+                case '信息网格':
+                    await loadInfoGridExample();
                     break;
                 case '图标演示':
                     await loadIconExamples();

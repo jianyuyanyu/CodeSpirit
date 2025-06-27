@@ -94,7 +94,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         var query = _repository.CreateQuery()
             .Include(x => x.StudentGroups)
                 .ThenInclude(x => x.StudentGroup)
-            .Where(predicate).OrderByDescending(x=>x.CreatedAt);
+            .Where(predicate).OrderByDescending(x => x.CreatedAt);
 
         // 执行分页查询
         var totalCount = await query.CountAsync();
@@ -288,7 +288,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     {
         try
         {
-            _logger.LogInformation("准备发布用户删除事件: 学生ID={StudentId}, 用户ID={UserId}", 
+            _logger.LogInformation("准备发布用户删除事件: 学生ID={StudentId}, 用户ID={UserId}",
                 student.Id, student.UserId);
 
             if (student.UserId <= 0)
@@ -308,7 +308,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发布用户删除事件失败: 学生ID={StudentId}, 用户ID={UserId}, 错误信息: {ErrorMessage}", 
+            _logger.LogError(ex, "发布用户删除事件失败: 学生ID={StudentId}, 用户ID={UserId}, 错误信息: {ErrorMessage}",
                 student.Id, student.UserId, ex.Message);
             throw; // 重新抛出异常，让调用者知道发布失败
         }
@@ -453,7 +453,8 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
                     continue;
                 }
             }
-
+            // 根据身份证号码校验男女
+            item.Gender = GetGenderFromIdCard(item.IdNo);
             var genderType = Gender.Unknown;
             switch (item.Gender)
             {
@@ -477,6 +478,29 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         }
 
         return (successCount, failedItems);
+    }
+
+    private string GetGenderFromIdCard(string idCard)
+    {
+        if (string.IsNullOrWhiteSpace(idCard))
+            return "未知";
+
+        // 如果是15位身份证，先转换为18位（简单方式，不含校验码）
+        if (idCard.Length == 15)
+            idCard = idCard.Substring(0, 6) + "19" + idCard.Substring(6);
+
+        if (idCard.Length != 18)
+            return "未知";
+
+        // 第17位（索引从0开始是第16位）
+        char genderCodeChar = idCard[16];
+
+        if (!char.IsDigit(genderCodeChar))
+            return "未知";
+
+        int genderCode = genderCodeChar - '0';
+
+        return (genderCode % 2 == 0) ? "女" : "男";
     }
 
     /// <summary>

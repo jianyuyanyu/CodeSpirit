@@ -299,8 +299,3 @@ await cards.setTheme('primary');
 欢迎提交 Issue 和 Pull Request！参与贡献前请阅读[贡献指南](docs/contributing.md)。
 
 ---
-
-**版本信息**
-- 项目版本：v2.0.0
-- 适用于：CodeSpirit Amis Cards V2.0
-- 作者：CodeSpirit 开发团队

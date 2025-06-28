@@ -9,9 +9,11 @@ namespace CodeSpirit.IdentityApi.Dtos.Role
     {
         [Required]
         [MaxLength(100)]
+        [DisplayName("名称")]
         public string Name { get; set; }
 
         [MaxLength(256)]
+        [DisplayName("描述")]
         public string Description { get; set; }
 
         // 可选：权限ID列表

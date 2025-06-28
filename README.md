@@ -365,9 +365,10 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 10. [📝 Form Default Values](./Docs/02-UI-Generation/CodeSpirit.Amis表单默认值使用指南.md) - Form default value configuration guide
 11. [📈 Smart Chart Component](./Docs/02-UI-Generation/CodeSpirit.Charts智能图表使用指南.md) - Data visualization solution
 12. [⏰ Date Time Column Optimization](./Docs/02-UI-Generation/日期时间列优化功能总结.md) - Intelligent time field processing
-13. [🎨 UDL UI Description Language Design](./Docs/02-UI-Generation/UDL-UI描述语言设计方案.md) - Unified UI description language architecture design
-14. [🃏 UDL Cards Detailed Implementation](./Docs/02-UI-Generation/UDL-Cards详细实现方案.md) - Card component library implementation guide
-15. [🎮 UDL Cards Simple Implementation](./Docs/02-UI-Generation/UDL-Cards简易实现方案.md) - Quick implementation guide for UDL Cards
+13. [🃏 UDL Cards Usage Guide](./Docs/02-UI-Generation/CodeSpirit.UDL-Cards卡片使用指南.md) - Unified card system usage guide and best practices
+14. [🎨 UDL UI Description Language Design](./Docs/02-UI-Generation/UDL-UI描述语言设计方案.md) - Unified UI description language architecture design
+15. [🎯 UDL Cards Detailed Implementation](./Docs/02-UI-Generation/UDL-Cards详细实现方案.md) - Card component library implementation guide
+16. [🎮 UDL Cards Simple Implementation](./Docs/02-UI-Generation/UDL-Cards简易实现方案.md) - Quick implementation guide for UDL Cards
 
 ### 🔧 Core Components
 

@@ -128,7 +128,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             dto.TotalParticipants = examRecords.Count;
             dto.PassedParticipants = examRecords.Count(r => r.Score >= passScore);
             dto.PassRate = dto.TotalParticipants > 0 
-                ? Math.Round((decimal)dto.PassedParticipants / dto.TotalParticipants * 100, 2)
+                ? Math.Round((decimal)dto.PassedParticipants / dto.TotalParticipants, 2)
                 : null;
         }
 

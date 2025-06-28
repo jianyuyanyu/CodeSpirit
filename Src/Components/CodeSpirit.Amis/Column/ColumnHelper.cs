@@ -641,22 +641,22 @@ namespace CodeSpirit.Amis.Column
             // 添加描述字段支持 - 根据常见命名模式推断
             listItem["desc"] = "${description || desc || remark || ''}";
 
-            // 添加默认的操作按钮配置
-            listItem["actions"] = new JArray
-            {
-                new JObject
-                {
-                    ["type"] = "button",
-                    ["label"] = "查看",
-                    ["level"] = "link",
-                    ["actionType"] = "dialog",
-                    ["dialog"] = new JObject
-                    {
-                        ["title"] = "详情",
-                        ["body"] = "${title || name}的详细信息"
-                    }
-                }
-            };
+            //// 添加默认的操作按钮配置
+            //listItem["actions"] = new JArray
+            //{
+            //    new JObject
+            //    {
+            //        ["type"] = "button",
+            //        ["label"] = "查看",
+            //        ["level"] = "link",
+            //        ["actionType"] = "dialog",
+            //        ["dialog"] = new JObject
+            //        {
+            //            ["title"] = "详情",
+            //            ["body"] = "${title || name}的详细信息"
+            //        }
+            //    }
+            //};
 
             return listItem;
         }

@@ -47,7 +47,8 @@ namespace CodeSpirit.Amis.Form.Fields
                     field["showOutline"] = attr.ShowOutline;
                 if (attr.ShowOutline)
                     field["clearable"] = attr.Clearable;
-                field["childrenField"] = attr.ChildrenField;
+                if (attr.ChildrenField != "children")
+                    field["childrenField"] = attr.ChildrenField;
                 if (!attr.DeferField.IsNullOrWhiteSpace())
                     field["deferField"] = attr.DeferField;
                 if (attr.OnlyLeaf)

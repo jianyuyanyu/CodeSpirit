@@ -19,22 +19,34 @@ namespace CodeSpirit.IdentityApi.Dtos.Role
         // 可选：权限ID列表
         // 权限ID列表
         [DisplayName("权限")]
-        [AmisInputTreeField(
-            DataSource = "${ROOT_API}/api/identity/permissions/tree",
+        //[AmisInputTreeField(
+        //    DataSource = "${ROOT_API}/api/identity/permissions/tree",
+        //    DeferApi = "${ROOT_API}/api/identity/permissions/tree/${id}",
+        //    LabelField = "label",
+        //    ValueField = "id",
+        //    Multiple = true,
+        //    JoinValues = false,
+        //    ExtractValue = true,
+        //    Required = true,
+        //    Placeholder = "请选择权限",
+        //    ShowIcon = true,
+        //    Expand = 1,
+        //    //Cascade = true,
+        //    ShowOutline = true
+        //    //AutoCheckChildren = true
+        //)]
+        [AmisTransferField(
+            Source = "${ROOT_API}/api/identity/permissions/tree",
             DeferApi = "${ROOT_API}/api/identity/permissions/tree/${id}",
             LabelField = "label",
             ValueField = "id",
+            SelectMode = "tree",
+            ResultListModeFollowSelect = true,
             Multiple = true,
             JoinValues = false,
             ExtractValue = true,
             Required = true,
-            Placeholder = "请选择权限",
-            ShowIcon = true,
-            Expand = 1,
-            //Cascade = true,
-            ShowOutline = true
-            //AutoCheckChildren = true
-        )]
+            Placeholder = "请选择权限")]
         public List<string> PermissionIds { get; set; }
     }
 }

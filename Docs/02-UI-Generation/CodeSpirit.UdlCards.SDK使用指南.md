@@ -8,7 +8,7 @@ CodeSpirit UDL Cards SDK 是一个专门为后端开发设计的卡片生成器�
 
 https://localhost:7120/amis-cards/demo/monitor-dashboard-api.html
 
-![屏幕截图_29-6-2025_23333_localhost](../../../Res/屏幕截图_29-6-2025_23333_localhost.jpeg)
+![屏幕截图_29-6-2025_23333_localhost](../../Res/屏幕截图_29-6-2025_23333_localhost.jpeg)
 
 ### 🎯 核心特性
 
@@ -890,4 +890,4 @@ services.AddUdlCards(options =>
 - **兼容性**: Amis Cards V2.0+
 - **最后更新**: 2025年
 
-如有问题或建议，请提交 Issue 或 Pull Request。
+如有问题或建议，请提交 Issue 或 Pull Request。 

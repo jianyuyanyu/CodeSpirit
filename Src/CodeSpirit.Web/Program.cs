@@ -10,6 +10,7 @@ using CodeSpirit.Messaging.Hubs;
 // using CodeSpirit.MultiTenant.Extensions;
 // using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.Navigation.Extensions;
+using CodeSpirit.UdlCards.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
@@ -89,6 +90,14 @@ public class Program
             options.EnableCache = true;
             options.CacheExpiration = 30; // 缓存30分钟
             options.DefaultProvider = "echarts";
+        });
+
+        // 添加 UDL Cards 服务
+        builder.Services.AddUdlCards(options =>
+        {
+            options.DefaultTheme = "primary";
+            options.EnablePermissionControl = true;
+            options.StrictMode = false;
         });
 
         // 添加消息模块服务

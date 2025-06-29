@@ -86,7 +86,7 @@
     line-height: 1.5;
     color: var(--amis-cards-gray-800);
     background-color: var(--amis-cards-gray-100);
-    min-height: 100vh;
+    /* min-height: 100vh; */
     padding: var(--amis-cards-spacing-lg);
     transition: var(--amis-cards-transition-theme);
 }

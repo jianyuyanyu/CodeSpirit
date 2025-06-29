@@ -32,13 +32,14 @@ class StatRenderer extends window.AmisCards.BaseRenderer {
         this.target = this.dataConfig.target || null;
         this.showProgress = this.dataConfig.showProgress || false;
 
-        // 图标配置
-        this.icon = this.dataConfig.icon || null;
-        this.iconColor = this.dataConfig.iconColor || null;
-        this.iconSize = this.dataConfig.iconSize || 'md';
-        this.iconPosition = this.dataConfig.iconPosition || 'left';
-        this.iconBackground = this.dataConfig.iconBackground || null;
-        this.iconBorder = this.dataConfig.iconBorder || false;
+        // 图标配置 - 从根级别的 icon 配置中读取
+        const iconConfig = this.config.icon || this.dataConfig.icon || {};
+        this.icon = iconConfig.name || this.dataConfig.icon || null;
+        this.iconColor = iconConfig.color || this.dataConfig.iconColor || null;
+        this.iconSize = iconConfig.size || this.dataConfig.iconSize || 'md';
+        this.iconPosition = iconConfig.position || this.dataConfig.iconPosition || 'left';
+        this.iconBackground = iconConfig.backgroundColor || this.dataConfig.iconBackground || null;
+        this.iconBorder = iconConfig.showBorder || this.dataConfig.iconBorder || false;
 
         // 动画配置
         this.animateValue = this.dataConfig.animateValue !== false;
@@ -340,7 +341,7 @@ class StatRenderer extends window.AmisCards.BaseRenderer {
      */
     buildDisplayValue(value) {
         if (this.animateValue) {
-            return `<span class="animated-value" data-target="${this.value}" data-duration="${this.animationDuration}">0</span>`;
+            return `<span class="animated-value" data-target="${this.value}" data-duration="${this.animationDuration}">${value}</span>`;
         }
         return value;
     }

@@ -455,14 +455,34 @@ class AmisCardsCore {
         // 第二行：图表和信息卡片混合
         if (chartCards.length > 0 || infoCards.length > 0) {
             const mixedItems = [...chartCards, ...infoCards];
+            
+            // 检查是否只有图表卡片，没有信息卡片
+            const hasOnlyCharts = chartCards.length > 0 && infoCards.length === 0;
+            
             layout.push({
                 type: 'grid',
                 className: 'amis-cards-mixed-row',
                 columns: mixedItems.map(card => {
                     const cardType = this.getCardTypeFromConfig(card);
+                    
+                    let mdWidth;
+                    if (hasOnlyCharts) {
+                        // 只有图表卡片的情况
+                        if (chartCards.length === 1) {
+                            mdWidth = 12; // 单个图表占满整行
+                        } else if (chartCards.length === 2) {
+                            mdWidth = 6;  // 两个图表一行2个
+                        } else {
+                            mdWidth = 6;  // 多个图表一行2个
+                        }
+                    } else {
+                        // 图表和信息卡片混合的情况，保持原有逻辑
+                        mdWidth = cardType === 'chart' ? 8 : 4; // 图表占2/3，信息占1/3
+                    }
+                    
                     return {
                         body: [card],
-                        md: cardType === 'chart' ? 8 : 4, // 图表占2/3，信息占1/3
+                        md: mdWidth,
                         className: `amis-cards-${cardType}-item`
                     };
                 }),

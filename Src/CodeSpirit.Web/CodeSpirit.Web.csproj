@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />
+    <ProjectReference Include="..\Components\CodeSpirit.UdlCards\CodeSpirit.UdlCards.csproj" />
   </ItemGroup>
 
   <ItemGroup>

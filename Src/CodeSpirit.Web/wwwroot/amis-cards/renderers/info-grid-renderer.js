@@ -181,9 +181,15 @@
                 return '';
             }
             
+            // 标准化图标类名，避免重复添加 fa- 前缀
+            let iconName = itemConfig.icon;
+            if (iconName.startsWith('fa-')) {
+                iconName = iconName.substring(3); // 移除 fa- 前缀
+            }
+            
             const iconClasses = [
                 'fa',
-                `fa-${itemConfig.icon}`,
+                `fa-${iconName}`,
                 `fa-${gridConfig.iconSize || 'lg'}`
             ].join(' ');
             

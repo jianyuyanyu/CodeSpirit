@@ -80,6 +80,11 @@
          * @returns {Array} Amis 组件配置
          */
         getCardBody() {
+            // 检查是否是UdlCards格式
+            if (this.isUdlCardsFormat()) {
+                return this.buildUdlCardsChart();
+            }
+            
             const chartConfig = this.buildChartConfig();
             
             return [
@@ -92,6 +97,170 @@
                     ...this.buildChartProps()
                 }
             ];
+        }
+        
+        /**
+         * 检查是否是UdlCards格式
+         * @returns {boolean} 是否为UdlCards格式
+         */
+        isUdlCardsFormat() {
+            return this.config.chart && 
+                   this.config.chart.type && 
+                   (this.config.chart.config || this.config.chart.height);
+        }
+        
+        /**
+         * 构建UdlCards格式的图表
+         * @returns {Array} Amis 组件配置
+         */
+        buildUdlCardsChart() {
+            const chartConfig = this.config.chart;
+            const chartData = this.config.data;
+            
+            // 基础图表配置
+            const amisChartConfig = {
+                type: 'chart',
+                className: 'amis-cards-chart',
+                height: chartConfig.height || 300,
+                config: this.buildUdlCardsEChartsConfig(chartConfig, chartData)
+            };
+            
+            // 如果有API数据源
+            if (this.config.api) {
+                amisChartConfig.api = this.config.api;
+            }
+            
+            return [amisChartConfig];
+        }
+        
+        /**
+         * 构建UdlCards的ECharts配置
+         * @param {Object} chartConfig - 图表配置
+         * @param {Array} chartData - 图表数据
+         * @returns {Object} ECharts配置
+         */
+        buildUdlCardsEChartsConfig(chartConfig, chartData) {
+            const baseConfig = chartConfig.config || {};
+            const chartType = chartConfig.type;
+            
+            // 根据图表类型处理数据
+            switch (chartType) {
+                case 'line':
+                case 'bar':
+                case 'area':
+                    return this.buildUdlCardsXYChart(baseConfig, chartData, chartType);
+                case 'pie':
+                    return this.buildUdlCardsPieChart(baseConfig, chartData);
+                case 'radar':
+                    return this.buildUdlCardsRadarChart(baseConfig, chartData);
+                default:
+                    return {
+                        ...baseConfig,
+                        dataset: {
+                            source: chartData || []
+                        }
+                    };
+            }
+        }
+        
+        /**
+         * 构建UdlCards的XY轴图表（线图、柱状图、面积图）
+         * @param {Object} baseConfig - 基础配置
+         * @param {Array} chartData - 图表数据
+         * @param {string} chartType - 图表类型
+         * @returns {Object} ECharts配置
+         */
+        buildUdlCardsXYChart(baseConfig, chartData, chartType) {
+            if (!chartData || chartData.length === 0) {
+                return baseConfig;
+            }
+            
+            // 提取时间轴和数据系列
+            const timeField = Object.keys(chartData[0]).find(key => 
+                key.includes('time') || key.includes('时间') || key === 'time'
+            );
+            
+            const dataFields = Object.keys(chartData[0]).filter(key => key !== timeField);
+            const xAxisData = chartData.map(item => item[timeField]);
+            
+            // 构建系列数据
+            const series = dataFields.map(field => {
+                const seriesType = chartType === 'area' ? 'line' : chartType;
+                const seriesConfig = {
+                    name: field,
+                    type: seriesType,
+                    data: chartData.map(item => item[field])
+                };
+                
+                // 面积图需要添加区域样式
+                if (chartType === 'area') {
+                    seriesConfig.areaStyle = {};
+                }
+                
+                return seriesConfig;
+            });
+            
+            return {
+                ...baseConfig,
+                xAxis: {
+                    type: 'category',
+                    data: xAxisData,
+                    ...baseConfig.xAxis
+                },
+                yAxis: {
+                    type: 'value',
+                    ...baseConfig.yAxis
+                },
+                series: series
+            };
+        }
+        
+        /**
+         * 构建UdlCards的饼图
+         * @param {Object} baseConfig - 基础配置
+         * @param {Array} chartData - 图表数据
+         * @returns {Object} ECharts配置
+         */
+        buildUdlCardsPieChart(baseConfig, chartData) {
+            if (!chartData || chartData.length === 0) {
+                return baseConfig;
+            }
+            
+            return {
+                ...baseConfig,
+                series: [{
+                    type: 'pie',
+                    radius: ['0%', '70%'],
+                    data: chartData,
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }]
+            };
+        }
+        
+        /**
+         * 构建UdlCards的雷达图
+         * @param {Object} baseConfig - 基础配置
+         * @param {Array} chartData - 图表数据
+         * @returns {Object} ECharts配置
+         */
+        buildUdlCardsRadarChart(baseConfig, chartData) {
+            if (!chartData || chartData.length === 0) {
+                return baseConfig;
+            }
+            
+            return {
+                ...baseConfig,
+                series: [{
+                    type: 'radar',
+                    data: chartData
+                }]
+            };
         }
         
         /**

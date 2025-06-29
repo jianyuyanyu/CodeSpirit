@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>监控大屏演示 - API版 | CodeSpirit UDL Cards</title>
+    
+    <!-- Amis CSS -->
+    <link rel="stylesheet" href="/sdk/6.12.0/antd.css">
+    <link rel="stylesheet" href="/sdk/6.12.0/helper.css">
+    <link rel="stylesheet" href="/sdk/6.12.0/iconfont.css">
+    
+    <!-- AmisCards CSS -->
+    <link rel="stylesheet" href="../styles/amis-cards.css">
+    <link rel="stylesheet" href="../styles/themes/default.css">
+    <link rel="stylesheet" href="../styles/themes/dark.css">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 35%, #f093fb 100%);
+            min-height: 100vh;
+        }
+        
+        .monitor-header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .monitor-title {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 2.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .monitor-title i {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .monitor-subtitle {
+            margin: 1rem 0 0 0;
+            color: #34495e;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .monitor-controls {
+            background: rgba(255, 255, 255, 0.92);
+            padding: 1.5rem 2rem;
+            margin: 0 2rem 2rem 2rem;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .monitor-controls button {
+            padding: 0.75rem 1.5rem;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.8);
+            color: #2c3e50;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .monitor-controls button:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #ffffff;
+            border-color: transparent;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        #monitor-container {
+            padding: 0 2rem 1rem 2rem;
+            min-height: 400px;
+        }
+        
+        .loading, .error {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .loading i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            animation: spin 1s linear infinite;
+        }
+        
+        .error {
+            background: rgba(220, 53, 69, 0.9);
+            border-color: rgba(220, 53, 69, 0.5);
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 场景分组样式 */
+        .scenario-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .scenario-title {
+            color: #ffffff;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1.25rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .scenario-title i {
+            font-size: 1.25rem;
+        }
+        
+        /* 暗色主题适配 */
+        .amis-cards-theme-dark .monitor-header {
+            background: rgba(44, 62, 80, 0.95);
+        }
+        
+        .amis-cards-theme-dark .monitor-title {
+            color: #ecf0f1;
+        }
+        
+        .amis-cards-theme-dark .monitor-subtitle {
+            color: #bdc3c7;
+        }
+        
+        .amis-cards-theme-dark .monitor-controls {
+            background: rgba(52, 73, 94, 0.92);
+        }
+        
+        .amis-cards-theme-dark .monitor-controls button {
+            background: rgba(69, 90, 120, 0.8);
+            color: #ecf0f1;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .monitor-header {
+                padding: 1.5rem;
+            }
+            
+            .monitor-title {
+                font-size: 2rem;
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .monitor-controls {
+                margin: 0 1rem 2rem 1rem;
+                padding: 1rem;
+                justify-content: center;
+            }
+            
+            #monitor-container {
+                padding: 0 1rem 2rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 监控大屏头部 -->
+    <div class="monitor-header">
+        <h1 class="monitor-title">
+            <i class="fa fa-desktop"></i>
+            监控大屏演示 - API版
+        </h1>
+        <div class="monitor-subtitle">
+            基于 CodeSpirit UDL Cards 组件，通过 API 接口获取监控数据并实时展示
+        </div>
+    </div>
+    
+    <!-- 控制面板 -->
+    <div class="monitor-controls">
+        <button onclick="loadAllMonitorData()" id="refresh-btn">
+            <i class="fa fa-sync-alt"></i> 刷新数据
+        </button>
+        <button onclick="toggleTheme()">
+            <i class="fa fa-palette"></i> 切换主题
+        </button>
+        <button onclick="startAutoRefresh()">
+            <i class="fa fa-play"></i> 自动刷新
+        </button>
+        <button onclick="stopAutoRefresh()" id="stop-btn">
+            <i class="fa fa-stop"></i> 停止刷新
+        </button>
+    </div>
+    
+    <!-- 监控数据容器 -->
+    <div id="monitor-container">
+        <div class="loading">
+            <div><i class="fa fa-spinner"></i></div>
+            <div>正在加载监控数据...</div>
+        </div>
+    </div>
+    
+    <!-- JavaScript 依赖 -->
+    <script src="/sdk/6.12.0/sdk.js"></script>
+    <script src="../core/utils.js"></script>
+    <script src="../core/data-service.js"></script>
+    <script src="../core/amis-cards-core.js"></script>
+    <script src="../renderers/base-renderer.js"></script>
+    <script src="../renderers/stat-renderer.js"></script>
+    <script src="../renderers/chart-renderer.js"></script>
+    <script src="../renderers/table-renderer.js"></script>
+    <script src="../renderers/info-renderer.js"></script>
+    <script src="../renderers/info-grid-renderer.js"></script>
+    <script src="../configs/card-configs.js"></script>
+    <script src="../configs/theme-configs.js"></script>
+    
+    <script>
+        // 全局变量
+        let amisInstance = null;
+        let currentTheme = 'default';
+        let refreshTimer = null;
+        
+        // 监控场景配置
+        const scenarios = [
+            { key: 'exam', title: '考试监控信息', icon: 'fa-graduation-cap' },
+            { key: 'system', title: '系统状态监控', icon: 'fa-server' },
+            { key: 'resource', title: '资源使用监控', icon: 'fa-chart-area' },
+            { key: 'security', title: '安全监控面板', icon: 'fa-shield-alt' }
+        ];
+        
+        /**
+         * 初始化应用
+         */
+        async function initApp() {
+            try {
+                console.log('[监控大屏 API版] 开始初始化');
+                
+                // 创建 AmisCards 实例
+                amisInstance = window.AmisCards.create({
+                    container: '#monitor-container',
+                    theme: currentTheme
+                });
+                
+                // 注册渲染器
+                registerRenderers();
+                
+                // 加载监控数据
+                await loadAllMonitorData();
+                
+                console.log('[监控大屏 API版] 初始化完成');
+                
+            } catch (error) {
+                console.error('[监控大屏 API版] 初始化失败:', error);
+                showError('初始化失败', error.message);
+            }
+        }
+        
+        /**
+         * 注册渲染器
+         */
+        function registerRenderers() {
+            const renderers = [
+                { type: 'stat', renderer: window.AmisCards.StatRenderer },
+                { type: 'chart', renderer: window.AmisCards.ChartRenderer },
+                { type: 'table', renderer: window.AmisCards.TableRenderer },
+                { type: 'info', renderer: window.AmisCards.InfoRenderer },
+                { type: 'info-grid', renderer: window.AmisCards.InfoGridRenderer }
+            ];
+            
+            renderers.forEach(({ type, renderer }) => {
+                if (renderer) {
+                    amisInstance.registerRenderer(type, renderer);
+                    console.log(`[监控大屏 API版] 已注册 ${type} 渲染器`);
+                } else {
+                    console.warn(`[监控大屏 API版] ${type} 渲染器未找到`);
+                }
+            });
+        }
+        
+        /**
+         * 加载所有监控数据
+         */
+        async function loadAllMonitorData() {
+            console.log('[监控大屏 API版] 开始加载所有监控数据');
+            
+            try {
+                // 显示加载状态
+                showLoading();
+                
+                // 并行获取所有场景数据
+                const promises = scenarios.map(scenario => 
+                    fetchScenarioData(scenario.key)
+                );
+                
+                const results = await Promise.allSettled(promises);
+                
+                // 构建渲染数据
+                const allCards = [];
+                let containerHtml = '';
+                
+                for (let i = 0; i < scenarios.length; i++) {
+                    const scenario = scenarios[i];
+                    const result = results[i];
+                    
+                    if (result.status === 'fulfilled') {
+                        const cards = result.value;
+                        if (cards && cards.length > 0) {
+                            // 添加场景标题
+                            containerHtml += `
+                                <div class="scenario-section">
+                                    <div class="scenario-title">
+                                        <i class="fa ${scenario.icon}"></i>
+                                        ${scenario.title}
+                                    </div>
+                                    <div id="scenario-${scenario.key}"></div>
+                                </div>
+                            `;
+                            allCards.push({ scenario: scenario.key, cards });
+                        }
+                    } else {
+                        console.error(`[监控大屏 API版] ${scenario.title} 数据加载失败:`, result.reason);
+                    }
+                }
+                
+                // 更新容器HTML
+                document.getElementById('monitor-container').innerHTML = containerHtml;
+                
+                // 重新创建实例并渲染各场景
+                for (const { scenario, cards } of allCards) {
+                    const scenarioInstance = window.AmisCards.create({
+                        container: `#scenario-${scenario}`,
+                        theme: currentTheme
+                    });
+                    
+                    registerRenderersForInstance(scenarioInstance);
+                    await scenarioInstance.render(cards);
+                }
+                
+                console.log('[监控大屏 API版] 所有监控数据加载完成');
+                showToast('监控数据加载完成', 'success');
+                
+            } catch (error) {
+                console.error('[监控大屏 API版] 加载监控数据失败:', error);
+                showError('数据加载失败', error.message);
+            }
+        }
+        
+        /**
+         * 为实例注册渲染器
+         */
+        function registerRenderersForInstance(instance) {
+            const renderers = [
+                { type: 'stat', renderer: window.AmisCards.StatRenderer },
+                { type: 'chart', renderer: window.AmisCards.ChartRenderer },
+                { type: 'table', renderer: window.AmisCards.TableRenderer },
+                { type: 'info', renderer: window.AmisCards.InfoRenderer },
+                { type: 'info-grid', renderer: window.AmisCards.InfoGridRenderer }
+            ];
+            
+            renderers.forEach(({ type, renderer }) => {
+                if (renderer) {
+                    instance.registerRenderer(type, renderer);
+                }
+            });
+        }
+        
+        /**
+         * 获取指定场景的监控数据
+         */
+        async function fetchScenarioData(scenario) {
+            try {
+                const response = await fetch(`/api/UdlCards/monitor/${scenario}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                // 适配 CodeSpirit API 响应格式: { status: 0, msg: "...", data: [...] }
+                if (result.status === 0 && result.data) {
+                    console.log(`[监控大屏 API版] ${scenario} 数据获取成功，共 ${result.data.length} 个卡片`);
+                    return result.data;
+                } else {
+                    throw new Error(result.msg || result.message || '获取数据失败');
+                }
+                
+            } catch (error) {
+                console.error(`[监控大屏 API版] 获取 ${scenario} 数据失败:`, error);
+                throw error;
+            }
+        }
+        
+        /**
+         * 切换主题
+         */
+        async function toggleTheme() {
+            const themes = ['default', 'dark'];
+            const currentIndex = themes.indexOf(currentTheme);
+            const nextIndex = (currentIndex + 1) % themes.length;
+            const newTheme = themes[nextIndex];
+            
+            try {
+                console.log(`[监控大屏 API版] 切换主题: ${currentTheme} -> ${newTheme}`);
+                
+                // 切换页面主题
+                document.body.classList.remove(`amis-cards-theme-${currentTheme}`);
+                document.body.classList.add(`amis-cards-theme-${newTheme}`);
+                
+                currentTheme = newTheme;
+                
+                // 重新加载数据以应用新主题
+                await loadAllMonitorData();
+                
+                console.log('[监控大屏 API版] 主题切换完成:', currentTheme);
+                showToast(`已切换到${newTheme === 'dark' ? '暗色' : '默认'}主题`, 'info');
+                
+            } catch (error) {
+                console.error('[监控大屏 API版] 主题切换失败:', error);
+            }
+        }
+        
+        /**
+         * 开始自动刷新
+         */
+        function startAutoRefresh() {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+            }
+            
+            refreshTimer = setInterval(async () => {
+                console.log('[监控大屏 API版] 自动刷新数据');
+                await loadAllMonitorData();
+            }, 30000); // 30秒刷新一次
+            
+            console.log('[监控大屏 API版] 自动刷新已启动');
+            showToast('自动刷新已启动（30秒间隔）', 'success');
+            
+            // 更新按钮状态
+            document.getElementById('stop-btn').style.display = 'inline-block';
+        }
+        
+        /**
+         * 停止自动刷新
+         */
+        function stopAutoRefresh() {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+                refreshTimer = null;
+                console.log('[监控大屏 API版] 自动刷新已停止');
+                showToast('自动刷新已停止', 'info');
+            }
+        }
+        
+        /**
+         * 显示加载状态
+         */
+        function showLoading() {
+            document.getElementById('monitor-container').innerHTML = `
+                <div class="loading">
+                    <div><i class="fa fa-spinner"></i></div>
+                    <div>正在加载监控数据...</div>
+                </div>
+            `;
+        }
+        
+        /**
+         * 显示错误信息
+         */
+        function showError(title, message) {
+            document.getElementById('monitor-container').innerHTML = `
+                <div class="error">
+                    <div><i class="fa fa-exclamation-triangle"></i></div>
+                    <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">${title}</div>
+                    <div style="font-size: 1rem; margin-bottom: 2rem;">${message}</div>
+                    <button onclick="loadAllMonitorData()" style="padding: 1rem 2rem; background: #ffffff; color: #dc3545; border: none; border-radius: 25px; cursor: pointer; font-weight: 700;">
+                        <i class="fa fa-redo"></i> 重新加载
+                    </button>
+                </div>
+            `;
+        }
+        
+        /**
+         * 显示提示消息
+         */
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 100px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 10px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                backdrop-filter: blur(10px);
+                color: #2c3e50;
+                font-weight: 600;
+                z-index: 9999;
+                transform: translateX(100%);
+                transition: all 0.3s ease;
+                max-width: 300px;
+            `;
+            
+            const colors = {
+                success: '#27ae60',
+                info: '#3498db',
+                warning: '#f39c12',
+                error: '#e74c3c'
+            };
+            
+            if (colors[type]) {
+                toast.style.borderLeft = `4px solid ${colors[type]}`;
+            }
+            
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.style.transform = 'translateX(0)', 100);
+            setTimeout(() => {
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 3000);
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[监控大屏 API版] 页面加载完成');
+            
+            // 应用默认主题
+            document.body.classList.add(`amis-cards-theme-${currentTheme}`);
+            
+            // 检查依赖并初始化
+            let checkCount = 0;
+            const checkAndInit = () => {
+                checkCount++;
+                
+                if (typeof window.AmisCards !== 'undefined' && 
+                    typeof window.AmisCards.InfoGridRenderer !== 'undefined') {
+                    initApp();
+                } else if (checkCount < 20) {
+                    setTimeout(checkAndInit, 200);
+                } else {
+                    showError('依赖加载失败', '请检查网络连接或刷新页面重试');
+                }
+            };
+            
+            checkAndInit();
+        });
+        
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', function() {
+            stopAutoRefresh();
+        });
+    </script>
+</body>
+</html> 

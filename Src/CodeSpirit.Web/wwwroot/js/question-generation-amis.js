@@ -10,6 +10,97 @@
     let amisInstance = null;     // AMIS实例对象
     let notificationClient = null; // 通知客户端实例
 
+    /**
+     * 初始化TokenManager为租户模式
+     */
+    function initializeTokenManager() {
+        try {
+            const tenantId = getTenantIdFromContext();
+            TokenManager.initTenantMode(tenantId);
+            console.log('TokenManager: 已初始化为租户模式');
+        } catch (error) {
+            console.error('初始化TokenManager失败:', error);
+            // 仍然尝试初始化租户模式，但不传入租户ID
+            TokenManager.initTenantMode(null);
+        }
+    }
+
+    /**
+     * 从上下文获取租户ID
+     * @returns {string|null} 租户ID
+     */
+    function getTenantIdFromContext() {
+        try {
+            // 1. 从URL参数获取
+            const urlParams = new URLSearchParams(window.location.search);
+            const tenantIdFromUrl = urlParams.get('tenantId');
+            if (tenantIdFromUrl) {
+                return tenantIdFromUrl;
+            }
+            
+            // 2. 从路径中提取（如 /tenant/{tenantId}/...）
+            const pathSegments = window.location.pathname.split('/');
+            const tenantIndex = pathSegments.findIndex(segment => segment === 'tenant');
+            if (tenantIndex >= 0 && tenantIndex < pathSegments.length - 1) {
+                return pathSegments[tenantIndex + 1];
+            }
+            
+            // 3. 从TokenManager已存储的平台信息获取
+            const platformInfo = TokenManager.getPlatformInfo();
+            if (platformInfo && platformInfo.tenantId) {
+                return platformInfo.tenantId;
+            }
+            
+            // 4. 从页面元数据获取
+            const tenantMeta = document.querySelector('meta[name="tenant-id"]');
+            if (tenantMeta) {
+                return tenantMeta.getAttribute('content');
+            }
+            
+            // 5. 从全局变量获取（如果页面设置了）
+            if (window.CURRENT_TENANT_ID) {
+                return window.CURRENT_TENANT_ID;
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('获取租户ID失败:', error);
+            return null;
+        }
+    }
+
+    /**
+     * 检查Token是否有效
+     * @returns {boolean} Token是否有效
+     */
+    function isTokenValid() {
+        return TokenManager.isAuthenticated();
+    }
+
+    /**
+     * 处理认证错误，跳转到租户登录页面
+     */
+    function handleAuthError() {
+        console.error('认证失败，准备跳转租户登录页面');
+        
+        // 延迟跳转，给用户看到错误信息的时间
+        setTimeout(() => {
+            const loginUrl = getLoginUrl();
+            if (loginUrl) {
+                window.location.href = loginUrl;
+            }
+        }, 2000);
+    }
+
+    /**
+     * 获取租户登录页面URL
+     * @returns {string} 登录URL
+     */
+    function getLoginUrl() {
+        const currentUrl = encodeURIComponent(window.location.href);
+        return `/tenant/login?returnUrl=${currentUrl}`;
+    }
+
     // 数据管理器 - 统一管理数据更新和传递，应用AMIS数据域和数据链概念
     const DataManager = {
         // 基础数据结构
@@ -359,15 +450,18 @@
         }
     };
 
-    // 添加认证请求适配器
+    // 添加认证请求适配器 - 使用TokenManager
     const requestAdaptor = function (api) {
         console.log("请求适配器被调用:", api);
-        const token = localStorage.getItem('token');
+        
+        // 使用TokenManager获取认证头
+        const authHeaders = TokenManager.getAuthHeaders();
+        
         return {
             ...api,
             headers: {
                 ...api.headers,
-                'Authorization': 'Bearer ' + token,
+                ...authHeaders,  // 包含Authorization和租户相关头信息
                 'X-Forwarded-With': 'CodeSpirit'
             }
         };
@@ -439,6 +533,13 @@
      */
     async function initializeNotificationConnection(sessionId) {
         try {
+            // 检查Token有效性
+            if (!isTokenValid()) {
+                ErrorHandler.handleApiError("认证失败", "Token无效或已过期，请重新登录");
+                handleAuthError();
+                return;
+            }
+
             // 确保通知客户端已初始化
             if (!notificationClient) {
                 notificationClient = new NotificationClient();
@@ -587,22 +688,22 @@
             return;
         }
 
+        // 检查Token有效性
+        if (!isTokenValid()) {
+            console.error('Token无效，无法获取题目');
+            ErrorHandler.handleApiError("认证失败", "Token无效或已过期，请重新登录");
+            handleAuthError();
+            return;
+        }
+
         // 更新加载状态
         DataManager.updateAmis({
             isFetchingQuestions: true,
             questionFetchMessage: '正在获取生成的题目...'
         });
 
-        // 获取认证令牌
-        const token = getToken();
-
-        // 构建请求头
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': 'Bearer ' + localStorage.getItem('token'),
-            'X-Forwarded-With': 'CodeSpirit'
-        };
+        // 使用TokenManager获取认证头
+        const authHeaders = TokenManager.getAuthHeaders();
 
         // 发送请求获取题目 - 注意URL
         console.log(`正在获取生成的题目，会话ID: ${sessionId}`);
@@ -610,9 +711,25 @@
         // 使用与后端匹配的API路径
         fetch(`/exam/api/exam/Questions/generated/${sessionId}`, {
             method: 'GET',
-            headers: headers
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...authHeaders,  // 使用TokenManager的认证头
+                'X-Forwarded-With': 'CodeSpirit'
+            }
         })
-            .then(response => {
+            .then(async response => {
+                // 处理401错误
+                if (response.status === 401) {
+                    const refreshSuccess = await TokenManager.refreshToken();
+                    if (refreshSuccess) {
+                        // Token刷新成功，重新尝试请求
+                        return fetchGeneratedQuestions(sessionId);
+                    } else {
+                        throw new Error('认证失败，请重新登录');
+                    }
+                }
+
                 if (!response.ok) {
                     throw new Error(`获取题目失败: ${response.status} ${response.statusText}`);
                 }
@@ -657,6 +774,14 @@
             })
             .catch(error => {
                 console.error('获取题目时发生错误:', error);
+                
+                // 检查是否是认证错误
+                if (error.message.includes('认证失败')) {
+                    ErrorHandler.handleApiError("认证失败", error.message);
+                    handleAuthError();
+                    return;
+                }
+                
                 DataManager.updateAmis({
                     isFetchingQuestions: false,
                     questionFetchMessage: `获取题目失败: ${error.message}`,
@@ -728,13 +853,11 @@
     }
 
     /**
-     * 获取认证令牌
+     * 获取认证令牌 - 使用TokenManager
      * @returns {string} 认证令牌
      */
     function getToken() {
-        // 从cookie或localStorage中获取令牌
-        return document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1") ||
-            localStorage.getItem('token');
+        return TokenManager.getToken();
     }
 
     /**
@@ -744,22 +867,51 @@
     function executeGeneration(sessionId) {
         DataManager.addLog("触发后端生成过程...");
 
+        // 检查Token有效性
+        if (!isTokenValid()) {
+            ErrorHandler.handleApiError("认证失败", "Token无效或已过期，请重新登录");
+            handleAuthError();
+            return;
+        }
+
         // 获取表单数据
         const formData = DataManager.initialData.formData || {};
 
         console.log(`正在执行生成，会话ID: ${sessionId}`);
+
+        // 使用TokenManager获取认证头
+        const authHeaders = TokenManager.getAuthHeaders();
 
         // 发送生成请求 - 确保URL正确匹配后端API
         fetch(`/exam/api/exam/Questions/ai/execute-generation/${sessionId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                ...authHeaders,  // 使用TokenManager的认证头
                 'X-Forwarded-With': 'CodeSpirit'
             },
             body: JSON.stringify(formData)
+        }).then(async response => {
+            // 处理401错误
+            if (response.status === 401) {
+                const refreshSuccess = await TokenManager.refreshToken();
+                if (refreshSuccess) {
+                    // Token刷新成功，重新尝试请求
+                    return executeGeneration(sessionId);
+                } else {
+                    throw new Error('认证失败，请重新登录');
+                }
+            }
+            // 对于其他错误，仍然忽略，因为这是后台长时间运行的任务
         }).catch(err => {
-            // 忽略错误，因为这是后台长时间运行的任务
+            // 检查是否是认证错误
+            if (err.message.includes('认证失败')) {
+                ErrorHandler.handleApiError("认证失败", err.message);
+                handleAuthError();
+                return;
+            }
+            
+            // 忽略其他错误，因为这是后台长时间运行的任务
             // 实际状态将通过SignalR通知
             console.log("后台生成任务已启动，状态将通过SignalR通知", err);
         });
@@ -773,6 +925,13 @@
     window.executeGenerationProcess = function (formData, context) {
         console.log("执行生成过程:", formData);
         console.log("AMIS上下文对象:", context);
+
+        // 检查Token有效性
+        if (!isTokenValid()) {
+            ErrorHandler.handleApiError("认证失败", "请先登录后再执行生成");
+            handleAuthError();
+            return;
+        }
 
         DataManager.setFormData(formData);
         DataManager.updateGenerationStatus('generating');
@@ -793,11 +952,14 @@
             }
         }, 200);
 
+        // 使用TokenManager获取认证头
+        const authHeaders = TokenManager.getAuthHeaders();
+
         fetch("/exam/api/exam/Questions/ai/generate-and-save", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer " + localStorage.getItem("token"),
+                ...authHeaders,  // 使用TokenManager的认证头
                 "X-Forwarded-With": "CodeSpirit"
             },
             body: JSON.stringify({
@@ -809,7 +971,18 @@
                 requirements: formData.requirements
             })
         })
-            .then(response => {
+            .then(async response => {
+                // 处理401错误
+                if (response.status === 401) {
+                    const refreshSuccess = await TokenManager.refreshToken();
+                    if (refreshSuccess) {
+                        // Token刷新成功，重新尝试请求
+                        return window.executeGenerationProcess(formData, context);
+                    } else {
+                        throw new Error('认证失败，请重新登录');
+                    }
+                }
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
@@ -842,6 +1015,14 @@
             })
             .catch(error => {
                 console.error("请求失败:", error);
+                
+                // 检查是否是认证错误
+                if (error.message.includes('认证失败')) {
+                    ErrorHandler.handleApiError("认证失败", error.message);
+                    handleAuthError();
+                    return;
+                }
+                
                 ErrorHandler.handleApiError("请求失败", error.toString());
             });
     };
@@ -1750,6 +1931,16 @@
         console.log("页面加载完成，初始化AMIS应用");
 
         try {
+            // 初始化TokenManager为租户模式
+            initializeTokenManager();
+            
+            // 检查Token有效性
+            if (!isTokenValid()) {
+                ErrorHandler.showError("请先登录后再访问此页面");
+                handleAuthError();
+                return;
+            }
+
             // 初始化通知客户端
             notificationClient = new NotificationClient();
             await notificationClient.connect();
@@ -1766,7 +1957,13 @@
                 requestAdaptor: requestAdaptor,
                 responseAdaptor: function (api, payload, query, request, response) {
                     if (response.status >= 400) {
-                        ErrorHandler.showError(`请求失败: ${response.status} ${response.statusText}`);
+                        // 401错误特殊处理
+                        if (response.status === 401) {
+                            ErrorHandler.showError("认证失败，请重新登录");
+                            handleAuthError();
+                        } else {
+                            ErrorHandler.showError(`请求失败: ${response.status} ${response.statusText}`);
+                        }
                         return payload;
                     }
                     return payload;

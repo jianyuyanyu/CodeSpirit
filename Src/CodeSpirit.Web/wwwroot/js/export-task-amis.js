@@ -11,6 +11,97 @@
     let pollingTimer = null;      // 轮询定时器
     let pollingInterval = 1000;   // 轮询间隔（毫秒）
 
+    /**
+     * 初始化TokenManager为租户模式
+     */
+    function initializeTokenManager() {
+        try {
+            const tenantId = getTenantIdFromContext();
+            TokenManager.initTenantMode(tenantId);
+            console.log('TokenManager: 已初始化为租户模式');
+        } catch (error) {
+            console.error('初始化TokenManager失败:', error);
+            // 仍然尝试初始化租户模式，但不传入租户ID
+            TokenManager.initTenantMode(null);
+        }
+    }
+
+    /**
+     * 从上下文获取租户ID
+     * @returns {string|null} 租户ID
+     */
+    function getTenantIdFromContext() {
+        try {
+            // 1. 从URL参数获取
+            const urlParams = new URLSearchParams(window.location.search);
+            const tenantIdFromUrl = urlParams.get('tenantId');
+            if (tenantIdFromUrl) {
+                return tenantIdFromUrl;
+            }
+            
+            // 2. 从路径中提取（如 /tenant/{tenantId}/...）
+            const pathSegments = window.location.pathname.split('/');
+            const tenantIndex = pathSegments.findIndex(segment => segment === 'tenant');
+            if (tenantIndex >= 0 && tenantIndex < pathSegments.length - 1) {
+                return pathSegments[tenantIndex + 1];
+            }
+            
+            // 3. 从TokenManager已存储的平台信息获取
+            const platformInfo = TokenManager.getPlatformInfo();
+            if (platformInfo && platformInfo.tenantId) {
+                return platformInfo.tenantId;
+            }
+            
+            // 4. 从页面元数据获取
+            const tenantMeta = document.querySelector('meta[name="tenant-id"]');
+            if (tenantMeta) {
+                return tenantMeta.getAttribute('content');
+            }
+            
+            // 5. 从全局变量获取（如果页面设置了）
+            if (window.CURRENT_TENANT_ID) {
+                return window.CURRENT_TENANT_ID;
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('获取租户ID失败:', error);
+            return null;
+        }
+    }
+
+    /**
+     * 检查Token是否有效
+     * @returns {boolean} Token是否有效
+     */
+    function isTokenValid() {
+        return TokenManager.isAuthenticated();
+    }
+
+    /**
+     * 处理认证错误，跳转到租户登录页面
+     */
+    function handleAuthError() {
+        console.error('认证失败，准备跳转租户登录页面');
+        
+        // 延迟跳转，给用户看到错误信息的时间
+        setTimeout(() => {
+            const loginUrl = getLoginUrl();
+            if (loginUrl) {
+                window.location.href = loginUrl;
+            }
+        }, 2000);
+    }
+
+    /**
+     * 获取租户登录页面URL
+     * @returns {string} 登录URL
+     */
+    function getLoginUrl() {
+        const currentUrl = encodeURIComponent(window.location.href);
+        return `/tenant/login?returnUrl=${currentUrl}`;
+    }
+
     // 数据管理器 - 统一管理数据更新和传递
     const DataManager = {
         // 基础数据结构
@@ -181,13 +272,13 @@
                 this.initialData[key] = taskData[key];
             });
 
-            // 添加token到数据模型
-            this.initialData.token = getToken();
+            // 添加token到数据模型 - 使用TokenManager
+            this.initialData.token = TokenManager.getToken() || '';
 
             // 更新AMIS数据
             this.updateAmis({
                 ...taskData,
-                token: getToken()
+                token: TokenManager.getToken() || ''
             });
 
             console.log('任务数据已更新:', taskData);
@@ -229,16 +320,19 @@
     };
 
     /**
-     * 添加认证请求适配器
+     * 添加认证请求适配器 - 使用TokenManager
      */
     const requestAdaptor = function (api) {
         console.log("请求适配器被调用:", api);
-        const token = localStorage.getItem('token');
+        
+        // 使用TokenManager获取认证头
+        const authHeaders = TokenManager.getAuthHeaders();
+        
         return {
             ...api,
             headers: {
                 ...api.headers,
-                'Authorization': 'Bearer ' + token,
+                ...authHeaders,  // 包含Authorization和租户相关头信息
                 'X-Forwarded-With': 'CodeSpirit'
             }
         };
@@ -278,11 +372,11 @@
     };
 
     /**
-     * 获取认证令牌
+     * 获取认证令牌 - 使用TokenManager
      * @returns {string} 认证令牌
      */
     function getToken() {
-        return localStorage.getItem('token');
+        return TokenManager.getToken();
     }
 
     /**
@@ -355,6 +449,12 @@
             return;
         }
 
+        // 检查Token有效性
+        if (!isTokenValid()) {
+            ErrorHandler.handleApiError("认证失败", "Token无效或已过期，请重新登录");
+            return;
+        }
+
         DataManager.updateAmis({
             isLoading: true,
             hasError: false,
@@ -362,16 +462,29 @@
         });
 
         try {
+            // 使用TokenManager获取认证头
+            const authHeaders = TokenManager.getAuthHeaders();
+            
             const response = await fetch(`/api/tempfiles/export-tasks/${taskId}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + getToken(),
+                    ...authHeaders,  // 使用TokenManager的认证头
                     'X-Forwarded-With': 'CodeSpirit'
                 }
             });
 
             if (!response.ok) {
+                // 如果是401错误，尝试刷新Token
+                if (response.status === 401) {
+                    const refreshSuccess = await TokenManager.refreshToken();
+                    if (refreshSuccess) {
+                        // 重新尝试请求
+                        return loadTaskInfo(taskId);
+                    } else {
+                        throw new Error('认证失败，请重新登录');
+                    }
+                }
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
 
@@ -492,16 +605,37 @@
      */
     async function refreshTaskInfo(taskId) {
         try {
+            // 检查Token有效性
+            if (!isTokenValid()) {
+                console.error('Token无效，停止轮询');
+                stopPolling();
+                return;
+            }
+
+            // 使用TokenManager获取认证头
+            const authHeaders = TokenManager.getAuthHeaders();
+            
             const response = await fetch(`/api/tempfiles/export-tasks/${taskId}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + getToken(),
+                    ...authHeaders,  // 使用TokenManager的认证头
                     'X-Forwarded-With': 'CodeSpirit'
                 }
             });
 
             if (!response.ok) {
+                // 如果是401错误，尝试刷新Token
+                if (response.status === 401) {
+                    const refreshSuccess = await TokenManager.refreshToken();
+                    if (!refreshSuccess) {
+                        console.error('Token刷新失败，停止轮询');
+                        stopPolling();
+                        return;
+                    }
+                    // Token刷新成功，下次轮询会使用新Token
+                    return;
+                }
                 console.error(`刷新任务状态失败: HTTP ${response.status}`);
                 return;
             }
@@ -817,6 +951,15 @@
         console.log("页面加载完成，初始化导出任务进度应用");
 
         try {
+            // 初始化TokenManager为租户模式
+            initializeTokenManager();
+            
+            // 检查Token有效性
+            if (!isTokenValid()) {
+                ErrorHandler.handleApiError("认证失败", "请先登录后再访问此页面");
+                return;
+            }
+
             // 获取任务ID
             taskId = getTaskIdFromUrl();
             console.log("获取到任务ID:", taskId);
@@ -838,7 +981,19 @@
                 requestAdaptor: requestAdaptor,
                 responseAdaptor: function (api, payload, query, request, response) {
                     if (response.status >= 400) {
-                        ErrorHandler.showError(`请求失败: ${response.status} ${response.statusText}`);
+                        // 401错误特殊处理
+                        if (response.status === 401) {
+                            ErrorHandler.showError("认证失败，请重新登录");
+                            // 跳转到租户登录页面
+                            setTimeout(() => {
+                                const loginUrl = getLoginUrl();
+                                if (loginUrl) {
+                                    window.location.href = loginUrl;
+                                }
+                            }, 2000);
+                        } else {
+                            ErrorHandler.showError(`请求失败: ${response.status} ${response.statusText}`);
+                        }
                         return payload;
                     }
                     return payload;
@@ -866,6 +1021,14 @@
         refresh: function () {
             loadTaskInfo(taskId);
         },
-        stopPolling: stopPolling
+        stopPolling: stopPolling,
+        getTokenInfo: function() {
+            return {
+                hasToken: TokenManager.hasToken(),
+                isAuthenticated: TokenManager.isAuthenticated(),
+                platformType: TokenManager.platformType,
+                tenantId: TokenManager.currentTenantId
+            };
+        }
     };
 })(); 

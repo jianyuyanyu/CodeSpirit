@@ -411,6 +411,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             switch (type)
             {
                 case QuestionType.SingleChoice:
+                    // 验证单选题选项数量不得少于4个
+                    if (options.Count < 4)
+                    {
+                        throw new AppServiceException(400, "单选题选项不得少于4个！");
+                    }
+                    
                     if (!options.Contains(correctAnswer))
                     {
                         throw new AppServiceException(400, "正确答案必须是选项之一！");
@@ -418,6 +424,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     break;
 
                 case QuestionType.MultipleChoice:
+                    // 验证多选题选项数量不得少于4个
+                    if (options.Count < 4)
+                    {
+                        throw new AppServiceException(400, "多选题选项不得少于4个！");
+                    }
+                    
                     try
                     {
                         var answers = JsonSerializer.Deserialize<List<string>>(correctAnswer);

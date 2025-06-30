@@ -5,6 +5,7 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace CodeSpirit.ExamApi.Controllers
 {
@@ -51,7 +52,7 @@ namespace CodeSpirit.ExamApi.Controllers
 
         protected ActionResult<ApiResponse> BadResponse(string message = "操作失败！")
         {
-            return BadResponse(message: message);
+            return StatusCode(400, new ApiResponse(400, message));
         }
     }
 }

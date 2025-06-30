@@ -213,7 +213,7 @@ public class QuestionsController : ApiControllerBase
 
         if (successCount == 0 && failedQuestions.Count > 0)
         {
-            BadResponse($"{failedQuestions.Count} 个题目导入失败: \n{string.Join(", \n", failedQuestions)}");
+            return BadResponse($"{failedQuestions.Count} 个题目导入失败: \n{string.Join(", \n", failedQuestions)}");
         }
         return failedQuestions.Any()
             ? SuccessResponse($"{successCount} 个题目导入成功，{failedQuestions.Count} 个题目导入失败: \n{string.Join(", \n", failedQuestions)}")

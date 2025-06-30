@@ -215,11 +215,18 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         }
     }
 
-    protected override Task OnCreating(Student entity, CreateStudentDto createDto)
+    protected override async Task OnCreating(Student entity, CreateStudentDto createDto)
     {
         entity.Id = _idGenerator.NewId();
         entity.UserId = entity.Id;
-        return base.OnCreating(entity, createDto);
+        
+        // 如果学号为空，生成唯一的短号
+        if (string.IsNullOrWhiteSpace(entity.StudentNumber))
+        {
+            entity.StudentNumber = await GenerateUniqueStudentNumberAsync();
+        }
+        
+        await base.OnCreating(entity, createDto);
     }
 
     /// <summary>
@@ -249,6 +256,39 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         await base.OnDeleted(entity);
         // 发布用户删除事件
         await PublishUserDeletedEventAsync(entity);
+    }
+
+    /// <summary>
+    /// 生成唯一的学号
+    /// </summary>
+    /// <returns>唯一的学号</returns>
+    private async Task<string> GenerateUniqueStudentNumberAsync()
+    {
+        const int maxRetries = 10;
+        var random = new Random();
+        
+        for (int i = 0; i < maxRetries; i++)
+        {
+            // 生成8位数字的短号：年份后2位 + 6位随机数
+            var year = DateTime.Now.Year % 100;
+            var randomNumber = random.Next(100000, 999999);
+            var studentNumber = $"{year:D2}{randomNumber}";
+            
+            //TODO: 需要优化
+            // 检查是否已存在
+            var exists = await Repository
+                .Find(x => x.StudentNumber == studentNumber)
+                .AnyAsync();
+                
+            if (!exists)
+            {
+                return studentNumber;
+            }
+        }
+        
+        // 如果多次重试仍然重复，使用时间戳确保唯一性
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+        return timestamp.Substring(Math.Max(0, timestamp.Length - 8));
     }
 
     /// <summary>
@@ -470,6 +510,13 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             entity.Gender = genderType;
             entity.Id = _idGenerator.NewId();
             entity.UserId = entity.Id;
+            
+            // 如果学号为空，生成唯一的短号
+            if (string.IsNullOrWhiteSpace(entity.StudentNumber))
+            {
+                entity.StudentNumber = await GenerateUniqueStudentNumberAsync();
+            }
+            
             successCount++;
 
             await Repository.AddAsync(entity);

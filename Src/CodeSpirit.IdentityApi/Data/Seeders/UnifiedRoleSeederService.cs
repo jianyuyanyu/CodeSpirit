@@ -39,10 +39,13 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
         /// </summary>
         public async Task<ApplicationRole> EnsureRoleExistsAsync(string roleName, string description, string tenantId)
         {
-            // 查找现有角色
-            var existingRole = await _context.Roles
-                .FirstOrDefaultAsync(r => r.TenantId == tenantId &&
-                                         (r.Name == roleName || r.NormalizedName == roleName.ToUpper()));
+            // 查找现有角色 - 使用WithoutMultiTenantFilterAsync确保能够查询到指定租户的角色
+            var existingRole = await _context.WithoutMultiTenantFilterAsync(async () =>
+            {
+                return await _context.Roles
+                    .FirstOrDefaultAsync(r => r.TenantId == tenantId &&
+                                             (r.Name == roleName || r.NormalizedName == roleName.ToUpper()));
+            });
 
             if (existingRole == null)
             {
@@ -61,21 +64,9 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     IsDeleted = false
                 };
 
-                // 对于系统角色，使用DbContext直接操作
-                // 对于业务角色，使用RoleManager
-                if (tenantId == TenantConstants.SystemTenantId)
-                {
-                    _context.Roles.Add(newRole);
-                }
-                else
-                {
-                    var result = await _roleManager.CreateAsync(newRole);
-                    if (!result.Succeeded)
-                    {
-                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                        throw new InvalidOperationException($"创建角色失败: {errors}");
-                    }
-                }
+                // 对于多租户环境，统一使用DbContext直接操作以确保租户隔离
+                // RoleManager在验证角色名称唯一性时可能不考虑租户隔离
+                _context.Roles.Add(newRole);
 
                 _logger.LogInformation("角色创建完成: {RoleName}, ID: {RoleId}", roleName, newRole.Id);
                 return newRole;
@@ -98,6 +89,12 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
             {
                 var role = await EnsureRoleExistsAsync(roleDefinition.Name, roleDefinition.Description, roleDefinition.TenantId);
                 createdRoles.Add(role);
+            }
+
+            // 保存所有更改到数据库
+            if (_context.ChangeTracker.HasChanges())
+            {
+                await _context.SaveChangesAsync();
             }
 
             return createdRoles;

@@ -17,6 +17,8 @@ namespace CodeSpirit.IdentityApi.Services
     public class TenantService : BaseCRUDService<TenantInfo, TenantDto, string, TenantCreateDto, TenantUpdateDto>, ITenantService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITenantDataInitializationService _dataInitializationService;
+        private readonly ILogger<TenantService> _logger;
 
         /// <summary>
         /// 构造函数
@@ -24,12 +26,18 @@ namespace CodeSpirit.IdentityApi.Services
         /// <param name="repository">仓储</param>
         /// <param name="mapper">映射器</param>
         /// <param name="context">数据库上下文</param>
+        /// <param name="dataInitializationService">租户数据初始化服务</param>
+        /// <param name="logger">日志记录器</param>
         public TenantService(
             IRepository<TenantInfo> repository,
             IMapper mapper,
-            ApplicationDbContext context) : base(repository, mapper)
+            ApplicationDbContext context,
+            ITenantDataInitializationService dataInitializationService,
+            ILogger<TenantService> logger) : base(repository, mapper)
         {
             _context = context;
+            _dataInitializationService = dataInitializationService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -304,6 +312,50 @@ namespace CodeSpirit.IdentityApi.Services
             var dtos = Mapper.Map<List<TenantDto>>(items);
             
             return new PageList<TenantDto>(dtos, total);
+        }
+
+        /// <summary>
+        /// 创建租户（重写基类方法以添加数据初始化）
+        /// </summary>
+        /// <param name="createDto">创建数据</param>
+        /// <returns>创建结果</returns>
+        public override async Task<TenantDto> CreateAsync(TenantCreateDto createDto)
+        {
+            // 创建前验证
+            var validationResult = await ValidateBeforeCreateAsync(createDto);
+            if (validationResult.Status != 0)
+            {
+                throw new BusinessException(validationResult.Msg);
+            }
+
+            // 调用基类方法创建租户
+            var tenantDto = await base.CreateAsync(createDto);
+
+            try
+            {
+                // 为新创建的租户初始化默认数据
+                var initResult = await _dataInitializationService.InitializeTenantDataAsync(createDto.TenantId, true);
+                if (initResult.Status != 0)
+                {
+                    // 如果数据初始化失败，记录警告但不回滚租户创建
+                    // 这样可以避免因为数据初始化问题导致租户创建失败
+                    // 管理员可以后续手动初始化数据
+                    _logger.LogWarning("租户 {TenantId} 创建成功，但数据初始化失败: {Message}", 
+                        createDto.TenantId, initResult.Msg);
+                }
+                else
+                {
+                    _logger.LogInformation("租户 {TenantId} 创建成功，数据初始化完成", createDto.TenantId);
+                }
+            }
+            catch (Exception ex)
+            {
+                // 记录数据初始化异常但不影响租户创建
+                _logger.LogError(ex, "租户 {TenantId} 创建成功，但数据初始化过程中发生异常: {Message}", 
+                    createDto.TenantId, ex.Message);
+            }
+
+            return tenantDto;
         }
     }
 } 

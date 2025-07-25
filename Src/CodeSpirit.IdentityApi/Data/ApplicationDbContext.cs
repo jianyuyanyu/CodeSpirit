@@ -150,7 +150,7 @@ namespace CodeSpirit.IdentityApi.Data
             changeTracker.StateChanged += ChangeTracker_StateChanged;
             changeTracker.Tracking += ChangeTracker_Tracking;
 
-            DataFilter = serviceProvider.GetService<IDataFilter>();
+            DataFilter = serviceProvider.GetRequiredService<IDataFilter>();
             _currentUser = currentUser;
             
             // 延迟初始化默认租户ID，从配置中读取
@@ -493,13 +493,10 @@ namespace CodeSpirit.IdentityApi.Data
             // 多租户过滤
             if (typeof(IMultiTenant).IsAssignableFrom(typeof(TEntity)))
             {
-                // 获取当前租户ID作为编译时常量
-                var currentTenantId = GetCurrentTenantId();
-                
-                // 创建简单的字符串比较表达式，EF Core可以转换为SQL
+                // 修复：使用方法调用而不是编译时常量，确保每次查询时动态获取租户ID
                 Expression<Func<TEntity, bool>> tenantFilter = e => 
                     !IsMultiTenantFilterEnabled || 
-                    EF.Property<string>(e, "TenantId") == currentTenantId;
+                    EF.Property<string>(e, "TenantId") == GetCurrentTenantId();
                 
                 if (expression != null)
                 {

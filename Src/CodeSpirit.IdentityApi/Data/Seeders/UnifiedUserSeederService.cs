@@ -42,10 +42,13 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
         /// </summary>
         public async Task<ApplicationUser> EnsureUserExistsAsync(string userName, string email, string displayName, string password, string tenantId)
         {
-            // 查找现有用户
-            var existingUser = await _context.Users
-                .FirstOrDefaultAsync(u => u.TenantId == tenantId &&
-                                         (u.UserName == userName || u.NormalizedUserName == userName.ToUpper()));
+            // 查找现有用户 - 使用WithoutMultiTenantFilterAsync确保能够查询到指定租户的用户
+            var existingUser = await _context.WithoutMultiTenantFilterAsync(async () =>
+            {
+                return await _context.Users
+                    .FirstOrDefaultAsync(u => u.TenantId == tenantId &&
+                                             (u.UserName == userName || u.NormalizedUserName == userName.ToUpper()));
+            });
 
             if (existingUser == null)
             {
@@ -69,23 +72,10 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     ConcurrencyStamp = Guid.NewGuid().ToString()
                 };
 
-                // 对于系统用户，使用DbContext直接操作
-                // 对于业务用户，使用UserManager
-                if (tenantId == TenantConstants.SystemTenantId)
-                {
-                    // 设置密码
-                    newUser.PasswordHash = _passwordHasher.HashPassword(newUser, password);
-                    _context.Users.Add(newUser);
-                }
-                else
-                {
-                    var result = await _userManager.CreateAsync(newUser, password);
-                    if (!result.Succeeded)
-                    {
-                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                        throw new InvalidOperationException($"创建用户失败: {errors}");
-                    }
-                }
+                // 对于多租户环境，统一使用DbContext直接操作以确保租户隔离
+                // UserManager在验证用户名称唯一性时可能不考虑租户隔离
+                newUser.PasswordHash = _passwordHasher.HashPassword(newUser, password);
+                _context.Users.Add(newUser);
 
                 _logger.LogInformation("用户创建完成: {UserName}, ID: {UserId}, 默认密码: {Password}",
                     userName, newUser.Id, password);
@@ -100,16 +90,9 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                 {
                     _logger.LogWarning("用户没有密码，设置默认密码...");
                     
-                    if (tenantId == TenantConstants.SystemTenantId)
-                    {
-                        existingUser.PasswordHash = _passwordHasher.HashPassword(existingUser, password);
-                        _context.Users.Update(existingUser);
-                    }
-                    else
-                    {
-                        var token = await _userManager.GeneratePasswordResetTokenAsync(existingUser);
-                        await _userManager.ResetPasswordAsync(existingUser, token, password);
-                    }
+                    // 统一使用密码哈希器直接设置密码，避免UserManager的复杂验证
+                    existingUser.PasswordHash = _passwordHasher.HashPassword(existingUser, password);
+                    _context.Users.Update(existingUser);
                     
                     _logger.LogInformation("用户密码已设置: {Password}", password);
                 }
@@ -135,6 +118,12 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     userDefinition.TenantId);
                     
                 createdUsers.Add(user);
+            }
+
+            // 保存所有更改到数据库
+            if (_context.ChangeTracker.HasChanges())
+            {
+                await _context.SaveChangesAsync();
             }
 
             return createdUsers;

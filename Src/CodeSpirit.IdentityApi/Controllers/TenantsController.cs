@@ -20,14 +20,17 @@ namespace CodeSpirit.IdentityApi.Controllers
     public class TenantsController : ApiControllerBase
     {
         private readonly ITenantService _tenantService;
+        private readonly ITenantDataInitializationService _dataInitializationService;
 
         /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="tenantService">租户服务</param>
-        public TenantsController(ITenantService tenantService)
+        /// <param name="dataInitializationService">租户数据初始化服务</param>
+        public TenantsController(ITenantService tenantService, ITenantDataInitializationService dataInitializationService)
         {
             _tenantService = tenantService;
+            _dataInitializationService = dataInitializationService;
         }
 
         /// <summary>

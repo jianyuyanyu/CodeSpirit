@@ -335,13 +335,10 @@ public abstract class MultiTenantDbContext : AuditableDbContext
         // 添加多租户过滤
         if (typeof(IMultiTenant).IsAssignableFrom(typeof(TEntity)))
         {
-            // 获取当前租户ID作为编译时常量
-            var currentTenantId = CurrentTenantId;
-            
-            // 创建简单的字符串比较表达式，EF Core可以转换为SQL
+            // 修复：使用方法调用而不是编译时常量，确保每次查询时动态获取租户ID
             Expression<Func<TEntity, bool>> tenantFilter = e => 
                 !IsMultiTenantFilterEnabled || 
-                EF.Property<string>(e, "TenantId") == currentTenantId;
+                EF.Property<string>(e, "TenantId") == ResolveTenantId();
             
             if (expression != null)
             {

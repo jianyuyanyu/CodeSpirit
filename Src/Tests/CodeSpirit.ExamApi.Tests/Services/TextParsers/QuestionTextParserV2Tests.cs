@@ -113,7 +113,7 @@ D、合法访问
         var question = result[0];
         Assert.Equal(QuestionType.MultipleChoice, question.Type);
         Assert.Equal("以下哪些是常见的Web安全威胁？", question.Content);
-        Assert.Equal("SQL注入|跨站脚本攻击|跨站请求伪造", question.CorrectAnswer);
+        Assert.Equal("SQL注入,跨站脚本攻击,跨站请求伪造", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Equal("SQL注入、XSS和CSRF都是常见的Web安全威胁。", question.Analysis);
         Assert.Equal(2, question.Tags.Count);

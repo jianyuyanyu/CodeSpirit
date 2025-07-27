@@ -430,7 +430,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                         throw new AppServiceException(400, "多选题选项不得少于4个！");
                     }
 
-                    var answers = correctAnswer.Split('|')?.ToList();
+                    if (options.Any(p => p.Contains(',')))
+                    {
+                        throw new AppServiceException(400, "多选题选项中不能包括特殊符号！");
+                    }
+
+                    var answers = correctAnswer.Split(',')?.ToList();
                     if (answers == null || !answers.Any() || !answers.All(a => options.Contains(a)))
                     {
                         throw new AppServiceException(400, "所有正确答案必须是选项之一！");

@@ -499,7 +499,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                 TotalScore = examSetting.ExamPaper.TotalScore,
                 AttemptNumber = examRecord.AttemptNumber,
                 AllowedAttempts = examSetting.AllowedAttempts,
-                Questions = questions.Select(q => new ClientExamQuestionDto
+                Questions = questions.OrderBy(q => (int)q.Question.Type)
+                .Select(q => new ClientExamQuestionDto
                 {
                     Id = q.Id,
                     QuestionId = q.QuestionId,
@@ -511,7 +512,6 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                     SequenceNumber = q.OrderNumber,
                     IsRequired = q.IsRequired
                 })
-                .OrderBy(q => q.Type)
                 .ToList()
             };
 

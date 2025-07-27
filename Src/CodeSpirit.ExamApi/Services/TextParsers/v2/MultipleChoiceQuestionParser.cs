@@ -92,7 +92,7 @@ public class MultipleChoiceQuestionParser : BaseQuestionParser
                         correctAnswers.Add(options[normalizedMark]);
                     }
                 }
-                result.CorrectAnswer = string.Join("|", correctAnswers);
+                result.CorrectAnswer = string.Join(",", correctAnswers);
             }
 
             // 解析分数

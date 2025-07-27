@@ -1203,7 +1203,7 @@
                                                         {
                                                             type: "checkboxes",
                                                             name: "question_${item.id}",
-                                                            options: "${options}",
+                                                            source: "${options}",
                                                             mode: "horizontal",
                                                             value: "${answer}",
                                                             required: "${item.isRequired}",

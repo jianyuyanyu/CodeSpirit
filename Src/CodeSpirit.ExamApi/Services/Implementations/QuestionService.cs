@@ -429,18 +429,11 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     {
                         throw new AppServiceException(400, "多选题选项不得少于4个！");
                     }
-                    
-                    try
+
+                    var answers = correctAnswer.Split('|')?.ToList();
+                    if (answers == null || !answers.Any() || !answers.All(a => options.Contains(a)))
                     {
-                        var answers = JsonSerializer.Deserialize<List<string>>(correctAnswer);
-                        if (answers == null || !answers.Any() || !answers.All(a => options.Contains(a)))
-                        {
-                            throw new AppServiceException(400, "所有正确答案必须是选项之一！");
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        throw new AppServiceException(400, "多选题答案格式无效！");
+                        throw new AppServiceException(400, "所有正确答案必须是选项之一！");
                     }
                     break;
 

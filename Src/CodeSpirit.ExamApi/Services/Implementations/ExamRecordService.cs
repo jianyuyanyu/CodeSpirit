@@ -1059,7 +1059,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 IsPassed = examRecord.IsPassed,
                 Status = examRecord.Status.ToString(),
                 Comments = examRecord.Comments,
-                Answers = answerRecords.Select(a => new ClientExamAnswerResultDto
+                Answers = answerRecords.OrderBy(a => a.Question.Type)
+                .Select(a => new ClientExamAnswerResultDto
                 {
                     QuestionId = a.QuestionId,
                     Content = a.QuestionVersion.Content,
@@ -1777,33 +1778,33 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             {
                 throw new BusinessException("考试记录不存在");
             }
-            
+
             // 获取试卷预览信息
             var preview = await GetAnswerPreviewAsync(recordId);
-            
+
             // 获取学生信息
             var student = examRecord.Student;
             if (student == null)
             {
                 throw new BusinessException("学生信息不存在");
             }
-            
+
             // 按题型分组
             var questionsByType = examRecord.AnswerRecords
                 .GroupBy(a => a.QuestionVersion.Question.Type.ToString())
                 .ToDictionary(g => g.Key, g => g.ToList());
-            
+
             // 计算各题型统计
             var typeStatistics = new List<QuestionTypeStatistics>();
-            
+
             foreach (var type in questionsByType.Keys)
             {
                 var typeAnswers = questionsByType[type];
-                
+
                 var totalScore = typeAnswers.Sum(a => a.QuestionVersion.DefaultScore);
                 var obtainedScore = (int)typeAnswers.Sum(a => a.Score ?? 0);
                 var correctCount = typeAnswers.Count(a => a.IsCorrect ?? false);
-                
+
                 typeStatistics.Add(new QuestionTypeStatistics
                 {
                     Type = type,
@@ -1814,7 +1815,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     CorrectCount = correctCount
                 });
             }
-            
+
             // 构建试卷题目列表
             var questions = examRecord.AnswerRecords
                 .OrderBy(a => a.OrderNumber)
@@ -1828,7 +1829,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     OrderNumber = a.OrderNumber
                 })
                 .ToList();
-                
+
             // 构建答案列表
             var answers = examRecord.AnswerRecords
                 .OrderBy(a => a.OrderNumber)
@@ -1843,7 +1844,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     DefaultScore = a.QuestionVersion.DefaultScore
                 })
                 .ToList();
-            
+
             // 构建详情DTO
             var detail = new ExamPaperDetailDto
             {
@@ -1866,7 +1867,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 Answers = answers,
                 TypeStatistics = typeStatistics
             };
-            
+
             return detail;
         }
         catch (Exception ex)
@@ -1875,7 +1876,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             throw new BusinessException($"获取试卷详情失败: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// 获取题目类型名称
     /// </summary>

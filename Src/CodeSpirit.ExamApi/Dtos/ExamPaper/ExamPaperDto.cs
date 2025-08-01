@@ -1,5 +1,6 @@
 using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.ExamApi.Data.Models.Enums;
+using System.ComponentModel;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamPaper;
 
@@ -99,6 +100,62 @@ public class ExamPaperDto
     /// </summary>
     [DisplayName("已预览")]
     public bool IsPreviewChecked { get; set; }
+
+    /// <summary>
+    /// 是否启用成绩换算
+    /// </summary>
+    [DisplayName("启用成绩换算")]
+    public bool EnableScoreConversion { get; set; }
+
+    /// <summary>
+    /// 原始及格分（换算前的及格分）
+    /// </summary>
+    [DisplayName("原始及格分")]
+    public int? OriginalPassScore { get; set; }
+
+    /// <summary>
+    /// 换算目标满分
+    /// </summary>
+    [DisplayName("换算目标满分")]
+    public int? ConversionTargetFullScore { get; set; }
+
+    /// <summary>
+    /// 换算小数保留位数
+    /// </summary>
+    [DisplayName("小数保留位数")]
+    public int ConversionDecimalPlaces { get; set; }
+
+    /// <summary>
+    /// 换算比例
+    /// </summary>
+    [DisplayName("换算比例")]
+    public decimal? ConversionRatio { get; set; }
+
+    /// <summary>
+    /// 换算描述（自动生成，仅用于前端显示）
+    /// </summary>
+    [DisplayName("换算说明")]
+    public string ConversionDescription { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 换算后的显示满分（用于前端显示）
+    /// </summary>
+    [DisplayName("显示满分")]
+    public int DisplayFullScore => EnableScoreConversion && ConversionTargetFullScore.HasValue 
+        ? ConversionTargetFullScore.Value 
+        : TotalScore;
+
+    /// <summary>
+    /// 原始满分（显示用）
+    /// </summary>
+    [DisplayName("原始满分")]
+    public int OriginalFullScore => TotalScore;
+
+    /// <summary>
+    /// 原始及格分（显示用）
+    /// </summary>
+    [DisplayName("原始及格分显示")]
+    public int OriginalPassScoreDisplay => OriginalPassScore ?? PassScore;
 
     /// <summary>
     /// 试卷包含的题目列表

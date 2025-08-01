@@ -99,6 +99,34 @@ public class ExamPaper: LongKeyAuditableEntityBase, IMultiTenant
     public bool IsPreviewChecked { get; set; } = false;
     
     /// <summary>
+    /// 是否启用成绩换算
+    /// </summary>
+    public bool EnableScoreConversion { get; set; } = false;
+
+    /// <summary>
+    /// 原始及格分（换算前的及格分）
+    /// </summary>
+    [Range(0, 1000)]
+    public int? OriginalPassScore { get; set; }
+
+    /// <summary>
+    /// 换算目标满分
+    /// </summary>
+    [Range(1, 1000)]
+    public int? ConversionTargetFullScore { get; set; }
+
+    /// <summary>
+    /// 换算小数保留位数
+    /// </summary>
+    [Range(0, 2)]
+    public int ConversionDecimalPlaces { get; set; } = 1;
+
+    /// <summary>
+    /// 换算比例（目标满分/原始满分，使用decimal确保精度）
+    /// </summary>
+    public decimal? ConversionRatio { get; set; }
+    
+    /// <summary>
     /// 租户ID
     /// </summary>
     [Required]

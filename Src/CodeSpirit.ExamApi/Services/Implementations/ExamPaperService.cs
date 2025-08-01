@@ -26,6 +26,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         private readonly IRepository<QuestionVersion> _questionVersionRepository;
         private readonly IMapper _mapper;
         private readonly ILogger<ExamPaperService> _logger;
+        private readonly IScoreConversionService _scoreConversionService;
 
         /// <summary>
         /// 构造函数
@@ -36,7 +37,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             IRepository<Question> questionRepository,
             IRepository<QuestionVersion> questionVersionRepository,
             IMapper mapper,
-            ILogger<ExamPaperService> logger)
+            ILogger<ExamPaperService> logger,
+            IScoreConversionService scoreConversionService)
             : base(examPaperRepository, mapper)
         {
             _examPaperRepository = examPaperRepository;
@@ -45,6 +47,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             _questionVersionRepository = questionVersionRepository;
             _mapper = mapper;
             _logger = logger;
+            _scoreConversionService = scoreConversionService;
         }
 
         /// <summary>
@@ -313,6 +316,39 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     AverageScore = 0,
                     PassRate = 0
                 };
+
+                // 处理成绩换算配置
+                if (createDto.EnableScoreConversion)
+                {
+                    // 验证换算配置
+                    var validationResult = _scoreConversionService.ValidateConversionConfiguration(
+                        createDto.TotalScore,
+                        createDto.ConversionTargetFullScore,
+                        createDto.ConversionTargetPassScore,
+                        createDto.ConversionDecimalPlaces);
+
+                    if (!validationResult.IsValid)
+                    {
+                        throw new AppServiceException(400, $"成绩换算配置无效：{validationResult.ErrorMessage}");
+                    }
+
+                    // 设置换算配置
+                    examPaper.EnableScoreConversion = true;
+                    examPaper.OriginalPassScore = createDto.PassScore; // 保存原始及格分
+                    examPaper.ConversionTargetFullScore = createDto.ConversionTargetFullScore;
+                    examPaper.ConversionDecimalPlaces = createDto.ConversionDecimalPlaces;
+                    
+                    // 计算换算比例
+                    examPaper.ConversionRatio = _scoreConversionService.CalculateConversionRatio(
+                        createDto.TotalScore, createDto.ConversionTargetFullScore);
+
+                    // 更新PassScore为换算后的目标及格分
+                    examPaper.PassScore = createDto.ConversionTargetPassScore;
+
+                    _logger.LogInformation(
+                        "试卷 {ExamPaperName} 启用成绩换算：{OriginalFullScore} → {TargetFullScore}，换算比例：{Ratio}",
+                        examPaper.Name, createDto.TotalScore, createDto.ConversionTargetFullScore, examPaper.ConversionRatio);
+                }
 
                 // 保存随机规则
                 var randomRules = new

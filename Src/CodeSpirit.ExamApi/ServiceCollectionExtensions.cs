@@ -3,6 +3,8 @@ using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.ExamApi.Services;
+using CodeSpirit.ExamApi.Services.Implementations;
+using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Navigation.Extensions;
@@ -117,6 +119,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExamSettingService, ExamSettingService>();
         services.AddScoped<IMonitorService, MonitorService>();
         services.AddScoped<IPracticeSettingService, PracticeSettingService>();
+        services.AddScoped<IScoreConversionService, ScoreConversionService>();
 
         // 注册PDF生成服务
         services.AddPdfGeneration(configuration);

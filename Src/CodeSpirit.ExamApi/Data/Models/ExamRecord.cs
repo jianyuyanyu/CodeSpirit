@@ -62,6 +62,22 @@ public class ExamRecord : LongKeyAuditableEntityBase, IMultiTenant
     public double? Score { get; set; }
     
     /// <summary>
+    /// 原始成绩（换算前）
+    /// </summary>
+    [Range(0, 1000)]
+    public double? OriginalScore { get; set; }
+
+    /// <summary>
+    /// 是否应用了成绩换算
+    /// </summary>
+    public bool IsScoreConverted { get; set; } = false;
+
+    /// <summary>
+    /// 换算比例（记录当时的换算比例）
+    /// </summary>
+    public decimal? ScoreConversionRatio { get; set; }
+    
+    /// <summary>
     /// 是否通过
     /// </summary>
     public bool IsPassed { get; set; }

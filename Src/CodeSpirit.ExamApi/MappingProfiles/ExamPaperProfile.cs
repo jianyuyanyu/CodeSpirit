@@ -1,6 +1,7 @@
 using AutoMapper;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
+using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Extensions;
 
 namespace CodeSpirit.ExamApi.MappingProfiles;
@@ -23,6 +24,18 @@ public class ExamPaperProfile : Profile
             CreateExamPaperDto, 
             UpdateExamPaperDto, 
             CreateExamPaperDto>();
+
+        // 试卷实体到DTO的自定义映射
+        CreateMap<ExamPaper, ExamPaperDto>()
+            .ForMember(dest => dest.ConversionDescription, opt => opt.MapFrom(src =>
+                !src.EnableScoreConversion || !src.ConversionTargetFullScore.HasValue || !src.ConversionRatio.HasValue
+                    ? string.Empty
+                    : $"成绩换算：{src.TotalScore}分制 → {src.ConversionTargetFullScore.Value}分制，" +
+                      $"换算比例：{src.ConversionRatio.Value:F4}，" +
+                      $"及格分：{src.OriginalPassScore ?? src.PassScore} → {src.PassScore}，" +
+                      $"小数保留：{src.ConversionDecimalPlaces}位。" +
+                      $"换算公式：换算后成绩 = 原始成绩 × {src.ConversionRatio.Value:F4}（保留{src.ConversionDecimalPlaces}位小数）"
+            ));
 
         // 试卷题目映射
         CreateMap<ExamPaperQuestion, ExamPaperQuestionDto>()

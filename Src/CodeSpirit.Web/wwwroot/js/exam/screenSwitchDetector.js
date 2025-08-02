@@ -213,7 +213,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                            'Authorization': 'Bearer ' + TokenManager.getToken(),
                             'X-Forwarded-With': 'CodeSpirit'
                         }
                     });

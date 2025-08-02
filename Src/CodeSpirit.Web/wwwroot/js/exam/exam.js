@@ -77,6 +77,11 @@
     let examAnswers = window.examAnswers; // 本地引用
     let recordId = null;             // 考试记录ID
     let isSubmitting = false;        // 是否正在提交
+    
+    // 性能优化相关变量
+    let questionIdIndexMap = new Map();  // 题目ID索引映射，提升查找性能
+    let answerSaveTimeouts = new Map();  // 答案保存防抖计时器
+    let lastTimerUpdate = 0;             // 上次计时器更新时间，避免频繁DOM更新
 
     // AMIS实例引用
     window.amisInstance = null;
@@ -322,9 +327,16 @@
         }
     }
 
-    // 更新计时器显示
+    // 优化版本的计时器显示更新
     function updateTimerDisplay() {
         try {
+            const currentTime = Date.now();
+            // 限制DOM更新频率，避免过度渲染
+            if (currentTime - lastTimerUpdate < 900) { // 900ms内不重复更新DOM
+                return;
+            }
+            lastTimerUpdate = currentTime;
+            
             // 防御性编程：确保remainingTime是有效值
             if (isNaN(remainingTime) || remainingTime === undefined) {
                 console.warn("更新计时器时发现remainingTime无效:", remainingTime);
@@ -340,7 +352,11 @@
 
             const displayText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-            window.GlobalData.set('timer.remainingSeconds', remainingTime); // 保留，可能其他逻辑需要
+            // 只在值真正变化时更新全局数据
+            const currentRemainingSeconds = window.GlobalData.get('timer.remainingSeconds', -1);
+            if (currentRemainingSeconds !== remainingTime) {
+                window.GlobalData.set('timer.remainingSeconds', remainingTime);
+            }
 
             // 检测是否在特殊时间段内，设置相应样式类
             let timerClassName = "exam-timer";
@@ -354,8 +370,10 @@
                 timerClassName += " countdown-warn";
             }
 
-            // 直接更新DOM显示
-            updateTimerDOMDisplay(displayText, timerClassName);
+            // 使用requestAnimationFrame优化DOM更新
+            requestAnimationFrame(() => {
+                updateTimerDOMDisplay(displayText, timerClassName);
+            });
 
         } catch (error) {
             console.error("更新计时器显示时发生错误:", error);
@@ -407,36 +425,79 @@
         }
     }
 
-    // 添加保存答案的函数
-    function saveAnswer(questionId, answer) {
+    // 添加保存答案的函数 - 性能优化版本
+    function saveAnswer(frontendQuestionId, answer) {
         try {
-
-            // 确保examAnswers对象存在
-            if (!window.examAnswers) {
-                window.examAnswers = {};
+            // 确保frontendQuestionId是字符串类型
+            frontendQuestionId = String(frontendQuestionId);
+            
+            // 查找对应的题目数据，获取服务器端需要的questionId
+            const questions = window.globalData?.exam?.questions || [];
+            const questionData = questions.find(q => String(q.id) === frontendQuestionId);
+            
+            if (!questionData) {
+                console.error(`[保存答案] 未找到前端题目ID ${frontendQuestionId} 对应的题目数据`);
+                return false;
             }
-
-            // 保存答案到examAnswers对象
-            window.examAnswers[questionId] = answer;
-
-            // 更新答题卡状态
-            const statusUpdated = updateAnswerCardStatus(questionId);
-            console.log(`[答题卡] 状态更新${statusUpdated ? '成功' : '失败'}`);
-
+            
+            // 获取服务器端需要的questionId
+            const serverQuestionId = questionData.questionId || questionData.id;
+            
+            // 确保examAnswers是数组
+            if (!Array.isArray(window.examAnswers)) {
+                window.examAnswers = [];
+            }
+            
+            // 高效查找和更新答案（使用前端ID作为本地存储键）
+            const existingIndex = window.examAnswers.findIndex(a => String(a.questionId) === frontendQuestionId);
+            if (existingIndex >= 0) {
+                // 更新现有答案
+                window.examAnswers[existingIndex].answer = answer;
+                window.examAnswers[existingIndex].serverQuestionId = serverQuestionId; // 保存服务器ID
+            } else {
+                // 添加新答案
+                window.examAnswers.push({ 
+                    questionId: frontendQuestionId,  // 前端ID用于本地查找
+                    serverQuestionId: serverQuestionId, // 服务器ID用于提交
+                    answer 
+                });
+            }
+            
+            // 立即更新答题卡状态（使用前端ID）
+            updateAnswerCardStatusOptimized(frontendQuestionId);
+            
             // 获取考试记录ID
             const recordId = window.globalData.exam.recordId;
-
+            
             if (!recordId) {
                 console.error(`[答题卡] 保存答案失败：缺少考试ID(${examId})或记录ID(${recordId})`);
                 return false;
             }
-            sendAnswerToServer(recordId, questionId, answer);
-
+            
+            // 使用防抖机制发送到服务器，发送服务器需要的ID
+            debouncedSendAnswerToServer(recordId, serverQuestionId, answer);
+            
             return true;
         } catch (error) {
             console.error(`[答题卡] 保存答案时出错:`, error);
             return false;
         }
+    }
+
+    // 防抖版本的答案发送函数
+    function debouncedSendAnswerToServer(recordId, serverQuestionId, answer) {
+        // 清除该题目的现有防抖计时器（使用服务器ID作为键）
+        if (answerSaveTimeouts.has(serverQuestionId)) {
+            clearTimeout(answerSaveTimeouts.get(serverQuestionId));
+        }
+        
+        // 设置新的防抖计时器（800ms延迟）
+        const timeoutId = setTimeout(() => {
+            sendAnswerToServer(recordId, serverQuestionId, answer);
+            answerSaveTimeouts.delete(serverQuestionId);
+        }, 800);
+        
+        answerSaveTimeouts.set(serverQuestionId, timeoutId);
     }
 
     // 添加向服务器提交单个答案的函数
@@ -620,16 +681,20 @@
 
             // 添加未同步的答案
             if (unsyncedAnswersExist) {
-                console.log(`[提交考试] 发现 ${window.unsyncedAnswers.size} 个未同步的答案`);
-
-                // 从examAnswers中找出对应的答案
-                window.unsyncedAnswers.forEach(questionId => {
-                    const answer = window.examAnswers.find(a => a.questionId === questionId);
-                    if (answer) {
+                // 高效收集未同步的答案
+                // 注意：unsyncedAnswers中存储的是服务器ID，需要反向查找前端ID对应的答案
+                window.unsyncedAnswers.forEach(serverQuestionId => {
+                    const serverQuestionIdStr = String(serverQuestionId);
+                    
+                    // 在本地答案中查找对应的答案（通过serverQuestionId匹配）
+                    const answerData = window.examAnswers.find(a => a.serverQuestionId === serverQuestionIdStr);
+                    if (answerData) {
                         answersToSync.push({
-                            questionId: String(answer.questionId), // 使用String()确保是字符串
-                            answer: answer.answer
+                            questionId: serverQuestionIdStr,  // 使用服务器ID
+                            answer: answerData.answer
                         });
+                    } else {
+                        console.warn(`[提交考试] 未找到服务器ID ${serverQuestionIdStr} 对应的本地答案`);
                     }
                 });
             }
@@ -704,11 +769,18 @@
 
         // 转换为后端需要的格式，确保questionId是字符串类型
         const answers = window.examAnswers.map(a => {
+            // 使用服务器ID进行最终提交
+            const serverQuestionId = a.serverQuestionId || a.questionId;
+            
             return {
-                questionId: String(a.questionId), // 使用String()确保是字符串
+                questionId: String(serverQuestionId), // 使用服务器ID
                 answer: a.answer
             };
         });
+        
+        // 清理防抖计时器，避免内存泄漏
+        answerSaveTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+        answerSaveTimeouts.clear();
 
         console.debug('[提交考试] 最终提交的答案数据:', answers);
 
@@ -920,6 +992,11 @@
                                                     // 保存到全局数据
                                                     window.globalData.profile = event.data;
                                                     console.log("考生信息数据:", event.data);
+                                                    
+                                                    // 尝试创建水印（考生信息已加载）
+                                                    if (typeof window.initializeWatermark === 'function') {
+                                                        window.initializeWatermark();
+                                                    }
                                                 }
                                             } catch (error) {
                                                 console.error('处理考生信息数据时出错:', error);
@@ -1071,34 +1148,48 @@
                                         // 初始化考试计时器
                                         initializeExamTimer(event.data);
                                         
-                                        // 为题目数据添加answered状态
+                                        // 为题目数据添加answered状态 - 性能优化版本
                                         if (Array.isArray(event.data.questions)) {
-                                            // 初始化题目的answered状态为false
-                                            event.data.questions.forEach(question => {
-                                                question.answered = question.answer && question.answer.length>0;
-                                            });
-                                            
                                             // 确保examAnswers是数组
-                                            if (typeof window.examAnswers === 'undefined') {
+                                            if (!Array.isArray(window.examAnswers)) {
                                                 console.warn("window.examAnswers未定义，初始化为空数组");
                                                 window.examAnswers = [];
                                                 examAnswers = window.examAnswers;
                                             }
                                             
-                                            // 如果已有答案，更新answered状态
-                                            if (Array.isArray(window.examAnswers) && window.examAnswers.length > 0) {
-                                                window.examAnswers.forEach(answer => {
-                                                    if (answer && answer.questionId) {
-                                                        const questionIndex = event.data.questions.findIndex(q => q.id == answer.questionId);
-                                                        if (questionIndex >= 0) {
-                                                            event.data.questions[questionIndex].answered = true;
-                                                        }
-                                                    }
-                                                });
-                                            }
+                                            // 创建答案查找映射，提升性能（使用前端ID作为键）
+                                            const answerMap = new Map();
+                                            window.examAnswers.forEach(answer => {
+                                                if (answer && answer.questionId) {
+                                                    answerMap.set(String(answer.questionId), answer.answer);
+                                                }
+                                            });
+                                            
+                                            // 初始化题目的answered状态
+                                            event.data.questions.forEach(question => {
+                                                // 优先使用question.id，与DOM中的data-question-id保持一致
+                                                const questionId = String(question.id);
+                                                const hasAnswer = answerMap.has(questionId);
+                                                const existingAnswer = question.answer;
+                                                
+                                                // 优先使用已保存的答案，其次是从服务器获取的答案
+                                                question.answered = hasAnswer || (existingAnswer && existingAnswer.length > 0);
+                                                
+                                                // 如果本地有答案但题目对象没有，同步过去
+                                                if (hasAnswer && !existingAnswer) {
+                                                    question.answer = answerMap.get(questionId);
+                                                }
+                                            });
+                                            
+                                            // 初始化题目ID索引，提升后续查找性能
+                                            setTimeout(initializeQuestionIdIndex, 100);
                                         }
                                         
                                         window.globalData.exam.questions = event.data.questions || [];
+                                        
+                                        // 对题目进行分组处理
+                                        const questionGroups = groupQuestionsByType(event.data.questions || []);
+                                        console.log("题目分组结果：", questionGroups);
                                         
                                         console.log("成功初始化考试数据");
                                         // 打印题目数据，检查是否正确
@@ -1108,10 +1199,17 @@
                                         if (window.amisInstance) {
                                             window.amisInstance.updateProps({
                                                 data: {
-                                                    questions: event.data.questions || []
+                                                    questions: event.data.questions || [],
+                                                    questionGroups: questionGroups
                                                 }
                                             });
                                             console.log("已同步题目数据到AMIS:", event.data.questions?.length || 0);
+                                            console.log("已同步分组数据到AMIS:", questionGroups.length);
+                                        }
+                                        
+                                        // 尝试创建水印（考试数据已加载）
+                                        if (typeof window.initializeWatermark === 'function') {
+                                            window.initializeWatermark();
                                         }
                                         
                                     } catch (error) {
@@ -1169,107 +1267,123 @@
                                     actions: [],  // 隐藏表单自带的提交按钮
                                     body: {
                                         type: "each",
-                                        name: "questions",
-                                        trackExpression: "${item.id}", // <--- 添加这里
+                                        name: "questionGroups",
+                                        trackExpression: "${item.type}",
                                         items: {
                                             type: "container",
                                             body: [
                                                 {
                                                     type: "tpl",
-                                                    tpl: "<div class=\"question-label\" id=\"question_${item.id}_label\"><pre>${(index + 1) + '. ' + item.content | raw} </pre><span style=\"color:#999\">（${item.score}分）</span></div>",
-                                                    inline: false
+                                                    tpl: "<div class=\"question-type-header\"><h3 class=\"question-type-title\"><i class=\"fa fa-list\"></i> ${item.typeName}（共${item.count}题）</h3></div>",
+                                                    inline: false,
+                                                    className: "question-type-header-wrapper"
                                                 },
                                                 {
-                                                    type: "container",
-                                                    body: [
-                                                        {
-                                                            type: "radios",
-                                                            name: "question_${item.id}",
-                                                            source: "${options}",
-                                                            mode: "horizontal",
-                                                            value: "${answer}",
-                                                            visibleOn: "item.type === 'SingleChoice'",
-                                                            onEvent: {
-                                                                change: {
-                                                                    actions: [
-                                                                        {
-                                                                            actionType: "custom",
-                                                                            script: "saveAnswer(event.data.__super.questionId, event.data.value);"
+                                                    type: "each",
+                                                    name: "questions",
+                                                    trackExpression: "${item.id}",
+                                                    items: {
+                                                        type: "container",
+                                                        body: [
+                                                            {
+                                                                type: "tpl",
+                                                                tpl: "<div class=\"question-label\" id=\"question_${item.id}_label\"><pre>${(item.globalIndex + 1) + '. ' + item.content | raw} </pre></div>",
+                                                                inline: false
+                                                            },
+                                                            {
+                                                                type: "container",
+                                                                body: [
+                                                                    {
+                                                                        type: "radios",
+                                                                        name: "question_${item.id}",
+                                                                        source: "${options}",
+                                                                        mode: "horizontal",
+                                                                        value: "${answer}",
+                                                                        visibleOn: "item.type === 'SingleChoice'",
+                                                                        onEvent: {
+                                                                            change: {
+                                                                                actions: [
+                                                                                    {
+                                                                                        actionType: "custom",
+                                                                                        script: "saveAnswer(event.data.__super.id, event.data.value);"
+                                                                                    }
+                                                                                ]
+                                                                            }
                                                                         }
-                                                                    ]
-                                                                }
-                                                            }
-                                                        },
-                                                        {
-                                                            type: "checkboxes",
-                                                            name: "question_${item.id}",
-                                                            source: "${options}",
-                                                            mode: "horizontal",
-                                                            value: "${answer}",
-                                                            required: "${item.isRequired}",
-                                                            visibleOn: "item.type === 'MultipleChoice'",
-                                                            onEvent: {
-                                                                change: {
-                                                                    actions: [
-                                                                        {
-                                                                            actionType: "custom",
-                                                                            script: "saveAnswer(event.data.__super.questionId, event.data.value);"
+                                                                    },
+                                                                    {
+                                                                        type: "checkboxes",
+                                                                        name: "question_${item.id}",
+                                                                        source: "${options}",
+                                                                        mode: "horizontal",
+                                                                        value: "${answer}",
+                                                                        required: "${item.isRequired}",
+                                                                        visibleOn: "item.type === 'MultipleChoice'",
+                                                                        onEvent: {
+                                                                            change: {
+                                                                                actions: [
+                                                                                    {
+                                                                                        actionType: "custom",
+                                                                                        script: "saveAnswer(event.data.__super.id, event.data.value);"
+                                                                                    }
+                                                                                ]
+                                                                            }
                                                                         }
-                                                                    ]
-                                                                }
-                                                            }
-                                                        },
-                                                        {
-                                                            type: "radios",
-                                                            name: "question_${item.id}",
-                                                            options: [
-                                                                {
-                                                                    label: "正确",
-                                                                    value: "True"
-                                                                },
-                                                                {
-                                                                    label: "错误",
-                                                                    value: "False"
-                                                                }
-                                                            ],
-                                                            mode: "horizontal",
-                                                            value: "${answer}",
-                                                            visibleOn: "${item.type === 'TrueFalse'}",
-                                                            onEvent: {
-                                                                change: {
-                                                                    actions: [
-                                                                        {
-                                                                            actionType: "custom",
-                                                                            script: "saveAnswer(event.data.__super.questionId, event.data.value);"
+                                                                    },
+                                                                    {
+                                                                        type: "radios",
+                                                                        name: "question_${item.id}",
+                                                                        options: [
+                                                                            {
+                                                                                label: "正确",
+                                                                                value: "True"
+                                                                            },
+                                                                            {
+                                                                                label: "错误",
+                                                                                value: "False"
+                                                                            }
+                                                                        ],
+                                                                        mode: "horizontal",
+                                                                        value: "${answer}",
+                                                                        visibleOn: "${item.type === 'TrueFalse'}",
+                                                                        onEvent: {
+                                                                            change: {
+                                                                                actions: [
+                                                                                    {
+                                                                                        actionType: "custom",
+                                                                                        script: "saveAnswer(event.data.__super.id, event.data.value);"
+                                                                                    }
+                                                                                ]
+                                                                            }
                                                                         }
-                                                                    ]
-                                                                }
-                                                            }
-                                                        },
-                                                        {
-                                                            type: "textarea",
-                                                            name: "question_${item.id}",
-                                                            placeholder: "请输入答案",
-                                                            minRows: 3,
-                                                            maxRows: 6,
-                                                            required: "${item.isRequired}",
-                                                            visibleOn: "${item.type !== 'SingleChoice' && item.type !== 'MultipleChoice' && item.type !== 'TrueFalse'}",
-                                                            onEvent: {
-                                                                change: {
-                                                                    actions: [
-                                                                        {
-                                                                            actionType: "custom",
-                                                                            script: "saveAnswer(event.data.__super.questionId, event.data.value);"
+                                                                    },
+                                                                    {
+                                                                        type: "textarea",
+                                                                        name: "question_${item.id}",
+                                                                        placeholder: "请输入答案",
+                                                                        minRows: 3,
+                                                                        maxRows: 6,
+                                                                        required: "${item.isRequired}",
+                                                                        visibleOn: "${item.type !== 'SingleChoice' && item.type !== 'MultipleChoice' && item.type !== 'TrueFalse'}",
+                                                                        onEvent: {
+                                                                            change: {
+                                                                                actions: [
+                                                                                    {
+                                                                                        actionType: "custom",
+                                                                                        script: "saveAnswer(event.data.__super.id, event.data.value);"
+                                                                                    }
+                                                                                ]
+                                                                            }
                                                                         }
-                                                                    ]
-                                                                }
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                type: "divider",
+                                                                hidden: "${__super.index === __super.questions.length - 1}"
                                                             }
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    type: "divider",
-                                                    hidden: "${index === questions.length - 1}"
+                                                        ]
+                                                    }
                                                 }
                                             ]
                                         }
@@ -1403,6 +1517,11 @@
                 console.log("AMIS渲染器已挂载");
                 // 标记AMIS实例已完全初始化
                 window.amisReady = true;
+                
+                // 在AMIS完全加载后尝试创建水印
+                if (typeof window.initializeWatermark === 'function') {
+                    window.initializeWatermark();
+                }
             },
             updateLocation: (location) => {
                 history.push(location);
@@ -1625,7 +1744,25 @@
             // 向后兼容旧的全局函数
             window.setupScreenSwitchDetection();
         }
+        
+        // 初始化水印
+        if (typeof window.initializeWatermark === 'function') {
+            window.initializeWatermark();
+        }
     };
+    
+    // 页面卸载时清理所有资源
+    window.addEventListener('beforeunload', function() {
+        // 清理水印资源
+        if (typeof window.WatermarkManager === 'object' && typeof window.WatermarkManager.destroy === 'function') {
+            window.WatermarkManager.destroy();
+        }
+        
+        // 清理考试相关资源
+        if (typeof window.cleanupExamResources === 'function') {
+            window.cleanupExamResources();
+        }
+    });
 
     // 初始化考试计时器
     function initializeExamTimer(examData) {
@@ -1649,7 +1786,6 @@
 
             // 在考试数据加载后初始化切屏检测（延迟执行确保数据已加载）
             setTimeout(function () {
-                console.log("延迟执行切屏检测初始化");
                 if (typeof window.ScreenSwitchDetector !== 'undefined' && typeof window.ScreenSwitchDetector.setup === 'function') {
                     window.ScreenSwitchDetector.setup();
                 } else if (typeof window.setupScreenSwitchDetection === 'function') {
@@ -1658,46 +1794,271 @@
                 } else {
                     console.error("切屏检测函数未定义");
                 }
+                
+                // 初始化性能优化组件
             }, 2000);
-
-            // 显示调试信息
-            console.log("考试全局数据已更新:", {
-                exam: window.globalData.exam,
-                recordId: window.globalData.exam.recordId,
-                screenSwitch: {
-                    count: window.globalData.exam.screenSwitchCount,
-                    allowed: window.globalData.exam.allowedScreenSwitchCount
-                }
-            });
         } catch (error) {
             console.error("初始化考试计时器失败", error);
+        }
+    }
+
+    // 题型分组函数
+    function groupQuestionsByType(questions) {
+        const groups = [];
+        const typeOrder = ['SingleChoice', 'MultipleChoice', 'TrueFalse', 'Essay']; // 题型顺序
+        const typeNames = {
+            'SingleChoice': '单选题',
+            'MultipleChoice': '多选题',
+            'TrueFalse': '判断题',
+            'Essay': '主观题'
+        };
+        
+        // 按题型分组
+        const groupedByType = {};
+        let questionIndex = 0; // 全局题目编号
+        
+        questions.forEach(question => {
+            let type = question.type;
+            // 如果不是已知类型，归类为主观题
+            if (!typeOrder.includes(type)) {
+                type = 'Essay';
+            }
+            
+            if (!groupedByType[type]) {
+                groupedByType[type] = [];
+            }
+            
+            // 添加全局题目编号
+            question.globalIndex = questionIndex++;
+            groupedByType[type].push(question);
+        });
+        
+        // 按预定义顺序生成分组
+        typeOrder.forEach(type => {
+            if (groupedByType[type] && groupedByType[type].length > 0) {
+                groups.push({
+                    type: type,
+                    typeName: typeNames[type],
+                    questions: groupedByType[type],
+                    count: groupedByType[type].length
+                });
+            }
+        });
+        
+        return groups;
+    }
+
+    // 初始化题目ID索引映射，提升查找性能
+    function initializeQuestionIdIndex() {
+        questionIdIndexMap.clear();
+        const questions = window.globalData?.exam?.questions || [];
+        
+        questions.forEach((question, index) => {
+            if (question.id) {
+                // 优先使用question.id，这个是与DOM中data-question-id匹配的ID
+                const id = String(question.id);
+                questionIdIndexMap.set(id, { index, question });
+            } else if (question.questionId) {
+                // 备用：如果没有question.id，使用questionId
+                const id = String(question.questionId);
+                questionIdIndexMap.set(id, { index, question });
+            }
+        });
+    }
+    
+    // 优化版本的答题卡状态更新函数
+    function updateAnswerCardStatusOptimized(questionId) {
+        try {
+            questionId = String(questionId);
+            
+            let dataUpdated = false;
+            
+            // 使用索引映射快速查找
+            const indexData = questionIdIndexMap.get(questionId);
+            if (indexData) {
+                indexData.question.answered = true;
+                dataUpdated = true;
+            } else {
+                // 降级到传统方法（以防索引失效）
+                const questions = window.globalData?.exam?.questions || [];
+                // 优先使用question.id进行匹配，与DOM中的data-question-id保持一致
+                const questionIndex = questions.findIndex(q => String(q.id) === questionId);
+                if (questionIndex >= 0) {
+                    questions[questionIndex].answered = true;
+                    dataUpdated = true;
+                } else {
+                    console.warn(`[答题卡] 在数据中未找到题目ID: ${questionId}，但仍会尝试更新DOM`);
+                }
+            }
+            
+            // 无论是否找到题目数据，都尝试更新DOM（因为DOM可能独立存在）
+            requestAnimationFrame(() => {
+                updateAnswerCardDOM(questionId, true);
+            });
+            
+            return dataUpdated;
+        } catch (error) {
+            console.error('[答题卡] 更新答题卡状态时出错:', error);
+            
+            // 即使出错也尝试更新DOM
+            try {
+                requestAnimationFrame(() => {
+                    updateAnswerCardDOM(questionId, true);
+                });
+            } catch (domError) {
+                console.error('[答题卡] DOM更新也失败:', domError);
+            }
+            
+            return false;
+        }
+    }
+    
+    // 优化的DOM更新函数 - 适配实际DOM结构
+    function updateAnswerCardDOM(questionId, answered) {
+        try {
+            // 根据实际DOM结构：外层span有answer-card-item类，内层a元素有data-question-id属性
+            const anchorElements = document.querySelectorAll(`a[data-question-id="${questionId}"]`);
+            
+            anchorElements.forEach(anchor => {
+                // 找到包含answer-card-item类的最外层容器
+                let answerCardContainer = anchor.closest('.answer-card-item');
+                
+                // 如果没找到，向上遍历查找（适配不同的DOM结构）
+                if (!answerCardContainer) {
+                    let parent = anchor.parentElement;
+                    while (parent && parent !== document.body) {
+                        if (parent.classList.contains('answer-card-item')) {
+                            answerCardContainer = parent;
+                            break;
+                        }
+                        parent = parent.parentElement;
+                    }
+                }
+                
+                // 更新状态类名
+                if (answerCardContainer) {
+                    if (answered) {
+                        answerCardContainer.classList.remove('unanswered');
+                        answerCardContainer.classList.add('answered');
+                    } else {
+                        answerCardContainer.classList.remove('answered');
+                        answerCardContainer.classList.add('unanswered');
+                    }
+                } else {
+                    console.warn(`[答题卡] 未找到题目${questionId}对应的答题卡容器`);
+                }
+            });
+            
+            // 如果没有找到任何元素，尝试备用方案
+            if (anchorElements.length === 0) {
+                console.warn(`[答题卡] 未找到题目ID为${questionId}的元素，尝试备用查找方案`);
+                
+                // 备用方案：查找包含题目ID的任何元素
+                const fallbackElements = document.querySelectorAll(`[data-question-id="${questionId}"], [data-question-index*="${questionId}"]`);
+                
+                fallbackElements.forEach(element => {
+                    const container = element.closest('.answer-card-item') || element;
+                    if (container) {
+                        if (answered) {
+                            container.classList.remove('unanswered');
+                            container.classList.add('answered');
+                        } else {
+                            container.classList.remove('answered');
+                            container.classList.add('unanswered');
+                        }
+                    }
+                });
+            }
+            
+        } catch (error) {
+            console.error('[答题卡] 更新DOM时出错:', error);
         }
     }
 
     // 使函数全局可用，供AMIS调用
     window.initializeExamTimer = initializeExamTimer;
     window.saveAnswer = saveAnswer;
+    window.initializeQuestionIdIndex = initializeQuestionIdIndex;
+    window.updateAnswerCardStatusOptimized = updateAnswerCardStatusOptimized;
+    window.groupQuestionsByType = groupQuestionsByType;
 
-    // 添加更新答题卡状态的函数
+    // 兼容性函数，保持向后兼容
     function updateAnswerCardStatus(questionId) {
-        try {
-            // 获取所有题目ID
-            const allQuestionIds = window.globalData?.exam?.questions?.map(q => q.questionId) || [];
-
-            // 尝试精确匹配
-            const matchedQuestion = allQuestionIds.find(id => id === questionId);
-            if (matchedQuestion) {
-                const question = window.globalData?.exam?.questions?.find(q => q.questionId === matchedQuestion);
-                if (question) {
-                    question.answered = true;
-                    //console.debug(`[答题卡] 更新题目 ${questionId} 的状态为已回答`);
-                }
-            }
-            GlobalData.update('exam.questions', window.globalData?.exam?.questions || []);
-            return true;
-        } catch (error) {
-            console.error('[答题卡] 更新答题卡状态时出错:', error);
-            return false;
-        }
+        return updateAnswerCardStatusOptimized(questionId);
     }
+    
+    // 清理资源的函数
+    window.cleanupExamResources = function() {
+        // 清理防抖计时器
+        answerSaveTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+        answerSaveTimeouts.clear();
+        
+        // 清理题目ID索引
+        questionIdIndexMap.clear();
+        
+        // 清理计时器
+        if (examTimerInterval) {
+            clearInterval(examTimerInterval);
+            examTimerInterval = null;
+        }
+    };
+
+    // 调试工具函数
+    window.debugExamQuestions = function() {
+        console.group('[调试工具] 考试题目信息');
+        
+        // 显示题目数据和ID映射关系
+        const questions = window.globalData?.exam?.questions || [];
+        console.log('题目数据总数:', questions.length);
+        console.log('索引映射大小:', questionIdIndexMap.size);
+        console.log('索引映射内容:', Array.from(questionIdIndexMap.keys()));
+        
+        // 显示前端ID和服务器ID的映射关系
+        console.group('题目ID映射关系:');
+        questions.slice(0, 10).forEach((q, index) => {
+            console.log(`题目${index + 1}:`, {
+                前端ID: q.id,
+                服务器ID: q.questionId,
+                题目类型: q.type,
+                题目内容: q.content?.substring(0, 30) + '...'
+            });
+        });
+        if (questions.length > 10) {
+            console.log(`... 还有 ${questions.length - 10} 个题目`);
+        }
+        console.groupEnd();
+        
+        // 显示已保存的答案
+        console.group('已保存答案:');
+        console.log('本地答案数量:', window.examAnswers?.length || 0);
+        window.examAnswers?.slice(0, 5).forEach((answer, index) => {
+            console.log(`答案${index + 1}:`, {
+                前端ID: answer.questionId,
+                服务器ID: answer.serverQuestionId,
+                答案: answer.answer
+            });
+        });
+        if ((window.examAnswers?.length || 0) > 5) {
+            console.log(`... 还有 ${window.examAnswers.length - 5} 个答案`);
+        }
+        console.groupEnd();
+        
+        // 检查DOM中的答题卡元素
+        const answerCardElements = document.querySelectorAll('.answer-card-item a[data-question-id]');
+        console.log('DOM中的答题卡元素数量:', answerCardElements.length);
+        console.log('未同步答案数量:', window.unsyncedAnswers?.size || 0);
+        console.log('同步失败答案数量:', window.failedSyncAnswers?.size || 0);
+        
+        console.groupEnd();
+    };
+    
+    window.testAnswerCardUpdate = function(questionId) {
+        console.log(`[调试工具] 测试更新题目 ${questionId} 的答题卡状态`);
+        updateAnswerCardStatusOptimized(questionId);
+    };
+    
+    window.reinitializeQuestionIndex = function() {
+        console.log('[调试工具] 重新初始化题目索引');
+        initializeQuestionIdIndex();
+    };
 })(); 

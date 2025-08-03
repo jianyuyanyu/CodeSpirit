@@ -93,6 +93,18 @@ public class ExamSettingDto
     public bool EnableViewResult { get; set; }
 
     /// <summary>
+    /// 最小考试时间（分钟），低于此时间不允许提交
+    /// </summary>
+    [DisplayName("最小考试时间（分钟）")]
+    public int MinExamTime { get; set; }
+
+    /// <summary>
+    /// 是否在结果页显示题目分析
+    /// </summary>
+    [DisplayName("显示题目分析")]
+    public bool EnableQuestionAnalysis { get; set; }
+
+    /// <summary>
     /// 考试状态
     /// </summary>
     [DisplayName("考试状态")]
@@ -110,6 +122,7 @@ public class ExamSettingDto
     /// 分组ID列表
     /// </summary>
     [IgnoreColumn]
+    [AmisFormField(Hidden = true)]
     public List<long> StudentGroupIds { get; set; } = new List<long>();
 
     /// <summary>

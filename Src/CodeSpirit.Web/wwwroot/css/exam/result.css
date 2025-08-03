@@ -697,4 +697,213 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+/* ========== 成绩换算相关样式 ========== */
+
+/* 成绩换算提醒框 */
+.score-conversion-alert {
+    margin-bottom: 20px !important;
+    border-left: 4px solid var(--result-success-color) !important;
+    background: linear-gradient(135deg, #f6ffed 0%, #ffffff 100%) !important;
+}
+
+.conversion-reminder {
+    padding: 2px 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.conversion-reminder strong {
+    color: var(--result-success-color);
+    font-weight: 600;
+}
+
+/* 换算后的成绩卡片 */
+.result-score-card.converted {
+    border: 2px solid var(--result-success-color) !important;
+    background: linear-gradient(135deg, #f6ffed 0%, #ffffff 100%) !important;
+    position: relative;
+    overflow: visible;
+}
+
+.result-score-card.converted::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: var(--result-gradient-success);
+    border-radius: 8px;
+    z-index: -1;
+    opacity: 0.1;
+}
+
+/* 成绩换算标识 */
+.score-badge {
+    display: inline-block;
+    background: var(--result-success-color);
+    color: white;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 5px;
+    vertical-align: middle;
+    box-shadow: 0 1px 2px rgba(76, 175, 80, 0.3);
+    animation: scoreConversionPulse 2s ease-in-out infinite;
+}
+
+@keyframes scoreConversionPulse {
+    0%, 100% {
+        box-shadow: 0 1px 2px rgba(76, 175, 80, 0.3);
+    }
+    50% {
+        box-shadow: 0 2px 4px rgba(76, 175, 80, 0.5);
+    }
+}
+
+/* 原始成绩显示 */
+.result-score-original {
+    font-size: 12px;
+    color: var(--result-text-muted);
+    margin-top: 5px;
+    line-height: 1.3;
+    opacity: 0.8;
+}
+
+.result-score-original small {
+    font-size: 11px;
+}
+
+/* 换算说明文本 */
+.result-score-note {
+    font-size: 11px;
+    color: var(--result-text-light);
+    margin-top: 3px;
+    line-height: 1.2;
+    font-style: italic;
+}
+
+.text-muted {
+    color: var(--result-text-muted) !important;
+}
+
+/* 换算后的成绩数值强调 */
+.score.converted {
+    color: var(--result-success-color) !important;
+    font-weight: 700 !important;
+    text-shadow: 0 1px 2px rgba(76, 175, 80, 0.2);
+}
+
+/* 响应式设计 - 移动端适配 */
+@media (max-width: 768px) {
+    .score-badge {
+        font-size: 8px;
+        padding: 1px 4px;
+        margin-left: 3px;
+    }
+    
+    .result-score-original {
+        font-size: 10px;
+        margin-top: 3px;
+    }
+    
+    .result-score-note {
+        font-size: 9px;
+        margin-top: 2px;
+    }
+    
+    .conversion-reminder {
+        font-size: 12px;
+        padding: 0;
+    }
+    
+    .conversion-reminder strong {
+        font-size: 13px;
+    }
+}
+
+/* 高对比度支持 */
+@media (prefers-contrast: high) {
+    .result-score-card.converted {
+        border: 3px solid var(--result-success-color) !important;
+        background: #ffffff !important;
+    }
+    
+    .score-badge {
+        background: #000 !important;
+        color: #fff !important;
+        border: 1px solid var(--result-success-color);
+    }
+    
+    .score.converted {
+        color: #000 !important;
+        text-decoration: underline;
+    }
+}
+
+/* 打印样式适配 */
+@media print {
+    .score-conversion-alert {
+        border: 2px solid #000 !important;
+        background: #f9f9f9 !important;
+        break-inside: avoid;
+    }
+    
+    .result-score-card.converted {
+        border: 2px solid #000 !important;
+        background: #f9f9f9 !important;
+    }
+    
+    .score-badge {
+        background: #000 !important;
+        color: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .conversion-reminder {
+        page-break-inside: avoid;
+    }
+}
+
+/* 无障碍访问增强 */
+.score-badge[aria-label] {
+    position: relative;
+}
+
+.score-badge:focus {
+    outline: 2px solid var(--result-primary-color);
+    outline-offset: 1px;
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .score-conversion-alert {
+        background: linear-gradient(135deg, #1a3e1a 0%, #2d2d2d 100%) !important;
+        border-left-color: #4caf50 !important;
+    }
+    
+    .result-score-card.converted {
+        background: linear-gradient(135deg, #1a3e1a 0%, #2d2d2d 100%) !important;
+        border-color: #4caf50 !important;
+    }
+    
+    .conversion-reminder {
+        color: #e0e0e0;
+    }
+    
+    .conversion-reminder strong {
+        color: #81c784;
+    }
+    
+    .result-score-original {
+        color: #b0b0b0;
+    }
+    
+    .result-score-note {
+        color: #888;
+    }
 } 

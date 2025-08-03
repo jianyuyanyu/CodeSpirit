@@ -87,6 +87,24 @@ public class ExamRecordDto
     public double? Score { get; set; }
 
     /// <summary>
+    /// 原始成绩（换算前）
+    /// </summary>
+    [DisplayName("原始成绩")]
+    public double? OriginalScore { get; set; }
+
+    /// <summary>
+    /// 是否应用了成绩换算
+    /// </summary>
+    [DisplayName("已应用换算")]
+    public bool IsScoreConverted { get; set; }
+
+    /// <summary>
+    /// 换算比例
+    /// </summary>
+    [DisplayName("换算比例")]
+    public decimal? ScoreConversionRatio { get; set; }
+
+    /// <summary>
     /// 单选题得分
     /// </summary>
     [DisplayName("单选题得分")]

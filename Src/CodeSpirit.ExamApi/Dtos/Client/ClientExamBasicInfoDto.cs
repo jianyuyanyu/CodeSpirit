@@ -75,6 +75,12 @@ public class ClientExamBasicInfoDto
     public bool EnableViewResult { get; set; }
     
     /// <summary>
+    /// 最小考试时间（分钟），低于此时间不允许提交
+    /// </summary>
+    [DisplayName("最小考试时间（分钟）")]
+    public int MinExamTime { get; set; }
+    
+    /// <summary>
     /// 是否启用切屏检测
     /// </summary>
     [DisplayName("是否启用切屏检测")]

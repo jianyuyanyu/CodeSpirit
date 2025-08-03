@@ -30,14 +30,14 @@ public class ExamPaper: LongKeyAuditableEntityBase, IMultiTenant
     public ExamPaperType Type { get; set; }
     
     /// <summary>
-    /// 总分
+    /// 总分（如果启用成绩换算，则为换算后的满分；否则为原始满分）
     /// </summary>
     [Required]
     [Range(0, 1000)]
     public int TotalScore { get; set; }
     
     /// <summary>
-    /// 及格分数
+    /// 及格分数（如果启用成绩换算，则为换算后的及格分；否则为原始及格分）
     /// </summary>
     [Range(0, 1000)]
     public int PassScore { get; set; }
@@ -104,13 +104,19 @@ public class ExamPaper: LongKeyAuditableEntityBase, IMultiTenant
     public bool EnableScoreConversion { get; set; } = false;
 
     /// <summary>
-    /// 原始及格分（换算前的及格分）
+    /// 原始总分（换算前的满分，始终保存试卷的原始分值）
+    /// </summary>
+    [Range(1, 1000)]
+    public int? OriginalTotalScore { get; set; }
+
+    /// <summary>
+    /// 原始及格分（换算前的及格分，始终保存试卷的原始及格分）
     /// </summary>
     [Range(0, 1000)]
     public int? OriginalPassScore { get; set; }
 
     /// <summary>
-    /// 换算目标满分
+    /// 换算目标满分（换算后想要达到的满分）
     /// </summary>
     [Range(1, 1000)]
     public int? ConversionTargetFullScore { get; set; }
@@ -122,7 +128,7 @@ public class ExamPaper: LongKeyAuditableEntityBase, IMultiTenant
     public int ConversionDecimalPlaces { get; set; } = 1;
 
     /// <summary>
-    /// 换算比例（目标满分/原始满分，使用decimal确保精度）
+    /// 换算比例（换算后满分/原始满分，使用decimal确保精度）
     /// </summary>
     public decimal? ConversionRatio { get; set; }
     

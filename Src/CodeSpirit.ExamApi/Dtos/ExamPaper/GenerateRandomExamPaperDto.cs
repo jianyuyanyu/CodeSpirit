@@ -114,7 +114,7 @@ public class GenerateRandomExamPaperDto
     [DisplayName("换算目标满分")]
     [Required(ErrorMessage = "换算目标满分不能为空")]
     [Range(1, 1000, ErrorMessage = "换算目标满分必须在1-1000之间")]
-    [AmisNumberField("换算目标满分", Min = 1, Max = 1000, DefaultValue = 100)]
+    [AmisNumberField("换算目标满分", Min = 1, Max = 1000, DefaultValue = 100, VisibleOn = "enableScoreConversion")]
     public int ConversionTargetFullScore { get; set; } = 100;
 
     /// <summary>
@@ -122,7 +122,7 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("换算目标及格分")]
     [Range(0, 1000, ErrorMessage = "换算目标及格分必须在0-1000之间")]
-    [AmisNumberField("换算目标及格分", Min = 0, Max = 1000, DefaultValue = 60)]
+    [AmisNumberField("换算目标及格分", Min = 0, Max = 1000, DefaultValue = 60, VisibleOn = "enableScoreConversion")]
     public int ConversionTargetPassScore { get; set; } = 60;
 
     /// <summary>
@@ -130,12 +130,6 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("小数保留位数")]
     [Range(0, 2, ErrorMessage = "小数保留位数必须在0-2之间")]
-    [AmisSelectField("小数保留位数", "0:不保留小数,1:保留1位小数,2:保留2位小数", "label")]
+    [AmisNumberField("小数保留位数", Min = 0, Max = 2, DefaultValue = 1, VisibleOn = "enableScoreConversion")]
     public int ConversionDecimalPlaces { get; set; } = 1;
-
-    /// <summary>
-    /// 换算说明（自动生成，仅用于前端显示）
-    /// </summary>
-    [DisplayName("换算说明")]
-    public string ConversionDescription { get; set; } = string.Empty;
 }

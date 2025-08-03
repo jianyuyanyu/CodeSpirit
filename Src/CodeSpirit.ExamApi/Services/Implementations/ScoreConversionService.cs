@@ -83,16 +83,19 @@ public class ScoreConversionService : IScoreConversionService
     /// <returns>换算后的考试记录</returns>
     public async Task<List<ExamRecord>> BatchConvertExamRecordScoresAsync(List<ExamRecord> examRecords, ExamPaper examPaper)
     {
-        if (examRecords == null || !examRecords.Any())
+        if (examRecords == null)
+            throw new ArgumentNullException(nameof(examRecords));
+            
+        if (!examRecords.Any())
             return new List<ExamRecord>();
 
-        if (!examPaper.EnableScoreConversion || !examPaper.ConversionTargetFullScore.HasValue)
+        if (!examPaper.EnableScoreConversion || !examPaper.OriginalTotalScore.HasValue)
         {
             _logger.LogWarning("试卷 {ExamPaperId} 未启用成绩换算或缺少换算配置", examPaper.Id);
             return examRecords;
         }
 
-        var conversionRatio = CalculateConversionRatio(examPaper.TotalScore, examPaper.ConversionTargetFullScore.Value);
+        var conversionRatio = CalculateConversionRatio(examPaper.OriginalTotalScore.Value, examPaper.TotalScore);
         
         foreach (var record in examRecords)
         {
@@ -121,7 +124,7 @@ public class ScoreConversionService : IScoreConversionService
 
         // 如果未启用换算或已经换算过，则跳过
         if (!examPaper.EnableScoreConversion || 
-            !examPaper.ConversionTargetFullScore.HasValue ||
+            !examPaper.OriginalTotalScore.HasValue ||
             examRecord.IsScoreConverted ||
             !examRecord.Score.HasValue)
         {
@@ -129,7 +132,7 @@ public class ScoreConversionService : IScoreConversionService
         }
 
         // 计算换算比例
-        var conversionRatio = CalculateConversionRatio(examPaper.TotalScore, examPaper.ConversionTargetFullScore.Value);
+        var conversionRatio = CalculateConversionRatio(examPaper.OriginalTotalScore.Value, examPaper.TotalScore);
 
         // 保存原始成绩
         examRecord.OriginalScore = examRecord.Score;
@@ -239,13 +242,13 @@ public class ScoreConversionService : IScoreConversionService
     /// <returns>是否需要重新换算</returns>
     public bool RequiresReconversion(ExamPaper examPaper, List<ExamRecord> existingRecords)
     {
-        if (!examPaper.EnableScoreConversion || !examPaper.ConversionTargetFullScore.HasValue)
+        if (!examPaper.EnableScoreConversion || !examPaper.OriginalTotalScore.HasValue)
             return false;
 
         if (!existingRecords.Any())
             return false;
 
-        var currentRatio = CalculateConversionRatio(examPaper.TotalScore, examPaper.ConversionTargetFullScore.Value);
+        var currentRatio = CalculateConversionRatio(examPaper.OriginalTotalScore.Value, examPaper.TotalScore);
 
         // 检查是否有记录使用了不同的换算比例
         return existingRecords.Any(r => r.IsScoreConverted && 

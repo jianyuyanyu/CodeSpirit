@@ -158,7 +158,8 @@ public class ScoreConversionServiceTests
         var examPaper = new ExamPaper
         {
             Id = 1,
-            TotalScore = 150,
+            TotalScore = 100, // 换算后的满分
+            OriginalTotalScore = 150, // 换算前的满分  
             EnableScoreConversion = true,
             ConversionTargetFullScore = 100,
             ConversionRatio = 0.6667m,
@@ -187,7 +188,7 @@ public class ScoreConversionServiceTests
         
         // 验证原始成绩和换算标记
         Assert.All(result, record => Assert.True(record.IsScoreConverted));
-        Assert.All(result, record => Assert.Equal(0.6667m, record.ScoreConversionRatio));
+        Assert.All(result, record => Assert.Equal(0.6666666666666666666666666667m, record.ScoreConversionRatio));
     }
 
     [Fact]
@@ -349,7 +350,8 @@ public class ScoreConversionServiceTests
         var examPaper = new ExamPaper
         {
             Id = 1,
-            TotalScore = 150,
+            TotalScore = 100, // 换算后的满分
+            OriginalTotalScore = 150, // 换算前的满分
             EnableScoreConversion = true,
             ConversionTargetFullScore = 100,
             ConversionRatio = 0.6667m,
@@ -372,7 +374,7 @@ public class ScoreConversionServiceTests
         Assert.Equal(60.0, result.Score);
         Assert.Equal(90, result.OriginalScore);
         Assert.True(result.IsScoreConverted);
-        Assert.Equal(0.6667m, result.ScoreConversionRatio);
+        Assert.Equal(0.6666666666666666666666666667m, result.ScoreConversionRatio);
     }
 
     [Fact]
@@ -415,7 +417,8 @@ public class ScoreConversionServiceTests
         // Arrange
         var examPaper = new ExamPaper
         {
-            TotalScore = 100,
+            TotalScore = 120, // 换算后的满分
+            OriginalTotalScore = 150, // 换算前的满分
             EnableScoreConversion = true,
             ConversionTargetFullScore = 120,
             ConversionRatio = 0.8m
@@ -439,7 +442,8 @@ public class ScoreConversionServiceTests
         // Arrange
         var examPaper = new ExamPaper
         {
-            TotalScore = 100,
+            TotalScore = 120, // 换算后的满分
+            OriginalTotalScore = 150, // 换算前的满分
             EnableScoreConversion = true,
             ConversionTargetFullScore = 120,
             ConversionRatio = 0.8m

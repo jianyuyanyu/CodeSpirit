@@ -82,6 +82,17 @@ public class ExamSetting : LongKeyAuditableEntityBase, IMultiTenant
     public bool EnableViewResult { get; set; } = false;
     
     /// <summary>
+    /// 最小考试时间（分钟），低于此时间不允许提交
+    /// </summary>
+    [Range(1, 1440)]
+    public int MinExamTime { get; set; } = 30;
+    
+    /// <summary>
+    /// 是否在结果页显示题目分析
+    /// </summary>
+    public bool EnableQuestionAnalysis { get; set; } = true;
+    
+    /// <summary>
     /// 考试状态
     /// </summary>
     [Required]

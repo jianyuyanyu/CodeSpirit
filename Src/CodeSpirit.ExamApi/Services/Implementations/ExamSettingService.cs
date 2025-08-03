@@ -593,7 +593,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                 RecordId = existingRecord?.Id,
                 AllowedScreenSwitchCount = examSetting.AllowedScreenSwitchCount,
                 ScreenSwitchCount = existingRecord?.ScreenSwitchCount ?? 0,
-                EnableViewResult = examSetting.EnableViewResult
+                EnableViewResult = examSetting.EnableViewResult,
+                MinExamTime = examSetting.MinExamTime
             };
 
             return examBasicInfo;

@@ -334,16 +334,17 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
                     // 设置换算配置
                     examPaper.EnableScoreConversion = true;
+                    examPaper.OriginalTotalScore = createDto.TotalScore; // 保存原始总分
                     examPaper.OriginalPassScore = createDto.PassScore; // 保存原始及格分
-                    examPaper.ConversionTargetFullScore = createDto.ConversionTargetFullScore;
                     examPaper.ConversionDecimalPlaces = createDto.ConversionDecimalPlaces;
-                    
+
                     // 计算换算比例
                     examPaper.ConversionRatio = _scoreConversionService.CalculateConversionRatio(
                         createDto.TotalScore, createDto.ConversionTargetFullScore);
 
-                    // 更新PassScore为换算后的目标及格分
-                    examPaper.PassScore = createDto.ConversionTargetPassScore;
+                    // 更新TotalScore和PassScore为换算后的分值
+                    examPaper.TotalScore = createDto.ConversionTargetFullScore; // 试卷总分更新为换算后的满分
+                    examPaper.PassScore = createDto.ConversionTargetPassScore; // 试卷及格分更新为换算后的及格分
 
                     _logger.LogInformation(
                         "试卷 {ExamPaperName} 启用成绩换算：{OriginalFullScore} → {TargetFullScore}，换算比例：{Ratio}",

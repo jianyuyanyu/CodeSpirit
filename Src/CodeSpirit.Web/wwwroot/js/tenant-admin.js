@@ -437,7 +437,7 @@
                             </div>
                             <div class="loading-spinner"></div>
                         </div>
-                        <h2 class="loading-title">租户后台加载中</h2>
+                        <h2 class="loading-title">加载中</h2>
                         <div class="progress-container">
                             <div class="progress-bar">
                                 <div class="progress-fill"></div>

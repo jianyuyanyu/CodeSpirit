@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.ExamApi.ValidationAttributes;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamSetting;
 
@@ -105,6 +106,22 @@ public class CreateExamSettingDto
     [DisplayName("提交后是否可以查看考试结果")]
     [AmisSwitchField(DefaultValue = true)]
     public bool EnableViewResult { get; set; }
+
+    /// <summary>
+    /// 最小考试时间（分钟），低于此时间不允许提交
+    /// </summary>
+    [DisplayName("最小考试时间（分钟）")]
+    [Range(1, 120, ErrorMessage = "最小考试时间必须在1-120分钟之间")]
+    [MinExamTimeLessThanDuration]
+    [AmisNumberField(DefaultValue = 30, Min = 1, Max = 120)]
+    public int MinExamTime { get; set; } = 30;
+
+    /// <summary>
+    /// 是否在结果页显示题目分析
+    /// </summary>
+    [DisplayName("显示题目分析")]
+    [AmisSwitchField(DefaultValue = true)]
+    public bool EnableQuestionAnalysis { get; set; } = true;
 
     /// <summary>
     /// 参加考试的学生分组ID列表

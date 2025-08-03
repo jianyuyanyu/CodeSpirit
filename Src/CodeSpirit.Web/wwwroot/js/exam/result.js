@@ -28,6 +28,7 @@
                 tenantId: options.tenantId || window.tenantId,
                 recordId: options.recordId || window.recordId,
                 debug: false,
+                idleTimeout: 30000, // 30秒无活动超时
                 ...options
             };
 
@@ -38,6 +39,10 @@
 
             // 状态管理
             this.isLoading = false;
+
+            // 空闲检测相关
+            this.idleTimer = null;
+            this.isIdleWarningShown = false;
 
             this.init();
         }
@@ -59,6 +64,9 @@
                 
                 // 初始化AMIS
                 this.initAmis();
+
+                // 初始化空闲检测
+                this.initIdleDetection();
 
                 this.showLoading(false);
                 this.logDebug('考试结果管理器初始化完成');
@@ -178,21 +186,24 @@
          * 构建AMIS页面结构
          */
         buildAmisSchema() {
+            const resultOverview = this.buildResultOverview();
+            const body = [
+                // 结果头部
+                this.buildResultHeader(),
+                // 成绩概览（可能是数组或单个对象）
+                ...(Array.isArray(resultOverview) ? resultOverview : [resultOverview]),
+                // 详细统计
+                this.buildResultDetails(),
+                // 题目分析
+                this.buildQuestionAnalysis(),
+                // 操作按钮
+                this.buildResultActions()
+            ];
+
             return {
                 type: 'page',
                 className: 'result-content',
-                body: [
-                    // 结果头部
-                    this.buildResultHeader(),
-                    // 成绩概览
-                    this.buildResultOverview(),
-                    // 详细统计
-                    this.buildResultDetails(),
-                    // 题目分析
-                    this.buildQuestionAnalysis(),
-                    // 操作按钮
-                    this.buildResultActions()
-                ]
+                body: body
             };
         }
 
@@ -223,76 +234,128 @@
         }
 
         /**
-         * 构建成绩概览
+         * 构建成绩概览（支持成绩换算显示）
          */
         buildResultOverview() {
-            const scorePercentage = this.resultData.totalScore > 0 
-                ? ((this.resultData.score / this.resultData.totalScore) * 100).toFixed(1)
+            // 检查是否启用了成绩换算
+            const isScoreConverted = this.resultData.isScoreConverted || false;
+            const originalScore = this.resultData.originalScore || this.resultData.score;
+            const finalScore = this.resultData.score; // Score字段存储最终显示成绩
+            const originalTotalScore = this.examData.originalTotalScore || this.examData.totalScore || this.resultData.totalScore;
+            const convertedTotalScore = this.examData.conversionTargetFullScore;
+            
+            // 确定显示的主要成绩
+            const displayScore = finalScore; // 最终显示成绩
+            const displayTotalScore = isScoreConverted ? convertedTotalScore : originalTotalScore;
+            
+            const scorePercentage = displayTotalScore > 0 
+                ? ((displayScore / displayTotalScore) * 100).toFixed(1)
                 : 0;
 
-            return {
-                type: 'grid',
-                className: 'result-overview',
-                columns: [
-                    {
+            // 构建成绩卡片
+            const scoreCard = this.buildScoreCard(isScoreConverted, originalScore, finalScore, 
+                                                 originalTotalScore, displayTotalScore);
+
+            const overviewItems = [
+                scoreCard,
+                {
+                    body: {
+                        type: 'panel',
+                        className: 'result-score-card',
                         body: {
-                            type: 'panel',
-                            className: 'result-score-card',
-                            body: {
-                                type: 'html',
-                                html: `
-                                    <div class="result-score-label">总分</div>
-                                    <div class="result-score-value score">${this.resultData.score}</div>
-                                    <div class="result-score-unit">/ ${this.resultData.totalScore}分</div>
-                                `
-                            }
-                        }
-                    },
-                    {
-                        body: {
-                            type: 'panel',
-                            className: 'result-score-card',
-                            body: {
-                                type: 'html',
-                                html: `
-                                    <div class="result-score-label">得分率</div>
-                                    <div class="result-score-value">${scorePercentage}%</div>
-                                    <div class="result-score-unit">百分比</div>
-                                `
-                            }
-                        }
-                    },
-                    {
-                        body: {
-                            type: 'panel',
-                            className: 'result-score-card',
-                            body: {
-                                type: 'html',
-                                html: `
-                                    <div class="result-score-label">用时</div>
-                                    <div class="result-score-value">${this.formatDuration(this.resultData.duration || 0)}</div>
-                                    <div class="result-score-unit">时间</div>
-                                `
-                            }
-                        }
-                    },
-                    {
-                        body: {
-                            type: 'panel',
-                            className: 'result-score-card',
-                            body: {
-                                type: 'html',
-                                html: `
-                                    <div class="result-score-label">状态</div>
-                                    <div class="result-score-value ${this.resultData.isPassed ? 'passed' : 'failed'}">
-                                        ${this.resultData.isPassed ? '通过' : '未通过'}
-                                    </div>
-                                    <div class="result-score-unit">结果</div>
-                                `
-                            }
+                            type: 'html',
+                            html: `
+                                <div class="result-score-label">得分率</div>
+                                <div class="result-score-value">${scorePercentage}%</div>
+                                <div class="result-score-unit">百分比</div>
+                            `
                         }
                     }
-                ]
+                },
+                {
+                    body: {
+                        type: 'panel',
+                        className: 'result-score-card',
+                        body: {
+                            type: 'html',
+                            html: `
+                                <div class="result-score-label">用时</div>
+                                <div class="result-score-value">${this.formatDuration(this.resultData.duration || 0)}</div>
+                                <div class="result-score-unit">时间</div>
+                            `
+                        }
+                    }
+                },
+                {
+                    body: {
+                        type: 'panel',
+                        className: 'result-score-card',
+                        body: {
+                            type: 'html',
+                            html: `
+                                <div class="result-score-label">状态</div>
+                                <div class="result-score-value ${this.resultData.isPassed ? 'passed' : 'failed'}">
+                                    ${this.resultData.isPassed ? '通过' : '未通过'}
+                                </div>
+                                <div class="result-score-unit">结果</div>
+                            `
+                        }
+                    }
+                }
+            ];
+
+            // 如果启用了成绩换算，在顶部添加醒目提醒
+            const components = [];
+            if (isScoreConverted) {
+                components.push({
+                    type: 'alert',
+                    level: 'success',
+                    className: 'score-conversion-alert',
+                    body: {
+                        type: 'html',
+                        html: `
+                            <div class="conversion-reminder">
+                                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 18px; margin-right: 8px;">🎯</span>
+                                    <strong style="font-size: 16px;">成绩换算提醒</strong>
+                                </div>
+                                <div style="font-size: 14px; line-height: 1.5;">
+                                    本考试已应用成绩换算：<strong>${this.examData.conversionDescription || `将${originalTotalScore}分制转换为${convertedTotalScore}分制`}</strong><br/>
+                                    <span style="color: #666;">原始成绩：${originalScore}/${originalTotalScore}分 → 最终成绩：${finalScore}/${convertedTotalScore}分</span>
+                                </div>
+                            </div>
+                        `
+                    }
+                });
+            }
+
+            components.push({
+                type: 'grid',
+                className: 'result-overview',
+                columns: overviewItems
+            });
+
+            return components.length === 1 ? components[0] : components;
+        }
+
+        /**
+         * 构建成绩卡片（支持换算显示）
+         */
+        buildScoreCard(isScoreConverted, originalScore, finalScore, originalTotalScore, finalTotalScore) {
+            // 显示原始成绩
+            return {
+                body: {
+                    type: 'panel',
+                    className: 'result-score-card',
+                    body: {
+                        type: 'html',
+                        html: `
+                            <div class="result-score-label">总分</div>
+                            <div class="result-score-value score">${finalScore}</div>
+                            <div class="result-score-unit">/ ${finalTotalScore}分</div>
+                        `
+                    }
+                }
             };
         }
 
@@ -302,15 +365,21 @@
         buildResultDetails() {
             const correctCount = this.questionResults.filter(q => q.isCorrect).length;
             const incorrectCount = this.questionResults.filter(q => {
-                const obtainedScore = q.obtainedScore !== undefined ? q.obtainedScore : q.score;
-                return !q.isCorrect && obtainedScore === 0;
+                return q.isAnswered === true && !q.isCorrect;
             }).length;
-            const partialCount = this.questionResults.filter(q => {
-                const obtainedScore = q.obtainedScore !== undefined ? q.obtainedScore : q.score;
-                const totalScore = q.score || q.totalScore || 0;
-                return !q.isCorrect && obtainedScore > 0 && obtainedScore < totalScore;
+            const unansweredCount = this.questionResults.filter(q => {
+                return q.isAnswered === false;
             }).length;
+            
+            // 现在后端返回所有题目（包括未作答），可以直接使用questionResults长度
             const totalQuestions = this.questionResults.length;
+            
+            console.log('📊 [ResultManager] 题目统计数据:');
+            console.log('📊 [ResultManager] examData.questions?.length:', this.examData.questions?.length);
+            console.log('📊 [ResultManager] examData.questionCount:', this.examData.questionCount);
+            console.log('📊 [ResultManager] examData.totalQuestions:', this.examData.totalQuestions);
+            console.log('📊 [ResultManager] questionResults.length:', this.questionResults.length);
+            console.log('📊 [ResultManager] 最终采用总题目数:', totalQuestions);
 
             return {
                 type: 'panel',
@@ -362,8 +431,8 @@
                                     type: 'html',
                                     html: `
                                         <div class="result-stat-item">
-                                            <div class="result-stat-value" style="color: var(--result-warning-color);">${partialCount}</div>
-                                            <div class="result-stat-label">部分正确</div>
+                                            <div class="result-stat-value" style="color: var(--result-warning-color);">${unansweredCount}</div>
+                                            <div class="result-stat-label">未作答</div>
                                         </div>
                                     `
                                 }
@@ -392,6 +461,31 @@
             console.log('🔧 [ResultManager] buildQuestionAnalysis调用');
             console.log('🔧 [ResultManager] this.questionResults:', this.questionResults);
             console.log('🔧 [ResultManager] 是否为空判断:', !this.questionResults || this.questionResults.length === 0);
+            
+            // 检查是否启用了题目分析功能
+            const enableQuestionAnalysis = this.resultData.enableQuestionAnalysis !== undefined ? 
+                this.resultData.enableQuestionAnalysis : true; // 默认启用
+            
+            console.log('🔧 [ResultManager] 题目分析启用状态:', enableQuestionAnalysis);
+            
+            if (!enableQuestionAnalysis) {
+                console.log('⚠️ [ResultManager] 题目分析功能已禁用');
+                return {
+                    type: 'panel',
+                    className: 'result-analysis',
+                    body: {
+                        type: 'html',
+                        html: `
+                            <div class="result-empty">
+                                <div class="result-empty-text">
+                                    <i class="fa fa-eye-slash" style="font-size: 24px; color: #ccc; margin-bottom: 10px;"></i>
+                                    <div>题目分析已关闭</div>
+                                </div>
+                            </div>
+                        `
+                    }
+                };
+            }
             
             if (!this.questionResults || this.questionResults.length === 0) {
                 console.log('⚠️ [ResultManager] 显示空状态：暂无题目分析数据');
@@ -424,9 +518,9 @@
                 
                 // 状态图标
                 const statusIcon = statusClass === 'correct' ? '✓' : 
-                                 statusClass === 'partial' ? '△' : '✗';
+                                 statusClass === 'unanswered' ? '?' : '✗';
                 const statusIconClass = statusClass === 'correct' ? 'status-icon-correct' : 
-                                      statusClass === 'partial' ? 'status-icon-partial' : 'status-icon-incorrect';
+                                      statusClass === 'unanswered' ? 'status-icon-unanswered' : 'status-icon-incorrect';
                 
                 return {
                     type: 'html',
@@ -501,7 +595,7 @@
          * 返回首页
          */
         goHome() {
-            window.location.href = `/${this.options.tenantId}/exam/application`;
+            window.location.href = `/${this.options.tenantId}/exam/app`;
         }
 
 
@@ -519,15 +613,14 @@
          * 获取题目状态样式类
          */
         getQuestionStatusClass(question) {
-            // 兼容新旧API字段
+            // 使用后端提供的isAnswered字段
             const isCorrect = question.isCorrect;
-            const obtainedScore = question.obtainedScore !== undefined ? question.obtainedScore : question.score;
-            const totalScore = question.score || question.totalScore || 0;
+            const isAnswered = question.isAnswered;
             
             if (isCorrect) {
                 return 'correct';
-            } else if (obtainedScore > 0 && obtainedScore < totalScore) {
-                return 'partial';
+            } else if (!isAnswered) {
+                return 'unanswered';
             } else {
                 return 'incorrect';
             }
@@ -537,15 +630,14 @@
          * 获取题目状态文本
          */
         getQuestionStatusText(question) {
-            // 兼容新旧API字段
+            // 使用后端提供的isAnswered字段
             const isCorrect = question.isCorrect;
-            const obtainedScore = question.obtainedScore !== undefined ? question.obtainedScore : question.score;
-            const totalScore = question.score || question.totalScore || 0;
+            const isAnswered = question.isAnswered;
             
             if (isCorrect) {
                 return '正确';
-            } else if (obtainedScore > 0 && obtainedScore < totalScore) {
-                return '部分正确';
+            } else if (!isAnswered) {
+                return '未作答';
             } else {
                 return '错误';
             }
@@ -626,9 +718,114 @@
         }
 
         /**
+         * 初始化空闲检测
+         */
+        initIdleDetection() {
+            // 监听的活动事件类型
+            const activityEvents = [
+                'mousedown', 'mousemove', 'keypress', 'keydown',
+                'scroll', 'touchstart', 'click', 'contextmenu'
+            ];
+
+            // 重置空闲定时器的处理函数
+            const resetIdleTimer = () => {
+                this.resetIdleTimer();
+            };
+
+            // 绑定事件监听器
+            activityEvents.forEach(event => {
+                document.addEventListener(event, resetIdleTimer, true);
+            });
+
+            // 存储事件处理函数和事件类型，用于后续清理
+            this.activityEvents = activityEvents;
+            this.resetIdleTimerHandler = resetIdleTimer;
+
+            // 启动空闲定时器
+            this.resetIdleTimer();
+
+            this.logDebug(`空闲检测已初始化，超时时间: ${this.options.idleTimeout / 1000}秒`);
+        }
+
+        /**
+         * 重置空闲定时器
+         */
+        resetIdleTimer() {
+            // 清除现有定时器
+            if (this.idleTimer) {
+                clearTimeout(this.idleTimer);
+            }
+
+            // 重置警告状态
+            this.isIdleWarningShown = false;
+
+            // 设置新的定时器
+            this.idleTimer = setTimeout(() => {
+                this.handleIdleTimeout();
+            }, this.options.idleTimeout);
+
+            this.logDebug('空闲定时器已重置');
+        }
+
+        /**
+         * 处理空闲超时
+         */
+        handleIdleTimeout() {
+            this.logDebug('检测到空闲超时，准备自动退出');
+
+            // 显示退出提示
+            if (amisInstance && amisInstance.env && amisInstance.env.notify) {
+                amisInstance.env.notify('warning', '由于长时间无操作，即将自动返回首页');
+            } else if (window.amis && window.amis.toast) {
+                window.amis.toast.warning('由于长时间无操作，即将自动返回首页');
+            }
+
+            // 1秒后执行退出
+            setTimeout(() => {
+                this.autoExit();
+            }, 1000);
+        }
+
+        /**
+         * 自动退出到首页
+         */
+        autoExit() {
+            this.logDebug('执行自动退出');
+            
+            // 清理资源
+            this.cleanupIdleDetection();
+            
+            // 跳转到登录页面
+            window.location.href = `/${this.options.tenantId}/exam/login`;
+        }
+
+        /**
+         * 清理空闲检测
+         */
+        cleanupIdleDetection() {
+            // 清除定时器
+            if (this.idleTimer) {
+                clearTimeout(this.idleTimer);
+                this.idleTimer = null;
+            }
+
+            // 移除事件监听器
+            if (this.activityEvents && this.resetIdleTimerHandler) {
+                this.activityEvents.forEach(event => {
+                    document.removeEventListener(event, this.resetIdleTimerHandler, true);
+                });
+            }
+
+            this.logDebug('空闲检测已清理');
+        }
+
+        /**
          * 销毁管理器
          */
         destroy() {
+            // 清理空闲检测
+            this.cleanupIdleDetection();
+            
             this.logDebug('考试结果管理器已销毁');
         }
     }
@@ -646,6 +843,13 @@
             });
             
             console.log('📊 考试结果管理器已自动初始化');
+        }
+    });
+
+    // 页面卸载时清理资源
+    window.addEventListener('beforeunload', () => {
+        if (window.resultManager) {
+            window.resultManager.destroy();
         }
     });
 

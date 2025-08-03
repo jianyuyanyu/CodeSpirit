@@ -108,6 +108,12 @@ public class ExamPaperDto
     public bool EnableScoreConversion { get; set; }
 
     /// <summary>
+    /// 原始总分（换算前的满分，始终保存试卷的原始分值）
+    /// </summary>
+    [DisplayName("原始总分")]
+    public int? OriginalTotalScore { get; set; }
+
+    /// <summary>
     /// 原始及格分（换算前的及格分）
     /// </summary>
     [DisplayName("原始及格分")]

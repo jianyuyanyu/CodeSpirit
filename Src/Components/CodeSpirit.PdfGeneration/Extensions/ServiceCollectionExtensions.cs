@@ -110,14 +110,21 @@ public static class ServiceCollectionExtensions
     /// <returns>应用程序构建器</returns>
     public static async Task<IApplicationBuilder> UsePdfGenerationAsync(this IApplicationBuilder app)
     {
-        // 获取PDF生成服务并初始化
-        var logger = app.ApplicationServices.GetRequiredService<ILogger<PdfGenerationService>>();
-        logger.LogInformation("正在初始化PDF生成服务...");
-        
-        var pdfService = app.ApplicationServices.GetRequiredService<IPdfGenerationService>();
-        await pdfService.InitializeAsync();
-        
-        logger.LogInformation("PDF生成服务初始化完成");
+        try
+        {
+            // 获取PDF生成服务并初始化
+            var logger = app.ApplicationServices.GetRequiredService<ILogger<PdfGenerationService>>();
+            logger.LogInformation("正在初始化PDF生成服务...");
+
+            var pdfService = app.ApplicationServices.GetRequiredService<IPdfGenerationService>();
+            await pdfService.InitializeAsync();
+
+            logger.LogInformation("PDF生成服务初始化完成");
+        }
+        catch (Exception)
+        {
+
+        }
         
         return app;
     }

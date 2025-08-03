@@ -38,8 +38,232 @@
             URGENT: 300,                   // 紧急阈值(5分钟)
             EXTREMELY_URGENT: 60           // 极度紧急阈值(1分钟)
         },
-        TIMER_TRIGGER_POINTS: [300, 240, 180, 120, 60, 30, 10] // 特殊倒计时提醒点(秒)
+        TIMER_TRIGGER_POINTS: [300, 240, 180, 120, 60, 30, 10], // 特殊倒计时提醒点(秒)
+        PERFORMANCE_THRESHOLDS: {          // 性能警告阈值(毫秒)
+            SAVE_ANSWER: 200,              // 保存答案函数
+            TIMER_UPDATE: 50,              // 计时器更新
+            INITIALIZATION: 1000,          // 初始化函数
+            ANSWER_CARD_UPDATE: 100        // 答题卡更新
+        }
     };
+
+    /**
+     * 性能监控管理器
+     * 检测开发人员工具并提供性能统计功能
+     */
+    const PerformanceMonitor = {
+        isDevToolsOpen: false,
+        isEnabled: false,
+        statistics: new Map(),
+        
+        /**
+         * 检测开发人员工具是否打开
+         */
+        detectDevTools: function() {
+            const threshold = 160;
+            let devtools = false;
+            
+            // 方法1：通过控制台大小检测
+            if (window.outerHeight - window.innerHeight > threshold || 
+                window.outerWidth - window.innerWidth > threshold) {
+                devtools = true;
+                return devtools;
+            }
+            
+            // 方法2：通过console对象检测
+            const element = new Image();
+            element.__defineGetter__('id', function() {
+                devtools = true;
+            });
+            console.log(element);
+            
+            return devtools;
+        },
+        
+        /**
+         * 初始化性能监控
+         */
+        init: function() {
+            // 检测开发人员工具
+            this.isDevToolsOpen = this.detectDevTools();
+            this.isEnabled = this.isDevToolsOpen;
+            
+            if (this.isEnabled) {
+                console.log('%c[性能监控] 检测到开发人员工具，已启用性能监控', 'color: #4CAF50; font-weight: bold;');
+                this.setupPerformanceTracking();
+                
+                // 定期重新检测开发者工具状态
+                setInterval(() => {
+                    const currentState = this.detectDevTools();
+                    if (currentState !== this.isDevToolsOpen) {
+                        this.isDevToolsOpen = currentState;
+                        this.isEnabled = currentState;
+                        
+                        if (currentState) {
+                            console.log('%c[性能监控] 开发人员工具已打开，启用性能监控', 'color: #4CAF50; font-weight: bold;');
+                            this.setupPerformanceTracking();
+                        } else {
+                            console.log('%c[性能监控] 开发人员工具已关闭，禁用性能监控', 'color: #FF9800; font-weight: bold;');
+                        }
+                    }
+                }, 2000);
+            }
+        },
+        
+        /**
+         * 设置性能追踪
+         */
+        setupPerformanceTracking: function() {
+            if (!this.isEnabled) return;
+            
+            // 记录页面加载性能
+            if (performance.navigation) {
+                const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
+                console.log(`%c[性能监控] 页面加载时间: ${loadTime}ms`, 'color: #2196F3;');
+            }
+        },
+        
+        /**
+         * 包装函数以进行性能监控
+         * @param {Function} fn - 要监控的函数
+         * @param {string} name - 函数名称
+         * @param {number} threshold - 警告阈值(毫秒)
+         * @returns {Function} 包装后的函数
+         */
+        wrapFunction: function(fn, name, threshold = 100) {
+            if (!this.isEnabled) return fn;
+            
+            const self = this;
+            return function(...args) {
+                const startTime = performance.now();
+                const result = fn.apply(this, args);
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+                
+                // 记录统计信息
+                self.recordStatistic(name, duration);
+                
+                // 检查是否超过阈值
+                if (duration > threshold) {
+                    console.warn(`%c[性能警告] ${name} 执行时间过长: ${duration.toFixed(2)}ms (阈值: ${threshold}ms)`, 
+                        'color: #FF5722; font-weight: bold;');
+                }
+                
+                return result;
+            };
+        },
+        
+        /**
+         * 包装异步函数以进行性能监控
+         * @param {Function} fn - 要监控的异步函数
+         * @param {string} name - 函数名称
+         * @param {number} threshold - 警告阈值(毫秒)
+         * @returns {Function} 包装后的函数
+         */
+        wrapAsyncFunction: function(fn, name, threshold = 100) {
+            if (!this.isEnabled) return fn;
+            
+            const self = this;
+            return async function(...args) {
+                const startTime = performance.now();
+                try {
+                    const result = await fn.apply(this, args);
+                    const endTime = performance.now();
+                    const duration = endTime - startTime;
+                    
+                    // 记录统计信息
+                    self.recordStatistic(name, duration);
+                    
+                    // 检查是否超过阈值
+                    if (duration > threshold) {
+                        console.warn(`%c[性能警告] ${name} 异步执行时间过长: ${duration.toFixed(2)}ms (阈值: ${threshold}ms)`, 
+                            'color: #FF5722; font-weight: bold;');
+                    }
+                    
+                    return result;
+                } catch (error) {
+                    const endTime = performance.now();
+                    const duration = endTime - startTime;
+                    console.error(`%c[性能监控] ${name} 执行出错 (耗时: ${duration.toFixed(2)}ms):`, 'color: #F44336;', error);
+                    throw error;
+                }
+            };
+        },
+        
+        /**
+         * 记录统计信息
+         * @param {string} name - 函数名称
+         * @param {number} duration - 执行时间
+         */
+        recordStatistic: function(name, duration) {
+            if (!this.statistics.has(name)) {
+                this.statistics.set(name, {
+                    count: 0,
+                    totalTime: 0,
+                    minTime: Infinity,
+                    maxTime: 0,
+                    avgTime: 0
+                });
+            }
+            
+            const stat = this.statistics.get(name);
+            stat.count++;
+            stat.totalTime += duration;
+            stat.minTime = Math.min(stat.minTime, duration);
+            stat.maxTime = Math.max(stat.maxTime, duration);
+            stat.avgTime = stat.totalTime / stat.count;
+        },
+        
+        /**
+         * 获取性能统计报告
+         */
+        getReport: function() {
+            if (!this.isEnabled) {
+                console.log('%c[性能监控] 性能监控未启用', 'color: #FF9800;');
+                return;
+            }
+            
+            console.group('%c[性能统计报告]', 'color: #4CAF50; font-weight: bold; font-size: 14px;');
+            
+            if (this.statistics.size === 0) {
+                console.log('暂无性能数据');
+            } else {
+                const sortedStats = Array.from(this.statistics.entries())
+                    .sort((a, b) => b[1].avgTime - a[1].avgTime);
+                
+                console.table(
+                    sortedStats.reduce((acc, [name, stat]) => {
+                        acc[name] = {
+                            '调用次数': stat.count,
+                            '总时间(ms)': stat.totalTime.toFixed(2),
+                            '平均时间(ms)': stat.avgTime.toFixed(2),
+                            '最小时间(ms)': stat.minTime.toFixed(2),
+                            '最大时间(ms)': stat.maxTime.toFixed(2)
+                        };
+                        return acc;
+                    }, {})
+                );
+            }
+            
+            console.groupEnd();
+        },
+        
+        /**
+         * 清空统计数据
+         */
+        clearStatistics: function() {
+            this.statistics.clear();
+            if (this.isEnabled) {
+                console.log('%c[性能监控] 统计数据已清空', 'color: #2196F3;');
+            }
+        }
+    };
+    
+    // 初始化性能监控
+    PerformanceMonitor.init();
+    
+    // 将性能监控器暴露到全局，便于调试
+    window.PerformanceMonitor = PerformanceMonitor;
 
     // 全局数据对象，用于存储用户信息和考试数据
     window.globalData = {
@@ -58,7 +282,8 @@
             totalScore: 0,
             recordId: null,
             screenSwitchCount: 0,         // 切屏次数属性
-            allowedScreenSwitchCount: 0    // 允许切屏次数属性
+            allowedScreenSwitchCount: 0,    // 允许切屏次数属性
+            minExamTime:0 //最小考试时间
         },
         timer: {
             displayText: '加载中...',
@@ -328,7 +553,7 @@
     }
 
     // 优化版本的计时器显示更新
-    function updateTimerDisplay() {
+    const updateTimerDisplayOriginal = function() {
         try {
             const currentTime = Date.now();
             // 限制DOM更新频率，避免过度渲染
@@ -378,7 +603,14 @@
         } catch (error) {
             console.error("更新计时器显示时发生错误:", error);
         }
-    }
+    };
+    
+    // 用性能监控包装计时器更新函数
+    const updateTimerDisplay = PerformanceMonitor.wrapFunction(
+        updateTimerDisplayOriginal,
+        '计时器更新',
+        CONSTANTS.PERFORMANCE_THRESHOLDS.TIMER_UPDATE
+    );
 
     // 处理最后5分钟倒计时的特效
     function handleFinalCountdown(remainingSeconds) {
@@ -426,7 +658,7 @@
     }
 
     // 添加保存答案的函数 - 性能优化版本
-    function saveAnswer(frontendQuestionId, answer) {
+    const saveAnswerOriginal = function(frontendQuestionId, answer) {
         try {
             // 确保frontendQuestionId是字符串类型
             frontendQuestionId = String(frontendQuestionId);
@@ -482,7 +714,14 @@
             console.error(`[答题卡] 保存答案时出错:`, error);
             return false;
         }
-    }
+    };
+    
+    // 用性能监控包装保存答案函数
+    const saveAnswer = PerformanceMonitor.wrapFunction(
+        saveAnswerOriginal, 
+        '保存答案', 
+        CONSTANTS.PERFORMANCE_THRESHOLDS.SAVE_ANSWER
+    );
 
     // 防抖版本的答案发送函数
     function debouncedSendAnswerToServer(recordId, serverQuestionId, answer) {
@@ -664,6 +903,27 @@
                 alert("提交失败：无法获取考试记录ID，请刷新页面重试");
             }
             return;
+        }
+
+        // 检查最小考试时间限制（仅对手动提交进行检查）
+        if (!isAutoSubmit) {
+            const examStartTime = window.globalData?.exam?.startTime;
+            const minExamTime = window.globalData?.exam?.minExamTime; // 最小考试时间（分钟）
+            
+            if (examStartTime && minExamTime && minExamTime > 0) {
+                const currentTime = new Date();
+                const startTime = new Date(examStartTime);
+                const elapsedMinutes = Math.floor((currentTime - startTime) / (1000 * 60)); // 已用时间（分钟）
+                
+                if (elapsedMinutes < minExamTime) {
+                    const remainingMinutes = minExamTime - elapsedMinutes;
+                    const message = `请不要提前交卷！您需要再考试 ${remainingMinutes} 分钟后才能提交试卷。\n\n当前已考试时间：${elapsedMinutes} 分钟\n最低要求时间：${minExamTime} 分钟`;
+                    
+                    console.log(`[提交限制] 考试时间不足，已用时间：${elapsedMinutes}分钟，最低要求：${minExamTime}分钟`);
+                    createCustomNotification('提交失败', message, 'error', 5000);
+                    return;
+                }
+            }
         }
 
         // 显示提交中的加载提示
@@ -1124,6 +1384,9 @@
                                         // 更新切屏相关数据
                                         window.globalData.exam.screenSwitchCount = event.data.screenSwitchCount || 0;
                                         window.globalData.exam.allowedScreenSwitchCount = event.data.allowedScreenSwitchCount || 0;
+
+                                        // 更新最低考试时间
+                                        window.globalData.exam.minExamTime = event.data.minExamTime || 0;
                                         
                                         // 从API同步切屏次数到全局变量
                                         window.screenSwitchCount = event.data.screenSwitchCount || 0;
@@ -1439,13 +1702,13 @@
         }
     };
 
-    // 注册用于提交考试的全局方法
+    // 注册用于提交考试的全局方法（部分函数在后面声明）
     window.submitExam = submitExam;
     window.cancelExam = cancelExam;
     window.startExamTimer = startExamTimer;
     window.updateTimerDisplay = updateTimerDisplay;
     window.saveAnswer = saveAnswer;
-    window.initializeExamTimer = initializeExamTimer;
+    // initializeExamTimer 将在后面赋值
 
     // 添加跳转到题目的全局方法
     window.scrollToQuestion = function (questionId, questionIndex) {
@@ -1765,7 +2028,7 @@
     });
 
     // 初始化考试计时器
-    function initializeExamTimer(examData) {
+    const initializeExamTimerOriginal = function(examData) {
         try {
             // 获取服务器返回的开始时间和考试时长
             const serverStartTime = examData.startTime;
@@ -1800,7 +2063,14 @@
         } catch (error) {
             console.error("初始化考试计时器失败", error);
         }
-    }
+    };
+    
+    // 用性能监控包装初始化函数
+    const initializeExamTimer = PerformanceMonitor.wrapFunction(
+        initializeExamTimerOriginal,
+        '考试计时器初始化',
+        CONSTANTS.PERFORMANCE_THRESHOLDS.INITIALIZATION
+    );
 
     // 题型分组函数
     function groupQuestionsByType(questions) {
@@ -1849,7 +2119,7 @@
     }
 
     // 初始化题目ID索引映射，提升查找性能
-    function initializeQuestionIdIndex() {
+    const initializeQuestionIdIndexOriginal = function() {
         questionIdIndexMap.clear();
         const questions = window.globalData?.exam?.questions || [];
         
@@ -1864,10 +2134,17 @@
                 questionIdIndexMap.set(id, { index, question });
             }
         });
-    }
+    };
+    
+    // 用性能监控包装题目索引初始化函数
+    const initializeQuestionIdIndex = PerformanceMonitor.wrapFunction(
+        initializeQuestionIdIndexOriginal,
+        '题目索引初始化',
+        CONSTANTS.PERFORMANCE_THRESHOLDS.INITIALIZATION
+    );
     
     // 优化版本的答题卡状态更新函数
-    function updateAnswerCardStatusOptimized(questionId) {
+    const updateAnswerCardStatusOptimizedOriginal = function(questionId) {
         try {
             questionId = String(questionId);
             
@@ -1911,7 +2188,14 @@
             
             return false;
         }
-    }
+    };
+    
+    // 用性能监控包装答题卡更新函数
+    const updateAnswerCardStatusOptimized = PerformanceMonitor.wrapFunction(
+        updateAnswerCardStatusOptimizedOriginal,
+        '答题卡更新',
+        CONSTANTS.PERFORMANCE_THRESHOLDS.ANSWER_CARD_UPDATE
+    );
     
     // 优化的DOM更新函数 - 适配实际DOM结构
     function updateAnswerCardDOM(questionId, answered) {
@@ -2061,4 +2345,33 @@
         console.log('[调试工具] 重新初始化题目索引');
         initializeQuestionIdIndex();
     };
+
+    // 性能监控调试工具
+    window.getPerformanceReport = function() {
+        PerformanceMonitor.getReport();
+    };
+    
+    window.clearPerformanceStats = function() {
+        PerformanceMonitor.clearStatistics();
+    };
+    
+    window.enablePerformanceMonitoring = function() {
+        PerformanceMonitor.isEnabled = true;
+        console.log('%c[性能监控] 手动启用性能监控', 'color: #4CAF50; font-weight: bold;');
+    };
+    
+    window.disablePerformanceMonitoring = function() {
+        PerformanceMonitor.isEnabled = false;
+        console.log('%c[性能监控] 手动禁用性能监控', 'color: #FF9800; font-weight: bold;');
+    };
+    
+    // 在开发环境中添加性能监控提示
+    if (PerformanceMonitor.isEnabled) {
+        console.group('%c[性能监控] 调试命令', 'color: #2196F3; font-weight: bold;');
+        console.log('%cgetPerformanceReport()', 'color: #4CAF50;', '- 查看性能统计报告');
+        console.log('%cclearPerformanceStats()', 'color: #FF9800;', '- 清空统计数据');
+        console.log('%cenablePerformanceMonitoring()', 'color: #2196F3;', '- 手动启用监控');
+        console.log('%cdisablePerformanceMonitoring()', 'color: #F44336;', '- 手动禁用监控');
+        console.groupEnd();
+    }
 })(); 

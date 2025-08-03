@@ -374,6 +374,36 @@ public class ClientExamResultDto
     /// </summary>
     [DisplayName("答题详情")]
     public List<ClientExamAnswerResultDto> Answers { get; set; } = new List<ClientExamAnswerResultDto>();
+    
+    /// <summary>
+    /// 原始成绩（换算前）
+    /// </summary>
+    [DisplayName("原始成绩")]
+    public double? OriginalScore { get; set; }
+    
+    /// <summary>
+    /// 是否应用了成绩换算
+    /// </summary>
+    [DisplayName("已应用换算")]
+    public bool IsScoreConverted { get; set; }
+    
+    /// <summary>
+    /// 换算比例（记录当时的换算比例）
+    /// </summary>
+    [DisplayName("换算比例")]
+    public decimal? ScoreConversionRatio { get; set; }
+    
+    /// <summary>
+    /// 试卷信息（包含换算配置）
+    /// </summary>
+    [DisplayName("试卷信息")]
+    public ClientExamPaperInfoDto? Exam { get; set; }
+    
+    /// <summary>
+    /// 是否在结果页显示题目分析
+    /// </summary>
+    [DisplayName("显示题目分析")]
+    public bool EnableQuestionAnalysis { get; set; }
 }
 
 /// <summary>
@@ -429,6 +459,12 @@ public class ClientExamAnswerResultDto
     /// </summary>
     [DisplayName("获得分数")]
     public double? ObtainedScore { get; set; }
+    
+    /// <summary>
+    /// 是否已作答
+    /// </summary>
+    [DisplayName("是否已作答")]
+    public bool IsAnswered { get; set; }
 }
 
 /// <summary>
@@ -490,4 +526,95 @@ public class ClientProfileDto
     /// </summary>
     [DisplayName("所属考生组")]
     public List<string> StudentGroups { get; set; } = new List<string>();
+}
+
+/// <summary>
+/// 客户端试卷信息DTO（包含换算配置）
+/// </summary>
+[DisplayName("试卷信息")]
+public class ClientExamPaperInfoDto
+{
+    /// <summary>
+    /// 试卷ID
+    /// </summary>
+    [DisplayName("试卷ID")]
+    public long Id { get; set; }
+    
+    /// <summary>
+    /// 试卷名称
+    /// </summary>
+    [DisplayName("试卷名称")]
+    public string Title { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 总分
+    /// </summary>
+    [DisplayName("总分")]
+    public int TotalScore { get; set; }
+    
+    /// <summary>
+    /// 及格分
+    /// </summary>
+    [DisplayName("及格分")]
+    public int PassScore { get; set; }
+    
+    /// <summary>
+    /// 是否启用成绩换算
+    /// </summary>
+    [DisplayName("启用成绩换算")]
+    public bool EnableScoreConversion { get; set; }
+    
+    /// <summary>
+    /// 原始总分（换算前的满分）
+    /// </summary>
+    [DisplayName("原始总分")]
+    public int? OriginalTotalScore { get; set; }
+    
+    /// <summary>
+    /// 原始及格分（换算前的及格分）
+    /// </summary>
+    [DisplayName("原始及格分")]
+    public int? OriginalPassScore { get; set; }
+    
+    /// <summary>
+    /// 换算目标满分
+    /// </summary>
+    [DisplayName("换算目标满分")]
+    public int? ConversionTargetFullScore { get; set; }
+    
+    /// <summary>
+    /// 换算目标及格分
+    /// </summary>
+    [DisplayName("换算目标及格分")]
+    public int? ConversionTargetPassScore { get; set; }
+    
+    /// <summary>
+    /// 换算小数保留位数
+    /// </summary>
+    [DisplayName("小数保留位数")]
+    public int ConversionDecimalPlaces { get; set; }
+    
+    /// <summary>
+    /// 换算比例
+    /// </summary>
+    [DisplayName("换算比例")]
+    public decimal? ConversionRatio { get; set; }
+    
+    /// <summary>
+    /// 换算描述（自动生成，仅用于前端显示）
+    /// </summary>
+    [DisplayName("换算说明")]
+    public string ConversionDescription { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 题目数量
+    /// </summary>
+    [DisplayName("题目数量")]
+    public int? QuestionCount { get; set; }
+    
+    /// <summary>
+    /// 题目总数（用于统计）
+    /// </summary>
+    [DisplayName("题目总数")]
+    public int? TotalQuestions { get; set; }
 } 

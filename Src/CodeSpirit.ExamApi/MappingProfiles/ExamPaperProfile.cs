@@ -28,11 +28,11 @@ public class ExamPaperProfile : Profile
         // 试卷实体到DTO的自定义映射
         CreateMap<ExamPaper, ExamPaperDto>()
             .ForMember(dest => dest.ConversionDescription, opt => opt.MapFrom(src =>
-                !src.EnableScoreConversion || !src.ConversionTargetFullScore.HasValue || !src.ConversionRatio.HasValue
+                !src.EnableScoreConversion || !src.OriginalTotalScore.HasValue || !src.ConversionRatio.HasValue
                     ? string.Empty
-                    : $"成绩换算：{src.TotalScore}分制 → {src.ConversionTargetFullScore.Value}分制，" +
+                    : $"成绩换算：{src.OriginalTotalScore.Value}分制 → {src.TotalScore}分制，" +
                       $"换算比例：{src.ConversionRatio.Value:F4}，" +
-                      $"及格分：{src.OriginalPassScore ?? src.PassScore} → {src.PassScore}，" +
+                      $"及格分：{src.OriginalPassScore ?? src.OriginalTotalScore.Value} → {src.PassScore}，" +
                       $"小数保留：{src.ConversionDecimalPlaces}位。" +
                       $"换算公式：换算后成绩 = 原始成绩 × {src.ConversionRatio.Value:F4}（保留{src.ConversionDecimalPlaces}位小数）"
             ));

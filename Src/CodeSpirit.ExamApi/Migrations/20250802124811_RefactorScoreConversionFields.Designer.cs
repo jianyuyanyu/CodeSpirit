@@ -4,6 +4,7 @@ using CodeSpirit.ExamApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CodeSpirit.ExamApi.Migrations
 {
     [DbContext(typeof(ExamDbContext))]
-    partial class ExamDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250802124811_RefactorScoreConversionFields")]
+    partial class RefactorScoreConversionFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -129,9 +132,6 @@ namespace CodeSpirit.ExamApi.Migrations
 
                     b.Property<decimal?>("ConversionRatio")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<int?>("ConversionTargetFullScore")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -441,9 +441,6 @@ namespace CodeSpirit.ExamApi.Migrations
                     b.Property<int>("Duration")
                         .HasColumnType("int");
 
-                    b.Property<bool>("EnableQuestionAnalysis")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("EnableRandomOptionOrder")
                         .HasColumnType("bit");
 
@@ -461,9 +458,6 @@ namespace CodeSpirit.ExamApi.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
-
-                    b.Property<int>("MinExamTime")
-                        .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()

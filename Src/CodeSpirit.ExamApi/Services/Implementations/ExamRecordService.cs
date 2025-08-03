@@ -32,6 +32,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     private readonly ILogger<ExamRecordService> _logger;
     private readonly IDistributedLockProvider _distributedLockProvider;
     private readonly ISettingsService _settingsService;
+    private readonly IScoreConversionService _scoreConversionService;
 
     /// <summary>
     /// 构造函数
@@ -45,7 +46,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         IMapper mapper,
         ILogger<ExamRecordService> logger,
         IDistributedLockProvider distributedLockProvider,
-        ISettingsService settingsService) : base(repository, mapper)
+        ISettingsService settingsService,
+        IScoreConversionService scoreConversionService) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
         _examSettingRepository = examSettingRepository;
@@ -54,6 +56,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         _logger = logger;
         _distributedLockProvider = distributedLockProvider ?? throw new ArgumentNullException(nameof(distributedLockProvider));
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+        _scoreConversionService = scoreConversionService ?? throw new ArgumentNullException(nameof(scoreConversionService));
     }
 
     /// <summary>
@@ -514,15 +517,53 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             }
         }
 
-        // 更新总分和是否通过
-        examRecord.Score = totalScore;
-        examRecord.IsPassed = totalScore >= examRecord.ExamSetting.ExamPaper.PassScore;
+        // 应用成绩换算
+        await ApplyScoreConversion(examRecord, totalScore);
 
         // 保存更改
         await _answerRecordRepository.UpdateRangeAsync(examRecord.AnswerRecords);
         await Repository.UpdateAsync(examRecord);
 
         return Mapper.Map<ExamRecordDto>(examRecord);
+    }
+
+    /// <summary>
+    /// 应用成绩换算逻辑
+    /// </summary>
+    /// <param name="examRecord">考试记录</param>
+    /// <param name="originalScore">原始成绩</param>
+    private async Task ApplyScoreConversion(ExamRecord examRecord, double originalScore)
+    {
+        var examPaper = examRecord.ExamSetting.ExamPaper;
+
+        // 保存原始成绩
+        examRecord.OriginalScore = originalScore;
+
+        if (!examPaper.EnableScoreConversion ||
+            examPaper.OriginalTotalScore == null ||
+            examPaper.ConversionRatio == null)
+        {
+            // 未启用换算，原始成绩即为最终成绩
+            examRecord.Score = originalScore;
+            examRecord.IsScoreConverted = false;
+            examRecord.ScoreConversionRatio = null;
+        }
+        else
+        {
+            // 应用换算规则
+            var convertedScore = _scoreConversionService.ConvertScore(
+                originalScore,
+                examPaper.ConversionRatio.Value,
+                examPaper.ConversionDecimalPlaces);
+
+            examRecord.Score = (double)convertedScore; // Score字段存储最终显示成绩（换算后）
+            examRecord.IsScoreConverted = true;
+            examRecord.ScoreConversionRatio = examPaper.ConversionRatio;
+        }
+
+        // 计算是否通过（基于PassScore字段，无需额外计算）
+        // PassScore字段已经根据是否启用换算设置为正确的及格分
+        examRecord.IsPassed = examRecord.Score >= examPaper.PassScore;
     }
 
     /// <summary>
@@ -791,6 +832,12 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         var attemptCount = await Repository.CreateQuery()
             .CountAsync(r => r.ExamSettingId == examId && r.StudentId == studentId);
 
+        // 检查是否超过允许的考试次数
+        if (attemptCount >= examSetting.AllowedAttempts)
+        {
+            throw new InvalidOperationException("已超过允许的考试次数");
+        }
+
         // 创建考试记录
         var examRecord = new ExamRecord
         {
@@ -1025,6 +1072,12 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             var examRecord = await Repository.CreateQuery()
                 .Include(r => r.ExamSetting)
                 .ThenInclude(s => s.ExamPaper)
+                .ThenInclude(p => p.ExamPaperQuestions)
+                .ThenInclude(pq => pq.Question)
+                .Include(r => r.ExamSetting)
+                .ThenInclude(s => s.ExamPaper)
+                .ThenInclude(p => p.ExamPaperQuestions)
+                .ThenInclude(pq => pq.QuestionVersion)
                 .Include(r => r.AnswerRecords)
                 .Where(r => r.Id == recordId && r.StudentId == studentId)
                 .FirstOrDefaultAsync();
@@ -1046,6 +1099,93 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 .Where(a => a.ExamRecordId == recordId)
                 .ToListAsync();
 
+            var examPaper = examRecord.ExamSetting.ExamPaper;
+
+            // 构建试卷信息（包含换算配置）
+            var examPaperInfo = new ClientExamPaperInfoDto
+            {
+                Id = examPaper.Id,
+                Title = examPaper.Name,
+                TotalScore = examPaper.TotalScore,
+                PassScore = examPaper.PassScore,
+                EnableScoreConversion = examPaper.EnableScoreConversion,
+                OriginalTotalScore = examPaper.OriginalTotalScore,
+                OriginalPassScore = examPaper.OriginalPassScore,
+                ConversionTargetFullScore = examPaper.EnableScoreConversion ? examPaper.TotalScore : null,
+                ConversionTargetPassScore = examPaper.EnableScoreConversion ? examPaper.PassScore : null,
+                ConversionDecimalPlaces = examPaper.ConversionDecimalPlaces,
+                ConversionRatio = examPaper.ConversionRatio,
+                ConversionDescription = string.Empty, // 稍后填充
+                QuestionCount = examPaper.ExamPaperQuestions?.Count,
+                TotalQuestions = examPaper.ExamPaperQuestions?.Count
+            };
+
+            // 如果启用了成绩换算，生成换算描述
+            if (examPaper.EnableScoreConversion && examPaper.OriginalTotalScore.HasValue)
+            {
+                examPaperInfo.ConversionDescription = $"将{examPaper.OriginalTotalScore.Value}分制转换为{examPaper.TotalScore}分制";
+                if (examPaper.ConversionRatio.HasValue)
+                {
+                    examPaperInfo.ConversionDescription += $"，换算比例为{examPaper.ConversionRatio.Value:F4}";
+                }
+            }
+
+            // 获取试卷中的所有题目（包括未作答的）
+            var allQuestions = (examPaper.ExamPaperQuestions ?? new List<ExamPaperQuestion>())
+                .Where(q => q.Question != null && q.QuestionVersion != null)
+                .OrderBy(q => q.OrderNumber)
+                .ThenBy(q => q.Question.Type)
+                .ToList();
+
+            // 创建答案字典以便快速查找
+            var answerDict = answerRecords.ToDictionary(a => a.QuestionId, a => a);
+
+            // 构建所有题目的答案结果（包括未作答的）
+            var allAnswerResults = allQuestions.Select(paperQuestion =>
+            {
+                // 检查是否有对应的答案记录
+                var hasAnswer = answerDict.TryGetValue(paperQuestion.QuestionId, out var answerRecord);
+                
+                if (hasAnswer && answerRecord != null && answerRecord.QuestionVersion != null && answerRecord.Question != null)
+                {
+                    // 已作答的题目
+                    return new ClientExamAnswerResultDto
+                    {
+                        QuestionId = answerRecord.QuestionId,
+                        Content = answerRecord.QuestionVersion.Content ?? string.Empty,
+                        Type = answerRecord.Question.Type.ToString(),
+                        Score = Convert.ToInt32(answerRecord.QuestionVersion.DefaultScore),
+                        UserAnswer = answerRecord.Question.Type == QuestionType.TrueFalse ?
+                            ConvertTrueFalseAnswer(answerRecord.Answer ?? string.Empty) :
+                            answerRecord.Answer ?? string.Empty,
+                        CorrectAnswer = answerRecord.Question.Type == QuestionType.TrueFalse ?
+                            ConvertTrueFalseAnswer(answerRecord.QuestionVersion.CorrectAnswer ?? string.Empty) :
+                            answerRecord.QuestionVersion.CorrectAnswer ?? string.Empty,
+                        IsCorrect = answerRecord.IsCorrect ?? false,
+                        ObtainedScore = answerRecord.Score ?? 0,
+                        IsAnswered = true
+                    };
+                }
+                else
+                {
+                    // 未作答的题目
+                    return new ClientExamAnswerResultDto
+                    {
+                        QuestionId = paperQuestion.QuestionId,
+                        Content = paperQuestion.QuestionVersion?.Content ?? string.Empty,
+                        Type = paperQuestion.Question?.Type.ToString() ?? string.Empty,
+                        Score = Convert.ToInt32(paperQuestion.QuestionVersion?.DefaultScore ?? 0),
+                        UserAnswer = string.Empty,
+                        CorrectAnswer = paperQuestion.Question?.Type == QuestionType.TrueFalse ?
+                            ConvertTrueFalseAnswer(paperQuestion.QuestionVersion?.CorrectAnswer ?? string.Empty) :
+                            paperQuestion.QuestionVersion?.CorrectAnswer ?? string.Empty,
+                        IsCorrect = false,
+                        ObtainedScore = 0,
+                        IsAnswered = false
+                    };
+                }
+            }).ToList();
+
             var result = new ClientExamResultDto
             {
                 Id = examRecord.Id,
@@ -1059,22 +1199,13 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 IsPassed = examRecord.IsPassed,
                 Status = examRecord.Status.ToString(),
                 Comments = examRecord.Comments,
-                Answers = answerRecords.OrderBy(a => a.Question.Type)
-                .Select(a => new ClientExamAnswerResultDto
-                {
-                    QuestionId = a.QuestionId,
-                    Content = a.QuestionVersion.Content,
-                    Type = a.Question.Type.ToString(),
-                    Score = Convert.ToInt32(a.QuestionVersion.DefaultScore),
-                    UserAnswer = a.Question.Type == QuestionType.TrueFalse ?
-                        ConvertTrueFalseAnswer(a.Answer) :
-                        a.Answer,
-                    CorrectAnswer = a.Question.Type == QuestionType.TrueFalse ?
-                        ConvertTrueFalseAnswer(a.QuestionVersion.CorrectAnswer) :
-                        a.QuestionVersion.CorrectAnswer,
-                    IsCorrect = a.IsCorrect ?? false,
-                    ObtainedScore = a.Score ?? 0
-                }).ToList()
+                // 添加成绩换算相关字段
+                OriginalScore = examRecord.OriginalScore,
+                IsScoreConverted = examRecord.IsScoreConverted,
+                ScoreConversionRatio = examRecord.ScoreConversionRatio,
+                Exam = examPaperInfo,
+                Answers = allAnswerResults,
+                EnableQuestionAnalysis = examRecord.ExamSetting.EnableQuestionAnalysis
             };
 
             return result;
@@ -1090,7 +1221,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     /// </summary>
     /// <param name="answer">原始答案</param>
     /// <returns>转换后的答案</returns>
-    private string ConvertTrueFalseAnswer(string answer)
+    private string ConvertTrueFalseAnswer(string? answer)
     {
         if (string.IsNullOrEmpty(answer))
         {
@@ -1127,9 +1258,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         // 如果全部为客观题，更新考试记录状态
         if (result.IsAllObjective)
         {
-            examRecord.Score = result.TotalScore;
+            await ApplyScoreConversion(examRecord, result.TotalScore);
             examRecord.Status = ExamRecordStatus.Graded;
-            examRecord.IsPassed = result.TotalScore >= examRecord.ExamSetting.ExamPaper.PassScore;
             examRecord.GradedTime = DateTime.UtcNow;
 
             await Repository.UpdateAsync(examRecord);
@@ -1220,8 +1350,9 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         if (Math.Abs(scoreDifference) < 0.01)
         {
             // 只更新状态和批改时间
-            examRecord.Score = targetTotalScore;
-            examRecord.IsPassed = targetTotalScore >= examPaper.PassScore;
+            // 应用成绩换算
+            await ApplyScoreConversion(examRecord, targetTotalScore);
+
             examRecord.Status = ExamRecordStatus.Graded;
             examRecord.GradedTime = examRecord.SubmitTime; // 确保批改时间与提交时间一致
             examRecord.UpdatedAt = examRecord.SubmitTime; // 确保更新时间与提交时间一致

@@ -164,8 +164,22 @@ public class ExamRecordsController : ApiControllerBase
             return NotFound("试卷不存在");
         }
 
-        // 计算总得分
-        double totalScore = preview.StudentScore ?? 0;
+        // 计算总得分和成绩换算信息
+        double finalScore = preview.StudentScore ?? 0;
+        bool isScoreConverted = examPaper.EnableScoreConversion && examPaper.OriginalTotalScore.HasValue && examPaper.ConversionRatio.HasValue;
+        
+        // 计算原始成绩（如果启用了换算）
+        double originalScore = finalScore;
+        int originalFullScore = examPaper.TotalScore;
+        int convertedFullScore = examPaper.TotalScore;
+        
+        if (isScoreConverted)
+        {
+            originalFullScore = examPaper.OriginalTotalScore!.Value;
+            convertedFullScore = examPaper.TotalScore;
+            // 反向计算原始成绩
+            originalScore = finalScore / (double)examPaper.ConversionRatio!.Value;
+        }
 
         // 按题目类型分组
         var questionsByType = examPaper.Questions
@@ -200,12 +214,54 @@ public class ExamRecordsController : ApiControllerBase
             ["header"] = new JObject
             {
                 ["title"] = "成绩统计",
-                ["subTitle"] = $"总分: {totalScore}/{preview.TotalScore}"
+                ["subTitle"] = isScoreConverted 
+                    ? $"总分: {finalScore:F1}/{convertedFullScore} (原始: {originalScore:F1}/{originalFullScore})"
+                    : $"总分: {finalScore}/{preview.TotalScore}"
             },
             ["body"] = new JArray()
         };
 
         var headerBody = (JArray)header["body"];
+
+        // 成绩换算提醒框
+        if (isScoreConverted)
+        {
+            var conversionDescription = $"将{originalFullScore}分制转换为{convertedFullScore}分制";
+            if (examPaper.ConversionRatio.HasValue)
+            {
+                conversionDescription += $"，换算比例为{examPaper.ConversionRatio!.Value:F4}";
+            }
+            if (examPaper.ConversionDecimalPlaces > 0)
+            {
+                conversionDescription += $"，小数保留{examPaper.ConversionDecimalPlaces}位";
+            }
+
+            headerBody.Add(new JObject
+            {
+                ["type"] = "alert",
+                ["level"] = "success",
+                ["className"] = "score-conversion-notice",
+                ["body"] = $@"
+                    <div class=""score-conversion-info"">
+                        <div class=""conversion-title"">✅ 已应用成绩换算</div>
+                        <div class=""conversion-details"">
+                            <div class=""score-comparison"">
+                                <div class=""original-score"">
+                                    原始成绩：<strong>{originalScore:F1}/{originalFullScore}分</strong>
+                                </div>
+                                <div class=""conversion-arrow"">↓ 换算</div>
+                                <div class=""converted-score"">
+                                    最终成绩：<strong style=""color: #52c41a"">{finalScore:F1}/{convertedFullScore}分</strong>
+                                </div>
+                            </div>
+                            <div class=""conversion-desc"">
+                                <small>{conversionDescription}</small>
+                            </div>
+                        </div>
+                    </div>
+                "
+            });
+        }
 
         // 添加各题型得分表格
         var typeScoreTable = new JObject

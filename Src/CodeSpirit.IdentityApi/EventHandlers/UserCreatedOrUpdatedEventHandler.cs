@@ -39,7 +39,7 @@ public class UserCreatedOrUpdatedEventHandler : IEventHandler<UserCreatedOrUpdat
         try
         {
             // 查询用户是否存在
-            var existingUser = await _userService.GetUserByUserNameAsync(@event.IdNo);
+            var existingUser = await _userService.GetUserByIdIgnoreFiltersAsync(@event.UserId);
 
             Gender gender = @event.Gender switch
             {

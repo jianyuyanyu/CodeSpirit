@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 publish.Dockerfile
 publish.ps1
+/DevOps/publish-common.ps1

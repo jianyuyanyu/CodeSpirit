@@ -10,10 +10,15 @@ namespace CodeSpirit.Authorization
     /// <summary>
     /// 当前用户实现类，用于获取当前HTTP上下文中的用户信息
     /// </summary>
-    public class CurrentUser : ICurrentUser
+    public class CurrentUser : ISettableCurrentUser
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IDistributedCache _cache;
+        
+        // 可设置的用户信息字段（用于事件处理等场景）
+        private long? _overrideUserId;
+        private string _overrideTenantId;
+        private string _overrideUserName;
         
         // 缓存反射结果以提升性能
         private static readonly PropertyInfo _tenantInfoNameProperty = 
@@ -46,6 +51,12 @@ namespace CodeSpirit.Authorization
         {
             get
             {
+                // 优先使用覆盖值（用于事件处理等场景）
+                if (_overrideUserId.HasValue)
+                {
+                    return _overrideUserId;
+                }
+                
                 var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier);
                 return userIdClaim != null && long.TryParse(userIdClaim.Value, out long userId) ? userId : null;
             }
@@ -55,7 +66,19 @@ namespace CodeSpirit.Authorization
         /// 获取当前用户名
         /// 从Name声明中获取用户名
         /// </summary>
-        public string UserName => User?.FindFirst(ClaimTypes.Name)?.Value;
+        public string UserName
+        {
+            get
+            {
+                // 优先使用覆盖值（用于事件处理等场景）
+                if (!string.IsNullOrEmpty(_overrideUserName))
+                {
+                    return _overrideUserName;
+                }
+                
+                return User?.FindFirst(ClaimTypes.Name)?.Value;
+            }
+        }
 
         /// <summary>
         /// 获取当前用户的所有角色
@@ -83,6 +106,12 @@ namespace CodeSpirit.Authorization
         {
             get
             {
+                // 优先使用覆盖值（用于事件处理等场景）
+                if (!string.IsNullOrEmpty(_overrideTenantId))
+                {
+                    return _overrideTenantId;
+                }
+                
                 // 先从JWT声明中获取租户ID
                 var tenantIdClaim = User?.FindFirst("TenantId");
                 if (!string.IsNullOrEmpty(tenantIdClaim?.Value))
@@ -162,6 +191,47 @@ namespace CodeSpirit.Authorization
 
             return string.Equals(TenantId, tenantId, StringComparison.OrdinalIgnoreCase);
         }
+
+        #region ISettableCurrentUser 实现
+
+        /// <summary>
+        /// 设置当前用户ID（用于事件处理等场景）
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        public void SetUserId(long? userId)
+        {
+            _overrideUserId = userId;
+        }
+
+        /// <summary>
+        /// 设置当前租户ID（用于事件处理等场景）
+        /// </summary>
+        /// <param name="tenantId">租户ID</param>
+        public void SetTenantId(string tenantId)
+        {
+            _overrideTenantId = tenantId;
+        }
+
+        /// <summary>
+        /// 设置当前用户名（用于事件处理等场景）
+        /// </summary>
+        /// <param name="userName">用户名</param>
+        public void SetUserName(string userName)
+        {
+            _overrideUserName = userName;
+        }
+
+        /// <summary>
+        /// 重置为原始状态，清除所有覆盖值
+        /// </summary>
+        public void Reset()
+        {
+            _overrideUserId = null;
+            _overrideTenantId = null;
+            _overrideUserName = null;
+        }
+
+        #endregion
 
         /// <summary>
         /// 权限集合

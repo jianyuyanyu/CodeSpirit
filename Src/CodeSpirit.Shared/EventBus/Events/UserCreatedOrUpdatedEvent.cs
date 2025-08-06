@@ -3,9 +3,9 @@ using System.Reflection;
 namespace CodeSpirit.Shared.EventBus.Events;
 
 /// <summary>
-/// 用户创建事件
+/// 用户创建或更新事件（支持租户隔离）
 /// </summary>
-public class UserCreatedOrUpdatedEvent
+public class UserCreatedOrUpdatedEvent : TenantAwareEventBase
 {
     /// <summary>
     /// 用户ID
@@ -35,11 +35,15 @@ public class UserCreatedOrUpdatedEvent
     /// <summary>
     /// 身份证号码
     /// </summary>
-    public string IdNo { get; set; }
-    public string UserName { get; set; }
+    public string IdNo { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 用户名
+    /// </summary>
+    public string UserName { get; set; } = string.Empty;
 
     /// <summary>
     /// 性别
     /// </summary>
-    public string Gender { get; set; }
+    public string Gender { get; set; } = string.Empty;
 } 

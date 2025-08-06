@@ -19,12 +19,18 @@ namespace CodeSpirit.IdentityApi.Tests.Services
     {
         private readonly UserService _userService;
         private readonly IIdGenerator _idGenerator;
+        private readonly Mock<IPasswordHasher<ApplicationUser>> _mockPasswordHasher;
 
         public UserServiceTests()
             : base()
         {
             // 设置额外依赖
             _idGenerator = new SnowflakeIdGenerator();
+            _mockPasswordHasher = new Mock<IPasswordHasher<ApplicationUser>>();
+            
+            // 设置密码哈希器的默认行为
+            _mockPasswordHasher.Setup(x => x.HashPassword(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+                              .Returns((ApplicationUser user, string password) => $"hashed_{password}");
             
             // 初始化UserService
             _userService = new UserService(
@@ -35,7 +41,8 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 MockUserServiceLogger.Object,
                 _idGenerator,
                 MockCurrentUser.Object,
-                DbContext
+                DbContext,
+                _mockPasswordHasher.Object
             );
             
             // 准备测试数据

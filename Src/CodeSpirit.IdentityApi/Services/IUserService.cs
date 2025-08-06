@@ -78,12 +78,14 @@ public interface IUserService : IBaseCRUDIService<ApplicationUser, UserDto, long
     /// <param name="creatorId">创建者ID</param>
     /// <param name="userId"> userId不为空时,将userId作为新创建的用户的Id,否则将自动生成Id</param>
     /// <param name="creatorName">创建者名称</param>
+    /// <param name="skipValidation">是否跳过验证（用于事件处理等场景）</param>
     /// <returns>创建的用户数据传输对象</returns>
     Task<UserDto> CreateAdvancedUserAsync(
         CreateUserDto createDto, 
         string password = null, 
         long? creatorId = null,
-        long? userId = null);
+        long? userId = null,
+        bool skipValidation = false);
 
     /// <summary>
     /// 根据用户名查询用户

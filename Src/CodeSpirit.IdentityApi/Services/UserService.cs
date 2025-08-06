@@ -23,6 +23,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     private readonly IIdGenerator _idGenerator;
     private readonly ICurrentUser _currentUser;
     private readonly ApplicationDbContext _dbContext;
+    private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
 
     public UserService(
         IRepository<ApplicationUser> userRepository,
@@ -32,7 +33,8 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         ILogger<UserService> logger,
         IIdGenerator idGenerator,
         ICurrentUser currentUser,
-        ApplicationDbContext dbContext)
+        ApplicationDbContext dbContext,
+        IPasswordHasher<ApplicationUser> passwordHasher)
         : base(userRepository, mapper)
     {
         _userRepository = userRepository;
@@ -42,6 +44,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         _idGenerator = idGenerator;
         _currentUser = currentUser;
         _dbContext = dbContext;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<PageList<UserDto>> GetUsersAsync(UserQueryDto queryDto)
@@ -106,14 +109,26 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
 
     protected override async Task ValidateCreateDto(CreateUserDto createDto)
     {
-        if (await _userManager.FindByNameAsync(createDto.UserName) != null)
+        // 使用数据库上下文直接查询，确保多租户过滤器正常工作
+        // 避免使用UserManager，因为它可能不会应用EF Core的查询过滤器
+        
+        var existingUserByName = await _dbContext.Users
+            .Where(u => u.UserName == createDto.UserName)
+            .FirstOrDefaultAsync();
+        if (existingUserByName != null)
         {
             throw new AppServiceException(400, "用户名已存在！");
         }
 
-        if (await _userManager.FindByEmailAsync(createDto.Email) != null)
+        if (!string.IsNullOrEmpty(createDto.Email))
         {
-            throw new AppServiceException(400, "邮箱已存在！");
+            var existingUserByEmail = await _dbContext.Users
+                .Where(u => u.Email == createDto.Email)
+                .FirstOrDefaultAsync();
+            if (existingUserByEmail != null)
+            {
+                throw new AppServiceException(400, "邮箱已存在！");
+            }
         }
     }
 
@@ -839,15 +854,20 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     /// <param name="creatorId">创建者ID</param>
     /// <param name="sendPasswordEmail">是否发送密码邮件</param>
     /// <param name="userId"> userId不为空时,将userId作为新创建的用户的Id,否则将自动生成Id</param>
+    /// <param name="skipValidation">是否跳过验证（用于事件处理等场景）</param>
     /// <returns>创建的用户数据传输对象</returns>
     public async Task<UserDto> CreateAdvancedUserAsync(
         CreateUserDto createDto,
         string password = null,
         long? creatorId = null,
-        long? userId = null)
+        long? userId = null,
+        bool skipValidation = false)
     {
-        // 验证用户名和邮箱
-        await ValidateCreateDto(createDto);
+        // 验证用户名和邮箱（除非明确跳过）
+        if (!skipValidation)
+        {
+            await ValidateCreateDto(createDto);
+        }
         
         // 创建用户实体
         var user = Mapper.Map<ApplicationUser>(createDto);
@@ -867,11 +887,59 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         // 使用指定密码或生成随机密码
         string newPassword = password ?? PasswordGenerator.GenerateRandomPassword(12);
         
-        // 创建用户
-        var result = await _userManager.CreateAsync(user, newPassword);
-        if (!result.Succeeded)
+        IdentityResult result;
+        
+        if (skipValidation)
         {
-            throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+            // 跨租户事件处理：直接使用 DbContext 创建用户，绕过 UserManager 的唯一性验证
+            // 设置必要的用户属性
+            user.NormalizedUserName = createDto.UserName?.ToUpper();
+            user.NormalizedEmail = createDto.Email?.ToUpper();
+            user.EmailConfirmed = true;
+            user.SecurityStamp = Guid.NewGuid().ToString();
+            user.ConcurrencyStamp = Guid.NewGuid().ToString();
+            user.PasswordHash = _passwordHasher.HashPassword(user, newPassword);
+            
+            // 设置审计信息
+            user.CreatedAt = DateTime.UtcNow;
+            user.IsDeleted = false;
+            
+            // 确保租户ID设置正确
+            // 优先使用CurrentUser的租户ID（在事件上下文中会是EventCurrentUser）
+            if (string.IsNullOrEmpty(user.TenantId))
+            {
+                if (!string.IsNullOrEmpty(_currentUser?.TenantId))
+                {
+                    user.TenantId = _currentUser.TenantId;
+                    _logger.LogDebug("从CurrentUser设置租户ID: {TenantId}", user.TenantId);
+                }
+                else
+                {
+                    // 如果CurrentUser中没有租户ID，使用默认租户ID
+                    user.TenantId = "default";
+                    _logger.LogWarning("无法获取租户ID，使用默认租户ID: default");
+                }
+            }
+            else
+            {
+                _logger.LogDebug("用户实体已有租户ID: {TenantId}", user.TenantId);
+            }
+            
+            // 直接添加到数据库
+            _dbContext.Users.Add(user);
+            await _dbContext.SaveChangesAsync();
+            
+            // 模拟成功的 IdentityResult
+            result = IdentityResult.Success;
+        }
+        else
+        {
+            // 正常流程：使用 UserManager 创建用户
+            result = await _userManager.CreateAsync(user, newPassword);
+            if (!result.Succeeded)
+            {
+                throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
         }
 
         // 分配角色

@@ -177,7 +177,13 @@ namespace CodeSpirit.IdentityApi.Data
                 b.ToTable(nameof(ApplicationUser));
                 b.Property(q => q.Id).ValueGeneratedNever();
                 b.Property(q => q.PhoneNumber).HasColumnType("varchar(15)");
-                b.HasIndex(q => q.IdNo).IsUnique(true);
+                
+                // 租户感知的IdNo复合唯一索引：同一租户内身份证号码唯一，但不同租户可以有相同身份证号码
+                b.HasIndex(q => new { q.TenantId, q.IdNo })
+                    .IsUnique(true)
+                    .HasDatabaseName("IX_ApplicationUser_TenantId_IdNo")
+                    .HasFilter("[IdNo] IS NOT NULL");
+                    
                 b.HasIndex(q => q.PhoneNumber);
             });
             #endregion

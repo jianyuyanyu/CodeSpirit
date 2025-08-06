@@ -32,6 +32,7 @@ public static class EventBusExtensions
             options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
         });
 
+        services.AddTenantAwareEventBus();
         return services;
     }
 

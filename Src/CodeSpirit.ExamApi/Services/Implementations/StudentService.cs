@@ -32,7 +32,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     private readonly IRepository<StudentGroup> _studentGroupRepository;
     private readonly ILogger<StudentService> _logger;
     private readonly IIdGenerator _idGenerator;
-    private readonly IEventBus _eventBus;
+    private readonly ITenantAwareEventBus _eventBus;
 
     /// <summary>
     /// 构造函数
@@ -44,7 +44,7 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         IMapper mapper,
         ILogger<StudentService> logger,
         IIdGenerator idGenerator,
-        IEventBus eventBus)
+        ITenantAwareEventBus eventBus)
         : base(repository, mapper)
     {
         _repository = repository;

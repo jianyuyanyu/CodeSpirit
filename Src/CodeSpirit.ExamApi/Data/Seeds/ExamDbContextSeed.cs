@@ -33,8 +33,8 @@ public static class ExamDbContextSeed
             await SeedStudentsAsync(context);
             await SeedExamPapersAsync(context);
             await SeedExamSettingsAsync(context);
-            await SeedWrongQuestionsAsync(context);
-            await SeedPracticeSettingsAsync(context);
+            //await SeedWrongQuestionsAsync(context);
+            //await SeedPracticeSettingsAsync(context);
             //await SeedExamRecordsAsync(context);
             //await SeedPracticeRecordsAsync(context);
 

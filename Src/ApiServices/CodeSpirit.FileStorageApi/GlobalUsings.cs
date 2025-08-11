@@ -1,0 +1,9 @@
+global using CodeSpirit.Core;
+global using CodeSpirit.Shared.Extensions;
+global using CodeSpirit.FileStorageApi.Data;
+global using CodeSpirit.FileStorageApi.Entities;
+global using CodeSpirit.FileStorageApi.Abstractions;
+global using Microsoft.EntityFrameworkCore;
+global using System.ComponentModel.DataAnnotations;
+global using Microsoft.Extensions.Logging;
+global using Microsoft.AspNetCore.Http;

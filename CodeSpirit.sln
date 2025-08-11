@@ -1,3 +1,4 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35617.110
@@ -81,6 +82,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.UdlCards", "Src\Components\CodeSpirit.UdlCards\CodeSpirit.UdlCards.csproj", "{34022520-5AC1-F903-E926-03F5903FA328}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.UdlCards.Tests", "Tests\Components\CodeSpirit.UdlCards.Tests\CodeSpirit.UdlCards.Tests.csproj", "{64474DA1-7227-AC4E-EA8C-0A61F8518E62}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.FileStorageApi", "Src\ApiServices\CodeSpirit.FileStorageApi\CodeSpirit.FileStorageApi.csproj", "{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -488,6 +491,18 @@ Global
 		{64474DA1-7227-AC4E-EA8C-0A61F8518E62}.Release|x64.Build.0 = Release|Any CPU
 		{64474DA1-7227-AC4E-EA8C-0A61F8518E62}.Release|x86.ActiveCfg = Release|Any CPU
 		{64474DA1-7227-AC4E-EA8C-0A61F8518E62}.Release|x86.Build.0 = Release|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Debug|x64.Build.0 = Debug|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Debug|x86.Build.0 = Debug|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Release|x64.ActiveCfg = Release|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Release|x64.Build.0 = Release|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Release|x86.ActiveCfg = Release|Any CPU
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -525,6 +540,7 @@ Global
 		{7EBD1532-7A13-9C15-5E59-CA0FCE22E690} = {E9AA3C88-F320-411E-9CBB-75B0047F0F46}
 		{34022520-5AC1-F903-E926-03F5903FA328} = {28E19F6A-7ADD-4941-9E72-EFA73162E871}
 		{64474DA1-7227-AC4E-EA8C-0A61F8518E62} = {E9AA3C88-F320-411E-9CBB-75B0047F0F46}
+		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FA2D98D6-8906-4629-AE73-437BD9C6A177}

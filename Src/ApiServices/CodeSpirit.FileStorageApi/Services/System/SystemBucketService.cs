@@ -312,7 +312,7 @@ public class SystemBucketService : ISystemBucketService
     /// <summary>
     /// 测试存储桶连接
     /// </summary>
-    public async Task<BucketConnectionTestResult> TestBucketConnectionAsync(string bucketName)
+    public Task<BucketConnectionTestResult> TestBucketConnectionAsync(string bucketName)
     {
         var startTime = DateTime.UtcNow;
         var result = new BucketConnectionTestResult { TestTime = startTime };
@@ -335,7 +335,7 @@ public class SystemBucketService : ISystemBucketService
             result.TestDetails.Add($"提供程序: {config.Provider}");
             result.TestDetails.Add("连接测试成功");
             
-            return result;
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {
@@ -345,14 +345,14 @@ public class SystemBucketService : ISystemBucketService
             result.TestDetails.Add($"连接测试失败: {ex.Message}");
             
             _logger.LogError(ex, "存储桶连接测试失败: {BucketName}", bucketName);
-            return result;
+            return Task.FromResult(result);
         }
     }
 
     /// <summary>
     /// 获取存储桶配置
     /// </summary>
-    public async Task<object> GetBucketConfigurationAsync(string bucketName)
+    public Task<object> GetBucketConfigurationAsync(string bucketName)
     {
         try
         {
@@ -361,7 +361,7 @@ public class SystemBucketService : ISystemBucketService
                 throw new ArgumentException($"存储桶 '{bucketName}' 不存在");
             }
 
-            return new
+            return Task.FromResult<object>(new
             {
                 BucketName = bucketName,
                 DisplayName = config.DisplayName,
@@ -375,7 +375,7 @@ public class SystemBucketService : ISystemBucketService
                 RetentionDays = config.RetentionDays,
                 IsEnabled = config.IsEnabled,
                 Properties = config.Properties
-            };
+            });
         }
         catch (Exception ex)
         {

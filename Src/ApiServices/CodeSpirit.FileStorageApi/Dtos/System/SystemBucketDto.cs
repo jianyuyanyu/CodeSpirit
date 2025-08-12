@@ -39,23 +39,23 @@ public class SystemBucketDto
     [DisplayName("访问策略")]
     public BucketAccessPolicy AccessPolicy { get; set; }
 
-    /// <summary>
-    /// 存储配额（字节）
-    /// </summary>
-    [DisplayName("存储配额")]
-    public long? StorageQuota { get; set; }
+    ///// <summary>
+    ///// 存储配额（字节）
+    ///// </summary>
+    //[DisplayName("存储配额")]
+    //public long? StorageQuota { get; set; }
 
     /// <summary>
     /// 存储配额（格式化显示）
     /// </summary>
-    [DisplayName("配额大小")]
+    [DisplayName("存储配额")]
     public string? StorageQuotaFormatted { get; set; }
 
-    /// <summary>
-    /// 最大文件大小（字节）
-    /// </summary>
-    [DisplayName("最大文件大小")]
-    public long MaxFileSize { get; set; }
+    ///// <summary>
+    ///// 最大文件大小（字节）
+    ///// </summary>
+    //[DisplayName("最大文件大小")]
+    //public long MaxFileSize { get; set; }
 
     /// <summary>
     /// 最大文件大小（格式化显示）

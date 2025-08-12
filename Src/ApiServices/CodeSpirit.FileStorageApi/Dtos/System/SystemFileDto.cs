@@ -1,5 +1,6 @@
-using System.ComponentModel;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.FileStorageApi.Entities;
+using System.ComponentModel;
 
 namespace CodeSpirit.FileStorageApi.Dtos.System;
 
@@ -19,12 +20,6 @@ public class SystemFileDto
     /// </summary>
     [DisplayName("租户ID")]
     public string TenantId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 租户名称
-    /// </summary>
-    [DisplayName("租户名称")]
-    public string TenantName { get; set; } = string.Empty;
 
     /// <summary>
     /// 存储桶名称
@@ -150,13 +145,8 @@ public class SystemFileDto
     /// 上传者ID
     /// </summary>
     [DisplayName("上传者ID")]
+    [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "{field}")]
     public long? CreatedBy { get; set; }
-
-    /// <summary>
-    /// 上传者名称
-    /// </summary>
-    [DisplayName("上传者")]
-    public string CreatedByName { get; set; } = string.Empty;
 
     /// <summary>
     /// 创建时间

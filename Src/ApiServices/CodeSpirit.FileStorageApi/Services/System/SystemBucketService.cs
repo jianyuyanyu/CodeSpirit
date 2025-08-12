@@ -1,3 +1,4 @@
+using AutoMapper;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.FileStorageApi.Abstractions;
 using CodeSpirit.FileStorageApi.Data;
@@ -19,6 +20,7 @@ public class SystemBucketService : ISystemBucketService
     private readonly FileStorageDbContext _context;
     private readonly FileStorageOptions _options;
     private readonly IStorageProviderFactory _storageProviderFactory;
+    private readonly IMapper _mapper;
     private readonly ILogger<SystemBucketService> _logger;
 
     /// <summary>
@@ -28,11 +30,13 @@ public class SystemBucketService : ISystemBucketService
         FileStorageDbContext context,
         IOptions<FileStorageOptions> options,
         IStorageProviderFactory storageProviderFactory,
+        IMapper mapper,
         ILogger<SystemBucketService> logger)
     {
         _context = context;
         _options = options.Value;
         _storageProviderFactory = storageProviderFactory;
+        _mapper = mapper;
         _logger = logger;
     }
 
@@ -64,28 +68,15 @@ public class SystemBucketService : ISystemBucketService
                     })
                     .FirstOrDefaultAsync();
 
-                buckets.Add(new SystemBucketDto
-                {
-                    BucketName = bucketName,
-                    DisplayName = config.DisplayName,
-                    Description = config.Description,
-                    Provider = config.Provider,
-                    AccessPolicy = config.AccessPolicy,
-                    StorageQuota = config.StorageQuota,
-                    StorageQuotaFormatted = config.StorageQuota?.ToString() ?? "无限制",
-                    MaxFileSize = config.MaxFileSize ?? 0,
-                    MaxFileSizeFormatted = FormatFileSize(config.MaxFileSize ?? 0),
-                    AllowedFileTypes = config.AllowedFileTypes,
-                    ForbiddenFileTypes = config.ForbiddenFileTypes,
-                    RetentionDays = config.RetentionDays,
-                    IsEnabled = config.IsEnabled,
-                    TotalFiles = fileStats?.TotalFiles ?? 0,
-                    TotalStorageSize = fileStats?.TotalSize ?? 0,
-                    TotalStorageSizeFormatted = FormatFileSize(fileStats?.TotalSize ?? 0),
-                    LastUploadTime = fileStats?.LastUpload,
-                    UsageTenantsCount = fileStats?.UsageTenants ?? 0,
-                    CreatedTime = DateTime.UtcNow // 这里应该从实际数据获取
-                });
+                var bucketDto = _mapper.Map<SystemBucketDto>(config);
+                bucketDto.BucketName = bucketName;
+                bucketDto.TotalFiles = fileStats?.TotalFiles ?? 0;
+                bucketDto.TotalStorageSize = fileStats?.TotalSize ?? 0;
+                bucketDto.TotalStorageSizeFormatted = FormatFileSize(fileStats?.TotalSize ?? 0);
+                bucketDto.LastUploadTime = fileStats?.LastUpload;
+                bucketDto.UsageTenantsCount = fileStats?.UsageTenants ?? 0;
+                
+                buckets.Add(bucketDto);
             }
 
             // 应用排序
@@ -140,28 +131,15 @@ public class SystemBucketService : ISystemBucketService
                 })
                 .FirstOrDefaultAsync();
 
-            return new SystemBucketDto
-            {
-                BucketName = bucketName,
-                DisplayName = config.DisplayName,
-                Description = config.Description,
-                Provider = config.Provider,
-                AccessPolicy = config.AccessPolicy,
-                StorageQuota = config.StorageQuota,
-                StorageQuotaFormatted = config.StorageQuota?.ToString() ?? "无限制",
-                MaxFileSize = config.MaxFileSize ?? 0,
-                MaxFileSizeFormatted = FormatFileSize(config.MaxFileSize ?? 0),
-                AllowedFileTypes = config.AllowedFileTypes,
-                ForbiddenFileTypes = config.ForbiddenFileTypes,
-                RetentionDays = config.RetentionDays,
-                IsEnabled = config.IsEnabled,
-                TotalFiles = fileStats?.TotalFiles ?? 0,
-                TotalStorageSize = fileStats?.TotalSize ?? 0,
-                TotalStorageSizeFormatted = FormatFileSize(fileStats?.TotalSize ?? 0),
-                LastUploadTime = fileStats?.LastUpload,
-                UsageTenantsCount = fileStats?.UsageTenants ?? 0,
-                CreatedTime = DateTime.UtcNow
-            };
+            var bucketDto = _mapper.Map<SystemBucketDto>(config);
+            bucketDto.BucketName = bucketName;
+            bucketDto.TotalFiles = fileStats?.TotalFiles ?? 0;
+            bucketDto.TotalStorageSize = fileStats?.TotalSize ?? 0;
+            bucketDto.TotalStorageSizeFormatted = FormatFileSize(fileStats?.TotalSize ?? 0);
+            bucketDto.LastUploadTime = fileStats?.LastUpload;
+            bucketDto.UsageTenantsCount = fileStats?.UsageTenants ?? 0;
+            
+            return bucketDto;
         }
         catch (Exception ex)
         {

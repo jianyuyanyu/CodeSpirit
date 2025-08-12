@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.Extensions.Options;
 using CodeSpirit.FileStorageApi.Options;
 using CodeSpirit.FileStorageApi.Abstractions;
@@ -11,15 +12,18 @@ public class BucketConfigurationService : IBucketConfigurationService
 {
     private readonly FileStorageOptions _options;
     private readonly IStorageProviderFactory _storageProviderFactory;
+    private readonly IMapper _mapper;
     private readonly ILogger<BucketConfigurationService> _logger;
 
     public BucketConfigurationService(
         IOptions<FileStorageOptions> options,
         IStorageProviderFactory storageProviderFactory,
+        IMapper mapper,
         ILogger<BucketConfigurationService> logger)
     {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _storageProviderFactory = storageProviderFactory ?? throw new ArgumentNullException(nameof(storageProviderFactory));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 

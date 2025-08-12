@@ -1,3 +1,4 @@
+using AutoMapper;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.FileStorageApi.Entities;
 using CodeSpirit.FileStorageApi.Abstractions;
@@ -17,6 +18,7 @@ public class FileReferenceService : IFileReferenceService
     private readonly IIdGenerator _idGenerator;
     private readonly ITenantAwareEventBus _eventBus;
     private readonly ICurrentUser _currentUser;
+    private readonly IMapper _mapper;
     private readonly ILogger<FileReferenceService> _logger;
 
     /// <summary>
@@ -27,12 +29,14 @@ public class FileReferenceService : IFileReferenceService
         IIdGenerator idGenerator,
         ITenantAwareEventBus eventBus,
         ICurrentUser currentUser,
+        IMapper mapper,
         ILogger<FileReferenceService> logger)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _idGenerator = idGenerator ?? throw new ArgumentNullException(nameof(idGenerator));
         _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
         _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -77,22 +81,16 @@ public class FileReferenceService : IFileReferenceService
             }
 
             // 3. 创建新的引用
-            var reference = new FileReferenceEntity
-            {
-                Id = _idGenerator.NewId(),
-                TenantId = _currentUser.TenantId ?? "default",
-                FileId = request.FileId,
-                SourceService = request.SourceService,
-                SourceEntityType = request.SourceEntityType,
-                SourceEntityId = request.SourceEntityId,
-                FieldName = request.FieldName,
-                ReferenceType = request.ReferenceType,
-                Status = request.IsTemporary ? ReferenceStatus.Pending : ReferenceStatus.Confirmed,
-                IsTemporary = request.IsTemporary,
-                ExpirationTime = request.IsTemporary ? DateTime.UtcNow.AddDays(1) : null, // 临时引用1天后过期
-                ConfirmedTime = request.IsTemporary ? null : DateTime.UtcNow,
-                Remarks = request.Remarks
-            };
+            var reference = _mapper.Map<FileReferenceEntity>(request);
+            reference.Id = _idGenerator.NewId();
+            reference.TenantId = _currentUser.TenantId ?? "default";
+            reference.FileId = request.FileId;
+            reference.SourceService = request.SourceService;
+            reference.SourceEntityType = request.SourceEntityType;
+            reference.SourceEntityId = request.SourceEntityId;
+            reference.FieldName = request.FieldName;
+            reference.ReferenceType = request.ReferenceType;
+            reference.Remarks = request.Remarks;
 
             await _context.FileReferences.AddAsync(reference);
             await _context.SaveChangesAsync();

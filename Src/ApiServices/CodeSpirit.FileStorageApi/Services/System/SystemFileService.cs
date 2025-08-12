@@ -1,3 +1,5 @@
+using AutoMapper;
+using CodeSpirit.Core.Dtos;
 using CodeSpirit.FileStorageApi.Abstractions;
 using CodeSpirit.FileStorageApi.Data;
 using CodeSpirit.FileStorageApi.Dtos.System;
@@ -16,6 +18,7 @@ public class SystemFileService : ISystemFileService
 {
     private readonly FileStorageDbContext _context;
     private readonly IFileStorageService _fileStorageService;
+    private readonly IMapper _mapper;
     private readonly ILogger<SystemFileService> _logger;
 
     /// <summary>
@@ -24,10 +27,12 @@ public class SystemFileService : ISystemFileService
     public SystemFileService(
         FileStorageDbContext context,
         IFileStorageService fileStorageService,
+        IMapper mapper,
         ILogger<SystemFileService> logger)
     {
         _context = context;
         _fileStorageService = fileStorageService;
+        _mapper = mapper;
         _logger = logger;
     }
 
@@ -38,7 +43,7 @@ public class SystemFileService : ISystemFileService
     {
         try
         {
-            var query = _context.Files.AsQueryable();
+            var query = _context.Files.Include(f => f.References).AsQueryable();
 
             // 应用筛选条件
             if (!string.IsNullOrEmpty(queryDto.TenantId))
@@ -110,50 +115,24 @@ public class SystemFileService : ISystemFileService
             // 获取总数
             var totalCount = await query.CountAsync();
 
-            // 分页查询
-            var files = await query
+            // 使用关联查询一次性获取文件和引用计数，避免N+1查询问题
+            var filesWithReferenceCounts = await query
+                .Select(f => new
+                {
+                    File = f,
+                    ReferenceCount = f.References.Count(r => r.Status == ReferenceStatus.Confirmed)
+                })
                 .Skip((queryDto.Page - 1) * queryDto.PerPage)
                 .Take(queryDto.PerPage)
                 .ToListAsync();
 
             // 转换为DTO
-            var items = new List<SystemFileDto>();
-            foreach (var file in files)
+            var items = filesWithReferenceCounts.Select(item =>
             {
-                var referenceCount = await _context.FileReferences
-                    .CountAsync(fr => fr.FileId == file.Id && fr.Status == ReferenceStatus.Confirmed);
-
-                items.Add(new SystemFileDto
-                {
-                    Id = file.Id,
-                    TenantId = file.TenantId,
-                    TenantName = file.TenantId, // 这里应该关联租户表获取名称
-                    BucketName = file.BucketName,
-                    OriginalFileName = file.OriginalFileName,
-                    StorageFileName = file.StorageFileName,
-                    FilePath = file.FilePath,
-                    Size = file.Size,
-                    SizeFormatted = FormatFileSize(file.Size),
-                    ContentType = file.ContentType,
-                    FileHash = file.FileHash,
-                    Extension = file.Extension,
-                    Category = file.Category,
-                    Description = file.Description,
-                    Status = file.Status,
-                    AccessCount = file.AccessCount,
-                    LastAccessTime = file.LastAccessTime,
-                    ExpirationTime = file.ExpirationTime,
-                    IsPublic = file.IsPublic,
-                    DownloadUrl = file.DownloadUrl,
-                    ETag = file.ETag,
-                    Tags = file.Tags,
-                    ReferenceCount = referenceCount,
-                    CreatedBy = file.CreatedBy,
-                    CreatedByName = "Unknown", // 这里应该关联用户表获取名称
-                    CreatedTime = file.CreatedAt,
-                    ModifiedTime = file.UpdatedAt
-                });
-            }
+                var dto = _mapper.Map<SystemFileDto>(item.File);
+                dto.ReferenceCount = item.ReferenceCount;
+                return dto;
+            }).ToList();
 
             return new PageList<SystemFileDto>(items, totalCount);
         }
@@ -171,45 +150,25 @@ public class SystemFileService : ISystemFileService
     {
         try
         {
-            var file = await _context.Files.FindAsync(id);
-            if (file == null)
+            // 使用投影查询一次性获取文件详情和引用计数
+            var fileWithReferenceCount = await _context.Files
+                .Where(f => f.Id == id)
+                .Select(f => new
+                {
+                    File = f,
+                    ReferenceCount = f.References.Count(r => r.Status == ReferenceStatus.Confirmed)
+                })
+                .FirstOrDefaultAsync();
+
+            if (fileWithReferenceCount == null)
             {
                 throw new ArgumentException($"文件不存在: {id}");
             }
 
-            var referenceCount = await _context.FileReferences
-                .CountAsync(fr => fr.FileId == file.Id && fr.Status == ReferenceStatus.Confirmed);
-
-            return new SystemFileDto
-            {
-                Id = file.Id,
-                TenantId = file.TenantId,
-                TenantName = file.TenantId,
-                BucketName = file.BucketName,
-                OriginalFileName = file.OriginalFileName,
-                StorageFileName = file.StorageFileName,
-                FilePath = file.FilePath,
-                Size = file.Size,
-                SizeFormatted = FormatFileSize(file.Size),
-                ContentType = file.ContentType,
-                FileHash = file.FileHash,
-                Extension = file.Extension,
-                Category = file.Category,
-                Description = file.Description,
-                Status = file.Status,
-                AccessCount = file.AccessCount,
-                LastAccessTime = file.LastAccessTime,
-                ExpirationTime = file.ExpirationTime,
-                IsPublic = file.IsPublic,
-                DownloadUrl = file.DownloadUrl,
-                ETag = file.ETag,
-                Tags = file.Tags,
-                ReferenceCount = referenceCount,
-                CreatedBy = file.CreatedBy,
-                CreatedByName = "Unknown",
-                CreatedTime = file.CreatedAt,
-                ModifiedTime = file.UpdatedAt
-            };
+            var dto = _mapper.Map<SystemFileDto>(fileWithReferenceCount.File);
+            dto.ReferenceCount = fileWithReferenceCount.ReferenceCount;
+            
+            return dto;
         }
         catch (Exception ex)
         {

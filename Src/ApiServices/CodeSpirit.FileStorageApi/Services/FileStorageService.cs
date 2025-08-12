@@ -1,3 +1,4 @@
+using AutoMapper;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.FileStorageApi.Entities;
 using CodeSpirit.FileStorageApi.Extensions;
@@ -25,6 +26,7 @@ public class FileStorageService : IFileStorageService
     private readonly IIdGenerator _idGenerator;
     private readonly ITenantAwareEventBus _eventBus;
     private readonly ICurrentUser _currentUser;
+    private readonly IMapper _mapper;
     private readonly ILogger<FileStorageService> _logger;
 
     /// <summary>
@@ -38,6 +40,7 @@ public class FileStorageService : IFileStorageService
         IIdGenerator idGenerator,
         ITenantAwareEventBus eventBus,
         ICurrentUser currentUser,
+        IMapper mapper,
         ILogger<FileStorageService> logger)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -47,6 +50,7 @@ public class FileStorageService : IFileStorageService
         _idGenerator = idGenerator ?? throw new ArgumentNullException(nameof(idGenerator));
         _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
         _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -129,29 +133,21 @@ public class FileStorageService : IFileStorageService
             }
 
             // 6. 创建数据库记录
-            var fileEntity = new FileEntity
-            {
-                Id = _idGenerator.NewId(),
-                TenantId = _currentUser.TenantId ?? "default",
-                BucketName = bucketName,
-                OriginalFileName = request.FileName,
-                StorageFileName = storageFileName,
-                FilePath = filePath,
-                Size = fileSize,
-                ContentType = request.ContentType ?? "application/octet-stream",
-                FileHash = fileHash,
-                Extension = Path.GetExtension(request.FileName)?.TrimStart('.').ToLowerInvariant() ?? string.Empty,
-                Category = FileTypeCategoryHelper.GetCategory(request.FileName, request.ContentType ?? "application/octet-stream"),
-                Description = request.Description,
-                Status = FileStatus.Active,
-                AccessCount = 0,
-                ExpirationTime = request.ExpirationTime,
-                IsPublic = request.IsPublic,
-                DownloadUrl = uploadResult.FileUrl,
-                ETag = uploadResult.ETag ?? string.Empty,
-                Tags = request.Tags != null ? string.Join(",", request.Tags.Select(kvp => $"{kvp.Key}:{kvp.Value}")) : string.Empty,
-                Properties = request.Tags != null ? JsonSerializer.Serialize(request.Tags) : string.Empty
-            };
+            var fileEntity = _mapper.Map<FileEntity>(request);
+            fileEntity.Id = _idGenerator.NewId();
+            fileEntity.TenantId = _currentUser.TenantId ?? "default";
+            fileEntity.BucketName = bucketName;
+            fileEntity.StorageFileName = storageFileName;
+            fileEntity.FilePath = filePath;
+            fileEntity.Size = fileSize;
+            fileEntity.FileHash = fileHash;
+            fileEntity.Extension = Path.GetExtension(request.FileName)?.TrimStart('.').ToLowerInvariant() ?? string.Empty;
+            fileEntity.Category = FileTypeCategoryHelper.GetCategory(request.FileName, request.ContentType ?? "application/octet-stream");
+            fileEntity.Status = FileStatus.Active;
+            fileEntity.AccessCount = 0;
+            fileEntity.DownloadUrl = uploadResult.FileUrl;
+            fileEntity.ETag = uploadResult.ETag ?? string.Empty;
+            fileEntity.Properties = request.Tags != null ? JsonSerializer.Serialize(request.Tags) : string.Empty;
 
             // 如果是覆盖现有文件，则更新现有记录
             if (existingFile != null && request.OverwriteExisting)

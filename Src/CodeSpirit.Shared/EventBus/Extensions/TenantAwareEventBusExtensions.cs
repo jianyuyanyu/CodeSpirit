@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using CodeSpirit.Shared.EventBus.Interfaces;
 using CodeSpirit.Shared.EventBus.Implementations;
+using CodeSpirit.Shared.EventBus.Publishers;
 
 namespace CodeSpirit.Shared.EventBus.Extensions;
 
@@ -23,6 +24,9 @@ public static class TenantAwareEventBusExtensions
     {
         // 注册租户感知事件总线服务
         services.AddScoped<ITenantAwareEventBus, TenantAwareEventBus>();
+        
+        // 注册文件引用事件发布器
+        services.AddScoped<FileReferenceEventPublisher>();
         
         // 不注册 TenantEventContext 为服务，因为它需要动态创建
         

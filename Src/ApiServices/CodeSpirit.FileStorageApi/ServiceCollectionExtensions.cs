@@ -2,14 +2,18 @@ using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.FileStorageApi.Abstractions;
 using CodeSpirit.FileStorageApi.Data;
+using CodeSpirit.FileStorageApi.EventHandlers;
 using CodeSpirit.FileStorageApi.Options;
 using CodeSpirit.FileStorageApi.Providers;
 using CodeSpirit.FileStorageApi.Services;
+using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 // using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Shared.DistributedLock;
+using CodeSpirit.Shared.EventBus.Events;
 using CodeSpirit.Shared.EventBus.Extensions;
+using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -48,13 +52,12 @@ public static class ServiceCollectionExtensions
     {
         // Add service defaults & Aspire client integrations
         builder.AddServiceDefaults("file");
-
         builder.Services.AddDatabase(builder.Configuration);
         builder.Services.AddSystemServices(builder.Configuration, typeof(Program), builder.Environment);
         builder.Services.AddFileStorageApiServices(builder.Configuration);
 
         // 添加多租户支持
-        // builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
+        builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
 
         // 使用共享项目中的JWT认证扩展方法
         builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -189,25 +192,17 @@ public static class ServiceCollectionExtensions
         // 注册性能监控服务
         services.AddScoped<IFileStorageMetrics, Services.FileStorageMetrics>();
 
-        // 注册系统管理服务
-        services.AddSystemServices();
-
-        return services;
-    }
-
-    /// <summary>
-    /// 添加系统管理服务
-    /// </summary>
-    public static IServiceCollection AddSystemServices(this IServiceCollection services)
-    {
         // 注册系统租户存储服务
         services.AddScoped<Services.System.ISystemTenantStorageService, Services.System.SystemTenantStorageService>();
-        
+
         // 注册系统存储桶服务
         services.AddScoped<Services.System.ISystemBucketService, Services.System.SystemBucketService>();
-        
+
         // 注册系统文件服务
         services.AddScoped<Services.System.ISystemFileService, Services.System.SystemFileService>();
+
+        // 注册文件引用事件处理器
+        services.AddTenantAwareEventHandler<FileReferenceEvent, FileReferenceEventHandler>();
 
         return services;
     }
@@ -296,10 +291,10 @@ public static class ServiceCollectionExtensions
         
         // 配置静态文件托管 - 用于图片等文件访问
         ConfigureStaticFiles(app);
-        
+
         // 使用多租户中间件
-        // app.UseCodeSpiritMultiTenant();
-        
+        app.UseCodeSpiritMultiTenant();
+
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();

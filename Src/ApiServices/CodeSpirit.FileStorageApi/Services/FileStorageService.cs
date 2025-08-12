@@ -112,11 +112,14 @@ public class FileStorageService : IFileStorageService
                 return existingFile;
             }
 
-            // 4. 生成存储文件名
-            var storageFileName = GenerateStorageFileName(request.FileName, fileHash);
+            // 4. 预先生成文件ID
+            var fileId = _idGenerator.NewId();
+            
+            // 5. 生成包含文件ID的存储文件名
+            var storageFileName = GenerateStorageFileName(request.FileName, fileId, fileHash);
             var filePath = GenerateFilePath(storageFileName);
 
-            // 5. 获取存储提供程序并上传
+            // 6. 获取存储提供程序并上传
             var storageProvider = _storageProviderFactory.GetProvider(bucketConfig.Provider);
             request.FileStream.Position = 0; // 重置流位置
 
@@ -132,9 +135,9 @@ public class FileStorageService : IFileStorageService
                 throw new AppServiceException(500, $"文件上传失败: {uploadResult.ErrorMessage}");
             }
 
-            // 6. 创建数据库记录
+            // 7. 创建数据库记录
             var fileEntity = _mapper.Map<FileEntity>(request);
-            fileEntity.Id = _idGenerator.NewId();
+            fileEntity.Id = fileId;
             fileEntity.TenantId = _currentUser.TenantId ?? "default";
             fileEntity.BucketName = bucketName;
             fileEntity.StorageFileName = storageFileName;
@@ -552,13 +555,14 @@ public class FileStorageService : IFileStorageService
     /// 生成存储文件名
     /// </summary>
     /// <param name="originalFileName">原始文件名</param>
+    /// <param name="fileId">文件ID</param>
     /// <param name="fileHash">文件哈希</param>
     /// <returns>存储文件名</returns>
-    private static string GenerateStorageFileName(string originalFileName, string fileHash)
+    private static string GenerateStorageFileName(string originalFileName, long fileId, string fileHash)
     {
         var extension = Path.GetExtension(originalFileName);
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        return $"{fileHash}_{timestamp}{extension}";
+        
+        return $"{fileId}_{fileHash}{extension}";
     }
 
     /// <summary>

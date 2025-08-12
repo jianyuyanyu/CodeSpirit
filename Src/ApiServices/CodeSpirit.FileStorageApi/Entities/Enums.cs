@@ -125,7 +125,19 @@ public enum ReferenceType
     /// 音频
     /// </summary>
     [Display(Name = "音频")]
-    Audio = 6
+    Audio = 6,
+    
+    /// <summary>
+    /// Logo图片
+    /// </summary>
+    [Display(Name = "Logo")]
+    Logo = 7,
+    
+    /// <summary>
+    /// 横幅图片
+    /// </summary>
+    [Display(Name = "横幅")]
+    Banner = 8
 }
 
 /// <summary>
@@ -155,5 +167,11 @@ public enum ReferenceStatus
     /// 已过期
     /// </summary>
     [Display(Name = "已过期")]
-    Expired = 4
+    Expired = 4,
+    
+    /// <summary>
+    /// 活跃状态
+    /// </summary>
+    [Display(Name = "活跃")]
+    Active = 5
 }

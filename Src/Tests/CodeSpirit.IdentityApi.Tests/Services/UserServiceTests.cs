@@ -42,7 +42,8 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 _idGenerator,
                 MockCurrentUser.Object,
                 DbContext,
-                _mockPasswordHasher.Object
+                _mockPasswordHasher.Object,
+                null
             );
             
             // 准备测试数据

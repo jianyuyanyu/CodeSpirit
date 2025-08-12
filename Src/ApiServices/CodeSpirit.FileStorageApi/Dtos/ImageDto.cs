@@ -244,7 +244,7 @@ public class CreateImageDto : CreateFileDto
     /// 缩略图尺寸配置
     /// </summary>
     [DisplayName("缩略图尺寸")]
-    public List<string> ThumbnailSizes { get; set; } = new();
+    public List<string> ThumbnailSizes { get; set; } = new() { "small" };
 
     /// <summary>
     /// 图片质量（1-100）

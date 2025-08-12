@@ -1,5 +1,8 @@
 using CodeSpirit.FileStorageApi.Abstractions;
+using CodeSpirit.FileStorageApi.Options;
+using CodeSpirit.FileStorageApi.Providers;
 using CodeSpirit.Core;
+using Microsoft.Extensions.Options;
 
 namespace CodeSpirit.FileStorageApi.Services;
 
@@ -9,23 +12,22 @@ namespace CodeSpirit.FileStorageApi.Services;
 public class StorageProviderFactory : IStorageProviderFactory
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly Dictionary<string, Type> _providerTypes;
     private readonly Dictionary<string, IStorageProvider> _providers;
     private readonly ILogger<StorageProviderFactory> _logger;
+    private readonly FileStorageOptions _fileStorageOptions;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     public StorageProviderFactory(
         IServiceProvider serviceProvider,
+        IOptions<FileStorageOptions> fileStorageOptions,
         ILogger<StorageProviderFactory> logger)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _fileStorageOptions = fileStorageOptions?.Value ?? throw new ArgumentNullException(nameof(fileStorageOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _providerTypes = new Dictionary<string, Type>();
         _providers = new Dictionary<string, IStorageProvider>();
-        
-        InitializeDefaultProviders();
     }
 
     /// <summary>
@@ -41,15 +43,28 @@ public class StorageProviderFactory : IStorageProviderFactory
             return cachedProvider;
         }
 
-        // 尝试从注册的类型创建实例
-        if (_providerTypes.TryGetValue(providerName, out var providerType))
+        // 从配置中查找提供程序配置
+        if (!_fileStorageOptions.StorageProviders.TryGetValue(providerName, out var providerOptions))
         {
-            var provider = (IStorageProvider)ActivatorUtilities.CreateInstance(_serviceProvider, providerType);
-            _providers[providerName] = provider; // 缓存实例
-            return provider;
+            throw new AppServiceException(500, $"未找到存储提供程序配置: {providerName}");
         }
 
-        throw new AppServiceException(500, $"未找到存储提供程序: {providerName}");
+        // 根据类型创建提供程序实例
+        IStorageProvider provider = providerOptions.Type switch
+        {
+            StorageProviderType.Local => new LocalStorageProvider(
+                providerOptions,
+                _serviceProvider.GetRequiredService<ILogger<LocalStorageProvider>>()),
+            
+            StorageProviderType.TencentCOS => new TencentCosStorageProvider(
+                _serviceProvider.GetRequiredService<IOptions<TencentCosOptions>>(),
+                _serviceProvider.GetRequiredService<ILogger<TencentCosStorageProvider>>()),
+            
+            _ => throw new AppServiceException(500, $"不支持的存储提供程序类型: {providerOptions.Type}")
+        };
+
+        _providers[providerName] = provider; // 缓存实例
+        return provider;
     }
 
     /// <summary>
@@ -68,7 +83,7 @@ public class StorageProviderFactory : IStorageProviderFactory
     {
         var providers = new List<IStorageProvider>();
         
-        foreach (var providerName in _providerTypes.Keys)
+        foreach (var providerName in _fileStorageOptions.StorageProviders.Keys)
         {
             try
             {
@@ -93,37 +108,5 @@ public class StorageProviderFactory : IStorageProviderFactory
 
         _providers[name] = provider;
         _logger.LogInformation("已注册存储提供程序: {ProviderName}", name);
-    }
-
-    /// <summary>
-    /// 注册存储提供程序类型
-    /// </summary>
-    public void RegisterProviderType<T>(string name) where T : class, IStorageProvider
-    {
-        ArgumentException.ThrowIfNullOrEmpty(name);
-        
-        _providerTypes[name] = typeof(T);
-        _logger.LogInformation("已注册存储提供程序类型: {ProviderName} -> {ProviderType}", name, typeof(T).Name);
-    }
-
-    /// <summary>
-    /// 初始化默认提供程序
-    /// </summary>
-    private void InitializeDefaultProviders()
-    {
-        try
-        {
-            // 注册本地存储提供程序
-            RegisterProviderType<Providers.LocalStorageProvider>("Local");
-            
-            // 注册腾讯云COS提供程序
-            RegisterProviderType<Providers.TencentCosStorageProvider>("TencentCOS");
-            
-            _logger.LogInformation("默认存储提供程序初始化完成");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "初始化默认存储提供程序失败");
-        }
     }
 }

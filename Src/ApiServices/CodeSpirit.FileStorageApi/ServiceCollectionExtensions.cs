@@ -12,6 +12,7 @@ using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace CodeSpirit.FileStorageApi;
 
@@ -127,14 +128,6 @@ public static class ServiceCollectionExtensions
 
                 switch (providerOptions.Type)
                 {
-                    case StorageProviderType.Local:
-                        services.AddScoped<IStorageProvider>(provider =>
-                        {
-                            var logger = provider.GetRequiredService<ILogger<LocalStorageProvider>>();
-                            return new LocalStorageProvider(providerOptions, logger);
-                        });
-                        break;
-                    
                     case StorageProviderType.TencentCOS:
                         // 添加腾讯云COS配置 - 从存储提供程序的Properties中读取
                         services.Configure<TencentCosOptions>(cosOptions =>
@@ -159,7 +152,10 @@ public static class ServiceCollectionExtensions
                                     cosOptions.UseTemporaryCredentials = Convert.ToBoolean(useTempCredentials);
                             }
                         });
-                        services.AddScoped<IStorageProvider, TencentCosStorageProvider>();
+                        break;
+                    
+                    // 本地存储不需要额外配置
+                    case StorageProviderType.Local:
                         break;
                     
                     // TODO: 添加阿里云OSS存储提供程序

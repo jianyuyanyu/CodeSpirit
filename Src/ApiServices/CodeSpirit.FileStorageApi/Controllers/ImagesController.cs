@@ -19,18 +19,22 @@ namespace CodeSpirit.FileStorageApi.Controllers;
 public class ImagesController : ApiControllerBase
 {
     private readonly IFileStorageService _fileStorageService;
+    private readonly IImageProcessingService _imageProcessingService;
     private readonly ILogger<ImagesController> _logger;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="fileStorageService">文件存储服务</param>
+    /// <param name="imageProcessingService">图片处理服务</param>
     /// <param name="logger">日志服务</param>
     public ImagesController(
         IFileStorageService fileStorageService,
+        IImageProcessingService imageProcessingService,
         ILogger<ImagesController> logger)
     {
         _fileStorageService = fileStorageService;
+        _imageProcessingService = imageProcessingService;
         _logger = logger;
     }
 
@@ -203,50 +207,61 @@ public class ImagesController : ApiControllerBase
     /// <returns>图片信息</returns>
     [HttpPost("upload")]
     [DisplayName("上传图片")]
-    public async Task<ActionResult<ApiResponse<ImageDto>>> UploadImage(
+    public async Task<ActionResult<ApiResponse<AmisImageDto>>> UploadImage(
         IFormFile file,
         [FromQuery] CreateImageDto createDto)
     {
         if (file == null || file.Length == 0)
         {
-            return BadResponse<ImageDto>("图片文件不能为空");
+            return BadResponse<AmisImageDto>("图片文件不能为空");
         }
 
         // 验证是否为图片文件
         if (!IsImageFile(file.ContentType))
         {
-            return BadResponse<ImageDto>("只能上传图片文件");
+            return BadResponse<AmisImageDto>("只能上传图片文件");
         }
 
-        var request = new FileUploadRequest
+        try
         {
-            BucketName = createDto.BucketName,
-            FileName = file.FileName,
-            FileStream = file.OpenReadStream(),
-            ContentType = file.ContentType,
-            Description = createDto.Description,
-            ExpirationTime = createDto.ExpirationTime,
-            IsPublic = createDto.IsPublic,
-            OverwriteExisting = createDto.OverwriteExisting,
-            Tags = createDto.Tags != null ? 
-                createDto.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .ToDictionary(tag => tag.Trim(), tag => tag.Trim()) : null
-        };
+            var request = new FileUploadRequest
+            {
+                BucketName = createDto.BucketName ?? "default",
+                FileName = file.FileName,
+                FileStream = file.OpenReadStream(),
+                ContentType = file.ContentType,
+                Description = createDto.Description,
+                ExpirationTime = createDto.ExpirationTime,
+                IsPublic = createDto.IsPublic,
+                OverwriteExisting = createDto.OverwriteExisting,
+                Tags = createDto.Tags != null ? 
+                    createDto.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .ToDictionary(tag => tag.Trim(), tag => tag.Trim()) : null
+            };
 
-        FileEntity fileEntity = await _fileStorageService.UploadFileAsync(request);
-        
-        // 如果需要自动生成缩略图，则生成缩略图
-        // 这里需要调用图片处理服务
-        // if (createDto.AutoGenerateThumbnails)
-        // {
-        //     await _imageProcessingService.GenerateThumbnailsAsync(fileEntity.Id, createDto.ThumbnailSizes);
-        // }
+            FileEntity fileEntity = await _fileStorageService.UploadFileAsync(request);
+            
+            var amisImageDto = new AmisImageDto
+            {
+                Id = fileEntity.Id,
+                Value = fileEntity.DownloadUrl,
+                Url = fileEntity.DownloadUrl ?? string.Empty, // 图片URL
+                Name = fileEntity.OriginalFileName ?? string.Empty,
+                Size = fileEntity.Size,
+                Type = fileEntity.ContentType ?? string.Empty,
+                Width = fileEntity.ImageMetadata?.Width,
+                Height = fileEntity.ImageMetadata?.Height,
+                IsImage = true,
+                UploadTime = fileEntity.CreatedAt
+            };
 
-        // 获取完整的图片信息（包含元数据）
-        var imageResult = await GetImageDetail(fileEntity.Id);
-        return imageResult.Value?.Status == 0 ? 
-            SuccessResponseWithCreate<ImageDto>(nameof(GetImageDetail), imageResult.Value.Data) :
-            BadResponse<ImageDto>("图片上传成功，但获取详情失败");
+            return SuccessResponseWithCreate<AmisImageDto>(nameof(GetImageDetail), amisImageDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "图片上传失败: {FileName}", file.FileName);
+            return BadResponse<AmisImageDto>($"图片上传失败: {ex.Message}");
+        }
     }
 
     /// <summary>

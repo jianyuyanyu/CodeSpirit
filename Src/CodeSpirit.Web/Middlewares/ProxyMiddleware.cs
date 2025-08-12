@@ -147,7 +147,7 @@ namespace CodeSpirit.Web.Middlewares
 
             // Skip proxy for all web project resources and requests
             // Check if it's a web project resource - paths that should not be proxied
-            var webProjectPaths = new[] { "/css/", "/js/", "/images/", "/fonts/", "/lib/", "/assets/", "/Pages/" };
+            var webProjectPaths = new[] { "/css/", "/js/", "/images/", "/fonts/", "/lib/", "/assets/", "/Pages/", "/.well-known/" };
             if (webProjectPaths.Any(p => request.Path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase)))
             {
                 _logger.LogInformation("Web项目资源，跳过代理 - 路径: {Path}", request.Path);
@@ -227,7 +227,8 @@ namespace CodeSpirit.Web.Middlewares
             };
 
             // 复制请求体
-            if (request.ContentLength > 0)
+            if (request.ContentLength > 0 || 
+                request.ContentType?.Contains("multipart/form-data", StringComparison.OrdinalIgnoreCase) == true)
             {
                 if (request.ContentLength > MaxRequestBodySize)
                 {
@@ -239,20 +240,33 @@ namespace CodeSpirit.Web.Middlewares
                 request.EnableBuffering();
 
                 // 读取请求体
-                var buffer = new byte[request.ContentLength.Value];
-                await request.Body.ReadAsync(buffer, 0, buffer.Length);
-
-                // 重置流位置以便后续中间件可以再次读取
-                request.Body.Position = 0;
+                var contentLength = request.ContentLength ?? 0;
+                var buffer = new byte[contentLength];
+                if (contentLength > 0)
+                {
+                    await request.Body.ReadAsync(buffer, 0, buffer.Length);
+                    // 重置流位置以便后续中间件可以再次读取
+                    request.Body.Position = 0;
+                }
 
                 // 添加到代理请求
                 proxyRequest.Content = new ByteArrayContent(buffer);
 
-                // 如果有 Content-Type 头，也复制过来
+                // 确保 Content-Type 头被正确复制
                 if (request.ContentType != null)
                 {
-                    proxyRequest.Content.Headers.ContentType =
-                        MediaTypeHeaderValue.Parse(request.ContentType);
+                    try
+                    {
+                        proxyRequest.Content.Headers.ContentType =
+                            MediaTypeHeaderValue.Parse(request.ContentType);
+                        _logger.LogInformation("成功设置 Content-Type: {ContentType}", request.ContentType);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "解析 Content-Type 失败: {ContentType}，尝试直接设置", request.ContentType);
+                        // 如果解析失败，尝试直接设置头部
+                        proxyRequest.Content.Headers.TryAddWithoutValidation("Content-Type", request.ContentType);
+                    }
                 }
             }
 
@@ -316,7 +330,7 @@ namespace CodeSpirit.Web.Middlewares
         /// <param name="source">源HTTP请求</param>
         /// <param name="target">目标HTTP请求消息</param>
         /// <remarks>
-        /// 会跳过Host头，因为需要使用新的目标主机
+        /// 会跳过Host头和Content-Type头，因为这些头部在其他地方单独处理
         /// </remarks>
         private static void CopyRequestHeaders(HttpRequest source, HttpRequestMessage target)
         {
@@ -324,6 +338,12 @@ namespace CodeSpirit.Web.Middlewares
             {
                 // 跳过 Host 头，因为我们要使用新的目标主机
                 if (header.Key.Equals("Host", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                // 跳过 Content-Type 头，因为已经在请求体处理时单独设置
+                if (header.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }

@@ -77,6 +77,18 @@ public class FileStorageDbContext : MultiTenantDbContext
     {
         var entity = modelBuilder.Entity<FileEntity>();
         
+        // 配置主键生成策略 - 使用自定义ID生成器而非数据库自增长
+        entity.Property(e => e.Id).ValueGeneratedNever();
+        
+        // 配置可空字段
+        entity.Property(e => e.Description).IsRequired(false);
+        entity.Property(e => e.FilePath).IsRequired(false);
+        entity.Property(e => e.Extension).IsRequired(false);
+        entity.Property(e => e.DownloadUrl).IsRequired(false);
+        entity.Property(e => e.ETag).IsRequired(false);
+        entity.Property(e => e.Tags).IsRequired(false);
+        entity.Property(e => e.Properties).IsRequired(false);
+        
         // 创建索引
         entity.HasIndex(e => new { e.TenantId, e.BucketName })
               .HasDatabaseName("IX_Files_TenantId_BucketName");
@@ -114,6 +126,13 @@ public class FileStorageDbContext : MultiTenantDbContext
     {
         var entity = modelBuilder.Entity<FileReferenceEntity>();
         
+        // 配置主键生成策略 - 使用自定义ID生成器而非数据库自增长
+        entity.Property(e => e.Id).ValueGeneratedNever();
+        
+        // 配置可空字段
+        entity.Property(e => e.Remarks).IsRequired(false);
+        entity.Property(e => e.Properties).IsRequired(false);
+        
         // 配置外键关系
         entity.HasOne(e => e.File)
               .WithMany(e => e.References)
@@ -147,6 +166,9 @@ public class FileStorageDbContext : MultiTenantDbContext
     {
         var entity = modelBuilder.Entity<ImageMetadataEntity>();
         
+        // 配置主键生成策略 - 使用自定义ID生成器而非数据库自增长
+        entity.Property(e => e.Id).ValueGeneratedNever();
+        
         // 配置一对一关系
         entity.HasOne(e => e.File)
               .WithOne(e => e.ImageMetadata)
@@ -174,6 +196,9 @@ public class FileStorageDbContext : MultiTenantDbContext
     {
         var entity = modelBuilder.Entity<ThumbnailEntity>();
         
+        // 配置主键生成策略 - 使用自定义ID生成器而非数据库自增长
+        entity.Property(e => e.Id).ValueGeneratedNever();
+        
         // 配置外键关系
         entity.HasOne(e => e.ImageMetadata)
               .WithMany(e => e.Thumbnails)
@@ -200,6 +225,9 @@ public class FileStorageDbContext : MultiTenantDbContext
     private static void ConfigureVideoMetadata(ModelBuilder modelBuilder)
     {
         var entity = modelBuilder.Entity<VideoMetadataEntity>();
+        
+        // 配置主键生成策略 - 使用自定义ID生成器而非数据库自增长
+        entity.Property(e => e.Id).ValueGeneratedNever();
         
         // 配置一对一关系
         entity.HasOne(e => e.File)

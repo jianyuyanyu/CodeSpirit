@@ -15,7 +15,7 @@ public class FileStorageDbContextFactory : IDesignTimeDbContextFactory<FileStora
         var optionsBuilder = new DbContextOptionsBuilder<FileStorageDbContext>();
         
         // 使用默认的连接字符串进行迁移
-        var connectionString = "Server=(LocalDB)\\MSSQLLocalDB;Database=CodeSpirit.FileStorage;Trusted_Connection=true;MultipleActiveResultSets=true;TrustServerCertificate=true";
+        var connectionString = "Server=(LocalDB)\\MSSQLLocalDB;Database=codespirit-file;Trusted_Connection=true;MultipleActiveResultSets=true;TrustServerCertificate=true";
         optionsBuilder.UseSqlServer(connectionString);
 
         // 创建一个简单的服务提供程序和当前用户实现用于设计时

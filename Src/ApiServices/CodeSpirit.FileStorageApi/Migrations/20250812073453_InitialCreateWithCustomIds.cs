@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CodeSpirit.FileStorageApi.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreateWithCustomIds : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,8 +15,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                 name: "Files",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     TenantId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     BucketName = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
                     OriginalFileName = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
@@ -54,8 +53,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                 name: "FileReferences",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     TenantId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     FileId = table.Column<long>(type: "bigint", nullable: false),
                     SourceService = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
@@ -92,8 +90,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                 name: "ImageMetadata",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     FileId = table.Column<long>(type: "bigint", nullable: false),
                     Width = table.Column<int>(type: "int", nullable: false),
                     Height = table.Column<int>(type: "int", nullable: false),
@@ -133,8 +130,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                 name: "VideoMetadata",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     FileId = table.Column<long>(type: "bigint", nullable: false),
                     Width = table.Column<int>(type: "int", nullable: false),
                     Height = table.Column<int>(type: "int", nullable: false),
@@ -174,8 +170,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                 name: "Thumbnails",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<long>(type: "bigint", nullable: false),
                     ImageMetadataId = table.Column<long>(type: "bigint", nullable: false),
                     ThumbnailFileId = table.Column<long>(type: "bigint", nullable: false),
                     SizeKey = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),

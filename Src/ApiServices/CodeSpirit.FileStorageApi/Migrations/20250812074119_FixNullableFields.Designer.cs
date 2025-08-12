@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CodeSpirit.FileStorageApi.Migrations
 {
     [DbContext(typeof(FileStorageDbContext))]
-    [Migration("20250811133658_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250812074119_FixNullableFields")]
+    partial class FixNullableFields
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -28,10 +28,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
             modelBuilder.Entity("CodeSpirit.FileStorageApi.Entities.FileEntity", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<long>("AccessCount")
                         .HasColumnType("bigint");
@@ -62,17 +59,14 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("DownloadUrl")
-                        .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)");
 
                     b.Property<string>("ETag")
-                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
@@ -80,7 +74,6 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Extension")
-                        .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
@@ -90,7 +83,6 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("FilePath")
-                        .IsRequired()
                         .HasMaxLength(1024)
                         .HasColumnType("nvarchar(1024)");
 
@@ -109,7 +101,6 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("Properties")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("Size")
@@ -124,7 +115,6 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("Tags")
-                        .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
@@ -175,10 +165,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
             modelBuilder.Entity("CodeSpirit.FileStorageApi.Entities.FileReferenceEntity", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime?>("ConfirmedTime")
                         .HasColumnType("datetime2");
@@ -213,14 +200,12 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Properties")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ReferenceType")
                         .HasColumnType("int");
 
                     b.Property<string>("Remarks")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
@@ -281,10 +266,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
             modelBuilder.Entity("CodeSpirit.FileStorageApi.Entities.ImageMetadataEntity", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CameraModel")
                         .IsRequired()
@@ -384,10 +366,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
             modelBuilder.Entity("CodeSpirit.FileStorageApi.Entities.ThumbnailEntity", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -444,10 +423,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
             modelBuilder.Entity("CodeSpirit.FileStorageApi.Entities.VideoMetadataEntity", b =>
                 {
                     b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<int>("AudioChannels")
                         .HasColumnType("int");

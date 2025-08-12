@@ -4,6 +4,7 @@ using CodeSpirit.FileStorageApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CodeSpirit.FileStorageApi.Migrations
 {
     [DbContext(typeof(FileStorageDbContext))]
-    partial class FileStorageDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250812073453_InitialCreateWithCustomIds")]
+    partial class InitialCreateWithCustomIds
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -56,14 +59,17 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("DownloadUrl")
+                        .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)");
 
                     b.Property<string>("ETag")
+                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
@@ -71,6 +77,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Extension")
+                        .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
@@ -80,6 +87,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("FilePath")
+                        .IsRequired()
                         .HasMaxLength(1024)
                         .HasColumnType("nvarchar(1024)");
 
@@ -98,6 +106,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("Properties")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("Size")
@@ -112,6 +121,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("nvarchar(512)");
 
                     b.Property<string>("Tags")
+                        .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
@@ -197,12 +207,14 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Properties")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ReferenceType")
                         .HasColumnType("int");
 
                     b.Property<string>("Remarks")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 

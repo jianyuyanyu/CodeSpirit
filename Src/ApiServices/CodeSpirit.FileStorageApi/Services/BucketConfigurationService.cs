@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using CodeSpirit.FileStorageApi.Options;
+using CodeSpirit.FileStorageApi.Abstractions;
 
 namespace CodeSpirit.FileStorageApi.Services;
 
@@ -9,13 +10,16 @@ namespace CodeSpirit.FileStorageApi.Services;
 public class BucketConfigurationService : IBucketConfigurationService
 {
     private readonly FileStorageOptions _options;
+    private readonly IStorageProviderFactory _storageProviderFactory;
     private readonly ILogger<BucketConfigurationService> _logger;
 
     public BucketConfigurationService(
         IOptions<FileStorageOptions> options,
+        IStorageProviderFactory storageProviderFactory,
         ILogger<BucketConfigurationService> logger)
     {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _storageProviderFactory = storageProviderFactory ?? throw new ArgumentNullException(nameof(storageProviderFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -160,7 +164,17 @@ public class BucketConfigurationService : IBucketConfigurationService
     /// </summary>
     public IStorageProvider GetStorageProvider(string bucketName)
     {
-        // TODO: 实现根据存储桶获取对应的存储提供程序
-        throw new NotImplementedException("GetStorageProvider 方法尚未实现");
+        var bucket = GetBucketByName(bucketName);
+        if (bucket == null)
+        {
+            throw new ArgumentException($"存储桶 '{bucketName}' 不存在", nameof(bucketName));
+        }
+
+        if (string.IsNullOrEmpty(bucket.Provider))
+        {
+            throw new InvalidOperationException($"存储桶 '{bucketName}' 未配置存储提供程序");
+        }
+
+        return _storageProviderFactory.GetProvider(bucket.Provider);
     }
 }

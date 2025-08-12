@@ -86,6 +86,12 @@ var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
     .WithReference(rabbitmqService)
     .WithReference(elasticsearchService);
 
+var fileService = builder.AddProject<Projects.CodeSpirit_FileStorageApi>("file")
+    .WithReference(seqService)
+    .WithReference(cache)
+    .WithReference(configService)
+    .WithReference(rabbitmqService);
+
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     .WithReference(cache)
@@ -96,6 +102,7 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(messagingService)
     .WithReference(examService)
     .WithReference(elasticsearchService)
+    .WithReference(fileService)
     .WithUrlForEndpoint("https", url =>
     {
         url.DisplayText = "Web 前端";

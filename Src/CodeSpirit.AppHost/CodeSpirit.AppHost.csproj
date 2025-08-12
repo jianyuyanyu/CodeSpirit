@@ -12,6 +12,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\ApiServices\CodeSpirit.FileStorageApi\CodeSpirit.FileStorageApi.csproj" />
 		<ProjectReference Include="..\CodeSpirit.ConfigCenter\CodeSpirit.ConfigCenter.csproj" />
 		<ProjectReference Include="..\CodeSpirit.ExamApi\CodeSpirit.ExamApi.csproj" />
 		<ProjectReference Include="..\CodeSpirit.IdentityApi\CodeSpirit.IdentityApi.csproj" />

@@ -49,7 +49,7 @@ public class LocalStorageProvider : IStorageProvider
             
             // 确保目录存在
             var directory = Path.GetDirectoryName(filePath);
-            if (!Directory.Exists(directory))
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);
             }
@@ -111,7 +111,7 @@ public class LocalStorageProvider : IStorageProvider
     /// <summary>
     /// 删除文件
     /// </summary>
-    public async Task<bool> DeleteFileAsync(string bucketName, string fileName)
+    public Task<bool> DeleteFileAsync(string bucketName, string fileName)
     {
         try
         {
@@ -121,16 +121,16 @@ public class LocalStorageProvider : IStorageProvider
             {
                 File.Delete(filePath);
                 _logger.LogInformation("文件删除成功: {FilePath}", filePath);
-                return true;
+                return Task.FromResult(true);
             }
             
             _logger.LogWarning("尝试删除不存在的文件: {FilePath}", filePath);
-            return false;
+            return Task.FromResult(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "文件删除失败: {BucketName}/{FileName}", bucketName, fileName);
-            return false;
+            return Task.FromResult(false);
         }
     }
 

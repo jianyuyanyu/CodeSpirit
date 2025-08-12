@@ -1,14 +1,16 @@
-using CodeSpirit.ServiceDefaults;
+using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
+using CodeSpirit.FileStorageApi.Abstractions;
+using CodeSpirit.FileStorageApi.Data;
+using CodeSpirit.FileStorageApi.Options;
+using CodeSpirit.FileStorageApi.Providers;
+using CodeSpirit.FileStorageApi.Services;
+using CodeSpirit.Navigation.Extensions;
+using CodeSpirit.ServiceDefaults;
 // using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Repositories;
-using CodeSpirit.FileStorageApi.Data;
-using CodeSpirit.FileStorageApi.Abstractions;
-using CodeSpirit.FileStorageApi.Services;
-using CodeSpirit.FileStorageApi.Providers;
-using CodeSpirit.FileStorageApi.Options;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.FileStorageApi;
@@ -18,11 +20,35 @@ namespace CodeSpirit.FileStorageApi;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// 添加数据库服务
+    /// </summary>
+    public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
+    {
+        string connectionString = configuration.GetConnectionString("file-api");
+        Console.WriteLine($"Connection string: {connectionString}");
+
+        services.AddDbContext<FileStorageDbContext>(options =>
+        {
+            options.UseSqlServer(connectionString);
+
+            // 仅在开发环境下启用敏感数据日志和控制台日志
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            {
+                options.EnableSensitiveDataLogging()
+                       .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
+            }
+        });
+
+        return services;
+    }
+
     public static IServiceCollection AddFileStorage(this WebApplicationBuilder builder)
     {
         // Add service defaults & Aspire client integrations
-        builder.AddServiceDefaults("CodeSpirit.FileStorageApi");
+        builder.AddServiceDefaults("file");
 
+        builder.Services.AddDatabase(builder.Configuration);
         builder.Services.AddSystemServices(builder.Configuration, typeof(Program), builder.Environment);
         builder.Services.AddFileStorageApiServices(builder.Configuration);
 
@@ -63,18 +89,9 @@ public static class ServiceCollectionExtensions
 
         // 添加API控制器
         services.AddControllers();
-        
-        string connectionString = configuration.GetConnectionString("DefaultConnection") ?? 
-            "Server=(LocalDB)\\MSSQLLocalDB;Database=CodeSpirit.FileStorage;Trusted_Connection=true;MultipleActiveResultSets=true;TrustServerCertificate=true";
-        Console.WriteLine($"FileStorage Connection string: {connectionString}");
-
-        services.AddDbContext<FileStorageDbContext>(options =>
-        {
-            options.UseSqlServer(connectionString);
-        });
 
         // 添加AutoMapper
-        // services.AddAutoMapper(cfg => {}, typeof(ServiceCollectionExtensions).Assembly);
+        services.AddAutoMapper(typeof(ServiceCollectionExtensions).Assembly);
 
         // 添加授权
         services.AddAuthorization();
@@ -158,6 +175,9 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddFileStorageServices(this IServiceCollection services)
     {
+        // 注册存储提供程序工厂
+        services.AddSingleton<IStorageProviderFactory, Services.StorageProviderFactory>();
+        
         // 注册存储桶配置服务
         services.AddScoped<IBucketConfigurationService, Services.BucketConfigurationService>();
         
@@ -172,6 +192,26 @@ public static class ServiceCollectionExtensions
         
         // 注册性能监控服务
         services.AddScoped<IFileStorageMetrics, Services.FileStorageMetrics>();
+
+        // 注册系统管理服务
+        services.AddSystemServices();
+
+        return services;
+    }
+
+    /// <summary>
+    /// 添加系统管理服务
+    /// </summary>
+    public static IServiceCollection AddSystemServices(this IServiceCollection services)
+    {
+        // 注册系统租户存储服务
+        services.AddScoped<Services.System.ISystemTenantStorageService, Services.System.SystemTenantStorageService>();
+        
+        // 注册系统存储桶服务
+        services.AddScoped<Services.System.ISystemBucketService, Services.System.SystemBucketService>();
+        
+        // 注册系统文件服务
+        services.AddScoped<Services.System.ISystemFileService, Services.System.SystemFileService>();
 
         return services;
     }
@@ -191,7 +231,9 @@ public static class ServiceCollectionExtensions
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+        app.UseAmis();
         app.UseCodeSpiritAuthorization();
+        await app.UseCodeSpiritNavigationAsync();
 
         // 初始化数据库
         using (var scope = app.Services.CreateScope())

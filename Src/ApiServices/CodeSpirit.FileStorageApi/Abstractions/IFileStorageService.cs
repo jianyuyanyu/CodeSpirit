@@ -76,27 +76,27 @@ public class FileUploadRequest
     /// <summary>
     /// 存储桶名称
     /// </summary>
-    public string BucketName { get; set; }
+    public string? BucketName { get; set; }
     
     /// <summary>
     /// 文件名
     /// </summary>
-    public string FileName { get; set; }
+    public string FileName { get; set; } = default!;
     
     /// <summary>
     /// 文件流
     /// </summary>
-    public Stream FileStream { get; set; }
+    public Stream FileStream { get; set; } = default!;
     
     /// <summary>
     /// 内容类型
     /// </summary>
-    public string ContentType { get; set; }
+    public string? ContentType { get; set; }
     
     /// <summary>
     /// 文件描述
     /// </summary>
-    public string Description { get; set; }
+    public string? Description { get; set; }
     
     /// <summary>
     /// 过期时间
@@ -106,7 +106,7 @@ public class FileUploadRequest
     /// <summary>
     /// 自定义标签
     /// </summary>
-    public IDictionary<string, string> Tags { get; set; }
+    public IDictionary<string, string>? Tags { get; set; }
     
     /// <summary>
     /// 是否覆盖已存在文件
@@ -127,7 +127,7 @@ public class FileQueryRequest
     /// <summary>
     /// 存储桶名称
     /// </summary>
-    public string BucketName { get; set; }
+    public string? BucketName { get; set; }
     
     /// <summary>
     /// 文件类型分类
@@ -142,12 +142,12 @@ public class FileQueryRequest
     /// <summary>
     /// 标签过滤
     /// </summary>
-    public string Tags { get; set; }
+    public string? Tags { get; set; }
     
     /// <summary>
     /// 文件名关键词
     /// </summary>
-    public string FileName { get; set; }
+    public string? FileName { get; set; }
     
     /// <summary>
     /// 创建开始时间

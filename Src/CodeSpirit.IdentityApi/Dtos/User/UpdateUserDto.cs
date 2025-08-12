@@ -17,7 +17,7 @@ public class UpdateUserDto
     [DataType(DataType.ImageUrl)]
     [AmisInputImageField(
         Label = "头像",
-        Receiver = "${ROOT_API}/api/identity/upload/avatar",
+        Receiver = "/file/api/file/images/upload",
         Accept = "image/png,image/jpeg",
         MaxSize = 1048576, // 1MB
         Multiple = false,

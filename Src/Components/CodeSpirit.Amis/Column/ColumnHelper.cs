@@ -358,6 +358,11 @@ namespace CodeSpirit.Amis.Column
                         {
                             column["onError"] = avatarAttr.OnError;
                         }
+
+                        if (!string.IsNullOrEmpty(avatarAttr.Src))
+                        {
+                            column["src"] = avatarAttr.Src;
+                        }
                     }
                     else
                     {

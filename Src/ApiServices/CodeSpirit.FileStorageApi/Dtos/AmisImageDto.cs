@@ -79,58 +79,7 @@ public class AmisImageDto
     [DisplayName("上传时间")]
     public DateTime UploadTime { get; set; }
 
-    /// <summary>
-    /// 缩略图URL（可选）
-    /// </summary>
-    [JsonProperty("thumbUrl")]
-    [DisplayName("缩略图URL")]
-    public string? ThumbUrl { get; set; }
 
-    /// <summary>
-    /// 缩略图列表
-    /// </summary>
-    [JsonProperty("thumbnails")]
-    [DisplayName("缩略图列表")]
-    public List<AmisImageThumbnailDto> Thumbnails { get; set; } = new();
 }
 
-/// <summary>
-/// Amis 缩略图DTO
-/// </summary>
-public class AmisImageThumbnailDto
-{
-    /// <summary>
-    /// 缩略图ID
-    /// </summary>
-    [JsonProperty("id")]
-    [DisplayName("缩略图ID")]
-    public long Id { get; set; }
 
-    /// <summary>
-    /// 缩略图尺寸标识
-    /// </summary>
-    [JsonProperty("sizeKey")]
-    [DisplayName("尺寸标识")]
-    public string SizeKey { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 宽度
-    /// </summary>
-    [JsonProperty("width")]
-    [DisplayName("宽度")]
-    public int Width { get; set; }
-
-    /// <summary>
-    /// 高度
-    /// </summary>
-    [JsonProperty("height")]
-    [DisplayName("高度")]
-    public int Height { get; set; }
-
-    /// <summary>
-    /// 缩略图URL
-    /// </summary>
-    [JsonProperty("url")]
-    [DisplayName("缩略图URL")]
-    public string Url { get; set; } = string.Empty;
-}

@@ -78,8 +78,16 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// 租户Logo URL
         /// </summary>
         [StringLength(500, ErrorMessage = "Logo URL长度不能超过500个字符")]
-        [DisplayName("Logo URL")]
-        [AmisInputImageField()]
+        [DisplayName("Logo")]
+        [AmisInputImageField(
+            Label = "Logo",
+            Receiver = "/file/api/file/images/upload",
+            Accept = "image/png,image/jpeg",
+            MaxSize = 1048576, // 1MB
+            Multiple = false,
+            Required = false,
+            Placeholder = "请上传Logo"
+        )]
         public string LogoUrl { get; set; }
 
         /// <summary>

@@ -39,5 +39,10 @@ namespace CodeSpirit.Amis.Attributes.Columns
         /// 图片加载失败后，通过 onError 控制是否进行 text、icon 置换
         /// </summary>
         public string OnError { get; set; } = "return true;";
+
+        /// <summary>
+        /// 图片地址
+        /// </summary>
+        public string Src { get; set; }
     }
 }

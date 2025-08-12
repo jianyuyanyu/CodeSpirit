@@ -34,7 +34,7 @@ public class ImageDto : FileDto
     /// 图片格式
     /// </summary>
     [DisplayName("图片格式")]
-    public string Format { get; set; }
+    public string? Format { get; set; }
 
     /// <summary>
     /// 是否有透明通道
@@ -70,7 +70,7 @@ public class ImageDto : FileDto
     /// 拍摄设备
     /// </summary>
     [DisplayName("拍摄设备")]
-    public string CameraModel { get; set; }
+    public string? CameraModel { get; set; }
 
     /// <summary>
     /// 拍摄时间
@@ -90,54 +90,10 @@ public class ImageDto : FileDto
     [DisplayName("经度")]
     public double? Longitude { get; set; }
 
-    /// <summary>
-    /// 缩略图列表
-    /// </summary>
-    [DisplayName("缩略图")]
-    public List<ThumbnailDto> Thumbnails { get; set; } = new();
+
 }
 
-/// <summary>
-/// 缩略图DTO
-/// </summary>
-public class ThumbnailDto
-{
-    /// <summary>
-    /// 缩略图ID
-    /// </summary>
-    [DisplayName("缩略图ID")]
-    public long Id { get; set; }
 
-    /// <summary>
-    /// 缩略图尺寸标识
-    /// </summary>
-    [DisplayName("尺寸标识")]
-    public string SizeKey { get; set; }
-
-    /// <summary>
-    /// 宽度
-    /// </summary>
-    [DisplayName("宽度")]
-    public int Width { get; set; }
-
-    /// <summary>
-    /// 高度
-    /// </summary>
-    [DisplayName("高度")]
-    public int Height { get; set; }
-
-    /// <summary>
-    /// 缩略图文件ID
-    /// </summary>
-    [DisplayName("文件ID")]
-    public long ThumbnailFileId { get; set; }
-
-    /// <summary>
-    /// 缩略图下载URL
-    /// </summary>
-    [DisplayName("下载链接")]
-    public string DownloadUrl { get; set; }
-}
 
 /// <summary>
 /// 图片查询DTO
@@ -234,17 +190,7 @@ public class ImageQueryDto : QueryDtoBase
 /// </summary>
 public class CreateImageDto : CreateFileDto
 {
-    /// <summary>
-    /// 是否自动生成缩略图
-    /// </summary>
-    [DisplayName("自动生成缩略图")]
-    public bool AutoGenerateThumbnails { get; set; } = true;
 
-    /// <summary>
-    /// 缩略图尺寸配置
-    /// </summary>
-    [DisplayName("缩略图尺寸")]
-    public List<string> ThumbnailSizes { get; set; } = new() { "small" };
 
     /// <summary>
     /// 图片质量（1-100）
@@ -294,43 +240,17 @@ public class ImageProcessDto
     /// 输出格式
     /// </summary>
     [DisplayName("输出格式")]
-    public string OutputFormat { get; set; }
+    public string? OutputFormat { get; set; }
 
     /// <summary>
     /// 水印文本
     /// </summary>
     [DisplayName("水印文本")]
-    public string WatermarkText { get; set; }
+    public string? WatermarkText { get; set; }
 
     /// <summary>
     /// 水印位置
     /// </summary>
     [DisplayName("水印位置")]
     public string WatermarkPosition { get; set; } = "BottomRight";
-}
-
-/// <summary>
-/// 生成缩略图DTO
-/// </summary>
-public class GenerateThumbnailDto
-{
-    /// <summary>
-    /// 缩略图尺寸列表
-    /// </summary>
-    [Required]
-    [DisplayName("缩略图尺寸")]
-    public List<string> ThumbnailSizes { get; set; } = new();
-
-    /// <summary>
-    /// 是否覆盖已存在的缩略图
-    /// </summary>
-    [DisplayName("覆盖已存在")]
-    public bool OverwriteExisting { get; set; } = false;
-
-    /// <summary>
-    /// 图片质量（1-100）
-    /// </summary>
-    [DisplayName("图片质量")]
-    [Range(1, 100)]
-    public int Quality { get; set; } = 85;
 }

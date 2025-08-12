@@ -96,41 +96,41 @@ namespace CodeSpirit.IdentityApi.Controllers
             return Ok(ApiResponse<TenantDto>.Success(result, "创建成功"));
         }
 
-        ///// <summary>
-        ///// 更新租户
-        ///// </summary>
-        ///// <param name="tenantId">租户ID</param>
-        ///// <param name="updateDto">更新数据</param>
-        ///// <returns>更新结果</returns>
-        //[HttpPut("{tenantId}")]
-        //[DisplayName("更新租户")]
-        //public async Task<ActionResult<ApiResponse<TenantDto>>> UpdateTenant(string tenantId, [FromBody] TenantUpdateDto updateDto)
-        //{
-        //    // 检查是否为系统租户且尝试禁用
-        //    if (string.Equals(tenantId, "system", StringComparison.OrdinalIgnoreCase) && !updateDto.IsActive)
-        //    {
-        //        return BadRequest(ApiResponse<TenantDto>.Error(400, "系统租户不能被禁用"));
-        //    }
+        /// <summary>
+        /// 更新租户
+        /// </summary>
+        /// <param name="tenantId">租户ID</param>
+        /// <param name="updateDto">更新数据</param>
+        /// <returns>更新结果</returns>
+        [HttpPut("{tenantId}")]
+        [DisplayName("更新租户")]
+        public async Task<ActionResult<ApiResponse<TenantDto>>> UpdateTenant(string tenantId, [FromBody] TenantUpdateDto updateDto)
+        {
+            // 检查是否为系统租户且尝试禁用
+            if (string.Equals(tenantId, "system", StringComparison.OrdinalIgnoreCase) && !updateDto.IsActive)
+            {
+                return BadRequest(ApiResponse<TenantDto>.Error(400, "系统租户不能被禁用"));
+            }
 
-        //    await _tenantService.UpdateAsync(tenantId, updateDto);
-        //    // 重新获取更新后的租户信息
-        //    var updatedTenant = await _tenantService.GetByTenantIdAsync(tenantId);
-        //    var tenantDto = new TenantDto
-        //    {
-        //        TenantId = updatedTenant.TenantId,
-        //        Name = updatedTenant.Name,
-        //        DisplayName = updatedTenant.DisplayName,
-        //        Description = updatedTenant.Description,
-        //        Strategy = updatedTenant.Strategy,
-        //        IsActive = updatedTenant.IsActive,
-        //        Domain = updatedTenant.Domain,
-        //        MaxUsers = updatedTenant.MaxUsers,
-        //        StorageLimit = updatedTenant.StorageLimit,
-        //        ExpiresAt = updatedTenant.ExpiresAt,
-        //        CreatedAt = updatedTenant.CreatedAt
-        //    };
-        //    return Ok(ApiResponse<TenantDto>.Success(tenantDto, "更新成功"));
-        //}
+            await _tenantService.UpdateAsync(tenantId, updateDto);
+            // 重新获取更新后的租户信息
+            var updatedTenant = await _tenantService.GetByTenantIdAsync(tenantId);
+            var tenantDto = new TenantDto
+            {
+                TenantId = updatedTenant.TenantId,
+                Name = updatedTenant.Name,
+                DisplayName = updatedTenant.DisplayName,
+                Description = updatedTenant.Description,
+                Strategy = updatedTenant.Strategy,
+                IsActive = updatedTenant.IsActive,
+                Domain = updatedTenant.Domain,
+                MaxUsers = updatedTenant.MaxUsers,
+                StorageLimit = updatedTenant.StorageLimit,
+                ExpiresAt = updatedTenant.ExpiresAt,
+                CreatedAt = updatedTenant.CreatedAt
+            };
+            return Ok(ApiResponse<TenantDto>.Success(tenantDto, "更新成功"));
+        }
 
         /// <summary>
         /// 删除租户

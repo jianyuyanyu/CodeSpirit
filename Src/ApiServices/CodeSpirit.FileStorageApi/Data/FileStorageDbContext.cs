@@ -26,10 +26,7 @@ public class FileStorageDbContext : MultiTenantDbContext
     /// </summary>
     public DbSet<ImageMetadataEntity> ImageMetadata { get; set; }
     
-    /// <summary>
-    /// 缩略图
-    /// </summary>
-    public DbSet<ThumbnailEntity> Thumbnails { get; set; }
+
     
     /// <summary>
     /// 视频元数据
@@ -63,8 +60,7 @@ public class FileStorageDbContext : MultiTenantDbContext
         // 配置图片元数据
         ConfigureImageMetadata(modelBuilder);
         
-        // 配置缩略图
-        ConfigureThumbnail(modelBuilder);
+
         
         // 配置视频元数据
         ConfigureVideoMetadata(modelBuilder);
@@ -189,35 +185,7 @@ public class FileStorageDbContext : MultiTenantDbContext
               .HasDatabaseName("IX_ImageMetadata_GpsLocation");
     }
     
-    /// <summary>
-    /// 配置缩略图实体
-    /// </summary>
-    private static void ConfigureThumbnail(ModelBuilder modelBuilder)
-    {
-        var entity = modelBuilder.Entity<ThumbnailEntity>();
-        
-        // 配置主键生成策略 - 使用自定义ID生成器而非数据库自增长
-        entity.Property(e => e.Id).ValueGeneratedNever();
-        
-        // 配置外键关系
-        entity.HasOne(e => e.ImageMetadata)
-              .WithMany(e => e.Thumbnails)
-              .HasForeignKey(e => e.ImageMetadataId)
-              .OnDelete(DeleteBehavior.Cascade);
-        
-        entity.HasOne(e => e.ThumbnailFile)
-              .WithMany()
-              .HasForeignKey(e => e.ThumbnailFileId)
-              .OnDelete(DeleteBehavior.Restrict);
-        
-        // 创建复合索引
-        entity.HasIndex(e => new { e.ImageMetadataId, e.SizeKey })
-              .IsUnique()
-              .HasDatabaseName("IX_Thumbnails_ImageMetadataId_SizeKey");
-        
-        entity.HasIndex(e => e.SizeKey)
-              .HasDatabaseName("IX_Thumbnails_SizeKey");
-    }
+
     
     /// <summary>
     /// 配置视频元数据实体

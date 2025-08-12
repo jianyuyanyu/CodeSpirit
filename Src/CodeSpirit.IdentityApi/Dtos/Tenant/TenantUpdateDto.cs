@@ -30,31 +30,31 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// </summary>
         [StringLength(500, ErrorMessage = "描述长度不能超过500个字符")]
         [DisplayName("描述")]
-        [AmisTextareaField(Placeholder = "请输入租户描述", MinRows = 3, MaxRows = 5)]
+        [AmisTextareaField(Placeholder = "请输入租户描述", MinRows = 3, MaxRows = 500)]
         public string Description { get; set; }
 
-        /// <summary>
-        /// 租户策略
-        /// </summary>
-        [Required(ErrorMessage = "租户策略不能为空")]
-        [DisplayName("租户策略")]
-        public TenantStrategy Strategy { get; set; }
+        ///// <summary>
+        ///// 租户策略
+        ///// </summary>
+        //[Required(ErrorMessage = "租户策略不能为空")]
+        //[DisplayName("租户策略")]
+        //public TenantStrategy Strategy { get; set; }
 
-        /// <summary>
-        /// 数据库连接字符串
-        /// </summary>
-        [StringLength(1000, ErrorMessage = "连接字符串长度不能超过1000个字符")]
-        [DisplayName("数据库连接字符串")]
-        [AmisTextareaField(Placeholder = "请输入数据库连接字符串", MinRows = 2, MaxRows = 4, VisibleOn = "strategy == 3")]
-        public string ConnectionString { get; set; }
+        ///// <summary>
+        ///// 数据库连接字符串
+        ///// </summary>
+        //[StringLength(1000, ErrorMessage = "连接字符串长度不能超过1000个字符")]
+        //[DisplayName("数据库连接字符串")]
+        //[AmisTextareaField(Placeholder = "请输入数据库连接字符串", MinRows = 2, MaxRows = 4, VisibleOn = "strategy == 3")]
+        //public string ConnectionString { get; set; }
 
-        /// <summary>
-        /// 表前缀
-        /// </summary>
-        [StringLength(20, ErrorMessage = "表前缀长度不能超过20个字符")]
-        [DisplayName("表前缀")]
-        [AmisFormField(Type = "input-text", Placeholder = "请输入表前缀", VisibleOn = "strategy == 2")]
-        public string TablePrefix { get; set; }
+        ///// <summary>
+        ///// 表前缀
+        ///// </summary>
+        //[StringLength(20, ErrorMessage = "表前缀长度不能超过20个字符")]
+        //[DisplayName("表前缀")]
+        //[AmisFormField(Type = "input-text", Placeholder = "请输入表前缀", VisibleOn = "strategy == 2")]
+        //public string TablePrefix { get; set; }
 
         /// <summary>
         /// 是否启用
@@ -75,8 +75,16 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// 租户Logo URL
         /// </summary>
         [StringLength(500, ErrorMessage = "Logo URL长度不能超过500个字符")]
-        [DisplayName("Logo URL")]
-        [AmisInputImageField()]
+        [DisplayName("Logo")]
+        [AmisInputImageField(
+            Label = "Logo",
+            Receiver = "/file/api/file/images/upload",
+            Accept = "image/png,image/jpeg",
+            MaxSize = 1048576, // 1MB
+            Multiple = false,
+            Required = false,
+            Placeholder = "请上传Logo"
+        )]
         public string LogoUrl { get; set; }
 
         /// <summary>

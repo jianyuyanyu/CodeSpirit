@@ -64,16 +64,8 @@ public class FileProfile : Profile
             .ForMember(dest => dest.CameraModel, opt => opt.MapFrom(src => src.ImageMetadata != null ? src.ImageMetadata.CameraModel : null))
             .ForMember(dest => dest.DateTaken, opt => opt.MapFrom(src => src.ImageMetadata != null ? src.ImageMetadata.DateTaken : null))
             .ForMember(dest => dest.Latitude, opt => opt.MapFrom(src => src.ImageMetadata != null ? src.ImageMetadata.Latitude : null))
-            .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => src.ImageMetadata != null ? src.ImageMetadata.Longitude : null))
-            .ForMember(dest => dest.Thumbnails, opt => opt.MapFrom(src => src.ImageMetadata != null ? src.ImageMetadata.Thumbnails : null));
+            .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => src.ImageMetadata != null ? src.ImageMetadata.Longitude : null));
 
-        CreateMap<ThumbnailEntity, ThumbnailDto>()
-            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.SizeKey, opt => opt.MapFrom(src => src.SizeKey))
-            .ForMember(dest => dest.Width, opt => opt.MapFrom(src => src.Width))
-            .ForMember(dest => dest.Height, opt => opt.MapFrom(src => src.Height))
-            .ForMember(dest => dest.ThumbnailFileId, opt => opt.MapFrom(src => src.ThumbnailFileId))
-            .ForMember(dest => dest.DownloadUrl, opt => opt.MapFrom(src => src.ThumbnailFile != null ? src.ThumbnailFile.DownloadUrl : null));
 
         CreateMap<FileReferenceEntity, FileReferenceDto>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))

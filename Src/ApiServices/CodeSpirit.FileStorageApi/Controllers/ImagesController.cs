@@ -98,15 +98,7 @@ public class ImagesController : ApiControllerBase
             DateTaken = f.ImageMetadata?.DateTaken,
             Latitude = f.ImageMetadata?.Latitude,
             Longitude = f.ImageMetadata?.Longitude,
-            Thumbnails = f.ImageMetadata?.Thumbnails?.Select(t => new ThumbnailDto
-            {
-                Id = t.Id,
-                SizeKey = t.SizeKey,
-                Width = t.Width,
-                Height = t.Height,
-                ThumbnailFileId = t.ThumbnailFileId,
-                DownloadUrl = t.ThumbnailFile?.DownloadUrl
-            }).ToList() ?? new List<ThumbnailDto>()
+
         }).ToList();
 
         var result = new PageList<ImageDto>(imageDtos, files.Total);
@@ -185,15 +177,7 @@ public class ImagesController : ApiControllerBase
             DateTaken = file.ImageMetadata?.DateTaken,
             Latitude = file.ImageMetadata?.Latitude,
             Longitude = file.ImageMetadata?.Longitude,
-            Thumbnails = file.ImageMetadata?.Thumbnails?.Select(t => new ThumbnailDto
-            {
-                Id = t.Id,
-                SizeKey = t.SizeKey,
-                Width = t.Width,
-                Height = t.Height,
-                ThumbnailFileId = t.ThumbnailFileId,
-                DownloadUrl = t.ThumbnailFile?.DownloadUrl
-            }).ToList() ?? new List<ThumbnailDto>()
+
         };
 
         return SuccessResponse(imageDto);
@@ -264,32 +248,7 @@ public class ImagesController : ApiControllerBase
         }
     }
 
-    /// <summary>
-    /// 生成缩略图
-    /// </summary>
-    /// <param name="id">图片ID</param>
-    /// <param name="generateDto">生成配置</param>
-    /// <returns>生成结果</returns>
-    [HttpPost("{id}/thumbnails")]
-    [Operation("生成缩略图", "form", null, "确定要生成缩略图吗？")]
-    [DisplayName("生成缩略图")]
-    public async Task<ActionResult<ApiResponse<List<ThumbnailDto>>>> GenerateThumbnails(
-        long id, 
-        [FromBody] GenerateThumbnailDto generateDto)
-    {
-        FileEntity file = await _fileStorageService.GetFileInfoAsync(id);
-        if (file == null || file.Category != FileTypeCategory.Image)
-        {
-            return BadResponse<List<ThumbnailDto>>("图片不存在");
-        }
 
-        // 这里需要调用图片处理服务生成缩略图
-        // var thumbnails = await _imageProcessingService.GenerateThumbnailsAsync(id, generateDto.ThumbnailSizes);
-        
-        // 暂时返回空列表
-        var thumbnails = new List<ThumbnailDto>();
-        return SuccessResponse(thumbnails, "缩略图生成成功");
-    }
 
     /// <summary>
     /// 处理图片
@@ -320,22 +279,7 @@ public class ImagesController : ApiControllerBase
             BadResponse<ImageDto>("图片处理失败");
     }
 
-    /// <summary>
-    /// 删除缩略图
-    /// </summary>
-    /// <param name="id">图片ID</param>
-    /// <param name="thumbnailId">缩略图ID</param>
-    /// <returns>删除结果</returns>
-    [HttpDelete("{id}/thumbnails/{thumbnailId}")]
-    [Operation("删除缩略图", "ajax", null, "确定要删除此缩略图吗？")]
-    [DisplayName("删除缩略图")]
-    public async Task<ActionResult<ApiResponse>> DeleteThumbnail(long id, long thumbnailId)
-    {
-        // 这里需要实现删除缩略图的逻辑
-        // await _imageProcessingService.DeleteThumbnailAsync(thumbnailId);
-        
-        return SuccessResponse("缩略图删除成功");
-    }
+
 
     /// <summary>
     /// 批量删除图片
@@ -358,22 +302,7 @@ public class ImagesController : ApiControllerBase
         return SuccessResponse($"批量删除成功！共删除 {result.Success} 张图片");
     }
 
-    /// <summary>
-    /// 批量生成缩略图
-    /// </summary>
-    /// <param name="request">批量生成请求</param>
-    /// <returns>生成结果</returns>
-    [HttpPost("batch/generate-thumbnails")]
-    [Operation("批量生成缩略图", "form", null, "确定要为选中的图片批量生成缩略图吗？", isBulkOperation: true)]
-    [DisplayName("批量生成缩略图")]
-    public async Task<ActionResult<ApiResponse>> BatchGenerateThumbnails([FromBody] BatchGenerateThumbnailsRequest request)
-    {
-        // 这里需要实现批量生成缩略图的逻辑
-        // var result = await _imageProcessingService.BatchGenerateThumbnailsAsync(request.ImageIds, request.ThumbnailSizes);
-        
-        int successCount = request.ImageIds?.Count ?? 0;
-        return SuccessResponse($"批量生成缩略图完成！成功处理 {successCount} 张图片");
-    }
+
 
     /// <summary>
     /// 获取图片统计信息
@@ -392,7 +321,7 @@ public class ImagesController : ApiControllerBase
             ImagesByResolution = new Dictionary<string, int>(),
             AverageFileSize = 0L,
             LargestImage = new { Width = 0, Height = 0, Size = 0L },
-            TotalThumbnails = 0
+
         };
 
         return SuccessResponse<object>(statistics);
@@ -418,32 +347,4 @@ public class ImagesController : ApiControllerBase
     }
 }
 
-/// <summary>
-/// 批量生成缩略图请求
-/// </summary>
-public class BatchGenerateThumbnailsRequest
-{
-    /// <summary>
-    /// 图片ID列表
-    /// </summary>
-    [DisplayName("图片ID列表")]
-    public List<long> ImageIds { get; set; } = new();
 
-    /// <summary>
-    /// 缩略图尺寸列表
-    /// </summary>
-    [DisplayName("缩略图尺寸")]
-    public List<string> ThumbnailSizes { get; set; } = new();
-
-    /// <summary>
-    /// 图片质量（1-100）
-    /// </summary>
-    [DisplayName("图片质量")]
-    public int Quality { get; set; } = 85;
-
-    /// <summary>
-    /// 是否覆盖已存在的缩略图
-    /// </summary>
-    [DisplayName("覆盖已存在")]
-    public bool OverwriteExisting { get; set; } = false;
-}

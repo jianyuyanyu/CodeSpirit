@@ -213,6 +213,79 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// 配置静态文件托管
+    /// </summary>
+    /// <param name="app">应用程序构建器</param>
+    private static void ConfigureStaticFiles(WebApplication app)
+    {
+        // 获取文件存储配置
+        var fileStorageOptions = app.Services.GetRequiredService<IOptions<FileStorageOptions>>().Value;
+        
+        // 配置静态文件中间件
+        if (fileStorageOptions.StorageProviders.TryGetValue("Local", out var localProvider))
+        {
+            var properties = localProvider.Properties;
+            if (properties.TryGetValue("RootPath", out var rootPath) && rootPath is string rootPathStr)
+            {
+                var uploadsPath = Path.Combine(app.Environment.ContentRootPath, rootPathStr);
+                
+                // 确保上传目录存在
+                if (!Directory.Exists(uploadsPath))
+                {
+                    Directory.CreateDirectory(uploadsPath);
+                }
+                
+                // 配置静态文件中间件，将 /files 路径映射到上传目录
+                app.UseStaticFiles(new StaticFileOptions
+                {
+                    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+                    RequestPath = "/files",
+                    ServeUnknownFileTypes = true, // 允许提供未知文件类型
+                    DefaultContentType = "application/octet-stream",
+                    OnPrepareResponse = context =>
+                    {
+                        // 设置缓存头以优化性能
+                        var headers = context.Context.Response.Headers;
+                        headers.CacheControl = "public,max-age=31536000"; // 1年缓存
+                        headers.Expires = DateTime.UtcNow.AddYears(1).ToString("R");
+                        
+                        // 为图片文件设置正确的MIME类型
+                        var fileExtension = Path.GetExtension(context.File.Name).ToLowerInvariant();
+                        switch (fileExtension)
+                        {
+                            case ".jpg":
+                            case ".jpeg":
+                                context.Context.Response.ContentType = "image/jpeg";
+                                break;
+                            case ".png":
+                                context.Context.Response.ContentType = "image/png";
+                                break;
+                            case ".gif":
+                                context.Context.Response.ContentType = "image/gif";
+                                break;
+                            case ".webp":
+                                context.Context.Response.ContentType = "image/webp";
+                                break;
+                            case ".svg":
+                                context.Context.Response.ContentType = "image/svg+xml";
+                                break;
+                            case ".bmp":
+                                context.Context.Response.ContentType = "image/bmp";
+                                break;
+                            case ".tiff":
+                            case ".tif":
+                                context.Context.Response.ContentType = "image/tiff";
+                                break;
+                        }
+                    }
+                });
+                
+                app.Logger.LogInformation("静态文件托管已配置: /files -> {UploadsPath}", uploadsPath);
+            }
+        }
+    }
+
+    /// <summary>
     /// 配置文件存储API服务中间件
     /// </summary>
     /// <param name="app">应用程序构建器</param>
@@ -220,6 +293,9 @@ public static class ServiceCollectionExtensions
     public static async Task<WebApplication> UseFileStorageApiServicesAsync(this WebApplication app)
     {
         app.UseCors("AllowSpecificOriginsWithCredentials");
+        
+        // 配置静态文件托管 - 用于图片等文件访问
+        ConfigureStaticFiles(app);
         
         // 使用多租户中间件
         // app.UseCodeSpiritMultiTenant();

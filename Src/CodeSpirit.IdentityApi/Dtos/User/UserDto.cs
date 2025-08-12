@@ -12,7 +12,7 @@ public class UserDto
     public string Name { get; set; }
 
     [DisplayName("头像")]
-    [AvatarColumn(Text = "${name}")]
+    [AvatarColumn(Text = "${name}",Src = "${avatarUrl}")]
     [Badge(Animation = true, VisibleOn = "isActive", Level = "info")]
     public string AvatarUrl { get; set; }
 

@@ -529,15 +529,6 @@ public interface IImageProcessingService
     Task<ImageEntity> UploadImageAsync(ImageUploadRequest request);
     
     /// <summary>
-    /// 生成缩略图
-    /// </summary>
-    /// <param name="imageId">图片ID</param>
-    /// <param name="sizes">缩略图尺寸列表</param>
-    /// <returns>缩略图信息</returns>
-    Task<IEnumerable<ThumbnailEntity>> GenerateThumbnailsAsync(long imageId, 
-        IEnumerable<ThumbnailSize> sizes);
-    
-    /// <summary>
     /// 获取图片信息
     /// </summary>
     /// <param name="imageId">图片ID</param>
@@ -558,17 +549,7 @@ public interface IImageProcessingService
 /// 图片上传请求
 /// </summary>
 public class ImageUploadRequest : FileUploadRequest
-{
-    /// <summary>
-    /// 是否自动生成缩略图
-    /// </summary>
-    public bool AutoGenerateThumbnails { get; set; } = true;
-    
-    /// <summary>
-    /// 缩略图尺寸
-    /// </summary>
-    public IEnumerable<ThumbnailSize> ThumbnailSizes { get; set; }
-    
+{    
     /// <summary>
     /// 图片质量（1-100）
     /// </summary>
@@ -1378,54 +1359,6 @@ public class ImageMetadataEntity : LongKeyAuditableEntityBase
     /// </summary>
     public virtual ICollection<ThumbnailEntity> Thumbnails { get; set; } = new List<ThumbnailEntity>();
 }
-
-/// <summary>
-/// 缩略图实体
-/// </summary>
-[Table("Thumbnails")]
-public class ThumbnailEntity : LongKeyAuditableEntityBase
-{
-    /// <summary>
-    /// 图片元数据ID
-    /// </summary>
-    [Required]
-    public long ImageMetadataId { get; set; }
-    
-    /// <summary>
-    /// 缩略图文件ID
-    /// </summary>
-    [Required]
-    public long ThumbnailFileId { get; set; }
-    
-    /// <summary>
-    /// 缩略图尺寸标识
-    /// </summary>
-    [Required]
-    [MaxLength(64)]
-    public string SizeKey { get; set; }
-    
-    /// <summary>
-    /// 宽度
-    /// </summary>
-    public int Width { get; set; }
-    
-    /// <summary>
-    /// 高度
-    /// </summary>
-    public int Height { get; set; }
-    
-    /// <summary>
-    /// 关联的图片元数据
-    /// </summary>
-    public virtual ImageMetadataEntity ImageMetadata { get; set; }
-    
-    /// <summary>
-    /// 缩略图文件
-    /// </summary>
-    public virtual FileEntity ThumbnailFile { get; set; }
-}
-
-
 ```
 
 #### 3.2.5 视频元数据实体
@@ -1552,11 +1485,6 @@ public class FileStorageDbContext : MultiTenantDbContext
     /// 图片元数据
     /// </summary>
     public DbSet<ImageMetadataEntity> ImageMetadata { get; set; }
-    
-    /// <summary>
-    /// 缩略图
-    /// </summary>
-    public DbSet<ThumbnailEntity> Thumbnails { get; set; }
     
     /// <summary>
     /// 视频元数据
@@ -1767,11 +1695,6 @@ public interface IFileStorageMetrics
     void RecordConcurrency(string operation, int currentConcurrency);
     
     /// <summary>
-    /// 记录缩略图生成指标
-    /// </summary>
-    void RecordThumbnailGeneration(TimeSpan duration, long originalSize, long thumbnailSize, string sizeKey);
-    
-    /// <summary>
     /// 记录CDN操作指标
     /// </summary>
     void RecordCdnOperation(string operation, TimeSpan duration, int urlCount, bool success);
@@ -1814,7 +1737,6 @@ public interface IFileStorageMetrics
 - `file_upload_duration_seconds` - 文件上传耗时分布
 - `file_download_duration_seconds` - 文件下载耗时分布
 - `file_size_bytes` - 文件大小分布
-- `thumbnail_generation_duration_seconds` - 缩略图生成耗时分布
 
 **仪表 (Gauge)**
 - `storage_usage_bytes` - 存储使用量

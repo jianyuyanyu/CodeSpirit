@@ -18,11 +18,7 @@ public class ImageProcessingService : IImageProcessingService
         throw new NotImplementedException("图片上传功能尚未实现");
     }
 
-    public async Task<IEnumerable<ThumbnailEntity>> GenerateThumbnailsAsync(long imageId, IEnumerable<ThumbnailSize> sizes)
-    {
-        // TODO: 实现缩略图生成逻辑
-        throw new NotImplementedException("缩略图生成功能尚未实现");
-    }
+
 
     public async Task<ImageEntity?> GetImageInfoAsync(long imageId)
     {

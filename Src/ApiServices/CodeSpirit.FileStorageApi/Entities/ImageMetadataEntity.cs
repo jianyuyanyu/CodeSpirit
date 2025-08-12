@@ -101,8 +101,5 @@ public class ImageMetadataEntity : LongKeyAuditableEntityBase
     /// </summary>
     public virtual FileEntity File { get; set; }
     
-    /// <summary>
-    /// 缩略图
-    /// </summary>
-    public virtual ICollection<ThumbnailEntity> Thumbnails { get; set; } = new List<ThumbnailEntity>();
+
 }

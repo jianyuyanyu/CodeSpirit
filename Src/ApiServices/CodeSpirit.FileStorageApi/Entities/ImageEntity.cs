@@ -96,10 +96,7 @@ public class ImageEntity
     /// </summary>
     public (double? Latitude, double? Longitude) GpsLocation { get; set; }
     
-    /// <summary>
-    /// 缩略图列表
-    /// </summary>
-    public List<ThumbnailInfo> Thumbnails { get; set; } = new();
+
     
     /// <summary>
     /// 创建时间
@@ -112,38 +109,4 @@ public class ImageEntity
     public DateTime UpdatedTime { get; set; }
 }
 
-/// <summary>
-/// 缩略图信息
-/// </summary>
-public class ThumbnailInfo
-{
-    /// <summary>
-    /// 缩略图ID
-    /// </summary>
-    public long Id { get; set; }
-    
-    /// <summary>
-    /// 尺寸标识
-    /// </summary>
-    public string SizeKey { get; set; }
-    
-    /// <summary>
-    /// 宽度
-    /// </summary>
-    public int Width { get; set; }
-    
-    /// <summary>
-    /// 高度
-    /// </summary>
-    public int Height { get; set; }
-    
-    /// <summary>
-    /// 缩略图文件ID
-    /// </summary>
-    public long ThumbnailFileId { get; set; }
-    
-    /// <summary>
-    /// 缩略图下载URL
-    /// </summary>
-    public string DownloadUrl { get; set; }
-}
+

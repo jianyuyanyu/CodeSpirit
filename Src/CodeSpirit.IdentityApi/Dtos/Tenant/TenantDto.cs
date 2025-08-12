@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.MultiTenant.Models;
 using System.ComponentModel;
 
@@ -53,7 +54,8 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// <summary>
         /// 租户Logo URL
         /// </summary>
-        [DisplayName("Logo URL")]
+        [DisplayName("Logo")]
+        [AmisColumn(Type = "image")]
         public string LogoUrl { get; set; }
 
         /// <summary>

@@ -14,14 +14,7 @@ public interface IImageProcessingService
     /// <returns>图片信息</returns>
     Task<ImageEntity> UploadImageAsync(ImageUploadRequest request);
     
-    /// <summary>
-    /// 生成缩略图
-    /// </summary>
-    /// <param name="imageId">图片ID</param>
-    /// <param name="sizes">缩略图尺寸列表</param>
-    /// <returns>缩略图信息</returns>
-    Task<IEnumerable<ThumbnailEntity>> GenerateThumbnailsAsync(long imageId, 
-        IEnumerable<ThumbnailSize> sizes);
+
     
     /// <summary>
     /// 获取图片信息
@@ -52,15 +45,7 @@ public interface IImageProcessingService
 /// </summary>
 public class ImageUploadRequest : FileUploadRequest
 {
-    /// <summary>
-    /// 是否自动生成缩略图
-    /// </summary>
-    public bool AutoGenerateThumbnails { get; set; } = true;
-    
-    /// <summary>
-    /// 缩略图尺寸
-    /// </summary>
-    public IEnumerable<ThumbnailSize> ThumbnailSizes { get; set; } = new List<ThumbnailSize>();
+
     
     /// <summary>
     /// 图片质量（1-100）
@@ -73,36 +58,7 @@ public class ImageUploadRequest : FileUploadRequest
     public bool ExtractExifData { get; set; } = true;
 }
 
-/// <summary>
-/// 缩略图尺寸
-/// </summary>
-public class ThumbnailSize
-{
-    /// <summary>
-    /// 尺寸标识
-    /// </summary>
-    public string SizeKey { get; set; }
-    
-    /// <summary>
-    /// 宽度
-    /// </summary>
-    public int Width { get; set; }
-    
-    /// <summary>
-    /// 高度
-    /// </summary>
-    public int Height { get; set; }
-    
-    /// <summary>
-    /// 是否保持比例
-    /// </summary>
-    public bool KeepAspectRatio { get; set; } = true;
-    
-    /// <summary>
-    /// 质量
-    /// </summary>
-    public int Quality { get; set; } = 80;
-}
+
 
 /// <summary>
 /// 图片操作

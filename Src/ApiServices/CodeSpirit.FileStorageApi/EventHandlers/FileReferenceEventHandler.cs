@@ -79,6 +79,23 @@ public class FileReferenceEventHandler : ITenantAwareEventHandler<FileReferenceE
                 "开始处理文件引用事件: 源服务={SourceService}, 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}, 租户ID={TenantId}",
                 @event.SourceService, @event.EntityType, @event.EntityId, @event.OperationType, @event.TenantId);
 
+            // 设置事件处理过程中的用户上下文，确保审计字段能够正确设置
+            if (@event.OperatorUserId.HasValue && _currentUser is ISettableCurrentUser settableCurrentUser)
+            {
+                settableCurrentUser.SetUserId(@event.OperatorUserId.Value);
+                if (!string.IsNullOrEmpty(@event.OperatorUserName))
+                {
+                    settableCurrentUser.SetUserName(@event.OperatorUserName);
+                }
+                if (!string.IsNullOrEmpty(@event.TenantId))
+                {
+                    settableCurrentUser.SetTenantId(@event.TenantId);
+                }
+                
+                _logger.LogDebug("已设置事件处理用户上下文: UserId={UserId}, UserName={UserName}, TenantId={TenantId}",
+                    @event.OperatorUserId, @event.OperatorUserName, @event.TenantId);
+            }
+
             switch (@event.OperationType)
             {
                 case FileReferenceOperationType.Create:
@@ -105,6 +122,15 @@ public class FileReferenceEventHandler : ITenantAwareEventHandler<FileReferenceE
                 "处理文件引用事件失败: 源服务={SourceService}, 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}",
                 @event.SourceService, @event.EntityType, @event.EntityId, @event.OperationType);
             throw;
+        }
+        finally
+        {
+            // 重置用户上下文，避免影响后续处理
+            if (_currentUser is ISettableCurrentUser settableUser)
+            {
+                settableUser.Reset();
+                _logger.LogDebug("已重置事件处理用户上下文");
+            }
         }
     }
 
@@ -188,7 +214,7 @@ public class FileReferenceEventHandler : ITenantAwareEventHandler<FileReferenceE
     {
         // 检查文件是否存在
         var fileExists = await _context.Files
-            .AnyAsync(f => f.Id == fileReference.FileId.Value);
+            .AnyAsync(f => f.Id == fileReference.FileId!.Value);
 
         if (!fileExists)
         {
@@ -198,9 +224,19 @@ public class FileReferenceEventHandler : ITenantAwareEventHandler<FileReferenceE
             return;
         }
 
+        // 确保用户ID不为空，避免审计字段设置失败
+        var operatorUserId = @event.OperatorUserId ?? _currentUser?.Id;
+        if (!operatorUserId.HasValue)
+        {
+            _logger.LogWarning(
+                "无法获取操作用户ID，使用系统默认用户: 实体类型={EntityType}, 实体ID={EntityId}, 文件ID={FileId}",
+                @event.EntityType, @event.EntityId, fileReference.FileId);
+            operatorUserId = 0; // 使用系统用户ID
+        }
+
         var fileReferenceEntity = new FileReferenceEntity
         {
-            FileId = fileReference.FileId.Value,
+            FileId = fileReference.FileId!.Value,
             SourceService = !string.IsNullOrEmpty(@event.SourceService) ? @event.SourceService : "FileStorage", // 使用事件中的源服务名称，如果为空则使用默认值
             SourceEntityType = @event.EntityType,
             SourceEntityId = @event.EntityId,
@@ -212,9 +248,9 @@ public class FileReferenceEventHandler : ITenantAwareEventHandler<FileReferenceE
             Properties = CreatePropertiesJson(fileReference),
             TenantId = @event.TenantId,
             CreatedAt = @event.OperationTime,
-            CreatedBy = @event.OperatorUserId ?? _currentUser?.Id ?? 0,
+            CreatedBy = operatorUserId.Value,
             UpdatedAt = @event.OperationTime,
-            UpdatedBy = @event.OperatorUserId ?? _currentUser?.Id ?? 0
+            UpdatedBy = operatorUserId.Value
         };
 
         _context.FileReferences.Add(fileReferenceEntity);

@@ -96,7 +96,20 @@ namespace CodeSpirit.Shared.Data
                 {
                     if (modifiedObj.UpdatedBy == default)
                     {
-                        modifiedObj.UpdatedBy = CurrentUserId;
+                        if (CurrentUserId.HasValue)
+                        {
+                            modifiedObj.UpdatedBy = CurrentUserId.Value;
+                        }
+                        else
+                        {
+                            // 在事件处理等无用户上下文的场景中，允许使用系统默认用户ID (0)
+                            modifiedObj.UpdatedBy = 0; // 系统用户ID
+                            
+                            // 记录警告日志，便于排查问题
+                            var logger = _serviceProvider.GetService<ILogger<AuditableDbContext>>();
+                            logger?.LogWarning("CurrentUserId 为 null，使用系统用户ID (0) 设置 UpdatedBy 字段。实体类型: {EntityType}", 
+                                entry.Entity.GetType().Name);
+                        }
                     }
 
                     if (modifiedObj.UpdatedAt == default)
@@ -109,7 +122,21 @@ namespace CodeSpirit.Shared.Data
                 {
                     if (addedObj.CreatedBy == default)
                     {
-                        addedObj.CreatedBy = CurrentUserId ?? throw new InvalidOperationException("Cannot set CreatedBy: CurrentUserId is null");
+                        if (CurrentUserId.HasValue)
+                        {
+                            addedObj.CreatedBy = CurrentUserId.Value;
+                        }
+                        else
+                        {
+                            // 在事件处理等无用户上下文的场景中，允许使用系统默认用户ID (0)
+                            // 这通常发生在后台任务、事件处理、定时任务等场景中
+                            addedObj.CreatedBy = 0; // 系统用户ID
+                            
+                            // 记录警告日志，便于排查问题
+                            var logger = _serviceProvider.GetService<ILogger<AuditableDbContext>>();
+                            logger?.LogWarning("CurrentUserId 为 null，使用系统用户ID (0) 设置 CreatedBy 字段。实体类型: {EntityType}", 
+                                entry.Entity.GetType().Name);
+                        }
                     }
 
                     if (addedObj.CreatedAt == default)

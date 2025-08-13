@@ -21,6 +21,12 @@ public abstract class EntityFileReferenceHandlerBase<THandler>
     private readonly ILogger<THandler> _logger;
 
     /// <summary>
+    /// 源服务名称
+    /// 由具体实现类提供服务名称标识
+    /// </summary>
+    protected abstract string SourceService { get; }
+    
+    /// <summary>
     /// 实体文件字段配置
     /// 由具体实现类提供配置
     /// </summary>
@@ -75,7 +81,7 @@ public abstract class EntityFileReferenceHandlerBase<THandler>
             var fileReferences = CreateFileReferences(fileUrl, config);
             
             await publisher.PublishFileReferenceEventAsync(
-                entity.GetType().FullName ?? string.Empty, entityId, entityName, operationType, fileReferences,
+                SourceService, entity.GetType().FullName ?? string.Empty, entityId, entityName, operationType, fileReferences,
                 currentUser?.Id, currentUser?.UserName ?? string.Empty);
 
             _logger.LogDebug("{EntityType}文件引用事件发布成功: {EntityId}, {Operation}, {FileCount}个文件", 

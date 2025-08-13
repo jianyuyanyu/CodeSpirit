@@ -76,8 +76,8 @@ public class FileReferenceEventHandler : ITenantAwareEventHandler<FileReferenceE
         try
         {
             _logger.LogInformation(
-                "开始处理文件引用事件: 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}, 租户ID={TenantId}",
-                @event.EntityType, @event.EntityId, @event.OperationType, @event.TenantId);
+                "开始处理文件引用事件: 源服务={SourceService}, 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}, 租户ID={TenantId}",
+                @event.SourceService, @event.EntityType, @event.EntityId, @event.OperationType, @event.TenantId);
 
             switch (@event.OperationType)
             {
@@ -96,14 +96,14 @@ public class FileReferenceEventHandler : ITenantAwareEventHandler<FileReferenceE
             }
 
             _logger.LogInformation(
-                "文件引用事件处理完成: 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}",
-                @event.EntityType, @event.EntityId, @event.OperationType);
+                "文件引用事件处理完成: 源服务={SourceService}, 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}",
+                @event.SourceService, @event.EntityType, @event.EntityId, @event.OperationType);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "处理文件引用事件失败: 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}",
-                @event.EntityType, @event.EntityId, @event.OperationType);
+                "处理文件引用事件失败: 源服务={SourceService}, 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}",
+                @event.SourceService, @event.EntityType, @event.EntityId, @event.OperationType);
             throw;
         }
     }
@@ -201,7 +201,7 @@ public class FileReferenceEventHandler : ITenantAwareEventHandler<FileReferenceE
         var fileReferenceEntity = new FileReferenceEntity
         {
             FileId = fileReference.FileId.Value,
-            SourceService = "FileStorage", // 默认服务名
+            SourceService = !string.IsNullOrEmpty(@event.SourceService) ? @event.SourceService : "FileStorage", // 使用事件中的源服务名称，如果为空则使用默认值
             SourceEntityType = @event.EntityType,
             SourceEntityId = @event.EntityId,
             FieldName = fileReference.ReferenceType,
@@ -220,8 +220,8 @@ public class FileReferenceEventHandler : ITenantAwareEventHandler<FileReferenceE
         _context.FileReferences.Add(fileReferenceEntity);
 
         _logger.LogDebug(
-            "已创建文件引用: 文件ID={FileId}, 实体类型={EntityType}, 实体ID={EntityId}, 引用类型={ReferenceType}",
-            fileReference.FileId, @event.EntityType, @event.EntityId, fileReference.ReferenceType);
+            "已创建文件引用: 源服务={SourceService}, 文件ID={FileId}, 实体类型={EntityType}, 实体ID={EntityId}, 引用类型={ReferenceType}",
+            @event.SourceService, fileReference.FileId, @event.EntityType, @event.EntityId, fileReference.ReferenceType);
     }
 
     /// <summary>

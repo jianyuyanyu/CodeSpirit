@@ -12,6 +12,11 @@ namespace CodeSpirit.IdentityApi.EventHandlers;
 public class EntityFileReferenceEventHandler : EntityFileReferenceHandlerBase<EntityFileReferenceEventHandler>
 {
     /// <summary>
+    /// 源服务名称
+    /// </summary>
+    protected override string SourceService => "IdentityApi";
+    
+    /// <summary>
     /// 实体文件字段配置
     /// 定义各个实体的文件字段映射规则
     /// </summary>

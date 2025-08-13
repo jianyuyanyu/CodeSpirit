@@ -30,6 +30,7 @@ public class FileReferenceEventPublisher
     /// <summary>
     /// 发布文件引用事件
     /// </summary>
+    /// <param name="sourceService">源服务名称</param>
     /// <param name="entityType">实体类型</param>
     /// <param name="entityId">实体ID</param>
     /// <param name="entityName">实体名称</param>
@@ -40,6 +41,7 @@ public class FileReferenceEventPublisher
     /// <param name="additionalData">附加数据</param>
     /// <returns>发布任务</returns>
     public async Task PublishFileReferenceEventAsync(
+        string sourceService,
         string entityType,
         string entityId,
         string entityName,
@@ -47,12 +49,13 @@ public class FileReferenceEventPublisher
         List<FileReferenceInfo> fileReferences,
         long? operatorUserId = null,
         string operatorUserName = "",
-        object? additionalData = null)
+        object additionalData = null)
     {
         try
         {
             var @event = new FileReferenceEvent
             {
+                SourceService = sourceService ?? string.Empty,
                 EntityType = entityType,
                 EntityId = entityId,
                 EntityName = entityName,
@@ -67,14 +70,14 @@ public class FileReferenceEventPublisher
             await _eventBus.PublishAsync(@event);
 
             _logger.LogInformation(
-                "已发布文件引用事件: 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}, 文件数量={FileCount}",
-                entityType, entityId, operationType, fileReferences?.Count ?? 0);
+                "已发布文件引用事件: 源服务={SourceService}, 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}, 文件数量={FileCount}",
+                sourceService, entityType, entityId, operationType, fileReferences?.Count ?? 0);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "发布文件引用事件失败: 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}",
-                entityType, entityId, operationType);
+                "发布文件引用事件失败: 源服务={SourceService}, 实体类型={EntityType}, 实体ID={EntityId}, 操作类型={OperationType}",
+                sourceService, entityType, entityId, operationType);
             throw;
         }
     }

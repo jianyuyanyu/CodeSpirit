@@ -28,6 +28,11 @@ public enum FileReferenceOperationType
 public class FileReferenceEvent : TenantAwareEventBase
 {
     /// <summary>
+    /// 源服务名称（如：IdentityApi、ExamApi、ConfigCenter等）
+    /// </summary>
+    public string SourceService { get; set; } = string.Empty;
+    
+    /// <summary>
     /// 实体类型
     /// </summary>
     public string EntityType { get; set; } = string.Empty;

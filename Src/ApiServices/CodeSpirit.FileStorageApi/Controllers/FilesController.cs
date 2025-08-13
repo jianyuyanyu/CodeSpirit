@@ -288,23 +288,23 @@ public class FilesController : ApiControllerBase
         return SuccessResponse<object>(new { downloadUrl, expiresIn = expirationMinutes });
     }
 
-    /// <summary>
-    /// 设置文件公开状态
-    /// </summary>
-    /// <param name="id">文件ID</param>
-    /// <param name="isPublic">是否公开</param>
-    /// <returns>设置结果</returns>
-    [HttpPut("{id}/public")]
-    [Operation("设置公开状态", "ajax", null, "确定要更改文件的公开状态吗？")]
-    [DisplayName("设置公开状态")]
-    public async Task<ActionResult<ApiResponse>> SetPublicStatus(long id, [FromQuery] bool isPublic)
-    {
-        // 这里需要在服务层实现设置公开状态的方法
-        // await _fileStorageService.SetPublicStatusAsync(id, isPublic);
+    ///// <summary>
+    ///// 设置文件公开状态
+    ///// </summary>
+    ///// <param name="id">文件ID</param>
+    ///// <param name="isPublic">是否公开</param>
+    ///// <returns>设置结果</returns>
+    //[HttpPut("{id}/public")]
+    //[Operation("设置公开状态", "ajax", null, "确定要更改文件的公开状态吗？")]
+    //[DisplayName("设置公开状态")]
+    //public async Task<ActionResult<ApiResponse>> SetPublicStatus(long id, [FromQuery] bool isPublic)
+    //{
+    //    // 这里需要在服务层实现设置公开状态的方法
+    //    // await _fileStorageService.SetPublicStatusAsync(id, isPublic);
         
-        string status = isPublic ? "公开" : "私有";
-        return SuccessResponse($"文件已设置为{status}状态");
-    }
+    //    string status = isPublic ? "公开" : "私有";
+    //    return SuccessResponse($"文件已设置为{status}状态");
+    //}
 
     /// <summary>
     /// 批量删除文件

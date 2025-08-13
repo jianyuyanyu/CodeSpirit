@@ -11,6 +11,7 @@ using CodeSpirit.Shared.EventBus.Events;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using CodeSpirit.FileStorageApi.Options;
 
 namespace CodeSpirit.FileStorageApi.Services;
 
@@ -70,13 +71,25 @@ public class FileStorageService : IFileStorageService
         try
         {
             // 1. 验证和准备参数
-            var bucketName = string.IsNullOrEmpty(request.BucketName) ? 
-                _bucketService.GetDefaultBucket().Name : request.BucketName;
-
-            var bucketConfig = _bucketService.GetBucketByName(bucketName);
-            if (bucketConfig == null)
+            string bucketName;
+            StorageBucketOptions bucketConfig;
+            
+            if (string.IsNullOrEmpty(request.BucketName))
             {
-                throw new AppServiceException(400, $"存储桶 '{bucketName}' 不存在或未配置");
+                var defaultBucket = _bucketService.GetDefaultBucket();
+                bucketName = defaultBucket.Name;
+                bucketConfig = defaultBucket.Options;
+            }
+            else
+            {
+                var bucketResult = _bucketService.GetBucket(request.BucketName);
+                if (!bucketResult.HasValue)
+                {
+                    throw new AppServiceException(400, $"存储桶 '{request.BucketName}' 不存在或未配置");
+                }
+                
+                bucketName = bucketResult.Value.BucketName;
+                bucketConfig = bucketResult.Value.Options;
             }
 
             if (!bucketConfig.IsEnabled)

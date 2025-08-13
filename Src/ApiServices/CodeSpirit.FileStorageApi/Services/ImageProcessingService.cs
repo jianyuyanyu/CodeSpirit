@@ -94,34 +94,68 @@ public class ImageProcessingService : IImageProcessingService
 
             var fileEntity = await _fileStorageService.UploadFileAsync(fileUploadRequest);
 
-            // 3. 保存图片元数据
-            var imageMetadataEntity = new ImageMetadataEntity
-            {
-                Id = _idGenerator.NewId(),
-                FileId = fileEntity.Id,
-                Width = metadata.Width,
-                Height = metadata.Height,
-                ColorDepth = metadata.ColorDepth,
-                Format = metadata.Format,
-                HasAlpha = metadata.HasAlpha,
-                IsAnimated = IsAnimatedFormat(metadata.Format),
-                FrameCount = IsAnimatedFormat(metadata.Format) ? GetFrameCount(request.FileStream) : 1,
-                DpiX = metadata.Dpi.X,
-                DpiY = metadata.Dpi.Y,
-                DateTaken = metadata.DateTaken,
-                Latitude = metadata.GpsLocation.Latitude,
-                Longitude = metadata.GpsLocation.Longitude,
-                ExifData = metadata.ExifData.Any() ? JsonConvert.SerializeObject(metadata.ExifData) : null,
-                CameraModel = ExtractCameraModel(metadata.ExifData),
-                TenantId = _currentUser.TenantId!,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = _currentUser.Id ?? 0,
-                UpdatedAt = DateTime.UtcNow,
-                UpdatedBy = _currentUser.Id ?? 0
-            };
+            // 3. 检查是否已存在图片元数据记录
+            var existingImageMetadata = await _context.ImageMetadata
+                .FirstOrDefaultAsync(im => im.FileId == fileEntity.Id);
 
-            _context.ImageMetadata.Add(imageMetadataEntity);
-            await _context.SaveChangesAsync();
+            ImageMetadataEntity imageMetadataEntity;
+            
+            if (existingImageMetadata != null)
+            {
+                // 如果已存在元数据记录，更新现有记录
+                _logger.LogInformation("图片元数据已存在，更新现有记录: FileId={FileId}", fileEntity.Id);
+                
+                existingImageMetadata.Width = metadata.Width;
+                existingImageMetadata.Height = metadata.Height;
+                existingImageMetadata.ColorDepth = metadata.ColorDepth;
+                existingImageMetadata.Format = metadata.Format;
+                existingImageMetadata.HasAlpha = metadata.HasAlpha;
+                existingImageMetadata.IsAnimated = IsAnimatedFormat(metadata.Format);
+                existingImageMetadata.FrameCount = IsAnimatedFormat(metadata.Format) ? GetFrameCount(request.FileStream) : 1;
+                existingImageMetadata.DpiX = metadata.Dpi.X;
+                existingImageMetadata.DpiY = metadata.Dpi.Y;
+                existingImageMetadata.DateTaken = metadata.DateTaken;
+                existingImageMetadata.Latitude = metadata.GpsLocation.Latitude;
+                existingImageMetadata.Longitude = metadata.GpsLocation.Longitude;
+                existingImageMetadata.ExifData = metadata.ExifData.Any() ? JsonConvert.SerializeObject(metadata.ExifData) : null;
+                existingImageMetadata.CameraModel = ExtractCameraModel(metadata.ExifData);
+                existingImageMetadata.UpdatedAt = DateTime.UtcNow;
+                existingImageMetadata.UpdatedBy = _currentUser.Id ?? 0;
+                
+                imageMetadataEntity = existingImageMetadata;
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                // 创建新的图片元数据记录
+                imageMetadataEntity = new ImageMetadataEntity
+                {
+                    Id = _idGenerator.NewId(),
+                    FileId = fileEntity.Id,
+                    Width = metadata.Width,
+                    Height = metadata.Height,
+                    ColorDepth = metadata.ColorDepth,
+                    Format = metadata.Format,
+                    HasAlpha = metadata.HasAlpha,
+                    IsAnimated = IsAnimatedFormat(metadata.Format),
+                    FrameCount = IsAnimatedFormat(metadata.Format) ? GetFrameCount(request.FileStream) : 1,
+                    DpiX = metadata.Dpi.X,
+                    DpiY = metadata.Dpi.Y,
+                    DateTaken = metadata.DateTaken,
+                    Latitude = metadata.GpsLocation.Latitude,
+                    Longitude = metadata.GpsLocation.Longitude,
+                    ExifData = metadata.ExifData.Any() ? JsonConvert.SerializeObject(metadata.ExifData) : null,
+                    CameraModel = ExtractCameraModel(metadata.ExifData),
+                    TenantId = _currentUser.TenantId!,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = _currentUser.Id ?? 0,
+                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedBy = _currentUser.Id ?? 0
+                };
+
+                _context.ImageMetadata.Add(imageMetadataEntity);
+                await _context.SaveChangesAsync();
+            }
 
             // 4. 构造并返回ImageEntity
             var imageEntity = new ImageEntity

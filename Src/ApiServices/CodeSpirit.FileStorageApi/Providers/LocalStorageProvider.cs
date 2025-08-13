@@ -226,6 +226,6 @@ public class LocalStorageProvider : IStorageProvider
     private static string GenerateETag(string filePath)
     {
         var fileInfo = new FileInfo(filePath);
-        return $"\"{fileInfo.LastWriteTime.Ticks:X}-{fileInfo.Length:X}\"";
+        return $"{fileInfo.LastWriteTime.Ticks:X}-{fileInfo.Length:X}";
     }
 }

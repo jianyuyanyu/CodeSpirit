@@ -18,6 +18,13 @@ public interface IBucketConfigurationService
     StorageBucketOptions? GetBucketByName(string bucketName);
     
     /// <summary>
+    /// 根据名称或别名获取存储桶配置
+    /// </summary>
+    /// <param name="nameOrAlias">存储桶名称或别名</param>
+    /// <returns>存储桶配置和对应的键名</returns>
+    (string BucketName, StorageBucketOptions Options)? GetBucket(string nameOrAlias);
+    
+    /// <summary>
     /// 获取默认存储桶配置
     /// </summary>
     (string Name, StorageBucketOptions Options) GetDefaultBucket();

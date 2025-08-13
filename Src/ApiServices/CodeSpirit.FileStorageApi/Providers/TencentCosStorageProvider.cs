@@ -7,6 +7,7 @@ using COSXML.CosException;
 using CodeSpirit.FileStorageApi.Options;
 using Microsoft.Extensions.Options;
 using System.ComponentModel;
+using System.Text;
 
 namespace CodeSpirit.FileStorageApi.Providers;
 
@@ -306,6 +307,135 @@ public class TencentCosStorageProvider : IStorageProvider
     #region 私有方法
 
     /// <summary>
+    /// 编码元数据值，符合腾讯云COS和HTTP标准
+    /// 根据官方文档，推荐使用URL编码处理中文字符
+    /// </summary>
+    /// <param name="value">原始值</param>
+    /// <returns>编码后的值</returns>
+    private static string EncodeMetadataValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            // 根据腾讯云COS官方文档建议，使用URL编码处理特殊字符
+            // 这比Base64更适合HTTP头部，且更节省空间
+            var encoded = Uri.EscapeDataString(value);
+            
+            // 限制长度，腾讯云COS建议单个元数据值不超过2KB
+            if (encoded.Length > 2000)
+            {
+                // 截断原始值后重新编码
+                var maxLength = 1000; // 保守估算原始长度
+                var truncated = value.Length > maxLength ? value.Substring(0, maxLength) : value;
+                encoded = Uri.EscapeDataString(truncated);
+                
+                // 添加截断标识
+                if (encoded.Length > 1900)
+                {
+                    encoded = encoded.Substring(0, 1900) + "...";
+                }
+            }
+            
+            return encoded;
+        }
+        catch (Exception)
+        {
+            // 如果编码失败，使用安全的ASCII替代
+            return "encoded-value";
+        }
+    }
+
+    /// <summary>
+    /// 清理HTTP头部名称，确保符合腾讯云COS要求
+    /// 根据官方文档，自定义元数据头部名称只能包含字母、数字、连字符
+    /// </summary>
+    /// <param name="name">原始头部名称</param>
+    /// <returns>清理后的安全头部名称</returns>
+    private static string SanitizeHeaderName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            return "unknown";
+        }
+
+        // 根据腾讯云COS文档，HTTP头部名称只能包含：
+        // - ASCII字母 (a-z, A-Z)
+        // - 数字 (0-9) 
+        // - 连字符 (-)
+        // 不能包含下划线、等号等特殊字符
+        var sanitized = new StringBuilder();
+        foreach (char c in name)
+        {
+            if (char.IsLetter(c) || char.IsDigit(c) || c == '-')
+            {
+                sanitized.Append(char.ToLower(c)); // 统一转为小写
+            }
+            else
+            {
+                // 将非法字符替换为连字符，但避免连续的连字符
+                if (sanitized.Length > 0 && sanitized[sanitized.Length - 1] != '-')
+                {
+                    sanitized.Append('-');
+                }
+            }
+        }
+
+        var result = sanitized.ToString().Trim('-'); // 移除首尾的连字符
+        
+        // 确保不为空，且以字母开头（符合HTTP头部规范）
+        if (string.IsNullOrEmpty(result) || char.IsDigit(result[0]))
+        {
+            result = "meta-" + result;
+        }
+
+        // 限制长度，腾讯云COS建议元数据头部名称不要太长
+        if (result.Length > 30)
+        {
+            result = result.Substring(0, 30).TrimEnd('-');
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 解码元数据值，将URL编码的值还原为原始字符串
+    /// </summary>
+    /// <param name="encodedValue">编码后的值</param>
+    /// <returns>解码后的原始值</returns>
+    private static string DecodeMetadataValue(string encodedValue)
+    {
+        if (string.IsNullOrEmpty(encodedValue))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            // 优先尝试URL解码
+            var decoded = Uri.UnescapeDataString(encodedValue);
+            return decoded;
+        }
+        catch (Exception)
+        {
+            try
+            {
+                // 备用：尝试Base64解码（兼容旧数据）
+                var bytes = Convert.FromBase64String(encodedValue);
+                return Encoding.UTF8.GetString(bytes);
+            }
+            catch (Exception)
+            {
+                // 如果都解码失败，直接返回原值
+                return encodedValue;
+            }
+        }
+    }
+
+    /// <summary>
     /// 初始化COS服务
     /// </summary>
     /// <returns>COS服务实例</returns>
@@ -347,11 +477,12 @@ public class TencentCosStorageProvider : IStorageProvider
     /// <returns>完整的存储桶名称</returns>
     private string GetFullBucketName(string bucketName)
     {
-        if (bucketName.Contains("-") && bucketName.EndsWith(_options.AppId))
-        {
-            return bucketName; // 已经包含APPID
-        }
-        return $"{bucketName}-{_options.AppId}";
+        //if (bucketName.Contains("-") && bucketName.EndsWith(_options.AppId))
+        //{
+        //    return bucketName; // 已经包含APPID
+        //}
+        //return $"{bucketName}-{_options.AppId}";
+        return bucketName;
     }
 
     /// <summary>
@@ -375,7 +506,29 @@ public class TencentCosStorageProvider : IStorageProvider
         {
             foreach (var meta in metadata)
             {
-                request.SetRequestHeader($"x-cos-meta-{meta.Key}", meta.Value);
+                // 只对值进行编码，键名保持原样（但需要是安全的ASCII字符）
+                var safeKey = SanitizeHeaderName(meta.Key);
+                var encodedValue = EncodeMetadataValue(meta.Value);
+                
+                try
+                {
+                    var headerName = $"x-cos-meta-{safeKey}";
+                    _logger.LogDebug("设置COS元数据头部: {HeaderName} = {EncodedValue} (原始: {OriginalKey}={OriginalValue})", 
+                        headerName, encodedValue, meta.Key, meta.Value);
+                    
+                    request.SetRequestHeader(headerName, encodedValue);
+                    
+                    _logger.LogDebug("COS元数据头部设置成功: {HeaderName}", headerName);
+                }
+                catch (ArgumentException ex) when (ex.Message.Contains("Control characters") || ex.Message.Contains("invalid HTTP Header characters"))
+                {
+                    _logger.LogWarning("元数据头部设置失败，跳过: 原始Key={OriginalKey}, 清理后Key={SafeKey}, 原始Value={OriginalValue}, 编码后Value={EncodedValue}, Error={Error}", 
+                        meta.Key, safeKey, meta.Value, encodedValue, ex.Message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "设置COS元数据头部时发生未知错误: Key={Key}, Value={Value}", meta.Key, meta.Value);
+                }
             }
         }
 
@@ -462,7 +615,15 @@ public class TencentCosStorageProvider : IStorageProvider
                 503 => "服务暂时不可用",
                 _ => $"服务器错误 ({serverEx.statusCode}): {serverEx.statusMessage}"
             },
+            CosClientException clientEx when clientEx.Message.Contains("Control characters") => 
+                "文件元数据包含中文或特殊字符，已自动编码处理",
+            CosClientException clientEx when clientEx.Message.Contains("invalid Control characters") => 
+                "文件元数据包含中文或特殊字符，已自动编码处理",
             CosClientException clientEx => $"客户端错误: {clientEx.Message}",
+            ArgumentException argEx when argEx.Message.Contains("Control characters") => 
+                "文件元数据包含中文或特殊字符，已自动编码处理",
+            ArgumentException argEx when argEx.Message.Contains("invalid HTTP Header characters") => 
+                "HTTP头部包含无效字符，已自动清理处理",
             _ => exception.Message
         };
     }

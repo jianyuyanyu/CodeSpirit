@@ -46,6 +46,20 @@ public class BucketConfigurationService : IBucketConfigurationService
 
         return _options.Buckets?.TryGetValue(bucketName, out var bucket) == true ? bucket : null;
     }
+    
+    /// <summary>
+    /// 根据名称或别名获取存储桶配置
+    /// </summary>
+    /// <param name="nameOrAlias">存储桶名称或别名</param>
+    /// <returns>存储桶配置和对应的键名</returns>
+    public (string BucketName, StorageBucketOptions Options)? GetBucket(string nameOrAlias)
+    {
+        if (string.IsNullOrWhiteSpace(nameOrAlias))
+            return null;
+            
+        var result = _options.GetBucket(nameOrAlias);
+        return result.HasValue ? (result.Value.Key, result.Value.Bucket) : null;
+    }
 
     /// <summary>
     /// 获取默认存储桶配置

@@ -23,6 +23,46 @@ public class FileStorageOptions
     /// 监控配置
     /// </summary>
     public MonitoringOptions Monitoring { get; set; } = new();
+    
+    /// <summary>
+    /// 通过别名获取存储桶配置
+    /// </summary>
+    /// <param name="alias">存储桶别名</param>
+    /// <returns>存储桶配置，如果未找到则返回null</returns>
+    public StorageBucketOptions? GetBucketByAlias(string alias)
+    {
+        if (string.IsNullOrWhiteSpace(alias))
+            return null;
+            
+        return Buckets.Values.FirstOrDefault(bucket => bucket.HasAlias(alias));
+    }
+    
+    /// <summary>
+    /// 通过名称或别名获取存储桶配置
+    /// </summary>
+    /// <param name="nameOrAlias">存储桶名称或别名</param>
+    /// <returns>存储桶配置和对应的键名</returns>
+    public (string Key, StorageBucketOptions Bucket)? GetBucket(string nameOrAlias)
+    {
+        if (string.IsNullOrWhiteSpace(nameOrAlias))
+            return null;
+            
+        // 首先尝试通过键名获取
+        if (Buckets.TryGetValue(nameOrAlias, out var bucketByKey))
+        {
+            return (nameOrAlias, bucketByKey);
+        }
+        
+        // 然后尝试通过别名获取
+        var bucketByAlias = Buckets.FirstOrDefault(kvp => kvp.Value.HasAlias(nameOrAlias));
+            
+        if (bucketByAlias.Key != null)
+        {
+            return (bucketByAlias.Key, bucketByAlias.Value);
+        }
+        
+        return null;
+    }
 }
 
 /// <summary>
@@ -43,7 +83,7 @@ public class StorageProviderOptions
     /// <summary>
     /// 获取配置属性值
     /// </summary>
-    public T GetProperty<T>(string key, T defaultValue = default)
+    public T GetProperty<T>(string key, T defaultValue = default!)
     {
         if (Properties.TryGetValue(key, out var value))
         {
@@ -53,10 +93,10 @@ public class StorageProviderOptions
             }
             catch
             {
-                return defaultValue;
+                return defaultValue!;
             }
         }
-        return defaultValue;
+        return defaultValue!;
     }
     
     /// <summary>
@@ -64,7 +104,7 @@ public class StorageProviderOptions
     /// </summary>
     public void SetProperty<T>(string key, T value)
     {
-        Properties[key] = value;
+        Properties[key] = value!;
     }
 }
 
@@ -76,17 +116,50 @@ public class StorageBucketOptions
     /// <summary>
     /// 显示名称
     /// </summary>
-    public string DisplayName { get; set; }
+    public string? DisplayName { get; set; }
     
     /// <summary>
     /// 描述
     /// </summary>
-    public string Description { get; set; }
+    public string? Description { get; set; }
+    
+    /// <summary>
+    /// 别名，用于便捷引用存储桶（多个别名用逗号分割，如：avatar,logo）
+    /// </summary>
+    public string? Alias { get; set; }
+    
+    /// <summary>
+    /// 获取所有别名列表
+    /// </summary>
+    /// <returns>别名列表</returns>
+    public List<string> GetAliases()
+    {
+        if (string.IsNullOrWhiteSpace(Alias))
+            return new List<string>();
+            
+        return Alias.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                   .Select(alias => alias.Trim())
+                   .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                   .ToList();
+    }
+    
+    /// <summary>
+    /// 检查是否包含指定别名
+    /// </summary>
+    /// <param name="alias">要检查的别名</param>
+    /// <returns>是否包含该别名</returns>
+    public bool HasAlias(string alias)
+    {
+        if (string.IsNullOrWhiteSpace(alias))
+            return false;
+            
+        return GetAliases().Any(a => string.Equals(a, alias, StringComparison.OrdinalIgnoreCase));
+    }
     
     /// <summary>
     /// 存储提供程序名称
     /// </summary>
-    public string Provider { get; set; }
+    public string? Provider { get; set; }
     
     /// <summary>
     /// 访问策略
@@ -106,12 +179,12 @@ public class StorageBucketOptions
     /// <summary>
     /// 允许的文件类型
     /// </summary>
-    public string AllowedFileTypes { get; set; }
+    public string? AllowedFileTypes { get; set; }
     
     /// <summary>
     /// 禁止的文件类型
     /// </summary>
-    public string ForbiddenFileTypes { get; set; }
+    public string? ForbiddenFileTypes { get; set; }
     
     /// <summary>
     /// 文件保留天数
@@ -131,7 +204,7 @@ public class StorageBucketOptions
     /// <summary>
     /// 获取扩展属性值
     /// </summary>
-    public T GetProperty<T>(string key, T defaultValue = default)
+    public T GetProperty<T>(string key, T defaultValue = default!)
     {
         if (Properties.TryGetValue(key, out var value))
         {
@@ -141,10 +214,10 @@ public class StorageBucketOptions
             }
             catch
             {
-                return defaultValue;
+                return defaultValue!;
             }
         }
-        return defaultValue;
+        return defaultValue!;
     }
     
     /// <summary>
@@ -152,7 +225,7 @@ public class StorageBucketOptions
     /// </summary>
     public void SetProperty<T>(string key, T value)
     {
-        Properties[key] = value;
+        Properties[key] = value!;
     }
 }
 

@@ -17,27 +17,27 @@ public class TenantEventContext : ITenantEventContext, IDisposable
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<TenantEventContext> _logger;
     private readonly Lazy<IServiceScope> _tenantScope;
-    
+
     /// <summary>
     /// 当前租户ID
     /// </summary>
     public string TenantId { get; private set; }
-    
+
     /// <summary>
     /// 是否允许跨租户操作
     /// </summary>
     public bool AllowCrossTenantAccess { get; private set; }
-    
+
     /// <summary>
     /// 事件处理的用户ID
     /// </summary>
     public long? UserId => _currentUser?.Id;
-    
+
     /// <summary>
     /// 事件处理的用户名
     /// </summary>
     public string? UserName => _currentUser?.UserName;
-    
+
     /// <summary>
     /// 构造函数
     /// </summary>
@@ -55,17 +55,17 @@ public class TenantEventContext : ITenantEventContext, IDisposable
         _currentUser = currentUser;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         TenantId = tenantId ?? throw new ArgumentNullException(nameof(tenantId));
-        
+
         // 初始化跨租户访问权限
         AllowCrossTenantAccess = _currentUser?.IsInRole("SystemAdmin") ?? false;
-        
+
         // 延迟创建租户作用域
         _tenantScope = new Lazy<IServiceScope>(CreateTenantScope);
-        
-        _logger.LogDebug("租户事件上下文初始化完成: 租户={TenantId}, 跨租户访问={AllowCrossTenantAccess}", 
-            TenantId, AllowCrossTenantAccess);
+
+        _logger.LogDebug("租户事件上下文初始化完成: 租户={TenantId},用户={UserId}, 跨租户访问={AllowCrossTenantAccess}",
+            TenantId, UserId, AllowCrossTenantAccess);
     }
-    
+
     /// <summary>
     /// 获取租户专用的服务实例
     /// </summary>
@@ -80,12 +80,12 @@ public class TenantEventContext : ITenantEventContext, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取租户服务失败: 服务类型={ServiceType}, 租户={TenantId}", 
+            _logger.LogError(ex, "获取租户服务失败: 服务类型={ServiceType}, 租户={TenantId}",
                 typeof(T).Name, TenantId);
             throw;
         }
     }
-    
+
     /// <summary>
     /// 获取租户专用的作用域服务提供者
     /// </summary>
@@ -110,7 +110,7 @@ public class TenantEventContext : ITenantEventContext, IDisposable
                 settableCurrentUser.SetUserId(userId.Value);
                 _logger.LogDebug("设置CurrentUser用户ID: {UserId}", userId.Value);
             }
-            
+
             if (!string.IsNullOrEmpty(userName))
             {
                 settableCurrentUser.SetUserName(userName);
@@ -122,7 +122,7 @@ public class TenantEventContext : ITenantEventContext, IDisposable
             _logger.LogWarning("CurrentUser未实现ISettableCurrentUser接口，无法设置用户信息");
         }
     }
-    
+
     /// <summary>
     /// 创建租户专用的服务作用域
     /// </summary>
@@ -132,7 +132,7 @@ public class TenantEventContext : ITenantEventContext, IDisposable
         try
         {
             var scope = _serviceProvider.CreateScope();
-            
+
             // 设置租户上下文到HttpContext（如果存在）
             var httpContextAccessor = scope.ServiceProvider.GetService<IHttpContextAccessor>();
             if (httpContextAccessor?.HttpContext != null)
@@ -140,14 +140,21 @@ public class TenantEventContext : ITenantEventContext, IDisposable
                 httpContextAccessor.HttpContext.Items["TenantId"] = TenantId;
                 _logger.LogDebug("已设置租户上下文到HttpContext: 租户={TenantId}", TenantId);
             }
-            
+
             // 自动设置CurrentUser的租户信息
             var currentUser = scope.ServiceProvider.GetService<ICurrentUser>();
             if (currentUser is ISettableCurrentUser settableCurrentUser)
             {
                 settableCurrentUser.SetTenantId(TenantId);
                 _logger.LogDebug("已自动设置CurrentUser租户ID: {TenantId}", TenantId);
-                
+
+                if (UserId != null)
+                {
+                    settableCurrentUser.SetUserId(UserId);
+                    _logger.LogDebug("已自动设置UserId: {UserId}", UserId);
+                }
+
+
                 // 返回包装的作用域，在销毁时自动重置CurrentUser
                 return new AutoResetCurrentUserScope(scope, settableCurrentUser, _logger);
             }
@@ -163,7 +170,7 @@ public class TenantEventContext : ITenantEventContext, IDisposable
             throw;
         }
     }
-    
+
     /// <summary>
     /// 释放资源
     /// </summary>

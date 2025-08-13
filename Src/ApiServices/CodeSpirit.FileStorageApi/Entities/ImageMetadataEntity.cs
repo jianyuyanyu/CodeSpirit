@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using CodeSpirit.Shared.Entities;
+using CodeSpirit.Core;
 
 namespace CodeSpirit.FileStorageApi.Entities;
 
@@ -9,8 +10,15 @@ namespace CodeSpirit.FileStorageApi.Entities;
 /// 存储图片的详细信息和处理结果
 /// </summary>
 [Table("ImageMetadata")]
-public class ImageMetadataEntity : LongKeyAuditableEntityBase
+public class ImageMetadataEntity : LongKeyAuditableEntityBase, IMultiTenant
 {
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    [Required]
+    [MaxLength(64)]
+    public string TenantId { get; set; }
+    
     /// <summary>
     /// 文件ID（一对一关系）
     /// </summary>
@@ -36,7 +44,7 @@ public class ImageMetadataEntity : LongKeyAuditableEntityBase
     /// 图片格式
     /// </summary>
     [MaxLength(32)]
-    public string Format { get; set; }
+    public string? Format { get; set; }
     
     /// <summary>
     /// 是否有透明通道
@@ -67,7 +75,7 @@ public class ImageMetadataEntity : LongKeyAuditableEntityBase
     /// 拍摄设备
     /// </summary>
     [MaxLength(256)]
-    public string CameraModel { get; set; }
+    public string? CameraModel { get; set; }
     
     /// <summary>
     /// 拍摄时间
@@ -88,13 +96,13 @@ public class ImageMetadataEntity : LongKeyAuditableEntityBase
     /// EXIF数据（JSON格式）
     /// </summary>
     [Column(TypeName = "nvarchar(max)")]
-    public string ExifData { get; set; }
+    public string? ExifData { get; set; }
     
     /// <summary>
     /// 主色调信息（JSON格式）
     /// </summary>
     [Column(TypeName = "nvarchar(max)")]
-    public string ColorPalette { get; set; }
+    public string? ColorPalette { get; set; }
     
     /// <summary>
     /// 关联的文件

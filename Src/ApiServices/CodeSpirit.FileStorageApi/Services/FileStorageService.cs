@@ -371,7 +371,8 @@ public class FileStorageService : IFileStorageService
             }
 
             // 5. 删除数据库记录
-            _context.Files.Remove(fileEntity);
+            //_context.Files.Remove(fileEntity);
+            _context.SoftDelete(fileEntity);
             await _context.SaveChangesAsync();
 
             // 6. 更新统计信息

@@ -20,10 +20,10 @@ public class LocalStorageProvider : IStorageProvider
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
+
         _rootPath = _options.GetProperty<string>("RootPath", "wwwroot/uploads");
         _baseUrl = _options.GetProperty<string>("BaseUrl", "");
-        
+
         // 确保根目录存在
         if (!Directory.Exists(_rootPath))
         {
@@ -34,7 +34,7 @@ public class LocalStorageProvider : IStorageProvider
     /// <summary>
     /// 上传文件
     /// </summary>
-    public async Task<StorageResult> UploadFileAsync(string bucketName, string fileName, 
+    public async Task<StorageResult> UploadFileAsync(string bucketName, string fileName,
         Stream stream, string? contentType = null, IDictionary<string, string>? metadata = null)
     {
         try
@@ -46,7 +46,7 @@ public class LocalStorageProvider : IStorageProvider
             }
 
             var filePath = Path.Combine(bucketPath, fileName);
-            
+
             // 确保目录存在
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -57,9 +57,9 @@ public class LocalStorageProvider : IStorageProvider
             // 写入文件
             using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
             await stream.CopyToAsync(fileStream);
-            
+
             var fileInfo = new FileInfo(filePath);
-            var fileUrl = !string.IsNullOrEmpty(_baseUrl) 
+            var fileUrl = !string.IsNullOrEmpty(_baseUrl)
                 ? $"{_baseUrl.TrimEnd('/')}/{bucketName}/{fileName}"
                 : $"/{bucketName}/{fileName}";
 
@@ -92,7 +92,7 @@ public class LocalStorageProvider : IStorageProvider
         try
         {
             var filePath = Path.Combine(_rootPath, bucketName, fileName);
-            
+
             if (!File.Exists(filePath))
             {
                 throw new FileNotFoundException($"文件不存在: {bucketName}/{fileName}");
@@ -116,14 +116,14 @@ public class LocalStorageProvider : IStorageProvider
         try
         {
             var filePath = Path.Combine(_rootPath, bucketName, fileName);
-            
+            _logger.LogInformation("准备删除文件：{FilePath}", filePath);
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
                 _logger.LogInformation("文件删除成功: {FilePath}", filePath);
                 return Task.FromResult(true);
             }
-            
+
             _logger.LogWarning("尝试删除不存在的文件: {FilePath}", filePath);
             return Task.FromResult(false);
         }
@@ -142,7 +142,7 @@ public class LocalStorageProvider : IStorageProvider
         try
         {
             var filePath = Path.Combine(_rootPath, bucketName, fileName);
-            
+
             if (!File.Exists(filePath))
             {
                 return null;
@@ -161,14 +161,14 @@ public class LocalStorageProvider : IStorageProvider
     /// <summary>
     /// 生成预签名URL
     /// </summary>
-    public async Task<string> GeneratePresignedUrlAsync(string bucketName, string fileName, 
+    public async Task<string> GeneratePresignedUrlAsync(string bucketName, string fileName,
         TimeSpan expirationTime, PresignedUrlOperation operation = PresignedUrlOperation.Read)
     {
         // 本地存储直接返回文件URL，不支持预签名
-        var fileUrl = !string.IsNullOrEmpty(_baseUrl) 
+        var fileUrl = !string.IsNullOrEmpty(_baseUrl)
             ? $"{_baseUrl.TrimEnd('/')}/{bucketName}/{fileName}"
             : $"/{bucketName}/{fileName}";
-            
+
         return await Task.FromResult(fileUrl);
     }
 
@@ -180,13 +180,13 @@ public class LocalStorageProvider : IStorageProvider
         try
         {
             var bucketPath = Path.Combine(_rootPath, bucketName);
-            
+
             if (!Directory.Exists(bucketPath))
             {
                 Directory.CreateDirectory(bucketPath);
                 _logger.LogInformation("存储桶创建成功: {BucketPath}", bucketPath);
             }
-            
+
             return await Task.FromResult(true);
         }
         catch (Exception ex)
@@ -204,13 +204,13 @@ public class LocalStorageProvider : IStorageProvider
         try
         {
             var bucketPath = Path.Combine(_rootPath, bucketName);
-            
+
             if (Directory.Exists(bucketPath))
             {
                 Directory.Delete(bucketPath, true);
                 _logger.LogInformation("存储桶删除成功: {BucketPath}", bucketPath);
             }
-            
+
             return await Task.FromResult(true);
         }
         catch (Exception ex)

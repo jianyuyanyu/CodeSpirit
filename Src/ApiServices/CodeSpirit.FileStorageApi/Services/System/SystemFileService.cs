@@ -221,33 +221,7 @@ public class SystemFileService : ISystemFileService
     /// </summary>
     public async Task ForceDeleteFileAsync(long id)
     {
-        try
-        {
-            var file = await _context.Files.FindAsync(id);
-            if (file == null)
-            {
-                throw new ArgumentException($"文件不存在: {id}");
-            }
-
-            // 删除所有引用
-            var references = await _context.FileReferences
-                .Where(fr => fr.FileId == id)
-                .ToListAsync();
-            
-            _context.FileReferences.RemoveRange(references);
-
-            // 删除文件记录
-            _context.Files.Remove(file);
-            
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("强制删除文件成功: {FileId}", id);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "强制删除文件失败: {FileId}", id);
-            throw;
-        }
+        throw new NotImplementedException();
     }
 
     /// <summary>
@@ -284,6 +258,8 @@ public class SystemFileService : ISystemFileService
     {
         try
         {
+            //TODO:存储提供程序处理
+
             var file = await _context.Files.FindAsync(id);
             if (file == null)
             {

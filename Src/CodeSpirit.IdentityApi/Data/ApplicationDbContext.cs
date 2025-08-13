@@ -1,5 +1,6 @@
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.EventHandlers;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.MultiTenant.Models;
@@ -11,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Data;
 using System.Linq.Expressions;
@@ -48,6 +50,7 @@ namespace CodeSpirit.IdentityApi.Data
         private readonly IHttpContextAccessor httpContextAccessor;
         private readonly ICurrentUser _currentUser;
         private readonly Lazy<string> _defaultTenantId;
+        private readonly EntityFileReferenceEventHandler _entityFileReferenceEventHandler;
 
         /// <summary>
         /// 是否启用软删除
@@ -140,12 +143,14 @@ namespace CodeSpirit.IdentityApi.Data
             DbContextOptions<ApplicationDbContext> options,
             IServiceProvider serviceProvider,
             IHttpContextAccessor httpContextAccessor,
-            ICurrentUser currentUser) : base(options)
+            ICurrentUser currentUser,
+            EntityFileReferenceEventHandler entityFileReferenceEventHandler) : base(options)
         {
             this.serviceProvider = serviceProvider;
             this.httpContextAccessor = httpContextAccessor;
             logger = serviceProvider.GetService<ILogger<ApplicationDbContext>>() ?? NullLogger<ApplicationDbContext>.Instance;
             changeTracker = ChangeTracker;
+            _entityFileReferenceEventHandler = entityFileReferenceEventHandler ?? throw new ArgumentNullException(nameof(entityFileReferenceEventHandler));
 
             changeTracker.StateChanged += ChangeTracker_StateChanged;
             changeTracker.Tracking += ChangeTracker_Tracking;
@@ -374,11 +379,13 @@ namespace CodeSpirit.IdentityApi.Data
         /// <summary>
         /// 推送实体事件
         /// </summary>
-        /// <param name="e"></param>
-        /// <param name="entity"></param>
+        /// <param name="e">实体状态变更事件参数</param>
+        /// <param name="entity">实体对象</param>
         /// <returns></returns>
         private void PublishEntityEventData(EntityStateChangedEventArgs e, object entity)
         {
+            // 委托给独立的事件处理器处理
+            _entityFileReferenceEventHandler.HandleEntityStateChanged(e, entity);
         }
 
         /// <summary>

@@ -6,8 +6,6 @@ using CodeSpirit.IdentityApi.Dtos.Tenant;
 using CodeSpirit.MultiTenant.Models;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
-using CodeSpirit.Shared.EventBus.Publishers;
-using CodeSpirit.Shared.EventBus.Events;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -21,7 +19,6 @@ namespace CodeSpirit.IdentityApi.Services
         private readonly ApplicationDbContext _context;
         private readonly ITenantDataInitializationService _dataInitializationService;
         private readonly ILogger<TenantService> _logger;
-        private readonly FileReferenceEventPublisher _fileReferenceEventPublisher;
 
         /// <summary>
         /// 构造函数
@@ -31,19 +28,16 @@ namespace CodeSpirit.IdentityApi.Services
         /// <param name="context">数据库上下文</param>
         /// <param name="dataInitializationService">租户数据初始化服务</param>
         /// <param name="logger">日志记录器</param>
-        /// <param name="fileReferenceEventPublisher">文件引用事件发布器</param>
         public TenantService(
             IRepository<TenantInfo> repository,
             IMapper mapper,
             ApplicationDbContext context,
             ITenantDataInitializationService dataInitializationService,
-            ILogger<TenantService> logger,
-            FileReferenceEventPublisher fileReferenceEventPublisher) : base(repository, mapper)
+            ILogger<TenantService> logger) : base(repository, mapper)
         {
             _context = context;
             _dataInitializationService = dataInitializationService;
             _logger = logger;
-            _fileReferenceEventPublisher = fileReferenceEventPublisher ?? throw new ArgumentNullException(nameof(fileReferenceEventPublisher));
         }
 
         /// <summary>
@@ -361,95 +355,12 @@ namespace CodeSpirit.IdentityApi.Services
                     createDto.TenantId, ex.Message);
             }
 
-            // 发布租户创建文件引用事件
-            try
-            {
-                var fileReferences = new List<FileReferenceInfo>();
-                var logoFileId = FileReferenceEventPublisher.ExtractFileIdFromUrl(createDto.LogoUrl);
-                if (logoFileId.HasValue || !string.IsNullOrEmpty(createDto.LogoUrl))
-                {
-                    fileReferences.Add(FileReferenceEventPublisher.CreateFileReference(
-                        logoFileId, createDto.LogoUrl ?? string.Empty, "Logo", "租户Logo", isPrimary: true));
-                }
-                
-                await _fileReferenceEventPublisher.PublishFileReferenceEventAsync(
-                    typeof(TenantInfo).FullName,
-                    createDto.TenantId,
-                    createDto.Name,
-                    FileReferenceOperationType.Create,
-                    fileReferences);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "发布租户创建文件引用事件失败: 租户ID={TenantId}", createDto.TenantId);
-                // 不抛出异常，避免影响租户创建流程
-            }
-
             return tenantDto;
         }
 
-        /// <summary>
-        /// 更新租户（重写基类方法以添加事件发布）
-        /// </summary>
-        /// <param name="id">租户ID</param>
-        /// <param name="updateDto">更新数据</param>
-        /// <returns>更新任务</returns>
-        public override async Task UpdateAsync(string id, TenantUpdateDto updateDto)
-        {
-            // 调用基类方法更新租户
-            await base.UpdateAsync(id, updateDto);
 
-            // 发布租户更新文件引用事件
-            try
-            {
-                var fileReferences = new List<FileReferenceInfo>();
-                var logoFileId = FileReferenceEventPublisher.ExtractFileIdFromUrl(updateDto.LogoUrl);
-                if (logoFileId.HasValue || !string.IsNullOrEmpty(updateDto.LogoUrl))
-                {
-                    fileReferences.Add(FileReferenceEventPublisher.CreateFileReference(
-                        logoFileId, updateDto.LogoUrl ?? string.Empty, "Logo", "租户Logo", isPrimary: true));
-                }
-                
-                await _fileReferenceEventPublisher.PublishFileReferenceEventAsync(
-                    typeof(TenantInfo).FullName,
-                    id,
-                    updateDto.Name,
-                    FileReferenceOperationType.Update,
-                    fileReferences);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "发布租户更新文件引用事件失败: 租户ID={TenantId}", id);
-                // 不抛出异常，避免影响租户更新流程
-            }
-        }
 
-        /// <summary>
-        /// 删除租户前的处理（重写基类方法以添加事件发布）
-        /// </summary>
-        /// <param name="entity">租户实体</param>
-        /// <returns>处理任务</returns>
-        protected override async Task OnDeleting(TenantInfo entity)
-        {
-            // 发布租户删除文件引用事件
-            try
-            {
-                await _fileReferenceEventPublisher.PublishFileReferenceEventAsync(
-                    typeof(TenantInfo).FullName,
-                    entity.TenantId,
-                    entity.Name,
-                    FileReferenceOperationType.Delete,
-                    new List<FileReferenceInfo>()); // 删除时传入空列表
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "发布租户删除文件引用事件失败: 租户ID={TenantId}", entity.TenantId);
-                // 不抛出异常，避免影响租户删除流程
-            }
 
-            // 调用基类方法
-            await base.OnDeleting(entity);
-        }
 
 
     }

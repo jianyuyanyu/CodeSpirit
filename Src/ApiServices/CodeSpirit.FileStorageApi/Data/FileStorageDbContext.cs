@@ -165,6 +165,12 @@ public class FileStorageDbContext : MultiTenantDbContext
         // 配置主键生成策略 - 使用自定义ID生成器而非数据库自增长
         entity.Property(e => e.Id).ValueGeneratedNever();
         
+        // 配置可空字段
+        entity.Property(e => e.Format).IsRequired(false);
+        entity.Property(e => e.CameraModel).IsRequired(false);
+        entity.Property(e => e.ExifData).IsRequired(false);
+        entity.Property(e => e.ColorPalette).IsRequired(false);
+        
         // 配置一对一关系
         entity.HasOne(e => e.File)
               .WithOne(e => e.ImageMetadata)

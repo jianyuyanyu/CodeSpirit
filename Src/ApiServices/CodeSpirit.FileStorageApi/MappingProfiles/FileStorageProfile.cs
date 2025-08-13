@@ -21,6 +21,7 @@ public class FileStorageProfile : Profile
         ConfigureFileReferenceMappings();
         ConfigureBucketMappings();
         ConfigureOperationResultMappings();
+        ConfigureImageMappings();
     }
 
     /// <summary>
@@ -117,6 +118,56 @@ public class FileStorageProfile : Profile
     {
         // BatchOperationResult 映射
         CreateMap<BatchOperationResult, BatchOperationResult>();
+    }
+
+    /// <summary>
+    /// 配置图片相关映射
+    /// </summary>
+    private void ConfigureImageMappings()
+    {
+        // ImageMetadataEntity 到 ImageMetadata 的映射
+        CreateMap<ImageMetadataEntity, ImageMetadata>()
+            .ForMember(dest => dest.Dpi, opt => opt.MapFrom(src => new ValueTuple<double, double>(src.DpiX, src.DpiY)))
+            .ForMember(dest => dest.GpsLocation, opt => opt.MapFrom(src => new ValueTuple<double?, double?>(src.Latitude, src.Longitude)))
+            .ForMember(dest => dest.ExifData, opt => opt.MapFrom(src => 
+                !string.IsNullOrEmpty(src.ExifData) ? 
+                Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(src.ExifData) ?? new Dictionary<string, object>() : 
+                new Dictionary<string, object>()));
+
+        // ImageMetadata 到 ImageMetadataEntity 的映射
+        CreateMap<ImageMetadata, ImageMetadataEntity>()
+            .ForMember(dest => dest.DpiX, opt => opt.MapFrom(src => src.Dpi.X))
+            .ForMember(dest => dest.DpiY, opt => opt.MapFrom(src => src.Dpi.Y))
+            .ForMember(dest => dest.Latitude, opt => opt.MapFrom(src => src.GpsLocation.Latitude))
+            .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => src.GpsLocation.Longitude))
+            .ForMember(dest => dest.ExifData, opt => opt.MapFrom(src => 
+                src.ExifData.Any() ? Newtonsoft.Json.JsonConvert.SerializeObject(src.ExifData) : null))
+            .ForMember(dest => dest.CameraModel, opt => opt.MapFrom(src => 
+                ExtractCameraModelFromExif(src.ExifData)))
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.FileId, opt => opt.Ignore())
+            .ForMember(dest => dest.FrameCount, opt => opt.Ignore())
+            .ForMember(dest => dest.ColorPalette, opt => opt.Ignore())
+            .ForMember(dest => dest.File, opt => opt.Ignore())
+            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedBy, opt => opt.Ignore());
+    }
+
+    /// <summary>
+    /// 提取相机型号
+    /// </summary>
+    /// <param name="exifData">EXIF数据字典</param>
+    /// <returns>相机型号或null</returns>
+    private static string? ExtractCameraModelFromExif(Dictionary<string, object> exifData)
+    {
+        if (exifData?.ContainsKey("CameraModel") == true)
+        {
+            return exifData["CameraModel"]?.ToString();
+        }
+        return null;
     }
 
     /// <summary>

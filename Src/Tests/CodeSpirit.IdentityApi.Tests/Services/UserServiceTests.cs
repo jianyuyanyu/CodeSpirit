@@ -27,11 +27,11 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             // 设置额外依赖
             _idGenerator = new SnowflakeIdGenerator();
             _mockPasswordHasher = new Mock<IPasswordHasher<ApplicationUser>>();
-            
+
             // 设置密码哈希器的默认行为
             _mockPasswordHasher.Setup(x => x.HashPassword(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
                               .Returns((ApplicationUser user, string password) => $"hashed_{password}");
-            
+
             // 初始化UserService
             _userService = new UserService(
                 UserRepository,
@@ -42,14 +42,13 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 _idGenerator,
                 MockCurrentUser.Object,
                 DbContext,
-                _mockPasswordHasher.Object,
-                null
+                _mockPasswordHasher.Object
             );
-            
+
             // 准备测试数据
             SeedTestData();
         }
-        
+
         /// <summary>
         /// 准备用户测试数据
         /// </summary>
@@ -82,21 +81,21 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                     TenantId = "test-tenant"
                 }
             };
-            
+
             SeedUsers(users.ToArray());
-            
+
             // 使用真实映射，不再模拟Mapper
-            
+
             // 为测试用户设置密码（使用真实的 UserManager）
             var passwordHasher = new PasswordHasher<ApplicationUser>();
-            
+
             foreach (var user in users)
             {
                 var dbUser = UserManager.FindByIdAsync(user.Id.ToString()).Result;
                 dbUser.PasswordHash = passwordHasher.HashPassword(dbUser, "testpassword");
                 UserManager.UpdateAsync(dbUser).Wait();
             }
-            
+
             // 添加测试角色
             if (!RoleManager.RoleExistsAsync("TestRole").Result)
             {
@@ -140,10 +139,10 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             Setup();
             var userId = 1L;
             var roles = new List<string> { "TestRole" };
-            
+
             // Act
             await _userService.AssignRolesAsync(userId, roles);
-            
+
             // Assert
             var user = await UserManager.FindByIdAsync(userId.ToString());
             var userRoles = await UserManager.GetRolesAsync(user);
@@ -156,10 +155,10 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             // Arrange
             Setup();
             var userId = 1L;
-            
+
             // Act
             await _userService.SetActiveStatusAsync(userId, false);
-            
+
             // Assert
             var user = await UserManager.FindByIdAsync(userId.ToString());
             Assert.False(user.IsActive);
@@ -171,14 +170,14 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             // Arrange
             Setup();
             var userId = 1L;
-            
+
             // 确保用户被锁定
             var user = await UserManager.FindByIdAsync(userId.ToString());
             Assert.NotNull(user.LockoutEnd); // 确认用户被锁定
-            
+
             // Act
             await _userService.UnlockUserAsync(userId);
-            
+
             // Assert
             user = await UserManager.FindByIdAsync(userId.ToString());
             Assert.Null(user.LockoutEnd); // 确认锁定已解除
@@ -190,10 +189,10 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             // Arrange
             Setup();
             var userIds = new List<long> { 1, 2 };
-            
+
             // Act
             var users = await _userService.GetUsersByIdsAsync(userIds);
-            
+
             // Assert
             Assert.NotNull(users);
             Assert.Equal(2, users.Count);
@@ -206,7 +205,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         {
             // Arrange
             Setup();
-            
+
             // 创建一个系统管理员用户用于测试
             var systemAdmin = new ApplicationUser
             {
@@ -218,12 +217,12 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 IsActive = true,
                 SecurityStamp = Guid.NewGuid().ToString()
             };
-            
+
             await UserManager.CreateAsync(systemAdmin, "TestPassword123!");
-            
+
             // Act - 使用忽略过滤器的方法查询
             var result = await _userService.GetUserByIdIgnoreFiltersAsync(999L);
-            
+
             // Assert
             Assert.NotNull(result);
             Assert.Equal(999L, result.Id);
@@ -239,10 +238,10 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         {
             // Arrange
             Setup();
-            
+
             // Act
             var result = await _userService.GetUserByIdIgnoreFiltersAsync(99999L);
-            
+
             // Assert
             Assert.Null(result);
         }
@@ -252,7 +251,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         {
             // Arrange
             Setup();
-            
+
             // 创建一个不同租户的用户
             var crossTenantUser = new ApplicationUser
             {
@@ -264,20 +263,20 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 IsActive = true,
                 SecurityStamp = Guid.NewGuid().ToString()
             };
-            
+
             await UserManager.CreateAsync(crossTenantUser, "TestPassword123!");
-            
+
             // Act - 分别使用两种方法查询
             var resultWithFilters = await _userService.GetAsync(888L);
             var resultIgnoreFilters = await _userService.GetUserByIdIgnoreFiltersAsync(888L);
-            
+
             // Assert - 忽略过滤器的方法应该能查到用户
             Assert.NotNull(resultIgnoreFilters);
             Assert.Equal(888L, resultIgnoreFilters.Id);
             Assert.Equal("crosstenant", resultIgnoreFilters.UserName);
-            
+
             // 注意：由于测试环境的租户过滤器可能未完全配置，这里主要验证方法调用不报错
             // 在实际环境中，普通GetAsync方法可能会因为租户过滤而返回null
         }
     }
-} 
+}

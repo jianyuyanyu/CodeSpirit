@@ -1,4 +1,5 @@
 using CodeSpirit.MultiTenant.Abstractions;
+using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Entities.Interfaces;
 using System.ComponentModel.DataAnnotations;
@@ -8,7 +9,7 @@ namespace CodeSpirit.MultiTenant.Models;
 /// <summary>
 /// 租户信息实体
 /// </summary>
-public class TenantInfo : EntityBase<string>, ITenantInfo, ISoftDeleteAuditable
+public class TenantInfo : EntityBase<string>, ITenantInfo, ISoftDeleteAuditable, IFullEntityEvent
 {
     /// <summary>
     /// 租户ID

@@ -47,61 +47,48 @@ public class ImagesController : ApiControllerBase
     [DisplayName("获取图片列表")]
     public async Task<ActionResult<ApiResponse<PageList<ImageDto>>>> GetImages([FromQuery] ImageQueryDto queryDto)
     {
-        var request = new FileQueryRequest
-        {
-            BucketName = queryDto.BucketName,
-            Category = FileTypeCategory.Image, // 只查询图片类型
-            FileName = queryDto.FileName,
-            CreatedFrom = queryDto.CreatedFrom,
-            CreatedTo = queryDto.CreatedTo,
-            PageNumber = queryDto.Page,
-            PageSize = queryDto.PerPage,
-            OrderBy = queryDto.OrderBy ?? "CreatedTime",
-            Descending = queryDto.OrderDir == "desc"
-        };
-
-        PageList<FileEntity> files = await _fileStorageService.QueryFilesAsync(request);
+        // 使用图片处理服务的专用查询方法，支持图片元数据查询
+        PageList<ImageEntity> images = await _imageProcessingService.QueryImagesAsync(queryDto);
         
-        // 转换为ImageDto（这里需要从服务层获取图片元数据）
-        var imageDtos = files.Items.Select(f => new ImageDto
+        // 转换为ImageDto
+        var imageDtos = images.Items.Select(img => new ImageDto
         {
-            Id = f.Id,
-            BucketName = f.BucketName,
-            OriginalFileName = f.OriginalFileName,
-            Size = f.Size,
-            ContentType = f.ContentType,
-            Extension = f.Extension,
-            Category = f.Category,
-            Status = f.Status,
-            Description = f.Description,
-            AccessCount = f.AccessCount,
-            LastAccessTime = f.LastAccessTime,
-            ExpirationTime = f.ExpirationTime,
-            IsPublic = f.IsPublic,
-            DownloadUrl = f.DownloadUrl,
-            Tags = f.Tags,
-            CreatedTime = f.CreatedAt,
-            CreatedBy = f.CreatedBy.ToString(),
-            UpdatedTime = f.UpdatedAt,
-            UpdatedBy = f.UpdatedBy?.ToString(),
-            // 图片特有属性需要从图片元数据获取
-            Width = f.ImageMetadata?.Width ?? 0,
-            Height = f.ImageMetadata?.Height ?? 0,
-            ColorDepth = f.ImageMetadata?.ColorDepth ?? 0,
-            Format = f.ImageMetadata?.Format,
-            HasAlpha = f.ImageMetadata?.HasAlpha ?? false,
-            IsAnimated = f.ImageMetadata?.IsAnimated ?? false,
-            FrameCount = f.ImageMetadata?.FrameCount ?? 0,
-            DpiX = f.ImageMetadata?.DpiX ?? 0,
-            DpiY = f.ImageMetadata?.DpiY ?? 0,
-            CameraModel = f.ImageMetadata?.CameraModel,
-            DateTaken = f.ImageMetadata?.DateTaken,
-            Latitude = f.ImageMetadata?.Latitude,
-            Longitude = f.ImageMetadata?.Longitude,
-
+            Id = img.Id,
+            BucketName = img.BucketName,
+            OriginalFileName = img.OriginalFileName,
+            Size = img.Size,
+            ContentType = img.ContentType,
+            Extension = Path.GetExtension(img.OriginalFileName),
+            Category = FileTypeCategory.Image,
+            Status = img.Status,
+            Description = img.Description,
+            AccessCount = img.AccessCount,
+            LastAccessTime = img.LastAccessTime,
+            ExpirationTime = img.ExpirationTime,
+            IsPublic = img.IsPublic,
+            DownloadUrl = img.DownloadUrl,
+            Tags = img.Tags,
+            CreatedTime = img.CreatedTime,
+            CreatedBy = img.CreatedBy.ToString(),
+            UpdatedTime = img.UpdatedTime,
+            UpdatedBy = img.UpdatedBy?.ToString(),
+            // 图片特有属性
+            Width = img.Width,
+            Height = img.Height,
+            ColorDepth = img.ColorDepth,
+            Format = img.Format,
+            HasAlpha = img.HasAlpha,
+            IsAnimated = img.IsAnimated,
+            FrameCount = img.FrameCount,
+            DpiX = img.DpiX,
+            DpiY = img.DpiY,
+            CameraModel = img.CameraModel,
+            DateTaken = img.DateTaken,
+            Latitude = img.GpsLocation.Item1,
+            Longitude = img.GpsLocation.Item2,
         }).ToList();
 
-        var result = new PageList<ImageDto>(imageDtos, files.Total);
+        var result = new PageList<ImageDto>(imageDtos, images.Total);
         return SuccessResponse(result);
     }
 
@@ -136,48 +123,48 @@ public class ImagesController : ApiControllerBase
     [DisplayName("获取图片详情")]
     public async Task<ActionResult<ApiResponse<ImageDto>>> GetImageDetail(long id)
     {
-        FileEntity file = await _fileStorageService.GetFileInfoAsync(id);
-        if (file == null || file.Category != FileTypeCategory.Image)
+        // 使用图片处理服务获取完整的图片信息
+        ImageEntity? imageEntity = await _imageProcessingService.GetImageInfoAsync(id);
+        if (imageEntity == null)
         {
             return BadResponse<ImageDto>("图片不存在");
         }
 
         var imageDto = new ImageDto
         {
-            Id = file.Id,
-            BucketName = file.BucketName,
-            OriginalFileName = file.OriginalFileName,
-            Size = file.Size,
-            ContentType = file.ContentType,
-            Extension = file.Extension,
-            Category = file.Category,
-            Status = file.Status,
-            Description = file.Description,
-            AccessCount = file.AccessCount,
-            LastAccessTime = file.LastAccessTime,
-            ExpirationTime = file.ExpirationTime,
-            IsPublic = file.IsPublic,
-            DownloadUrl = file.DownloadUrl,
-            Tags = file.Tags,
-            CreatedTime = file.CreatedAt,
-            CreatedBy = file.CreatedBy.ToString(),
-            UpdatedTime = file.UpdatedAt,
-            UpdatedBy = file.UpdatedBy?.ToString(),
+            Id = imageEntity.Id,
+            BucketName = imageEntity.BucketName,
+            OriginalFileName = imageEntity.OriginalFileName,
+            Size = imageEntity.Size,
+            ContentType = imageEntity.ContentType,
+            Extension = Path.GetExtension(imageEntity.OriginalFileName),
+            Category = FileTypeCategory.Image,
+            Status = imageEntity.Status,
+            Description = "", // 需要从文件表获取
+            AccessCount = 0, // 需要从文件表获取
+            LastAccessTime = null, // 需要从文件表获取
+            ExpirationTime = null, // 需要从文件表获取
+            IsPublic = false, // 需要从文件表获取
+            DownloadUrl = imageEntity.DownloadUrl,
+            Tags = imageEntity.Tags,
+            CreatedTime = imageEntity.CreatedTime,
+            CreatedBy = "", // 需要从文件表获取
+            UpdatedTime = imageEntity.UpdatedTime,
+            UpdatedBy = "", // 需要从文件表获取
             // 图片特有属性
-            Width = file.ImageMetadata?.Width ?? 0,
-            Height = file.ImageMetadata?.Height ?? 0,
-            ColorDepth = file.ImageMetadata?.ColorDepth ?? 0,
-            Format = file.ImageMetadata?.Format,
-            HasAlpha = file.ImageMetadata?.HasAlpha ?? false,
-            IsAnimated = file.ImageMetadata?.IsAnimated ?? false,
-            FrameCount = file.ImageMetadata?.FrameCount ?? 0,
-            DpiX = file.ImageMetadata?.DpiX ?? 0,
-            DpiY = file.ImageMetadata?.DpiY ?? 0,
-            CameraModel = file.ImageMetadata?.CameraModel,
-            DateTaken = file.ImageMetadata?.DateTaken,
-            Latitude = file.ImageMetadata?.Latitude,
-            Longitude = file.ImageMetadata?.Longitude,
-
+            Width = imageEntity.Width,
+            Height = imageEntity.Height,
+            ColorDepth = 0, // 需要从图片元数据获取
+            Format = imageEntity.Format,
+            HasAlpha = imageEntity.HasAlpha,
+            IsAnimated = imageEntity.IsAnimated,
+            FrameCount = 0, // 需要从图片元数据获取
+            DpiX = 0, // 需要从图片元数据获取
+            DpiY = 0, // 需要从图片元数据获取
+            CameraModel = "", // 需要从图片元数据获取
+            DateTaken = imageEntity.DateTaken,
+            Latitude = imageEntity.GpsLocation.Latitude,
+            Longitude = imageEntity.GpsLocation.Longitude,
         };
 
         return SuccessResponse(imageDto);
@@ -208,7 +195,8 @@ public class ImagesController : ApiControllerBase
 
         try
         {
-            var request = new FileUploadRequest
+            // 使用图片处理服务上传并自动提取元数据
+            var imageUploadRequest = new ImageUploadRequest
             {
                 BucketName = createDto.BucketName ?? "default",
                 FileName = file.FileName,
@@ -220,24 +208,30 @@ public class ImagesController : ApiControllerBase
                 OverwriteExisting = createDto.OverwriteExisting,
                 Tags = createDto.Tags != null ? 
                     createDto.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .ToDictionary(tag => tag.Trim(), tag => tag.Trim()) : null
+                    .ToDictionary(tag => tag.Trim(), tag => tag.Trim()) : null,
+                Quality = createDto.Quality,
+                ExtractExifData = createDto.ExtractExifData
             };
 
-            FileEntity fileEntity = await _fileStorageService.UploadFileAsync(request);
+            // 调用图片处理服务进行上传和元数据提取
+            ImageEntity imageEntity = await _imageProcessingService.UploadImageAsync(imageUploadRequest);
             
             var amisImageDto = new AmisImageDto
             {
-                Id = fileEntity.Id,
-                Value = fileEntity.DownloadUrl,
-                Url = fileEntity.DownloadUrl ?? string.Empty, // 图片URL
-                Name = fileEntity.OriginalFileName ?? string.Empty,
-                Size = fileEntity.Size,
-                Type = fileEntity.ContentType ?? string.Empty,
-                Width = fileEntity.ImageMetadata?.Width,
-                Height = fileEntity.ImageMetadata?.Height,
+                Id = imageEntity.Id,
+                Value = imageEntity.DownloadUrl,
+                Url = imageEntity.DownloadUrl ?? string.Empty,
+                Name = imageEntity.OriginalFileName ?? string.Empty,
+                Size = imageEntity.Size,
+                Type = imageEntity.ContentType ?? string.Empty,
+                Width = imageEntity.Width,
+                Height = imageEntity.Height,
                 IsImage = true,
-                UploadTime = fileEntity.CreatedAt
+                UploadTime = imageEntity.CreatedTime
             };
+
+            _logger.LogInformation("图片上传成功: {FileName}, ID: {ImageId}, 尺寸: {Width}x{Height}", 
+                file.FileName, imageEntity.Id, imageEntity.Width, imageEntity.Height);
 
             return SuccessResponseWithCreate<AmisImageDto>(nameof(GetImageDetail), amisImageDto);
         }
@@ -263,20 +257,56 @@ public class ImagesController : ApiControllerBase
         long id, 
         [FromBody] ImageProcessDto processDto)
     {
-        FileEntity file = await _fileStorageService.GetFileInfoAsync(id);
+        FileEntity? file = await _fileStorageService.GetFileInfoAsync(id);
         if (file == null || file.Category != FileTypeCategory.Image)
         {
             return BadResponse<ImageDto>("图片不存在");
         }
 
-        // 这里需要调用图片处理服务
-        // var processedImage = await _imageProcessingService.ProcessImageAsync(id, processDto);
-        
-        // 暂时返回原图片信息
-        var imageResult = await GetImageDetail(id);
-        return imageResult.Value?.Status == 0 ? 
-            SuccessResponse(imageResult.Value.Data, "图片处理成功") :
-            BadResponse<ImageDto>("图片处理失败");
+        try
+        {
+            // 构建图片操作列表
+            var operations = new List<ImageOperation>();
+            
+            // 如果指定了目标尺寸，添加缩放操作
+            if (processDto.TargetWidth.HasValue || processDto.TargetHeight.HasValue)
+            {
+                var resizeOp = new ResizeOperation
+                {
+                    Width = processDto.TargetWidth ?? 0,
+                    Height = processDto.TargetHeight ?? 0,
+                    KeepAspectRatio = processDto.KeepAspectRatio
+                };
+                operations.Add(resizeOp);
+            }
+            
+            // 如果没有任何操作，返回错误
+            if (operations.Count == 0)
+            {
+                return BadResponse<ImageDto>("请指定至少一种图片处理操作");
+            }
+            
+            // 调用图片处理服务
+            ProcessedImageResult processedResult = await _imageProcessingService.ProcessImageAsync(id, operations);
+            
+            // 这里可以选择保存处理后的图片或直接返回处理结果
+            // 为了演示，我们先返回原图片信息，表示处理成功
+            var imageResult = await GetImageDetail(id);
+            if (imageResult.Value?.Status == 0)
+            {
+                _logger.LogInformation("图片处理成功: {ImageId}, 输出尺寸: {Width}x{Height}, 大小: {Size}字节", 
+                    id, processedResult.Width, processedResult.Height, processedResult.Size);
+                
+                return SuccessResponse(imageResult.Value.Data, "图片处理成功");
+            }
+            
+            return BadResponse<ImageDto>("图片处理失败");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "图片处理失败: {ImageId}", id);
+            return BadResponse<ImageDto>($"图片处理失败: {ex.Message}");
+        }
     }
 
 
@@ -310,7 +340,7 @@ public class ImagesController : ApiControllerBase
     /// <returns>统计信息</returns>
     [HttpGet("statistics")]
     [DisplayName("获取图片统计")]
-    public async Task<ActionResult<ApiResponse<object>>> GetImageStatistics()
+    public Task<ActionResult<ApiResponse<object>>> GetImageStatistics()
     {
         // 这里需要实现图片统计功能
         var statistics = new
@@ -324,7 +354,7 @@ public class ImagesController : ApiControllerBase
 
         };
 
-        return SuccessResponse<object>(statistics);
+        return Task.FromResult(SuccessResponse<object>(statistics));
     }
 
     /// <summary>

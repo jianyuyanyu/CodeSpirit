@@ -8,8 +8,6 @@ using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Utilities;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
-using CodeSpirit.Shared.EventBus.Publishers;
-using CodeSpirit.Shared.EventBus.Events;
 using LinqKit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +24,6 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     private readonly ICurrentUser _currentUser;
     private readonly ApplicationDbContext _dbContext;
     private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
-    private readonly FileReferenceEventPublisher _fileReferenceEventPublisher;
 
     public UserService(
         IRepository<ApplicationUser> userRepository,
@@ -37,8 +34,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         IIdGenerator idGenerator,
         ICurrentUser currentUser,
         ApplicationDbContext dbContext,
-        IPasswordHasher<ApplicationUser> passwordHasher,
-        FileReferenceEventPublisher fileReferenceEventPublisher)
+        IPasswordHasher<ApplicationUser> passwordHasher)
         : base(userRepository, mapper)
     {
         _userRepository = userRepository;
@@ -49,7 +45,6 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         _currentUser = currentUser;
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
-        _fileReferenceEventPublisher = fileReferenceEventPublisher ?? throw new ArgumentNullException(nameof(fileReferenceEventPublisher));
     }
 
     public async Task<PageList<UserDto>> GetUsersAsync(UserQueryDto queryDto)
@@ -188,33 +183,6 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
             .FirstOrDefaultAsync(u => u.Id == user.Id);
 
         var userDto = Mapper.Map<UserDto>(createdUser);
-
-        // 发布用户创建文件引用事件
-        try
-        {
-            var fileReferences = new List<FileReferenceInfo>();
-            var avatarFileId = FileReferenceEventPublisher.ExtractFileIdFromUrl(createDto.AvatarUrl);
-            if (avatarFileId.HasValue || !string.IsNullOrEmpty(createDto.AvatarUrl))
-            {
-                fileReferences.Add(FileReferenceEventPublisher.CreateFileReference(
-                    avatarFileId, createDto.AvatarUrl ?? string.Empty, "Avatar", "用户头像", isPrimary: true));
-            }
-            
-            await _fileReferenceEventPublisher.PublishFileReferenceEventAsync(
-                typeof(ApplicationUser).FullName,
-                user.Id.ToString(),
-                user.Name,
-                FileReferenceOperationType.Create,
-                fileReferences,
-                _currentUser?.Id,
-                _currentUser?.UserName ?? string.Empty);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "发布用户创建文件引用事件失败: 用户ID={UserId}", user.Id);
-            // 不抛出异常，避免影响用户创建流程
-        }
-
         return userDto;
     }
 
@@ -241,32 +209,6 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         {
             await UpdateUserRolesAsync(entity, updateDto.Roles);
         }
-
-        // 发布用户更新文件引用事件
-        try
-        {
-            var fileReferences = new List<FileReferenceInfo>();
-            var avatarFileId = FileReferenceEventPublisher.ExtractFileIdFromUrl(updateDto.AvatarUrl);
-            if (avatarFileId.HasValue || !string.IsNullOrEmpty(updateDto.AvatarUrl))
-            {
-                fileReferences.Add(FileReferenceEventPublisher.CreateFileReference(
-                    avatarFileId, updateDto.AvatarUrl ?? string.Empty, "Avatar", "用户头像", isPrimary: true));
-            }
-            
-            await _fileReferenceEventPublisher.PublishFileReferenceEventAsync(
-                typeof(ApplicationUser).FullName,
-                entity.Id.ToString(),
-                entity.Name,
-                FileReferenceOperationType.Update,
-                fileReferences,
-                _currentUser?.Id,
-                _currentUser?.UserName ?? string.Empty);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "发布用户更新文件引用事件失败: 用户ID={UserId}", entity.Id);
-            // 不抛出异常，避免影响用户更新流程
-        }
     }
 
 
@@ -280,24 +222,6 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         if (await _userManager.IsInRoleAsync(entity, "Admin"))
         {
             throw new AppServiceException(400, "不能删除管理员用户！");
-        }
-
-        // 发布用户删除文件引用事件
-        try
-        {
-            await _fileReferenceEventPublisher.PublishFileReferenceEventAsync(
-                typeof(ApplicationUser).FullName,
-                entity.Id.ToString(),
-                entity.Name,
-                FileReferenceOperationType.Delete,
-                new List<FileReferenceInfo>(), // 删除时传入空列表
-                _currentUser?.Id,
-                _currentUser?.UserName ?? string.Empty);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "发布用户删除文件引用事件失败: 用户ID={UserId}", entity.Id);
-            // 不抛出异常，避免影响用户删除流程
         }
     }
 
@@ -1115,7 +1039,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
             throw new ArgumentException("身份证号码不能为空", nameof(idNo));
         }
 
-        ApplicationUser? user = await _userManager.Users
+        ApplicationUser user = await _userManager.Users
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.IdNo == idNo);

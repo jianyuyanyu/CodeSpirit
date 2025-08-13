@@ -1,4 +1,6 @@
+using CodeSpirit.Core;
 using CodeSpirit.FileStorageApi.Entities;
+using CodeSpirit.FileStorageApi.Dtos;
 
 namespace CodeSpirit.FileStorageApi.Abstractions;
 
@@ -38,6 +40,13 @@ public interface IImageProcessingService
     /// <param name="stream">图片流</param>
     /// <returns>图片元数据</returns>
     Task<ImageMetadata> ExtractImageMetadataAsync(Stream stream);
+
+    /// <summary>
+    /// 查询图片列表（包含图片元数据）
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>图片分页列表</returns>
+    Task<PageList<ImageEntity>> QueryImagesAsync(ImageQueryDto queryDto);
 }
 
 /// <summary>

@@ -4,6 +4,7 @@ using CodeSpirit.FileStorageApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CodeSpirit.FileStorageApi.Migrations
 {
     [DbContext(typeof(FileStorageDbContext))]
-    partial class FileStorageDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250813062151_AddTenantIdToImageMetadata")]
+    partial class AddTenantIdToImageMetadata
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -266,6 +269,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<string>("CameraModel")
+                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
@@ -273,6 +277,7 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("ColorPalette")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -297,12 +302,14 @@ namespace CodeSpirit.FileStorageApi.Migrations
                         .HasColumnType("float");
 
                     b.Property<string>("ExifData")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<long>("FileId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Format")
+                        .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 

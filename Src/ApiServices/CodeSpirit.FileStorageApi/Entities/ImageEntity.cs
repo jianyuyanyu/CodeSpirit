@@ -96,7 +96,65 @@ public class ImageEntity
     /// </summary>
     public (double? Latitude, double? Longitude) GpsLocation { get; set; }
     
-
+    /// <summary>
+    /// 颜色深度（位）
+    /// </summary>
+    public int ColorDepth { get; set; }
+    
+    /// <summary>
+    /// 帧数（动画图片）
+    /// </summary>
+    public int FrameCount { get; set; }
+    
+    /// <summary>
+    /// DPI水平分辨率
+    /// </summary>
+    public double DpiX { get; set; }
+    
+    /// <summary>
+    /// DPI垂直分辨率
+    /// </summary>
+    public double DpiY { get; set; }
+    
+    /// <summary>
+    /// 拍摄设备
+    /// </summary>
+    public string? CameraModel { get; set; }
+    
+    /// <summary>
+    /// 文件描述
+    /// </summary>
+    public string? Description { get; set; }
+    
+    /// <summary>
+    /// 访问次数
+    /// </summary>
+    public long AccessCount { get; set; }
+    
+    /// <summary>
+    /// 最后访问时间
+    /// </summary>
+    public DateTime? LastAccessTime { get; set; }
+    
+    /// <summary>
+    /// 过期时间
+    /// </summary>
+    public DateTime? ExpirationTime { get; set; }
+    
+    /// <summary>
+    /// 是否公开访问
+    /// </summary>
+    public bool IsPublic { get; set; }
+    
+    /// <summary>
+    /// 创建人ID
+    /// </summary>
+    public long CreatedBy { get; set; }
+    
+    /// <summary>
+    /// 更新人ID
+    /// </summary>
+    public long? UpdatedBy { get; set; }
     
     /// <summary>
     /// 创建时间

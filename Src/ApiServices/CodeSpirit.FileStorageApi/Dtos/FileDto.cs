@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.FileStorageApi.Entities;
@@ -94,6 +95,7 @@ public class FileDto
     /// 下载URL
     /// </summary>
     [DisplayName("下载链接")]
+    [AmisColumn(Type = "image")]
     public string? DownloadUrl { get; set; }
 
     /// <summary>

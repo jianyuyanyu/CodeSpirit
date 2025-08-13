@@ -97,20 +97,6 @@ public class SystemFilesController : ApiControllerBase
     }
 
     /// <summary>
-    /// 强制删除文件
-    /// </summary>
-    /// <param name="id">文件ID</param>
-    /// <returns>删除结果</returns>
-    [HttpDelete("{id}/force")]
-    [Operation("强制删除", "ajax", null, "确定要强制删除此文件吗？此操作不可撤销，将同时删除所有引用！")]
-    [DisplayName("强制删除文件")]
-    public async Task<ActionResult<ApiResponse>> ForceDeleteFile(long id)
-    {
-        await _fileService.ForceDeleteFileAsync(id);
-        return SuccessResponse("文件已强制删除");
-    }
-
-    /// <summary>
     /// 恢复已删除的文件
     /// </summary>
     /// <param name="id">文件ID</param>
@@ -209,7 +195,7 @@ public class SystemFilesController : ApiControllerBase
     /// </summary>
     /// <returns>清理结果</returns>
     [HttpPost("cleanup/expired")]
-    [Operation("清理过期文件", "ajax", null, "确定要清理所有过期文件吗？此操作不可撤销！")]
+    [Operation("清理过期文件", "ajax", null, "确定要清理所有过期文件吗？此操作不可撤销！", IsBulkOperation = true)]
     [DisplayName("清理过期文件")]
     public async Task<ActionResult<ApiResponse<CleanupResult>>> CleanupExpiredFiles()
     {
@@ -222,7 +208,7 @@ public class SystemFilesController : ApiControllerBase
     /// </summary>
     /// <returns>清理结果</returns>
     [HttpPost("cleanup/unreferenced")]
-    [Operation("清理无引用文件", "ajax", null, "确定要清理所有无引用的文件吗？此操作不可撤销！")]
+    [Operation("清理无引用文件", "ajax", null, "确定要清理所有无引用的文件吗？此操作不可撤销！", IsBulkOperation = true)]
     [DisplayName("清理无引用文件")]
     public async Task<ActionResult<ApiResponse<CleanupResult>>> CleanupUnreferencedFiles()
     {

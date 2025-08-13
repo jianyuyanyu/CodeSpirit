@@ -56,6 +56,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<ITenantDataInitializationService, TenantDataInitializationService>();
 
+        // 注册实体文件引用事件处理器
+        services.AddScoped<EntityFileReferenceEventHandler>();
+
         // 注册自定义授权处理程序（这个需要特殊处理，因为是 Identity 框架的组件）
         services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
 

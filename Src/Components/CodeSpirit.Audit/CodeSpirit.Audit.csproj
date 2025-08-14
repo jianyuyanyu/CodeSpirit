@@ -20,7 +20,7 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.Http" Version="9.0.5" />
 		<PackageReference Include="Aspire.Elastic.Clients.Elasticsearch" Version="9.2.1-preview.1.25222.1" />
-		<PackageReference Include="Aspire.RabbitMQ.Client" Version="9.3.0" />
+		<PackageReference Include="Aspire.RabbitMQ.Client" Version="9.4.1" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
 	</ItemGroup>
 

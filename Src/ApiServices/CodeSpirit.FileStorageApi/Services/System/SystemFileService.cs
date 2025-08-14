@@ -120,7 +120,7 @@ public class SystemFileService : ISystemFileService
                 .Select(f => new
                 {
                     File = f,
-                    ReferenceCount = f.References.Count(r => r.Status == ReferenceStatus.Confirmed)
+                    ReferenceCount = f.References.Count(r => r.Status == ReferenceStatus.Confirmed || r.Status == ReferenceStatus.Active)
                 })
                 .Skip((queryDto.Page - 1) * queryDto.PerPage)
                 .Take(queryDto.PerPage)
@@ -156,7 +156,7 @@ public class SystemFileService : ISystemFileService
                 .Select(f => new
                 {
                     File = f,
-                    ReferenceCount = f.References.Count(r => r.Status == ReferenceStatus.Confirmed)
+                    ReferenceCount = f.References.Count(r => r.Status == ReferenceStatus.Confirmed || r.Status == ReferenceStatus.Active)
                 })
                 .FirstOrDefaultAsync();
 

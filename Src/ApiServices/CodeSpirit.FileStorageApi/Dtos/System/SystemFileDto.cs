@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.FileStorageApi.Entities;
 using System.ComponentModel;
@@ -45,11 +46,11 @@ public class SystemFileDto
     [DisplayName("文件路径")]
     public string FilePath { get; set; } = string.Empty;
 
-    /// <summary>
-    /// 文件大小（字节）
-    /// </summary>
-    [DisplayName("文件大小")]
-    public long Size { get; set; }
+    ///// <summary>
+    ///// 文件大小（字节）
+    ///// </summary>
+    //[DisplayName("文件大小")]
+    //public long Size { get; set; }
 
     /// <summary>
     /// 文件大小（格式化显示）
@@ -121,6 +122,7 @@ public class SystemFileDto
     /// 下载URL
     /// </summary>
     [DisplayName("下载链接")]
+    [AmisColumn(Type = "image")]
     public string DownloadUrl { get; set; } = string.Empty;
 
     /// <summary>

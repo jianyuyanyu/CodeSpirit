@@ -1,9 +1,9 @@
-﻿﻿namespace CodeSpirit.Amis.Attributes.FormFields
+﻿namespace CodeSpirit.Amis.Attributes.FormFields
 {
     /// <summary>
     /// 自定义特性，用于配置 AMIS 表单字段的通用属性。
     /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = false)]
     public class AmisFormFieldAttribute : Attribute
     {
         /// <summary>
@@ -28,7 +28,7 @@
 
         public string VisibleOn { get; set; }
 
-        public bool Hidden {  get; set; }
+        public bool Hidden { get; set; }
 
         /// <summary>
         /// 字段的值（已弃用，请使用 DefaultValue 或 DefaultValueExpression）

@@ -7,6 +7,7 @@ using CodeSpirit.MultiTenant.Models;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
 
 namespace CodeSpirit.IdentityApi.Services
@@ -312,6 +313,40 @@ namespace CodeSpirit.IdentityApi.Services
             var dtos = Mapper.Map<List<TenantDto>>(items);
             
             return new PageList<TenantDto>(dtos, total);
+        }
+
+        /// <summary>
+        /// 更新租户（重写基类方法以正确处理租户筛选器）
+        /// </summary>
+        /// <param name="tenantId">租户ID</param>
+        /// <param name="updateDto">更新数据</param>
+        /// <returns>更新任务</returns>
+        public override async Task UpdateAsync(string tenantId, TenantUpdateDto updateDto)
+        {
+            ArgumentNullException.ThrowIfNull(updateDto);
+
+            // 使用 WithoutMultiTenantFilterAsync 确保整个更新过程都禁用租户筛选器
+            await _context.WithoutMultiTenantFilterAsync(async () =>
+            {
+                // 获取要更新的租户
+                var tenant = await _context.Tenants.FirstOrDefaultAsync(x => x.TenantId == tenantId);
+                if (tenant == null)
+                {
+                    throw new AppServiceException(404, "租户不存在！");
+                }
+
+                // 使用 AutoMapper 进行部分更新
+                Mapper.Map(updateDto, tenant);
+                
+                // 手动设置更新时间（AutoMapper配置中已处理，但这里确保设置）
+                tenant.UpdatedAt = DateTime.UtcNow;
+                
+                // 更新实体
+                _context.Tenants.Update(tenant);
+                await _context.SaveChangesAsync();
+                
+                return Task.CompletedTask;
+            });
         }
 
         /// <summary>

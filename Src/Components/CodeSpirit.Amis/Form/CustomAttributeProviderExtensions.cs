@@ -244,7 +244,7 @@ namespace CodeSpirit.Amis.Form
 
             // 处理 MaxLengthAttribute
             MaxLengthAttribute maxLengthAttr = member.GetAttribute<MaxLengthAttribute>();
-            if (maxLengthAttr != null)
+            if (maxLengthAttr != null && maxLengthAttr.Length > 0)
             {
                 validations["maxLength"] = maxLengthAttr.Length; // MaxLengthAttribute 的 Length 表示最大长度
 

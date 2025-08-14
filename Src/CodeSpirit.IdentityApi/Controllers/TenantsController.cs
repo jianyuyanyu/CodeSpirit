@@ -4,6 +4,7 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Tenant;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Shared.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -21,16 +22,19 @@ namespace CodeSpirit.IdentityApi.Controllers
     {
         private readonly ITenantService _tenantService;
         private readonly ITenantDataInitializationService _dataInitializationService;
+        private readonly IDataFilter _dataFilter;
 
         /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="tenantService">租户服务</param>
         /// <param name="dataInitializationService">租户数据初始化服务</param>
-        public TenantsController(ITenantService tenantService, ITenantDataInitializationService dataInitializationService)
+        /// <param name="dataFilter">数据筛选器</param>
+        public TenantsController(ITenantService tenantService, ITenantDataInitializationService dataInitializationService, IDataFilter dataFilter)
         {
             _tenantService = tenantService;
             _dataInitializationService = dataInitializationService;
+            _dataFilter = dataFilter;
         }
 
         /// <summary>
@@ -42,8 +46,12 @@ namespace CodeSpirit.IdentityApi.Controllers
         [DisplayName("获取租户列表")]
         public async Task<ActionResult<ApiResponse<PageList<TenantDto>>>> GetTenants([FromQuery] TenantQueryDto queryDto)
         {
-            var result = await _tenantService.GetPagedListAsync(queryDto);
-            return Ok(ApiResponse<PageList<TenantDto>>.Success(result));
+            // 禁用多租户筛选器来查询所有租户
+            using (_dataFilter.Disable<IMultiTenant>())
+            {
+                var result = await _tenantService.GetPagedListAsync(queryDto);
+                return Ok(ApiResponse<PageList<TenantDto>>.Success(result));
+            }
         }
 
         /// <summary>
@@ -55,26 +63,30 @@ namespace CodeSpirit.IdentityApi.Controllers
         [DisplayName("获取租户详情")]
         public async Task<ActionResult<ApiResponse<TenantDto>>> GetTenant(string tenantId)
         {
-            var result = await _tenantService.GetByTenantIdAsync(tenantId);
-            if (result == null)
+            // 禁用多租户筛选器来查询指定租户
+            using (_dataFilter.Disable<IMultiTenant>())
             {
-                return NotFound(ApiResponse<TenantDto>.Error(404, "租户不存在"));
+                var result = await _tenantService.GetByTenantIdAsync(tenantId);
+                if (result == null)
+                {
+                    return NotFound(ApiResponse<TenantDto>.Error(404, "租户不存在"));
+                }
+                var dto = new TenantDto
+                {
+                    TenantId = result.TenantId,
+                    Name = result.Name,
+                    DisplayName = result.DisplayName,
+                    Description = result.Description,
+                    Strategy = result.Strategy,
+                    IsActive = result.IsActive,
+                    Domain = result.Domain,
+                    MaxUsers = result.MaxUsers,
+                    StorageLimit = result.StorageLimit,
+                    ExpiresAt = result.ExpiresAt,
+                    CreatedAt = result.CreatedAt
+                };
+                return Ok(ApiResponse<TenantDto>.Success(dto));
             }
-            var dto = new TenantDto
-            {
-                TenantId = result.TenantId,
-                Name = result.Name,
-                DisplayName = result.DisplayName,
-                Description = result.Description,
-                Strategy = result.Strategy,
-                IsActive = result.IsActive,
-                Domain = result.Domain,
-                MaxUsers = result.MaxUsers,
-                StorageLimit = result.StorageLimit,
-                ExpiresAt = result.ExpiresAt,
-                CreatedAt = result.CreatedAt
-            };
-            return Ok(ApiResponse<TenantDto>.Success(dto));
         }
 
         /// <summary>
@@ -92,8 +104,12 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadRequest(ApiResponse<TenantDto>.Error(400, "不能创建租户ID为'system'的租户，该ID为系统保留"));
             }
 
-            var result = await _tenantService.CreateAsync(createDto);
-            return Ok(ApiResponse<TenantDto>.Success(result, "创建成功"));
+            // 禁用多租户筛选器来创建租户
+            using (_dataFilter.Disable<IMultiTenant>())
+            {
+                var result = await _tenantService.CreateAsync(createDto);
+                return Ok(ApiResponse<TenantDto>.Success(result, "创建成功"));
+            }
         }
 
         /// <summary>
@@ -104,7 +120,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <returns>更新结果</returns>
         [HttpPut("{tenantId}")]
         [DisplayName("更新租户")]
-        public async Task<ActionResult<ApiResponse<TenantDto>>> UpdateTenant(string tenantId, [FromBody] TenantUpdateDto updateDto)
+        public async Task<ActionResult<ApiResponse<TenantDto>>> UpdateTenant([FromRoute, AmisFormField(Hidden = true)] string tenantId, [FromBody] TenantUpdateDto updateDto)
         {
             // 检查是否为系统租户且尝试禁用
             if (string.Equals(tenantId, "system", StringComparison.OrdinalIgnoreCase) && !updateDto.IsActive)
@@ -148,9 +164,13 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadRequest(ApiResponse.Error(400, "系统租户不能被删除"));
             }
 
-            //TODO:租户数据处理
-            await _tenantService.DeleteAsync(tenantId);
-            return Ok(ApiResponse.Success("删除成功"));
+            // 禁用多租户筛选器来删除租户
+            using (_dataFilter.Disable<IMultiTenant>())
+            {
+                //TODO:租户数据处理
+                await _tenantService.DeleteAsync(tenantId);
+                return Ok(ApiResponse.Success("删除成功"));
+            }
         }
 
         /// <summary>
@@ -163,8 +183,12 @@ namespace CodeSpirit.IdentityApi.Controllers
         [DisplayName("启用租户")]
         public async Task<ActionResult<ApiResponse>> EnableTenant(string tenantId)
         {
-            var result = await _tenantService.EnableTenantAsync(tenantId);
-            return Ok(result);
+            // 禁用多租户筛选器来启用租户
+            using (_dataFilter.Disable<IMultiTenant>())
+            {
+                var result = await _tenantService.EnableTenantAsync(tenantId);
+                return Ok(result);
+            }
         }
 
         /// <summary>
@@ -183,8 +207,12 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadRequest(ApiResponse.Error(400, "系统租户不能被禁用"));
             }
 
-            var result = await _tenantService.DisableTenantAsync(tenantId);
-            return Ok(result);
+            // 禁用多租户筛选器来禁用租户
+            using (_dataFilter.Disable<IMultiTenant>())
+            {
+                var result = await _tenantService.DisableTenantAsync(tenantId);
+                return Ok(result);
+            }
         }
 
         /// <summary>
@@ -196,12 +224,16 @@ namespace CodeSpirit.IdentityApi.Controllers
         [DisplayName("获取租户统计")]
         public async Task<ActionResult<ApiResponse<object>>> GetTenantStatistics(string tenantId)
         {
-            var result = await _tenantService.GetTenantStatisticsAsync(tenantId);
-            if (result == null)
+            // 禁用多租户筛选器来获取租户统计信息
+            using (_dataFilter.Disable<IMultiTenant>())
             {
-                return NotFound(ApiResponse<object>.Error(404, "租户不存在"));
+                var result = await _tenantService.GetTenantStatisticsAsync(tenantId);
+                if (result == null)
+                {
+                    return NotFound(ApiResponse<object>.Error(404, "租户不存在"));
+                }
+                return Ok(ApiResponse<object>.Success(result));
             }
-            return Ok(ApiResponse<object>.Success(result));
         }
 
         /// <summary>
@@ -213,8 +245,12 @@ namespace CodeSpirit.IdentityApi.Controllers
         [DisplayName("检查租户过期")]
         public async Task<ActionResult<ApiResponse<object>>> IsTenantExpired(string tenantId)
         {
-            var result = await _tenantService.IsTenantExpiredAsync(tenantId);
-            return Ok(ApiResponse<object>.Success(new { IsExpired = result }));
+            // 禁用多租户筛选器来检查租户过期状态
+            using (_dataFilter.Disable<IMultiTenant>())
+            {
+                var result = await _tenantService.IsTenantExpiredAsync(tenantId);
+                return Ok(ApiResponse<object>.Success(new { IsExpired = result }));
+            }
         }
 
         /// <summary>
@@ -234,8 +270,12 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadRequest(ApiResponse.Error(400, "系统租户不需要续期"));
             }
 
-            var result = await _tenantService.RenewTenantAsync(tenantId, request.ExpiresAt);
-            return Ok(result);
+            // 禁用多租户筛选器来续期租户
+            using (_dataFilter.Disable<IMultiTenant>())
+            {
+                var result = await _tenantService.RenewTenantAsync(tenantId, request.ExpiresAt);
+                return Ok(result);
+            }
         }
 
         /// <summary>
@@ -253,8 +293,12 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadRequest(ApiResponse.Error(400, "批量删除中包含系统租户，系统租户不能被删除"));
             }
 
-            var result = await _tenantService.BatchDeleteAsync(ids);
-            return Ok(result);
+            // 禁用多租户筛选器来批量删除租户
+            using (_dataFilter.Disable<IMultiTenant>())
+            {
+                var result = await _tenantService.BatchDeleteAsync(ids);
+                return Ok(result);
+            }
         }
 
         /// <summary>
@@ -268,20 +312,24 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             try
             {
-                // 使用分页查询获取活跃租户
-                var queryDto = new TenantQueryDto { IsActive = true, Page = 1, PerPage = 1000 };
-                var result = await _tenantService.GetPagedListAsync(queryDto);
-                
-                var selectDtos = result.Items.Select(t => new TenantSelectDto
+                // 禁用多租户筛选器来获取所有活跃租户
+                using (_dataFilter.Disable<IMultiTenant>())
                 {
-                    TenantId = t.TenantId,
-                    Name = t.Name,
-                    DisplayName = t.DisplayName,
-                    Description = t.Description,
-                    LogoUrl = t.LogoUrl
-                });
-                
-                return Ok(ApiResponse<IEnumerable<TenantSelectDto>>.Success(selectDtos));
+                    // 使用分页查询获取活跃租户
+                    var queryDto = new TenantQueryDto { IsActive = true, Page = 1, PerPage = 1000 };
+                    var result = await _tenantService.GetPagedListAsync(queryDto);
+
+                    var selectDtos = result.Items.Select(t => new TenantSelectDto
+                    {
+                        TenantId = t.TenantId,
+                        Name = t.Name,
+                        DisplayName = t.DisplayName,
+                        Description = t.Description,
+                        LogoUrl = t.LogoUrl
+                    });
+
+                    return Ok(ApiResponse<IEnumerable<TenantSelectDto>>.Success(selectDtos));
+                }
             }
             catch
             {
@@ -301,38 +349,42 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             try
             {
-                // 验证租户是否存在且活跃
-                var tenant = await _tenantService.GetByTenantIdAsync(tenantId);
-                if (tenant == null)
+                // 禁用多租户筛选器来验证租户
+                using (_dataFilter.Disable<IMultiTenant>())
                 {
-                    return BadRequest(ApiResponse<object>.Error(404, "租户不存在"));
+                    // 验证租户是否存在且活跃
+                    var tenant = await _tenantService.GetByTenantIdAsync(tenantId);
+                    if (tenant == null)
+                    {
+                        return BadRequest(ApiResponse<object>.Error(404, "租户不存在"));
+                    }
+
+                    if (!tenant.IsActive)
+                    {
+                        return BadRequest(ApiResponse<object>.Error(400, "租户已被禁用，无法登录"));
+                    }
+
+                    // 检查租户是否过期
+                    if (tenant.ExpiresAt.HasValue && tenant.ExpiresAt.Value < DateTime.UtcNow)
+                    {
+                        return BadRequest(ApiResponse<object>.Error(400, "租户已过期，请联系管理员"));
+                    }
+
+                    // 构建租户登录页面URL
+                    var loginUrl = $"/{tenant.TenantId}/login";
+
+                    // 返回跳转信息
+                    var result = new
+                    {
+                        tenantId = tenant.TenantId,
+                        loginUrl = loginUrl,
+                        tenantName = tenant.DisplayName ?? tenant.Name,
+                        description = tenant.Description,
+                        logoUrl = tenant.LogoUrl
+                    };
+
+                    return Ok(ApiResponse<object>.Success(result, "租户验证成功，即将跳转到登录页面"));
                 }
-
-                if (!tenant.IsActive)
-                {
-                    return BadRequest(ApiResponse<object>.Error(400, "租户已被禁用，无法登录"));
-                }
-
-                // 检查租户是否过期
-                if (tenant.ExpiresAt.HasValue && tenant.ExpiresAt.Value < DateTime.UtcNow)
-                {
-                    return BadRequest(ApiResponse<object>.Error(400, "租户已过期，请联系管理员"));
-                }
-
-                // 构建租户登录页面URL
-                var loginUrl = $"/{tenant.TenantId}/login";
-                
-                // 返回跳转信息
-                var result = new
-                {
-                    tenantId = tenant.TenantId,
-                    loginUrl = loginUrl,
-                    tenantName = tenant.DisplayName ?? tenant.Name,
-                    description = tenant.Description,
-                    logoUrl = tenant.LogoUrl
-                };
-
-                return Ok(ApiResponse<object>.Success(result, "租户验证成功，即将跳转到登录页面"));
             }
             catch (Exception ex)
             {
@@ -352,37 +404,41 @@ namespace CodeSpirit.IdentityApi.Controllers
         {
             try
             {
-                var tenant = await _tenantService.GetByTenantIdAsync(tenantId);
-                if (tenant == null)
+                // 禁用多租户筛选器来获取租户配置
+                using (_dataFilter.Disable<IMultiTenant>())
                 {
-                    return NotFound(ApiResponse<object>.Error(404, "租户不存在"));
+                    var tenant = await _tenantService.GetByTenantIdAsync(tenantId);
+                    if (tenant == null)
+                    {
+                        return NotFound(ApiResponse<object>.Error(404, "租户不存在"));
+                    }
+
+                    if (!tenant.IsActive)
+                    {
+                        return BadRequest(ApiResponse<object>.Error(400, "租户已停用"));
+                    }
+
+                    // 构建登录页面配置
+                    var config = new
+                    {
+                        tenantId = tenant.TenantId,
+                        name = tenant.Name,
+                        displayName = tenant.DisplayName,
+                        description = tenant.Description,
+                        logoUrl = tenant.LogoUrl,
+                        domain = tenant.Domain,
+                        // 主题配置（如果有的话）
+                        themeConfig = !string.IsNullOrEmpty(tenant.ThemeConfig) ?
+                            JsonSerializer.Deserialize<object>(tenant.ThemeConfig) : null,
+                        // 功能配置（如果有的话）
+                        configuration = !string.IsNullOrEmpty(tenant.Configuration) ?
+                            JsonSerializer.Deserialize<object>(tenant.Configuration) : null,
+                        isActive = tenant.IsActive,
+                        expiresAt = tenant.ExpiresAt
+                    };
+
+                    return Ok(ApiResponse<object>.Success(config));
                 }
-
-                if (!tenant.IsActive)
-                {
-                    return BadRequest(ApiResponse<object>.Error(400, "租户已停用"));
-                }
-
-                // 构建登录页面配置
-                var config = new
-                {
-                    tenantId = tenant.TenantId,
-                    name = tenant.Name,
-                    displayName = tenant.DisplayName,
-                    description = tenant.Description,
-                    logoUrl = tenant.LogoUrl,
-                    domain = tenant.Domain,
-                    // 主题配置（如果有的话）
-                    themeConfig = !string.IsNullOrEmpty(tenant.ThemeConfig) ? 
-                        JsonSerializer.Deserialize<object>(tenant.ThemeConfig) : null,
-                    // 功能配置（如果有的话）
-                    configuration = !string.IsNullOrEmpty(tenant.Configuration) ? 
-                        JsonSerializer.Deserialize<object>(tenant.Configuration) : null,
-                    isActive = tenant.IsActive,
-                    expiresAt = tenant.ExpiresAt
-                };
-
-                return Ok(ApiResponse<object>.Success(config));
             }
             catch (Exception ex)
             {
@@ -404,4 +460,4 @@ namespace CodeSpirit.IdentityApi.Controllers
         [AmisDatetimeField(RelativeTime = "nextmonth", Placeholder = "请选择新的过期时间")]
         public DateTime ExpiresAt { get; set; }
     }
-} 
+}

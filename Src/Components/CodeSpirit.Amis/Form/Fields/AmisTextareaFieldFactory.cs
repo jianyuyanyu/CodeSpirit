@@ -30,10 +30,11 @@ namespace CodeSpirit.Amis.Form.Fields
                 field["maxRows"] = attr.MaxRows;
                 field["trim"] = attr.Trim;
                 field["showCounter"] = attr.ShowCounter;
-                field["maxLength"] = attr.MaxLength;
+                if (attr.MaxLength > 0)
+                    field["maxLength"] = attr.MaxLength;
                 field["resizable"] = attr.Resizable;
             }
             return field;
         }
     }
-} 
+}

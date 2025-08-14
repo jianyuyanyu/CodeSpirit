@@ -40,7 +40,7 @@ namespace CodeSpirit.IdentityApi.Dtos.Tenant
         /// </summary>
         [StringLength(500, ErrorMessage = "描述长度不能超过500个字符")]
         [DisplayName("描述")]
-        [AmisTextareaField(Placeholder = "请输入租户描述", MinRows = 3, MaxRows = 5)]
+        [AmisTextareaField(Placeholder = "请输入租户描述", MinRows = 3, MaxRows = 500)]
         public string Description { get; set; }
 
         /// <summary>

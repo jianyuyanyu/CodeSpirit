@@ -47,9 +47,9 @@ public class SystemUsersController : ApiControllerBase
     /// <returns>系统用户分页列表</returns>
     [HttpGet]
     [DisplayName("获取系统用户列表")]
-    public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> GetSystemUsers([FromQuery] SystemUserQueryDto queryDto)
+    public async Task<ActionResult<ApiResponse<PageList<SystemUserDto>>>> GetSystemUsers([FromQuery] SystemUserQueryDto queryDto)
     {
-        PageList<UserDto> users = await _userService.GetSystemUsersAsync(queryDto);
+        PageList<SystemUserDto> users = await _userService.GetSystemUsersAsync(queryDto);
         return SuccessResponse(users);
     }
 
@@ -72,7 +72,7 @@ public class SystemUsersController : ApiControllerBase
     /// <returns>用户数据</returns>
     [HttpGet("export")]
     [DisplayName("导出系统用户列表")]
-    public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> ExportSystemUsers([FromQuery] SystemUserQueryDto queryDto)
+    public async Task<ActionResult<ApiResponse<PageList<SystemUserDto>>>> ExportSystemUsers([FromQuery] SystemUserQueryDto queryDto)
     {
         // 设置导出时的分页参数
         const int MaxExportLimit = 50000; // 系统级导出数量上限更高
@@ -80,10 +80,10 @@ public class SystemUsersController : ApiControllerBase
         queryDto.Page = 1;
 
         // 获取用户数据
-        PageList<UserDto> users = await _userService.GetSystemUsersAsync(queryDto);
+        var users = await _userService.GetSystemUsersAsync(queryDto);
 
         // 如果数据为空则返回错误信息
-        return users.Items.Count == 0 ? BadResponse<PageList<UserDto>>("没有数据可供导出") : SuccessResponse(users);
+        return users.Items.Count == 0 ? BadResponse<PageList<SystemUserDto>>("没有数据可供导出") : SuccessResponse(users);
     }
 
     /// <summary>
@@ -122,18 +122,18 @@ public class SystemUsersController : ApiControllerBase
     //     }
     // }
 
-    /// <summary>
-    /// 创建系统用户
-    /// </summary>
-    /// <param name="createUserDto">创建用户DTO</param>
-    /// <returns>创建结果</returns>
-    [HttpPost]
-    [DisplayName("创建系统用户")]
-    public async Task<ActionResult<ApiResponse<UserDto>>> CreateSystemUser(CreateUserDto createUserDto)
-    {
-        var userDto = await _userService.CreateAsync(createUserDto);
-        return SuccessResponseWithCreate<UserDto>(nameof(Detail), userDto);
-    }
+    ///// <summary>
+    ///// 创建系统用户
+    ///// </summary>
+    ///// <param name="createUserDto">创建用户DTO</param>
+    ///// <returns>创建结果</returns>
+    //[HttpPost]
+    //[DisplayName("创建系统用户")]
+    //public async Task<ActionResult<ApiResponse<UserDto>>> CreateSystemUser(CreateUserDto createUserDto)
+    //{
+    //    var userDto = await _userService.CreateAsync(createUserDto);
+    //    return SuccessResponseWithCreate<UserDto>(nameof(Detail), userDto);
+    //}
 
     /// <summary>
     /// 更新用户信息

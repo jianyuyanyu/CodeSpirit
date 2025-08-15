@@ -1128,7 +1128,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     /// </summary>
     /// <param name="queryDto">查询条件</param>
     /// <returns>系统用户分页列表</returns>
-    public async Task<PageList<UserDto>> GetSystemUsersAsync(SystemUserQueryDto queryDto)
+    public async Task<PageList<SystemUserDto>> GetSystemUsersAsync(SystemUserQueryDto queryDto)
     {
         ExpressionStarter<ApplicationUser> predicate = PredicateBuilder.New<ApplicationUser>(true);
 
@@ -1209,9 +1209,9 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
             .ToListAsync();
 
         // 映射结果
-        var mappedItems = Mapper.Map<List<UserDto>>(items);
+        var mappedItems = Mapper.Map<List<SystemUserDto>>(items);
         
-        return new PageList<UserDto>
+        return new PageList<SystemUserDto>
         {
             Total = totalCount,
             Items = mappedItems

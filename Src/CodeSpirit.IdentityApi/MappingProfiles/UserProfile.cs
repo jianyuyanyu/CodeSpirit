@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Dtos.User;
 using System.Data;
 
 namespace CodeSpirit.IdentityApi.MappingProfiles
@@ -15,6 +16,14 @@ namespace CodeSpirit.IdentityApi.MappingProfiles
                 src.UserRoles != null ? 
                 src.UserRoles.Select(ur => ur.Role.Name).ToList() : 
                 new List<string>()));
+
+            // 从 ApplicationUser 到 SystemUserDto 的映射
+            CreateMap<ApplicationUser, SystemUserDto>()
+                .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => 
+                    src.UserRoles != null ? 
+                    src.UserRoles.Select(ur => ur.Role.Name).ToList() : 
+                    new List<string>()))
+                .ForMember(dest => dest.TenantId, opt => opt.MapFrom(src => src.TenantId));
                 
             // 从 CreateUserDto 到 ApplicationUser 的映射
             CreateMap<CreateUserDto, ApplicationUser>()

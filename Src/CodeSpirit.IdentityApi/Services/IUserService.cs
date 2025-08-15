@@ -135,7 +135,7 @@ public interface IUserService : IBaseCRUDIService<ApplicationUser, UserDto, long
     /// </summary>
     /// <param name="queryDto">查询条件</param>
     /// <returns>系统用户分页列表</returns>
-    Task<PageList<UserDto>> GetSystemUsersAsync(SystemUserQueryDto queryDto);
+    Task<PageList<SystemUserDto>> GetSystemUsersAsync(SystemUserQueryDto queryDto);
 
     /// <summary>
     /// 获取按租户分组的用户统计信息

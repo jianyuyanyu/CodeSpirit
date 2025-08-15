@@ -46,15 +46,10 @@
                         "zIndex": "10"
                     },
                     "body": [
-                        // 租户信息显示
-                        {
-                            "type": "tpl",
-                            "tpl": "<div class='tenant-info'><i class='fa fa-building'></i><span class='tenant-name'>${tenantDisplayName | raw}</span></div>"
-                        },
                         // Logo和标题
                         {
                             "type": "tpl",
-                            "tpl": buildExamBrandingTpl(),
+                            "tpl": "<div class='exam-logo text-center'><img src='${tenantConfig.logoUrl}' alt='${tenantDisplayName}' onerror=\"this.src='/logo.png'\" loading='lazy' /><h2>${tenantDisplayName}<span class='exam-badge'>2.0</span></h2><p class='exam-subtitle'><i class='fa fa-graduation-cap'></i>安全考试环境 - 请使用您的账户凭据登录</p></div >",
                             "className": "mb-4"
                         },
                         // 登录表单面板
@@ -351,29 +346,6 @@
     }
 
     /**
-     * 构建考试系统品牌信息模板
-     * @returns {string} HTML模板
-     */
-    function buildExamBrandingTpl() {
-        const config = window.tenantConfig || {};
-        const logoUrl = config.logoUrl || '/logo.png';
-        const displayName = config.displayName || config.name || '考试系统';
-        
-        return `
-            <div class='exam-logo text-center'>
-                <img src='${logoUrl}' alt='${displayName}' 
-                     onerror="this.src='/logo.png'" 
-                     loading="lazy" />
-                <h2>${displayName}<span class='exam-badge'>2.0</span></h2>
-                <p class='exam-subtitle'>
-                    <i class='fa fa-graduation-cap'></i>
-                    安全考试环境 - 请使用您的账户凭据登录
-                </p>
-            </div>
-        `;
-    }
-
-    /**
      * 构建考试系统页脚模板
      * @returns {string} HTML模板
      */
@@ -665,9 +637,6 @@
      */
     window.handleLoginSuccess = function(data) {
         try {
-            // 显示成功提示
-            showSuccessToast('登录成功！正在进入考试系统...');
-            
             // 保存认证信息
             if (data.token) {
                 TokenManager.setToken(data.token, 24);

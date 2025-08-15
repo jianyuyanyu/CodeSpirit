@@ -141,8 +141,19 @@ namespace CodeSpirit.IdentityApi.Services
         /// <returns>用户权限列表</returns>
         public async Task<HashSet<string>> GetUserPermissionsAsync(long userId)
         {
-            // 定义缓存键
-            string cacheKey = CacheKeys.GetUserPermissionsCacheKey(userId);
+            // 获取用户信息以确定租户ID
+            var user = await _userRepository.CreateQuery()
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+                
+            if (user == null)
+            {
+                _logger.LogWarning("获取权限失败，用户不存在，用户ID: {UserId}", userId);
+                return new HashSet<string>();
+            }
+            
+            // 定义缓存键（包含租户信息）
+            string cacheKey = CacheKeys.GetUserPermissionsCacheKey(userId, user.TenantId);
             
             // 尝试从缓存中获取
             var cachedPermissions = await _cache.GetAsync<HashSet<string>>(cacheKey);
@@ -152,19 +163,13 @@ namespace CodeSpirit.IdentityApi.Services
                 return cachedPermissions;
             }
             
-            // 缓存未命中，从数据库获取
-            var user = await _userRepository.CreateQuery()
+            // 缓存未命中，从数据库获取详细信息
+            user = await _userRepository.CreateQuery()
                 .IgnoreQueryFilters()
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
                         .ThenInclude(r => r.RolePermission)
                 .FirstOrDefaultAsync(u => u.Id == userId);
-                
-            if (user == null)
-            {
-                _logger.LogWarning("获取权限失败，用户不存在，用户ID: {UserId}", userId);
-                return new HashSet<string>();
-            }
             
             // 收集用户所有角色的所有权限
             var permissions = new HashSet<string>();
@@ -287,9 +292,21 @@ namespace CodeSpirit.IdentityApi.Services
 
                 foreach (var userId in userIds)
                 {
-                    string cacheKey = CacheKeys.GetUserPermissionsCacheKey(userId);
-                    await _cache.RemoveAsync(cacheKey);
-                    _logger.LogDebug("已清除用户权限缓存，用户ID: {UserId}, 角色ID: {RoleId}", userId, roleId);
+                    // 获取用户租户信息以生成正确的缓存键
+                    var user = await _userRepository.CreateQuery()
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(u => u.Id == userId);
+                        
+                    if (user != null)
+                    {
+                        string cacheKey = CacheKeys.GetUserPermissionsCacheKey(userId, user.TenantId);
+                        await _cache.RemoveAsync(cacheKey);
+                        _logger.LogDebug("已清除用户权限缓存，用户ID: {UserId}, 租户ID: {TenantId}, 角色ID: {RoleId}", userId, user.TenantId, roleId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("无法清除用户权限缓存，用户不存在，用户ID: {UserId}, 角色ID: {RoleId}", userId, roleId);
+                    }
                 }
             }
             catch (Exception ex)

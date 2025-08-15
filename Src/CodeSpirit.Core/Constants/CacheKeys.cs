@@ -10,14 +10,9 @@ namespace CodeSpirit.Core.Constants
         #region 权限缓存
 
         /// <summary>
-        /// 用户权限缓存键格式，参数：用户ID
+        /// 用户权限缓存键格式（必须包含租户ID），参数：用户ID、租户ID
         /// </summary>
-        public const string UserPermissions = "UserPermissions:{0}";
-
-        /// <summary>
-        /// 用户权限缓存键格式（包含租户），参数：用户ID、租户ID
-        /// </summary>
-        public const string UserPermissionsWithTenant = "UserPermissions:{0}:Tenant:{1}";
+        public const string UserPermissions = "UserPermissions:{0}:Tenant:{1}";
 
         /// <summary>
         /// 用户权限缓存过期时间 - 绝对过期时间（小时）
@@ -57,18 +52,18 @@ namespace CodeSpirit.Core.Constants
         #region 辅助方法
 
         /// <summary>
-        /// 生成用户权限缓存键
+        /// 生成用户权限缓存键（必须包含租户ID）
         /// </summary>
         /// <param name="userId">用户ID</param>
-        /// <param name="tenantId">租户ID（可选）</param>
+        /// <param name="tenantId">租户ID（必需）</param>
         /// <returns>缓存键</returns>
-        public static string GetUserPermissionsCacheKey(long userId, string tenantId = null)
+        public static string GetUserPermissionsCacheKey(long userId, string tenantId)
         {
             if (string.IsNullOrEmpty(tenantId))
             {
-                return string.Format(UserPermissions, userId);
+                throw new ArgumentException("租户ID不能为空", nameof(tenantId));
             }
-            return string.Format(UserPermissionsWithTenant, userId, tenantId);
+            return string.Format(UserPermissions, userId, tenantId);
         }
 
         /// <summary>

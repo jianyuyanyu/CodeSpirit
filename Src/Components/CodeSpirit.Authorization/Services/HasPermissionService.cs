@@ -100,7 +100,16 @@ namespace CodeSpirit.Authorization.Services
             var navigationPermissions = ExtractNavigationPermissions(_currentUser.Permissions);
 
             // 使用权限服务检查导航权限
-            return _permissionService.HasPermission(permissionCode, navigationPermissions);
+            var hasPermission = _permissionService.HasPermission(permissionCode, navigationPermissions);
+            
+            // 详细调试日志
+            _logger.LogDebug("导航权限检查详情: 权限代码={PermissionCode}, 用户原始权限=[{UserPermissions}], 提取的导航权限=[{NavigationPermissions}], 检查结果={HasPermission}",
+                permissionCode,
+                string.Join(",", _currentUser.Permissions ?? new HashSet<string>()),
+                string.Join(",", navigationPermissions),
+                hasPermission);
+                
+            return hasPermission;
         }
 
         /// <summary>

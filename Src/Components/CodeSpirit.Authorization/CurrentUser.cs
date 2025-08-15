@@ -247,7 +247,13 @@ namespace CodeSpirit.Authorization
                     return new HashSet<string>();
                 }
 
-                // 定义缓存键，包含租户信息
+                // 检查租户ID是否存在
+                if (string.IsNullOrEmpty(TenantId))
+                {
+                    return new HashSet<string>();
+                }
+
+                // 定义缓存键，必须包含租户信息
                 string cacheKey = CacheKeys.GetUserPermissionsCacheKey(Id.Value, TenantId);
 
                 // 尝试从缓存中获取权限

@@ -1477,9 +1477,18 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     {
         try
         {
-            string cacheKey = CacheKeys.GetUserPermissionsCacheKey(userId);
-            await _cache.RemoveAsync(cacheKey);
-            _logger.LogDebug("已清除用户权限缓存，用户ID: {UserId}", userId);
+            // 获取用户租户信息以生成正确的缓存键
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user != null)
+            {
+                string cacheKey = CacheKeys.GetUserPermissionsCacheKey(userId, user.TenantId);
+                await _cache.RemoveAsync(cacheKey);
+                _logger.LogDebug("已清除用户权限缓存，用户ID: {UserId}, 租户ID: {TenantId}", userId, user.TenantId);
+            }
+            else
+            {
+                _logger.LogWarning("无法清除用户权限缓存，用户不存在，用户ID: {UserId}", userId);
+            }
         }
         catch (Exception ex)
         {

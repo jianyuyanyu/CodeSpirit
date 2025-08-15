@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Constants;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
@@ -11,8 +12,10 @@ using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using System.Globalization;
 using CodeSpirit.Core.Extensions;
+using CodeSpirit.Authorization.Extensions;
 
 public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, CreateUserDto, UpdateUserDto, UserBatchImportItemDto>, IUserService
 {
@@ -24,6 +27,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
     private readonly ICurrentUser _currentUser;
     private readonly ApplicationDbContext _dbContext;
     private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
+    private readonly IDistributedCache _cache;
 
     public UserService(
         IRepository<ApplicationUser> userRepository,
@@ -34,7 +38,8 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         IIdGenerator idGenerator,
         ICurrentUser currentUser,
         ApplicationDbContext dbContext,
-        IPasswordHasher<ApplicationUser> passwordHasher)
+        IPasswordHasher<ApplicationUser> passwordHasher,
+        IDistributedCache cache)
         : base(userRepository, mapper)
     {
         _userRepository = userRepository;
@@ -45,6 +50,7 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         _currentUser = currentUser;
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
+        _cache = cache;
     }
 
     public async Task<PageList<UserDto>> GetUsersAsync(UserQueryDto queryDto)
@@ -208,6 +214,8 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         if (updateDto.Roles != null && updateDto.Roles.Count > 0)
         {
             await UpdateUserRolesAsync(entity, updateDto.Roles);
+            // 角色发生变更，清除用户权限缓存
+            await InvalidateUserPermissionCacheAsync(entity.Id);
         }
     }
 
@@ -223,6 +231,9 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         {
             throw new AppServiceException(400, "不能删除管理员用户！");
         }
+        
+        // 删除用户前清除其权限缓存
+        await InvalidateUserPermissionCacheAsync(entity.Id);
     }
 
     protected override string GetImportItemId(UserBatchImportItemDto importDto)
@@ -236,6 +247,8 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
             ?? throw new AppServiceException(404, "用户不存在！");
 
         await AssignRolesAsync(user, roles);
+        // 角色分配后，清除用户权限缓存
+        await InvalidateUserPermissionCacheAsync(user.Id);
     }
 
     public async Task RemoveRolesAsync(long id, List<string> roles)
@@ -256,6 +269,8 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         {
             throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
         }
+        // 角色移除后，清除用户权限缓存
+        await InvalidateUserPermissionCacheAsync(user.Id);
     }
 
     private async Task AssignRolesAsync(ApplicationUser user, List<string> roles)
@@ -316,6 +331,8 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         if (updateUserDto.Roles != null)
         {
             await UpdateUserRolesAsync(user, updateUserDto.Roles);
+            // 角色发生变更，清除用户权限缓存
+            await InvalidateUserPermissionCacheAsync(user.Id);
         }
     }
 
@@ -325,9 +342,12 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         List<string> rolesToAdd = newRoles.Except(currentRoles).ToList();
         List<string> rolesToRemove = currentRoles.Except(newRoles).ToList();
 
+        bool rolesChanged = false;
+        
         if (rolesToAdd.Any())
         {
             await AssignRolesAsync(user, rolesToAdd);
+            rolesChanged = true;
         }
 
         if (rolesToRemove.Any())
@@ -337,6 +357,13 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
             {
                 throw new AppServiceException(400, string.Join(", ", removeResult.Errors.Select(e => e.Description)));
             }
+            rolesChanged = true;
+        }
+        
+        // 如果角色发生了变更，清除用户权限缓存
+        if (rolesChanged)
+        {
+            await InvalidateUserPermissionCacheAsync(user.Id);
         }
     }
 
@@ -359,6 +386,9 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         {
             throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)));
         }
+        
+        // 用户状态变更后，清除其权限缓存（特别是禁用用户时）
+        await InvalidateUserPermissionCacheAsync(user.Id);
     }
 
     public async Task<string> ResetRandomPasswordAsync(long id)
@@ -1433,6 +1463,28 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         };
 
         return await Task.FromResult(result);
+    }
+
+    #endregion
+
+    #region 权限缓存管理
+
+    /// <summary>
+    /// 清除用户权限缓存
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    private async Task InvalidateUserPermissionCacheAsync(long userId)
+    {
+        try
+        {
+            string cacheKey = CacheKeys.GetUserPermissionsCacheKey(userId);
+            await _cache.RemoveAsync(cacheKey);
+            _logger.LogDebug("已清除用户权限缓存，用户ID: {UserId}", userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清除用户权限缓存失败，用户ID: {UserId}", userId);
+        }
     }
 
     #endregion

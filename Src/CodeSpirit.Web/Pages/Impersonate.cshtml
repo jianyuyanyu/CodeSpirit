@@ -27,19 +27,39 @@
                 location: history.location,
                 data: {},
                 context: {
-                    
+
                 }
             }, { theme: 'antd' });
         })();
 
-        // 从URL获取token参数
+        // 从URL获取token和tenantId参数
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
+        const tenantId = urlParams.get('tenantId');
 
         if (token) {
-            TokenManager.setToken(token);
-            // 跳转到根页面
-            window.location.href = '/';
+            try {
+                // 根据是否有tenantId来判断使用哪种模式
+                if (tenantId && tenantId !== 'null' && tenantId !== '') {
+                    // 有租户ID，使用租户模式
+                    console.log('模拟登录：切换到租户模式，租户ID:', tenantId);
+                    TokenManager.initTenantMode(tenantId);
+                    // 设置租户Token，包含刷新Token和过期时间（3小时过期）
+                    TokenManager.setTokenExtended(token, null, 10800, tenantId);
+                    const baseUrl = `/${tenantId}/admin`;
+                    window.location.href = baseUrl;
+                } else {
+                    // 没有租户ID，使用系统模式
+                    console.log('模拟登录：使用系统模式');
+                    TokenManager.initSystemMode();
+                    TokenManager.setToken(token, 3); // 3小时过期
+                    window.location.href = '/';
+                }                
+            } catch (error) {
+                console.error('模拟登录Token设置失败:', error);
+                alert('模拟登录失败：' + error.message);
+                window.location.href = '/';
+            }
         } else {
             alert('Token参数不能为空');
             window.location.href = '/';

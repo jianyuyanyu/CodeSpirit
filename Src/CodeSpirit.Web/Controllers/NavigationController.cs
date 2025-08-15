@@ -332,12 +332,56 @@ namespace CodeSpirit.Web.Controllers
         private static string GetSchemaApi(NavigationNode node)
         {
             if (node.IsExternal) return null;
-            //针对web模块的特殊处理，直接返回options:/{route}?amis格式
-            if (node.ModuleName.Equals("web", StringComparison.CurrentCultureIgnoreCase))
+            
+            // 如果有明确的Route信息，直接使用
+            if (!string.IsNullOrEmpty(node.Route))
             {
-                return !string.IsNullOrEmpty(node.Route) ? $"options:/{node.Route}?amis" : null;
+                // 针对web模块的特殊处理，直接返回options:/{route}格式
+                if (node.ModuleName.Equals("web", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    return $"options:/{node.Route}?amis";
+                }
+                
+                // 优先级：元数据配置 > Route自动解析 > 模块名
+                string apiPrefix = GetApiPrefix(node);
+                return $"options:/{apiPrefix}/{node.Route}?amis";
             }
-            return !string.IsNullOrEmpty(node.Route) ? $"options:/{node.ModuleName.ToCamelCase()}/{node.Route}?amis" : null;
+            
+            return null;
+        }
+
+        /// <summary>
+        /// 获取API前缀，支持多种方式：元数据配置、Route自动解析、模块名fallback
+        /// </summary>
+        /// <param name="node">导航节点</param>
+        /// <returns>API前缀</returns>
+        private static string GetApiPrefix(NavigationNode node)
+        {
+            // 方式1：检查元数据中是否配置了API前缀
+            if (node.MetaData?.ContainsKey("apiPrefix") == true)
+            {
+                var apiPrefix = node.MetaData["apiPrefix"]?.ToString();
+                if (!string.IsNullOrEmpty(apiPrefix))
+                {
+                    return apiPrefix;
+                }
+            }
+            
+            // 方式2：从Route自动解析API前缀
+            // Route格式通常是：api/{prefix}/[controller] 或 api/{prefix}/{controller}
+            if (!string.IsNullOrEmpty(node.Route))
+            {
+                var routeParts = node.Route.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (routeParts.Length >= 2 && routeParts[0].Equals("api", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 如果Route是完整的api路径，提取前缀部分
+                    // 例如：api/identity/tenants -> 提取 "identity"
+                    return routeParts[1];
+                }
+            }
+            
+            // 方式3：Fallback到模块名
+            return node.ModuleName.ToCamelCase();
         }
     }
 

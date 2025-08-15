@@ -18,7 +18,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     /// </summary>
     [DisplayName("租户管理")]
     [Navigation(Icon = "fa-solid fa-building", PlatformType = PlatformType.System)]
-    public class TenantsController : ApiControllerBase
+    public class TenantsController : TenantApiControllerBase
     {
         private readonly ITenantService _tenantService;
         private readonly ITenantDataInitializationService _dataInitializationService;

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Constants;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Role;
@@ -141,7 +142,7 @@ namespace CodeSpirit.IdentityApi.Services
         public async Task<HashSet<string>> GetUserPermissionsAsync(long userId)
         {
             // 定义缓存键
-            string cacheKey = $"UserPermissions:{userId}";
+            string cacheKey = CacheKeys.GetUserPermissionsCacheKey(userId);
             
             // 尝试从缓存中获取
             var cachedPermissions = await _cache.GetAsync<HashSet<string>>(cacheKey);
@@ -181,8 +182,8 @@ namespace CodeSpirit.IdentityApi.Services
             // 将权限存入缓存
             var cacheOptions = new DistributedCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(12),
-                SlidingExpiration = TimeSpan.FromMinutes(30)
+                AbsoluteExpirationRelativeToNow = CacheKeys.UserPermissionsAbsoluteExpiration,
+                SlidingExpiration = CacheKeys.UserPermissionsSlidingExpiration
             };
             
             await _cache.SetAsync(cacheKey, permissions, cacheOptions);
@@ -286,7 +287,7 @@ namespace CodeSpirit.IdentityApi.Services
 
                 foreach (var userId in userIds)
                 {
-                    string cacheKey = $"UserPermissions:{userId}";
+                    string cacheKey = CacheKeys.GetUserPermissionsCacheKey(userId);
                     await _cache.RemoveAsync(cacheKey);
                     _logger.LogDebug("已清除用户权限缓存，用户ID: {UserId}, 角色ID: {RoleId}", userId, roleId);
                 }

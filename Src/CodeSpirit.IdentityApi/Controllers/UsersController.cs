@@ -169,7 +169,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // POST: api/Users/{id}/impersonate
         [HttpPost("{id}/impersonate")]
-        [Operation("模拟登录", "ajax", null, "确定要模拟此用户登录吗？", "isActive == true", Redirect = "/impersonate?token=${token}")]
+        [Operation("模拟登录", "ajax", null, "确定要模拟此用户登录吗？", "isActive == true", Redirect = "/impersonate?token=${token}&tenantId=${tenantId}")]
         [DisplayName("模拟用户登录")]
         public async Task<ActionResult<ApiResponse<object>>> ImpersonateUser(long id)
         {
@@ -190,8 +190,12 @@ namespace CodeSpirit.IdentityApi.Controllers
                 return BadResponse<object>("无法模拟已禁用的用户！");
             }
 
-            (bool success, string message, string token, UserDto userInfo) = await _authService.ImpersonateLoginAsync(user.UserName);
-            return !success ? BadResponse<object>(message) : SuccessResponse<object>(new { token, userInfo });
+            // 获取当前租户ID（从当前用户的Claims中获取）
+            var currentTenantId = User.FindFirst("TenantId")?.Value;
+            
+            // 传递租户ID给模拟登录方法
+            (bool success, string message, string token, UserDto userInfo) = await _authService.ImpersonateLoginAsync(user.UserName, currentTenantId);
+            return !success ? BadResponse<object>(message) : SuccessResponse<object>(new { token, userInfo, tenantId = currentTenantId });
         }
 
         // POST: api/Users/batch/import

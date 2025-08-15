@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Constants;
 using CodeSpirit.Authorization.Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
@@ -247,11 +248,7 @@ namespace CodeSpirit.Authorization
                 }
 
                 // 定义缓存键，包含租户信息
-                string cacheKey = $"UserPermissions:{Id.Value}";
-                if (!string.IsNullOrEmpty(TenantId))
-                {
-                    cacheKey += $":Tenant:{TenantId}";
-                }
+                string cacheKey = CacheKeys.GetUserPermissionsCacheKey(Id.Value, TenantId);
 
                 // 尝试从缓存中获取权限
                 var cachedPermissions = _cache.GetAsync<HashSet<string>>(cacheKey).GetAwaiter().GetResult();

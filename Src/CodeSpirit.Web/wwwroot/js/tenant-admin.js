@@ -77,7 +77,7 @@
                         },
                         {
                             type: 'dropdown-button',
-                            label: '${userName || email || "用户"}',
+                            label: '${name || userName || email || "用户"}',
                             icon: 'fa fa-user',
                             trigger: 'click',
                             closeOnClick: true,
@@ -162,7 +162,7 @@
             }
 
             // 特殊路径处理
-            if (to.startsWith('/login') || to.startsWith('/notifications') || to.startsWith('/chat')) {
+            if (to.startsWith('/impersonate') || to.startsWith('/login') || to.startsWith('/notifications') || to.startsWith('/chat') || to.endsWith("/login")) {
                 window.location.href = to;
                 return;
             }
@@ -549,8 +549,7 @@
      */
     window.fetchTenantInfo = withErrorHandling(async function () {
         const token = TokenManager.getToken();
-
-        const response = await fetch(`/identity/api/identity/tenants/${tenantId}`, {
+        const response = await fetch(`/identity/api/identity/tenants/${tenantId}/login-config`, {
             headers: {
                 'Authorization': token ? `Bearer ${token}` : '',
                 'X-Forwarded-With': 'CodeSpirit',

@@ -381,50 +381,53 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 23. [🕒 Time Processing Mechanism](./Docs/03-Core-Components/CodeSpirit时间处理机制.md) - Unified time processing solution
 24. [🌐 Client IP Service](./Docs/03-Core-Components/ClientIpService使用指南.md) - Client IP acquisition and processing
 25. [📋 Audit Component Integration Guide](./Docs/03-Core-Components/CodeSpirit.Audit审计组件集成使用指南.md) - Complete audit system integration and usage
-
-### 📝 Exam System
-
-26. [📚 Exam System Overview](./Docs/09-Exam-System/README.md) - Complete exam system documentation navigation and quick reference
-27. [🏗️ Exam System Technical Architecture](./Docs/09-Exam-System/考试系统完整说明文档.md) - Comprehensive technical architecture, API design and security mechanisms
-28. [📋 Exam System Business Functions](./Docs/09-Exam-System/考试系统业务功能清单.md) - Complete business function list with 200+ features across 12 modules
+26. [🚀 Unified Startup Framework Usage Guide](./Docs/03-Core-Components/CodeSpirit统一启动框架使用指南.md) - Unified API project startup framework, simplifying project creation and configuration
+27. [🏗️ Unified Startup Framework Core Architecture](./Docs/03-Core-Components/CodeSpirit统一启动框架核心架构.md) - Architecture design and implementation principles of the unified startup framework
+28. [📦 API Configuration Class Development Guide](./Docs/03-Core-Components/CodeSpirit.API配置类开发指南.md) - Development standards and best practices for API configuration classes
+29. [🔌 Middleware Injection Point Usage Guide](./Docs/03-Core-Components/CodeSpirit中间件插入点使用指南.md) - Usage methods and extension mechanisms for middleware injection points
+30. [🔄 Unified Startup Framework Migration Guide](./Docs/03-Core-Components/CodeSpirit统一启动框架迁移指南.md) - Detailed guide for migrating existing projects to the unified startup framework
+31. [📝 Scrutor Dependency Injection Integration Guide](./Docs/03-Core-Components/Scrutor依赖注入集成指南.md) - Integration and usage methods of Scrutor library in the framework
+32. [🖼️ Image Processing Service Integration Guide](./Docs/03-Core-Components/CodeSpirit.ImageProcessingService图片处理服务集成指南.md) - Integration and usage of image processing services
+33. [📎 Entity File Reference Event Handler Usage Guide](./Docs/03-Core-Components/CodeSpirit.EntityFileReferenceHandler实体文件引用事件处理器使用指南.md) - Automatic management of entity file references
+34. [🏷️ Resource Management Component Usage Guide](./Docs/03-Core-Components/ResourceTagHelper资源管理组件使用指南.md) - Usage methods of resource tag helpers
 
 ### 🔐 Identity & Authorization
 
-29. [🔑 IdentityApi Identity Service](./Docs/04-Identity-Auth/CodeSpirit.IdentityApi身份认证服务.md) - Complete identity authentication service architecture
-30. [👮 Authorization Component](./Docs/04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md) - Comprehensive permission system with RBAC+ABAC hybrid model
-31. [🎫 TokenManager Frontend Authentication Manager](./Docs/04-Identity-Auth/CodeSpirit.TokenManager前端认证管理器使用指南.md) - Frontend authentication management and token handling
-32. [⚙️ ISettableCurrentUser Interface Guide](./Docs/04-Identity-Auth/ISettableCurrentUser可设置用户接口使用指南.md) - Settable current user interface for dynamic user context scenarios
+35. [🔑 IdentityApi Identity Service](./Docs/04-Identity-Auth/CodeSpirit.IdentityApi身份认证服务.md) - Complete identity authentication service architecture
+36. [👮 Authorization Component](./Docs/04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md) - Comprehensive permission system with RBAC+ABAC hybrid model
+37. [🎫 TokenManager Frontend Authentication Manager](./Docs/04-Identity-Auth/CodeSpirit.TokenManager前端认证管理器使用指南.md) - Frontend authentication management and token handling
+38. [⚙️ ISettableCurrentUser Interface Guide](./Docs/04-Identity-Auth/ISettableCurrentUser可设置用户接口使用指南.md) - Settable current user interface for dynamic user context scenarios
 
 ### 🏢 Multi-Tenancy Architecture
 
-33. [🏗️ Multi-Tenant Component Refactoring Plan](./Docs/05-Multi-Tenancy/CodeSpirit多租户组件整改计划.md) - Multi-tenancy architecture improvement and implementation plan
-34. [🎯 TenantResolver Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.TenantResolver租户解析器使用指南.md) - Tenant resolution and context management
-35. [🔍 DataFilter Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.DataFilter数据筛选器使用指南.md) - Data filtering and tenant isolation mechanisms
-36. [🗄️ Multi-Tenant Database Context Architecture](./Docs/05-Multi-Tenancy/CodeSpirit 多租户数据库上下文架构.md) - Database architecture design for multi-tenancy
-37. [✅ ExamApi Multi-Tenant Integration Report](./Docs/05-Multi-Tenancy/ExamApi多租户集成完成报告.md) - Multi-tenant integration completion report for exam system
-38. [🖥️ Multi-Tenant Login Page Usage Guide](./Docs/05-Multi-Tenancy/多租户登录页面使用指南.md) - Multi-tenant login interface implementation
-39. [🎯 Tenant-Aware Event System Design](./Docs/05-Multi-Tenancy/CodeSpirit 租户感知事件系统设计.md) - Comprehensive tenant-aware event bus architecture and implementation
+39. [🏗️ Multi-Tenant Component Refactoring Plan](./Docs/05-Multi-Tenancy/CodeSpirit多租户组件整改计划.md) - Multi-tenancy architecture improvement and implementation plan
+40. [🎯 TenantResolver Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.TenantResolver租户解析器使用指南.md) - Tenant resolution and context management
+41. [🔍 DataFilter Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.DataFilter数据筛选器使用指南.md) - Data filtering and tenant isolation mechanisms
+42. [🗄️ Multi-Tenant Database Context Architecture](./Docs/05-Multi-Tenancy/CodeSpirit 多租户数据库上下文架构.md) - Database architecture design for multi-tenancy
+43. [🖥️ Multi-Tenant Login Page Usage Guide](./Docs/05-Multi-Tenancy/多租户登录页面使用指南.md) - Multi-tenant login interface implementation
+44. [🎯 Tenant-Aware Event System Design](./Docs/05-Multi-Tenancy/CodeSpirit 租户感知事件系统设计.md) - Comprehensive tenant-aware event bus architecture and implementation
 
 ### 🚀 Infrastructure & DevOps
 
-40. [🐰 RabbitMQ Integration Guide](./Docs/06-Infrastructure/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
-41. [🔧 RabbitMQ Troubleshooting](./Docs/06-Infrastructure/RabbitMQ故障排除指南.md) - Common problem solutions
-42. [🔍 Elasticsearch Migration Summary](./Docs/06-Infrastructure/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
-43. [🌐 CORS Policy Configuration Guide](./Docs/06-Infrastructure/CodeSpirit跨域策略配置指南.md) - CORS cross-origin resource sharing configuration and security policies
+45. [🐰 RabbitMQ Integration Guide](./Docs/06-Infrastructure/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
+46. [🔧 RabbitMQ Troubleshooting](./Docs/06-Infrastructure/RabbitMQ故障排除指南.md) - Common problem solutions
+47. [🔍 Elasticsearch Migration Summary](./Docs/06-Infrastructure/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
+48. [🌐 CORS Policy Configuration Guide](./Docs/06-Infrastructure/CodeSpirit跨域策略配置指南.md) - CORS cross-origin resource sharing configuration and security policies
+49. [📁 File Storage Service Implementation](./Docs/06-Infrastructure/CodeSpirit文件存储服务方案实现.md) - File storage service architecture design and implementation
 
 ### 🌐 API & Communication
 
-44. [🔗 Universal API Jump Mechanism Usage Guide](./Docs/07-API-Communication/CodeSpirit通用API跳转机制使用指南.md) - Universal API routing and communication mechanisms
+50. [🔗 Universal API Jump Mechanism Usage Guide](./Docs/07-API-Communication/CodeSpirit通用API跳转机制使用指南.md) - Universal API routing and communication mechanisms
 
 ### 📊 Project Management
 
-45. [📋 Technical Debt Management](./Docs/08-Project-Management/技术债管理文档.md) - Technical debt tracking and management standards
+51. [📋 Technical Debt Management](./Docs/08-Project-Management/技术债管理文档.md) - Technical debt tracking and management standards
 
 ### 📝 Exam System
 
-46. [📚 Exam System Overview](./Docs/09-Exam-System/README.md) - Complete exam system documentation navigation and quick reference
-47. [🏗️ Exam System Technical Architecture](./Docs/09-Exam-System/考试系统完整说明文档.md) - Comprehensive technical architecture, API design and security mechanisms
-48. [📋 Exam System Business Functions](./Docs/09-Exam-System/考试系统业务功能清单.md) - Complete business function list with 200+ features across 12 modules
+52. [📚 Exam System Overview](./Docs/09-Exam-System/README.md) - Complete exam system documentation navigation and quick reference
+53. [🏗️ Exam System Technical Architecture](./Docs/09-Exam-System/考试系统完整说明文档.md) - Comprehensive technical architecture, API design and security mechanisms
+54. [📋 Exam System Business Functions](./Docs/09-Exam-System/考试系统业务功能清单.md) - Complete business function list with 200+ features across 12 modules
 
 ### 💬 Technical Community
 

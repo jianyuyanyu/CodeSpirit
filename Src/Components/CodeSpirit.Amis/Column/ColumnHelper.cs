@@ -980,9 +980,41 @@ namespace CodeSpirit.Amis.Column
                 return true;
             }
 
-            // 另外，可以根据属性名称包含 "Image" 或 "Avatar" 来判断
-            return prop.Name.IndexOf("Image", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                prop.Name.IndexOf("Avatar", StringComparison.OrdinalIgnoreCase) >= 0;
+            // 获取属性的基础类型（处理可空类型）
+            Type underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+            
+            // 如果不是字符串类型，则不是图片字段
+            if (underlyingType != typeof(string))
+            {
+                return false;
+            }
+
+            string propName = prop.Name.ToLowerInvariant();
+
+            // 排除明显不是图片的字段（包含计数、数量、尺寸等词汇）
+            if (propName.Contains("count") || propName.Contains("size") || 
+                propName.Contains("length") || propName.Contains("width") || 
+                propName.Contains("height") || propName.Contains("number") || 
+                propName.Contains("quantity") || propName.Contains("amount") ||
+                propName.Contains("total") || propName.Contains("sum"))
+            {
+                return false;
+            }
+
+            // 检查是否为明确的图片字段名称模式
+            return (propName.EndsWith("image") || propName.EndsWith("avatar") || 
+                    propName.EndsWith("photo") || propName.EndsWith("picture") ||
+                    propName.EndsWith("icon") || propName.EndsWith("logo") ||
+                    propName.StartsWith("image") || propName.StartsWith("avatar") ||
+                    propName.StartsWith("photo") || propName.StartsWith("picture") ||
+                    propName.StartsWith("icon") || propName.StartsWith("logo") ||
+                    // 支持常见的图片字段命名
+                    propName == "image" || propName == "avatar" || 
+                    propName == "photo" || propName == "picture" ||
+                    propName == "icon" || propName == "logo" ||
+                    propName.Contains("imageurl") || propName.Contains("photourl") ||
+                    propName.Contains("avatarurl") || propName.Contains("iconurl") ||
+                    propName.Contains("logourl") || propName.Contains("pictureurl"));
         }
 
         /// <summary>

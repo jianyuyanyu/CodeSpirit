@@ -1,11 +1,12 @@
 using CodeSpirit.FileStorageApi.Options;
+using CodeSpirit.Core.DependencyInjection;
 
 namespace CodeSpirit.FileStorageApi.Abstractions;
 
 /// <summary>
 /// 存储桶配置服务接口
 /// </summary>
-public interface IBucketConfigurationService
+public interface IBucketConfigurationService : IScopedDependency
 {
     /// <summary>
     /// 获取所有存储桶配置

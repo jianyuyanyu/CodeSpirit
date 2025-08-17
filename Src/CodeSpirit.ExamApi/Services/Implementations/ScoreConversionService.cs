@@ -1,4 +1,5 @@
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -8,7 +9,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// <summary>
 /// 成绩换算服务实现
 /// </summary>
-public class ScoreConversionService : IScoreConversionService
+public class ScoreConversionService : IScoreConversionService, IScopedDependency
 {
     private readonly ILogger<ScoreConversionService> _logger;
 

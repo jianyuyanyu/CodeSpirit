@@ -1,16 +1,20 @@
-using CodeSpirit.FileStorageApi;
+using CodeSpirit.FileStorageApi.Configuration;
+using CodeSpirit.Shared.Startup;
 using System.Text;
 
 Console.OutputEncoding = Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.AddFileStorage();
+
+// 使用统一的API启动框架
+builder.AddCodeSpiritApi<FileStorageApiConfiguration>();
 
 var app = builder.Build();
 
 try
 {
-    await app.UseFileStorageApiServicesAsync();    
+    // 使用统一的API配置
+    await app.UseCodeSpiritApiAsync<FileStorageApiConfiguration>();
     app.Run();
 }
 catch (Exception ex)

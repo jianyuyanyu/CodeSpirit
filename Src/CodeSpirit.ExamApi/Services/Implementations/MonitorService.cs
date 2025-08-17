@@ -1,3 +1,4 @@
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
@@ -12,7 +13,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// <summary>
 /// 监考服务实现类
 /// </summary>
-public class MonitorService : IMonitorService
+public class MonitorService : IMonitorService, IScopedDependency
 {
     private readonly IRepository<ExamSetting> _examSettingRepository;
     private readonly IRepository<ExamRecord> _examRecordRepository;

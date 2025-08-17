@@ -1,11 +1,12 @@
 using System.Threading.Tasks;
+using CodeSpirit.Core.DependencyInjection;
 
 namespace CodeSpirit.ConfigCenter.Services;
 
 /// <summary>
 /// 配置变更通知器接口
 /// </summary>
-public interface IConfigChangeNotifier
+public interface IConfigChangeNotifier : ISingletonDependency
 {
     /// <summary>
     /// 通知配置变更

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -10,7 +11,7 @@ namespace CodeSpirit.ExamApi.Services.TextParsers.v2;
 /// <summary>
 /// 单选题解析器
 /// </summary>
-public class SingleChoiceQuestionParser : BaseQuestionParser
+public class SingleChoiceQuestionParser : BaseQuestionParser, IScopedDependency
 {
     private static readonly Regex OptionPattern = new(@"^[A-Z][、.．]\s*(.+)$", RegexOptions.Compiled);
     private static readonly Regex AnswerPattern = new(@"[\(（]\s*([A-Z])\s*[\)）]|(?<=\d[、.．]\s*.*)[A-Z](?=\s*$)", RegexOptions.Compiled);
@@ -30,7 +31,7 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
             return false;
 
         // 检查是否包含选项标记或答案标记
-        return AnswerPattern.IsMatch(line) || 
+        return AnswerPattern.IsMatch(line) ||
                line.Contains("A、") || line.Contains("A.") ||
                line.Contains("B、") || line.Contains("B.") ||
                line.Contains("C、") || line.Contains("C.") ||
@@ -70,7 +71,7 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
                 // 1. 如果答案标记在题目末尾，直接移除
                 // 2. 如果答案标记在题目中间，需要判断是否为真正的答案标记
                 var answerText = answerMatch.Value;
-                
+
                 // 检查是否在末尾
                 if (currentContent.EndsWith(answerText))
                 {
@@ -112,7 +113,7 @@ public class SingleChoiceQuestionParser : BaseQuestionParser
             var options = new Dictionary<string, string>();
             var currentOption = "";
             var currentOptionMark = "";
-            
+
             for (var i = optionStartIndex; i < lineList.Count; i++)
             {
                 var line = lineList[i];

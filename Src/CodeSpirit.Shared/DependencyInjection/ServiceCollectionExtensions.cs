@@ -15,86 +15,140 @@ namespace CodeSpirit.Shared.DependencyInjection
         private static readonly ConcurrentDictionary<Assembly, Type[]> _typeCache = new();
 
         /// <summary>
-        /// 批量注册依赖注入
+        /// 使用Scrutor进行依赖注入自动注册
         /// </summary>
         /// <param name="services">IServiceCollection</param>
         /// <param name="assemblies">要扫描的程序集</param>
-        public static IServiceCollection AddDependencyInjection(this IServiceCollection services, params Assembly[] assemblies)
+        /// <returns>IServiceCollection</returns>
+        public static IServiceCollection AddDependencyInjectionWithScrutor(
+            this IServiceCollection services,
+            params Assembly[] assemblies)
         {
-            // 预先获取依赖注入标记接口类型，避免重复获取
-            var singletonType = typeof(ISingletonDependency);
-            var scopedType = typeof(IScopedDependency);
-            var transientType = typeof(ITransientDependency);
-
-            // 记录扫描的程序集
-            Console.WriteLine($"Scanning assemblies: {string.Join(", ", assemblies.Select(a => a.GetName().Name))}");
-
-            foreach (var assembly in assemblies)
+            if (assemblies == null || assemblies.Length == 0)
             {
-                // 从缓存中获取或扫描程序集
-                var types = _typeCache.GetOrAdd(assembly, asm =>
-                {
-                    var foundTypes = asm.GetTypes()
-                        .Where(type => !type.IsInterface && !type.IsAbstract)
-                        .ToArray();
-                    Console.WriteLine($"Found {foundTypes.Length} concrete types in {asm.GetName().Name}");
-                    return foundTypes;
-                });
-
-                // 使用 HashSet 存储已注册的类型，避免重复注册
-                var registeredTypes = new HashSet<Type>();
-
-                foreach (var type in types)
-                {
-                    if (registeredTypes.Contains(type))
-                        continue;
-
-                    // 获取类实现的接口
-                    var interfaces = type.GetInterfaces();
-
-                    // 注册服务
-                    void RegisterService(ServiceLifetime lifetime)
-                    {
-                        // 获取该类型实现的所有非依赖注入标记接口
-                        var serviceInterfaces = interfaces
-                            .Where(i => i != singletonType && 
-                                   i != scopedType && 
-                                   i != transientType)
-                            .ToList(); // 移除了命名空间限制，以便更灵活地注册服务
-
-                        if (serviceInterfaces.Any())
-                        {
-                            // 为每个服务接口注册实现
-                            foreach (var serviceInterface in serviceInterfaces)
-                            {
-                                services.Add(new ServiceDescriptor(serviceInterface, type, lifetime));
-                                Console.WriteLine($"Registered {serviceInterface.Name} -> {type.Name} as {lifetime}");
-                            }
-                        }
-                        else
-                        {
-                            // 如果没有找到匹配的接口，则注册类型本身
-                            services.Add(new ServiceDescriptor(type, type, lifetime));
-                            Console.WriteLine($"Registered {type.Name} as {lifetime}");
-                        }
-                        registeredTypes.Add(type);
-                    }
-
-                    // 根据依赖注入标记接口选择生命周期
-                    if (interfaces.Contains(singletonType))
-                    {
-                        RegisterService(ServiceLifetime.Singleton);
-                    }
-                    else if (interfaces.Contains(scopedType))
-                    {
-                        RegisterService(ServiceLifetime.Scoped);
-                    }
-                    else if (interfaces.Contains(transientType))
-                    {
-                        RegisterService(ServiceLifetime.Transient);
-                    }
-                }
+                assemblies = new[] { Assembly.GetCallingAssembly() };
             }
+
+            // 注册 Scoped 服务（有业务接口的）
+            services.Scan(scan => scan
+                .FromAssemblies(assemblies)
+                .AddClasses(classes => classes.AssignableTo<IScopedDependency>()
+                    .Where(type => type.GetInterfaces().Any(i =>
+                        i != typeof(IScopedDependency) &&
+                        i != typeof(ITransientDependency) &&
+                        i != typeof(ISingletonDependency))))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime());
+
+            // 注册 Scoped 服务（注册为自身，包括有业务接口和没有业务接口的）
+            services.Scan(scan => scan
+                .FromAssemblies(assemblies)
+                .AddClasses(classes => classes.AssignableTo<IScopedDependency>())
+                .AsSelf()
+                .WithScopedLifetime());
+
+            // 注册 Transient 服务（有业务接口的）
+            services.Scan(scan => scan
+                .FromAssemblies(assemblies)
+                .AddClasses(classes => classes.AssignableTo<ITransientDependency>()
+                    .Where(type => type.GetInterfaces().Any(i =>
+                        i != typeof(IScopedDependency) &&
+                        i != typeof(ITransientDependency) &&
+                        i != typeof(ISingletonDependency))))
+                .AsImplementedInterfaces()
+                .WithTransientLifetime());
+
+            // 注册 Transient 服务（注册为自身，包括有业务接口和没有业务接口的）
+            services.Scan(scan => scan
+                .FromAssemblies(assemblies)
+                .AddClasses(classes => classes.AssignableTo<ITransientDependency>())
+                .AsSelf()
+                .WithTransientLifetime());
+
+            // 注册 Singleton 服务（有业务接口的）
+            services.Scan(scan => scan
+                .FromAssemblies(assemblies)
+                .AddClasses(classes => classes.AssignableTo<ISingletonDependency>()
+                    .Where(type => type.GetInterfaces().Any(i =>
+                        i != typeof(IScopedDependency) &&
+                        i != typeof(ITransientDependency) &&
+                        i != typeof(ISingletonDependency))))
+                .AsImplementedInterfaces()
+                .WithSingletonLifetime());
+
+            // 注册 Singleton 服务（注册为自身，包括有业务接口和没有业务接口的）
+            services.Scan(scan => scan
+                .FromAssemblies(assemblies)
+                .AddClasses(classes => classes.AssignableTo<ISingletonDependency>())
+                .AsSelf()
+                .WithSingletonLifetime());
+
+            return services;
+        }
+
+        /// <summary>
+        /// 使用Scrutor进行高级依赖注入配置
+        /// </summary>
+        /// <param name="services">IServiceCollection</param>
+        /// <param name="assemblies">要扫描的程序集</param>
+        /// <returns>IServiceCollection</returns>
+        public static IServiceCollection AddAdvancedDependencyInjection(
+            this IServiceCollection services,
+            params Assembly[] assemblies)
+        {
+            if (assemblies == null || assemblies.Length == 0)
+            {
+                assemblies = new[] { Assembly.GetCallingAssembly() };
+            }
+
+            services.Scan(scan => scan
+                .FromAssemblies(assemblies)
+
+                // 注册所有以Service结尾的类
+                .AddClasses(classes => classes
+                    .Where(type => type.Name.EndsWith("Service") &&
+                           !type.IsAbstract &&
+                           !type.IsInterface))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+
+                // 注册所有Repository
+                .AddClasses(classes => classes
+                    .Where(type => type.Name.EndsWith("Repository") &&
+                           !type.IsAbstract &&
+                           !type.IsInterface))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+
+                // 注册标记接口的服务
+                .AddClasses(classes => classes.AssignableTo<IScopedDependency>())
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+
+                .AddClasses(classes => classes.AssignableTo<ITransientDependency>())
+                .AsImplementedInterfaces()
+                .WithTransientLifetime()
+
+                .AddClasses(classes => classes.AssignableTo<ISingletonDependency>())
+                .AsImplementedInterfaces()
+                .WithSingletonLifetime());
+
+            return services;
+        }
+
+        /// <summary>
+        /// 使用Scrutor进行装饰器模式注册
+        /// </summary>
+        /// <typeparam name="TService">服务接口</typeparam>
+        /// <typeparam name="TDecorator">装饰器实现</typeparam>
+        /// <param name="services">IServiceCollection</param>
+        /// <returns>IServiceCollection</returns>
+        public static IServiceCollection AddDecorator<TService, TDecorator>(
+            this IServiceCollection services)
+            where TService : class
+            where TDecorator : class, TService
+        {
+            services.Decorate<TService, TDecorator>();
             return services;
         }
 
@@ -106,4 +160,4 @@ namespace CodeSpirit.Shared.DependencyInjection
             _typeCache.Clear();
         }
     }
-} 
+}

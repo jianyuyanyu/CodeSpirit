@@ -1,13 +1,14 @@
-using System.Text.RegularExpressions;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace CodeSpirit.ExamApi.Services.TextParsers.v2;
 
 /// <summary>
 /// 多选题解析器
 /// </summary>
-public class MultipleChoiceQuestionParser : BaseQuestionParser
+public class MultipleChoiceQuestionParser : BaseQuestionParser, IScopedDependency
 {
     private static readonly string[] SectionHeaders = { "多项选择题", "多选题" };
     private static readonly string OptionPattern = @"^([A-Z])[、\.\s]+(.+)$";

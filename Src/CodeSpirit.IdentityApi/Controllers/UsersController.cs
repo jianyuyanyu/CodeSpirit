@@ -6,6 +6,7 @@ using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Dtos.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 

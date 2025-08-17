@@ -1,9 +1,10 @@
+using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.ExamApi.Data.Models;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Logging;
-using CodeSpirit.ExamApi.Data.Models;
 
 namespace CodeSpirit.ExamApi.Services.TextParsers.v2
 {
@@ -12,7 +13,7 @@ namespace CodeSpirit.ExamApi.Services.TextParsers.v2
     /// 支持解析包含特殊字符（如$符号）的编程题目
     /// 根据AMIS框架数据映射规范，对$字符进行特殊处理以避免模板变量冲突
     /// </summary>
-    public class QuestionTextParserV2
+    public class QuestionTextParserV2: IScopedDependency
     {
         private readonly ILogger<QuestionTextParserV2> _logger;
         private readonly SingleChoiceQuestionParser _singleChoiceParser;

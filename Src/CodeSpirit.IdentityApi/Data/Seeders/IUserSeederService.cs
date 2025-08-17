@@ -5,7 +5,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
     /// <summary>
     /// 用户种子数据服务接口
     /// </summary>
-    public interface IUserSeederService
+    public interface IUserSeederService : IScopedDependency
     {
         /// <summary>
         /// 确保用户存在
@@ -87,4 +87,4 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
         /// </summary>
         public List<string> Roles { get; set; } = new();
     }
-} 
+}

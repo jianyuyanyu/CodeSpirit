@@ -1,3 +1,4 @@
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
@@ -13,7 +14,7 @@ namespace CodeSpirit.ExamApi.Services;
 /// <summary>
 /// 考试客户端服务实现（门面服务）
 /// </summary>
-public class ClientService : IClientService
+public class ClientService : IClientService, IScopedDependency
 {
     private readonly IExamSettingService _examSettingService;
     private readonly IExamRecordService _examRecordService;

@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.QuestionCategory;
 using CodeSpirit.ExamApi.Services.Interfaces;
@@ -15,7 +16,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// <summary>
 /// 题目分类服务实现
 /// </summary>
-public class QuestionCategoryService : BaseCRUDService<QuestionCategory, QuestionCategoryDto, long, CreateQuestionCategoryDto, UpdateQuestionCategoryDto>, IQuestionCategoryService
+public class QuestionCategoryService : BaseCRUDService<QuestionCategory, QuestionCategoryDto, long, CreateQuestionCategoryDto, UpdateQuestionCategoryDto>, IQuestionCategoryService, IScopedDependency
 {
     private readonly ILogger<QuestionCategoryService> _logger;
 

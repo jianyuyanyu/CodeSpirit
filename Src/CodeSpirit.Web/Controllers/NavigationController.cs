@@ -322,7 +322,8 @@ namespace CodeSpirit.Web.Controllers
                     {
                         type = "iframe",
                         src = node.Link,
-                        height = "100%"
+                        height = "100%",
+                        className = "h-full"
                     }
                 };
             }

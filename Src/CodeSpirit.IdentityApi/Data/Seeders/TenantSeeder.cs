@@ -12,7 +12,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
     /// 租户种子数据服务
     /// </summary>
     [DisplayName("租户种子数据服务")]
-    public class TenantSeeder
+    public class TenantSeeder : IScopedDependency
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<TenantSeeder> _logger;
@@ -27,7 +27,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
         /// <param name="roleSeederService">角色种子数据服务</param>
         /// <param name="userSeederService">用户种子数据服务</param>
         public TenantSeeder(
-            ApplicationDbContext context, 
+            ApplicationDbContext context,
             ILogger<TenantSeeder> logger,
             IRoleSeederService roleSeederService,
             IUserSeederService userSeederService)
@@ -50,7 +50,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
                 // 使用数据库事务确保数据一致性
                 using var transaction = await _context.Database.BeginTransactionAsync();
-                
+
                 try
                 {
                     // 1. 确保默认租户存在
@@ -73,7 +73,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     if (hasChanges)
                     {
                         _logger.LogInformation("检测到数据变更，正在保存到数据库...");
-                        
+
                         try
                         {
                             await _context.SaveChangesAsync();
@@ -84,14 +84,14 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                         {
                             _logger.LogError(ex, "保存租户种子数据时发生错误，回滚事务: {Message}", ex.Message);
                             await transaction.RollbackAsync();
-                            
+
                             // 如果是重复键约束错误，说明数据已存在，不需要抛出异常
                             if (ex.Message.Contains("duplicate key") || ex.Message.Contains("重复键"))
                             {
                                 _logger.LogWarning("检测到重复键约束，可能数据已存在，忽略此错误");
                                 return;
                             }
-                            
+
                             throw;
                         }
                     }
@@ -162,20 +162,20 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     try
                     {
                         var role = await _roleSeederService.EnsureRoleExistsAsync(
-                            roleDefinition.Name, 
-                            roleDefinition.Description, 
+                            roleDefinition.Name,
+                            roleDefinition.Description,
                             roleDefinition.TenantId);
                         createdRoles.Add(role);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "创建角色 {RoleName} 时发生错误，可能已存在: {Message}", 
+                        _logger.LogWarning(ex, "创建角色 {RoleName} 时发生错误，可能已存在: {Message}",
                             roleDefinition.Name, ex.Message);
-                        
+
                         // 尝试查找已存在的角色
                         var existingRole = await _context.Roles
                             .FirstOrDefaultAsync(r => r.TenantId == roleDefinition.TenantId &&
-                                                     (r.Name == roleDefinition.Name || 
+                                                     (r.Name == roleDefinition.Name ||
                                                       r.NormalizedName == roleDefinition.Name.ToUpper()));
                         if (existingRole != null)
                         {
@@ -204,13 +204,13 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "创建用户 {UserName} 时发生错误，可能已存在: {Message}", 
+                        _logger.LogWarning(ex, "创建用户 {UserName} 时发生错误，可能已存在: {Message}",
                             userDefinition.UserName, ex.Message);
-                        
+
                         // 尝试查找已存在的用户
                         var existingUser = await _context.Users
                             .FirstOrDefaultAsync(u => u.TenantId == userDefinition.TenantId &&
-                                                     (u.UserName == userDefinition.UserName || 
+                                                     (u.UserName == userDefinition.UserName ||
                                                       u.NormalizedUserName == userDefinition.UserName.ToUpper()));
                         if (existingUser != null)
                         {
@@ -238,7 +238,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogWarning(ex, "为用户 {UserName} 分配角色 {RoleName} 时发生错误: {Message}", 
+                                    _logger.LogWarning(ex, "为用户 {UserName} 分配角色 {RoleName} 时发生错误: {Message}",
                                         user.UserName, roleName, ex.Message);
                                 }
                             }
@@ -288,7 +288,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                 };
 
                 _context.Tenants.Add(defaultTenant);
-                _logger.LogInformation("默认租户创建完成: {TenantId}, 过期时间: {ExpiresAt}", 
+                _logger.LogInformation("默认租户创建完成: {TenantId}, 过期时间: {ExpiresAt}",
                     TenantConstants.DefaultTenantId, defaultTenant.ExpiresAt?.ToString() ?? "永不过期");
             }
             else
@@ -306,7 +306,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
             try
             {
                 _logger.LogInformation("开始检查系统租户是否存在...");
-                
+
                 var existingTenant = await _context.Tenants
                     .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.SystemTenantId);
 
@@ -334,17 +334,17 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     };
 
                     _context.Tenants.Add(systemTenant);
-                    _logger.LogInformation("系统租户创建完成: {TenantId}, Id: {Id}, 过期时间: {ExpiresAt}", 
+                    _logger.LogInformation("系统租户创建完成: {TenantId}, Id: {Id}, 过期时间: {ExpiresAt}",
                         TenantConstants.SystemTenantId, systemTenant.Id, systemTenant.ExpiresAt?.ToString() ?? "永不过期");
-                    
+
                     // 立即检查是否已添加到上下文
                     var addedEntry = _context.Entry(systemTenant);
                     _logger.LogInformation("系统租户在上下文中的状态: {State}", addedEntry.State);
                 }
                 else
                 {
-                    _logger.LogInformation("系统租户已存在: {TenantId}, Id: {Id}, Name: {Name}, 过期时间: {ExpiresAt}", 
-                        existingTenant.TenantId, existingTenant.Id, existingTenant.Name, 
+                    _logger.LogInformation("系统租户已存在: {TenantId}, Id: {Id}, Name: {Name}, 过期时间: {ExpiresAt}",
+                        existingTenant.TenantId, existingTenant.Id, existingTenant.Name,
                         existingTenant.ExpiresAt?.ToString() ?? "永不过期");
                 }
             }
@@ -403,17 +403,17 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                 foreach (var role in rolesWithoutTenant)
                 {
                     role.TenantId = TenantConstants.DefaultTenantId;
-                    
+
                     // 设置审计信息（如果还没有设置）
                     if (role.CreatedAt == default)
                     {
                         role.CreatedAt = currentTime;
                         role.CreatedBy = 1L; // 系统管理员
                     }
-                    
+
                     // 确保角色是激活状态
                     role.IsActive = true;
-                    
+
                     _logger.LogDebug("角色 {RoleId} ({RoleName}) 已分配到默认租户", role.Id, role.Name);
                 }
 
@@ -554,19 +554,19 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                 var totalRoles = await _context.Roles.CountAsync();
                 var totalTenants = await _context.Tenants.CountAsync();
 
-                _logger.LogInformation("数据迁移验证完成 - 用户: {Users}, 角色: {Roles}, 租户: {Tenants}", 
+                _logger.LogInformation("数据迁移验证完成 - 用户: {Users}, 角色: {Roles}, 租户: {Tenants}",
                     totalUsers, totalRoles, totalTenants);
-                    
+
                 // 列出所有租户
                 var allTenants = await _context.Tenants
                     .Select(t => new { t.TenantId, t.Name, t.IsActive, t.ExpiresAt })
                     .ToListAsync();
-                    
+
                 _logger.LogInformation("当前所有租户:");
                 foreach (var tenant in allTenants)
                 {
-                    _logger.LogInformation("- 租户ID: {TenantId}, 名称: {Name}, 状态: {IsActive}, 过期时间: {ExpiresAt}", 
-                        tenant.TenantId, tenant.Name, tenant.IsActive ? "激活" : "禁用", 
+                    _logger.LogInformation("- 租户ID: {TenantId}, 名称: {Name}, 状态: {IsActive}, 过期时间: {ExpiresAt}",
+                        tenant.TenantId, tenant.Name, tenant.IsActive ? "激活" : "禁用",
                         tenant.ExpiresAt?.ToString() ?? "永不过期");
                 }
             }
@@ -607,7 +607,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
                 foreach (var tenant in allTenants)
                 {
-                    _logger.LogInformation("租户详情 - ID: {Id}, 租户ID: {TenantId}, 名称: {Name}, 创建时间: {CreatedAt}, 是否激活: {IsActive}", 
+                    _logger.LogInformation("租户详情 - ID: {Id}, 租户ID: {TenantId}, 名称: {Name}, 创建时间: {CreatedAt}, 是否激活: {IsActive}",
                         tenant.Id, tenant.TenantId, tenant.Name, tenant.CreatedAt, tenant.IsActive);
                 }
 
@@ -617,14 +617,14 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                 if (systemTenant == null)
                 {
                     _logger.LogError("系统租户确实不存在!");
-                    
+
                     // 尝试强制创建
                     _logger.LogInformation("尝试立即创建系统租户...");
                     await ForceCreateSystemTenantAsync();
                 }
                 else
                 {
-                    _logger.LogInformation("系统租户存在: {SystemTenant}", 
+                    _logger.LogInformation("系统租户存在: {SystemTenant}",
                         Newtonsoft.Json.JsonConvert.SerializeObject(systemTenant, Newtonsoft.Json.Formatting.Indented));
                 }
 
@@ -666,8 +666,8 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
                 _context.Tenants.Add(systemTenant);
                 await _context.SaveChangesAsync();
-                
-                _logger.LogInformation("强制创建系统租户成功: {TenantId}, ID: {Id}, 过期时间: {ExpiresAt}", 
+
+                _logger.LogInformation("强制创建系统租户成功: {TenantId}, ID: {Id}, 过期时间: {ExpiresAt}",
                     systemTenant.TenantId, systemTenant.Id, systemTenant.ExpiresAt?.ToString() ?? "永不过期");
             }
             catch (Exception ex)
@@ -677,4 +677,4 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
             }
         }
     }
-} 
+}

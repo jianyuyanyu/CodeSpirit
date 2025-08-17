@@ -1,4 +1,5 @@
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.FileStorageApi.Dtos.System;
 using CodeSpirit.Shared.Dtos.Common;
 
@@ -7,7 +8,7 @@ namespace CodeSpirit.FileStorageApi.Services.System;
 /// <summary>
 /// 系统租户存储服务接口
 /// </summary>
-public interface ISystemTenantStorageService
+public interface ISystemTenantStorageService : IScopedDependency
 {
     /// <summary>
     /// 获取租户存储统计列表

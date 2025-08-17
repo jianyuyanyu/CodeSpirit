@@ -1,15 +1,16 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.PracticeRecord;
 using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using CodeSpirit.Shared.DistributedLock;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +21,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// <summary>
 /// 练习记录服务实现
 /// </summary>
-public class PracticeRecordService : BaseCRUDIService<PracticeRecord, PracticeRecordDto, long, CreatePracticeRecordDto, UpdatePracticeRecordDto, PracticeRecordBatchImportDto>, IPracticeRecordService
+public class PracticeRecordService : BaseCRUDIService<PracticeRecord, PracticeRecordDto, long, CreatePracticeRecordDto, UpdatePracticeRecordDto, PracticeRecordBatchImportDto>, IPracticeRecordService, IScopedDependency
 {
     private readonly IRepository<PracticeRecord> _repository;
     private readonly IRepository<Student> _studentRepository;

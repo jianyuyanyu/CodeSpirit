@@ -1,13 +1,25 @@
-Console.OutputEncoding = System.Text.Encoding.UTF8;
+using CodeSpirit.ConfigCenter.Configuration;
+using CodeSpirit.Shared.Startup;
+using System.Text;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+Console.OutputEncoding = Encoding.UTF8;
 
-// 使用 ConfigCenter 扩展方法注册所有服务
-builder.AddConfigCenter();
+var builder = WebApplication.CreateBuilder(args);
 
-WebApplication app = builder.Build();
+// 使用统一的API启动框架
+builder.AddCodeSpiritApi<ConfigCenterApiConfiguration>();
 
-// 配置中间件
-app.UseCors("AllowSpecificOriginsWithCredentials");
-await app.ConfigureAppAsync();
-app.Run();
+var app = builder.Build();
+
+try
+{
+    // 使用统一的API配置
+    await app.UseCodeSpiritApiAsync<ConfigCenterApiConfiguration>();
+    app.Run();
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "配置中心服务启动过程中发生错误");
+    Console.WriteLine($"配置中心服务启动失败: {ex.Message}");
+}

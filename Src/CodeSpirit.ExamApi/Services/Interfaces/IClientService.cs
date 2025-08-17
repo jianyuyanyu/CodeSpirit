@@ -1,4 +1,5 @@
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
@@ -8,7 +9,7 @@ namespace CodeSpirit.ExamApi.Services.Interfaces;
 /// <summary>
 /// 考试客户端服务接口
 /// </summary>
-public interface IClientService
+public interface IClientService : IScopedDependency
 {
     /// <summary>
     /// 获取用户可参加的考试列表

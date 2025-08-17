@@ -1,12 +1,13 @@
 ﻿using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Models;
+using CodeSpirit.Core.DependencyInjection;
 
 namespace CodeSpirit.ConfigCenter.Services
 {
     /// <summary>
     /// 应用程序服务接口
     /// </summary>
-    public interface IAppService
+    public interface IAppService : IScopedDependency
     {
         /// <summary>
         /// 批量删除应用

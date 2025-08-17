@@ -1,4 +1,5 @@
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.FileStorageApi.Entities;
 using CodeSpirit.FileStorageApi.Dtos;
 
@@ -7,7 +8,7 @@ namespace CodeSpirit.FileStorageApi.Abstractions;
 /// <summary>
 /// 图片处理服务接口
 /// </summary>
-public interface IImageProcessingService
+public interface IImageProcessingService : IScopedDependency
 {
     /// <summary>
     /// 上传图片

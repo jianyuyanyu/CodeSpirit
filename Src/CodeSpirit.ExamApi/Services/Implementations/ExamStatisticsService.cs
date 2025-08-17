@@ -1,3 +1,4 @@
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using System.Globalization;
@@ -7,7 +8,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// <summary>
 /// 考试统计服务实现
 /// </summary>
-public class ExamStatisticsService : IExamStatisticsService
+public class ExamStatisticsService : IExamStatisticsService, IScopedDependency
 {
     private readonly ExamDbContext _dbContext;
     private readonly ILogger<ExamStatisticsService> _logger;

@@ -1,5 +1,6 @@
 using CodeSpirit.FileStorageApi.Dtos.System;
 using CodeSpirit.FileStorageApi.Abstractions;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Shared.Dtos.Common;
 using static CodeSpirit.FileStorageApi.Services.System.ISystemBucketService;
 
@@ -8,7 +9,7 @@ namespace CodeSpirit.FileStorageApi.Services.System;
 /// <summary>
 /// 系统文件服务接口
 /// </summary>
-public interface ISystemFileService
+public interface ISystemFileService : IScopedDependency
 {
     /// <summary>
     /// 获取系统文件列表

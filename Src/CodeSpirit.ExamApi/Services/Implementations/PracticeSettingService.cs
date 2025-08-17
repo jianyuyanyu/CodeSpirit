@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
@@ -10,15 +11,15 @@ using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
 /// <summary>
 /// 练习设置服务实现
 /// </summary>
-public class PracticeSettingService : BaseCRUDService<PracticeSetting, PracticeSettingDto, long, CreatePracticeSettingDto, UpdatePracticeSettingDto>, IPracticeSettingService
+public class PracticeSettingService : BaseCRUDService<PracticeSetting, PracticeSettingDto, long, CreatePracticeSettingDto, UpdatePracticeSettingDto>, IPracticeSettingService, IScopedDependency
 {
     private readonly IRepository<PracticeSetting> _repository;
     private readonly IRepository<ExamPaper> _examPaperRepository;

@@ -1,28 +1,29 @@
 using AutoMapper;
+using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.ExamApi.Constants;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
+using CodeSpirit.ExamApi.Dtos.Client;
+using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
 using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.Settings.Services.Interfaces;
+using CodeSpirit.Shared.DistributedLock;
+using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
-using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 using LinqKit;
-using CodeSpirit.Core;
-using CodeSpirit.ExamApi.Dtos.Client;
-using CodeSpirit.Shared.Extensions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using CodeSpirit.Shared.DistributedLock;
-using CodeSpirit.ExamApi.Dtos.ExamPaper;
-using CodeSpirit.Settings.Services.Interfaces;
-using CodeSpirit.ExamApi.Constants;
+using System.Linq.Expressions;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
 /// <summary>
 /// 考试记录服务实现类
 /// </summary>
-public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long, StartExamDto, object>, IExamRecordService
+public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long, StartExamDto, object>, IExamRecordService, IScopedDependency
 {
     private const string ExamPaperExportSettings = "ExamPaperExportSettings";
     private readonly IRepository<ExamAnswerRecord> _answerRecordRepository;

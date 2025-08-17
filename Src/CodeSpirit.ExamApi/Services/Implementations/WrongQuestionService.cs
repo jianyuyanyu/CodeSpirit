@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.WrongQuestion;
 using CodeSpirit.ExamApi.Services.Interfaces;
@@ -15,7 +16,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// <summary>
 /// 错题服务实现
 /// </summary>
-public class WrongQuestionService : BaseCRUDService<WrongQuestion, WrongQuestionDto, long, CreateWrongQuestionDto, UpdateWrongQuestionDto>, IWrongQuestionService
+public class WrongQuestionService : BaseCRUDService<WrongQuestion, WrongQuestionDto, long, CreateWrongQuestionDto, UpdateWrongQuestionDto>, IWrongQuestionService, IScopedDependency
 {
     private readonly IRepository<Student> _studentRepository;
     private readonly IRepository<Question> _questionRepository;

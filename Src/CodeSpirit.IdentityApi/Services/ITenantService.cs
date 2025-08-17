@@ -1,4 +1,5 @@
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.IdentityApi.Dtos.Tenant;
 using CodeSpirit.MultiTenant.Models;
 using CodeSpirit.Shared.Services;
@@ -8,7 +9,7 @@ namespace CodeSpirit.IdentityApi.Services
     /// <summary>
     /// 租户服务接口
     /// </summary>
-    public interface ITenantService : IBaseCRUDService<TenantInfo, TenantDto, string, TenantCreateDto, TenantUpdateDto>
+    public interface ITenantService : IBaseCRUDService<TenantInfo, TenantDto, string, TenantCreateDto, TenantUpdateDto>, IScopedDependency
     {
         /// <summary>
         /// 根据租户ID获取租户信息

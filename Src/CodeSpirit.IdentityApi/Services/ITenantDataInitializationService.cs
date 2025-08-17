@@ -1,11 +1,12 @@
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 
 namespace CodeSpirit.IdentityApi.Services
 {
     /// <summary>
     /// 租户数据初始化服务接口
     /// </summary>
-    public interface ITenantDataInitializationService
+    public interface ITenantDataInitializationService : IScopedDependency
     {
         /// <summary>
         /// 为新创建的租户初始化默认数据

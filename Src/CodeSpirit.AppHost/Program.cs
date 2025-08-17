@@ -28,6 +28,7 @@ var cache = builder.AddRedis("cache")
 
 // 添加 Seq 日志服务
 var seqService = builder.AddSeq("seq")
+                    .WithImageTag("2024.3")
                  .WithDataVolume()
                  .WithLifetime(ContainerLifetime.Persistent)
                  .WithHttpEndpoint(port: 61688, targetPort: 80, name: "seq-ui")

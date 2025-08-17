@@ -5,7 +5,7 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
     /// <summary>
     /// 角色种子数据服务接口
     /// </summary>
-    public interface IRoleSeederService
+    public interface IRoleSeederService : IScopedDependency
     {
         /// <summary>
         /// 确保角色存在
@@ -61,4 +61,4 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
         /// </summary>
         public bool IsSystemRole { get; set; }
     }
-} 
+}

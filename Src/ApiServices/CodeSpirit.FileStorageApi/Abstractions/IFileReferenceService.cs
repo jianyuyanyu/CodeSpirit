@@ -1,5 +1,6 @@
 using CodeSpirit.FileStorageApi.Entities;
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.FileStorageApi.Abstractions;
@@ -8,7 +9,7 @@ namespace CodeSpirit.FileStorageApi.Abstractions;
 /// 文件引用服务接口
 /// 管理文件的引用关系，支持引用计数和生命周期管理
 /// </summary>
-public interface IFileReferenceService
+public interface IFileReferenceService : IScopedDependency
 {
     /// <summary>
     /// 创建文件引用

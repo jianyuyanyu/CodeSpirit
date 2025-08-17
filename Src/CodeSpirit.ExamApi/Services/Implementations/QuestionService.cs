@@ -1,4 +1,5 @@
 using AutoMapper;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Constants;
@@ -20,7 +21,7 @@ using System.Text.Json;
 /// </summary>
 namespace CodeSpirit.ExamApi.Services.Implementations
 {
-    public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, CreateQuestionDto, UpdateQuestionDto, QuestionBatchImportItemDto>, IQuestionService
+    public class QuestionService : BaseCRUDIService<Question, QuestionDto, long, CreateQuestionDto, UpdateQuestionDto, QuestionBatchImportItemDto>, IQuestionService, IScopedDependency
     {
         private const string QuestionSettings = "QuestionSettings";
         private readonly IRepository<Question> _repository;

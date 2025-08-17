@@ -1,16 +1,17 @@
+using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.ExamApi.Data.Models.Enums;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using CodeSpirit.ExamApi.Data.Models.Enums;
-using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.ExamApi.Services.TextParsers.v2;
 
 /// <summary>
 /// 判断题解析器
 /// </summary>
-public class TrueFalseQuestionParser : BaseQuestionParser
+public class TrueFalseQuestionParser : BaseQuestionParser, IScopedDependency
 {
     private static readonly string[] TrueMarks = { "对", "√", "✓", "true", "t", "是", "y", "yes" };
     private static readonly string[] FalseMarks = { "错", "×", "✗", "false", "f", "否", "n", "no" };

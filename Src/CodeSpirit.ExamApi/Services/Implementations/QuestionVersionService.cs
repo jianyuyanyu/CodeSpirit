@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.QuestionVersion;
 using CodeSpirit.ExamApi.Services.Interfaces;
@@ -15,7 +16,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// <summary>
 /// 题目版本服务实现
 /// </summary>
-public class QuestionVersionService : BaseCRUDService<QuestionVersion, QuestionVersionDto, long, CreateQuestionVersionDto, UpdateQuestionVersionDto>, IQuestionVersionService
+public class QuestionVersionService : BaseCRUDService<QuestionVersion, QuestionVersionDto, long, CreateQuestionVersionDto, UpdateQuestionVersionDto>, IQuestionVersionService, IScopedDependency
 {
     private readonly IRepository<Question> _questionRepository;
     private readonly ILogger<QuestionVersionService> _logger;

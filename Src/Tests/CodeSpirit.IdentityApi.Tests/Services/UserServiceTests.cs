@@ -12,6 +12,7 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Tests.TestBase;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace CodeSpirit.IdentityApi.Tests.Services
 {
@@ -20,6 +21,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         private readonly UserService _userService;
         private readonly IIdGenerator _idGenerator;
         private readonly Mock<IPasswordHasher<ApplicationUser>> _mockPasswordHasher;
+        private readonly Mock<IDistributedCache> _mockCache;
 
         public UserServiceTests()
             : base()
@@ -27,6 +29,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             // 设置额外依赖
             _idGenerator = new SnowflakeIdGenerator();
             _mockPasswordHasher = new Mock<IPasswordHasher<ApplicationUser>>();
+            _mockCache = new Mock<IDistributedCache>();
 
             // 设置密码哈希器的默认行为
             _mockPasswordHasher.Setup(x => x.HashPassword(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
@@ -42,7 +45,8 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 _idGenerator,
                 MockCurrentUser.Object,
                 DbContext,
-                _mockPasswordHasher.Object
+                _mockPasswordHasher.Object,
+                _mockCache.Object
             );
 
             // 准备测试数据

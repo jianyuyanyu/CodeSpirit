@@ -1,11 +1,12 @@
 using System.Threading.Tasks;
+using CodeSpirit.Core.DependencyInjection;
 
 namespace CodeSpirit.ConfigCenter.Services;
 
 /// <summary>
 /// 配置缓存服务接口
 /// </summary>
-public interface IConfigCacheService
+public interface IConfigCacheService : ISingletonDependency
 {
     /// <summary>
     /// 获取缓存的配置值

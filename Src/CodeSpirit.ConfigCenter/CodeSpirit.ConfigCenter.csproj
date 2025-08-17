@@ -26,6 +26,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
 		<ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
+		<ProjectReference Include="..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
 	</ItemGroup>
 
 </Project>

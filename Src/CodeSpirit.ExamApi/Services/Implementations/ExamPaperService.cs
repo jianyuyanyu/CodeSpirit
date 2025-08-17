@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
@@ -18,7 +19,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
     /// <summary>
     /// 试卷服务实现
     /// </summary>
-    public class ExamPaperService : BaseCRUDService<ExamPaper, ExamPaperDto, long, CreateExamPaperDto, UpdateExamPaperDto>, IExamPaperService
+    public class ExamPaperService : BaseCRUDService<ExamPaper, ExamPaperDto, long, CreateExamPaperDto, UpdateExamPaperDto>, IExamPaperService, IScopedDependency
     {
         private readonly IRepository<ExamPaper> _examPaperRepository;
         private readonly IRepository<ExamPaperQuestion> _examPaperQuestionRepository;

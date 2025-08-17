@@ -1,4 +1,5 @@
 using CodeSpirit.ConfigCenter.Hubs;
+using CodeSpirit.Core.DependencyInjection;
 using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ namespace CodeSpirit.ConfigCenter.Services;
 /// <summary>
 /// 配置通知服务
 /// </summary>
-public interface IConfigNotificationService
+public interface IConfigNotificationService : IScopedDependency
 {
     /// <summary>
     /// 发送配置变更通知

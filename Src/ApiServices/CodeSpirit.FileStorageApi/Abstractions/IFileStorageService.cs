@@ -1,5 +1,6 @@
 using CodeSpirit.FileStorageApi.Entities;
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.FileStorageApi.Abstractions;
@@ -8,7 +9,7 @@ namespace CodeSpirit.FileStorageApi.Abstractions;
 /// 文件存储服务接口
 /// 提供高级文件管理功能
 /// </summary>
-public interface IFileStorageService
+public interface IFileStorageService : IScopedDependency
 {
     /// <summary>
     /// 上传文件

@@ -1,17 +1,25 @@
-using CodeSpirit.Messaging.Extensions;
-using CodeSpirit.Messaging.Hubs;
-using CodeSpirit.ServiceDefaults;
-using Microsoft.EntityFrameworkCore;
+using CodeSpirit.MessagingApi.Configuration;
+using CodeSpirit.Shared.Startup;
+using System.Text;
 
-Console.OutputEncoding = System.Text.Encoding.UTF8;
+Console.OutputEncoding = Encoding.UTF8;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
-// 使用 MessagingApi 扩展方法注册所有服务
-builder.AddMessagingApi();
+// 使用统一的API启动框架
+builder.AddCodeSpiritApi<MessagingApiConfiguration>();
 
-WebApplication app = builder.Build();
+var app = builder.Build();
 
-// 配置中间件
-await app.ConfigureAppAsync();
-app.Run();
+try
+{
+    // 使用统一的API配置
+    await app.UseCodeSpiritApiAsync<MessagingApiConfiguration>();
+    app.Run();
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "消息系统服务启动过程中发生错误");
+    Console.WriteLine($"消息系统服务启动失败: {ex.Message}");
+}

@@ -1,4 +1,5 @@
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.ExamSetting;
 using CodeSpirit.ExamApi.Dtos.Client;
@@ -9,7 +10,7 @@ namespace CodeSpirit.ExamApi.Services.Interfaces;
 /// <summary>
 /// 考试设置服务接口
 /// </summary>
-public interface IExamSettingService : IBaseCRUDService<ExamSetting, ExamSettingDto, long, CreateExamSettingDto, UpdateExamSettingDto>
+public interface IExamSettingService : IBaseCRUDService<ExamSetting, ExamSettingDto, long, CreateExamSettingDto, UpdateExamSettingDto>, IScopedDependency
 {
     /// <summary>
     /// 获取考试设置分页列表

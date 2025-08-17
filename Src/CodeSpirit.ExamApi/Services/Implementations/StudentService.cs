@@ -19,13 +19,14 @@ using System.Linq.Expressions;
 using CodeSpirit.Core.Extensions;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components.Forms;
+using CodeSpirit.Core.DependencyInjection;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
 /// <summary>
 /// 学生服务实现
 /// </summary>
-public class StudentService : BaseCRUDIService<Student, StudentDto, long, CreateStudentDto, UpdateStudentDto, StudentBatchImportDto>, IStudentService
+public class StudentService : BaseCRUDIService<Student, StudentDto, long, CreateStudentDto, UpdateStudentDto, StudentBatchImportDto>, IStudentService, IScopedDependency
 {
     private readonly IRepository<Student> _repository;
     private readonly IRepository<StudentGroupMapping> _mappingRepository;

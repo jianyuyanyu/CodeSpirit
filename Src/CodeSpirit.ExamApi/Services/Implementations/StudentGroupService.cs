@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data.Models;
@@ -17,7 +18,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations;
 /// <summary>
 /// 考生组服务实现
 /// </summary>
-public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDto, long, CreateStudentGroupDto, UpdateStudentGroupDto, StudentGroupBatchImportDto>, IStudentGroupService
+public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDto, long, CreateStudentGroupDto, UpdateStudentGroupDto, StudentGroupBatchImportDto>, IStudentGroupService, IScopedDependency
 {
     private readonly IRepository<Student> _studentRepository;
     private readonly IRepository<StudentGroupMapping> _mappingRepository;

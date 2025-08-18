@@ -1,6 +1,8 @@
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Data.Models.Enums;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 /// <summary>
 /// 题目查询DTO
@@ -23,15 +25,33 @@ public class QuestionQueryDto : QueryDtoBase
     /// 分类ID
     /// </summary>
     [DisplayName("分类")]
-    [AmisTreeSelectField(
+    [PageAside()]
+    // [AmisTreeSelectField(
+    //     DataSource = "${ROOT_API}/api/exam/QuestionCategories/tree",
+    //     Multiple = false,
+    //     Cascade = true,
+    //     ShowOutline = true,
+    //     LabelField = "name",
+    //     ValueField = "id",
+    //     Required = false,
+    //     Clearable = true
+    // )]
+     [AmisInputTreeField(
         DataSource = "${ROOT_API}/api/exam/QuestionCategories/tree",
         Multiple = false,
-        Cascade = true,
+        //Cascade = true,
+        JoinValues = true,
+        ExtractValue = false,
         ShowOutline = true,
         LabelField = "name",
         ValueField = "id",
         Required = false,
-        Clearable = true
+        Clearable = true,
+        SubmitOnChange = true,
+        HeightAuto = true,
+        SelectFirst = false,
+        InputOnly = true,
+        ShowIcon = true
     )]
     public long? CategoryId { get; set; }
 

@@ -1,15 +1,17 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
+		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>disable</Nullable>
-		<UserSecretsId>dc371141-becb-4008-a1a7-3a61a91c7a80</UserSecretsId>
+		<InvariantGlobalization>false</InvariantGlobalization>
+		<UserSecretsId>5edcf4b6-a4ef-47c6-b452-ede79ea812f6</UserSecretsId>
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 		<DockerfileContext>..\..</DockerfileContext>
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.14" />
 		<PackageReference Include="LinqKit.Core" Version="1.2.8" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.NewtonsoftJson" Version="9.0.2" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.0" />
@@ -24,9 +26,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
-		<ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
-		<ProjectReference Include="..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
+		<ProjectReference Include="..\..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
+		<ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
+		<ProjectReference Include="..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.Settings\CodeSpirit.Settings.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.LLM\CodeSpirit.LLM.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.PdfGeneration\CodeSpirit.PdfGeneration.csproj" />
 	</ItemGroup>
 
 </Project>

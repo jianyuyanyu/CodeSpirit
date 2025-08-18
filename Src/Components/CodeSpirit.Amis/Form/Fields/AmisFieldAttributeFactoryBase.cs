@@ -54,8 +54,10 @@ namespace CodeSpirit.Amis.Form.Fields
                 ["required"] = isRequired,
                 ["type"] = fieldAttr.Type,
                 ["placeholder"] = fieldAttr.Placeholder,
-                ["visibleOn"] = fieldAttr.VisibleOn
             };
+
+            if(!string.IsNullOrEmpty(fieldAttr.VisibleOn))
+                field["visibleOn"] = fieldAttr.VisibleOn;
 
             if (fieldAttr.Hidden)
             {
@@ -75,6 +77,9 @@ namespace CodeSpirit.Amis.Form.Fields
             {
                 field["static"] = fieldAttr.Static;
             }
+
+            if (fieldAttr.SubmitOnChange)
+                field["submitOnChange"] = fieldAttr.SubmitOnChange;
 
             // 处理额外的自定义配置
             utilityHelper.HandleAdditionalConfig(fieldAttr.AdditionalConfig, field);

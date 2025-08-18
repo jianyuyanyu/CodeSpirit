@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -26,8 +26,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
-    <ProjectReference Include="..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
+    <ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
+    <ProjectReference Include="..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
+    <ProjectReference Include="..\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
   </ItemGroup>
 
 </Project>

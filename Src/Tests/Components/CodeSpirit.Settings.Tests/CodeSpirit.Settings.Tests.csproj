@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -28,7 +28,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
-    <ProjectReference Include="..\..\..\CodeSpirit.Settings\CodeSpirit.Settings.csproj" />
+    <ProjectReference Include="..\..\..\Components\CodeSpirit.Settings\CodeSpirit.Settings.csproj" />
     <ProjectReference Include="..\..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
   </ItemGroup>
 

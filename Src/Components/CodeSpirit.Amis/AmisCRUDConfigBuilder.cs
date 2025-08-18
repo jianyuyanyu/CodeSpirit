@@ -21,12 +21,13 @@ namespace CodeSpirit.Amis
         private readonly AmisContext _amisContext;
         private readonly UtilityHelper _utilityHelper;
         private readonly AmisApiHelper _amisApiHelper;
+        private readonly AsideHelper _asideHelper;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisCRUDConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
-                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper)
+                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper, AsideHelper asideHelper)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
@@ -35,6 +36,7 @@ namespace CodeSpirit.Amis
             _amisContext = amisContext;
             _utilityHelper = utilityHelper;
             _amisApiHelper = amisApiHelper;
+            _asideHelper = asideHelper;
         }
 
         /// <summary>
@@ -69,11 +71,12 @@ namespace CodeSpirit.Amis
             List<JObject> columns = _columnHelper.GetAmisColumns();
             List<JObject> searchFields = _searchFieldHelper.GetAmisSearchFields(actions.List);
 
+            string crudName = $"{controllerName.ToLower()}Crud"; // CRUD组件名称
             // 构建 CRUD 配置
             JObject crudConfig = new()
             {
                 ["type"] = "crud",  // 设置类型为 CRUD
-                ["name"] = $"{controllerName.ToLower()}Crud",  // 设置配置名称
+                ["name"] = crudName,  // 设置配置名称
                 ["showIndex"] = true,  // 显示索引列
                 ["api"] = _amisApiHelper.CreateApi(apiRoutes.Read),  // 设置 API 配置
                 ["quickSaveApi"] = _amisApiHelper.CreateApi(apiRoutes.QuickSave),
@@ -110,6 +113,11 @@ namespace CodeSpirit.Amis
                 crudConfig["filter"] = BuildFilterConfig(searchFields);
             }
 
+            // 检查是否需要生成aside配置
+            Type? queryDtoType = _utilityHelper.GetQueryDtoTypeFromMethod(actions.List);
+            
+            JObject? asideConfig = _asideHelper.GenerateAsideConfig(queryDtoType, crudName);
+
             // 构建页面配置
             JObject pageConfig = new()
             {
@@ -124,6 +132,12 @@ namespace CodeSpirit.Amis
                     ["ROOT_API"] = _apiRouteHelper.GetRootApi()
                 }
             };
+
+            // 如果有aside配置，添加到页面中
+            if (asideConfig != null)
+            {
+                pageConfig["aside"] = asideConfig;
+            }
 
             return pageConfig;
         }

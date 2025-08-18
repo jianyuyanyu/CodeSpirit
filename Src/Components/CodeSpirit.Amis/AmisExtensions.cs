@@ -28,6 +28,7 @@ namespace CodeSpirit.Amis
             services.AddScoped<ButtonHelper>();
             services.AddScoped<FormFieldHelper>();
             services.AddScoped<SearchFieldHelper>();
+            services.AddScoped<AsideHelper>();
             services.AddScoped<AmisCRUDConfigBuilder>();
             services.AddScoped<StatisticsConfigBuilder>();
             services.AddScoped<AmisContext>();

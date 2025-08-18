@@ -18,10 +18,10 @@ var builder = DistributedApplication.CreateBuilder(args);
 // 添加 Redis 缓存服务
 var cache = builder.AddRedis("cache")
                    .WithLifetime(ContainerLifetime.Persistent)
-                   .WithHostPort(61690)  // 使用新的 WithHostPort 方法
+                   .WithHostPort(6380)  // 修改为安全端口范围
                    .WithRedisCommander((op) =>
                    {
-                       op.WithHttpEndpoint(port: 61689, targetPort: 8081, name: "commander-ui")
+                       op.WithHttpEndpoint(port: 8082, targetPort: 8081, name: "commander-ui")
                          .WithUrlForEndpoint("commander-ui", url =>
                              url.DisplayLocation = UrlDisplayLocation.SummaryAndDetails);
                    });
@@ -31,7 +31,7 @@ var seqService = builder.AddSeq("seq")
                     .WithImageTag("2024.3")
                  .WithDataVolume()
                  .WithLifetime(ContainerLifetime.Persistent)
-                 .WithHttpEndpoint(port: 61688, targetPort: 80, name: "seq-ui")
+                 .WithHttpEndpoint(port: 5341, targetPort: 80, name: "seq-ui")
                  .WithEnvironment("ACCEPT_EULA", "Y")
                  .WithUrlForEndpoint("seq-ui", url =>
                      url.DisplayText = "Seq 日志界面");
@@ -54,8 +54,8 @@ var esPassword = builder.AddParameter("password", "Password123", secret: true);
 var elasticsearchService = builder.AddElasticsearch("elasticsearch", password: esPassword)
                           .WithLifetime(ContainerLifetime.Persistent)
                           .WithDataVolume()
-                          .WithHttpEndpoint(port: 61687, targetPort: 9200, name: "elasticsearch")
-                          .WithHttpEndpoint(port: 61686, targetPort: 9300, name: "elasticsearch-nodes")
+                          .WithHttpEndpoint(port: 9200, targetPort: 9200, name: "elasticsearch")
+                          .WithHttpEndpoint(port: 9300, targetPort: 9300, name: "elasticsearch-nodes")
                           .WithUrlForEndpoint("elasticsearch", ep => new()
                           {
                               Url = "/_cluster/health",

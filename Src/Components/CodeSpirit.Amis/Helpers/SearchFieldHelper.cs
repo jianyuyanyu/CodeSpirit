@@ -1,4 +1,5 @@
-﻿using CodeSpirit.Amis.Extensions;
+﻿using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Core.Attributes;
 using Microsoft.AspNetCore.Mvc;
@@ -113,6 +114,16 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         /// <summary>
+        /// 检查属性是否标记了PageAside特性，如果有则不应该在查询表单中显示
+        /// </summary>
+        /// <param name="prop">属性信息</param>
+        /// <returns>如果属性标记了PageAside特性则返回true，否则返回false</returns>
+        private bool HasPageAsideAttribute(PropertyInfo prop)
+        {
+            return prop.GetCustomAttribute<PageAsideAttribute>() != null;
+        }
+
+        /// <summary>
         /// 根据参数信息创建相应的搜索字段列表。
         /// </summary>
         /// <param name="param">参数信息。</param>
@@ -144,6 +155,12 @@ namespace CodeSpirit.Amis.Helpers
                     }
 
                     if (!HasSearchPermission(prop))
+                    {
+                        continue;
+                    }
+
+                    // 跳过标记了PageAside特性的属性，它们将在侧边栏中显示
+                    if (HasPageAsideAttribute(prop))
                     {
                         continue;
                     }

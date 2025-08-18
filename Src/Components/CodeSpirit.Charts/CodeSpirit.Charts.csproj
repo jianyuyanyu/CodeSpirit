@@ -8,11 +8,11 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
-		<ProjectReference Include="..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	</ItemGroup>
 
 </Project>

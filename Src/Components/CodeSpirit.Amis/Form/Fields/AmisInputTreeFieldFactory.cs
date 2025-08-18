@@ -25,15 +25,28 @@ namespace CodeSpirit.Amis.Form.Fields
             var (field, attr) = CreateField<AmisInputTreeFieldAttribute>(member, utilityHelper);
             if (field != null)
             {
-                field["source"] = attr.DataSource;
+                if (!string.IsNullOrEmpty(attr.DataSource))
+                    field["source"] = attr.DataSource;
+
                 field["labelField"] = attr.LabelField;
                 field["valueField"] = attr.ValueField;
-                field["multiple"] = attr.Multiple;
-                field["joinValues"] = attr.JoinValues;
-                field["extractValue"] = attr.ExtractValue;
-                field["deferApi"] = attr.DeferApi;
+
+                if (!attr.Multiple)
+                    field["multiple"] = attr.Multiple;
+
+                if (!attr.JoinValues)
+                    field["joinValues"] = attr.JoinValues;
+
+                if (attr.ExtractValue)
+                    field["extractValue"] = attr.ExtractValue;
+
+                if (!string.IsNullOrEmpty(attr.DeferApi))
+                    field["deferApi"] = attr.DeferApi;
+
                 field["expand"] = attr.Expand;
-                field["showIcon"] = attr.ShowIcon;
+
+                if (!attr.ShowIcon)
+                    field["showIcon"] = attr.ShowIcon;
 
                 if (attr.Cascade)
                     field["cascade"] = attr.Cascade;
@@ -53,6 +66,15 @@ namespace CodeSpirit.Amis.Form.Fields
                     field["deferField"] = attr.DeferField;
                 if (attr.OnlyLeaf)
                     field["onlyLeaf"] = attr.OnlyLeaf;
+
+                if (attr.HeightAuto)
+                    field["heightAuto"] = attr.HeightAuto;
+
+                if (attr.SelectFirst)
+                    field["selectFirst"] = attr.SelectFirst;
+
+                if (attr.InputOnly)
+                    field["inputOnly"] = attr.InputOnly;
             }
             return field;
         }

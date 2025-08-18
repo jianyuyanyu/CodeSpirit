@@ -92,6 +92,21 @@
         public bool OnlyLeaf { get; set; } = false;
 
         /// <summary>
+        /// 是否自动调整高度，默认为false
+        /// </summary>
+        public bool HeightAuto { get; set; } = false;
+
+        /// <summary>
+        /// 是否默认选择第一个选项，默认为false
+        /// </summary>
+        public bool SelectFirst { get; set; } = false;
+
+        /// <summary>
+        /// 是否只显示输入框不显示边框等样式，默认为false
+        /// </summary>
+        public bool InputOnly { get; set; } = false;
+
+        /// <summary>
         /// 初始化 <see cref="AmisInputTreeFieldAttribute"/> 的新实例。
         /// </summary>
         public AmisInputTreeFieldAttribute()

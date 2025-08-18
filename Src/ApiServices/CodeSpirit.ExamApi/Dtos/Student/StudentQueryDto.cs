@@ -13,13 +13,23 @@ public class StudentQueryDto : QueryDtoBase
     /// 学生组ID, -1 表示查询无分组的学生
     /// </summary>
     [DisplayName("所属分组")]
-    [AmisSelectField(
-        Source = "${ROOT_API}/api/exam/StudentGroups/select?hasNoGroup=true",
-        ValueField = "id",
-        LabelField = "name",
-        Searchable = true,
+    [PageAside()]
+    [AmisInputTreeField(
+        DataSource = "${ROOT_API}/api/exam/StudentGroups/select?hasNoGroup=true",
         Multiple = false,
-        Clearable = true
+        //Cascade = true,
+        JoinValues = true,
+        ExtractValue = false,
+        ShowOutline = true,
+        LabelField = "name",
+        ValueField = "id",
+        Required = false,
+        Clearable = true,
+        SubmitOnChange = true,
+        HeightAuto = true,
+        SelectFirst = false,
+        InputOnly = true,
+        ShowIcon = true
     )]
     public long? StudentGroupId { get; set; }
 

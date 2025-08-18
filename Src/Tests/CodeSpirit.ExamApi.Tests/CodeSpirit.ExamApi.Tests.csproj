@@ -25,7 +25,7 @@
 	</ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\CodeSpirit.ExamApi\CodeSpirit.ExamApi.csproj" />
+    <ProjectReference Include="..\..\ApiServices\CodeSpirit.ExamApi\CodeSpirit.ExamApi.csproj" />
   </ItemGroup>
 
 </Project> 

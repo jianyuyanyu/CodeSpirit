@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -23,11 +23,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\CodeSpirit.ConfigCenter.Client\CodeSpirit.ConfigCenter.Client.csproj" />
-		<ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
-		<ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
-		<ProjectReference Include="..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
-		<ProjectReference Include="..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.ConfigCenter.Client\CodeSpirit.ConfigCenter.Client.csproj" />
+		<ProjectReference Include="..\..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
+		<ProjectReference Include="..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
 	</ItemGroup>
 
 </Project>

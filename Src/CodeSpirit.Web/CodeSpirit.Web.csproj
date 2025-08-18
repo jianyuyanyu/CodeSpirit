@@ -10,12 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CodeSpirit.Messaging\CodeSpirit.Messaging.csproj" />
     <ProjectReference Include="..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
     <ProjectReference Include="..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Aggregator\CodeSpirit.Aggregator.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Audit\CodeSpirit.Audit.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
+    <ProjectReference Include="..\Components\CodeSpirit.Messaging\CodeSpirit.Messaging.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />
     <ProjectReference Include="..\Components\CodeSpirit.UdlCards\CodeSpirit.UdlCards.csproj" />

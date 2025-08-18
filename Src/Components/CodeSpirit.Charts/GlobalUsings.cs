@@ -6,5 +6,3 @@ global using Microsoft.Extensions.Logging;
 global using Newtonsoft.Json;
 global using Newtonsoft.Json.Linq;
 global using CodeSpirit.Core;
-global using CodeSpirit.Shared;
-global using CodeSpirit.Shared.Data; 

@@ -35,7 +35,9 @@ public class CreateStudentGroupDto
         ValueField = "id",
         LabelField = "name",
         Searchable = true,
-        Multiple = true
+        Multiple = true,
+        JoinValues = false,
+        ExtractValue = true
     )]
     public List<long> StudentIds { get; set; } = new();
 } 

@@ -67,6 +67,11 @@
         public bool Static { get; set; }
 
         /// <summary>
+        /// 是否在值变化时提交表单，默认为false
+        /// </summary>
+        public bool SubmitOnChange { get; set; } = false;
+
+        /// <summary>
         /// 初始化一个新的 <see cref="AmisFormFieldAttribute"/> 实例。
         /// </summary>
         public AmisFormFieldAttribute()

@@ -213,6 +213,37 @@ namespace CodeSpirit.Amis.Helpers
         {
             return prop.PropertyType.IsEnum || Nullable.GetUnderlyingType(prop.PropertyType)?.IsEnum == true;
         }
+
+        /// <summary>
+        /// 从List方法参数中获取查询DTO类型
+        /// </summary>
+        /// <param name="method">List方法</param>
+        /// <returns>查询DTO类型，如果未找到则返回null</returns>
+        public Type? GetQueryDtoTypeFromMethod(MethodInfo? method)
+        {
+            if (method == null)
+                return null;
+
+            // 获取方法的第一个参数，通常是查询DTO
+            var parameters = method.GetParameters();
+            if (parameters.Length == 0)
+                return null;
+
+            var firstParam = parameters[0];
+            var paramType = firstParam.ParameterType;
+
+            // 检查参数名称是否包含Query或Filter
+            string paramName = firstParam.Name?.ToLower() ?? "";
+            string typeName = paramType.Name.ToLower();
+
+            if (paramName.Contains("query") || paramName.Contains("filter") || 
+                typeName.Contains("query") || typeName.Contains("filter"))
+            {
+                return paramType;
+            }
+
+            return null;
+        }
     }
 }
 

@@ -155,6 +155,14 @@ namespace CodeSpirit.Web.Middlewares
                 return;
             }
             
+            // 特殊处理：.well-known 路径直接跳过代理
+            if (request.Path.Value?.StartsWith("/.well-known/", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _logger.LogInformation(".well-known路径，跳过代理 - 路径: {Path}", request.Path);
+                await _next(context);
+                return;
+            }
+            
             // Check if the request is for a static resource
             var staticFileExtensions = new[] { ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".map", ".woff", ".woff2", ".ttf", ".eot", ".html", ".htm" };
             if (staticFileExtensions.Any(ext => request.Path.Value?.EndsWith(ext, StringComparison.OrdinalIgnoreCase) == true))
@@ -208,6 +216,7 @@ namespace CodeSpirit.Web.Middlewares
                 case "Impersonate":
                 case "Shared":
                 case "export-task":
+                case ".well-known": // 添加.well-known路径到跳过列表
                     _logger.LogInformation("Web项目路径，跳过代理 - 路径: {Path}", request.Path);
                     await _next(context);
                     return;

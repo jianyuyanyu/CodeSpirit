@@ -34,11 +34,11 @@ public class SystemFileDto
     [DisplayName("文件名")]
     public string OriginalFileName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// 存储文件名
-    /// </summary>
-    [DisplayName("存储文件名")]
-    public string StorageFileName { get; set; } = string.Empty;
+    ///// <summary>
+    ///// 存储文件名
+    ///// </summary>
+    //[DisplayName("存储文件名")]
+    //public string StorageFileName { get; set; } = string.Empty;
 
     /// <summary>
     /// 文件路径

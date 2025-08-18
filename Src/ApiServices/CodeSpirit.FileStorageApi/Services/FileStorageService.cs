@@ -138,7 +138,7 @@ public class FileStorageService : IFileStorageService
 
             var uploadResult = await storageProvider.UploadFileAsync(
                 bucketName, 
-                storageFileName, 
+                filePath, // 传递完整路径，包含日期目录结构: YYYY/MM/DD/filename
                 request.FileStream, 
                 request.ContentType, 
                 CreateMetadata(request));
@@ -241,7 +241,7 @@ public class FileStorageService : IFileStorageService
             var storageProvider = _storageProviderFactory.GetProvider(bucketConfig.Provider);
 
             // 4. 从存储提供程序下载文件
-            var fileStream = await storageProvider.DownloadFileAsync(fileEntity.BucketName, fileEntity.StorageFileName);
+            var fileStream = await storageProvider.DownloadFileAsync(fileEntity.BucketName, fileEntity.FilePath);
 
             // 5. 更新访问统计
             await UpdateFileAccessAsync(fileEntity, startTime);
@@ -306,7 +306,7 @@ public class FileStorageService : IFileStorageService
             var expirationTime = TimeSpan.FromMinutes(expirationMinutes);
             var downloadUrl = await storageProvider.GeneratePresignedUrlAsync(
                 fileEntity.BucketName, 
-                fileEntity.StorageFileName, 
+                fileEntity.FilePath, 
                 expirationTime, 
                 PresignedUrlOperation.Read);
 
@@ -375,7 +375,7 @@ public class FileStorageService : IFileStorageService
                     var storageProvider = _storageProviderFactory.GetProvider(bucketConfig.Provider);
                     
                     // 4. 从存储提供程序删除物理文件
-                    await storageProvider.DeleteFileAsync(fileEntity.BucketName, fileEntity.StorageFileName);
+                    await storageProvider.DeleteFileAsync(fileEntity.BucketName, fileEntity.FilePath);
                 }
                 catch (Exception ex)
                 {

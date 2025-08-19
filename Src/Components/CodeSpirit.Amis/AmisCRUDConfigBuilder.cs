@@ -1,6 +1,7 @@
 ﻿using CodeSpirit.Amis.Column;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
+using CodeSpirit.Amis.Attributes;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
@@ -22,12 +23,13 @@ namespace CodeSpirit.Amis
         private readonly UtilityHelper _utilityHelper;
         private readonly AmisApiHelper _amisApiHelper;
         private readonly AsideHelper _asideHelper;
+        private readonly CardHelper _cardHelper;
 
         /// <summary>
         /// 构造函数，初始化所需的助手类。
         /// </summary>
         public AmisCRUDConfigBuilder(ApiRouteHelper apiRouteHelper, ColumnHelper columnHelper, ButtonHelper buttonHelper,
-                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper, AsideHelper asideHelper)
+                                 SearchFieldHelper searchFieldHelper, AmisContext amisContext, UtilityHelper utilityHelper, AmisApiHelper amisApiHelper, AsideHelper asideHelper, CardHelper cardHelper)
         {
             _apiRouteHelper = apiRouteHelper;
             _columnHelper = columnHelper;
@@ -37,6 +39,7 @@ namespace CodeSpirit.Amis
             _utilityHelper = utilityHelper;
             _amisApiHelper = amisApiHelper;
             _asideHelper = asideHelper;
+            _cardHelper = cardHelper;
         }
 
         /// <summary>
@@ -67,6 +70,9 @@ namespace CodeSpirit.Amis
             // 检查数据类型是否为PageList<>
             bool isPaginated = IsPageListType(actions.List.ReturnType);
 
+            // 检查是否支持卡片模式
+            bool isCardModeSupported = _cardHelper.IsCardModeSupported(controllerType);
+
             // 获取列配置和搜索字段
             List<JObject> columns = _columnHelper.GetAmisColumns();
             List<JObject> searchFields = _searchFieldHelper.GetAmisSearchFields(actions.List);
@@ -77,13 +83,21 @@ namespace CodeSpirit.Amis
             {
                 ["type"] = "crud",  // 设置类型为 CRUD
                 ["name"] = crudName,  // 设置配置名称
-                ["showIndex"] = true,  // 显示索引列
                 ["api"] = _amisApiHelper.CreateApi(apiRoutes.Read),  // 设置 API 配置
                 ["quickSaveApi"] = _amisApiHelper.CreateApi(apiRoutes.QuickSave),
-                ["columns"] = new JArray(columns),  // 设置列
-                ["headerToolbar"] = BuildHeaderToolbar(),  // 设置头部工具栏
+                ["headerToolbar"] = BuildHeaderToolbar(isCardModeSupported),  // 设置头部工具栏
                 ["bulkActions"] = new JArray(_buttonHelper.GetBulkOperationButtons()), //设置批量操作
             };
+
+            // 配置卡片模式或表格模式
+            if (isCardModeSupported)
+            {
+                ConfigureCardMode(crudConfig, controllerType, dataType);
+            }
+            else
+            {
+                ConfigureTableMode(crudConfig, columns);
+            }
 
             // 只有分页数据才配置分页工具栏
             if (isPaginated)
@@ -114,9 +128,9 @@ namespace CodeSpirit.Amis
             }
 
             // 检查是否需要生成aside配置
-            Type? queryDtoType = _utilityHelper.GetQueryDtoTypeFromMethod(actions.List);
+            Type queryDtoType = _utilityHelper.GetQueryDtoTypeFromMethod(actions.List);
             
-            JObject? asideConfig = _asideHelper.GenerateAsideConfig(queryDtoType, crudName);
+            JObject asideConfig = _asideHelper.GenerateAsideConfig(queryDtoType, crudName);
 
             // 构建页面配置
             JObject pageConfig = new()
@@ -193,7 +207,8 @@ namespace CodeSpirit.Amis
         /// <summary>
         /// 构建头部工具栏配置。
         /// </summary>
-        private JArray BuildHeaderToolbar()
+        /// <param name="isCardMode">是否为卡片模式</param>
+        private JArray BuildHeaderToolbar(bool isCardMode = false)
         {
             JArray buttons = ["bulkActions"];
             if (_amisContext.ApiRoutes.Create != null && _amisContext.Actions.Create != null)
@@ -203,26 +218,32 @@ namespace CodeSpirit.Amis
                     buttons.Add(_buttonHelper.CreateHeaderButton("新增", _amisContext.ApiRoutes.Create, _amisContext.Actions.Create?.GetParameters()));
                 }
             }
-            buttons.Add(new JObject()
-            {
-                ["type"] = "export-excel",
-                ["label"] = "导出当前页",
-                //["filename"] = ""
-            });
 
-            if (_amisContext.Actions.Export != null)
+            // 卡片模式不支持导出按钮
+            if (!isCardMode)
             {
                 buttons.Add(new JObject()
                 {
                     ["type"] = "export-excel",
-                    ["label"] = "导出全部",
-                    ["api"] = new JObject
-                    {
-                        ["url"] = _amisContext.ApiRoutes.Export.ApiPath,
-                        ["method"] = _amisContext.ApiRoutes.Export.HttpMethod
-                    },
+                    ["label"] = "导出当前页",
+                    //["filename"] = ""
                 });
+
+                if (_amisContext.Actions.Export != null)
+                {
+                    buttons.Add(new JObject()
+                    {
+                        ["type"] = "export-excel",
+                        ["label"] = "导出全部",
+                        ["api"] = new JObject
+                        {
+                            ["url"] = _amisContext.ApiRoutes.Export.ApiPath,
+                            ["method"] = _amisContext.ApiRoutes.Export.HttpMethod
+                        },
+                    });
+                }
             }
+
             if (_amisContext.ApiRoutes.Import != null && _amisContext.Actions.Import != null)
             {
                 buttons.Add(_buttonHelper.CreateHeaderButton("导入", _amisContext.ApiRoutes.Import, _amisContext.Actions.Import?.GetParameters(), size: "lg"));
@@ -267,6 +288,45 @@ namespace CodeSpirit.Amis
                     }
                 }
             };
+        }
+
+        /// <summary>
+        /// 配置卡片模式
+        /// </summary>
+        /// <param name="crudConfig">CRUD配置对象</param>
+        /// <param name="controllerType">控制器类型</param>
+        /// <param name="dataType">数据类型</param>
+        private void ConfigureCardMode(JObject crudConfig, Type controllerType, Type dataType)
+        {
+            var cardAttribute = controllerType.GetCustomAttribute<AmisCardAttribute>();
+            if (cardAttribute == null) return;
+
+            // 设置卡片模式
+            crudConfig["mode"] = "cards";
+            crudConfig["switchPerPage"] = cardAttribute.SwitchPerPage;
+            crudConfig["placeholder"] = cardAttribute.Placeholder;
+            crudConfig["columnsCount"] = cardAttribute.ColumnsCount;
+
+            var defaultParams = _cardHelper.GetCardModeDefaultParams(cardAttribute);
+            crudConfig["defaultParams"] = defaultParams;
+
+            // 生成卡片配置
+            var cardConfig = _cardHelper.GenerateCardConfig(controllerType, dataType);
+            if (cardConfig != null)
+            {
+                crudConfig["card"] = cardConfig;
+            }
+        }
+
+        /// <summary>
+        /// 配置表格模式
+        /// </summary>
+        /// <param name="crudConfig">CRUD配置对象</param>
+        /// <param name="columns">列配置</param>
+        private void ConfigureTableMode(JObject crudConfig, List<JObject> columns)
+        {
+            crudConfig["showIndex"] = true;  // 显示索引列
+            crudConfig["columns"] = new JArray(columns);  // 设置列
         }
 
         internal JObject GenerateAmisCrudConfig()

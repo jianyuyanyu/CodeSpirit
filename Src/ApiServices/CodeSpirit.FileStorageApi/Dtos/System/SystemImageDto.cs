@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.FileStorageApi.Entities;
@@ -32,6 +33,7 @@ public class SystemImageDto
     /// 原始文件名
     /// </summary>
     [DisplayName("文件名")]
+    [AmisCardField(FieldType = CardFieldType.Title, Order = 1)]
     public string OriginalFileName { get; set; } = string.Empty;
 
     /// <summary>
@@ -44,6 +46,7 @@ public class SystemImageDto
     /// 文件大小（格式化显示）
     /// </summary>
     [DisplayName("大小")]
+    [AmisCardField(FieldType = CardFieldType.SubTitle, Order = 2)]
     public string SizeFormatted { get; set; } = string.Empty;
 
     /// <summary>
@@ -68,6 +71,7 @@ public class SystemImageDto
     /// 文件描述
     /// </summary>
     [DisplayName("描述")]
+    [AmisCardField(FieldType = CardFieldType.Description, Order = 3)]
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
@@ -105,6 +109,7 @@ public class SystemImageDto
     /// </summary>
     [DisplayName("下载链接")]
     [AmisColumn(Type = "image")]
+    [AmisCardField(FieldType = CardFieldType.Avatar, Order = 0)]
     public string DownloadUrl { get; set; } = string.Empty;
 
     /// <summary>
@@ -130,6 +135,7 @@ public class SystemImageDto
     /// 创建时间
     /// </summary>
     [DisplayName("上传时间")]
+    [AmisCardField(FieldType = CardFieldType.Body, Order = 6, Template = "<p class=\"text-muted\"><i class=\"fa fa-clock\"></i> 上传于: ${createdTime|date:YYYY-MM-DD HH:mm}</p>")]
     public DateTime CreatedTime { get; set; }
 
     /// <summary>
@@ -143,12 +149,14 @@ public class SystemImageDto
     /// 图片宽度（像素）
     /// </summary>
     [DisplayName("宽度")]
+    [AmisCardField(FieldType = CardFieldType.Body, Order = 4, Template = "<span class=\"label label-info\">宽度: ${width}px</span>")]
     public int Width { get; set; }
 
     /// <summary>
     /// 图片高度（像素）
     /// </summary>
     [DisplayName("高度")]
+    [AmisCardField(FieldType = CardFieldType.Body, Order = 5, Template = "<span class=\"label label-info\">高度: ${height}px</span>")]
     public int Height { get; set; }
 
     /// <summary>

@@ -6,6 +6,7 @@ using CodeSpirit.FileStorageApi.Dtos.System;
 using CodeSpirit.FileStorageApi.Services.System;
 using CodeSpirit.Shared.Dtos.Common;
 using static CodeSpirit.FileStorageApi.Services.System.ISystemFileService;
+using CodeSpirit.Amis.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
@@ -16,6 +17,16 @@ namespace CodeSpirit.FileStorageApi.Controllers.System;
 /// </summary>
 [DisplayName("图片管理")]
 [Navigation(Icon = "fa-solid fa-image", PlatformType = PlatformType.System)]
+[AmisCard(
+    DefaultPerPage = 12,
+    SwitchPerPage = true,
+    Placeholder = "暂无图片",
+    ColumnsCount = 3,
+    TitleField = "OriginalFileName",
+    SubTitleField = "SizeFormatted",
+    DescriptionField = "Description",
+    AvatarField = "DownloadUrl"
+)]
 public class SystemImagesController : ApiControllerBase
 {
     private readonly ISystemImageService _imageService;
@@ -137,47 +148,47 @@ public class SystemImagesController : ApiControllerBase
         return SuccessResponse(result);
     }
 
-    /// <summary>
-    /// 修复图片数据完整性
-    /// </summary>
-    /// <param name="id">图片ID</param>
-    /// <returns>修复结果</returns>
-    [HttpPost("{id}/repair")]
-    [Operation("修复图片", "ajax", null, "确定要修复此图片的数据完整性吗？")]
-    [DisplayName("修复图片数据")]
-    public async Task<ActionResult<ApiResponse<FileRepairResult>>> RepairImage(long id)
-    {
-        var result = await _imageService.RepairImageAsync(id);
-        return SuccessResponse(result, result.IsRepaired ? "图片修复成功" : "图片无需修复");
-    }
+    ///// <summary>
+    ///// 修复图片数据完整性
+    ///// </summary>
+    ///// <param name="id">图片ID</param>
+    ///// <returns>修复结果</returns>
+    //[HttpPost("{id}/repair")]
+    //[Operation("修复图片", "ajax", null, "确定要修复此图片的数据完整性吗？")]
+    //[DisplayName("修复图片数据")]
+    //public async Task<ActionResult<ApiResponse<FileRepairResult>>> RepairImage(long id)
+    //{
+    //    var result = await _imageService.RepairImageAsync(id);
+    //    return SuccessResponse(result, result.IsRepaired ? "图片修复成功" : "图片无需修复");
+    //}
 
-    /// <summary>
-    /// 重建图片元数据
-    /// </summary>
-    /// <param name="id">图片ID</param>
-    /// <returns>重建结果</returns>
-    [HttpPost("{id}/rebuild-metadata")]
-    [Operation("重建元数据", "ajax", null, "确定要重建此图片的元数据吗？")]
-    [DisplayName("重建图片元数据")]
-    public async Task<ActionResult<ApiResponse<object>>> RebuildImageMetadata(long id)
-    {
-        var result = await _imageService.RebuildImageMetadataAsync(id);
-        return SuccessResponse(result, "图片元数据重建成功");
-    }
+    ///// <summary>
+    ///// 重建图片元数据
+    ///// </summary>
+    ///// <param name="id">图片ID</param>
+    ///// <returns>重建结果</returns>
+    //[HttpPost("{id}/rebuild-metadata")]
+    //[Operation("重建元数据", "ajax", null, "确定要重建此图片的元数据吗？")]
+    //[DisplayName("重建图片元数据")]
+    //public async Task<ActionResult<ApiResponse<object>>> RebuildImageMetadata(long id)
+    //{
+    //    var result = await _imageService.RebuildImageMetadataAsync(id);
+    //    return SuccessResponse(result, "图片元数据重建成功");
+    //}
 
-    /// <summary>
-    /// 优化图片存储
-    /// </summary>
-    /// <param name="id">图片ID</param>
-    /// <returns>优化结果</returns>
-    [HttpPost("{id}/optimize")]
-    [Operation("优化存储", "ajax", null, "确定要优化此图片的存储吗？")]
-    [DisplayName("优化图片存储")]
-    public async Task<ActionResult<ApiResponse<object>>> OptimizeImageStorage(long id)
-    {
-        var result = await _imageService.OptimizeImageStorageAsync(id);
-        return SuccessResponse(result, "图片存储优化成功");
-    }
+    ///// <summary>
+    ///// 优化图片存储
+    ///// </summary>
+    ///// <param name="id">图片ID</param>
+    ///// <returns>优化结果</returns>
+    //[HttpPost("{id}/optimize")]
+    //[Operation("优化存储", "ajax", null, "确定要优化此图片的存储吗？")]
+    //[DisplayName("优化图片存储")]
+    //public async Task<ActionResult<ApiResponse<object>>> OptimizeImageStorage(long id)
+    //{
+    //    var result = await _imageService.OptimizeImageStorageAsync(id);
+    //    return SuccessResponse(result, "图片存储优化成功");
+    //}
 
     /// <summary>
     /// 获取系统图片统计摘要

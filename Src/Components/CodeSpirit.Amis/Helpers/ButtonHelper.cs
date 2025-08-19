@@ -502,6 +502,15 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         /// <summary>
+        /// 获取行操作按钮（用于卡片和表格行）
+        /// </summary>
+        /// <returns>操作按钮列表</returns>
+        public List<JObject> GetOperationButtons()
+        {
+            return GetCustomOperationsButtons<OperationAttribute>(false);
+        }
+
+        /// <summary>
         /// 创建一个Service弹窗按钮
         /// </summary>
         /// <param name="title">按钮和弹窗标题</param>

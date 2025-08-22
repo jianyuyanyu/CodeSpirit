@@ -21,6 +21,7 @@ public class SystemImageDto
     /// 租户ID
     /// </summary>
     [DisplayName("租户ID")]
+    [AmisCardField(FieldType = CardFieldType.Description, Order = 3)]
     public string TenantId { get; set; } = string.Empty;
 
     /// <summary>
@@ -71,7 +72,6 @@ public class SystemImageDto
     /// 文件描述
     /// </summary>
     [DisplayName("描述")]
-    [AmisCardField(FieldType = CardFieldType.Description, Order = 3)]
     public string Description { get; set; } = string.Empty;
 
     /// <summary>

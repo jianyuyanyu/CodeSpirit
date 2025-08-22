@@ -1,5 +1,6 @@
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Core.Extensions;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.Reflection;
@@ -103,30 +104,30 @@ namespace CodeSpirit.Amis.Helpers
             {
                 var cardFieldAttr = prop.GetCustomAttribute<AmisCardFieldAttribute>();
                 var displayNameAttr = prop.GetCustomAttribute<DisplayNameAttribute>();
-                var propName = prop.Name;
+                var propName = prop.Name.ToCamelCase();
 
                 if (cardFieldAttr != null)
                 {
                     switch (cardFieldAttr.FieldType)
                     {
                         case CardFieldType.Title:
-                            headerConfig["title"] = $"${{{char.ToLower(propName[0])}{propName[1..]}}}";
+                            headerConfig["title"] = $"${{TRUNCATE({propName},30)}}";
                             break;
                         case CardFieldType.SubTitle:
-                            headerConfig["subTitle"] = $"${{{char.ToLower(propName[0])}{propName[1..]}}}";
+                            headerConfig["subTitle"] = $"${{{propName}}}";
                             break;
                         case CardFieldType.Description:
-                            headerConfig["description"] = $"${{{char.ToLower(propName[0])}{propName[1..]}}}";
+                            headerConfig["description"] = $"${{{propName}}}";
                             break;
                         case CardFieldType.Avatar:
-                            headerConfig["avatar"] = $"${{{char.ToLower(propName[0])}{propName[1..]} | raw}}";
+                            headerConfig["avatar"] = $"${{{propName}}}";
                             if (!string.IsNullOrEmpty(cardAttribute.AvatarClassName))
                             {
                                 headerConfig["avatarClassName"] = cardAttribute.AvatarClassName;
                             }
                             break;
                         case CardFieldType.Highlight:
-                            headerConfig["highlight"] = $"${{{char.ToLower(propName[0])}{propName[1..]}}}";
+                            headerConfig["highlight"] = $"${{{propName}}}";
                             break;
                     }
                 }
@@ -135,22 +136,22 @@ namespace CodeSpirit.Amis.Helpers
             // 使用配置的字段
             if (!string.IsNullOrEmpty(cardAttribute.TitleField))
             {
-                string titleField = char.ToLower(cardAttribute.TitleField[0]) + cardAttribute.TitleField[1..];
-                headerConfig["title"] = $"${{{titleField}}}";
+                string titleField = cardAttribute.TitleField.ToCamelCase();
+                headerConfig["title"] = $"${{TRUNCATE({titleField},25)}}";
             }
             if (!string.IsNullOrEmpty(cardAttribute.SubTitleField))
             {
-                string subTitleField = char.ToLower(cardAttribute.SubTitleField[0]) + cardAttribute.SubTitleField[1..];
+                string subTitleField = cardAttribute.SubTitleField.ToCamelCase();
                 headerConfig["subTitle"] = $"${{{subTitleField}}}";
             }
             if (!string.IsNullOrEmpty(cardAttribute.DescriptionField))
             {
-                string descriptionField = char.ToLower(cardAttribute.DescriptionField[0]) + cardAttribute.DescriptionField[1..];
+                string descriptionField = cardAttribute.DescriptionField.ToCamelCase();
                 headerConfig["description"] = $"${{{descriptionField}}}";
             }
             if (!string.IsNullOrEmpty(cardAttribute.AvatarField))
             {
-                string avatarField = char.ToLower(cardAttribute.AvatarField[0]) + cardAttribute.AvatarField[1..];
+                string avatarField = cardAttribute.AvatarField.ToCamelCase();
                 headerConfig["avatar"] = $"${{{avatarField} | raw}}";
                 if (!string.IsNullOrEmpty(cardAttribute.AvatarClassName))
                 {
@@ -159,7 +160,7 @@ namespace CodeSpirit.Amis.Helpers
             }
             if (!string.IsNullOrEmpty(cardAttribute.HighlightField))
             {
-                string highlightField = char.ToLower(cardAttribute.HighlightField[0]) + cardAttribute.HighlightField[1..];
+                string highlightField = cardAttribute.HighlightField.ToCamelCase();
                 headerConfig["highlight"] = $"${{{highlightField}}}";
             }
 

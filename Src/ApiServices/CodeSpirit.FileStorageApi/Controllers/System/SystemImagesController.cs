@@ -24,7 +24,6 @@ namespace CodeSpirit.FileStorageApi.Controllers.System;
     ColumnsCount = 3,
     TitleField = "OriginalFileName",
     SubTitleField = "SizeFormatted",
-    DescriptionField = "Description",
     AvatarField = "DownloadUrl"
 )]
 public class SystemImagesController : ApiControllerBase
@@ -105,34 +104,34 @@ public class SystemImagesController : ApiControllerBase
         return SuccessResponse(references);
     }
 
-    /// <summary>
-    /// 恢复已删除的图片
-    /// </summary>
-    /// <param name="id">图片ID</param>
-    /// <returns>恢复结果</returns>
-    [HttpPost("{id}/restore")]
-    [Operation("恢复图片", "ajax", null, "确定要恢复此图片吗？")]
-    [DisplayName("恢复图片")]
-    public async Task<ActionResult<ApiResponse>> RestoreImage(long id)
-    {
-        await _imageService.RestoreImageAsync(id);
-        return SuccessResponse("图片已恢复");
-    }
+    ///// <summary>
+    ///// 恢复已删除的图片
+    ///// </summary>
+    ///// <param name="id">图片ID</param>
+    ///// <returns>恢复结果</returns>
+    //[HttpPost("{id}/restore")]
+    //[Operation("恢复图片", "ajax", null, "确定要恢复此图片吗？")]
+    //[DisplayName("恢复图片")]
+    //public async Task<ActionResult<ApiResponse>> RestoreImage(long id)
+    //{
+    //    await _imageService.RestoreImageAsync(id);
+    //    return SuccessResponse("图片已恢复");
+    //}
 
-    /// <summary>
-    /// 移动图片到其他存储桶
-    /// </summary>
-    /// <param name="id">图片ID</param>
-    /// <param name="targetBucketName">目标存储桶名称</param>
-    /// <returns>移动结果</returns>
-    [HttpPost("{id}/move")]
-    [Operation("移动图片", "form", null, "确定要将此图片移动到指定存储桶吗？")]
-    [DisplayName("移动图片")]
-    public async Task<ActionResult<ApiResponse>> MoveImage(long id, [FromBody] string targetBucketName)
-    {
-        await _imageService.MoveImageAsync(id, targetBucketName);
-        return SuccessResponse($"图片已移动到存储桶 '{targetBucketName}'");
-    }
+    ///// <summary>
+    ///// 移动图片到其他存储桶
+    ///// </summary>
+    ///// <param name="id">图片ID</param>
+    ///// <param name="targetBucketName">目标存储桶名称</param>
+    ///// <returns>移动结果</returns>
+    //[HttpPost("{id}/move")]
+    //[Operation("移动图片", "form", null, "确定要将此图片移动到指定存储桶吗？")]
+    //[DisplayName("移动图片")]
+    //public async Task<ActionResult<ApiResponse>> MoveImage(long id, [FromBody] string targetBucketName)
+    //{
+    //    await _imageService.MoveImageAsync(id, targetBucketName);
+    //    return SuccessResponse($"图片已移动到存储桶 '{targetBucketName}'");
+    //}
 
     /// <summary>
     /// 获取图片下载链接

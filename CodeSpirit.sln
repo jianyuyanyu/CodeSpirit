@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35617.110
@@ -84,6 +84,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.UdlCards.Tests", "Tests\Components\CodeSpirit.UdlCards.Tests\CodeSpirit.UdlCards.Tests.csproj", "{64474DA1-7227-AC4E-EA8C-0A61F8518E62}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.FileStorageApi", "Src\ApiServices\CodeSpirit.FileStorageApi\CodeSpirit.FileStorageApi.csproj", "{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.SurveyApi", "Src\ApiServices\CodeSpirit.SurveyApi\CodeSpirit.SurveyApi.csproj", "{A6DE483B-E706-44A4-A488-D174CD34FC39}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -503,6 +505,18 @@ Global
 		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Release|x64.Build.0 = Release|Any CPU
 		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Release|x86.ActiveCfg = Release|Any CPU
 		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C}.Release|x86.Build.0 = Release|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Debug|x64.Build.0 = Debug|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Debug|x86.Build.0 = Debug|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Release|x64.ActiveCfg = Release|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Release|x64.Build.0 = Release|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Release|x86.ActiveCfg = Release|Any CPU
+		{A6DE483B-E706-44A4-A488-D174CD34FC39}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -541,6 +555,7 @@ Global
 		{34022520-5AC1-F903-E926-03F5903FA328} = {28E19F6A-7ADD-4941-9E72-EFA73162E871}
 		{64474DA1-7227-AC4E-EA8C-0A61F8518E62} = {E9AA3C88-F320-411E-9CBB-75B0047F0F46}
 		{1656D98D-E7F7-3091-2E38-4FA179BBCF3C} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{A6DE483B-E706-44A4-A488-D174CD34FC39} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FA2D98D6-8906-4629-AE73-437BD9C6A177}

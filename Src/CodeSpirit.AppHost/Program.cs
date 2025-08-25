@@ -93,6 +93,12 @@ var fileService = builder.AddProject<Projects.CodeSpirit_FileStorageApi>("file")
     .WithReference(configService)
     .WithReference(rabbitmqService);
 
+var surveyService = builder.AddProject<Projects.CodeSpirit_SurveyApi>("survey")
+    .WithReference(seqService)
+    .WithReference(cache)
+    .WithReference(configService)
+    .WithReference(rabbitmqService);
+
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     .WithReference(cache)
@@ -104,6 +110,7 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(examService)
     .WithReference(elasticsearchService)
     .WithReference(fileService)
+    .WithReference(surveyService)
     .WithUrlForEndpoint("https", url =>
     {
         url.DisplayText = "Web 前端";

@@ -128,6 +128,7 @@ namespace CodeSpirit.Amis.Helpers
                 "上传" => "fa fa-upload",
                 "预览" => "fa fa-eye",
                 "附件" => "fa fa-paperclip",
+                "归档" => "fa fa-archive",
 
                 // 消息操作
                 "发送" => "fa fa-paper-plane",

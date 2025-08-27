@@ -1,9 +1,10 @@
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
+using CodeSpirit.Shared.Services;
 using CodeSpirit.SurveyApi.Dtos.Question;
 using CodeSpirit.SurveyApi.Models;
 using CodeSpirit.SurveyApi.Services.Interfaces;
-using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeSpirit.SurveyApi.Controllers;
@@ -35,13 +36,27 @@ public class QuestionsController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取题目列表
+    /// 获取题目分页列表
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>题目分页列表</returns>
+    [HttpGet]
+    [DisplayName("获取题目列表")]
+    public async Task<ActionResult<ApiResponse<PageList<QuestionDto>>>> GetQuestions(
+        [FromQuery] QuestionQueryDto queryDto)
+    {
+        var questions = await _questionService.GetQuestionsAsync(queryDto);
+        return SuccessResponse(questions);
+    }
+
+    /// <summary>
+    /// 根据问卷ID获取题目列表（简化版本）
     /// </summary>
     /// <param name="surveyId">问卷ID</param>
     /// <returns>题目列表</returns>
-    [HttpGet]
-    [DisplayName("获取题目列表")]
-    public async Task<ActionResult<ApiResponse<List<QuestionDto>>>> GetQuestions([FromQuery] int surveyId)
+    [HttpGet("by-survey/{surveyId}")]
+    [DisplayName("按问卷获取题目")]
+    public async Task<ActionResult<ApiResponse<List<QuestionDto>>>> GetQuestionsBySurvey(int surveyId)
     {
         var questions = await _questionService.GetQuestionsBySurveyIdAsync(surveyId);
         return SuccessResponse(questions);

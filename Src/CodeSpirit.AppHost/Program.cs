@@ -63,41 +63,64 @@ var elasticsearchService = builder.AddElasticsearch("elasticsearch", password: e
                               DisplayLocation = UrlDisplayLocation.DetailsOnly
                           });
 
+// 添加统一的JWT配置参数
+var jwtSecretKey = builder.AddParameter(name: "jwt-SecretKey", "ECBF8FA013844D77AE041A6800D7FF8F", secret: true);
+var jwtIssuer = builder.AddParameter(name: "jwt-Issuer", "codespirit.com");
+var jwtAudience = builder.AddParameter(name: "jwt-Audience", "CodeSpirit");
+
 // 添加 ConfigCenter 服务
 var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
     .WithReference(seqService)
-    .WithReference(cache);
+    .WithReference(cache)
+    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
+    .WithEnvironment("Jwt__Issuer", jwtIssuer)
+    .WithEnvironment("Jwt__Audience", jwtAudience);
 
 var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
-    .WithReference(rabbitmqService);
+    .WithReference(rabbitmqService)
+    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
+    .WithEnvironment("Jwt__Issuer", jwtIssuer)
+    .WithEnvironment("Jwt__Audience", jwtAudience);
 
 // 添加消息服务
 var messagingService = builder.AddProject<Projects.CodeSpirit_MessagingApi>("messaging")
     .WithReference(seqService)
     .WithReference(cache)
-    .WithReference(configService);
+    .WithReference(configService)
+    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
+    .WithEnvironment("Jwt__Issuer", jwtIssuer)
+    .WithEnvironment("Jwt__Audience", jwtAudience);
 
 var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
     .WithReference(rabbitmqService)
-    .WithReference(elasticsearchService);
+    .WithReference(elasticsearchService)
+    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
+    .WithEnvironment("Jwt__Issuer", jwtIssuer)
+    .WithEnvironment("Jwt__Audience", jwtAudience);
 
 var fileService = builder.AddProject<Projects.CodeSpirit_FileStorageApi>("file")
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
-    .WithReference(rabbitmqService);
+    .WithReference(rabbitmqService)
+    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
+    .WithEnvironment("Jwt__Issuer", jwtIssuer)
+    .WithEnvironment("Jwt__Audience", jwtAudience);
 
 var surveyService = builder.AddProject<Projects.CodeSpirit_SurveyApi>("survey")
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
-    .WithReference(rabbitmqService);
+    .WithReference(rabbitmqService)
+    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
+    .WithEnvironment("Jwt__Issuer", jwtIssuer)
+    .WithEnvironment("Jwt__Audience", jwtAudience);
 
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()

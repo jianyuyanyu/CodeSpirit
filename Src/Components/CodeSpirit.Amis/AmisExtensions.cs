@@ -37,6 +37,7 @@ namespace CodeSpirit.Amis
             // 注册工厂
             services.AddTransient<IAmisFieldFactory, AmisInputImageFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisSelectFieldFactory>();
+            services.AddTransient<IAmisFieldFactory, AmisListSelectFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisInputTreeFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisTreeSelectFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisInputExcelFieldFactory>();

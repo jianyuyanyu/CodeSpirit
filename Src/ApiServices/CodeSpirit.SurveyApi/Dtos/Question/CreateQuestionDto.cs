@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.SurveyApi.Models.Enums;
 
 namespace CodeSpirit.SurveyApi.Dtos.Question;
@@ -13,6 +14,7 @@ public class CreateQuestionDto
     /// </summary>
     [Required]
     [DisplayName("问卷ID")]
+    [AmisSelectField(Source = "/survey/api/survey/surveys/options", ValueField = "id", LabelField = "title", Clearable = false, Searchable = true)]
     public int SurveyId { get; set; }
 
     /// <summary>

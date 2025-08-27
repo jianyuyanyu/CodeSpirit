@@ -82,11 +82,7 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
             predicate = predicate.And(x => x.IsTemplate == queryDto.IsTemplate.Value);
         }
 
-        // 创建者筛选
-        if (queryDto.CreatedBy.HasValue)
-        {
-            predicate = predicate.And(x => x.CreatedBy == queryDto.CreatedBy.Value);
-        }
+        // 创建者筛选已移除，如需按创建者筛选请使用具体的业务方法
 
         // 时间范围筛选
         if (queryDto.StartTime.HasValue)
@@ -104,7 +100,7 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
             queryDto.Page,
             queryDto.PerPage,
             predicate,
-            queryDto.SortField?.ToLower() switch
+            queryDto.OrderBy?.ToLower() switch
             {
                 "title" => "Title",
                 "status" => "Status", 
@@ -112,7 +108,7 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
                 "updatedat" => "UpdatedAt",
                 _ => "UpdatedAt"
             },
-            queryDto.SortOrder?.ToLower() == "desc" ? "desc" : "asc",
+            queryDto.OrderDir?.ToLower() == "desc" ? "desc" : "asc",
             "Questions", "Responses"
         ).ContinueWith(t => _mapper.Map<PageList<SurveyDto>>(t.Result));
     }
@@ -140,6 +136,12 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
         if (!hasQuestions)
         {
             throw new BusinessException("问卷必须包含至少一个题目才能发布");
+        }
+
+        // 验证问卷是否已预览
+        if (!survey.IsPreviewChecked)
+        {
+            throw new BusinessException("问卷必须先预览后才能发布");
         }
 
         survey.Status = SurveyStatus.Published;
@@ -310,8 +312,64 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
             throw new BusinessException("用户未登录");
         }
 
-        queryDto.CreatedBy = (int)_currentUser.Id.Value;
-        return await GetSurveysAsync(queryDto);
+        // 构建查询条件，专门针对当前用户的问卷
+        var predicate = PredicateBuilder.New<Survey>(true);
+
+        // 当前用户创建的问卷
+        predicate = predicate.And(x => x.CreatedBy == _currentUser.Id.Value);
+
+        // 其他查询条件
+        if (!string.IsNullOrWhiteSpace(queryDto.Keywords))
+        {
+            predicate = predicate.And(x => x.Title.Contains(queryDto.Keywords) || 
+                                          (x.Description != null && x.Description.Contains(queryDto.Keywords)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(queryDto.Title))
+        {
+            predicate = predicate.And(x => x.Title.Contains(queryDto.Title));
+        }
+
+        if (queryDto.Status.HasValue)
+        {
+            predicate = predicate.And(x => x.Status == queryDto.Status.Value);
+        }
+
+        if (queryDto.AccessType.HasValue)
+        {
+            predicate = predicate.And(x => x.AccessType == queryDto.AccessType.Value);
+        }
+
+        if (queryDto.IsTemplate.HasValue)
+        {
+            predicate = predicate.And(x => x.IsTemplate == queryDto.IsTemplate.Value);
+        }
+
+        if (queryDto.StartTime.HasValue)
+        {
+            predicate = predicate.And(x => x.CreatedAt >= queryDto.StartTime.Value);
+        }
+
+        if (queryDto.EndTime.HasValue)
+        {
+            predicate = predicate.And(x => x.CreatedAt <= queryDto.EndTime.Value);
+        }
+
+        return await _repository.GetPagedAsync(
+            queryDto.Page,
+            queryDto.PerPage,
+            predicate,
+            queryDto.OrderBy?.ToLower() switch
+            {
+                "title" => "Title",
+                "status" => "Status", 
+                "createdat" => "CreatedAt",
+                "updatedat" => "UpdatedAt",
+                _ => "UpdatedAt"
+            },
+            queryDto.OrderDir?.ToLower() == "desc" ? "desc" : "asc",
+            "Questions", "Responses"
+        ).ContinueWith(t => _mapper.Map<PageList<SurveyDto>>(t.Result));
     }
 
     /// <summary>
@@ -346,5 +404,43 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
         }
 
         return await CopySurveyAsync(templateId, title);
+    }
+
+    /// <summary>
+    /// 标记问卷已预览
+    /// </summary>
+    /// <param name="id">问卷ID</param>
+    /// <returns>异步任务</returns>
+    public async Task MarkPreviewedAsync(int id)
+    {
+        var survey = await _repository.GetByIdAsync(id);
+        if (survey == null)
+        {
+            throw new BusinessException("问卷不存在");
+        }
+
+        survey.IsPreviewChecked = true;
+        await _repository.UpdateAsync(survey);
+        
+        _logger.LogInformation("问卷 {SurveyId} 已标记为已预览", id);
+    }
+
+    /// <summary>
+    /// 获取问卷选项列表（用于下拉选择）
+    /// </summary>
+    /// <returns>问卷选项列表</returns>
+    public async Task<List<SurveyOptionDto>> GetSurveyOptionsAsync()
+    {
+        var surveys = await _repository.Find(s => !s.IsTemplate)
+            .OrderByDescending(s => s.CreatedAt)
+            .Take(100) // 限制返回数量，避免数据过多
+            .ToListAsync();
+
+        return surveys.Select(s => new SurveyOptionDto
+        {
+            Id = s.Id,
+            Title = s.Title,
+            Status = s.Status.ToString()
+        }).ToList();
     }
 }

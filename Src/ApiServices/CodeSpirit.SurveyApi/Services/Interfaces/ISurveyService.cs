@@ -73,4 +73,17 @@ public interface ISurveyService : IBaseCRUDService<Survey, SurveyDto, int, Creat
     /// <param name="title">新问卷标题</param>
     /// <returns>新问卷</returns>
     Task<SurveyDto> CreateFromTemplateAsync(int templateId, string title);
+
+    /// <summary>
+    /// 标记问卷已预览
+    /// </summary>
+    /// <param name="id">问卷ID</param>
+    /// <returns>异步任务</returns>
+    Task MarkPreviewedAsync(int id);
+
+    /// <summary>
+    /// 获取问卷选项列表（用于下拉选择）
+    /// </summary>
+    /// <returns>问卷选项列表</returns>
+    Task<List<SurveyOptionDto>> GetSurveyOptionsAsync();
 }

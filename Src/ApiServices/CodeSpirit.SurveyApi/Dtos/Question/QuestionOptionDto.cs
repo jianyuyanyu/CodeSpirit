@@ -1,3 +1,5 @@
+using CodeSpirit.Amis.Attributes.Columns;
+
 namespace CodeSpirit.SurveyApi.Dtos.Question;
 
 /// <summary>
@@ -28,6 +30,7 @@ public class QuestionOptionDto
     /// 选项值
     /// </summary>
     [DisplayName("选项值")]
+    [AmisColumn(Copyable = true)]
     public string? Value { get; set; }
 
     /// <summary>
@@ -40,5 +43,6 @@ public class QuestionOptionDto
     /// 是否为"其他"选项
     /// </summary>
     [DisplayName("其他选项")]
+    [AmisColumn(Type = "status")]
     public bool IsOther { get; set; }
 }

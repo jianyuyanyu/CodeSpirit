@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using CodeSpirit.SurveyApi.Models.Enums;
 
 namespace CodeSpirit.SurveyApi.Dtos.Survey;
@@ -69,10 +70,16 @@ public class SurveyDto
     public string? LLMPrompt { get; set; }
 
     /// <summary>
+    /// LLM原始输出内容
+    /// </summary>
+    [DisplayName("LLM原始输出")]
+    public string? LLMRawOutput { get; set; }
+
+    /// <summary>
     /// 创建者ID
     /// </summary>
     [DisplayName("创建者")]
-    public int CreatedBy { get; set; }
+    public long CreatedBy { get; set; }
 
     /// <summary>
     /// 创建时间
@@ -97,4 +104,10 @@ public class SurveyDto
     /// </summary>
     [DisplayName("回答数量")]
     public int ResponseCount { get; set; }
+
+    /// <summary>
+    /// 是否已预览
+    /// </summary>
+    [DisplayName("是否已预览")]
+    public bool IsPreviewChecked { get; set; }
 }

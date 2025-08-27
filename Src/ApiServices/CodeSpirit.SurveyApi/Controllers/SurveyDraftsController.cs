@@ -10,7 +10,7 @@ namespace CodeSpirit.SurveyApi.Controllers;
 /// 问卷草稿管理控制器
 /// </summary>
 [DisplayName("草稿管理")]
-[Navigation(Icon = "fa-solid fa-file-text", PlatformType = PlatformType.Tenant)]
+[Navigation(Icon = "fa-solid fa-file-text", PlatformType = PlatformType.Tenant, Hidden = true)]
 public class SurveyDraftsController : ApiControllerBase
 {
     private readonly ISurveyDraftService _draftService;

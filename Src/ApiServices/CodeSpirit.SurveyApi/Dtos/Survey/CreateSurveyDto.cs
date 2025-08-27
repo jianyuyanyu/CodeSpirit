@@ -49,6 +49,13 @@ public class CreateSurveyDto
     public string? LLMPrompt { get; set; }
 
     /// <summary>
+    /// LLM原始输出内容
+    /// </summary>
+    [DisplayName("LLM原始输出")]
+    [StringLength(8000, ErrorMessage = "LLM原始输出长度不能超过8000个字符")]
+    public string? LLMRawOutput { get; set; }
+
+    /// <summary>
     /// 题目数量（用于LLM生成）
     /// </summary>
     [DisplayName("题目数量")]

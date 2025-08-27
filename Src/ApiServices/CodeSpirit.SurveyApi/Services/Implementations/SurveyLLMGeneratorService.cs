@@ -1,10 +1,12 @@
 using AutoMapper;
 using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.LLM;
+using CodeSpirit.SurveyApi.Dtos.Question;
 using CodeSpirit.SurveyApi.Dtos.Survey;
 using CodeSpirit.SurveyApi.Models;
 using CodeSpirit.SurveyApi.Models.Enums;
 using CodeSpirit.SurveyApi.Services.Interfaces;
+using CodeSpirit.Shared.Services;
 using Newtonsoft.Json;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -18,26 +20,38 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
 {
     private readonly LLMAssistant _llmAssistant;
     private readonly ISurveySettingsService _settingsService;
+    private readonly ISurveyService _surveyService;
+    private readonly IQuestionService _questionService;
     private readonly IMapper _mapper;
     private readonly ILogger<SurveyLLMGeneratorService> _logger;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="llmAssistant">LLM助手</param>
     /// <param name="settingsService">设置服务</param>
+    /// <param name="surveyService">问卷服务</param>
+    /// <param name="questionService">题目服务</param>
     /// <param name="mapper">映射器</param>
     /// <param name="logger">日志器</param>
+    /// <param name="currentUser">当前用户</param>
     public SurveyLLMGeneratorService(
         LLMAssistant llmAssistant,
         ISurveySettingsService settingsService,
+        ISurveyService surveyService,
+        IQuestionService questionService,
         IMapper mapper,
-        ILogger<SurveyLLMGeneratorService> logger)
+        ILogger<SurveyLLMGeneratorService> logger,
+        ICurrentUser currentUser)
     {
         _llmAssistant = llmAssistant;
         _settingsService = settingsService;
+        _surveyService = surveyService;
+        _questionService = questionService;
         _mapper = mapper;
         _logger = logger;
+        _currentUser = currentUser;
     }
 
     /// <summary>
@@ -75,9 +89,15 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
             var llmResponse = await _llmAssistant.GenerateContentAsync(prompt, llmSettings.MaxTokens);
 
             // 解析LLM响应
-            var generatedSurvey = await ParseLLMResponseAsync(llmResponse, request);
+            var generatedSurvey = await ParseLLMResponseAsync(llmResponse, request, prompt);
 
             _logger.LogInformation("问卷生成成功，题目数量：{QuestionCount}", generatedSurvey.Questions.Count);
+
+            // 保存生成的问卷及题目
+            var savedSurvey = await SaveGeneratedSurveyAsync(generatedSurvey, request, llmResponse);
+            
+            // 更新生成结果，添加保存后的问卷ID
+            generatedSurvey.SavedSurveyId = savedSurvey.Id;
 
             return generatedSurvey;
         }
@@ -366,8 +386,9 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
     /// </summary>
     /// <param name="llmResponse">LLM响应</param>
     /// <param name="request">原始请求</param>
+    /// <param name="usedPrompt">使用的完整提示词</param>
     /// <returns>生成的问卷</returns>
-    private Task<GeneratedSurveyDto> ParseLLMResponseAsync(string llmResponse, GenerateSurveyRequest request)
+    private Task<GeneratedSurveyDto> ParseLLMResponseAsync(string llmResponse, GenerateSurveyRequest request, string usedPrompt)
     {
         try
         {
@@ -380,10 +401,10 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
 
             var result = new GeneratedSurveyDto
             {
-                Title = surveyData?.title ?? request.Topic,
+                Title = surveyData?.title ?? request.Topic ?? "未知主题",
                 Description = surveyData?.description ?? request.Description,
                 Questions = new List<GeneratedQuestionDto>(),
-                UsedPrompt = request.CustomPrompt,
+                UsedPrompt = usedPrompt,
                 GeneratedAt = DateTime.UtcNow,
                 QualityScore = CalculateQualityScore(surveyData)
             };
@@ -432,7 +453,7 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
             // 返回默认结果
             return Task.FromResult(new GeneratedSurveyDto
             {
-                Title = request.Topic,
+                Title = request.Topic ?? "未知主题",
                 Description = request.Description,
                 Questions = new List<GeneratedQuestionDto>(),
                 GeneratedAt = DateTime.UtcNow,
@@ -523,8 +544,8 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
         try
         {
             // 有标题和描述 +1
-            if (!string.IsNullOrEmpty((string)surveyData?.title) && 
-                !string.IsNullOrEmpty((string)surveyData?.description))
+            if (!string.IsNullOrEmpty((string?)surveyData?.title) && 
+                !string.IsNullOrEmpty((string?)surveyData?.description))
             {
                 score += 1;
             }
@@ -553,5 +574,362 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
         return score;
     }
 
+    /// <summary>
+    /// 保存生成的问卷及题目
+    /// </summary>
+    /// <param name="generatedSurvey">生成的问卷数据</param>
+    /// <param name="request">原始生成请求</param>
+    /// <param name="llmRawOutput">LLM原始输出内容</param>
+    /// <returns>保存后的问卷DTO</returns>
+    private async Task<SurveyDto> SaveGeneratedSurveyAsync(GeneratedSurveyDto generatedSurvey, GenerateSurveyRequest request, string llmRawOutput)
+    {
+        try
+        {
+            _logger.LogInformation("开始保存生成的问卷：{Title}", generatedSurvey.Title);
+
+            // 创建问卷实体
+            var createSurveyDto = new CreateSurveyDto
+            {
+                Title = generatedSurvey.Title,
+                Description = generatedSurvey.Description,
+                AccessType = SurveyAccessType.Public,
+                IsTemplate = false,
+                LLMPrompt = generatedSurvey.UsedPrompt,
+                LLMRawOutput = llmRawOutput
+            };
+
+            // 保存问卷
+            var savedSurvey = await _surveyService.CreateAsync(createSurveyDto);
+
+            _logger.LogInformation("问卷已保存，ID：{SurveyId}", savedSurvey.Id);
+
+            // 保存题目（带验证和重试机制）
+            var validationErrors = new List<string>();
+            var validatedQuestions = new List<GeneratedQuestionDto>();
+
+            foreach (var generatedQuestion in generatedSurvey.Questions)
+            {
+                var questionType = MapStringToQuestionType(generatedQuestion.Type);
+                
+                var createQuestionDto = new CreateQuestionDto
+                {
+                    SurveyId = savedSurvey.Id,
+                    Title = generatedQuestion.Title,
+                    Description = generatedQuestion.Description,
+                    Type = questionType,
+                    OrderIndex = generatedQuestion.OrderIndex,
+                    IsRequired = generatedQuestion.IsRequired,
+                    LLMGenerated = true
+                };
+
+                // 添加选项
+                if (generatedQuestion.Options?.Any() == true)
+                {
+                    createQuestionDto.Options = generatedQuestion.Options.Select(o => new CreateQuestionOptionDto
+                    {
+                        Text = o.Text,
+                        Value = o.Value ?? o.Text,
+                        OrderIndex = o.OrderIndex,
+                        IsOther = false
+                    }).ToList();
+                }
+
+                try
+                {
+                    await _questionService.CreateAsync(createQuestionDto);
+                    validatedQuestions.Add(generatedQuestion);
+                }
+                catch (BusinessException ex) when (ex.Message.Contains("题目验证失败"))
+                {
+                    _logger.LogWarning("题目验证失败：{Title} - {Error}", generatedQuestion.Title, ex.Message);
+                    validationErrors.Add($"题目\"{generatedQuestion.Title}\"：{ex.Message}");
+                }
+            }
+
+            // 如果有验证错误，尝试修正
+            if (validationErrors.Any())
+            {
+                _logger.LogInformation("存在 {ErrorCount} 个题目验证错误，尝试AI修正", validationErrors.Count);
+                
+                var correctionResult = await TryCorrectQuestionsAsync(request, generatedSurvey, validationErrors, savedSurvey.Id);
+                
+                if (correctionResult.HasCorrectedQuestions)
+                {
+                    validatedQuestions.AddRange(correctionResult.CorrectedQuestions);
+                    _logger.LogInformation("AI修正成功，新增 {CorrectedCount} 个题目", correctionResult.CorrectedQuestions.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("AI修正失败，部分题目无法保存：{Errors}", string.Join("；", validationErrors));
+                }
+            }
+
+            _logger.LogInformation("问卷及题目保存完成，问卷ID：{SurveyId}，题目数量：{QuestionCount}", 
+                savedSurvey.Id, generatedSurvey.Questions.Count);
+
+            return savedSurvey;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "保存生成的问卷失败：{Title}", generatedSurvey.Title);
+            throw new BusinessException($"保存问卷失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 将字符串类型映射为QuestionType枚举
+    /// </summary>
+    /// <param name="typeString">类型字符串</param>
+    /// <returns>QuestionType枚举</returns>
+    private QuestionType MapStringToQuestionType(string typeString)
+    {
+        if (string.IsNullOrEmpty(typeString))
+            return QuestionType.Text;
+
+        return typeString.ToLower() switch
+        {
+            "singlechoice" or "single" or "radio" => QuestionType.SingleChoice,
+            "multiplechoice" or "multiple" or "checkbox" => QuestionType.MultipleChoice,
+            "text" or "input" => QuestionType.Text,
+            "textarea" or "longtext" => QuestionType.Textarea,
+            "number" or "numeric" => QuestionType.Number,
+            "rating" or "rate" => QuestionType.Rating,
+            "date" => QuestionType.Date,
+            "time" => QuestionType.Time,
+            "datetime" => QuestionType.DateTime,
+            "matrix" => QuestionType.Matrix,
+            "ranking" or "rank" => QuestionType.Ranking,
+            _ => QuestionType.Text
+        };
+    }
+
+    /// <summary>
+    /// 尝试修正验证失败的题目
+    /// </summary>
+    /// <param name="originalRequest">原始请求</param>
+    /// <param name="originalSurvey">原始生成的问卷</param>
+    /// <param name="validationErrors">验证错误列表</param>
+    /// <param name="surveyId">问卷ID</param>
+    /// <returns>修正结果</returns>
+    private async Task<QuestionCorrectionResult> TryCorrectQuestionsAsync(
+        GenerateSurveyRequest originalRequest, 
+        GeneratedSurveyDto originalSurvey, 
+        List<string> validationErrors, 
+        int surveyId)
+    {
+        try
+        {
+            // 获取LLM设置
+            var llmSettings = await _settingsService.GetLLMSettingsAsync();
+
+            // 构建修正提示词
+            var correctionPrompt = BuildCorrectionPrompt(originalRequest, originalSurvey, validationErrors);
+
+            // 调用LLM生成修正后的题目
+            var llmResponse = await _llmAssistant.GenerateContentAsync(correctionPrompt, llmSettings.MaxTokens);
+
+            // 解析修正后的题目
+            var correctedQuestions = await ParseCorrectionResponseAsync(llmResponse);
+
+            // 验证并保存修正后的题目
+            var savedQuestions = new List<GeneratedQuestionDto>();
+            foreach (var correctedQuestion in correctedQuestions)
+            {
+                var questionType = MapStringToQuestionType(correctedQuestion.Type);
+                
+                var createQuestionDto = new CreateQuestionDto
+                {
+                    SurveyId = surveyId,
+                    Title = correctedQuestion.Title,
+                    Description = correctedQuestion.Description,
+                    Type = questionType,
+                    OrderIndex = correctedQuestion.OrderIndex,
+                    IsRequired = correctedQuestion.IsRequired,
+                    LLMGenerated = true
+                };
+
+                // 添加选项
+                if (correctedQuestion.Options?.Any() == true)
+                {
+                    createQuestionDto.Options = correctedQuestion.Options.Select(o => new CreateQuestionOptionDto
+                    {
+                        Text = o.Text,
+                        Value = o.Value ?? o.Text,
+                        OrderIndex = o.OrderIndex,
+                        IsOther = false
+                    }).ToList();
+                }
+
+                try
+                {
+                    await _questionService.CreateAsync(createQuestionDto);
+                    savedQuestions.Add(correctedQuestion);
+                    _logger.LogInformation("修正题目保存成功：{Title}", correctedQuestion.Title);
+                }
+                catch (BusinessException ex)
+                {
+                    _logger.LogWarning("修正题目仍然验证失败：{Title} - {Error}", correctedQuestion.Title, ex.Message);
+                }
+            }
+
+            return new QuestionCorrectionResult
+            {
+                HasCorrectedQuestions = savedQuestions.Any(),
+                CorrectedQuestions = savedQuestions,
+                RemainingErrors = savedQuestions.Count < correctedQuestions.Count 
+                    ? new List<string> { "部分修正题目仍然验证失败" } 
+                    : new List<string>()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AI修正题目过程中发生错误");
+            return new QuestionCorrectionResult
+            {
+                HasCorrectedQuestions = false,
+                CorrectedQuestions = new List<GeneratedQuestionDto>(),
+                RemainingErrors = new List<string> { $"AI修正失败：{ex.Message}" }
+            };
+        }
+    }
+
+    /// <summary>
+    /// 构建修正提示词
+    /// </summary>
+    /// <param name="originalRequest">原始请求</param>
+    /// <param name="originalSurvey">原始生成的问卷</param>
+    /// <param name="validationErrors">验证错误列表</param>
+    /// <returns>修正提示词</returns>
+    private string BuildCorrectionPrompt(GenerateSurveyRequest originalRequest, GeneratedSurveyDto originalSurvey, List<string> validationErrors)
+    {
+        var promptBuilder = new StringBuilder();
+
+        promptBuilder.AppendLine("你是一个问卷设计专家，需要修正以下问卷题目的验证错误：");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine($"原始问卷主题：{originalRequest.Topic}");
+        promptBuilder.AppendLine();
+        
+        promptBuilder.AppendLine("发现的验证错误：");
+        foreach (var error in validationErrors)
+        {
+            promptBuilder.AppendLine($"- {error}");
+        }
+        promptBuilder.AppendLine();
+
+        promptBuilder.AppendLine("请根据以下验证规则修正题目：");
+        promptBuilder.AppendLine("1. 单选题和多选题必须至少包含2个有效选项");
+        promptBuilder.AppendLine("2. 选项文本不能为空且不能重复");
+        promptBuilder.AppendLine("3. 矩阵题至少需要2个行选项，并需要配置列选项设置");
+        promptBuilder.AppendLine("4. 排序题至少需要2个选项");
+        promptBuilder.AppendLine("5. 评分题如果有自定义标签，标签不能为空");
+        promptBuilder.AppendLine();
+
+        promptBuilder.AppendLine("请只修正有错误的题目，保持题目的原始意图，并以JSON格式返回修正后的题目：");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("期望的JSON格式：");
+        promptBuilder.AppendLine(@"{
+  ""correctedQuestions"": [
+    {
+      ""title"": ""题目标题"",
+      ""description"": ""题目描述"",
+      ""type"": ""题目类型"",
+      ""isRequired"": true/false,
+      ""orderIndex"": 排序索引,
+      ""options"": [
+        {
+          ""text"": ""选项文本"",
+          ""value"": ""选项值"",
+          ""orderIndex"": 1
+        }
+      ]
+    }
+  ]
+}");
+
+        return promptBuilder.ToString();
+    }
+
+    /// <summary>
+    /// 解析修正响应
+    /// </summary>
+    /// <param name="llmResponse">LLM响应</param>
+    /// <returns>修正后的题目列表</returns>
+    private Task<List<GeneratedQuestionDto>> ParseCorrectionResponseAsync(string llmResponse)
+    {
+        try
+        {
+            // 尝试从响应中提取JSON
+            var jsonMatch = Regex.Match(llmResponse, @"\{[\s\S]*\}", RegexOptions.Multiline);
+            var jsonContent = jsonMatch.Success ? jsonMatch.Value : llmResponse;
+
+            // 解析JSON
+            var correctionData = JsonConvert.DeserializeObject<dynamic>(jsonContent);
+
+            var result = new List<GeneratedQuestionDto>();
+
+            // 解析修正后的题目
+            if (correctionData?.correctedQuestions != null)
+            {
+                foreach (var questionData in correctionData.correctedQuestions)
+                {
+                    var question = new GeneratedQuestionDto
+                    {
+                        Title = questionData?.title ?? "",
+                        Description = questionData?.description,
+                        Type = questionData?.type ?? "Text",
+                        IsRequired = questionData?.isRequired ?? false,
+                        OrderIndex = questionData?.orderIndex ?? 0,
+                        Options = new List<GeneratedQuestionOptionDto>()
+                    };
+
+                    // 解析选项
+                    if (questionData?.options != null)
+                    {
+                        int optionIndex = 1;
+                        foreach (var optionData in questionData.options)
+                        {
+                            question.Options.Add(new GeneratedQuestionOptionDto
+                            {
+                                Text = optionData?.text ?? "",
+                                Value = optionData?.value,
+                                OrderIndex = optionIndex++
+                            });
+                        }
+                    }
+
+                    result.Add(question);
+                }
+            }
+
+            return Task.FromResult(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "解析修正响应失败");
+            return Task.FromResult(new List<GeneratedQuestionDto>());
+        }
+    }
+
     #endregion
+}
+
+/// <summary>
+/// 题目修正结果
+/// </summary>
+public class QuestionCorrectionResult
+{
+    /// <summary>
+    /// 是否有修正成功的题目
+    /// </summary>
+    public bool HasCorrectedQuestions { get; set; }
+
+    /// <summary>
+    /// 修正成功的题目列表
+    /// </summary>
+    public List<GeneratedQuestionDto> CorrectedQuestions { get; set; } = new();
+
+    /// <summary>
+    /// 剩余的错误
+    /// </summary>
+    public List<string> RemainingErrors { get; set; } = new();
 }

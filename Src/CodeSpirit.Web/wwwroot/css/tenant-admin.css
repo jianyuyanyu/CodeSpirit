@@ -18,30 +18,25 @@ html, body, .app-wrapper {
     --tenant-success-color: #10b981;
     --tenant-warning-color: #f59e0b;
     --tenant-danger-color: #ef4444;
-    
     /* 背景色彩 */
     --tenant-bg-color: #f8fafc;
     --tenant-sidebar-bg: #ffffff;
     --tenant-header-bg: #ffffff;
     --tenant-surface-bg: #ffffff;
-    
     /* 文字色彩 */
     --tenant-text-primary: #1e293b;
     --tenant-text-secondary: #64748b;
     --tenant-text-tertiary: #94a3b8;
-    
     /* 边框和阴影 */
     --tenant-border-color: #e2e8f0;
     --tenant-border-light: #f1f5f9;
     --tenant-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     --tenant-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --tenant-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    
     /* 圆角 */
     --tenant-radius: 8px;
     --tenant-radius-sm: 6px;
     --tenant-radius-lg: 12px;
-    
     /* 动画 */
     --tenant-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -83,24 +78,21 @@ html, body, .app-wrapper {
     max-width: 320px;
 }
 
-.tenant-brand-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, 
-        rgba(255, 255, 255, 0.15) 0%, 
-        rgba(255, 255, 255, 0.08) 50%, 
-        rgba(255, 255, 255, 0.02) 100%);
-    pointer-events: none;
-}
+    .tenant-brand-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.02) 100%);
+        pointer-events: none;
+    }
 
-.tenant-brand-container:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px rgba(99, 102, 241, 0.3);
-}
+    .tenant-brand-container:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(99, 102, 241, 0.3);
+    }
 
 .tenant-info {
     display: flex;
@@ -150,11 +142,11 @@ html, body, .app-wrapper {
     background: var(--tenant-surface-bg);
 }
 
-.tenant-logo:hover {
-    transform: scale(1.05) rotate(5deg);
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
+    .tenant-logo:hover {
+        transform: scale(1.05) rotate(5deg);
+        border-color: rgba(255, 255, 255, 0.5);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
 
 /* 覆盖AMIS默认样式，适配租户主题 - 现代化设计 */
 .tenant-admin-wrapper .cxd-Layout-brand {
@@ -170,9 +162,9 @@ html, body, .app-wrapper {
     transition: var(--tenant-transition) !important;
 }
 
-.tenant-admin-wrapper .cxd-Layout-aside:hover {
-    box-shadow: var(--tenant-shadow-md) !important;
-}
+    .tenant-admin-wrapper .cxd-Layout-aside:hover {
+        box-shadow: var(--tenant-shadow-md) !important;
+    }
 
 .tenant-admin-wrapper .cxd-Layout-header {
     background: linear-gradient(135deg, var(--tenant-header-bg) 0%, var(--tenant-bg-color) 100%) !important;
@@ -200,53 +192,53 @@ html, body, .app-wrapper {
     margin-bottom: 4px !important;
 }
 
-.tenant-admin-wrapper .cxd-AsideNav-item > a {
-    color: var(--tenant-text-primary) !important;
-    border-radius: var(--tenant-radius) !important;
-    margin: 0 !important;
-    padding: 12px 16px !important;
-    transition: var(--tenant-transition) !important;
-    border: 1px solid transparent !important;
-    position: relative !important;
-    font-weight: 500 !important;
-}
+    .tenant-admin-wrapper .cxd-AsideNav-item > a {
+        color: var(--tenant-text-primary) !important;
+        border-radius: var(--tenant-radius) !important;
+        margin: 0 !important;
+        padding: 12px 16px !important;
+        transition: var(--tenant-transition) !important;
+        border: 1px solid transparent !important;
+        position: relative !important;
+        font-weight: 500 !important;
+    }
 
-.tenant-admin-wrapper .cxd-AsideNav-item > a::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 0;
-    background: var(--tenant-primary-color);
-    border-radius: 2px;
-    transition: var(--tenant-transition);
-}
+        .tenant-admin-wrapper .cxd-AsideNav-item > a::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 0;
+            background: var(--tenant-primary-color);
+            border-radius: 2px;
+            transition: var(--tenant-transition);
+        }
 
-.tenant-admin-wrapper .cxd-AsideNav-item > a:hover {
-    background: rgba(99, 102, 241, 0.08) !important;
-    color: var(--tenant-primary-color) !important;
-    border-color: var(--tenant-border-color) !important;
-    transform: translateX(4px) !important;
-}
+        .tenant-admin-wrapper .cxd-AsideNav-item > a:hover {
+            background: rgba(99, 102, 241, 0.08) !important;
+            color: var(--tenant-primary-color) !important;
+            border-color: var(--tenant-border-color) !important;
+            transform: translateX(4px) !important;
+        }
 
-.tenant-admin-wrapper .cxd-AsideNav-item > a:hover::before {
-    height: 20px;
-}
+            .tenant-admin-wrapper .cxd-AsideNav-item > a:hover::before {
+                height: 20px;
+            }
 
-.tenant-admin-wrapper .cxd-AsideNav-item.is-active > a {
-    background: linear-gradient(135deg, var(--tenant-primary-color) 0%, var(--tenant-primary-hover) 100%) !important;
-    color: white !important;
-    border-color: var(--tenant-primary-color) !important;
-    box-shadow: var(--tenant-shadow-md) !important;
-    transform: translateX(6px) !important;
-}
+    .tenant-admin-wrapper .cxd-AsideNav-item.is-active > a {
+        background: linear-gradient(135deg, var(--tenant-primary-color) 0%, var(--tenant-primary-hover) 100%) !important;
+        color: white !important;
+        border-color: var(--tenant-primary-color) !important;
+        box-shadow: var(--tenant-shadow-md) !important;
+        transform: translateX(6px) !important;
+    }
 
-.tenant-admin-wrapper .cxd-AsideNav-item.is-active > a::before {
-    height: 24px;
-    background: rgba(255, 255, 255, 0.3);
-}
+        .tenant-admin-wrapper .cxd-AsideNav-item.is-active > a::before {
+            height: 24px;
+            background: rgba(255, 255, 255, 0.3);
+        }
 
 /* 租户按钮样式 - 现代化设计 */
 .tenant-admin-wrapper .cxd-Button--primary {
@@ -260,30 +252,30 @@ html, body, .app-wrapper {
     overflow: hidden !important;
 }
 
-.tenant-admin-wrapper .cxd-Button--primary::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    transition: left 0.5s ease;
-}
+    .tenant-admin-wrapper .cxd-Button--primary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        transition: left 0.5s ease;
+    }
 
-.tenant-admin-wrapper .cxd-Button--primary:hover {
-    background: linear-gradient(135deg, var(--tenant-primary-hover) 0%, #4338ca 100%) !important;
-    box-shadow: var(--tenant-shadow-md) !important;
-    transform: translateY(-1px) !important;
-}
+    .tenant-admin-wrapper .cxd-Button--primary:hover {
+        background: linear-gradient(135deg, var(--tenant-primary-hover) 0%, #4338ca 100%) !important;
+        box-shadow: var(--tenant-shadow-md) !important;
+        transform: translateY(-1px) !important;
+    }
 
-.tenant-admin-wrapper .cxd-Button--primary:hover::before {
-    left: 100%;
-}
+        .tenant-admin-wrapper .cxd-Button--primary:hover::before {
+            left: 100%;
+        }
 
-.tenant-admin-wrapper .cxd-Button--primary:active {
-    transform: translateY(0) !important;
-}
+    .tenant-admin-wrapper .cxd-Button--primary:active {
+        transform: translateY(0) !important;
+    }
 
 .tenant-admin-wrapper .cxd-Button--secondary {
     background: var(--tenant-surface-bg) !important;
@@ -294,13 +286,13 @@ html, body, .app-wrapper {
     font-weight: 500 !important;
 }
 
-.tenant-admin-wrapper .cxd-Button--secondary:hover {
-    background: var(--tenant-primary-light) !important;
-    border-color: var(--tenant-primary-color) !important;
-    color: var(--tenant-primary-color) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: var(--tenant-shadow) !important;
-}
+    .tenant-admin-wrapper .cxd-Button--secondary:hover {
+        background: var(--tenant-primary-light) !important;
+        border-color: var(--tenant-primary-color) !important;
+        color: var(--tenant-primary-color) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: var(--tenant-shadow) !important;
+    }
 
 /* 租户表格样式 */
 .tenant-admin-wrapper .cxd-Table-table {
@@ -311,38 +303,38 @@ html, body, .app-wrapper {
     overflow: hidden !important;
 }
 
-.tenant-admin-wrapper .cxd-Table-table thead {
-    background: linear-gradient(135deg, var(--tenant-bg-color) 0%, var(--tenant-border-light) 100%) !important;
-    border-bottom: 2px solid var(--tenant-border-color) !important;
-}
+    .tenant-admin-wrapper .cxd-Table-table thead {
+        background: linear-gradient(135deg, var(--tenant-bg-color) 0%, var(--tenant-border-light) 100%) !important;
+        border-bottom: 2px solid var(--tenant-border-color) !important;
+    }
 
-.tenant-admin-wrapper .cxd-Table-table thead th {
-    background: transparent !important;
-    color: var(--tenant-text-primary) !important;
-    font-weight: 600 !important;
-    padding: 16px 20px !important;
-    border: none !important;
-    font-size: 14px !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
-}
+        .tenant-admin-wrapper .cxd-Table-table thead th {
+            background: transparent !important;
+            color: var(--tenant-text-primary) !important;
+            font-weight: 600 !important;
+            padding: 16px 20px !important;
+            border: none !important;
+            font-size: 14px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+        }
 
-.tenant-admin-wrapper .cxd-Table-table tbody tr {
-    transition: var(--tenant-transition) !important;
-    border-bottom: 1px solid var(--tenant-border-light) !important;
-}
+    .tenant-admin-wrapper .cxd-Table-table tbody tr {
+        transition: var(--tenant-transition) !important;
+        border-bottom: 1px solid var(--tenant-border-light) !important;
+    }
 
-.tenant-admin-wrapper .cxd-Table-table tbody tr:hover {
-    background: rgba(99, 102, 241, 0.04) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-}
+        .tenant-admin-wrapper .cxd-Table-table tbody tr:hover {
+            background: rgba(99, 102, 241, 0.04) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+        }
 
-.tenant-admin-wrapper .cxd-Table-table tbody td {
-    padding: 16px 20px !important;
-    border: none !important;
-    vertical-align: middle !important;
-}
+    .tenant-admin-wrapper .cxd-Table-table tbody td {
+        padding: 16px 20px !important;
+        border: none !important;
+        vertical-align: middle !important;
+    }
 
 /* 租户表单样式 - 现代化设计 */
 .tenant-admin-wrapper .cxd-Form {
@@ -357,17 +349,17 @@ html, body, .app-wrapper {
     margin-bottom: 20px !important;
 }
 
-.tenant-admin-wrapper .cxd-Form-item > .cxd-Form-label {
-    color: var(--tenant-text-primary) !important;
-    font-weight: 600 !important;
-    margin-bottom: 8px !important;
-    font-size: 14px !important;
-}
+    .tenant-admin-wrapper .cxd-Form-item > .cxd-Form-label {
+        color: var(--tenant-text-primary) !important;
+        font-weight: 600 !important;
+        margin-bottom: 8px !important;
+        font-size: 14px !important;
+    }
 
-.tenant-admin-wrapper .cxd-Form-item > .cxd-Form-label.is-required::before {
-    color: var(--tenant-danger-color) !important;
-    content: '* ' !important;
-}
+        .tenant-admin-wrapper .cxd-Form-item > .cxd-Form-label.is-required::before {
+            color: var(--tenant-danger-color) !important;
+            content: '* ' !important;
+        }
 
 /* 租户输入框样式 - 现代化设计 */
 .tenant-admin-wrapper .cxd-Form-control {
@@ -380,21 +372,21 @@ html, body, .app-wrapper {
     font-size: 14px !important;
 }
 
-.tenant-admin-wrapper .cxd-Form-control:focus {
-    border-color: var(--tenant-primary-color) !important;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
-    outline: none !important;
-    background: white !important;
-}
+    .tenant-admin-wrapper .cxd-Form-control:focus {
+        border-color: var(--tenant-primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+        outline: none !important;
+        background: white !important;
+    }
 
-.tenant-admin-wrapper .cxd-Form-control:hover:not(:focus) {
-    border-color: var(--tenant-primary-light) !important;
-}
+    .tenant-admin-wrapper .cxd-Form-control:hover:not(:focus) {
+        border-color: var(--tenant-primary-light) !important;
+    }
 
-.tenant-admin-wrapper .cxd-Form-control.is-error {
-    border-color: var(--tenant-danger-color) !important;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
-}
+    .tenant-admin-wrapper .cxd-Form-control.is-error {
+        border-color: var(--tenant-danger-color) !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+    }
 
 /* 租户选择器样式 - 现代化设计 */
 .tenant-admin-wrapper .cxd-Select {
@@ -409,14 +401,14 @@ html, body, .app-wrapper {
     min-height: 44px !important;
 }
 
-.tenant-admin-wrapper .cxd-Select-control:hover {
-    border-color: var(--tenant-primary-light) !important;
-}
+    .tenant-admin-wrapper .cxd-Select-control:hover {
+        border-color: var(--tenant-primary-light) !important;
+    }
 
-.tenant-admin-wrapper .cxd-Select-control.is-focused {
-    border-color: var(--tenant-primary-color) !important;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
-}
+    .tenant-admin-wrapper .cxd-Select-control.is-focused {
+        border-color: var(--tenant-primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+    }
 
 .tenant-admin-wrapper .cxd-Select-option.is-highlight,
 .tenant-admin-wrapper .cxd-Select-option:hover {
@@ -439,14 +431,14 @@ html, body, .app-wrapper {
     min-height: 44px !important;
 }
 
-.tenant-admin-wrapper .cxd-DatePicker-toggler:hover {
-    border-color: var(--tenant-primary-light) !important;
-}
+    .tenant-admin-wrapper .cxd-DatePicker-toggler:hover {
+        border-color: var(--tenant-primary-light) !important;
+    }
 
-.tenant-admin-wrapper .cxd-DatePicker-toggler.is-focused {
-    border-color: var(--tenant-primary-color) !important;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
-}
+    .tenant-admin-wrapper .cxd-DatePicker-toggler.is-focused {
+        border-color: var(--tenant-primary-color) !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+    }
 
 /* 租户卡片样式 */
 .tenant-admin-wrapper .cxd-Panel {
@@ -458,10 +450,10 @@ html, body, .app-wrapper {
     transition: var(--tenant-transition) !important;
 }
 
-.tenant-admin-wrapper .cxd-Panel:hover {
-    box-shadow: var(--tenant-shadow-md) !important;
-    transform: translateY(-2px) !important;
-}
+    .tenant-admin-wrapper .cxd-Panel:hover {
+        box-shadow: var(--tenant-shadow-md) !important;
+        transform: translateY(-2px) !important;
+    }
 
 .tenant-admin-wrapper .cxd-Panel-heading {
     background: linear-gradient(135deg, var(--tenant-bg-color) 0%, var(--tenant-border-light) 100%) !important;
@@ -509,10 +501,10 @@ html, body, .app-wrapper {
     transition: var(--tenant-transition) !important;
 }
 
-.tenant-admin-wrapper .cxd-Tag:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: var(--tenant-shadow) !important;
-}
+    .tenant-admin-wrapper .cxd-Tag:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: var(--tenant-shadow) !important;
+    }
 
 .tenant-admin-wrapper .cxd-Tag--primary {
     background: linear-gradient(135deg, var(--tenant-primary-color) 0%, var(--tenant-primary-hover) 100%) !important;
@@ -559,9 +551,9 @@ html, body, .app-wrapper {
     color: var(--tenant-primary-color) !important;
 }
 
-.tenant-admin-wrapper .cxd-Button--link:hover {
-    color: #1565c0 !important;
-}
+    .tenant-admin-wrapper .cxd-Button--link:hover {
+        color: #1565c0 !important;
+    }
 
 /* 租户面包屑样式 */
 .tenant-admin-wrapper .cxd-Breadcrumb-item.is-active {
@@ -604,16 +596,16 @@ html, body, .app-wrapper {
     margin-bottom: 20px;
 }
 
-.tenant-stats-card .stats-number {
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
+    .tenant-stats-card .stats-number {
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
 
-.tenant-stats-card .stats-label {
-    font-size: 14px;
-    opacity: 0.9;
-}
+    .tenant-stats-card .stats-label {
+        font-size: 14px;
+        opacity: 0.9;
+    }
 
 /* 租户品牌头部区域增强 */
 .tenant-brand-enhanced {
@@ -623,56 +615,56 @@ html, body, .app-wrapper {
     border-radius: var(--tenant-radius) var(--tenant-radius) 0 0;
 }
 
-.tenant-brand-enhanced .tenant-logo {
-    border: 2px solid rgba(255, 255, 255, 0.3);
-}
+    .tenant-brand-enhanced .tenant-logo {
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
 
-.tenant-brand-enhanced .tenant-name {
-    color: white;
-    font-size: 16px;
-    font-weight: 600;
-}
+    .tenant-brand-enhanced .tenant-name {
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+    }
 
 /* 响应式布局 */
 @media (max-width: 768px) {
     .tenant-brand {
         padding: 8px 12px;
     }
-    
+
     .tenant-brand-container {
         padding: 8px 12px;
         border-radius: 8px;
     }
-    
+
     .tenant-logo {
         width: 36px;
         height: 36px;
         margin-right: 12px;
     }
-    
+
     .tenant-name {
         font-size: 16px;
     }
-    
+
     .tenant-id {
         font-size: 12px;
     }
-    
+
     .header-actions {
         gap: 8px;
     }
-    
+
     .tenant-admin-wrapper .cxd-Layout-header {
         padding: 8px 16px !important;
     }
-    
+
     .tenant-stats-card {
         padding: 15px;
     }
-    
-    .tenant-stats-card .stats-number {
-        font-size: 24px;
-    }
+
+        .tenant-stats-card .stats-number {
+            font-size: 24px;
+        }
 }
 
 @media (max-width: 480px) {
@@ -680,21 +672,21 @@ html, body, .app-wrapper {
         padding: 6px 10px;
         margin-right: 8px;
     }
-    
+
     .tenant-info {
         display: none; /* 在很小的屏幕上隐藏文字，只显示logo */
     }
-    
+
     .tenant-logo {
         width: 32px;
         height: 32px;
         margin-right: 0;
     }
-    
+
     .header-actions {
         gap: 6px;
     }
-    
+
     .tenant-admin-wrapper .notification-btn {
         padding: 6px 8px !important;
     }
@@ -703,63 +695,46 @@ html, body, .app-wrapper {
 /* 现代化深色主题 */
 @media (prefers-color-scheme: dark) {
     .tenant-preloader {
-        background: radial-gradient(ellipse at center, 
-            rgba(15, 23, 42, 0.94) 0%, 
-            rgba(2, 6, 23, 0.97) 35%, 
-            rgba(0, 0, 0, 1) 100%);
+        background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.94) 0%, rgba(2, 6, 23, 0.97) 35%, rgba(0, 0, 0, 1) 100%);
     }
-    
-    .tenant-preloader::before {
-        background: conic-gradient(
-            transparent,
-            rgba(99, 102, 241, 0.06),
-            transparent,
-            rgba(139, 92, 246, 0.04),
-            transparent
-        );
-    }
-    
+
+        .tenant-preloader::before {
+            background: conic-gradient( transparent, rgba(99, 102, 241, 0.06), transparent, rgba(139, 92, 246, 0.04), transparent );
+        }
+
     .preloader-content {
         background: rgba(30, 41, 59, 0.8);
         border-color: rgba(99, 102, 241, 0.2);
-        box-shadow: 
-            0 32px 64px rgba(0, 0, 0, 0.5),
-            inset 0 1px 0 rgba(148, 163, 184, 0.1);
+        box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(148, 163, 184, 0.1);
     }
-    
+
     .logo-placeholder {
-        background: linear-gradient(135deg, 
-            rgba(99, 102, 241, 0.15) 0%, 
-            rgba(139, 92, 246, 0.1) 100%);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
         border-color: rgba(99, 102, 241, 0.3);
-        box-shadow: 
-            0 8px 32px rgba(99, 102, 241, 0.2),
-            inset 0 1px 0 rgba(148, 163, 184, 0.1);
+        box-shadow: 0 8px 32px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(148, 163, 184, 0.1);
     }
-    
-    .logo-placeholder i {
-        color: #a5b4fc;
-        filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.3));
-    }
-    
+
+        .logo-placeholder i {
+            color: #a5b4fc;
+            filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.3));
+        }
+
     .loading-title {
         color: white;
-        background: linear-gradient(135deg, 
-            rgba(255, 255, 255, 1) 0%, 
-            rgba(203, 213, 225, 0.9) 100%);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(203, 213, 225, 0.9) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
-    
+
     .progress-text {
         color: #cbd5e1;
     }
-    
+
     .progress-percent {
         color: #a5b4fc;
     }
-    
+
     .loading-tips .tip {
         color: #94a3b8;
     }
@@ -782,12 +757,12 @@ html, body, .app-wrapper {
     transition: all 0.2s ease !important;
 }
 
-.tenant-admin-wrapper .notification-btn:hover {
-    background: rgba(255, 255, 255, 0.15) !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
+    .tenant-admin-wrapper .notification-btn:hover {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
 
 /* 用户头像优化 */
 .tenant-admin-wrapper .cxd-Avatar {
@@ -796,11 +771,11 @@ html, body, .app-wrapper {
     transition: all 0.2s ease !important;
 }
 
-.tenant-admin-wrapper .cxd-Avatar:hover {
-    border-color: var(--tenant-primary-color) !important;
-    box-shadow: 0 3px 10px rgba(25, 118, 210, 0.3) !important;
-    transform: translateY(-1px);
-}
+    .tenant-admin-wrapper .cxd-Avatar:hover {
+        border-color: var(--tenant-primary-color) !important;
+        box-shadow: 0 3px 10px rgba(25, 118, 210, 0.3) !important;
+        transform: translateY(-1px);
+    }
 
 /* 用户下拉菜单优化 */
 .tenant-admin-wrapper .cxd-DropDown-button {
@@ -813,11 +788,11 @@ html, body, .app-wrapper {
     transition: all 0.2s ease !important;
 }
 
-.tenant-admin-wrapper .cxd-DropDown-button:hover {
-    background: rgba(25, 118, 210, 0.05) !important;
-    border-color: var(--tenant-primary-color) !important;
-    color: var(--tenant-primary-color) !important;
-}
+    .tenant-admin-wrapper .cxd-DropDown-button:hover {
+        background: rgba(25, 118, 210, 0.05) !important;
+        border-color: var(--tenant-primary-color) !important;
+        color: var(--tenant-primary-color) !important;
+    }
 
 /* ===== 租户预加载器样式 - 现代化设计 v2.0 ===== */
 .tenant-preloader {
@@ -826,10 +801,7 @@ html, body, .app-wrapper {
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(ellipse at center, 
-        rgba(248, 250, 252, 0.95) 0%, 
-        rgba(241, 245, 249, 0.97) 35%, 
-        rgba(226, 232, 240, 1) 100%);
+    background: radial-gradient(ellipse at center, rgba(248, 250, 252, 0.95) 0%, rgba(241, 245, 249, 0.97) 35%, rgba(226, 232, 240, 1) 100%);
     z-index: 9999;
     display: flex;
     align-items: center;
@@ -841,27 +813,26 @@ html, body, .app-wrapper {
     overflow: hidden;
 }
 
-.tenant-preloader::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: conic-gradient(
-        transparent,
-        rgba(99, 102, 241, 0.08),
-        transparent,
-        rgba(139, 92, 246, 0.06),
-        transparent
-    );
-    animation: rotateBackground 25s linear infinite;
-    opacity: 0.6;
-}
+    .tenant-preloader::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: conic-gradient( transparent, rgba(99, 102, 241, 0.08), transparent, rgba(139, 92, 246, 0.06), transparent );
+        animation: rotateBackground 25s linear infinite;
+        opacity: 0.6;
+    }
 
 @keyframes rotateBackground {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .tenant-preloader.show {
@@ -889,36 +860,36 @@ html, body, .app-wrapper {
     border-radius: 24px;
     padding: 48px 36px;
     border: 1px solid rgba(99, 102, 241, 0.15);
-    box-shadow: 
-        0 32px 64px rgba(0, 0, 0, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    box-shadow: 0 32px 64px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
     position: relative;
     overflow: hidden;
     transform: perspective(1000px) rotateX(2deg);
     transition: transform 0.3s ease;
 }
 
-.preloader-content:hover {
-    transform: perspective(1000px) rotateX(0deg) translateY(-2px);
-}
+    .preloader-content:hover {
+        transform: perspective(1000px) rotateX(0deg) translateY(-2px);
+    }
 
-.preloader-content::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, 
-        transparent, 
-        rgba(99, 102, 241, 0.08), 
-        transparent);
-    animation: shimmer 3s ease-in-out infinite;
-}
+    .preloader-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.08), transparent);
+        animation: shimmer 3s ease-in-out infinite;
+    }
 
 @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 100%;
+    }
 }
 
 /* 现代化Logo区域 */
@@ -931,9 +902,7 @@ html, body, .app-wrapper {
 .logo-placeholder {
     width: 96px;
     height: 96px;
-    background: linear-gradient(135deg, 
-        rgba(99, 102, 241, 0.1) 0%, 
-        rgba(139, 92, 246, 0.08) 100%);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.08) 100%);
     border-radius: 24px;
     display: flex;
     align-items: center;
@@ -942,31 +911,30 @@ html, body, .app-wrapper {
     position: relative;
     z-index: 3;
     border: 1px solid rgba(99, 102, 241, 0.2);
-    box-shadow: 
-        0 8px 32px rgba(99, 102, 241, 0.15),
-        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
     animation: logoFloat 4s ease-in-out infinite;
     overflow: hidden;
 }
 
-.logo-placeholder::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: conic-gradient(
-        transparent,
-        rgba(99, 102, 241, 0.1),
-        transparent
-    );
-    animation: logoRotate 8s linear infinite;
-}
+    .logo-placeholder::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: conic-gradient( transparent, rgba(99, 102, 241, 0.1), transparent );
+        animation: logoRotate 8s linear infinite;
+    }
 
 @keyframes logoRotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .logo-placeholder i {
@@ -979,11 +947,12 @@ html, body, .app-wrapper {
 }
 
 @keyframes logoFloat {
-    0%, 100% { 
+    0%, 100% {
         transform: translateY(0px) scale(1);
         filter: drop-shadow(0 8px 16px rgba(99, 102, 241, 0.1));
     }
-    50% { 
+
+    50% {
         transform: translateY(-12px) scale(1.02);
         filter: drop-shadow(0 16px 32px rgba(99, 102, 241, 0.15));
     }
@@ -1005,9 +974,17 @@ html, body, .app-wrapper {
 }
 
 @keyframes modernSpin {
-    0% { transform: rotate(0deg) scale(1); }
-    50% { transform: rotate(180deg) scale(1.05); }
-    100% { transform: rotate(360deg) scale(1); }
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+
+    50% {
+        transform: rotate(180deg) scale(1.05);
+    }
+
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
 }
 
 /* 现代化标题 */
@@ -1019,9 +996,7 @@ html, body, .app-wrapper {
     text-shadow: 0 4px 20px rgba(99, 102, 241, 0.1);
     letter-spacing: -0.5px;
     line-height: 1.2;
-    background: linear-gradient(135deg, 
-        #1e293b 0%, 
-        #475569 100%);
+    background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -1043,82 +1018,79 @@ html, body, .app-wrapper {
     box-shadow: inset 0 2px 4px rgba(99, 102, 241, 0.05);
 }
 
-.progress-bar::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, 
-        rgba(99, 102, 241, 0.05), 
-        rgba(139, 92, 246, 0.1), 
-        rgba(99, 102, 241, 0.05));
-    animation: progressShimmer 2.5s ease-in-out infinite;
-}
+    .progress-bar::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.05));
+        animation: progressShimmer 2.5s ease-in-out infinite;
+    }
 
 @keyframes progressShimmer {
-    0%, 100% { transform: translateX(-100%); }
-    50% { transform: translateX(100%); }
+    0%, 100% {
+        transform: translateX(-100%);
+    }
+
+    50% {
+        transform: translateX(100%);
+    }
 }
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, 
-        #6366f1 0%, 
-        #8b5cf6 50%, 
-        #6366f1 100%);
+    background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #6366f1 100%);
     border-radius: 4px;
     width: 0%;
     transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     position: relative;
-    box-shadow: 
-        0 0 16px rgba(99, 102, 241, 0.3),
-        0 2px 8px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 16px rgba(99, 102, 241, 0.3), 0 2px 8px rgba(99, 102, 241, 0.1);
     overflow: hidden;
 }
 
-.progress-fill::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, 
-        transparent 0%, 
-        rgba(255, 255, 255, 0.3) 50%, 
-        transparent 100%);
-    animation: progressFlow 2s linear infinite;
-}
+    .progress-fill::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+        animation: progressFlow 2s linear infinite;
+    }
 
-.progress-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 24px;
-    height: 100%;
-    background: linear-gradient(90deg, 
-        transparent, 
-        rgba(255, 255, 255, 0.4),
-        rgba(255, 255, 255, 0.6));
-    animation: progressGlow 1.8s ease-in-out infinite;
-    border-radius: 0 4px 4px 0;
-}
+    .progress-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 24px;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.6));
+        animation: progressGlow 1.8s ease-in-out infinite;
+        border-radius: 0 4px 4px 0;
+    }
 
 @keyframes progressFlow {
-    0%, 100% { transform: translateX(-100%); }
-    50% { transform: translateX(100%); }
+    0%, 100% {
+        transform: translateX(-100%);
+    }
+
+    50% {
+        transform: translateX(100%);
+    }
 }
 
 @keyframes progressGlow {
-    0%, 100% { 
-        opacity: 0.7; 
+    0%, 100% {
+        opacity: 0.7;
         transform: scaleX(1);
     }
-    50% { 
-        opacity: 1; 
+
+    50% {
+        opacity: 1;
         transform: scaleX(1.2);
     }
 }
@@ -1155,26 +1127,26 @@ html, body, .app-wrapper {
     min-height: 28px;
 }
 
-.loading-tips .tip {
-    color: #64748b;
-    font-size: 15px;
-    font-weight: 400;
-    opacity: 0;
-    transform: translateY(12px) scale(0.95);
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    text-shadow: 0 2px 8px rgba(99, 102, 241, 0.05);
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    letter-spacing: 0.2px;
-    line-height: 1.4;
-}
+    .loading-tips .tip {
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 400;
+        opacity: 0;
+        transform: translateY(12px) scale(0.95);
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        text-shadow: 0 2px 8px rgba(99, 102, 241, 0.05);
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        letter-spacing: 0.2px;
+        line-height: 1.4;
+    }
 
-.loading-tips .tip.active {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-}
+        .loading-tips .tip.active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
 
 /* 现代化响应式设计 */
 @media (max-width: 768px) {
@@ -1183,26 +1155,26 @@ html, body, .app-wrapper {
         margin: 0 20px;
         border-radius: 20px;
     }
-    
+
     .logo-placeholder {
         width: 80px;
         height: 80px;
         border-radius: 20px;
     }
-    
-    .logo-placeholder i {
-        font-size: 28px;
-    }
-    
+
+        .logo-placeholder i {
+            font-size: 28px;
+        }
+
     .loading-title {
         font-size: 24px;
         margin-bottom: 28px;
     }
-    
+
     .progress-text {
         font-size: 14px;
     }
-    
+
     .loading-tips .tip {
         font-size: 14px;
     }
@@ -1213,27 +1185,27 @@ html, body, .app-wrapper {
         padding: 28px 20px;
         border-radius: 16px;
     }
-    
+
     .logo-placeholder {
         width: 64px;
         height: 64px;
         border-radius: 16px;
         margin-bottom: 24px;
     }
-    
-    .logo-placeholder i {
-        font-size: 24px;
-    }
-    
+
+        .logo-placeholder i {
+            font-size: 24px;
+        }
+
     .loading-title {
         font-size: 20px;
         margin-bottom: 24px;
     }
-    
+
     .progress-container {
         margin-bottom: 24px;
     }
-    
+
     .progress-bar {
         height: 6px;
         margin-bottom: 12px;
@@ -1253,18 +1225,30 @@ html, body, .app-wrapper {
         animation: none !important;
         transition: opacity 0.3s ease !important;
     }
-    
-    .tenant-preloader.show {
-        opacity: 1;
-        visibility: visible;
-    }
-    
-    .tenant-preloader.fade-out {
-        opacity: 0;
-    }
-    
-    .loading-tips .tip.active {
-        opacity: 1;
-        transform: none;
-    }
-} 
+
+        .tenant-preloader.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tenant-preloader.fade-out {
+            opacity: 0;
+        }
+
+        .loading-tips .tip.active {
+            opacity: 1;
+            transform: none;
+        }
+}
+
+.amis-scope .antd-Form {
+    padding: 8px;
+}
+
+/* 页面左侧边栏标题 */
+.amis-scope .antd-Form-item--normal > .antd-Form-label {
+    color: var(--Page-title-color);
+    line-height: var(--Page-title-lineHeight);
+    font-size: var(--Page-title-fontSize);
+    font-weight: var(--Page-title-fontWeight);
+}

@@ -17,6 +17,13 @@ public interface IQuestionService : IBaseCRUDService<Question, QuestionDto, int,
     Task<List<QuestionDto>> GetQuestionsBySurveyIdAsync(int surveyId);
 
     /// <summary>
+    /// 获取题目分页列表
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>题目分页列表</returns>
+    Task<PageList<QuestionDto>> GetQuestionsAsync(QuestionQueryDto queryDto);
+
+    /// <summary>
     /// 批量排序题目
     /// </summary>
     /// <param name="surveyId">问卷ID</param>

@@ -1,4 +1,5 @@
 using AutoMapper;
+using CodeSpirit.Core;
 using CodeSpirit.SurveyApi.Dtos.Survey;
 using CodeSpirit.SurveyApi.Models;
 
@@ -27,6 +28,11 @@ public class SurveyMappingProfile : Profile
             .ForMember(dest => dest.QuestionCount, opt => opt.MapFrom(src => src.Questions.Count))
             .ForMember(dest => dest.ResponseCount, opt => opt.MapFrom(src => src.Responses.Count));
 
+        // PageList泛型映射配置
+        CreateMap<PageList<Survey>, PageList<SurveyDto>>()
+            .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Items))
+            .ForMember(dest => dest.Total, opt => opt.MapFrom(src => src.Total));
+
         // CreateSurveyDto到Survey实体的映射
         CreateMap<CreateSurveyDto, Survey>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -49,6 +55,7 @@ public class SurveyMappingProfile : Profile
             .ForMember(dest => dest.Status, opt => opt.Ignore())
             .ForMember(dest => dest.PublishedAt, opt => opt.Ignore())
             .ForMember(dest => dest.LLMPrompt, opt => opt.Ignore())
+            .ForMember(dest => dest.LLMRawOutput, opt => opt.Ignore())
             .ForMember(dest => dest.Settings, opt => opt.Ignore())
             .ForMember(dest => dest.Questions, opt => opt.Ignore())
             .ForMember(dest => dest.Responses, opt => opt.Ignore())

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.SurveyApi.Models.Enums;
 
@@ -34,12 +35,6 @@ public class SurveyQueryDto : QueryDtoBase
     public bool? IsTemplate { get; set; }
 
     /// <summary>
-    /// 创建者ID
-    /// </summary>
-    [DisplayName("创建者ID")]
-    public int? CreatedBy { get; set; }
-
-    /// <summary>
     /// 开始时间
     /// </summary>
     [DisplayName("开始时间")]
@@ -50,18 +45,6 @@ public class SurveyQueryDto : QueryDtoBase
     /// </summary>
     [DisplayName("结束时间")]
     public DateTime? EndTime { get; set; }
-
-    /// <summary>
-    /// 排序字段
-    /// </summary>
-    [DisplayName("排序字段")]
-    public string? SortField { get; set; }
-
-    /// <summary>
-    /// 排序方向
-    /// </summary>
-    [DisplayName("排序方向")]
-    public string? SortOrder { get; set; }
 
 
 }

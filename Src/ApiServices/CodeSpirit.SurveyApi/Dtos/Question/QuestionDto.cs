@@ -1,3 +1,7 @@
+using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.SurveyApi.Models.Enums;
 
 namespace CodeSpirit.SurveyApi.Dtos.Question;
@@ -17,7 +21,7 @@ public class QuestionDto
     /// <summary>
     /// 问卷ID
     /// </summary>
-    [DisplayName("问卷ID")]
+    [DisplayName("问卷")]
     public int SurveyId { get; set; }
 
     /// <summary>
@@ -30,6 +34,7 @@ public class QuestionDto
     /// 题目描述
     /// </summary>
     [DisplayName("题目描述")]
+    [AmisColumn(Copyable = true, Toggled = false)]
     public string? Description { get; set; }
 
     /// <summary>
@@ -48,29 +53,34 @@ public class QuestionDto
     /// 是否必填
     /// </summary>
     [DisplayName("是否必填")]
+    [AmisColumn(Type = "status")]
     public bool IsRequired { get; set; }
 
     /// <summary>
     /// 验证规则
     /// </summary>
     [DisplayName("验证规则")]
+    [AmisColumn(Type = "json", Toggled = false)]
     public string? Validation { get; set; }
 
     /// <summary>
     /// 题目设置
     /// </summary>
     [DisplayName("题目设置")]
+    [AmisColumn(Type = "json", Toggled = false)]
     public string? Settings { get; set; }
 
     /// <summary>
     /// 是否由LLM生成
     /// </summary>
     [DisplayName("LLM生成")]
+    [AmisColumn(Type = "status")]
     public bool LLMGenerated { get; set; }
 
     /// <summary>
     /// 题目选项
     /// </summary>
     [DisplayName("题目选项")]
+    [ListColumn(Title = "${text}")]
     public List<QuestionOptionDto> Options { get; set; } = new();
 }

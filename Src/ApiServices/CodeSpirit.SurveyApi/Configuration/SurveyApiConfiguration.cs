@@ -2,6 +2,7 @@ using CodeSpirit.Aggregator;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.SurveyApi.Data;
 using CodeSpirit.SurveyApi.Extensions;
+
 using CodeSpirit.SurveyApi.Services.Interfaces;
 using CodeSpirit.SurveyApi.Services.Implementations;
 using CodeSpirit.MultiTenant.Extensions;
@@ -193,10 +194,6 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<ISurveyLLMGeneratorService, SurveyLLMGeneratorService>();
         
-        // 添加LLM服务
-        services.AddSurveyLLMServices();
-        
-        // TODO: 注册AutoMapper
-        // services.AddAutoMapper(typeof(SurveyApiConfiguration));
+        // AutoMapper已在CommonApiServices中配置，会自动扫描当前程序集中的Profile
     }
 }

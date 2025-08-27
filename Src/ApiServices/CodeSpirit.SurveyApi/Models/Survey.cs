@@ -14,7 +14,7 @@ public class Survey : AuditableEntityBase<int>, IMultiTenant
     /// </summary>
     [Required]
     [StringLength(50)]
-    public string TenantId { get; set; } = "default";
+    public string TenantId { get; set; }
 
     /// <summary>
     /// 问卷标题
@@ -67,6 +67,17 @@ public class Survey : AuditableEntityBase<int>, IMultiTenant
     /// </summary>
     [StringLength(4000)]
     public string? LLMPrompt { get; set; }
+
+    /// <summary>
+    /// LLM原始输出内容
+    /// </summary>
+    [StringLength(8000)]
+    public string? LLMRawOutput { get; set; }
+
+    /// <summary>
+    /// 是否已预览
+    /// </summary>
+    public bool IsPreviewChecked { get; set; } = false;
 
     /// <summary>
     /// 问卷题目集合

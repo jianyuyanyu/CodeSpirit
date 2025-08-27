@@ -1,4 +1,5 @@
 using CodeSpirit.LLM;
+using CodeSpirit.SurveyApi.Services.Implementations;
 
 namespace CodeSpirit.SurveyApi.Extensions;
 
@@ -14,8 +15,8 @@ public static class ServiceCollectionExtensions
     /// <returns>服务集合</returns>
     public static IServiceCollection AddSurveyLLMServices(this IServiceCollection services)
     {
-        // 添加LLM服务
-        services.AddLLMServices();
+        // 使用LLMSettingsProvider作为ISettingsProvider的实现
+        services.AddLLMServices<LLMSettingsProvider>();
         
         return services;
     }

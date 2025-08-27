@@ -1,10 +1,12 @@
 ﻿﻿// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
 
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel;
 
 namespace CodeSpirit.Amis.Form.Fields
 {
@@ -78,8 +80,13 @@ namespace CodeSpirit.Amis.Form.Fields
                 field["static"] = fieldAttr.Static;
             }
 
-            if (fieldAttr.SubmitOnChange)
-                field["submitOnChange"] = fieldAttr.SubmitOnChange;
+            // 检查是否设置了 SubmitOnChange 或者有 PageAside 特性
+            bool shouldSubmitOnChange = fieldAttr.SubmitOnChange || HasPageAsideAttribute(member);
+            if (shouldSubmitOnChange)
+                field["submitOnChange"] = true;
+
+            // 处理描述信息
+            AddDescription(member, field);
 
             // 处理额外的自定义配置
             utilityHelper.HandleAdditionalConfig(fieldAttr.AdditionalConfig, field);
@@ -98,6 +105,21 @@ namespace CodeSpirit.Amis.Form.Fields
             {
                 MemberInfo m => m.GetCustomAttribute<RequiredAttribute>() != null,
                 ParameterInfo p => p.GetCustomAttribute<RequiredAttribute>() != null,
+                _ => false
+            };
+        }
+
+        /// <summary>
+        /// 检查成员是否包含PageAsideAttribute特性
+        /// </summary>
+        /// <param name="member">成员信息</param>
+        /// <returns>是否包含PageAside特性</returns>
+        private bool HasPageAsideAttribute(ICustomAttributeProvider member)
+        {
+            return member switch
+            {
+                MemberInfo m => m.GetCustomAttribute<PageAsideAttribute>() != null,
+                ParameterInfo p => p.GetCustomAttribute<PageAsideAttribute>() != null,
                 _ => false
             };
         }
@@ -161,6 +183,35 @@ namespace CodeSpirit.Amis.Form.Fields
         protected virtual void HandleCustomDefaultValue(JObject field, AmisFormFieldAttribute attr)
         {
             // 基类不做任何处理，由具体的字段工厂实现
+        }
+
+        /// <summary>
+        /// 添加描述信息
+        /// </summary>
+        /// <param name="member">成员信息</param>
+        /// <param name="field">AMIS字段配置</param>
+        private void AddDescription(ICustomAttributeProvider member, JObject field)
+        {
+            string description = GetDescription(member);
+            if (!string.IsNullOrEmpty(description))
+            {
+                field["description"] = description;
+            }
+        }
+
+        /// <summary>
+        /// 获取成员的描述信息
+        /// </summary>
+        /// <param name="member">成员信息</param>
+        /// <returns>描述文本</returns>
+        private string GetDescription(ICustomAttributeProvider member)
+        {
+            return member switch
+            {
+                MemberInfo m => m.GetCustomAttribute<DescriptionAttribute>()?.Description,
+                ParameterInfo p => p.GetCustomAttribute<DescriptionAttribute>()?.Description,
+                _ => null
+            };
         }
     }
 }

@@ -391,11 +391,27 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
     /// <returns>复制的题目</returns>
     public async Task<QuestionDto> CopyQuestionToSurveyAsync(int questionId, int targetSurveyId)
     {
+        return await CopyQuestionToSurveyAsync(questionId, targetSurveyId, null);
+    }
+
+    /// <summary>
+    /// 复制题目到指定问卷（带自定义标题）
+    /// </summary>
+    /// <param name="questionId">源题目ID</param>
+    /// <param name="targetSurveyId">目标问卷ID</param>
+    /// <param name="newTitle">新标题</param>
+    /// <returns>复制的题目</returns>
+    public async Task<QuestionDto> CopyQuestionToSurveyAsync(int questionId, int targetSurveyId, string? newTitle)
+    {
         var sourceQuestion = await _repository.GetByIdAsync(questionId);
         if (sourceQuestion == null)
         {
             throw new BusinessException("源题目不存在");
         }
+
+        // 获取目标问卷的最大排序索引
+        var maxOrderIndex = _repository.Find(q => q.SurveyId == targetSurveyId)
+            .Max(q => (int?)q.OrderIndex) ?? 0;
 
         // 获取源题目的选项
         var sourceOptions = _optionRepository.Find(o => o.QuestionId == questionId).ToList();
@@ -404,10 +420,10 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
         var newQuestion = new Question
         {
             SurveyId = targetSurveyId,
-            Title = sourceQuestion.Title,
+            Title = newTitle ?? $"{sourceQuestion.Title} (副本)",
             Description = sourceQuestion.Description,
             Type = sourceQuestion.Type,
-            OrderIndex = 0, // 默认放在最后
+            OrderIndex = maxOrderIndex + 1,
             IsRequired = sourceQuestion.IsRequired,
             Validation = sourceQuestion.Validation,
             Settings = sourceQuestion.Settings,
@@ -417,6 +433,7 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
         var createdQuestion = await _repository.AddAsync(newQuestion);
 
         // 复制选项
+        var copiedOptions = new List<QuestionOption>();
         foreach (var sourceOption in sourceOptions)
         {
             var newOption = new QuestionOption
@@ -428,7 +445,8 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
                 IsOther = sourceOption.IsOther
             };
 
-            await _optionRepository.AddAsync(newOption, false);
+            var addedOption = await _optionRepository.AddAsync(newOption, false);
+            copiedOptions.Add(addedOption);
         }
 
         await _optionRepository.SaveChangesAsync();
@@ -436,6 +454,10 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
         _logger.LogInformation("题目 {SourceQuestionId} 已复制到问卷 {TargetSurveyId}，新题目ID：{NewQuestionId}", 
             questionId, targetSurveyId, createdQuestion.Id);
 
-        return _mapper.Map<QuestionDto>(createdQuestion);
+        // 构建返回DTO，包含选项
+        var result = _mapper.Map<QuestionDto>(createdQuestion);
+        result.Options = _mapper.Map<List<QuestionOptionDto>>(copiedOptions);
+        
+        return result;
     }
 }

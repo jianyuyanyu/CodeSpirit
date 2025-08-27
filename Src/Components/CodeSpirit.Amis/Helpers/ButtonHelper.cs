@@ -405,6 +405,10 @@ namespace CodeSpirit.Amis.Helpers
                             ["body"] = op.FeedbackBodyTpl
                         };
                     }
+                    if (!string.IsNullOrEmpty(op.FeedBackSize))
+                    {
+                        button["feedback"]["size"] = op.FeedBackSize;
+                    }
                 }
             }
             //输入表单

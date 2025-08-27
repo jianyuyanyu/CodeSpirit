@@ -17,7 +17,13 @@ public class GenerateSurveyRequest
     [StringLength(200)]
     [DisplayName("问卷主题")]
     [Description("请输入问卷的主题，例如：客户满意度调查、产品反馈收集等")]
-    [AmisFormField(Type = "input-text", Placeholder = "请输入问卷主题")]
+    [AmisInputTextField("AI生成", "/survey/api/survey/Surveys/generate-suggestions", 
+        Placeholder = "请输入问卷主题", 
+        AddOnIcon = "fa fa-magic",
+        AddOnLevel = "info",
+        // AddOnSize = "sm",
+        // AddOnConfirmText = "是否基于当前主题生成问卷建议？",
+        AddOnLoadingText = "AI正在生成中...")]
     public string Topic { get; set; } = string.Empty;
 
     /// <summary>

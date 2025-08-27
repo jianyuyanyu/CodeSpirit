@@ -443,4 +443,158 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
             Status = s.Status.ToString()
         }).ToList();
     }
+
+    /// <summary>
+    /// 批量编辑问卷题目
+    /// </summary>
+    /// <param name="request">批量编辑请求</param>
+    /// <returns>异步任务</returns>
+    public async Task BatchEditQuestionsAsync(BatchEditQuestionsRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        // 验证问卷是否存在且有权限操作
+        var survey = await _repository.GetByIdAsync(request.SurveyId);
+        if (survey == null)
+        {
+            throw new BusinessException("问卷不存在");
+        }
+
+        // 获取要编辑的题目
+        var questionIds = request.Questions.Select(q => q.Id).ToList();
+        var questions = await _questionRepository.Find(q => q.SurveyId == request.SurveyId && questionIds.Contains(q.Id))
+            .ToListAsync();
+
+        if (questions.Count != request.Questions.Count)
+        {
+            throw new BusinessException("部分题目不存在或不属于该问卷");
+        }
+
+        // 应用批量编辑
+        foreach (var questionItem in request.Questions)
+        {
+            var question = questions.First(q => q.Id == questionItem.Id);
+
+            if (!string.IsNullOrEmpty(questionItem.Title))
+            {
+                question.Title = questionItem.Title;
+            }
+
+            if (questionItem.Description != null)
+            {
+                question.Description = questionItem.Description;
+            }
+
+            if (questionItem.IsRequired.HasValue)
+            {
+                question.IsRequired = questionItem.IsRequired.Value;
+            }
+
+            if (questionItem.OrderIndex.HasValue)
+            {
+                question.OrderIndex = questionItem.OrderIndex.Value;
+            }
+
+            if (questionItem.Validation != null)
+            {
+                question.Validation = questionItem.Validation;
+            }
+
+            if (questionItem.Settings != null)
+            {
+                question.Settings = questionItem.Settings;
+            }
+
+            await _questionRepository.UpdateAsync(question, false);
+        }
+
+        await _questionRepository.SaveChangesAsync();
+        
+        _logger.LogInformation("批量编辑了问卷 {SurveyId} 的 {Count} 个题目", request.SurveyId, request.Questions.Count);
+    }
+
+    /// <summary>
+    /// 批量删除问卷题目
+    /// </summary>
+    /// <param name="request">批量删除请求</param>
+    /// <returns>异步任务</returns>
+    public async Task BatchDeleteQuestionsAsync(BatchDeleteQuestionsRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        // 验证问卷是否存在且有权限操作
+        var survey = await _repository.GetByIdAsync(request.SurveyId);
+        if (survey == null)
+        {
+            throw new BusinessException("问卷不存在");
+        }
+
+        // 验证问卷状态
+        if (survey.Status == SurveyStatus.Published)
+        {
+            throw new BusinessException("已发布的问卷不能删除题目");
+        }
+
+        // 获取要删除的题目
+        var questions = await _questionRepository.Find(q => q.SurveyId == request.SurveyId && request.QuestionIds.Contains(q.Id))
+            .ToListAsync();
+
+        if (questions.Count != request.QuestionIds.Count)
+        {
+            throw new BusinessException("部分题目不存在或不属于该问卷");
+        }
+
+        // 删除题目
+        foreach (var question in questions)
+        {
+            await _questionRepository.DeleteAsync(question.Id, false);
+        }
+
+        await _questionRepository.SaveChangesAsync();
+
+        // 更新问卷题目数量（这里只是记录日志，实际的题目数量可以通过导航属性获取）
+        var questionCount = await _questionRepository.Find(q => q.SurveyId == request.SurveyId).CountAsync();
+        _logger.LogInformation("问卷 {SurveyId} 删除题目后，剩余题目数量：{QuestionCount}", request.SurveyId, questionCount);
+
+        _logger.LogInformation("批量删除了问卷 {SurveyId} 的 {Count} 个题目", request.SurveyId, request.QuestionIds.Count);
+    }
+
+    /// <summary>
+    /// 拖拽排序问卷题目
+    /// </summary>
+    /// <param name="request">排序请求</param>
+    /// <returns>异步任务</returns>
+    public async Task DragSortQuestionsAsync(DragSortQuestionsRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        // 验证问卷是否存在且有权限操作
+        var survey = await _repository.GetByIdAsync(request.SurveyId);
+        if (survey == null)
+        {
+            throw new BusinessException("问卷不存在");
+        }
+
+        // 获取所有题目
+        var questionIds = request.Questions.Select(q => q.Id).ToList();
+        var questions = await _questionRepository.Find(q => q.SurveyId == request.SurveyId && questionIds.Contains(q.Id))
+            .ToListAsync();
+
+        if (questions.Count != request.Questions.Count)
+        {
+            throw new BusinessException("部分题目不存在或不属于该问卷");
+        }
+
+        // 更新排序
+        foreach (var sortItem in request.Questions)
+        {
+            var question = questions.First(q => q.Id == sortItem.Id);
+            question.OrderIndex = sortItem.OrderIndex;
+            await _questionRepository.UpdateAsync(question, false);
+        }
+
+        await _questionRepository.SaveChangesAsync();
+        
+        _logger.LogInformation("更新了问卷 {SurveyId} 的题目排序", request.SurveyId);
+    }
 }

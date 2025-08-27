@@ -1,5 +1,6 @@
-using System.ComponentModel;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.SurveyApi.Models.Enums;
+using System.ComponentModel;
 
 namespace CodeSpirit.SurveyApi.Dtos.Survey;
 
@@ -14,12 +15,6 @@ public class SurveyDto
     /// </summary>
     [DisplayName("问卷ID")]
     public int Id { get; set; }
-
-    /// <summary>
-    /// 租户ID
-    /// </summary>
-    [DisplayName("租户ID")]
-    public string TenantId { get; set; } = string.Empty;
 
     /// <summary>
     /// 问卷标题
@@ -64,21 +59,10 @@ public class SurveyDto
     public bool IsTemplate { get; set; }
 
     /// <summary>
-    /// LLM生成提示词
-    /// </summary>
-    [DisplayName("LLM提示词")]
-    public string? LLMPrompt { get; set; }
-
-    /// <summary>
-    /// LLM原始输出内容
-    /// </summary>
-    [DisplayName("LLM原始输出")]
-    public string? LLMRawOutput { get; set; }
-
-    /// <summary>
     /// 创建者ID
     /// </summary>
     [DisplayName("创建者")]
+    [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "{field}")]
     public long CreatedBy { get; set; }
 
     /// <summary>

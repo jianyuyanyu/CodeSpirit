@@ -55,6 +55,40 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
     }
 
     /// <summary>
+    /// 根据主题生成问卷字段建议
+    /// </summary>
+    /// <param name="topic">问卷主题</param>
+    /// <returns>字段建议</returns>
+    public async Task<SurveyFieldSuggestions> GenerateFieldSuggestionsAsync(string topic)
+    {
+        try
+        {
+            _logger.LogInformation("开始生成问卷字段建议，主题：{Topic}", topic);
+
+            // 获取LLM设置
+            var llmSettings = await _settingsService.GetLLMSettingsAsync();
+
+            // 构建字段建议的提示词
+            var prompt = BuildFieldSuggestionsPrompt(topic);
+
+            // 调用LLM生成建议
+            var llmResponse = await _llmAssistant.GenerateContentAsync(prompt, 1000); // 使用较少的tokens
+
+            // 解析LLM响应为字段建议
+            var suggestions = ParseFieldSuggestionsResponse(llmResponse);
+
+            _logger.LogInformation("问卷字段建议生成成功");
+
+            return suggestions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "生成问卷字段建议失败，主题：{Topic}", topic);
+            throw new BusinessException($"生成问卷字段建议失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// 根据主题生成问卷
     /// </summary>
     /// <param name="request">生成请求</param>
@@ -146,13 +180,13 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
     /// <summary>
     /// 生成问卷洞察分析
     /// </summary>
-    /// <param name="surveyId">问卷ID</param>
+    /// <param name="surveyDto">问卷信息</param>
     /// <returns>洞察分析结果</returns>
-    public async Task<SurveyInsightResult> GenerateInsightsAsync(int surveyId)
+    public async Task<SurveyInsightResult> GenerateInsightsAsync(SurveyDto surveyDto)
     {
         try
         {
-            _logger.LogInformation("开始生成问卷洞察分析 {SurveyId}", surveyId);
+            _logger.LogInformation("开始生成问卷洞察分析 {SurveyId} - {SurveyTitle}", surveyDto.Id, surveyDto.Title);
 
             // 检查是否启用洞察功能
             var llmSettings = await _settingsService.GetLLMSettingsAsync();
@@ -161,26 +195,25 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
                 throw new BusinessException("LLM洞察分析功能已禁用");
             }
 
-            // TODO: 获取问卷数据和回答数据
-            // var survey = await _surveyService.GetAsync(surveyId);
-            // var responses = await _responseService.GetResponsesAsync(surveyId);
+            // 获取问卷题目数据
+            var questions = await _questionService.GetQuestionsBySurveyIdAsync(surveyDto.Id);
 
             // 构建洞察分析提示词
-            var prompt = BuildInsightPrompt(surveyId);
+            var prompt = BuildInsightPrompt(surveyDto, questions);
 
             // 调用LLM生成洞察
             var llmResponse = await _llmAssistant.GenerateContentAsync(prompt);
 
             // 解析洞察结果
-            var result = ParseInsightResponse(llmResponse);
+            var result = ParseInsightResponse(llmResponse, surveyDto);
 
-            _logger.LogInformation("问卷洞察分析完成，洞察数量：{InsightCount}", result.Insights.Count);
+            _logger.LogInformation("问卷洞察分析完成，问卷：{SurveyTitle}", surveyDto.Title);
 
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "生成问卷洞察失败，ID：{SurveyId}", surveyId);
+            _logger.LogError(ex, "生成问卷洞察失败，ID：{SurveyId}", surveyDto.Id);
             throw new BusinessException($"生成洞察失败：{ex.Message}");
         }
     }
@@ -265,6 +298,88 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
     }
 
     #region 私有辅助方法
+
+    /// <summary>
+    /// 构建字段建议提示词
+    /// </summary>
+    /// <param name="topic">问卷主题</param>
+    /// <returns>提示词</returns>
+    private string BuildFieldSuggestionsPrompt(string topic)
+    {
+        var prompt = $@"基于问卷主题""{topic}""，请为问卷生成以下字段的建议：
+
+1. 问卷描述：简明扼要地描述问卷的目的和背景
+2. 问卷类型：例如满意度调查、市场调研、员工反馈等
+3. 题目数量：建议的题目数量（5-20题范围内）
+4. 目标受众：描述问卷的目标受众群体
+5. 调查目标：明确说明通过此问卷希望达到的目标
+
+请以JSON格式回复，格式如下：
+{{
+  ""description"": ""问卷描述"",
+  ""surveyType"": ""问卷类型"",
+  ""questionCount"": 题目数量,
+  ""targetAudience"": ""目标受众"",
+  ""goals"": ""调查目标""
+}}
+
+要求：
+- 内容要与主题高度相关
+- 描述要简洁明了
+- 题目数量要合理
+- 目标受众要具体
+- 调查目标要明确可执行";
+
+        return prompt;
+    }
+
+    /// <summary>
+    /// 解析字段建议响应
+    /// </summary>
+    /// <param name="llmResponse">LLM响应</param>
+    /// <returns>字段建议</returns>
+    private SurveyFieldSuggestions ParseFieldSuggestionsResponse(string llmResponse)
+    {
+        try
+        {
+            // 提取JSON部分
+            var jsonMatch = Regex.Match(llmResponse, @"\{[\s\S]*\}", RegexOptions.Multiline);
+            if (!jsonMatch.Success)
+            {
+                throw new ArgumentException("无法从响应中提取JSON格式的建议");
+            }
+
+            var jsonContent = jsonMatch.Value;
+            var suggestions = JsonConvert.DeserializeObject<SurveyFieldSuggestions>(jsonContent);
+
+            if (suggestions == null)
+            {
+                throw new ArgumentException("JSON解析失败");
+            }
+
+            // 验证和调整数据
+            if (suggestions.QuestionCount < 1 || suggestions.QuestionCount > 50)
+            {
+                suggestions.QuestionCount = 10; // 默认值
+            }
+
+            return suggestions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "解析字段建议失败，使用默认建议。LLM响应：{Response}", llmResponse);
+            
+            // 返回默认建议
+            return new SurveyFieldSuggestions
+            {
+                Description = "这是一份调查问卷，旨在收集相关信息和意见。",
+                SurveyType = "意见调查",
+                QuestionCount = 10,
+                TargetAudience = "相关人群",
+                Goals = "了解具体情况，收集意见和建议，为后续决策提供数据支持。"
+            };
+        }
+    }
 
     /// <summary>
     /// 构建问卷生成提示词
@@ -362,21 +477,78 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
     /// <summary>
     /// 构建洞察分析提示词
     /// </summary>
-    /// <param name="surveyId">问卷ID</param>
+    /// <param name="surveyDto">问卷信息</param>
+    /// <param name="questions">问卷题目列表</param>
     /// <returns>提示词</returns>
-    private string BuildInsightPrompt(int surveyId)
+    private string BuildInsightPrompt(SurveyDto surveyDto, List<QuestionDto> questions)
     {
         var promptBuilder = new StringBuilder();
         
-        promptBuilder.AppendLine("你是一个数据分析专家，请分析以下问卷的回答数据并提供洞察：");
+        promptBuilder.AppendLine("你是一个专业的问卷数据分析专家，请基于以下问卷信息提供深度洞察分析：");
         promptBuilder.AppendLine();
-        promptBuilder.AppendLine($"问卷ID：{surveyId}");
+        
+        // 问卷基本信息
+        promptBuilder.AppendLine("## 问卷基本信息");
+        promptBuilder.AppendLine($"- 问卷标题：{surveyDto.Title}");
+        if (!string.IsNullOrEmpty(surveyDto.Description))
+        {
+            promptBuilder.AppendLine($"- 问卷描述：{surveyDto.Description}");
+        }
+        promptBuilder.AppendLine($"- 问卷状态：{surveyDto.Status}");
+        promptBuilder.AppendLine($"- 题目数量：{surveyDto.QuestionCount}");
+        promptBuilder.AppendLine($"- 回答数量：{surveyDto.ResponseCount}");
+        promptBuilder.AppendLine($"- 创建时间：{surveyDto.CreatedAt:yyyy-MM-dd}");
+        if (surveyDto.PublishedAt.HasValue)
+        {
+            promptBuilder.AppendLine($"- 发布时间：{surveyDto.PublishedAt:yyyy-MM-dd}");
+        }
         promptBuilder.AppendLine();
-        promptBuilder.AppendLine("请从以下角度进行分析：");
-        promptBuilder.AppendLine("1. 回答数据的整体趋势");
-        promptBuilder.AppendLine("2. 异常数据或模式");
-        promptBuilder.AppendLine("3. 用户行为特征");
-        promptBuilder.AppendLine("4. 关键发现和建议");
+        
+        // 题目结构信息
+        if (questions.Any())
+        {
+            promptBuilder.AppendLine("## 题目结构");
+            for (int i = 0; i < questions.Count && i < 10; i++) // 限制显示前10个题目
+            {
+                var question = questions[i];
+                promptBuilder.AppendLine($"{i + 1}. [{question.Type}] {question.Title}");
+                if (!string.IsNullOrEmpty(question.Description))
+                {
+                    promptBuilder.AppendLine($"   描述：{question.Description}");
+                }
+                promptBuilder.AppendLine($"   必填：{(question.IsRequired ? "是" : "否")}");
+            }
+            if (questions.Count > 10)
+            {
+                promptBuilder.AppendLine($"... 还有 {questions.Count - 10} 个题目");
+            }
+            promptBuilder.AppendLine();
+        }
+        
+        promptBuilder.AppendLine("## 分析要求");
+        promptBuilder.AppendLine("请从以下维度进行深度分析，并提供结构化的洞察报告：");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("### 1. 问卷设计质量分析");
+        promptBuilder.AppendLine("- 题目设计的合理性和逻辑性");
+        promptBuilder.AppendLine("- 题目类型分布是否均衡");
+        promptBuilder.AppendLine("- 必填题设置是否合理");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("### 2. 数据收集效果评估");
+        promptBuilder.AppendLine("- 回答率和参与度分析");
+        promptBuilder.AppendLine("- 数据质量评估");
+        promptBuilder.AppendLine("- 潜在的数据偏差或问题");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("### 3. 优化建议");
+        promptBuilder.AppendLine("- 问卷结构优化建议");
+        promptBuilder.AppendLine("- 题目改进建议");
+        promptBuilder.AppendLine("- 数据收集策略建议");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("### 4. 关键洞察");
+        promptBuilder.AppendLine("- 主要发现和趋势");
+        promptBuilder.AppendLine("- 值得关注的模式");
+        promptBuilder.AppendLine("- 行动建议");
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("请用中文提供详细、专业且易于理解的分析报告。");
 
         return promptBuilder.ToString();
     }
@@ -492,27 +664,180 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
     /// 解析洞察分析响应
     /// </summary>
     /// <param name="llmResponse">LLM响应</param>
+    /// <param name="surveyDto">问卷信息</param>
     /// <returns>洞察结果</returns>
-    private SurveyInsightResult ParseInsightResponse(string llmResponse)
+    private SurveyInsightResult ParseInsightResponse(string llmResponse, SurveyDto surveyDto)
     {
-        // 简单解析，实际可以更复杂
-        var insights = new List<SurveyInsight>
+        try
         {
-            new SurveyInsight
-            {
-                Type = "General",
-                Content = llmResponse,
-                Confidence = 0.8
-            }
-        };
+            // 尝试从响应中提取结构化信息
+            var keyFindings = ExtractKeyFindings(llmResponse);
+            var recommendedActions = ExtractRecommendedActions(llmResponse);
+            var qualityScore = CalculateDataQualityScore(surveyDto, llmResponse);
 
-        return new SurveyInsightResult
+            return new SurveyInsightResult
+            {
+                Insights = llmResponse,
+                DataQualityScore = qualityScore,
+                KeyFindings = keyFindings,
+                RecommendedActions = recommendedActions
+            };
+        }
+        catch (Exception ex)
         {
-            Insights = insights,
-            DataQualityScore = 8,
-            KeyFindings = new List<string> { "基于LLM分析的关键发现" },
-            RecommendedActions = new List<string> { "基于LLM分析的建议行动" }
-        };
+            _logger.LogWarning(ex, "解析洞察响应时出现错误，使用默认解析");
+            
+            return new SurveyInsightResult
+            {
+                Insights = llmResponse,
+                DataQualityScore = 7,
+                KeyFindings = new List<string> { "基于AI分析的专业洞察" },
+                RecommendedActions = new List<string> { "建议根据分析结果优化问卷设计" }
+            };
+        }
+    }
+
+    /// <summary>
+    /// 从响应中提取关键发现
+    /// </summary>
+    /// <param name="response">LLM响应</param>
+    /// <returns>关键发现列表</returns>
+    private List<string> ExtractKeyFindings(string response)
+    {
+        var findings = new List<string>();
+        
+        // 查找关键发现相关的段落
+        var patterns = new[] { "关键洞察", "主要发现", "重要发现", "核心洞察" };
+        
+        foreach (var pattern in patterns)
+        {
+            var index = response.IndexOf(pattern, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0)
+            {
+                // 提取该段落的内容
+                var section = ExtractSection(response, index);
+                var items = ExtractListItems(section);
+                findings.AddRange(items);
+                break;
+            }
+        }
+        
+        return findings.Any() ? findings : new List<string> { "基于AI分析的专业洞察" };
+    }
+
+    /// <summary>
+    /// 从响应中提取建议行动
+    /// </summary>
+    /// <param name="response">LLM响应</param>
+    /// <returns>建议行动列表</returns>
+    private List<string> ExtractRecommendedActions(string response)
+    {
+        var actions = new List<string>();
+        
+        // 查找建议相关的段落
+        var patterns = new[] { "优化建议", "行动建议", "改进建议", "建议" };
+        
+        foreach (var pattern in patterns)
+        {
+            var index = response.IndexOf(pattern, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0)
+            {
+                var section = ExtractSection(response, index);
+                var items = ExtractListItems(section);
+                actions.AddRange(items);
+                break;
+            }
+        }
+        
+        return actions.Any() ? actions : new List<string> { "建议根据分析结果优化问卷设计" };
+    }
+
+    /// <summary>
+    /// 提取文本段落
+    /// </summary>
+    /// <param name="text">完整文本</param>
+    /// <param name="startIndex">开始位置</param>
+    /// <returns>段落内容</returns>
+    private string ExtractSection(string text, int startIndex)
+    {
+        var endIndex = text.IndexOf("###", startIndex + 1);
+        if (endIndex == -1)
+        {
+            endIndex = text.IndexOf("##", startIndex + 1);
+        }
+        if (endIndex == -1)
+        {
+            endIndex = text.Length;
+        }
+        
+        return text.Substring(startIndex, endIndex - startIndex);
+    }
+
+    /// <summary>
+    /// 从段落中提取列表项
+    /// </summary>
+    /// <param name="section">段落内容</param>
+    /// <returns>列表项</returns>
+    private List<string> ExtractListItems(string section)
+    {
+        var items = new List<string>();
+        var lines = section.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith("-") || trimmed.StartsWith("•") || 
+                Regex.IsMatch(trimmed, @"^\d+\."))
+            {
+                var content = Regex.Replace(trimmed, @"^[-•\d\.\s]+", "").Trim();
+                if (!string.IsNullOrEmpty(content) && content.Length > 5)
+                {
+                    items.Add(content);
+                }
+            }
+        }
+        
+        return items;
+    }
+
+    /// <summary>
+    /// 计算数据质量评分
+    /// </summary>
+    /// <param name="surveyDto">问卷信息</param>
+    /// <param name="analysisResponse">分析响应</param>
+    /// <returns>质量评分(1-10)</returns>
+    private int CalculateDataQualityScore(SurveyDto surveyDto, string analysisResponse)
+    {
+        var score = 5; // 基础分数
+        
+        // 基于问卷基本指标调整分数
+        if (surveyDto.QuestionCount >= 5 && surveyDto.QuestionCount <= 20)
+        {
+            score += 1; // 题目数量合理
+        }
+        
+        if (surveyDto.ResponseCount > 10)
+        {
+            score += 1; // 有足够的回答数据
+        }
+        
+        if (surveyDto.ResponseCount > 50)
+        {
+            score += 1; // 回答数据充足
+        }
+        
+        // 基于分析内容调整分数
+        if (analysisResponse.Contains("质量") && analysisResponse.Contains("良好"))
+        {
+            score += 1;
+        }
+        
+        if (analysisResponse.Contains("建议") && analysisResponse.Length > 500)
+        {
+            score += 1; // 分析内容详细
+        }
+        
+        return Math.Max(1, Math.Min(10, score));
     }
 
     /// <summary>

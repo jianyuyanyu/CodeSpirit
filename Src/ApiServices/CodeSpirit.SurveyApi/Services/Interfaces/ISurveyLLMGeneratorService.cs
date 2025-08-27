@@ -8,6 +8,13 @@ namespace CodeSpirit.SurveyApi.Services.Interfaces;
 public interface ISurveyLLMGeneratorService
 {
     /// <summary>
+    /// 根据主题生成问卷字段建议
+    /// </summary>
+    /// <param name="topic">问卷主题</param>
+    /// <returns>字段建议</returns>
+    Task<SurveyFieldSuggestions> GenerateFieldSuggestionsAsync(string topic);
+
+    /// <summary>
     /// 根据主题生成问卷
     /// </summary>
     /// <param name="request">生成请求</param>
@@ -25,9 +32,9 @@ public interface ISurveyLLMGeneratorService
     /// <summary>
     /// 生成问卷洞察分析
     /// </summary>
-    /// <param name="surveyId">问卷ID</param>
+    /// <param name="surveyDto">问卷信息</param>
     /// <returns>洞察分析结果</returns>
-    Task<SurveyInsightResult> GenerateInsightsAsync(int surveyId);
+    Task<SurveyInsightResult> GenerateInsightsAsync(SurveyDto surveyDto);
 
     /// <summary>
     /// 验证提示词长度

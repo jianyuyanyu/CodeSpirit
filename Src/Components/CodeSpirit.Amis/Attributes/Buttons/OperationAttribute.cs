@@ -43,6 +43,11 @@ public class OperationAttribute : Attribute
     public string FeedbackBodyTpl { get; set; }
 
     /// <summary>
+    /// 指定 dialog 大小，支持: xs、sm、md、lg、xl、full、custom
+    /// </summary>
+    public string FeedBackSize { get; set; }
+
+    /// <summary>
     /// 仅当 ActionType 为 form 时可用，用于表单数据初始化
     /// </summary>
     public string InitApi { get; set; }

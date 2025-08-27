@@ -86,4 +86,25 @@ public interface ISurveyService : IBaseCRUDService<Survey, SurveyDto, int, Creat
     /// </summary>
     /// <returns>问卷选项列表</returns>
     Task<List<SurveyOptionDto>> GetSurveyOptionsAsync();
+
+    /// <summary>
+    /// 批量编辑问卷题目
+    /// </summary>
+    /// <param name="request">批量编辑请求</param>
+    /// <returns>异步任务</returns>
+    Task BatchEditQuestionsAsync(BatchEditQuestionsRequest request);
+
+    /// <summary>
+    /// 批量删除问卷题目
+    /// </summary>
+    /// <param name="request">批量删除请求</param>
+    /// <returns>异步任务</returns>
+    Task BatchDeleteQuestionsAsync(BatchDeleteQuestionsRequest request);
+
+    /// <summary>
+    /// 拖拽排序问卷题目
+    /// </summary>
+    /// <param name="request">排序请求</param>
+    /// <returns>异步任务</returns>
+    Task DragSortQuestionsAsync(DragSortQuestionsRequest request);
 }

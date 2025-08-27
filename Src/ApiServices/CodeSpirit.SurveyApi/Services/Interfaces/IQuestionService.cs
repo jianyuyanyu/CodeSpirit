@@ -38,4 +38,13 @@ public interface IQuestionService : IBaseCRUDService<Question, QuestionDto, int,
     /// <param name="targetSurveyId">目标问卷ID</param>
     /// <returns>复制的题目</returns>
     Task<QuestionDto> CopyQuestionToSurveyAsync(int questionId, int targetSurveyId);
+
+    /// <summary>
+    /// 复制题目到指定问卷（带自定义标题）
+    /// </summary>
+    /// <param name="questionId">源题目ID</param>
+    /// <param name="targetSurveyId">目标问卷ID</param>
+    /// <param name="newTitle">新标题</param>
+    /// <returns>复制的题目</returns>
+    Task<QuestionDto> CopyQuestionToSurveyAsync(int questionId, int targetSurveyId, string? newTitle);
 }

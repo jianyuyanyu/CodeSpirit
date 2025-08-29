@@ -60,6 +60,11 @@ public class SurveyDbContext : MultiTenantDbContext
     /// </summary>
     public DbSet<SurveyDraft> SurveyDrafts { get; set; }
 
+    /// <summary>
+    /// 问卷分类集合
+    /// </summary>
+    public DbSet<SurveyCategory> SurveyCategories { get; set; }
+
     #endregion
 
     /// <summary>
@@ -87,6 +92,9 @@ public class SurveyDbContext : MultiTenantDbContext
 
         // 配置问卷草稿实体
         ConfigureSurveyDraft(modelBuilder);
+
+        // 配置问卷分类实体
+        ConfigureSurveyCategory(modelBuilder);
     }
 
     /// <summary>
@@ -130,6 +138,12 @@ public class SurveyDbContext : MultiTenantDbContext
             .WithOne(d => d.Survey)
             .HasForeignKey(d => d.SurveyId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // 分类关系配置
+        entity.HasOne(s => s.Category)
+            .WithMany(c => c.Surveys)
+            .HasForeignKey(s => s.CategoryId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 
     /// <summary>
@@ -273,6 +287,39 @@ public class SurveyDbContext : MultiTenantDbContext
         entity.HasIndex(d => new { d.SurveyId, d.SessionId }).HasDatabaseName("IX_SurveyDrafts_SurveyId_SessionId");
         entity.HasIndex(d => new { d.SurveyId, d.UserId }).HasDatabaseName("IX_SurveyDrafts_SurveyId_UserId");
         entity.HasIndex(d => d.ExpiresAt).HasDatabaseName("IX_SurveyDrafts_ExpiresAt");
+    }
+
+    /// <summary>
+    /// 配置问卷分类实体
+    /// </summary>
+    /// <param name="modelBuilder">模型构建器</param>
+    private static void ConfigureSurveyCategory(ModelBuilder modelBuilder)
+    {
+        var entity = modelBuilder.Entity<SurveyCategory>();
+
+        entity.ToTable("SurveyCategories");
+
+        entity.HasKey(c => c.Id);
+
+        entity.Property(c => c.TenantId).IsRequired().HasMaxLength(50);
+        entity.Property(c => c.Name).IsRequired().HasMaxLength(100);
+        entity.Property(c => c.Description).HasMaxLength(500);
+        entity.Property(c => c.Color).HasMaxLength(7);
+        entity.Property(c => c.Icon).HasMaxLength(50);
+        entity.Property(c => c.OrderIndex).IsRequired();
+        entity.Property(c => c.IsEnabled).IsRequired();
+
+        // 索引
+        entity.HasIndex(c => c.TenantId).HasDatabaseName("IX_SurveyCategories_TenantId");
+        entity.HasIndex(c => c.ParentId).HasDatabaseName("IX_SurveyCategories_ParentId");
+        entity.HasIndex(c => new { c.TenantId, c.IsEnabled }).HasDatabaseName("IX_SurveyCategories_TenantId_IsEnabled");
+        entity.HasIndex(c => new { c.TenantId, c.ParentId, c.OrderIndex }).HasDatabaseName("IX_SurveyCategories_TenantId_ParentId_OrderIndex");
+
+        // 自引用关系配置
+        entity.HasOne(c => c.Parent)
+            .WithMany(c => c.Children)
+            .HasForeignKey(c => c.ParentId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 
     /// <summary>

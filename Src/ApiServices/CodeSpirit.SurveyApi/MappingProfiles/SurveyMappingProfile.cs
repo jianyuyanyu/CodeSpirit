@@ -26,7 +26,8 @@ public class SurveyMappingProfile : Profile
         // Survey实体到SurveyDto的映射
         CreateMap<Survey, SurveyDto>()
             .ForMember(dest => dest.QuestionCount, opt => opt.MapFrom(src => src.Questions.Count))
-            .ForMember(dest => dest.ResponseCount, opt => opt.MapFrom(src => src.Responses.Count));
+            .ForMember(dest => dest.ResponseCount, opt => opt.MapFrom(src => src.Responses.Count))
+            .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null));
 
         // PageList泛型映射配置
         CreateMap<PageList<Survey>, PageList<SurveyDto>>()
@@ -43,6 +44,7 @@ public class SurveyMappingProfile : Profile
             .ForMember(dest => dest.Questions, opt => opt.Ignore())
             .ForMember(dest => dest.Responses, opt => opt.Ignore())
             .ForMember(dest => dest.Drafts, opt => opt.Ignore())
+            .ForMember(dest => dest.Category, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
@@ -60,6 +62,7 @@ public class SurveyMappingProfile : Profile
             .ForMember(dest => dest.Questions, opt => opt.Ignore())
             .ForMember(dest => dest.Responses, opt => opt.Ignore())
             .ForMember(dest => dest.Drafts, opt => opt.Ignore())
+            .ForMember(dest => dest.Category, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())

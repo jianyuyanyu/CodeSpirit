@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.SurveyApi.Models.Enums;
 
@@ -27,6 +29,27 @@ public class SurveyQueryDto : QueryDtoBase
     /// </summary>
     [DisplayName("访问类型")]
     public SurveyAccessType? AccessType { get; set; }
+
+    /// <summary>
+    /// 问卷分类ID
+    /// </summary>
+    [DisplayName("问卷分类")]
+    [PageAside]
+    [AmisInputTreeField(
+        DataSource = "${ROOT_API}/api/survey/SurveyCategories/tree",
+        Multiple = false,
+        JoinValues = true,
+        ExtractValue = false,
+        ShowOutline = true,
+        LabelField = "name",
+        ValueField = "id",
+        Required = false,
+        Clearable = true,
+        SubmitOnChange = true,
+        HeightAuto = true,
+        SelectFirst = false
+    )]
+    public int? CategoryId { get; set; }
 
     /// <summary>
     /// 是否为模板

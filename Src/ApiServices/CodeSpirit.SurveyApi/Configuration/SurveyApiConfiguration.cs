@@ -193,6 +193,7 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         services.AddScoped<ISurveySettingsService, SurveySettingsService>();
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<ISurveyLLMGeneratorService, SurveyLLMGeneratorService>();
+        services.AddScoped<ISurveyCategoryService, SurveyCategoryService>();
         
         // AutoMapper已在CommonApiServices中配置，会自动扫描当前程序集中的Profile
     }

@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.SurveyApi.Models.Enums;
 using System.ComponentModel;
@@ -94,4 +95,16 @@ public class SurveyDto
     /// </summary>
     [DisplayName("是否已预览")]
     public bool IsPreviewChecked { get; set; }
+
+    /// <summary>
+    /// 问卷分类ID
+    /// </summary>
+    [DisplayName("分类ID")]
+    public int? CategoryId { get; set; }
+
+    /// <summary>
+    /// 问卷分类名称
+    /// </summary>
+    [DisplayName("问卷分类")]
+    public string? CategoryName { get; set; }
 }

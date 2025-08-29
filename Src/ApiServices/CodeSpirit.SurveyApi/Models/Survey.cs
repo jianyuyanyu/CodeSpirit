@@ -80,6 +80,16 @@ public class Survey : AuditableEntityBase<int>, IMultiTenant
     public bool IsPreviewChecked { get; set; } = false;
 
     /// <summary>
+    /// 问卷分类ID
+    /// </summary>
+    public int? CategoryId { get; set; }
+
+    /// <summary>
+    /// 问卷分类
+    /// </summary>
+    public virtual SurveyCategory? Category { get; set; }
+
+    /// <summary>
     /// 问卷题目集合
     /// </summary>
     public virtual ICollection<Question> Questions { get; set; } = new List<Question>();

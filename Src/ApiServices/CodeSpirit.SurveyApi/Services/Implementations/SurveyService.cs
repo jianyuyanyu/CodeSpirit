@@ -82,6 +82,12 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
             predicate = predicate.And(x => x.IsTemplate == queryDto.IsTemplate.Value);
         }
 
+        // 分类筛选
+        if (queryDto.CategoryId.HasValue)
+        {
+            predicate = predicate.And(x => x.CategoryId == queryDto.CategoryId.Value);
+        }
+
         // 创建者筛选已移除，如需按创建者筛选请使用具体的业务方法
 
         // 时间范围筛选
@@ -109,7 +115,7 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
                 _ => "UpdatedAt"
             },
             queryDto.OrderDir?.ToLower() == "desc" ? "desc" : "asc",
-            "Questions", "Responses"
+            "Questions", "Responses", "Category"
         ).ContinueWith(t => _mapper.Map<PageList<SurveyDto>>(t.Result));
     }
 
@@ -345,6 +351,12 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
             predicate = predicate.And(x => x.IsTemplate == queryDto.IsTemplate.Value);
         }
 
+        // 分类筛选
+        if (queryDto.CategoryId.HasValue)
+        {
+            predicate = predicate.And(x => x.CategoryId == queryDto.CategoryId.Value);
+        }
+
         if (queryDto.StartTime.HasValue)
         {
             predicate = predicate.And(x => x.CreatedAt >= queryDto.StartTime.Value);
@@ -368,7 +380,7 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
                 _ => "UpdatedAt"
             },
             queryDto.OrderDir?.ToLower() == "desc" ? "desc" : "asc",
-            "Questions", "Responses"
+            "Questions", "Responses", "Category"
         ).ContinueWith(t => _mapper.Map<PageList<SurveyDto>>(t.Result));
     }
 

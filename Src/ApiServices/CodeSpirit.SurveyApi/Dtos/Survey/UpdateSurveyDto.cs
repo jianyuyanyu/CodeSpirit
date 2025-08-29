@@ -1,4 +1,7 @@
 using CodeSpirit.SurveyApi.Models.Enums;
+using CodeSpirit.Amis.Attributes.FormFields;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.SurveyApi.Dtos.Survey;
 
@@ -40,4 +43,19 @@ public class UpdateSurveyDto
     /// </summary>
     [DisplayName("是否为模板")]
     public bool IsTemplate { get; set; }
+
+    /// <summary>
+    /// 问卷分类ID
+    /// </summary>
+    [DisplayName("问卷分类")]
+    [AmisTreeSelectField(
+        DataSource = "${ROOT_API}/api/survey/SurveyCategories/tree",
+        Multiple = false,
+        Cascade = true,
+        ShowOutline = true,
+        LabelField = "name",
+        ValueField = "id",
+        Clearable = true
+    )]
+    public int? CategoryId { get; set; }
 }

@@ -50,6 +50,13 @@ public interface ISurveyLLMGeneratorService
     /// <param name="maxLength">最大长度</param>
     /// <returns>压缩后的提示词</returns>
     Task<string> CompressPromptAsync(string prompt, int maxLength);
+
+    /// <summary>
+    /// AI扩题功能
+    /// </summary>
+    /// <param name="request">扩题请求</param>
+    /// <returns>扩题结果</returns>
+    Task<ExpandQuestionsResult> ExpandQuestionsAsync(ExpandQuestionsRequest request);
 }
 
 

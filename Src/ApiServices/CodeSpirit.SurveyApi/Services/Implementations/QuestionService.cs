@@ -50,9 +50,10 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
     public Task<List<QuestionDto>> GetQuestionsBySurveyIdAsync(int surveyId)
     {
         var questions = _repository.Find(q => q.SurveyId == surveyId)
+            .Include(q => q.Options)
             .OrderBy(q => q.OrderIndex)
             .ToList();
-        
+
         return Task.FromResult(_mapper.Map<List<QuestionDto>>(questions));
     }
 
@@ -74,7 +75,7 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
         // 关键词搜索（标题）
         if (!string.IsNullOrEmpty(queryDto.Keywords))
         {
-            predicate = predicate.And(x => x.Title.Contains(queryDto.Keywords) || 
+            predicate = predicate.And(x => x.Title.Contains(queryDto.Keywords) ||
                                           (x.Description != null && x.Description.Contains(queryDto.Keywords)));
         }
 
@@ -132,7 +133,7 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
 
         // 构建查询
         var baseQuery = _repository.Find(predicate);
-        
+
         // 排序
         IQueryable<Question> orderedQuery;
         if (!string.IsNullOrEmpty(queryDto.OrderBy))
@@ -140,23 +141,23 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
             switch (queryDto.OrderBy.ToLower())
             {
                 case "title":
-                    orderedQuery = queryDto.OrderDir?.ToLower() == "asc" 
-                        ? baseQuery.OrderBy(x => x.Title) 
+                    orderedQuery = queryDto.OrderDir?.ToLower() == "asc"
+                        ? baseQuery.OrderBy(x => x.Title)
                         : baseQuery.OrderByDescending(x => x.Title);
                     break;
                 case "type":
-                    orderedQuery = queryDto.OrderDir?.ToLower() == "asc" 
-                        ? baseQuery.OrderBy(x => x.Type) 
+                    orderedQuery = queryDto.OrderDir?.ToLower() == "asc"
+                        ? baseQuery.OrderBy(x => x.Type)
                         : baseQuery.OrderByDescending(x => x.Type);
                     break;
                 case "orderindex":
-                    orderedQuery = queryDto.OrderDir?.ToLower() == "asc" 
-                        ? baseQuery.OrderBy(x => x.OrderIndex) 
+                    orderedQuery = queryDto.OrderDir?.ToLower() == "asc"
+                        ? baseQuery.OrderBy(x => x.OrderIndex)
                         : baseQuery.OrderByDescending(x => x.OrderIndex);
                     break;
                 case "createdat":
-                    orderedQuery = queryDto.OrderDir?.ToLower() == "asc" 
-                        ? baseQuery.OrderBy(x => x.CreatedAt) 
+                    orderedQuery = queryDto.OrderDir?.ToLower() == "asc"
+                        ? baseQuery.OrderBy(x => x.CreatedAt)
                         : baseQuery.OrderByDescending(x => x.CreatedAt);
                     break;
                 default:
@@ -194,7 +195,7 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
     public async Task ReorderQuestionsAsync(int surveyId, Dictionary<int, int> questionOrders)
     {
         var questions = _repository.Find(q => q.SurveyId == surveyId).ToList();
-        
+
         foreach (var question in questions)
         {
             if (questionOrders.TryGetValue(question.Id, out var newOrder))
@@ -207,9 +208,9 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
         {
             await _repository.UpdateAsync(question, false);
         }
-        
+
         await _repository.SaveChangesAsync();
-        
+
         _logger.LogInformation("问卷 {SurveyId} 的题目排序已更新", surveyId);
     }
 
@@ -227,7 +228,7 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
 
         // 创建题目实体
         var question = _mapper.Map<Question>(createDto);
-        
+
         // 保存题目
         var createdQuestion = await _repository.AddAsync(question);
 
@@ -247,11 +248,11 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
 
                 await _optionRepository.AddAsync(option, false);
             }
-            
+
             await _optionRepository.SaveChangesAsync();
         }
 
-        _logger.LogInformation("题目创建成功：{Title}，ID：{QuestionId}，选项数量：{OptionCount}", 
+        _logger.LogInformation("题目创建成功：{Title}，ID：{QuestionId}，选项数量：{OptionCount}",
             createdQuestion.Title, createdQuestion.Id, createDto.Options?.Count ?? 0);
 
         return _mapper.Map<QuestionDto>(createdQuestion);
@@ -264,9 +265,9 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
     /// <returns>异步任务</returns>
     protected override Task ValidateCreateDto(CreateQuestionDto createDto)
     {
-        _logger.LogInformation("开始验证题目：{Title}，类型：{Type}，选项数量：{OptionCount}", 
+        _logger.LogInformation("开始验证题目：{Title}，类型：{Type}，选项数量：{OptionCount}",
             createDto.Title, createDto.Type, createDto.Options?.Count ?? 0);
-        
+
         var errors = new List<string>();
 
         // 验证选择题必须有选项
@@ -294,7 +295,7 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
                     .Where(g => g.Count() > 1)
                     .Select(g => g.Key)
                     .ToList();
-                
+
                 if (duplicateOptions.Any())
                 {
                     errors.Add($"选项文本不能重复：{string.Join(", ", duplicateOptions)}");
@@ -355,7 +356,7 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
     /// <returns>是否为选择题</returns>
     private static bool IsChoiceQuestion(QuestionType questionType)
     {
-        return questionType == QuestionType.SingleChoice || 
+        return questionType == QuestionType.SingleChoice ||
                questionType == QuestionType.MultipleChoice;
     }
 
@@ -451,13 +452,13 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
 
         await _optionRepository.SaveChangesAsync();
 
-        _logger.LogInformation("题目 {SourceQuestionId} 已复制到问卷 {TargetSurveyId}，新题目ID：{NewQuestionId}", 
+        _logger.LogInformation("题目 {SourceQuestionId} 已复制到问卷 {TargetSurveyId}，新题目ID：{NewQuestionId}",
             questionId, targetSurveyId, createdQuestion.Id);
 
         // 构建返回DTO，包含选项
         var result = _mapper.Map<QuestionDto>(createdQuestion);
         result.Options = _mapper.Map<List<QuestionOptionDto>>(copiedOptions);
-        
+
         return result;
     }
 }

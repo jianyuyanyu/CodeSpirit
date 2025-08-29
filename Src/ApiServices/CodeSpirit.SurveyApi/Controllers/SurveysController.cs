@@ -80,6 +80,48 @@ public class SurveysController : ApiControllerBase
         return SuccessResponse(surveys);
     }
 
+    /// <summary>
+    /// 获取题目类型选项
+    /// </summary>
+    /// <returns>题目类型选项</returns>
+    [HttpGet("question-type-options")]
+    [DisplayName("获取题目类型选项")]
+    public ActionResult<ApiResponse<List<object>>> GetQuestionTypeOptions()
+    {
+        var options = new List<object>
+        {
+            new { value = "SingleChoice", label = "单选题" },
+            new { value = "MultipleChoice", label = "多选题" },
+            new { value = "Text", label = "填空题" },
+            new { value = "Textarea", label = "长文本题" },
+            new { value = "Rating", label = "评分题" },
+            new { value = "Number", label = "数字题" },
+            new { value = "Date", label = "日期题" },
+            new { value = "Time", label = "时间题" },
+            new { value = "DateTime", label = "日期时间题" },
+            new { value = "Matrix", label = "矩阵题" },
+            new { value = "Ranking", label = "排序题" }
+        };
+        return SuccessResponse(options);
+    }
+
+    /// <summary>
+    /// 获取插入位置选项
+    /// </summary>
+    /// <returns>插入位置选项</returns>
+    [HttpGet("insert-position-options")]
+    [DisplayName("获取插入位置选项")]
+    public ActionResult<ApiResponse<List<object>>> GetInsertPositionOptions()
+    {
+        var options = new List<object>
+        {
+            new { value = "end", label = "末尾添加" },
+            new { value = "beginning", label = "开头插入" },
+            new { value = "middle", label = "中间插入" }
+        };
+        return SuccessResponse(options);
+    }
+
     ///// <summary>
     ///// 获取问卷详情
     ///// </summary>
@@ -93,18 +135,18 @@ public class SurveysController : ApiControllerBase
     //    return SuccessResponse(survey);
     //}
 
-    /// <summary>
-    /// 创建问卷
-    /// </summary>
-    /// <param name="createDto">创建问卷DTO</param>
-    /// <returns>创建的问卷</returns>
-    [HttpPost]
-    [DisplayName("创建问卷")]
-    public async Task<ActionResult<ApiResponse<SurveyDto>>> CreateSurvey([FromBody] CreateSurveyDto createDto)
-    {
-        var survey = await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).CreateAsync(createDto);
-        return SuccessResponseWithCreate("GetSurvey", survey);
-    }
+    ///// <summary>
+    ///// 创建问卷
+    ///// </summary>
+    ///// <param name="createDto">创建问卷DTO</param>
+    ///// <returns>创建的问卷</returns>
+    //[HttpPost]
+    //[DisplayName("创建问卷")]
+    //public async Task<ActionResult<ApiResponse<SurveyDto>>> CreateSurvey([FromBody] CreateSurveyDto createDto)
+    //{
+    //    var survey = await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).CreateAsync(createDto);
+    //    return SuccessResponseWithCreate("GetSurvey", survey);
+    //}
 
     /// <summary>
     /// 更新问卷
@@ -311,26 +353,26 @@ public class SurveysController : ApiControllerBase
     /// <param name="settings">设置信息</param>
     /// <returns>操作结果</returns>
     [HttpPut("settings")]
-    [DisplayName("更新系统设置")]
-    [HeaderOperation("更新系统设置", "form", null, null, InitApi = "/survey/api/survey/Surveys/settings")]
+    [DisplayName("全局设置")]
+    [HeaderOperation("全局设置", "form", null, null, InitApi = "/survey/api/survey/Surveys/settings")]
     public async Task<ActionResult<ApiResponse>> UpdateSurveySettings([FromBody] SurveySettingsDto settings)
     {
         await _settingsService.UpdateSurveySettingsAsync(settings);
         return SuccessResponse("设置更新成功");
     }
 
-    /// <summary>
-    /// 重置为默认设置
-    /// </summary>
-    /// <returns>操作结果</returns>
-    [HttpPost("settings/reset")]
-    [HeaderOperation("重置默认", "ajax", null, "确定要重置为默认设置吗？")]
-    [DisplayName("重置设置")]
-    public async Task<ActionResult<ApiResponse>> ResetToDefaultSettings()
-    {
-        await _settingsService.ResetToDefaultSettingsAsync();
-        return SuccessResponse("设置已重置为默认值");
-    }
+    ///// <summary>
+    ///// 重置为默认设置
+    ///// </summary>
+    ///// <returns>操作结果</returns>
+    //[HttpPost("settings/reset")]
+    //[HeaderOperation("重置默认", "ajax", null, "确定要重置为默认设置吗？")]
+    //[DisplayName("重置设置")]
+    //public async Task<ActionResult<ApiResponse>> ResetToDefaultSettings()
+    //{
+    //    await _settingsService.ResetToDefaultSettingsAsync();
+    //    return SuccessResponse("设置已重置为默认值");
+    //}
 
     ///// <summary>
     ///// 获取自动保存设置
@@ -605,6 +647,110 @@ public class SurveysController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<PromptValidationResult>>> ValidatePrompt([FromBody] ValidatePromptRequest request)
     {
         var result = await _llmGeneratorService.ValidatePromptAsync(request.Prompt);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// AI扩题功能
+    /// </summary>
+    /// <param name="request">扩题请求</param>
+    /// <returns>扩题结果</returns>
+    [HttpPost("ai/expand-questions")]
+    [Operation("AI扩题", "form", null, null, null,
+        FeedbackTitle = "AI扩题结果",
+        FeedbackBodyTpl = @"{
+            ""type"": ""form"",
+            ""body"": [
+                {
+                    ""type"": ""alert"",
+                    ""level"": ""success"",
+                    ""body"": ""AI扩题完成！成功生成 ${successCount} 道新题目。"",
+                    ""className"": ""mb-3""
+                },
+                {
+                    ""type"": ""divider"",
+                    ""title"": ""扩展说明""
+                },
+                {
+                    ""type"": ""tpl"",
+                    ""tpl"": ""${expandDescription}"",
+                    ""className"": ""mb-3""
+                },
+                {
+                    ""type"": ""divider"",
+                    ""title"": ""生成的题目""
+                },
+                {
+                    ""type"": ""each"",
+                    ""name"": ""generatedQuestions"",
+                    ""items"": {
+                        ""type"": ""panel"",
+                        ""className"": ""mb-2"",
+                        ""body"": [
+                            {
+                                ""type"": ""tpl"",
+                                ""tpl"": ""<div class='mb-2'><strong>${item.orderIndex}. [${item.type}] ${item.title}</strong></div>""
+                            },
+                            {
+                                ""type"": ""tpl"",
+                                ""tpl"": ""<div class='text-muted'>${item.description}</div>"",
+                                ""visibleOn"": ""item.description""
+                            }
+                        ]
+                    }
+                },
+                {
+                    ""type"": ""divider"",
+                    ""title"": ""扩展建议"",
+                    ""visibleOn"": ""suggestions && suggestions.length > 0""
+                },
+                {
+                    ""type"": ""each"",
+                    ""name"": ""suggestions"",
+                    ""items"": {
+                        ""type"": ""tpl"",
+                        ""tpl"": ""<div class='mb-2'><i class='fa fa-lightbulb text-warning'></i> ${item}</div>""
+                    },
+                    ""visibleOn"": ""suggestions && suggestions.length > 0""
+                },
+                {
+                    ""type"": ""divider""
+                },
+                {
+                    ""type"": ""flex"",
+                    ""justify"": ""space-between"",
+                    ""items"": [
+                        {
+                            ""type"": ""button"",
+                            ""label"": ""查看题目管理"",
+                            ""actionType"": ""link"",
+                            ""link"": ""/survey/questions?surveyId=${surveyId}"",
+                            ""level"": ""primary""
+                        },
+                        {
+                            ""type"": ""button"",
+                            ""label"": ""预览问卷"",
+                            ""actionType"": ""dialog"",
+                            ""dialog"": {
+                                ""title"": ""预览问卷"",
+                                ""size"": ""xl"",
+                                ""body"": {
+                                    ""type"": ""service"",
+                                    ""schemaApi"": ""get:/survey/api/survey/surveys/${surveyId}/questions-preview""
+                                }
+                            },
+                            ""level"": ""info""
+                        }
+                    ]
+                }
+            ]
+        }",
+        FeedBackSize = "lg",
+        Icon = "fa fa-plus-circle")]
+    [DisplayName("AI扩题")]
+    public async Task<ActionResult<ApiResponse<ExpandQuestionsResult>>> ExpandQuestions([FromBody] ExpandQuestionsRequest request)
+    {
+        var result = await _llmGeneratorService.ExpandQuestionsAsync(request);
         return SuccessResponse(result);
     }
 
@@ -1034,86 +1180,6 @@ public class SurveysController : ApiControllerBase
         return SuccessResponse(questions);
     }
 
-    ///// <summary>
-    ///// 批量编辑题目
-    ///// </summary>
-    ///// <param name="request">批量编辑请求</param>
-    ///// <returns>操作结果</returns>
-    //[HttpPut("questions/batch-edit")]
-    //[Operation("批量编辑", "form", Icon = "fa-solid fa-edit")]
-    //[DisplayName("批量编辑题目")]
-    //public async Task<ActionResult<ApiResponse>> BatchEditQuestions([FromBody] BatchEditQuestionsRequest request)
-    //{
-    //    await _surveyService.BatchEditQuestionsAsync(request);
-    //    return SuccessResponse("题目批量编辑成功");
-    //}
-
-    ///// <summary>
-    ///// 批量删除题目
-    ///// </summary>
-    ///// <param name="request">批量删除请求</param>
-    ///// <returns>操作结果</returns>
-    //[HttpDelete("questions/batch-delete")]
-    //[Operation("批量删除", "form", Icon = "fa-solid fa-trash")]
-    //[DisplayName("批量删除题目")]
-    //public async Task<ActionResult<ApiResponse>> BatchDeleteQuestions([FromBody] BatchDeleteQuestionsRequest request)
-    //{
-    //    await _surveyService.BatchDeleteQuestionsAsync(request);
-    //    return SuccessResponse("题目批量删除成功");
-    //}
-
-    ///// <summary>
-    ///// 拖拽排序题目
-    ///// </summary>
-    ///// <param name="request">排序请求</param>
-    ///// <returns>操作结果</returns>
-    //[HttpPut("questions/drag-sort")]
-    //[Operation("拖拽排序", "ajax", Icon = "fa-solid fa-sort")]
-    //[DisplayName("拖拽排序题目")]
-    //public async Task<ActionResult<ApiResponse>> DragSortQuestions([FromBody] DragSortQuestionsRequest request)
-    //{
-    //    await _surveyService.DragSortQuestionsAsync(request);
-    //    return SuccessResponse("题目排序成功");
-    //}
-
-    ///// <summary>
-    ///// 快速添加题目
-    ///// </summary>
-    ///// <param name="request">快速添加请求</param>
-    ///// <returns>创建的题目</returns>
-    //[HttpPost("questions/quick-add")]
-    //[DisplayName("快速添加题目")]
-    //public async Task<ActionResult<ApiResponse<QuestionDto>>> QuickAddQuestion([FromBody] QuickAddQuestionRequest request)
-    //{
-    //    // 验证问卷是否存在
-    //    var survey = await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).GetAsync(request.SurveyId);
-    //    if (survey == null)
-    //    {
-    //        return NotFound("问卷不存在");
-    //    }
-
-    //    // 构建创建题目DTO
-    //    var createQuestionDto = new CreateQuestionDto
-    //    {
-    //        SurveyId = request.SurveyId,
-    //        Title = request.Title,
-    //        Description = request.Description,
-    //        Type = request.Type,
-    //        IsRequired = request.IsRequired,
-    //        OrderIndex = 0, // QuestionService会自动计算排序索引
-    //        Options = request.Options?.Select((option, index) => new CreateQuestionOptionDto
-    //        {
-    //            Text = option,
-    //            OrderIndex = index
-    //        }).ToList() ?? new List<CreateQuestionOptionDto>()
-    //    };
-
-    //    // 使用QuestionService创建题目
-    //    var questionDto = await ((IBaseCRUDService<Question, QuestionDto, int, CreateQuestionDto, UpdateQuestionDto>)_questionService).CreateAsync(createQuestionDto);
-
-    //    return SuccessResponse(questionDto);
-    //}
-
     /// <summary>
     /// 复制题目到当前问卷或其他问卷
     /// </summary>
@@ -1138,1254 +1204,165 @@ public class SurveysController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取问卷编辑器配置
+    /// 题目管理操作
     /// </summary>
-    /// <param name="id">问卷ID，如果为0则创建新问卷</param>
-    /// <returns>问卷编辑器Amis配置</returns>
-    [HttpGet("{id}/editor")]
-    [Operation(label: "问卷编辑", actionType: "service")]
-    [DisplayName("问卷编辑")]
-    public async Task<ActionResult<ApiResponse<JObject>>> GetSurveyEditorConfig(int id)
+    /// <returns>操作结果</returns>
+    [Operation("题目管理", "link", "/survey/questions?surveyId=$id", null, Icon = "fa-solid fa-question-circle")]
+    [DisplayName("题目管理")]
+    public ActionResult<ApiResponse> Questions_Manager()
     {
-        SurveyDto? survey = null;
-        List<QuestionDto> questions = new();
-
-        // 如果是编辑模式，获取现有问卷和题目
-        if (id > 0)
-        {
-            survey = await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).GetAsync(id);
-            if (survey == null)
-            {
-                return NotFound("问卷不存在");
-            }
-            questions = await _questionService.GetQuestionsBySurveyIdAsync(id);
-        }
-
-        var editorConfig = BuildSurveyEditorConfig(survey, questions);
-        return SuccessResponse(editorConfig);
+        return SuccessResponse();
     }
 
     /// <summary>
-    /// 保存问卷编辑器数据
+    /// AI扩题操作（针对特定问卷）
     /// </summary>
-    /// <param name="request">编辑器保存请求</param>
-    /// <returns>保存结果</returns>
-    [HttpPost("editor/save")]
-    [DisplayName("保存问卷编辑")]
-    public async Task<ActionResult<ApiResponse<SurveyDto>>> SaveSurveyEditor([FromBody] SaveSurveyEditorRequest request)
-    {
-        SurveyDto resultSurvey;
-
-        if (request.SurveyId > 0)
-        {
-            // 更新现有问卷
-            var updateDto = new UpdateSurveyDto
-            {
-                Title = request.Title,
-                Description = request.Description,
-                AccessType = request.AccessType,
-                ExpiresAt = request.ExpiresAt,
-                IsTemplate = request.IsTemplate
-            };
-            
-            await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).UpdateAsync(request.SurveyId, updateDto);
-            resultSurvey = await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).GetAsync(request.SurveyId);
-        }
-        else
-        {
-            // 创建新问卷
-            var createDto = new CreateSurveyDto
-            {
-                Title = request.Title,
-                Description = request.Description,
-                AccessType = request.AccessType,
-                ExpiresAt = request.ExpiresAt,
-                IsTemplate = request.IsTemplate
-            };
-            
-            resultSurvey = await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).CreateAsync(createDto);
-        }
-
-        // 保存题目数据
-        if (request.Questions?.Any() == true)
-        {
-            await SaveEditorQuestions(resultSurvey.Id, request.Questions);
-        }
-
-        return SuccessResponse(resultSurvey);
-    }
-
-    /// <summary>
-    /// 获取题目类型模板配置
-    /// </summary>
-    /// <returns>题目类型模板及对应的Amis组件配置</returns>
-    [HttpGet("editor/question-templates")]
-    [DisplayName("获取题目模板")]
-    public Task<ActionResult<ApiResponse<object>>> GetQuestionTemplates()
-    {
-        var templates = new List<object>
-        {
-            new
-            {
-                type = QuestionType.SingleChoice.ToString(),
-                typeValue = (int)QuestionType.SingleChoice,
-                name = "单选题",
-                icon = "fa-solid fa-dot-circle",
-                description = "从多个选项中选择一个答案",
-                category = "选择题",
-                defaultOptions = new[] { "选项1", "选项2", "选项3" },
-                amisComponent = new
+    /// <param name="id">问卷ID</param>
+    /// <param name="request">扩题请求</param>
+    /// <returns>操作结果</returns>
+    [HttpPost("{id}/ai/expand-questions")]
+    [Operation("AI扩题", "form", null, null, "status == 'Draft'",
+        InitApi = "/survey/api/survey/surveys/{id}/expand-questions-init",
+        FeedbackTitle = "AI扩题结果",
+        FeedbackBodyTpl = @"{
+            ""type"": ""form"",
+            ""body"": [
                 {
-                    type = "radios",
-                    mode = "horizontal",
-                    options = new[]
-                    {
-                        new { label = "选项1", value = "选项1" },
-                        new { label = "选项2", value = "选项2" },
-                        new { label = "选项3", value = "选项3" }
-                    }
+                    ""type"": ""alert"",
+                    ""level"": ""success"",
+                    ""body"": ""AI扩题完成！成功为问卷生成了 ${successCount} 道新题目。"",
+                    ""className"": ""mb-3""
                 },
-                validation = new
                 {
-                    required = true,
-                    minItems = 1,
-                    maxItems = 1
+                    ""type"": ""divider"",
+                    ""title"": ""扩展说明""
                 },
-                settings = new
                 {
-                    allowOther = false,
-                    randomOrder = false,
-                    displayMode = "vertical"
-                }
-            },
-            new
-            {
-                type = QuestionType.MultipleChoice.ToString(),
-                typeValue = (int)QuestionType.MultipleChoice,
-                name = "多选题", 
-                icon = "fa-solid fa-check-square",
-                description = "从多个选项中选择多个答案",
-                category = "选择题",
-                defaultOptions = new[] { "选项1", "选项2", "选项3" },
-                amisComponent = new
-                {
-                    type = "checkboxes",
-                    options = new[]
-                    {
-                        new { label = "选项1", value = "选项1" },
-                        new { label = "选项2", value = "选项2" },
-                        new { label = "选项3", value = "选项3" }
-                    }
+                    ""type"": ""tpl"",
+                    ""tpl"": ""${expandDescription}"",
+                    ""className"": ""mb-3""
                 },
-                validation = new
                 {
-                    required = false,
-                    minItems = 0,
-                    maxItems = 0 // 0表示无限制
+                    ""type"": ""divider"",
+                    ""title"": ""生成的题目 (${generatedQuestions.length}道)""
                 },
-                settings = new
                 {
-                    allowOther = false,
-                    randomOrder = false,
-                    displayMode = "vertical"
-                }
-            },
-            new
-            {
-                type = QuestionType.Text.ToString(),
-                typeValue = (int)QuestionType.Text,
-                name = "填空题",
-                icon = "fa-solid fa-edit",
-                description = "输入短文本答案",
-                category = "文本题",
-                defaultOptions = (string[]?)null,
-                amisComponent = new
-                {
-                    type = "input-text",
-                    placeholder = "请输入答案",
-                    clearable = true
-                },
-                validation = new
-                {
-                    required = false,
-                    minLength = 0,
-                    maxLength = 200,
-                    pattern = ""
-                },
-                settings = new
-                {
-                    placeholder = "请输入答案",
-                    inputType = "text"
-                }
-            },
-            new
-            {
-                type = QuestionType.Textarea.ToString(),
-                typeValue = (int)QuestionType.Textarea,
-                name = "长文本题",
-                icon = "fa-solid fa-align-left",
-                description = "输入长文本答案",
-                category = "文本题",
-                defaultOptions = (string[]?)null,
-                amisComponent = new
-                {
-                    type = "textarea",
-                    placeholder = "请输入详细答案",
-                    minRows = 3,
-                    maxRows = 8,
-                    showCounter = true
-                },
-                validation = new
-                {
-                    required = false,
-                    minLength = 0,
-                    maxLength = 1000
-                },
-                settings = new
-                {
-                    placeholder = "请输入详细答案",
-                    rows = 4
-                }
-            },
-            new
-            {
-                type = QuestionType.Number.ToString(),
-                typeValue = (int)QuestionType.Number,
-                name = "数字题",
-                icon = "fa-solid fa-calculator",
-                description = "输入数字答案",
-                category = "数值题",
-                defaultOptions = (string[]?)null,
-                amisComponent = new
-                {
-                    type = "input-number",
-                    placeholder = "请输入数字",
-                    precision = 2,
-                    showSteps = true
-                },
-                validation = new
-                {
-                    required = false,
-                    min = (double?)null,
-                    max = (double?)null,
-                    step = 1.0
-                },
-                settings = new
-                {
-                    placeholder = "请输入数字",
-                    precision = 2,
-                    unit = ""
-                }
-            },
-            new
-            {
-                type = QuestionType.Rating.ToString(),
-                typeValue = (int)QuestionType.Rating,
-                name = "评分题",
-                icon = "fa-solid fa-star",
-                description = "通过星级评分",
-                category = "评价题",
-                defaultOptions = (string[]?)null,
-                amisComponent = new
-                {
-                    type = "input-rating",
-                    count = 5,
-                    allowHalf = false,
-                    readOnly = false,
-                    tooltip = new[] { "很差", "较差", "一般", "较好", "很好" }
-                },
-                validation = new
-                {
-                    required = false,
-                    min = 1,
-                    max = 5
-                },
-                settings = new
-                {
-                    maxRating = 5,
-                    allowHalf = false,
-                    showText = true
-                }
-            },
-            new
-            {
-                type = QuestionType.Date.ToString(),
-                typeValue = (int)QuestionType.Date,
-                name = "日期题",
-                icon = "fa-solid fa-calendar",
-                description = "选择日期",
-                category = "时间题",
-                defaultOptions = (string[]?)null,
-                amisComponent = new
-                {
-                    type = "input-date",
-                    format = "YYYY-MM-DD",
-                    placeholder = "请选择日期",
-                    clearable = true
-                },
-                validation = new
-                {
-                    required = false,
-                    minDate = (string?)null,
-                    maxDate = (string?)null
-                },
-                settings = new
-                {
-                    format = "YYYY-MM-DD",
-                    placeholder = "请选择日期"
-                }
-            },
-            new
-            {
-                type = QuestionType.Time.ToString(),
-                typeValue = (int)QuestionType.Time,
-                name = "时间题",
-                icon = "fa-solid fa-clock",
-                description = "选择时间",
-                category = "时间题",
-                defaultOptions = (string[]?)null,
-                amisComponent = new
-                {
-                    type = "input-time",
-                    format = "HH:mm",
-                    placeholder = "请选择时间",
-                    clearable = true
-                },
-                validation = new
-                {
-                    required = false,
-                    minTime = (string?)null,
-                    maxTime = (string?)null
-                },
-                settings = new
-                {
-                    format = "HH:mm",
-                    placeholder = "请选择时间"
-                }
-            },
-            new
-            {
-                type = QuestionType.DateTime.ToString(),
-                typeValue = (int)QuestionType.DateTime,
-                name = "日期时间题",
-                icon = "fa-solid fa-calendar-alt",
-                description = "选择日期和时间",
-                category = "时间题",
-                defaultOptions = (string[]?)null,
-                amisComponent = new
-                {
-                    type = "input-datetime",
-                    format = "YYYY-MM-DD HH:mm",
-                    placeholder = "请选择日期时间",
-                    clearable = true
-                },
-                validation = new
-                {
-                    required = false,
-                    minDateTime = (string?)null,
-                    maxDateTime = (string?)null
-                },
-                settings = new
-                {
-                    format = "YYYY-MM-DD HH:mm",
-                    placeholder = "请选择日期时间"
-                }
-            },
-            new
-            {
-                type = QuestionType.Matrix.ToString(),
-                typeValue = (int)QuestionType.Matrix,
-                name = "矩阵题",
-                icon = "fa-solid fa-table",
-                description = "矩阵选择题",
-                category = "高级题型",
-                defaultOptions = (string[]?)null,
-                amisComponent = new
-                {
-                    type = "matrix-checkboxes",
-                    columns = new[]
-                    {
-                        new { label = "非常满意", value = "5" },
-                        new { label = "满意", value = "4" },
-                        new { label = "一般", value = "3" },
-                        new { label = "不满意", value = "2" },
-                        new { label = "非常不满意", value = "1" }
-                    },
-                    rows = new[]
-                    {
-                        new { label = "产品质量", value = "quality" },
-                        new { label = "服务态度", value = "service" },
-                        new { label = "价格合理性", value = "price" }
-                    }
-                },
-                validation = new
-                {
-                    required = false
-                },
-                settings = new
-                {
-                    matrixType = "radio", // radio 或 checkbox
-                    columns = new[] { "非常满意", "满意", "一般", "不满意", "非常不满意" },
-                    rows = new[] { "产品质量", "服务态度", "价格合理性" }
-                }
-            },
-            new
-            {
-                type = QuestionType.Ranking.ToString(),
-                typeValue = (int)QuestionType.Ranking,
-                name = "排序题",
-                icon = "fa-solid fa-sort",
-                description = "对选项进行排序",
-                category = "高级题型",
-                defaultOptions = new[] { "选项A", "选项B", "选项C", "选项D" },
-                amisComponent = new
-                {
-                    type = "input-array",
-                    inline = false,
-                    draggable = true,
-                    items = new
-                    {
-                        type = "input-text",
-                        placeholder = "选项内容"
-                    }
-                },
-                validation = new
-                {
-                    required = false,
-                    minItems = 2,
-                    maxItems = 10
-                },
-                settings = new
-                {
-                    allowDuplicate = false,
-                    randomOrder = false,
-                    defaultOptions = new[] { "选项A", "选项B", "选项C", "选项D" }
-                }
-            }
-        };
-
-        // 按分类组织数据
-        var groupedTemplates = templates
-            .GroupBy(t => ((dynamic)t).category)
-            .Select(g => new
-            {
-                category = g.Key,
-                items = g.ToList()
-            })
-            .ToList();
-
-        return Task.FromResult<ActionResult<ApiResponse<object>>>(SuccessResponse<object>(new
-        {
-            templates = templates,
-            groupedTemplates = groupedTemplates,
-            categories = templates.Select(t => ((dynamic)t).category).Distinct().ToList()
-        }));
-    }
-
-    /// <summary>
-    /// 获取指定题目类型的Amis组件配置
-    /// </summary>
-    /// <param name="questionType">题目类型</param>
-    /// <returns>Amis组件配置</returns>
-    [HttpGet("editor/question-component/{questionType}")]
-    [DisplayName("获取题目组件配置")]
-    public Task<ActionResult<ApiResponse<JObject>>> GetQuestionAmisComponent(string questionType)
-    {
-        if (!Enum.TryParse<QuestionType>(questionType, true, out var type))
-        {
-            return Task.FromResult<ActionResult<ApiResponse<JObject>>>(BadRequest("无效的题目类型"));
-        }
-
-        var component = GetAmisComponentForQuestionType(type);
-        
-        // 添加题目特定的配置
-        component["name"] = $"question_{DateTime.Now.Ticks}";
-        component["label"] = GetQuestionTypeName(type.ToString());
-        component["required"] = false;
-
-        return Task.FromResult<ActionResult<ApiResponse<JObject>>>(SuccessResponse(component));
-    }
-
-    /// <summary>
-    /// 批量获取题目类型的Amis组件配置
-    /// </summary>
-    /// <param name="questionTypes">题目类型列表</param>
-    /// <returns>Amis组件配置映射</returns>
-    [HttpPost("editor/question-components")]
-    [DisplayName("批量获取题目组件配置")]
-    public Task<ActionResult<ApiResponse<Dictionary<string, JObject>>>> GetQuestionAmisComponents([FromBody] string[] questionTypes)
-    {
-        var components = new Dictionary<string, JObject>();
-
-        foreach (var questionType in questionTypes)
-        {
-            if (Enum.TryParse<QuestionType>(questionType, true, out var type))
-            {
-                var component = GetAmisComponentForQuestionType(type);
-                component["name"] = $"question_{type}";
-                component["label"] = GetQuestionTypeName(type.ToString());
-                component["required"] = false;
-                
-                components[questionType] = component;
-            }
-        }
-
-        return Task.FromResult<ActionResult<ApiResponse<Dictionary<string, JObject>>>>(SuccessResponse(components));
-    }
-
-    /// <summary>
-    /// 根据题目类型获取对应的Amis组件配置
-    /// </summary>
-    /// <param name="questionType">题目类型</param>
-    /// <param name="options">题目选项</param>
-    /// <returns>Amis组件配置</returns>
-    private JObject GetAmisComponentForQuestionType(QuestionType questionType, List<QuestionOptionDto>? options = null)
-    {
-        switch (questionType)
-        {
-            case QuestionType.SingleChoice:
-                var singleOptions = options?.OrderBy(o => o.OrderIndex).Select(o => new JObject
-                {
-                    ["label"] = o.Text,
-                    ["value"] = o.Value ?? o.Text
-                }).ToArray() ?? new JObject[0];
-                
-                return new JObject
-                {
-                    ["type"] = "radios",
-                    ["mode"] = "horizontal",
-                    ["options"] = new JArray(singleOptions)
-                };
-
-            case QuestionType.MultipleChoice:
-                var multiOptions = options?.OrderBy(o => o.OrderIndex).Select(o => new JObject
-                {
-                    ["label"] = o.Text,
-                    ["value"] = o.Value ?? o.Text
-                }).ToArray() ?? new JObject[0];
-                
-                return new JObject
-                {
-                    ["type"] = "checkboxes",
-                    ["options"] = new JArray(multiOptions)
-                };
-
-            case QuestionType.Text:
-                return new JObject
-                {
-                    ["type"] = "input-text",
-                    ["placeholder"] = "请输入答案",
-                    ["clearable"] = true
-                };
-
-            case QuestionType.Textarea:
-                return new JObject
-                {
-                    ["type"] = "textarea",
-                    ["placeholder"] = "请输入详细答案",
-                    ["minRows"] = 3,
-                    ["maxRows"] = 8,
-                    ["showCounter"] = true
-                };
-
-            case QuestionType.Number:
-                return new JObject
-                {
-                    ["type"] = "input-number",
-                    ["placeholder"] = "请输入数字",
-                    ["precision"] = 2,
-                    ["showSteps"] = true
-                };
-
-            case QuestionType.Rating:
-                return new JObject
-                {
-                    ["type"] = "input-rating",
-                    ["count"] = 5,
-                    ["allowHalf"] = false,
-                    ["tooltip"] = new JArray { "很差", "较差", "一般", "较好", "很好" }
-                };
-
-            case QuestionType.Date:
-                return new JObject
-                {
-                    ["type"] = "input-date",
-                    ["format"] = "YYYY-MM-DD",
-                    ["placeholder"] = "请选择日期",
-                    ["clearable"] = true
-                };
-
-            case QuestionType.Time:
-                return new JObject
-                {
-                    ["type"] = "input-time",
-                    ["format"] = "HH:mm",
-                    ["placeholder"] = "请选择时间",
-                    ["clearable"] = true
-                };
-
-            case QuestionType.DateTime:
-                return new JObject
-                {
-                    ["type"] = "input-datetime",
-                    ["format"] = "YYYY-MM-DD HH:mm",
-                    ["placeholder"] = "请选择日期时间",
-                    ["clearable"] = true
-                };
-
-            case QuestionType.Matrix:
-                return new JObject
-                {
-                    ["type"] = "matrix-checkboxes",
-                    ["columns"] = new JArray
-                    {
-                        new JObject { ["label"] = "非常满意", ["value"] = "5" },
-                        new JObject { ["label"] = "满意", ["value"] = "4" },
-                        new JObject { ["label"] = "一般", ["value"] = "3" },
-                        new JObject { ["label"] = "不满意", ["value"] = "2" },
-                        new JObject { ["label"] = "非常不满意", ["value"] = "1" }
-                    },
-                    ["rows"] = new JArray
-                    {
-                        new JObject { ["label"] = "产品质量", ["value"] = "quality" },
-                        new JObject { ["label"] = "服务态度", ["value"] = "service" },
-                        new JObject { ["label"] = "价格合理性", ["value"] = "price" }
-                    }
-                };
-
-            case QuestionType.Ranking:
-                var rankingOptions = options?.OrderBy(o => o.OrderIndex).Select(o => o.Text).ToArray() 
-                    ?? new[] { "选项A", "选项B", "选项C", "选项D" };
-                
-                return new JObject
-                {
-                    ["type"] = "input-array",
-                    ["inline"] = false,
-                    ["draggable"] = true,
-                    ["value"] = new JArray(rankingOptions),
-                    ["items"] = new JObject
-                    {
-                        ["type"] = "input-text",
-                        ["placeholder"] = "选项内容"
-                    }
-                };
-
-            default:
-                return new JObject
-                {
-                    ["type"] = "input-text",
-                    ["placeholder"] = "请输入答案"
-                };
-        }
-    }
-
-    /// <summary>
-    /// 构建问卷编辑器配置
-    /// </summary>
-    /// <param name="survey">问卷数据</param>
-    /// <param name="questions">题目列表</param>
-    /// <returns>编辑器配置</returns>
-    private JObject BuildSurveyEditorConfig(SurveyDto? survey, List<QuestionDto> questions)
-    {
-        var isNewSurvey = survey == null;
-        var surveyId = survey?.Id ?? 0;
-
-        var editorConfig = new JObject
-        {
-            ["type"] = "page",
-            ["title"] = isNewSurvey ? "创建问卷" : $"编辑问卷 - {survey!.Title}",
-            ["body"] = new JArray
-            {
-                // 工具栏
-                new JObject
-                {
-                    ["type"] = "flex",
-                    ["className"] = "survey-editor-toolbar",
-                    ["style"] = new JObject
-                    {
-                        ["padding"] = "16px",
-                        ["backgroundColor"] = "#f5f5f5",
-                        ["borderBottom"] = "1px solid #e8e8e8"
-                    },
-                    ["items"] = new JArray
-                    {
-                        new JObject
-                        {
-                            ["type"] = "button",
-                            ["label"] = "预览",
-                            ["icon"] = "fa fa-eye",
-                            ["level"] = "info",
-                            ["size"] = "sm",
-                            ["actionType"] = "dialog",
-                            ["dialog"] = new JObject
+                    ""type"": ""each"",
+                    ""name"": ""generatedQuestions"",
+                    ""items"": {
+                        ""type"": ""panel"",
+                        ""className"": ""mb-2 p-3 border rounded"",
+                        ""body"": [
                             {
-                                ["title"] = "问卷预览",
-                                ["size"] = "xl",
-                                ["body"] = new JObject
-                                {
-                                    ["type"] = "service",
-                                    ["schemaApi"] = $"get:/survey/api/survey/surveys/{surveyId}/questions-preview"
-                                }
-                            }
-                        },
-                        new JObject
-                        {
-                            ["type"] = "button",
-                            ["label"] = "保存",
-                            ["icon"] = "fa fa-save",
-                            ["level"] = "primary",
-                            ["size"] = "sm",
-                            ["actionType"] = "ajax",
-                            ["api"] = "post:/survey/api/survey/surveys/editor/save",
-                            ["data"] = new JObject
-                            {
-                                ["surveyId"] = surveyId,
-                                ["&"] = "$$"
-                            }
-                        },
-                        new JObject
-                        {
-                            ["type"] = "button",
-                            ["label"] = "返回",
-                            ["icon"] = "fa fa-arrow-left",
-                            ["level"] = "default",
-                            ["size"] = "sm",
-                            ["actionType"] = "url",
-                            ["url"] = "/survey/surveys"
-                        }
-                    }
-                },
-
-                // 主编辑区域
-                new JObject
-                {
-                    ["type"] = "flex",
-                    ["direction"] = "row",
-                    ["style"] = new JObject { ["height"] = "calc(100vh - 120px)" },
-                    ["items"] = new JArray
-                    {
-                        // 左侧题目类型面板
-                        BuildQuestionTypesPanel(),
-                        
-                        // 中间编辑区域
-                        BuildMainEditorArea(survey, questions),
-                        
-                        // 右侧属性面板
-                        BuildPropertiesPanel()
-                    }
-                }
-            }
-        };
-
-        return editorConfig;
-    }
-
-    /// <summary>
-    /// 构建题目类型面板
-    /// </summary>
-    /// <returns>题目类型面板配置</returns>
-    private JObject BuildQuestionTypesPanel()
-    {
-        return new JObject
-        {
-            ["type"] = "panel",
-            ["title"] = "题目类型",
-            ["className"] = "question-types-panel",
-            ["style"] = new JObject
-            {
-                ["width"] = "280px",
-                ["borderRight"] = "1px solid #e8e8e8",
-                ["padding"] = "16px",
-                ["maxHeight"] = "calc(100vh - 120px)",
-                ["overflowY"] = "auto"
-            },
-            ["body"] = new JObject
-            {
-                ["type"] = "service",
-                ["schemaApi"] = "get:/survey/api/survey/surveys/editor/question-templates",
-                ["body"] = new JArray
-                {
-                    // 按分类显示题目类型
-                    new JObject
-                    {
-                        ["type"] = "each",
-                        ["name"] = "data.groupedTemplates",
-                        ["items"] = new JObject
-                        {
-                            ["type"] = "collapse",
-                            ["header"] = "${category}",
-                            ["className"] = "question-category-collapse",
-                            ["style"] = new JObject
-                            {
-                                ["marginBottom"] = "12px"
+                                ""type"": ""tpl"",
+                                ""tpl"": ""<div class='mb-2'><strong>第${item.orderIndex}题 [${item.type | raw}] ${item.title}</strong></div>""
                             },
-                            ["body"] = new JArray
                             {
-                                new JObject
-                                {
-                                    ["type"] = "each",
-                                    ["name"] = "items",
-                                    ["items"] = new JObject
-                                    {
-                                        ["type"] = "flex",
-                                        ["className"] = "question-type-item",
-                                        ["style"] = new JObject
-                                        {
-                                            ["marginBottom"] = "8px",
-                                            ["padding"] = "8px",
-                                            ["border"] = "1px solid #e8e8e8",
-                                            ["borderRadius"] = "6px",
-                                            ["cursor"] = "pointer",
-                                            ["transition"] = "all 0.3s ease"
-                                        },
-                                        ["items"] = new JArray
-                                        {
-                                            new JObject
-                                            {
-                                                ["type"] = "icon",
-                                                ["icon"] = "${icon}",
-                                                ["className"] = "question-type-icon",
-                                                ["style"] = new JObject
-                                                {
-                                                    ["marginRight"] = "8px",
-                                                    ["color"] = "#666",
-                                                    ["fontSize"] = "16px"
-                                                }
-                                            },
-                                            new JObject
-                                            {
-                                                ["type"] = "container",
-                                                ["style"] = new JObject
-                                                {
-                                                    ["flex"] = "1"
-                                                },
-                                                ["body"] = new JArray
-                                                {
-                                                    new JObject
-                                                    {
-                                                        ["type"] = "tpl",
-                                                        ["tpl"] = "${name}",
-                                                        ["className"] = "question-type-name",
-                                                        ["style"] = new JObject
-                                                        {
-                                                            ["fontWeight"] = "500",
-                                                            ["fontSize"] = "14px",
-                                                            ["color"] = "#333",
-                                                            ["marginBottom"] = "2px"
-                                                        }
-                                                    },
-                                                    new JObject
-                                                    {
-                                                        ["type"] = "tpl",
-                                                        ["tpl"] = "${description}",
-                                                        ["className"] = "question-type-desc",
-                                                        ["style"] = new JObject
-                                                        {
-                                                            ["fontSize"] = "12px",
-                                                            ["color"] = "#999",
-                                                            ["lineHeight"] = "1.4"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        ["onEvent"] = new JObject
-                                        {
-                                            ["click"] = new JObject
-                                            {
-                                                ["actions"] = new JArray
-                                                {
-                                                    new JObject
-                                                    {
-                                                        ["actionType"] = "custom",
-                                                        ["script"] = @"
-                                                            const item = event.data;
-                                                            const questionType = item.type;
-                                                            const typeValue = item.typeValue;
-                                                            const defaultOptions = item.defaultOptions;
-                                                            const amisComponent = item.amisComponent;
-                                                            
-                                                            console.log('添加题目:', questionType, amisComponent);
-                                                            
-                                                            if (window.addQuestion) {
-                                                                window.addQuestion(questionType, typeValue, defaultOptions, amisComponent);
-                                                            } else {
-                                                                // 兜底方案：使用Amis的事件机制
-                                                                doAction({
-                                                                    actionType: 'broadcast',
-                                                                    eventName: 'addQuestion',
-                                                                    data: {
-                                                                        type: questionType,
-                                                                        typeValue: typeValue,
-                                                                        defaultOptions: defaultOptions,
-                                                                        amisComponent: amisComponent
-                                                                    }
-                                                                });
-                                                            }
-                                                        "
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-    }
-
-    /// <summary>
-    /// 构建主编辑区域
-    /// </summary>
-    /// <param name="survey">问卷数据</param>
-    /// <param name="questions">题目列表</param>
-    /// <returns>主编辑区域配置</returns>
-    private JObject BuildMainEditorArea(SurveyDto? survey, List<QuestionDto> questions)
-    {
-        var questionsData = JArray.FromObject(questions.OrderBy(q => q.OrderIndex).Select(q => new
-        {
-            id = q.Id,
-            title = q.Title,
-            description = q.Description,
-            type = q.Type.ToString(),
-            typeName = GetQuestionTypeName(q.Type.ToString()),
-            isRequired = q.IsRequired,
-            orderIndex = q.OrderIndex,
-            options = q.Options.OrderBy(o => o.OrderIndex).Select(o => new
-            {
-                id = o.Id,
-                text = o.Text,
-                value = o.Value,
-                orderIndex = o.OrderIndex,
-                isOther = o.IsOther
-            }).ToArray()
-        }).ToArray());
-
-        return new JObject
-        {
-            ["type"] = "panel",
-            ["title"] = "问卷设计",
-            ["className"] = "survey-main-editor",
-            ["style"] = new JObject
-            {
-                ["flex"] = "1",
-                ["padding"] = "16px",
-                ["overflow"] = "auto"
-            },
-            ["body"] = new JArray
-            {
-                // 问卷基本信息表单
-                new JObject
-                {
-                    ["type"] = "form",
-                    ["title"] = "问卷信息",
-                    ["className"] = "survey-basic-form",
-                    ["body"] = new JArray
-                    {
-                        new JObject
-                        {
-                            ["type"] = "input-text",
-                            ["name"] = "title",
-                            ["label"] = "问卷标题",
-                            ["placeholder"] = "请输入问卷标题",
-                            ["required"] = true,
-                            ["value"] = survey?.Title ?? ""
-                        },
-                        new JObject
-                        {
-                            ["type"] = "textarea",
-                            ["name"] = "description",
-                            ["label"] = "问卷描述",
-                            ["placeholder"] = "请输入问卷描述",
-                            ["value"] = survey?.Description ?? ""
-                        }
-                    }
-                },
-
-                // 题目列表
-                new JObject
-                {
-                    ["type"] = "panel",
-                    ["title"] = "题目设计",
-                    ["className"] = "questions-designer",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "input-array",
-                        ["name"] = "questions",
-                        ["label"] = false,
-                        ["addable"] = false,
-                        ["removable"] = true,
-                        ["draggable"] = true,
-                        ["value"] = questionsData,
-                        ["items"] = BuildQuestionEditorItem()
-                    }
-                }
-            }
-        };
-    }
-
-    /// <summary>
-    /// 构建属性面板
-    /// </summary>
-    /// <returns>属性面板配置</returns>
-    private JObject BuildPropertiesPanel()
-    {
-        return new JObject
-        {
-            ["type"] = "panel",
-            ["title"] = "属性设置",
-            ["className"] = "properties-panel",
-            ["style"] = new JObject
-            {
-                ["width"] = "300px",
-                ["borderLeft"] = "1px solid #e8e8e8",
-                ["padding"] = "16px"
-            },
-            ["body"] = new JObject
-            {
-                ["type"] = "form",
-                ["body"] = new JArray
-                {
-                    new JObject
-                    {
-                        ["type"] = "select",
-                        ["name"] = "accessType",
-                        ["label"] = "访问类型",
-                        ["options"] = new JArray
-                        {
-                            new JObject { ["label"] = "公开", ["value"] = "Public" },
-                            new JObject { ["label"] = "私有", ["value"] = "Private" },
-                            new JObject { ["label"] = "密码保护", ["value"] = "Password" }
-                        }
-                    },
-                    new JObject
-                    {
-                        ["type"] = "input-datetime",
-                        ["name"] = "expiresAt",
-                        ["label"] = "过期时间",
-                        ["format"] = "YYYY-MM-DD HH:mm:ss"
-                    },
-                    new JObject
-                    {
-                        ["type"] = "switch",
-                        ["name"] = "isTemplate",
-                        ["label"] = "保存为模板"
-                    }
-                }
-            }
-        };
-    }
-
-    /// <summary>
-    /// 构建题目编辑项配置
-    /// </summary>
-    /// <returns>题目编辑项配置</returns>
-    private JObject BuildQuestionEditorItem()
-    {
-        return new JObject
-        {
-            ["type"] = "panel",
-            ["className"] = "question-editor-item",
-            ["style"] = new JObject
-            {
-                ["border"] = "1px solid #e8e8e8",
-                ["borderRadius"] = "4px",
-                ["padding"] = "16px",
-                ["marginBottom"] = "16px"
-            },
-            ["body"] = new JArray
-            {
-                // 题目头部信息
-                new JObject
-                {
-                    ["type"] = "flex",
-                    ["justify"] = "space-between",
-                    ["items"] = new JArray
-                    {
-                        new JObject
-                        {
-                            ["type"] = "tpl",
-                            ["tpl"] = "<strong>${typeName}</strong>",
-                            ["className"] = "question-type-label"
-                        },
-                        new JObject
-                        {
-                            ["type"] = "button-group",
-                            ["buttons"] = new JArray
+                                ""type"": ""tpl"",
+                                ""tpl"": ""<div class='text-muted mb-2'>${item.description}</div>"",
+                                ""visibleOn"": ""item.description""
+                            },
                             {
-                                new JObject
-                                {
-                                    ["type"] = "button",
-                                    ["icon"] = "fa fa-edit",
-                                    ["size"] = "xs",
-                                    ["tooltip"] = "编辑",
-                                    ["actionType"] = "dialog",
-                                    ["dialog"] = BuildQuestionEditDialog()
-                                },
-                                new JObject
-                                {
-                                    ["type"] = "button",
-                                    ["icon"] = "fa fa-copy",
-                                    ["size"] = "xs",
-                                    ["tooltip"] = "复制"
-                                },
-                                new JObject
-                                {
-                                    ["type"] = "button",
-                                    ["icon"] = "fa fa-trash",
-                                    ["size"] = "xs",
-                                    ["level"] = "danger",
-                                    ["tooltip"] = "删除"
-                                }
+                                ""type"": ""tpl"",
+                                ""tpl"": ""<div class='text-success'><i class='fa fa-check'></i> 必填题目</div>"",
+                                ""visibleOn"": ""item.isRequired""
                             }
-                        }
+                        ]
                     }
                 },
-
-                // 题目标题和描述
-                new JObject
                 {
-                    ["type"] = "tpl",
-                    ["tpl"] = "${title}${isRequired ? '<span style=\"color:red\">*</span>' : ''}",
-                    ["className"] = "question-title"
+                    ""type"": ""divider"",
+                    ""title"": ""扩展建议"",
+                    ""visibleOn"": ""suggestions && suggestions.length > 0""
                 },
-                new JObject
                 {
-                    ["type"] = "tpl",
-                    ["tpl"] = "${description}",
-                    ["className"] = "question-description",
-                    ["visibleOn"] = "${description}"
-                }
-            }
-        };
-    }
-
-    /// <summary>
-    /// 构建题目编辑对话框
-    /// </summary>
-    /// <returns>题目编辑对话框配置</returns>
-    private JObject BuildQuestionEditDialog()
-    {
-        return new JObject
-        {
-            ["title"] = "编辑题目",
-            ["size"] = "lg",
-            ["body"] = new JObject
-            {
-                ["type"] = "form",
-                ["body"] = new JArray
+                    ""type"": ""each"",
+                    ""name"": ""suggestions"",
+                    ""items"": {
+                        ""type"": ""tpl"",
+                        ""tpl"": ""<div class='mb-2'><i class='fa fa-lightbulb text-warning'></i> ${item}</div>""
+                    },
+                    ""visibleOn"": ""suggestions && suggestions.length > 0""
+                },
                 {
-                    new JObject
-                    {
-                        ["type"] = "input-text",
-                        ["name"] = "title",
-                        ["label"] = "题目标题",
-                        ["required"] = true
-                    },
-                    new JObject
-                    {
-                        ["type"] = "textarea",
-                        ["name"] = "description",
-                        ["label"] = "题目描述"
-                    },
-                    new JObject
-                    {
-                        ["type"] = "switch",
-                        ["name"] = "isRequired",
-                        ["label"] = "是否必填"
-                    },
-                    new JObject
-                    {
-                        ["type"] = "input-array",
-                        ["name"] = "options",
-                        ["label"] = "选项设置",
-                        ["visibleOn"] = "${type === 'SingleChoice' || type === 'MultipleChoice'}",
-                        ["items"] = new JObject
+                    ""type"": ""divider""
+                },
+                {
+                    ""type"": ""flex"",
+                    ""justify"": ""space-between"",
+                    ""items"": [
                         {
-                            ["type"] = "input-text",
-                            ["placeholder"] = "输入选项内容"
+                            ""type"": ""button"",
+                            ""label"": ""查看题目管理"",
+                            ""actionType"": ""link"",
+                            ""link"": ""/survey/questions?surveyId="" + id,
+                            ""level"": ""primary"",
+                            ""icon"": ""fa fa-list""
+                        },
+                        {
+                            ""type"": ""button"",
+                            ""label"": ""预览问卷"",
+                            ""actionType"": ""dialog"",
+                            ""dialog"": {
+                                ""title"": ""预览问卷"",
+                                ""size"": ""xl"",
+                                ""body"": {
+                                    ""type"": ""service"",
+                                    ""schemaApi"": ""get:/survey/api/survey/surveys/"" + id + ""/questions-preview""
+                                }
+                            },
+                            ""level"": ""info"",
+                            ""icon"": ""fa fa-eye""
                         }
-                    }
+                    ]
                 }
-            }
-        };
-    }
-
-    /// <summary>
-    /// 保存编辑器中的题目数据
-    /// </summary>
-    /// <param name="surveyId">问卷ID</param>
-    /// <param name="editorQuestions">编辑器题目数据</param>
-    /// <returns>异步任务</returns>
-    private async Task SaveEditorQuestions(int surveyId, List<EditorQuestionDto> editorQuestions)
+            ]
+        }",
+        FeedBackSize = "lg",
+        Icon = "fa fa-plus-circle")]
+    [DisplayName("AI扩题")]
+    public async Task<ActionResult<ApiResponse<ExpandQuestionsResult>>> ExpandQuestionsForSurvey([FromRoute] int id, [FromBody] ExpandQuestionsRequest request)
     {
-        // 获取现有题目
-        var existingQuestions = await _questionService.GetQuestionsBySurveyIdAsync(surveyId);
-        var existingQuestionIds = existingQuestions.Select(q => q.Id).ToList();
+        // 设置问卷ID
+        request.Id = id;
         
-        // 处理题目更新和创建
-        for (int i = 0; i < editorQuestions.Count; i++)
+        var result = await _llmGeneratorService.ExpandQuestionsAsync(request);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 获取AI扩题初始化数据
+    /// </summary>
+    /// <param name="id">问卷ID</param>
+    /// <returns>初始化数据</returns>
+    [HttpGet("{id}/expand-questions-init")]
+    [DisplayName("获取扩题初始化数据")]
+    public async Task<ActionResult<ApiResponse<ExpandQuestionsRequest>>> GetExpandQuestionsInit(int id)
+    {
+        // 获取问卷信息
+        var survey = await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).GetAsync(id);
+        if (survey == null)
         {
-            var editorQuestion = editorQuestions[i];
-            editorQuestion.OrderIndex = i + 1;
-
-            if (editorQuestion.Id > 0 && existingQuestionIds.Contains(editorQuestion.Id))
-            {
-                // 更新现有题目
-                var updateDto = new UpdateQuestionDto
-                {
-                    Title = editorQuestion.Title,
-                    Description = editorQuestion.Description,
-                    Type = editorQuestion.Type,
-                    OrderIndex = editorQuestion.OrderIndex,
-                    IsRequired = editorQuestion.IsRequired,
-                    Options = editorQuestion.Options?.Select(o => new UpdateQuestionOptionDto
-                    {
-                        Id = o.Id,
-                        Text = o.Text,
-                        Value = o.Value,
-                        OrderIndex = o.OrderIndex,
-                        IsOther = o.IsOther
-                    }).ToList() ?? new List<UpdateQuestionOptionDto>()
-                };
-
-                await ((IBaseCRUDService<Question, QuestionDto, int, CreateQuestionDto, UpdateQuestionDto>)_questionService).UpdateAsync(editorQuestion.Id, updateDto);
-                existingQuestionIds.Remove(editorQuestion.Id);
-            }
-            else
-            {
-                // 创建新题目
-                var createDto = new CreateQuestionDto
-                {
-                    SurveyId = surveyId,
-                    Title = editorQuestion.Title,
-                    Description = editorQuestion.Description,
-                    Type = editorQuestion.Type,
-                    OrderIndex = editorQuestion.OrderIndex,
-                    IsRequired = editorQuestion.IsRequired,
-                    Options = editorQuestion.Options?.Select(o => new CreateQuestionOptionDto
-                    {
-                        Text = o.Text,
-                        Value = o.Value,
-                        OrderIndex = o.OrderIndex,
-                        IsOther = o.IsOther
-                    }).ToList() ?? new List<CreateQuestionOptionDto>()
-                };
-
-                await ((IBaseCRUDService<Question, QuestionDto, int, CreateQuestionDto, UpdateQuestionDto>)_questionService).CreateAsync(createDto);
-            }
+            return NotFound("问卷不存在");
         }
 
-        // 删除不再存在的题目
-        foreach (var deletedQuestionId in existingQuestionIds)
+        // 获取现有题目数量
+        var existingQuestions = await _questionService.GetQuestionsBySurveyIdAsync(id);
+
+        // 构建初始化数据
+        var initData = new ExpandQuestionsRequest
         {
-            await ((IBaseCRUDService<Question, QuestionDto, int, CreateQuestionDto, UpdateQuestionDto>)_questionService).DeleteAsync(deletedQuestionId);
-        }
+            Id = id,
+            ExpandCount = 5, // 默认扩展5题
+            MaintainStyle = true,
+            InsertPosition = "end",
+            ExpandDirection = existingQuestions.Count > 0 
+                ? $"基于现有{existingQuestions.Count}道题目，进一步深入了解相关主题" 
+                : "为问卷添加基础题目"
+        };
+
+        return SuccessResponse(initData);
     }
 
     #endregion
 }
-

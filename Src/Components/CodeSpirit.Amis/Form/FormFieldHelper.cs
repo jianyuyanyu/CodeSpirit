@@ -104,6 +104,68 @@ namespace CodeSpirit.Amis.Form
             return fields;
         }
 
+        /// <summary>
+        /// 从方法参数生成带全局AI组件的AMIS表单字段配置
+        /// </summary>
+        /// <param name="parameters">方法参数集合</param>
+        /// <param name="dtoType">DTO类型（用于检测AI填充特性，可选）</param>
+        /// <returns>AMIS字段配置列表</returns>
+        public List<JObject> GetAmisFormFieldsFromParameters(IEnumerable<ParameterInfo> parameters, Type dtoType)
+        {
+            List<JObject> fields = [];
+
+            // 如果指定了DTO类型，尝试创建全局AI填充组件
+            if (dtoType != null)
+            {
+                var globalAiComponent = _aiEnhancer.CreateGlobalAiFillComponent(dtoType);
+                if (globalAiComponent != null)
+                {
+                    fields.Add(globalAiComponent);
+                }
+            }
+            else
+            {
+                // 如果没有指定DTO类型，尝试从第一个复杂类型参数推断
+                var firstComplexParam = parameters?.FirstOrDefault(p => !_utilityHelper.IsSimpleType(p.ParameterType));
+                if (firstComplexParam != null)
+                {
+                    var globalAiComponent = _aiEnhancer.CreateGlobalAiFillComponent(firstComplexParam.ParameterType);
+                    if (globalAiComponent != null)
+                    {
+                        fields.Add(globalAiComponent);
+                    }
+                }
+            }
+
+            // 添加常规字段
+            fields.AddRange(GetAmisFormFieldsFromParameters(parameters));
+
+            return fields;
+        }
+
+        /// <summary>
+        /// 从属性集合生成带全局AI组件的AMIS表单字段配置
+        /// </summary>
+        /// <param name="properties">属性集合</param>
+        /// <param name="dtoType">DTO类型（用于检测AI填充特性）</param>
+        /// <returns>AMIS字段配置列表</returns>
+        public List<JObject> GetAmisFormFieldsFromProperties(IEnumerable<PropertyInfo> properties, Type dtoType)
+        {
+            List<JObject> fields = [];
+
+            // 尝试创建全局AI填充组件
+            var globalAiComponent = _aiEnhancer.CreateGlobalAiFillComponent(dtoType);
+            if (globalAiComponent != null)
+            {
+                fields.Add(globalAiComponent);
+            }
+
+            // 添加常规字段
+            fields.AddRange(GetAmisFormFieldsFromProperties(properties));
+
+            return fields;
+        }
+
         #region 处理逻辑
         /// <summary>
         /// 检查成员（参数或属性）是否可以处理（权限和忽略检查）。

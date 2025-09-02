@@ -1,6 +1,7 @@
 ﻿using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers.Dtos;
+using CodeSpirit.Core.Attributes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
@@ -185,7 +186,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["url"] = route.ApiPath,
                         ["method"] = route.HttpMethod
                     },
-                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(formParameters))
+                    ["controls"] = new JArray(GetFormFieldsWithAiSupport(formParameters))
                 },
             };
 
@@ -207,7 +208,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["url"] = updateRoute.ApiPath,
                         ["method"] = updateRoute.HttpMethod
                     },
-                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(updateParameters))
+                    ["controls"] = new JArray(GetFormFieldsWithAiSupport(updateParameters))
                 }
             };
             return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
@@ -218,7 +219,7 @@ namespace CodeSpirit.Amis.Helpers
             string title = "查看";
             JArray controls = [];
 
-            List<JObject> formFields = formFieldHelper.GetAmisFormFieldsFromProperties(detailPropertites);
+            List<JObject> formFields = GetFormFieldsWithAiSupport(detailPropertites, null, isReadOnly: true);
 
             // 遍历字段,在每个字段后面添加分割线(最后一个字段除外)
             for (int i = 0; i < formFields.Count(); i++)
@@ -425,7 +426,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["url"] = route.ApiPath,
                         ["method"] = route.HttpMethod
                     },
-                    ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromParameters(method.GetParameters()))
+                    ["controls"] = new JArray(GetFormFieldsWithAiSupport(method.GetParameters(), method))
                 };
 
                 if (!op.InitApi.IsNullOrWhiteSpace())
@@ -472,7 +473,7 @@ namespace CodeSpirit.Amis.Helpers
                             ["url"] = route.ApiPath,
                             ["method"] = route.HttpMethod
                         },
-                        ["controls"] = new JArray(formFieldHelper.GetAmisFormFieldsFromProperties(method.ReturnParameter.ParameterType?.GetUnderlyingDataType().GetProperties()))
+                        ["controls"] = new JArray(GetFormFieldsWithAiSupport(method.ReturnParameter.ParameterType?.GetUnderlyingDataType().GetProperties(), method.ReturnParameter.ParameterType?.GetUnderlyingDataType(), isReadOnly: true))
                     }
                 };
                 button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
@@ -561,5 +562,104 @@ namespace CodeSpirit.Amis.Helpers
             CreateIcon(title, button);
             return button;
         }
+
+        /// <summary>
+        /// 获取带AI支持的表单字段（从方法参数）
+        /// </summary>
+        /// <param name="parameters">方法参数</param>
+        /// <param name="method">方法信息（可选，用于推断DTO类型）</param>
+        /// <returns>表单字段配置列表</returns>
+        private List<JObject> GetFormFieldsWithAiSupport(IEnumerable<ParameterInfo> parameters, MethodInfo method = null)
+        {
+            Console.WriteLine($"[ButtonHelper调试] GetFormFieldsWithAiSupport - 方法: {method?.Name ?? "NULL"}");
+
+            if (parameters == null) return new List<JObject>();
+
+            // 尝试从方法参数中推断输入DTO类型
+            Type dtoType = null;
+            if (method != null)
+            {
+                var paramTypes = parameters.Select(p => p.ParameterType.Name).ToArray();
+                Console.WriteLine($"[ButtonHelper调试] 方法参数类型: [{string.Join(", ", paramTypes)}]");
+
+                // 查找带有 AiFormFillAttribute 的参数类型
+                var inputDtoParam = parameters.FirstOrDefault(p => 
+                {
+                    var aiAttr = p.ParameterType.GetCustomAttribute<AiFormFillAttribute>();
+                    Console.WriteLine($"[ButtonHelper调试] 检查参数 {p.Name} (类型: {p.ParameterType.Name}) - AI特性: {(aiAttr != null ? "有" : "无")}");
+                    return aiAttr != null;
+                });
+
+                if (inputDtoParam != null)
+                {
+                    dtoType = inputDtoParam.ParameterType;
+                    Console.WriteLine($"[ButtonHelper调试] 找到AI输入DTO: {dtoType.Name}");
+                }
+
+                if (dtoType == null)
+                {
+                        Console.WriteLine($"[ButtonHelper调试] 未找到合适的输入DTO类型");
+                }
+            }
+
+            // 只有当找到输入DTO类型时才启用AI支持
+            if (dtoType != null)
+            {
+                Console.WriteLine($"[ButtonHelper调试] 使用AI支持的表单字段生成，DTO类型: {dtoType.Name}");
+                return formFieldHelper.GetAmisFormFieldsFromParameters(parameters, dtoType);
+            }
+
+            // 否则使用原有方法（不启用AI填充）
+            Console.WriteLine("[ButtonHelper调试] 使用原有方法（不启用AI填充）");
+            return formFieldHelper.GetAmisFormFieldsFromParameters(parameters);
+        }
+
+        /// <summary>
+        /// 获取带AI支持的表单字段（从属性）
+        /// </summary>
+        /// <param name="properties">属性集合</param>
+        /// <param name="dtoType">DTO类型（可选）</param>
+        /// <param name="isReadOnly">是否为只读表单（查看表单）</param>
+        /// <returns>表单字段配置列表</returns>
+        private List<JObject> GetFormFieldsWithAiSupport(IEnumerable<PropertyInfo> properties, Type dtoType = null, bool isReadOnly = false)
+        {
+            if (properties == null) return new List<JObject>();
+
+            // 如果是只读表单（查看表单），不启用AI填充功能
+            if (isReadOnly)
+            {
+                return formFieldHelper.GetAmisFormFieldsFromProperties(properties);
+            }
+
+            Console.WriteLine($"[ButtonHelper调试] GetFormFieldsWithAiSupport(属性) - 原始DTO类型: {dtoType?.Name ?? "NULL"}");
+
+            // 如果没有指定DTO类型，尝试从第一个属性推断
+            if (dtoType == null)
+            {
+                var firstProperty = properties.FirstOrDefault();
+                if (firstProperty != null)
+                {
+                    dtoType = firstProperty.DeclaringType;
+                    Console.WriteLine($"[ButtonHelper调试] 从属性推断DTO类型: {dtoType?.Name ?? "NULL"}");
+                }
+            }
+
+            if (dtoType != null)
+            {
+                var aiAttr = dtoType.GetCustomAttribute<AiFormFillAttribute>();
+                Console.WriteLine($"[ButtonHelper调试] DTO类型 {dtoType.Name} - AI特性: {(aiAttr != null ? "有" : "无")}");
+                
+                if (aiAttr != null)
+                {
+                    Console.WriteLine($"[ButtonHelper调试] 使用AI支持的表单字段生成（属性），DTO类型: {dtoType.Name}");
+                    return formFieldHelper.GetAmisFormFieldsFromProperties(properties, dtoType);
+                }
+            }
+
+            // 否则使用原有方法（不启用AI填充）
+            Console.WriteLine("[ButtonHelper调试] 使用原有方法（属性，不启用AI填充）");
+            return formFieldHelper.GetAmisFormFieldsFromProperties(properties);
+        }
     }
 }
+

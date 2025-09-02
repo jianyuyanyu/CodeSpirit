@@ -92,6 +92,9 @@ public class GeneratedQuestionDto
     /// </summary>
     [DisplayName("题目选项")]
     public List<GeneratedQuestionOptionDto> Options { get; set; } = new();
+
+
+    public bool LLMGenerated { get; set; }
 }
 
 /// <summary>

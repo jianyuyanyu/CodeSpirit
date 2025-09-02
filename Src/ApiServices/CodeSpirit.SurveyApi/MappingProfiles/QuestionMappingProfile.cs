@@ -83,9 +83,6 @@ public class QuestionMappingProfile : Profile
         CreateMap<GeneratedQuestionDto, CreateQuestionDto>()
             .ForMember(dest => dest.SurveyId, opt => opt.Ignore()) // 在外部设置
             .ForMember(dest => dest.Type, opt => opt.MapFrom(src => ParseQuestionType(src.Type)))
-            .ForMember(dest => dest.LLMGenerated, opt => opt.MapFrom(src => true))
-            .ForMember(dest => dest.Validation, opt => opt.Ignore())
-            .ForMember(dest => dest.Settings, opt => opt.Ignore())
             .ForMember(dest => dest.Options, opt => opt.MapFrom(src => src.Options));
 
         // GeneratedQuestionOptionDto到CreateQuestionOptionDto的映射

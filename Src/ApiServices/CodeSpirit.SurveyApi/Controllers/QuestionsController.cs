@@ -82,6 +82,7 @@ public class QuestionsController : ApiControllerBase
     /// <returns>创建的题目</returns>
     [HttpPost]
     [DisplayName("创建题目")]
+    [HeaderOperation("新建", "form")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> CreateQuestion([FromBody] CreateQuestionDto createDto)
     {
         var question = await ((IBaseCRUDService<Question, QuestionDto, int, CreateQuestionDto, UpdateQuestionDto>)_questionService).CreateAsync(createDto);

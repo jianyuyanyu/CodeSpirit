@@ -57,6 +57,11 @@ public class AiFormFillEndpointScanner : ISingletonDependency
                 var key = $"{endpointInfo.ControllerName}:{endpointInfo.DtoType.Name}";
                 _endpoints[key] = endpointInfo;
                 
+                Console.WriteLine($"[端点扫描调试] 发现AI填充DTO: {type.Name}");
+                Console.WriteLine($"[端点扫描调试] - TriggerField: '{aiFormFillAttr.TriggerField}'");
+                Console.WriteLine($"[端点扫描调试] - IsGlobalMode: {aiFormFillAttr.IsGlobalMode}");
+                Console.WriteLine($"[端点扫描调试] - Route: {endpointInfo.Route}");
+                
                 _logger.LogInformation("发现AI填充DTO: {DtoType} -> {Route}", 
                     type.Name, endpointInfo.Route);
             }

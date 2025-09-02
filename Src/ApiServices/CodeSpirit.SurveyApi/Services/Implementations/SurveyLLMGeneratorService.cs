@@ -1281,7 +1281,7 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
             {
                 var createDto = _mapper.Map<CreateQuestionDto>(question);
                 createDto.SurveyId = request.Id;
-                createDto.LLMGenerated = true;
+                question.LLMGenerated = true;
 
                 var savedQuestion = await _questionService.CreateAsync(createDto);
                 savedQuestions.Add(savedQuestion);

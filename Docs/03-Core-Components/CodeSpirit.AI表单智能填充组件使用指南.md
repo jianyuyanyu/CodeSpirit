@@ -8,7 +8,7 @@ CodeSpirit.AI表单智能填充组件是一个基于LLM的通用表单内容生�
 
 ### 1. 智能特性驱动
 - **AI填充特性**：通过 `[AiFormFillAttribute]` 标记需要AI填充的字段
-- **触发字段配置**：指定触发AI填充的关键字段
+- **双模式支持**：支持全局AI填充模式和字段触发模式
 - **零配置端点生成**：基于DTO自动生成AI填充的API端点，无需手动编写控制器代码
 - **灵活配置选项**：支持忽略字段、自定义提示词等配置
 
@@ -240,11 +240,90 @@ services.AddAiFormFillEndpoints();
 app.UseAiFormFillEndpoints();
 ```
 
+## 使用模式
+
+### 模式概述
+
+AI表单智能填充组件支持两种模式：
+- **全局AI填充模式**：表单顶部显示AI生成组件，从空白表单开始智能填充
+- **字段触发模式**：在指定字段右侧显示AI按钮，基于该字段内容进行填充
+
+### 模式对比
+
+| 特性 | 全局AI填充模式 | 字段触发模式 |
+|------|----------------|--------------|
+| **触发方式** | 表单顶部AI组件 | 字段右侧AI按钮 |
+| **使用场景** | 从零开始创建内容 | 基于关键信息扩展 |
+| **用户体验** | 自定义提示词 + 一键生成 | 输入触发词后生成 |
+| **适用情况** | 创意性内容生成 | 基于现有信息补全 |
+
+### 界面效果
+
+#### 全局AI填充模式
+- 表单顶部显示AI生成组件
+- 包含输入框（自定义提示词）和生成按钮
+- 用户可输入具体需求，如"生成一道关于JavaScript的单选题"
+- 点击生成按钮，AI填充整个表单
+
+#### 字段触发模式  
+- 指定字段右侧显示AI魔法棒按钮
+- 用户输入触发字段内容后点击按钮
+- AI基于触发字段内容填充其他字段
+
 ## 使用示例
 
 ### 1. DTO定义示例
 
-#### 基础配置示例
+#### 全局AI填充模式示例
+
+```csharp
+/// <summary>
+/// 全局AI填充模式 - 不指定触发字段
+/// </summary>
+[AiFormFill(GlobalFillPrompt = "智能生成问卷题目")]
+public class CreateQuestionDto
+{
+    [Required]
+    [DisplayName("题目标题")]
+    public string Title { get; set; } = string.Empty;
+    
+    [DisplayName("题目类型")]
+    public QuestionType Type { get; set; }
+    
+    [DisplayName("题目描述")]
+    public string? Description { get; set; }
+    
+    [DisplayName("排序索引")]
+    public int OrderIndex { get; set; }
+    
+    [DisplayName("是否必填")]
+    public bool IsRequired { get; set; } = false;
+}
+```
+
+#### 字段触发模式示例
+
+```csharp
+/// <summary>
+/// 字段触发模式 - 指定触发字段
+/// </summary>
+[AiFormFill(TriggerField = nameof(Topic))]
+public class CreateSurveyDto
+{
+    [Required]
+    [DisplayName("问卷主题")]
+    public string Topic { get; set; } = string.Empty;
+    
+    [DisplayName("问卷描述")]
+    public string? Description { get; set; }
+    
+    [DisplayName("题目数量")]
+    public int QuestionCount { get; set; } = 10;
+}
+```
+
+#### 完整配置示例
+
 ```csharp
 [AiFormFill(TriggerField = nameof(Title))]
 public class CreateSurveyDto
@@ -365,12 +444,12 @@ public class SurveysController : ApiControllerBase
 #### 方案二自动生成的API端点
 基于DTO配置，系统会自动生成以下端点：
 
-| DTO类型 | 自动生成的端点 | 说明 |
-|---------|----------------|------|
-| `CreateQuestionDto` | `POST /api/exam/questions/ai-fill` | 题目AI填充 |
-| `CreateSurveyDto` | `POST /api/survey/surveys/ai-fill` | 问卷AI填充 |
-| `GenerateRandomExamPaperDto` | `POST /api/exam/exampapers/ai-fill` | 试卷AI填充 |
-| `GenerateSurveyRequest` | `POST /api/survey/surveys/generate-suggestions` | 问卷建议生成 |
+| DTO类型 | 自动生成的端点 | 说明 | 模式 |
+|---------|----------------|------|------|
+| `CreateQuestionDto` | `POST /api/survey/questions/ai-fill` | 题目AI填充 | 全局模式 |
+| `CreateSurveyDto` | `POST /api/survey/surveys/ai-fill` | 问卷AI填充 | 字段触发模式 |
+| `GenerateRandomExamPaperDto` | `POST /api/exam/exampapers/ai-fill` | 试卷AI填充 | 字段触发模式 |
+| `GenerateSurveyRequest` | `POST /api/survey/surveys/generate-suggestions` | 问卷建议生成 | 字段触发模式 |
 
 #### 端点特点
 - **零配置**：无需手动编写控制器代码
@@ -596,9 +675,47 @@ public string SomeField { get; set; }
 - **智能检测**：系统会检测现有配置，只在缺失时自动补充
 - **向后兼容**：现有的手动配置继续有效，不会被破坏
 
+## 高级配置
+
+### AiFormFill特性参数
+
+```csharp
+[AiFormFill(
+    GlobalFillPrompt = "智能生成内容",       // 全局模式提示文本
+    TriggerField = "Title",                // 触发字段名（留空为全局模式）
+    MaxTokens = 1000,                      // 最大Token数
+    EnableCache = true,                    // 启用缓存
+    IgnoreFields = new[] { "CreatedBy" }   // 忽略字段列表
+)]
+```
+
+### 字段级控制
+
+```csharp
+[DisplayName("题目内容")]
+[AiFieldFill(Priority = 1, Weight = 3)]    // 高优先级字段
+public string Content { get; set; }
+
+[DisplayName("内部备注")]
+[AiFieldFill(Enabled = false)]             // 排除AI填充
+public string? InternalNote { get; set; }
+```
+
 ## 最佳实践
 
-### 1. DTO设计原则
+### 1. 模式选择指南
+
+**全局模式适用于：**
+- 创作类功能（文章、题目、问卷）  
+- 数据生成和模板创建
+- 从零开始的内容创建
+
+**字段触发模式适用于：**
+- 基于关键词的内容扩展
+- 需要核心信息驱动的场景
+- 复杂的业务逻辑填充
+
+### 2. DTO设计原则
 
 - **明确触发字段**：选择最能代表业务意图的字段作为触发字段
 - **合理设置权重**：重要字段设置更高的权重，影响提示词生成
@@ -606,8 +723,9 @@ public string SomeField { get; set; }
 - **标准验证特性**：使用标准的验证特性（Required、StringLength、Range等），系统会自动读取
 - **适当忽略字段**：将不需要AI填充的字段加入忽略列表或设置`AiFieldFill(Enabled = false)`
 - **简化UI配置**：触发字段只需基础的AmisField配置，系统会自动添加AI功能
+- **清晰的提示文本**：使用描述性的`GlobalFillPrompt`
 
-### 2. 提示词优化
+### 3. 优化建议
 
 - **上下文丰富**：提供足够的上下文信息帮助AI理解业务场景
 - **格式规范**：明确指定返回的JSON格式和字段要求
@@ -615,14 +733,18 @@ public string SomeField { get; set; }
 - **示例引导**：在复杂场景下提供示例数据
 - **描述优先级**：合理使用Description特性，系统会自动用于提示词生成
 
-### 3. 性能优化
+### 4. 注意事项
 
+- AI生成的内容仍会进行字段验证
+- 系统自动生成`/ai-fill`端点，无需手动实现
+- 支持自定义提示词，提供更精确的AI控制
+- 缓存机制可提升响应速度
 - **启用缓存**：对于相同输入的结果进行缓存，减少LLM调用
 - **控制Token**：根据实际需要设置合理的MaxTokens值
 - **异步处理**：使用异步方法避免阻塞用户界面
 - **错误处理**：提供完善的错误处理和降级策略
 
-### 4. 安全考虑
+### 5. 安全考虑
 
 - **输入验证**：对用户输入进行严格验证，防止注入攻击
 - **输出过滤**：对AI生成的内容进行安全过滤
@@ -700,12 +822,13 @@ CodeSpirit.AI表单智能填充组件提供了一套完整的AI驱动表单填�
 ### 核心优势
 
 1. **革命性自动化**：方案二实现了真正的零配置、零代码AI填充功能
-2. **工业级简化**：从15行+控制器代码简化到0行，100%消除样板代码
-3. **智能自动化**：自动读取字段描述、验证规则，自动生成UI增强和API端点
-4. **扩展性强**：支持自定义提示词、字段配置等高级功能
-5. **性能优秀**：内置缓存和优化机制，支持异步处理
-6. **易于维护**：统一的架构和清晰的职责分离，向后兼容现有配置
-7. **用户体验佳**：自动添加AI按钮和加载状态，提供流畅的交互体验
+2. **双模式支持**：支持全局AI填充模式和字段触发模式，满足不同使用场景
+3. **工业级简化**：从15行+控制器代码简化到0行，100%消除样板代码
+4. **智能自动化**：自动读取字段描述、验证规则，自动生成UI增强和API端点
+5. **扩展性强**：支持自定义提示词、字段配置等高级功能
+6. **性能优秀**：内置缓存和优化机制，支持异步处理
+7. **易于维护**：统一的架构和清晰的职责分离，向后兼容现有配置
+8. **用户体验佳**：自动添加AI按钮和加载状态，全局模式支持自定义提示词
 
 ### 方案二革命性改进
 
@@ -733,4 +856,11 @@ CodeSpirit.AI表单智能填充组件提供了一套完整的AI驱动表单填�
 - **零维护成本**：系统自动处理路由、验证、错误处理等所有方面
 - **完全消除样板代码**：从根本上解决了重复代码问题
 
-通过方案二的革命性改进，CodeSpirit平台的AI表单填充功能达到了**工业级的自动化水平**，为开发者提供了极致简化的使用体验，真正实现了"**一个特性，全自动AI填充**"的愿景！
+通过方案二的革命性改进和双模式支持，CodeSpirit平台的AI表单填充功能达到了**工业级的自动化水平**，为开发者提供了极致简化的使用体验，真正实现了"**一个特性，全自动AI填充**"的愿景！
+
+### 双模式总结
+
+- **全局AI填充模式**：适用于创意性内容生成，用户在表单顶部输入自定义需求，AI一次性填充整个表单
+- **字段触发模式**：适用于基于关键信息的内容扩展，用户输入触发字段后，AI智能填充其他相关字段
+
+两种模式无缝集成，开发者只需通过简单的特性配置即可选择合适的模式，系统自动处理所有技术细节。

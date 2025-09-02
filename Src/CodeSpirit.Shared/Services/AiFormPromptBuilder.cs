@@ -87,9 +87,22 @@ public class AiFormPromptBuilder : IScopedDependency
         var promptBuilder = new StringBuilder();
         
         // 添加基础上下文
-        var triggerFieldDisplayName = GetTriggerFieldDisplayName<T>(attr.TriggerField);
-        promptBuilder.AppendLine($"基于输入的{triggerFieldDisplayName}：\"{triggerValue}\"，请为以下表单字段生成合适的内容：");
-        promptBuilder.AppendLine();
+        if (attr.IsGlobalMode)
+        {
+            // 全局模式提示词
+            var dtoDisplayName = dtoType.Name.EndsWith("Dto") 
+                ? dtoType.Name.Substring(0, dtoType.Name.Length - 3) 
+                : dtoType.Name;
+            promptBuilder.AppendLine($"请为以下{dtoDisplayName}表单的所有字段智能生成合适的内容：");
+            promptBuilder.AppendLine();
+        }
+        else
+        {
+            // 传统模式提示词
+            var triggerFieldDisplayName = GetTriggerFieldDisplayName<T>(attr.TriggerField);
+            promptBuilder.AppendLine($"基于输入的{triggerFieldDisplayName}：\"{triggerValue}\"，请为以下表单字段生成合适的内容：");
+            promptBuilder.AppendLine();
+        }
 
         // 添加字段描述
         for (int i = 0; i < properties.Count; i++)
@@ -148,7 +161,8 @@ public class AiFormPromptBuilder : IScopedDependency
         
         return dtoType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanWrite && 
-                       p.Name != aiFormFillAttr?.TriggerField && // 排除触发字段
+                       // 全局模式不排除触发字段，传统模式排除触发字段
+                       (aiFormFillAttr?.IsGlobalMode == true || p.Name != aiFormFillAttr?.TriggerField) && 
                        !ignoreFields.Contains(p.Name) && // 排除忽略字段
                        IsAiFillEnabled(p)) // 检查字段是否启用AI填充
             .OrderBy(p => GetFieldPriority(p))

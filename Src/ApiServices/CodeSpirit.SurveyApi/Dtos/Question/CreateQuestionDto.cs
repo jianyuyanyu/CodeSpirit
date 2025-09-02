@@ -1,4 +1,5 @@
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.SurveyApi.Models.Enums;
 
 namespace CodeSpirit.SurveyApi.Dtos.Question;
@@ -7,6 +8,7 @@ namespace CodeSpirit.SurveyApi.Dtos.Question;
 /// 创建题目DTO
 /// </summary>
 [DisplayName("创建题目")]
+[AiFormFill(GlobalFillPrompt = "智能生成问卷题目")]
 public class CreateQuestionDto
 {
     /// <summary>
@@ -32,6 +34,14 @@ public class CreateQuestionDto
     [DisplayName("题目描述")]
     public string? Description { get; set; }
 
+
+    /// <summary>
+    /// 是否由LLM生成
+    /// </summary>
+    [DisplayName("LLM生成")]
+    [AmisFormField(Hidden = true)]
+    public bool LLMGenerated { get; set; } = false;
+
     /// <summary>
     /// 题目类型
     /// </summary>
@@ -51,25 +61,19 @@ public class CreateQuestionDto
     [DisplayName("是否必填")]
     public bool IsRequired { get; set; } = false;
 
-    /// <summary>
-    /// 验证规则（JSON格式）
-    /// </summary>
-    [StringLength(2000)]
-    [DisplayName("验证规则")]
-    public string? Validation { get; set; }
+    ///// <summary>
+    ///// 验证规则（JSON格式）
+    ///// </summary>
+    //[StringLength(2000)]
+    //[DisplayName("验证规则")]
+    //public string? Validation { get; set; }
 
-    /// <summary>
-    /// 题目设置（JSON格式）
-    /// </summary>
-    [StringLength(2000)]
-    [DisplayName("题目设置")]
-    public string? Settings { get; set; }
-
-    /// <summary>
-    /// 是否由LLM生成
-    /// </summary>
-    [DisplayName("LLM生成")]
-    public bool LLMGenerated { get; set; } = false;
+    ///// <summary>
+    ///// 题目设置（JSON格式）
+    ///// </summary>
+    //[StringLength(2000)]
+    //[DisplayName("题目设置")]
+    //public string? Settings { get; set; }
 
     /// <summary>
     /// 题目选项

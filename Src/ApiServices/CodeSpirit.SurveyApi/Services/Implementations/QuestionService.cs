@@ -310,11 +310,6 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
             {
                 errors.Add("矩阵题至少需要2个行选项");
             }
-            // 矩阵题还需要列选项，这里可以通过Settings配置
-            if (string.IsNullOrWhiteSpace(createDto.Settings))
-            {
-                errors.Add("矩阵题需要配置列选项设置");
-            }
         }
 
         // 验证排序题特殊要求

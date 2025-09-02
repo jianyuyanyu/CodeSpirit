@@ -1,5 +1,6 @@
 using CodeSpirit.SurveyApi.Models.Enums;
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -9,6 +10,7 @@ namespace CodeSpirit.SurveyApi.Dtos.Survey;
 /// 创建问卷DTO
 /// </summary>
 [DisplayName("创建问卷")]
+[AiFormFill(TriggerField = nameof(Title), ApiEndpoint = "ai-fill")]
 public class CreateSurveyDto
 {
     /// <summary>
@@ -24,6 +26,8 @@ public class CreateSurveyDto
     /// </summary>
     [DisplayName("问卷描述")]
     [StringLength(2000, ErrorMessage = "问卷描述长度不能超过2000个字符")]
+    [Description("详细描述问卷的目的、背景和填写说明")]
+    [AiFieldFill(Weight = 2, Priority = 1)]
     public string? Description { get; set; }
 
     /// <summary>
@@ -63,12 +67,16 @@ public class CreateSurveyDto
     /// </summary>
     [DisplayName("题目数量")]
     [Range(1, 50, ErrorMessage = "题目数量必须在1-50之间")]
+    [Description("建议的问卷题目数量，通常5-20题为佳")]
+    [AiFieldFill(Weight = 1, Priority = 3)]
     public int? QuestionCount { get; set; }
 
     /// <summary>
     /// 问卷类型（用于LLM生成）
     /// </summary>
     [DisplayName("问卷类型")]
+    [Description("问卷的类型分类，如：满意度调查、市场调研、员工反馈等")]
+    [AiFieldFill(Weight = 1, Priority = 2)]
     public string? SurveyType { get; set; }
 
     /// <summary>

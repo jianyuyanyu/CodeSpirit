@@ -1,5 +1,6 @@
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Helpers;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.Reflection;
@@ -49,9 +50,7 @@ namespace CodeSpirit.Amis.Form.Fields
             if (field["addOn"] != null) return field;
 
             // 自动添加AI填充按钮
-            var apiEndpoint = string.IsNullOrEmpty(aiFormFillAttr.ApiEndpoint)
-                ? "/api/ai-form-fill/ai-fill"
-                : aiFormFillAttr.ApiEndpoint;
+            var apiEndpoint = GetApiEndpoint(dtoType, aiFormFillAttr);
 
             field["addOn"] = new JObject
             {
@@ -77,6 +76,19 @@ namespace CodeSpirit.Amis.Form.Fields
             };
 
             return field;
+        }
+
+        /// <summary>
+        /// 获取AI填充API端点路径
+        /// </summary>
+        /// <param name="dtoType">DTO类型</param>
+        /// <param name="aiFormFillAttr">AI填充特性</param>
+        /// <returns>API端点路径</returns>
+        private string GetApiEndpoint(Type dtoType, AiFormFillAttribute aiFormFillAttr)
+        {
+            // 使用共享的路由辅助类生成前端调用路由
+            // 前端路由包含服务前缀，用于网关或反向代理的路由转发
+            return AiFormFillRouteHelper.GenerateFrontendRoute(dtoType, aiFormFillAttr);
         }
     }
 

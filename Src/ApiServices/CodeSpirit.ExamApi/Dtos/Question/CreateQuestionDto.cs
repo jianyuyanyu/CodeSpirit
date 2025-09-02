@@ -1,11 +1,16 @@
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using Newtonsoft.Json;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 /// <summary>
 /// 创建题目DTO
 /// </summary>
+[DisplayName("创建题目")]
+[AiFormFill(TriggerField = nameof(Content), ApiEndpoint = "ai-fill")]
 public class CreateQuestionDto
 {
     /// <summary>
@@ -36,6 +41,8 @@ public class CreateQuestionDto
     /// </summary>
     [Required(ErrorMessage = "请添加题目选项")]
     [DisplayName("选项")]
+    [Description("根据题目内容生成合适的选项，单选题通常4个选项，多选题可以有更多选项")]
+    [AiFieldFill(Weight = 3, Priority = 1)]
     [AmisArrayField(
         Items = "{ \"type\":\"input-text\", \"required\":true }",
         Addable = true,
@@ -53,6 +60,7 @@ public class CreateQuestionDto
     [StringLength(1000)]
     [DisplayName("正确答案")]
     [Description("多选题请用逗号分隔，判断题答案必须是True或False。")]
+    [AiFieldFill(Weight = 3, Priority = 2)]
     public string CorrectAnswer { get; set; } = string.Empty;
 
     /// <summary>
@@ -60,6 +68,8 @@ public class CreateQuestionDto
     /// </summary>
     [DisplayName("解析")]
     [StringLength(2000)]
+    [Description("详细解释正确答案的原因，帮助学生理解知识点")]
+    [AiFieldFill(Weight = 2, Priority = 3)]
     [AmisTextareaField(MaxLength = 2000, ShowCounter = true)]
     public string? Analysis { get; set; }
 
@@ -67,6 +77,8 @@ public class CreateQuestionDto
     /// 知识点
     /// </summary>
     [DisplayName("知识点")]
+    [Description("列出该题目涉及的主要知识点，用逗号分隔")]
+    [AiFieldFill(Weight = 2, Priority = 4)]
     public string? KnowledgePoints { get; set; }
 
     /// <summary>
@@ -96,6 +108,8 @@ public class CreateQuestionDto
     /// 标签
     /// </summary>
     [DisplayName("标签")]
+    [Description("为题目添加相关标签，便于分类和搜索")]
+    [AiFieldFill(Weight = 1, Priority = 5)]
     [AmisArrayField(
         Items = "{ \"type\":\"input-text\" }",
         Addable = true,

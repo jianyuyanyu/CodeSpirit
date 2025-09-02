@@ -1,12 +1,13 @@
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace CodeSpirit.Web.Extensions
+namespace CodeSpirit.Shared.Extensions
 {
     /// <summary>
     /// AI表单填充控制器扩展
@@ -91,29 +92,5 @@ namespace CodeSpirit.Web.Extensions
             var displayAttr = property.GetCustomAttribute<DisplayNameAttribute>();
             return displayAttr?.DisplayName ?? property.Name;
         }
-    }
-
-
-
-    /// <summary>
-    /// AI表单填充服务接口
-    /// </summary>
-    public interface IAiFormFillService
-    {
-        /// <summary>
-        /// 填充表单字段
-        /// </summary>
-        /// <typeparam name="T">DTO类型</typeparam>
-        /// <param name="triggerValue">触发值</param>
-        /// <param name="existingData">现有数据</param>
-        /// <returns>填充后的数据</returns>
-        Task<T> FillFormAsync<T>(string triggerValue, T? existingData = null) where T : class, new();
-
-        /// <summary>
-        /// 验证DTO是否支持AI填充
-        /// </summary>
-        /// <typeparam name="T">DTO类型</typeparam>
-        /// <returns>是否支持</returns>
-        bool IsAiFillSupported<T>() where T : class;
     }
 }

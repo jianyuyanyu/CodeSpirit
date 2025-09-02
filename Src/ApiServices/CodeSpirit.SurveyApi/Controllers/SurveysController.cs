@@ -7,6 +7,7 @@ using CodeSpirit.SurveyApi.Models;
 using CodeSpirit.SurveyApi.Models.Enums;
 using CodeSpirit.SurveyApi.Services.Interfaces;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json.Linq;
@@ -25,6 +26,7 @@ public class SurveysController : ApiControllerBase
     private readonly ISurveySettingsService _settingsService;
     private readonly ISurveyLLMGeneratorService _llmGeneratorService;
     private readonly IQuestionService _questionService;
+    private readonly IAiFormFillService _aiFormFillService;
     private readonly ILogger<SurveysController> _logger;
 
     /// <summary>
@@ -34,24 +36,28 @@ public class SurveysController : ApiControllerBase
     /// <param name="settingsService">设置服务</param>
     /// <param name="llmGeneratorService">LLM生成服务</param>
     /// <param name="questionService">题目服务</param>
+    /// <param name="aiFormFillService">AI表单填充服务</param>
     /// <param name="logger">日志记录器</param>
     public SurveysController(
         ISurveyService surveyService,
         ISurveySettingsService settingsService,
         ISurveyLLMGeneratorService llmGeneratorService,
         IQuestionService questionService,
+        IAiFormFillService aiFormFillService,
         ILogger<SurveysController> logger)
     {
         ArgumentNullException.ThrowIfNull(surveyService);
         ArgumentNullException.ThrowIfNull(settingsService);
         ArgumentNullException.ThrowIfNull(llmGeneratorService);
         ArgumentNullException.ThrowIfNull(questionService);
+        ArgumentNullException.ThrowIfNull(aiFormFillService);
         ArgumentNullException.ThrowIfNull(logger);
 
         _surveyService = surveyService;
         _settingsService = settingsService;
         _llmGeneratorService = llmGeneratorService;
         _questionService = questionService;
+        _aiFormFillService = aiFormFillService;
         _logger = logger;
     }
 
@@ -134,6 +140,8 @@ public class SurveysController : ApiControllerBase
     //    var survey = await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).GetAsync(id);
     //    return SuccessResponse(survey);
     //}
+
+
 
     ///// <summary>
     ///// 创建问卷
@@ -423,28 +431,7 @@ public class SurveysController : ApiControllerBase
     [DisplayName("生成问卷建议")]
     public async Task<ActionResult<ApiResponse<GenerateSurveyRequest>>> GenerateSurveyFieldSuggestions([FromBody] GenerateSurveyRequest request)
     {
-        // 如果主题为空，返回错误
-        if (string.IsNullOrEmpty(request.Topic?.Trim()))
-        {
-            return BadResponse<GenerateSurveyRequest>("请先输入问卷主题");
-        }
-
-        // 基于主题生成其他字段的建议
-        var suggestions = await _llmGeneratorService.GenerateFieldSuggestionsAsync(request.Topic);
-        
-        // 返回包含建议内容的请求对象
-        var result = new GenerateSurveyRequest
-        {
-            Topic = request.Topic,
-            Description = suggestions.Description,
-            SurveyType = suggestions.SurveyType,
-            QuestionCount = suggestions.QuestionCount,
-            TargetAudience = suggestions.TargetAudience,
-            Goals = suggestions.Goals,
-            CustomPrompt = request.CustomPrompt // 保持原有的自定义提示词
-        };
-
-        return SuccessResponse(result);
+        return await this.HandleAiFillAsync(_aiFormFillService, request);
     }
 
     /// <summary>

@@ -9,6 +9,7 @@ using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Extensions;
+using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Builder;
@@ -98,6 +99,9 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         
         // 使用聚合器
         app.UseCodeSpiritAggregator();
+        
+        // 使用AI表单填充自动端点
+        app.UseAiFormFillEndpoints();
     }
     
     /// <summary>
@@ -194,6 +198,9 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<ISurveyLLMGeneratorService, SurveyLLMGeneratorService>();
         services.AddScoped<ISurveyCategoryService, SurveyCategoryService>();
+        
+        // 添加AI表单填充服务（包含自动端点功能）
+        services.AddAiFormFillEndpoints();
         
         // AutoMapper已在CommonApiServices中配置，会自动扫描当前程序集中的Profile
     }

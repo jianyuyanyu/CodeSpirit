@@ -1,6 +1,7 @@
 ﻿// 文件路径: CodeSpirit.Amis.Helpers/FormFieldHelper.cs
 
 using CodeSpirit.Amis.Extensions;
+using CodeSpirit.Amis.Form.Fields;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Core.Attributes;
 using Newtonsoft.Json.Linq;
@@ -17,6 +18,7 @@ namespace CodeSpirit.Amis.Form
         private readonly IHasPermissionService _permissionService;
         private readonly UtilityHelper _utilityHelper;
         private readonly IEnumerable<IAmisFieldFactory> _fieldFactories;
+        private readonly AiFormFieldEnhancer _aiEnhancer;
 
         /// <summary>
         /// 初始化表单字段帮助类实例
@@ -24,15 +26,18 @@ namespace CodeSpirit.Amis.Form
         /// <param name="permissionService">权限校验服务</param>
         /// <param name="utilityHelper">通用工具类</param>
         /// <param name="fieldFactories">字段工厂集合</param>
+        /// <param name="aiEnhancer">AI表单字段增强器</param>
         /// <exception cref="ArgumentNullException">当任何参数为null时抛出</exception>
         public FormFieldHelper(
             IHasPermissionService permissionService,
             UtilityHelper utilityHelper,
-            IEnumerable<IAmisFieldFactory> fieldFactories)
+            IEnumerable<IAmisFieldFactory> fieldFactories,
+            AiFormFieldEnhancer aiEnhancer)
         {
             _permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
             _utilityHelper = utilityHelper ?? throw new ArgumentNullException(nameof(utilityHelper));
             _fieldFactories = fieldFactories?.ToList() ?? throw new ArgumentNullException(nameof(fieldFactories));
+            _aiEnhancer = aiEnhancer ?? throw new ArgumentNullException(nameof(aiEnhancer));
         }
 
         /// <summary>
@@ -147,9 +152,9 @@ namespace CodeSpirit.Amis.Form
 
                 return null;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // 异常处理
+                // 异常处理 - 记录日志或其他处理
                 return null;
             }
         }
@@ -183,9 +188,19 @@ namespace CodeSpirit.Amis.Form
         /// </summary>
         private IEnumerable<JObject> ProcessParameter(ParameterInfo param)
         {
-            return _utilityHelper.IsSimpleType(param.ParameterType)
-                ? [param.CreateFormField()]
-                : ProcessComplexType(param);
+            if (_utilityHelper.IsSimpleType(param.ParameterType))
+            {
+                var field = param.CreateFormField();
+                if (field != null)
+                {
+                    field = ApplyAiEnhancement(field, param);
+                }
+                return [field];
+            }
+            else
+            {
+                return ProcessComplexType(param);
+            }
         }
 
         /// <summary>
@@ -205,7 +220,65 @@ namespace CodeSpirit.Amis.Form
         /// </summary>
         private JObject ProcessProperty(PropertyInfo prop)
         {
-            return CreateFieldUsingFactories(prop) ?? prop.CreateFormField();
+            // 优先使用工厂创建字段
+            var field = CreateFieldUsingFactories(prop);
+            
+            // 如果工厂未创建字段，使用默认方法创建
+            if (field == null)
+            {
+                field = prop.CreateFormField();
+                
+                // 对于非工厂创建的字段，也应用AI增强功能
+                if (field != null)
+                {
+                    field = ApplyAiEnhancement(field, prop);
+                }
+            }
+            
+            return field;
+        }
+
+        /// <summary>
+        /// 应用AI增强功能到字段
+        /// </summary>
+        /// <param name="field">字段配置</param>
+        /// <param name="member">成员信息</param>
+        /// <returns>增强后的字段配置</returns>
+        private JObject ApplyAiEnhancement(JObject field, ICustomAttributeProvider member)
+        {
+            if (field == null || member == null) return field;
+            
+            // 获取DTO类型
+            var dtoType = GetDtoTypeFromContext(member);
+            if (dtoType != null && dtoType != typeof(object))
+            {
+                // 应用AI增强
+                field = _aiEnhancer.EnhanceField(field, member, dtoType);
+            }
+            
+            return field;
+        }
+
+        /// <summary>
+        /// 从上下文获取DTO类型
+        /// </summary>
+        /// <param name="member">成员信息</param>
+        /// <returns>DTO类型</returns>
+        private Type GetDtoTypeFromContext(ICustomAttributeProvider member)
+        {
+            // 如果是属性，获取其声明类型
+            if (member is PropertyInfo property)
+            {
+                return property.DeclaringType;
+            }
+
+            // 如果是参数，尝试获取其声明方法的类型
+            if (member is ParameterInfo parameter)
+            {
+                return parameter.Member?.DeclaringType;
+            }
+
+            return typeof(object); // 返回默认类型而不是null
         }
         #endregion
 

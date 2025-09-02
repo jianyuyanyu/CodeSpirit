@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel;
 
@@ -8,6 +9,7 @@ namespace CodeSpirit.ExamApi.Dtos.ExamPaper;
 /// 随机试卷生成DTO
 /// </summary>
 [DisplayName("生成随机试卷")]
+[AiFormFill(TriggerField = nameof(Name), ApiEndpoint = "ai-fill")]
 public class GenerateRandomExamPaperDto
 {
     /// <summary>
@@ -23,6 +25,8 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("试卷描述")]
     [StringLength(500, ErrorMessage = "试卷描述不能超过500个字符")]
+    [Description("详细描述试卷的内容、适用范围和考试要求")]
+    [AiFieldFill(Weight = 2, Priority = 1)]
     public string? Description { get; set; }
 
     /// <summary>
@@ -31,6 +35,8 @@ public class GenerateRandomExamPaperDto
     [DisplayName("总分")]
     [Required(ErrorMessage = "总分不能为空")]
     [Range(1, 1000, ErrorMessage = "总分必须在1-1000之间")]
+    [Description("试卷的总分值，通常为100分")]
+    [AiFieldFill(Weight = 1, Priority = 2)]
     [AmisNumberField(DefaultValue = 100)]
     public int TotalScore { get; set; } = 100;
 
@@ -39,6 +45,8 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("及格分数")]
     [Range(0, 1000, ErrorMessage = "及格分数必须在0-1000之间")]
+    [Description("考试及格所需的最低分数，通常为总分的60%")]
+    [AiFieldFill(Weight = 1, Priority = 3)]
     [AmisNumberField(DefaultValue = 60)]
     public int PassScore { get; set; } = 60;
 
@@ -47,6 +55,8 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("时长（分钟）")]
     [Range(1, 1440, ErrorMessage = "考试时长必须在1-1440分钟之间")]
+    [Description("考试的时间限制，单位为分钟，根据题目数量和难度合理设置")]
+    [AiFieldFill(Weight = 1, Priority = 4)]
     [AmisNumberField(DefaultValue = 120)]
     public int Duration { get; set; } = 120;
 

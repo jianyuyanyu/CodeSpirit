@@ -11,6 +11,7 @@ using CodeSpirit.PdfGeneration.Extensions;
 using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Extensions;
+using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Builder;
@@ -101,6 +102,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
         // 使用聚合器
         app.UseCodeSpiritAggregator();
         
+        // 使用AI表单填充自动端点
+        app.UseAiFormFillEndpoints();
+        
         // 初始化PDF生成服务
         await app.UsePdfGenerationAsync();
     }
@@ -176,6 +180,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
     {
         // 使用扩展方法注册AI题目生成相关服务
         services.AddAIQuestionGeneratorServices();
+        
+        // 添加AI表单填充服务（包含自动端点功能）
+        services.AddAiFormFillEndpoints();
         
         // 添加SignalR服务
         services.AddSignalR()

@@ -44,6 +44,7 @@ public class SurveyQueryDto : QueryDtoBase
         LabelField = "name",
         ValueField = "id",
         Required = false,
+        ShowIcon = true,
         Clearable = true,
         SubmitOnChange = true,
         HeightAuto = true,

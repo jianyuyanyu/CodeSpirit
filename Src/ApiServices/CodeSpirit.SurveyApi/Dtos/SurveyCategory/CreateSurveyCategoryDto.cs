@@ -1,12 +1,22 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
 
 namespace CodeSpirit.SurveyApi.Dtos.SurveyCategory;
 
 /// <summary>
 /// 创建问卷分类DTO
 /// </summary>
+[AiFormFill(
+    TriggerField = "Name",
+    IgnoreFields = new[] { "ParentId", "OrderIndex", "IsEnabled" },
+    //CustomPromptTemplate = "根据分类名称生成合适的分类描述、颜色和图标。请生成符合分类特点的描述，选择合适的十六进制颜色值，以及相应的FontAwesome图标类名。",
+    //ApiEndpoint = "/api/survey/SurveyCategories/ai-fill",
+    MaxTokens = 500,
+    EnableCache = true,
+    CacheExpirationMinutes = 60
+)]
 public class CreateSurveyCategoryDto
 {
     /// <summary>
@@ -22,6 +32,7 @@ public class CreateSurveyCategoryDto
     /// </summary>
     [StringLength(500, ErrorMessage = "分类描述长度不能超过500个字符")]
     [DisplayName("分类描述")]
+    [AiFieldFill(Enabled = true, Weight = 3, Priority = 1, CustomDescription = "根据分类名称生成详细且有意义的分类描述")]
     public string? Description { get; set; }
 
     /// <summary>
@@ -30,6 +41,7 @@ public class CreateSurveyCategoryDto
     [RegularExpression(@"^#[0-9A-Fa-f]{6}$", ErrorMessage = "请输入有效的十六进制颜色值")]
     [DisplayName("分类颜色")]
     [AmisFormField(Type = "input-color", DefaultValue = "#1890ff")]
+    [AiFieldFill(Enabled = true, Weight = 2, Priority = 3, CustomDescription = "根据分类名称选择合适的主题颜色，返回十六进制颜色值格式如：#1890ff")]
     public string? Color { get; set; }
 
     /// <summary>
@@ -37,15 +49,16 @@ public class CreateSurveyCategoryDto
     /// </summary>
     [StringLength(50, ErrorMessage = "分类图标长度不能超过50个字符")]
     [DisplayName("分类图标")]
-    [AmisInputTextFieldAttribute(Placeholder = "请输入FontAwesome图标类名，如：fa-solid fa-folder")]
+    [AmisIconField(
+        IconType = "fontawesome",
+        Searchable = true,
+        Clearable = true,
+        ShowPreview = true,
+        PreviewSize = "md",
+        Placeholder = "请选择图标"
+    )]
+    [AiFieldFill(Enabled = true, Weight = 2, Priority = 2, CustomDescription = "根据分类名称选择合适的FontAwesome图标类名，格式如：fa-solid fa-folder")]
     public string? Icon { get; set; }
-
-    /// <summary>
-    /// 排序索引
-    /// </summary>
-    [Range(0, int.MaxValue, ErrorMessage = "排序索引必须大于等于0")]
-    [DisplayName("排序索引")]
-    public int OrderIndex { get; set; } = 0;
 
     /// <summary>
     /// 是否启用

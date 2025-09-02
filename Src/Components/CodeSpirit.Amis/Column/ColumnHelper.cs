@@ -312,8 +312,90 @@ namespace CodeSpirit.Amis.Column
                 column["map"] = GetEnumMapping(prop.PropertyType);
             }
 
+            // 处理图标字段
+            if (IsIconField(prop))
+            {
+                column["type"] = "icon";
+                
+                // 设置默认的vendor为空字符串，以支持自定义图标
+                column["vendor"] = "";
+                
+                // 处理 IconColumn 特定配置
+                IconColumnAttribute iconAttr = prop.GetCustomAttribute<IconColumnAttribute>();
+                if (iconAttr != null)
+                {
+                    // 设置图标厂商
+                    column["vendor"] = iconAttr.Vendor ?? "";
+                    
+                    // 构建CSS类名来控制图标样式
+                    var cssClasses = new List<string>();
+                    
+                    // 添加大小相关的CSS类
+                    if (!string.IsNullOrEmpty(iconAttr.Size))
+                    {
+                        string sizeClass = GetIconSizeClass(iconAttr.Size);
+                        if (!string.IsNullOrEmpty(sizeClass))
+                        {
+                            cssClasses.Add(sizeClass);
+                        }
+                    }
+                    
+                    // 添加颜色相关的CSS类
+                    if (!string.IsNullOrEmpty(iconAttr.Color))
+                    {
+                        string colorClass = GetIconColorClass(iconAttr.Color);
+                        if (!string.IsNullOrEmpty(colorClass))
+                        {
+                            cssClasses.Add(colorClass);
+                        }
+                    }
+                    
+                    // 添加自定义CSS类名
+                    if (!string.IsNullOrEmpty(iconAttr.ClassName))
+                    {
+                        cssClasses.Add(iconAttr.ClassName);
+                    }
+                    
+                    // 设置组合后的CSS类名
+                    if (cssClasses.Count > 0)
+                    {
+                        column["className"] = string.Join(" ", cssClasses);
+                    }
+                    
+                    // 设置旋转动画
+                    if (iconAttr.Spin)
+                    {
+                        column["spin"] = iconAttr.Spin;
+                    }
+                    
+                    // 处理默认图标
+                    if (!string.IsNullOrEmpty(iconAttr.DefaultIcon))
+                    {
+                        column["icon"] = "${" + fieldName + " || '" + iconAttr.DefaultIcon + "'}";
+                    }
+                    else
+                    {
+                        column["icon"] = "${" + fieldName + "}";
+                    }
+                    
+                    // 处理文本显示配置
+                    if (iconAttr.ShowText)
+                    {
+                        column["type"] = "tpl";
+                        string textTemplate = CreateIconWithTextTemplate(fieldName, iconAttr);
+                        column["tpl"] = textTemplate;
+                        column.Remove("icon"); // 移除icon属性，因为使用tpl模板
+                    }
+                }
+                else
+                {
+                    // 设置默认图标配置
+                    column["icon"] = "${" + fieldName + "}";
+                    // 不设置默认className，使用浏览器默认样式
+                }
+            }
             // 处理图片或头像字段
-            if (IsImageField(prop))
+            else if (IsImageField(prop))
             {
                 string columnType = GetImageColumnType(prop);
                 column["type"] = columnType;
@@ -756,10 +838,22 @@ namespace CodeSpirit.Amis.Column
                 return "each";
             }
 
+            IconColumnAttribute iconAttr = prop.GetCustomAttribute<IconColumnAttribute>();
+            if (iconAttr != null)
+            {
+                return "icon";
+            }
+
             AvatarColumnAttribute avatarAttr = prop.GetCustomAttribute<AvatarColumnAttribute>();
             if (avatarAttr != null)
             {
                 return "avatar";
+            }
+
+            // 检查是否为图标字段
+            if (IsIconField(prop))
+            {
+                return "icon";
             }
 
             // 检查是否为图片字段
@@ -1002,19 +1096,187 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 检查是否为明确的图片字段名称模式
+            // 注意：包含"icon"的字段现在由IsIconField处理，这里只处理图片URL相关的
             return (propName.EndsWith("image") || propName.EndsWith("avatar") || 
                     propName.EndsWith("photo") || propName.EndsWith("picture") ||
-                    propName.EndsWith("icon") || propName.EndsWith("logo") ||
+                    propName.EndsWith("logo") ||
                     propName.StartsWith("image") || propName.StartsWith("avatar") ||
                     propName.StartsWith("photo") || propName.StartsWith("picture") ||
-                    propName.StartsWith("icon") || propName.StartsWith("logo") ||
+                    propName.StartsWith("logo") ||
                     // 支持常见的图片字段命名
                     propName == "image" || propName == "avatar" || 
                     propName == "photo" || propName == "picture" ||
-                    propName == "icon" || propName == "logo" ||
+                    propName == "logo" ||
                     propName.Contains("imageurl") || propName.Contains("photourl") ||
-                    propName.Contains("avatarurl") || propName.Contains("iconurl") ||
-                    propName.Contains("logourl") || propName.Contains("pictureurl"));
+                    propName.Contains("avatarurl") || propName.Contains("logourl") ||
+                    propName.Contains("pictureurl") ||
+                    // 只有明确包含URL的icon字段才被视为图片字段
+                    propName.Contains("iconurl"));
+        }
+
+        /// <summary>
+        /// 判断属性是否为图标字段。
+        /// </summary>
+        /// <param name="prop">属性的信息。</param>
+        /// <returns>如果是图标字段则返回 true，否则返回 false。</returns>
+        private bool IsIconField(PropertyInfo prop)
+        {
+            // 检查是否有IconColumnAttribute特性
+            IconColumnAttribute iconAttr = prop.GetCustomAttribute<IconColumnAttribute>();
+            if (iconAttr != null)
+            {
+                return true;
+            }
+
+            // 获取属性的基础类型（处理可空类型）
+            Type underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+            
+            // 如果不是字符串类型，则不是图标字段
+            if (underlyingType != typeof(string))
+            {
+                return false;
+            }
+
+            string propName = prop.Name.ToLowerInvariant();
+
+            // 排除明显不是图标的字段
+            if (propName.Contains("url") || propName.Contains("path") || 
+                propName.Contains("image") || propName.Contains("photo") ||
+                propName.Contains("picture") || propName.Contains("avatar"))
+            {
+                return false;
+            }
+
+            // 检查是否为明确的图标字段名称模式
+            return propName == "icon" || 
+                   propName.EndsWith("icon") ||
+                   propName.StartsWith("icon") ||
+                   propName.Contains("_icon") ||
+                   propName.Contains("icon_") ||
+                   // 支持常见的图标字段命名模式
+                   propName == "iconclass" || propName == "iconname" ||
+                   propName == "iconcss" || propName == "fonticon" ||
+                   propName.Contains("iconclass") || propName.Contains("iconname") ||
+                   propName.Contains("iconcss") || propName.Contains("fonticon");
+        }
+
+        /// <summary>
+        /// 创建图标与文本的模板
+        /// </summary>
+        /// <param name="fieldName">字段名称</param>
+        /// <param name="iconAttr">图标列特性</param>
+        /// <returns>模板字符串</returns>
+        private string CreateIconWithTextTemplate(string fieldName, IconColumnAttribute iconAttr)
+        {
+            string iconTemplate = "";
+            string textTemplate = "${" + fieldName + "Text || " + fieldName + "}";
+            
+            // 构建图标部分
+            if (!string.IsNullOrEmpty(iconAttr.DefaultIcon))
+            {
+                iconTemplate = "<i class=\"${" + fieldName + " || '" + iconAttr.DefaultIcon + "'}\"";
+            }
+            else
+            {
+                iconTemplate = "<i class=\"${" + fieldName + "}\"";
+            }
+            
+            // 构建CSS类名
+            var iconClasses = new List<string>();
+            
+            // 添加大小类
+            string sizeClass = GetIconSizeClass(iconAttr.Size);
+            if (!string.IsNullOrEmpty(sizeClass))
+            {
+                iconClasses.Add(sizeClass);
+            }
+            
+            // 添加颜色类
+            string colorClass = GetIconColorClass(iconAttr.Color);
+            if (!string.IsNullOrEmpty(colorClass))
+            {
+                iconClasses.Add(colorClass);
+            }
+            
+            // 添加自定义CSS类
+            if (!string.IsNullOrEmpty(iconAttr.ClassName))
+            {
+                iconClasses.Add(iconAttr.ClassName);
+            }
+            
+            // 应用CSS类名
+            if (iconClasses.Count > 0)
+            {
+                iconTemplate += " class=\"" + string.Join(" ", iconClasses) + "\"";
+            }
+            
+            iconTemplate += "></i>";
+            
+            // 根据文本位置组合模板
+            return iconAttr.TextPosition?.ToLower() switch
+            {
+                "left" => textTemplate + " " + iconTemplate,
+                "top" => textTemplate + "<br/>" + iconTemplate,
+                "bottom" => iconTemplate + "<br/>" + textTemplate,
+                _ => iconTemplate + " " + textTemplate // 默认右侧
+            };
+        }
+
+        /// <summary>
+        /// 获取图标大小对应的CSS类名
+        /// </summary>
+        /// <param name="size">尺寸配置</param>
+        /// <returns>CSS类名</returns>
+        private string GetIconSizeClass(string size)
+        {
+            if (string.IsNullOrEmpty(size))
+            {
+                return "";
+            }
+
+            return size.ToLower() switch
+            {
+                "xs" => "text-xs",     // 对应 12px
+                "sm" => "text-sm",     // 对应 14px  
+                "md" => "text-base",   // 对应 16px
+                "lg" => "text-lg",     // 对应 18px
+                "xl" => "text-xl",     // 对应 20px
+                "2xl" => "text-2xl",   // 对应 24px
+                "3xl" => "text-3xl",   // 对应 30px
+                "4xl" => "text-4xl",   // 对应 36px
+                _ => "" // 不识别的尺寸不添加类名，可能是自定义className
+            };
+        }
+
+        /// <summary>
+        /// 获取图标颜色对应的CSS类名
+        /// </summary>
+        /// <param name="color">颜色配置</param>
+        /// <returns>CSS类名</returns>
+        private string GetIconColorClass(string color)
+        {
+            if (string.IsNullOrEmpty(color))
+            {
+                return "";
+            }
+
+            // 支持常见的语义化颜色名称
+            return color.ToLower() switch
+            {
+                "primary" => "text-primary",
+                "secondary" => "text-secondary", 
+                "success" => "text-success",
+                "danger" => "text-danger",
+                "warning" => "text-warning",
+                "info" => "text-info",
+                "light" => "text-light",
+                "dark" => "text-dark",
+                "muted" => "text-muted",
+                // 对于自定义颜色值（如 #ff0000），不处理，让用户通过 ClassName 自定义
+                _ => color.StartsWith("#") || color.StartsWith("rgb") || color.StartsWith("hsl") 
+                     ? "" 
+                     : $"text-{color}" // 尝试构建 text-{color} 类名
+            };
         }
 
         /// <summary>

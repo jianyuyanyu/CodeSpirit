@@ -33,6 +33,9 @@ namespace CodeSpirit.Amis
             services.AddScoped<AmisCRUDConfigBuilder>();
             services.AddScoped<StatisticsConfigBuilder>();
             services.AddScoped<AmisContext>();
+            
+            // 注册AI表单增强器
+            services.AddScoped<AiFormFieldEnhancer>();
 
             // 注册工厂
             services.AddTransient<IAmisFieldFactory, AmisInputImageFieldFactory>();

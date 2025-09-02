@@ -11,6 +11,16 @@ namespace CodeSpirit.Amis.Form.Fields
     /// </summary>
     public class AmisInputTextFieldFactory : AmisFieldAttributeFactoryBase
     {
+        private readonly AiFormFieldEnhancer _aiEnhancer;
+
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="aiEnhancer">AI表单增强器</param>
+        public AmisInputTextFieldFactory(AiFormFieldEnhancer aiEnhancer)
+        {
+            _aiEnhancer = aiEnhancer;
+        }
         /// <summary>
         /// 判断是否能处理指定类型的特性
         /// </summary>
@@ -115,9 +125,41 @@ namespace CodeSpirit.Amis.Form.Fields
                     // 将附加组件添加到字段配置中
                     field["addOn"] = addOn;
                 }
+                else
+                {
+                    // 如果没有手动配置addOn，尝试自动添加AI填充功能
+                    // 需要从上下文获取DTO类型信息
+                    var dtoType = GetDtoTypeFromContext(member);
+                    if (dtoType != null && dtoType != typeof(object))
+                    {
+                        field = _aiEnhancer.EnhanceField(field, member, dtoType);
+                    }
+                }
             }
 
             return field;
+        }
+
+        /// <summary>
+        /// 从上下文获取DTO类型
+        /// </summary>
+        /// <param name="member">成员信息</param>
+        /// <returns>DTO类型</returns>
+        private Type GetDtoTypeFromContext(ICustomAttributeProvider member)
+        {
+            // 如果是属性，获取其声明类型
+            if (member is PropertyInfo property)
+            {
+                return property.DeclaringType;
+            }
+
+            // 如果是参数，尝试获取其声明方法的类型
+            if (member is ParameterInfo parameter)
+            {
+                return parameter.Member?.DeclaringType;
+            }
+
+            return typeof(object); // 返回默认类型而不是null
         }
     }
 }

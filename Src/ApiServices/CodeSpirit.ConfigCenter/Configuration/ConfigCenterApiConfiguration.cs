@@ -4,7 +4,10 @@ using CodeSpirit.ConfigCenter.Data.Seeders;
 using CodeSpirit.ConfigCenter.Hubs;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.ConfigCenter.Services.Implementations;
+using CodeSpirit.ConfigCenter.Services.Settings;
+using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
+using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Builder;
@@ -52,6 +55,12 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
         // 添加多租户支持
         services.AddCodeSpiritMultiTenant(configuration);
         
+        // 添加LLM服务
+        AddLLMServices(services);
+        
+        // 添加AI表单填充服务（包含自动端点功能）
+        services.AddAiFormFillEndpoints();
+        
         // 添加SignalR服务
         services.AddSignalR()
             .AddNewtonsoftJsonProtocol(options =>
@@ -76,8 +85,21 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
         
         // 使用聚合器
         app.UseCodeSpiritAggregator();
+
+        // 使用AI表单填充自动端点
+        app.UseAiFormFillEndpoints();
         
         return Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// 添加LLM服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    private static void AddLLMServices(IServiceCollection services)
+    {
+        // 添加LLM服务，使用配置中心专用的设置提供者
+        services.AddLLMServices<ConfigCenterLLMSettingsProvider>();
     }
     
     /// <summary>

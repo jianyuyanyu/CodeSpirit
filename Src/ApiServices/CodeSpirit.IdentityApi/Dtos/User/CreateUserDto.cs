@@ -1,7 +1,11 @@
 ﻿using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Data.Models;
 using System.ComponentModel;
 
+namespace CodeSpirit.IdentityApi.Dtos.User;
+
+[AiFormFill(TriggerField = nameof(Name), IgnoreFields = new[] { nameof(AvatarUrl), nameof(Roles) })]
 public class CreateUserDto
 {
     [Required]
@@ -14,6 +18,7 @@ public class CreateUserDto
     [MaxLength(256)]
     [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "用户名只能包含字母、数字和下划线。")]
     [Description("用户名只能包含字母、数字和下划线。")]
+    [AiFieldFill(Weight = 3, Priority = 1)]
     public string UserName { get; set; }
 
     [MaxLength(18)]

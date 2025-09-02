@@ -1,5 +1,6 @@
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ConfigCenter.Models.Enums;
+using CodeSpirit.Core.Attributes;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
@@ -8,6 +9,7 @@ namespace CodeSpirit.ConfigCenter.Dtos.Config;
 /// <summary>
 /// 创建配置 DTO
 /// </summary>
+[AiFormFill(TriggerField = nameof(Key), ApiEndpoint = "ai-fill", IgnoreFields = new[] { nameof(AppId), nameof(Environment) })]
 public class CreateConfigDto
 {
     /// <summary>
@@ -41,7 +43,9 @@ public class CreateConfigDto
     [Required]
     [StringLength(4000)]
     [DisplayName("配置值")]
+    [Description("根据配置键提供合适的配置值")]
     [AmisTextareaField(MinRows = 3, MaxRows = 6, ShowCounter = true, MaxLength = 500)]
+    [AiFieldFill(Weight = 3, Priority = 1)]
     public required string Value { get; set; }
 
     /// <summary>
@@ -63,6 +67,8 @@ public class CreateConfigDto
     /// </summary>
     [StringLength(200)]
     [DisplayName("配置描述")]
+    [Description("详细描述配置项的用途和作用")]
+    [AiFieldFill(Weight = 2, Priority = 2)]
     public string Description { get; set; } = string.Empty;
 
     /// <summary>

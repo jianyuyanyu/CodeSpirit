@@ -69,8 +69,8 @@ public static class AiFormFillEndpointExtensions
         // 注册端点扫描器
         services.AddSingleton<AiFormFillEndpointScanner>();
         
-        // 确保AI表单填充服务已注册
-        services.AddAiFormFill();
+        // 确保AI表单填充服务已注册（带LLM依赖检查）
+        services.AddAiFormFillWithLLMCheck();
 
         return services;
     }

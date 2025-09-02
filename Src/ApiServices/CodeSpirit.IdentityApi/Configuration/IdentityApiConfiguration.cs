@@ -1,29 +1,22 @@
 using Audit.Core;
 using Audit.WebApi;
 using CodeSpirit.Aggregator;
-using CodeSpirit.Amis;
 using CodeSpirit.Charts.Extensions;
-using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
-using CodeSpirit.IdentityApi.Data.Seeders;
 using CodeSpirit.IdentityApi.EventHandlers;
-using CodeSpirit.IdentityApi.Jwt;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.IdentityApi.Services.Settings;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Shared.EventBus.Events;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
-
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using CodeSpirit.LLM;
 
 
 namespace CodeSpirit.IdentityApi.Configuration;
@@ -64,6 +57,9 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         // 添加自定义业务服务
         AddCustomServices(services);
         
+        // 添加LLM服务
+        AddLLMServices(services);
+        
         // 添加Identity服务
         AddIdentityServices(services, configuration);
         
@@ -85,6 +81,9 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         // 注册事件处理器
         services.AddTenantAwareEventHandler<UserCreatedOrUpdatedEvent, UserCreatedOrUpdatedEventHandler>();
         services.AddTenantAwareEventHandler<UserDeletedEvent, UserDeletedEventHandler>();
+
+        // 添加AI表单填充服务（包含自动端点功能）
+        services.AddAiFormFillEndpoints();
     }
     
     /// <summary>
@@ -122,7 +121,10 @@ public class IdentityApiConfiguration : BaseApiConfiguration
     {
         // 使用聚合器（在导航之后）
         app.UseCodeSpiritAggregator();
-        
+
+        // 使用AI表单填充自动端点
+        app.UseAiFormFillEndpoints();
+
         return Task.CompletedTask;
     }
     
@@ -161,6 +163,16 @@ public class IdentityApiConfiguration : BaseApiConfiguration
 
         // 注册自定义授权处理程序（这个需要特殊处理，因为是 Identity 框架的组件）
         services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
+    }
+    
+    /// <summary>
+    /// 添加LLM服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    private static void AddLLMServices(IServiceCollection services)
+    {
+        // 添加LLM服务，使用身份认证系统专用的设置提供者
+        services.AddLLMServices<IdentityLLMSettingsProvider>();
     }
     
     /// <summary>

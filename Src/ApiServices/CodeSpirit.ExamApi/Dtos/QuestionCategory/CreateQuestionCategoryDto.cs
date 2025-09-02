@@ -1,12 +1,14 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
 
 namespace CodeSpirit.ExamApi.Dtos.QuestionCategory;
 
 /// <summary>
 /// 创建题目分类DTO
 /// </summary>
+[AiFormFill(TriggerField = nameof(Name), ApiEndpoint = "ai-fill")]
 public class CreateQuestionCategoryDto
 {
     /// <summary>
@@ -22,7 +24,9 @@ public class CreateQuestionCategoryDto
     /// </summary>
     [StringLength(500, ErrorMessage = "分类描述最大长度为500")]
     [DisplayName("描述")]
+    [Description("详细描述题目分类的特点和用途")]
     [AmisTextareaField(MaxLength = 500, ShowCounter = true)]
+    [AiFieldFill(Weight = 2, Priority = 1)]
     public string? Description { get; set; }
     
     /// <summary>

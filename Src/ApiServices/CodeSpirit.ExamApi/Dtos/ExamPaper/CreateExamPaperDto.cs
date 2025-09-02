@@ -1,5 +1,8 @@
 ﻿using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.ExamApi.Data.Models.Enums;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamPaper;
 
@@ -7,6 +10,7 @@ namespace CodeSpirit.ExamApi.Dtos.ExamPaper;
 /// 试卷创建DTO
 /// </summary>
 [DisplayName("创建试卷")]
+[AiFormFill(TriggerField = nameof(Name), ApiEndpoint = "ai-fill")]
 public class CreateExamPaperDto
 {
     /// <summary>
@@ -22,6 +26,8 @@ public class CreateExamPaperDto
     /// </summary>
     [DisplayName("试卷描述")]
     [StringLength(500, ErrorMessage = "试卷描述不能超过500个字符")]
+    [Description("详细描述试卷的用途、考试范围和特点")]
+    [AiFieldFill(Weight = 2, Priority = 1)]
     public string? Description { get; set; }
 
     /// <summary>

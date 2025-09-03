@@ -1,0 +1,12 @@
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Logging;
+global using Microsoft.AspNetCore.Http;
+global using Microsoft.AspNetCore.Builder;
+global using System.ComponentModel;
+global using System.ComponentModel.DataAnnotations;
+global using System.Reflection;
+global using Newtonsoft.Json;
+global using Newtonsoft.Json.Linq;
+global using CodeSpirit.Core;
+global using CodeSpirit.Core.Attributes;
+global using CodeSpirit.Core.DependencyInjection;

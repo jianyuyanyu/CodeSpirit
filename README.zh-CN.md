@@ -169,6 +169,47 @@ graph TB
 | **身份认证** | JWT + OAuth2.0（RBAC/ABAC混合模型）         |
 | **数据访问** | Repository Pattern + CQRS（部分模块）       |
 
+## 项目结构
+
+### 核心架构
+
+```
+Src/
+├── ApiServices/                          # API服务层
+│   ├── CodeSpirit.AiCardsApi/           # AI卡片API服务
+│   ├── CodeSpirit.ConfigCenter/         # 配置中心API
+│   ├── CodeSpirit.ExamApi/              # 考试系统API
+│   ├── CodeSpirit.FileStorageApi/       # 文件存储API
+│   ├── CodeSpirit.IdentityApi/          # 身份认证API
+│   ├── CodeSpirit.MessagingApi/         # 消息服务API
+│   └── CodeSpirit.SurveyApi/            # 问卷调查API
+├── Components/                           # 独立组件库
+│   ├── CodeSpirit.Aggregator/           # 数据聚合器组件
+│   ├── CodeSpirit.AiFormFill/           # AI表单智能填充组件
+│   ├── CodeSpirit.Amis/                 # AMIS界面生成引擎
+│   ├── CodeSpirit.Audit/                # 审计追踪组件
+│   ├── CodeSpirit.Authorization/        # 权限管理组件
+│   ├── CodeSpirit.Charts/               # 智能图表组件
+│   ├── CodeSpirit.ConfigCenter.Client/ # 配置中心客户端
+│   ├── CodeSpirit.LLM/                  # 大语言模型集成组件
+│   ├── CodeSpirit.Messaging/            # 消息队列组件
+│   ├── CodeSpirit.MultiTenant/          # 多租户组件
+│   ├── CodeSpirit.Navigation/           # 导航组件
+│   ├── CodeSpirit.PdfGeneration/        # PDF生成组件
+│   ├── CodeSpirit.Settings/             # 设置管理组件
+│   ├── CodeSpirit.Shared/               # 组件共享库
+│   └── CodeSpirit.UdlCards/             # UDL卡片组件
+├── CodeSpirit.AppHost/                   # Aspire应用宿主（启动项目）
+├── CodeSpirit.Core/                      # 核心框架定义
+├── CodeSpirit.ServiceDefaults/           # 服务默认配置
+├── CodeSpirit.Shared/                    # 全局共享库
+├── CodeSpirit.Web/                       # Web前端项目
+└── Tests/                                # 测试项目集合
+    ├── ApiServices/                      # API服务测试
+    ├── Components/                       # 组件测试
+    └── CodeSpirit.*.Tests/               # 各模块单元测试
+```
+
 ## 功能架构全景
 
 ### 一、智能界面生成引擎
@@ -392,7 +433,7 @@ https://codespirit-app.xin-lai.com/
 
 ### 🔧 核心组件
 
-19. [🤖 AI表单智能填充组件使用指南](./Docs/03-Core-Components/CodeSpirit.AI表单智能填充组件使用指南.md) - AI驱动的表单填充，支持全局和字段触发模式，零代码自动端点生成
+19. [🤖 AI表单智能填充组件使用指南](./Docs/03-Core-Components/CodeSpirit.AI表单智能填充组件使用指南.md) - 独立AI表单填充组件，支持全局和字段触发模式，零代码自动端点生成，NuGet就绪架构
 20. [🧭 Navigation导航组件](./Docs/03-Core-Components/CodeSpirit.Navigation导航组件使用指南.md) - 智能导航系统，支持多平台、权限过滤和上下文感知
 21. [🔗 聚合器使用指南](./Docs/03-Core-Components/CodeSpirit.Aggregator聚合器使用指南.md) - 数据聚合和字段替换
 22. [⚙️ 设置管理组件](./Docs/03-Core-Components/CodeSpirit.Settings设置管理组件使用指南.md) - 配置管理解决方案

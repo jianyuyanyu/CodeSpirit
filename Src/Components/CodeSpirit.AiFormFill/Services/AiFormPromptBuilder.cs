@@ -1,13 +1,7 @@
-using CodeSpirit.Core.Attributes;
-using CodeSpirit.Core.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Reflection;
+
 using System.Text;
 
-namespace CodeSpirit.Shared.Services;
+namespace CodeSpirit.AiFormFill.Services;
 
 /// <summary>
 /// AI表单提示词构建器

@@ -1,6 +1,7 @@
 using Audit.Core;
 using Audit.WebApi;
 using CodeSpirit.Aggregator;
+using CodeSpirit.AiFormFill;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;

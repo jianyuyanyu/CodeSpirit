@@ -1,15 +1,7 @@
-using CodeSpirit.Core;
-using CodeSpirit.Core.Attributes;
-using CodeSpirit.Core.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Reflection;
+
 using System.Text.RegularExpressions;
 
-namespace CodeSpirit.Shared.Services;
+namespace CodeSpirit.AiFormFill.Services;
 
 /// <summary>
 /// AI表单响应解析器
@@ -191,7 +183,8 @@ public class AiFormResponseParser : IScopedDependency
         
         return dtoType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(p => p.CanWrite && 
-                       p.Name != aiFormFillAttr?.TriggerField && // 排除触发字段
+                       // 全局模式不排除触发字段，传统模式排除触发字段
+                       (aiFormFillAttr?.IsGlobalMode == true || p.Name != aiFormFillAttr?.TriggerField) && 
                        !ignoreFields.Contains(p.Name) && // 排除忽略字段
                        IsAiFillEnabled(p)) // 检查字段是否启用AI填充
             .ToList();

@@ -1,4 +1,5 @@
 using CodeSpirit.Aggregator;
+using CodeSpirit.AiFormFill;
 using CodeSpirit.ConfigCenter.Data;
 using CodeSpirit.ConfigCenter.Data.Seeders;
 using CodeSpirit.ConfigCenter.Hubs;

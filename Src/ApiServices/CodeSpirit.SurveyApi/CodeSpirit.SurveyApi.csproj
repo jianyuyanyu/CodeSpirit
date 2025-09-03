@@ -36,6 +36,7 @@
 		<ProjectReference Include="..\..\Components\CodeSpirit.Settings\CodeSpirit.Settings.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.LLM\CodeSpirit.LLM.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.Charts\CodeSpirit.Charts.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj" />
 	</ItemGroup>
 
 </Project>

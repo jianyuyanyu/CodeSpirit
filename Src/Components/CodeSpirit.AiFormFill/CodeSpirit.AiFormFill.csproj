@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <PackageId>CodeSpirit.AiFormFill</PackageId>
+        <Version>1.0.0</Version>
+        <Authors>CodeSpirit Team</Authors>
+        <Description>CodeSpirit AI表单智能填充组件，提供基于LLM的表单内容自动生成功能</Description>
+        <PackageTags>CodeSpirit;AI;Form;LLM;AutoFill</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
+        <ProjectReference Include="..\CodeSpirit.LLM\CodeSpirit.LLM.csproj" />
+    </ItemGroup>
+
+</Project>

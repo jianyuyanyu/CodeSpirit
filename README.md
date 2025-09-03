@@ -151,6 +151,47 @@ graph TB
 | **Identity Authentication** | JWT + OAuth2.0 (RBAC/ABAC hybrid model) |
 | **Data Access** | Repository Pattern + CQRS (partial modules) |
 
+## Project Structure
+
+### Core Architecture
+
+```
+Src/
+├── ApiServices/                          # API Service Layer
+│   ├── CodeSpirit.AiCardsApi/           # AI Cards API Service
+│   ├── CodeSpirit.ConfigCenter/         # Configuration Center API
+│   ├── CodeSpirit.ExamApi/              # Exam System API
+│   ├── CodeSpirit.FileStorageApi/       # File Storage API
+│   ├── CodeSpirit.IdentityApi/          # Identity Authentication API
+│   ├── CodeSpirit.MessagingApi/         # Messaging Service API
+│   └── CodeSpirit.SurveyApi/            # Survey System API
+├── Components/                           # Independent Component Library
+│   ├── CodeSpirit.Aggregator/           # Data Aggregator Component
+│   ├── CodeSpirit.AiFormFill/           # AI Form Fill Component
+│   ├── CodeSpirit.Amis/                 # AMIS UI Generation Engine
+│   ├── CodeSpirit.Audit/                # Audit Tracking Component
+│   ├── CodeSpirit.Authorization/        # Authorization Management Component
+│   ├── CodeSpirit.Charts/               # Smart Chart Component
+│   ├── CodeSpirit.ConfigCenter.Client/ # Configuration Center Client
+│   ├── CodeSpirit.LLM/                  # Large Language Model Integration
+│   ├── CodeSpirit.Messaging/            # Message Queue Component
+│   ├── CodeSpirit.MultiTenant/          # Multi-Tenancy Component
+│   ├── CodeSpirit.Navigation/           # Navigation Component
+│   ├── CodeSpirit.PdfGeneration/        # PDF Generation Component
+│   ├── CodeSpirit.Settings/             # Settings Management Component
+│   ├── CodeSpirit.Shared/               # Component Shared Library
+│   └── CodeSpirit.UdlCards/             # UDL Cards Component
+├── CodeSpirit.AppHost/                   # Aspire Application Host (Startup Project)
+├── CodeSpirit.Core/                      # Core Framework Definitions
+├── CodeSpirit.ServiceDefaults/           # Service Default Configuration
+├── CodeSpirit.Shared/                    # Global Shared Library
+├── CodeSpirit.Web/                       # Web Frontend Project
+└── Tests/                                # Test Project Collection
+    ├── ApiServices/                      # API Service Tests
+    ├── Components/                       # Component Tests
+    └── CodeSpirit.*.Tests/               # Module Unit Tests
+```
+
 ## Functional Architecture Overview
 
 ### I. Intelligent UI Generation Engine
@@ -374,7 +415,7 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 
 ### 🔧 Core Components
 
-19. [🤖 AI Form Intelligent Fill Component Usage Guide](./Docs/03-Core-Components/CodeSpirit.AI表单智能填充组件使用指南.md) - AI-powered form filling with global and field-trigger modes, zero-code auto endpoint generation
+19. [🤖 AI Form Intelligent Fill Component Usage Guide](./Docs/03-Core-Components/CodeSpirit.AI表单智能填充组件使用指南.md) - Independent AI form filling component with global and field-trigger modes, zero-code auto endpoint generation, NuGet-ready architecture
 20. [🧭 Navigation Component](./Docs/03-Core-Components/CodeSpirit.Navigation导航组件使用指南.md) - Smart navigation system with multi-platform, permission filtering and context awareness
 21. [🔗 Aggregator Usage Guide](./Docs/03-Core-Components/CodeSpirit.Aggregator聚合器使用指南.md) - Data aggregation and field replacement
 22. [⚙️ Settings Management Component](./Docs/03-Core-Components/CodeSpirit.Settings设置管理组件使用指南.md) - Configuration management solution

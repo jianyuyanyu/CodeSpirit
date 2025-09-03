@@ -1,8 +1,15 @@
-# CodeSpirit.AI表单智能填充组件使用指南
+# CodeSpirit.AiFormFill 独立组件使用指南
 
 ## 概述
 
-CodeSpirit.AI表单智能填充组件是一个基于LLM的通用表单内容生成解决方案，能够根据用户输入的关键信息，自动生成表单中其他字段的建议内容。该组件通过特性驱动的方式，实现了AI内容填充的标准化和自动化，并提供了革命性的零配置自动端点生成能力。
+`CodeSpirit.AiFormFill` 是一个独立的、可复用的AI表单智能填充组件，基于LLM的通用表单内容生成解决方案。该组件能够根据用户输入的关键信息，自动生成表单中其他字段的建议内容。通过特性驱动的方式，实现了AI内容填充的标准化和自动化，并提供了革命性的零配置自动端点生成能力。
+
+### 组件特点
+
+- **独立组件**：可作为NuGet包独立发布和使用
+- **零依赖侵入**：仅依赖`CodeSpirit.Core`和`CodeSpirit.LLM`
+- **完全自包含**：包含所有必需的服务、中间件和扩展方法
+- **即插即用**：简单的服务注册即可在任何CodeSpirit项目中使用
 
 ## 核心特性
 
@@ -219,25 +226,52 @@ AI增强器已无缝集成到Amis字段工厂中：
 - **智能配置**：根据DTO配置自动生成API调用参数
 - **向后兼容**：保持与现有手动配置的完全兼容
 
-### 7. 服务注册与配置
+### 7. 组件安装与配置
 
-#### 服务注册
-系统提供简化的服务注册方式：
+#### 组件安装
+将`CodeSpirit.AiFormFill`组件添加到项目中：
 
-```csharp
-// 方案一：基础服务注册
-services.AddAiFormFill();
-
-// 方案二：自动端点服务注册（推荐）
-services.AddAiFormFillEndpoints();
+```xml
+<!-- 项目文件中添加引用 -->
+<ProjectReference Include="..\..\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj" />
 ```
 
-#### 中间件配置
-在应用程序启动时注册AI填充中间件：
+#### 服务注册
+在API项目的配置类中注册服务：
 
 ```csharp
-// 注册AI填充自动端点中间件
-app.UseAiFormFillEndpoints();
+using CodeSpirit.AiFormFill;
+
+public static class ApiConfiguration
+{
+    public static void ConfigureServices(IServiceCollection services)
+    {
+        // 方案一：基础服务注册
+        services.AddAiFormFill();
+
+        // 方案二：自动端点服务注册（推荐）
+        services.AddAiFormFillEndpoints();
+        
+        // 注意：使用AddAiFormFillEndpoints时会自动验证LLM服务依赖
+    }
+    
+    public static void Configure(WebApplication app)
+    {
+        // 注册AI填充自动端点中间件
+        app.UseAiFormFillEndpoints();
+    }
+}
+```
+
+#### 依赖要求
+组件需要以下依赖服务：
+
+```csharp
+// 必须先注册LLM服务
+services.AddLLMService(configuration);
+
+// 然后注册AI表单填充服务
+services.AddAiFormFillEndpoints(); // 会自动验证LLM服务是否已注册
 ```
 
 ## 使用模式
@@ -384,6 +418,9 @@ public class GenerateSurveyRequest
 适用于需要自定义业务逻辑的场景：
 
 ```csharp
+using CodeSpirit.AiFormFill.Services;
+using CodeSpirit.AiFormFill.Extensions;
+
 [DisplayName("问卷管理")]
 public class SurveysController : ApiControllerBase
 {
@@ -457,63 +494,92 @@ public class SurveysController : ApiControllerBase
 - **统一格式**：所有端点使用相同的请求/响应格式
 - **自动验证**：内置参数验证和错误处理
 
-## 项目结构和文件位置
+## 组件架构和文件结构
 
-### 核心文件分布
+### 独立组件结构
 
 ```
-CodeSpirit/
+CodeSpirit.AiFormFill/                          # 独立AI填充组件
+├── CodeSpirit.AiFormFill.csproj               # 组件项目文件
+├── GlobalUsings.cs                             # 全局using声明
+├── README.md                                   # 组件使用说明
+├── ServiceCollectionExtensions.cs             # 服务注册扩展
+├── Models/
+│   └── AiFormFillEndpointInfo.cs              # 端点信息模型
+├── Services/
+│   ├── IAiFormFillService.cs                  # AI填充服务接口
+│   ├── AiFormFillService.cs                   # AI填充服务实现
+│   ├── AiFormPromptBuilder.cs                 # 提示词构建器
+│   ├── AiFormResponseParser.cs                # 响应解析器
+│   └── AiFormFillEndpointScanner.cs           # 自动端点扫描器
+├── Middleware/
+│   └── AiFormFillMiddleware.cs                # AI填充中间件
+└── Extensions/
+    └── AiFormFillControllerExtensions.cs      # 控制器扩展方法
+```
+
+### 项目集成结构
+
+```
+CodeSpirit项目/
 ├── Src/
-│   ├── CodeSpirit.Shared/                       # 共享组件 - 核心AI填充功能
-│   │   ├── Services/
-│   │   │   ├── AiFormFillService.cs                 # AI表单填充服务
-│   │   │   ├── AiFormPromptBuilder.cs               # 提示词构建器
-│   │   │   ├── AiFormResponseParser.cs              # 响应解析器
-│   │   │   └── AiFormFillEndpointScanner.cs         # 自动端点扫描器
-│   │   ├── Middleware/
-│   │   │   └── AiFormFillMiddleware.cs              # AI填充中间件
-│   │   └── Extensions/
-│   │       ├── AiFormFillControllerExtensions.cs    # 控制器扩展（方案一）
-│   │       ├── AiFormFillEndpointExtensions.cs      # 端点扩展（方案二）
-│   │       └── AiFormFillServiceCollectionExtensions.cs # 服务注册扩展
+│   ├── Components/
+│   │   ├── CodeSpirit.AiFormFill/              # 独立AI填充组件
+│   │   └── CodeSpirit.Amis/                    # Amis组件 - UI增强实现
+│   │       └── Form/Fields/
+│   │           ├── AiFormFieldEnhancer.cs      # AI表单字段增强器
+│   │           └── AmisInputTextFieldFactory.cs # 集成AI功能的文本字段工厂
 │   │
 │   ├── ApiServices/
-│   │   ├── CodeSpirit.ExamApi/                  # 考试系统API
+│   │   ├── CodeSpirit.ExamApi/                 # 考试系统API
+│   │   │   ├── CodeSpirit.ExamApi.csproj       # 引用AiFormFill组件
+│   │   │   ├── Configuration/
+│   │   │   │   └── ExamApiConfiguration.cs     # 注册AI填充服务
 │   │   │   ├── Controllers/
-│   │   │   │   ├── QuestionsController.cs           # 题目控制器（零AI代码）
-│   │   │   │   └── ExamPapersController.cs          # 试卷控制器（零AI代码）
+│   │   │   │   ├── QuestionsController.cs      # 题目控制器（零AI代码）
+│   │   │   │   └── ExamPapersController.cs     # 试卷控制器（零AI代码）
 │   │   │   └── Dtos/
-│   │   │       ├── CreateQuestionDto.cs             # 配置了AI填充特性
-│   │   │       └── GenerateRandomExamPaperDto.cs    # 配置了AI填充特性
+│   │   │       ├── CreateQuestionDto.cs        # 配置了AI填充特性
+│   │   │       └── GenerateRandomExamPaperDto.cs # 配置了AI填充特性
 │   │   │
-│   │   └── CodeSpirit.SurveyApi/                # 问卷系统API
+│   │   └── CodeSpirit.SurveyApi/               # 问卷系统API
+│   │       ├── CodeSpirit.SurveyApi.csproj     # 引用AiFormFill组件
+│   │       ├── Configuration/
+│   │       │   └── SurveyApiConfiguration.cs   # 注册AI填充服务
 │   │       ├── Controllers/
-│   │       │   └── SurveysController.cs             # 问卷控制器（零AI代码）
+│   │       │   └── SurveysController.cs        # 问卷控制器（零AI代码）
 │   │       └── Dtos/
-│   │           ├── CreateSurveyDto.cs               # 配置了AI填充特性
-│   │           └── GenerateSurveyRequest.cs         # 配置了AI填充特性
+│   │           ├── CreateSurveyDto.cs          # 配置了AI填充特性
+│   │           └── GenerateSurveyRequest.cs    # 配置了AI填充特性
 │   │
-│   └── Components/
-│       └── CodeSpirit.Amis/                     # Amis组件 - UI增强实现
-│           └── Form/Fields/
-│               ├── AiFormFieldEnhancer.cs           # AI表单字段增强器
-│               └── AmisInputTextFieldFactory.cs     # 集成AI功能的文本字段工厂
+│   └── CodeSpirit.Core/                        # 核心组件
+│       └── Attributes/
+│           ├── AiFormFillAttribute.cs          # AI填充特性定义
+│           └── AiFieldFillAttribute.cs         # AI字段特性定义
 ```
 
 ### 组件职责划分
 
-1. **CodeSpirit.Shared项目**
-   - **核心AI填充服务**：提供通用的AI表单填充功能
+1. **CodeSpirit.AiFormFill独立组件**
+   - **完全自包含**：包含所有AI填充相关的服务和中间件
+   - **零依赖侵入**：仅依赖CodeSpirit.Core和CodeSpirit.LLM
    - **自动端点扫描器**：启动时自动发现AI填充DTO
    - **智能中间件**：拦截并自动处理AI填充请求
    - **控制器扩展**：为方案一提供扩展方法支持
+   - **NuGet就绪**：可独立打包发布
 
-2. **CodeSpirit.Amis组件**
+2. **CodeSpirit.Core组件**
+   - **特性定义**：提供AiFormFillAttribute和AiFieldFillAttribute
+   - **基础接口**：提供核心接口和基类
+
+3. **CodeSpirit.Amis组件**
    - **UI自动增强**：为触发字段自动添加AI按钮
    - **智能路径推断**：自动生成正确的API调用路径
    - **无缝集成**：与现有字段工厂完美融合
 
-3. **业务API项目**（如CodeSpirit.ExamApi、CodeSpirit.SurveyApi）
+4. **业务API项目**（如CodeSpirit.ExamApi、CodeSpirit.SurveyApi）
+   - **简单引用**：仅需添加对AiFormFill组件的引用
+   - **服务注册**：在配置类中注册AI填充服务
    - **零AI代码**：控制器中无需任何AI相关代码
    - **DTO配置**：仅需在DTO上添加AI填充特性
    - **专注业务**：开发者只需关注核心业务逻辑
@@ -788,7 +854,6 @@ public interface IAiFormFillService
     Task<List<T>> FillFormsAsync<T>(List<string> triggerValues) where T : class, new();
 }
 ```
-
 ## 故障排除
 
 ### 1. 常见问题
@@ -817,18 +882,21 @@ public interface IAiFormFillService
 
 ## 总结
 
-CodeSpirit.AI表单智能填充组件提供了一套完整的AI驱动表单填充解决方案，通过特性驱动的方式实现了高度的自动化和标准化。该组件具有以下优势：
+`CodeSpirit.AiFormFill` 独立组件提供了一套完整的AI驱动表单填充解决方案，通过特性驱动的方式实现了高度的自动化和标准化。该组件具有以下优势：
 
 ### 核心优势
 
-1. **革命性自动化**：方案二实现了真正的零配置、零代码AI填充功能
-2. **双模式支持**：支持全局AI填充模式和字段触发模式，满足不同使用场景
-3. **工业级简化**：从15行+控制器代码简化到0行，100%消除样板代码
-4. **智能自动化**：自动读取字段描述、验证规则，自动生成UI增强和API端点
-5. **扩展性强**：支持自定义提示词、字段配置等高级功能
-6. **性能优秀**：内置缓存和优化机制，支持异步处理
-7. **易于维护**：统一的架构和清晰的职责分离，向后兼容现有配置
-8. **用户体验佳**：自动添加AI按钮和加载状态，全局模式支持自定义提示词
+1. **独立组件架构**：完全自包含的独立组件，可作为NuGet包发布和复用
+2. **零依赖侵入**：仅依赖CodeSpirit.Core和CodeSpirit.LLM，最小化依赖关系
+3. **革命性自动化**：方案二实现了真正的零配置、零代码AI填充功能
+4. **双模式支持**：支持全局AI填充模式和字段触发模式，满足不同使用场景
+5. **工业级简化**：从15行+控制器代码简化到0行，100%消除样板代码
+6. **智能自动化**：自动读取字段描述、验证规则，自动生成UI增强和API端点
+7. **即插即用**：简单的项目引用和服务注册即可在任何CodeSpirit项目中使用
+8. **扩展性强**：支持自定义提示词、字段配置等高级功能
+9. **性能优秀**：内置缓存和优化机制，支持异步处理
+10. **易于维护**：统一的架构和清晰的职责分离，向后兼容现有配置
+11. **用户体验佳**：自动添加AI按钮和加载状态，全局模式支持自定义提示词
 
 ### 方案二革命性改进
 
@@ -856,7 +924,14 @@ CodeSpirit.AI表单智能填充组件提供了一套完整的AI驱动表单填�
 - **零维护成本**：系统自动处理路由、验证、错误处理等所有方面
 - **完全消除样板代码**：从根本上解决了重复代码问题
 
-通过方案二的革命性改进和双模式支持，CodeSpirit平台的AI表单填充功能达到了**工业级的自动化水平**，为开发者提供了极致简化的使用体验，真正实现了"**一个特性，全自动AI填充**"的愿景！
+通过独立组件架构和方案二的革命性改进，`CodeSpirit.AiFormFill`组件达到了**工业级的自动化水平**，为开发者提供了极致简化的使用体验，真正实现了"**一个组件，全自动AI填充**"的愿景！
+
+### 独立组件优势总结
+
+- **完全自包含**：所有AI填充功能封装在独立组件中，无需修改现有架构
+- **最小化依赖**：仅依赖CodeSpirit.Core和CodeSpirit.LLM，避免循环依赖
+- **即插即用**：简单的项目引用和服务注册即可获得完整AI填充能力
+- **NuGet就绪**：可独立打包发布，支持跨项目复用
 
 ### 双模式总结
 

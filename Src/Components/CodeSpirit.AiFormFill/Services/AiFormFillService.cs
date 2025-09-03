@@ -1,13 +1,8 @@
-using CodeSpirit.Core;
-using CodeSpirit.Core.Attributes;
-using CodeSpirit.Core.DependencyInjection;
+
 using CodeSpirit.LLM;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
-using System.ComponentModel;
-using System.Reflection;
 
-namespace CodeSpirit.Shared.Services;
+namespace CodeSpirit.AiFormFill.Services;
 
 /// <summary>
 /// AI表单填充服务实现
@@ -88,10 +83,13 @@ public class AiFormFillService : IAiFormFillService, IScopedDependency
             var result = await _responseParser.ParseResponseAsync<T>(llmResponse, existingData);
 
             // 设置触发字段的值
-            var triggerProperty = dtoType.GetProperty(aiFormFillAttr.TriggerField);
-            if (triggerProperty != null && triggerProperty.CanWrite)
+            if (!aiFormFillAttr.IsGlobalMode)
             {
-                triggerProperty.SetValue(result, triggerValue);
+                var triggerProperty = dtoType.GetProperty(aiFormFillAttr.TriggerField);
+                if (triggerProperty != null && triggerProperty.CanWrite)
+                {
+                    triggerProperty.SetValue(result, triggerValue);
+                }
             }
 
             // 缓存结果

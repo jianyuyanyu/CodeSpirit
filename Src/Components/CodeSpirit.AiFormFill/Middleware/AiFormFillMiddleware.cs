@@ -1,16 +1,9 @@
-using CodeSpirit.Core;
-using CodeSpirit.Shared.Services;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using CodeSpirit.AiFormFill.Services;
+using CodeSpirit.AiFormFill.Models;
 using Newtonsoft.Json.Serialization;
-using System.ComponentModel;
-using System.Reflection;
 using System.Text;
 
-namespace CodeSpirit.Shared.Middleware;
+namespace CodeSpirit.AiFormFill.Middleware;
 
 /// <summary>
 /// AI表单填充中间件
@@ -126,7 +119,7 @@ public class AiFormFillMiddleware
     /// <param name="requestBody">请求体</param>
     /// <param name="dtoType">DTO类型</param>
     /// <returns>解析后的请求对象和自定义提示词</returns>
-    private (object RequestObject, string CustomPrompt) ParseRequestWithCustomPrompt(string requestBody, Type dtoType)
+    private (object? RequestObject, string CustomPrompt) ParseRequestWithCustomPrompt(string requestBody, Type dtoType)
     {
         try
         {
@@ -220,7 +213,7 @@ public class AiFormFillMiddleware
         IAiFormFillService aiFormFillService, 
         object requestObject, 
         AiFormFillEndpointInfo endpointInfo,
-        string customPrompt = null)
+        string? customPrompt = null)
     {
         string triggerValue;
 
@@ -251,8 +244,8 @@ public class AiFormFillMiddleware
                 throw new InvalidOperationException($"未找到触发字段：{endpointInfo.TriggerField}");
             }
 
-            triggerValue = triggerProperty.GetValue(requestObject)?.ToString();
-            if (string.IsNullOrEmpty(triggerValue?.Trim()))
+            triggerValue = triggerProperty.GetValue(requestObject)?.ToString() ?? string.Empty;
+            if (string.IsNullOrEmpty(triggerValue.Trim()))
             {
                 var displayName = GetDisplayName(triggerProperty);
                 throw new BusinessException($"请先输入{displayName}");
@@ -284,9 +277,9 @@ public class AiFormFillMiddleware
     /// </summary>
     /// <param name="property">属性信息</param>
     /// <returns>显示名称</returns>
-    private string GetDisplayName(System.Reflection.PropertyInfo property)
+    private string GetDisplayName(PropertyInfo property)
     {
-        var displayAttr = property.GetCustomAttribute<System.ComponentModel.DisplayNameAttribute>();
+        var displayAttr = property.GetCustomAttribute<DisplayNameAttribute>();
         return displayAttr?.DisplayName ?? property.Name;
     }
 

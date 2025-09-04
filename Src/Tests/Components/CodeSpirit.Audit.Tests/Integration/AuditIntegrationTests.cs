@@ -83,6 +83,9 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
         // 添加模拟的客户端IP服务
         services.AddSingleton<CodeSpirit.Shared.Services.IClientIpService, MockClientIpService>();
 
+        // 添加模拟的当前用户服务
+        services.AddSingleton<CodeSpirit.Core.ICurrentUser, MockCurrentUser>();
+
         // 添加控制器并注册测试控制器
         services.AddControllers();
     }
@@ -302,6 +305,66 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
         Assert.False(log.AfterData?.Contains("这个不应该被记录") ?? false);
 
         base._output.WriteLine($"自定义审计日志已创建: {JsonSerializer.Serialize(log, base._jsonOptions)}");
+    }
+
+    [Fact]
+    public async Task Options_AnyEndpoint_ShouldNotAuditRequest()
+    {
+        // 安排
+        base._output.WriteLine("测试OPTIONS请求过滤功能 - CORS预检请求不应被审计");
+        AuditService.ClearLogs();
+
+        // 执行 - 发送OPTIONS请求（CORS预检请求）
+        var request = new HttpRequestMessage(HttpMethod.Options, "/api/MethodLevelAudit");
+        request.Headers.Add("Origin", "http://localhost:3000");
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add("Access-Control-Request-Headers", "Content-Type");
+        
+        var response = await base._client.SendAsync(request);
+
+        // 断言
+        // OPTIONS请求可能返回404或其他状态码，这里不验证响应状态
+        base._output.WriteLine($"OPTIONS请求响应状态码: {response.StatusCode}");
+
+        // 验证审计日志 - 应该没有日志被记录
+        var logs = AuditService.GetAuditLogs();
+        base._output.WriteLine($"发送OPTIONS请求后的日志数量: {logs.Count()}");
+        
+        // 应该没有日志，因为OPTIONS请求被过滤了
+        Assert.Empty(logs);
+        
+        base._output.WriteLine("OPTIONS请求成功被过滤，未记录审计日志");
+    }
+
+    [Fact]
+    public async Task Options_MultipleEndpoints_ShouldNotAuditAnyRequest()
+    {
+        // 安排
+        base._output.WriteLine("测试多个OPTIONS请求过滤功能");
+        AuditService.ClearLogs();
+
+        // 执行 - 发送多个OPTIONS请求到不同端点
+        var endpoints = new[] { "/api/MethodLevelAudit", "/api/ControllerLevelAudit", "/api/CustomAudit" };
+        
+        foreach (var endpoint in endpoints)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Options, endpoint);
+            request.Headers.Add("Origin", "http://localhost:3000");
+            request.Headers.Add("Access-Control-Request-Method", "GET");
+            
+            var response = await base._client.SendAsync(request);
+            base._output.WriteLine($"OPTIONS请求到 {endpoint}，响应状态码: {response.StatusCode}");
+        }
+
+        // 断言
+        // 验证审计日志 - 应该没有任何日志被记录
+        var logs = AuditService.GetAuditLogs();
+        base._output.WriteLine($"发送多个OPTIONS请求后的日志数量: {logs.Count()}");
+        
+        // 应该没有日志，因为所有OPTIONS请求都被过滤了
+        Assert.Empty(logs);
+        
+        base._output.WriteLine("所有OPTIONS请求成功被过滤，未记录任何审计日志");
     }
 }
 

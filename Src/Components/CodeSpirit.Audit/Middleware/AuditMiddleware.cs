@@ -614,6 +614,13 @@ public class AuditMiddleware
     /// </summary>
     private bool ShouldSkipAudit(HttpContext context)
     {
+        // 检查是否为OPTIONS请求（CORS预检请求）
+        if (context.Request.Method.Equals("OPTIONS", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogDebug("跳过审计 - OPTIONS请求: {Path}", context.Request.Path.Value);
+            return true;
+        }
+
         // 检查请求路径是否在排除列表中
         var requestPath = context.Request.Path.Value;
 

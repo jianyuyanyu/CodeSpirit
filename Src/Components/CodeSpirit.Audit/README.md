@@ -60,6 +60,16 @@ CodeSpirit.Audit是一个全面的审计组件，提供操作日志记录、消�
 
 在`appsettings.json`中添加以下配置：
 
+### 自动过滤的请求类型
+
+审计组件会自动过滤以下类型的请求，无需额外配置：
+
+- **OPTIONS请求** - CORS预检请求会被自动跳过审计
+- **健康检查路径** - 包含 `/health`、`/metrics` 的路径
+- **Swagger文档** - 包含 `/swagger` 的路径
+- **NoAudit控制器** - 包含 `/NoAudit` 的路径
+- **静态文件** - 通过 `ExcludedPathPrefixes` 配置的路径前缀
+
 ```json
 {
   "Audit": {

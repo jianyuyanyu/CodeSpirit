@@ -10,6 +10,7 @@ CodeSpirit AI表单智能填充组件，提供基于LLM的表单内容自动生�
 - **智能提示词构建**：自动分析DTO结构，生成结构化提示词
 - **完整的缓存机制**：内置智能缓存提升性能
 - **响应解析与验证**：自动解析LLM返回的JSON格式数据
+- **独立LLM配置**：支持为AI表单填充配置专用的LLM设置，包括禁用思考、JSON响应格式等
 
 ## 📦 安装
 
@@ -117,6 +118,12 @@ public class SurveysController : ApiControllerBase
 | `EnableCache` | bool | true | 是否启用缓存 |
 | `CacheExpirationMinutes` | int | 30 | 缓存过期时间（分钟） |
 | `GlobalFillPrompt` | string | "使用AI智能优化表单" | 全局模式提示文本 |
+| `UseIndependentLLM` | bool | false | 是否使用独立的LLM配置 |
+| `LLMSettingsKey` | string | "AiFormFillLLM" | 独立LLM配置的设置键名 |
+| `DisableThinking` | bool | true | 是否禁用思考（enable_thinking: false） |
+| `ResponseFormatType` | string | "json_object" | 响应格式类型 |
+| `Temperature` | double | 0.1 | 温度参数，控制生成内容的随机性 |
+| `TopP` | double | 0.9 | Top-p参数，控制生成内容的多样性 |
 
 ### AiFieldFillAttribute
 
@@ -167,6 +174,74 @@ public class GenerateContentDto
 
 ## 🔧 高级配置
 
+### 独立LLM配置
+
+为AI表单填充配置专用的LLM设置，支持禁用思考、JSON响应格式等高级特性：
+
+#### 1. 配置文件设置
+
+```json
+{
+  "AiFormFillLLM": {
+    "ApiBaseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "ApiKey": "your-api-key",
+    "ModelName": "qwq-plus",
+    "TimeoutSeconds": 120,
+    "MaxTokens": 2048,
+    "DisableThinking": true,
+    "ResponseFormatType": "json_object",
+    "Temperature": 0.1,
+    "TopP": 0.9,
+    "EnableStreaming": false
+  }
+}
+```
+
+#### 2. DTO配置
+
+```csharp
+[AiFormFill(
+    TriggerField = nameof(Topic),
+    UseIndependentLLM = true,
+    LLMSettingsKey = "AiFormFillLLM",
+    DisableThinking = true,
+    ResponseFormatType = "json_object",
+    Temperature = 0.1,
+    TopP = 0.9)]
+public class SmartSurveyDto
+{
+    [Required]
+    [DisplayName("问卷主题")]
+    public string Topic { get; set; } = string.Empty;
+    
+    [DisplayName("问卷描述")]
+    [AiFieldFill(Priority = 1)]
+    public string? Description { get; set; }
+    
+    [DisplayName("目标受众")]
+    [AiFieldFill(Priority = 2)]
+    public string? TargetAudience { get; set; }
+}
+```
+
+#### 3. 服务注册
+
+```csharp
+// Program.cs
+builder.Services.AddLLMServices<YourLLMSettingsProvider>();
+builder.Services.AddAiFormFillEndpoints();
+
+// 可选：配置独立LLM选项
+builder.Services.AddAiFormFillIndependentLLM(options =>
+{
+    options.DefaultSettingsKey = "AiFormFillLLM";
+    options.DefaultDisableThinking = true;
+    options.DefaultResponseFormatType = "json_object";
+    options.DefaultTemperature = 0.1;
+    options.DefaultTopP = 0.9;
+});
+```
+
 ### 自定义提示词模板
 
 ```csharp
@@ -204,6 +279,91 @@ public class DetailedDto
 | `CreateQuestionDto` | `POST /api/survey/questions/ai-fill` | 题目AI填充 |
 | `CreateSurveyDto` | `POST /api/survey/surveys/ai-fill` | 问卷AI填充 |
 | `GenerateContentDto` | `POST /api/content/contents/ai-fill` | 内容AI填充 |
+
+## 🆕 独立LLM配置特性
+
+### 主要优势
+
+1. **专用优化**：为AI表单填充场景专门优化的LLM配置
+2. **禁用思考**：通过 `enable_thinking: false` 提高响应速度和准确性
+3. **JSON格式**：强制 `response_format: {"type": "json_object"}` 确保结构化输出
+4. **精确控制**：独立的温度、Top-p等参数控制
+5. **配置隔离**：不影响全局LLM配置，可以使用不同的模型和API
+
+### 使用场景
+
+- 需要快速、准确的结构化数据生成
+- 对响应格式有严格要求的表单填充
+- 需要使用特定模型（如qwq-plus）进行表单智能填充
+- 希望与其他LLM应用场景隔离配置
+
+### 配置优先级
+
+1. DTO特性中的参数设置（最高优先级）
+2. 独立LLM配置文件中的设置
+3. 全局LLM配置（当UseIndependentLLM=false时）
+
+## 📊 响应内容日志
+
+### 日志配置
+
+为了便于调试和监控，组件提供了详细的日志输出功能：
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "CodeSpirit.AiFormFill": "Information"
+    }
+  }
+}
+```
+
+### 日志内容
+
+- **请求日志**：完整的 LLM API 请求体和参数
+- **响应日志**：API 返回的完整响应内容
+- **解析日志**：JSON 提取和属性设置过程
+- **错误日志**：详细的错误信息和调试数据
+
+### 示例日志输出
+
+```
+[Information] 使用独立AI表单填充LLM配置，设置键：AiFormFillLLM
+[Information] AI表单填充LLM响应内容：{"choices":[{"message":{"content":"{\"description\":\"智能问卷描述\"}"}}]}
+[Information] AI表单填充解析后的结果：{"Topic":"AI调研","Description":"智能问卷描述"}
+[Information] AI表单填充成功设置属性 Description = 智能问卷描述
+```
+
+详细的日志配置和调试指南请参考：[日志配置文档](Examples/LoggingConfiguration.md)
+
+## 🚨 错误处理
+
+### 自动错误检测
+
+组件会自动检测和处理各种错误情况：
+
+- **HTTP 错误状态码**：401、400、429、500 等
+- **网络连接问题**：DNS 解析失败、SSL 证书错误、超时等
+- **JSON 解析错误**：响应格式不正确、字段类型不匹配等
+- **配置错误**：无效的 API 密钥、模型名称等
+- **流式模式要求**：自动检测"只支持流式模式"的模型并重试
+
+### 错误日志输出
+
+所有错误都会输出详细的日志信息，包括：
+
+```
+[Error] AI表单填充API请求失败，状态码: Unauthorized, 错误内容: {"error":{"message":"Invalid API key"}}
+[Error] AI表单填充HTTP请求失败: The SSL connection could not be established
+[Error] AI表单填充请求超时: The operation was canceled.
+[Warning] 检测到模型只支持流式模式，尝试启用流式响应重新请求
+[Information] 使用流式模式重新发送AI表单填充请求
+```
+
+### 错误处理示例
+
+参考 [错误处理示例](Examples/ErrorHandlingExample.cs) 了解如何测试和处理各种错误情况。
 
 ## 📚 依赖关系
 

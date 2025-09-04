@@ -9,7 +9,7 @@ namespace CodeSpirit.SurveyApi.Dtos.Survey;
 /// 生成问卷请求
 /// </summary>
 [DisplayName("生成问卷请求")]
-[AiFormFill(TriggerField = nameof(Topic),ApiEndpoint = "/survey/api/survey/surveys/generate-suggestions")]
+[AiFormFill(TriggerField = nameof(Topic), UseIndependentLLM = true)]
 public class GenerateSurveyRequest
 {
     /// <summary>

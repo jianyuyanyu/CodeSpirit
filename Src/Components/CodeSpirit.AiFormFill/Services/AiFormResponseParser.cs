@@ -33,7 +33,7 @@ public class AiFormResponseParser : IScopedDependency
             // 提取JSON部分
             var jsonContent = ExtractJsonContent(llmResponse);
             
-            _logger.LogDebug("提取的JSON内容：{JsonContent}", jsonContent);
+            _logger.LogInformation("AI表单填充提取的JSON内容：{JsonContent}", jsonContent);
             
             // 解析JSON
             var jsonObject = JsonConvert.DeserializeObject<JObject>(jsonContent);
@@ -64,7 +64,7 @@ public class AiFormResponseParser : IScopedDependency
                         if (convertedValue != null && property.CanWrite)
                         {
                             property.SetValue(result, convertedValue);
-                            _logger.LogDebug("成功设置属性 {PropertyName} = {Value}", property.Name, convertedValue);
+                            _logger.LogInformation("AI表单填充成功设置属性 {PropertyName} = {Value}", property.Name, convertedValue);
                         }
                     }
                     catch (Exception ex)

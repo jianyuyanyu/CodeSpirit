@@ -55,6 +55,42 @@ namespace CodeSpirit.Core.Attributes
         /// 当TriggerField为空时，返回true
         /// </summary>
         public bool IsGlobalMode => string.IsNullOrEmpty(TriggerField);
+
+        /// <summary>
+        /// 是否使用独立的LLM配置
+        /// 当设置为true时，将使用专门的AiFormFill LLM配置而不是全局LLM配置
+        /// </summary>
+        public bool UseIndependentLLM { get; set; } = false;
+
+        /// <summary>
+        /// 独立LLM配置的设置键名
+        /// 当UseIndependentLLM为true时，从此键名获取LLM配置
+        /// </summary>
+        public string LLMSettingsKey { get; set; } = "AiFormFillLLM";
+
+        /// <summary>
+        /// 是否禁用思考（enable_thinking）
+        /// 仅在UseIndependentLLM为true时生效
+        /// </summary>
+        public bool DisableThinking { get; set; } = true;
+
+        /// <summary>
+        /// 响应格式类型
+        /// 仅在UseIndependentLLM为true时生效，如"json_object"
+        /// </summary>
+        public string ResponseFormatType { get; set; } = "json_object";
+
+        /// <summary>
+        /// 温度参数
+        /// 仅在UseIndependentLLM为true时生效，控制生成内容的随机性
+        /// </summary>
+        public double Temperature { get; set; } = 0.1;
+
+        /// <summary>
+        /// Top-p参数
+        /// 仅在UseIndependentLLM为true时生效，控制生成内容的多样性
+        /// </summary>
+        public double TopP { get; set; } = 0.9;
     }
 
     /// <summary>

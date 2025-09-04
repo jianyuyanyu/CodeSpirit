@@ -13,8 +13,9 @@ namespace CodeSpirit.SurveyApi.Dtos.SurveyCategory;
     IgnoreFields = new[] { "ParentId", "OrderIndex", "IsEnabled" },
     //CustomPromptTemplate = "根据分类名称生成合适的分类描述、颜色和图标。请生成符合分类特点的描述，选择合适的十六进制颜色值，以及相应的FontAwesome图标类名。",
     //ApiEndpoint = "/api/survey/SurveyCategories/ai-fill",
-    MaxTokens = 500,
+    MaxTokens = 1000,
     EnableCache = true,
+    UseIndependentLLM = true,
     CacheExpirationMinutes = 60
 )]
 public class CreateSurveyCategoryDto

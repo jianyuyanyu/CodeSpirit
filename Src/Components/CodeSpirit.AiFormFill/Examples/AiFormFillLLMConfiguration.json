@@ -1,0 +1,59 @@
+{
+  "// AI表单填充独立LLM配置示例": "",
+  "AiFormFillLLM": {
+    "ApiBaseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "ApiKey": "your-api-key-here",
+    "ModelName": "qwq-plus",
+    "TimeoutSeconds": 120,
+    "MaxTokens": 2048,
+    "UseProxy": false,
+    "ProxyAddress": "",
+    "DisableThinking": true,
+    "ResponseFormatType": "json_object",
+    "Temperature": 0.1,
+    "TopP": 0.9,
+    "EnableStreaming": false
+  },
+  
+  "// 阿里云通义千问配置示例": "",
+  "AiFormFillLLM_Qwen": {
+    "ApiBaseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "ApiKey": "sk-your-dashscope-api-key",
+    "ModelName": "qwen-plus",
+    "TimeoutSeconds": 120,
+    "MaxTokens": 2048,
+    "DisableThinking": true,
+    "ResponseFormatType": "json_object",
+    "Temperature": 0.1,
+    "TopP": 0.9,
+    "EnableStreaming": false
+  },
+
+  "// 阿里云QWQ模型配置示例（只支持流式模式）": "",
+  "AiFormFillLLM_QWQ": {
+    "ApiBaseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "ApiKey": "sk-your-dashscope-api-key",
+    "ModelName": "qwq-plus",
+    "TimeoutSeconds": 120,
+    "MaxTokens": 2048,
+    "DisableThinking": true,
+    "ResponseFormatType": "json_object",
+    "Temperature": 0.1,
+    "TopP": 0.9,
+    "EnableStreaming": true
+  },
+  
+  "// OpenAI配置示例": "",
+  "AiFormFillLLM_OpenAI": {
+    "ApiBaseUrl": "https://api.openai.com/v1",
+    "ApiKey": "sk-your-openai-api-key",
+    "ModelName": "gpt-4o",
+    "TimeoutSeconds": 120,
+    "MaxTokens": 2048,
+    "DisableThinking": false,
+    "ResponseFormatType": "json_object",
+    "Temperature": 0.1,
+    "TopP": 0.9,
+    "EnableStreaming": false
+  }
+}

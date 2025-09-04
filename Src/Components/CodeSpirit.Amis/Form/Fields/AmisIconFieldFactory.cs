@@ -39,7 +39,7 @@ namespace CodeSpirit.Amis.Form.Fields
                 var fieldName = GetFieldName(member);
                 
                 // 设置字段名称以便对话框中的按钮能够定位到此字段
-                field["name"] = fieldName;
+                field["name"] = fieldName.ToCamelCase();
                 
                 // 创建图标选择器的附加按钮
                 var dialog = CreateIconSelectorDialog(attr, fieldName);

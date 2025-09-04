@@ -89,6 +89,10 @@ public class AiFormFillMiddleware
             // 返回结果
             await WriteSuccessResponseAsync(context, result);
         }
+        catch (BusinessException bex)
+        {
+            await WriteErrorResponseAsync(context, 400, bex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "处理AI填充请求时发生错误: {Path}", path);
@@ -108,7 +112,7 @@ public class AiFormFillMiddleware
 
         using var reader = new StreamReader(request.Body, Encoding.UTF8, leaveOpen: true);
         var body = await reader.ReadToEndAsync();
-        
+
         request.Body.Position = 0;
         return body;
     }
@@ -125,17 +129,17 @@ public class AiFormFillMiddleware
         {
             // 首先尝试解析为包含自定义提示词的格式
             var jObject = JObject.Parse(requestBody);
-            
+
             // 提取自定义提示词
             var customPrompt = jObject["customPrompt"]?.ToString() ?? string.Empty;
-            
+
             // 移除自定义提示词字段，避免影响DTO反序列化
             jObject.Remove("customPrompt");
             jObject.Remove("_aiCustomPrompt"); // 移除前端字段
-            
+
             // 清理空对象字段，避免反序列化到string类型时出错
             CleanEmptyObjectFields(jObject, dtoType);
-            
+
             // 反序列化为目标DTO类型，使用宽松的设置
             var settings = new JsonSerializerSettings
             {
@@ -143,7 +147,7 @@ public class AiFormFillMiddleware
                 NullValueHandling = NullValueHandling.Ignore
             };
             var requestObject = jObject.ToObject(dtoType, JsonSerializer.Create(settings));
-            
+
             return (requestObject, customPrompt);
         }
         catch
@@ -175,25 +179,25 @@ public class AiFormFillMiddleware
     {
         var properties = dtoType.GetProperties();
         var fieldsToRemove = new List<string>();
-        
+
         foreach (var property in jObject.Properties().ToList())
         {
-            var targetProperty = properties.FirstOrDefault(p => 
+            var targetProperty = properties.FirstOrDefault(p =>
                 string.Equals(p.Name, property.Name, StringComparison.OrdinalIgnoreCase));
-            
+
             if (targetProperty != null)
             {
                 // 如果目标属性是string类型，但JSON值是空对象，则移除该字段
-                var isStringType = targetProperty.PropertyType == typeof(string) || 
+                var isStringType = targetProperty.PropertyType == typeof(string) ||
                                    targetProperty.PropertyType.Name == "String";
-                                    
+
                 if (isStringType && property.Value.Type == JTokenType.Object && !property.Value.HasValues)
                 {
                     fieldsToRemove.Add(property.Name);
                 }
             }
         }
-        
+
         // 移除有问题的字段
         foreach (var fieldName in fieldsToRemove)
         {
@@ -210,8 +214,8 @@ public class AiFormFillMiddleware
     /// <param name="customPrompt">自定义提示词</param>
     /// <returns>填充结果</returns>
     private async Task<object> ExecuteAiFillAsync(
-        IAiFormFillService aiFormFillService, 
-        object requestObject, 
+        IAiFormFillService aiFormFillService,
+        object requestObject,
         AiFormFillEndpointInfo endpointInfo,
         string? customPrompt = null)
     {
@@ -229,8 +233,8 @@ public class AiFormFillMiddleware
             {
                 // 使用DTO类型名称作为默认触发值
                 var dtoTypeName = endpointInfo.DtoType.Name;
-                var displayName = dtoTypeName.EndsWith("Dto") 
-                    ? dtoTypeName.Substring(0, dtoTypeName.Length - 3) 
+                var displayName = dtoTypeName.EndsWith("Dto")
+                    ? dtoTypeName.Substring(0, dtoTypeName.Length - 3)
                     : dtoTypeName;
                 triggerValue = $"全局AI填充{displayName}";
             }
@@ -255,12 +259,12 @@ public class AiFormFillMiddleware
         // 使用反射调用泛型方法
         var method = typeof(IAiFormFillService).GetMethod(nameof(IAiFormFillService.FillFormAsync))!;
         var genericMethod = method.MakeGenericMethod(endpointInfo.DtoType);
-        
+
         var task = genericMethod.Invoke(aiFormFillService, new[] { triggerValue, requestObject });
         if (task is Task taskResult)
         {
             await taskResult;
-            
+
             // 获取Task<T>的Result属性
             var resultProperty = task.GetType().GetProperty("Result");
             if (resultProperty != null)
@@ -268,7 +272,7 @@ public class AiFormFillMiddleware
                 return resultProperty.GetValue(task) ?? throw new InvalidOperationException("AI填充返回空结果");
             }
         }
-        
+
         throw new InvalidOperationException("AI填充调用失败");
     }
 

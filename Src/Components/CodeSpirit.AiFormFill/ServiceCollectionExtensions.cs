@@ -20,6 +20,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AiFormPromptBuilder>();
         services.AddScoped<AiFormResponseParser>();
         
+        // 注册AI表单填充专用LLM服务
+        services.AddScoped<AiFormFillLLMClientFactory>();
+        
+        // 注册HTTP客户端（用于AI表单填充专用LLM）
+        services.AddHttpClient("AiFormFillLLMClient");
+        
         // 添加内存缓存
         services.AddMemoryCache();
         
@@ -91,6 +97,24 @@ public static class ServiceCollectionExtensions
     }
     
     /// <summary>
+    /// 添加AI表单填充独立LLM配置
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configureOptions">配置选项</param>
+    /// <returns>服务集合</returns>
+    public static IServiceCollection AddAiFormFillIndependentLLM(
+        this IServiceCollection services,
+        Action<AiFormFillLLMOptions> configureOptions)
+    {
+        var options = new AiFormFillLLMOptions();
+        configureOptions(options);
+        
+        services.AddSingleton(options);
+        
+        return services;
+    }
+    
+    /// <summary>
     /// 验证LLM服务依赖
     /// </summary>
     /// <param name="services">服务集合</param>
@@ -104,4 +128,40 @@ public static class ServiceCollectionExtensions
                 "AI表单填充服务需要LLM服务支持，请先调用 AddLLMServices() 注册LLM服务");
         }
     }
+}
+
+/// <summary>
+/// AI表单填充LLM配置选项
+/// </summary>
+public class AiFormFillLLMOptions
+{
+    /// <summary>
+    /// 默认设置键名
+    /// </summary>
+    public string DefaultSettingsKey { get; set; } = "AiFormFillLLM";
+    
+    /// <summary>
+    /// 是否启用独立LLM配置
+    /// </summary>
+    public bool EnableIndependentLLM { get; set; } = true;
+    
+    /// <summary>
+    /// 默认是否禁用思考
+    /// </summary>
+    public bool DefaultDisableThinking { get; set; } = true;
+    
+    /// <summary>
+    /// 默认响应格式类型
+    /// </summary>
+    public string DefaultResponseFormatType { get; set; } = "json_object";
+    
+    /// <summary>
+    /// 默认温度参数
+    /// </summary>
+    public double DefaultTemperature { get; set; } = 0.1;
+    
+    /// <summary>
+    /// 默认Top-p参数
+    /// </summary>
+    public double DefaultTopP { get; set; } = 0.9;
 }

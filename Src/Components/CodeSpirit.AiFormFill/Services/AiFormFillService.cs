@@ -14,6 +14,7 @@ public class AiFormFillService : IAiFormFillService, IScopedDependency
     private readonly AiFormResponseParser _responseParser;
     private readonly IMemoryCache _cache;
     private readonly ILogger<AiFormFillService> _logger;
+    private readonly AiFormFillLLMClientFactory _aiFormFillLLMClientFactory;
 
     /// <summary>
     /// 构造函数
@@ -23,18 +24,21 @@ public class AiFormFillService : IAiFormFillService, IScopedDependency
     /// <param name="responseParser">响应解析器</param>
     /// <param name="cache">内存缓存</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="aiFormFillLLMClientFactory">AI表单填充LLM客户端工厂</param>
     public AiFormFillService(
         LLMAssistant llmAssistant,
         AiFormPromptBuilder promptBuilder,
         AiFormResponseParser responseParser,
         IMemoryCache cache,
-        ILogger<AiFormFillService> logger)
+        ILogger<AiFormFillService> logger,
+        AiFormFillLLMClientFactory aiFormFillLLMClientFactory)
     {
         _llmAssistant = llmAssistant;
         _promptBuilder = promptBuilder;
         _responseParser = responseParser;
         _cache = cache;
         _logger = logger;
+        _aiFormFillLLMClientFactory = aiFormFillLLMClientFactory;
     }
 
     /// <summary>
@@ -74,13 +78,38 @@ public class AiFormFillService : IAiFormFillService, IScopedDependency
             
             _logger.LogDebug("AI填充提示词：{Prompt}", prompt);
 
-            // 调用LLM
-            var llmResponse = await _llmAssistant.GenerateContentAsync(prompt, aiFormFillAttr.MaxTokens);
+            // 调用LLM（根据配置选择使用独立LLM还是全局LLM）
+            string llmResponse;
+            if (aiFormFillAttr.UseIndependentLLM)
+            {
+                _logger.LogInformation("使用独立AI表单填充LLM配置，设置键：{SettingsKey}", aiFormFillAttr.LLMSettingsKey);
+                
+                var aiFormFillClient = await _aiFormFillLLMClientFactory.CreateClientAsync(aiFormFillAttr.LLMSettingsKey);
+                if (aiFormFillClient == null)
+                {
+                    throw new InvalidOperationException($"无法创建AI表单填充LLM客户端，设置键：{aiFormFillAttr.LLMSettingsKey}");
+                }
+
+                llmResponse = await aiFormFillClient.GenerateContentAsync(
+                    prompt,
+                    aiFormFillAttr.MaxTokens > 0 ? aiFormFillAttr.MaxTokens : null,
+                    aiFormFillAttr.DisableThinking,
+                    aiFormFillAttr.ResponseFormatType,
+                    aiFormFillAttr.Temperature,
+                    aiFormFillAttr.TopP);
+            }
+            else
+            {
+                _logger.LogInformation("使用全局LLM配置");
+                llmResponse = await _llmAssistant.GenerateContentAsync(prompt, aiFormFillAttr.MaxTokens);
+            }
             
-            _logger.LogDebug("LLM响应：{Response}", llmResponse);
+            _logger.LogInformation("AI表单填充LLM响应内容：{Response}", llmResponse);
 
             // 解析响应
             var result = await _responseParser.ParseResponseAsync<T>(llmResponse, existingData);
+            
+            _logger.LogInformation("AI表单填充解析后的结果：{Result}", System.Text.Json.JsonSerializer.Serialize(result));
 
             // 设置触发字段的值
             if (!aiFormFillAttr.IsGlobalMode)

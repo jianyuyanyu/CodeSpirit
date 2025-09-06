@@ -22,18 +22,22 @@ namespace CodeSpirit.Amis.Column
         private readonly UtilityHelper _utilityHelper;
         private readonly AmisContext amisContext;
         private readonly ButtonHelper buttonHelper;
+        private readonly LongTextColumnHandler _longTextHandler;
 
         /// <summary>
         /// 初始化 <see cref="ColumnHelper"/> 的新实例。
         /// </summary>
         /// <param name="permissionService">权限服务，用于检查用户权限。</param>
         /// <param name="utilityHelper">实用工具类，提供辅助方法。</param>
+        /// <param name="amisContext">AMIS上下文。</param>
+        /// <param name="buttonHelper">按钮帮助类。</param>
         public ColumnHelper(IHasPermissionService permissionService, UtilityHelper utilityHelper, AmisContext amisContext, ButtonHelper buttonHelper)
         {
             _permissionService = permissionService;
             _utilityHelper = utilityHelper;
             this.amisContext = amisContext;
             this.buttonHelper = buttonHelper;
+            _longTextHandler = new LongTextColumnHandler();
         }
 
         /// <summary>
@@ -569,25 +573,9 @@ namespace CodeSpirit.Amis.Column
             // 处理文本长度较长的字段，自动截断显示
             if (numericUnderlyingType == typeof(string))
             {
-                if (prop.Name.IndexOf("Description", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    prop.Name.IndexOf("Content", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    prop.Name.IndexOf("Note", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    prop.Name.IndexOf("Remark", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    prop.Name.IndexOf("Comment", StringComparison.OrdinalIgnoreCase) >= 0)
+                if (_longTextHandler.IsLongTextField(prop))
                 {
-                    column["type"] = "text";
-                    column["breakWord"] = true;
-                    // 添加省略号显示
-                    var maxLengthAttr = prop.GetCustomAttribute<MaxLengthAttribute>();
-                    if (maxLengthAttr != null && maxLengthAttr.Length > 50)
-                    {
-                        column["type"] = "tpl";
-                        column["tpl"] = "${" + fieldName + " | truncate:50}";
-                        column["popOver"] = new JObject
-                        {
-                            ["body"] = "${" + fieldName + "}"
-                        };
-                    }
+                    _longTextHandler.ApplyLongTextColumnOptimization(column, prop, fieldName);
                 }
             }
 
@@ -983,16 +971,10 @@ namespace CodeSpirit.Amis.Column
                 return "text"; // 密码字段在 CreateAmisColumn 中会被特殊处理
             }
 
-            if (propName.Contains("description") || propName.Contains("content") ||
-                propName.Contains("note") || propName.Contains("remark") || propName.Contains("comment"))
+            if (_longTextHandler.IsLongTextField(prop))
             {
-                // 长文本字段，可能需要截断或弹窗显示
-                var maxLengthAttr = prop.GetCustomAttribute<MaxLengthAttribute>();
-                if (maxLengthAttr != null && maxLengthAttr.Length > 100)
-                {
-                    return "tpl"; // 在 CreateAmisColumn 中会添加截断逻辑
-                }
-                return "text";
+                // 长文本字段，使用专门的处理器获取列类型
+                return _longTextHandler.GetLongTextColumnType(prop);
             }
 
             if (propName.Contains("json") || propName.Contains("config") || propName.Contains("setting"))
@@ -1733,5 +1715,6 @@ namespace CodeSpirit.Amis.Column
                 }
             }
         }
+
     }
 }

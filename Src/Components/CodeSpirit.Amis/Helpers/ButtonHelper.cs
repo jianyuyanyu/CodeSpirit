@@ -530,13 +530,20 @@ namespace CodeSpirit.Amis.Helpers
             {
                 ["title"] = title,
                 ["size"] = "lg",
+                ["closeOnEsc"] = true,
+                ["closeOnOutside"] = false,
+                ["showCloseButton"] = true,
                 ["body"] = new JObject
                 {
                     ["type"] = "service",
                     ["schemaApi"] = new JObject
                     {
                         ["url"] = route.ApiPath,
-                        ["method"] = route.HttpMethod
+                        ["method"] = route.HttpMethod,
+                        ["data"] = new JObject
+                        {
+                            ["&"] = "$$" // 传递当前行数据
+                        }
                     },
                     ["body"] = "${body}" // 使用Service返回的body内容
                 },
@@ -546,7 +553,8 @@ namespace CodeSpirit.Amis.Helpers
                     {
                         ["type"] = "button",
                         ["label"] = "关闭",
-                        ["actionType"] = "close"
+                        ["actionType"] = "close",
+                        ["level"] = "default"
                     }
                 }
             };
@@ -556,7 +564,8 @@ namespace CodeSpirit.Amis.Helpers
                 ["type"] = "button",
                 ["label"] = title,
                 ["actionType"] = "dialog",
-                ["dialog"] = serviceBody
+                ["dialog"] = serviceBody,
+                ["level"] = "info"
             };
 
             CreateIcon(title, button);

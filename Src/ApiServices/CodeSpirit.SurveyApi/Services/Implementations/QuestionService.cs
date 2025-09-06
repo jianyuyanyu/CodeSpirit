@@ -104,34 +104,6 @@ public class QuestionService : BaseCRUDService<Question, QuestionDto, int, Creat
             predicate = predicate.And(x => x.LLMGenerated == queryDto.LLMGenerated.Value);
         }
 
-        // 创建者筛选
-        if (queryDto.CreatedBy.HasValue)
-        {
-            predicate = predicate.And(x => x.CreatedBy == queryDto.CreatedBy.Value);
-        }
-
-        // 时间范围筛选
-        if (queryDto.StartTime.HasValue)
-        {
-            predicate = predicate.And(x => x.CreatedAt >= queryDto.StartTime.Value);
-        }
-
-        if (queryDto.EndTime.HasValue)
-        {
-            predicate = predicate.And(x => x.CreatedAt <= queryDto.EndTime.Value);
-        }
-
-        // 排序索引范围筛选
-        if (queryDto.MinOrderIndex.HasValue)
-        {
-            predicate = predicate.And(x => x.OrderIndex >= queryDto.MinOrderIndex.Value);
-        }
-
-        if (queryDto.MaxOrderIndex.HasValue)
-        {
-            predicate = predicate.And(x => x.OrderIndex <= queryDto.MaxOrderIndex.Value);
-        }
-
         // 构建查询
         var baseQuery = _repository.Find(predicate);
 

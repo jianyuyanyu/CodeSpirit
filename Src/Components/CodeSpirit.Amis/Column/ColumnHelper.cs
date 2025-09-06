@@ -1282,7 +1282,22 @@ namespace CodeSpirit.Amis.Column
         private JObject CreateOperationsColumn(string controllerName, Type dataType, ApiRoutesInfo apiRoute, CrudActions actions)
         {
             JArray buttons = [];
-            if (actions.Detail != null)
+            
+            // 获取所有自定义操作按钮，用于检查是否有重复的标准操作
+            List<JObject> customButtons = buttonHelper.GetCustomOperationsButtons<OperationAttribute>();
+            
+            // 检查是否有自定义的编辑操作
+            bool hasCustomEditOperation = HasCustomOperationWithLabel(customButtons, "编辑");
+            
+            // 检查是否有自定义的删除操作
+            bool hasCustomDeleteOperation = HasCustomOperationWithLabel(customButtons, "删除");
+            
+            // 检查是否有自定义的查看/详情操作
+            bool hasCustomDetailOperation = HasCustomOperationWithLabel(customButtons, "查看") || 
+                                           HasCustomOperationWithLabel(customButtons, "详情");
+
+            // 添加详情按钮（如果没有自定义的查看操作）
+            if (actions.Detail != null && !hasCustomDetailOperation)
             {
                 if (apiRoute.Detail != null && actions.Detail != null && _permissionService.HasPermission(_permissionService.GetPermissionCode(actions.Detail)))
                 {
@@ -1294,7 +1309,8 @@ namespace CodeSpirit.Amis.Column
                 }
             }
 
-            if (actions.Update != null && _permissionService.HasPermission(_permissionService.GetPermissionCode(actions.Update)))
+            // 添加编辑按钮（如果没有自定义的编辑操作）
+            if (actions.Update != null && !hasCustomEditOperation && _permissionService.HasPermission(_permissionService.GetPermissionCode(actions.Update)))
             {
                 if (apiRoute.Update != null && actions.Update != null)
                 {
@@ -1303,8 +1319,8 @@ namespace CodeSpirit.Amis.Column
                 }
             }
 
-            // 如果用户有删除权限，则添加删除按钮
-            if (actions.Delete != null && _permissionService.HasPermission(_permissionService.GetPermissionCode(actions.Delete)))
+            // 添加删除按钮（如果没有自定义的删除操作）
+            if (actions.Delete != null && !hasCustomDeleteOperation && _permissionService.HasPermission(_permissionService.GetPermissionCode(actions.Delete)))
             {
                 OperationAttribute operationAttribute = actions.Delete.GetCustomAttribute<OperationAttribute>();
                 if (operationAttribute == null)
@@ -1315,7 +1331,6 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 添加自定义操作按钮
-            List<JObject> customButtons = buttonHelper.GetCustomOperationsButtons<OperationAttribute>();
             foreach (JObject btn in customButtons)
             {
                 buttons.Add(btn);
@@ -1332,6 +1347,18 @@ namespace CodeSpirit.Amis.Column
                     ["buttons"] = buttons,
                     ["fixed"] = "right"
                 };
+        }
+
+        /// <summary>
+        /// 检查自定义操作按钮中是否包含指定标签的操作
+        /// </summary>
+        /// <param name="customButtons">自定义按钮列表</param>
+        /// <param name="label">要检查的标签</param>
+        /// <returns>如果存在指定标签的操作则返回true，否则返回false</returns>
+        private bool HasCustomOperationWithLabel(List<JObject> customButtons, string label)
+        {
+            return customButtons.Any(btn => 
+                btn["label"]?.ToString().Equals(label, StringComparison.OrdinalIgnoreCase) == true);
         }
 
         /// <summary>

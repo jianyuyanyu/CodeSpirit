@@ -100,6 +100,7 @@ public class SurveyDto
     /// 问卷分类ID
     /// </summary>
     [DisplayName("分类ID")]
+    [AmisColumn(Hidden = true)]
     public int? CategoryId { get; set; }
 
     /// <summary>

@@ -211,7 +211,21 @@ namespace CodeSpirit.Amis
         private JArray BuildHeaderToolbar(bool isCardMode = false)
         {
             JArray buttons = ["bulkActions"];
-            if (_amisContext.ApiRoutes.Create != null && _amisContext.Actions.Create != null)
+            
+            // 获取所有自定义头部按钮，用于检查是否有重复的标准操作
+            var headerCustomButtons = _buttonHelper.GetHeaderOperationButtons();
+            
+            // 检查是否有自定义的新增操作
+            bool hasCustomCreateOperation = HasCustomHeaderOperationWithLabel(headerCustomButtons, "新增") ||
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "添加") ||
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "创建");
+            
+            // 检查是否有自定义的导入操作
+            bool hasCustomImportOperation = HasCustomHeaderOperationWithLabel(headerCustomButtons, "导入") ||
+                                           HasCustomHeaderOperationWithLabel(headerCustomButtons, "批量导入");
+
+            // 添加新增按钮（如果没有自定义的新增操作）
+            if (_amisContext.ApiRoutes.Create != null && _amisContext.Actions.Create != null && !hasCustomCreateOperation)
             {
                 if (_amisContext.Actions.Create.GetCustomAttribute<HeaderOperationAttribute>() == null)
                 {
@@ -244,13 +258,13 @@ namespace CodeSpirit.Amis
                 }
             }
 
-            if (_amisContext.ApiRoutes.Import != null && _amisContext.Actions.Import != null)
+            // 添加导入按钮（如果没有自定义的导入操作）
+            if (_amisContext.ApiRoutes.Import != null && _amisContext.Actions.Import != null && !hasCustomImportOperation)
             {
                 buttons.Add(_buttonHelper.CreateHeaderButton("导入", _amisContext.ApiRoutes.Import, _amisContext.Actions.Import?.GetParameters(), size: "lg"));
             }
 
-            //添加自定义顶部按钮
-            var headerCustomButtons = _buttonHelper.GetHeaderOperationButtons();
+            // 添加自定义顶部按钮
             if (headerCustomButtons != null && headerCustomButtons.Any())
             {
                 foreach (var button in headerCustomButtons)
@@ -259,6 +273,18 @@ namespace CodeSpirit.Amis
                 }
             }
             return buttons;
+        }
+
+        /// <summary>
+        /// 检查自定义头部操作按钮中是否包含指定标签的操作
+        /// </summary>
+        /// <param name="customButtons">自定义按钮列表</param>
+        /// <param name="label">要检查的标签</param>
+        /// <returns>如果存在指定标签的操作则返回true，否则返回false</returns>
+        private bool HasCustomHeaderOperationWithLabel(List<JObject> customButtons, string label)
+        {
+            return customButtons?.Any(btn => 
+                btn["label"]?.ToString().Equals(label, StringComparison.OrdinalIgnoreCase) == true) == true;
         }
 
         /// <summary>

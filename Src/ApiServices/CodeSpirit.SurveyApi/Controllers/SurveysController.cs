@@ -13,6 +13,7 @@ using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json.Linq;
+using CodeSpirit.Core.Extensions;
 
 
 namespace CodeSpirit.SurveyApi.Controllers;
@@ -165,6 +166,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="updateDto">更新问卷DTO</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}")]
+    [Operation("编辑", "form", null, null, visibleOn: "status == 0")]
     [DisplayName("更新问卷")]
     public async Task<ActionResult<ApiResponse>> UpdateSurvey(int id, [FromBody] UpdateSurveyDto updateDto)
     {
@@ -178,6 +180,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="id">问卷ID</param>
     /// <returns>操作结果</returns>
     [HttpDelete("{id}")]
+    [Operation("删除", "ajax", null, "确定要删除此问卷吗？", visibleOn: "status == 0")]
     [DisplayName("删除问卷")]
     public async Task<ActionResult<ApiResponse>> DeleteSurvey(int id)
     {
@@ -191,7 +194,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="id">问卷ID</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}/publish")]
-    [Operation("发布", "ajax", null, "确定要发布此问卷吗？", "status == 'Draft' && isPreviewChecked")]
+    [Operation("发布", "ajax", null, "确定要发布此问卷吗？", visibleOn: "status == 0 && isPreviewChecked")]
     [DisplayName("发布问卷")]
     public async Task<ActionResult<ApiResponse>> PublishSurvey(int id)
     {
@@ -205,7 +208,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="id">问卷ID</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}/close")]
-    [Operation("关闭", "ajax", null, "确定要关闭此问卷吗？", "status == 'Published'")]
+    [Operation("关闭", "ajax", null, "确定要关闭此问卷吗？", visibleOn: "status == 1")]
     [DisplayName("关闭问卷")]
     public async Task<ActionResult<ApiResponse>> CloseSurvey(int id)
     {
@@ -219,7 +222,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="id">问卷ID</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}/archive")]
-    [Operation("归档", "ajax", null, "确定要归档此问卷吗？", "status != 'Archived'")]
+    [Operation("归档", "ajax", null, "确定要归档此问卷吗？", visibleOn: "status == 2")]
     [DisplayName("归档问卷")]
     public async Task<ActionResult<ApiResponse>> ArchiveSurvey(int id)
     {
@@ -328,20 +331,20 @@ public class SurveysController : ApiControllerBase
         return SuccessResponse(templates);
     }
 
-    /// <summary>
-    /// 从模板创建问卷
-    /// </summary>
-    /// <param name="templateId">模板ID</param>
-    /// <param name="request">创建请求</param>
-    /// <returns>创建的问卷</returns>
-    [HttpPost("templates/{templateId}/create")]
-    [HeaderOperation("从模板创建", "form")]
-    [DisplayName("从模板创建问卷")]
-    public async Task<ActionResult<ApiResponse<SurveyDto>>> CreateFromTemplate(int templateId, [FromBody] CreateFromTemplateRequest request)
-    {
-        var survey = await _surveyService.CreateFromTemplateAsync(templateId, request.Title);
-        return SuccessResponse(survey);
-    }
+    ///// <summary>
+    ///// 从模板创建问卷
+    ///// </summary>
+    ///// <param name="templateId">模板ID</param>
+    ///// <param name="request">创建请求</param>
+    ///// <returns>创建的问卷</returns>
+    //[HttpPost("templates/{templateId}/create")]
+    //[HeaderOperation("从模板创建", "form")]
+    //[DisplayName("从模板创建问卷")]
+    //public async Task<ActionResult<ApiResponse<SurveyDto>>> CreateFromTemplate(int templateId, [FromBody] CreateFromTemplateRequest request)
+    //{
+    //    var survey = await _surveyService.CreateFromTemplateAsync(templateId, request.Title);
+    //    return SuccessResponse(survey);
+    //}
 
     #region 系统设置相关方法
 
@@ -470,7 +473,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="id">问卷ID</param>
     /// <returns>洞察分析结果</returns>
     [HttpPost("{id}/ai/insights")]
-    [Operation("AI洞察分析", "ajax", null, null, null, 
+    [Operation("AI洞察分析", "ajax", null, null, visibleOn: "status == 1 || status == 2", 
         FeedbackTitle = "问卷洞察分析结果",
         FeedbackBodyTpl = @"{
             ""type"": ""form"",
@@ -809,8 +812,8 @@ public class SurveysController : ApiControllerBase
                     <h3>{survey.Title}</h3>
                     <div class=""survey-basic-info"">
                         <span>题目数量：{survey.QuestionCount}题</span> | 
-                        <span>状态：{GetSurveyStatusName(survey.Status.ToString())}</span> | 
-                        <span>访问类型：{GetAccessTypeName(survey.AccessType.ToString())}</span>
+                        <span>状态：{survey.Status.GetDisplayName()}</span> | 
+                        <span>访问类型：{survey.AccessType.GetDisplayName()}</span>
                     </div>
                     {(!string.IsNullOrEmpty(survey.Description) ? $"<div class=\"survey-description\">{survey.Description}</div>" : "")}
                 </div>
@@ -1089,39 +1092,6 @@ public class SurveysController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取问卷状态中文名称
-    /// </summary>
-    /// <param name="status">状态</param>
-    /// <returns>中文名称</returns>
-    private string GetSurveyStatusName(string status)
-    {
-        return status switch
-        {
-            "Draft" => "草稿",
-            "Published" => "已发布",
-            "Closed" => "已关闭",
-            "Archived" => "已归档",
-            _ => status
-        };
-    }
-
-    /// <summary>
-    /// 获取访问类型中文名称
-    /// </summary>
-    /// <param name="accessType">访问类型</param>
-    /// <returns>中文名称</returns>
-    private string GetAccessTypeName(string accessType)
-    {
-        return accessType switch
-        {
-            "Public" => "公开",
-            "Private" => "私有",
-            "Password" => "密码保护",
-            _ => accessType
-        };
-    }
-
-    /// <summary>
     /// 获取题目类型中文名称
     /// </summary>
     /// <param name="questionType">题目类型</param>
@@ -1196,7 +1166,7 @@ public class SurveysController : ApiControllerBase
     /// 题目管理操作
     /// </summary>
     /// <returns>操作结果</returns>
-    [Operation("题目管理", "link", "/survey/questions?surveyId=$id", null, Icon = "fa-solid fa-question-circle")]
+    [Operation("题目管理", "link", "/survey/questions?surveyId=$id", null, visibleOn: "status == 0", Icon = "fa-solid fa-question-circle")]
     [DisplayName("题目管理")]
     public ActionResult<ApiResponse> Questions_Manager()
     {
@@ -1210,7 +1180,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="request">扩题请求</param>
     /// <returns>操作结果</returns>
     [HttpPost("{id}/ai/expand-questions")]
-    [Operation("AI扩题", "form", null, null, "status == 'Draft'",
+    [Operation("AI扩题", "form", null, null, visibleOn: "status == 0",
         InitApi = "/survey/api/survey/surveys/{id}/expand-questions-init",
         FeedbackTitle = "AI扩题结果",
         FeedbackBodyTpl = @"{

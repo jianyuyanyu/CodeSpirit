@@ -96,7 +96,8 @@ public class QuestionsController : ApiControllerBase
     /// <param name="updateDto">更新题目DTO</param>
     /// <returns>操作结果</returns>
     [HttpPut("{id}")]
-    [DisplayName("更新题目")]
+    [DisplayName("编辑")]
+    [Operation("编辑", "form")]
     public async Task<ActionResult<ApiResponse>> UpdateQuestion(int id, [FromBody] UpdateQuestionDto updateDto)
     {
         await ((IBaseCRUDService<Question, QuestionDto, int, CreateQuestionDto, UpdateQuestionDto>)_questionService).UpdateAsync(id, updateDto);
@@ -116,18 +117,50 @@ public class QuestionsController : ApiControllerBase
         return SuccessResponse("题目删除成功");
     }
 
+    ///// <summary>
+    ///// 批量排序题目（旧版本，保留兼容性）
+    ///// </summary>
+    ///// <param name="request">排序请求</param>
+    ///// <returns>操作结果</returns>
+    //[HttpPost("reorder")]
+    //[Operation("排序", "form")]
+    //[DisplayName("题目排序")]
+    //public async Task<ActionResult<ApiResponse>> ReorderQuestions([FromBody] ReorderQuestionsRequest request)
+    //{
+    //    await _questionService.ReorderQuestionsAsync(request.SurveyId, request.QuestionOrders);
+    //    return SuccessResponse("题目排序成功");
+    //}
+
     /// <summary>
-    /// 批量排序题目
+    /// 题目拖拽排序（新版本）
     /// </summary>
     /// <param name="request">排序请求</param>
     /// <returns>操作结果</returns>
-    [HttpPost("reorder")]
-    [Operation("排序", "form")]
-    [DisplayName("题目排序")]
-    public async Task<ActionResult<ApiResponse>> ReorderQuestions([FromBody] ReorderQuestionsRequest request)
+    [HttpPost("drag-sort")]
+    [Operation("排序", "form", InitApi = "/survey/api/survey/questions/sort-list/$surveyId")]
+    [DisplayName("排序")]
+    public async Task<ActionResult<ApiResponse>> DragSortQuestions([FromBody] QuestionReorderRequest request)
     {
-        await _questionService.ReorderQuestionsAsync(request.SurveyId, request.QuestionOrders);
+        await _questionService.ReorderQuestionsAsync(request);
         return SuccessResponse("题目排序成功");
+    }
+
+    /// <summary>
+    /// 获取问卷题目排序列表
+    /// </summary>
+    /// <param name="surveyId">问卷ID</param>
+    /// <returns>题目排序列表</returns>
+    [HttpGet("sort-list/{surveyId}")]
+    [DisplayName("获取排序列表")]
+    public async Task<ActionResult<ApiResponse<QuestionReorderRequest>>> GetQuestionSortList(int surveyId)
+    {
+        var questions = await _questionService.GetQuestionSortListAsync(surveyId);
+        var response = new QuestionReorderRequest
+        {
+            SurveyId = surveyId,
+            Questions = questions
+        };
+        return SuccessResponse(response);
     }
 
     /// <summary>

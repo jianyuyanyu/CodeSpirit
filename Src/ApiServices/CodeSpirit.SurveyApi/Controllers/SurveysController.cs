@@ -739,7 +739,6 @@ public class SurveysController : ApiControllerBase
         }",
         FeedBackSize = "lg",
         Icon = "fa fa-plus-circle")]
-    [DisplayName("AI扩题")]
     public async Task<ActionResult<ApiResponse<ExpandQuestionsResult>>> ExpandQuestions([FromBody] ExpandQuestionsRequest request)
     {
         var result = await _llmGeneratorService.ExpandQuestionsAsync(request);
@@ -1279,7 +1278,6 @@ public class SurveysController : ApiControllerBase
         }",
         FeedBackSize = "lg",
         Icon = "fa fa-plus-circle")]
-    [DisplayName("AI扩题")]
     public async Task<ActionResult<ApiResponse<ExpandQuestionsResult>>> ExpandQuestionsForSurvey([FromRoute] int id, [FromBody] ExpandQuestionsRequest request)
     {
         // 设置问卷ID

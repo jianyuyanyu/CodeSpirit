@@ -920,7 +920,8 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
                 AccessType = SurveyAccessType.Public,
                 IsTemplate = false,
                 LLMPrompt = generatedSurvey.UsedPrompt,
-                LLMRawOutput = llmRawOutput
+                LLMRawOutput = llmRawOutput,
+                CategoryId = request.CategoryId,
             };
 
             // 保存问卷

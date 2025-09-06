@@ -1330,9 +1330,20 @@ namespace CodeSpirit.Amis.Column
                 }
             }
 
-            // 添加自定义操作按钮
+            // 添加自定义操作按钮（去重处理）
+            var addedLabels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (JObject btn in customButtons)
             {
+                string label = btn["label"]?.ToString();
+                if (!string.IsNullOrEmpty(label))
+                {
+                    // 如果标签已经存在，跳过重复的按钮
+                    if (addedLabels.Contains(label))
+                    {
+                        continue;
+                    }
+                    addedLabels.Add(label);
+                }
                 buttons.Add(btn);
             }
 

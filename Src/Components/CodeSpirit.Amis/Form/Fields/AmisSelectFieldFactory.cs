@@ -25,9 +25,12 @@ namespace CodeSpirit.Amis.Form.Fields
             (JObject field, AmisSelectFieldAttribute attr) = CreateField<AmisSelectFieldAttribute>(member, utilityHelper);
             if (field != null)
             {
-                field["source"] = attr.Source;
-                field["labelField"] = attr.LabelField;
-                field["valueField"] = attr.ValueField;
+                if(!string.IsNullOrEmpty(attr.Source))
+                    field["source"] = attr.Source;
+                if(!string.IsNullOrEmpty(attr.LabelField))
+                    field["labelField"] = attr.LabelField;
+                if(!string.IsNullOrEmpty(attr.ValueField))
+                    field["valueField"] = attr.ValueField;
                 field["multiple"] = attr.Multiple;
                 field["joinValues"] = attr.JoinValues;
                 field["extractValue"] = attr.ExtractValue;

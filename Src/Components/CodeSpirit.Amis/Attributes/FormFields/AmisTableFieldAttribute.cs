@@ -53,9 +53,19 @@ namespace CodeSpirit.Amis.Attributes.FormFields
         /// </summary>
         public bool Editable { get; set; } = true;
 
-        /// <summary>
-        /// 是否可复制
-        /// </summary>
-        public bool Copyable { get; set; } = false;
+    /// <summary>
+    /// 是否可复制
+    /// </summary>
+    public bool Copyable { get; set; } = false;
+
+    /// <summary>
+    /// 条件显示表达式，支持表达式语法，如 "this.type === 1"
+    /// </summary>
+    public string VisibleOn { get; set; }
+
+    /// <summary>
+    /// 是否启用快速编辑功能
+    /// </summary>
+    public bool QuickEdit { get; set; } = false;
     }
 } 

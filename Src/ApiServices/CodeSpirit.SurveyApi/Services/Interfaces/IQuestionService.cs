@@ -32,6 +32,20 @@ public interface IQuestionService : IBaseCRUDService<Question, QuestionDto, int,
     Task ReorderQuestionsAsync(int surveyId, Dictionary<int, int> questionOrders);
 
     /// <summary>
+    /// 批量排序题目（新版本，使用表格拖拽）
+    /// </summary>
+    /// <param name="request">排序请求</param>
+    /// <returns>异步任务</returns>
+    Task ReorderQuestionsAsync(QuestionReorderRequest request);
+
+    /// <summary>
+    /// 获取问卷的题目排序列表（简化版本）
+    /// </summary>
+    /// <param name="surveyId">问卷ID</param>
+    /// <returns>题目排序列表</returns>
+    Task<List<QuestionSortDto>> GetQuestionSortListAsync(int surveyId);
+
+    /// <summary>
     /// 复制题目到指定问卷
     /// </summary>
     /// <param name="questionId">源题目ID</param>

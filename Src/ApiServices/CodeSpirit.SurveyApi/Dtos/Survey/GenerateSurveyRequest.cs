@@ -88,4 +88,22 @@ public class GenerateSurveyRequest
     [AiFieldFill(Enabled = false)] // 不参与AI填充
     [AmisTextareaField(Placeholder = "请输入自定义提示词（可选）")]
     public string? CustomPrompt { get; set; }
+
+    [AmisInputTreeField(
+        DataSource = "${ROOT_API}/api/survey/SurveyCategories/tree",
+        Multiple = false,
+        JoinValues = true,
+        ExtractValue = false,
+        ShowOutline = true,
+        LabelField = "name",
+        ValueField = "id",
+        Required = false,
+        ShowIcon = true,
+        Clearable = true,
+        SubmitOnChange = true,
+        HeightAuto = true,
+        SelectFirst = true
+    )]
+    [DisplayName("问卷分类")]
+    public int? CategoryId { get; set; }
 }

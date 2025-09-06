@@ -47,34 +47,53 @@ namespace CodeSpirit.Amis.Form.Factories
             {
                 field["perPage"] = attr.Perpage;
             }
+
+            // 添加条件显示支持
+            if (!string.IsNullOrEmpty(attr.VisibleOn))
+            {
+                field["visibleOn"] = attr.VisibleOn;
+            }
             // 获取集合元素类型
             var elementType = prop.PropertyType.GetGenericArguments().FirstOrDefault();
             if (elementType != null)
             {
                 // 自动生成列配置
-                var columns = GenerateColumns(elementType, utilityHelper);
+                var columns = GenerateColumns(elementType, utilityHelper, attr);
                 field["columns"] = JArray.FromObject(columns);
             }
 
             return field;
         }
 
-        private List<JObject> GenerateColumns(Type elementType, UtilityHelper utilityHelper)
+        private List<JObject> GenerateColumns(Type elementType, UtilityHelper utilityHelper, AmisTableFieldAttribute tableFieldAttr)
         {
             var columns = new List<JObject>();
 
             foreach (var prop in elementType.GetProperties())
             {
+                // 检查AmisFormField特性，如果Hidden为true则跳过该列
+                var amisFormFieldAttr = prop.GetCustomAttribute<AmisFormFieldAttribute>();
+                if (amisFormFieldAttr?.Hidden == true)
+                {
+                    continue; // 跳过隐藏字段
+                }
+
                 var column = new JObject
                 {
                     ["name"] = prop.Name.ToCamelCase(),
-                    ["label"] = prop.GetDisplayName(),
-                    ["quickEdit"] = GetQuickEditConfig(prop, utilityHelper)
+                    ["label"] = prop.GetDisplayName()
                 };
 
-                // 针对枚举类型添加映射
+                // 只有在启用快速编辑时才添加快速编辑配置
+                if (tableFieldAttr?.QuickEdit == true)
+                {
+                    column["quickEdit"] = GetQuickEditConfig(prop, utilityHelper);
+                }
+
+                // 针对枚举类型和布尔类型添加映射
                 var enumType = prop.PropertyType;
                 var isNullableEnum = Nullable.GetUnderlyingType(enumType)?.IsEnum == true;
+                var boolType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
                 
                 if (enumType.IsEnum || isNullableEnum)
                 {
@@ -108,6 +127,11 @@ namespace CodeSpirit.Amis.Form.Factories
                     
                     // 设置映射
                     column["map"] = mapping;
+                }
+                else if (boolType == typeof(bool))
+                {
+                    // 添加布尔类型映射
+                    column["type"] = "status";
                 }
 
                 columns.Add(column);

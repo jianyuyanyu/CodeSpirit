@@ -36,10 +36,26 @@ public class QuestionMappingProfile : Profile
             .ForMember(dest => dest.Survey, opt => opt.Ignore())
             .ForMember(dest => dest.Options, opt => opt.Ignore()) // 选项单独处理
             .ForMember(dest => dest.Answers, opt => opt.Ignore())
+            .ForMember(dest => dest.Settings, opt => opt.Ignore()) // 设置字段在服务中单独处理
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
-            .ForMember(dest => dest.UpdatedBy, opt => opt.Ignore());
+            .ForMember(dest => dest.UpdatedBy, opt => opt.Ignore())
+            // 忽略题型特定字段，这些字段会被转换为Settings JSON
+            .ForSourceMember(src => src.RatingMin, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.RatingMax, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.RatingStep, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.NumberMin, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.NumberMax, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.NumberStep, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.TextMinLength, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.TextMaxLength, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.TextInputMode, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.DateFormat, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.TimeFormat, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.MatrixRows, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.MatrixColumns, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.Options, opt => opt.DoNotValidate());
 
         // UpdateQuestionDto到Question实体的映射
         CreateMap<UpdateQuestionDto, Question>()
@@ -48,10 +64,29 @@ public class QuestionMappingProfile : Profile
             .ForMember(dest => dest.Survey, opt => opt.Ignore())
             .ForMember(dest => dest.Options, opt => opt.Ignore()) // 选项单独处理
             .ForMember(dest => dest.Answers, opt => opt.Ignore())
+            .ForMember(dest => dest.Settings, opt => opt.Ignore()) // 设置字段在服务中单独处理
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
-            .ForMember(dest => dest.UpdatedBy, opt => opt.Ignore());
+            .ForMember(dest => dest.UpdatedBy, opt => opt.Ignore())
+            // 忽略题型特定字段，这些字段会被转换为Settings JSON
+            .ForSourceMember(src => src.RatingMin, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.RatingMax, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.RatingStep, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.NumberMin, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.NumberMax, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.NumberStep, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.TextMinLength, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.TextMaxLength, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.TextInputMode, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.DateFormat, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.TimeFormat, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.MatrixRows, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.MatrixColumns, opt => opt.DoNotValidate())
+            .ForSourceMember(src => src.Options, opt => opt.DoNotValidate());
+
+        // Question实体到QuestionSortDto的映射（用于排序）
+        CreateMap<Question, QuestionSortDto>();
     }
 
     /// <summary>

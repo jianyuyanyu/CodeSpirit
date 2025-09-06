@@ -19,6 +19,16 @@ public class QuestionReorderRequest
     public int SurveyId { get; set; }
 
     /// <summary>
+    /// 排序说明文字
+    /// </summary>
+    [DisplayName("温馨提示")]
+    [AmisInputTextField(
+        Static = true,
+        AdditionalConfig = "{\"staticInputClassName\": \"text-info font-bold\"}"
+    )]
+    public string SortInstructions { get; set; } = string.Empty;
+
+    /// <summary>
     /// 题目列表（仅支持拖拽排序）
     /// </summary>
     [Required]

@@ -158,7 +158,8 @@ public class QuestionsController : ApiControllerBase
         var response = new QuestionReorderRequest
         {
             SurveyId = surveyId,
-            Questions = questions
+            Questions = questions,
+            SortInstructions = "请点击下方按钮开始排序！"
         };
         return SuccessResponse(response);
     }

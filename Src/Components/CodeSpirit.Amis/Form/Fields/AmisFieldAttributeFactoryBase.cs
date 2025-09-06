@@ -53,10 +53,14 @@ namespace CodeSpirit.Amis.Form.Fields
             {
                 ["name"] = fieldName,
                 ["label"] = fieldAttr.Label ?? displayName,
-                ["required"] = isRequired,
-                ["type"] = fieldAttr.Type,
-                ["placeholder"] = fieldAttr.Placeholder,
+                ["type"] = fieldAttr.Type
             };
+
+            if(!string.IsNullOrEmpty(fieldAttr.Placeholder))
+                field["placeholder"] = fieldAttr.Placeholder;
+
+            if(!fieldAttr.Static)
+                field["required"] = isRequired;
 
             if(!string.IsNullOrEmpty(fieldAttr.VisibleOn))
                 field["visibleOn"] = fieldAttr.VisibleOn;

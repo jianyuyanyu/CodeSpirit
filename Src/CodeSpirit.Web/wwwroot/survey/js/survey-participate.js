@@ -13,6 +13,7 @@
     let amisInstance = null;
     let startTime = null;
     let currentTenantId = null;
+    let isSubmitting = false; // 标记是否正在提交
 
     /**
      * 从URL路径解析租户ID
@@ -194,7 +195,26 @@
     }
 
     /**
+     * 保存问卷答案并更新进度
+     * 参考exam.js中的saveAnswer逻辑
+     */
+    function saveQuestionAnswer(questionId, answer) {
+        try {
+            console.log(`[问卷答题] 保存题目 ${questionId} 的答案:`, answer);
+            
+            // 立即更新进度
+            updateFormProgress();
+            
+            return true;
+        } catch (error) {
+            console.error(`[问卷答题] 保存答案时出错:`, error);
+            return false;
+        }
+    }
+
+    /**
      * 初始化表单进度跟踪
+     * 参考exam.js，移除DOM事件监听，改为在AMIS组件中直接绑定事件
      */
     function initFormProgressTracking() {
         try {
@@ -205,18 +225,6 @@
             const totalQuestions = surveyData.questions.length;
             console.log('初始化进度跟踪，总题目数:', totalQuestions);
 
-            // 监听表单变化
-            const surveyContainer = document.getElementById('survey-container');
-            if (surveyContainer) {
-                surveyContainer.addEventListener('input', function() {
-                    updateFormProgress();
-                });
-
-                surveyContainer.addEventListener('change', function() {
-                    updateFormProgress();
-                });
-            }
-
             // 初始计算进度
             setTimeout(updateFormProgress, 500);
         } catch (error) {
@@ -226,6 +234,7 @@
 
     /**
      * 更新表单进度
+     * 参考exam.js的逻辑，改进答案检测机制
      */
     function updateFormProgress() {
         try {
@@ -236,19 +245,11 @@
             const totalQuestions = surveyData.questions.length;
             let answeredQuestions = 0;
 
-            // 统计已回答的题目
+            // 统计已回答的题目 - 改进检测逻辑
             surveyData.questions.forEach(question => {
                 const fieldName = `question_${question.id}`;
-                const inputs = document.querySelectorAll(`[name="${fieldName}"], [name="${fieldName}[]"]`);
-                
                 let hasAnswer = false;
-                inputs.forEach(input => {
-                    if (input.type === 'checkbox' || input.type === 'radio') {
-                        if (input.checked) hasAnswer = true;
-                    } else if (input.value && input.value.trim() !== '') {
-                        hasAnswer = true;
-                    }
-                });
+
 
                 if (hasAnswer) {
                     answeredQuestions++;
@@ -476,6 +477,10 @@
                         method: 'post',
                         url: '/survey/api/app/responses/submit',
                         requestAdaptor: function(api) {
+                            // 标记开始提交，避免页面离开提醒
+                            console.log('开始提交问卷，设置提交状态');
+                            isSubmitting = true;
+                            
                             // 转换表单数据为API需要的格式
                             const formData = api.data;
                             const answers = [];
@@ -525,21 +530,74 @@
                             api.data = submitData;
                             
                             return api;
+                        },
+                        responseAdaptor: function(payload, response, api) {
+                            console.log('API响应适配器 - payload:', payload);
+                            console.log('API响应适配器 - response:', response);
+                            
+                            // 检查响应是否成功
+                            if (payload && (payload.status === 0 || payload.success)) {
+                                console.log('问卷提交成功');
+                                
+                                // 标记正在提交，避免页面离开提醒
+                                isSubmitting = true;
+                                
+                                // 保存完成时间到localStorage
+                                if (startTime) {
+                                    localStorage.setItem('survey-start-time', startTime.getTime().toString());
+                                }
+                                
+                                // 返回成功响应，让AMIS处理跳转
+                                return {
+                                    status: 0,
+                                    msg: '问卷提交成功！'
+                                };
+                            } else {
+                                // 提交失败，重置提交状态
+                                isSubmitting = false;
+                                
+                                const message = payload?.msg || payload?.message || '提交失败，请重试';
+                                console.error('问卷提交失败:', payload);
+                                
+                                // 返回错误消息给AMIS显示
+                                return {
+                                    status: 1,
+                                    msg: message
+                                };
+                            }
                         }
                     },
                     submitText: '提交问卷',
                     resetAfterSubmit: false,
                     className: 'survey-form',
-                    onFinished: function(values, response) {
-                        console.log('表单提交完成:', response);
-                        
-                        if (response && (response.status === 0 || response.success)) {
-                            // 保存完成时间到localStorage
-                            if (startTime) {
-                                localStorage.setItem('survey-start-time', startTime.getTime().toString());
+                    redirect: (function() {
+                        // 动态计算跳转URL
+                        let tenantId = currentTenantId;
+                        if (!tenantId) {
+                            tenantId = getTenantIdFromPath();
+                            if (!tenantId && window.surveyPageData && window.surveyPageData.tenantId) {
+                                tenantId = window.surveyPageData.tenantId;
                             }
-                            
-                            // 提交成功，跳转到成功页面
+                            if (!tenantId && window.currentTenantId) {
+                                tenantId = window.currentTenantId;
+                            }
+                        }
+                        
+                        if (tenantId) {
+                            return `/${tenantId}/survey/success`;
+                        } else {
+                            return '/survey/success';
+                        }
+                    })(),
+                    onFinished: function(values, response) {
+                        console.log('表单提交完成 - onFinished回调:', response);
+                        console.log('表单提交完成 - values:', values);
+                        
+                        // 标记正在提交，避免页面离开提醒
+                        isSubmitting = true;
+                        
+                        // 备用跳转方案：如果redirect属性没有生效，手动跳转
+                        setTimeout(() => {
                             // 动态获取租户ID
                             let tenantId = currentTenantId;
                             if (!tenantId) {
@@ -559,21 +617,9 @@
                                 successUrl = '/survey/success';
                             }
                             
-                            // 延迟跳转以显示提交动画
-                            setTimeout(() => {
-                                window.location.href = successUrl;
-                            }, 500);
-                        } else {
-                            // 提交失败，显示错误信息
-                            const message = response?.msg || response?.message || '提交失败，请重试';
-                            console.error('提交失败:', response);
-                            
-                            if (window.AMISEnv && window.AMISEnv.notify) {
-                                window.AMISEnv.notify('error', message);
-                            } else {
-                                alert(message);
-                            }
-                        }
+                            console.log('准备跳转到成功页面:', successUrl);
+                            window.location.href = successUrl;
+                        }, 1000);
                     },
                     onValidate: function(values) {
                         const errors = {};
@@ -705,6 +751,12 @@
             
             // 初始化表单进度监听
             initFormProgressTracking();
+            
+            // 延迟更新初始进度，确保AMIS表单完全渲染
+            setTimeout(() => {
+                console.log('开始计算初始进度');
+                updateFormProgress();
+            }, 1000);
         }, 100);
         
         } catch (error) {
@@ -746,7 +798,17 @@
                             label: opt.text,
                             value: opt.value
                         })),
-                        className: baseField.className + ' survey-radio-field'
+                        className: baseField.className + ' survey-radio-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 2: // MultipleChoice - 多选题
@@ -757,7 +819,17 @@
                             label: opt.text,
                             value: opt.value
                         })),
-                        className: baseField.className + ' survey-checkbox-field'
+                        className: baseField.className + ' survey-checkbox-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 3: // Text - 填空题
@@ -765,7 +837,17 @@
                         ...baseField,
                         type: 'input-text',
                         placeholder: '请输入您的答案',
-                        className: baseField.className + ' survey-text-field'
+                        className: baseField.className + ' survey-text-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 4: // Number - 数字题
@@ -773,7 +855,17 @@
                         ...baseField,
                         type: 'input-number',
                         placeholder: '请输入数字',
-                        className: baseField.className + ' survey-number-field'
+                        className: baseField.className + ' survey-number-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 5: // Rating - 评分题
@@ -781,7 +873,17 @@
                         ...baseField,
                         type: 'input-rating',
                         count: 5,
-                        className: baseField.className + ' survey-rating-field'
+                        className: baseField.className + ' survey-rating-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 6: // Date - 日期题
@@ -789,7 +891,17 @@
                         ...baseField,
                         type: 'input-date',
                         format: 'YYYY-MM-DD',
-                        className: baseField.className + ' survey-date-field'
+                        className: baseField.className + ' survey-date-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 7: // Time - 时间题
@@ -797,7 +909,17 @@
                         ...baseField,
                         type: 'input-time',
                         format: 'HH:mm',
-                        className: baseField.className + ' survey-time-field'
+                        className: baseField.className + ' survey-time-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 8: // DateTime - 日期时间题
@@ -805,7 +927,17 @@
                         ...baseField,
                         type: 'input-datetime',
                         format: 'YYYY-MM-DD HH:mm',
-                        className: baseField.className + ' survey-datetime-field'
+                        className: baseField.className + ' survey-datetime-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 9: // Textarea - 长文本题
@@ -815,7 +947,17 @@
                         minRows: 3,
                         maxRows: 6,
                         placeholder: '请输入您的详细答案',
-                        className: baseField.className + ' survey-textarea-field'
+                        className: baseField.className + ' survey-textarea-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 10: // Matrix - 矩阵题
@@ -833,7 +975,17 @@
                             { label: '满意', value: '4' },
                             { label: '非常满意', value: '5' }
                         ],
-                        className: baseField.className + ' survey-matrix-field'
+                        className: baseField.className + ' survey-matrix-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 case 11: // Ranking - 排序题
@@ -849,7 +1001,17 @@
                                 value: opt.value
                             }))
                         },
-                        className: baseField.className + ' survey-ranking-field'
+                        className: baseField.className + ' survey-ranking-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
                     
                 default:
@@ -858,7 +1020,17 @@
                         ...baseField,
                         type: 'input-text',
                         placeholder: '请输入您的答案',
-                        className: baseField.className + ' survey-default-field'
+                        className: baseField.className + ' survey-default-field',
+                        onEvent: {
+                            change: {
+                                actions: [
+                                    {
+                                        actionType: "custom",
+                                        script: `saveQuestionAnswer(${question.id || index}, event.data.value);`
+                                    }
+                                ]
+                            }
+                        }
                     };
             }
         }).filter(field => field !== null); // 过滤掉无效的字段
@@ -940,6 +1112,12 @@
 
         // 页面离开前提醒
         window.addEventListener('beforeunload', function(e) {
+            // 如果正在提交或已经提交成功，不显示提醒
+            if (isSubmitting) {
+                return;
+            }
+            
+            // 如果问卷已加载但未提交，显示提醒
             if (surveyData && amisInstance) {
                 const message = '您的问卷尚未提交，确定要离开吗？';
                 e.returnValue = message;
@@ -987,9 +1165,53 @@
                     progressBar.classList.remove('hidden');
                     console.log('进度条已显示');
                 }
+            },
+            updateProgress: function() {
+                updateFormProgress();
+            },
+            testProgressUpdate: function() {
+                console.group('[测试] 进度更新功能');
+                
+                if (!surveyData || !surveyData.questions) {
+                    console.error('问卷数据未加载');
+                    console.groupEnd();
+                    return;
+                }
+                
+                console.log('问卷题目数量:', surveyData.questions.length);
+                
+                // 测试模拟答题
+                const firstQuestion = surveyData.questions[0];
+                if (firstQuestion) {
+                    console.log('模拟回答第一题:', firstQuestion.id);
+                    saveQuestionAnswer(firstQuestion.id, 'test-answer');
+                }
+                
+                // 检查AMIS实例状态
+                if (amisInstance) {
+                    console.log('AMIS实例存在');
+                    try {
+                        const formComponent = amisInstance.getComponentByName('surveyForm');
+                        if (formComponent) {
+                            console.log('表单组件存在');
+                            console.log('表单数据:', formComponent.data);
+                        } else {
+                            console.warn('未找到表单组件');
+                        }
+                    } catch (e) {
+                        console.error('获取表单组件失败:', e);
+                    }
+                } else {
+                    console.error('AMIS实例不存在');
+                }
+                
+                console.groupEnd();
             }
         }
     };
+
+    // 暴露答题函数供AMIS调用
+    window.saveQuestionAnswer = saveQuestionAnswer;
 
     // 等待DOM加载完成后初始化
     console.log('=== survey-participate.js 加载完成 ===');

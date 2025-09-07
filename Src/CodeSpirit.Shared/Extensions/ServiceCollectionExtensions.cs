@@ -92,7 +92,10 @@ public static class ServiceCollectionExtensions
 
         services.AddCodeSpiritNavigation();
 
-        services.AddCodeSpiritAggregator();
+        services.AddCodeSpiritAggregator(globalConfig =>
+        {
+            globalConfig.ConfigureCommonGlobalRules();
+        });
 
         // 注册后台任务服务
         services.AddHostedService<BackgroundJobServiceImpl>();

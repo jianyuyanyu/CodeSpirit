@@ -11,10 +11,19 @@ namespace CodeSpirit.Aggregator.Services
     public class AggregationHeaderService : IAggregationHeaderService
     {
         private readonly ILogger<AggregationHeaderService> _logger;
+        private readonly IGlobalAggregatorConfigurationService _globalConfigService;
 
-        public AggregationHeaderService(ILogger<AggregationHeaderService> logger)
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="logger">日志记录器</param>
+        /// <param name="globalConfigService">全局聚合器配置服务</param>
+        public AggregationHeaderService(
+            ILogger<AggregationHeaderService> logger,
+            IGlobalAggregatorConfigurationService globalConfigService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _globalConfigService = globalConfigService;
         }
 
         /// <summary>
@@ -105,10 +114,14 @@ namespace CodeSpirit.Aggregator.Services
                 }
             }
 
-            var properties = type.GetProperties()
+            // 获取所有属性
+            var allProperties = type.GetProperties();
+            
+            // 收集有AggregateFieldAttribute特性的属性
+            var propertiesWithAttribute = allProperties
                 .Where(p => p.GetCustomAttribute<AggregateFieldAttribute>() != null);
 
-            foreach (var property in properties)
+            foreach (var property in propertiesWithAttribute)
             {
                 var attribute = property.GetCustomAttribute<AggregateFieldAttribute>();
                 var fieldPath = string.IsNullOrEmpty(parentPath) 
@@ -125,7 +138,39 @@ namespace CodeSpirit.Aggregator.Services
                 {
                     var rule = attribute.GetRuleString(fieldPath);
                     rules.Add(rule);
-                    _logger.LogDebug("添加聚合规则: {FieldPath} => {Rule}", fieldPath, rule);
+                    _logger.LogDebug("添加特性聚合规则: {FieldPath} => {Rule}", fieldPath, rule);
+                }
+            }
+
+            // 检查全局聚合规则（仅当全局配置服务可用时）
+            if (_globalConfigService != null)
+            {
+                // 对于没有AggregateFieldAttribute特性的属性，检查是否有全局规则
+                var propertiesWithoutAttribute = allProperties
+                    .Where(p => p.GetCustomAttribute<AggregateFieldAttribute>() == null);
+
+                foreach (var property in propertiesWithoutAttribute)
+                {
+                    var globalRule = _globalConfigService.GetGlobalRule(property.Name);
+                    if (globalRule != null)
+                    {
+                        var fieldPath = string.IsNullOrEmpty(parentPath) 
+                            ? property.Name.ToCamelCase() 
+                            : $"{parentPath}.{property.Name.ToCamelCase()}";
+
+                        // 如果是复杂类型且没有数据源，则递归处理
+                        if (IsComplexType(property.PropertyType) && string.IsNullOrEmpty(globalRule.DataSource))
+                        {
+                            _logger.LogDebug("处理复杂类型属性（全局规则）: {PropertyName} => {PropertyType}", property.Name, property.PropertyType.Name);
+                            CollectAggregationRules(property.PropertyType, fieldPath, rules);
+                        }
+                        else
+                        {
+                            var rule = globalRule.GetRuleString(fieldPath);
+                            rules.Add(rule);
+                            _logger.LogDebug("添加全局聚合规则: {FieldPath} => {Rule}", fieldPath, rule);
+                        }
+                    }
                 }
             }
         }

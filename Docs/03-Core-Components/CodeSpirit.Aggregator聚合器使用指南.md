@@ -131,7 +131,91 @@ public class UserModel
   - 数据源请求失败时保留原始值
   - 详细日志记录聚合处理过程，便于调试
 
-## 七、未来规划
+## 七、全局聚合器注册功能
+
+### 7.1 功能概述
+
+全局聚合器注册功能允许开发者为特定字段名（如 `CreatedBy`、`UpdatedBy` 等）自动配置聚合规则，无需在每个 DTO 类中重复添加 `AggregateFieldAttribute` 特性。
+
+### 7.2 基本配置
+
+在 `Program.cs` 或 `Startup.cs` 中注册聚合器服务并配置全局规则：
+
+```csharp
+// 方式一：使用预定义的常用规则
+builder.Services.AddCodeSpiritAggregator(globalConfig =>
+{
+    globalConfig.ConfigureCommonGlobalRules();
+});
+
+// 方式二：自定义全局规则
+builder.Services.AddCodeSpiritAggregator(globalConfig =>
+{
+    // 配置CreatedBy字段的全局规则
+    globalConfig.RegisterGlobalRule(
+        "CreatedBy", 
+        "http://identity/api/identity/internal/users/{value}.data.name", 
+        "{field}");
+    
+    // 配置UpdatedBy字段的全局规则
+    globalConfig.RegisterGlobalRule(
+        "UpdatedBy", 
+        "http://identity/api/identity/internal/users/{value}.data.name", 
+        "{field}");
+});
+```
+
+### 7.3 DTO 类使用示例
+
+有了全局规则后，DTO 类中的 `CreatedBy` 和 `UpdatedBy` 字段将自动应用聚合规则：
+
+```csharp
+public class DocumentDto
+{
+    public string Id { get; set; }
+    
+    public string Title { get; set; }
+    
+    // 这个字段将自动应用全局聚合规则
+    // 无需添加 [AggregateField] 特性
+    public string CreatedBy { get; set; }
+    
+    // 这个字段也将自动应用全局聚合规则
+    public string UpdatedBy { get; set; }
+    
+    // 如果需要特殊处理，仍可使用特性覆盖全局规则
+    [AggregateField(dataSource: "/api/custom/{value}.displayName", template: "自定义: {field}")]
+    public string CustomField { get; set; }
+}
+```
+
+### 7.4 预定义的常用规则
+
+`ConfigureCommonGlobalRules()` 扩展方法提供了以下预定义规则：
+
+- **CreatedBy**: 从用户服务获取创建者姓名
+- **UpdatedBy**: 从用户服务获取更新者姓名  
+- **UserId**: 从用户服务获取用户姓名
+
+所有规则都使用以下配置：
+- 数据源：`http://identity/api/identity/internal/users/{value}.data.name`
+- 模板：`{field}`（直接显示用户姓名）
+
+### 7.5 工作原理
+
+1. **规则收集**：`AggregationHeaderService` 在生成聚合头部时，首先收集带有 `AggregateFieldAttribute` 特性的属性
+2. **全局规则检查**：对于没有特性的属性，检查是否存在匹配的全局规则
+3. **优先级处理**：特性规则优先级高于全局规则，不会重复应用
+4. **规则生成**：将所有规则合并生成最终的聚合头部
+
+### 7.6 注意事项
+
+- 全局规则仅对没有 `AggregateFieldAttribute` 特性的属性生效
+- 字段名匹配不区分大小写
+- 全局规则在应用启动时配置，运行时修改需要重新注入服务
+- 建议将常用的全局规则配置在应用启动时，避免运行时频繁修改
+
+## 八、未来规划
 
 - 支持跨字段处理
 

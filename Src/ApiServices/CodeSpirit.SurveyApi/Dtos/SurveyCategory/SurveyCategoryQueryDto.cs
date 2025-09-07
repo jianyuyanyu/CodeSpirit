@@ -1,3 +1,4 @@
+using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Dtos;
 using System.ComponentModel;
 
@@ -24,6 +25,14 @@ public class SurveyCategoryQueryDto : QueryDtoBase
     /// 父级分类ID
     /// </summary>
     [DisplayName("父级分类")]
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/survey/SurveyCategories",
+        ValueField = "id",
+        LabelField = "name",
+        Searchable = true,
+        Multiple = false,
+        Clearable = true
+    )]
     public int? ParentId { get; set; }
 
     /// <summary>

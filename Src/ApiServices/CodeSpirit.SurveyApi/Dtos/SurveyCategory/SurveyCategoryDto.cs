@@ -56,13 +56,22 @@ public class SurveyCategoryDto
     /// 父级分类ID
     /// </summary>
     [DisplayName("父级分类ID")]
+    [AmisColumn(Hidden = true)]
     public int? ParentId { get; set; }
 
     /// <summary>
     /// 父级分类名称
     /// </summary>
     [DisplayName("父级分类")]
+    [AmisColumn(Hidden = true)]
     public string? ParentName { get; set; }
+
+    /// <summary>
+    /// 子分类列表
+    /// </summary>
+    [DisplayName("子分类")]
+    [IgnoreColumn]
+    public List<SurveyCategoryDto> Children { get; set; } = new();
 
     /// <summary>
     /// 问卷数量
@@ -81,5 +90,5 @@ public class SurveyCategoryDto
     /// </summary>
     [DisplayName("创建人")]
     [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "{field}")]
-    public string? CreatedBy { get; set; }
+    public long CreatedBy { get; set; }
 }

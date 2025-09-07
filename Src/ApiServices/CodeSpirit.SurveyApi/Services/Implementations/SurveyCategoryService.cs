@@ -31,6 +31,123 @@ public class SurveyCategoryService : BaseCRUDService<SurveyCategory, SurveyCateg
     }
 
     /// <summary>
+    /// 获取所有分类列表
+    /// </summary>
+    /// <returns>所有分类列表</returns>
+    public async Task<List<SurveyCategoryDto>> GetAllCategoriesAsync()
+    {
+        var categories = await _context.SurveyCategories
+            .Include(c => c.Parent)
+            .Include(c => c.Surveys)
+            .OrderBy(c => c.OrderIndex)
+            .ThenBy(c => c.Name)
+            .ToListAsync();
+
+        return Mapper.Map<List<SurveyCategoryDto>>(categories);
+    }
+
+    /// <summary>
+    /// 根据查询条件获取分类列表（支持树形结构）
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>分类列表（树形结构）</returns>
+    public async Task<List<SurveyCategoryDto>> GetCategoriesWithTreeAsync(SurveyCategoryQueryDto queryDto)
+    {
+        // 获取所有分类数据
+        var allCategories = await GetAllCategoriesAsync();
+        
+        // 特殊处理：如果只是查询特定父级下的分类，直接使用现有的树形方法
+        if (queryDto.ParentId.HasValue && 
+            string.IsNullOrEmpty(queryDto.Keywords) && 
+            string.IsNullOrEmpty(queryDto.Name) && 
+            !queryDto.IsEnabled.HasValue && 
+            queryDto.OnlyTopLevel != true)
+        {
+            return await GetCategoryTreeAsync(queryDto.ParentId.Value);
+        }
+        
+        // 应用查询条件进行过滤
+        var filteredCategories = ApplyQueryFilters(allCategories, queryDto);
+        
+        // 构建树形结构
+        return BuildCategoryTree(filteredCategories);
+    }
+
+    /// <summary>
+    /// 应用查询条件过滤分类
+    /// </summary>
+    /// <param name="categories">分类列表</param>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>过滤后的分类列表</returns>
+    private static List<SurveyCategoryDto> ApplyQueryFilters(List<SurveyCategoryDto> categories, SurveyCategoryQueryDto queryDto)
+    {
+        var filteredCategories = categories.AsEnumerable();
+        
+        // 关键字搜索（通用搜索）
+        if (!string.IsNullOrEmpty(queryDto.Keywords))
+        {
+            filteredCategories = filteredCategories.Where(c => 
+                c.Name.Contains(queryDto.Keywords, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(c.Description) && c.Description.Contains(queryDto.Keywords, StringComparison.OrdinalIgnoreCase))
+            );
+        }
+        
+        // 分类名称搜索
+        if (!string.IsNullOrEmpty(queryDto.Name))
+        {
+            filteredCategories = filteredCategories.Where(c => 
+                c.Name.Contains(queryDto.Name, StringComparison.OrdinalIgnoreCase)
+            );
+        }
+        
+        // 启用状态筛选
+        if (queryDto.IsEnabled.HasValue)
+        {
+            filteredCategories = filteredCategories.Where(c => 
+                c.IsEnabled == queryDto.IsEnabled.Value
+            );
+        }
+        
+        // 只查询顶级分类
+        if (queryDto.OnlyTopLevel == true)
+        {
+            filteredCategories = filteredCategories.Where(c => !c.ParentId.HasValue);
+        }
+        
+        return filteredCategories.ToList();
+    }
+
+
+    /// <summary>
+    /// 构建分类树形结构
+    /// </summary>
+    /// <param name="categories">分类列表</param>
+    /// <returns>树形结构的分类列表</returns>
+    private static List<SurveyCategoryDto> BuildCategoryTree(List<SurveyCategoryDto> categories)
+    {
+        // 创建字典以便快速查找
+        var categoryDict = categories.ToDictionary(c => c.Id, c => c);
+
+        // 初始化所有分类的Children列表
+        foreach (var category in categories)
+        {
+            category.Children = [];
+        }
+
+        // 构建父子关系
+        foreach (var category in categories)
+        {
+            if (category.ParentId.HasValue && categoryDict.TryGetValue(category.ParentId.Value, out var parent))
+            {
+                parent.Children.Add(category);
+            }
+        }
+
+        // 返回根节点（没有父级的分类）
+        return categories.Where(c => !c.ParentId.HasValue).ToList();
+    }
+
+    /// <summary>
     /// 获取分类树形结构
     /// </summary>
     /// <param name="parentId">父级分类ID，null表示获取所有顶级分类</param>

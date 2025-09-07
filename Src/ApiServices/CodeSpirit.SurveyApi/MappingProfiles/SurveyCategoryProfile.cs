@@ -18,7 +18,8 @@ public class SurveyCategoryProfile : Profile
         // 实体到DTO的映射
         CreateMap<SurveyCategory, SurveyCategoryDto>()
             .ForMember(dest => dest.ParentName, opt => opt.MapFrom(src => src.Parent != null ? src.Parent.Name : null))
-            .ForMember(dest => dest.SurveyCount, opt => opt.MapFrom(src => src.Surveys.Count));
+            .ForMember(dest => dest.SurveyCount, opt => opt.MapFrom(src => src.Surveys.Count))
+            .ForMember(dest => dest.Children, opt => opt.Ignore()); // Children 将通过树形构建方法设置
 
         // PageList映射配置
         CreateMap<PageList<SurveyCategory>, PageList<SurveyCategoryDto>>();

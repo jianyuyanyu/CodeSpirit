@@ -11,6 +11,19 @@ namespace CodeSpirit.SurveyApi.Services.Interfaces;
 public interface ISurveyCategoryService : IBaseCRUDService<SurveyCategory, SurveyCategoryDto, int, CreateSurveyCategoryDto, UpdateSurveyCategoryDto>
 {
     /// <summary>
+    /// 获取所有分类列表
+    /// </summary>
+    /// <returns>所有分类列表</returns>
+    Task<List<SurveyCategoryDto>> GetAllCategoriesAsync();
+
+    /// <summary>
+    /// 根据查询条件获取分类列表（支持树形结构）
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>分类列表（树形结构）</returns>
+    Task<List<SurveyCategoryDto>> GetCategoriesWithTreeAsync(SurveyCategoryQueryDto queryDto);
+
+    /// <summary>
     /// 获取分类树形结构
     /// </summary>
     /// <param name="parentId">父级分类ID，null表示获取所有顶级分类</param>

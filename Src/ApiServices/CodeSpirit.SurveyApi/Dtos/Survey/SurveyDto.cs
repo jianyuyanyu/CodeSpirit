@@ -63,7 +63,6 @@ public class SurveyDto
     /// 创建者ID
     /// </summary>
     [DisplayName("创建者")]
-    [AggregateField(dataSource: "http://identity/api/identity/internal/users/{value}.data.name", template: "{field}")]
     public long CreatedBy { get; set; }
 
     /// <summary>

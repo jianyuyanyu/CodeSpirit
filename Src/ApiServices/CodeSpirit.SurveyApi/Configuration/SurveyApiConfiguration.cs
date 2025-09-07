@@ -198,6 +198,7 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         services.AddScoped<ISurveyLLMGeneratorService, SurveyLLMGeneratorService>();
         services.AddScoped<ISurveyCategoryService, SurveyCategoryService>();
         services.AddScoped<IAppSurveyService, AppSurveyService>();
+        services.AddScoped<IResponseService, ResponseService>();
         
         // 添加AI表单填充服务（包含自动端点功能）
         services.AddAiFormFillEndpoints();

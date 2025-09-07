@@ -6,6 +6,7 @@ using CodeSpirit.SurveyApi.Models.Enums;
 using CodeSpirit.SurveyApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Utilities;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 
@@ -120,6 +121,60 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
     }
 
     /// <summary>
+    /// 创建问卷（重写以自动生成访问码）
+    /// </summary>
+    /// <param name="createDto">创建问卷DTO</param>
+    /// <returns>创建的问卷DTO</returns>
+    public override async Task<SurveyDto> CreateAsync(CreateSurveyDto createDto)
+    {
+        ArgumentNullException.ThrowIfNull(createDto);
+
+        // 创建问卷实体
+        var survey = _mapper.Map<Survey>(createDto);
+        
+        // 自动生成访问码
+        survey.PublicAccessCode = await GenerateUniqueAccessCodeAsync();
+        
+        // 设置租户ID
+        survey.TenantId = _currentUser.TenantId ?? "default";
+
+        // 保存问卷
+        var createdSurvey = await _repository.AddAsync(survey);
+
+        _logger.LogInformation("问卷创建成功：{Title}，ID：{SurveyId}，访问码：{AccessCode}，操作用户：{UserId}",
+            createdSurvey.Title, createdSurvey.Id, createdSurvey.PublicAccessCode, _currentUser.Id);
+
+        return _mapper.Map<SurveyDto>(createdSurvey);
+    }
+
+    /// <summary>
+    /// 生成唯一的访问码
+    /// </summary>
+    /// <returns>唯一访问码</returns>
+    private async Task<string> GenerateUniqueAccessCodeAsync()
+    {
+        string accessCode;
+        int attempts = 0;
+        const int maxAttempts = 10;
+
+        do
+        {
+            accessCode = AccessCodeGenerator.GenerateSurveyAccessCode();
+            attempts++;
+
+            if (attempts > maxAttempts)
+            {
+                _logger.LogError("生成唯一访问码失败，超过最大尝试次数 {MaxAttempts}", maxAttempts);
+                throw new InvalidOperationException("生成唯一访问码失败");
+            }
+        }
+        while (await _repository.ExistsAsync(s => s.PublicAccessCode == accessCode));
+
+        _logger.LogDebug("生成访问码成功：{AccessCode}，尝试次数：{Attempts}", accessCode, attempts);
+        return accessCode;
+    }
+
+    /// <summary>
     /// 发布问卷
     /// </summary>
     /// <param name="id">问卷ID</param>
@@ -227,6 +282,7 @@ public class SurveyService : BaseCRUDService<Survey, SurveyDto, int, CreateSurve
             Description = sourceSurvey.Description,
             AccessType = sourceSurvey.AccessType,
             ExpiresAt = sourceSurvey.ExpiresAt,
+            PublicAccessCode = await GenerateUniqueAccessCodeAsync(),
             IsTemplate = false,
             Status = SurveyStatus.Draft,
             TenantId = _currentUser.TenantId ?? "default"

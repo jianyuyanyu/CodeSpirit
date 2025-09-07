@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Shared.Entities;
 using CodeSpirit.Shared.Entities.Interfaces;
 using CodeSpirit.SurveyApi.Models.Enums;
@@ -14,7 +15,7 @@ public class Survey : AuditableEntityBase<int>, IMultiTenant
     /// </summary>
     [Required]
     [StringLength(50)]
-    public string TenantId { get; set; }
+    public string TenantId { get; set; } = string.Empty;
 
     /// <summary>
     /// 问卷标题
@@ -78,6 +79,18 @@ public class Survey : AuditableEntityBase<int>, IMultiTenant
     /// 是否已预览
     /// </summary>
     public bool IsPreviewChecked { get; set; } = false;
+
+    /// <summary>
+    /// 公开访问码（用于外部分享链接）
+    /// </summary>
+    [StringLength(16)]
+    [Required]
+    public string PublicAccessCode { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 分享链接过期时间
+    /// </summary>
+    public DateTime? ShareExpiresAt { get; set; }
 
     /// <summary>
     /// 问卷分类ID

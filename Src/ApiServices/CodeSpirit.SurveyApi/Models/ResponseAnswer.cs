@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Shared.Entities;
 
 namespace CodeSpirit.SurveyApi.Models;

@@ -1,0 +1,569 @@
+/* 问卷参与页面样式 */
+
+.survey-participate-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    position: relative;
+}
+
+/* 顶部进度条 */
+.survey-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px !important; /* 强制高度为4px */
+    max-height: 4px !important; /* 防止被覆盖 */
+    background: rgba(255,255,255,0.2);
+    z-index: 10;
+    backdrop-filter: blur(10px);
+    pointer-events: none; /* 确保不阻止鼠标事件 */
+    overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 如果进度条仍然造成问题，可以使用这个类来隐藏它 */
+.survey-progress-bar.hidden {
+    display: none;
+}
+
+.survey-progress-fill {
+    height: 4px !important; /* 明确指定高度 */
+    max-height: 4px !important; /* 防止被覆盖 */
+    background: linear-gradient(90deg, #007bff, #0056b3, #28a745);
+    transition: width 0.3s ease;
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 10px rgba(0,123,255,0.5);
+    position: relative;
+    top: 0;
+}
+
+.survey-participate-container {
+    min-height: 100vh;
+    padding: 20px 0 40px;
+    margin-top: 0; /* 移除margin-top，因为进度条现在是绝对定位 */
+}
+
+.survey-participate-card {
+    box-shadow: 0 0 1px rgba(0,0,0,.125), 0 1px 3px rgba(0,0,0,.2);
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+}
+
+.survey-participate-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px 30px;
+    border-bottom: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.survey-participate-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><defs><radialGradient id="a" cx="50%" cy="50%"><stop offset="0%" stop-color="rgba(255,255,255,.1)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><circle cx="10" cy="10" r="10" fill="url(%23a)"/><circle cx="50" cy="10" r="10" fill="url(%23a)"/><circle cx="90" cy="10" r="10" fill="url(%23a)"/></svg>') repeat;
+    opacity: 0.1;
+    animation: float 15s ease-in-out infinite;
+}
+
+.survey-participate-title {
+    margin: 0 0 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 2;
+}
+
+.survey-title-content {
+    display: flex;
+    align-items: center;
+}
+
+.survey-title-icon {
+    font-size: 1.5rem;
+    margin-right: 12px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.survey-title-text {
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+/* 问卷信息区域 */
+.survey-info-section {
+    position: relative;
+    z-index: 2;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.survey-meta-info {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.survey-meta-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    opacity: 0.9;
+    background: rgba(255,255,255,0.1);
+    padding: 8px 12px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.survey-meta-item i {
+    opacity: 0.8;
+}
+
+.survey-back-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.survey-back-btn:hover {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    color: white;
+}
+
+.survey-participate-body {
+    padding: 30px;
+}
+
+/* 加载状态样式 */
+.survey-loading-container {
+    text-align: center;
+    padding: 80px 20px;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.survey-loading-spinner {
+    width: 4rem;
+    height: 4rem;
+    border: 4px solid rgba(0,123,255,0.1);
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 24px;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.2);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.survey-loading-text {
+    color: #495057;
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 16px;
+}
+
+/* 加载点动画 */
+.survey-loading-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.survey-loading-dots span {
+    width: 8px;
+    height: 8px;
+    background: #007bff;
+    border-radius: 50%;
+    animation: loadingDots 1.4s ease-in-out infinite both;
+}
+
+.survey-loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.survey-loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+.survey-loading-dots span:nth-child(3) { animation-delay: 0s; }
+
+@keyframes loadingDots {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+/* 错误状态样式 */
+.survey-error-container {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.survey-error-icon {
+    font-size: 3rem;
+    color: #dc3545;
+    margin-bottom: 16px;
+}
+
+.survey-error-title {
+    color: #dc3545;
+    margin-bottom: 12px;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.survey-error-message {
+    color: #6c757d;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.survey-retry-btn {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.survey-retry-btn:hover {
+    background-color: #c82333;
+}
+
+/* 问卷表单样式 */
+.survey-form-container {
+    max-width: 100%;
+}
+
+.survey-info-alert {
+    background-color: #e7f3ff;
+    border: 1px solid #b8daff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    color: #004085;
+}
+
+.survey-info-alert i {
+    margin-right: 8px;
+    color: #007bff;
+}
+
+/* AMIS表单项样式优化 */
+.antd-Form-item,
+.cxd-Form-item {
+    margin-bottom: 24px;
+    padding: 20px;
+    background: #fafbfc;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.antd-Form-item::before,
+.cxd-Form-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    border-radius: 8px 8px 0 0;
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.antd-Form-item:hover,
+.cxd-Form-item:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+    transform: translateY(-2px);
+}
+
+.antd-Form-item:hover::before,
+.cxd-Form-item:hover::before {
+    transform: scaleX(1);
+}
+
+.antd-Form-item.is-focused,
+.cxd-Form-item.is-focused {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.cxd-Form-label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.cxd-Form-label.is-required::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.cxd-Form-description {
+    color: #6c757d;
+    font-size: 14px;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+/* 表单控件样式 */
+.cxd-TextControl-input,
+.cxd-NumberControl-input,
+.cxd-TextareaControl-input {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    padding: 10px 12px;
+    font-size: 14px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cxd-TextControl-input:focus,
+.cxd-NumberControl-input:focus,
+.cxd-TextareaControl-input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+    outline: none;
+}
+
+/* 单选和多选样式 */
+.cxd-RadiosControl-option,
+.cxd-CheckboxesControl-option {
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.cxd-RadiosControl-option::before,
+.cxd-CheckboxesControl-option::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0,123,255,0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.cxd-RadiosControl-option:hover,
+.cxd-CheckboxesControl-option:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+    transform: translateX(4px);
+}
+
+.cxd-RadiosControl-option:hover::before,
+.cxd-CheckboxesControl-option:hover::before {
+    left: 100%;
+}
+
+.cxd-RadiosControl-option.is-checked,
+.cxd-CheckboxesControl-option.is-checked {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #e7f3ff 0%, #cce7ff 100%);
+    box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+}
+
+/* 评分控件样式 */
+.cxd-RatingControl {
+    padding: 12px 0;
+}
+
+.cxd-RatingControl-star {
+    font-size: 24px;
+    margin-right: 4px;
+    color: #ffc107;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.cxd-RatingControl-star:hover {
+    transform: scale(1.1);
+}
+
+/* 提交按钮样式 */
+.cxd-Form-submit {
+    text-align: center;
+    padding: 30px 0 20px;
+}
+
+.cxd-Button--primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+    border-radius: 8px;
+    padding: 14px 40px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+}
+
+.cxd-Button--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,123,255,0.4);
+}
+
+.cxd-Button--primary:active {
+    transform: translateY(0);
+}
+
+/* 进度指示器 */
+.survey-progress {
+    background: #e9ecef;
+    height: 4px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.survey-progress-bar {
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+/* 动画关键帧 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .survey-participate-container {
+        padding: 15px 0;
+        margin-top: 0;
+    }
+    
+    .survey-participate-header {
+        padding: 20px;
+    }
+    
+    .survey-participate-title {
+        margin-bottom: 15px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .survey-title-text {
+        font-size: 1.2rem;
+    }
+    
+    .survey-meta-info {
+        gap: 16px;
+        justify-content: center;
+    }
+    
+    .survey-meta-item {
+        font-size: 0.85rem;
+        padding: 6px 10px;
+    }
+    
+    .survey-participate-body {
+        padding: 20px;
+    }
+    
+    .cxd-Form-item {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+    
+    .cxd-Form-label {
+        font-size: 15px;
+    }
+    
+    .cxd-Button--primary {
+        width: 100%;
+        padding: 12px 20px;
+    }
+}
+
+/* 动画效果 */
+.survey-form-container {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 验证错误样式 */
+.cxd-Form-item.has-error {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.cxd-Form-feedback {
+    color: #dc3545;
+    font-size: 13px;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+}
+
+.cxd-Form-feedback::before {
+    content: "⚠";
+    margin-right: 4px;
+}

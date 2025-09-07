@@ -30,7 +30,7 @@ public class TenantOptions
     /// <summary>
     /// 租户Header名称
     /// </summary>
-    public string TenantHeaderName { get; set; } = "TenantId";
+    public string TenantHeaderName { get; set; } = "X-Tenant-Id";
 
     /// <summary>
     /// 是否从Query参数解析租户

@@ -4,6 +4,7 @@ using CodeSpirit.SurveyApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CodeSpirit.SurveyApi.Migrations
 {
     [DbContext(typeof(SurveyDbContext))]
-    partial class SurveyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250907143813_PopulatePublicAccessCodes")]
+    partial class PopulatePublicAccessCodes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -242,7 +245,6 @@ namespace CodeSpirit.SurveyApi.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PublicAccessCode")
-                        .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("nvarchar(16)");
 
@@ -284,7 +286,8 @@ namespace CodeSpirit.SurveyApi.Migrations
 
                     b.HasIndex("PublicAccessCode")
                         .IsUnique()
-                        .HasDatabaseName("IX_Surveys_PublicAccessCode");
+                        .HasDatabaseName("IX_Surveys_PublicAccessCode")
+                        .HasFilter("[PublicAccessCode] IS NOT NULL");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_Surveys_Status");

@@ -445,7 +445,7 @@ builder.Services.Replace(ServiceDescriptor.Singleton<ITenantStore, DatabaseTenan
 | `Enabled` | bool | true | 是否启用多租户功能 |
 | `DefaultTenantId` | string | "default" | 默认租户ID |
 | `ResolveFromHeader` | bool | true | 是否从HTTP Header解析租户 |
-| `TenantHeaderName` | string | "TenantId" | 租户Header名称 |
+| `TenantHeaderName` | string | "X-Tenant-Id" | 租户Header名称 |
 | `ResolveFromQuery` | bool | true | 是否从Query参数解析租户 |
 | `TenantQueryName` | string | "tenantId" | 租户Query参数名称 |
 | `ResolveFromSubdomain` | bool | false | 是否从子域名解析租户 |

@@ -231,6 +231,151 @@ public class SurveysController : ApiControllerBase
     }
 
     /// <summary>
+    /// 跳转到问卷参与页面
+    /// </summary>
+    /// <returns>跳转操作</returns>
+    [Operation("参与问卷", "link", "/$tenantId/survey/participate/$accessCode", null, 
+        visibleOn: "status == 1 && accessCode", 
+        Icon = "fa-solid fa-external-link-alt",Blank = true)]
+    [DisplayName("参与问卷")]
+    public ActionResult<ApiResponse> ParticipateInSurvey()
+    {
+        return SuccessResponse("跳转到问卷参与页面");
+    }
+
+    /// <summary>
+    /// 获取问卷分享链接
+    /// </summary>
+    /// <param name="id">问卷ID</param>
+    /// <returns>分享链接信息</returns>
+    [HttpGet("{id}/share-link")]
+    [Operation("分享链接", "ajax", null, null, 
+        visibleOn: "status == 1 && accessCode",
+        Icon = "fa-solid fa-share-alt",
+        FeedbackTitle = "问卷分享链接",
+        FeedbackBodyTpl = @"{
+            ""type"": ""form"",
+            ""body"": [
+                {
+                    ""type"": ""alert"",
+                    ""level"": ""info"",
+                    ""body"": ""复制下方链接分享给参与者，他们可以通过此链接直接参与问卷。"",
+                    ""className"": ""mb-3""
+                },
+                {
+                    ""type"": ""input-text"",
+                    ""label"": ""分享链接"",
+                    ""name"": ""shareUrl"",
+                    ""value"": ""${shareUrl}"",
+                    ""readOnly"": true,
+                    ""addOn"": {
+                        ""type"": ""button"",
+                        ""label"": ""复制"",
+                        ""level"": ""primary"",
+                        ""onEvent"": {
+                            ""click"": {
+                                ""actions"": [
+                                    {
+                                        ""actionType"": ""copy"",
+                                        ""args"": {
+                                            ""content"": ""${shareUrl}""
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    ""type"": ""input-text"",
+                    ""label"": ""访问码"",
+                    ""name"": ""accessCode"",
+                    ""value"": ""${accessCode}"",
+                    ""readOnly"": true,
+                    ""description"": ""参与者也可以使用此访问码在问卷系统中搜索并参与问卷"",
+                    ""addOn"": {
+                        ""type"": ""button"",
+                        ""label"": ""复制"",
+                        ""level"": ""default"",
+                        ""onEvent"": {
+                            ""click"": {
+                                ""actions"": [
+                                    {
+                                        ""actionType"": ""copy"",
+                                        ""args"": {
+                                            ""content"": ""${accessCode}""
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    ""type"": ""divider""
+                },
+                {
+                    ""type"": ""flex"",
+                    ""justify"": ""space-between"",
+                    ""items"": [
+                        {
+                            ""type"": ""tpl"",
+                            ""tpl"": ""<div class='text-muted'><i class='fa fa-info-circle'></i> 问卷状态：已发布</div>""
+                        },
+                        {
+                            ""type"": ""button"",
+                            ""label"": ""预览问卷"",
+                            ""actionType"": ""url"",
+                            ""url"": ""${shareUrl}"",
+                            ""blank"": true,
+                            ""level"": ""info"",
+                            ""size"": ""sm""
+                        }
+                    ]
+                }
+            ]
+        }",
+        FeedBackSize = "md")]
+    [DisplayName("获取分享链接")]
+    public async Task<ActionResult<ApiResponse<object>>> GetShareLink(int id)
+    {
+        // 获取问卷信息
+        var survey = await ((IBaseCRUDService<Survey, SurveyDto, int, CreateSurveyDto, UpdateSurveyDto>)_surveyService).GetAsync(id);
+        if (survey == null)
+        {
+            return NotFound("问卷不存在");
+        }
+
+        // 检查问卷是否已发布且有访问码
+        if (survey.Status != SurveyStatus.Published)
+        {
+            return BadRequest("问卷未发布，无法获取分享链接");
+        }
+
+        if (string.IsNullOrEmpty(survey.AccessCode))
+        {
+            return BadRequest("问卷未设置访问码，无法获取分享链接");
+        }
+
+        // 构建完整的分享链接（包含域名）
+        var request = HttpContext.Request;
+        var baseUrl = $"{request.Scheme}://{request.Host}";
+        var shareUrl = $"{baseUrl}/{survey.TenantId}/survey/participate/{survey.AccessCode}";
+
+        var result = new
+        {
+            shareUrl = shareUrl,
+            accessCode = survey.AccessCode,
+            surveyTitle = survey.Title,
+            surveyDescription = survey.Description,
+            questionCount = survey.QuestionCount,
+            estimatedMinutes = survey.EstimatedMinutes ?? 5 // 默认5分钟
+        };
+
+        return SuccessResponse((object)result);
+    }
+
+    /// <summary>
     /// 复制问卷
     /// </summary>
     /// <param name="id">问卷ID</param>

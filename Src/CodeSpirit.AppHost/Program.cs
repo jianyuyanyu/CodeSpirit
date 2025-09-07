@@ -118,6 +118,7 @@ var surveyService = builder.AddProject<Projects.CodeSpirit_SurveyApi>("survey")
     .WithReference(cache)
     .WithReference(configService)
     .WithReference(rabbitmqService)
+    .WithReference(identityService)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience);

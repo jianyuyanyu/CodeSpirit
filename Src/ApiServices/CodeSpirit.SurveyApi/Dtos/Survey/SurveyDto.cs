@@ -18,6 +18,13 @@ public class SurveyDto
     public int Id { get; set; }
 
     /// <summary>
+    /// 租户ID
+    /// </summary>
+    [DisplayName("租户ID")]
+    [AmisColumn(Hidden = true)]
+    public string TenantId { get; set; } = string.Empty;
+
+    /// <summary>
     /// 问卷标题
     /// </summary>
     [DisplayName("问卷标题")]
@@ -107,4 +114,16 @@ public class SurveyDto
     /// </summary>
     [DisplayName("问卷分类")]
     public string? CategoryName { get; set; }
+
+    /// <summary>
+    /// 公开访问码
+    /// </summary>
+    [DisplayName("访问码")]
+    public string? AccessCode { get; set; }
+
+    /// <summary>
+    /// 预计完成时间（分钟）
+    /// </summary>
+    [DisplayName("预计用时")]
+    public int? EstimatedMinutes { get; set; }
 }

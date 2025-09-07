@@ -1,0 +1,182 @@
+@page "/{tenantId?}/survey/success"
+@model CodeSpirit.Web.Pages.Survey.SuccessModel
+@{
+    ViewData["Title"] = "提交成功";
+    Layout = "_Layout";
+}
+
+<div class="survey-success-page">
+    <div class="survey-success-background">
+        <div class="success-particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+    </div>
+    
+    <div class="container-fluid survey-success-container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-lg-6 col-md-8 col-12">
+                <div class="survey-success-card">
+                    <div class="survey-success-decoration"></div>
+                    <div class="survey-success-badge">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    
+                    <div class="survey-success-body">
+                        <div class="survey-success-icon-container">
+                            <div class="success-ripple"></div>
+                            <div class="success-ripple"></div>
+                            <div class="success-ripple"></div>
+                            <i class="fas fa-check-circle survey-success-icon"></i>
+                        </div>
+                        
+                        <h1 class="survey-success-title">问卷提交成功！</h1>
+                        <p class="survey-success-message">
+                            🎉 感谢您的参与！您的宝贵意见已成功提交，我们会认真对待每一份反馈，让我们一起创造更美好的体验。
+                        </p>
+                        
+                        <div class="survey-success-stats">
+                            <div class="success-stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-number" id="completion-time">--</span>
+                                    <span class="stat-label">完成用时</span>
+                                </div>
+                            </div>
+                            <div class="success-stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-number">+1</span>
+                                    <span class="stat-label">参与人数</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="survey-success-actions">
+                            @{
+                                var surveyListUrl = !string.IsNullOrEmpty(Model.TenantId) 
+                                    ? $"/{Model.TenantId}/survey" 
+                                    : "/survey";
+                            }
+                            <a href="@surveyListUrl" class="survey-success-btn primary">
+                                <i class="fas fa-list mr-2"></i>
+                                查看更多问卷
+                            </a>
+                            <a href="/" class="survey-success-btn secondary">
+                                <i class="fas fa-home mr-2"></i>
+                                返回首页
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 模拟完成时间计算
+            const completionTime = localStorage.getItem('survey-start-time');
+            if (completionTime) {
+                const startTime = parseInt(completionTime);
+                const endTime = Date.now();
+                const duration = Math.round((endTime - startTime) / 1000);
+                
+                const minutes = Math.floor(duration / 60);
+                const seconds = duration % 60;
+                const timeText = minutes > 0 ? `${minutes}分${seconds}秒` : `${seconds}秒`;
+                
+                document.getElementById('completion-time').textContent = timeText;
+                localStorage.removeItem('survey-start-time');
+            }
+            
+            // 添加成功音效（可选）
+            try {
+                // 创建音频上下文
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // 播放成功提示音
+                function playSuccessSound() {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+                    oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+                    oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+                    
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                }
+                
+                // 延迟播放音效
+                setTimeout(playSuccessSound, 800);
+            } catch (error) {
+                // 忽略音频错误
+                console.log('音频播放不可用');
+            }
+            
+            // 添加按钮点击动画
+            const buttons = document.querySelectorAll('.survey-success-btn');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    // 创建点击波纹效果
+                    const ripple = document.createElement('span');
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    
+                    ripple.style.cssText = `
+                        position: absolute;
+                        width: ${size}px;
+                        height: ${size}px;
+                        left: ${x}px;
+                        top: ${y}px;
+                        background: rgba(255,255,255,0.3);
+                        border-radius: 50%;
+                        transform: scale(0);
+                        animation: buttonRipple 0.6s ease-out;
+                        pointer-events: none;
+                    `;
+                    
+                    this.style.position = 'relative';
+                    this.style.overflow = 'hidden';
+                    this.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                });
+            });
+        });
+    </script>
+    <style>
+        @@keyframes buttonRipple {
+            to {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+    </style>
+}
+
+@section Styles {
+    <resource path="css/survey-success.css" type="css" />
+}

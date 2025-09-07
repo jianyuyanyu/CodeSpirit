@@ -1,0 +1,533 @@
+/* 问卷列表页面样式 */
+
+:root {
+    --survey-primary-color: #007bff;
+    --survey-primary-hover: #0056b3;
+    --survey-success-color: #28a745;
+    --survey-danger-color: #dc3545;
+    --survey-warning-color: #ffc107;
+    --survey-light-bg: #f8f9fa;
+    --survey-border-color: #e9ecef;
+    --survey-shadow: 0 0 1px rgba(0,0,0,.125), 0 1px 3px rgba(0,0,0,.2);
+    --survey-shadow-hover: 0 4px 12px rgba(0,0,0,.15);
+    --survey-border-radius: 8px;
+    --survey-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --survey-gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --survey-gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* 页面容器 */
+.survey-page-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+/* 英雄区域 */
+.survey-hero-section {
+    background: var(--survey-gradient-primary);
+    padding: 60px 0 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.survey-hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><defs><radialGradient id="a" cx="50%" cy="50%"><stop offset="0%" stop-color="rgba(255,255,255,.1)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><circle cx="10" cy="10" r="10" fill="url(%23a)"/><circle cx="50" cy="10" r="10" fill="url(%23a)"/><circle cx="90" cy="10" r="10" fill="url(%23a)"/></svg>') repeat;
+    opacity: 0.1;
+    animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+.survey-hero-content {
+    color: white;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.survey-hero-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    display: block;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.survey-hero-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.survey-hero-subtitle {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+    font-weight: 300;
+}
+
+/* 内容区域 */
+.survey-content-section {
+    padding: 0 20px 60px;
+    margin-top: -40px;
+    position: relative;
+    z-index: 2;
+}
+
+.survey-main-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    overflow: hidden;
+    animation: slideInUp 0.8s ease-out 0.2s both;
+}
+
+.survey-card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 30px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.survey-header-info .survey-card-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.survey-header-info .survey-card-subtitle {
+    color: #6c757d;
+    margin-bottom: 0;
+    font-size: 1rem;
+}
+
+.survey-stats {
+    text-align: center;
+}
+
+.survey-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 24px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-width: 100px;
+}
+
+.survey-stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--survey-primary-color);
+    line-height: 1;
+}
+
+.survey-stat-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 4px;
+}
+
+.survey-card-body {
+    padding: 30px;
+}
+
+.survey-list-container {
+    padding: 20px;
+}
+
+.survey-card {
+    box-shadow: var(--survey-shadow);
+    margin-bottom: 1rem;
+    border-radius: var(--survey-border-radius);
+    overflow: hidden;
+    transition: var(--survey-transition);
+}
+
+.survey-card:hover {
+    box-shadow: var(--survey-shadow-hover);
+}
+
+.survey-card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 15px 20px;
+}
+
+.survey-card-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #333;
+    display: flex;
+    align-items: center;
+}
+
+.survey-card-title i {
+    margin-right: 8px;
+    color: #007bff;
+}
+
+.survey-card-body {
+    padding: 20px;
+}
+
+/* AMIS表格样式优化 - Ant Design 主题 */
+.antd-Table,
+.cxd-Table {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.antd-Table .ant-table-thead > tr > th,
+.cxd-Table-header {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.antd-Table .ant-table-tbody > tr > td,
+.cxd-Table-cell {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.antd-Table .ant-table-tbody > tr:hover,
+.cxd-Table-row:hover {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s ease;
+}
+
+/* 操作按钮样式 */
+.survey-action-btn {
+    margin-right: 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    padding: 6px 14px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    font-weight: 500;
+}
+
+.survey-action-btn.primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+}
+
+.survey-action-btn.primary:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,123,255,0.4);
+}
+
+.survey-action-btn.primary:active,
+.survey-action-btn.primary.btn-clicked {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 6px rgba(0,123,255,0.3);
+}
+
+.survey-action-btn.disabled {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* 参与按钮特殊样式 */
+.survey-participate-btn {
+    position: relative;
+}
+
+.survey-participate-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.survey-participate-btn:hover::before {
+    left: 100%;
+}
+
+/* 按钮点击波纹效果 */
+.survey-action-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+    pointer-events: none;
+}
+
+.survey-action-btn.btn-clicked::after {
+    width: 120%;
+    height: 120%;
+}
+
+/* 按钮焦点状态 */
+.survey-action-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+}
+
+/* 操作列样式 */
+.survey-action-column {
+    text-align: center;
+}
+
+.survey-action-column .cxd-Table-cell {
+    padding: 8px 12px;
+}
+
+/* 按钮组样式 */
+.survey-action-column .cxd-ButtonGroup {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 禁用按钮的特殊样式 */
+.survey-action-btn.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* 加载状态按钮 */
+.survey-action-btn.loading {
+    position: relative;
+    color: transparent;
+}
+
+.survey-action-btn.loading::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: buttonSpin 1s linear infinite;
+}
+
+@keyframes buttonSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 搜索过滤器样式 */
+.survey-filter-form {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid #e9ecef;
+}
+
+.survey-filter-form .antd-Form-item,
+.survey-filter-form .cxd-Form-item {
+    margin-bottom: 12px;
+    margin-right: 16px;
+}
+
+.survey-filter-form .antd-Form-label,
+.survey-filter-form .cxd-Form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 4px;
+}
+
+.survey-filter-form .antd-Form-control,
+.survey-filter-form .cxd-Form-control {
+    min-width: 200px;
+}
+
+.survey-filter-form .antd-Button,
+.survey-filter-form .cxd-Button {
+    margin-left: 8px;
+}
+
+/* 内联表单样式优化 */
+.antd-Form--inline .antd-Form-item,
+.cxd-Form--inline .cxd-Form-item {
+    display: inline-block;
+    vertical-align: top;
+    margin-right: 16px;
+    margin-bottom: 8px;
+}
+
+.antd-Form--inline .antd-Form-item:last-child,
+.cxd-Form--inline .cxd-Form-item:last-child {
+    margin-right: 0;
+}
+
+/* 动画关键帧 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .survey-hero-section {
+        padding: 40px 0 60px;
+    }
+    
+    .survey-hero-icon {
+        font-size: 3rem;
+        margin-bottom: 16px;
+    }
+    
+    .survey-hero-title {
+        font-size: 2rem;
+        margin-bottom: 12px;
+    }
+    
+    .survey-hero-subtitle {
+        font-size: 1rem;
+    }
+    
+    .survey-content-section {
+        padding: 0 15px 40px;
+        margin-top: -30px;
+    }
+    
+    .survey-card-header {
+        padding: 20px;
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+    }
+    
+    .survey-header-info .survey-card-title {
+        font-size: 1.25rem;
+        justify-content: center;
+    }
+    
+    .survey-card-body {
+        padding: 20px;
+    }
+    
+    .survey-list-container {
+        padding: 10px;
+    }
+    
+    .antd-Table .ant-table-tbody > tr > td,
+    .cxd-Table-cell {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+}
+
+/* 加载状态 */
+.survey-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.survey-loading .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 16px;
+}
+
+/* 空状态 */
+.survey-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+.survey-empty i {
+    font-size: 4rem;
+    margin-bottom: 16px;
+    color: #dee2e6;
+}
+
+.survey-empty h4 {
+    margin-bottom: 8px;
+    color: #495057;
+}
+
+/* 状态标签 */
+.survey-status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    min-width: 60px;
+}
+
+.survey-status-badge.published {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.survey-status-badge.expired {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.survey-status-badge.draft {
+    background-color: #fff3cd;
+    color: #856404;
+}

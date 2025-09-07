@@ -1,0 +1,67 @@
+@page "/{tenantId?}/survey"
+@model CodeSpirit.Web.Pages.Survey.IndexModel
+@{
+    ViewData["Title"] = "问卷调查";
+    Layout = "_Layout";
+}
+
+<div class="survey-page-container">
+    <div class="survey-hero-section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8 text-center">
+                    <div class="survey-hero-content">
+                        <i class="fas fa-poll survey-hero-icon"></i>
+                        <h1 class="survey-hero-title">问卷调查</h1>
+                        <p class="survey-hero-subtitle">参与公开问卷调查，分享您的宝贵意见</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container-fluid survey-content-section">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-10">
+                <div class="survey-main-card">
+                    <div class="survey-card-header">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="survey-header-info">
+                                <h3 class="survey-card-title">
+                                    <i class="fas fa-list-ul mr-2"></i>
+                                    可参与的问卷
+                                </h3>
+                                <p class="survey-card-subtitle">选择您感兴趣的问卷开始参与</p>
+                            </div>
+                            <div class="survey-stats">
+                                <div class="survey-stat-item">
+                                    <span class="survey-stat-number" id="survey-count">-</span>
+                                    <span class="survey-stat-label">个问卷</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="survey-card-body">
+                        <div id="survey-list-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // 传递服务器端数据到客户端
+        window.surveyPageData = {
+            tenantId: '@Model.EffectiveTenantId',
+            tenantName: '@Model.TenantName',
+            routeTenantId: '@Model.TenantId'
+        };
+    </script>
+    <resource path="js/survey-list.js" type="js" />
+}
+
+@section Styles {
+    <resource path="css/survey-list.css" type="css" />
+}

@@ -27,7 +27,9 @@ public class SurveyMappingProfile : Profile
         CreateMap<Survey, SurveyDto>()
             .ForMember(dest => dest.QuestionCount, opt => opt.MapFrom(src => src.Questions.Count))
             .ForMember(dest => dest.ResponseCount, opt => opt.MapFrom(src => src.Responses.Count))
-            .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null));
+            .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null))
+            .ForMember(dest => dest.AccessCode, opt => opt.MapFrom(src => src.PublicAccessCode))
+            .ForMember(dest => dest.EstimatedMinutes, opt => opt.MapFrom(src => 5)); // 默认5分钟，后续可以从设置中获取
 
         // PageList泛型映射配置
         CreateMap<PageList<Survey>, PageList<SurveyDto>>()

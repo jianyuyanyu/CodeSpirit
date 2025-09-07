@@ -122,8 +122,6 @@ public class SurveyApiConfiguration : BaseApiConfiguration
             var context = services.GetRequiredService<SurveyDbContext>();
             // 使用迁移而不是EnsureCreated
             await context.Database.MigrateAsync();
-            // 初始化数据
-            await context.InitializeDatabaseAsync();
         }
         catch (Exception ex)
         {
@@ -199,6 +197,7 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<ISurveyLLMGeneratorService, SurveyLLMGeneratorService>();
         services.AddScoped<ISurveyCategoryService, SurveyCategoryService>();
+        services.AddScoped<IAppSurveyService, AppSurveyService>();
         
         // 添加AI表单填充服务（包含自动端点功能）
         services.AddAiFormFillEndpoints();

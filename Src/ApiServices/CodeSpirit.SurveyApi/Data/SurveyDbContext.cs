@@ -114,6 +114,7 @@ public class SurveyDbContext : MultiTenantDbContext
         entity.Property(s => s.Description).HasMaxLength(2000);
         entity.Property(s => s.Status).IsRequired().HasConversion<int>();
         entity.Property(s => s.AccessType).IsRequired().HasConversion<int>();
+        entity.Property(s => s.PublicAccessCode).IsRequired().HasMaxLength(16);
         entity.Property(s => s.Settings).HasMaxLength(4000);
         entity.Property(s => s.LLMPrompt).HasMaxLength(4000);
 
@@ -121,6 +122,7 @@ public class SurveyDbContext : MultiTenantDbContext
         entity.HasIndex(s => s.TenantId).HasDatabaseName("IX_Surveys_TenantId");
         entity.HasIndex(s => s.Status).HasDatabaseName("IX_Surveys_Status");
         entity.HasIndex(s => s.CreatedBy).HasDatabaseName("IX_Surveys_CreatedBy");
+        entity.HasIndex(s => s.PublicAccessCode).IsUnique().HasDatabaseName("IX_Surveys_PublicAccessCode");
         entity.HasIndex(s => new { s.TenantId, s.Status }).HasDatabaseName("IX_Surveys_TenantId_Status");
 
         // 关系配置

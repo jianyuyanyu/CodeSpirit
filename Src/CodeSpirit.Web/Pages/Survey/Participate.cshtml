@@ -1,0 +1,151 @@
+@page "/{tenantId?}/survey/participate/{accessCode}"
+@model CodeSpirit.Web.Pages.Survey.ParticipateModel
+@{
+    ViewData["Title"] = "参与问卷";
+    Layout = "_Layout";
+}
+
+<div class="survey-participate-page">
+    <!-- 进度条 -->
+    <div class="survey-progress-bar">
+        <div class="survey-progress-fill" id="survey-progress" style="width: 0%"></div>
+    </div>
+    
+    <div class="container-fluid survey-participate-container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10 col-12">
+                <div class="survey-participate-card">
+                    <div class="survey-participate-header">
+                        <div class="survey-participate-title">
+                            <div class="survey-title-content">
+                                <i class="fas fa-edit survey-title-icon"></i>
+                                <span class="survey-title-text">参与问卷</span>
+                            </div>
+                            <button type="button" class="survey-back-btn" onclick="window.history.back()">
+                                <i class="fas fa-arrow-left mr-1"></i>
+                                返回
+                            </button>
+                        </div>
+                        <!-- 问卷信息区域 -->
+                        <div class="survey-info-section" id="survey-info" style="display: none;">
+                            <div class="survey-meta-info">
+                                <span class="survey-meta-item">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    <span id="survey-duration">预计用时: --</span>
+                                </span>
+                                <span class="survey-meta-item">
+                                    <i class="fas fa-question-circle mr-1"></i>
+                                    <span id="survey-question-count">题目数量: --</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="survey-participate-body">
+                        <!-- 加载提示 -->
+                        <div id="loading-container" class="survey-loading-container">
+                            <div class="survey-loading-spinner"></div>
+                            <p class="survey-loading-text">正在加载问卷...</p>
+                            <div class="survey-loading-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <p style="color: #666; font-size: 12px; margin-top: 20px;">
+                                调试信息：页面已加载，正在初始化问卷系统...
+                            </p>
+                        </div>
+                        
+                        <!-- 问卷容器 -->
+                        <div id="survey-container" class="survey-form-container" style="display: none;"></div>
+                        
+                        <!-- 错误提示 -->
+                        <div id="error-container" class="survey-error-container" style="display: none;">
+                            <div class="survey-error-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <h5 class="survey-error-title">加载失败</h5>
+                            <p class="survey-error-message" id="error-message">问卷加载失败，请稍后重试。</p>
+                            <button type="button" class="survey-retry-btn" onclick="window.SurveyParticipate?.reload?.() || location.reload()">
+                                <i class="fas fa-redo mr-1"></i>
+                                重新加载
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // 传递服务器端数据到客户端
+        window.surveyPageData = {
+            accessCode: '@Model.AccessCode',
+            tenantId: '@Model.EffectiveTenantId',
+            tenantName: '@Model.TenantName',
+            routeTenantId: '@Model.TenantId'
+        };
+        
+        // 调试信息
+        console.log('=== 页面脚本开始执行 ===');
+        console.log('页面数据已设置:', window.surveyPageData);
+        console.log('当前URL:', window.location.href);
+        console.log('DOM状态:', document.readyState);
+        
+        // 立即检查关键元素
+        function checkPageElements() {
+            console.log('=== 检查页面元素 ===');
+            const elements = {
+                'loading-container': document.getElementById('loading-container'),
+                'survey-container': document.getElementById('survey-container'),
+                'error-container': document.getElementById('error-container'),
+                'survey-progress': document.getElementById('survey-progress')
+            };
+            
+            for (const [name, element] of Object.entries(elements)) {
+                console.log(`元素 ${name}:`, element ? '存在' : '不存在', element);
+            }
+        }
+        
+        // 立即检查
+        checkPageElements();
+        
+        // 检查AMIS是否已加载
+        console.log('AMIS是否可用:', typeof amisRequire !== 'undefined');
+        console.log('SurveyParticipate是否可用:', typeof window.SurveyParticipate !== 'undefined');
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== DOM加载完成事件触发 ===');
+            console.log('DOM加载完成');
+            checkPageElements();
+            console.log('AMIS是否可用:', typeof amisRequire !== 'undefined');
+            
+            if (typeof amisRequire === 'undefined') {
+                console.error('AMIS未加载，等待资源加载...');
+                // 延迟检查AMIS加载状态
+                let checkCount = 0;
+                const checkAmis = setInterval(() => {
+                    checkCount++;
+                    console.log(`AMIS加载检查 ${checkCount}/10`);
+                    if (typeof amisRequire !== 'undefined') {
+                        console.log('AMIS已加载，尝试重新初始化');
+                        clearInterval(checkAmis);
+                        if (window.SurveyParticipate) {
+                            window.SurveyParticipate.reload();
+                        }
+                    } else if (checkCount > 10) {
+                        console.error('AMIS加载超时');
+                        clearInterval(checkAmis);
+                    }
+                }, 500);
+            }
+        });
+    </script>
+    <resource path="js/survey-participate.js" type="js" />
+}
+
+@section Styles {
+    <resource path="css/survey-participate.css" type="css" />
+}

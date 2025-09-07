@@ -494,3 +494,11 @@
         opacity: 1;
     }
 }
+
+/* 按钮点击波纹效果 */
+@keyframes buttonRipple {
+    to {
+        transform: scale(2);
+        opacity: 0;
+    }
+}

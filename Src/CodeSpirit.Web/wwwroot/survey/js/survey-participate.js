@@ -286,7 +286,7 @@
         }
         
         if (token) {
-            headers['Authorization'] = 'Bearer ' + token;
+            //headers['Authorization'] = 'Bearer ' + token;
         }
         
         // 添加租户ID头部（如果存在）
@@ -694,7 +694,7 @@
                 // 构建请求头
                 const headers = {
                     ...api.headers,
-                    'Authorization': token ? 'Bearer ' + token : '',
+                    //'Authorization': token ? 'Bearer ' + token : '',
                     'X-Forwarded-With': 'CodeSpirit',
                     'Content-Type': 'application/json'
                 };

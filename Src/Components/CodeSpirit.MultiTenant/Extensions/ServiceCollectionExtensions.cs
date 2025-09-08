@@ -4,6 +4,7 @@ using CodeSpirit.MultiTenant.Models;
 using CodeSpirit.MultiTenant.Services;
 using CodeSpirit.Shared.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace CodeSpirit.MultiTenant.Extensions;
 
@@ -25,58 +26,43 @@ public static class ServiceCollectionExtensions
         // 注册配置选项
         services.Configure<TenantOptions>(configuration.GetSection(TenantOptions.SectionName));
 
-        // 注册核心服务
-        services.AddScoped<ITenantResolver, TenantResolver>();
-        
-        // 根据配置选择租户存储实现
+        // 获取配置选项
         var tenantOptions = configuration.GetSection(TenantOptions.SectionName).Get<TenantOptions>() 
                            ?? new TenantOptions();
 
-        switch (tenantOptions.StoreType)
+        // 注册核心服务
+        services.AddScoped<ITenantResolver, TenantResolver>();
+        
+        
+        // 注册统一租户存储实现（固定使用内存→分布式缓存→API的顺序）
+        
+        // 注册API租户存储配置
+        services.Configure<ApiTenantStoreOptions>(configuration.GetSection(ApiTenantStoreOptions.SectionName));
+        
+        // 获取配置选项用于HttpClient配置
+        var apiStoreOptions = configuration.GetSection(ApiTenantStoreOptions.SectionName).Get<ApiTenantStoreOptions>() 
+                            ?? new ApiTenantStoreOptions();
+        
+        // 注册命名HttpClient并配置
+        services.AddHttpClient("ApiTenantStore", client =>
         {
-            case TenantStoreType.Memory:
-                services.AddSingleton<ITenantStore, MemoryTenantStore>();
-                break;
-            case TenantStoreType.Api:
-                // 注册API租户存储配置
-                services.Configure<ApiTenantStoreOptions>(configuration.GetSection(ApiTenantStoreOptions.SectionName));
-                // 注册HttpClient
-                services.AddHttpClient<ApiTenantStore>();
-                // 注册API租户存储
-                services.AddScoped<ITenantStore, ApiTenantStore>();
-                break;
-            case TenantStoreType.Adaptive:
-                // 注册自适应租户存储配置
-                services.Configure<AdaptiveTenantStoreOptions>(options =>
-                {
-                    configuration.GetSection("MultiTenant:AdaptiveStore").Bind(options);
-                    // 如果配置中没有指定，使用默认值
-                    if (options.PrimaryStoreType == default)
-                        options.PrimaryStoreType = TenantStoreType.Memory;
-                    if (options.FallbackStoreType == default)
-                        options.FallbackStoreType = TenantStoreType.Api;
-                });
-                
-                // 注册主要存储和备用存储
-                RegisterTenantStore(services, configuration, tenantOptions.AdaptiveStore.PrimaryStoreType, "Primary");
-                RegisterTenantStore(services, configuration, tenantOptions.AdaptiveStore.FallbackStoreType, "Fallback");
-                
-                // 注册自适应租户存储
-                services.AddScoped<ITenantStore>(serviceProvider =>
-                {
-                    var primaryStore = serviceProvider.GetRequiredKeyedService<ITenantStore>("Primary");
-                    var fallbackStore = serviceProvider.GetRequiredKeyedService<ITenantStore>("Fallback");
-                    var logger = serviceProvider.GetRequiredService<ILogger<AdaptiveTenantStore>>();
-                    var options = serviceProvider.GetRequiredService<IOptions<AdaptiveTenantStoreOptions>>();
-                    
-                    return new AdaptiveTenantStore(primaryStore, fallbackStore, logger, options);
-                });
-                break;
-            default:
-                // 默认使用内存存储
-                services.AddSingleton<ITenantStore, MemoryTenantStore>();
-                break;
-        }
+            if (!string.IsNullOrEmpty(apiStoreOptions.BaseUrl))
+            {
+                client.BaseAddress = new Uri(apiStoreOptions.BaseUrl);
+            }
+            
+            if (apiStoreOptions.Timeout > 0)
+            {
+                client.Timeout = TimeSpan.FromSeconds(apiStoreOptions.Timeout);
+            }
+            
+            // 设置默认请求头
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.DefaultRequestHeaders.Add("User-Agent", "CodeSpirit.MultiTenant/1.0");
+        });
+        
+        // 注册统一租户存储
+        services.AddScoped<ITenantStore, UnifiedTenantStore>();
 
         // 注册多租户数据过滤器
         services.Configure<DataFilterOptions>(options =>
@@ -140,40 +126,4 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// 注册指定类型的租户存储
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configuration">配置</param>
-    /// <param name="storeType">存储类型</param>
-    /// <param name="serviceKey">服务键</param>
-    private static void RegisterTenantStore(
-        IServiceCollection services, 
-        IConfiguration configuration, 
-        TenantStoreType storeType, 
-        string serviceKey)
-    {
-        switch (storeType)
-        {
-            case TenantStoreType.Memory:
-                services.AddKeyedSingleton<ITenantStore, MemoryTenantStore>(serviceKey);
-                break;
-            case TenantStoreType.Api:
-                // 注册API租户存储配置（如果还没注册）
-                if (!services.Any(s => s.ServiceType == typeof(IConfigureOptions<ApiTenantStoreOptions>)))
-                {
-                    services.Configure<ApiTenantStoreOptions>(configuration.GetSection(ApiTenantStoreOptions.SectionName));
-                }
-                // 注册HttpClient（如果还没注册）
-                if (!services.Any(s => s.ServiceType == typeof(HttpClient) && s.ImplementationType?.Name.Contains("ApiTenantStore") == true))
-                {
-                    services.AddHttpClient<ApiTenantStore>();
-                }
-                services.AddKeyedScoped<ITenantStore, ApiTenantStore>(serviceKey);
-                break;
-            default:
-                services.AddKeyedSingleton<ITenantStore, MemoryTenantStore>(serviceKey);
-                break;
-        }
-    }
 } 

@@ -18,18 +18,17 @@ public class TenantOptionsTests
         options.Enabled.Should().BeTrue();
         options.DefaultTenantId.Should().Be("default");
         options.ResolveFromHeader.Should().BeTrue();
-        options.TenantHeaderName.Should().Be("TenantId");
-        options.ResolveFromQuery.Should().BeTrue();
+        options.TenantHeaderName.Should().Be("X-Tenant-Id");
+        options.ResolveFromQuery.Should().BeFalse();
         options.TenantQueryName.Should().Be("tenantId");
         options.ResolveFromSubdomain.Should().BeFalse();
         options.ResolveFromPath.Should().BeFalse();
         options.TenantPathPrefix.Should().Be("tenant-");
         options.CacheExpirationMinutes.Should().Be(30);
-        options.StoreType.Should().Be(TenantStoreType.Database);
-        options.ConfigFilePath.Should().Be("tenants.json");
+        // StoreType 属性已被移除，现在使用统一的存储策略
         options.EnableTenantValidation.Should().BeTrue();
         options.EnableTenantCache.Should().BeTrue();
-        options.FailureStrategy.Should().Be(TenantResolutionFailureStrategy.UseDefault);
+        options.FailureStrategy.Should().Be(TenantResolutionFailureStrategy.Return404);
     }
 
     /// <summary>
@@ -180,41 +179,35 @@ public class TenantOptionsTests
     }
 
     /// <summary>
-    /// 测试存储类型配置
+    /// 测试统一存储策略（不再需要配置存储类型）
     /// </summary>
-    [Theory]
-    [InlineData(TenantStoreType.Database)]
-    [InlineData(TenantStoreType.ConfigFile)]
-    [InlineData(TenantStoreType.Memory)]
-    public void TenantOptions_ShouldConfigureStoreType(TenantStoreType storeType)
+    [Fact]
+    public void TenantOptions_ShouldUseUnifiedStorageStrategy()
     {
         // Arrange
         var options = new TenantOptions();
 
-        // Act
-        options.StoreType = storeType;
-
         // Assert
-        options.StoreType.Should().Be(storeType);
+        // 验证不再需要配置存储类型，现在使用统一的内存→分布式缓存→API策略
+        options.EnableTenantCache.Should().BeTrue();
+        options.CacheExpirationMinutes.Should().Be(30);
     }
 
     /// <summary>
-    /// 测试配置文件路径
+    /// 测试简化后的配置选项
     /// </summary>
-    [Theory]
-    [InlineData("config/tenants.json")]
-    [InlineData("data/tenant-config.json")]
-    [InlineData("tenants.xml")]
-    public void TenantOptions_ShouldConfigureFilePath(string filePath)
+    [Fact]
+    public void TenantOptions_ShouldHaveSimplifiedConfiguration()
     {
         // Arrange
         var options = new TenantOptions();
 
-        // Act
-        options.ConfigFilePath = filePath;
-
         // Assert
-        options.ConfigFilePath.Should().Be(filePath);
+        // 验证简化后的配置选项
+        options.Should().NotBeNull();
+        options.EnableTenantCache.Should().BeTrue();
+        options.EnableTenantValidation.Should().BeTrue();
+        options.FailureStrategy.Should().Be(TenantResolutionFailureStrategy.Return404);
     }
 
     /// <summary>
@@ -273,7 +266,7 @@ public class TenantOptionsTests
         options.ResolveFromPath = false;
         options.EnableTenantCache = true;
         options.CacheExpirationMinutes = 45;
-        options.StoreType = TenantStoreType.Database;
+        // StoreType 属性已被移除，现在使用统一的存储策略
         options.EnableTenantValidation = true;
         options.FailureStrategy = TenantResolutionFailureStrategy.ThrowException;
 
@@ -287,7 +280,7 @@ public class TenantOptionsTests
         options.ResolveFromPath.Should().BeFalse();
         options.EnableTenantCache.Should().BeTrue();
         options.CacheExpirationMinutes.Should().Be(45);
-        options.StoreType.Should().Be(TenantStoreType.Database);
+        // StoreType 属性已被移除，现在使用统一的存储策略
         options.EnableTenantValidation.Should().BeTrue();
         options.FailureStrategy.Should().Be(TenantResolutionFailureStrategy.ThrowException);
     }

@@ -68,7 +68,8 @@
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Forwarded-With': 'CodeSpirit'
+                'X-Forwarded-With': 'CodeSpirit',
+                'X-Tenant-Id': tenantId // 添加租户ID到请求头
             }
         });
         
@@ -137,7 +138,7 @@
                                             "requestAdaptor": function(api) {
                                                 // 添加租户信息到请求头
                                                 api.headers = api.headers || {};
-                                                api.headers['TenantId'] = tenant.tenantId;
+                                                api.headers['X-Tenant-Id'] = tenant.tenantId;
                                                 api.headers['X-Tenant-Path'] = window.location.pathname;
                                                 api.headers['X-Forwarded-With'] = 'CodeSpirit';
                                                 api.headers['Content-Type'] = 'application/json';

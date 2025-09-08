@@ -3,6 +3,7 @@ using CodeSpirit.MultiTenant.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Linq;
 
 namespace CodeSpirit.MultiTenant.Middleware;
 
@@ -41,6 +42,14 @@ public class MultiTenantMiddleware
     {
         if (!_options.Enabled)
         {
+            await _next(context);
+            return;
+        }
+
+        // 检查是否为内部API请求，如果是则跳过租户验证
+        if (IsInternalApiRequest(context.Request))
+        {
+            _logger.LogDebug("跳过内部API请求的租户验证: {Path}", context.Request.Path);
             await _next(context);
             return;
         }
@@ -112,5 +121,29 @@ public class MultiTenantMiddleware
             default:
                 throw new InvalidOperationException(message);
         }
+    }
+
+    /// <summary>
+    /// 判断是否为需要跳过多租户验证的内部API请求
+    /// 仅针对租户存储相关的内部API，避免循环依赖
+    /// </summary>
+    /// <param name="request">HTTP请求</param>
+    /// <returns>是否为需要跳过验证的内部API请求</returns>
+    private static bool IsInternalApiRequest(HttpRequest request)
+    {
+        var path = request.Path.Value;
+        if (string.IsNullOrEmpty(path))
+        {
+            return false;
+        }
+
+        // 仅跳过租户存储相关的内部API，避免循环依赖
+        var tenantInternalApiPaths = new[]
+        {
+            "/api/identity/internal/tenants/", // 租户信息API
+        };
+
+        return tenantInternalApiPaths.Any(apiPath => 
+            path.Contains(apiPath, StringComparison.OrdinalIgnoreCase));
     }
 } 

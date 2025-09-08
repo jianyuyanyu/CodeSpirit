@@ -100,7 +100,6 @@ public class GenerateSurveyRequest
         Required = false,
         ShowIcon = true,
         Clearable = true,
-        SubmitOnChange = true,
         HeightAuto = true,
         SelectFirst = true
     )]

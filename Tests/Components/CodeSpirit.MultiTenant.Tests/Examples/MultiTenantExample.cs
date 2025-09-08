@@ -1,3 +1,4 @@
+using CodeSpirit.Core;
 using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.MultiTenant.Extensions;
 using Microsoft.AspNetCore.Mvc;

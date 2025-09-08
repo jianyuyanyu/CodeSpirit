@@ -27,7 +27,6 @@ public class ResponseDto
     /// 问卷标题
     /// </summary>
     [DisplayName("问卷标题")]
-    [AggregateField(dataSource: "/api/surveys/{value}.title")]
     public string? SurveyTitle { get; set; }
 
     /// <summary>

@@ -79,7 +79,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Internal
         [DisplayName("获取内部租户信息")]
         public async Task<ActionResult<ApiResponse<InternalTenantDto>>> GetInternalTenant(string tenantId)
         {
-            _logger.LogDebug("开始获取内部租户信息: {TenantId}", tenantId);
+            _logger.LogInformation("开始获取内部租户信息: {TenantId}", tenantId);
             
             try
             {
@@ -88,29 +88,29 @@ namespace CodeSpirit.IdentityApi.Controllers.Internal
                 // 先尝试从缓存获取
                 if (_memoryCache.TryGetValue(cacheKey, out InternalTenantDto cachedDto))
                 {
-                    _logger.LogDebug("从缓存中获取到租户信息: {TenantId}", tenantId);
+                    _logger.LogInformation("从缓存中获取到租户信息: {TenantId}", tenantId);
                     return Ok(ApiResponse<InternalTenantDto>.Success(cachedDto));
                 }
 
-                _logger.LogDebug("缓存中未找到租户信息，准备从数据库查询: {TenantId}", tenantId);
+                _logger.LogInformation("缓存中未找到租户信息，准备从数据库查询: {TenantId}", tenantId);
 
                 // 使用分布式锁防止缓存击穿
                 var lockKey = $"{TENANT_LOCK_KEY_PREFIX}{tenantId}";
                 using var distributedLock = await _distributedLockProvider.AcquireLockAsync(lockKey, LockTimeout, LockTtl);
                 
-                _logger.LogDebug("已获取分布式锁: {LockKey}", lockKey);
+                _logger.LogInformation("已获取分布式锁: {LockKey}", lockKey);
 
                 // 再次检查缓存，可能在等待锁的过程中其他线程已经缓存了数据
                 if (_memoryCache.TryGetValue(cacheKey, out cachedDto))
                 {
-                    _logger.LogDebug("在获取锁后从缓存中获取到租户信息: {TenantId}", tenantId);
+                    _logger.LogInformation("在获取锁后从缓存中获取到租户信息: {TenantId}", tenantId);
                     return Ok(ApiResponse<InternalTenantDto>.Success(cachedDto));
                 }
 
                 // 禁用多租户筛选器来查询指定租户
                 using (_dataFilter.Disable<IMultiTenant>())
                 {
-                    _logger.LogDebug("已禁用多租户筛选器，正在查询租户: {TenantId}", tenantId);
+                    _logger.LogInformation("已禁用多租户筛选器，正在查询租户: {TenantId}", tenantId);
                     
                     var tenant = await _tenantService.GetByTenantIdAsync(tenantId);
                     if (tenant == null)
@@ -120,12 +120,12 @@ namespace CodeSpirit.IdentityApi.Controllers.Internal
                         // 缓存不存在的结果，避免频繁查询不存在的租户
                         var notFoundResult = ApiResponse<InternalTenantDto>.Error(404, "租户不存在");
                         _memoryCache.Set<InternalTenantDto>(cacheKey, null, TimeSpan.FromMinutes(5)); // 不存在的租户缓存时间较短
-                        _logger.LogDebug("已缓存租户不存在的结果: {TenantId}", tenantId);
+                        _logger.LogInformation("已缓存租户不存在的结果: {TenantId}", tenantId);
                         
                         return NotFound(notFoundResult);
                     }
 
-                    _logger.LogDebug("成功找到租户: {TenantId}, Name: {Name}, IsActive: {IsActive}", 
+                    _logger.LogInformation("成功找到租户: {TenantId}, Name: {Name}, IsActive: {IsActive}", 
                         tenant.TenantId, tenant.Name, tenant.IsActive);
 
                     var dto = new InternalTenantDto
@@ -148,9 +148,9 @@ namespace CodeSpirit.IdentityApi.Controllers.Internal
 
                     // 将结果缓存
                     _memoryCache.Set(cacheKey, dto, CacheExpiration);
-                    _logger.LogDebug("已缓存租户信息: {TenantId}, 过期时间: {Expiration}", tenantId, CacheExpiration);
+                    _logger.LogInformation("已缓存租户信息: {TenantId}, 过期时间: {Expiration}", tenantId, CacheExpiration);
 
-                    _logger.LogDebug("成功返回租户信息: {TenantId}", tenantId);
+                    _logger.LogInformation("成功返回租户信息: {TenantId}", tenantId);
                     return Ok(ApiResponse<InternalTenantDto>.Success(dto));
                 }
             }

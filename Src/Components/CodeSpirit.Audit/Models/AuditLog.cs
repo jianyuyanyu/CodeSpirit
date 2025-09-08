@@ -75,6 +75,13 @@ public class AuditLog : IMultiTenant
     [StringLength(100)]
     public string ServiceName { get; set; } = string.Empty;
     
+    // /// <summary>
+    // /// 应用程序ID
+    // /// </summary>
+    // [DisplayName("应用程序ID")]
+    // [StringLength(100)]
+    // public string ApplicationId { get; set; } = string.Empty;
+    
     /// <summary>
     /// 控制器名称
     /// </summary>

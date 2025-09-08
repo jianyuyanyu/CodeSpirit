@@ -13,35 +13,28 @@ namespace CodeSpirit.MultiTenant.Services;
 /// </summary>
 public class ApiTenantStore : ITenantStore
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ApiTenantStore> _logger;
     private readonly ApiTenantStoreOptions _options;
+    private readonly string _clientName;
 
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="httpClient">HTTP客户端</param>
+    /// <param name="httpClientFactory">HTTP客户端工厂</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="options">API租户存储配置选项</param>
+    /// <param name="clientName">HTTP客户端名称</param>
     public ApiTenantStore(
-        HttpClient httpClient, 
+        IHttpClientFactory httpClientFactory, 
         ILogger<ApiTenantStore> logger,
-        IOptions<ApiTenantStoreOptions> options)
+        IOptions<ApiTenantStoreOptions> options,
+        string clientName = "ApiTenantStore")
     {
-        _httpClient = httpClient;
-        _logger = logger;
-        _options = options.Value;
-
-        // 配置HttpClient基础设置
-        if (!string.IsNullOrEmpty(_options.BaseUrl))
-        {
-            _httpClient.BaseAddress = new Uri(_options.BaseUrl);
-        }
-
-        if (_options.Timeout > 0)
-        {
-            _httpClient.Timeout = TimeSpan.FromSeconds(_options.Timeout);
-        }
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _clientName = clientName ?? "ApiTenantStore";
     }
 
     /// <summary>
@@ -49,8 +42,10 @@ public class ApiTenantStore : ITenantStore
     /// </summary>
     /// <param name="tenantId">租户ID</param>
     /// <returns>租户信息</returns>
-    public async Task<ITenantInfo?> GetTenantAsync(string tenantId)
+    public async Task<ITenantInfo> GetTenantAsync(string tenantId)
     {
+        _logger.LogWarning("==== ApiTenantStore.GetTenantAsync 被调用，租户ID: {TenantId}，HttpClient名称: {ClientName} ====", tenantId, _clientName);
+        
         try
         {
             if (string.IsNullOrWhiteSpace(tenantId))
@@ -58,10 +53,11 @@ public class ApiTenantStore : ITenantStore
                 return null;
             }
 
+            using var httpClient = _httpClientFactory.CreateClient(_clientName);
             var endpoint = _options.GetTenantEndpoint.Replace("{tenantId}", tenantId);
-            _logger.LogDebug("调用API获取租户信息: GET {Endpoint}", endpoint);
+            _logger.LogInformation("调用API获取租户信息: GET {Endpoint}，BaseAddress: {BaseAddress}", endpoint, httpClient.BaseAddress);
 
-            var response = await _httpClient.GetAsync(endpoint);
+            var response = await httpClient.GetAsync(endpoint);
             
             if (response.IsSuccessStatusCode)
             {
@@ -104,15 +100,33 @@ public class ApiTenantStore : ITenantStore
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP请求异常，获取租户信息失败: {TenantId}", tenantId);
+            var endpoint = _options.GetTenantEndpoint.Replace("{tenantId}", tenantId);
+            _logger.LogError(ex, "HTTP请求异常，获取租户信息失败: {TenantId}，端点: {Endpoint}，错误: {Message}", 
+                tenantId, endpoint, ex.Message);
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            var endpoint = _options.GetTenantEndpoint.Replace("{tenantId}", tenantId);
+            _logger.LogError(ex, "请求超时，获取租户信息失败: {TenantId}，端点: {Endpoint}，超时时间: {Timeout}ms", 
+                tenantId, endpoint, ex.ToString());
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogError(ex, "请求超时，获取租户信息失败: {TenantId}", tenantId);
+            var endpoint = _options.GetTenantEndpoint.Replace("{tenantId}", tenantId);
+            _logger.LogError(ex, "请求被取消，获取租户信息失败: {TenantId}，端点: {Endpoint}", 
+                tenantId, endpoint);
+        }
+        catch (JsonException ex)
+        {
+            var endpoint = _options.GetTenantEndpoint.Replace("{tenantId}", tenantId);
+            _logger.LogError(ex, "JSON反序列化失败，获取租户信息失败: {TenantId}，端点: {Endpoint}，错误: {Message}", 
+                tenantId, endpoint, ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取租户信息时发生异常: {TenantId}", tenantId);
+            var endpoint = _options.GetTenantEndpoint.Replace("{tenantId}", tenantId);
+            _logger.LogError(ex, "获取租户信息时发生未知异常: {TenantId}，端点: {Endpoint}，异常类型: {ExceptionType}，错误: {Message}", 
+                tenantId, endpoint, ex.GetType().Name, ex.Message);
         }
 
         return null;
@@ -126,9 +140,10 @@ public class ApiTenantStore : ITenantStore
     {
         try
         {
+            using var httpClient = _httpClientFactory.CreateClient(_clientName);
             _logger.LogDebug("调用API获取活跃租户列表: GET {Endpoint}", _options.GetActiveTenantsEndpoint);
 
-            var response = await _httpClient.GetAsync(_options.GetActiveTenantsEndpoint);
+            var response = await httpClient.GetAsync(_options.GetActiveTenantsEndpoint);
             
             if (response.IsSuccessStatusCode)
             {
@@ -185,12 +200,13 @@ public class ApiTenantStore : ITenantStore
                 return false;
             }
 
+            using var httpClient = _httpClientFactory.CreateClient(_clientName);
             _logger.LogDebug("调用API创建租户: POST {Endpoint}", _options.CreateTenantEndpoint);
 
             var json = JsonConvert.SerializeObject(tenantInfo);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync(_options.CreateTenantEndpoint, content);
+            var response = await httpClient.PostAsync(_options.CreateTenantEndpoint, content);
             
             if (response.IsSuccessStatusCode)
             {
@@ -226,13 +242,14 @@ public class ApiTenantStore : ITenantStore
                 return false;
             }
 
+            using var httpClient = _httpClientFactory.CreateClient(_clientName);
             var endpoint = _options.UpdateTenantEndpoint.Replace("{tenantId}", tenantInfo.TenantId);
             _logger.LogDebug("调用API更新租户: PUT {Endpoint}", endpoint);
 
             var json = JsonConvert.SerializeObject(tenantInfo);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PutAsync(endpoint, content);
+            var response = await httpClient.PutAsync(endpoint, content);
             
             if (response.IsSuccessStatusCode)
             {
@@ -268,10 +285,11 @@ public class ApiTenantStore : ITenantStore
                 return false;
             }
 
+            using var httpClient = _httpClientFactory.CreateClient(_clientName);
             var endpoint = _options.DeleteTenantEndpoint.Replace("{tenantId}", tenantId);
             _logger.LogDebug("调用API删除租户: DELETE {Endpoint}", endpoint);
 
-            var response = await _httpClient.DeleteAsync(endpoint);
+            var response = await httpClient.DeleteAsync(endpoint);
             
             if (response.IsSuccessStatusCode)
             {
@@ -307,10 +325,11 @@ public class ApiTenantStore : ITenantStore
                 return false;
             }
 
+            using var httpClient = _httpClientFactory.CreateClient(_clientName);
             var endpoint = _options.CheckTenantExistsEndpoint.Replace("{tenantId}", tenantId);
             _logger.LogDebug("调用API检查租户是否存在: HEAD {Endpoint}", endpoint);
 
-            var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, endpoint));
+            var response = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, endpoint));
             
             return response.IsSuccessStatusCode;
         }

@@ -9,14 +9,16 @@ using Newtonsoft.Json;
 
 namespace CodeSpirit.IdentityApi.Audit
 {
-    public class CustomAuditDataProvider : AuditDataProvider
-    {
-        private readonly IServiceProvider _serviceProvider;
+public class CustomAuditDataProvider : AuditDataProvider
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IHostEnvironment _hostEnvironment;
 
-        public CustomAuditDataProvider(IServiceProvider serviceProvider)
-        {
-            _serviceProvider = serviceProvider;
-        }
+    public CustomAuditDataProvider(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+        _hostEnvironment = serviceProvider.GetRequiredService<IHostEnvironment>();
+    }
 
         public override object InsertEvent(AuditEvent auditEvent)
         {
@@ -56,7 +58,8 @@ namespace CodeSpirit.IdentityApi.Audit
                     StatusCode = webApiAudit.ResponseStatusCode,
                     Duration = auditEvent.Duration,
                     EventTime = DateTime.UtcNow,
-                    UserId = currentUser.Id
+                    UserId = currentUser.Id,
+                    //ApplicationId = _hostEnvironment.ApplicationName ?? "identity"
                 };
 
                 dbContext.AuditLogs.Add(auditLog);

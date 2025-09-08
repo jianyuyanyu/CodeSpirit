@@ -1,3 +1,4 @@
+using CodeSpirit.Aggregator.Attributes;
 using CodeSpirit.Core;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,6 +9,7 @@ namespace CodeSpirit.SurveyApi.Controllers.App;
 /// </summary>
 [ApiController]
 [Route("api/app/[controller]")]
+[DisableAggregator]
 public abstract class AppControllerBase : ControllerBase
 {
     /// <summary>

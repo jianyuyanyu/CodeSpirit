@@ -2,6 +2,7 @@ using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
 // using CodeSpirit.MultiTenant.Extensions; // 注释掉，避免循环引用
 using CodeSpirit.Navigation.Extensions;
+using CodeSpirit.ServiceDefaults.Middleware;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Builder;
@@ -66,6 +67,9 @@ public static class CommonApiServiceExtensions
     {
         // CORS
         app.UseCors("AllowSpecificOriginsWithCredentials");
+        
+        // 应用程序ID中间件（在最早期添加，确保所有日志都包含应用ID）
+        app.UseApplicationId();
         
         // 插入点1：认证前中间件（如多租户中间件）
         await config.ConfigurePreAuthenticationMiddlewareAsync(app);

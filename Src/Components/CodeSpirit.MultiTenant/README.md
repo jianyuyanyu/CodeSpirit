@@ -6,7 +6,7 @@ CodeSpirit多租户组件，提供灵活的多租户数据隔离解决方案。
 
 - 🏢 **多种租户策略**：支持共享数据库、独立表结构、独立数据库等多种隔离策略
 - 🔍 **灵活的租户解析**：支持从Header、Query参数、子域名、路径等多种方式解析租户
-- 💾 **多种存储方式**：支持内存、API等多种租户信息存储方式
+- 💾 **统一存储策略**：按照内存→分布式缓存→API的固定优先级获取租户信息
 - ⚡ **高性能缓存**：内置分布式缓存支持，提升租户解析性能
 - 🔧 **易于配置**：提供丰富的配置选项，满足不同场景需求
 - 🧪 **完整测试**：包含完整的单元测试，确保组件稳定性
@@ -56,7 +56,6 @@ app.Run();
     "TenantQueryName": "tenantId",
     "ResolveFromSubdomain": false,
     "ResolveFromPath": false,
-    "StoreType": "Memory",
     "EnableTenantCache": true,
     "CacheExpirationMinutes": 30
   }
@@ -366,58 +365,27 @@ string cacheKey = $"UserPermissions:{Id.Value}:Tenant:{TenantId}";
 - 多租户控制器
 - API存储配置示例
 
-## 租户存储类型
+## 租户存储策略
 
-### API存储（推荐）
+### 统一存储模式
 
-通过HTTP API调用获取租户信息，适合集中式租户管理和内部服务通信：
+组件采用固定的三层存储架构，按照以下优先级自动获取租户信息：
 
-```json
-{
-  "MultiTenant": {
-    "StoreType": "Api",
-    "ApiStore": {
-      "BaseUrl": "http://identity-api",
-      "Timeout": 30,
-      "UseApiResponseFormat": true,
-      "GetTenantEndpoint": "api/tenants/{tenantId}",
-      "GetActiveTenantsEndpoint": "api/tenants/active"
-    }
-  }
-}
-```
+1. **内存存储**：最快速的本地缓存，优先使用
+2. **分布式缓存**：支持多实例共享的Redis等分布式缓存
+3. **API存储**：通过HTTP API从远程服务获取租户信息
 
-支持多种部署环境的服务发现：
-- **.NET Aspire**: `http://identityapi`
-- **Kubernetes**: `http://identity-api.default.svc.cluster.local`
-- **Docker Compose**: `http://identity-api`
-- **本地开发**: `http://localhost:5001`
-
-### 内存存储
-
-适合开发和测试环境：
+### 配置示例
 
 ```json
 {
   "MultiTenant": {
-    "StoreType": "Memory"
-  }
-}
-```
-
-### 自适应存储
-
-自适应存储结合了内存存储和API存储的优势，优先从内存获取租户信息，失败后自动从API获取：
-
-```json
-{
-  "MultiTenant": {
-    "StoreType": "Adaptive",
-    "AdaptiveStore": {
-      "SyncToPrimaryStore": true,
-      "PrimaryStoreType": "Memory",
-      "FallbackStoreType": "Api"
-    }
+    "Enabled": true,
+    "DefaultTenantId": "default",
+    "ResolveFromHeader": true,
+    "TenantHeaderName": "X-Tenant-Id",
+    "EnableTenantCache": true,
+    "CacheExpirationMinutes": 30
   },
   "MultiTenant:ApiStore": {
     "BaseUrl": "http://identity-api",
@@ -429,25 +397,24 @@ string cacheKey = $"UserPermissions:{Id.Value}:Tenant:{TenantId}";
 }
 ```
 
-#### 自适应存储特性
+### 存储特性
 
-- ✅ **高可用性**：主存储失败时自动切换到备用存储
-- ✅ **性能优化**：优先使用本地内存，减少网络请求
-- ✅ **自动同步**：可配置将API获取的租户信息同步到内存
-- ✅ **灵活配置**：支持内存和API存储的组合
-- ✅ **故障恢复**：主存储恢复后自动使用主存储
+- ✅ **高性能**：内存优先，最快的访问速度
+- ✅ **高可用性**：多层降级，单点故障自动切换
+- ✅ **自动同步**：从API获取的数据自动同步到缓存层
+- ✅ **简化配置**：无需复杂的存储类型选择，统一的配置方式
+- ✅ **故障恢复**：上层存储恢复后自动优先使用
 
-#### 配置选项说明
+### 支持的部署环境
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `SyncToPrimaryStore` | bool | true | 是否将从备用存储获取的租户同步到主存储 |
-| `PrimaryStoreType` | enum | Memory | 主要存储类型 |
-| `FallbackStoreType` | enum | Api | 备用存储类型 |
+- **.NET Aspire**: `http://identityapi`
+- **Kubernetes**: `http://identity-api.default.svc.cluster.local`  
+- **Docker Compose**: `http://identity-api`
+- **本地开发**: `http://localhost:5001`
 
 ### 自定义租户存储
 
-实现 `ITenantStore` 接口来自定义租户存储：
+如需完全自定义租户存储逻辑，可以实现 `ITenantStore` 接口：
 
 ```csharp
 public class CustomTenantStore : ITenantStore
@@ -474,7 +441,7 @@ public class CustomTenantStore : ITenantStore
 
 ```csharp
 builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
-builder.Services.Replace(ServiceDescriptor.Singleton<ITenantStore, CustomTenantStore>());
+builder.Services.Replace(ServiceDescriptor.Scoped<ITenantStore, CustomTenantStore>());
 ```
 
 ## 配置选项说明
@@ -490,10 +457,9 @@ builder.Services.Replace(ServiceDescriptor.Singleton<ITenantStore, CustomTenantS
 | `ResolveFromSubdomain` | bool | false | 是否从子域名解析租户 |
 | `ResolveFromPath` | bool | false | 是否从路径解析租户 |
 | `TenantPathPrefix` | string | "tenant-" | 租户路径前缀 |
-| `StoreType` | enum | Memory | 租户存储类型（Memory/Api/Adaptive） |
 | `EnableTenantCache` | bool | true | 是否启用租户缓存 |
 | `CacheExpirationMinutes` | int | 30 | 缓存过期时间（分钟） |
-| `ApiStore.BaseUrl` | string | "" | API存储基础URL，支持服务发现（当StoreType为Api时使用） |
+| `ApiStore.BaseUrl` | string | "" | API存储基础URL，支持服务发现 |
 | `ApiStore.Timeout` | int | 30 | API请求超时时间（秒） |
 | `ApiStore.UseApiResponseFormat` | bool | true | 是否使用ApiResponse格式 |
 

@@ -123,7 +123,20 @@ public static class Extensions
             {
                 Console.WriteLine($"Application Name: {builder.Environment.ApplicationName}");
                 tracing.AddSource(builder.Environment.ApplicationName)  // ApplicationName can be configured via ASPNETCORE_APPLICATIONNAME environment variable
-                    .AddAspNetCoreInstrumentation()
+                    .AddAspNetCoreInstrumentation(options =>
+                    {
+                        // 为每个请求添加应用程序ID标签
+                        options.EnrichWithHttpRequest = (activity, request) =>
+                        {
+                            activity.SetTag("app.id", builder.Environment.ApplicationName);
+                            // activity.SetTag("app.service", builder.Environment.ApplicationName);
+                        };
+                        
+                        options.EnrichWithHttpResponse = (activity, response) =>
+                        {
+                            activity.SetTag("app.id", builder.Environment.ApplicationName);
+                        };
+                    })
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation();

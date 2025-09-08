@@ -6,7 +6,7 @@ CodeSpirit多租户组件，提供灵活的多租户数据隔离解决方案。
 
 - 🏢 **多种租户策略**：支持共享数据库、独立表结构、独立数据库等多种隔离策略
 - 🔍 **灵活的租户解析**：支持从Header、Query参数、子域名、路径等多种方式解析租户
-- 💾 **多种存储方式**：支持数据库、内存、配置文件等多种租户信息存储方式
+- 💾 **多种存储方式**：支持内存、API等多种租户信息存储方式
 - ⚡ **高性能缓存**：内置分布式缓存支持，提升租户解析性能
 - 🔧 **易于配置**：提供丰富的配置选项，满足不同场景需求
 - 🧪 **完整测试**：包含完整的单元测试，确保组件稳定性
@@ -405,26 +405,65 @@ string cacheKey = $"UserPermissions:{Id.Value}:Tenant:{TenantId}";
 }
 ```
 
+### 自适应存储
+
+自适应存储结合了内存存储和API存储的优势，优先从内存获取租户信息，失败后自动从API获取：
+
+```json
+{
+  "MultiTenant": {
+    "StoreType": "Adaptive",
+    "AdaptiveStore": {
+      "SyncToPrimaryStore": true,
+      "PrimaryStoreType": "Memory",
+      "FallbackStoreType": "Api"
+    }
+  },
+  "MultiTenant:ApiStore": {
+    "BaseUrl": "http://identity-api",
+    "Timeout": 30,
+    "UseApiResponseFormat": true,
+    "GetTenantEndpoint": "api/identity/internal/tenants/{tenantId}",
+    "GetActiveTenantsEndpoint": "api/identity/internal/tenants/active"
+  }
+}
+```
+
+#### 自适应存储特性
+
+- ✅ **高可用性**：主存储失败时自动切换到备用存储
+- ✅ **性能优化**：优先使用本地内存，减少网络请求
+- ✅ **自动同步**：可配置将API获取的租户信息同步到内存
+- ✅ **灵活配置**：支持内存和API存储的组合
+- ✅ **故障恢复**：主存储恢复后自动使用主存储
+
+#### 配置选项说明
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `SyncToPrimaryStore` | bool | true | 是否将从备用存储获取的租户同步到主存储 |
+| `PrimaryStoreType` | enum | Memory | 主要存储类型 |
+| `FallbackStoreType` | enum | Api | 备用存储类型 |
+
 ### 自定义租户存储
 
 实现 `ITenantStore` 接口来自定义租户存储：
 
 ```csharp
-public class DatabaseTenantStore : ITenantStore
+public class CustomTenantStore : ITenantStore
 {
-    private readonly IDbContextFactory<TenantDbContext> _dbContextFactory;
+    private readonly ILogger<CustomTenantStore> _logger;
 
-    public DatabaseTenantStore(IDbContextFactory<TenantDbContext> dbContextFactory)
+    public CustomTenantStore(ILogger<CustomTenantStore> logger)
     {
-        _dbContextFactory = dbContextFactory;
+        _logger = logger;
     }
 
     public async Task<ITenantInfo?> GetTenantAsync(string tenantId)
     {
-        using var context = _dbContextFactory.CreateDbContext();
-        return await context.Tenants
-            .Where(t => t.TenantId == tenantId && t.IsActive)
-            .FirstOrDefaultAsync();
+        // 实现自定义的租户获取逻辑
+        // 例如：从配置文件、外部服务等获取
+        return null;
     }
 
     // 实现其他接口方法...
@@ -435,7 +474,7 @@ public class DatabaseTenantStore : ITenantStore
 
 ```csharp
 builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
-builder.Services.Replace(ServiceDescriptor.Singleton<ITenantStore, DatabaseTenantStore>());
+builder.Services.Replace(ServiceDescriptor.Singleton<ITenantStore, CustomTenantStore>());
 ```
 
 ## 配置选项说明
@@ -451,7 +490,7 @@ builder.Services.Replace(ServiceDescriptor.Singleton<ITenantStore, DatabaseTenan
 | `ResolveFromSubdomain` | bool | false | 是否从子域名解析租户 |
 | `ResolveFromPath` | bool | false | 是否从路径解析租户 |
 | `TenantPathPrefix` | string | "tenant-" | 租户路径前缀 |
-| `StoreType` | enum | Database | 租户存储类型（Memory/ConfigFile/Database/Api） |
+| `StoreType` | enum | Memory | 租户存储类型（Memory/Api/Adaptive） |
 | `EnableTenantCache` | bool | true | 是否启用租户缓存 |
 | `CacheExpirationMinutes` | int | 30 | 缓存过期时间（分钟） |
 | `ApiStore.BaseUrl` | string | "" | API存储基础URL，支持服务发现（当StoreType为Api时使用） |

@@ -65,12 +65,7 @@ public class TenantOptions
     /// <summary>
     /// 租户存储类型
     /// </summary>
-    public TenantStoreType StoreType { get; set; } = TenantStoreType.Database;
-
-    /// <summary>
-    /// 租户配置文件路径（当StoreType为ConfigFile时使用）
-    /// </summary>
-    public string ConfigFilePath { get; set; } = "tenants.json";
+    public TenantStoreType StoreType { get; set; } = TenantStoreType.Adaptive;
 
     /// <summary>
     /// 是否启用租户验证
@@ -87,6 +82,11 @@ public class TenantOptions
     /// 租户解析失败时的处理策略
     /// </summary>
     public TenantResolutionFailureStrategy FailureStrategy { get; set; } = TenantResolutionFailureStrategy.UseDefault;
+
+    /// <summary>
+    /// 自适应存储配置选项
+    /// </summary>
+    public AdaptiveTenantStoreOptions AdaptiveStore { get; set; } = new();
 }
 
 /// <summary>
@@ -94,18 +94,6 @@ public class TenantOptions
 /// </summary>
 public enum TenantStoreType
 {
-    /// <summary>
-    /// 数据库存储
-    /// </summary>
-    [Display(Name = "数据库存储")]
-    Database,
-    
-    /// <summary>
-    /// 配置文件存储
-    /// </summary>
-    [Display(Name = "配置文件存储")]
-    ConfigFile,
-    
     /// <summary>
     /// 内存存储
     /// </summary>
@@ -116,7 +104,13 @@ public enum TenantStoreType
     /// API存储
     /// </summary>
     [Display(Name = "API存储")]
-    Api
+    Api,
+    
+    /// <summary>
+    /// 自适应存储（优先内存，失败后使用API）
+    /// </summary>
+    [Display(Name = "自适应存储")]
+    Adaptive
 }
 
 /// <summary>
@@ -141,4 +135,25 @@ public enum TenantResolutionFailureStrategy
     /// </summary>
     [Display(Name = "返回404错误")]
     Return404
+}
+
+/// <summary>
+/// 自适应租户存储配置选项
+/// </summary>
+public class AdaptiveTenantStoreOptions
+{
+    /// <summary>
+    /// 是否将从备用存储获取的租户同步到主要存储
+    /// </summary>
+    public bool SyncToPrimaryStore { get; set; } = true;
+
+    /// <summary>
+    /// 主要存储类型（默认为内存）
+    /// </summary>
+    public TenantStoreType PrimaryStoreType { get; set; } = TenantStoreType.Memory;
+
+    /// <summary>
+    /// 备用存储类型（默认为API）
+    /// </summary>
+    public TenantStoreType FallbackStoreType { get; set; } = TenantStoreType.Api;
 }

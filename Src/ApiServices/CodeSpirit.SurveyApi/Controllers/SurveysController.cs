@@ -964,6 +964,95 @@ public class SurveysController : ApiControllerBase
             "
         });
 
+        // 如果是公开问卷且已发布，添加二维码组件
+        if (survey.AccessType == SurveyAccessType.Public && survey.Status == SurveyStatus.Published && !string.IsNullOrEmpty(survey.AccessCode))
+        {
+            // 构建手机端表单链接
+            var baseUrl = HttpContext.Request.Scheme + "://" + HttpContext.Request.Host;
+            var mobileFormUrl = $"{baseUrl}/{survey.TenantId}/survey/participate/{survey.AccessCode}";
+            
+            // 添加二维码面板
+            headerBody!.Add(new JObject
+            {
+                ["type"] = "panel",
+                ["title"] = "手机端访问",
+                ["className"] = "survey-qr-panel",
+                ["collapsable"] = true,
+                ["collapsed"] = false,
+                ["body"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["type"] = "flex",
+                        ["direction"] = "row",
+                        ["justify"] = "flex-start",
+                        ["alignItems"] = "flex-start",
+                        ["items"] = new JArray
+                        {
+                            new JObject
+                            {
+                                ["type"] = "qrcode",
+                                ["value"] = mobileFormUrl,
+                                ["level"] = "M",
+                                ["size"] = 150,
+                                ["className"] = "survey-qr-code"
+                            },
+                            new JObject
+                            {
+                                ["type"] = "container",
+                                ["className"] = "survey-qr-info",
+                                ["style"] = new JObject
+                                {
+                                    ["marginLeft"] = "20px",
+                                    ["flex"] = "1"
+                                },
+                                ["body"] = new JArray
+                                {
+                                    new JObject
+                                    {
+                                        ["type"] = "html",
+                                        ["html"] = @"
+                                            <div style=""color: #666; font-size: 14px; line-height: 1.6;"">
+                                                <div style=""margin-bottom: 10px;"">
+                                                    <i class=""fas fa-mobile-alt"" style=""color: #1890ff; margin-right: 8px;""></i>
+                                                    <strong>扫码参与问卷</strong>
+                                                </div>
+                                                <div style=""margin-bottom: 8px;"">
+                                                    • 使用手机扫描左侧二维码
+                                                </div>
+                                                <div style=""margin-bottom: 8px;"">
+                                                    • 直接在手机浏览器中打开表单
+                                                </div>
+                                                <div style=""margin-bottom: 8px;"">
+                                                    • 支持微信、支付宝等扫码工具
+                                                </div>
+                                            </div>
+                                        "
+                                    },
+                                    new JObject
+                                    {
+                                        ["type"] = "input-text",
+                                        ["label"] = "分享链接",
+                                        ["value"] = mobileFormUrl,
+                                        ["readOnly"] = true,
+                                        ["addOn"] = new JObject
+                                        {
+                                            ["type"] = "button",
+                                            ["label"] = "复制",
+                                            ["level"] = "primary",
+                                            ["size"] = "sm",
+                                            ["actionType"] = "copy",
+                                            ["content"] = mobileFormUrl
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         formItems.Add(headerInfo);
 
         // 按题型分组题目并排序

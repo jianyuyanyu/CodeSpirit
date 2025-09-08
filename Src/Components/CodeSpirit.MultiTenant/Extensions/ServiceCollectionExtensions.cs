@@ -37,10 +37,6 @@ public static class ServiceCollectionExtensions
             case TenantStoreType.Memory:
                 services.AddSingleton<ITenantStore, MemoryTenantStore>();
                 break;
-            case TenantStoreType.ConfigFile:
-                // TODO: 实现配置文件存储
-                services.AddSingleton<ITenantStore, MemoryTenantStore>();
-                break;
             case TenantStoreType.Api:
                 // 注册API租户存储配置
                 services.Configure<ApiTenantStoreOptions>(configuration.GetSection(ApiTenantStoreOptions.SectionName));
@@ -49,9 +45,35 @@ public static class ServiceCollectionExtensions
                 // 注册API租户存储
                 services.AddScoped<ITenantStore, ApiTenantStore>();
                 break;
-            case TenantStoreType.Database:
+            case TenantStoreType.Adaptive:
+                // 注册自适应租户存储配置
+                services.Configure<AdaptiveTenantStoreOptions>(options =>
+                {
+                    configuration.GetSection("MultiTenant:AdaptiveStore").Bind(options);
+                    // 如果配置中没有指定，使用默认值
+                    if (options.PrimaryStoreType == default)
+                        options.PrimaryStoreType = TenantStoreType.Memory;
+                    if (options.FallbackStoreType == default)
+                        options.FallbackStoreType = TenantStoreType.Api;
+                });
+                
+                // 注册主要存储和备用存储
+                RegisterTenantStore(services, configuration, tenantOptions.AdaptiveStore.PrimaryStoreType, "Primary");
+                RegisterTenantStore(services, configuration, tenantOptions.AdaptiveStore.FallbackStoreType, "Fallback");
+                
+                // 注册自适应租户存储
+                services.AddScoped<ITenantStore>(serviceProvider =>
+                {
+                    var primaryStore = serviceProvider.GetRequiredKeyedService<ITenantStore>("Primary");
+                    var fallbackStore = serviceProvider.GetRequiredKeyedService<ITenantStore>("Fallback");
+                    var logger = serviceProvider.GetRequiredService<ILogger<AdaptiveTenantStore>>();
+                    var options = serviceProvider.GetRequiredService<IOptions<AdaptiveTenantStoreOptions>>();
+                    
+                    return new AdaptiveTenantStore(primaryStore, fallbackStore, logger, options);
+                });
+                break;
             default:
-                // TODO: 实现数据库存储
+                // 默认使用内存存储
                 services.AddSingleton<ITenantStore, MemoryTenantStore>();
                 break;
         }
@@ -116,5 +138,42 @@ public static class ServiceCollectionExtensions
         });
 
         return services;
+    }
+
+    /// <summary>
+    /// 注册指定类型的租户存储
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置</param>
+    /// <param name="storeType">存储类型</param>
+    /// <param name="serviceKey">服务键</param>
+    private static void RegisterTenantStore(
+        IServiceCollection services, 
+        IConfiguration configuration, 
+        TenantStoreType storeType, 
+        string serviceKey)
+    {
+        switch (storeType)
+        {
+            case TenantStoreType.Memory:
+                services.AddKeyedSingleton<ITenantStore, MemoryTenantStore>(serviceKey);
+                break;
+            case TenantStoreType.Api:
+                // 注册API租户存储配置（如果还没注册）
+                if (!services.Any(s => s.ServiceType == typeof(IConfigureOptions<ApiTenantStoreOptions>)))
+                {
+                    services.Configure<ApiTenantStoreOptions>(configuration.GetSection(ApiTenantStoreOptions.SectionName));
+                }
+                // 注册HttpClient（如果还没注册）
+                if (!services.Any(s => s.ServiceType == typeof(HttpClient) && s.ImplementationType?.Name.Contains("ApiTenantStore") == true))
+                {
+                    services.AddHttpClient<ApiTenantStore>();
+                }
+                services.AddKeyedScoped<ITenantStore, ApiTenantStore>(serviceKey);
+                break;
+            default:
+                services.AddKeyedSingleton<ITenantStore, MemoryTenantStore>(serviceKey);
+                break;
+        }
     }
 } 

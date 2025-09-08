@@ -46,12 +46,36 @@ public class AppSurveyService : IAppSurveyService, IScopedDependency
     /// <returns>公开问卷列表</returns>
     public async Task<List<AppSurveyDto>> GetPublicSurveysAsync()
     {
+        return await GetPublicSurveysAsync(new AppSurveyQueryDto());
+    }
+
+    /// <summary>
+    /// 获取公开问卷列表（带查询参数）
+    /// </summary>
+    /// <param name="queryDto">查询参数</param>
+    /// <returns>公开问卷列表</returns>
+    public async Task<List<AppSurveyDto>> GetPublicSurveysAsync(AppSurveyQueryDto queryDto)
+    {
         try
         {
-            var surveys = await _surveyRepository.Find(s => 
+            var query = _surveyRepository.Find(s => 
                 s.Status == SurveyStatus.Published && 
                 s.AccessType == SurveyAccessType.Public &&
-                (s.ExpiresAt == null || s.ExpiresAt > DateTime.UtcNow))
+                (s.ExpiresAt == null || s.ExpiresAt > DateTime.UtcNow));
+
+            // 标题模糊搜索
+            if (!string.IsNullOrWhiteSpace(queryDto.Title))
+            {
+                query = query.Where(s => s.Title.Contains(queryDto.Title));
+            }
+
+            // 分类名称筛选
+            if (!string.IsNullOrWhiteSpace(queryDto.CategoryName))
+            {
+                query = query.Where(s => s.Category != null && s.Category.Name == queryDto.CategoryName);
+            }
+
+            var surveys = await query
                 .Include(s => s.Category)
                 .Include(s => s.Questions)
                 .OrderByDescending(s => s.PublishedAt)
@@ -70,7 +94,7 @@ public class AppSurveyService : IAppSurveyService, IScopedDependency
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取公开问卷列表失败");
+            _logger.LogError(ex, "获取公开问卷列表失败，查询参数: {@QueryDto}", queryDto);
             throw;
         }
     }

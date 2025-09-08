@@ -14,6 +14,13 @@ public interface IAppSurveyService
     Task<List<AppSurveyDto>> GetPublicSurveysAsync();
 
     /// <summary>
+    /// 获取公开问卷列表（带查询参数）
+    /// </summary>
+    /// <param name="queryDto">查询参数</param>
+    /// <returns>公开问卷列表</returns>
+    Task<List<AppSurveyDto>> GetPublicSurveysAsync(AppSurveyQueryDto queryDto);
+
+    /// <summary>
     /// 根据ID获取问卷详情
     /// </summary>
     /// <param name="id">问卷ID</param>

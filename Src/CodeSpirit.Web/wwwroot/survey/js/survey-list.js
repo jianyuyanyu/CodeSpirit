@@ -88,12 +88,19 @@
     }
 
     /**
+     * 检测是否为移动设备
+     */
+    function isMobileDevice() {
+        return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    /**
      * 初始化按钮交互效果
      */
     function initButtonInteractions() {
         // 监听按钮点击事件
         document.addEventListener('click', function(event) {
-            const button = event.target.closest('.survey-participate-btn');
+            const button = event.target.closest('.survey-participate-btn, .survey-card-item-btn');
             if (button) {
                 // 添加点击动画效果
                 button.classList.add('btn-clicked');
@@ -150,6 +157,87 @@
     }
 
     /**
+     * 创建移动端卡片布局
+     */
+    function createMobileCardLayout(surveys) {
+        if (!Array.isArray(surveys) || surveys.length === 0) {
+            return `
+                <div class="survey-empty">
+                    <i class="fas fa-poll"></i>
+                    <h4>暂无问卷</h4>
+                    <p>当前没有可参与的问卷调查</p>
+                </div>
+            `;
+        }
+
+        return surveys.map(survey => {
+            const canParticipate = survey.canParticipate;
+            const isExpired = survey.isExpired;
+            
+            let actionButton = '';
+            if (canParticipate && !isExpired) {
+                actionButton = `
+                    <a href="${survey.participateUrl}" class="survey-card-item-btn primary">
+                        <i class="fas fa-play"></i>
+                        参与问卷
+                    </a>
+                `;
+            } else if (isExpired) {
+                actionButton = `
+                    <button class="survey-card-item-btn disabled" disabled>
+                        <i class="fas fa-clock"></i>
+                        已过期
+                    </button>
+                `;
+            } else {
+                actionButton = `
+                    <button class="survey-card-item-btn disabled" disabled>
+                        <i class="fas fa-ban"></i>
+                        不可用
+                    </button>
+                `;
+            }
+
+            return `
+                <div class="survey-card-item">
+                    <div class="survey-card-item-header">
+                        <h3 class="survey-card-item-title">${survey.title || '未命名问卷'}</h3>
+                        ${survey.categoryName ? `<span class="survey-card-item-category">${survey.categoryName}</span>` : ''}
+                    </div>
+                    ${survey.description ? `<div class="survey-card-item-description">${survey.description}</div>` : ''}
+                    <div class="survey-card-item-meta">
+                        <div class="survey-card-item-questions">
+                            <i class="fas fa-list"></i>
+                            <span>${survey.questionCount || 0}题</span>
+                        </div>
+                        <div class="survey-card-item-time">
+                            <i class="fas fa-clock"></i>
+                            <span>${survey.estimatedMinutes || 5}分钟</span>
+                        </div>
+                    </div>
+                    <div class="survey-card-item-actions">
+                        ${actionButton}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * 切换显示模式（表格/卡片）
+     */
+    function toggleDisplayMode() {
+        const container = document.getElementById('survey-list-container');
+        if (!container) return;
+
+        if (isMobileDevice()) {
+            container.classList.add('survey-card-mode');
+        } else {
+            container.classList.remove('survey-card-mode');
+        }
+    }
+
+    /**
      * 初始化问卷列表
      */
     function initSurveyList() {
@@ -160,28 +248,72 @@
             getTenantInfo();
         const amisSchema = {
             type: 'page',
-            title: '问卷调查',
-            subTitle: '参与公开问卷调查，分享您的宝贵意见',
+            title: '',
             body: [
+                // 搜索过滤器
                 {
-                    type: 'crud',
-                    name: 'surveyList',
+                    type: 'form',
+                    name: 'searchForm',
+                    mode: 'horizontal',
+                    wrapWithPanel: false,
+                    className: 'survey-search-form',
+                    target: 'surveyService',
+                    body: [
+                        {
+                            type: 'container',
+                            className: 'survey-search-container',
+                            body: [
+                                {
+                                    type: 'input-text',
+                                    name: 'title',
+                                    label: false,
+                                    placeholder: '搜索问卷标题...',
+                                    clearable: true,
+                                    className: 'survey-search-input',
+                                    addOn: {
+                                        type: 'button',
+                                        icon: 'fa fa-search',
+                                        level: 'primary',
+                                        actionType: 'submit',
+                                        className: 'survey-search-btn'
+                                    }
+                                },
+                                {
+                                    type: 'select',
+                                    name: 'categoryName',
+                                    label: false,
+                                    placeholder: '选择分类',
+                                    source: {
+                                        method: 'get',
+                                        url: '/survey/api/app/surveys/categories'
+                                    },
+                                    clearable: true,
+                                    className: 'survey-category-select',
+                                    submitOnChange: true
+                                }
+                            ]
+                        }
+                    ],
+                    actions: []
+                },
+                
+                // 数据服务组件
+                {
+                    type: 'service',
+                    id: 'surveyService',
+                    name: 'surveyService',
                     api: {
                         method: 'get',
                         url: '/survey/api/app/surveys/public',
                         data: {
-                            '&': '$$' // 传递所有查询参数
-                            // 租户参数将通过 requestAdaptor 动态添加
+                            title: '${title}',
+                            categoryName: '${categoryName}'
                         },
                         adaptor: function(payload) {
-                            // 处理API响应数据
                             if (payload.status === 0 && payload.data) {
-                                // 更新统计数字
                                 updateSurveyCount(payload.data.length);
                                 
-                                // 为每个问卷项添加参与链接
                                 const processedData = payload.data.map(item => {
-                                    // 动态获取租户ID
                                     let tenantId = currentTenantId;
                                     if (!tenantId) {
                                         tenantId = getTenantIdFromPath();
@@ -193,9 +325,8 @@
                                         }
                                     }
                                     
-                                    // 构建参与问卷的URL（优先使用访问码）
                                     let participateUrl;
-                                    const identifier = item.publicAccessCode || item.id; // 优先使用访问码，回退到ID
+                                    const identifier = item.publicAccessCode || item.id;
                                     if (tenantId) {
                                         participateUrl = `/${tenantId}/survey/participate/${identifier}`;
                                     } else {
@@ -212,177 +343,132 @@
                                     status: 0,
                                     msg: payload.msg || '获取成功',
                                     data: {
-                                        items: processedData,
+                                        surveys: processedData,
                                         total: processedData.length
                                     }
                                 };
                             }
-                            // 更新统计数字
                             updateSurveyCount(0);
                             return payload;
                         }
                     },
-                    filter: {
-                        title: '搜索问卷',
-                        submitText: '搜索',
-                        body: [
-                            {
-                                type: 'input-text',
-                                name: 'title',
-                                label: '问卷标题',
-                                placeholder: '请输入问卷标题关键词',
-                                clearable: true
-                            },
-                            {
-                                type: 'select',
-                                name: 'categoryName',
-                                label: '问卷分类',
-                                placeholder: '请选择问卷分类',
-                                source: {
-                                    method: 'get',
-                                    url: '/survey/api/app/surveys/categories'
-                                    // 租户参数将通过 requestAdaptor 动态添加
-                                },
-                                clearable: true
+                    body: [
+                        // 移动端卡片布局
+                        {
+                            type: 'each',
+                            name: 'surveys',
+                            placeholder: '暂无问卷数据',
+                            className: 'survey-cards-container',
+                            items: {
+                                type: 'container',
+                                className: 'survey-card-wrapper',
+                                body: [
+                                    {
+                                        type: 'container',
+                                        className: 'survey-card-modern',
+                                        body: [
+                                            // 卡片头部
+                                            {
+                                                type: 'container',
+                                                className: 'survey-card-header',
+                                                body: [
+                                                    {
+                                                        type: 'container',
+                                                        className: 'survey-card-title-section',
+                                                        body: [
+                                                            {
+                                                                type: 'tpl',
+                                                                className: 'survey-card-title',
+                                                                tpl: '<h3>${title}</h3>'
+                                                            },
+                                                            {
+                                                                type: 'tpl',
+                                                                className: 'survey-card-category',
+                                                                tpl: '${categoryName}',
+                                                                visibleOn: '${categoryName}'
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            
+                                            // 卡片描述
+                                            {
+                                                type: 'tpl',
+                                                className: 'survey-card-description',
+                                                tpl: '${description | truncate:120}',
+                                                visibleOn: '${description}'
+                                            },
+                                            
+                                            // 卡片元信息
+                                            {
+                                                type: 'container',
+                                                className: 'survey-card-meta',
+                                                body: [
+                                                    {
+                                                        type: 'tpl',
+                                                        className: 'survey-meta-item',
+                                                        tpl: '<i class="fas fa-list-ul"></i><span>${questionCount || 0}题</span>'
+                                                    },
+                                                    {
+                                                        type: 'tpl',
+                                                        className: 'survey-meta-item',
+                                                        tpl: '<i class="fas fa-clock"></i><span>${estimatedMinutes || 5}分钟</span>'
+                                                    },
+                                                    {
+                                                        type: 'tpl',
+                                                        className: 'survey-meta-item',
+                                                        tpl: '<i class="fas fa-calendar"></i><span>${publishedAt | date:"MM-DD"}</span>',
+                                                        visibleOn: '${publishedAt}'
+                                                    }
+                                                ]
+                                            },
+                                            
+                                            // 卡片操作按钮
+                                            {
+                                                type: 'container',
+                                                className: 'survey-card-actions',
+                                                body: [
+                                                    {
+                                                        type: 'tpl',
+                                                        className: 'survey-btn-wrapper',
+                                                        tpl: '<a href="${participateUrl}" class="survey-btn survey-btn-primary"><i class="fas fa-play"></i><span>参与问卷</span></a>',
+                                                        visibleOn: '${canParticipate && !isExpired}'
+                                                    },
+                                                    {
+                                                        type: 'tpl',
+                                                        className: 'survey-btn-wrapper',
+                                                        tpl: '<button class="survey-btn survey-btn-disabled" disabled><i class="fas fa-clock"></i><span>已过期</span></button>',
+                                                        visibleOn: '${isExpired}'
+                                                    },
+                                                    {
+                                                        type: 'tpl',
+                                                        className: 'survey-btn-wrapper',
+                                                        tpl: '<button class="survey-btn survey-btn-disabled" disabled><i class="fas fa-ban"></i><span>不可用</span></button>',
+                                                        visibleOn: '${!canParticipate && !isExpired}'
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
                             }
-                        ]
-                    },
-                    columns: [
-                        {
-                            name: 'title',
-                            label: '问卷标题',
-                            type: 'text',
-                            searchable: true,
-                            width: 300,
-                            className: 'survey-title-column'
                         },
+                        
+                        // 空状态
                         {
-                            name: 'description',
-                            label: '问卷描述',
-                            type: 'text',
-                            width: 250,
-                            breakpoint: '*',
-                            className: 'survey-desc-column',
-                            tpl: '${description | truncate:80}'
-                        },
-                        {
-                            name: 'categoryName',
-                            label: '分类',
-                            type: 'text',
-                            width: 120,
-                            className: 'survey-category-column'
-                        },
-                        {
-                            name: 'questionCount',
-                            label: '题目数量',
                             type: 'tpl',
-                            width: 100,
-                            className: 'survey-count-column',
-                            tpl: '<span class="badge badge-info">${questionCount}题</span>'
-                        },
-                        {
-                            name: 'estimatedMinutes',
-                            label: '预计时间',
-                            type: 'tpl',
-                            width: 100,
-                            className: 'survey-time-column',
-                            tpl: '<span class="text-muted">${estimatedMinutes}分钟</span>'
-                        },
-                        {
-                            name: 'publishedAt',
-                            label: '发布时间',
-                            type: 'datetime',
-                            width: 150,
-                            format: 'YYYY-MM-DD HH:mm',
-                            className: 'survey-date-column'
-                        },
-                        {
-                            name: 'expiresAt',
-                            label: '过期时间',
-                            type: 'datetime',
-                            width: 150,
-                            format: 'YYYY-MM-DD HH:mm',
-                            className: 'survey-expire-column',
-                            tpl: '${expiresAt ? (expiresAt | date:"YYYY-MM-DD HH:mm") : "无限期"}'
-                        },
-                        {
-                            type: 'operation',
-                            label: '操作',
-                            width: 150,
-                            className: 'survey-action-column',
-                            buttons: [
-                                {
-                                    type: 'button',
-                                    label: '参与问卷',
-                                    level: 'primary',
-                                    size: 'sm',
-                                    actionType: 'link',
-                                    link: '${participateUrl | raw}',
-                                    blank: false,
-                                    visibleOn: '${canParticipate}',
-                                    className: 'survey-action-btn primary survey-participate-btn',
-                                    tooltip: '点击参与问卷调查'
-                                },
-                                {
-                                    type: 'button',
-                                    label: '已过期',
-                                    level: 'default',
-                                    size: 'sm',
-                                    disabled: true,
-                                    visibleOn: '${isExpired}',
-                                    className: 'survey-action-btn disabled',
-                                    tooltip: '问卷已过期，无法参与'
-                                },
-                                {
-                                    type: 'button',
-                                    label: '不可用',
-                                    level: 'default',
-                                    size: 'sm',
-                                    disabled: true,
-                                    visibleOn: '${!canParticipate && !isExpired}',
-                                    className: 'survey-action-btn disabled',
-                                    tooltip: '问卷当前不可参与'
-                                }
-                            ]
+                            visibleOn: '${!surveys || surveys.length === 0}',
+                            className: 'survey-empty-state',
+                            tpl: `
+                                <div class="survey-empty">
+                                    <i class="fas fa-poll"></i>
+                                    <h4>暂无问卷</h4>
+                                    <p>当前没有可参与的问卷调查</p>
+                                </div>
+                            `
                         }
-                    ],
-                    headerToolbar: [
-                        {
-                            type: 'tpl',
-                            tpl: '<div class="survey-list-header"><i class="fas fa-poll"></i> 问卷列表</div>',
-                            className: 'survey-header-title'
-                        },
-                        'filter-toggler',
-                        'reload',
-                        {
-                            type: 'columns-toggler',
-                            align: 'right',
-                            className: 'survey-columns-toggle'
-                        }
-                    ],
-                    footerToolbar: [
-                        'statistics', 
-                        'pagination'
-                    ],
-                    perPage: 10,
-                    perPageAvailable: [10, 20, 50],
-                    loadDataOnce: false,
-                    className: 'survey-list-table',
-                    placeholder: {
-                        type: 'tpl',
-                        tpl: `
-                            <div class="survey-empty">
-                                <i class="fas fa-poll"></i>
-                                <h4>暂无问卷</h4>
-                                <p>当前没有可参与的问卷调查</p>
-                            </div>
-                        `,
-                        className: 'survey-empty-state'
-                    },
-                    loadingConfig: {
-                        show: true,
-                        className: 'survey-loading'
-                    }
+                    ]
                 }
             ]
         };
@@ -468,6 +554,9 @@
         // 绑定事件监听器
         bindEventListeners();
         
+        // 初始化显示模式
+        toggleDisplayMode();
+        
         console.log('问卷列表初始化完成');
         
         } catch (error) {
@@ -513,6 +602,44 @@
                     }
                 }, 500);
             }
+        });
+
+        // 监听窗口大小变化，切换显示模式
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                toggleDisplayMode();
+                
+                // 如果从桌面端切换到移动端，重新加载数据以应用卡片布局
+                if (amisInstance) {
+                    try {
+                        const surveyServiceComponent = amisInstance.getComponentById?.('surveyService');
+                        if (surveyServiceComponent && surveyServiceComponent.reload) {
+                            surveyServiceComponent.reload();
+                        }
+                    } catch (error) {
+                        console.warn('切换显示模式时刷新失败:', error);
+                    }
+                }
+            }, 300);
+        });
+
+        // 监听设备方向变化（移动设备）
+        window.addEventListener('orientationchange', function() {
+            setTimeout(() => {
+                toggleDisplayMode();
+                if (amisInstance) {
+                    try {
+                        const surveyServiceComponent = amisInstance.getComponentById?.('surveyService');
+                        if (surveyServiceComponent && surveyServiceComponent.reload) {
+                            surveyServiceComponent.reload();
+                        }
+                    } catch (error) {
+                        console.warn('方向变化时刷新失败:', error);
+                    }
+                }
+            }, 500);
         });
     }
 
@@ -560,16 +687,125 @@
     /**
      * 页面初始化
      */
+    // 页面加载动画
+    function addPageLoadAnimation() {
+        // 添加页面淡入效果
+        document.body.style.opacity = '0';
+        document.body.style.transition = 'opacity 0.8s ease-in-out';
+        
+        setTimeout(() => {
+            document.body.style.opacity = '1';
+        }, 100);
+        
+        // 为卡片添加交错动画
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry, index) => {
+                if (entry.isIntersecting) {
+                    setTimeout(() => {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }, index * 120);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+        
+        // 观察所有卡片
+        setTimeout(() => {
+            const cards = document.querySelectorAll('.survey-card-modern');
+            cards.forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(40px)';
+                card.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+                observer.observe(card);
+            });
+        }, 600);
+    }
+    
+    // 添加搜索动画效果
+    function enhanceSearchInteraction() {
+        setTimeout(() => {
+            const searchForm = document.querySelector('.survey-search-form');
+            const searchInput = document.querySelector('.survey-search-input');
+            const categorySelect = document.querySelector('.survey-category-select');
+            const searchBtn = document.querySelector('.survey-search-btn');
+            
+            if (searchForm) {
+                searchForm.style.opacity = '0';
+                searchForm.style.transform = 'translateY(-20px)';
+                searchForm.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                
+                setTimeout(() => {
+                    searchForm.style.opacity = '1';
+                    searchForm.style.transform = 'translateY(0)';
+                }, 200);
+            }
+            
+            if (searchInput) {
+                searchInput.addEventListener('focus', function() {
+                    this.style.transform = 'scale(1.02)';
+                });
+                
+                searchInput.addEventListener('blur', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            }
+            
+            if (categorySelect) {
+                categorySelect.addEventListener('focus', function() {
+                    this.style.transform = 'scale(1.02)';
+                });
+                
+                categorySelect.addEventListener('blur', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            }
+            
+            if (searchBtn) {
+                searchBtn.addEventListener('mousedown', function() {
+                    this.style.transform = 'scale(0.95)';
+                });
+                
+                searchBtn.addEventListener('mouseup', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            }
+        }, 300);
+    }
+    
+    // 添加统计卡片动画
+    function animateStatsCards() {
+        setTimeout(() => {
+            const statItems = document.querySelectorAll('.survey-stat-item');
+            statItems.forEach((item, index) => {
+                item.style.opacity = '0';
+                item.style.transform = 'translateY(30px) scale(0.9)';
+                item.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                
+                setTimeout(() => {
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateY(0) scale(1)';
+                }, index * 150 + 400);
+            });
+        }, 100);
+    }
+
     function init() {
         // 等待DOM加载完成
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function() {
                 initSurveyList();
                 initButtonInteractions();
+                addPageLoadAnimation();
+                enhanceSearchInteraction();
+                animateStatsCards();
             });
         } else {
             initSurveyList();
             initButtonInteractions();
+            addPageLoadAnimation();
+            enhanceSearchInteraction();
+            animateStatsCards();
         }
     }
 
@@ -579,9 +815,9 @@
         reload: function() {
             if (amisInstance) {
                 try {
-                    const surveyListComponent = amisInstance.getComponentByName?.('surveyList');
-                    if (surveyListComponent && surveyListComponent.reload) {
-                        surveyListComponent.reload();
+                    const surveyServiceComponent = amisInstance.getComponentById?.('surveyService');
+                    if (surveyServiceComponent && surveyServiceComponent.reload) {
+                        surveyServiceComponent.reload();
                     } else {
                         // 备用方案：重新初始化
                         initSurveyList();

@@ -34,19 +34,20 @@ public class SurveysController : AppControllerBase
     /// <summary>
     /// 获取公开问卷列表
     /// </summary>
+    /// <param name="queryDto">查询参数</param>
     /// <returns>公开问卷列表</returns>
     [HttpGet("public")]
     [DisplayName("获取公开问卷列表")]
-    public async Task<ActionResult<ApiResponse<List<AppSurveyDto>>>> GetPublicSurveys()
+    public async Task<ActionResult<ApiResponse<List<AppSurveyDto>>>> GetPublicSurveys([FromQuery] AppSurveyQueryDto queryDto)
     {
         try
         {
-            var result = await _appSurveyService.GetPublicSurveysAsync();
+            var result = await _appSurveyService.GetPublicSurveysAsync(queryDto);
             return SuccessResponse(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取公开问卷列表失败");
+            _logger.LogError(ex, "获取公开问卷列表失败，查询参数: {@QueryDto}", queryDto);
             return ErrorResponse<List<AppSurveyDto>>("获取问卷列表失败");
         }
     }

@@ -141,12 +141,70 @@ builder.Services.AddCodeSpiritAggregator(globalConfig =>
 3. **优先级处理**：特性规则优先级高于全局规则，不会重复应用
 4. **规则生成**：将所有规则合并生成最终的聚合头部
 
+## 禁用聚合器
+
+### 使用DisableAggregatorAttribute特性
+
+对于某些特殊的API（如内部API、健康检查等），可能不需要聚合器处理。可以使用 `DisableAggregatorAttribute` 特性来禁用聚合器功能。
+
+#### 控制器级别禁用
+
+```csharp
+using CodeSpirit.Aggregator.Attributes;
+
+[DisableAggregator]
+[DisplayName("内部租户信息")]
+public class InternalTenantsController : ControllerBase
+{
+    // 整个控制器的所有方法都不会应用聚合器
+    [HttpGet("{tenantId}")]
+    public async Task<ActionResult<ApiResponse<InternalTenantDto>>> GetInternalTenant(string tenantId)
+    {
+        // 此方法不会生成聚合头信息
+        // ...
+    }
+}
+```
+
+#### 方法级别禁用
+
+```csharp
+public class UsersController : ApiControllerBase
+{
+    // 正常的方法会应用聚合器
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> GetUsers([FromQuery] UserQueryDto query)
+    {
+        // 此方法会正常生成聚合头信息
+        // ...
+    }
+    
+    // 特定方法禁用聚合器
+    [DisableAggregator]
+    [HttpGet("health")]
+    public ActionResult<ApiResponse> Health()
+    {
+        // 此方法不会生成聚合头信息
+        return Ok(ApiResponse.Success("服务正常"));
+    }
+}
+```
+
+#### 使用场景
+
+- **内部API**：如 `/api/internal/*` 路径下的API，通常用于服务间调用
+- **健康检查**：如 `/health` 或 `/api/health` 端点
+- **静态数据API**：如配置信息、枚举值等不需要聚合的数据
+- **文件上传/下载**：处理文件的API通常不需要聚合器
+
 ## 注意事项
 
 - 全局规则仅对没有 `AggregateFieldAttribute` 特性的属性生效
 - 字段名匹配不区分大小写
 - 全局规则在应用启动时配置，运行时修改需要重新注入服务
 - 建议将常用的全局规则配置在应用启动时，避免运行时频繁修改
+- `DisableAggregatorAttribute` 可以应用于控制器或方法级别，方法级别优先级更高
+- 禁用聚合器的API不会生成 `X-Aggregate-Keys` 响应头
 
 ## 迁移指南
 

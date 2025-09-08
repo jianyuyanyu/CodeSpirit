@@ -1,3 +1,4 @@
+using CodeSpirit.Aggregator.Attributes;
 using CodeSpirit.Aggregator.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using CodeSpirit.Core.Extensions;
 
@@ -42,17 +44,25 @@ namespace CodeSpirit.Aggregator.Middlewares
                 var responseContent = await new StreamReader(responseBody).ReadToEndAsync();
                 responseBody.Seek(0, SeekOrigin.Begin);
 
-                // 尝试解析响应类型
-                var responseType = GetResponseType(context);
-                if (responseType != null)
+                // 检查是否禁用聚合器
+                if (!IsAggregatorDisabled(context))
                 {
-                    // 生成聚合规则头信息
-                    var aggregationHeader = _headerService.GenerateAggregationHeader(responseType);
-                    if (!string.IsNullOrEmpty(aggregationHeader))
+                    // 尝试解析响应类型
+                    var responseType = GetResponseType(context);
+                    if (responseType != null)
                     {
-                        context.Response.Headers["X-Aggregate-Keys"] = aggregationHeader;
-                        _logger.LogInformation("添加聚合规则头信息: {Header}", aggregationHeader);
+                        // 生成聚合规则头信息
+                        var aggregationHeader = _headerService.GenerateAggregationHeader(responseType);
+                        if (!string.IsNullOrEmpty(aggregationHeader))
+                        {
+                            context.Response.Headers["X-Aggregate-Keys"] = aggregationHeader;
+                            _logger.LogInformation("添加聚合规则头信息: {Header}", aggregationHeader);
+                        }
                     }
+                }
+                else
+                {
+                    _logger.LogDebug("聚合器已被禁用，跳过处理");
                 }
 
                 // 将响应内容写回原始流
@@ -62,6 +72,39 @@ namespace CodeSpirit.Aggregator.Middlewares
             {
                 context.Response.Body = originalBodyStream;
             }
+        }
+
+        /// <summary>
+        /// 检查是否禁用聚合器
+        /// </summary>
+        /// <param name="context">HTTP上下文</param>
+        /// <returns>如果禁用返回true，否则返回false</returns>
+        private bool IsAggregatorDisabled(HttpContext context)
+        {
+            // 从路由数据中获取控制器和动作信息
+            var endpoint = context.GetEndpoint();
+            if (endpoint == null)
+                return false;
+
+            var controllerActionDescriptor = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>();
+            if (controllerActionDescriptor == null)
+                return false;
+
+            // 检查方法级别的DisableAggregatorAttribute
+            if (controllerActionDescriptor.MethodInfo.GetCustomAttribute<DisableAggregatorAttribute>() != null)
+            {
+                _logger.LogDebug("方法 {MethodName} 标记为禁用聚合器", controllerActionDescriptor.MethodInfo.Name);
+                return true;
+            }
+
+            // 检查控制器级别的DisableAggregatorAttribute
+            if (controllerActionDescriptor.ControllerTypeInfo.GetCustomAttribute<DisableAggregatorAttribute>() != null)
+            {
+                _logger.LogDebug("控制器 {ControllerName} 标记为禁用聚合器", controllerActionDescriptor.ControllerTypeInfo.Name);
+                return true;
+            }
+
+            return false;
         }
 
         private Type GetResponseType(HttpContext context)

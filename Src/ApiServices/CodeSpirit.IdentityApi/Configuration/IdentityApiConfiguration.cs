@@ -9,7 +9,9 @@ using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.EventHandlers;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Services.Settings;
+using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
+using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Events;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
@@ -17,7 +19,6 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using CodeSpirit.LLM;
 
 
 namespace CodeSpirit.IdentityApi.Configuration;
@@ -85,6 +86,9 @@ public class IdentityApiConfiguration : BaseApiConfiguration
 
         // 添加AI表单填充服务（包含自动端点功能）
         services.AddAiFormFillEndpoints();
+
+        // 添加Redis分布式锁服务
+        AddRedisDistributedLock(services);
     }
     
     /// <summary>
@@ -271,6 +275,21 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         {
             options.EnableCache = true;
             options.CacheExpiration = 30; // 修改为int类型的值，表示缓存过期时间（分钟）
+        });
+    }
+
+    /// <summary>
+    /// 添加Redis分布式锁服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    private static void AddRedisDistributedLock(IServiceCollection services)
+    {
+        services.AddRedisDistributedLock(options =>
+        {
+            options.KeyPrefix = "CodeSpirit:Identity:Lock:";
+            options.DefaultLockTimeout = TimeSpan.FromMinutes(5);
+            options.DefaultAcquireTimeout = TimeSpan.FromSeconds(10);
+            options.RetryInterval = TimeSpan.FromMilliseconds(100);
         });
     }
 }

@@ -1,3 +1,4 @@
+using CodeSpirit.Aggregator.Attributes;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Dtos.Tenant;
@@ -14,6 +15,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Internal
     /// 内部租户信息访问控制器
     /// 提供租户存储所需的内部API接口
     /// </summary>
+    [DisableAggregator]
     [DisplayName("内部租户信息")]
     [Module("default")]
     [Route("api/identity/internal/tenants")]

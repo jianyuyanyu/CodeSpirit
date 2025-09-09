@@ -4,6 +4,14 @@
 
 `CreateAmisColumn` 方法是 CodeSpirit.Amis 组件中用于自动生成 AMIS 表格列配置的核心方法。该方法能够根据 .NET 属性的类型、特性和命名约定，自动推断出最适合的 AMIS 列类型和配置。
 
+### 系统特色
+
+- **智能识别**：基于属性名称模式和数据类型自动推断最适合的列类型
+- **特性驱动**：支持丰富的列特性配置，提供精确控制
+- **优先级明确**：AmisColumnAttribute 具有最高优先级，可覆盖所有自动推断
+- **扩展性强**：支持多种专用列特性，满足不同场景需求
+- **智能优化**：自动优化显示效果，如长文本截断、日期格式化、时长单位等
+
 ## 主要功能
 
 ### 1. 聚合器字段支持
@@ -32,9 +40,13 @@
   - **历史记录优化**：为历史、日志、审计相关时间字段自动启用相对时间显示
 
 ### 3. 标签列（Tags）支持
-- 自动识别名为 "Tags" 的字符串数组属性
-- 支持 `TagsColumnAttribute` 特性配置
-- 自动生成标签样式和颜色配置
+- **自动识别**：名为 "Tags" 的字符串数组属性自动显示为标签列
+- **TagsColumnAttribute 特性**：基于 each 列封装，提供丰富的标签配置选项
+  - **标签颜色**：支持 primary、success、info、warning、danger 等语义化颜色
+  - **CSS类配置**：可自定义标签的CSS类和额外样式类
+  - **数量限制**：支持设置最大显示标签数量，超出数量时显示省略提示
+  - **占位符配置**：支持空列表时的占位符显示
+  - **溢出模板**：可自定义超出最大数量时的显示模板（如"+{overflow}更多"）
 
 ### 4. 枚举类型映射
 - 自动将枚举类型映射为 AMIS 的 mapping 列
@@ -59,7 +71,18 @@
 - 自动识别包含 "Status"、"State" 的字符串字段
 - 设置为 AMIS 的 status 类型
 
-### 8. 链接字段
+### 8. 图标字段智能处理
+- **自动识别**：包含 "icon"、"Icon" 的字段自动显示为图标列
+- **IconColumnAttribute 特性**：提供完整的图标列配置选项
+  - **图标厂商**：支持自定义图标厂商（默认为空字符串，支持自定义图标）
+  - **尺寸配置**：xs, sm, md, lg, xl, 2xl, 3xl, 4xl（对应Tailwind CSS的text-*类）
+  - **颜色配置**：primary, secondary, success, danger, warning, info, light, dark, muted
+  - **旋转动画**：支持spin属性启用旋转效果
+  - **默认图标**：当图标值为空时显示的默认图标
+  - **图标与文本**：支持同时显示图标和文本，可配置文本位置（left, right, top, bottom）
+  - **自定义CSS类**：支持添加自定义CSS类名
+
+### 9. 链接字段
 - **URL 链接**：自动识别包含 "Url"、"Link"、"Website" 的字段或 `DataType.Url` 特性
 - **邮箱链接**：自动识别包含 "Email"、"Mail" 的字段或 `DataType.EmailAddress` 特性
 - **电话链接**：自动识别包含 "Phone"、"Tel"、"Mobile" 的字段或 `DataType.PhoneNumber` 特性，支持：
@@ -68,16 +91,27 @@
   - 一键复制功能
   - 优雅的样式设计
 
-### 9. 密码字段脱敏
+### 10. 密码字段脱敏
 - 自动识别包含 "Password"、"Pwd" 的字段
 - 显示为 "******" 并禁用排序
 
-### 10. 长文本字段处理
-- 自动识别包含 "Description"、"Content"、"Note"、"Remark"、"Comment" 的字段
-- 支持文本截断和弹窗显示完整内容
-- 根据 `MaxLengthAttribute` 自动配置截断长度
+### 11. 长文本字段智能处理
+- **自动识别**：包含 "Description"、"Content"、"Note"、"Remark"、"Comment"、"Summary"、"Detail"、"Text"、"Message"、"Reason"、"Explanation"、"Instruction"、"Feedback"、"Review" 的字段
+- **LongTextColumnAttribute 特性**：专门用于配置长文本字段的显示和弹窗行为
+  - **弹窗触发方式**：支持 hover(悬停) 或 click(点击) 触发
+  - **自定义显示长度**：可覆盖自动计算的截断长度
+  - **自定义列宽**：可覆盖自动计算的列宽度
+  - **弹窗模式**：支持 popOver 或 dialog 两种弹窗模式
+  - **对话框大小**：可配置dialog模式下的弹窗大小
+  - **点击图标**：可配置是否显示点击图标及其样式
+- **智能优化功能**：
+  - 根据字段类型智能调整显示长度（摘要80字符，描述60字符，备注50字符等）
+  - 根据 `MaxLengthAttribute` 自动配置截断长度
+  - 智能列宽配置（描述300px，摘要250px，备注200px等）
+  - 支持文本换行和自动省略
+  - 提供悬停或点击弹窗查看完整内容
 
-### 11. 集合类型支持
+### 12. 集合类型支持
 - **List<string> / string[]**：字符串数组/集合自动显示为 each 类型，支持：
   - 标签样式显示（badge样式）
   - 自动截断超出数量的项目（默认最多显示10项）
@@ -91,13 +125,13 @@
   - 占位符自定义
 - **基础类型集合**：显示为 each 类型（循环显示）
 
-### 12. 复杂对象类型
+### 13. 复杂对象类型
 - **自定义类对象**：复杂对象类型自动显示为 json 列
 - **结构体类型**：自定义结构体（如 Point、Rectangle 等）显示为 json 列
 - **匿名对象**：匿名类型对象显示为 json 列
 - **排除类型**：字符串、数组、集合、已处理的特殊类型除外
 
-### 13. 特殊数据类型
+### 14. 特殊数据类型
 - **JSON 字段**：自动识别包含 "json"、"config"、"setting" 的字段
 - **HTML 字段**：自动识别包含 "html"、"rich" 的字段
 - **颜色字段**：自动识别包含 "color"、"colour" 的字段
@@ -114,16 +148,17 @@
 ## 支持的 AMIS 列类型
 
 - `text` - 文本显示
-- `tpl` - 模板显示（用于格式化）
-- `date` - 日期显示
+- `tpl` - 模板显示（用于格式化、时长、金额、百分比等）
+- `date` - 日期显示（支持智能格式推断和相对时间）
 - `mapping` - 枚举映射
 - `switch` - 开关（布尔值）
-- `link` - 链接
+- `link` - 链接（URL、邮箱）
 - `image` - 图片
 - `avatar` - 头像
+- `icon` - 图标（支持多种配置选项）
 - `status` - 状态
-- `each` - 循环显示（标签、数组）
-- `list` - 列表显示
+- `each` - 循环显示（标签、字符串数组）
+- `list` - 列表显示（复杂对象集合）
 - `json` - JSON 显示
 - `html` - HTML 显示
 - `color` - 颜色显示
@@ -180,6 +215,18 @@ public class UserDto
 
     [DisplayName("地址信息")]
     public Address Address { get; set; }
+
+    [DisplayName("状态图标")]
+    [IconColumn(Size = "lg", Color = "primary")]
+    public string StatusIcon { get; set; }
+
+    [DisplayName("详细描述")]
+    [LongTextColumn(true)] // 启用点击弹窗
+    public string Description { get; set; }
+
+    [DisplayName("备注信息")]
+    [LongTextColumn("hover", CustomDisplayLength = 30)]
+    public string Remark { get; set; }
 }
 ```
 
@@ -215,6 +262,85 @@ public class PerformanceDto
 
     [DisplayName("成功率")]
     public double SuccessRate { get; set; }  // → "95.6%"
+}
+```
+
+### 图标字段示例
+
+```csharp
+public class ComponentDto
+{
+    [DisplayName("组件ID")]
+    public long Id { get; set; }
+
+    [DisplayName("组件名称")]
+    public string Name { get; set; }
+
+    // 简单图标字段（自动识别）
+    [DisplayName("图标")]
+    public string Icon { get; set; }  // → 自动显示为图标列
+
+    // 带配置的图标字段
+    [DisplayName("状态图标")]
+    [IconColumn(Size = "lg", Color = "success")]
+    public string StatusIcon { get; set; }  // → 大尺寸绿色图标
+
+    // 带旋转动画的图标
+    [DisplayName("加载图标")]
+    [IconColumn(Size = "md", Color = "primary", Spin = true)]
+    public string LoadingIcon { get; set; }  // → 旋转的蓝色图标
+
+    // 图标与文本组合显示
+    [DisplayName("操作类型")]
+    [IconColumn(ShowText = true, TextPosition = "right", Size = "sm")]
+    public string ActionType { get; set; }  // → 图标 + 文本
+
+    // 带默认图标的字段
+    [DisplayName("优先级")]
+    [IconColumn(DefaultIcon = "fa fa-star", Color = "warning")]
+    public string Priority { get; set; }  // → 空值时显示星星图标
+}
+```
+
+### 长文本字段示例
+
+```csharp
+public class ArticleDto
+{
+    [DisplayName("文章ID")]
+    public long Id { get; set; }
+
+    [DisplayName("标题")]
+    public string Title { get; set; }
+
+    // 自动识别的长文本字段（悬停弹窗）
+    [DisplayName("文章内容")]
+    public string Content { get; set; }  // → 自动截断并支持悬停查看
+
+    // 点击弹窗的长文本字段
+    [DisplayName("详细描述")]
+    [LongTextColumn(true)]  // 启用点击弹窗
+    public string Description { get; set; }
+
+    // 自定义配置的长文本字段
+    [DisplayName("备注")]
+    [LongTextColumn("hover", CustomDisplayLength = 40, CustomWidth = 250)]
+    public string Remark { get; set; }
+
+    // 对话框模式的长文本字段
+    [DisplayName("详细说明")]
+    [LongTextColumn(EnableClickPopOver = true, PopOverMode = "dialog", DialogSize = "lg")]
+    public string DetailedExplanation { get; set; }
+
+    // 自动识别的其他长文本字段
+    [DisplayName("摘要")]
+    public string Summary { get; set; }  // → 自动识别，80字符截断
+
+    [DisplayName("评论")]
+    public string Comment { get; set; }  // → 自动识别，50字符截断
+
+    [DisplayName("反馈")]
+    public string Feedback { get; set; }  // → 自动识别，支持弹窗
 }
 ```
 
@@ -309,6 +435,20 @@ public class AuditLogDto
 - `Status` → status 类型
 - `CreatedTime` → date 类型（YYYY-MM-DD HH:mm:ss 格式）
 
+### 图标字段
+- `Icon` → icon 类型（自动识别，支持自定义图标）
+- `StatusIcon` → icon 类型（大尺寸绿色图标配置）
+- `LoadingIcon` → icon 类型（带旋转动画的蓝色图标）
+- `ActionType` → tpl 类型（图标与文本组合显示）
+- `Priority` → icon 类型（带默认图标配置）
+
+### 长文本字段
+- `Content` → tpl 类型（自动截断，悬停弹窗查看完整内容）
+- `Description` → text 类型（点击弹窗配置）
+- `Remark` → tpl 类型（自定义截断长度和列宽）
+- `Summary` → tpl 类型（80字符截断，智能列宽300px）
+- `Comment` → tpl 类型（50字符截断，悬停弹窗）
+
 ### 数值类型
 - `Amount` → tpl 类型（货币格式化：¥123.45）
 - `Duration` → tpl 类型（时长格式化：123.45 ms）
@@ -342,7 +482,16 @@ public class AuditLogDto
 1. **通过添加新的列特性**来支持更多 AMIS 列类型
 2. **通过修改属性名称模式识别**添加更多字段名称匹配规则
 3. **通过 `AmisColumnAttribute` 覆盖自动推断**的配置，提供完全的控制权
-4. **通过特定列特性**（如 `DateColumnAttribute`、`TagsColumnAttribute`）提供精确配置
+4. **通过特定列特性**提供精确配置：
+   - `DateColumnAttribute` - 日期列配置
+   - `TagsColumnAttribute` - 标签列配置
+   - `IconColumnAttribute` - 图标列配置
+   - `LongTextColumnAttribute` - 长文本列配置
+   - `EachColumnAttribute` - 循环列配置
+   - `ListColumnAttribute` - 列表列配置
+   - `AvatarColumnAttribute` - 头像列配置
+   - `TplColumnAttribute` - 模板列配置
+   - `LinkColumnAttribute` - 链接列配置
 
 ### 配置优先级保障
 

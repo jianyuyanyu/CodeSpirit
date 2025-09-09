@@ -83,6 +83,7 @@
                                                                 api.headers = api.headers || {};
                                                                 api.headers['X-Forwarded-With'] = 'CodeSpirit';
                                                                 api.headers['Content-Type'] = 'application/json';
+                                                                api.headers["X-Tenant-Id"] = "system";
                                                                 return api;
                                                             },
                                                             "adaptor": function(payload, response, api) {

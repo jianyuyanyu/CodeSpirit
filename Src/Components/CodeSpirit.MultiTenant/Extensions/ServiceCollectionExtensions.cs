@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
 
         // 注册核心服务
         services.AddScoped<ITenantResolver, TenantResolver>();
+        services.AddScoped<ITenantContext, TenantContext>();
         
         
         // 注册统一租户存储实现（固定使用内存→分布式缓存→API的顺序）

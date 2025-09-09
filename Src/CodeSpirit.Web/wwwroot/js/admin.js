@@ -417,7 +417,8 @@
                 headers: {
                     ...api.headers,
                     'Authorization': token ? 'Bearer ' + token : '',
-                    'X-Forwarded-With': 'CodeSpirit'
+                    'X-Forwarded-With': 'CodeSpirit',
+                    'X-Tenant-Id': 'system'
                 }
             };
         },

@@ -8,8 +8,9 @@ using System.Linq;
 namespace CodeSpirit.MultiTenant.Middleware;
 
 /// <summary>
-/// 多租户中间件
-/// 负责在请求处理过程中解析和验证租户信息
+/// 多租户中间件（简化版）
+/// 负责在请求处理过程中解析租户ID并设置到HTTP上下文
+/// 租户验证由各服务按需进行，提供更好的灵活性和性能
 /// </summary>
 public class MultiTenantMiddleware
 {
@@ -35,6 +36,7 @@ public class MultiTenantMiddleware
 
     /// <summary>
     /// 中间件执行方法
+    /// 简化版本：只负责解析租户ID并设置到上下文，不进行验证
     /// </summary>
     /// <param name="context">HTTP上下文</param>
     /// <param name="tenantResolver">租户解析器</param>
@@ -46,90 +48,54 @@ public class MultiTenantMiddleware
             return;
         }
 
-        // 检查是否为内部API请求，如果是则跳过租户验证
-        if (IsInternalApiRequest(context.Request))
+        // 检查是否为需要跳过的请求
+        if (ShouldSkipRequest(context.Request))
         {
-            _logger.LogDebug("跳过内部API请求的租户验证: {Path}", context.Request.Path);
+            _logger.LogDebug("跳过租户解析: {Path}", context.Request.Path);
             await _next(context);
             return;
         }
 
         try
         {
-            // 解析租户ID
+            // 仅解析租户ID，不进行验证
             var tenantId = await tenantResolver.ResolveTenantIdAsync();
             
-            if (string.IsNullOrEmpty(tenantId))
+            if (!string.IsNullOrEmpty(tenantId))
             {
-                await HandleTenantResolutionFailure(context, "无法解析租户ID");
-                return;
+                // 将租户ID添加到HTTP上下文，供后续服务使用
+                context.Items["TenantId"] = tenantId;
+                _logger.LogDebug("成功解析租户ID: {TenantId}", tenantId);
             }
-
-            // 获取租户信息
-            var tenantInfo = await tenantResolver.GetTenantInfoAsync(tenantId);
-            
-            if (tenantInfo == null)
+            else if (_options.FailureStrategy == TenantResolutionFailureStrategy.UseDefault 
+                     && !string.IsNullOrEmpty(_options.DefaultTenantId))
             {
-                await HandleTenantResolutionFailure(context, $"租户不存在: {tenantId}");
-                return;
+                // 仅在配置为使用默认租户时才设置
+                context.Items["TenantId"] = _options.DefaultTenantId;
+                _logger.LogDebug("使用默认租户ID: {TenantId}", _options.DefaultTenantId);
             }
-
-            if (!tenantInfo.IsActive)
+            else
             {
-                await HandleTenantResolutionFailure(context, $"租户已禁用: {tenantId}");
-                return;
+                _logger.LogDebug("无法解析租户ID，跳过设置");
             }
-
-            // 将租户信息添加到HTTP上下文
-            context.Items["TenantId"] = tenantId;
-            context.Items["TenantInfo"] = tenantInfo;
-
-            _logger.LogDebug("成功解析租户: {TenantId}", tenantId);
 
             await _next(context);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "多租户中间件处理异常");
-            await HandleTenantResolutionFailure(context, "租户解析异常");
+            _logger.LogWarning(ex, "租户解析过程中发生异常，继续处理请求");
+            await _next(context);
         }
     }
 
-    /// <summary>
-    /// 处理租户解析失败
-    /// </summary>
-    /// <param name="context">HTTP上下文</param>
-    /// <param name="message">错误消息</param>
-    private async Task HandleTenantResolutionFailure(HttpContext context, string message)
-    {
-        _logger.LogWarning("租户解析失败: {Message}", message);
-
-        switch (_options.FailureStrategy)
-        {
-            case TenantResolutionFailureStrategy.UseDefault:
-                // 使用默认租户继续处理
-                context.Items["TenantId"] = _options.DefaultTenantId;
-                await _next(context);
-                break;
-                
-            case TenantResolutionFailureStrategy.Return404:
-                context.Response.StatusCode = 404;
-                await context.Response.WriteAsync("租户不存在");
-                break;
-                
-            case TenantResolutionFailureStrategy.ThrowException:
-            default:
-                throw new InvalidOperationException(message);
-        }
-    }
 
     /// <summary>
-    /// 判断是否为需要跳过多租户验证的内部API请求
-    /// 仅针对租户存储相关的内部API，避免循环依赖
+    /// 判断是否应该跳过租户解析的请求
+    /// 包括内部API、健康检查、静态资源等
     /// </summary>
     /// <param name="request">HTTP请求</param>
-    /// <returns>是否为需要跳过验证的内部API请求</returns>
-    private static bool IsInternalApiRequest(HttpRequest request)
+    /// <returns>是否应该跳过租户解析</returns>
+    private bool ShouldSkipRequest(HttpRequest request)
     {
         var path = request.Path.Value;
         if (string.IsNullOrEmpty(path))
@@ -137,13 +103,50 @@ public class MultiTenantMiddleware
             return false;
         }
 
-        // 仅跳过租户存储相关的内部API，避免循环依赖
+        // 1. 检查内部API，避免循环依赖
         var tenantInternalApiPaths = new[]
         {
-            "/api/identity/internal/tenants/", // 租户信息API
+            "/api/identity/internal/tenants/" // 租户信息API
         };
 
-        return tenantInternalApiPaths.Any(apiPath => 
-            path.Contains(apiPath, StringComparison.OrdinalIgnoreCase));
+        if (tenantInternalApiPaths.Any(apiPath => 
+            path.Contains(apiPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        // 2. 检查配置的跳过路径模式
+        foreach (var pattern in _options.SkipPathPatterns)
+        {
+            if (IsPathMatch(path, pattern))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 检查路径是否匹配模式（支持简单通配符）
+    /// </summary>
+    /// <param name="path">请求路径</param>
+    /// <param name="pattern">匹配模式</param>
+    /// <returns>是否匹配</returns>
+    private static bool IsPathMatch(string path, string pattern)
+    {
+        if (string.IsNullOrEmpty(pattern))
+        {
+            return false;
+        }
+
+        // 支持简单的通配符匹配
+        if (pattern.EndsWith("*"))
+        {
+            var prefix = pattern.Substring(0, pattern.Length - 1);
+            return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return path.Equals(pattern, StringComparison.OrdinalIgnoreCase);
     }
 } 

@@ -76,6 +76,30 @@ public class TenantOptions
     /// 租户解析失败时的处理策略
     /// </summary>
     public TenantResolutionFailureStrategy FailureStrategy { get; set; } = TenantResolutionFailureStrategy.Return404;
+
+    /// <summary>
+    /// 是否在中间件中进行租户验证
+    /// 设为false时，中间件只解析租户ID，验证由各服务按需进行
+    /// </summary>
+    public bool ValidateInMiddleware { get; set; } = false;
+
+    /// <summary>
+    /// 是否在中间件中缓存租户信息
+    /// 设为false时，中间件只设置租户ID，租户信息由各服务按需获取
+    /// </summary>
+    public bool CacheTenantInfoInMiddleware { get; set; } = false;
+
+    /// <summary>
+    /// 中间件跳过的路径模式列表
+    /// 支持通配符匹配，如：/api/health/*、/swagger/*
+    /// </summary>
+    public List<string> SkipPathPatterns { get; set; } = new List<string>
+    {
+        "/health*",
+        "/swagger*",
+        "/favicon.ico",
+        "/_*"
+    };
 }
 
 

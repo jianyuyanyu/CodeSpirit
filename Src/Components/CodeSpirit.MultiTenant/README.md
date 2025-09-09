@@ -2,6 +2,14 @@
 
 CodeSpirit多租户组件，提供灵活的多租户数据隔离解决方案。
 
+## 🆕 v2.0 架构更新
+
+从 v2.0 开始，多租户组件采用**简化架构**：
+- **轻量级中间件**：只负责解析租户ID并设置到HTTP上下文，不进行验证
+- **按需验证**：各服务通过 `ITenantContext` 按需进行租户验证和信息获取
+- **更好性能**：减少不必要的验证开销，提升请求处理性能
+- **更高灵活性**：服务可以根据业务需求选择验证策略
+
 ## 功能特性
 
 - 🏢 **多种租户策略**：支持共享数据库、独立表结构、独立数据库等多种隔离策略
@@ -12,6 +20,7 @@ CodeSpirit多租户组件，提供灵活的多租户数据隔离解决方案。
 - 🧪 **完整测试**：包含完整的单元测试，确保组件稳定性
 - 👤 **用户上下文集成**：扩展ICurrentUser接口，提供完整的多租户用户上下文
 - 🔐 **JWT集成**：登录接口自动在JWT中包含租户信息
+- 🚀 **按需验证**：支持服务级别的按需租户验证，提供更好的性能和灵活性
 
 ## 快速开始
 
@@ -57,8 +66,86 @@ app.Run();
     "ResolveFromSubdomain": false,
     "ResolveFromPath": false,
     "EnableTenantCache": true,
-    "CacheExpirationMinutes": 30
+    "CacheExpirationMinutes": 30,
+    "ValidateInMiddleware": false,
+    "CacheTenantInfoInMiddleware": false,
+    "SkipPathPatterns": [
+      "/health*",
+      "/swagger*",
+      "/favicon.ico",
+      "/_*"
+    ]
   }
+}
+```
+
+### 4. 按需验证使用
+
+在服务中使用 `ITenantContext` 进行按需验证：
+
+```csharp
+public class OrderService
+{
+    private readonly ITenantContext _tenantContext;
+    private readonly ILogger<OrderService> _logger;
+
+    public OrderService(ITenantContext tenantContext, ILogger<OrderService> logger)
+    {
+        _tenantContext = tenantContext;
+        _logger = logger;
+    }
+
+    // 简单获取租户ID（不验证）
+    public async Task<List<Order>> GetOrdersAsync()
+    {
+        var tenantId = _tenantContext.TenantId;
+        if (string.IsNullOrEmpty(tenantId))
+        {
+            throw new InvalidOperationException("无法获取租户ID");
+        }
+        
+        // 查询订单...
+        return orders.Where(o => o.TenantId == tenantId).ToList();
+    }
+
+    // 验证租户有效性
+    public async Task<Order> CreateOrderAsync(CreateOrderDto dto)
+    {
+        // 验证当前租户是否有效
+        if (!await _tenantContext.ValidateCurrentTenantAsync())
+        {
+            throw new UnauthorizedAccessException("租户无效或已禁用");
+        }
+
+        var tenantId = _tenantContext.TenantId;
+        var order = new Order
+        {
+            TenantId = tenantId,
+            ProductName = dto.ProductName,
+            Amount = dto.Amount
+        };
+
+        // 保存订单...
+        return order;
+    }
+
+    // 获取验证过的租户信息
+    public async Task<TenantSummary> GetTenantSummaryAsync()
+    {
+        // 获取并验证租户信息，如果无效会根据配置策略处理
+        var tenantInfo = await _tenantContext.GetValidatedCurrentTenantInfoAsync();
+        if (tenantInfo == null)
+        {
+            throw new UnauthorizedAccessException("无法获取有效的租户信息");
+        }
+
+        return new TenantSummary
+        {
+            TenantId = tenantInfo.Id,
+            TenantName = tenantInfo.Name,
+            IsActive = tenantInfo.IsActive
+        };
+    }
 }
 ```
 
@@ -184,6 +271,190 @@ Content-Type: application/json
 - ✅ **性能优化**：避免循环依赖，直接从用户对象获取租户信息
 - ✅ **安全性**：租户信息在JWT中加密存储，防止篡改
 - ✅ **灵活性**：支持多种租户解析策略的兼容性
+
+## ITenantContext 统一租户上下文服务
+
+### 核心功能
+
+`ITenantContext` 提供统一的租户信息获取方式，解决了在登录和免登录场景下租户ID获取的重复逻辑问题：
+
+```csharp
+public interface ITenantContext : IScopedDependency
+{
+    /// <summary>
+    /// 获取当前租户ID
+    /// 优先级：JWT Claims -> HTTP上下文 -> 默认租户
+    /// </summary>
+    string? TenantId { get; }
+
+    /// <summary>
+    /// 获取当前租户名称
+    /// </summary>
+    string? TenantName { get; }
+
+    /// <summary>
+    /// 获取当前租户信息
+    /// </summary>
+    Task<ITenantInfo?> GetCurrentTenantInfoAsync();
+
+    /// <summary>
+    /// 判断是否为指定租户
+    /// </summary>
+    bool IsInTenant(string tenantId);
+
+    /// <summary>
+    /// 判断当前是否有有效的租户上下文
+    /// </summary>
+    bool HasTenant { get; }
+
+    /// <summary>
+    /// 强制刷新租户上下文
+    /// </summary>
+    Task RefreshTenantContextAsync();
+}
+```
+
+### 租户解析优先级
+
+`ITenantContext` 按以下优先级获取租户信息：
+
+1. **JWT Claims**：优先从用户的JWT声明中获取 `TenantId`（登录场景）
+2. **ICurrentUser接口**：从扩展的ICurrentUser接口获取租户信息
+3. **HTTP上下文**：从 `HttpContext.Items` 中获取（免登录场景，由多租户中间件设置）
+4. **默认租户**：使用配置的默认租户ID
+
+### 使用示例
+
+#### 在控制器中使用
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class OrdersController : ControllerBase
+{
+    private readonly ITenantContext _tenantContext;
+
+    public OrdersController(ITenantContext tenantContext)
+    {
+        _tenantContext = tenantContext;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOrders()
+    {
+        // 检查是否有租户上下文
+        if (!_tenantContext.HasTenant)
+        {
+            return BadRequest("未找到租户上下文");
+        }
+
+        // 获取当前租户ID
+        var tenantId = _tenantContext.TenantId;
+        
+        // 获取完整租户信息
+        var tenantInfo = await _tenantContext.GetCurrentTenantInfoAsync();
+        
+        if (tenantInfo == null || !tenantInfo.IsActive)
+        {
+            return BadRequest("租户不存在或已禁用");
+        }
+
+        // 根据租户获取数据
+        var orders = await GetOrdersByTenantAsync(tenantId);
+        return Ok(orders);
+    }
+
+    [HttpPost("transfer/{targetTenantId}")]
+    public async Task<IActionResult> TransferOrder(string targetTenantId, [FromBody] TransferOrderDto dto)
+    {
+        // 验证租户权限
+        if (!_tenantContext.IsInTenant(dto.SourceTenantId))
+        {
+            return Forbid("无权限操作源租户");
+        }
+
+        // 执行跨租户操作
+        await TransferOrderAsync(dto.OrderId, targetTenantId);
+        return Ok();
+    }
+}
+```
+
+#### 在业务服务中使用
+
+```csharp
+public class OrderService
+{
+    private readonly ITenantContext _tenantContext;
+    private readonly ILogger<OrderService> _logger;
+
+    public OrderService(ITenantContext tenantContext, ILogger<OrderService> logger)
+    {
+        _tenantContext = tenantContext;
+        _logger = logger;
+    }
+
+    public async Task<Order> CreateOrderAsync(CreateOrderDto dto)
+    {
+        var tenantId = _tenantContext.TenantId;
+        
+        if (string.IsNullOrEmpty(tenantId))
+        {
+            throw new InvalidOperationException("无法获取租户ID");
+        }
+
+        // 验证租户状态
+        var tenantInfo = await _tenantContext.GetCurrentTenantInfoAsync();
+        if (tenantInfo == null || !tenantInfo.IsActive)
+        {
+            throw new InvalidOperationException("租户不存在或已禁用");
+        }
+
+        var order = new Order
+        {
+            TenantId = tenantId, // 自动设置租户ID
+            ProductName = dto.ProductName,
+            Amount = dto.Amount,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _logger.LogInformation("为租户 {TenantId} 创建订单", tenantId);
+        return order;
+    }
+
+    public async Task<List<Order>> GetUserOrdersAsync()
+    {
+        var tenantId = _tenantContext.TenantId;
+        
+        if (string.IsNullOrEmpty(tenantId))
+        {
+            return new List<Order>();
+        }
+
+        // 自动按租户过滤数据
+        return await _orderRepository
+            .Where(o => o.TenantId == tenantId)
+            .ToListAsync();
+    }
+}
+```
+
+### 免登录场景支持
+
+`ITenantContext` 特别适用于免登录场景，如：
+
+- 公开API接口
+- Webhook处理
+- 定时任务
+- 系统内部调用
+
+在这些场景下，租户信息通过HTTP Header、Query参数等方式传递，由多租户中间件解析并设置到HTTP上下文中，`ITenantContext` 会自动从上下文中获取。
+
+### 性能优化
+
+- **请求级缓存**：在单个请求中，租户信息会被缓存，避免重复解析
+- **延迟加载**：租户信息只在首次访问时加载
+- **刷新机制**：支持运行时刷新租户上下文
 
 ## ICurrentUser 多租户扩展
 

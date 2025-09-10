@@ -52,6 +52,46 @@ public class OperationAttribute : Attribute
     /// </summary>
     public string InitApi { get; set; }
 
+    /// <summary>
+    /// 仅当 ActionType 为 aiForm 时可用，用于获取AI任务状态的轮询API
+    /// </summary>
+    public string StatusApi { get; set; }
+
+    /// <summary>
+    /// 仅当 ActionType 为 aiForm 时可用，轮询间隔（毫秒），默认2000ms
+    /// </summary>
+    public int PollingInterval { get; set; } = 2000;
+
+    /// <summary>
+    /// 仅当 ActionType 为 aiForm 时可用，最大轮询时间（毫秒），默认300000ms（5分钟）
+    /// </summary>
+    public int MaxPollingTime { get; set; } = 300000;
+
+    /// <summary>
+    /// 仅当 ActionType 为 aiForm 时可用，AI任务完成后的跳转页面
+    /// </summary>
+    public string SuccessRedirect { get; set; }
+
+    /// <summary>
+    /// 仅当 ActionType 为 aiForm 时可用，步骤面板标题
+    /// </summary>
+    public string StepsTitle { get; set; } = "AI处理进度";
+
+    /// <summary>
+    /// 仅当 ActionType 为 aiForm 时可用，表单面板标题
+    /// </summary>
+    public string FormTitle { get; set; } = "参数配置";
+
+    /// <summary>
+    /// 仅当 ActionType 为 aiForm 时可用，日志面板标题
+    /// </summary>
+    public string LogTitle { get; set; } = "处理日志";
+
+    /// <summary>
+    /// 仅当 ActionType 为 aiForm 时可用，结果面板标题
+    /// </summary>
+    public string ResultTitle { get; set; } = "处理结果";
+
     public OperationAttribute(string label, string actionType = "ajax", string api = null, string confirmText = null, string visibleOn = null, bool isBulkOperation = false)
     {
         Label = label;

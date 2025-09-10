@@ -33,10 +33,15 @@ public static class ApiStartupExtensions
         // 添加系统服务 - 使用调用程序集的类型
         var entryAssembly = System.Reflection.Assembly.GetEntryAssembly();
         var programType = entryAssembly?.GetType("Program") ?? typeof(ApiStartupExtensions);
-        // 使用Scrutor自动注册标记接口的服务 - 使用入口程序集而不是执行程序集
+        // 使用Scrutor自动注册标记接口的服务 - 包含入口程序集和共享程序集
         if (entryAssembly != null)
         {
-            builder.Services.AddDependencyInjectionWithScrutor(entryAssembly);
+            var assembliesToScan = new[]
+            {
+                entryAssembly,
+                typeof(CodeSpirit.Shared.Services.IAiTaskService).Assembly // CodeSpirit.Shared 程序集
+            };
+            builder.Services.AddDependencyInjectionWithScrutor(assembliesToScan);
         }
         builder.Services.AddSystemServices(builder.Configuration, programType, builder.Environment);
         

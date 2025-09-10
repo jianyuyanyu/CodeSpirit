@@ -1,19 +1,22 @@
+using CodeSpirit.AiFormFill.Extensions;
+using CodeSpirit.AiFormFill.Services;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
-using CodeSpirit.SurveyApi.Dtos.Survey;
-using CodeSpirit.SurveyApi.Dtos.Settings;
-using CodeSpirit.SurveyApi.Dtos.Question;
-using CodeSpirit.SurveyApi.Models;
-using CodeSpirit.SurveyApi.Models.Enums;
-using CodeSpirit.SurveyApi.Services.Interfaces;
-using CodeSpirit.AiFormFill.Services;
-using CodeSpirit.AiFormFill.Extensions;
+using CodeSpirit.Core.Extensions;
+using CodeSpirit.Shared.Dtos.AI;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.SurveyApi.Dtos.Question;
+using CodeSpirit.SurveyApi.Dtos.Settings;
+using CodeSpirit.SurveyApi.Dtos.Survey;
+using CodeSpirit.SurveyApi.Models;
+using CodeSpirit.SurveyApi.Models.Enums;
+using CodeSpirit.SurveyApi.Services.Implementations;
+using CodeSpirit.SurveyApi.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json.Linq;
-using CodeSpirit.Core.Extensions;
+using System.ComponentModel.DataAnnotations;
 
 
 namespace CodeSpirit.SurveyApi.Controllers;
@@ -30,6 +33,8 @@ public class SurveysController : ApiControllerBase
     private readonly ISurveyLLMGeneratorService _llmGeneratorService;
     private readonly IQuestionService _questionService;
     private readonly IAiFormFillService _aiFormFillService;
+    private readonly SurveyAiGeneratorService _surveyAiGeneratorService;
+    private readonly IAiTaskService _aiTaskService;
     private readonly ILogger<SurveysController> _logger;
 
     /// <summary>
@@ -40,6 +45,8 @@ public class SurveysController : ApiControllerBase
     /// <param name="llmGeneratorService">LLM生成服务</param>
     /// <param name="questionService">题目服务</param>
     /// <param name="aiFormFillService">AI表单填充服务</param>
+    /// <param name="surveyAiGeneratorService">问卷AI生成服务</param>
+    /// <param name="aiTaskService">AI任务服务</param>
     /// <param name="logger">日志记录器</param>
     public SurveysController(
         ISurveyService surveyService,
@@ -47,6 +54,8 @@ public class SurveysController : ApiControllerBase
         ISurveyLLMGeneratorService llmGeneratorService,
         IQuestionService questionService,
         IAiFormFillService aiFormFillService,
+        SurveyAiGeneratorService surveyAiGeneratorService,
+        IAiTaskService aiTaskService,
         ILogger<SurveysController> logger)
     {
         ArgumentNullException.ThrowIfNull(surveyService);
@@ -54,6 +63,8 @@ public class SurveysController : ApiControllerBase
         ArgumentNullException.ThrowIfNull(llmGeneratorService);
         ArgumentNullException.ThrowIfNull(questionService);
         ArgumentNullException.ThrowIfNull(aiFormFillService);
+        ArgumentNullException.ThrowIfNull(surveyAiGeneratorService);
+        ArgumentNullException.ThrowIfNull(aiTaskService);
         ArgumentNullException.ThrowIfNull(logger);
 
         _surveyService = surveyService;
@@ -61,6 +72,8 @@ public class SurveysController : ApiControllerBase
         _llmGeneratorService = llmGeneratorService;
         _questionService = questionService;
         _aiFormFillService = aiFormFillService;
+        _surveyAiGeneratorService = surveyAiGeneratorService;
+        _aiTaskService = aiTaskService;
         _logger = logger;
     }
 
@@ -234,9 +247,9 @@ public class SurveysController : ApiControllerBase
     /// 跳转到问卷参与页面
     /// </summary>
     /// <returns>跳转操作</returns>
-    [Operation("参与问卷", "link", "/$tenantId/survey/participate/$accessCode", null, 
-        visibleOn: "status == 1 && accessCode", 
-        Icon = "fa-solid fa-external-link-alt",Blank = true)]
+    [Operation("参与问卷", "link", "/$tenantId/survey/participate/$accessCode", null,
+        visibleOn: "status == 1 && accessCode",
+        Icon = "fa-solid fa-external-link-alt", Blank = true)]
     [DisplayName("参与问卷")]
     public ActionResult<ApiResponse> ParticipateInSurvey()
     {
@@ -249,7 +262,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="id">问卷ID</param>
     /// <returns>分享链接信息</returns>
     [HttpGet("{id}/share-link")]
-    [Operation("分享链接", "ajax", null, null, 
+    [Operation("分享链接", "ajax", null, null,
         visibleOn: "status == 1 && accessCode",
         Icon = "fa-solid fa-share-alt",
         FeedbackTitle = "问卷分享链接",
@@ -566,9 +579,9 @@ public class SurveysController : ApiControllerBase
     //{
     //    var settings = await _settingsService.GetDefaultRestrictionsSettingsAsync();
     //    return SuccessResponse(settings);
-         //}
+    //}
 
-     #endregion
+    #endregion
 
     #region AI问卷生成相关方法
 
@@ -585,17 +598,81 @@ public class SurveysController : ApiControllerBase
     //}
 
     /// <summary>
-    /// 根据主题生成问卷
+    /// 根据主题生成问卷（同步版本）
     /// </summary>
     /// <param name="request">生成请求</param>
     /// <returns>生成的问卷</returns>
     [HttpPost("ai/generate")]
-    [HeaderOperation("AI生成问卷", "form",Icon = "fa-solid fa-robot")]
+    [HeaderOperation("AI生成问卷", "form", Icon = "fa-solid fa-robot")]
     [DisplayName("AI生成问卷")]
     public async Task<ActionResult<ApiResponse<GeneratedSurveyDto>>> GenerateSurvey([FromBody] GenerateSurveyRequest request)
     {
         var result = await _llmGeneratorService.GenerateSurveyAsync(request);
         return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 根据主题异步生成问卷（使用前端提供的任务ID）
+    /// </summary>
+    /// <param name="request">生成请求（包含前端生成的taskId）</param>
+    /// <returns>任务ID确认</returns>
+    [HttpPost("ai/generate-async")]
+    [HeaderOperation("AI智能生成问卷", "aiForm",
+        Icon = "fa-solid fa-magic",
+        StatusApi = "/survey/api/survey/Surveys/ai/task-status",
+        PollingInterval = 2000,
+        MaxPollingTime = 300000,
+        FormTitle = "问卷生成配置",
+        StepsTitle = "AI生成进度",
+        LogTitle = "生成日志",
+        ResultTitle = "生成结果")]
+    [DisplayName("AI智能生成问卷")]
+    public async Task<ActionResult<ApiResponse<object>>> GenerateSurveyAsync([FromBody] GenerateSurveyRequest request)
+    {
+        var taskId = await _surveyAiGeneratorService.GenerateAsync(request);
+        return SuccessResponse<object>(new { taskId });
+    }
+
+    /// <summary>
+    /// 获取AI任务状态
+    /// </summary>
+    /// <param name="taskId">任务ID</param>
+    /// <returns>任务状态</returns>
+    [HttpGet("ai/task-status")]
+    [DisplayName("获取AI任务状态")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<AiTaskStatusDto>>> GetTaskStatus([FromQuery] string taskId)
+    {
+        if (string.IsNullOrEmpty(taskId))
+        {
+            return BadResponse<AiTaskStatusDto>("任务ID不能为空");
+        }
+
+        var status = await _aiTaskService.GetTaskStatusAsync(taskId);
+        if (status == null)
+        {
+            return BadResponse<AiTaskStatusDto>("任务不存在", statusCode: 404);
+        }
+
+        return SuccessResponse(status);
+    }
+
+    /// <summary>
+    /// 取消AI任务
+    /// </summary>
+    /// <param name="taskId">任务ID</param>
+    /// <returns>取消结果</returns>
+    [HttpPost("ai/cancel-task")]
+    [DisplayName("取消AI任务")]
+    public async Task<ActionResult<ApiResponse>> CancelTask([FromBody] string taskId)
+    {
+        if (string.IsNullOrEmpty(taskId))
+        {
+            return BadResponse("任务ID不能为空");
+        }
+
+        await _aiTaskService.CancelTaskAsync(taskId);
+        return SuccessResponse("任务已取消");
     }
 
     ///// <summary>
@@ -618,7 +695,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="id">问卷ID</param>
     /// <returns>洞察分析结果</returns>
     [HttpPost("{id}/ai/insights")]
-    [Operation("AI洞察分析", "ajax", null, null, visibleOn: "status == 1 || status == 2", 
+    [Operation("AI洞察分析", "ajax", null, null, visibleOn: "status == 1 || status == 2",
         FeedbackTitle = "问卷洞察分析结果",
         FeedbackBodyTpl = @"{
             ""type"": ""form"",
@@ -901,7 +978,7 @@ public class SurveysController : ApiControllerBase
     //public async Task<ActionResult<ApiResponse<CompressPromptResult>>> CompressPrompt([FromBody] CompressPromptRequest request)
     //{
     //    var compressedPrompt = await _llmGeneratorService.CompressPromptAsync(request.Prompt, request.MaxLength);
-        
+
     //    var result = new CompressPromptResult
     //    {
     //        OriginalPrompt = request.Prompt,
@@ -970,7 +1047,7 @@ public class SurveysController : ApiControllerBase
             // 构建手机端表单链接
             var baseUrl = HttpContext.Request.Scheme + "://" + HttpContext.Request.Host;
             var mobileFormUrl = $"{baseUrl}/{survey.TenantId}/survey/participate/{survey.AccessCode}";
-            
+
             // 添加二维码面板
             headerBody!.Add(new JObject
             {
@@ -1088,7 +1165,7 @@ public class SurveysController : ApiControllerBase
             for (int i = 0; i < typeQuestions.Count; i++)
             {
                 var question = typeQuestions[i];
-                
+
                 // 问题标题
                 var titleObj = new JObject
                 {
@@ -1284,10 +1361,10 @@ public class SurveysController : ApiControllerBase
             }
 
             // 在不同题型之间添加更明显的分隔
-            formItems.Add(new JObject 
-            { 
-                ["type"] = "html", 
-                ["html"] = "<div style=\"margin: 30px 0; border-bottom: 1px solid #f0f0f0;\"></div>" 
+            formItems.Add(new JObject
+            {
+                ["type"] = "html",
+                ["html"] = "<div style=\"margin: 30px 0; border-bottom: 1px solid #f0f0f0;\"></div>"
             });
         }
 
@@ -1516,7 +1593,7 @@ public class SurveysController : ApiControllerBase
     {
         // 设置问卷ID
         request.Id = id;
-        
+
         var result = await _llmGeneratorService.ExpandQuestionsAsync(request);
         return SuccessResponse(result);
     }
@@ -1547,8 +1624,8 @@ public class SurveysController : ApiControllerBase
             ExpandCount = 5, // 默认扩展5题
             MaintainStyle = true,
             InsertPosition = "end",
-            ExpandDirection = existingQuestions.Count > 0 
-                ? $"基于现有{existingQuestions.Count}道题目，进一步深入了解相关主题" 
+            ExpandDirection = existingQuestions.Count > 0
+                ? $"基于现有{existingQuestions.Count}道题目，进一步深入了解相关主题"
                 : "为问卷添加基础题目"
         };
 

@@ -89,6 +89,9 @@ public class GenerateSurveyRequest
     [AmisTextareaField(Placeholder = "请输入自定义提示词（可选）")]
     public string? CustomPrompt { get; set; }
 
+    /// <summary>
+    /// 问卷分类ID
+    /// </summary>
     [AmisInputTreeField(
         DataSource = "${ROOT_API}/api/survey/SurveyCategories/tree",
         Multiple = false,
@@ -105,4 +108,5 @@ public class GenerateSurveyRequest
     )]
     [DisplayName("问卷分类")]
     public int? CategoryId { get; set; }
+
 }

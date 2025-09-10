@@ -478,6 +478,13 @@ namespace CodeSpirit.Amis.Helpers
                 };
                 button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
             }
+            // AI表单
+            else if (op.ActionType == "aiForm")
+            {
+                string title = op.Label;
+                var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
+                button = CreateAiFormButton(op, title, route, method);
+            }
 
             // 添加其他通用配置
             if (!string.IsNullOrEmpty(op.ConfirmText))
@@ -573,6 +580,608 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         /// <summary>
+        /// 创建AI表单按钮
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <param name="title">按钮标题</param>
+        /// <param name="route">API路由信息</param>
+        /// <param name="method">方法信息</param>
+        /// <returns>按钮配置对象</returns>
+        /// <summary>
+        /// 创建AI步骤指示器（顶部步骤向导）
+        /// </summary>
+        /// <returns>步骤指示器配置</returns>
+        private JObject CreateAiStepsIndicator()
+        {
+            return new JObject
+            {
+                ["type"] = "wizard",
+                ["id"] = "aiSteps",
+                ["name"] = "aiSteps",
+                ["className"] = "mb-4",
+                ["mode"] = "horizontal",
+                ["actionNextLabel"] = "",
+                ["actionPrevLabel"] = "",
+                ["actionFinishLabel"] = "",
+                ["steps"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["title"] = "填写表单",
+                        ["description"] = "填写AI生成所需的参数信息",
+                        ["body"] = new JArray()
+                    },
+                    new JObject
+                    {
+                        ["title"] = "AI处理中", 
+                        ["description"] = "AI正在分析您的需求并生成内容",
+                        ["body"] = new JArray()
+                    },
+                    new JObject
+                    {
+                        ["title"] = "查看结果",
+                        ["description"] = "查看AI生成的结果内容",
+                        ["body"] = new JArray()
+                    }
+                }
+            };
+        }
+
+        /// <summary>
+        /// 创建AI表单内容区域
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <param name="route">API路由信息</param>
+        /// <param name="method">方法信息</param>
+        /// <returns>表单内容配置</returns>
+        private JObject CreateAiFormContent(OperationAttribute op, ApiRouteInfo route, MethodInfo method)
+        {
+            // 获取表单字段
+            var formFields = GetFormFieldsWithAiSupport(method.GetParameters(), method).ToList();
+            
+            return new JObject
+            {
+                ["type"] = "container",
+                ["id"] = "aiFormContent",
+                ["className"] = "p-3",
+                ["visibleOn"] = "${!taskId}", // 只在未开始任务时显示
+                ["body"] = new JArray(
+                    formFields
+                        .Append(new JObject
+                        {
+                            ["type"] = "divider",
+                            ["className"] = "my-3"
+                        })
+                        .Append(CreateAiFormSubmitButton(op, route))
+                )
+            };
+        }
+
+        /// <summary>
+        /// 创建AI进度内容区域
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <param name="route">API路由信息</param>
+        /// <returns>进度内容配置</returns>
+        private JObject CreateAiProgressContent(OperationAttribute op, ApiRouteInfo route)
+        {
+            return new JObject
+            {
+                ["type"] = "container",
+                ["id"] = "aiProgressContent",
+                ["className"] = "p-3",
+                ["visibleOn"] = "${taskId && !aiTaskCompleted}", // 任务开始后且未完成时显示
+                ["body"] = new JArray
+                {
+                    // TaskId显示控件
+                    new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = "<div class='alert alert-info mb-3'><i class='fa fa-info-circle'></i> 任务ID: ${taskId}</div>"
+                    },
+                    // 进度状态显示
+                    new JObject
+                    {
+                        ["type"] = "alert",
+                        ["level"] = "info",
+                        ["body"] = new JObject
+                        {
+                            ["type"] = "tpl",
+                            ["tpl"] = "<strong>当前状态：</strong>${statusText || '准备中...'}<br/><strong>进度：</strong>${progress || 0}%"
+                        }
+                    },
+                    // 分隔线
+                    new JObject
+                    {
+                        ["type"] = "divider",
+                        ["className"] = "my-3"
+                    },
+                    // 日志标题
+                    new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = "<h5><i class='fa fa-list-alt'></i> 生成日志</h5>",
+                        ["className"] = "mb-2"
+                    },
+                    // 实时日志显示
+                    CreateAiLogService(op, route)
+                }
+            };
+        }
+
+        /// <summary>
+        /// 创建AI结果内容区域
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <param name="route">API路由信息</param>
+        /// <returns>结果内容配置</returns>
+        private JObject CreateAiResultContent(OperationAttribute op, ApiRouteInfo route)
+        {
+            return new JObject
+            {
+                ["type"] = "service",
+                ["name"] = "aiResult",
+                ["id"] = "aiResultContent",
+                ["interval"] = op.PollingInterval,
+                ["silentPolling"] = true,
+                ["stopAutoRefreshWhen"] = "${aiTaskCompleted}",
+                ["initFetch"] = false, // 禁用初始加载
+                ["visibleOn"] = "${aiTaskCompleted}", // 只在任务完成时显示
+                ["api"] = new JObject
+                {
+                    ["url"] = !string.IsNullOrEmpty(op.StatusApi) ? op.StatusApi : $"{route.ApiPath}/status",
+                    ["method"] = "get",
+                    ["data"] = new JObject
+                    {
+                        ["taskId"] = "${taskId}"
+                    }
+                },
+                ["onEvent"] = new JObject
+                {
+                    ["aiTaskCompleted"] = new JObject
+                    {
+                        ["actions"] = new JArray
+                        {
+                            new JObject
+                            {
+                                ["actionType"] = "setValue",
+                                ["args"] = new JObject
+                                {
+                                    ["value"] = new JObject
+                                    {
+                                        ["aiTaskCompleted"] = true
+                                    }
+                                }
+                            },
+                            // 更新步骤指示器到第三步（查看结果）
+                            new JObject
+                            {
+                                ["actionType"] = "goto-step",
+                                ["componentId"] = "aiSteps",
+                                ["args"] = new JObject
+                                {
+                                    ["step"] = 3
+                                }
+                            }
+                        }
+                    }
+                },
+                ["body"] = CreateAiResultPanelBody()
+            };
+        }
+
+
+        /// <summary>
+        /// 创建AI表单提交按钮及其事件处理
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <param name="route">API路由信息</param>
+        /// <returns>提交按钮配置</returns>
+        private JObject CreateAiFormSubmitButton(OperationAttribute op, ApiRouteInfo route)
+        {
+            return new JObject
+            {
+                ["type"] = "button",
+                ["label"] = "开始生成",
+                ["level"] = "primary",
+                ["actionType"] = "ajax",
+                ["icon"] = "fa fa-rocket",
+                ["api"] = new JObject
+                {
+                    ["url"] = route.ApiPath,
+                    ["method"] = route.HttpMethod,
+                    ["data"] = new JObject
+                    {
+                        ["&"] = "$$"
+                    }
+                },
+                ["onEvent"] = new JObject
+                {
+                    ["click"] = new JObject
+                    {
+                        ["actions"] = CreateAiFormPostSubmitActions(op, route)
+                    }
+                }
+            };
+        }
+
+        /// <summary>
+        /// 创建AI表单提交后的动作序列（不包含AJAX提交，因为已移至按钮的api属性）
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <param name="route">API路由信息</param>
+        /// <returns>动作数组</returns>
+        private JArray CreateAiFormPostSubmitActions(OperationAttribute op, ApiRouteInfo route)
+        {
+            return new JArray
+            {
+                new JObject
+                {
+                    ["actionType"] = "wait",
+                    ["args"] = new JObject
+                    {
+                        ["time"] = 300
+                    }
+                },
+                // 更新步骤指示器到第二步（AI处理中）
+                new JObject
+                {
+                    ["actionType"] = "next",
+                    ["componentId"] = "aiSteps"
+                },
+                // 启动日志服务轮询
+                new JObject
+                {
+                    ["actionType"] = "reload",
+                    ["componentId"] = "aiLogsService",
+                    ["data"] = new JObject{
+                        ["taskId"] = "${taskId}"
+                    }
+                },
+                // 启动结果服务轮询
+                new JObject
+                {
+                    ["actionType"] = "reload",
+                    ["componentId"] = "aiResult"
+                }
+            };
+        }
+
+        /// <summary>
+        /// 创建AI任务轮询动作
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <param name="route">API路由信息</param>
+        /// <returns>轮询动作配置</returns>
+        private JObject CreateAiTaskPollingAction(OperationAttribute op, ApiRouteInfo route)
+        {
+            return new JObject
+            {
+                ["actionType"] = "loop",
+                ["args"] = new JObject
+                {
+                    ["loopName"] = "aiTaskPolling",
+                    ["maxLoopCount"] = op.MaxPollingTime / op.PollingInterval,
+                    ["break"] = "${aiTaskCompleted}"
+                },
+                ["children"] = new JArray
+                {
+                    // 等待间隔
+                    new JObject
+                    {
+                        ["actionType"] = "wait",
+                        ["args"] = new JObject
+                        {
+                            ["duration"] = op.PollingInterval
+                        }
+                    },
+                    // 查询任务状态
+                    new JObject
+                    {
+                       ["actionType"] = "ajax",
+                       ["api"] = new JObject
+                       {
+                           ["url"] = !string.IsNullOrEmpty(op.StatusApi) ? op.StatusApi : $"{route.ApiPath}/status",
+                           ["method"] = "get",
+                           ["data"] = new JObject
+                           {
+                               ["taskId"] = "${currentTaskId}"
+                           }
+                       }
+                    },
+                    // 更新步骤
+                    new JObject
+                    {
+                        ["actionType"] = "goto-step",
+                        ["componentId"] = "aiSteps",
+                        ["args"] = new JObject
+                        {
+                            ["step"] = "${event.data.responseResult.responseData.step}"
+                        }
+                    },
+                    // 更新日志
+                    new JObject
+                    {
+                        ["actionType"] = "setValue",
+                        ["componentId"] = "aiLogs",
+                        ["args"] = new JObject
+                        {
+                            ["value"] = "${event.data.responseResult.responseData.logs}"
+                        }
+                    },
+                    // 检查是否完成
+                    CreateAiTaskCompletionCheck()
+                }
+            };
+        }
+
+        /// <summary>
+        /// 创建AI任务完成检查逻辑
+        /// </summary>
+        /// <returns>完成检查动作配置</returns>
+        private JObject CreateAiTaskCompletionCheck()
+        {
+            return new JObject
+            {
+                ["actionType"] = "condition",
+                ["expression"] = "${event.data.responseResult.responseData.status == 'completed' || event.data.responseResult.responseData.status == 'failed'}",
+                ["onTrue"] = new JArray
+                {
+                    // 广播任务完成状态
+                    new JObject
+                    {
+                        ["actionType"] = "broadcast",
+                        ["args"] = new JObject
+                        {
+                            ["eventName"] = "aiTaskCompleted",
+                            ["eventData"] = new JObject
+                            {
+                                ["status"] = "${event.data.responseResult.responseData.status}",
+                                ["result"] = "${event.data.responseResult.responseData}"
+                            }
+                        }
+                    },
+                    // 如果成功，切换到结果面板
+                    new JObject
+                    {
+                        ["actionType"] = "condition",
+                        ["expression"] = "${event.data.responseResult.responseData.status == 'completed'}",
+                        ["onTrue"] = new JArray
+                        {
+                            new JObject
+                            {
+                                ["actionType"] = "changeActiveKey",
+                                ["componentId"] = "aiFormTabs",
+                                ["args"] = new JObject
+                                {
+                                    ["activeKey"] = 3
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+
+        /// <summary>
+        /// 创建AI日志服务组件
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <param name="route">API路由信息</param>
+        /// <returns>日志服务配置</returns>
+        private JObject CreateAiLogService(OperationAttribute op, ApiRouteInfo route)
+        {
+            return new JObject
+            {
+                ["type"] = "service",
+                ["id"] = "aiLogsService",
+                ["interval"] = op.PollingInterval,
+                ["silentPolling"] = true,
+                ["stopAutoRefreshWhen"] = "${aiTaskCompleted}",
+                ["initFetch"] = false, 
+                ["api"] = new JObject
+                {
+                    ["url"] = !string.IsNullOrEmpty(op.StatusApi) ? op.StatusApi : $"{route.ApiPath}/status",
+                    ["method"] = "get",
+                    ["data"] = new JObject
+                    {
+                        ["taskId"] = "${taskId}"
+                    }
+                },
+                ["onEvent"] = new JObject
+                {
+                    ["aiTaskCompleted"] = new JObject
+                    {
+                        ["actions"] = new JArray
+                        {
+                            new JObject
+                            {
+                                ["actionType"] = "setValue",
+                                ["args"] = new JObject
+                                {
+                                    ["value"] = new JObject
+                                    {
+                                        ["aiTaskCompleted"] = true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                ["body"] = new JObject
+                {
+                    ["type"] = "log",
+                    ["id"] = "aiLogs",
+                    ["height"] = 300,
+                    ["source"] = "${logs}",
+                    ["autoScroll"] = true,
+                    ["encoding"] = "utf-8"
+                }
+            };
+        }
+
+
+        /// <summary>
+        /// 创建AI结果面板内容
+        /// </summary>
+        /// <returns>结果面板内容配置</returns>
+        private JArray CreateAiResultPanelBody()
+        {
+            return new JArray
+            {
+                // 状态展示
+                new JObject
+                {
+                    ["type"] = "alert",
+                    ["level"] = "${status == 'completed' ? 'success' : (status == 'failed' ? 'danger' : 'info')}",
+                    ["body"] = new JObject
+                    {
+                        ["type"] = "tpl",
+                        ["tpl"] = "<strong>状态：</strong>${statusText}<br/><strong>进度：</strong>${progress}%<br/><strong>耗时：</strong>${elapsedTime}"
+                    }
+                },
+                // 结果展示
+                new JObject
+                {
+                    ["type"] = "container",
+                    ["visibleOn"] = "${status == 'completed'}",
+                    ["body"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["type"] = "divider"
+                        },
+                        new JObject
+                        {
+                            ["type"] = "tpl",
+                            ["tpl"] = "<h4>生成结果</h4>"
+                        },
+                        new JObject
+                        {
+                            ["type"] = "json",
+                            ["name"] = "result",
+                            ["source"] = "${result}",
+                            ["levelExpand"] = 2
+                        }
+                    }
+                },
+                // 操作按钮
+                new JObject
+                {
+                    ["type"] = "container",
+                    ["visibleOn"] = "${status == 'completed'}",
+                    ["body"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["type"] = "button-group",
+                            ["buttons"] = new JArray
+                            {
+                                new JObject
+                                {
+                                    ["type"] = "button",
+                                    ["label"] = "查看详情",
+                                    ["level"] = "primary",
+                                    ["actionType"] = "link",
+                                    ["link"] = "${detailUrl}",
+                                    ["blank"] = true,
+                                    ["visibleOn"] = "${detailUrl}"
+                                },
+                                new JObject
+                                {
+                                    ["type"] = "button",
+                                    ["label"] = "重新生成",
+                                    ["level"] = "default",
+                                    ["actionType"] = "custom",
+                                    ["script"] = "window.resetAiForm && window.resetAiForm();"
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+        /// <summary>
+        /// 创建AI表单按钮（重构后的简洁版本）
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <param name="title">按钮标题</param>
+        /// <param name="route">API路由信息</param>
+        /// <param name="method">方法信息</param>
+        /// <returns>按钮配置对象</returns>
+        private JObject CreateAiFormButton(OperationAttribute op, string title, ApiRouteInfo route, MethodInfo method)
+        {
+            // 创建AI表单弹窗配置
+            JObject aiFormDialog = new()
+            {
+                ["title"] = title,
+                ["size"] = "xl", // 使用更大的弹窗
+                ["closeOnEsc"] = false,
+                ["closeOnOutside"] = false,
+                ["showCloseButton"] = true,
+                ["name"] = "aiFormDialog",
+                ["body"] = new JObject
+                {
+                    ["type"] = "form",
+                    ["name"] = "aiForm",
+                    ["title"] = "",
+                    ["data"] = !string.IsNullOrEmpty(op.Data) ? JsonConvert.DeserializeObject<JObject>(op.Data) : null,
+                    ["body"] = new JArray
+                    {
+                        // 顶部步骤向导
+                        CreateAiStepsIndicator(),
+                        // 分隔线
+                        new JObject
+                        {
+                            ["type"] = "divider",
+                            ["className"] = "my-3"
+                        },
+                        // 表单内容区域
+                        CreateAiFormContent(op, route, method),
+                        // 进度显示区域
+                        CreateAiProgressContent(op, route),
+                        // 结果显示区域
+                        CreateAiResultContent(op, route)
+                    }
+                },
+                ["actions"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["type"] = "button",
+                        ["label"] = "关闭",
+                        ["actionType"] = "close",
+                        ["level"] = "default"
+                    }
+                }
+            };
+
+            // 如果配置了成功跳转，在完成时自动跳转
+            if (!string.IsNullOrEmpty(op.SuccessRedirect))
+            {
+                aiFormDialog["onEvent"] = new JObject
+                {
+                    ["aiTaskCompleted"] = new JObject
+                    {
+                        ["actions"] = new JArray
+                        {
+                            new JObject
+                            {
+                                ["actionType"] = "url",
+                                ["url"] = op.SuccessRedirect
+                            }
+                        }
+                    }
+                };
+            }
+
+            return CreateButton(title, "dialog", dialogOrDrawer: aiFormDialog, visibleOn: op.VisibleOn);
+        }
+
+
+        /// <summary>
         /// 获取带AI支持的表单字段（从方法参数）
         /// </summary>
         /// <param name="parameters">方法参数</param>
@@ -592,7 +1201,7 @@ namespace CodeSpirit.Amis.Helpers
                 Console.WriteLine($"[ButtonHelper调试] 方法参数类型: [{string.Join(", ", paramTypes)}]");
 
                 // 查找带有 AiFormFillAttribute 的参数类型
-                var inputDtoParam = parameters.FirstOrDefault(p => 
+                var inputDtoParam = parameters.FirstOrDefault(p =>
                 {
                     var aiAttr = p.ParameterType.GetCustomAttribute<AiFormFillAttribute>();
                     Console.WriteLine($"[ButtonHelper调试] 检查参数 {p.Name} (类型: {p.ParameterType.Name}) - AI特性: {(aiAttr != null ? "有" : "无")}");
@@ -607,7 +1216,7 @@ namespace CodeSpirit.Amis.Helpers
 
                 if (dtoType == null)
                 {
-                        Console.WriteLine($"[ButtonHelper调试] 未找到合适的输入DTO类型");
+                    Console.WriteLine($"[ButtonHelper调试] 未找到合适的输入DTO类型");
                 }
             }
 
@@ -657,7 +1266,7 @@ namespace CodeSpirit.Amis.Helpers
             {
                 var aiAttr = dtoType.GetCustomAttribute<AiFormFillAttribute>();
                 Console.WriteLine($"[ButtonHelper调试] DTO类型 {dtoType.Name} - AI特性: {(aiAttr != null ? "有" : "无")}");
-                
+
                 if (aiAttr != null)
                 {
                     Console.WriteLine($"[ButtonHelper调试] 使用AI支持的表单字段生成（属性），DTO类型: {dtoType.Name}");

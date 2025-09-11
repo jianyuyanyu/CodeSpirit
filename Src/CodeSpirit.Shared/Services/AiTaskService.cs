@@ -1,29 +1,46 @@
+#nullable enable
 using System.Collections.Concurrent;
 using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Shared.Dtos.AI;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System.Text;
 
 namespace CodeSpirit.Shared.Services;
 
 /// <summary>
-/// AI任务服务实现（内存存储版本）
+/// AI任务服务实现（分布式缓存版本）
 /// </summary>
 /// <remarks>
-/// 这是一个基于内存的简单实现，适用于单实例部署。
-/// 对于分布式部署，建议使用Redis或数据库存储任务状态。
+/// 基于IDistributedCache实现，支持多实例部署和数据持久化。
+/// 适用于分布式部署环境，任务状态存储在分布式缓存中。
 /// </remarks>
 public class AiTaskService : IAiTaskService, ISingletonDependency
 {
-    private readonly ConcurrentDictionary<string, AiTaskStatusDto> _tasks = new();
+    private readonly IDistributedCache _distributedCache;
     private readonly ILogger<AiTaskService> _logger;
+    private readonly DistributedCacheEntryOptions _defaultCacheOptions;
+    
+    // 缓存键前缀
+    private const string TaskKeyPrefix = "AiTask:";
 
     /// <summary>
     /// 初始化AI任务服务
     /// </summary>
+    /// <param name="distributedCache">分布式缓存</param>
     /// <param name="logger">日志记录器</param>
-    public AiTaskService(ILogger<AiTaskService> logger)
+    public AiTaskService(IDistributedCache distributedCache, ILogger<AiTaskService> logger)
     {
+        _distributedCache = distributedCache ?? throw new ArgumentNullException(nameof(distributedCache));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        // 配置默认缓存选项 - 24小时绝对过期，12小时滑动过期
+        _defaultCacheOptions = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24),
+            SlidingExpiration = TimeSpan.FromHours(12)
+        };
     }
 
     /// <summary>
@@ -32,7 +49,7 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
     /// <param name="taskType">任务类型</param>
     /// <param name="parameters">任务参数</param>
     /// <returns>任务ID</returns>
-    public Task<string> CreateTaskAsync(string taskType, object parameters)
+    public async Task<string> CreateTaskAsync(string taskType, object parameters)
     {
         string taskId = Guid.NewGuid().ToString("N");
         
@@ -47,10 +64,10 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
             Logs = new List<string> { $"[{DateTime.Now:HH:mm:ss}] 任务已创建，类型：{taskType}" }
         };
 
-        _tasks.TryAdd(taskId, task);
+        await SetTaskToCache(taskId, task);
         _logger.LogInformation("AI任务已创建：{TaskId}，类型：{TaskType}", taskId, taskType);
 
-        return Task.FromResult(taskId);
+        return taskId;
     }
 
     /// <summary>
@@ -58,9 +75,9 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
     /// </summary>
     /// <param name="taskId">任务ID</param>
     /// <returns>任务状态</returns>
-    public Task<AiTaskStatusDto?> GetTaskStatusAsync(string taskId)
+    public async Task<AiTaskStatusDto?> GetTaskStatusAsync(string taskId)
     {
-        _tasks.TryGetValue(taskId, out var task);
+        var task = await GetTaskFromCache(taskId);
         
         // 计算已耗时
         if (task != null)
@@ -69,7 +86,7 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
             task.ElapsedTime = FormatElapsedTime(elapsed);
         }
 
-        return Task.FromResult(task);
+        return task;
     }
 
     /// <summary>
@@ -80,9 +97,10 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
     /// <param name="step">当前步骤</param>
     /// <param name="progress">进度百分比</param>
     /// <param name="message">状态消息</param>
-    public Task UpdateTaskStatusAsync(string taskId, AiTaskStatus status, int step = 0, int progress = 0, string? message = null)
+    public async Task UpdateTaskStatusAsync(string taskId, AiTaskStatus status, int step = 0, int progress = 0, string? message = null)
     {
-        if (_tasks.TryGetValue(taskId, out var task))
+        var task = await GetTaskFromCache(taskId);
+        if (task != null)
         {
             task.Status = status;
             task.Step = step;
@@ -110,11 +128,10 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
                 task.EndTime = DateTime.UtcNow;
             }
 
+            await SetTaskToCache(taskId, task);
             _logger.LogInformation("AI任务状态已更新：{TaskId}，状态：{Status}，步骤：{Step}，进度：{Progress}%", 
                 taskId, status, step, progress);
         }
-
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -122,9 +139,10 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
     /// </summary>
     /// <param name="taskId">任务ID</param>
     /// <param name="message">日志消息</param>
-    public Task AddTaskLogAsync(string taskId, string message)
+    public async Task AddTaskLogAsync(string taskId, string message)
     {
-        if (_tasks.TryGetValue(taskId, out var task))
+        var task = await GetTaskFromCache(taskId);
+        if (task != null)
         {
             var logEntry = $"[{DateTime.Now:HH:mm:ss}] {message}";
             task.Logs.Add(logEntry);
@@ -135,10 +153,9 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
                 task.Logs.RemoveAt(0);
             }
 
+            await SetTaskToCache(taskId, task);
             _logger.LogDebug("AI任务日志已添加：{TaskId}，消息：{Message}", taskId, message);
         }
-
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -149,7 +166,8 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
     /// <param name="detailUrl">详情页面URL（可选）</param>
     public async Task CompleteTaskAsync(string taskId, object result, string? detailUrl = null)
     {
-        if (_tasks.TryGetValue(taskId, out var task))
+        var task = await GetTaskFromCache(taskId);
+        if (task != null)
         {
             task.Result = result;
             task.DetailUrl = detailUrl;
@@ -168,7 +186,8 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
     /// <param name="errorMessage">错误消息</param>
     public async Task FailTaskAsync(string taskId, string errorMessage)
     {
-        if (_tasks.TryGetValue(taskId, out var task))
+        var task = await GetTaskFromCache(taskId);
+        if (task != null)
         {
             task.ErrorMessage = errorMessage;
             
@@ -197,21 +216,58 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
     /// <param name="expiredHours">过期小时数，默认24小时</param>
     public Task CleanupExpiredTasksAsync(int expiredHours = 24)
     {
-        var cutoff = DateTime.UtcNow.AddHours(-expiredHours);
-        var expiredTasks = _tasks.Where(kvp => kvp.Value.StartTime < cutoff).ToList();
-
-        foreach (var expiredTask in expiredTasks)
-        {
-            _tasks.TryRemove(expiredTask.Key, out _);
-            _logger.LogDebug("已清理过期AI任务：{TaskId}", expiredTask.Key);
-        }
-
-        if (expiredTasks.Count > 0)
-        {
-            _logger.LogInformation("已清理 {Count} 个过期AI任务", expiredTasks.Count);
-        }
-
+        // 注意：这个方法在分布式缓存中的实现相对复杂
+        // 因为IDistributedCache没有提供列出所有键的功能
+        // 在实际生产环境中，建议使用Redis的SCAN命令或专门的任务清理机制
+        // 这里仅作为接口实现，实际清理由缓存的过期机制自动处理
+        
+        _logger.LogInformation("清理过期任务请求已接收，过期时间：{ExpiredHours}小时。实际清理由分布式缓存的过期机制自动处理。", expiredHours);
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 从缓存中获取任务
+    /// </summary>
+    /// <param name="taskId">任务ID</param>
+    /// <returns>任务状态</returns>
+    private async Task<AiTaskStatusDto?> GetTaskFromCache(string taskId)
+    {
+        try
+        {
+            string cacheKey = TaskKeyPrefix + taskId;
+            var cachedData = await _distributedCache.GetStringAsync(cacheKey);
+            
+            if (string.IsNullOrEmpty(cachedData))
+            {
+                return null;
+            }
+            
+            return JsonConvert.DeserializeObject<AiTaskStatusDto>(cachedData);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从缓存获取AI任务失败：{TaskId}", taskId);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// 将任务保存到缓存
+    /// </summary>
+    /// <param name="taskId">任务ID</param>
+    /// <param name="task">任务状态</param>
+    private async Task SetTaskToCache(string taskId, AiTaskStatusDto task)
+    {
+        try
+        {
+            string cacheKey = TaskKeyPrefix + taskId;
+            string json = JsonConvert.SerializeObject(task);
+            await _distributedCache.SetStringAsync(cacheKey, json, _defaultCacheOptions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "保存AI任务到缓存失败：{TaskId}", taskId);
+        }
     }
 
     /// <summary>

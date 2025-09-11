@@ -118,7 +118,7 @@ namespace CodeSpirit.Web.Middlewares
             //}
 
             // Skip proxy for local web project requests
-            if (IsLocalWebProjectRequest(request))
+            if (IsLocalWebProjectRequest(request) || request.Path.StartsWithSegments("/api/common/", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogInformation("本地Web项目请求，跳过代理 - 路径: {Path}", request.Path);
                 await _next(context);
@@ -138,7 +138,8 @@ namespace CodeSpirit.Web.Middlewares
             if (request.Path.StartsWithSegments("/chathub", StringComparison.OrdinalIgnoreCase) ||
                 request.Path.StartsWithSegments("/hub", StringComparison.OrdinalIgnoreCase) ||
                 request.Path.StartsWithSegments("/signalr", StringComparison.OrdinalIgnoreCase) ||
-                request.Path.StartsWithSegments("/_blazor", StringComparison.OrdinalIgnoreCase))
+                request.Path.StartsWithSegments("/_blazor", StringComparison.OrdinalIgnoreCase)
+                )
             {
                 _logger.LogInformation("SignalR请求，跳过代理 - 路径: {Path}", request.Path);
                 await _next(context);

@@ -1,8 +1,64 @@
-﻿[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = true)]
+using System.ComponentModel.DataAnnotations;
+
+/// <summary>
+/// 操作类型枚举
+/// </summary>
+public enum OperationActionType
+{
+    /// <summary>
+    /// AJAX请求
+    /// </summary>
+    [Display(Name = "AJAX请求")]
+    Ajax = 1,
+
+    /// <summary>
+    /// 表单操作
+    /// </summary>
+    [Display(Name = "表单操作")]
+    Form = 2,
+
+    /// <summary>
+    /// 链接跳转
+    /// </summary>
+    [Display(Name = "链接跳转")]
+    Link = 3,
+
+    /// <summary>
+    /// 服务调用
+    /// </summary>
+    [Display(Name = "服务调用")]
+    Service = 4,
+
+    /// <summary>
+    /// AI表单操作
+    /// </summary>
+    [Display(Name = "AI表单操作")]
+    AiForm = 5
+}
+
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = true)]
 public class OperationAttribute : Attribute
 {
     public string Label { get; }
-    public string ActionType { get; }
+    
+    /// <summary>
+    /// 操作类型（枚举）
+    /// </summary>
+    public OperationActionType ActionTypeEnum { get; }
+    
+    /// <summary>
+    /// 操作类型（字符串，用于向后兼容）
+    /// </summary>
+    public string ActionType => ActionTypeEnum switch
+    {
+        OperationActionType.Ajax => "ajax",
+        OperationActionType.Form => "form",
+        OperationActionType.Link => "link",
+        OperationActionType.Service => "service",
+        OperationActionType.AiForm => "aiForm",
+        _ => "ajax"
+    };
+    
     public string Api { get; }
     public string ConfirmText { get; }
     public string VisibleOn { get; }
@@ -54,8 +110,9 @@ public class OperationAttribute : Attribute
 
     /// <summary>
     /// 仅当 ActionType 为 aiForm 时可用，用于获取AI任务状态的轮询API
+    /// 默认使用 /api/web/TaskStatus/{taskId}
     /// </summary>
-    public string StatusApi { get; set; }
+    public string StatusApi { get; set; } = "/api/common/TaskStatus";
 
     /// <summary>
     /// 仅当 ActionType 为 aiForm 时可用，轮询间隔（毫秒），默认2000ms
@@ -92,10 +149,46 @@ public class OperationAttribute : Attribute
     /// </summary>
     public string ResultTitle { get; set; } = "处理结果";
 
+    /// <summary>
+    /// 使用枚举类型的构造函数（推荐）
+    /// </summary>
+    /// <param name="label">按钮标签</param>
+    /// <param name="actionType">操作类型枚举</param>
+    /// <param name="api">API地址</param>
+    /// <param name="confirmText">确认文本</param>
+    /// <param name="visibleOn">显示条件</param>
+    /// <param name="isBulkOperation">是否批量操作</param>
+    public OperationAttribute(string label, OperationActionType actionType = OperationActionType.Ajax, string api = null, string confirmText = null, string visibleOn = null, bool isBulkOperation = false)
+    {
+        Label = label;
+        ActionTypeEnum = actionType;
+        Api = api;
+        ConfirmText = confirmText;
+        VisibleOn = visibleOn;
+        IsBulkOperation = isBulkOperation;
+    }
+
+    /// <summary>
+    /// 使用字符串类型的构造函数（向后兼容）
+    /// </summary>
+    /// <param name="label">按钮标签</param>
+    /// <param name="actionType">操作类型字符串</param>
+    /// <param name="api">API地址</param>
+    /// <param name="confirmText">确认文本</param>
+    /// <param name="visibleOn">显示条件</param>
+    /// <param name="isBulkOperation">是否批量操作</param>
     public OperationAttribute(string label, string actionType = "ajax", string api = null, string confirmText = null, string visibleOn = null, bool isBulkOperation = false)
     {
         Label = label;
-        ActionType = actionType;
+        ActionTypeEnum = actionType?.ToLower() switch
+        {
+            "ajax" => OperationActionType.Ajax,
+            "form" => OperationActionType.Form,
+            "link" => OperationActionType.Link,
+            "service" => OperationActionType.Service,
+            "aiform" => OperationActionType.AiForm,
+            _ => OperationActionType.Ajax
+        };
         Api = api;
         ConfirmText = confirmText;
         VisibleOn = visibleOn;

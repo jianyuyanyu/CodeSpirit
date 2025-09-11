@@ -1,4 +1,5 @@
 using CodeSpirit.Aggregator.Services;
+using CodeSpirit.Shared.DependencyInjection;
 using CodeSpirit.Shared.Services;
 using CodeSpirit.Web.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,14 @@ namespace CodeSpirit.Web.Extensions
         {
             // 注册JWT认证服务
             services.AddScoped<IJwtAuthService, JwtAuthService>();
+            
+            // 使用Scrutor自动注册标记接口的服务 - 注册CodeSpirit.Shared程序集中的服务
+            var assembliesToScan = new[]
+            {
+                typeof(ServiceCollectionExtensions).Assembly, // CodeSpirit.Web程序集
+                typeof(IAiTaskService).Assembly // CodeSpirit.Shared程序集
+            };
+            services.AddDependencyInjectionWithScrutor(assembliesToScan);
             
             return services;
         }

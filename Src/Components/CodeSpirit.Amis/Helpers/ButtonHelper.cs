@@ -607,11 +607,6 @@ namespace CodeSpirit.Amis.Helpers
                 ["actionPrevLabel"] = "上一步",
                 ["actionFinishLabel"] = "完成",
                 ["initApi"] = false, // 禁用自动初始化
-                //["data"] = new JObject
-                //{
-                //    ["&"] = "$$",
-                //    ["taskId"] = ""
-                //},
                 ["steps"] = new JArray
                 {
                     // 第一步：填写表单
@@ -619,46 +614,47 @@ namespace CodeSpirit.Amis.Helpers
                     {
                         ["title"] = "填写表单",
                         ["description"] = "填写AI生成所需的参数信息",
-                        ["body"] = new JArray { CreateAiFormStep(op, route, method) }
+                        ["body"] = new JArray { CreateAiFormStep(op, route, method) },
+                        ["jumpableOn"] = "${!taskId}",
+                        ["actions"] = new JArray
+                        {
+
+                        }
                     },
                     // 第二步：AI处理中
                     new JObject
                     {
                         ["title"] = "AI处理中",
                         ["description"] = "AI正在分析您的需求并生成内容",
-                        ["body"] = new JArray { CreateAiProgressStep(op, route) }
+                        ["body"] = new JArray { CreateAiProgressStep(op, route) },
+                        ["actions"] = new JArray
+                        {
+
+                        }
                     },
                     // 第三步：查看结果
                     new JObject
                     {
                         ["title"] = "查看结果",
                         ["description"] = "查看AI生成的结果内容",
-                        ["body"] = new JArray { CreateAiResultStep(op, route) }
-                    }
-                },
-                ["onEvent"] = new JObject
-                {
-                    // 任务开始时自动切换到第二步
-                    ["taskStarted"] = new JObject
-                    {
+                        ["body"] = new JArray { CreateAiResultStep(op, route) },
                         ["actions"] = new JArray
                         {
                             new JObject
                             {
-                                ["actionType"] = "goto-step",
-                                ["args"] = new JObject { ["step"] = 2 }
-                            }
-                        }
-                    },
-                    // 任务完成时自动切换到第三步
-                    ["taskCompleted"] = new JObject
-                    {
-                        ["actions"] = new JArray
-                        {
-                            new JObject
-                            {
-                                ["actionType"] = "goto-step",
-                                ["args"] = new JObject { ["step"] = 3 }
+                                ["type"] = "button",
+                                ["level"] = "primary",
+                                ["label"] = "完成",
+                                ["actionType"] = "close",
+                                ["onEvent"] = new JObject
+                                {
+                                    ["click"] = new JObject
+                                    {
+                                        ["actions"] = new JArray { 
+                                            new JObject { ["actionType"] = "reload", ["componentName"] = amisContext.CrudComponentName } 
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -778,52 +774,11 @@ namespace CodeSpirit.Amis.Helpers
                 ["initFetch"] = false, // 禁用初始加载
                 ["api"] = new JObject
                 {
-                    ["url"] = !string.IsNullOrEmpty(op.StatusApi) ? op.StatusApi : $"{route.ApiPath}/status",
+                    ["url"] = $"{op.StatusApi}/${{taskId}}",
                     ["method"] = "get",
                     ["data"] = new JObject
                     {
                         ["taskId"] = "${taskId}"
-                    }
-                },
-                ["onEvent"] = new JObject
-                {
-                    ["aiTaskCompleted"] = new JObject
-                    {
-                        ["actions"] = new JArray
-                        {
-                            new JObject
-                            {
-                                ["actionType"] = "setValue",
-                                ["args"] = new JObject
-                                {
-                                    ["value"] = new JObject
-                                    {
-                                        ["aiTaskCompleted"] = true
-                                    }
-                                }
-                            },
-                            new JObject
-                            {
-                                ["actionType"] = "setValue",
-                                ["args"] = new JObject
-                                {
-                                    ["value"] = new JObject
-                                    {
-                                        ["aiTaskCompleted"] = true
-                                    }
-                                }
-                            },
-                            // 更新步骤指示器到第三步（查看结果）
-                            new JObject
-                            {
-                                ["actionType"] = "goto-step",
-                                ["componentId"] = "aiSteps",
-                                ["args"] = new JObject
-                                {
-                                    ["step"] = 3
-                                }
-                            }
-                        }
                     }
                 },
                 ["body"] = CreateAiResultPanelBody()
@@ -876,36 +831,6 @@ namespace CodeSpirit.Amis.Helpers
         {
             return new JArray
             {
-                //new JObject
-                //{
-                //    ["actionType"] = "ajax",
-                //    ["api"] = new JObject
-                //    {
-                //        ["url"] = route.ApiPath,
-                //        ["method"] = route.HttpMethod,
-                //        ["data"] = new JObject
-                //        {
-                //            ["&"] = "$$"
-                //        },
-                //        ["silent"] = true
-                //    },
-                //    ["responseData"] = new JObject
-                //    {
-                //        ["taskId"] = "${taskId}"
-                //    }
-                //},
-                //new JObject
-                //{
-                //    ["actionType"] = "setValue",
-                //    ["componentId"] = "aiSteps",
-                //    ["args"] = new JObject
-                //    {
-                //        ["value"] = new JObject
-                //        {
-                //            ["taskId"] = "${__rendererData.taskId}"
-                //        }
-                //    }
-                //},
                 // 更新步骤指示器到第二步（AI处理中）
                 new JObject
                 {
@@ -934,13 +859,9 @@ namespace CodeSpirit.Amis.Helpers
                 ["initFetch"] = true,
                 ["api"] = new JObject
                 {
-                    ["url"] = !string.IsNullOrEmpty(op.StatusApi) ? op.StatusApi : $"{route.ApiPath}/status",
+                    ["url"] = $"{op.StatusApi}/${{taskId}}",
                     ["method"] = "get",
-                    ["data"] = new JObject
-                    {
-                        ["taskId"] = "${taskId}"
-                    },
-                    //["sendOn"] = "taskId != ''"
+                    ["sendOn"] = "taskId != ''"
                 },
                 ["onEvent"] = new JObject
                 {
@@ -1003,7 +924,7 @@ namespace CodeSpirit.Amis.Helpers
                 new JObject
                 {
                     ["type"] = "alert",
-                    ["level"] = "${status == 'completed' ? 'success' : (status == 'failed' ? 'danger' : 'info')}",
+                    ["level"] = "${status == 2 ? 'success' : (status == 'failed' ? 'danger' : 'info')}",
                     ["body"] = new JObject
                     {
                         ["type"] = "tpl",
@@ -1014,7 +935,7 @@ namespace CodeSpirit.Amis.Helpers
                 new JObject
                 {
                     ["type"] = "container",
-                    ["visibleOn"] = "${status == 'completed'}",
+                    ["visibleOn"] = "${status == 2}",
                     ["body"] = new JArray
                     {
                         new JObject
@@ -1032,40 +953,6 @@ namespace CodeSpirit.Amis.Helpers
                             ["name"] = "result",
                             ["source"] = "${result}",
                             ["levelExpand"] = 2
-                        }
-                    }
-                },
-                // 操作按钮
-                new JObject
-                {
-                    ["type"] = "container",
-                    ["visibleOn"] = "${status == 'completed'}",
-                    ["body"] = new JArray
-                    {
-                        new JObject
-                        {
-                            ["type"] = "button-group",
-                            ["buttons"] = new JArray
-                            {
-                                new JObject
-                                {
-                                    ["type"] = "button",
-                                    ["label"] = "查看详情",
-                                    ["level"] = "primary",
-                                    ["actionType"] = "link",
-                                    ["link"] = "${detailUrl}",
-                                    ["blank"] = true,
-                                    ["visibleOn"] = "${detailUrl}"
-                                },
-                                new JObject
-                                {
-                                    ["type"] = "button",
-                                    ["label"] = "重新生成",
-                                    ["level"] = "default",
-                                    ["actionType"] = "custom",
-                                    ["script"] = "window.resetAiForm && window.resetAiForm();"
-                                }
-                            }
                         }
                     }
                 }
@@ -1089,7 +976,7 @@ namespace CodeSpirit.Amis.Helpers
                 ["size"] = "lg", // 使用更大的弹窗
                 ["closeOnEsc"] = false,
                 ["closeOnOutside"] = false,
-                ["showCloseButton"] = true,
+                // ["showCloseButton"] = true,
                 ["name"] = "aiFormDialog",
                 ["body"] = new JObject
                 {
@@ -1105,34 +992,9 @@ namespace CodeSpirit.Amis.Helpers
                 },
                 ["actions"] = new JArray
                 {
-                    new JObject
-                    {
-                        ["type"] = "button",
-                        ["label"] = "关闭",
-                        ["actionType"] = "close",
-                        ["level"] = "default"
-                    }
+                    
                 }
             };
-
-            // 如果配置了成功跳转，在完成时自动跳转
-            if (!string.IsNullOrEmpty(op.SuccessRedirect))
-            {
-                aiFormDialog["onEvent"] = new JObject
-                {
-                    ["aiTaskCompleted"] = new JObject
-                    {
-                        ["actions"] = new JArray
-                        {
-                            new JObject
-                            {
-                                ["actionType"] = "url",
-                                ["url"] = op.SuccessRedirect
-                            }
-                        }
-                    }
-                };
-            }
 
             return CreateButton(title, "dialog", dialogOrDrawer: aiFormDialog, visibleOn: op.VisibleOn);
         }

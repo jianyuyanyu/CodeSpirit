@@ -598,63 +598,24 @@ public class SurveysController : ApiControllerBase
     //}
 
     /// <summary>
-    /// 根据主题生成问卷（同步版本）
-    /// </summary>
-    /// <param name="request">生成请求</param>
-    /// <returns>生成的问卷</returns>
-    [HttpPost("ai/generate")]
-    [HeaderOperation("AI生成问卷", "form", Icon = "fa-solid fa-robot")]
-    [DisplayName("AI生成问卷")]
-    public async Task<ActionResult<ApiResponse<GeneratedSurveyDto>>> GenerateSurvey([FromBody] GenerateSurveyRequest request)
-    {
-        var result = await _llmGeneratorService.GenerateSurveyAsync(request);
-        return SuccessResponse(result);
-    }
-
-    /// <summary>
     /// 根据主题异步生成问卷（使用前端提供的任务ID）
     /// </summary>
     /// <param name="request">生成请求（包含前端生成的taskId）</param>
     /// <returns>任务ID确认</returns>
     [HttpPost("ai/generate-async")]
-    [HeaderOperation("AI智能生成问卷", "aiForm",
+    [HeaderOperation("问卷生成", "aiForm",
         Icon = "fa-solid fa-magic",
-        StatusApi = "/survey/api/survey/Surveys/ai/task-status",
         PollingInterval = 2000,
         MaxPollingTime = 300000,
         FormTitle = "问卷生成配置",
         StepsTitle = "AI生成进度",
         LogTitle = "生成日志",
         ResultTitle = "生成结果")]
-    [DisplayName("AI智能生成问卷")]
+    [DisplayName("问卷生成")]
     public async Task<ActionResult<ApiResponse<object>>> GenerateSurveyAsync([FromBody] GenerateSurveyRequest request)
     {
         var taskId = await _surveyAiGeneratorService.GenerateAsync(request);
         return SuccessResponse<object>(new { taskId });
-    }
-
-    /// <summary>
-    /// 获取AI任务状态
-    /// </summary>
-    /// <param name="taskId">任务ID</param>
-    /// <returns>任务状态</returns>
-    [HttpGet("ai/task-status")]
-    [DisplayName("获取AI任务状态")]
-    [AllowAnonymous]
-    public async Task<ActionResult<ApiResponse<AiTaskStatusDto>>> GetTaskStatus([FromQuery] string taskId)
-    {
-        if (string.IsNullOrEmpty(taskId))
-        {
-            return BadResponse<AiTaskStatusDto>("任务ID不能为空");
-        }
-
-        var status = await _aiTaskService.GetTaskStatusAsync(taskId);
-        if (status == null)
-        {
-            return BadResponse<AiTaskStatusDto>("任务不存在", statusCode: 404);
-        }
-
-        return SuccessResponse(status);
     }
 
     /// <summary>

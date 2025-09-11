@@ -21,7 +21,8 @@ var cache = builder.AddRedis("cache")
                    .WithHostPort(6380)  // 修改为安全端口范围
                    .WithRedisCommander((op) =>
                    {
-                       op.WithHttpEndpoint(port: 8082, targetPort: 8081, name: "commander-ui")
+                       op
+                         //.WithHttpEndpoint(port: 8082, targetPort: 8081, name: "commander-ui")
                          .WithUrlForEndpoint("commander-ui", url =>
                              url.DisplayLocation = UrlDisplayLocation.SummaryAndDetails);
                    });
@@ -31,7 +32,8 @@ var seqService = builder.AddSeq("seq")
                     .WithImageTag("2024.3")
                  .WithDataVolume()
                  .WithLifetime(ContainerLifetime.Persistent)
-                 .WithHttpEndpoint(port: 5341, targetPort: 80, name: "seq-ui")
+                 //.WithHttpEndpoint(port: 5341, targetPort: 80, name: "seq-ui")
+                 .WithUrlForEndpoint("seq", url => url.DisplayLocation = UrlDisplayLocation.SummaryAndDetails)
                  .WithEnvironment("ACCEPT_EULA", "Y")
                  .WithUrlForEndpoint("seq-ui", url =>
                      url.DisplayText = "Seq 日志界面");
@@ -54,8 +56,8 @@ var esPassword = builder.AddParameter("password", "Password123", secret: true);
 var elasticsearchService = builder.AddElasticsearch("elasticsearch", password: esPassword)
                           .WithLifetime(ContainerLifetime.Persistent)
                           .WithDataVolume()
-                          .WithHttpEndpoint(port: 9200, targetPort: 9200, name: "elasticsearch")
-                          .WithHttpEndpoint(port: 9300, targetPort: 9300, name: "elasticsearch-nodes")
+                          //.WithHttpEndpoint(port: 9200, targetPort: 9200, name: "elasticsearch")
+                          //.WithHttpEndpoint(port: 9300, targetPort: 9300, name: "elasticsearch-nodes")
                           .WithUrlForEndpoint("elasticsearch", ep => new()
                           {
                               Url = "/_cluster/health",

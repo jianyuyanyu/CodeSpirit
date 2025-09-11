@@ -1,4 +1,5 @@
 using AutoMapper;
+using CodeSpirit.Core;
 using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.LLM;
 using CodeSpirit.Shared.Dtos.AI;
@@ -16,6 +17,7 @@ namespace CodeSpirit.SurveyApi.Services.Implementations;
 public class SurveyAiGeneratorService : BaseAiGeneratorService<GenerateSurveyRequest, GeneratedSurveyDto>, IScopedDependency
 {
     private readonly ISurveyLLMGeneratorService _llmGeneratorService;
+    private readonly ICurrentUser _currentUser;
 
     /// <summary>
     /// 初始化问卷AI生成服务
@@ -24,14 +26,17 @@ public class SurveyAiGeneratorService : BaseAiGeneratorService<GenerateSurveyReq
     /// <param name="llmGeneratorService">LLM生成服务</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="serviceScopeFactory">服务范围工厂</param>
+    /// <param name="currentUser">当前用户服务</param>
     public SurveyAiGeneratorService(
         IAiTaskService aiTaskService,
         ISurveyLLMGeneratorService llmGeneratorService,
         ILogger<SurveyAiGeneratorService> logger,
-        IServiceScopeFactory serviceScopeFactory)
+        IServiceScopeFactory serviceScopeFactory,
+        ICurrentUser currentUser)
         : base(aiTaskService, logger, serviceScopeFactory)
     {
         _llmGeneratorService = llmGeneratorService ?? throw new ArgumentNullException(nameof(llmGeneratorService));
+        _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
     }
 
     /// <summary>
@@ -39,6 +44,98 @@ public class SurveyAiGeneratorService : BaseAiGeneratorService<GenerateSurveyReq
     /// </summary>
     /// <returns>任务类型</returns>
     protected override string GetTaskType() => "问卷生成";
+
+    /// <summary>
+    /// 重写异步生成方法，确保在Task.Run之前捕获租户上下文
+    /// </summary>
+    /// <param name="request">生成请求</param>
+    /// <returns>任务ID</returns>
+    public override async Task<string> GenerateAsync(GenerateSurveyRequest request)
+    {
+        // 在Task.Run之前捕获当前的租户上下文
+        var capturedTenantId = _currentUser.TenantId;
+        var capturedUserId = _currentUser.Id;
+        var capturedUserName = _currentUser.UserName;
+        
+        _logger.LogDebug("捕获租户上下文：TenantId={TenantId}, UserId={UserId}, UserName={UserName}", 
+            capturedTenantId, capturedUserId, capturedUserName);
+
+        string taskId = await _aiTaskService.CreateTaskAsync(GetTaskType(), request);
+        
+        // 在后台执行生成任务，使用独立的服务范围，并传递捕获的上下文
+        _ = Task.Run(async () =>
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            try
+            {
+                // 在新的服务范围中设置租户上下文
+                SetTenantContextInScope(scope.ServiceProvider, capturedTenantId, capturedUserId, capturedUserName);
+                
+                await ExecuteGenerationTaskAsyncWithScope(scope.ServiceProvider, taskId, request);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI生成任务执行失败：{TaskId}", taskId);
+                
+                // 使用独立的服务范围来处理失败任务
+                try
+                {
+                    var aiTaskService = scope.ServiceProvider.GetRequiredService<IAiTaskService>();
+                    await aiTaskService.FailTaskAsync(taskId, ex.Message);
+                }
+                catch (Exception failEx)
+                {
+                    _logger.LogError(failEx, "更新任务失败状态时出错：{TaskId}", taskId);
+                }
+            }
+        });
+
+        return taskId;
+    }
+
+    /// <summary>
+    /// 在新的服务范围中设置租户上下文
+    /// </summary>
+    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <param name="userName">用户名</param>
+    private void SetTenantContextInScope(IServiceProvider serviceProvider, string? tenantId, long? userId, string? userName)
+    {
+        try
+        {
+            // 设置当前用户的租户上下文
+            var scopedCurrentUser = serviceProvider.GetRequiredService<ICurrentUser>();
+            if (scopedCurrentUser is ISettableCurrentUser settableCurrentUser)
+            {
+                if (!string.IsNullOrEmpty(tenantId))
+                {
+                    settableCurrentUser.SetTenantId(tenantId);
+                    _logger.LogDebug("已在新服务范围中设置租户ID: {TenantId}", tenantId);
+                }
+                
+                if (userId.HasValue)
+                {
+                    settableCurrentUser.SetUserId(userId.Value);
+                    _logger.LogDebug("已在新服务范围中设置用户ID: {UserId}", userId.Value);
+                }
+                
+                if (!string.IsNullOrEmpty(userName))
+                {
+                    settableCurrentUser.SetUserName(userName);
+                    _logger.LogDebug("已在新服务范围中设置用户名: {UserName}", userName);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("无法设置租户上下文：当前用户服务未实现ISettableCurrentUser接口");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "设置租户上下文时发生异常：TenantId={TenantId}, UserId={UserId}", tenantId, userId);
+        }
+    }
 
     /// <summary>
     /// 执行具体的AI生成逻辑
@@ -60,9 +157,6 @@ public class SurveyAiGeneratorService : BaseAiGeneratorService<GenerateSurveyReq
         progressCallback?.Invoke(0.6, "正在生成题目内容...");
         var result = await _llmGeneratorService.GenerateSurveyAsync(request);
         
-        progressCallback?.Invoke(0.9, "正在优化问卷格式...");
-        await Task.Delay(300);
-        
         progressCallback?.Invoke(1.0, "问卷生成完成");
         
         return result;
@@ -79,6 +173,11 @@ public class SurveyAiGeneratorService : BaseAiGeneratorService<GenerateSurveyReq
     {
         // 从独立的服务范围获取所需的服务
         var llmGeneratorService = serviceProvider.GetRequiredService<ISurveyLLMGeneratorService>();
+        
+        // 验证租户上下文是否正确设置
+        var scopedCurrentUser = serviceProvider.GetRequiredService<ICurrentUser>();
+        _logger.LogDebug("问卷生成开始，当前租户上下文：TenantId={TenantId}, UserId={UserId}, UserName={UserName}", 
+            scopedCurrentUser.TenantId, scopedCurrentUser.Id, scopedCurrentUser.UserName);
         
         progressCallback?.Invoke(0.1, "正在分析问卷主题...");
         await Task.Delay(500); // 模拟处理时间

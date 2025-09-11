@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Amis.Helpers.Dtos;
+using Microsoft.AspNetCore.Mvc;
 using System.Reflection;
 
 namespace CodeSpirit.Amis
@@ -12,6 +13,15 @@ namespace CodeSpirit.Amis
         public string BaseRoute { get; internal set; }
         public ApiRoutesInfo ApiRoutes { get; internal set; }
         public Type ListDataType { get; internal set; }
+
+        public string CrudComponentName
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(ControllerName)) return null;
+                return $"{ControllerName.ToCamelCase()}Crud";
+            }
+        }
     }
 
 }

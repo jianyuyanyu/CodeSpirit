@@ -77,7 +77,7 @@ namespace CodeSpirit.Amis
             List<JObject> columns = _columnHelper.GetAmisColumns();
             List<JObject> searchFields = _searchFieldHelper.GetAmisSearchFields(actions.List);
 
-            string crudName = $"{controllerName.ToLower()}Crud"; // CRUD组件名称
+            string crudName = _amisContext.CrudComponentName; // CRUD组件名称
             // 构建 CRUD 配置
             JObject crudConfig = new()
             {

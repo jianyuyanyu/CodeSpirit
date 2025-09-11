@@ -127,7 +127,21 @@ public class AuditMiddleware
         var stopwatch = Stopwatch.StartNew();
 
         // 保存原始请求体
-        var originalRequestBody = await GetRequestBodyAsync(context);
+        string originalRequestBody;
+        try
+        {
+            originalRequestBody = await GetRequestBodyAsync(context);
+        }
+        catch (IOException ex) when (ex.Message.Contains("client reset") || ex.Message.Contains("reset the request"))
+        {
+            // 客户端重置连接，跳过审计记录
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            // 操作被取消（通常是客户端断开连接），跳过审计记录
+            return;
+        }
 
         // 记录响应
         var originalResponseBody = context.Response.Body;
@@ -381,6 +395,16 @@ public class AuditMiddleware
                 }
             }
         }
+        catch (IOException ex) when (ex.Message.Contains("client reset") || ex.Message.Contains("reset the request"))
+        {
+            // 客户端重置连接，跳过审计记录，不记录错误日志
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            // 操作被取消（通常是客户端断开连接），跳过审计记录，不记录错误日志
+            return;
+        }
         catch (Exception ex)
         {
             // 记录处理过程中的错误，但不影响原始请求
@@ -391,9 +415,22 @@ public class AuditMiddleware
         finally
         {
             // 复制响应流到原始响应流
-            responseBodyStream.Position = 0;
-            await responseBodyStream.CopyToAsync(originalResponseBody);
-            context.Response.Body = originalResponseBody;
+            try
+            {
+                responseBodyStream.Position = 0;
+                await responseBodyStream.CopyToAsync(originalResponseBody);
+                context.Response.Body = originalResponseBody;
+            }
+            catch (IOException ex) when (ex.Message.Contains("client reset") || ex.Message.Contains("reset the request"))
+            {
+                // 客户端断开连接，无法复制响应，跳过复制操作
+                _logger.LogDebug("客户端断开连接，跳过响应复制操作");
+            }
+            catch (OperationCanceledException)
+            {
+                // 操作被取消，无法复制响应，跳过复制操作
+                _logger.LogDebug("操作被取消，跳过响应复制操作");
+            }
 
             // 停止计时
             stopwatch.Stop();
@@ -658,21 +695,34 @@ public class AuditMiddleware
     /// </summary>
     private static async Task<string> GetRequestBodyAsync(HttpContext context)
     {
-        // 启用重新读取请求体
-        context.Request.EnableBuffering();
+        try
+        {
+            // 启用重新读取请求体
+            context.Request.EnableBuffering();
 
-        using var reader = new StreamReader(
-            context.Request.Body,
-            encoding: Encoding.UTF8,
-            detectEncodingFromByteOrderMarks: false,
-            leaveOpen: true);
+            using var reader = new StreamReader(
+                context.Request.Body,
+                encoding: Encoding.UTF8,
+                detectEncodingFromByteOrderMarks: false,
+                leaveOpen: true);
 
-        var requestBody = await reader.ReadToEndAsync();
+            var requestBody = await reader.ReadToEndAsync();
 
-        // 重置请求体位置，以便后续中间件可以读取
-        context.Request.Body.Position = 0;
+            // 重置请求体位置，以便后续中间件可以读取
+            context.Request.Body.Position = 0;
 
-        return requestBody;
+            return requestBody;
+        }
+        catch (IOException ex) when (ex.Message.Contains("client reset") || ex.Message.Contains("reset the request"))
+        {
+            // 客户端重置连接，返回空字符串
+            return string.Empty;
+        }
+        catch (OperationCanceledException)
+        {
+            // 操作被取消（通常是客户端断开连接）
+            return string.Empty;
+        }
     }
 
     /// <summary>

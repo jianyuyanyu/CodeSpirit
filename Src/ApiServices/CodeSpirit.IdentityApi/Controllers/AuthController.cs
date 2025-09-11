@@ -25,6 +25,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILogger<AuthController> _logger;
         private readonly IClientIpService _clientIpService;
+        private readonly ICurrentUser _currentUser;
 
         /// <summary>
         /// 初始化授权控制器
@@ -33,16 +34,19 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="signInManager">登录管理器</param>
         /// <param name="logger">日志记录器</param>
         /// <param name="clientIpService">客户端IP地址获取服务</param>
+        /// <param name="currentUser">当前用户服务</param>
         public AuthController(
             IAuthService authService,
             SignInManager<ApplicationUser> signInManager,
             ILogger<AuthController> logger,
-            IClientIpService clientIpService)
+            IClientIpService clientIpService,
+            ICurrentUser currentUser)
         {
             _authService = authService;
             _signInManager = signInManager;
             _logger = logger;
             _clientIpService = clientIpService;
+            _currentUser = currentUser;
         }
 
         /// <summary>
@@ -140,8 +144,21 @@ namespace CodeSpirit.IdentityApi.Controllers
         [DisplayName("用户登出")]
         public async Task<ActionResult<ApiResponse>> Logout()
         {
-            await _signInManager.SignOutAsync();
-            return SuccessResponse("退出登录成功!");
+            try
+            {
+                if (!_currentUser.IsAuthenticated || !_currentUser.Id.HasValue)
+                {
+                    return BadResponse("用户未登录");
+                }
+
+                await _authService.LogoutAsync(_currentUser.Id.Value);
+                return SuccessResponse("退出登录成功!");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "退出登录异常");
+                return BadResponse("退出登录失败");
+            }
         }
 
         /// <summary>

@@ -6,6 +6,7 @@ using CodeSpirit.Shared.Services;
 using CodeSpirit.SurveyApi.Dtos.Survey;
 using CodeSpirit.SurveyApi.Services.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.SurveyApi.Services.Implementations;
 
@@ -22,11 +23,13 @@ public class SurveyAiGeneratorService : BaseAiGeneratorService<GenerateSurveyReq
     /// <param name="aiTaskService">AI任务服务</param>
     /// <param name="llmGeneratorService">LLM生成服务</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="serviceScopeFactory">服务范围工厂</param>
     public SurveyAiGeneratorService(
         IAiTaskService aiTaskService,
         ISurveyLLMGeneratorService llmGeneratorService,
-        ILogger<SurveyAiGeneratorService> logger)
-        : base(aiTaskService, logger)
+        ILogger<SurveyAiGeneratorService> logger,
+        IServiceScopeFactory serviceScopeFactory)
+        : base(aiTaskService, logger, serviceScopeFactory)
     {
         _llmGeneratorService = llmGeneratorService ?? throw new ArgumentNullException(nameof(llmGeneratorService));
     }
@@ -56,6 +59,35 @@ public class SurveyAiGeneratorService : BaseAiGeneratorService<GenerateSurveyReq
         
         progressCallback?.Invoke(0.6, "正在生成题目内容...");
         var result = await _llmGeneratorService.GenerateSurveyAsync(request);
+        
+        progressCallback?.Invoke(0.9, "正在优化问卷格式...");
+        await Task.Delay(300);
+        
+        progressCallback?.Invoke(1.0, "问卷生成完成");
+        
+        return result;
+    }
+
+    /// <summary>
+    /// 执行具体的AI生成逻辑（使用独立的服务范围）
+    /// </summary>
+    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="request">生成请求</param>
+    /// <param name="progressCallback">进度回调</param>
+    /// <returns>生成结果</returns>
+    protected override async Task<GeneratedSurveyDto> DoGenerateAsyncWithScope(IServiceProvider serviceProvider, GenerateSurveyRequest request, Action<double, string>? progressCallback = null)
+    {
+        // 从独立的服务范围获取所需的服务
+        var llmGeneratorService = serviceProvider.GetRequiredService<ISurveyLLMGeneratorService>();
+        
+        progressCallback?.Invoke(0.1, "正在分析问卷主题...");
+        await Task.Delay(500); // 模拟处理时间
+        
+        progressCallback?.Invoke(0.3, "正在生成问卷结构...");
+        await Task.Delay(500);
+        
+        progressCallback?.Invoke(0.6, "正在生成题目内容...");
+        var result = await llmGeneratorService.GenerateSurveyAsync(request);
         
         progressCallback?.Invoke(0.9, "正在优化问卷格式...");
         await Task.Delay(300);

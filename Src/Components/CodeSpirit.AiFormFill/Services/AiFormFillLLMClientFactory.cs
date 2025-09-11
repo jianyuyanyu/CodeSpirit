@@ -15,7 +15,7 @@ public class AiFormFillLLMClientFactory : IScopedDependency
     private readonly ILogger<AiFormFillLLMClientFactory> _logger;
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ILoggerFactory _loggerFactory;
 
     private AiFormFillLLMSettings? _cachedSettings;
 
@@ -26,19 +26,19 @@ public class AiFormFillLLMClientFactory : IScopedDependency
     /// <param name="logger">日志记录器</param>
     /// <param name="configuration">配置</param>
     /// <param name="httpClientFactory">HTTP客户端工厂</param>
-    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="loggerFactory">日志工厂</param>
     public AiFormFillLLMClientFactory(
         ISettingsProvider settingsProvider,
         ILogger<AiFormFillLLMClientFactory> logger,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
-        IServiceProvider serviceProvider)
+        ILoggerFactory loggerFactory)
     {
         _settingsProvider = settingsProvider;
         _logger = logger;
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
-        _serviceProvider = serviceProvider;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -61,8 +61,8 @@ public class AiFormFillLLMClientFactory : IScopedDependency
             return null;
         }
 
-        // 创建日志记录器
-        var clientLogger = _serviceProvider.GetRequiredService<ILogger<AiFormFillLLMClient>>();
+        // 创建日志记录器（使用注入的日志工厂）
+        var clientLogger = _loggerFactory.CreateLogger<AiFormFillLLMClient>();
 
         // 创建客户端
         return new AiFormFillLLMClient(clientLogger, _cachedSettings, _httpClientFactory);

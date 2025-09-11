@@ -15,7 +15,7 @@ public class DefaultLLMClientFactory : ILLMClientFactory
     private readonly ILogger<DefaultLLMClientFactory> _logger;
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ILoggerFactory _loggerFactory;
     
     private LLMSettings? _cachedSettings;
 
@@ -26,19 +26,19 @@ public class DefaultLLMClientFactory : ILLMClientFactory
     /// <param name="logger">日志记录器</param>
     /// <param name="configuration">配置</param>
     /// <param name="httpClientFactory">HTTP客户端工厂</param>
-    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="loggerFactory">日志工厂</param>
     public DefaultLLMClientFactory(
         ISettingsProvider settingsProvider,
         ILogger<DefaultLLMClientFactory> logger,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
-        IServiceProvider serviceProvider)
+        ILoggerFactory loggerFactory)
     {
         _settingsProvider = settingsProvider;
         _logger = logger;
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
-        _serviceProvider = serviceProvider;
+        _loggerFactory = loggerFactory;
     }
 
     /// <inheritdoc/>
@@ -62,8 +62,8 @@ public class DefaultLLMClientFactory : ILLMClientFactory
             return null;
         }
 
-        // 创建日志记录器
-        var clientLogger = _serviceProvider.GetRequiredService<ILogger<DefaultLLMClient>>();
+        // 创建日志记录器（使用注入的日志工厂）
+        var clientLogger = _loggerFactory.CreateLogger<DefaultLLMClient>();
 
         // 创建客户端
         return new DefaultLLMClient(clientLogger, _cachedSettings, _httpClientFactory);

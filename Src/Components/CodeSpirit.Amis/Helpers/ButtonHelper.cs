@@ -719,12 +719,25 @@ namespace CodeSpirit.Amis.Helpers
                     // 进度状态显示
                     new JObject
                     {
-                        ["type"] = "alert",
-                        ["level"] = "info",
-                        ["body"] = new JObject
+                        ["type"] = "container",
+                        ["className"] = "mb-3",
+                        ["body"] = new JArray
                         {
-                            ["type"] = "tpl",
-                            ["tpl"] = "<strong>当前状态：</strong>${statusText || '准备中...'}<br/><strong>进度：</strong>${progress || 0}%"
+                            // 状态文本
+                            new JObject
+                            {
+                                ["type"] = "tpl",
+                                ["tpl"] = "<div class='mb-2'><strong>当前状态：</strong>${statusText || '准备中...'}</div>"
+                            },
+                            // 进度条
+                            new JObject
+                            {
+                                ["type"] = "progress",
+                                ["value"] = "${progress || 0}",
+                                ["showLabel"] = true,
+                                ["strokeWidth"] = 10,
+                                ["animate"] = true
+                            }
                         }
                     },
                     // 分隔线
@@ -917,7 +930,7 @@ namespace CodeSpirit.Amis.Helpers
                 ["name"] = "aiLogsService",
                 ["interval"] = op.PollingInterval,
                 ["silentPolling"] = true,
-                ["stopAutoRefreshWhen"] = "${aiTaskCompleted}",
+                ["stopAutoRefreshWhen"] = "progress == 100",
                 ["initFetch"] = true,
                 ["api"] = new JObject
                 {
@@ -927,28 +940,30 @@ namespace CodeSpirit.Amis.Helpers
                     {
                         ["taskId"] = "${taskId}"
                     },
-                    ["sendOn"] = "taskId != ''"
+                    //["sendOn"] = "taskId != ''"
                 },
                 ["onEvent"] = new JObject
                 {
-                    //["init"] = new JObject
-                    //{
-                    //    ["actions"] = new JArray
-                    //    {
-                    //        new JObject
-                    //        {
-                    //            ["actionType"] = "toast",
-                    //            ["args"] = new JObject
-                    //            {
-                    //                ["msg"] = "init...."
-                    //            }
-                    //        }
-                    //    }
-                    //},
-                    ["aiTaskCompleted"] = new JObject
+                    ["fetchInited"] = new JObject
                     {
                         ["actions"] = new JArray
                         {
+                            // 等待300毫秒
+                            new JObject
+                            {
+                                ["actionType"] = "delay",
+                                ["args"] = new JObject
+                                {
+                                    ["delay"] = 300
+                                }
+                            },
+                            // 跳转到下一步
+                            new JObject
+                            {
+                                ["expression"] = "progress == 100",
+                                ["actionType"] = "next",
+                                ["componentId"] = "aiSteps"
+                            },
                             new JObject
                             {
                                 ["actionType"] = "setValue",

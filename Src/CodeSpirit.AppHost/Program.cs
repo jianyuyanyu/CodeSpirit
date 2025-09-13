@@ -82,7 +82,7 @@ if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
     var mysqlPassword = builder.AddParameter("mysql-password", "Password123", secret: true);
 
     // 添加MySQL服务器
-    var mysql = builder.AddMySql("mysql", password: mysqlPassword)
+    var mysql = builder.AddMySql("mysql", password: mysqlPassword, port: 53362)
                        .WithLifetime(ContainerLifetime.Persistent)
                        .WithDataVolume()
                        .WithPhpMyAdmin();

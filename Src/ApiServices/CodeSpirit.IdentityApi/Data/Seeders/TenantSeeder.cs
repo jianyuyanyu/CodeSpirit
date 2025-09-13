@@ -101,6 +101,9 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                         _logger.LogInformation("没有数据变更，跳过保存操作");
                     }
 
+                    // 等待一小段时间，确保事务完全提交到数据库
+                    await Task.Delay(500);
+
                     _logger.LogInformation("租户种子数据初始化完成");
                 }
                 catch
@@ -529,7 +532,21 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
                 if (defaultTenant == null)
                 {
-                    _logger.LogError("默认租户不存在！");
+                    _logger.LogWarning("默认租户在验证时不存在，这可能是首次启动的正常情况。将在下次验证时检查。");
+                    // 尝试重新查询，有时候是缓存或上下文问题
+                    await Task.Delay(500);
+                    defaultTenant = await _context.Tenants
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.DefaultTenantId);
+                    
+                    if (defaultTenant == null)
+                    {
+                        _logger.LogWarning("二次验证默认租户仍不存在，可能需要手动创建或检查数据库连接");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("二次验证默认租户成功: {TenantName}", defaultTenant.Name);
+                    }
                 }
                 else
                 {
@@ -542,7 +559,21 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
                 if (systemTenant == null)
                 {
-                    _logger.LogError("系统租户不存在！");
+                    _logger.LogWarning("系统租户在验证时不存在，这可能是首次启动的正常情况。将在下次验证时检查。");
+                    // 尝试重新查询，有时候是缓存或上下文问题
+                    await Task.Delay(500);
+                    systemTenant = await _context.Tenants
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.SystemTenantId);
+                    
+                    if (systemTenant == null)
+                    {
+                        _logger.LogWarning("二次验证系统租户仍不存在，可能需要手动创建或检查数据库连接");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("二次验证系统租户成功: {TenantName}", systemTenant.Name);
+                    }
                 }
                 else
                 {

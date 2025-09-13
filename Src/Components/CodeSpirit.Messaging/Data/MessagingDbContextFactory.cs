@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Pomelo.EntityFrameworkCore.MySql;
 
 namespace CodeSpirit.Messaging.Data;
 
@@ -26,11 +27,20 @@ public class MessagingDbContextFactory : IDesignTimeDbContextFactory<MessagingDb
             .AddJsonFile("appsettings.Development.json", optional: true)
             .Build();
 
-        // 配置选项
-        var optionsBuilder = new DbContextOptionsBuilder<MessagingDbContext>();
-        optionsBuilder.UseSqlServer(
-            configuration.GetConnectionString("messaging-api") ?? 
-            "Server=(localdb)\\mssqllocaldb;Database=codespirit-messaging;Trusted_Connection=True;MultipleActiveResultSets=true");
+        // 配置选项 - 根据配置选择数据库类型
+        var optionsBuilder = new DbContextOptionsBuilder();
+        var connectionString = configuration.GetConnectionString("messaging-api") ?? 
+            "Server=localhost;Port=3306;Database=codespirit-messaging;Uid=root;Pwd=Password123;CharSet=utf8mb4;";
+        var databaseType = configuration.GetValue<string>("DatabaseType") ?? "MySql";
+        
+        if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
+        {
+            optionsBuilder.UseMySql(connectionString, ServerVersion.Parse("8.0.21-mysql"));
+        }
+        else
+        {
+            optionsBuilder.UseSqlServer(connectionString);
+        }
 
         // 创建服务集合用于设计时
         var services = new ServiceCollection();

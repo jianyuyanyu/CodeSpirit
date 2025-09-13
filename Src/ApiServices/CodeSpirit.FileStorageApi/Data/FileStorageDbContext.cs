@@ -7,9 +7,9 @@ using CodeSpirit.Core;
 namespace CodeSpirit.FileStorageApi.Data;
 
 /// <summary>
-/// 文件存储数据库上下文
+/// 文件存储数据库上下文 - 支持多数据库
 /// </summary>
-public class FileStorageDbContext : MultiTenantDbContext
+public class FileStorageDbContext : MultiDatabaseDbContextBase
 {
     /// <summary>
     /// 文件
@@ -37,7 +37,7 @@ public class FileStorageDbContext : MultiTenantDbContext
     /// 构造函数
     /// </summary>
     public FileStorageDbContext(
-        DbContextOptions<FileStorageDbContext> options,
+        DbContextOptions options,
         IServiceProvider serviceProvider,
         ICurrentUser currentUser,
         IHttpContextAccessor httpContextAccessor) : base(options, serviceProvider, currentUser, httpContextAccessor)

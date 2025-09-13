@@ -1,6 +1,7 @@
 using CodeSpirit.Settings.Data;
 using CodeSpirit.Settings.Services.Implementations;
 using CodeSpirit.MultiTenant.Extensions;
+using CodeSpirit.Shared.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,17 +27,17 @@ public static class SettingsExtensions
         // 添加多租户支持
         services.AddCodeSpiritMultiTenant(configuration);
         
-        // 添加数据库上下文
+        // 添加数据库上下文 - 使用多数据库架构
         if (dbContextOptions != null)
         {
+            // 如果提供了自定义配置，仍然使用传统方式
             services.AddDbContext<SettingsDbContext>(dbContextOptions);
         }
         else
         {
-            // 默认使用SQL Server
-            var connectionString = configuration.GetConnectionString("settings");
-            services.AddDbContext<SettingsDbContext>(options =>
-                options.UseSqlServer(connectionString));
+            // 使用多数据库架构配置
+            DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<SettingsDbContext, MySqlSettingsDbContext, SqlServerSettingsDbContext>(
+                services, configuration, "settings");
         }
         
         // 注册设置服务
@@ -56,14 +57,17 @@ public static class SettingsExtensions
         using (var scope = app.ApplicationServices.CreateScope())
         {
             var services = scope.ServiceProvider;
+            var configuration = services.GetRequiredService<IConfiguration>();
+            var logger = services.GetRequiredService<ILogger<SettingsDbContext>>();
             
             try
             {
-                // 获取数据库上下文
-                var context = services.GetRequiredService<SettingsDbContext>();
+                // 使用多数据库迁移助手应用迁移
+                await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlSettingsDbContext, SqlServerSettingsDbContext>(
+                    services, configuration, logger, "Settings");
                 
-                // 应用迁移
-                await context.Database.MigrateAsync();
+                // 获取数据库上下文进行数据初始化
+                var context = services.GetRequiredService<SettingsDbContext>();
                 
                 // 初始化数据
                 // 检查是否有设置数据
@@ -75,8 +79,8 @@ public static class SettingsExtensions
             }
             catch (Exception ex)
             {
-                var logger = services.GetRequiredService<ILogger<SettingsDbContext>>();
                 logger.LogError(ex, "初始化设置数据库时出错");
+                throw;
             }
         }
         

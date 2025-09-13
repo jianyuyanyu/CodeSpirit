@@ -7,9 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace CodeSpirit.Messaging.Data;
 
 /// <summary>
-/// 消息模块数据库上下文
+/// 消息模块数据库上下文 - 支持多数据库
 /// </summary>
-public class MessagingDbContext : MultiTenantDbContext
+public class MessagingDbContext : MultiDatabaseDbContextBase
 {
     /// <summary>
     /// 构造函数
@@ -19,7 +19,7 @@ public class MessagingDbContext : MultiTenantDbContext
     /// <param name="currentUser">当前用户服务</param>
     /// <param name="httpContextAccessor">HTTP上下文访问器</param>
     public MessagingDbContext(
-        DbContextOptions<MessagingDbContext> options,
+        DbContextOptions options,
         IServiceProvider serviceProvider,
         ICurrentUser currentUser,
         IHttpContextAccessor httpContextAccessor) : base(options, serviceProvider, currentUser, httpContextAccessor)
@@ -63,7 +63,7 @@ public class MessagingDbContext : MultiTenantDbContext
             entity.Property(e => e.SenderId).HasMaxLength(100);
             entity.Property(e => e.SenderName).HasMaxLength(100);
             entity.Property(e => e.RecipientId).HasMaxLength(100).IsRequired();
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
             
             // 多租户字段配置
             entity.Property(e => e.TenantId).HasMaxLength(50).IsRequired();
@@ -75,8 +75,8 @@ public class MessagingDbContext : MultiTenantDbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Title).HasMaxLength(200);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()");
-            entity.Property(e => e.LastActivityAt).HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+            entity.Property(e => e.LastActivityAt).HasDefaultValueSql("GETUTCDATE()");
             
             // 多租户字段配置
             entity.Property(e => e.TenantId).HasMaxLength(50).IsRequired();
@@ -101,7 +101,7 @@ public class MessagingDbContext : MultiTenantDbContext
             entity.HasKey(e => new { e.UserId, e.ConversationId });
             entity.Property(e => e.UserId).HasMaxLength(100).IsRequired();
             entity.Property(e => e.UserName).HasMaxLength(100).IsRequired();
-            entity.Property(e => e.JoinedAt).HasDefaultValueSql("GETDATE()");
+            entity.Property(e => e.JoinedAt).HasDefaultValueSql("GETUTCDATE()");
             
             // 多租户字段配置
             entity.Property(e => e.TenantId).HasMaxLength(50).IsRequired();

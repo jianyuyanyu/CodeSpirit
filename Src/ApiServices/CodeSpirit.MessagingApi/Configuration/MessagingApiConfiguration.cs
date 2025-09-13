@@ -38,20 +38,9 @@ public class MessagingApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 配置消息系统数据库
-        var connectionString = configuration.GetConnectionString(ConnectionStringKey);
-        services.AddDbContext<MessagingDbContext>(options =>
-        {
-            options.UseSqlServer(connectionString, sqlOptions =>
-                sqlOptions.EnableRetryOnFailure());
-
-            options.ConfigureWarnings(warnings =>
-                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-        });
-        
-        // 注册DbContext基类解析
-        services.AddScoped<DbContext>(provider =>
-            provider.GetRequiredService<MessagingDbContext>());
+        // 使用多数据库配置助手配置消息系统数据库
+        CodeSpirit.Shared.Data.DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<MessagingDbContext, MySqlMessagingDbContext, SqlServerMessagingDbContext>(
+            services, configuration, ConnectionStringKey);
         
         // 从已有MessagingServices中迁移 - 保持原有功能
         services.AddMessagingServices(configuration);

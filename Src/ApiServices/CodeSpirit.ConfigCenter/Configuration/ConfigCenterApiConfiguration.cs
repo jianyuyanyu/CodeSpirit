@@ -8,6 +8,7 @@ using CodeSpirit.ConfigCenter.Services.Implementations;
 using CodeSpirit.ConfigCenter.Services.Settings;
 using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
+using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
@@ -42,16 +43,9 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 配置配置中心数据库
-        var connectionString = configuration.GetConnectionString(ConnectionStringKey);
-        services.AddDbContext<ConfigDbContext>(options =>
-        {
-            options.UseSqlServer(connectionString);
-        });
-        
-        // 注册DbContext基类解析
-        services.AddScoped<DbContext>(provider =>
-            provider.GetRequiredService<ConfigDbContext>());
+        // 配置多数据库支持的配置中心数据库
+        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<ConfigDbContext, MySqlConfigDbContext, SqlServerConfigDbContext>(
+            services, configuration, ConnectionStringKey);
         
         // 添加多租户支持
         services.AddCodeSpiritMultiTenant(configuration);
@@ -110,21 +104,26 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override async Task InitializeDatabaseAsync(WebApplication app)
     {
-        // 使用通用数据库初始化方法
-        await app.InitializeApiDatabaseAsync<ConfigDbContext>(async services =>
+        // 初始化数据库
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var logger = services.GetRequiredService<ILogger<ConfigCenterApiConfiguration>>();
+        var configuration = services.GetRequiredService<IConfiguration>();
+        
+        try
         {
-            try
-            {
-                // 初始化配置中心种子数据
-                var seederService = services.GetRequiredService<ConfigSeederService>();
-                await seederService.SeedAsync();
-            }
-            catch (Exception ex)
-            {
-                var logger = services.GetRequiredService<ILogger<ConfigCenterApiConfiguration>>();
-                logger.LogError(ex, "初始化配置中心种子数据时发生错误");
-                throw;
-            }
-        });
+            // 应用数据库迁移
+            await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlConfigDbContext, SqlServerConfigDbContext>(
+                services, configuration, logger, "ConfigCenter");
+            
+            // 初始化配置中心种子数据
+            var seederService = services.GetRequiredService<ConfigSeederService>();
+            await seederService.SeedAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "初始化配置中心数据库时发生错误：{Message}", ex.Message);
+            throw;
+        }
     }
 }

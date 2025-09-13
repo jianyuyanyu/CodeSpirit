@@ -23,13 +23,9 @@ public static class ServiceCollectionExtensions
     /// <returns>服务集合</returns>
     public static IServiceCollection AddMessagingServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // 注册数据库上下文
-        services.AddDbContext<MessagingDbContext>(options =>
-        {
-            options.UseSqlServer(
-                configuration.GetConnectionString("messaging-api"),
-                sqlOptions => sqlOptions.EnableRetryOnFailure());
-        });
+        // 注册数据库上下文 - 使用多数据库架构
+        CodeSpirit.Shared.Data.DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<MessagingDbContext, MySqlMessagingDbContext, SqlServerMessagingDbContext>(
+            services, configuration, "messaging-api");
 
         // 注册仓储
         services.AddScoped<IMessageRepository, MessageRepository>();
@@ -70,14 +66,14 @@ public static class ServiceCollectionExtensions
     {
         using var scope = serviceProvider.CreateScope();
         var services = scope.ServiceProvider;
+        var configuration = services.GetRequiredService<IConfiguration>();
         var logger = services.GetRequiredService<ILogger<MessagingDbContext>>();
         
         try
         {
-            // 执行迁移
-            var dbContext = services.GetRequiredService<MessagingDbContext>();
-            await dbContext.Database.MigrateAsync();
-            logger.LogInformation("消息数据库迁移完成");
+            // 执行迁移 - 使用多数据库迁移助手
+            await CodeSpirit.Shared.Data.DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlMessagingDbContext, SqlServerMessagingDbContext>(
+                services, configuration, logger, "Messaging");
             
             // 初始化种子数据
             var messageSeeder = services.GetRequiredService<MessageSeeder>();

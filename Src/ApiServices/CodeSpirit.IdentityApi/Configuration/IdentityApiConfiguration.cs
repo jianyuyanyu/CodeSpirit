@@ -19,6 +19,7 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Pomelo.EntityFrameworkCore.MySql;
 
 
 namespace CodeSpirit.IdentityApi.Configuration;
@@ -45,12 +46,48 @@ public class IdentityApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 配置身份认证数据库
+        // 使用传统方式配置数据库，因为统一启动框架暂时不支持直接使用Aspire扩展方法
+        // TODO: 后续需要修改统一启动框架以支持Aspire数据库集成
+        var databaseType = configuration.GetValue<string>("DatabaseType") ?? "MySql";
         var connectionString = configuration.GetConnectionString(ConnectionStringKey);
-        services.AddDbContext<ApplicationDbContext>(options =>
+        Console.WriteLine($"Identity API 使用数据库类型: {databaseType}");
+
+        if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
         {
-            options.UseSqlServer(connectionString);
-        });
+            // 注册MySQL特定的DbContext用于迁移
+            services.AddDbContext<MySqlDbContext>(options =>
+            {
+                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+            });
+            
+            // 注册ApplicationDbContext，使用MySQL配置
+            services.AddDbContext<ApplicationDbContext>(options =>
+            {
+                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+            });
+            
+            Console.WriteLine("已配置MySql数据库");
+        }
+        else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            // 注册SQL Server特定的DbContext用于迁移
+            services.AddDbContext<SqlServerDbContext>(options =>
+            {
+                options.UseSqlServer(connectionString);
+            });
+            
+            // 注册ApplicationDbContext，使用SQL Server配置
+            services.AddDbContext<ApplicationDbContext>(options =>
+            {
+                options.UseSqlServer(connectionString);
+            });
+            
+            Console.WriteLine("已配置SqlServer数据库");
+        }
+        else
+        {
+            throw new InvalidOperationException($"不支持的数据库类型: {databaseType}");
+        }
         
         // 注册DbContext基类解析
         services.AddScoped<DbContext>(provider =>
@@ -144,9 +181,14 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var logger = services.GetRequiredService<ILogger<IdentityApiConfiguration>>();
+        var configuration = services.GetRequiredService<IConfiguration>();
+        
         try
         {
-            // 调用数据初始化方法
+            // 首先应用数据库迁移
+            await ApplyDatabaseMigrationsAsync(services, configuration, logger);
+            
+            // 然后执行数据初始化
             await DataSeeder.SeedAsync(services);
         }
         catch (Exception ex)
@@ -154,6 +196,36 @@ public class IdentityApiConfiguration : BaseApiConfiguration
             // 在控制台输出错误
             logger.LogError(ex, "数据初始化失败：{Message}", ex.Message);
             throw;
+        }
+    }
+    
+    /// <summary>
+    /// 应用数据库迁移
+    /// </summary>
+    /// <param name="services">服务提供者</param>
+    /// <param name="configuration">配置</param>
+    /// <param name="logger">日志记录器</param>
+    /// <returns>异步任务</returns>
+    private static async Task ApplyDatabaseMigrationsAsync(IServiceProvider services, IConfiguration configuration, ILogger logger)
+    {
+        var databaseType = configuration.GetValue<string>("DatabaseType") ?? "MySql";
+        logger.LogInformation("开始应用 {DatabaseType} 数据库迁移...", databaseType);
+        
+        if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
+        {
+            var mySqlContext = services.GetRequiredService<MySqlDbContext>();
+            await mySqlContext.Database.MigrateAsync();
+            logger.LogInformation("MySQL 数据库迁移应用完成");
+        }
+        else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            var sqlServerContext = services.GetRequiredService<SqlServerDbContext>();
+            await sqlServerContext.Database.MigrateAsync();
+            logger.LogInformation("SQL Server 数据库迁移应用完成");
+        }
+        else
+        {
+            throw new InvalidOperationException($"不支持的数据库类型: {databaseType}");
         }
     }
     

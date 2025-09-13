@@ -7,9 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace CodeSpirit.Settings.Data;
 
 /// <summary>
-/// 设置数据库上下文
+/// 设置数据库上下文 - 支持多数据库
 /// </summary>
-public class SettingsDbContext : MultiTenantDbContext
+public class SettingsDbContext : MultiDatabaseDbContextBase
 {
     private readonly IServiceProvider _serviceProvider;
 
@@ -30,7 +30,7 @@ public class SettingsDbContext : MultiTenantDbContext
     /// <param name="serviceProvider">服务提供者</param>
     /// <param name="currentUser">当前用户</param>
     /// <param name="httpContextAccessor">HTTP上下文访问器</param>
-    public SettingsDbContext(DbContextOptions<SettingsDbContext> options,
+    public SettingsDbContext(DbContextOptions options,
         IServiceProvider serviceProvider,
         ICurrentUser currentUser,
         IHttpContextAccessor httpContextAccessor) :

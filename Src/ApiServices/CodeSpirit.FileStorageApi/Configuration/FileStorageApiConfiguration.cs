@@ -6,6 +6,7 @@ using CodeSpirit.FileStorageApi.Options;
 using CodeSpirit.FileStorageApi.Providers;
 using CodeSpirit.FileStorageApi.Services;
 using CodeSpirit.MultiTenant.Extensions;
+using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Events;
 using CodeSpirit.Shared.EventBus.Extensions;
@@ -43,23 +44,9 @@ public class FileStorageApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 配置文件存储数据库
-        var connectionString = configuration.GetConnectionString(ConnectionStringKey);
-        services.AddDbContext<FileStorageDbContext>(options =>
-        {
-            options.UseSqlServer(connectionString);
-
-            // 仅在开发环境下启用敏感数据日志和控制台日志
-            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
-            {
-                options.EnableSensitiveDataLogging()
-                       .UseLoggerFactory(LoggerFactory.Create(builder => builder.AddConsole()));
-            }
-        });
-        
-        // 注册DbContext基类解析
-        services.AddScoped<DbContext>(provider =>
-            provider.GetRequiredService<FileStorageDbContext>());
+        // 配置多数据库支持的文件存储数据库
+        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<FileStorageDbContext, MySqlFileStorageDbContext, SqlServerFileStorageDbContext>(
+            services, configuration, ConnectionStringKey);
         
         // 添加多租户支持
         services.AddCodeSpiritMultiTenant(configuration);
@@ -118,18 +105,22 @@ public class FileStorageApiConfiguration : BaseApiConfiguration
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
+        var logger = services.GetRequiredService<ILogger<FileStorageApiConfiguration>>();
+        var configuration = services.GetRequiredService<IConfiguration>();
+        
         try
         {
-            var context = services.GetRequiredService<FileStorageDbContext>();
-            // 使用迁移而不是EnsureCreated
-            await context.Database.MigrateAsync();
+            // 应用数据库迁移
+            await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlFileStorageDbContext, SqlServerFileStorageDbContext>(
+                services, configuration, logger, "FileStorageApi");
+            
             // 初始化数据
+            var context = services.GetRequiredService<FileStorageDbContext>();
             await FileStorageDbContextExtensions.InitializeDatabaseAsync(context);
         }
         catch (Exception ex)
         {
-            var logger = services.GetRequiredService<ILogger<FileStorageApiConfiguration>>();
-            logger.LogError(ex, "初始化文件存储数据库时发生错误");
+            logger.LogError(ex, "初始化文件存储数据库时发生错误：{Message}", ex.Message);
             throw;
         }
     }

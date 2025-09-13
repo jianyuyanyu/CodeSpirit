@@ -13,9 +13,9 @@ using Microsoft.AspNetCore.Http;
 namespace CodeSpirit.ExamApi.Data;
 
 /// <summary>
-/// 考试系统数据库上下文 - 支持多租户
+/// 考试系统数据库上下文 - 支持多租户和多数据库
 /// </summary>
-public class ExamDbContext : MultiTenantDbContext
+public class ExamDbContext : MultiDatabaseDbContextBase
 {
     private readonly IServiceProvider _serviceProvider;
     
@@ -27,7 +27,7 @@ public class ExamDbContext : MultiTenantDbContext
     /// <param name="currentUser">当前用户</param>
     /// <param name="httpContextAccessor">HTTP上下文访问器</param>
     public ExamDbContext(
-        DbContextOptions<ExamDbContext> options,
+        DbContextOptions options,
         IServiceProvider serviceProvider,
         ICurrentUser currentUser,
         IHttpContextAccessor httpContextAccessor) : base(options, serviceProvider, currentUser, httpContextAccessor)

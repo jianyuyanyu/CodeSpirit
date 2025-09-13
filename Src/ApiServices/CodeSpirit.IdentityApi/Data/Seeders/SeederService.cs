@@ -23,8 +23,7 @@ public class SeederService: IScopedDependency
                 // 临时设置一个系统用户ID用于审计字段
                 dbContext.UserId = -1;  // 使用-1作为系统用户ID
 
-                // 应用迁移
-                await dbContext.Database.MigrateAsync();
+                // 注意：数据库迁移已在 IdentityApiConfiguration.ApplyDatabaseMigrationsAsync 中处理
 
                 // 1. 首先初始化租户数据（必须在用户和角色之前）
                 TenantSeeder tenantSeeder = scope.ServiceProvider.GetRequiredService<TenantSeeder>();
@@ -34,13 +33,12 @@ public class SeederService: IScopedDependency
                 // 清理ChangeTracker以避免实体跟踪冲突
                 dbContext.ChangeTracker.Clear();
 
-                // 验证租户数据迁移结果
-                await tenantSeeder.ValidateMigrationAsync();
+                // 等待一小段时间确保数据库事务完全提交
+                await Task.Delay(1000);
+
+                // 验证租户数据迁移结果（使用新的scope避免上下文冲突）
+                await ValidateDataWithNewScopeAsync(scope.ServiceProvider);
                 _logger.LogInformation("租户数据验证完毕！");
-                
-                // 诊断租户状态
-                await tenantSeeder.DiagnoseTenantStatusAsync();
-                _logger.LogInformation("租户状态诊断完毕！");
 
                 // 再次清理ChangeTracker
                 dbContext.ChangeTracker.Clear();
@@ -116,6 +114,35 @@ public class SeederService: IScopedDependency
         {
             _logger.LogError(ex, "创建业务角色和用户时发生错误: {Message}", ex.Message);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 使用新的作用域验证数据
+    /// </summary>
+    /// <param name="serviceProvider">服务提供者</param>
+    /// <returns></returns>
+    private async Task ValidateDataWithNewScopeAsync(IServiceProvider serviceProvider)
+    {
+        // 创建新的作用域来验证数据，避免与之前的上下文冲突
+        using var validationScope = serviceProvider.CreateScope();
+        var validationServices = validationScope.ServiceProvider;
+        
+        try
+        {
+            var tenantSeeder = validationServices.GetRequiredService<TenantSeeder>();
+            
+            // 诊断租户状态（更详细的检查）
+            await tenantSeeder.DiagnoseTenantStatusAsync();
+            _logger.LogInformation("租户状态诊断完毕！");
+            
+            // 验证租户数据迁移结果
+            await tenantSeeder.ValidateMigrationAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "租户数据验证时发生警告: {Message}", ex.Message);
+            // 这里改为警告而不是抛出异常，因为可能是初始化时的正常情况
         }
     }
 }

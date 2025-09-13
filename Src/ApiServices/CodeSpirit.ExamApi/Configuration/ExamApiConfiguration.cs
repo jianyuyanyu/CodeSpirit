@@ -10,6 +10,7 @@ using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.PdfGeneration.Extensions;
 using CodeSpirit.Settings.Extensions;
+using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
@@ -46,18 +47,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 配置考试系统数据库
-        var connectionString = configuration.GetConnectionString(ConnectionStringKey);
-        Console.WriteLine($"Connection string: {connectionString}");
-        
-        services.AddDbContext<ExamDbContext>(options =>
-        {
-            options.UseSqlServer(connectionString);
-        });
-        
-        // 注册DbContext基类解析
-        services.AddScoped<DbContext>(provider =>
-            provider.GetRequiredService<ExamDbContext>());
+        // 配置多数据库支持的考试系统数据库
+        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<ExamDbContext, MySqlExamDbContext, SqlServerExamDbContext>(
+            services, configuration, ConnectionStringKey);
         
         // 注册仓储模式
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -121,18 +113,35 @@ public class ExamApiConfiguration : BaseApiConfiguration
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var logger = services.GetRequiredService<ILogger<ExamApiConfiguration>>();
+        var configuration = services.GetRequiredService<IConfiguration>();
         
         try
         {
-            var context = services.GetRequiredService<ExamDbContext>();
-            // 使用迁移而不是EnsureCreated
-            await context.Database.MigrateAsync();
+            // 应用数据库迁移（使用改进的迁移方法）
+            await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlExamDbContext, SqlServerExamDbContext>(
+                services, configuration, logger, "ExamApi");
+            
             // 初始化数据
+            var context = services.GetRequiredService<ExamDbContext>();
             await context.InitializeDatabaseAsync();
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "初始化考试系统数据库时发生错误：{Message}", ex.Message);
+            
+            // 如果是迁移冲突错误，提供解决建议
+            if (ex.Message.Contains("already an object named") || 
+                ex.Message.Contains("Table") && ex.Message.Contains("already exists"))
+            {
+                logger.LogError("检测到数据库迁移冲突！这通常是因为:");
+                logger.LogError("1. 数据库中已存在表但迁移历史不一致");
+                logger.LogError("2. 多个DbContext尝试创建相同的表");
+                logger.LogError("建议解决方案:");
+                logger.LogError("1. 运行迁移冲突修复脚本: .\\Scripts\\fix-migration-conflicts.ps1 -ApiProject ExamApi -DatabaseType SqlServer -Action CheckStatus");
+                logger.LogError("2. 或手动清理数据库: DELETE FROM __EFMigrationsHistory;");
+                logger.LogError("3. 然后重启应用程序");
+            }
+            
             throw;
         }
     }

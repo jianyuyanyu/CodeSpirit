@@ -140,7 +140,7 @@ namespace CodeSpirit.IdentityApi.Data
         }
 
         public ApplicationDbContext(
-            DbContextOptions<ApplicationDbContext> options,
+            DbContextOptions options,
             IServiceProvider serviceProvider,
             IHttpContextAccessor httpContextAccessor,
             ICurrentUser currentUser,
@@ -169,6 +169,15 @@ namespace CodeSpirit.IdentityApi.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            
+            // 移除ASP.NET Core Identity默认创建的RoleNameIndex
+            var roleEntity = builder.Entity<ApplicationRole>();
+            var roleNameIndex = roleEntity.Metadata.GetIndexes()
+                .FirstOrDefault(i => i.GetDatabaseName() == "RoleNameIndex");
+            if (roleNameIndex != null)
+            {
+                roleEntity.Metadata.RemoveIndex(roleNameIndex);
+            }
 
             // 定义一个转换器：将 string[] 转换为单一字符串存储，反之转换回来
             ValueConverter<string[], string> stringArrayConverter = new(
@@ -197,6 +206,11 @@ namespace CodeSpirit.IdentityApi.Data
             {
                 b.Property(q => q.Id).ValueGeneratedNever();
                 b.ToTable(nameof(ApplicationRole));
+                
+                // 重新配置角色名称索引，包含租户ID以支持多租户
+                b.HasIndex(r => new { r.NormalizedName, r.TenantId })
+                 .HasDatabaseName("IX_ApplicationRole_NormalizedName_TenantId")
+                 .IsUnique();
             });
 
             // 配置 ApplicationUserRole 的关系
@@ -588,5 +602,6 @@ namespace CodeSpirit.IdentityApi.Data
         }
 
         #endregion
+
     }
 }

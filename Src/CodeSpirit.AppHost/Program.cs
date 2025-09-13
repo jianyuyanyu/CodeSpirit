@@ -1,5 +1,7 @@
 using Aspire.Hosting;
+using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Aspire.Hosting.Elasticsearch;
 using System.Text;
 
@@ -65,6 +67,60 @@ var elasticsearchService = builder.AddElasticsearch("elasticsearch", password: e
                               DisplayLocation = UrlDisplayLocation.DetailsOnly
                           });
 
+// 获取数据库类型配置
+var databaseType = builder.Configuration.GetValue<string>("DatabaseType") ?? "MySql";
+Console.WriteLine($"使用数据库类型: {databaseType}");
+
+// 数据库资源配置
+IResourceBuilder<IResourceWithConnectionString> identityDb, examDb, configDb, settingsDb, messagingDb, fileDb, surveyDb;
+
+if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
+{
+    Console.WriteLine("配置MySQL数据库资源...");
+
+    // 添加MySQL密码参数
+    var mysqlPassword = builder.AddParameter("mysql-password", "Password123", secret: true);
+
+    // 添加MySQL服务器
+    var mysql = builder.AddMySql("mysql", password: mysqlPassword)
+                       .WithLifetime(ContainerLifetime.Persistent)
+                       .WithDataVolume()
+                       .WithPhpMyAdmin();
+
+    // 创建各个数据库
+    identityDb = mysql.AddDatabase("identity-api");
+    examDb = mysql.AddDatabase("exam-api");
+    configDb = mysql.AddDatabase("config-api");
+    settingsDb = mysql.AddDatabase("settings");
+    messagingDb = mysql.AddDatabase("messaging-api");
+    fileDb = mysql.AddDatabase("file-api");
+    surveyDb = mysql.AddDatabase("survey-api");
+}
+else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+{
+    Console.WriteLine("配置SQL Server数据库资源...");
+
+    // 添加SQL Server服务器
+    var sqlServerPassword = builder.AddParameter("sqlserver-password", "P@ssword123456", secret: true);
+    var sqlServer = builder.AddSqlServer("sqlserver", password: sqlServerPassword, port: 1433)
+                           .WithLifetime(ContainerLifetime.Persistent)
+                           .WithDataVolume()
+                           ;
+
+    // 创建各个数据库
+    identityDb = sqlServer.AddDatabase("identity-api");
+    examDb = sqlServer.AddDatabase("exam-api");
+    configDb = sqlServer.AddDatabase("config-api");
+    settingsDb = sqlServer.AddDatabase("settings");
+    messagingDb = sqlServer.AddDatabase("messaging-api");
+    fileDb = sqlServer.AddDatabase("file-api");
+    surveyDb = sqlServer.AddDatabase("survey-api");
+}
+else
+{
+    throw new InvalidOperationException($"不支持的数据库类型: {databaseType}");
+}
+
 // 添加统一的JWT配置参数
 var jwtSecretKey = builder.AddParameter(name: "jwt-SecretKey", "ECBF8FA013844D77AE041A6800D7FF8F", secret: true);
 var jwtIssuer = builder.AddParameter(name: "jwt-Issuer", "codespirit.com");
@@ -72,58 +128,80 @@ var jwtAudience = builder.AddParameter(name: "jwt-Audience", "CodeSpirit");
 
 // 添加 ConfigCenter 服务
 var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
+    .WithReference(configDb)
     .WithReference(seqService)
     .WithReference(cache)
+    .WithEnvironment("DatabaseType", databaseType)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience);
+    .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WaitFor(configDb);
 
 var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
+    .WithReference(identityDb)
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
     .WithReference(rabbitmqService)
+    .WithEnvironment("DatabaseType", databaseType)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience);
+    .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WaitFor(identityDb);
 
 // 添加消息服务
 var messagingService = builder.AddProject<Projects.CodeSpirit_MessagingApi>("messaging")
+    .WithReference(messagingDb)
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
+    .WithEnvironment("DatabaseType", databaseType)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience);
+    .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WaitFor(messagingDb);
 
 var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
+    .WithReference(examDb)
+    .WithReference(settingsDb)  // 考试服务需要访问设置数据库
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
     .WithReference(rabbitmqService)
     .WithReference(elasticsearchService)
+    .WithEnvironment("DatabaseType", databaseType)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience);
+    .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WaitFor(examDb)
+    .WaitFor(settingsDb);
 
 var fileService = builder.AddProject<Projects.CodeSpirit_FileStorageApi>("file")
+    .WithReference(fileDb)
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
     .WithReference(rabbitmqService)
+    .WithEnvironment("DatabaseType", databaseType)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience);
+    .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WaitFor(fileDb);
 
 var surveyService = builder.AddProject<Projects.CodeSpirit_SurveyApi>("survey")
+    .WithReference(surveyDb)
+    .WithReference(settingsDb)
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
     .WithReference(rabbitmqService)
     .WithReference(identityService)
+    .WithEnvironment("DatabaseType", databaseType)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience);
+    .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WaitFor(surveyDb)
+    .WaitFor(settingsDb);
 
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
@@ -137,6 +215,7 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(elasticsearchService)
     .WithReference(fileService)
     .WithReference(surveyService)
+    .WithEnvironment("DatabaseType", databaseType)
     .WithUrlForEndpoint("https", url =>
     {
         url.DisplayText = "Web 前端";
@@ -146,7 +225,8 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
         Url = "/health",
         DisplayText = "健康检查",
         DisplayLocation = UrlDisplayLocation.DetailsOnly
-    });
+    })
+    .WaitFor(messagingDb);
 
 // 注册资源初始化事件，需要提供CancellationToken参数
 builder.Eventing.Subscribe<InitializeResourceEvent>((eventData, cancellationToken) =>
@@ -155,4 +235,5 @@ builder.Eventing.Subscribe<InitializeResourceEvent>((eventData, cancellationToke
     return Task.CompletedTask;
 });
 
+Console.WriteLine($"数据库类型 {databaseType} 配置完成，正在启动应用...");
 builder.Build().Run();

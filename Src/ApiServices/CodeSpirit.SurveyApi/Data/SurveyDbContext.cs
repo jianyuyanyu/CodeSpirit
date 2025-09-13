@@ -8,9 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace CodeSpirit.SurveyApi.Data;
 
 /// <summary>
-/// 问卷系统数据库上下文
+/// 问卷系统数据库上下文 - 支持多数据库
 /// </summary>
-public class SurveyDbContext : MultiTenantDbContext
+public class SurveyDbContext : MultiDatabaseDbContextBase
 {
     /// <summary>
     /// 初始化问卷数据库上下文
@@ -20,7 +20,7 @@ public class SurveyDbContext : MultiTenantDbContext
     /// <param name="currentUser">当前用户服务</param>
     /// <param name="httpContextAccessor">HTTP上下文访问器</param>
     public SurveyDbContext(
-        DbContextOptions<SurveyDbContext> options,
+        DbContextOptions options,
         IServiceProvider serviceProvider,
         ICurrentUser currentUser,
         IHttpContextAccessor httpContextAccessor) 

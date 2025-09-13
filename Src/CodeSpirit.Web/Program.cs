@@ -101,7 +101,7 @@ public class Program
         });
 
         // 添加消息模块服务
-        builder.Services.AddMessagingServices(builder.Configuration);
+        // builder.Services.AddMessagingServices(builder.Configuration);
         builder.Services.AddRealtimeChat();
         builder.Services.AddCodeSpiritAuthorization();
         builder.Services.AddCodeSpiritNavigation();

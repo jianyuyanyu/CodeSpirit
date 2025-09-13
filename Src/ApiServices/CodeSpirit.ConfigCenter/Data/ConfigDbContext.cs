@@ -7,11 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using System;
 
 /// <summary>
-/// 配置中心数据库上下文
+/// 配置中心数据库上下文 - 支持多数据库
 /// </summary>
-public class ConfigDbContext : AuditableDbContext
+public class ConfigDbContext : MultiDatabaseAuditableDbContextBase
 {
-    public ConfigDbContext(DbContextOptions<ConfigDbContext> options, IServiceProvider serviceProvider, ICurrentUser currentUser) : base(options, serviceProvider, currentUser)
+    public ConfigDbContext(DbContextOptions options, IServiceProvider serviceProvider, ICurrentUser currentUser) : base(options, serviceProvider, currentUser)
     {
     }
 

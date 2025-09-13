@@ -3,11 +3,11 @@ using CodeSpirit.AiFormFill;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.SurveyApi.Data;
 using CodeSpirit.SurveyApi.Extensions;
-
 using CodeSpirit.SurveyApi.Services.Interfaces;
 using CodeSpirit.SurveyApi.Services.Implementations;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Settings.Extensions;
+using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
@@ -44,18 +44,9 @@ public class SurveyApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 配置问卷系统数据库
-        var connectionString = configuration.GetConnectionString(ConnectionStringKey);
-        Console.WriteLine($"Connection string: {connectionString}");
-        
-        services.AddDbContext<SurveyDbContext>(options =>
-        {
-            options.UseSqlServer(connectionString);
-        });
-        
-        // 注册DbContext基类解析
-        services.AddScoped<DbContext>(provider =>
-            provider.GetRequiredService<SurveyDbContext>());
+        // 配置多数据库支持的问卷系统数据库
+        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<SurveyDbContext, MySqlSurveyDbContext, SqlServerSurveyDbContext>(
+            services, configuration, ConnectionStringKey);
         
         // 注册仓储模式
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -116,12 +107,17 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var logger = services.GetRequiredService<ILogger<SurveyApiConfiguration>>();
+        var configuration = services.GetRequiredService<IConfiguration>();
         
         try
         {
+            // 应用数据库迁移
+            await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlSurveyDbContext, SqlServerSurveyDbContext>(
+                services, configuration, logger, "SurveyApi");
+            
+            // 初始化数据
             var context = services.GetRequiredService<SurveyDbContext>();
-            // 使用迁移而不是EnsureCreated
-            await context.Database.MigrateAsync();
+            await context.InitializeDatabaseAsync();
         }
         catch (Exception ex)
         {

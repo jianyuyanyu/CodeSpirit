@@ -646,8 +646,54 @@ string cacheKey = $"UserPermissions:{Id.Value}:Tenant:{TenantId}";
 2. **分布式缓存**：支持多实例共享的Redis等分布式缓存
 3. **API存储**：通过HTTP API从远程服务获取租户信息
 
+### 存储特性
+
+- ✅ **智能选择**：自动检测服务类型，选择最优存储方式
+- ✅ **高性能**：Identity服务直接访问数据库，其他服务内存优先
+- ✅ **高可用性**：多层降级，单点故障自动切换
+- ✅ **自动同步**：从API获取的数据自动同步到缓存层
+- ✅ **简化配置**：无需手动选择存储类型，自动适配
+- ✅ **故障恢复**：上层存储恢复后自动优先使用
+
+### 智能存储选择
+
+组件会自动检测当前服务类型并选择最合适的存储方式：
+
+#### Identity服务（自动检测）
+- **使用LocalTenantStore**：直接访问数据库，避免HTTP循环调用
+- **检测方式**：
+  - 程序集名称包含"Identity"
+  - 当前目录路径包含"IdentityApi"
+  - 存在IdentityApi相关的ApplicationDbContext类型
+- **优势**：无需HTTP调用，性能更高，避免循环依赖
+
+#### 其他服务
+- **使用UnifiedTenantStore**：通过API调用获取租户信息
+- **三层存储架构**：内存→分布式缓存→API
+- **支持服务发现**：自动适配不同部署环境
+
 ### 配置示例
 
+#### Identity服务配置
+```json
+{
+  "MultiTenant": {
+    "Enabled": true,
+    "DefaultTenantId": "default",
+    "ResolveFromHeader": true,
+    "TenantHeaderName": "X-Tenant-Id",
+    "EnableTenantCache": true,
+    "CacheExpirationMinutes": 30
+  },
+  "MultiTenant:LocalStore": {
+    "MaxActiveTenantsCount": 1000,
+    "EnableCache": true,
+    "CacheExpirationMinutes": 30
+  }
+}
+```
+
+#### 其他服务配置
 ```json
 {
   "MultiTenant": {
@@ -667,14 +713,6 @@ string cacheKey = $"UserPermissions:{Id.Value}:Tenant:{TenantId}";
   }
 }
 ```
-
-### 存储特性
-
-- ✅ **高性能**：内存优先，最快的访问速度
-- ✅ **高可用性**：多层降级，单点故障自动切换
-- ✅ **自动同步**：从API获取的数据自动同步到缓存层
-- ✅ **简化配置**：无需复杂的存储类型选择，统一的配置方式
-- ✅ **故障恢复**：上层存储恢复后自动优先使用
 
 ### 支持的部署环境
 
@@ -717,6 +755,8 @@ builder.Services.Replace(ServiceDescriptor.Scoped<ITenantStore, CustomTenantStor
 
 ## 配置选项说明
 
+### 基础配置（MultiTenant节）
+
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `Enabled` | bool | true | 是否启用多租户功能 |
@@ -730,20 +770,61 @@ builder.Services.Replace(ServiceDescriptor.Scoped<ITenantStore, CustomTenantStor
 | `TenantPathPrefix` | string | "tenant-" | 租户路径前缀 |
 | `EnableTenantCache` | bool | true | 是否启用租户缓存 |
 | `CacheExpirationMinutes` | int | 30 | 缓存过期时间（分钟） |
-| `ApiStore.BaseUrl` | string | "" | API存储基础URL，支持服务发现 |
-| `ApiStore.Timeout` | int | 30 | API请求超时时间（秒） |
-| `ApiStore.UseApiResponseFormat` | bool | true | 是否使用ApiResponse格式 |
+
+### 本地存储配置（MultiTenant:LocalStore节）
+*适用于Identity服务，自动检测启用*
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `MaxActiveTenantsCount` | int | 1000 | 最大活跃租户数量限制 |
+| `EnableCache` | bool | true | 是否启用缓存 |
+| `CacheExpirationMinutes` | int | 30 | 缓存过期时间（分钟） |
+
+### API存储配置（MultiTenant:ApiStore节）
+*适用于其他服务，自动检测启用*
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `BaseUrl` | string | "http://identity" | API存储基础URL，支持服务发现 |
+| `Timeout` | int | 2 | API请求超时时间（秒） |
+| `UseApiResponseFormat` | bool | true | 是否使用ApiResponse格式 |
+| `GetTenantEndpoint` | string | "api/identity/internal/tenants/{tenantId}" | 获取租户信息端点 |
+| `GetActiveTenantsEndpoint` | string | "api/identity/internal/tenants/active" | 获取活跃租户列表端点 |
+| `CreateTenantEndpoint` | string | "api/identity/internal/tenants" | 创建租户端点 |
+| `UpdateTenantEndpoint` | string | "api/identity/internal/tenants/{tenantId}" | 更新租户端点 |
+| `DeleteTenantEndpoint` | string | "api/identity/internal/tenants/{tenantId}" | 删除租户端点 |
+| `CheckTenantExistsEndpoint` | string | "api/identity/internal/tenants/{tenantId}" | 检查租户是否存在端点 |
 
 ## 最佳实践
 
-1. **性能优化**：启用租户缓存以提升解析性能
-2. **安全考虑**：验证租户权限，防止跨租户数据访问
-3. **监控日志**：记录租户解析过程，便于问题排查
-4. **数据备份**：为每个租户制定独立的备份策略
-5. **扩展性**：设计时考虑租户数量增长的扩展性
-6. **用户体验**：使用ICurrentUser扩展简化多租户开发
-7. **权限隔离**：确保权限系统支持租户级别的隔离
-8. **JWT优化**：在登录时包含租户信息，减少后续查询开销
+1. **智能存储**：组件自动检测服务类型，无需手动配置存储方式
+2. **Identity服务**：自动使用LocalTenantStore，避免HTTP循环调用
+3. **其他服务**：自动使用UnifiedTenantStore，通过API获取租户信息
+4. **性能优化**：启用租户缓存以提升解析性能
+5. **安全考虑**：验证租户权限，防止跨租户数据访问
+6. **监控日志**：记录租户解析过程，便于问题排查
+7. **数据备份**：为每个租户制定独立的备份策略
+8. **扩展性**：设计时考虑租户数量增长的扩展性
+9. **用户体验**：使用ICurrentUser扩展简化多租户开发
+10. **权限隔离**：确保权限系统支持租户级别的隔离
+11. **JWT优化**：在登录时包含租户信息，减少后续查询开销
+
+## 解决方案亮点
+
+### 🔄 自动循环调用检测
+- **问题**：Identity服务调用自己的API会造成循环依赖
+- **解决**：自动检测Identity服务，使用LocalTenantStore直接访问数据库
+- **优势**：避免HTTP调用开销，提升性能，消除循环依赖
+
+### 🎯 智能服务识别
+- **多重检测**：程序集名称、目录路径、DbContext类型
+- **自动适配**：无需手动配置，自动选择最优存储方式
+- **向后兼容**：现有配置继续有效，无需修改
+
+### ⚡ 性能优化
+- **Identity服务**：直接数据库访问，无HTTP开销
+- **其他服务**：三层缓存架构，最小化API调用
+- **内存优先**：最快的访问速度，自动降级机制
 
 ## 许可证
 

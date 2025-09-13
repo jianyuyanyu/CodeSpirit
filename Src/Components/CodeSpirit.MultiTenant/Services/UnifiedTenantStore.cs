@@ -24,18 +24,19 @@ public class UnifiedTenantStore : ITenantStore
     /// <param name="httpClientFactory">HTTP客户端工厂</param>
     /// <param name="tenantOptions">租户配置选项</param>
     /// <param name="apiStoreOptions">API存储配置选项</param>
+    /// <param name="loggerFactory">日志工厂</param>
     /// <param name="logger">日志记录器</param>
     public UnifiedTenantStore(
         IDistributedCache distributedCache,
         IHttpClientFactory httpClientFactory,
         IOptions<TenantOptions> tenantOptions,
         IOptions<ApiTenantStoreOptions> apiStoreOptions,
+        ILoggerFactory loggerFactory,
         ILogger<UnifiedTenantStore> logger)
     {
         _logger = logger;
         
-        // 初始化三个存储实现
-        var loggerFactory = LoggerFactory.Create(builder => { });
+        // 初始化三个存储实现，使用注入的日志工厂
         _memoryStore = new MemoryTenantStore(loggerFactory.CreateLogger<MemoryTenantStore>());
         _distributedStore = new DistributedTenantStore(
             distributedCache, 
@@ -53,7 +54,7 @@ public class UnifiedTenantStore : ITenantStore
     /// </summary>
     /// <param name="tenantId">租户ID</param>
     /// <returns>租户信息</returns>
-    public async Task<ITenantInfo?> GetTenantAsync(string tenantId)
+    public async Task<ITenantInfo> GetTenantAsync(string tenantId)
     {
         if (string.IsNullOrWhiteSpace(tenantId))
         {

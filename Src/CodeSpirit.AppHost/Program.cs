@@ -92,6 +92,7 @@ var messagingService = builder.AddProject<Projects.CodeSpirit_MessagingApi>("mes
     .WithReference(seqService)
     .WithReference(cache)
     .WithReference(configService)
+    .WithReference(identityService)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience);
@@ -102,6 +103,7 @@ var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
     .WithReference(configService)
     .WithReference(rabbitmqService)
     .WithReference(elasticsearchService)
+    .WithReference(identityService)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience);
@@ -111,6 +113,7 @@ var fileService = builder.AddProject<Projects.CodeSpirit_FileStorageApi>("file")
     .WithReference(cache)
     .WithReference(configService)
     .WithReference(rabbitmqService)
+    .WithReference(identityService)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience);

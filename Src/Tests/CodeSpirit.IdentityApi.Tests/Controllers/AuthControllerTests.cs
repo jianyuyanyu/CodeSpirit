@@ -28,7 +28,7 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             _mockAuthService = new Mock<IAuthService>();
             _mockLogger = new Mock<ILogger<AuthController>>();
             _mockClientIpService = new Mock<IClientIpService>();
-            
+
             // 设置 SignInManager 的 Mock
             var mockUserManager = new Mock<UserManager<ApplicationUser>>(
                 Mock.Of<IUserStore<ApplicationUser>>(),
@@ -43,7 +43,7 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             _mockClientIpService.Setup(x => x.GetClientIpAddress(It.IsAny<HttpContext>()))
                 .Returns("127.0.0.1");
 
-            _controller = new AuthController(_mockAuthService.Object, _mockSignInManager.Object, _mockLogger.Object, _mockClientIpService.Object);
+            _controller = new AuthController(_mockAuthService.Object, _mockSignInManager.Object, _mockLogger.Object, _mockClientIpService.Object, new Mock<ICurrentUser>().Object);
         }
 
         [Fact]
@@ -61,9 +61,9 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             // 预期服务器会构建包含IP和UserAgent的LoginDto
             var userDto = new UserDto { UserName = userName };
             var authResult = AuthResultDto.CreateSuccess("test-token", "test-refresh-token", userDto);
-            
-            _mockAuthService.Setup(a => a.LoginAsync(It.Is<LoginDto>(dto => 
-                dto.UserName == userName && 
+
+            _mockAuthService.Setup(a => a.LoginAsync(It.Is<LoginDto>(dto =>
+                dto.UserName == userName &&
                 dto.Password == password)))
                 .ReturnsAsync(authResult);
 
@@ -81,7 +81,7 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             var actionResult = Assert.IsType<ActionResult<ApiResponse<AuthTokenResponse>>>(result);
             var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             var response = Assert.IsType<ApiResponse<AuthTokenResponse>>(okResult.Value);
-            
+
             Assert.Equal(0, response.Status);
             Assert.Equal("登录成功", response.Msg);
             Assert.NotNull(response.Data);
@@ -94,18 +94,18 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
         public async Task Login_WithInvalidCredentials_ReturnsBadResponse()
         {
             // Arrange
-            var loginModel = new LoginModel 
-            { 
-                UserName = "testuser", 
+            var loginModel = new LoginModel
+            {
+                UserName = "testuser",
                 Password = "wrongpass",
             };
-            
+
             var errorMessage = "用户名或密码错误";
             var authResult = AuthResultDto.CreateFailure(errorMessage);
 
             _mockAuthService.Setup(x => x.LoginAsync(It.IsAny<LoginDto>()))
                 .ReturnsAsync(authResult);
-            
+
             // 设置HttpContext
             var controllerContext = new ControllerContext
             {
@@ -130,12 +130,12 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
         public async Task RefreshToken_WithValidTokens_ReturnsSuccessResponse()
         {
             // Arrange
-            var refreshTokenDto = new RefreshTokenDto 
-            { 
-                Token = "old-token", 
-                RefreshToken = "old-refresh-token" 
+            var refreshTokenDto = new RefreshTokenDto
+            {
+                Token = "old-token",
+                RefreshToken = "old-refresh-token"
             };
-            
+
             var userDto = new UserDto { UserName = "testuser" };
             var authResult = AuthResultDto.CreateSuccess("new-token", "new-refresh-token", userDto);
 
@@ -161,12 +161,12 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
         public async Task RefreshToken_WithInvalidTokens_ReturnsBadResponse()
         {
             // Arrange
-            var refreshTokenDto = new RefreshTokenDto 
-            { 
-                Token = "invalid-token", 
-                RefreshToken = "invalid-refresh-token" 
+            var refreshTokenDto = new RefreshTokenDto
+            {
+                Token = "invalid-token",
+                RefreshToken = "invalid-refresh-token"
             };
-            
+
             var errorMessage = "无效的访问令牌";
             var authResult = AuthResultDto.CreateFailure(errorMessage);
 
@@ -188,10 +188,10 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
         public async Task RefreshToken_WithEmptyTokens_ReturnsBadResponse()
         {
             // Arrange
-            var refreshTokenDto = new RefreshTokenDto 
-            { 
-                Token = "", 
-                RefreshToken = null 
+            var refreshTokenDto = new RefreshTokenDto
+            {
+                Token = "",
+                RefreshToken = null
             };
 
             // Act
@@ -223,4 +223,4 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             Assert.Equal("退出登录成功!", response.Msg);
         }
     }
-} 
+}

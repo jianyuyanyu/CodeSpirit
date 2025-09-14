@@ -1,5 +1,6 @@
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
+using CodeSpirit.Core.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;

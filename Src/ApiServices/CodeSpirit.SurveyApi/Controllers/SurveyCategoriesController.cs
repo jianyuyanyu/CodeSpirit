@@ -146,7 +146,7 @@ public class SurveyCategoriesController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> BatchDeleteCategories([FromBody] BatchOperationDto<int> request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         int successCount = 0;
         List<int> failedIds = new();
 
@@ -170,7 +170,7 @@ public class SurveyCategoriesController : ApiControllerBase
                 failedIds.Add(id);
             }
         }
-        
+
         return failedIds.Any()
             ? SuccessResponse($"成功删除 {successCount} 个问卷分类，但以下分类删除失败: {string.Join(", ", failedIds)}")
             : SuccessResponse($"成功删除 {successCount} 个问卷分类！");
@@ -183,6 +183,7 @@ public class SurveyCategoriesController : ApiControllerBase
     /// <returns>分类树</returns>
     [HttpGet("tree")]
     [DisplayName("获取分类树")]
+    [Permission(AllowInheritedPermissions = new[] { "survey_surveys" })]
     public async Task<ActionResult<ApiResponse<List<SurveyCategoryDto>>>> GetCategoryTree([FromQuery] int? parentId = null)
     {
         var result = await _surveyCategoryService.GetCategoryTreeAsync(parentId);
@@ -195,6 +196,7 @@ public class SurveyCategoriesController : ApiControllerBase
     /// <returns>启用的分类列表</returns>
     [HttpGet("enabled")]
     [DisplayName("获取启用分类")]
+    [Permission(AllowInheritedPermissions = new[] { "survey_surveys" })]
     public async Task<ActionResult<ApiResponse<List<SurveyCategoryDto>>>> GetEnabledCategories()
     {
         var result = await _surveyCategoryService.GetEnabledCategoriesAsync();

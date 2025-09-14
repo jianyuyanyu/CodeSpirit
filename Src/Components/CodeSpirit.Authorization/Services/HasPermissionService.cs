@@ -37,28 +37,34 @@ namespace CodeSpirit.Authorization.Services
         /// <returns>true 表示权限存在，false 表示权限不存在</returns>
         public override bool HasPermission(string permissionCode)
         {
+            _logger.LogWarning("[HasPermissionService] 开始权限检查: 权限代码={PermissionCode}", permissionCode);
+            
             if (!_currentUser.IsAuthenticated)
             {
-                _logger.LogDebug("用户未认证，权限检查失败");
+                _logger.LogWarning("[HasPermissionService] 用户未认证，权限检查失败");
                 return false;
             }
+
+            _logger.LogWarning("[HasPermissionService] 用户已认证: 用户名={UserName}, 角色=[{Roles}]", 
+                _currentUser.UserName, string.Join(",", _currentUser.Roles ?? Array.Empty<string>()));
 
             // 管理员角色直接通过
             if (_currentUser.Roles.Contains("Admin"))
             {
-                _logger.LogDebug("用户拥有Admin角色，权限检查通过");
+                _logger.LogWarning("[HasPermissionService] 用户拥有Admin角色，权限检查通过");
                 return true;
+            }
+
+            _logger.LogWarning("[HasPermissionService] 用户权限数量: {PermissionCount}", _currentUser.Permissions?.Count ?? 0);
+            if (_currentUser.Permissions?.Count > 0)
+            {
+                _logger.LogWarning("[HasPermissionService] 用户权限列表: [{Permissions}]", string.Join(",", _currentUser.Permissions));
             }
 
             // 使用权限服务检查具体权限
             var hasPermission = _permissionService.HasPermission(permissionCode, _currentUser.Permissions);
 
-            // 日志记录当前用户信息和角色
-            _logger.LogDebug("执行权限检查: 用户={UserName}, 角色={Roles}, 权限代码={PermissionCode}, 检查结果={HasPermission}",
-                _currentUser.UserName,
-                string.Join(",", _currentUser.Roles ?? Array.Empty<string>()),
-                permissionCode,
-                hasPermission);
+            _logger.LogWarning("[HasPermissionService] 权限检查结果: {HasPermission}", hasPermission);
 
             return hasPermission;
         }
@@ -101,14 +107,14 @@ namespace CodeSpirit.Authorization.Services
 
             // 使用权限服务检查导航权限
             var hasPermission = _permissionService.HasPermission(permissionCode, navigationPermissions);
-            
+
             // 详细调试日志
             _logger.LogDebug("导航权限检查详情: 权限代码={PermissionCode}, 用户原始权限=[{UserPermissions}], 提取的导航权限=[{NavigationPermissions}], 检查结果={HasPermission}",
                 permissionCode,
                 string.Join(",", _currentUser.Permissions ?? new HashSet<string>()),
                 string.Join(",", navigationPermissions),
                 hasPermission);
-                
+
             return hasPermission;
         }
 

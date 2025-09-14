@@ -717,7 +717,80 @@ public class AuthorizationContext
 
 ## 权限特性系统
 
-### 1. 权限要求特性 (RequirePermissionAttribute)
+### 1. 权限特性 (PermissionAttribute)
+
+用于标识权限信息，可覆盖默认的名称和描述，并支持权限继承机制。
+
+```csharp
+/// <summary>
+/// 自定义权限特性，用于标识权限信息，可覆盖默认的名称和描述。
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
+public class PermissionAttribute : Attribute
+{
+    /// <summary>
+    /// 权限名称
+    /// </summary>
+    public string Name { get; set; }
+
+    /// <summary>
+    /// 权限显示名称
+    /// </summary>
+    public string DisplayName { get; set; }
+
+    /// <summary>
+    /// 权限描述
+    /// </summary>
+    public string Description { get; set; }
+
+    /// <summary>
+    /// 父级权限名称
+    /// </summary>
+    public string Parent { get; set; }
+
+    /// <summary>
+    /// 允许的继承权限列表（当用户拥有这些权限时，也可以访问当前接口）
+    /// </summary>
+    public string[] AllowInheritedPermissions { get; set; } = Array.Empty<string>();
+}
+```
+
+#### 权限继承机制
+
+权限继承机制允许拥有特定权限的用户访问相关的其他接口，而无需单独授予每个接口的权限。这在业务场景中非常有用，例如：
+
+- 拥有问卷管理权限的用户需要访问分类下拉接口
+- 拥有用户管理权限的用户需要访问角色选择接口
+
+**使用示例：**
+
+```csharp
+/// <summary>
+/// 获取分类树形结构
+/// </summary>
+[HttpGet("tree")]
+[DisplayName("获取分类树")]
+[Permission(AllowInheritedPermissions = new[] { "survey_surveys" })]
+public async Task<ActionResult<ApiResponse<List<SurveyCategoryDto>>>> GetCategoryTree([FromQuery] int? parentId = null)
+{
+    var result = await _surveyCategoryService.GetCategoryTreeAsync(parentId);
+    return SuccessResponse(result);
+}
+```
+
+在上述示例中：
+- 该接口的默认权限为 `survey_surveycategories_tree`
+- 通过 `AllowInheritedPermissions` 配置，拥有 `survey_surveys` 权限的用户也可以访问此接口
+- 这解决了问卷管理界面需要加载分类下拉数据的权限问题
+
+**权限检查流程：**
+
+1. 首先检查用户是否有直接权限（如 `survey_surveycategories_tree`）
+2. 如果没有直接权限，检查用户是否有继承权限（如 `survey_surveys`）
+3. 如果有任一权限，则允许访问
+4. 记录详细的权限检查日志，便于调试和审计
+
+### 2. 权限要求特性 (RequirePermissionAttribute)
 
 用于标记控制器或方法需要的权限。
 
@@ -834,7 +907,7 @@ public enum OperationType
 }
 ```
 
-### 2. 页面权限特性 (PageAttribute)
+### 3. 页面权限特性 (PageAttribute)
 
 用于标记页面级别的权限控制。
 
@@ -1405,7 +1478,7 @@ public enum PlatformType
 }
 ```
 
-### 3. 平台权限特性 (PlatformAttribute)
+### 4. 平台权限特性 (PlatformAttribute)
 
 用于标记控制器或方法的平台访问权限。
 
@@ -1427,7 +1500,7 @@ public class PlatformAttribute : AuthorizeAttribute
 }
 ```
 
-### 4. 平台权限验证处理器 (PlatformAuthorizationHandler)
+### 5. 平台权限验证处理器 (PlatformAuthorizationHandler)
 
 负责执行平台权限验证逻辑。
 

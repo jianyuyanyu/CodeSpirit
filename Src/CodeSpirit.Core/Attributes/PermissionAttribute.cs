@@ -24,5 +24,10 @@ namespace CodeSpirit.Core.Attributes
         /// 父级权限名称
         /// </summary>
         public string Parent { get; set; }
+
+        /// <summary>
+        /// 允许的继承权限列表（当用户拥有这些权限时，也可以访问当前接口）
+        /// </summary>
+        public string[] AllowInheritedPermissions { get; set; } = Array.Empty<string>();
     }
 }

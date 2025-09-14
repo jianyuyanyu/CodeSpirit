@@ -88,6 +88,8 @@ namespace CodeSpirit.Authorization
                 }
                 // 从服务容器中获取IHasPermissionService实例，使用Scoped生命周期
                 var hasPermissionService = httpContext.RequestServices.GetRequiredService<IHasPermissionService>();
+                
+                // 首先检查直接权限
                 if (hasPermissionService.HasPermission(permissionName))
                 {
                     logger.LogDebug("User {UserId} has permission {PermissionCode}", currentUser.Id, permissionName);
@@ -95,7 +97,31 @@ namespace CodeSpirit.Authorization
                 }
                 else
                 {
-                    logger.LogWarning("User {UserId} does not have permission {PermissionCode}", currentUser.Id, permissionName);
+                    // 检查是否有继承权限
+                    bool hasInheritedPermission = false;
+                    if (permissionAttribute?.AllowInheritedPermissions != null && permissionAttribute.AllowInheritedPermissions.Length > 0)
+                    {
+                        foreach (var inheritedPermission in permissionAttribute.AllowInheritedPermissions)
+                        {
+                            if (hasPermissionService.HasPermission(inheritedPermission))
+                            {
+                                logger.LogInformation("User {UserId} has inherited permission {InheritedPermission} for {PermissionCode}", 
+                                    currentUser.Id, inheritedPermission, permissionName);
+                                hasInheritedPermission = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (hasInheritedPermission)
+                    {
+                        context.Succeed(requirement);
+                    }
+                    else
+                    {
+                        logger.LogWarning("User {UserId} does not have permission {PermissionCode} or any inherited permissions", 
+                            currentUser.Id, permissionName);
+                    }
                 }
             }
 

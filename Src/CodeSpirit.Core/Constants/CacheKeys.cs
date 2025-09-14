@@ -22,7 +22,7 @@ namespace CodeSpirit.Core.Constants
         /// <summary>
         /// 用户权限缓存过期时间 - 滑动过期时间（分钟）
         /// </summary>
-        public static readonly TimeSpan UserPermissionsSlidingExpiration = TimeSpan.FromMinutes(30);
+        public static readonly TimeSpan UserPermissionsSlidingExpiration = TimeSpan.FromMinutes(60);
 
         #endregion
 

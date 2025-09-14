@@ -109,11 +109,14 @@ namespace CodeSpirit.IdentityApi.Services
 
             if (createDto.PermissionAssignments != null && createDto.PermissionAssignments.Any())
             {
+                // 优化权限ID数组，移除冗余的父级权限
+                var optimizedPermissionIds = OptimizePermissionIds(createDto.PermissionAssignments.Distinct().ToArray());
+                
                 role.RolePermission = new RolePermission
                 {
                     RoleId = role.Id,
                     TenantId = TenantConstants.SystemTenantId,
-                    PermissionIds = createDto.PermissionAssignments.Distinct().ToArray()
+                    PermissionIds = optimizedPermissionIds
                 };
             }
 
@@ -214,10 +217,13 @@ namespace CodeSpirit.IdentityApi.Services
             
             if (createDto.PermissionAssignments != null && createDto.PermissionAssignments.Any())
             {
+                // 优化权限ID数组，移除冗余的父级权限
+                var optimizedPermissionIds = OptimizePermissionIds(createDto.PermissionAssignments.Distinct().ToArray());
+                
                 role.RolePermission = new RolePermission
                 {
                     RoleId = role.Id,
-                    PermissionIds = createDto.PermissionAssignments.Distinct().ToArray()
+                    PermissionIds = optimizedPermissionIds
                 };
             }
 
@@ -239,6 +245,9 @@ namespace CodeSpirit.IdentityApi.Services
 
                 if (distinctPermissionIds.Any())
                 {
+                    // 优化权限ID数组，移除冗余的父级权限
+                    var optimizedPermissionIds = OptimizePermissionIds(distinctPermissionIds);
+                    
                     // Load the existing RolePermission if not already loaded
                     if (entity.RolePermission == null)
                     {
@@ -253,12 +262,12 @@ namespace CodeSpirit.IdentityApi.Services
                         entity.RolePermission = new RolePermission
                         {
                             RoleId = entity.Id,
-                            PermissionIds = distinctPermissionIds
+                            PermissionIds = optimizedPermissionIds
                         };
                     }
                     else
                     {
-                        entity.RolePermission.PermissionIds = distinctPermissionIds;
+                        entity.RolePermission.PermissionIds = optimizedPermissionIds;
                     }
                 }
                 else
@@ -370,6 +379,64 @@ namespace CodeSpirit.IdentityApi.Services
         private string NormalizeRoleName(string roleName)
         {
             return roleName?.ToUpperInvariant();
+        }
+
+        /// <summary>
+        /// 优化权限ID数组，仅移除冗余的一级权限
+        /// 当存在二级或三级权限时，移除对应的一级权限以避免冗余，但保留二级权限
+        /// </summary>
+        /// <param name="permissionIds">原始权限ID数组</param>
+        /// <returns>优化后的权限ID数组</returns>
+        private string[] OptimizePermissionIds(string[] permissionIds)
+        {
+            if (permissionIds == null || !permissionIds.Any())
+            {
+                return permissionIds;
+            }
+
+            var optimizedPermissions = new HashSet<string>(permissionIds, StringComparer.OrdinalIgnoreCase);
+            var permissionsToRemove = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // 遍历所有权限，仅检查一级权限是否需要移除
+            foreach (var permission in permissionIds)
+            {
+                if (string.IsNullOrEmpty(permission)) continue;
+
+                var parts = permission.Split('_');
+                
+                // 仅对一级权限（如 "identity"）进行优化，检查是否有二级或三级权限
+                if (parts.Length == 1)
+                {
+                    var hasChildPermissions = permissionIds.Any(p => 
+                        !string.IsNullOrEmpty(p) && 
+                        p.StartsWith(permission + "_", StringComparison.OrdinalIgnoreCase) && 
+                        p != permission);
+                    
+                    if (hasChildPermissions)
+                    {
+                        permissionsToRemove.Add(permission);
+                        _logger.LogDebug("移除冗余的一级权限: {Permission}，因为存在子权限", permission);
+                    }
+                }
+                // 保留所有二级权限和三级权限，不进行优化
+            }
+
+            // 移除冗余权限
+            foreach (var permissionToRemove in permissionsToRemove)
+            {
+                optimizedPermissions.Remove(permissionToRemove);
+            }
+
+            var result = optimizedPermissions.ToArray();
+            
+            if (permissionsToRemove.Any())
+            {
+                _logger.LogInformation("权限优化完成，移除了 {RemovedCount} 个冗余的一级权限: [{RemovedPermissions}]", 
+                    permissionsToRemove.Count, 
+                    string.Join(", ", permissionsToRemove));
+            }
+
+            return result;
         }
 
         #endregion

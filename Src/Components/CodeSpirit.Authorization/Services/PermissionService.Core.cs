@@ -124,22 +124,33 @@ namespace CodeSpirit.Authorization
         /// <returns>true 表示有权限，false 表示无权限</returns>
         public bool HasPermission(string permissionName, ISet<string> userPermissions)
         {
+            _logger.LogWarning("[PermissionService] 开始具体权限检查: 权限名称={PermissionName}", permissionName);
+            
             // 检查权限名称是否为 null 或空
             if (string.IsNullOrEmpty(permissionName))
             {
+                _logger.LogWarning("[PermissionService] 权限名称为空，返回false");
                 return false;
             }
 
             // 默认放通所有 default_ 开头的权限
             if (permissionName.StartsWith("default_", StringComparison.OrdinalIgnoreCase))
             {
+                _logger.LogWarning("[PermissionService] default_开头的权限，直接放通");
                 return true;
             }
 
             // 检查用户权限集合是否为 null
             if (userPermissions == null)
             {
+                _logger.LogWarning("[PermissionService] 用户权限集合为null，返回false");
                 return false;
+            }
+
+            _logger.LogWarning("[PermissionService] 用户权限集合大小: {PermissionCount}", userPermissions.Count);
+            if (userPermissions.Count > 0)
+            {
+                _logger.LogWarning("[PermissionService] 用户权限详情: [{Permissions}]", string.Join(",", userPermissions));
             }
 
             //权限继承逻辑：
@@ -149,43 +160,59 @@ namespace CodeSpirit.Authorization
             //如果用户有 "module_controller" 权限，则拥有该控制器下所有权限
             //如果用户有具体的 "module_controller_action" 权限，则只有该具体权限
 
-            // 直接匹配权限
-            if (userPermissions.Contains(permissionName))
+            // 直接匹配权限（不区分大小写）
+            _logger.LogWarning("[PermissionService] 检查直接匹配权限: {PermissionName}", permissionName);
+            if (userPermissions.Any(p => string.Equals(p, permissionName, StringComparison.OrdinalIgnoreCase)))
             {
+                _logger.LogWarning("[PermissionService] 直接匹配成功，返回true");
                 return true;
             }
 
             // 查找权限节点
             var permissionParts = permissionName.Split('_');
+            _logger.LogWarning("[PermissionService] 权限分段: [{Parts}], 段数: {PartCount}", 
+                string.Join(",", permissionParts), permissionParts.Length);
+            
             if (permissionParts.Length < 2)
             {
+                _logger.LogWarning("[PermissionService] 权限段数小于2，返回false");
                 return false;
             }
             //对于二级权限，如果用户存在三级及以下权限，则放通二级权限（控制器权限）
             else if (permissionParts.Length == 2)
             {
-                if (userPermissions.Any(p => p.StartsWith(permissionName)))
-                    return true;
-            }
-
-            // 先检查模块级权限
-            if (userPermissions.Contains(permissionParts[0]))
-            {
-                return true;
-            }
-
-            // 从模块开始逐级查找父权限
-            var currentPermission = permissionParts[0]; // 模块
-            for (int i = 1; i < permissionParts.Length - 1; i++)
-            {
-                currentPermission = $"{currentPermission}_{permissionParts[i]}";
-                // 如果用户拥有任意父级权限，则认为有权限
-                if (userPermissions.Contains(currentPermission))
+                _logger.LogWarning("[PermissionService] 检查二级权限的子权限匹配");
+                if (userPermissions.Any(p => p.StartsWith(permissionName, StringComparison.OrdinalIgnoreCase)))
                 {
+                    _logger.LogWarning("[PermissionService] 二级权限子权限匹配成功，返回true");
                     return true;
                 }
             }
 
+            // 先检查模块级权限（不区分大小写）
+            _logger.LogWarning("[PermissionService] 检查模块级权限: {ModulePermission}", permissionParts[0]);
+            if (userPermissions.Any(p => string.Equals(p, permissionParts[0], StringComparison.OrdinalIgnoreCase)))
+            {
+                _logger.LogWarning("[PermissionService] 模块级权限匹配成功，返回true");
+                return true;
+            }
+
+            // 从模块开始逐级查找父权限（不区分大小写）
+            var currentPermission = permissionParts[0]; // 模块
+            _logger.LogWarning("[PermissionService] 开始逐级检查父权限");
+            for (int i = 1; i < permissionParts.Length - 1; i++)
+            {
+                currentPermission = $"{currentPermission}_{permissionParts[i]}";
+                _logger.LogWarning("[PermissionService] 检查父权限: {ParentPermission}", currentPermission);
+                // 如果用户拥有任意父级权限，则认为有权限
+                if (userPermissions.Any(p => string.Equals(p, currentPermission, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _logger.LogWarning("[PermissionService] 父权限匹配成功，返回true");
+                    return true;
+                }
+            }
+
+            _logger.LogWarning("[PermissionService] 所有权限检查都失败，返回false");
             return false;
         }
     }

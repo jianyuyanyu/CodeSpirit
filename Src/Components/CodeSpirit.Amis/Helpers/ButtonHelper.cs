@@ -2,6 +2,7 @@
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Core.Attributes;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
@@ -16,14 +17,16 @@ namespace CodeSpirit.Amis.Helpers
         private readonly ApiRouteHelper apiRouteHelper;
         private readonly AmisApiHelper amisApiHelper;
         private readonly FormFieldHelper formFieldHelper;
+        private readonly ILogger<ButtonHelper> _logger;
 
-        public ButtonHelper(IHasPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper)
+        public ButtonHelper(IHasPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper, ILogger<ButtonHelper> logger)
         {
             _permissionService = permissionService;
             this.amisContext = amisContext;
             this.apiRouteHelper = apiRouteHelper;
             this.amisApiHelper = amisApiHelper;
             this.formFieldHelper = formFieldHelper;
+            _logger = logger;
         }
 
         // 创建一个通用的按钮模板
@@ -320,7 +323,13 @@ namespace CodeSpirit.Amis.Helpers
 
                 if (op != null && op.IsBulkOperation == isBulkOperation)
                 {
-                    if (_permissionService.HasPermission(_permissionService.GetPermissionCode(method)))
+                    var permissionCode = _permissionService.GetPermissionCode(method);
+                    var hasPermission = _permissionService.HasPermission(permissionCode);
+                    
+                    _logger.LogWarning("[ButtonHelper权限检查] 方法: {MethodName}, 权限代码: {PermissionCode}, 检查结果: {HasPermission}", 
+                        method.Name, permissionCode, hasPermission);
+                    
+                    if (hasPermission)
                     {
                         // 为每个操作方法创建按钮
                         JObject button = CreateCustomOperationButton(op, method);
@@ -331,6 +340,11 @@ namespace CodeSpirit.Amis.Helpers
                             button["redirect"] = op.Redirect;
                         }
                         buttons.Add(button);
+                        _logger.LogWarning("[ButtonHelper权限检查] 按钮已添加: {ButtonLabel}", op.Label);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[ButtonHelper权限检查] 权限不足，按钮未添加: {ButtonLabel}", op.Label);
                     }
                 }
             }

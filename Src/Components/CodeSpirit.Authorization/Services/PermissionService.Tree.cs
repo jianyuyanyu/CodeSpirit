@@ -1,5 +1,6 @@
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
+using CodeSpirit.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 

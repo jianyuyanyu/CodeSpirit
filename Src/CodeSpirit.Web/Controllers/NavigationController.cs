@@ -67,7 +67,7 @@ namespace CodeSpirit.Web.Controllers
 
                 // 使用新的上下文过滤功能
                 var filteredNodes = _navigationService.FilterNodesByContext(tree, filterContext);
-                var pageTree = ConvertToPageFormat(filteredNodes).ToList();
+                var pageTree = ConvertToPageFormat(filteredNodes)?.ToList() ?? [];
 
                 if (pageTree.Any() && includeDashboard)
                 {
@@ -130,7 +130,7 @@ namespace CodeSpirit.Web.Controllers
                 var filteredNodes = _navigationService.FilterNodesByContext(tree, filterContext);
                 
                 // 使用标准的页面格式转换，无需特殊处理租户路径
-                var pageTree = ConvertToPageFormat(filteredNodes).ToList();
+                var pageTree = ConvertToPageFormat(filteredNodes)?.ToList() ?? [];
 
                 if (pageTree.Any() && includeDashboard)
                 {

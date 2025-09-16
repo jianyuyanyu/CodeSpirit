@@ -144,7 +144,7 @@ public class ApprovalProfile : Profile
             requireConditionalBranch = dto.RequireConditionalBranch,
             conditionalBranchDescription = dto.ConditionalBranchDescription,
             customPrompt = dto.CustomPrompt,
-            categoryId = dto.CategoryId
+            //categoryId = dto.CategoryId
         };
         
         return JsonConvert.SerializeObject(config, Formatting.Indented);

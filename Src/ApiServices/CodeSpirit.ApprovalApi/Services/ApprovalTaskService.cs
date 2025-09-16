@@ -34,8 +34,9 @@ public class ApprovalTaskService : BaseCRUDService<ApprovalTask, ApprovalTaskDto
     /// <param name="intelligentApprovalService">智能审批服务</param>
     /// <param name="eventBus">事件总线</param>
     /// <param name="currentUser">当前用户</param>
-    /// <param name="currentTenant">当前租户</param>
+    /// <param name="tenantContext">租户上下文</param>
     /// <param name="clientIpService">客户端IP服务</param>
+    /// <param name="httpContextAccessor">HTTP上下文访问器</param>
     /// <param name="logger">日志记录器</param>
     public ApprovalTaskService(
         IRepository<ApprovalTask> repository,

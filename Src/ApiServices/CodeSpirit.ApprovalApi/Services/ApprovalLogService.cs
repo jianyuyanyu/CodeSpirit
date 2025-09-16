@@ -1,6 +1,7 @@
 using CodeSpirit.ApprovalApi.Data;
 using CodeSpirit.ApprovalApi.Dtos;
 using CodeSpirit.ApprovalApi.Models;
+using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeSpirit.ApprovalApi.Services;
@@ -10,22 +11,22 @@ namespace CodeSpirit.ApprovalApi.Services;
 /// </summary>
 public class ApprovalLogService : IApprovalLogService
 {
-    private readonly ApprovalDbContext _context;
+    private readonly IRepository<ApprovalLog> _logRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<ApprovalLogService> _logger;
 
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="context">数据库上下文</param>
+    /// <param name="logRepository">审批日志仓储</param>
     /// <param name="mapper">映射器</param>
     /// <param name="logger">日志记录器</param>
     public ApprovalLogService(
-        ApprovalDbContext context,
+        IRepository<ApprovalLog> logRepository,
         IMapper mapper,
         ILogger<ApprovalLogService> logger)
     {
-        _context = context;
+        _logRepository = logRepository;
         _mapper = mapper;
         _logger = logger;
     }
@@ -39,8 +40,7 @@ public class ApprovalLogService : IApprovalLogService
     {
         try
         {
-            _context.ApprovalLogs.Add(log);
-            await _context.SaveChangesAsync();
+            await _logRepository.AddAsync(log);
 
             _logger.LogDebug("审批日志记录成功: 实例ID={InstanceId}, 操作类型={LogType}, 操作人={OperatorId}",
                 log.ApprovalInstanceId, log.LogType, log.OperatorId);
@@ -67,8 +67,7 @@ public class ApprovalLogService : IApprovalLogService
 
         try
         {
-            _context.ApprovalLogs.AddRange(logs);
-            await _context.SaveChangesAsync();
+            await _logRepository.AddRangeAsync(logs);
 
             _logger.LogDebug("批量审批日志记录成功: 数量={Count}", logs.Count);
             return true;
@@ -89,7 +88,7 @@ public class ApprovalLogService : IApprovalLogService
     {
         try
         {
-            var logs = await _context.ApprovalLogs
+            var logs = await _logRepository.CreateQuery()
                 .Where(x => x.ApprovalInstanceId == long.Parse(instanceId))
                 .OrderBy(x => x.OperationTime)
                 .ToListAsync();
@@ -119,7 +118,7 @@ public class ApprovalLogService : IApprovalLogService
     {
         try
         {
-            var query = _context.ApprovalLogs
+            var query = _logRepository.CreateQuery()
                 .Where(x => x.OperatorId == userId)
                 .OrderByDescending(x => x.OperationTime);
 
@@ -162,7 +161,7 @@ public class ApprovalLogService : IApprovalLogService
     {
         try
         {
-            var query = _context.ApprovalLogs
+            var query = _logRepository.CreateQuery()
                 .Where(x => x.OperationTime >= startTime && x.OperationTime <= endTime);
 
             if (!string.IsNullOrEmpty(userId))
@@ -251,14 +250,17 @@ public class ApprovalLogService : IApprovalLogService
         {
             var cutoffDate = DateTime.UtcNow.AddDays(-retentionDays);
 
-            var expiredLogs = await _context.ApprovalLogs
+            var expiredLogs = await _logRepository.CreateQuery()
                 .Where(x => x.OperationTime < cutoffDate)
                 .ToListAsync();
 
             if (expiredLogs.Any())
             {
-                _context.ApprovalLogs.RemoveRange(expiredLogs);
-                await _context.SaveChangesAsync();
+                foreach (var log in expiredLogs)
+                {
+                    await _logRepository.DeleteAsync(log, false);
+                }
+                await _logRepository.SaveChangesAsync();
 
                 _logger.LogInformation("清理过期审批日志成功: 清理数量={Count}, 保留天数={RetentionDays}",
                     expiredLogs.Count, retentionDays);

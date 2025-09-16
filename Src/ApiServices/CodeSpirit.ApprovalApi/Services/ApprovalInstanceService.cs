@@ -3,6 +3,7 @@ using CodeSpirit.ApprovalApi.Dtos;
 using CodeSpirit.ApprovalApi.Models;
 using CodeSpirit.Shared.EventBus.Interfaces;
 using CodeSpirit.MultiTenant.Abstractions;
+using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
@@ -13,7 +14,7 @@ namespace CodeSpirit.ApprovalApi.Services;
 /// </summary>
 public class ApprovalInstanceService : IApprovalInstanceService
 {
-    private readonly ApprovalDbContext _context;
+    private readonly IRepository<ApprovalInstance> _instanceRepository;
     private readonly IMapper _mapper;
     private readonly IWorkflowEngine _workflowEngine;
     private readonly IApprovalLogService _approvalLogService;
@@ -28,8 +29,19 @@ public class ApprovalInstanceService : IApprovalInstanceService
     /// <summary>
     /// 构造函数
     /// </summary>
+    /// <param name="instanceRepository">审批实例仓储</param>
+    /// <param name="mapper">映射器</param>
+    /// <param name="workflowEngine">工作流引擎</param>
+    /// <param name="approvalLogService">审批日志服务</param>
+    /// <param name="intelligentApprovalService">智能审批服务</param>
+    /// <param name="eventBus">事件总线</param>
+    /// <param name="currentUser">当前用户</param>
+    /// <param name="tenantContext">租户上下文</param>
+    /// <param name="clientIpService">客户端IP服务</param>
+    /// <param name="httpContextAccessor">HTTP上下文访问器</param>
+    /// <param name="logger">日志记录器</param>
     public ApprovalInstanceService(
-        ApprovalDbContext context,
+        IRepository<ApprovalInstance> instanceRepository,
         IMapper mapper,
         IWorkflowEngine workflowEngine,
         IApprovalLogService approvalLogService,
@@ -41,7 +53,7 @@ public class ApprovalInstanceService : IApprovalInstanceService
         IHttpContextAccessor httpContextAccessor,
         ILogger<ApprovalInstanceService> logger)
     {
-        _context = context;
+        _instanceRepository = instanceRepository;
         _mapper = mapper;
         _workflowEngine = workflowEngine;
         _approvalLogService = approvalLogService;
@@ -103,7 +115,7 @@ public class ApprovalInstanceService : IApprovalInstanceService
     /// </summary>
     public async Task<ApprovalInstanceDetailDto?> GetDetailAsync(long id)
     {
-        var instance = await _context.ApprovalInstances
+        var instance = await _instanceRepository.CreateQuery()
             .Include(x => x.Tasks)
             .Include(x => x.WorkflowDefinition)
             .FirstOrDefaultAsync(x => x.Id == id);
@@ -127,7 +139,7 @@ public class ApprovalInstanceService : IApprovalInstanceService
     {
         try
         {
-            var instance = await _context.ApprovalInstances.FirstOrDefaultAsync(x => x.Id == id);
+            var instance = await _instanceRepository.GetByIdAsync(id);
             if (instance == null)
                 return false;
 
@@ -157,7 +169,7 @@ public class ApprovalInstanceService : IApprovalInstanceService
     /// </summary>
     public async Task<List<ApprovalInstance>> GetByEntityAsync(string entityType, string entityId)
     {
-        return await _context.ApprovalInstances
+        return await _instanceRepository.CreateQuery()
             .Where(x => x.EntityType == entityType && x.EntityId == entityId)
             .OrderByDescending(x => x.ApplyTime)
             .ToListAsync();
@@ -168,7 +180,7 @@ public class ApprovalInstanceService : IApprovalInstanceService
     /// </summary>
     public async Task<PageList<ApprovalInstanceDto>> GetPagedListAsync(ApprovalInstanceQueryDto query)
     {
-        var queryable = _context.ApprovalInstances
+        var queryable = _instanceRepository.CreateQuery()
             .Include(x => x.WorkflowDefinition)
             .AsQueryable();
 
@@ -195,7 +207,7 @@ public class ApprovalInstanceService : IApprovalInstanceService
     /// </summary>
     public async Task<ApprovalInstanceDto?> GetAsync(long id)
     {
-        var instance = await _context.ApprovalInstances
+        var instance = await _instanceRepository.CreateQuery()
             .Include(x => x.WorkflowDefinition)
             .FirstOrDefaultAsync(x => x.Id == id);
 
@@ -207,7 +219,7 @@ public class ApprovalInstanceService : IApprovalInstanceService
     /// </summary>
     public async Task<PageList<ApprovalInstanceDto>> GetMyApplicationsAsync(string applicantId, int pageIndex = 1, int pageSize = 20)
     {
-        var query = _context.ApprovalInstances
+        var query = _instanceRepository.CreateQuery()
             .Include(x => x.WorkflowDefinition)
             .Where(x => x.ApplicantId == applicantId)
             .OrderByDescending(x => x.ApplyTime);

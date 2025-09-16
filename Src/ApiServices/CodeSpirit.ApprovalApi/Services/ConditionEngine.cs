@@ -1,5 +1,6 @@
 using CodeSpirit.ApprovalApi.Data;
 using CodeSpirit.ApprovalApi.Models;
+using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
@@ -11,22 +12,22 @@ namespace CodeSpirit.ApprovalApi.Services;
 /// </summary>
 public class ConditionEngine : IConditionEngine
 {
-    private readonly ApprovalDbContext _context;
+    private readonly IRepository<WorkflowNode> _nodeRepository;
     private readonly ILogger<ConditionEngine> _logger;
     private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="context">数据库上下文</param>
+    /// <param name="nodeRepository">工作流节点仓储</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="serviceProvider">服务提供者</param>
     public ConditionEngine(
-        ApprovalDbContext context,
+        IRepository<WorkflowNode> nodeRepository,
         ILogger<ConditionEngine> logger,
         IServiceProvider serviceProvider)
     {
-        _context = context;
+        _nodeRepository = nodeRepository;
         _logger = logger;
         _serviceProvider = serviceProvider;
     }
@@ -72,7 +73,7 @@ public class ConditionEngine : IConditionEngine
     {
         try
         {
-            var currentNode = await _context.WorkflowNodes
+            var currentNode = await _nodeRepository.CreateQuery()
                 .Include(x => x.Conditions)
                 .Include(x => x.WorkflowDefinition)
                 .ThenInclude(x => x.Nodes)
@@ -215,7 +216,7 @@ public class ConditionEngine : IConditionEngine
     /// <param name="expression">表达式</param>
     /// <param name="context">上下文</param>
     /// <returns>替换后的表达式</returns>
-    private async Task<string> ReplaceVariablesAsync(string expression, Dictionary<string, object> context)
+    private Task<string> ReplaceVariablesAsync(string expression, Dictionary<string, object> context)
     {
         var result = expression;
 
@@ -239,7 +240,7 @@ public class ConditionEngine : IConditionEngine
             }
         }
 
-        return result;
+        return Task.FromResult(result);
     }
 
     /// <summary>
@@ -381,12 +382,11 @@ public class ConditionEngine : IConditionEngine
     /// <param name="userId">用户ID</param>
     /// <param name="level">上级层级</param>
     /// <returns>上级用户ID</returns>
-    private async Task<string?> GetUserSuperiorAsync(string userId, int level = 1)
+    private Task<string?> GetUserSuperiorAsync(string userId, int level = 1)
     {
         // 这里应该调用组织架构服务获取用户上级
         // 暂时返回null
-        await Task.CompletedTask;
-        return null;
+        return Task.FromResult<string?>(null);
     }
 
     /// <summary>

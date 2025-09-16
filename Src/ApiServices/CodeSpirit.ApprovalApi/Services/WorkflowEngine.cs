@@ -1,6 +1,7 @@
 using CodeSpirit.ApprovalApi.Data;
 using CodeSpirit.ApprovalApi.Models;
 using CodeSpirit.MultiTenant.Abstractions;
+using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
@@ -11,7 +12,8 @@ namespace CodeSpirit.ApprovalApi.Services;
 /// </summary>
 public class WorkflowEngine : IWorkflowEngine
 {
-    private readonly ApprovalDbContext _context;
+    private readonly IRepository<ApprovalInstance> _instanceRepository;
+    private readonly IRepository<ApprovalTask> _taskRepository;
     private readonly IWorkflowDefinitionService _workflowDefinitionService;
     private readonly IConditionEngine _conditionEngine;
     private readonly ICurrentUser _currentUser;
@@ -21,15 +23,24 @@ public class WorkflowEngine : IWorkflowEngine
     /// <summary>
     /// 构造函数
     /// </summary>
+    /// <param name="instanceRepository">审批实例仓储</param>
+    /// <param name="taskRepository">审批任务仓储</param>
+    /// <param name="workflowDefinitionService">工作流定义服务</param>
+    /// <param name="conditionEngine">条件引擎</param>
+    /// <param name="currentUser">当前用户</param>
+    /// <param name="tenantContext">租户上下文</param>
+    /// <param name="logger">日志记录器</param>
     public WorkflowEngine(
-        ApprovalDbContext context,
+        IRepository<ApprovalInstance> instanceRepository,
+        IRepository<ApprovalTask> taskRepository,
         IWorkflowDefinitionService workflowDefinitionService,
         IConditionEngine conditionEngine,
         ICurrentUser currentUser,
         ITenantContext tenantContext,
         ILogger<WorkflowEngine> logger)
     {
-        _context = context;
+        _instanceRepository = instanceRepository;
+        _taskRepository = taskRepository;
         _workflowDefinitionService = workflowDefinitionService;
         _conditionEngine = conditionEngine;
         _currentUser = currentUser;
@@ -66,22 +77,21 @@ public class WorkflowEngine : IWorkflowEngine
             // 创建审批实例
             var instance = new ApprovalInstance
             {
-                TenantId = tenantId,
+                TenantId = tenantId ?? string.Empty,
                 WorkflowDefinitionId = workflowDefinition.Id,
                 Title = title,
                 EntityType = entityType,
                 EntityId = entityId,
                 ApplicantId = applicantId,
-                ApplicantName = applicantId, // 简化处理
+                ApplicantName = applicantId ?? "system", // 简化处理
                 Status = ApprovalStatus.InProgress,
                 ApplyTime = DateTime.UtcNow,
                 BusinessData = JsonConvert.SerializeObject(businessData),
                 CreatedAt = DateTime.UtcNow,
-                CreatedBy = long.Parse(applicantId ?? "0")
+                CreatedBy = long.TryParse(applicantId, out var parsedId) ? parsedId : 0
             };
 
-            _context.ApprovalInstances.Add(instance);
-            await _context.SaveChangesAsync();
+            await _instanceRepository.AddAsync(instance);
 
             _logger.LogInformation("工作流启动成功: 实例ID={InstanceId}", instance.Id);
             return instance;
@@ -106,7 +116,7 @@ public class WorkflowEngine : IWorkflowEngine
         {
             _logger.LogInformation("处理审批任务: 任务ID={TaskId}", taskId);
 
-            var task = await _context.ApprovalTasks
+            var task = await _taskRepository.CreateQuery()
                 .Include(x => x.ApprovalInstance)
                 .FirstOrDefaultAsync(x => x.Id == long.Parse(taskId));
 
@@ -122,7 +132,7 @@ public class WorkflowEngine : IWorkflowEngine
             task.Comment = comment;
             task.ProcessedTime = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            await _taskRepository.UpdateAsync(task);
 
             return new WorkflowProcessResult
             {
@@ -143,7 +153,7 @@ public class WorkflowEngine : IWorkflowEngine
     /// </summary>
     public async Task<ApprovalTask> AddSignAsync(string taskId, string approverId, string comment = "")
     {
-        var task = await _context.ApprovalTasks.FirstOrDefaultAsync(x => x.Id == long.Parse(taskId));
+        var task = await _taskRepository.GetByIdAsync(long.Parse(taskId));
         if (task == null)
             throw new BusinessException("审批任务不存在");
 
@@ -161,8 +171,7 @@ public class WorkflowEngine : IWorkflowEngine
             CreatedBy = _currentUser.Id ?? 0
         };
 
-        _context.ApprovalTasks.Add(newTask);
-        await _context.SaveChangesAsync();
+        await _taskRepository.AddAsync(newTask);
 
         return newTask;
     }
@@ -172,7 +181,7 @@ public class WorkflowEngine : IWorkflowEngine
     /// </summary>
     public async Task<ApprovalTask> TransferTaskAsync(string taskId, string fromUserId, string toUserId, string comment = "")
     {
-        var task = await _context.ApprovalTasks.FirstOrDefaultAsync(x => x.Id == long.Parse(taskId));
+        var task = await _taskRepository.GetByIdAsync(long.Parse(taskId));
         if (task == null)
             throw new BusinessException("审批任务不存在");
 
@@ -192,8 +201,8 @@ public class WorkflowEngine : IWorkflowEngine
             CreatedBy = long.Parse(fromUserId ?? "0")
         };
 
-        _context.ApprovalTasks.Add(newTask);
-        await _context.SaveChangesAsync();
+        await _taskRepository.UpdateAsync(task, false);
+        await _taskRepository.AddAsync(newTask);
 
         return newTask;
     }
@@ -203,7 +212,7 @@ public class WorkflowEngine : IWorkflowEngine
     /// </summary>
     public async Task<bool> WithdrawAsync(string instanceId, string applicantId, string reason = "")
     {
-        var instance = await _context.ApprovalInstances
+        var instance = await _instanceRepository.CreateQuery()
             .Include(x => x.Tasks)
             .FirstOrDefaultAsync(x => x.Id == long.Parse(instanceId));
 
@@ -221,7 +230,7 @@ public class WorkflowEngine : IWorkflowEngine
             task.Status = ApprovalTaskStatus.Cancelled;
         }
 
-        await _context.SaveChangesAsync();
+        await _instanceRepository.UpdateAsync(instance);
         return true;
     }
 
@@ -232,7 +241,7 @@ public class WorkflowEngine : IWorkflowEngine
     {
         tenantId ??= _tenantContext.TenantId;
 
-        return await _context.ApprovalTasks
+        return await _taskRepository.CreateQuery()
             .Include(x => x.ApprovalInstance)
             .Where(x => x.ApproverId == userId && 
                        x.Status == ApprovalTaskStatus.Pending &&
@@ -246,7 +255,7 @@ public class WorkflowEngine : IWorkflowEngine
     /// </summary>
     public async Task<ApprovalInstance?> GetInstanceAsync(string instanceId)
     {
-        return await _context.ApprovalInstances
+        return await _instanceRepository.CreateQuery()
             .Include(x => x.Tasks)
             .Include(x => x.WorkflowDefinition)
             .FirstOrDefaultAsync(x => x.Id == long.Parse(instanceId));

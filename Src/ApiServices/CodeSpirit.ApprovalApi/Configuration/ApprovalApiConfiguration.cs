@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using CodeSpirit.AiFormFill;
 
 namespace CodeSpirit.ApprovalApi.Configuration;
 
@@ -42,8 +43,8 @@ public class ApprovalApiConfiguration : BaseApiConfiguration
         DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<ApprovalDbContext, MySqlApprovalDbContext, SqlServerApprovalDbContext>(
             services, configuration, ConnectionStringKey);
         
-        // 注册仓储模式
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        // 注册仓储模式 - 重新注册以确保使用正确的DbContext
+        //services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         
         // 添加多租户支持
         services.AddCodeSpiritMultiTenant(configuration);
@@ -76,7 +77,9 @@ public class ApprovalApiConfiguration : BaseApiConfiguration
     {
         // 使用多租户中间件
         app.UseCodeSpiritMultiTenant();
-        
+
+        app.UseAiFormFillEndpoints();
+
         await Task.CompletedTask;
     }
     

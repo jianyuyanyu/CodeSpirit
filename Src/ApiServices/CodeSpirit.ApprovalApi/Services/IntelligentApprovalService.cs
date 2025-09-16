@@ -2,6 +2,7 @@ using CodeSpirit.ApprovalApi.Data;
 using CodeSpirit.ApprovalApi.Models;
 using CodeSpirit.LLM.Clients;
 using CodeSpirit.LLM.Factories;
+using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
@@ -12,7 +13,7 @@ namespace CodeSpirit.ApprovalApi.Services;
 /// </summary>
 public class IntelligentApprovalService : IIntelligentApprovalService
 {
-    private readonly ApprovalDbContext _context;
+    private readonly IRepository<ApprovalInstance> _instanceRepository;
     private readonly ILLMClientFactory _llmClientFactory;
     private readonly IMemoryCache _cache;
     private readonly ILogger<IntelligentApprovalService> _logger;
@@ -20,17 +21,17 @@ public class IntelligentApprovalService : IIntelligentApprovalService
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="context">数据库上下文</param>
+    /// <param name="instanceRepository">审批实例仓储</param>
     /// <param name="llmClientFactory">LLM客户端工厂</param>
     /// <param name="cache">内存缓存</param>
     /// <param name="logger">日志记录器</param>
     public IntelligentApprovalService(
-        ApprovalDbContext context,
+        IRepository<ApprovalInstance> instanceRepository,
         ILLMClientFactory llmClientFactory,
         IMemoryCache cache,
         ILogger<IntelligentApprovalService> logger)
     {
-        _context = context;
+        _instanceRepository = instanceRepository;
         _llmClientFactory = llmClientFactory;
         _cache = cache;
         _logger = logger;
@@ -513,7 +514,7 @@ public class IntelligentApprovalService : IIntelligentApprovalService
         {
             // 这里可以根据业务数据的特征查找相似的历史审批记录
             // 暂时返回最近的10个已完成的审批记录
-            var recentInstances = await _context.ApprovalInstances
+            var recentInstances = await _instanceRepository.CreateQuery()
                 .Where(x => x.Status == ApprovalStatus.Approved || x.Status == ApprovalStatus.Rejected)
                 .OrderByDescending(x => x.CompletedTime)
                 .Take(10)

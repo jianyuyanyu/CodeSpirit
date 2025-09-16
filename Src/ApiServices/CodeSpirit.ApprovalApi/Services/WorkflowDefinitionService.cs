@@ -17,6 +17,7 @@ namespace CodeSpirit.ApprovalApi.Services;
 public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, WorkflowDefinitionDto, long, CreateWorkflowDefinitionDto, UpdateWorkflowDefinitionDto>, IWorkflowDefinitionService
 {
     private readonly ApprovalDbContext _context;
+    private readonly IRepository<ApprovalInstance> _instanceRepository;
     private readonly ICurrentUser _currentUser;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<WorkflowDefinitionService> _logger;
@@ -28,14 +29,16 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
     /// <param name="repository">仓储</param>
     /// <param name="mapper">映射器</param>
     /// <param name="context">数据库上下文</param>
+    /// <param name="instanceRepository">审批实例仓储</param>
     /// <param name="currentUser">当前用户</param>
-    /// <param name="currentTenant">当前租户</param>
+    /// <param name="tenantContext">租户上下文</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="cache">内存缓存</param>
     public WorkflowDefinitionService(
         IRepository<WorkflowDefinition> repository,
         IMapper mapper,
         ApprovalDbContext context,
+        IRepository<ApprovalInstance> instanceRepository,
         ICurrentUser currentUser,
         ITenantContext tenantContext,
         ILogger<WorkflowDefinitionService> logger,
@@ -43,6 +46,7 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
         : base(repository, mapper)
     {
         _context = context;
+        _instanceRepository = instanceRepository;
         _currentUser = currentUser;
         _tenantContext = tenantContext;
         _logger = logger;
@@ -65,7 +69,7 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
             return cachedWorkflow;
         }
 
-        var workflow = await _context.WorkflowDefinitions
+        var workflow = await Repository.CreateQuery()
             .Include(x => x.Nodes)
             .ThenInclude(x => x.Approvers)
             .Include(x => x.Nodes)
@@ -97,7 +101,7 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
 
             workflow.IsEnabled = enabled;
         workflow.UpdatedAt = DateTime.UtcNow;
-        workflow.UpdatedBy = _currentUser.Id;
+        workflow.UpdatedBy = _currentUser.Id ?? 0;
 
             await Repository.UpdateAsync(workflow);
 
@@ -125,7 +129,7 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
     {
         try
         {
-            var sourceWorkflow = await _context.WorkflowDefinitions
+            var sourceWorkflow = await Repository.CreateQuery()
                 .Include(x => x.Nodes)
                 .ThenInclude(x => x.Approvers)
                 .Include(x => x.Nodes)
@@ -136,7 +140,7 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
                 throw new BusinessException("源工作流不存在");
 
             // 检查新代码是否已存在
-            var existingWorkflow = await _context.WorkflowDefinitions
+            var existingWorkflow = await Repository.CreateQuery()
                 .FirstOrDefaultAsync(x => x.Code == newCode && x.TenantId == _tenantContext.TenantId);
             if (existingWorkflow != null)
                 throw new BusinessException("工作流代码已存在");
@@ -144,7 +148,7 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
             // 创建新工作流
             var newWorkflow = new WorkflowDefinition
             {
-                TenantId = _tenantContext.TenantId,
+                TenantId = _tenantContext.TenantId ?? string.Empty,
                 Name = newName,
                 Code = newCode,
                 Description = $"复制自: {sourceWorkflow.Name}",
@@ -157,7 +161,6 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
             };
 
             await Repository.AddAsync(newWorkflow);
-            await _context.SaveChangesAsync();
 
             // 复制节点
             var nodeMapping = new Dictionary<long, long>();
@@ -228,13 +231,13 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
     public override async Task<WorkflowDefinitionDto> CreateAsync(CreateWorkflowDefinitionDto createDto)
     {
         // 检查代码是否已存在
-        var existingWorkflow = await _context.WorkflowDefinitions
+        var existingWorkflow = await Repository.CreateQuery()
             .FirstOrDefaultAsync(x => x.Code == createDto.Code && x.TenantId == _tenantContext.TenantId);
         if (existingWorkflow != null)
             throw new BusinessException("工作流代码已存在");
 
         var entity = Mapper.Map<WorkflowDefinition>(createDto);
-        entity.TenantId = _tenantContext.TenantId;
+        entity.TenantId = _tenantContext.TenantId ?? string.Empty;
         entity.CreatedAt = DateTime.UtcNow;
         entity.CreatedBy = _currentUser.Id ?? 0;
 
@@ -259,7 +262,7 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
         // 如果修改了代码，检查新代码是否已存在
         if (updateDto.Code != entity.Code)
         {
-            var existingWorkflow = await _context.WorkflowDefinitions
+            var existingWorkflow = await Repository.CreateQuery()
                 .FirstOrDefaultAsync(x => x.Code == updateDto.Code && x.TenantId == _tenantContext.TenantId && x.Id != id);
             if (existingWorkflow != null)
                 throw new BusinessException("工作流代码已存在");
@@ -267,10 +270,10 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
 
         Mapper.Map(updateDto, entity);
         entity.UpdatedAt = DateTime.UtcNow;
-        entity.UpdatedBy = _currentUser.Id;
+        entity.UpdatedBy = _currentUser.Id ?? 0;
         entity.Version++; // 版本号递增
 
-        await _context.SaveChangesAsync();
+        await Repository.UpdateAsync(entity);
 
         // 清除缓存
         ClearWorkflowCache(entity.TenantId, entity.Code);
@@ -291,7 +294,7 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
             return false;
 
         // 检查是否有正在使用的审批实例
-        var hasActiveInstances = await _context.ApprovalInstances
+        var hasActiveInstances = await _instanceRepository.CreateQuery()
             .AnyAsync(x => x.WorkflowDefinitionId == id && 
                           (x.Status == ApprovalStatus.Pending || x.Status == ApprovalStatus.InProgress));
 
@@ -301,9 +304,9 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
         // 软删除
         entity.IsDeleted = true;
         entity.DeletedAt = DateTime.UtcNow;
-        entity.DeletedBy = _currentUser.Id;
+        entity.DeletedBy = _currentUser.Id ?? 0;
 
-        await _context.SaveChangesAsync();
+        await Repository.UpdateAsync(entity);
 
         // 清除缓存
         ClearWorkflowCache(entity.TenantId, entity.Code);

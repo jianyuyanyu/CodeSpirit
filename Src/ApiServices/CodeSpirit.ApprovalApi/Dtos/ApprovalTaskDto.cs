@@ -59,7 +59,7 @@ public class ApprovalTaskDto
     /// </summary>
     [DisplayName("任务状态")]
     [AmisColumn(Type = "mapping")]
-    public TaskStatus Status { get; set; }
+    public ApprovalTaskStatus Status { get; set; }
 
     /// <summary>
     /// 审批结果
@@ -128,7 +128,7 @@ public class ApprovalTaskQueryDto : QueryDtoBase
     /// 任务状态
     /// </summary>
     [DisplayName("任务状态")]
-    public TaskStatus? Status { get; set; }
+    public ApprovalTaskStatus? Status { get; set; }
 
     /// <summary>
     /// 分配开始时间

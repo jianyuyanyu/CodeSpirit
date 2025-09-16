@@ -37,7 +37,7 @@ public static class SettingsExtensions
         {
             // 使用多数据库架构配置
             DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<SettingsDbContext, MySqlSettingsDbContext, SqlServerSettingsDbContext>(
-                services, configuration, "settings");
+                services, configuration, "settings", false );
         }
         
         // 注册设置服务

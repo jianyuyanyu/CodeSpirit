@@ -1,5 +1,4 @@
 using CodeSpirit.ExamApi.Services.Helpers;
-using CodeSpirit.ExamApi.Services.Settings;
 using CodeSpirit.LLM;
 using CodeSpirit.Shared.Notifications;
 
@@ -17,8 +16,8 @@ public static class DependencyInjectionExtensions
     /// <returns>服务集合</returns>
     public static IServiceCollection AddAIQuestionGeneratorServices(this IServiceCollection services)
     {
-        // 添加LLM服务，使用自定义设置提供者
-        services.AddLLMServices<ExamLLMSettingsProvider>();
+        // 添加LLM服务（使用统一配置）
+        services.AddLLMServices();
         
         // 注册工具类
         services.AddSingleton<IPromptBuilder, DefaultPromptBuilder>();

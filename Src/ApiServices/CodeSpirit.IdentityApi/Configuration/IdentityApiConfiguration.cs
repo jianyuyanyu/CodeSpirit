@@ -8,7 +8,6 @@ using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.EventHandlers;
 using CodeSpirit.IdentityApi.Services;
-using CodeSpirit.IdentityApi.Services.Settings;
 using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Shared.DistributedLock;
@@ -248,8 +247,8 @@ public class IdentityApiConfiguration : BaseApiConfiguration
     /// <param name="services">服务集合</param>
     private static void AddLLMServices(IServiceCollection services)
     {
-        // 添加LLM服务，使用身份认证系统专用的设置提供者
-        services.AddLLMServices<IdentityLLMSettingsProvider>();
+        // 添加LLM服务（使用统一配置）
+        services.AddLLMServices();
     }
     
     /// <summary>

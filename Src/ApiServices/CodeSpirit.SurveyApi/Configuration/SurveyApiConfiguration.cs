@@ -1,8 +1,6 @@
 using CodeSpirit.Aggregator;
 using CodeSpirit.AiFormFill;
 using CodeSpirit.Charts.Extensions;
-using CodeSpirit.SurveyApi.Data;
-using CodeSpirit.SurveyApi.Extensions;
 using CodeSpirit.SurveyApi.Services.Interfaces;
 using CodeSpirit.SurveyApi.Services.Implementations;
 using CodeSpirit.MultiTenant.Extensions;
@@ -19,6 +17,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using CodeSpirit.LLM;
 
 namespace CodeSpirit.SurveyApi.Configuration;
 
@@ -63,8 +62,8 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         // 注册Charts服务
         AddChartServices(services);
         
-        // 注册LLM和SignalR服务
-        AddLLMAndSignalRServices(services);
+        // 注册LLM服务
+        services.AddLLMServices();
         
         // 添加设置管理
         services.AddSettingsManagerWithDatabase(configuration);
@@ -160,24 +159,6 @@ public class SurveyApiConfiguration : BaseApiConfiguration
         {
             Console.WriteLine($"警告: 注册Charts服务时出错: {ex.Message}，但应用程序将继续启动");
         }
-    }
-    
-    /// <summary>
-    /// 添加LLM和SignalR服务
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    private static void AddLLMAndSignalRServices(IServiceCollection services)
-    {
-        // 使用扩展方法注册LLM问卷生成相关服务
-        services.AddSurveyLLMServices();
-        
-        // 添加SignalR服务
-        services.AddSignalR()
-            .AddNewtonsoftJsonProtocol(options =>
-            {
-                options.PayloadSerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
-                options.PayloadSerializerSettings.NullValueHandling = NullValueHandling.Ignore;
-            });
     }
     
     /// <summary>

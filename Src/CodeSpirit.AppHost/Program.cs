@@ -128,6 +128,25 @@ var jwtSecretKey = builder.AddParameter(name: "jwt-SecretKey", "ECBF8FA013844D77
 var jwtIssuer = builder.AddParameter(name: "jwt-Issuer", "codespirit.com");
 var jwtAudience = builder.AddParameter(name: "jwt-Audience", "CodeSpirit");
 
+// 添加统一的LLM配置参数
+var llmApiKey = builder.AddParameter(name: "llm-ApiKey", secret: true);
+var llmApiBaseUrl = builder.AddParameter(name: "llm-ApiBaseUrl", "https://dashscope.aliyuncs.com/compatible-mode/v1");
+var llmModelName = builder.AddParameter(name: "llm-ModelName", "qwen-plus");
+var llmTimeoutSeconds = builder.AddParameter(name: "llm-TimeoutSeconds", "120");
+var llmMaxTokens = builder.AddParameter(name: "llm-MaxTokens", "2048");
+var llmUseProxy = builder.AddParameter(name: "llm-UseProxy", "false");
+var llmProxyAddress = builder.AddParameter(name: "llm-ProxyAddress", "", secret: false);
+
+// 添加AI表单填充专用LLM配置参数
+var aiFormFillLlmApiKey = builder.AddParameter(name: "ai-form-fill-llm-ApiKey", secret: true);
+var aiFormFillLlmApiBaseUrl = builder.AddParameter(name: "ai-form-fill-llm-ApiBaseUrl", "https://dashscope.aliyuncs.com/compatible-mode/v1");
+var aiFormFillLlmModelName = builder.AddParameter(name: "ai-form-fill-llm-ModelName", "qwen-flash");
+var aiFormFillLlmDisableThinking = builder.AddParameter(name: "ai-form-fill-llm-DisableThinking", "true");
+var aiFormFillLlmResponseFormatType = builder.AddParameter(name: "ai-form-fill-llm-ResponseFormatType", "json_object");
+var aiFormFillLlmTemperature = builder.AddParameter(name: "ai-form-fill-llm-Temperature", "0.1");
+var aiFormFillLlmTopP = builder.AddParameter(name: "ai-form-fill-llm-TopP", "0.9");
+var aiFormFillLlmEnableStreaming = builder.AddParameter(name: "ai-form-fill-llm-EnableStreaming", "true");
+
 // 添加 ConfigCenter 服务
 var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
     .WithReference(configDb)
@@ -137,6 +156,21 @@ var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WithEnvironment("LLM__ApiKey", llmApiKey)
+    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
+    .WithEnvironment("LLM__ModelName", llmModelName)
+    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
+    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
+    .WithEnvironment("LLM__UseProxy", llmUseProxy)
+    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
+    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
+    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
+    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
+    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
+    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
+    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
+    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
+    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
     .WaitFor(configDb);
 
 var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
@@ -149,6 +183,21 @@ var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("ident
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WithEnvironment("LLM__ApiKey", llmApiKey)
+    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
+    .WithEnvironment("LLM__ModelName", llmModelName)
+    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
+    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
+    .WithEnvironment("LLM__UseProxy", llmUseProxy)
+    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
+    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
+    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
+    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
+    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
+    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
+    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
+    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
+    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
     .WaitFor(identityDb);
 
 // 添加消息服务
@@ -162,6 +211,21 @@ var messagingService = builder.AddProject<Projects.CodeSpirit_MessagingApi>("mes
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WithEnvironment("LLM__ApiKey", llmApiKey)
+    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
+    .WithEnvironment("LLM__ModelName", llmModelName)
+    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
+    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
+    .WithEnvironment("LLM__UseProxy", llmUseProxy)
+    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
+    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
+    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
+    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
+    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
+    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
+    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
+    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
+    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
     .WaitFor(messagingDb);
 
 var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
@@ -177,6 +241,21 @@ var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WithEnvironment("LLM__ApiKey", llmApiKey)
+    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
+    .WithEnvironment("LLM__ModelName", llmModelName)
+    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
+    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
+    .WithEnvironment("LLM__UseProxy", llmUseProxy)
+    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
+    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
+    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
+    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
+    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
+    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
+    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
+    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
+    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
     .WaitFor(examDb)
     .WaitFor(settingsDb);
 
@@ -191,6 +270,21 @@ var fileService = builder.AddProject<Projects.CodeSpirit_FileStorageApi>("file")
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WithEnvironment("LLM__ApiKey", llmApiKey)
+    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
+    .WithEnvironment("LLM__ModelName", llmModelName)
+    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
+    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
+    .WithEnvironment("LLM__UseProxy", llmUseProxy)
+    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
+    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
+    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
+    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
+    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
+    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
+    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
+    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
+    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
     .WaitFor(fileDb);
 
 var surveyService = builder.AddProject<Projects.CodeSpirit_SurveyApi>("survey")
@@ -205,6 +299,21 @@ var surveyService = builder.AddProject<Projects.CodeSpirit_SurveyApi>("survey")
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WithEnvironment("LLM__ApiKey", llmApiKey)
+    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
+    .WithEnvironment("LLM__ModelName", llmModelName)
+    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
+    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
+    .WithEnvironment("LLM__UseProxy", llmUseProxy)
+    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
+    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
+    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
+    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
+    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
+    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
+    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
+    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
+    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
     .WaitFor(surveyDb)
     .WaitFor(settingsDb);
 
@@ -221,6 +330,21 @@ var approvalService = builder.AddProject<Projects.CodeSpirit_ApprovalApi>("appro
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
     .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WithEnvironment("LLM__ApiKey", llmApiKey)
+    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
+    .WithEnvironment("LLM__ModelName", llmModelName)
+    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
+    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
+    .WithEnvironment("LLM__UseProxy", llmUseProxy)
+    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
+    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
+    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
+    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
+    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
+    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
+    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
+    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
+    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
     .WaitFor(approvalDb)
     .WaitFor(settingsDb);
 
@@ -238,6 +362,14 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(surveyService)
     .WithReference(approvalService)
     .WithEnvironment("DatabaseType", databaseType)
+    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
+    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
+    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
+    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
+    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
+    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
+    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
+    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
     .WithUrlForEndpoint("https", url =>
     {
         url.DisplayText = "Web 前端";

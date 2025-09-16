@@ -5,7 +5,6 @@ using CodeSpirit.ConfigCenter.Data.Seeders;
 using CodeSpirit.ConfigCenter.Hubs;
 using CodeSpirit.ConfigCenter.Services;
 using CodeSpirit.ConfigCenter.Services.Implementations;
-using CodeSpirit.ConfigCenter.Services.Settings;
 using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Shared.Data;
@@ -94,7 +93,7 @@ public class ConfigCenterApiConfiguration : BaseApiConfiguration
     private static void AddLLMServices(IServiceCollection services)
     {
         // 添加LLM服务，使用配置中心专用的设置提供者
-        services.AddLLMServices<ConfigCenterLLMSettingsProvider>();
+        services.AddLLMServices();
     }
     
     /// <summary>

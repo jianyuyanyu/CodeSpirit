@@ -1,19 +1,19 @@
+using CodeSpirit.Aggregator;
+using CodeSpirit.AiFormFill;
 using CodeSpirit.ApprovalApi.Data;
 using CodeSpirit.ApprovalApi.Services;
-using CodeSpirit.ApprovalApi.Services.Settings;
 using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.Data;
-using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.EventBus.Extensions;
+using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using CodeSpirit.AiFormFill;
 
 namespace CodeSpirit.ApprovalApi.Configuration;
 
@@ -64,8 +64,11 @@ public class ApprovalApiConfiguration : BaseApiConfiguration
         // 添加审批事件处理器
         services.AddApprovalEventHandlers();
         
-        // 添加LLM服务（使用设置提供程序）
-        services.AddLLMServices<ApprovalLLMSettingsProvider>();
+        // 添加LLM服务（使用统一配置）
+        services.AddLLMServices();
+
+        // 添加AI表单填充服务（包含自动端点功能）
+        services.AddAiFormFillEndpoints();
     }
     
     /// <summary>
@@ -78,7 +81,11 @@ public class ApprovalApiConfiguration : BaseApiConfiguration
         // 使用多租户中间件
         app.UseCodeSpiritMultiTenant();
 
+        // 使用AI表单填充自动端点
         app.UseAiFormFillEndpoints();
+
+        // 使用聚合器
+        app.UseCodeSpiritAggregator();
 
         await Task.CompletedTask;
     }

@@ -30,7 +30,7 @@ public class MySqlMessagingDbContextFactory : IDesignTimeDbContextFactory<MySqlM
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrEmpty(connectionString))
         {
-            connectionString = "Server=localhost;Port=53362;Database=messaging;Uid=root;Pwd=Password123;CharSet=utf8mb4;";
+            connectionString = "Server=localhost;Port=3306;Database=messaging;Uid=root;Pwd=Password123;CharSet=utf8mb4;";
         }
 
         var optionsBuilder = new DbContextOptionsBuilder<MySqlMessagingDbContext>();

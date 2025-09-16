@@ -1,0 +1,39 @@
+using CodeSpirit.Core;
+using CodeSpirit.Shared.Data;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+
+namespace CodeSpirit.ApprovalApi.Data;
+
+/// <summary>
+/// SQL Server 特定的审批系统数据库上下文
+/// 用于迁移和SQL Server特定的配置
+/// </summary>
+public class SqlServerApprovalDbContext : ApprovalDbContext
+{
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="options">数据库上下文选项</param>
+    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="currentUser">当前用户</param>
+    /// <param name="httpContextAccessor">HTTP上下文访问器</param>
+    public SqlServerApprovalDbContext(
+        DbContextOptions<SqlServerApprovalDbContext> options,
+        IServiceProvider serviceProvider,
+        ICurrentUser currentUser,
+        IHttpContextAccessor httpContextAccessor) 
+        : base((DbContextOptions)options, serviceProvider, currentUser, httpContextAccessor)
+    {
+    }
+
+    /// <summary>
+    /// 应用数据库特定的配置
+    /// </summary>
+    /// <param name="modelBuilder">模型构建器</param>
+    protected override void ApplyDatabaseSpecificConfigurations(ModelBuilder modelBuilder)
+    {
+        // 应用SQL Server特定配置
+        DatabaseSpecificConfigurations.ApplySqlServerConfigurations(modelBuilder);
+    }
+}

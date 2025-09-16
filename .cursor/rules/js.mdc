@@ -1,6 +1,5 @@
 ---
-description: 
-globs: 
+globs: *.js
 alwaysApply: false
 ---
 # 通用要求

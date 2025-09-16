@@ -24,7 +24,7 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
         if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
         {
             // MySQL连接字符串 - 使用Aspire映射的端口
-            var connectionString = "Server=localhost;Port=53362;Database=identity-api;Uid=root;Pwd=Password123;CharSet=utf8mb4;";
+            var connectionString = "Server=localhost;Port=3306;Database=identity-api;Uid=root;Pwd=Password123;CharSet=utf8mb4;";
             // 使用固定的服务器版本，避免在设计时需要连接到实际数据库
             optionsBuilder.UseMySql(connectionString, ServerVersion.Parse("8.0.21-mysql"),
                 options => options.MigrationsAssembly("CodeSpirit.IdentityApi"));

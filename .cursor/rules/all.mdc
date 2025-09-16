@@ -12,31 +12,41 @@ alwaysApply: true
 - 注释应清晰描述功能、参数和返回
 - 请基于下面的项目结构理解当前项目，必须严格遵守下面的项目结构要求及规范
 - 如需调试运行需运行协调程序CodeSpirit.AppHost
+- 创建EF迁移时必须按数据库目录进行创建迁移，目前已支持SQL Server和MySQL
 
 # 项目结构
 
 Src/
-├── ApiServices/
-│   ├── CodeSpirit.IdentityApi/           # 身份认证API
-│   ├── CodeSpirit.ExamApi/               # 考试系统API
-│   └── CodeSpirit.ConfigCenter/          # 配置中心
-├── Components/
-│   ├── CodeSpirit.Aggregator/            # 聚合器组件
-│   ├── CodeSpirit.Amis/                  # UI生成引擎
-│   ├── CodeSpirit.Authorization/         # 权限组件
-│   ├── CodeSpirit.Audit/                 # 审计组件
-│   └── CodeSpirit.Navigation/            # 导航组件
-│   └── CodeSpirit.Charts/             # 智能图表组件
-├── CodeSpirit.AppHost/                   # Aspire应用宿主，启动项目
-├── CodeSpirit.Core/                      # 核心定义
+├── ApiServices/                          # API服务层
+│   ├── CodeSpirit.AiCardsApi/           # AI卡片API服务
+│   ├── CodeSpirit.ConfigCenter/         # 配置中心API
+│   ├── CodeSpirit.ExamApi/              # 考试系统API
+│   ├── CodeSpirit.FileStorageApi/       # 文件存储API
+│   ├── CodeSpirit.IdentityApi/          # 身份认证API
+│   ├── CodeSpirit.MessagingApi/         # 消息服务API
+│   └── CodeSpirit.SurveyApi/            # 问卷调查API
+├── Components/                           # 独立组件库
+│   ├── CodeSpirit.Aggregator/           # 数据聚合器组件
+│   ├── CodeSpirit.AiFormFill/           # AI表单智能填充组件
+│   ├── CodeSpirit.Amis/                 # AMIS界面生成引擎
+│   ├── CodeSpirit.Audit/                # 审计追踪组件
+│   ├── CodeSpirit.Authorization/        # 权限管理组件
+│   ├── CodeSpirit.Charts/               # 智能图表组件
+│   ├── CodeSpirit.ConfigCenter.Client/ # 配置中心客户端
+│   ├── CodeSpirit.LLM/                  # 大语言模型集成组件
+│   ├── CodeSpirit.Messaging/            # 消息队列组件
+│   ├── CodeSpirit.MultiTenant/          # 多租户组件
+│   ├── CodeSpirit.Navigation/           # 导航组件
+│   ├── CodeSpirit.PdfGeneration/        # PDF生成组件
+│   ├── CodeSpirit.Settings/             # 设置管理组件
+│   ├── CodeSpirit.Shared/               # 组件共享库
+│   └── CodeSpirit.UdlCards/             # UDL卡片组件
+├── CodeSpirit.AppHost/                   # Aspire应用宿主（启动项目）
+├── CodeSpirit.Core/                      # 核心框架定义
 ├── CodeSpirit.ServiceDefaults/           # 服务默认配置
-├── CodeSpirit.Shared/                    # 共享库
-├── CodeSpirit.Web/                       # Web项目，包含代理组件
-└── Tests/
-    ├── Components/
-    │   ├── CodeSpirit.Aggregator.Tests/
-    │   ├── CodeSpirit.Authorization.Tests/
-    │   └── CodeSpirit.Components.TestsBase/
-    ├── ApiServices/
-    │   └── CodeSpirit.IdentityApi.Tests/
-    └── CodeSpirit.Tests/                 # 通用测试
+├── CodeSpirit.Shared/                    # 全局共享库
+├── CodeSpirit.Web/                       # Web前端项目
+└── Tests/                                # 测试项目集合
+    ├── ApiServices/                      # API服务测试
+    ├── Components/                       # 组件测试
+    └── CodeSpirit.*.Tests/               # 各模块单元测试

@@ -27,7 +27,7 @@ public class MySqlExamDbContextFactory : IDesignTimeDbContextFactory<MySqlExamDb
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Server=localhost;Port=53362;Database=exam-api;Uid=root;Pwd=Password123;CharSet=utf8mb4;";
+        var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Server=localhost;Port=3306;Database=exam-api;Uid=root;Pwd=Password123;CharSet=utf8mb4;";
         if (string.IsNullOrEmpty(connectionString))
         {
             throw new InvalidOperationException("未找到数据库连接字符串 'DefaultConnection'");

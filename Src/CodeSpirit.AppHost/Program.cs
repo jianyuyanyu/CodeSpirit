@@ -72,7 +72,7 @@ var databaseType = builder.Configuration.GetValue<string>("DatabaseType") ?? "My
 Console.WriteLine($"使用数据库类型: {databaseType}");
 
 // 数据库资源配置
-IResourceBuilder<IResourceWithConnectionString> identityDb, examDb, configDb, settingsDb, messagingDb, fileDb, surveyDb;
+IResourceBuilder<IResourceWithConnectionString> identityDb, examDb, configDb, settingsDb, messagingDb, fileDb, surveyDb, approvalDb;
 
 if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
 {
@@ -81,8 +81,8 @@ if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
     // 添加MySQL密码参数
     var mysqlPassword = builder.AddParameter("mysql-password", "Password123", secret: true);
 
-    // 添加MySQL服务器
-    var mysql = builder.AddMySql("mysql", password: mysqlPassword, port: 53362)
+    // 添加MySQL服务器 - 使用默认端口3306
+    var mysql = builder.AddMySql("mysql", password: mysqlPassword, port: 3306)
                        .WithLifetime(ContainerLifetime.Persistent)
                        .WithDataVolume()
                        .WithPhpMyAdmin();
@@ -95,6 +95,7 @@ if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
     messagingDb = mysql.AddDatabase("messaging-api");
     fileDb = mysql.AddDatabase("file-api");
     surveyDb = mysql.AddDatabase("survey-api");
+    approvalDb = mysql.AddDatabase("approval-api");
 }
 else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
 {
@@ -115,6 +116,7 @@ else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
     messagingDb = sqlServer.AddDatabase("messaging-api");
     fileDb = sqlServer.AddDatabase("file-api");
     surveyDb = sqlServer.AddDatabase("survey-api");
+    approvalDb = sqlServer.AddDatabase("approval-api");
 }
 else
 {
@@ -206,6 +208,22 @@ var surveyService = builder.AddProject<Projects.CodeSpirit_SurveyApi>("survey")
     .WaitFor(surveyDb)
     .WaitFor(settingsDb);
 
+// 添加审批服务
+var approvalService = builder.AddProject<Projects.CodeSpirit_ApprovalApi>("approval")
+    .WithReference(approvalDb)
+    .WithReference(settingsDb)
+    .WithReference(seqService)
+    .WithReference(cache)
+    .WithReference(configService)
+    .WithReference(rabbitmqService)
+    .WithReference(identityService)
+    .WithEnvironment("DatabaseType", databaseType)
+    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
+    .WithEnvironment("Jwt__Issuer", jwtIssuer)
+    .WithEnvironment("Jwt__Audience", jwtAudience)
+    .WaitFor(approvalDb)
+    .WaitFor(settingsDb);
+
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     .WithReference(cache)
@@ -218,6 +236,7 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(elasticsearchService)
     .WithReference(fileService)
     .WithReference(surveyService)
+    .WithReference(approvalService)
     .WithEnvironment("DatabaseType", databaseType)
     .WithUrlForEndpoint("https", url =>
     {

@@ -1,10 +1,47 @@
-# CodeSpirit 数据库管理脚本
+# CodeSpirit 管理脚本
 
-本目录包含用于管理CodeSpirit项目多数据库架构的PowerShell脚本，支持MySQL和SQL Server的迁移管理。
+本目录包含用于管理CodeSpirit项目的PowerShell脚本，包括多数据库架构的迁移管理和端口占用问题解决。
 
 ## 脚本说明
 
-### manage-multi-database-migrations.ps1 ⭐ 推荐使用
+### 端口管理脚本
+
+#### kill-port-process.ps1
+**端口占用检测和释放脚本**，用于解决 Aspire 应用程序端口冲突问题。
+
+**功能特性：**
+- 检测指定端口的占用情况
+- 释放被占用的端口进程
+- 支持批量释放所有 Aspire 服务端口
+- 提供详细的进程信息显示
+
+**使用示例：**
+```powershell
+# 释放MySQL端口
+.\Scripts\kill-port-process.ps1 -Port 3306
+
+# 仅查看端口占用情况
+.\Scripts\kill-port-process.ps1 -ShowOnly -Port 3306
+
+# 释放所有Aspire服务端口
+.\Scripts\kill-port-process.ps1 -KillAll
+
+# 显示帮助信息
+.\Scripts\kill-port-process.ps1 -Help
+```
+
+#### fix-mysql-port.ps1
+**MySQL端口快速修复脚本**，专门用于解决MySQL端口3306的占用问题。
+
+**使用方法：**
+```powershell
+# 直接运行，自动检测并释放MySQL端口
+.\Scripts\fix-mysql-port.ps1
+```
+
+### 数据库迁移脚本
+
+#### manage-multi-database-migrations.ps1 ⭐ 推荐使用
 **多数据库迁移管理脚本**，支持所有API项目和组件的MySQL/SQL Server迁移管理。
 
 **支持的项目：**
@@ -151,19 +188,59 @@ dotnet run
 
 ## 故障排除
 
-### 1. 迁移生成失败
+### 1. 端口占用问题 🔧
+
+**问题症状：**
+```
+service mysql is configured to use a port in the ephemeral range on your machine, which may cause conflicts
+could not start the proxy for the service: listen tcp [::1]:53362: bind: Only one usage of each socket address
+```
+
+**解决方案：**
+
+**方法一：使用快速修复脚本**
+```powershell
+# 快速释放MySQL端口
+.\Scripts\fix-mysql-port.ps1
+```
+
+**方法二：使用通用端口管理脚本**
+```powershell
+# 释放指定端口
+.\Scripts\kill-port-process.ps1 -Port 3306
+
+# 释放所有Aspire服务端口
+.\Scripts\kill-port-process.ps1 -KillAll
+```
+
+**方法三：手动处理**
+```powershell
+# 查找占用端口的进程
+netstat -ano | findstr :3306
+
+# 终止进程（替换PID为实际进程ID）
+taskkill /PID <PID> /F
+```
+
+**预防措施：**
+- 项目使用MySQL默认端口3306，避免与其他服务冲突
+- 使用持久化容器生命周期避免频繁端口分配
+- 定期清理未使用的Docker容器和进程
+
+### 2. 迁移生成失败
 - 检查项目是否存在于指定路径
 - 确认数据库连接字符串配置正确
 - 验证EF Core工具是否已安装
 
-### 2. DbContext创建失败
+### 3. DbContext创建失败
 - 检查DbContextFactory是否正确配置
 - 确认配置文件存在且格式正确
 - 验证依赖注入配置
 
-### 3. 权限问题
+### 4. 权限问题
 - 确保数据库用户有足够权限创建/修改数据库
 - 检查文件系统权限
+- 以管理员身份运行端口管理脚本
 
 ## 最佳实践
 

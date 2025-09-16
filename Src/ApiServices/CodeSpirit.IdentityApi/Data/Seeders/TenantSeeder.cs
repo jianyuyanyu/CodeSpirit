@@ -54,10 +54,14 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                 try
                 {
                     // 1. 确保默认租户存在
-                    await EnsureDefaultTenantAsync();
+                    _logger.LogInformation("步骤1: 开始确保默认租户存在...");
+                    var isDefaultTenantCreated = await EnsureDefaultTenantAsync();
+                    _logger.LogInformation("步骤1完成: 默认租户创建状态 = {IsCreated}", isDefaultTenantCreated);
 
                     // 2. 确保系统租户存在
+                    _logger.LogInformation("步骤2: 开始确保系统租户存在...");
                     await EnsureSystemTenantAsync();
+                    _logger.LogInformation("步骤2完成: 系统租户处理完成");
 
                     // 3. 迁移现有用户数据
                     await MigrateExistingUsersAsync();
@@ -67,6 +71,18 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
                     // 5. 创建系统角色和用户（使用统一服务）
                     await CreateSystemRolesAndUsersAsync();
+
+                    // 6. 如果默认租户是新创建的，为其创建角色和用户
+                    if (isDefaultTenantCreated)
+                    {
+                        _logger.LogInformation("步骤6: 开始为新创建的默认租户创建角色和用户...");
+                        await CreateDefaultTenantRolesAndUsersAsync();
+                        _logger.LogInformation("步骤6完成: 默认租户角色和用户创建完成");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("步骤6跳过: 默认租户已存在，不需要创建角色和用户");
+                    }
 
                     // 检查是否有需要保存的更改
                     var hasChanges = _context.ChangeTracker.HasChanges();
@@ -103,6 +119,9 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
 
                     // 等待一小段时间，确保事务完全提交到数据库
                     await Task.Delay(500);
+
+                    // 验证租户创建结果
+                    await VerifyTenantCreationAsync();
 
                     _logger.LogInformation("租户种子数据初始化完成");
                 }
@@ -261,11 +280,27 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
         /// <summary>
         /// 确保默认租户存在
         /// </summary>
-        /// <returns></returns>
-        private async Task EnsureDefaultTenantAsync()
+        /// <returns>如果创建了新的默认租户则返回true，否则返回false</returns>
+        private async Task<bool> EnsureDefaultTenantAsync()
         {
-            var existingTenant = await _context.Tenants
-                .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.DefaultTenantId);
+            try
+            {
+                _logger.LogInformation("开始检查默认租户是否存在...");
+                
+                // 检查数据库连接
+                var canConnect = await _context.Database.CanConnectAsync();
+                _logger.LogInformation("数据库连接状态: {CanConnect}", canConnect ? "正常" : "失败");
+                
+                if (!canConnect)
+                {
+                    _logger.LogError("无法连接到数据库，默认租户创建失败!");
+                    throw new InvalidOperationException("数据库连接失败");
+                }
+
+                var existingTenant = await _context.Tenants
+                    .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.DefaultTenantId);
+                
+                _logger.LogInformation("默认租户查询结果: {IsNull}", existingTenant == null ? "不存在" : "已存在");
 
             if (existingTenant == null)
             {
@@ -291,12 +326,26 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                 };
 
                 _context.Tenants.Add(defaultTenant);
-                _logger.LogInformation("默认租户创建完成: {TenantId}, 过期时间: {ExpiresAt}",
-                    TenantConstants.DefaultTenantId, defaultTenant.ExpiresAt?.ToString() ?? "永不过期");
+                
+                // 立即检查是否已添加到上下文
+                var addedEntry = _context.Entry(defaultTenant);
+                _logger.LogInformation("默认租户在上下文中的状态: {State}", addedEntry.State);
+                
+                _logger.LogInformation("默认租户创建完成: {TenantId}, Id: {Id}, 过期时间: {ExpiresAt}",
+                    TenantConstants.DefaultTenantId, defaultTenant.Id, defaultTenant.ExpiresAt?.ToString() ?? "永不过期");
+                return true; // 返回true表示创建了新的默认租户
             }
             else
             {
-                _logger.LogInformation("默认租户已存在: {TenantId}", TenantConstants.DefaultTenantId);
+                _logger.LogInformation("默认租户已存在: {TenantId}, Id: {Id}, Name: {Name}",
+                    existingTenant.TenantId, existingTenant.Id, existingTenant.Name);
+                return false; // 返回false表示默认租户已存在
+            }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "确保默认租户存在时发生错误: {Message}", ex.Message);
+                throw;
             }
         }
 
@@ -705,6 +754,265 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
             {
                 _logger.LogError(ex, "强制创建系统租户失败: {Message}", ex.Message);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// 为默认租户创建角色和用户
+        /// </summary>
+        /// <returns></returns>
+        private async Task CreateDefaultTenantRolesAndUsersAsync()
+        {
+            try
+            {
+                _logger.LogInformation("开始为默认租户创建角色和用户...");
+
+                // 先清理 ChangeTracker，避免之前的实体影响
+                _context.ChangeTracker.Clear();
+
+                // 检查默认租户是否已经存在角色和用户
+                var existingDefaultRoles = await _context.Roles
+                    .IgnoreQueryFilters() // 忽略软删除过滤器
+                    .Where(r => r.TenantId == TenantConstants.DefaultTenantId)
+                    .ToListAsync();
+
+                var existingDefaultUsers = await _context.Users
+                    .IgnoreQueryFilters() // 忽略软删除过滤器
+                    .Where(u => u.TenantId == TenantConstants.DefaultTenantId)
+                    .ToListAsync();
+
+                _logger.LogInformation("现有默认租户角色数量: {Count}", existingDefaultRoles.Count);
+                _logger.LogInformation("现有默认租户用户数量: {Count}", existingDefaultUsers.Count);
+
+                // 如果默认租户数据已存在，跳过创建
+                if (existingDefaultRoles.Any() && existingDefaultUsers.Any())
+                {
+                    _logger.LogInformation("默认租户角色和用户已存在，跳过创建");
+                    return;
+                }
+
+                // 创建默认租户的业务角色
+                var businessRoles = _roleSeederService.GetBusinessRoles();
+                var createdRoles = new List<ApplicationRole>();
+
+                foreach (var roleDefinition in businessRoles)
+                {
+                    try
+                    {
+                        var role = await _roleSeederService.EnsureRoleExistsAsync(
+                            roleDefinition.Name,
+                            roleDefinition.Description,
+                            roleDefinition.TenantId);
+                        createdRoles.Add(role);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "为默认租户创建角色 {RoleName} 时发生错误，可能已存在: {Message}",
+                            roleDefinition.Name, ex.Message);
+
+                        // 尝试查找已存在的角色
+                        var existingRole = await _context.Roles
+                            .FirstOrDefaultAsync(r => r.TenantId == roleDefinition.TenantId &&
+                                                     (r.Name == roleDefinition.Name ||
+                                                      r.NormalizedName == roleDefinition.Name.ToUpper()));
+                        if (existingRole != null)
+                        {
+                            createdRoles.Add(existingRole);
+                        }
+                    }
+                }
+
+                _logger.LogInformation("默认租户角色创建完成，共处理 {Count} 个角色", createdRoles.Count);
+
+                // 创建默认租户的业务用户
+                var businessUsers = _userSeederService.GetBusinessUsers();
+                var createdUsers = new List<ApplicationUser>();
+
+                foreach (var userDefinition in businessUsers)
+                {
+                    try
+                    {
+                        var user = await _userSeederService.EnsureUserExistsAsync(
+                            userDefinition.UserName,
+                            userDefinition.Email,
+                            userDefinition.DisplayName,
+                            userDefinition.Password,
+                            userDefinition.TenantId);
+                        createdUsers.Add(user);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "为默认租户创建用户 {UserName} 时发生错误，可能已存在: {Message}",
+                            userDefinition.UserName, ex.Message);
+
+                        // 尝试查找已存在的用户
+                        var existingUser = await _context.Users
+                            .FirstOrDefaultAsync(u => u.TenantId == userDefinition.TenantId &&
+                                                     (u.UserName == userDefinition.UserName ||
+                                                      u.NormalizedUserName == userDefinition.UserName.ToUpper()));
+                        if (existingUser != null)
+                        {
+                            createdUsers.Add(existingUser);
+                        }
+                    }
+                }
+
+                _logger.LogInformation("默认租户用户创建完成，共处理 {Count} 个用户", createdUsers.Count);
+
+                // 为默认租户用户分配角色
+                foreach (var userDefinition in businessUsers)
+                {
+                    var user = createdUsers.FirstOrDefault(u => u.UserName == userDefinition.UserName);
+                    if (user != null)
+                    {
+                        foreach (var roleName in userDefinition.Roles)
+                        {
+                            var role = createdRoles.FirstOrDefault(r => r.Name == roleName);
+                            if (role != null)
+                            {
+                                try
+                                {
+                                    await _userSeederService.EnsureUserRoleExistsAsync(user.Id, role.Id, userDefinition.TenantId);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogWarning(ex, "为默认租户用户 {UserName} 分配角色 {RoleName} 时发生错误: {Message}",
+                                        user.UserName, roleName, ex.Message);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                _logger.LogInformation("默认租户角色和用户创建完成");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "为默认租户创建角色和用户时发生错误: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 强制创建默认租户（用于故障排除）
+        /// </summary>
+        /// <returns></returns>
+        public async Task ForceCreateDefaultTenantAsync()
+        {
+            try
+            {
+                _logger.LogInformation("开始强制创建默认租户...");
+
+                // 检查数据库连接
+                var canConnect = await _context.Database.CanConnectAsync();
+                if (!canConnect)
+                {
+                    _logger.LogError("数据库连接失败，无法创建默认租户");
+                    return;
+                }
+
+                // 使用新的事务
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // 再次检查是否已存在
+                    var existingTenant = await _context.Tenants
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.DefaultTenantId);
+
+                    if (existingTenant != null)
+                    {
+                        _logger.LogInformation("默认租户已存在，无需强制创建: {TenantId}", existingTenant.TenantId);
+                        return;
+                    }
+
+                    var defaultTenant = new TenantInfo
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        TenantId = TenantConstants.DefaultTenantId,
+                        Name = TenantConstants.DefaultTenantName,
+                        DisplayName = TenantConstants.DefaultTenantDisplayName,
+                        Description = TenantConstants.DefaultTenantDescription,
+                        Strategy = TenantStrategy.SharedDatabase,
+                        IsActive = true,
+                        Configuration = "{}",
+                        ThemeConfig = "{}",
+                        MaxUsers = 10000,
+                        StorageLimit = 102400L,
+                        ExpiresAt = null,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = 1L,
+                        IsDeleted = false
+                    };
+
+                    _context.Tenants.Add(defaultTenant);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation("强制创建默认租户成功: {TenantId}, ID: {Id}",
+                        defaultTenant.TenantId, defaultTenant.Id);
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "强制创建默认租户时发生事务错误: {Message}", ex.Message);
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "强制创建默认租户失败: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 验证租户创建结果
+        /// </summary>
+        /// <returns></returns>
+        private async Task VerifyTenantCreationAsync()
+        {
+            try
+            {
+                _logger.LogInformation("开始验证租户创建结果...");
+
+                // 重新查询默认租户
+                var defaultTenant = await _context.Tenants
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.DefaultTenantId);
+
+                if (defaultTenant == null)
+                {
+                    _logger.LogError("验证失败：默认租户仍然不存在!");
+                }
+                else
+                {
+                    _logger.LogInformation("验证成功：默认租户存在 - ID: {Id}, 租户ID: {TenantId}, 名称: {Name}",
+                        defaultTenant.Id, defaultTenant.TenantId, defaultTenant.Name);
+                }
+
+                // 重新查询系统租户
+                var systemTenant = await _context.Tenants
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.SystemTenantId);
+
+                if (systemTenant == null)
+                {
+                    _logger.LogError("验证失败：系统租户仍然不存在!");
+                }
+                else
+                {
+                    _logger.LogInformation("验证成功：系统租户存在 - ID: {Id}, 租户ID: {TenantId}, 名称: {Name}",
+                        systemTenant.Id, systemTenant.TenantId, systemTenant.Name);
+                }
+
+                // 统计总数
+                var totalTenants = await _context.Tenants.AsNoTracking().CountAsync();
+                _logger.LogInformation("数据库中总租户数量: {Count}", totalTenants);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "验证租户创建结果时发生错误: {Message}", ex.Message);
             }
         }
     }

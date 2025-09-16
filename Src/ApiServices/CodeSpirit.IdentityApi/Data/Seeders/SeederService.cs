@@ -1,6 +1,7 @@
 ﻿using CodeSpirit.IdentityApi.Data.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using CodeSpirit.Core;
 namespace CodeSpirit.IdentityApi.Data.Seeders;
 public class SeederService: IScopedDependency
 {
@@ -29,6 +30,17 @@ public class SeederService: IScopedDependency
                 TenantSeeder tenantSeeder = scope.ServiceProvider.GetRequiredService<TenantSeeder>();
                 await tenantSeeder.SeedAsync();
                 _logger.LogInformation("租户数据初始化完毕！");
+
+                // 1.1. 验证默认租户是否创建成功，如果失败则强制创建
+                var defaultTenantExists = await dbContext.Tenants
+                    .AsNoTracking()
+                    .AnyAsync(t => t.TenantId == TenantConstants.DefaultTenantId);
+                
+                if (!defaultTenantExists)
+                {
+                    _logger.LogWarning("默认租户验证失败，尝试强制创建...");
+                    await tenantSeeder.ForceCreateDefaultTenantAsync();
+                }
 
                 // 清理ChangeTracker以避免实体跟踪冲突
                 dbContext.ChangeTracker.Clear();

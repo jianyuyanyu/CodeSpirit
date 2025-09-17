@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Hosting;
+using CodeSpirit.Audit.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.Audit.Extensions;
 
@@ -8,7 +10,7 @@ namespace CodeSpirit.Audit.Extensions;
 public class AuditLogConsumerService : BackgroundService
 {
     private readonly IRabbitMQService _rabbitMQService;
-    private readonly IElasticsearchService _elasticsearchService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly IGeoLocationService _geoLocationService;
     private readonly ILogger<AuditLogConsumerService> _logger;
     private readonly AuditOptions _options;
@@ -21,13 +23,13 @@ public class AuditLogConsumerService : BackgroundService
     /// </summary>
     public AuditLogConsumerService(
         IRabbitMQService rabbitMQService,
-        IElasticsearchService elasticsearchService,
+        IServiceScopeFactory serviceScopeFactory,
         IGeoLocationService geoLocationService,
         IConfiguration configuration,
         ILogger<AuditLogConsumerService> logger)
     {
         _rabbitMQService = rabbitMQService;
-        _elasticsearchService = elasticsearchService;
+        _serviceScopeFactory = serviceScopeFactory;
         _geoLocationService = geoLocationService;
         _logger = logger;
         
@@ -129,33 +131,44 @@ public class AuditLogConsumerService : BackgroundService
             throw new InvalidOperationException("RabbitMQ配置未找到");
         }
         
-        if (_options.Elasticsearch != null)
+        // 记录存储提供者配置
+        _logger.LogInformation("存储提供者: {Provider}", _options.StorageProvider);
+        if (_options.StorageProvider.Equals("elasticsearch", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogInformation("Elasticsearch配置 - 索引: {Index}, URLs: {Urls}",
-                _options.Elasticsearch.IndexName, string.Join(", ", _options.Elasticsearch.Urls));
-        }
-        else
-        {
-            _logger.LogError("Elasticsearch配置为空！");
-            throw new InvalidOperationException("Elasticsearch配置未找到");
-        }
-        
-        // 确保Elasticsearch索引存在
-        _logger.LogInformation("正在检查Elasticsearch索引...");
-        try
-        {
-            var indexCreated = await _elasticsearchService.CreateIndexAsync();
-            _logger.LogInformation("Elasticsearch索引检查完成，结果: {Result}", indexCreated);
-            
-            if (!indexCreated)
+            if (_options.Elasticsearch != null)
             {
-                _logger.LogWarning("Elasticsearch索引创建失败，但继续初始化消费者");
+                _logger.LogInformation("Elasticsearch配置 - 索引: {Index}, URLs: {Urls}",
+                    _options.Elasticsearch.IndexName, string.Join(", ", _options.Elasticsearch.Urls));
             }
         }
-        catch (Exception esEx)
+        else if (_options.StorageProvider.Equals("greptimedb", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogError(esEx, "检查Elasticsearch索引时发生异常: {Type}: {Message}", 
-                esEx.GetType().Name, esEx.Message);
+            if (_options.GreptimeDB != null)
+            {
+                _logger.LogInformation("GreptimeDB配置 - 数据库: {Database}, 表: {Table}, URL: {Url}",
+                    _options.GreptimeDB.Database, _options.GreptimeDB.TableName, _options.GreptimeDB.Url);
+            }
+        }
+        
+        // 初始化存储
+        _logger.LogInformation("正在初始化存储服务...");
+        try
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var auditStorageService = scope.ServiceProvider.GetRequiredService<IAuditStorageService>();
+            
+            var storageInitialized = await auditStorageService.InitializeAsync();
+            _logger.LogInformation("存储服务初始化完成，结果: {Result}", storageInitialized);
+            
+            if (!storageInitialized)
+            {
+                _logger.LogWarning("存储服务初始化失败，但继续初始化消费者");
+            }
+        }
+        catch (Exception storageEx)
+        {
+            _logger.LogError(storageEx, "初始化存储服务时发生异常: {Type}: {Message}", 
+                storageEx.GetType().Name, storageEx.Message);
             throw;
         }
         
@@ -280,28 +293,58 @@ public class AuditLogConsumerService : BackgroundService
                 // 地理位置失败不应该阻止整个处理流程，继续执行
             }
             
-            // 保存到Elasticsearch
+            // 保存到存储
             try
             {
-                _logger.LogDebug("开始保存到Elasticsearch...");
-                await _elasticsearchService.IndexDocumentAsync(auditLog);
-                _logger.LogInformation("=== 审计日志处理完成 === ID: {Id}", messageId);
-            }
-            catch (Exception esEx)
-            {
-                _logger.LogError(esEx, "保存到Elasticsearch失败 - ID: {Id}, 异常类型: {ExceptionType}, 消息: {Message}", 
-                    messageId, esEx.GetType().Name, esEx.Message);
+                _logger.LogDebug("开始保存到存储服务...");
+                using var scope = _serviceScopeFactory.CreateScope();
+                var auditStorageService = scope.ServiceProvider.GetRequiredService<IAuditStorageService>();
                 
-                if (esEx.InnerException != null)
+                var stored = await auditStorageService.StoreAsync(auditLog);
+                if (stored)
                 {
-                    _logger.LogError("Elasticsearch服务内部异常: {InnerExceptionType}: {InnerMessage}", 
-                        esEx.InnerException.GetType().Name, esEx.InnerException.Message);
+                    _logger.LogInformation("=== 审计日志处理完成 === ID: {Id}", messageId);
+                }
+                else
+                {
+                    _logger.LogError("存储审计日志失败 - ID: {Id}, 存储服务: {ServiceType}", 
+                        messageId, auditStorageService.GetType().Name);
+                    
+                    // 如果是GreptimeDB存储服务，进行详细诊断
+                    if (auditStorageService is GreptimeDbAuditStorageService greptimeDbService)
+                    {
+                        _logger.LogWarning("检测到GreptimeDB存储失败，开始健康检查...");
+                        var isHealthy = await greptimeDbService.HealthCheckAsync();
+                        _logger.LogWarning("GreptimeDB健康状态: {IsHealthy}", isHealthy);
+                        
+                        if (!isHealthy)
+                        {
+                            _logger.LogError("GreptimeDB服务不健康，建议检查:");
+                            _logger.LogError("1. GreptimeDB服务是否正在运行");
+                            _logger.LogError("2. 网络连接是否正常");
+                            _logger.LogError("3. 配置URL是否正确");
+                            _logger.LogError("4. 数据库是否存在");
+                        }
+                    }
+                    
+                    throw new InvalidOperationException($"存储审计日志失败 - ID: {messageId}, 服务类型: {auditStorageService.GetType().Name}");
+                }
+            }
+            catch (Exception storageEx)
+            {
+                _logger.LogError(storageEx, "保存到存储服务失败 - ID: {Id}, 异常类型: {ExceptionType}, 消息: {Message}", 
+                    messageId, storageEx.GetType().Name, storageEx.Message);
+                
+                if (storageEx.InnerException != null)
+                {
+                    _logger.LogError("存储服务内部异常: {InnerExceptionType}: {InnerMessage}", 
+                        storageEx.InnerException.GetType().Name, storageEx.InnerException.Message);
                 }
                 
                 // 记录详细的堆栈跟踪以便调试
-                _logger.LogError("Elasticsearch异常堆栈跟踪: {StackTrace}", esEx.StackTrace);
+                _logger.LogError("存储服务异常堆栈跟踪: {StackTrace}", storageEx.StackTrace);
                 
-                throw; // Elasticsearch失败必须重新抛出异常
+                throw; // 存储失败必须重新抛出异常
             }
         }
         catch (Exception ex)

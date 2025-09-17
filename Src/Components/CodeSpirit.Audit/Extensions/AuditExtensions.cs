@@ -2,6 +2,7 @@ using CodeSpirit.Audit.Middleware;
 using CodeSpirit.Audit.Models;
 using CodeSpirit.Audit.Services;
 using CodeSpirit.Audit.Services.Implementation;
+using CodeSpirit.MultiTenant.Abstractions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,11 +40,44 @@ public static class AuditExtensions
         // 注册选项
         services.Configure<AuditOptions>(auditConfig);
         
-        // 注册Elasticsearch服务
-        services.AddSingleton<IElasticsearchService, ElasticsearchService>();
+        // 获取存储提供者类型
+        var storageProvider = auditConfig.GetValue<string>("StorageProvider") ?? "Elasticsearch";
         
         // 注册RabbitMQ服务
         services.AddSingleton<IRabbitMQService, RabbitMQService>();
+        
+        // 根据配置注册存储服务
+        switch (storageProvider.ToLowerInvariant())
+        {
+            case "greptimedb":
+                // 注册GreptimeDB存储服务
+                services.AddHttpClient<GreptimeDbAuditStorageService>();
+                services.AddScoped<IAuditStorageService>(provider =>
+                {
+                    var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+                    var httpClient = httpClientFactory.CreateClient(nameof(GreptimeDbAuditStorageService));
+                    var logger = provider.GetRequiredService<ILogger<GreptimeDbAuditStorageService>>();
+                    var configuration = provider.GetRequiredService<IConfiguration>();
+                    var tenantContext = provider.GetService<ITenantContext>();
+                    
+                    return new GreptimeDbAuditStorageService(httpClient, logger, configuration, tenantContext);
+                });
+                break;
+            
+            case "elasticsearch":
+            default:
+                // 注册Elasticsearch服务（默认）
+                services.AddSingleton<IElasticsearchService, ElasticsearchService>();
+                services.AddScoped<IAuditStorageService>(provider =>
+                {
+                    var elasticsearchService = provider.GetRequiredService<IElasticsearchService>();
+                    var tenantContext = provider.GetService<ITenantContext>();
+                    var logger = provider.GetRequiredService<ILogger<ElasticsearchAuditStorageService>>();
+                    
+                    return new ElasticsearchAuditStorageService(elasticsearchService, tenantContext, logger);
+                });
+                break;
+        }
         
         // 注册审计服务
         services.AddScoped<IAuditService, AuditService>();

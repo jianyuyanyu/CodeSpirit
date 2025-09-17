@@ -8,7 +8,7 @@ namespace CodeSpirit.Audit.Services.Implementation;
 /// </summary>
 public class AuditService : IAuditService
 {
-    private readonly IElasticsearchService _elasticsearchService;
+    private readonly IAuditStorageService _storageService;
     private readonly IRabbitMQService _rabbitMQService;
     private readonly ILogger<AuditService> _logger;
     private readonly AuditOptions _options;
@@ -17,12 +17,12 @@ public class AuditService : IAuditService
     /// 构造函数
     /// </summary>
     public AuditService(
-        IElasticsearchService elasticsearchService,
+        IAuditStorageService storageService,
         IRabbitMQService rabbitMQService,
         ILogger<AuditService> logger,
         IConfiguration configuration)
     {
-        _elasticsearchService = elasticsearchService;
+        _storageService = storageService;
         _rabbitMQService = rabbitMQService;
         _logger = logger;
         
@@ -55,13 +55,13 @@ public class AuditService : IAuditService
             {
                 // RabbitMQ不可用时直接写入Elasticsearch
                 _logger.LogWarning(ex, "RabbitMQ服务不可用，正在直接写入Elasticsearch");
-                await _elasticsearchService.IndexDocumentAsync(auditLog);
+                await _storageService.StoreAsync(auditLog);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "推送审计日志到RabbitMQ失败，尝试直接写入Elasticsearch");
                 // 如果RabbitMQ出错，尝试直接写入Elasticsearch
-                await _elasticsearchService.IndexDocumentAsync(auditLog);
+                await _storageService.StoreAsync(auditLog);
             }
         }
         catch (Exception ex)
@@ -77,7 +77,7 @@ public class AuditService : IAuditService
     {
         try
         {
-            return await _elasticsearchService.GetDocumentAsync<Models.AuditLog>(id);
+            return await _storageService.GetByIdAsync(id);
         }
         catch (Exception ex)
         {
@@ -95,8 +95,8 @@ public class AuditService : IAuditService
         {
             // 记录查询参数
             _logger.LogInformation("开始搜索审计日志");
-            _logger.LogInformation("查询参数 - 页码: {PageIndex}, 页大小: {PageSize}", query.PageIndex, query.PageSize);
-            _logger.LogInformation("排序字段: {SortField}, 排序方向: {SortDirection}", query.SortField, query.SortDirection);
+            _logger.LogInformation("查询参数 - 页码: {PageIndex}, 页大小: {PageSize}", query.Page, query.PerPage);
+            _logger.LogInformation("排序字段: {SortField}, 排序方向: {SortDirection}", query.OrderBy ?? "OperationTime", query.OrderDir);
             
             if (!string.IsNullOrEmpty(query.UserId))
                 _logger.LogInformation("用户ID过滤: {UserId}", query.UserId);
@@ -111,20 +111,20 @@ public class AuditService : IAuditService
             var searchFunc = BuildSearchQuery(query);
             
             // 确定排序字段和方向
-            var sortField = string.IsNullOrEmpty(query.SortField) ? "OperationTime" : query.SortField;
-            var isAscending = query.SortDirection?.ToLower() == "asc";
+            var sortField = string.IsNullOrEmpty(query.OrderBy) ? "OperationTime" : query.OrderBy;
+            var isAscending = query.OrderDir?.ToLower() == "asc";
             
             _logger.LogInformation("最终排序配置 - 字段: {SortField}, 升序: {IsAscending}", sortField, isAscending);
             
             // 添加分页和排序
             var combinedFunc = AuditQueryHelper.CombineQueries(
                 searchFunc,
-                AuditQueryHelper.CreatePaginationQuery(query.PageIndex, query.PageSize),
+                AuditQueryHelper.CreatePaginationQuery(query.Page, query.PerPage),
                 AuditQueryHelper.CreateSortQuery(sortField, isAscending)
             );
             
             _logger.LogInformation("开始执行Elasticsearch查询...");
-            var result = await _elasticsearchService.SearchAsync<Models.AuditLog>(combinedFunc);
+            var result = await _storageService.SearchAsync(query);
             
             _logger.LogInformation("审计日志搜索完成 - 返回 {Count} 条记录，总计 {Total} 条", 
                 result.Items.Count(), result.Total);
@@ -179,8 +179,8 @@ public class AuditService : IAuditService
         // 如果没有任何查询条件，返回匹配所有的查询
         if (queries.Count == 0)
         {
-            return s => s.From((query.PageIndex - 1) * query.PageSize)
-                         .Size(query.PageSize);
+            return s => s.From((query.Page - 1) * query.PerPage)
+                         .Size(query.PerPage);
         }
         
         // 组合所有查询条件
@@ -198,15 +198,7 @@ public class AuditService : IAuditService
     {
         try
         {
-            var aggregationFunc = CreateOperationStatsAggregation(startTime, endTime, tenantId);
-            var result = await _elasticsearchService.AggregateAsync<Models.AuditLog>(aggregationFunc);
-            
-            if (result != null)
-            {
-                return ParseOperationStatsResult(result);
-            }
-            
-            return new Dictionary<string, long>();
+            return await _storageService.GetOperationStatsAsync(startTime, endTime, tenantId);
         }
         catch (Exception ex)
         {
@@ -327,15 +319,7 @@ public class AuditService : IAuditService
     {
         try
         {
-            var aggregationFunc = CreateUserStatsAggregation(startTime, endTime, topN, tenantId);
-            var result = await _elasticsearchService.AggregateAsync<Models.AuditLog>(aggregationFunc);
-            
-            if (result != null)
-            {
-                return ParseUserStatsResult(result);
-            }
-            
-            return new Dictionary<string, long>();
+            return await _storageService.GetUserStatsAsync(startTime, endTime, topN, tenantId);
         }
         catch (Exception ex)
         {
@@ -456,15 +440,7 @@ public class AuditService : IAuditService
     {
         try
         {
-            var aggregationFunc = CreateOperationTrendAggregation(startTime, endTime, interval, tenantId);
-            var result = await _elasticsearchService.AggregateAsync<Models.AuditLog>(aggregationFunc);
-            
-            if (result != null)
-            {
-                return ParseOperationTrendResult(result);
-            }
-            
-            return new Dictionary<DateTime, long>();
+            return await _storageService.GetOperationTrendAsync(startTime, endTime, interval, tenantId);
         }
         catch (Exception ex)
         {

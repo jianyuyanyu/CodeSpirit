@@ -161,7 +161,6 @@ public class AuditMiddleware
         {
             TenantId = tenantId,
             RequestPath = context.Request.GetDisplayUrl(),
-            RequestMethod = context.Request.Method,
             IpAddress = ipAddress,
             UserAgent = userAgent,
             RequestParams = _options.LogRequestParams ? SanitizeSensitiveData(originalRequestBody) : null
@@ -281,10 +280,6 @@ public class AuditMiddleware
                     controllerActionDescriptor.ControllerName,
                     controllerActionDescriptor.ActionName);
 
-                auditLog.StatusCode = context.Response.StatusCode;
-                auditLog.ControllerName = controllerActionDescriptor.ControllerName;
-                auditLog.ActionName = controllerActionDescriptor.ActionName;
-                auditLog.ServiceName = controllerType.Assembly.GetName().Name;
 
                 // 获取控制器和方法上的审计特性
                 var controllerAuditAttr = controllerType.GetCustomAttribute<AuditAttribute>();
@@ -339,27 +334,6 @@ public class AuditMiddleware
                         auditLog.OperationName = displayNameAttr.DisplayName;
                     }
 
-                    // 从路由数据中提取实体ID
-                    var entityIdParamName = auditAttr.EntityIdParamName;
-                    if (context.Request.RouteValues.TryGetValue(entityIdParamName, out var entityId))
-                    {
-                        auditLog.EntityId = entityId?.ToString();
-                    }
-
-                    // 设置实体名称
-                    if (!string.IsNullOrEmpty(auditAttr.EntityName))
-                    {
-                        auditLog.EntityName = auditAttr.EntityName;
-                    }
-                    else
-                    {
-                        // 尝试从控制器名称推断实体名称
-                        auditLog.EntityName = auditLog.ControllerName;
-                        if (auditLog.EntityName.EndsWith("Controller", StringComparison.OrdinalIgnoreCase))
-                        {
-                            auditLog.EntityName = auditLog.EntityName.Substring(0, auditLog.EntityName.Length - 10);
-                        }
-                    }
 
                     // 如果需要记录响应数据
                     if (auditAttr.LogResponseData)
@@ -677,6 +651,16 @@ public class AuditMiddleware
             requestPath.Contains("/swagger", StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogDebug("跳过审计 - 系统路径: {Path}", requestPath);
+            return true;
+        }
+
+        // 检查是否为Blazor相关请求
+        if (requestPath.StartsWith("/_blazor", StringComparison.OrdinalIgnoreCase) ||
+            requestPath.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
+            requestPath.StartsWith("/_content", StringComparison.OrdinalIgnoreCase) ||
+            requestPath.Contains("/blazor", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogDebug("跳过审计 - Blazor相关请求: {Path}", requestPath);
             return true;
         }
 
@@ -1077,37 +1061,6 @@ public class AuditMiddleware
                     _options.OperationInference);
             }
 
-            // 推断实体名称（如果尚未设置）
-            if (string.IsNullOrEmpty(auditLog.EntityName))
-            {
-                auditLog.EntityName = auditLog.ControllerName;
-                if (auditLog.EntityName.EndsWith("Controller", StringComparison.OrdinalIgnoreCase))
-                {
-                    auditLog.EntityName = auditLog.EntityName.Substring(0, auditLog.EntityName.Length - 10);
-                }
-            }
-
-            // 尝试从路由数据中提取实体ID
-            if (string.IsNullOrEmpty(auditLog.EntityId))
-            {
-                // 检查常见的ID参数名称
-                foreach (var idParamName in _options.OperationInference.CommonIdParameterNames)
-                {
-                    string paramName = idParamName;
-
-                    // 替换{entityName}占位符
-                    if (paramName.Contains("{entityName}"))
-                    {
-                        paramName = paramName.Replace("{entityName}", auditLog.EntityName);
-                    }
-
-                    if (context.Request.RouteValues.TryGetValue(paramName, out var entityId) && entityId != null)
-                    {
-                        auditLog.EntityId = entityId.ToString();
-                        break;
-                    }
-                }
-            }
 
             // 生成描述信息
             if (string.IsNullOrEmpty(auditLog.Description))
@@ -1180,46 +1133,36 @@ public class AuditMiddleware
     /// </summary>
     private string GenerateDescription(AuditLog auditLog)
     {
-        var entityName = string.IsNullOrEmpty(auditLog.EntityName) ? "数据" : auditLog.EntityName;
-
         switch (auditLog.OperationType)
         {
             case "Query":
-                return $"查询{entityName}";
+                return "查询数据";
             case "Create":
-                return $"创建{entityName}";
+                return "创建数据";
             case "Update":
-                if (!string.IsNullOrEmpty(auditLog.EntityId))
-                {
-                    return $"更新{entityName}，ID: {auditLog.EntityId}";
-                }
-                return $"更新{entityName}";
+                return "更新数据";
             case "Delete":
-                if (!string.IsNullOrEmpty(auditLog.EntityId))
-                {
-                    return $"删除{entityName}，ID: {auditLog.EntityId}";
-                }
-                return $"删除{entityName}";
+                return "删除数据";
             case "Login":
                 return "用户登录";
             case "Logout":
                 return "用户登出";
             case "Import":
-                return $"导入{entityName}";
+                return "导入数据";
             case "Export":
-                return $"导出{entityName}";
+                return "导出数据";
             case "Upload":
-                return $"上传{entityName}";
+                return "上传数据";
             case "Download":
-                return $"下载{entityName}";
+                return "下载数据";
             case "Authorize":
-                return $"授权{entityName}";
+                return "授权操作";
             case "Setting":
-                return $"设置{entityName}";
+                return "设置操作";
             case "Batch":
-                return $"批量处理{entityName}";
+                return "批量处理";
             default:
-                return $"操作{entityName}";
+                return "数据操作";
         }
     }
 }

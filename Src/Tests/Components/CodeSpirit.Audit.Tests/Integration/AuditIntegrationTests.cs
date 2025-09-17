@@ -117,7 +117,7 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
         Assert.NotEmpty(logs);
         var log = logs.First();
 
-        Assert.Equal("GET", log.RequestMethod);
+        // 验证请求信息
         Assert.Contains("/api/MethodLevelAudit", log.RequestPath);
         Assert.Equal("Query", log.OperationType);
         Assert.Equal("测试获取操作", log.OperationName);
@@ -151,7 +151,7 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
         Assert.NotEmpty(logs);
         var log = logs.First();
 
-        Assert.Equal("POST", log.RequestMethod);
+        // 验证请求信息
         Assert.Contains("/api/MethodLevelAudit", log.RequestPath);
         Assert.Equal("Create", log.OperationType);
         Assert.Equal("测试创建操作", log.OperationName);
@@ -199,7 +199,7 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
         Assert.NotEmpty(logs);
         var log = logs.First();
 
-        Assert.Equal("PUT", log.RequestMethod);
+        // 验证请求信息
         Assert.Contains($"/api/MethodLevelAudit/{id}", log.RequestPath);
         Assert.Equal("Update", log.OperationType);
         Assert.Equal("测试更新操作", log.OperationName);
@@ -217,7 +217,8 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
             Assert.Fail("RequestParams为空");
         }
         
-        Assert.Equal("123", log.EntityId);
+        // 验证实体信息
+        Assert.Contains("123", log.RequestPath); // 实体ID现在存储在RequestPath中
 
         base._output.WriteLine($"审计日志已创建: {JsonSerializer.Serialize(log, base._jsonOptions)}");
     }
@@ -242,7 +243,7 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
         Assert.NotEmpty(logs);
         var log = logs.First();
 
-        Assert.Equal("GET", log.RequestMethod);
+        // 验证请求信息
         Assert.Contains("/api/ControllerLevelAudit", log.RequestPath);
         Assert.Equal("Action", log.OperationType); // 默认操作类型
 
@@ -296,7 +297,7 @@ public class AuditIntegrationTests : CodeSpirit.Audit.Tests.Infrastructure.Integ
         Assert.NotEmpty(logs);
         var log = logs.First();
 
-        Assert.Equal("GET", log.RequestMethod);
+        // 验证请求信息
         Assert.Contains("/api/CustomAudit", log.RequestPath);
         Assert.Equal("Query", log.OperationType);
         Assert.Equal("自定义审计配置-不记录响应", log.OperationName);
@@ -492,25 +493,7 @@ public class InMemoryAuditService : IAuditService
                 
             if (query.EndTime.HasValue)
                 queryable = queryable.Where(l => l.OperationTime <= query.EndTime.Value);
-                
-            if (!string.IsNullOrEmpty(query.ServiceName))
-                queryable = queryable.Where(l => l.ServiceName == query.ServiceName);
-                
-            if (!string.IsNullOrEmpty(query.ControllerName))
-                queryable = queryable.Where(l => l.ControllerName == query.ControllerName);
-                
-            if (!string.IsNullOrEmpty(query.ActionName))
-                queryable = queryable.Where(l => l.ActionName == query.ActionName);
-                
-            if (!string.IsNullOrEmpty(query.OperationType))
-                queryable = queryable.Where(l => l.OperationType == query.OperationType);
-                
-            if (!string.IsNullOrEmpty(query.EntityName))
-                queryable = queryable.Where(l => l.EntityName == query.EntityName);
-                
-            if (!string.IsNullOrEmpty(query.EntityId))
-                queryable = queryable.Where(l => l.EntityId == query.EntityId);
-            
+                            
             if (query.IsSuccess.HasValue)
                 queryable = queryable.Where(l => l.IsSuccess == query.IsSuccess.Value);
             
@@ -518,12 +501,12 @@ public class InMemoryAuditService : IAuditService
             var totalCount = queryable.Count();
             
             // 应用排序
-            if (!string.IsNullOrEmpty(query.SortField))
+            if (!string.IsNullOrEmpty(query.OrderBy))
             {
                 // 根据字段进行排序
-                queryable = query.SortDirection?.ToLower() == "asc" 
-                    ? queryable.OrderBy(l => GetPropertyValue(l, query.SortField))
-                    : queryable.OrderByDescending(l => GetPropertyValue(l, query.SortField));
+                queryable = query.OrderDir?.ToLower() == "asc" 
+                    ? queryable.OrderBy(l => GetPropertyValue(l, query.OrderBy))
+                    : queryable.OrderByDescending(l => GetPropertyValue(l, query.OrderBy));
             }
             else
             {
@@ -533,8 +516,8 @@ public class InMemoryAuditService : IAuditService
             
             // 分页
             filteredItems = queryable
-                .Skip((query.PageIndex - 1) * query.PageSize)
-                .Take(query.PageSize)
+                .Skip((query.Page - 1) * query.PerPage)
+                .Take(query.PerPage)
                 .ToList();
                 
             return Task.FromResult((filteredItems, (long)totalCount));

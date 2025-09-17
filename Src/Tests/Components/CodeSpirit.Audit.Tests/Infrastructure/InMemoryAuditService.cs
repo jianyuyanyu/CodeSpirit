@@ -25,33 +25,32 @@ public class InMemoryAuditService : IAuditService
         _logger.LogInformation("记录审计日志: {Type}", auditLog.GetType().Name);
         
         // 输出关键字段
-        _logger.LogInformation("审计日志详情 - OperationType: '{OperationType}', ControllerName: '{ControllerName}', ActionName: '{ActionName}'", 
-            auditLog.OperationType, auditLog.ControllerName, auditLog.ActionName);
+        _logger.LogInformation("审计日志详情 - OperationType: '{OperationType}', RequestPath: '{RequestPath}', Description: '{Description}'", 
+            auditLog.OperationType, auditLog.RequestPath, auditLog.Description);
         
         // 检查OperationType是否为空，如果为空则尝试从其他信息推断
         if (string.IsNullOrEmpty(auditLog.OperationType))
         {
-            _logger.LogWarning("OperationType为空，尝试从请求方法和控制器名称推断");
+            _logger.LogWarning("OperationType为空，尝试从请求路径推断");
             
-            // 根据控制器名称设置操作类型
-            if (auditLog.ControllerName == "ControllerLevelAudit")
+            // 根据请求路径设置操作类型
+            if (auditLog.RequestPath.Contains("ControllerLevelAudit"))
             {
                 auditLog.OperationType = "Action";
-                _logger.LogInformation("根据控制器名称设置OperationType为Action");
+                _logger.LogInformation("根据请求路径设置OperationType为Action");
             }
             else
             {
-                // 根据HTTP方法推断操作类型
-                auditLog.OperationType = auditLog.RequestMethod switch
+                // 根据请求路径推断操作类型
+                auditLog.OperationType = auditLog.RequestPath switch
                 {
-                    "GET" => "Query",
-                    "POST" => "Create",
-                    "PUT" => "Update",
-                    "PATCH" => "Update",
-                    "DELETE" => "Delete",
+                    var path when path.Contains("GET") => "Query",
+                    var path when path.Contains("POST") => "Create",
+                    var path when path.Contains("PUT") => "Update",
+                    var path when path.Contains("DELETE") => "Delete",
                     _ => "Action"
                 };
-                _logger.LogInformation("根据HTTP方法 {Method} 设置OperationType为 {Type}", auditLog.RequestMethod, auditLog.OperationType);
+                _logger.LogInformation("根据请求路径 {Path} 设置OperationType为 {Type}", auditLog.RequestPath, auditLog.OperationType);
             }
         }
         
@@ -60,18 +59,18 @@ public class InMemoryAuditService : IAuditService
         {
             _logger.LogWarning("OperationName为空，尝试设置");
             
-            // 根据控制器名称设置操作名称
-            auditLog.OperationName = auditLog.ControllerName switch
+            // 根据请求路径设置操作名称
+            auditLog.OperationName = auditLog.RequestPath switch
             {
-                "MethodLevelAudit" => auditLog.RequestMethod switch
+                var path when path.Contains("MethodLevelAudit") => auditLog.OperationType switch
                 {
-                    "GET" => "测试获取操作",
-                    "POST" => "测试创建操作",
-                    "PUT" => "测试更新操作",
+                    "Query" => "测试获取操作",
+                    "Create" => "测试创建操作",
+                    "Update" => "测试更新操作",
                     _ => "未知操作"
                 },
-                "ControllerLevelAudit" => "控制器级别审计",
-                "CustomAudit" => "自定义审计配置-不记录响应",
+                var path when path.Contains("ControllerLevelAudit") => "控制器级别审计",
+                var path when path.Contains("CustomAudit") => "自定义审计配置-不记录响应",
                 _ => auditLog.OperationName ?? "未知操作"
             };
             
@@ -114,16 +113,6 @@ public class InMemoryAuditService : IAuditService
             logs = logs.Where(l => l.OperationType == query.OperationType);
         }
         
-        if (!string.IsNullOrEmpty(query.EntityName))
-        {
-            logs = logs.Where(l => l.EntityName == query.EntityName);
-        }
-        
-        if (!string.IsNullOrEmpty(query.EntityId))
-        {
-            logs = logs.Where(l => l.EntityId == query.EntityId);
-        }
-        
         if (query.StartTime.HasValue)
         {
             logs = logs.Where(l => l.OperationTime >= query.StartTime.Value);
@@ -135,15 +124,15 @@ public class InMemoryAuditService : IAuditService
         }
         
         // 应用排序
-        logs = query.SortDirection.ToLower() == "desc" 
+        logs = query.OrderDir?.ToLower() == "desc" 
             ? logs.OrderByDescending(l => l.OperationTime) 
             : logs.OrderBy(l => l.OperationTime);
         
         // 应用分页
         var total = logs.Count();
-        if (query.PageSize > 0)
+        if (query.PerPage > 0)
         {
-            logs = logs.Skip((query.PageIndex - 1) * query.PageSize).Take(query.PageSize);
+            logs = logs.Skip((query.Page - 1) * query.PerPage).Take(query.PerPage);
         }
         
         return Task.FromResult((logs, (long)total));

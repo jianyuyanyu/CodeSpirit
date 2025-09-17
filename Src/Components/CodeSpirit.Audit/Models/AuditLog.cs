@@ -68,12 +68,6 @@ public class AuditLog : IMultiTenant
     [Required]
     public DateTime OperationTime { get; set; } = DateTime.UtcNow;
     
-    /// <summary>
-    /// 服务名称
-    /// </summary>
-    [DisplayName("服务名称")]
-    [StringLength(100)]
-    public string ServiceName { get; set; } = string.Empty;
     
     // /// <summary>
     // /// 应用程序ID
@@ -82,19 +76,7 @@ public class AuditLog : IMultiTenant
     // [StringLength(100)]
     // public string ApplicationId { get; set; } = string.Empty;
     
-    /// <summary>
-    /// 控制器名称
-    /// </summary>
-    [DisplayName("控制器名称")]
-    [StringLength(100)]
-    public string ControllerName { get; set; } = string.Empty;
     
-    /// <summary>
-    /// 操作名称
-    /// </summary>
-    [DisplayName("操作名称")]
-    [StringLength(100)]
-    public string ActionName { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作显示名称
@@ -124,12 +106,6 @@ public class AuditLog : IMultiTenant
     [StringLength(500)]
     public string RequestPath { get; set; } = string.Empty;
     
-    /// <summary>
-    /// 请求方法
-    /// </summary>
-    [DisplayName("请求方法")]
-    [StringLength(10)]
-    public string RequestMethod { get; set; } = string.Empty;
     
     /// <summary>
     /// 请求参数
@@ -137,19 +113,6 @@ public class AuditLog : IMultiTenant
     [DisplayName("请求参数")]
     public string RequestParams { get; set; } = string.Empty;
     
-    /// <summary>
-    /// 业务实体名称
-    /// </summary>
-    [DisplayName("业务实体名称")]
-    [StringLength(100)]
-    public string EntityName { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// 业务实体ID
-    /// </summary>
-    [DisplayName("业务实体ID")]
-    [StringLength(100)]
-    public string EntityId { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作前数据

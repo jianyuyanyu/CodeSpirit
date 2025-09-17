@@ -72,7 +72,10 @@ public class AuditOptions
     {
         "/swagger",
         "/healthz",
-        "/favicon.ico"
+        "/favicon.ico",
+        "/_blazor",
+        "/_framework",
+        "/_content"
     };
     
     /// <summary>
@@ -81,9 +84,19 @@ public class AuditOptions
     public RabbitMQOptions RabbitMQ { get; set; } = new RabbitMQOptions();
     
     /// <summary>
+    /// 存储提供者类型（Elasticsearch 或 GreptimeDB）
+    /// </summary>
+    public string StorageProvider { get; set; } = "Elasticsearch";
+    
+    /// <summary>
     /// Elasticsearch配置
     /// </summary>
     public ElasticsearchOptions Elasticsearch { get; set; } = new ElasticsearchOptions();
+    
+    /// <summary>
+    /// GreptimeDB配置
+    /// </summary>
+    public GreptimeDbOptions GreptimeDB { get; set; } = new GreptimeDbOptions();
 }
 
 /// <summary>
@@ -205,6 +218,54 @@ public class ElasticsearchOptions
     /// 索引副本数
     /// </summary>
     public int NumberOfReplicas { get; set; } = 1;
+}
+
+/// <summary>
+/// GreptimeDB配置选项
+/// </summary>
+public class GreptimeDbOptions
+{
+    /// <summary>
+    /// GreptimeDB服务器URL
+    /// </summary>
+    public string Url { get; set; } = "http://localhost:4000";
+    
+    /// <summary>
+    /// 数据库名称
+    /// </summary>
+    public string Database { get; set; } = "audit_logs";
+    
+    /// <summary>
+    /// 表名
+    /// </summary>
+    public string TableName { get; set; } = "audit_logs";
+    
+    /// <summary>
+    /// 用户名
+    /// </summary>
+    public string Username { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 密码
+    /// </summary>
+    public string Password { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 连接超时时间（秒）
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 30;
+    
+    /// <summary>
+    /// 批量插入的批次大小
+    /// </summary>
+    public int BatchSize { get; set; } = 1000;
+    
+    /// <summary>
+    /// 表前缀，用于区分不同环境（可选）
+    /// 例如：dev、test、prod等
+    /// 最终表名格式：{TablePrefix}_{TableName}
+    /// </summary>
+    public string TablePrefix { get; set; } = "codespirit";
 }
 
 /// <summary>

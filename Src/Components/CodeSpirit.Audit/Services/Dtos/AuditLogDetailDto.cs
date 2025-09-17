@@ -51,23 +51,6 @@ public class AuditLogDetailDto
     [DisplayName("操作时间")]
     public DateTime OperationTime { get; set; }
     
-    /// <summary>
-    /// 服务名称
-    /// </summary>
-    [DisplayName("服务名称")]
-    public string ServiceName { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// 控制器名称
-    /// </summary>
-    [DisplayName("控制器名称")]
-    public string ControllerName { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// 操作名称
-    /// </summary>
-    [DisplayName("操作名称")]
-    public string ActionName { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作显示名称
@@ -93,11 +76,6 @@ public class AuditLogDetailDto
     [DisplayName("请求路径")]
     public string RequestPath { get; set; } = string.Empty;
     
-    /// <summary>
-    /// 请求方法
-    /// </summary>
-    [DisplayName("请求方法")]
-    public string RequestMethod { get; set; } = string.Empty;
     
     /// <summary>
     /// 请求参数
@@ -105,17 +83,6 @@ public class AuditLogDetailDto
     [DisplayName("请求参数")]
     public string RequestParams { get; set; } = string.Empty;
     
-    /// <summary>
-    /// 业务实体名称
-    /// </summary>
-    [DisplayName("业务实体名称")]
-    public string EntityName { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// 业务实体ID
-    /// </summary>
-    [DisplayName("业务实体ID")]
-    public string EntityId { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作前数据

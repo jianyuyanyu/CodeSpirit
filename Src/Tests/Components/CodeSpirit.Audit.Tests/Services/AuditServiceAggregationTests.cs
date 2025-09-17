@@ -39,8 +39,9 @@ public class AuditServiceAggregationTests
         });
         _configuration = configBuilder.Build();
         
+        var mockStorageService = new Mock<IAuditStorageService>();
         _auditService = new AuditService(
-            _mockElasticsearchService.Object,
+            mockStorageService.Object,
             _mockRabbitMQService.Object,
             _mockLogger.Object,
             _configuration);

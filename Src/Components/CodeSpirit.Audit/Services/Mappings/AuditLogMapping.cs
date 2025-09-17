@@ -32,23 +32,11 @@ public static class AuditLogMapping
         if (queryDto.EndTime.HasValue)
             parameters["EndTime"] = queryDto.EndTime.Value;
             
-        if (!string.IsNullOrEmpty(queryDto.ServiceName))
-            parameters["ServiceName"] = queryDto.ServiceName;
-            
-        if (!string.IsNullOrEmpty(queryDto.ControllerName))
-            parameters["ControllerName"] = queryDto.ControllerName;
-            
-        if (!string.IsNullOrEmpty(queryDto.ActionName))
-            parameters["ActionName"] = queryDto.ActionName;
+        if (!string.IsNullOrEmpty(queryDto.TenantId))
+            parameters["TenantId"] = queryDto.TenantId;
             
         if (!string.IsNullOrEmpty(queryDto.OperationType))
             parameters["OperationType"] = queryDto.OperationType;
-            
-        if (!string.IsNullOrEmpty(queryDto.EntityName))
-            parameters["EntityName"] = queryDto.EntityName;
-            
-        if (!string.IsNullOrEmpty(queryDto.EntityId))
-            parameters["EntityId"] = queryDto.EntityId;
             
         if (queryDto.IsSuccess.HasValue)
             parameters["IsSuccess"] = queryDto.IsSuccess.Value;
@@ -56,10 +44,10 @@ public static class AuditLogMapping
         if (!string.IsNullOrEmpty(queryDto.Keywords))
             parameters["Keyword"] = queryDto.Keywords;
             
-        parameters["PageIndex"] = queryDto.PageIndex;
-        parameters["PageSize"] = queryDto.PageSize;
-        parameters["SortField"] = queryDto.SortField;
-        parameters["SortDirection"] = queryDto.SortDirection;
+        parameters["PageIndex"] = queryDto.Page;
+        parameters["PageSize"] = queryDto.PerPage;
+        parameters["SortField"] = queryDto.OrderBy ?? "OperationTime";
+        parameters["SortDirection"] = queryDto.OrderDir;
         
         return parameters;
     }
@@ -78,12 +66,7 @@ public static class AuditLogMapping
             UserName = auditLog.UserName,
             IpAddress = auditLog.IpAddress,
             OperationTime = auditLog.OperationTime,
-            ServiceName = auditLog.ServiceName,
-            ControllerName = auditLog.ControllerName,
-            ActionName = auditLog.ActionName,
             OperationType = auditLog.OperationType,
-            EntityName = auditLog.EntityName,
-            EntityId = auditLog.EntityId,
             IsSuccess = auditLog.IsSuccess,
             StatusCode = auditLog.StatusCode,
             ExecutionDuration = auditLog.ExecutionDuration
@@ -106,17 +89,11 @@ public static class AuditLogMapping
             Location = auditLog.Location,
             UserAgent = auditLog.UserAgent,
             OperationTime = auditLog.OperationTime,
-            ServiceName = auditLog.ServiceName,
-            ControllerName = auditLog.ControllerName,
-            ActionName = auditLog.ActionName,
             OperationName = auditLog.OperationName,
             OperationType = auditLog.OperationType,
             Description = auditLog.Description,
             RequestPath = auditLog.RequestPath,
-            RequestMethod = auditLog.RequestMethod,
             RequestParams = auditLog.RequestParams,
-            EntityName = auditLog.EntityName,
-            EntityId = auditLog.EntityId,
             BeforeData = auditLog.BeforeData,
             AfterData = auditLog.AfterData,
             ExecutionDuration = auditLog.ExecutionDuration,

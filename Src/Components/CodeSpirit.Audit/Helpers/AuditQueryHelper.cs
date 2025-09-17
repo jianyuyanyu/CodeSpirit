@@ -76,7 +76,7 @@ public static class AuditQueryHelper
     {
         return s => s.Query(q => q
             .Wildcard(w => w
-                .Field(f => f.EntityName)
+                .Field(f => f.RequestPath)
                 .Value($"*{resource}*")
             )
         );
@@ -225,10 +225,6 @@ public static class AuditQueryHelper
                         .Query(searchText)
                     )
                     .Match(m => m
-                        .Field(f => f.EntityName)
-                        .Query(searchText)
-                    )
-                    .Match(m => m
                         .Field(f => f.Description)
                         .Query(searchText)
                     )
@@ -279,14 +275,8 @@ public static class AuditQueryHelper
             { "UserId", "userId" },
             { "UserName", "userName" },
             { "IpAddress", "ipAddress" },
-            { "ServiceName", "serviceName" },
-            { "ControllerName", "controllerName" },
-            { "ActionName", "actionName" },
             { "OperationType", "operationType" },
             { "RequestPath", "requestPath" },
-            { "RequestMethod", "requestMethod" },
-            { "EntityName", "entityName" },
-            { "EntityId", "entityId" },
             { "ExecutionDuration", "executionDuration" },
             { "IsSuccess", "isSuccess" },
             { "StatusCode", "statusCode" }

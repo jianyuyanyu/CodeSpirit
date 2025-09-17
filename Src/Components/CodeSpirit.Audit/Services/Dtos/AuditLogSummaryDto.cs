@@ -38,23 +38,6 @@ public class AuditLogSummaryDto
     [DisplayName("操作时间")]
     public DateTime OperationTime { get; set; }
     
-    /// <summary>
-    /// 服务名称
-    /// </summary>
-    [DisplayName("服务名称")]
-    public string ServiceName { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// 控制器名称
-    /// </summary>
-    [DisplayName("控制器名称")]
-    public string ControllerName { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// 操作名称
-    /// </summary>
-    [DisplayName("操作名称")]
-    public string ActionName { get; set; } = string.Empty;
     
     /// <summary>
     /// 操作类型
@@ -62,17 +45,6 @@ public class AuditLogSummaryDto
     [DisplayName("操作类型")]
     public string OperationType { get; set; } = string.Empty;
     
-    /// <summary>
-    /// 实体名称
-    /// </summary>
-    [DisplayName("实体名称")]
-    public string EntityName { get; set; } = string.Empty;
-    
-    /// <summary>
-    /// 实体ID
-    /// </summary>
-    [DisplayName("实体ID")]
-    public string EntityId { get; set; } = string.Empty;
     
     /// <summary>
     /// 是否成功

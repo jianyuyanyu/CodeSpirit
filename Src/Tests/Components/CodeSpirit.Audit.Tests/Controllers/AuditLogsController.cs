@@ -43,8 +43,8 @@ public class AuditLogsController : ControllerBase
             {
                 Items = items,
                 Total = total,
-                PageIndex = query.PageIndex,
-                PageSize = query.PageSize
+                PageIndex = query.Page,
+                PageSize = query.PerPage
             });
         }
         catch (Exception ex)

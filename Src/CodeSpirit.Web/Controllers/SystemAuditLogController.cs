@@ -22,7 +22,6 @@ namespace CodeSpirit.Web.Controllers
     public class SystemAuditLogController : ApiControllerBase
     {
         private readonly IAuditService _auditService;
-        private readonly IElasticsearchService _elasticsearchService;
         private readonly ICurrentUser _currentUser;
         private readonly ILogger<SystemAuditLogController> _logger;
 
@@ -30,17 +29,14 @@ namespace CodeSpirit.Web.Controllers
         /// 构造函数
         /// </summary>
         /// <param name="auditService">审计服务</param>
-        /// <param name="elasticsearchService">Elasticsearch服务</param>
         /// <param name="currentUser">当前用户服务</param>
         /// <param name="logger">日志记录器</param>
         public SystemAuditLogController(
             IAuditService auditService,
-            IElasticsearchService elasticsearchService,
             ICurrentUser currentUser,
             ILogger<SystemAuditLogController> logger)
         {
             _auditService = auditService;
-            _elasticsearchService = elasticsearchService;
             _currentUser = currentUser;
             _logger = logger;
         }
@@ -120,7 +116,7 @@ namespace CodeSpirit.Web.Controllers
             {
                 var query = new AuditLogQueryDto
                 {
-                    PageSize = 1000 // 搜索更多记录来查找指定ID
+                    PerPage = 1000 // 搜索更多记录来查找指定ID
                 };
 
                 var (logs, _) = await _auditService.SearchAsync(query);
@@ -314,7 +310,7 @@ namespace CodeSpirit.Web.Controllers
                 {
                     StartTime = startTime,
                     EndTime = endTime,
-                    PageSize = 1000 // 获取大量数据用于分析租户
+                    PerPage = 1000 // 获取大量数据用于分析租户
                 };
 
                 var (logs, _) = await _auditService.SearchAsync(tenantQuery);

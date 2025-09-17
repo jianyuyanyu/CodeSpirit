@@ -22,6 +22,7 @@ var cache = builder.AddRedis("cache")
                    .WithRedisCommander((op) =>
                    {
                        op
+                         .WithLifetime (ContainerLifetime.Persistent)
                          //.WithHttpEndpoint(port: 8082, targetPort: 8081, name: "commander-ui")
                          .WithUrlForEndpoint("commander-ui", url =>
                              url.DisplayLocation = UrlDisplayLocation.SummaryAndDetails);
@@ -51,19 +52,30 @@ var rabbitmqService = builder.AddRabbitMQ("rabbitmq", rabbitmqUser, rabbitmqPass
                          url.DisplayText = "RabbitMQ 管理界面";
                      });
 
-// 添加 Elasticsearch 服务
-var esPassword = builder.AddParameter("password", "Password123", secret: true);
-var elasticsearchService = builder.AddElasticsearch("elasticsearch", password: esPassword)
-                          .WithLifetime(ContainerLifetime.Persistent)
-                          .WithDataVolume()
-                          //.WithHttpEndpoint(port: 9200, targetPort: 9200, name: "elasticsearch")
-                          //.WithHttpEndpoint(port: 9300, targetPort: 9300, name: "elasticsearch-nodes")
-                          .WithUrlForEndpoint("elasticsearch", ep => new()
-                          {
-                              Url = "/_cluster/health",
-                              DisplayText = "ES 集群健康状态",
-                              DisplayLocation = UrlDisplayLocation.DetailsOnly
-                          });
+//// 添加 Elasticsearch 服务
+//var esPassword = builder.AddParameter("password", "Password123", secret: true);
+//var elasticsearchService = builder.AddElasticsearch("elasticsearch", password: esPassword)
+//                          .WithLifetime(ContainerLifetime.Persistent)
+//                          .WithDataVolume()
+//                          //.WithHttpEndpoint(port: 9200, targetPort: 9200, name: "elasticsearch")
+//                          //.WithHttpEndpoint(port: 9300, targetPort: 9300, name: "elasticsearch-nodes")
+//                          .WithUrlForEndpoint("elasticsearch", ep => new()
+//                          {
+//                              Url = "/_cluster/health",
+//                              DisplayText = "ES 集群健康状态",
+//                              DisplayLocation = UrlDisplayLocation.DetailsOnly
+//                          });
+
+// 添加 GreptimeDB 服务 - 使用固定端口便于外部访问
+var greptimedbService = builder.AddContainer("greptimedb", "greptime/greptimedb", "latest")
+                              .WithArgs("standalone", "start", "--http-addr", "0.0.0.0:4000", "--rpc-addr", "0.0.0.0:4001")
+                              .WithHttpEndpoint(port: 4000, targetPort: 4000, name: "greptimedb-http")
+                              .WithHttpEndpoint(port: 4001, targetPort: 4001, name: "greptimedb-grpc")
+                              //.WithHttpEndpoint(port: 4002, targetPort: 4002, name: "greptimedb-mysql")
+                              //.WithHttpEndpoint(port: 4003, targetPort: 4003, name: "greptimedb-postgres")
+                              .WithLifetime(ContainerLifetime.Persistent)
+                              .WithEnvironment("GREPTIME_OPTS", "--log-level=info")
+                              ;
 
 // 添加统一的JWT配置参数
 var jwtSecretKey = builder.AddParameter(name: "jwt-SecretKey", "ECBF8FA013844D77AE041A6800D7FF8F", secret: true);
@@ -102,7 +114,6 @@ var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
     .WithReference(cache)
     .WithReference(configService)
     .WithReference(rabbitmqService)
-    .WithReference(elasticsearchService)
     .WithReference(identityService)
     .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
     .WithEnvironment("Jwt__Issuer", jwtIssuer)
@@ -137,9 +148,13 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(configService)
     .WithReference(messagingService)
     .WithReference(examService)
-    .WithReference(elasticsearchService)
     .WithReference(fileService)
     .WithReference(surveyService)
+    .WithEnvironment("Audit__StorageProvider", "GreptimeDB")
+    .WithEnvironment("Audit__GreptimeDB__Url", greptimedbService.GetEndpoint("greptimedb-http"))
+    .WithEnvironment("Audit__GreptimeDB__Database", "audit_logs")
+    .WithEnvironment("Audit__GreptimeDB__TableName", "audit_logs")
+    .WithEnvironment("Audit__GreptimeDB__TablePrefix", "web")
     .WithUrlForEndpoint("https", url =>
     {
         url.DisplayText = "Web 前端";
@@ -149,7 +164,8 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
         Url = "/health",
         DisplayText = "健康检查",
         DisplayLocation = UrlDisplayLocation.DetailsOnly
-    });
+    })
+    .WaitFor(greptimedbService);
 
 // 注册资源初始化事件，需要提供CancellationToken参数
 builder.Eventing.Subscribe<InitializeResourceEvent>((eventData, cancellationToken) =>
@@ -158,4 +174,6 @@ builder.Eventing.Subscribe<InitializeResourceEvent>((eventData, cancellationToke
     return Task.CompletedTask;
 });
 
+Console.WriteLine("审计存储：已配置GreptimeDB作为默认存储提供者");
+Console.WriteLine("正在启动应用...");
 builder.Build().Run();

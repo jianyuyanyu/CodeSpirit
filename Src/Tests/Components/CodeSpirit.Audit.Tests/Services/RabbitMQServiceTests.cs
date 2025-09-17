@@ -311,7 +311,6 @@ public class RabbitMQServiceTests : TestBase
             UserId = "test-user",
             UserName = "测试用户",
             IpAddress = "127.0.0.1",
-            RequestMethod = "POST",
             RequestPath = "/api/users",
             OperationType = "Create",
             OperationName = "创建用户",

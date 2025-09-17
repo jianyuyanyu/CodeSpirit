@@ -64,6 +64,7 @@ public class WorkflowDefinition : AuditableEntityBase<long>, IMultiTenant
     /// 审批表单Schema（符合AMIS要求的JSON结构）
     /// </summary>
     [DisplayName("审批表单Schema")]
+    [StringLength(int.MaxValue)]
     public string? FormSchema { get; set; }
     
     /// <summary>

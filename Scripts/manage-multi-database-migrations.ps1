@@ -35,7 +35,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("ExamApi", "ConfigCenter", "FileStorageApi", "SurveyApi", "Settings", "Messaging")]
+    [ValidateSet("ExamApi", "ConfigCenter", "FileStorageApi", "SurveyApi", "Settings", "Messaging", "ApprovalApi")]
     [string]$ApiProject,
     
     [Parameter(Mandatory = $true)]
@@ -61,6 +61,7 @@ $ProjectPaths = @{
     "SurveyApi" = "Src/ApiServices/CodeSpirit.SurveyApi"
     "Settings" = "Src/Components/CodeSpirit.Settings"
     "Messaging" = "Src/Components/CodeSpirit.Messaging"
+    "ApprovalApi" = "Src/ApiServices/CodeSpirit.ApprovalApi"
 }
 
 # DbContext类名映射
@@ -88,6 +89,10 @@ $DbContextMappings = @{
     "Messaging" = @{
         "MySql" = "MySqlMessagingDbContext"
         "SqlServer" = "SqlServerMessagingDbContext"
+    }
+    "ApprovalApi" = @{
+        "MySql" = "MySqlApprovalDbContext"
+        "SqlServer" = "SqlServerApprovalDbContext"
     }
 }
 

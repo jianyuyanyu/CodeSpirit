@@ -335,8 +335,8 @@ namespace CodeSpirit.ApprovalApi.Migrations.MySQL
                         .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("FormSchema")
-                        .HasMaxLength(4000)
-                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                        .HasMaxLength(2147483647)
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("tinyint(1)");

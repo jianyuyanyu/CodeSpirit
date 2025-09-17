@@ -101,7 +101,6 @@ public class ApprovalDbContext : MultiDatabaseDbContextBase
             entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
             // 配置为长文本字段，让DatabaseSpecificConfigurations处理具体类型
             entity.Property(e => e.Configuration).HasMaxLength(4000);
-            entity.Property(e => e.FormSchema).HasMaxLength(4000);
         });
 
         // 配置工作流节点

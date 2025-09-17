@@ -60,20 +60,20 @@ public class WorkflowDefinitionsController : ApiControllerBase
         return SuccessResponse(result);
     }
 
-    /// <summary>
-    /// 更新工作流定义
-    /// </summary>
-    /// <param name="id">工作流定义ID</param>
-    /// <param name="dto">更新工作流定义DTO</param>
-    /// <returns>更新结果</returns>
-    [HttpPut("{id}")]
-    [DisplayName("更新工作流定义")]
-    public async Task<ActionResult<ApiResponse<WorkflowDefinitionDto>>> UpdateWorkflowDefinition(long id, UpdateWorkflowDefinitionDto dto)
-    {
-        await _workflowDefinitionService.UpdateAsync(id, dto);
-        var result = await _workflowDefinitionService.GetAsync(id);
-        return SuccessResponse(result);
-    }
+    ///// <summary>
+    ///// 更新工作流定义
+    ///// </summary>
+    ///// <param name="id">工作流定义ID</param>
+    ///// <param name="dto">更新工作流定义DTO</param>
+    ///// <returns>更新结果</returns>
+    //[HttpPut("{id}")]
+    //[DisplayName("更新工作流定义")]
+    //public async Task<ActionResult<ApiResponse<WorkflowDefinitionDto>>> UpdateWorkflowDefinition(long id, UpdateWorkflowDefinitionDto dto)
+    //{
+    //    await _workflowDefinitionService.UpdateAsync(id, dto);
+    //    var result = await _workflowDefinitionService.GetAsync(id);
+    //    return SuccessResponse(result);
+    //}
 
     /// <summary>
     /// 删除工作流定义

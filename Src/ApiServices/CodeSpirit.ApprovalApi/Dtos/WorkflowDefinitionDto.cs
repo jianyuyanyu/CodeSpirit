@@ -38,59 +38,25 @@ public class WorkflowDefinitionDto
     /// 工作流版本
     /// </summary>
     [DisplayName("版本")]
-    [AmisColumn]
     public int Version { get; set; }
 
     /// <summary>
     /// 是否启用
     /// </summary>
     [DisplayName("是否启用")]
-    [AmisColumn(Type = "switch")]
     public bool IsEnabled { get; set; }
 
     /// <summary>
     /// 创建时间
     /// </summary>
     [DisplayName("创建时间")]
-    [AmisColumn(Type = "datetime")]
-    public DateTime CreatedTime { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     /// <summary>
     /// 更新时间
     /// </summary>
     [DisplayName("更新时间")]
-    [AmisColumn(Type = "datetime")]
-    public DateTime? UpdatedTime { get; set; }
-}
-
-/// <summary>
-/// 工作流定义查询DTO
-/// </summary>
-public class WorkflowDefinitionQueryDto : QueryDtoBase
-{
-    /// <summary>
-    /// 工作流名称（模糊查询）
-    /// </summary>
-    [DisplayName("工作流名称")]
-    public string? Name { get; set; }
-
-    /// <summary>
-    /// 工作流代码（模糊查询）
-    /// </summary>
-    [DisplayName("工作流代码")]
-    public string? Code { get; set; }
-
-    /// <summary>
-    /// 是否启用
-    /// </summary>
-    [DisplayName("是否启用")]
-    public bool? IsEnabled { get; set; }
-
-    /// <summary>
-    /// 版本
-    /// </summary>
-    [DisplayName("版本")]
-    public int? Version { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }
 
 /// <summary>

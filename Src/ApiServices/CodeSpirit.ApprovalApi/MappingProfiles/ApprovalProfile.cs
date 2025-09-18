@@ -43,6 +43,15 @@ public class ApprovalProfile : Profile
             UpdateWorkflowDefinitionDto, 
             WorkflowDefinitionQueryDto>();
 
+        // 配置工作流节点基本CRUD映射
+        this.ConfigureBaseCRUDIMappings<
+            WorkflowNode, 
+            WorkflowNodeDto, 
+            long, 
+            CreateWorkflowNodeDto, 
+            UpdateWorkflowNodeDto, 
+            WorkflowNodeQueryDto>();
+
         // 审批实例映射
         CreateMap<ApprovalInstance, ApprovalInstanceDto>()
             .ForMember(dest => dest.WorkflowName, opt => opt.MapFrom(src => src.WorkflowDefinition.Name));
@@ -119,6 +128,36 @@ public class ApprovalProfile : Profile
             .ForMember(dest => dest.ApproverType, opt => opt.MapFrom(src => src.ApproverType.ToString()));
 
         CreateMap<WorkflowNodeCondition, WorkflowNodeConditionDto>();
+
+        // 创建工作流节点映射
+        CreateMap<CreateWorkflowNodeDto, WorkflowNode>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+            .ForMember(dest => dest.WorkflowDefinition, opt => opt.Ignore())
+            .ForMember(dest => dest.Approvers, opt => opt.Ignore())
+            .ForMember(dest => dest.Conditions, opt => opt.Ignore());
+
+        CreateMap<UpdateWorkflowNodeDto, WorkflowNode>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+            .ForMember(dest => dest.WorkflowDefinitionId, opt => opt.Ignore())
+            .ForMember(dest => dest.WorkflowDefinition, opt => opt.Ignore())
+            .ForMember(dest => dest.Approvers, opt => opt.Ignore())
+            .ForMember(dest => dest.Conditions, opt => opt.Ignore());
+
+        // 工作流节点审批人映射
+        CreateMap<CreateWorkflowNodeApproverDto, WorkflowNodeApprover>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+            .ForMember(dest => dest.WorkflowNodeId, opt => opt.Ignore())
+            .ForMember(dest => dest.WorkflowNode, opt => opt.Ignore());
+
+        // 工作流节点条件映射
+        CreateMap<CreateWorkflowNodeConditionDto, WorkflowNodeCondition>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+            .ForMember(dest => dest.WorkflowNodeId, opt => opt.Ignore())
+            .ForMember(dest => dest.WorkflowNode, opt => opt.Ignore());
 
         // 审批日志映射
         CreateMap<ApprovalLog, ApprovalLogDto>()

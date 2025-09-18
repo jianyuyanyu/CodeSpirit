@@ -1,5 +1,6 @@
 using CodeSpirit.ApprovalApi.Dtos;
 using CodeSpirit.ApprovalApi.Services;
+using CodeSpirit.Core.Attributes;
 
 namespace CodeSpirit.ApprovalApi.Controllers;
 
@@ -11,14 +12,19 @@ namespace CodeSpirit.ApprovalApi.Controllers;
 public class WorkflowDefinitionsController : ApiControllerBase
 {
     private readonly IWorkflowDefinitionService _workflowDefinitionService;
+    private readonly IWorkflowNodeService _workflowNodeService;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="workflowDefinitionService">工作流定义服务</param>
-    public WorkflowDefinitionsController(IWorkflowDefinitionService workflowDefinitionService)
+    /// <param name="workflowNodeService">工作流节点服务</param>
+    public WorkflowDefinitionsController(
+        IWorkflowDefinitionService workflowDefinitionService,
+        IWorkflowNodeService workflowNodeService)
     {
         _workflowDefinitionService = workflowDefinitionService;
+        _workflowNodeService = workflowNodeService;
     }
 
     /// <summary>
@@ -131,6 +137,37 @@ public class WorkflowDefinitionsController : ApiControllerBase
         var resultDto = await _workflowDefinitionService.GetAsync(result.Id);
         return SuccessResponse(resultDto);
     }
+
+    #region 流程设计和预览
+
+    /// <summary>
+    /// 保存流程设计
+    /// </summary>
+    /// <param name="dto">流程设计DTO</param>
+    /// <returns>保存结果</returns>
+    [HttpPost("process-design")]
+    [Operation("保存流程设计", "form")]
+    [DisplayName("保存流程设计")]
+    public async Task<ActionResult<ApiResponse>> SaveProcessDesign(WorkflowProcessDesignDto dto)
+    {
+        await _workflowNodeService.SaveProcessDesignAsync(dto);
+        return SuccessResponse("流程设计保存成功");
+    }
+
+    /// <summary>
+    /// 获取工作流预览
+    /// </summary>
+    /// <param name="id">工作流定义ID</param>
+    /// <returns>预览数据</returns>
+    [HttpGet("{id}/preview")]
+    [DisplayName("获取工作流预览")]
+    public async Task<ActionResult<ApiResponse<object>>> GetWorkflowPreview(long id)
+    {
+        var result = await _workflowNodeService.GetWorkflowPreviewAsync(id);
+        return SuccessResponse(result);
+    }
+
+    #endregion
 }
 
 /// <summary>
@@ -154,3 +191,4 @@ public class CopyWorkflowDefinitionDto
     [DisplayName("新工作流代码")]
     public string Code { get; set; } = string.Empty;
 }
+

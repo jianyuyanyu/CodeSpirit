@@ -68,21 +68,31 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
     }
     
     /// <summary>
-    /// 初始化存储（创建表）
+    /// 初始化存储（创建数据库和表）
     /// </summary>
     public async Task<bool> InitializeAsync()
     {
         try
         {
-            // 首先进行健康检查
-            _logger.LogInformation("开始GreptimeDB健康检查，URL: {Url}, Database: {Database}", _options.Url, _options.Database);
-            var isHealthy = await HealthCheckAsync();
-            if (!isHealthy)
+            // 首先检查基础连接（不指定数据库）
+            _logger.LogInformation("开始GreptimeDB连接检查，URL: {Url}", _options.Url);
+            var canConnect = await CheckBaseConnectionAsync();
+            if (!canConnect)
             {
-                _logger.LogError("GreptimeDB健康检查失败，无法连接到服务器");
+                _logger.LogError("GreptimeDB基础连接失败，无法连接到服务器");
                 return false;
             }
             
+            // 创建数据库（如果不存在）
+            _logger.LogInformation("开始创建GreptimeDB数据库: {Database}", _options.Database);
+            var dbCreated = await CreateDatabaseAsync();
+            if (!dbCreated)
+            {
+                _logger.LogError("GreptimeDB数据库创建失败: {Database}", _options.Database);
+                return false;
+            }
+            
+            // 创建表（如果不存在）
             var tableName = GetFinalTableName();
             _logger.LogInformation("开始创建GreptimeDB表: {TableName}", tableName);
             
@@ -115,6 +125,17 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             if (success)
             {
                 _logger.LogInformation("GreptimeDB表创建成功: {TableName}", tableName);
+                
+                // 最后进行健康检查确认一切正常
+                var isHealthy = await HealthCheckAsync();
+                if (isHealthy)
+                {
+                    _logger.LogInformation("GreptimeDB初始化完成并通过健康检查");
+                }
+                else
+                {
+                    _logger.LogWarning("GreptimeDB表创建成功，但健康检查未通过");
+                }
             }
             else
             {
@@ -138,9 +159,6 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
     {
         try
         {
-            // 确保表存在
-            await InitializeAsync();
-            
             var tableName = GetFinalTableName();
             var insertSql = $@"
                 INSERT INTO {tableName} (
@@ -201,9 +219,6 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             {
                 return true;
             }
-            
-            // 确保表存在
-            await InitializeAsync();
             
             var tableName = GetFinalTableName();
             var tenantId = "";
@@ -605,9 +620,217 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
     #region 私有辅助方法
     
     /// <summary>
+    /// 检查基础连接（不指定数据库）
+    /// </summary>
+    private async Task<bool> CheckBaseConnectionAsync()
+    {
+        try
+        {
+            _logger.LogDebug("检查GreptimeDB基础连接，BaseAddress: {BaseAddress}", _httpClient.BaseAddress);
+            
+            // 尝试访问健康检查端点
+            var response = await _httpClient.GetAsync("/health");
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogDebug("GreptimeDB健康端点响应正常");
+                return true;
+            }
+            else
+            {
+                _logger.LogWarning("GreptimeDB健康端点不可用: {StatusCode}", response.StatusCode);
+                
+                // 如果健康端点不可用，尝试执行简单的SQL查询（不指定数据库）
+                var testSql = "SELECT 1 as test";
+                var formParams = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("sql", testSql)
+                };
+                var content = new FormUrlEncodedContent(formParams);
+                
+                var testResponse = await _httpClient.PostAsync("/v1/sql", content);
+                var canConnect = testResponse.IsSuccessStatusCode;
+                
+                if (canConnect)
+                {
+                    _logger.LogDebug("GreptimeDB基础连接测试成功");
+                }
+                else
+                {
+                    var errorContent = await testResponse.Content.ReadAsStringAsync();
+                    _logger.LogError("GreptimeDB基础连接测试失败: {StatusCode}, {Error}", 
+                        testResponse.StatusCode, errorContent);
+                }
+                
+                return canConnect;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GreptimeDB基础连接检查异常");
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 创建数据库（如果不存在）
+    /// </summary>
+    private async Task<bool> CreateDatabaseAsync()
+    {
+        try
+        {
+            // 首先检查数据库是否已存在
+            var checkDbSql = "SHOW DATABASES";
+            var databases = await ExecuteQueryWithoutDbAsync(checkDbSql);
+            
+            // 检查数据库是否已存在
+            var dbExists = databases.Any(db => 
+                db.ContainsKey("Database") && 
+                db["Database"].ToString()?.Equals(_options.Database, StringComparison.OrdinalIgnoreCase) == true);
+            
+            if (dbExists)
+            {
+                _logger.LogInformation("GreptimeDB数据库已存在: {Database}", _options.Database);
+                return true;
+            }
+            
+            // 创建数据库
+            var createDbSql = $"CREATE DATABASE IF NOT EXISTS {_options.Database}";
+            var success = await ExecuteSqlWithoutDbAsync(createDbSql);
+            
+            if (success)
+            {
+                _logger.LogInformation("GreptimeDB数据库创建成功: {Database}", _options.Database);
+            }
+            else
+            {
+                _logger.LogError("GreptimeDB数据库创建失败: {Database}", _options.Database);
+            }
+            
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "创建GreptimeDB数据库异常: {Database}", _options.Database);
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 执行SQL命令（不指定数据库）
+    /// </summary>
+    private async Task<bool> ExecuteSqlWithoutDbAsync(string sql)
+    {
+        try
+        {
+            var formParams = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("sql", sql)
+            };
+            var content = new FormUrlEncodedContent(formParams);
+            
+            _logger.LogDebug("执行GreptimeDB SQL（无数据库），SQL: {SQL}", sql);
+            
+            var response = await _httpClient.PostAsync("/v1/sql", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                _logger.LogDebug("GreptimeDB SQL执行成功（无数据库），响应: {Response}", responseContent);
+                return true;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("GreptimeDB SQL执行失败（无数据库）: {StatusCode}, {Error}", 
+                    response.StatusCode, errorContent);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "执行GreptimeDB SQL失败（无数据库）: {SQL}", sql);
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// 执行查询SQL（不指定数据库）
+    /// </summary>
+    private async Task<IEnumerable<Dictionary<string, object>>> ExecuteQueryWithoutDbAsync(string sql)
+    {
+        try
+        {
+            var formParams = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("sql", sql)
+            };
+            var content = new FormUrlEncodedContent(formParams);
+            
+            _logger.LogDebug("执行GreptimeDB查询（无数据库），SQL: {SQL}", sql);
+            
+            var response = await _httpClient.PostAsync("/v1/sql", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                _logger.LogDebug("GreptimeDB查询成功（无数据库），响应: {Response}", responseContent);
+                
+                var result = JsonConvert.DeserializeObject<GreptimeDbQueryResponse>(responseContent);
+                if (result?.Output != null && result.Output.Any())
+                {
+                    var results = new List<Dictionary<string, object>>();
+                    
+                    // 处理第一个输出项（通常查询只返回一个输出）
+                    var output = result.Output.First();
+                    if (output.Records != null)
+                    {
+                        var columns = output.Records.Schema?.Column_schemas ?? new List<ColumnSchema>();
+                        
+                        foreach (var row in output.Records.Rows ?? new List<List<object>>())
+                        {
+                            var record = new Dictionary<string, object>();
+                            for (int i = 0; i < columns.Count && i < row.Count; i++)
+                            {
+                                record[columns[i].Name] = row[i] ?? "";
+                            }
+                            results.Add(record);
+                        }
+                    }
+                    
+                    return results;
+                }
+                
+                return Enumerable.Empty<Dictionary<string, object>>();
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("GreptimeDB查询失败（无数据库）: {StatusCode}, {Error}", 
+                    response.StatusCode, errorContent);
+                return Enumerable.Empty<Dictionary<string, object>>();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "执行GreptimeDB查询失败（无数据库）: {SQL}", sql);
+            return Enumerable.Empty<Dictionary<string, object>>();
+        }
+    }
+    
+    /// <summary>
     /// 执行SQL命令
     /// </summary>
     private async Task<bool> ExecuteSqlAsync(string sql)
+    {
+        return await ExecuteSqlAsync(sql, true);
+    }
+    
+    /// <summary>
+    /// 执行SQL命令
+    /// </summary>
+    /// <param name="sql">要执行的SQL</param>
+    /// <param name="autoInitialize">是否在数据库不存在时自动初始化</param>
+    private async Task<bool> ExecuteSqlAsync(string sql, bool autoInitialize)
     {
         const int maxRetries = 3;
         
@@ -636,8 +859,30 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("GreptimeDB SQL执行失败: {StatusCode}, {Error}, Headers: {Headers}", 
-                        response.StatusCode, errorContent, string.Join(", ", response.Headers.Select(h => $"{h.Key}={string.Join(",", h.Value)}")));
+                    _logger.LogError("GreptimeDB SQL执行失败: {StatusCode}, {Error}", 
+                        response.StatusCode, errorContent);
+                    
+                    // 检查是否是数据库不存在的错误
+                    if (autoInitialize && 
+                        response.StatusCode == System.Net.HttpStatusCode.BadRequest && 
+                        errorContent.Contains("Database not found"))
+                    {
+                        _logger.LogWarning("检测到数据库不存在错误，尝试自动初始化: {Database}", _options.Database);
+                        
+                        // 尝试初始化（避免递归调用）
+                        var initSuccess = await InitializeAsync();
+                        if (initSuccess)
+                        {
+                            _logger.LogInformation("数据库初始化成功，重新执行SQL");
+                            // 重新执行SQL，但不再自动初始化避免无限递归
+                            return await ExecuteSqlAsync(sql, false);
+                        }
+                        else
+                        {
+                            _logger.LogError("数据库初始化失败，终止SQL执行");
+                            return false;
+                        }
+                    }
                     
                     // 如果是服务不可用错误，等待后重试
                     if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable && attempt < maxRetries)
@@ -743,6 +988,26 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
                 _logger.LogError("GreptimeDB查询失败: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                
+                // 检查是否是数据库不存在的错误
+                if (response.StatusCode == System.Net.HttpStatusCode.BadRequest && 
+                    errorContent.Contains("Database not found"))
+                {
+                    _logger.LogWarning("检测到数据库不存在错误，尝试自动初始化: {Database}", _options.Database);
+                    
+                    // 尝试初始化
+                    var initSuccess = await InitializeAsync();
+                    if (initSuccess)
+                    {
+                        _logger.LogInformation("数据库初始化成功，重新执行查询");
+                        // 重新执行查询（只重试一次避免无限递归）
+                        return await ExecuteQueryInternalAsync(sql);
+                    }
+                    else
+                    {
+                        _logger.LogError("数据库初始化失败，返回空结果");
+                    }
+                }
             }
             
             return new List<Dictionary<string, object>>();
@@ -750,6 +1015,66 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
         catch (Exception ex)
         {
             _logger.LogError(ex, "执行GreptimeDB查询失败: {SQL}", sql);
+            return new List<Dictionary<string, object>>();
+        }
+    }
+    
+    /// <summary>
+    /// 执行查询SQL（内部方法，不进行自动初始化）
+    /// </summary>
+    private async Task<List<Dictionary<string, object>>> ExecuteQueryInternalAsync(string sql)
+    {
+        try
+        {
+            // GreptimeDB期望form-urlencoded格式
+            var formParams = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("sql", sql)
+            };
+            var content = new FormUrlEncodedContent(formParams);
+            
+            var response = await _httpClient.PostAsync($"/v1/sql?db={_options.Database}", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var queryResult = JsonConvert.DeserializeObject<GreptimeDbQueryResponse>(responseContent);
+                
+                if (queryResult?.Output != null && queryResult.Output.Any())
+                {
+                    var results = new List<Dictionary<string, object>>();
+                    
+                    // 处理第一个输出项（通常查询只返回一个输出）
+                    var output = queryResult.Output.First();
+                    if (output.Records != null)
+                    {
+                        var columns = output.Records.Schema?.Column_schemas ?? new List<ColumnSchema>();
+                        
+                        foreach (var row in output.Records.Rows ?? new List<List<object>>())
+                        {
+                            var record = new Dictionary<string, object>();
+                            for (int i = 0; i < columns.Count && i < row.Count; i++)
+                            {
+                                record[columns[i].Name] = row[i] ?? "";
+                            }
+                            results.Add(record);
+                        }
+                    }
+                    
+                    return results;
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("GreptimeDB查询失败（内部重试）: {StatusCode}, {Error}", response.StatusCode, errorContent);
+            }
+            
+            return new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "执行GreptimeDB查询失败（内部重试）: {SQL}", sql);
             return new List<Dictionary<string, object>>();
         }
     }

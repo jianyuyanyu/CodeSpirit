@@ -62,6 +62,9 @@ public static class AuditExtensions
                     
                     return new GreptimeDbAuditStorageService(httpClient, logger, configuration, tenantContext);
                 });
+                
+                // 注册GreptimeDB初始化服务，确保在应用启动时主动初始化数据库
+                services.AddHostedService<GreptimeDbInitializationService>();
                 break;
             
             case "elasticsearch":

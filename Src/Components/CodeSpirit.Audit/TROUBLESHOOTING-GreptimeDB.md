@@ -131,6 +131,40 @@ curl -X POST "http://localhost:4000/v1/sql?db=audit_logs" \
   }'
 ```
 
+## 自动初始化机制
+
+### v1.1 更新（已修复数据库初始化问题）
+
+从 v1.1 版本开始，GreptimeDB 审计存储服务已经实现了自动初始化机制：
+
+1. **启动时初始化**：应用启动时会自动创建数据库和表
+2. **运行时检测**：如果检测到数据库不存在错误，会自动重新初始化
+3. **重试机制**：包含指数退避的重试逻辑
+4. **错误隔离**：初始化失败不会影响应用启动
+
+### 初始化流程
+
+1. 检查基础连接（不指定数据库）
+2. 执行 `SHOW DATABASES` 检查数据库是否存在
+3. 如果不存在，执行 `CREATE DATABASE IF NOT EXISTS audit_logs`
+4. 创建审计日志表（包含所有必要字段）
+5. 进行健康检查确认初始化成功
+
+### 日志输出示例
+
+成功初始化时的日志：
+```
+info: GreptimeDB初始化服务开始
+info: 检测到GreptimeDB审计存储服务，开始初始化  
+info: 开始GreptimeDB连接检查，URL: http://localhost:4000
+info: 开始创建GreptimeDB数据库: audit_logs
+info: GreptimeDB数据库创建成功: audit_logs
+info: 开始创建GreptimeDB表: web_audit_logs
+info: GreptimeDB表创建成功: web_audit_logs
+info: GreptimeDB初始化完成并通过健康检查
+info: GreptimeDB健康检查通过，服务就绪
+```
+
 ## 配置验证
 
 ### 检查 appsettings.json

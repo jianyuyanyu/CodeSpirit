@@ -1,0 +1,173 @@
+@page "/{tenantId?}/approval/workflow-preview/{id:long}"
+@model CodeSpirit.Web.Pages.Approval.WorkflowPreviewModel
+@{
+    ViewData["Title"] = "工作流预览";
+    Layout = "~/Pages/Shared/_Layout.cshtml";
+}
+
+<div class="workflow-preview-page">
+    <div class="workflow-preview-container">
+        <!-- 页面标题区域 -->
+        <div class="workflow-header fade-in-up">
+            <div class="text-center">
+                <h1>
+                    <i class="fas fa-project-diagram"></i>
+                    工作流预览
+                </h1>
+                <p class="subtitle">查看工作流的详细信息和流程图</p>
+            </div>
+        </div>
+
+        <!-- 工作流基本信息 -->
+        <div class="workflow-card fade-in-up" style="animation-delay: 0.1s;">
+            <div class="workflow-card-header">
+                <h5>
+                    <i class="fas fa-info-circle"></i>
+                    基本信息
+                </h5>
+            </div>
+            <div class="workflow-card-body">
+                <div class="workflow-info-grid">
+                    <div class="workflow-info-item">
+                        <span class="workflow-info-label">工作流名称</span>
+                        <span class="workflow-info-value" data-field="name">
+                            <div class="workflow-loading">
+                                <div class="spinner"></div>
+                                <span class="workflow-loading-text">加载中...</span>
+                            </div>
+                        </span>
+                    </div>
+                    <div class="workflow-info-item">
+                        <span class="workflow-info-label">工作流代码</span>
+                        <span class="workflow-info-value" data-field="code">
+                            <div class="workflow-loading">
+                                <div class="spinner"></div>
+                                <span class="workflow-loading-text">加载中...</span>
+                            </div>
+                        </span>
+                    </div>
+                    <div class="workflow-info-item">
+                        <span class="workflow-info-label">版本</span>
+                        <span class="workflow-info-value" data-field="version">
+                            <div class="workflow-loading">
+                                <div class="spinner"></div>
+                                <span class="workflow-loading-text">加载中...</span>
+                            </div>
+                        </span>
+                    </div>
+                    <div class="workflow-info-item">
+                        <span class="workflow-info-label">状态</span>
+                        <span class="workflow-info-value">
+                            <span data-field="status" class="workflow-status-badge">
+                                <div class="workflow-loading">
+                                    <div class="spinner"></div>
+                                    <span class="workflow-loading-text">加载中...</span>
+                                </div>
+                            </span>
+                        </span>
+                    </div>
+                </div>
+                <div class="workflow-description">
+                    <span class="workflow-info-label">
+                        <i class="fas fa-file-alt"></i> 描述
+                    </span>
+                    <div class="workflow-info-value" data-field="description">
+                        <div class="workflow-loading">
+                            <div class="spinner"></div>
+                            <span class="workflow-loading-text">加载中...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 流程图展示 -->
+        <div class="workflow-card fade-in-up" style="animation-delay: 0.2s;">
+            <div class="workflow-card-header">
+                <h5>
+                    <i class="fas fa-sitemap"></i>
+                    流程图
+                </h5>
+            </div>
+            <div class="workflow-card-body">
+                <div class="workflow-diagram-container">
+                    <!-- 流程图控制按钮 -->
+                    <div class="workflow-diagram-controls">
+                        <button class="diagram-control-btn" id="zoom-in-btn" title="放大">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="diagram-control-btn" id="zoom-out-btn" title="缩小">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="diagram-control-btn" id="fit-screen-btn" title="适应屏幕">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                        </button>
+                        <button class="diagram-control-btn" id="download-btn" title="下载图片">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="workflow-diagram">
+                        <div class="workflow-loading">
+                            <div class="spinner"></div>
+                            <span class="workflow-loading-text">正在生成流程图...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 节点详情 -->
+        <div class="workflow-card fade-in-up" style="animation-delay: 0.3s;">
+            <div class="workflow-card-header">
+                <h5>
+                    <i class="fas fa-list-ul"></i>
+                    节点详情
+                </h5>
+            </div>
+            <div class="workflow-card-body">
+                <div class="workflow-table-container">
+                    <table class="table workflow-table" id="nodes-table">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-tag"></i> 节点名称</th>
+                                <th><i class="fas fa-cog"></i> 节点类型</th>
+                                <th><i class="fas fa-users"></i> 审批模式</th>
+                                <th><i class="fas fa-user-check"></i> 审批人</th>
+                                <th><i class="fas fa-filter"></i> 条件</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nodes-table-body">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <div class="workflow-loading">
+                                        <div class="spinner"></div>
+                                        <span class="workflow-loading-text">正在加载节点数据...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <resource path="/css/pages/approval/workflow-preview.css" type="css" />
+}
+
+@section Scripts {
+    <script>
+        // 传递服务器端数据到客户端
+        window.workflowPageData = {
+            workflowId: @Model.WorkflowId,
+            tenantId: '@Model.EffectiveTenantId',
+            routeTenantId: '@Model.TenantId'
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <resource path="/js/pages/approval/workflow-preview.js" type="js" />
+    <resource path="/js/pages/approval/workflow-preview-init.js" type="js" />
+}

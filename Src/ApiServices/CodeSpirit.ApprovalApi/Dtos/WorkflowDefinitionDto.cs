@@ -15,6 +15,13 @@ public class WorkflowDefinitionDto
     public long Id { get; set; }
 
     /// <summary>
+    /// 租户ID
+    /// </summary>
+    [DisplayName("租户ID")]
+    [AmisColumn(Hidden = true)]
+    public string TenantId { get; set; } = string.Empty;
+
+    /// <summary>
     /// 工作流名称
     /// </summary>
     [DisplayName("工作流名称")]

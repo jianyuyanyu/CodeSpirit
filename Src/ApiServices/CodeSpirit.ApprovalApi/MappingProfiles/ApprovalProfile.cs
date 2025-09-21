@@ -90,7 +90,7 @@ public class ApprovalProfile : Profile
             .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedBy, opt => opt.Ignore())
-            .ForMember(dest => dest.Nodes, opt => opt.Ignore())
+            .ForMember(dest => dest.Nodes, opt => opt.Ignore()) // 节点通过WorkflowNodeSchema单独处理
             // 忽略AI填充相关的辅助字段，这些字段不需要映射到实体
             .ForMember(dest => dest.Configuration, opt => opt.MapFrom(src => 
                 string.IsNullOrEmpty(src.Configuration) ? 
@@ -102,6 +102,24 @@ public class ApprovalProfile : Profile
                 if (string.IsNullOrEmpty(dest.FormSchema) && !string.IsNullOrEmpty(src.FormSchema))
                 {
                     dest.FormSchema = src.FormSchema;
+                }
+                
+                // 处理WorkflowNodeSchema - 创建节点实体
+                if (!string.IsNullOrEmpty(src.WorkflowNodeSchema))
+                {
+                    try
+                    {
+                        var nodeSchemas = JsonConvert.DeserializeObject<List<WorkflowNodeSchema>>(src.WorkflowNodeSchema);
+                        if (nodeSchemas != null && nodeSchemas.Any())
+                        {
+                            dest.Nodes = CreateWorkflowNodesFromSchema(nodeSchemas, dest.TenantId ?? string.Empty);
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        // 记录错误但不阻止工作流创建，节点可以后续手动添加
+                        System.Diagnostics.Debug.WriteLine($"解析WorkflowNodeSchema失败: {ex.Message}");
+                    }
                 }
             });
 
@@ -182,10 +200,207 @@ public class ApprovalProfile : Profile
             expectedApprovalLevels = dto.ExpectedApprovalLevels,
             requireConditionalBranch = dto.RequireConditionalBranch,
             conditionalBranchDescription = dto.ConditionalBranchDescription,
+            approvalRoles = dto.ApprovalRoles,
             customPrompt = dto.CustomPrompt,
+            // 工作流节点Schema不包含在配置中，因为它将用于创建实际的WorkflowNode实体
             //categoryId = dto.CategoryId
         };
         
         return JsonConvert.SerializeObject(config, Formatting.Indented);
     }
+
+    /// <summary>
+    /// 根据节点Schema创建工作流节点实体
+    /// </summary>
+    /// <param name="nodeSchemas">节点Schema列表</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <returns>工作流节点实体集合</returns>
+    private static ICollection<WorkflowNode> CreateWorkflowNodesFromSchema(List<WorkflowNodeSchema> nodeSchemas, string tenantId)
+    {
+        var nodes = new List<WorkflowNode>();
+        
+        foreach (var schema in nodeSchemas)
+        {
+            var node = new WorkflowNode
+            {
+                TenantId = tenantId,
+                Name = schema.Name ?? "未命名节点",
+                NodeType = ParseNodeType(schema.NodeType),
+                ApprovalMode = ParseApprovalMode(schema.ApprovalMode),
+                Configuration = schema.Configuration ?? "{}"
+            };
+
+            // 创建审批人配置
+            if (schema.Approvers != null && schema.Approvers.Any())
+            {
+                node.Approvers = schema.Approvers.Select(a => new WorkflowNodeApprover
+                {
+                    TenantId = tenantId,
+                    ApproverType = ParseApproverType(a.ApproverType),
+                    ApproverValue = a.ApproverValue ?? string.Empty,
+                    ApproverName = a.ApproverName ?? string.Empty
+                }).ToList();
+            }
+
+            // 创建条件配置
+            if (schema.Conditions != null && schema.Conditions.Any())
+            {
+                node.Conditions = schema.Conditions.Select((c, index) => new WorkflowNodeCondition
+                {
+                    TenantId = tenantId,
+                    Expression = c.Expression ?? string.Empty,
+                    NextNodeName = c.NextNodeName ?? string.Empty,
+                    Description = c.Description ?? string.Empty,
+                    Order = index
+                }).ToList();
+            }
+
+            nodes.Add(node);
+        }
+
+        return nodes;
+    }
+
+    /// <summary>
+    /// 解析节点类型
+    /// </summary>
+    /// <param name="nodeType">节点类型字符串</param>
+    /// <returns>节点类型枚举</returns>
+    private static WorkflowNodeType ParseNodeType(string? nodeType)
+    {
+        if (string.IsNullOrEmpty(nodeType))
+            return WorkflowNodeType.Approval;
+
+        return nodeType.ToUpper() switch
+        {
+            "START" => WorkflowNodeType.Start,
+            "APPROVAL" => WorkflowNodeType.Approval,
+            "CONDITION" => WorkflowNodeType.Condition,
+            "PARALLELGATEWAY" => WorkflowNodeType.ParallelGateway,
+            "EXCLUSIVEGATEWAY" => WorkflowNodeType.ExclusiveGateway,
+            "CARBONCOPY" => WorkflowNodeType.CarbonCopy,
+            "END" => WorkflowNodeType.End,
+            _ => WorkflowNodeType.Approval
+        };
+    }
+
+    /// <summary>
+    /// 解析审批模式
+    /// </summary>
+    /// <param name="approvalMode">审批模式字符串</param>
+    /// <returns>审批模式枚举</returns>
+    private static ApprovalMode ParseApprovalMode(string? approvalMode)
+    {
+        if (string.IsNullOrEmpty(approvalMode))
+            return ApprovalMode.Sequential;
+
+        return approvalMode.ToUpper() switch
+        {
+            "SEQUENTIAL" => ApprovalMode.Sequential,
+            "PARALLEL" => ApprovalMode.Parallel,
+            "COUNTERSIGN" => ApprovalMode.CounterSign,
+            "ORSIGN" => ApprovalMode.OrSign,
+            _ => ApprovalMode.Sequential
+        };
+    }
+
+    /// <summary>
+    /// 解析审批人类型
+    /// </summary>
+    /// <param name="approverType">审批人类型字符串</param>
+    /// <returns>审批人类型枚举</returns>
+    private static ApproverType ParseApproverType(string? approverType)
+    {
+        if (string.IsNullOrEmpty(approverType))
+            return ApproverType.User;
+
+        return approverType.ToUpper() switch
+        {
+            "USER" => ApproverType.User,
+            "ROLE" => ApproverType.Role,
+            "DEPARTMENT" => ApproverType.Department,
+            "INITIATOR" => ApproverType.Initiator,
+            "INITIATORSUPERIOR" => ApproverType.InitiatorSuperior,
+            "EXPRESSION" => ApproverType.Expression,
+            _ => ApproverType.User
+        };
+    }
+}
+
+/// <summary>
+/// 工作流节点Schema
+/// </summary>
+public class WorkflowNodeSchema
+{
+    /// <summary>
+    /// 节点名称
+    /// </summary>
+    public string? Name { get; set; }
+
+    /// <summary>
+    /// 节点类型
+    /// </summary>
+    public string? NodeType { get; set; }
+
+    /// <summary>
+    /// 审批模式
+    /// </summary>
+    public string? ApprovalMode { get; set; }
+
+    /// <summary>
+    /// 节点配置
+    /// </summary>
+    public string? Configuration { get; set; }
+
+    /// <summary>
+    /// 审批人配置
+    /// </summary>
+    public List<WorkflowNodeApproverSchema>? Approvers { get; set; }
+
+    /// <summary>
+    /// 条件配置
+    /// </summary>
+    public List<WorkflowNodeConditionSchema>? Conditions { get; set; }
+}
+
+/// <summary>
+/// 工作流节点审批人Schema
+/// </summary>
+public class WorkflowNodeApproverSchema
+{
+    /// <summary>
+    /// 审批人类型
+    /// </summary>
+    public string? ApproverType { get; set; }
+
+    /// <summary>
+    /// 审批人值
+    /// </summary>
+    public string? ApproverValue { get; set; }
+
+    /// <summary>
+    /// 审批人名称
+    /// </summary>
+    public string? ApproverName { get; set; }
+}
+
+/// <summary>
+/// 工作流节点条件Schema
+/// </summary>
+public class WorkflowNodeConditionSchema
+{
+    /// <summary>
+    /// 条件表达式
+    /// </summary>
+    public string? Expression { get; set; }
+
+    /// <summary>
+    /// 下一个节点名称
+    /// </summary>
+    public string? NextNodeName { get; set; }
+
+    /// <summary>
+    /// 条件描述
+    /// </summary>
+    public string? Description { get; set; }
 }

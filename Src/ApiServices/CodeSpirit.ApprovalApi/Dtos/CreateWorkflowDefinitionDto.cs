@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core.Attributes;
 using CodeSpirit.Amis.Attributes.FormFields;
 
 namespace CodeSpirit.ApprovalApi.Dtos;
@@ -6,7 +9,14 @@ namespace CodeSpirit.ApprovalApi.Dtos;
 /// 创建工作流定义DTO
 /// </summary>
 [DisplayName("创建工作流定义")]
-[AiFormFill(TriggerField = nameof(Name), UseIndependentLLM = true)]
+[AiFormFill(
+    TriggerField = nameof(Name), 
+    UseIndependentLLM = true,
+    MaxTokens = 2000,
+    EnableCache = true,
+    CacheExpirationMinutes = 60,
+    IgnoreFields = new[] { nameof(CustomPrompt), nameof(Configuration) }
+)]
 public class CreateWorkflowDefinitionDto
 {
     /// <summary>
@@ -56,8 +66,8 @@ public class CreateWorkflowDefinitionDto
     /// </summary>
     [StringLength(200)]
     [DisplayName("业务场景")]
-    [Description("具体的业务应用场景，帮助AI更好地生成相关的表单字段")]
-    [AiFieldFill(Weight = 2, Priority = 4)]
+    [Description("具体的业务应用场景，例如：员工请假、设备采购、供应商合同签署、财务报销、项目审批等")]
+    [AiFieldFill(Weight = 3, Priority = 4, CustomDescription = "详细的业务应用场景，用于生成针对性的审批流程和表单结构")]
     [AmisFormField(Type = "input-text", Placeholder = "例如：员工请假、设备采购、供应商合同签署")]
     public string? BusinessScenario { get; set; }
 
@@ -85,8 +95,8 @@ public class CreateWorkflowDefinitionDto
     /// </summary>
     [StringLength(1000)]
     [DisplayName("条件分支描述")]
-    [Description("描述需要的条件分支逻辑，例如：金额大于1万需要财务总监审批")]
-    [AiFieldFill(Weight = 2, Priority = 7)]
+    [Description("描述需要的条件分支逻辑，例如：金额大于1万需要财务总监审批、请假天数超过3天需要部门经理和HR审批等")]
+    [AiFieldFill(Weight = 3, Priority = 7, CustomDescription = "条件分支的具体业务规则，用于生成带有条件判断的工作流节点配置")]
     [AmisTextareaField(Placeholder = "请描述条件分支的具体逻辑", VisibleOn = "${RequireConditionalBranch}")]
     public string? ConditionalBranchDescription { get; set; }
 
@@ -115,6 +125,25 @@ public class CreateWorkflowDefinitionDto
     [AiFieldFill(Weight = 3, Priority = 8, CustomDescription = "根据工作流名称、业务场景和描述，生成符合AMIS规范的表单Schema，包含必要的静态信息展示、审批意见输入、审批结果选择等字段")]
     [AmisFormField(Type = "amis", Placeholder = "将根据工作流信息自动生成")]
     public string? FormSchema { get; set; }
+
+    /// <summary>
+    /// 审批角色和层级
+    /// </summary>
+    [StringLength(500)]
+    [DisplayName("审批角色和层级")]
+    [Description("描述各级审批人的角色或职位，例如：直接主管→部门经理→总监→总经理")]
+    [AiFieldFill(Weight = 3, Priority = 9, CustomDescription = "根据业务场景和审批层级生成具体的审批角色配置，包含各级审批人的职位或角色名称")]
+    [AmisTextareaField(Placeholder = "请描述各级审批人的角色，例如：直接主管→部门经理→总监")]
+    public string? ApprovalRoles { get; set; }
+
+    /// <summary>
+    /// 工作流节点Schema（JSON格式的节点配置）
+    /// </summary>
+    [DisplayName("工作流节点Schema")]
+    [Description("工作流的节点配置，包含各个审批节点的配置信息，JSON格式。节点包含：名称、类型（Start/Approval/Condition/End）、审批模式、审批人配置、条件配置等")]
+    [AiFieldFill(Weight = 3, Priority = 10, CustomDescription = "根据工作流名称、业务场景、预期审批层级、审批角色和条件分支描述，生成完整的工作流节点配置JSON数组。每个节点对象需包含：name(节点名称，使用中文命名)、nodeType(节点类型：Start/Approval/Condition/End)、approvalMode(审批模式：Sequential/Parallel/CounterSign/OrSign)、configuration(节点配置JSON字符串)、approvers(审批人数组，包含approverType和approverValue)、conditions(条件数组，包含expression和nextNodeName)。确保至少包含一个Start节点和一个End节点")]
+    [AmisFormField(Type = "json", Placeholder = "将根据工作流信息自动生成")]
+    public string? WorkflowNodeSchema { get; set; }
 
     /// <summary>
     /// 自定义提示词

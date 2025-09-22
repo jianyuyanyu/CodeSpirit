@@ -1,4 +1,6 @@
-using CodeSpirit.ApprovalApi.Dtos;
+using CodeSpirit.ApprovalApi.Dtos.WorkflowDefinition;
+using CodeSpirit.ApprovalApi.Dtos.WorkflowNode;
+using CodeSpirit.ApprovalApi.Dtos.Visualization;
 using CodeSpirit.ApprovalApi.Services;
 using CodeSpirit.Core.Attributes;
 
@@ -151,6 +153,17 @@ public class WorkflowDefinitionsController : ApiControllerBase
         return SuccessResponse(resultDto);
     }
 
+    /// <summary>
+    /// 节点管理操作
+    /// </summary>
+    /// <returns>操作结果</returns>
+    [Operation("节点管理", "link", "/approval/workflowNodes?WorkflowDefinitionId=$id", null, Icon = "fa-solid fa-share-alt")]
+    [DisplayName("节点管理")]
+    public ActionResult<ApiResponse> Nodes_Manager()
+    {
+        return SuccessResponse();
+    }
+
     #region 流程设计和预览
 
     /// <summary>
@@ -195,29 +208,9 @@ public class WorkflowDefinitionsController : ApiControllerBase
     [HttpGet("{id}/preview-ui")]
     [Operation("流程预览", actionType: OperationActionType.Link, "/$tenantId/approval/workflow-preview/$id", Blank = true)]
     [DisplayName("流程预览")]
-    public async Task<ActionResult<ApiResponse<object>>> GetWorkflowPreviewUI(long id)
+    public ActionResult<ApiResponse> GetWorkflowPreviewUI(long id)
     {
-        // 验证工作流是否存在
-        var workflowDefinition = await _workflowDefinitionService.GetAsync(id);
-        if (workflowDefinition == null)
-        {
-            return NotFound(ApiResponse.Error(404, "工作流定义不存在"));
-        }
-
-        // 返回跳转配置
-        var uiConfig = new
-        {
-            type = "action",
-            actionType = OperationActionType.Link,
-            url = $"/approval/workflow-preview/{id}",
-            blank = true, // 在新窗口打开
-            label = "预览工作流",
-            level = "primary",
-            icon = "fa fa-eye",
-            tooltip = $"预览工作流: {workflowDefinition.Name}"
-        };
-
-        return SuccessResponse((object)uiConfig);
+        return SuccessResponse();
     }
 
     /// <summary>

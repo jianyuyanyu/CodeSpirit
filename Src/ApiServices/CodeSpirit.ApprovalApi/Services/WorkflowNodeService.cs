@@ -1,5 +1,6 @@
 using CodeSpirit.ApprovalApi.Data;
-using CodeSpirit.ApprovalApi.Dtos;
+using CodeSpirit.ApprovalApi.Dtos.WorkflowNode;
+using CodeSpirit.ApprovalApi.Dtos.Visualization;
 using CodeSpirit.ApprovalApi.Models;
 using CodeSpirit.Core;
 using CodeSpirit.MultiTenant.Abstractions;
@@ -7,6 +8,8 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System.Linq.Expressions;
+using LinqKit;
 
 namespace CodeSpirit.ApprovalApi.Services;
 
@@ -52,7 +55,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     public async Task<List<WorkflowNodeDto>> GetByWorkflowDefinitionIdAsync(long workflowDefinitionId)
     {
         var tenantId = _tenantContext.TenantId;
-        
+
         var nodes = await _context.WorkflowNodes
             .Include(x => x.Approvers)
             .Include(x => x.Conditions)
@@ -71,11 +74,11 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     public async Task<List<WorkflowNodeDto>> BatchCreateAsync(BatchCreateWorkflowNodesDto dto)
     {
         var tenantId = _tenantContext.TenantId;
-        
+
         // 验证工作流定义是否存在
         var workflowExists = await _context.WorkflowDefinitions
             .AnyAsync(x => x.Id == dto.WorkflowDefinitionId && x.TenantId == tenantId);
-        
+
         if (!workflowExists)
         {
             throw new BusinessException("工作流定义不存在");
@@ -85,13 +88,13 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
         await DeleteByWorkflowDefinitionIdAsync(dto.WorkflowDefinitionId);
 
         var nodes = new List<WorkflowNode>();
-        
+
         foreach (var nodeDto in dto.Nodes)
         {
             var node = Mapper.Map<WorkflowNode>(nodeDto);
             node.TenantId = tenantId ?? string.Empty;
             node.WorkflowDefinitionId = dto.WorkflowDefinitionId;
-            
+
             // 设置审批人
             foreach (var approverDto in nodeDto.Approvers)
             {
@@ -99,7 +102,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
                 approver.TenantId = tenantId ?? string.Empty;
                 node.Approvers.Add(approver);
             }
-            
+
             // 设置条件
             foreach (var conditionDto in nodeDto.Conditions)
             {
@@ -107,7 +110,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
                 condition.TenantId = tenantId ?? string.Empty;
                 node.Conditions.Add(condition);
             }
-            
+
             nodes.Add(node);
         }
 
@@ -125,11 +128,11 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     public async Task<bool> SaveProcessDesignAsync(WorkflowProcessDesignDto dto)
     {
         var tenantId = _tenantContext.TenantId;
-        
+
         // 验证工作流定义是否存在
         var workflow = await _context.WorkflowDefinitions
             .FirstOrDefaultAsync(x => x.Id == dto.WorkflowDefinitionId && x.TenantId == tenantId);
-        
+
         if (workflow == null)
         {
             throw new BusinessException("工作流定义不存在");
@@ -158,7 +161,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
                 WorkflowDefinitionId = dto.WorkflowDefinitionId,
                 Nodes = dto.Nodes
             };
-            
+
             await BatchCreateAsync(batchDto);
 
             await transaction.CommitAsync();
@@ -208,7 +211,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
             .Where(g => g.Count() > 1)
             .Select(g => g.Key)
             .ToList();
-        
+
         if (duplicateNames.Any())
         {
             errors.Add($"节点名称重复：{string.Join(", ", duplicateNames)}");
@@ -246,17 +249,17 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     public async Task<List<WorkflowNodeDto>> CopyNodesAsync(long sourceWorkflowDefinitionId, long targetWorkflowDefinitionId)
     {
         var sourceNodes = await GetByWorkflowDefinitionIdAsync(sourceWorkflowDefinitionId);
-        
+
         var createNodes = sourceNodes.Select(node => new CreateWorkflowNodeDto
         {
             WorkflowDefinitionId = targetWorkflowDefinitionId,
             Name = node.Name,
-            NodeType = Enum.Parse<WorkflowNodeType>(node.NodeType),
-            ApprovalMode = Enum.Parse<ApprovalMode>(node.ApprovalMode),
+            NodeType = node.NodeType,
+            ApprovalMode = node.ApprovalMode,
             Configuration = node.Configuration,
             Approvers = node.Approvers.Select(approver => new CreateWorkflowNodeApproverDto
             {
-                ApproverType = Enum.Parse<ApproverType>(approver.ApproverType),
+                ApproverType = approver.ApproverType,
                 ApproverValue = approver.ApproverValue,
                 ApproverName = approver.ApproverName
             }).ToList(),
@@ -285,7 +288,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     public async Task<bool> DeleteByWorkflowDefinitionIdAsync(long workflowDefinitionId)
     {
         var tenantId = _tenantContext.TenantId;
-        
+
         var nodes = await _context.WorkflowNodes
             .Where(x => x.WorkflowDefinitionId == workflowDefinitionId && x.TenantId == tenantId)
             .ToListAsync();
@@ -307,7 +310,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     public async Task<WorkflowPreviewDto> GetWorkflowPreviewAsync(long workflowDefinitionId)
     {
         var tenantId = _tenantContext.TenantId;
-        
+
         var workflow = await _context.WorkflowDefinitions
             .Include(x => x.Nodes)
                 .ThenInclude(x => x.Approvers)
@@ -324,12 +327,12 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
         {
             Id = node.Id,
             Name = node.Name,
-            Type = node.NodeType.ToString(),
-            ApprovalMode = node.ApprovalMode.ToString(),
+            Type = node.NodeType,
+            ApprovalMode = node.ApprovalMode,
             Configuration = node.Configuration ?? "{}",
             Approvers = node.Approvers.Select(a => new WorkflowNodeApproverPreviewDto
             {
-                Type = a.ApproverType.ToString(),
+                Type = a.ApproverType,
                 Value = a.ApproverValue,
                 Name = a.ApproverName
             }).ToList(),
@@ -362,7 +365,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     /// <param name="items">导入项列表</param>
     /// <returns>导入结果</returns>
     public async Task<(int SuccessCount, int ErrorCount, List<string> Errors)> ImportNodesAsync(
-        long workflowDefinitionId, 
+        long workflowDefinitionId,
         List<WorkflowNodeBatchImportItemDto> items)
     {
         var errors = new List<string>();
@@ -388,7 +391,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
 
                 // 验证审批模式
                 var approvalMode = ApprovalMode.Sequential;
-                if (!string.IsNullOrEmpty(item.ApprovalMode) && 
+                if (!string.IsNullOrEmpty(item.ApprovalMode) &&
                     !Enum.TryParse<ApprovalMode>(item.ApprovalMode, out approvalMode))
                 {
                     errors.Add($"第{rowIndex}行：审批模式 '{item.ApprovalMode}' 无效");
@@ -447,13 +450,13 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     public async Task<WorkflowVisualizationDto> GetWorkflowVisualizationAsync(long workflowDefinitionId)
     {
         var nodes = await GetByWorkflowDefinitionIdAsync(workflowDefinitionId);
-        
+
         var flowNodes = new List<FlowChartNodeDto>();
         var flowEdges = new List<FlowChartEdgeDto>();
-        
+
         // 节点布局计算
         var nodePositions = CalculateNodePositions(nodes);
-        
+
         // 生成流程图节点
         foreach (var node in nodes)
         {
@@ -462,7 +465,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
             {
                 Id = node.Id.ToString(),
                 Label = node.Name,
-                Type = GetFlowChartNodeType(Enum.Parse<WorkflowNodeType>(node.NodeType)),
+                Type = GetFlowChartNodeType(node.NodeType),
                 Position = position,
                 Data = new
                 {
@@ -472,11 +475,11 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
                     conditions = node.Conditions,
                     configuration = node.Configuration
                 },
-                Style = GetNodeStyle(Enum.Parse<WorkflowNodeType>(node.NodeType))
+                Style = GetNodeStyle(node.NodeType)
             };
             flowNodes.Add(flowNode);
         }
-        
+
         // 生成连线（基于条件配置）
         foreach (var node in nodes)
         {
@@ -497,9 +500,9 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
                     flowEdges.Add(edge);
                 }
             }
-            
+
             // 对于非条件节点，添加默认连线到下一个节点
-            if (!node.Conditions.Any() && Enum.Parse<WorkflowNodeType>(node.NodeType) != WorkflowNodeType.End)
+            if (!node.Conditions.Any() && node.NodeType != WorkflowNodeType.End)
             {
                 var nextNode = nodes.FirstOrDefault(n => n.Id > node.Id);
                 if (nextNode != null)
@@ -516,7 +519,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
                 }
             }
         }
-        
+
         return new WorkflowVisualizationDto
         {
             Nodes = flowNodes,
@@ -605,7 +608,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     public async Task<WorkflowInstanceStatusDto> GetWorkflowInstanceStatusAsync(long instanceId)
     {
         var tenantId = _tenantContext.TenantId;
-        
+
         var instance = await _context.ApprovalInstances
             .Include(x => x.WorkflowDefinition)
                 .ThenInclude(x => x.Nodes)
@@ -644,6 +647,11 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
         }
 
         return status;
+    }
+
+    protected override string[] BuildInclues()
+    {
+        return ["Approvers", "Conditions"];
     }
 
     #region 私有辅助方法
@@ -744,14 +752,14 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     private List<string> ValidateConnectivity(List<CreateWorkflowNodeDto> nodes)
     {
         var issues = new List<string>();
-        
+
         // 检查是否有孤立节点
         var nodeNames = nodes.Select(n => n.Name).ToHashSet();
         var referencedNodes = nodes.SelectMany(n => n.Conditions.Select(c => c.NextNodeName)).ToHashSet();
-        
-        var unreferencedNodes = nodeNames.Except(referencedNodes).Where(name => 
+
+        var unreferencedNodes = nodeNames.Except(referencedNodes).Where(name =>
             !nodes.Any(n => n.Name == name && (n.NodeType == WorkflowNodeType.Start || n.NodeType == WorkflowNodeType.End))).ToList();
-            
+
         if (unreferencedNodes.Any())
         {
             issues.Add($"存在未被引用的节点：{string.Join(", ", unreferencedNodes)}");
@@ -775,7 +783,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     private List<string> ValidateConditions(List<CreateWorkflowNodeDto> nodes)
     {
         var issues = new List<string>();
-        
+
         foreach (var node in nodes.Where(n => n.NodeType == WorkflowNodeType.Condition))
         {
             foreach (var condition in node.Conditions)
@@ -799,14 +807,14 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     private List<string> ValidateApprovers(List<CreateWorkflowNodeDto> nodes)
     {
         var issues = new List<string>();
-        
+
         foreach (var node in nodes.Where(n => n.NodeType == WorkflowNodeType.Approval))
         {
             if (!node.Approvers.Any())
             {
                 issues.Add($"审批节点 {node.Name} 缺少审批人配置");
             }
-            
+
             foreach (var approver in node.Approvers)
             {
                 if (string.IsNullOrWhiteSpace(approver.ApproverValue))
@@ -817,6 +825,55 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
         }
 
         return issues;
+    }
+
+    #endregion
+
+    #region Protected Override Methods
+
+    /// <summary>
+    /// 构建查询表达式
+    /// </summary>
+    /// <param name="queryDto">查询DTO</param>
+    /// <returns>查询表达式</returns>
+    protected override Expression<Func<WorkflowNode, bool>>? BuildQueryExpression(object? queryDto)
+    {
+        if (queryDto is not WorkflowNodeQueryDto query)
+        {
+            return null;
+        }
+
+        var predicate = PredicateBuilder.New<WorkflowNode>(true);
+
+        // 工作流定义ID筛选
+        if (query.WorkflowDefinitionId.HasValue)
+        {
+            var workflowDefinitionId = query.WorkflowDefinitionId.Value;
+            predicate = predicate.And(x => x.WorkflowDefinitionId == workflowDefinitionId);
+        }
+
+        // 节点名称筛选
+        if (!string.IsNullOrWhiteSpace(query.Name))
+        {
+            var name = query.Name.Trim();
+            predicate = predicate.And(x => x.Name.Contains(name));
+        }
+
+        // 节点类型筛选
+        if (query.NodeType.HasValue)
+        {
+            var nodeType = query.NodeType.Value;
+            predicate = predicate.And(x => x.NodeType == nodeType);
+        }
+
+        // 审批模式筛选
+        if (query.ApprovalMode.HasValue)
+        {
+            var approvalMode = query.ApprovalMode.Value;
+            predicate = predicate.And(x => x.ApprovalMode == approvalMode);
+        }
+
+        return predicate;
     }
 
     #endregion

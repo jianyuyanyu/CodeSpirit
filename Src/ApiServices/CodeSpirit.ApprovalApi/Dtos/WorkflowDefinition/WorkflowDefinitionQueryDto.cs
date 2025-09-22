@@ -3,7 +3,7 @@ using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Dtos;
 
-namespace CodeSpirit.ApprovalApi.Dtos;
+namespace CodeSpirit.ApprovalApi.Dtos.WorkflowDefinition;
 
 /// <summary>
 /// 工作流定义查询DTO

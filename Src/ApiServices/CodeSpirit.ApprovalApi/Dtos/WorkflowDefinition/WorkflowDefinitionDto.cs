@@ -1,8 +1,9 @@
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Amis.Attributes.FormFields;
 using Elastic.Clients.Elasticsearch.TextStructure;
+using CodeSpirit.ApprovalApi.Dtos.WorkflowNode;
 
-namespace CodeSpirit.ApprovalApi.Dtos;
+namespace CodeSpirit.ApprovalApi.Dtos.WorkflowDefinition;
 
 /// <summary>
 /// 工作流定义DTO
@@ -164,112 +165,4 @@ public class WorkflowDefinitionDetailDto : WorkflowDefinitionDto
     /// </summary>
     [DisplayName("工作流节点列表")]
     public List<WorkflowNodeDto> Nodes { get; set; } = new();
-}
-
-/// <summary>
-/// 工作流节点DTO
-/// </summary>
-public class WorkflowNodeDto
-{
-    /// <summary>
-    /// 节点ID
-    /// </summary>
-    [DisplayName("节点ID")]
-    public long Id { get; set; }
-
-    /// <summary>
-    /// 节点名称
-    /// </summary>
-    [DisplayName("节点名称")]
-    public string Name { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 节点类型
-    /// </summary>
-    [DisplayName("节点类型")]
-    public string NodeType { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 审批模式
-    /// </summary>
-    [DisplayName("审批模式")]
-    public string ApprovalMode { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 节点配置
-    /// </summary>
-    [DisplayName("节点配置")]
-    public string Configuration { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 审批人配置
-    /// </summary>
-    [DisplayName("审批人配置")]
-    public List<WorkflowNodeApproverDto> Approvers { get; set; } = new();
-
-    /// <summary>
-    /// 条件配置
-    /// </summary>
-    [DisplayName("条件配置")]
-    public List<WorkflowNodeConditionDto> Conditions { get; set; } = new();
-}
-
-/// <summary>
-/// 工作流节点审批人DTO
-/// </summary>
-public class WorkflowNodeApproverDto
-{
-    /// <summary>
-    /// 审批人ID
-    /// </summary>
-    [DisplayName("审批人ID")]
-    public long Id { get; set; }
-
-    /// <summary>
-    /// 审批人类型
-    /// </summary>
-    [DisplayName("审批人类型")]
-    public string ApproverType { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 审批人值
-    /// </summary>
-    [DisplayName("审批人值")]
-    public string ApproverValue { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 审批人名称
-    /// </summary>
-    [DisplayName("审批人名称")]
-    public string ApproverName { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// 工作流节点条件DTO
-/// </summary>
-public class WorkflowNodeConditionDto
-{
-    /// <summary>
-    /// 条件ID
-    /// </summary>
-    [DisplayName("条件ID")]
-    public long Id { get; set; }
-
-    /// <summary>
-    /// 条件表达式
-    /// </summary>
-    [DisplayName("条件表达式")]
-    public string Expression { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 下一个节点名称
-    /// </summary>
-    [DisplayName("下一个节点名称")]
-    public string NextNodeName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 条件描述
-    /// </summary>
-    [DisplayName("条件描述")]
-    public string Description { get; set; } = string.Empty;
 }

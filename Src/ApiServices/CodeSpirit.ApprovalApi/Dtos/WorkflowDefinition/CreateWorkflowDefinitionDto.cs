@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Amis.Attributes.FormFields;
 
-namespace CodeSpirit.ApprovalApi.Dtos;
+namespace CodeSpirit.ApprovalApi.Dtos.WorkflowDefinition;
 
 /// <summary>
 /// 创建工作流定义DTO

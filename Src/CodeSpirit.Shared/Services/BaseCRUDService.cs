@@ -71,6 +71,11 @@ public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDt
         // 如果没有提供predicate，尝试从查询DTO构建
         predicate ??= BuildQueryExpression(queryDto);
 
+        if (includes == null || includes.Length==0)
+        {
+            includes = BuildInclues();
+        }
+
         PageList<TEntity> result = await Repository.GetPagedAsync(
             queryDto.Page,
             queryDto.PerPage,
@@ -82,6 +87,8 @@ public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDt
 
         return Mapper.Map<PageList<TDto>>(result);
     }
+
+    protected virtual string[] BuildInclues() => [];
 
     /// <summary>
     /// 创建实体

@@ -1,4 +1,5 @@
-using CodeSpirit.ApprovalApi.Dtos;
+using CodeSpirit.ApprovalApi.Dtos.WorkflowNode;
+using CodeSpirit.ApprovalApi.Dtos.Visualization;
 using CodeSpirit.ApprovalApi.Models;
 using CodeSpirit.Shared.Services;
 

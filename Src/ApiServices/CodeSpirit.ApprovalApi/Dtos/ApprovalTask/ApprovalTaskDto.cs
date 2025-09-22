@@ -1,7 +1,8 @@
 using CodeSpirit.ApprovalApi.Models;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Dtos;
 
-namespace CodeSpirit.ApprovalApi.Dtos;
+namespace CodeSpirit.ApprovalApi.Dtos.ApprovalTask;
 
 /// <summary>
 /// 审批任务DTO

@@ -1,5 +1,5 @@
 using CodeSpirit.ApprovalApi.Data;
-using CodeSpirit.ApprovalApi.Dtos;
+using CodeSpirit.ApprovalApi.Dtos.WorkflowDefinition;
 using CodeSpirit.ApprovalApi.Models;
 using CodeSpirit.Core;
 using CodeSpirit.MultiTenant.Abstractions;

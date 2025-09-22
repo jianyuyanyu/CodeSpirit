@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeSpirit.ApprovalApi.Dtos;
+namespace CodeSpirit.ApprovalApi.Dtos.WorkflowDefinition;
 
 /// <summary>
 /// 工作流定义快速保存请求DTO

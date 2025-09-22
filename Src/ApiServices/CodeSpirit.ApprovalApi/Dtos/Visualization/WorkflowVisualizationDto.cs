@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using CodeSpirit.ApprovalApi.Models;
 using Newtonsoft.Json;
 
-namespace CodeSpirit.ApprovalApi.Dtos;
+namespace CodeSpirit.ApprovalApi.Dtos.Visualization;
 
 /// <summary>
 /// 工作流可视化DTO

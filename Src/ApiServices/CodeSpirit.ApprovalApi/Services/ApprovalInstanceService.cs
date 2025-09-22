@@ -1,5 +1,7 @@
 using CodeSpirit.ApprovalApi.Data;
-using CodeSpirit.ApprovalApi.Dtos;
+using CodeSpirit.ApprovalApi.Dtos.ApprovalInstance;
+using CodeSpirit.ApprovalApi.Dtos.ApprovalTask;
+using CodeSpirit.ApprovalApi.Dtos.ApprovalLog;
 using CodeSpirit.ApprovalApi.Models;
 using CodeSpirit.Shared.EventBus.Interfaces;
 using CodeSpirit.MultiTenant.Abstractions;

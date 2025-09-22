@@ -1,4 +1,4 @@
-using CodeSpirit.ApprovalApi.Dtos;
+using CodeSpirit.ApprovalApi.Dtos.WorkflowDefinition;
 using CodeSpirit.ApprovalApi.Models;
 
 namespace CodeSpirit.ApprovalApi.Services;

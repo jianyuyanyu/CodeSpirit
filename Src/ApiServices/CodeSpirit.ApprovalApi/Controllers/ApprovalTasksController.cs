@@ -1,4 +1,4 @@
-using CodeSpirit.ApprovalApi.Dtos;
+using CodeSpirit.ApprovalApi.Dtos.ApprovalTask;
 using CodeSpirit.ApprovalApi.Services;
 
 namespace CodeSpirit.ApprovalApi.Controllers;

@@ -190,7 +190,8 @@ namespace CodeSpirit.Amis.Column
                 }
 
                 // 如果AmisColumnAttribute明确指定了类型，则直接返回，不进行其他自动推断
-                if (!string.IsNullOrEmpty(columnAttr.Type))
+                // 但是 EachColumnAttribute 需要特殊处理，不能早期返回
+                if (!string.IsNullOrEmpty(columnAttr.Type) && !(columnAttr is EachColumnAttribute))
                 {
                     // 如果是主键，依然需要隐藏该列
                     if (IsPrimaryKey(prop))
@@ -579,8 +580,14 @@ namespace CodeSpirit.Amis.Column
                 }
             }
 
-            // 处理 List 类型属性
-            if (IsListProperty(prop))
+            // 处理 Each 类型列
+            EachColumnAttribute eachAttr = prop.GetCustomAttribute<EachColumnAttribute>();
+            if (eachAttr != null)
+            {
+                ApplyEachColumnAttribute(column, eachAttr, fieldName);
+            }
+            // 处理 List 类型属性（只有在没有 EachColumnAttribute 时才处理）
+            else if (IsListProperty(prop))
             {
                 column["type"] = "list";
 
@@ -589,54 +596,6 @@ namespace CodeSpirit.Amis.Column
                 if (listItem != null)
                 {
                     column["listItem"] = listItem;
-                }
-            }
-
-            // 处理 Each 类型列
-            EachColumnAttribute eachAttr = prop.GetCustomAttribute<EachColumnAttribute>();
-            if (eachAttr != null)
-            {
-                column["type"] = "each";
-
-                // 设置数据来源
-                if (!string.IsNullOrEmpty(eachAttr.Source))
-                {
-                    column["source"] = eachAttr.Source;
-                }
-                else
-                {
-                    column["source"] = "${" + fieldName + "}";
-                }
-
-                // 设置循环项变量名
-                if (!string.IsNullOrEmpty(eachAttr.ItemVariable))
-                {
-                    column["itemVariable"] = eachAttr.ItemVariable;
-                }
-
-                // 设置索引变量名
-                if (!string.IsNullOrEmpty(eachAttr.IndexVariable))
-                {
-                    column["indexVariable"] = eachAttr.IndexVariable;
-                }
-
-                // 设置每项的渲染模板
-                if (!string.IsNullOrEmpty(eachAttr.ItemTemplate))
-                {
-                    column["items"] = new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = eachAttr.ItemTemplate
-                    };
-                }
-                else
-                {
-                    // 默认显示为文本
-                    column["items"] = new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = "${" + eachAttr.ItemVariable + "}"
-                    };
                 }
             }
 
@@ -1516,6 +1475,13 @@ namespace CodeSpirit.Amis.Column
             column["copyable"] = columnAttr.Copyable;
             column["hidden"] = columnAttr.Hidden;
 
+            // 如果是 EachColumnAttribute，需要在最后应用其特有属性（避免被基础属性覆盖）
+            if (columnAttr is EachColumnAttribute eachAttr)
+            {
+                string fieldName = column["name"]?.ToString();
+                ApplyEachColumnAttribute(column, eachAttr, fieldName);
+            }
+
             if (!columnAttr.Toggled)
             {
                 column["toggled"] = columnAttr.Toggled;
@@ -1729,6 +1695,53 @@ namespace CodeSpirit.Amis.Column
                 return "过期时间";
 
             return "请选择日期";
+        }
+
+        /// <summary>
+        /// 应用 EachColumnAttribute 的配置到列对象
+        /// </summary>
+        /// <param name="column">列对象</param>
+        /// <param name="eachAttr">EachColumnAttribute 特性</param>
+        /// <param name="fieldName">字段名</param>
+        private void ApplyEachColumnAttribute(JObject column, EachColumnAttribute eachAttr, string fieldName)
+        {
+            column["type"] = "each";
+
+            // 设置数据来源
+            if (!string.IsNullOrEmpty(eachAttr.Source))
+            {
+                column["source"] = eachAttr.Source;
+            }
+            else if (!string.IsNullOrEmpty(fieldName))
+            {
+                column["source"] = "${" + fieldName + "}";
+            }
+
+            // 设置循环项变量名 - 总是设置默认值
+            column["itemVariable"] = !string.IsNullOrEmpty(eachAttr.ItemVariable) ? eachAttr.ItemVariable : "item";
+
+            // 设置索引变量名 - 总是设置默认值
+            column["indexVariable"] = !string.IsNullOrEmpty(eachAttr.IndexVariable) ? eachAttr.IndexVariable : "index";
+
+            // 设置每项的渲染模板
+            if (!string.IsNullOrEmpty(eachAttr.ItemTemplate))
+            {
+                column["items"] = new JObject
+                {
+                    ["type"] = "tpl",
+                    ["tpl"] = eachAttr.ItemTemplate
+                };
+            }
+            else
+            {
+                // 默认显示为文本
+                string itemVar = !string.IsNullOrEmpty(eachAttr.ItemVariable) ? eachAttr.ItemVariable : "item";
+                column["items"] = new JObject
+                {
+                    ["type"] = "tpl",
+                    ["tpl"] = "${" + itemVar + "}"
+                };
+            }
         }
 
         /// <summary>

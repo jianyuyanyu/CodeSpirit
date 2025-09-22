@@ -1,6 +1,11 @@
 using AutoMapper;
 using Newtonsoft.Json;
-using CodeSpirit.ApprovalApi.Dtos;
+using CodeSpirit.ApprovalApi.Dtos.WorkflowDefinition;
+using CodeSpirit.ApprovalApi.Dtos.WorkflowNode;
+using CodeSpirit.ApprovalApi.Dtos.ApprovalTask;
+using CodeSpirit.ApprovalApi.Dtos.ApprovalInstance;
+using CodeSpirit.ApprovalApi.Dtos.ApprovalLog;
+using CodeSpirit.ApprovalApi.Dtos.Visualization;
 using CodeSpirit.ApprovalApi.Models;
 using CodeSpirit.Shared.Extensions;
 
@@ -138,13 +143,10 @@ public class ApprovalProfile : Profile
 
         // 工作流节点映射
         CreateMap<WorkflowNode, WorkflowNodeDto>()
-            .ForMember(dest => dest.NodeType, opt => opt.MapFrom(src => src.NodeType.ToString()))
-            .ForMember(dest => dest.ApprovalMode, opt => opt.MapFrom(src => src.ApprovalMode.ToString()))
             .ForMember(dest => dest.Approvers, opt => opt.MapFrom(src => src.Approvers))
             .ForMember(dest => dest.Conditions, opt => opt.MapFrom(src => src.Conditions));
 
-        CreateMap<WorkflowNodeApprover, WorkflowNodeApproverDto>()
-            .ForMember(dest => dest.ApproverType, opt => opt.MapFrom(src => src.ApproverType.ToString()));
+        CreateMap<WorkflowNodeApprover, WorkflowNodeApproverDto>();
 
         CreateMap<WorkflowNodeCondition, WorkflowNodeConditionDto>();
 

@@ -122,36 +122,35 @@ class WorkflowPreview {
         }
     }
 
+    /**
+     * 加载工作流数据
+     * 使用单一接口获取工作流信息和节点数据
+     */
     async loadWorkflowData() {
         try {
-            // 并行加载工作流基本信息和预览数据
-            const [workflowResponse, previewResponse] = await Promise.all([
-                this.fetchWithAuth(`/approval/api/approval/workflowdefinitions/${this.workflowId}`),
-                this.fetchWithAuth(`/approval/api/approval/workflowdefinitions/${this.workflowId}/preview-data`)
-            ]);
-
-            if (!workflowResponse.ok) {
-                throw new Error(`获取工作流基本信息失败: ${workflowResponse.status}`);
-            }
+            // 使用单一接口获取完整的预览数据（包含工作流信息和节点数据）
+            const previewResponse = await this.fetchWithAuth(
+                `/approval/api/approval/workflowdefinitions/${this.workflowId}/preview-data`
+            );
 
             if (!previewResponse.ok) {
                 throw new Error(`获取工作流预览数据失败: ${previewResponse.status}`);
             }
 
-            const workflowData = await workflowResponse.json();
-            const previewData = await previewResponse.json();
+            const responseData = await previewResponse.json();
+            const previewData = responseData.data;
 
             // 保存工作流基本信息
-            this.workflowData = workflowData.data;
+            this.workflowData = previewData.workflow;
 
             // 更新页面标题和基本信息
             this.updateWorkflowInfo(this.workflowData);
             
             // 渲染流程图
-            this.renderFlowChart(previewData.data);
+            this.renderFlowChart(previewData);
             
             // 渲染节点表格
-            this.renderNodesTable(previewData.data.nodes);
+            this.renderNodesTable(previewData.nodes);
             
         } catch (error) {
             console.error('加载工作流数据失败:', error);

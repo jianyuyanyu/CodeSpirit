@@ -68,6 +68,9 @@ public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDt
     public virtual async Task<PageList<TDto>> GetPagedListAsync<TQueryDto>(TQueryDto queryDto, Expression<Func<TEntity, bool>> predicate = null,
         params string[] includes) where TQueryDto : QueryDtoBase
     {
+        // 如果没有提供predicate，尝试从查询DTO构建
+        predicate ??= BuildQueryExpression(queryDto);
+
         PageList<TEntity> result = await Repository.GetPagedAsync(
             queryDto.Page,
             queryDto.PerPage,
@@ -180,6 +183,17 @@ public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDt
     }
 
     #region Protected Virtual Methods for Override
+
+    /// <summary>
+    /// 构建查询表达式
+    /// </summary>
+    /// <param name="queryDto">查询DTO</param>
+    /// <returns>查询表达式，如果不支持则返回null</returns>
+    protected virtual Expression<Func<TEntity, bool>>? BuildQueryExpression(object? queryDto)
+    {
+        // 默认实现返回null，子类可以重写此方法来构建自定义查询表达式
+        return null;
+    }
 
     /// <summary>
     /// 验证创建DTO

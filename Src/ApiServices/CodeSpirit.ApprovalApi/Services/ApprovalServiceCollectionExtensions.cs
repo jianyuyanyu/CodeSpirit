@@ -30,6 +30,7 @@ public static class ApprovalServiceCollectionExtensions
         services.AddScoped<IApprovalTaskService, ApprovalTaskService>();
         services.AddScoped<IWorkflowDefinitionService, WorkflowDefinitionService>();
         services.AddScoped<IWorkflowNodeService, WorkflowNodeService>();
+        services.AddScoped<IWorkflowCategoryService, WorkflowCategoryService>();
         services.AddScoped<IWorkflowEngine, WorkflowEngine>();
         services.AddScoped<IConditionEngine, ConditionEngine>();
         services.AddScoped<IApprovalLogService, ApprovalLogService>();

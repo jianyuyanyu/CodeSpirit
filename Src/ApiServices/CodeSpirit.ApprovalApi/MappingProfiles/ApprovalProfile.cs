@@ -80,7 +80,8 @@ public class ApprovalProfile : Profile
             .ForMember(dest => dest.ProcessedTime, opt => opt.Ignore());
 
         // 工作流定义映射
-        CreateMap<WorkflowDefinition, WorkflowDefinitionDto>();
+        CreateMap<WorkflowDefinition, WorkflowDefinitionDto>()
+            .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : null));
         
         CreateMap<CreateWorkflowDefinitionDto, WorkflowDefinition>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())

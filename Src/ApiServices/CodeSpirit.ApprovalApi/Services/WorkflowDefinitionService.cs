@@ -316,6 +316,16 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
     }
 
     /// <summary>
+    /// 构建查询表达式（重写基类方法）
+    /// </summary>
+    /// <param name="queryDto">查询DTO</param>
+    /// <returns>查询表达式</returns>
+    protected override Expression<Func<WorkflowDefinition, bool>>? BuildQueryExpression(object? queryDto)
+    {
+        return BuildQueryExpressionInternal(queryDto);
+    }
+
+    /// <summary>
     /// 构建查询表达式（私有方法，用于内部查询构建）
     /// </summary>
     /// <param name="query">查询DTO</param>
@@ -345,9 +355,114 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
             {
                 predicate = predicate.And(x => x.Version == queryDto.Version.Value);
             }
+
+            if (queryDto.CategoryId.HasValue)
+            {
+                predicate = predicate.And(x => x.CategoryId == queryDto.CategoryId.Value);
+            }
         }
 
         return predicate;
+    }
+
+    /// <summary>
+    /// 快速保存工作流定义
+    /// </summary>
+    /// <param name="request">快速保存请求</param>
+    /// <returns>操作结果</returns>
+    public async Task QuickSaveWorkflowDefinitionsAsync(WorkflowDefinitionQuickSaveRequestDto request)
+    {
+        if (request?.Rows == null || !request.Rows.Any())
+        {
+            throw new AppServiceException(400, "请求数据无效或为空！");
+        }
+
+        // 获取需要更新的工作流定义ID列表
+        List<long> workflowIdsToUpdate = request.Rows.Select(row => row.Id).ToList();
+        List<WorkflowDefinition> workflowsToUpdate = await GetWorkflowsByIdsAsync(workflowIdsToUpdate);
+        if (workflowsToUpdate.Count != workflowIdsToUpdate.Count)
+        {
+            throw new AppServiceException(400, "部分工作流定义未找到!");
+        }
+
+        // 执行批量更新：更新 `rowsDiff` 中的变化字段
+        foreach (WorkflowDefinitionDiffDto rowDiff in request.RowsDiff)
+        {
+            WorkflowDefinition workflow = workflowsToUpdate.FirstOrDefault(w => w.Id == rowDiff.Id);
+            if (workflow != null)
+            {
+                // 更新名称
+                if (!string.IsNullOrEmpty(rowDiff.Name))
+                {
+                    workflow.Name = rowDiff.Name;
+                }
+
+                // 更新代码（需要检查唯一性）
+                if (!string.IsNullOrEmpty(rowDiff.Code) && rowDiff.Code != workflow.Code)
+                {
+                    var existingWorkflow = await Repository.CreateQuery()
+                        .FirstOrDefaultAsync(x => x.Code == rowDiff.Code && x.TenantId == _tenantContext.TenantId && x.Id != workflow.Id);
+                    if (existingWorkflow != null)
+                        throw new AppServiceException(400, $"工作流代码 '{rowDiff.Code}' 已存在!");
+                    
+                    workflow.Code = rowDiff.Code;
+                }
+
+                // 更新描述
+                if (rowDiff.Description != null)
+                {
+                    workflow.Description = rowDiff.Description;
+                }
+
+                // 更新启用状态
+                if (rowDiff.IsEnabled.HasValue)
+                {
+                    workflow.IsEnabled = rowDiff.IsEnabled.Value;
+                }
+
+                // 更新配置
+                if (rowDiff.Configuration != null)
+                {
+                    workflow.Configuration = rowDiff.Configuration;
+                }
+
+                // 更新表单Schema
+                if (rowDiff.FormSchema != null)
+                {
+                    workflow.FormSchema = rowDiff.FormSchema;
+                }
+
+                // 设置更新信息
+                workflow.UpdatedAt = DateTime.UtcNow;
+                workflow.UpdatedBy = _currentUser.Id ?? 0;
+                workflow.Version++; // 版本号递增
+
+                // 清除缓存
+                ClearWorkflowCache(workflow.TenantId, workflow.Code);
+            }
+        }
+
+        // 批量保存更改
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("工作流定义快速保存成功，更新了 {Count} 个工作流定义", request.RowsDiff.Count);
+    }
+
+    /// <summary>
+    /// 根据ID列表获取工作流定义
+    /// </summary>
+    /// <param name="ids">ID列表</param>
+    /// <returns>工作流定义列表</returns>
+    private async Task<List<WorkflowDefinition>> GetWorkflowsByIdsAsync(List<long> ids)
+    {
+        var tenantId = _tenantContext.TenantId;
+        
+        var workflows = await Repository.CreateQuery()
+            .Where(w => ids.Contains(w.Id) && w.TenantId == tenantId && !w.IsDeleted)
+            .ToListAsync();
+
+        // 如果没有找到任何工作流定义，返回空列表
+        return workflows == null || !workflows.Any() ? [] : workflows;
     }
 
     /// <summary>

@@ -1,8 +1,14 @@
+using System.ComponentModel;
+using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Core.Dtos;
+
 namespace CodeSpirit.ApprovalApi.Dtos;
 
 /// <summary>
 /// 工作流定义查询DTO
 /// </summary>
+[DisplayName("工作流定义查询")]
 public class WorkflowDefinitionQueryDto : QueryDtoBase
 {
     /// <summary>
@@ -28,4 +34,26 @@ public class WorkflowDefinitionQueryDto : QueryDtoBase
     /// </summary>
     [DisplayName("版本")]
     public int? Version { get; set; }
+
+    /// <summary>
+    /// 流程分类ID
+    /// </summary>
+    [DisplayName("流程分类")]
+    [PageAside]
+    [AmisInputTreeField(
+        DataSource = "${ROOT_API}/api/approval/WorkflowCategories/tree",
+        Multiple = false,
+        JoinValues = true,
+        ExtractValue = false,
+        ShowOutline = true,
+        LabelField = "name",
+        ValueField = "id",
+        Required = false,
+        ShowIcon = true,
+        Clearable = true,
+        SubmitOnChange = true,
+        HeightAuto = true,
+        SelectFirst = false
+    )]
+    public int? CategoryId { get; set; }
 }

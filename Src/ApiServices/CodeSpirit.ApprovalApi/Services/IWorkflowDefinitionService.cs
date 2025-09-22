@@ -32,4 +32,11 @@ public interface IWorkflowDefinitionService : IBaseCRUDService<WorkflowDefinitio
     /// <param name="newCode">新工作流代码</param>
     /// <returns>新工作流定义</returns>
     Task<WorkflowDefinition> CopyAsync(long sourceId, string newName, string newCode);
+
+    /// <summary>
+    /// 快速保存工作流定义
+    /// </summary>
+    /// <param name="request">快速保存请求</param>
+    /// <returns>操作结果</returns>
+    Task QuickSaveWorkflowDefinitionsAsync(WorkflowDefinitionQuickSaveRequestDto request);
 }

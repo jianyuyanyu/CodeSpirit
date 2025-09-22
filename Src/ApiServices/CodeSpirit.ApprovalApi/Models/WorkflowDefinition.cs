@@ -68,6 +68,17 @@ public class WorkflowDefinition : AuditableEntityBase<long>, IMultiTenant
     public string? FormSchema { get; set; }
     
     /// <summary>
+    /// 流程分类ID
+    /// </summary>
+    [DisplayName("流程分类")]
+    public int? CategoryId { get; set; }
+    
+    /// <summary>
+    /// 流程分类
+    /// </summary>
+    public virtual WorkflowCategory? Category { get; set; }
+    
+    /// <summary>
     /// 工作流节点集合
     /// </summary>
     public virtual ICollection<WorkflowNode> Nodes { get; set; } = new List<WorkflowNode>();

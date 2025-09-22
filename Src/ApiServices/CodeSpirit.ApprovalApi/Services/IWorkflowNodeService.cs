@@ -58,7 +58,7 @@ public interface IWorkflowNodeService : IBaseCRUDService<WorkflowNode, WorkflowN
     /// </summary>
     /// <param name="workflowDefinitionId">工作流定义ID</param>
     /// <returns>预览数据</returns>
-    Task<object> GetWorkflowPreviewAsync(long workflowDefinitionId);
+    Task<WorkflowPreviewDto> GetWorkflowPreviewAsync(long workflowDefinitionId);
 
     /// <summary>
     /// 导入工作流节点

@@ -304,7 +304,7 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
     /// </summary>
     /// <param name="workflowDefinitionId">工作流定义ID</param>
     /// <returns>预览数据</returns>
-    public async Task<object> GetWorkflowPreviewAsync(long workflowDefinitionId)
+    public async Task<WorkflowPreviewDto> GetWorkflowPreviewAsync(long workflowDefinitionId)
     {
         var tenantId = _tenantContext.TenantId;
         
@@ -320,37 +320,38 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
             throw new BusinessException("工作流定义不存在");
         }
 
-        var nodes = workflow.Nodes.Select(node => new
+        var nodes = workflow.Nodes.Select(node => new WorkflowNodePreviewDto
         {
-            id = node.Id,
-            name = node.Name,
-            type = node.NodeType.ToString(),
-            approvalMode = node.ApprovalMode.ToString(),
-            approvers = node.Approvers.Select(a => new
+            Id = node.Id,
+            Name = node.Name,
+            Type = node.NodeType.ToString(),
+            ApprovalMode = node.ApprovalMode.ToString(),
+            Configuration = node.Configuration ?? "{}",
+            Approvers = node.Approvers.Select(a => new WorkflowNodeApproverPreviewDto
             {
-                type = a.ApproverType.ToString(),
-                value = a.ApproverValue,
-                name = a.ApproverName
+                Type = a.ApproverType.ToString(),
+                Value = a.ApproverValue,
+                Name = a.ApproverName
             }).ToList(),
-            conditions = node.Conditions.Select(c => new
+            Conditions = node.Conditions.Select(c => new WorkflowNodeConditionPreviewDto
             {
-                expression = c.Expression,
-                nextNode = c.NextNodeName,
-                description = c.Description
+                Expression = c.Expression,
+                NextNodeName = c.NextNodeName,
+                Description = c.Description
             }).ToList()
         }).ToList();
 
-        return new
+        return new WorkflowPreviewDto
         {
-            workflow = new
+            Workflow = new WorkflowPreviewInfoDto
             {
-                id = workflow.Id,
-                name = workflow.Name,
-                code = workflow.Code,
-                description = workflow.Description,
-                configuration = workflow.Configuration
+                Id = workflow.Id,
+                Name = workflow.Name,
+                Code = workflow.Code,
+                Description = workflow.Description,
+                Configuration = workflow.Configuration
             },
-            nodes = nodes
+            Nodes = nodes
         };
     }
 

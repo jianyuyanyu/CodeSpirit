@@ -95,6 +95,19 @@ public class WorkflowDefinitionsController : ApiControllerBase
     }
 
     /// <summary>
+    /// 快速保存工作流定义
+    /// </summary>
+    /// <param name="request">快速保存请求</param>
+    /// <returns>保存结果</returns>
+    [HttpPatch("quickSave")]
+    [DisplayName("快速保存工作流定义")]
+    public async Task<ActionResult<ApiResponse>> QuickSaveWorkflowDefinitions([FromBody] WorkflowDefinitionQuickSaveRequestDto request)
+    {
+        await _workflowDefinitionService.QuickSaveWorkflowDefinitionsAsync(request);
+        return SuccessResponse();
+    }
+
+    /// <summary>
     /// 启用工作流定义
     /// </summary>
     /// <param name="id">工作流定义ID</param>
@@ -140,58 +153,38 @@ public class WorkflowDefinitionsController : ApiControllerBase
 
     #region 流程设计和预览
 
-    ///// <summary>
-    ///// 保存流程设计
-    ///// </summary>
-    ///// <param name="dto">流程设计DTO</param>
-    ///// <returns>保存结果</returns>
-    //[HttpPost("process-design")]
-    //[Operation("保存流程设计", "form")]
-    //[DisplayName("保存流程设计")]
-    //public async Task<ActionResult<ApiResponse>> SaveProcessDesign(WorkflowProcessDesignDto dto)
-    //{
-    //    await _workflowNodeService.SaveProcessDesignAsync(dto);
-    //    return SuccessResponse("流程设计保存成功");
-    //}
-
     /// <summary>
-    /// 获取工作流预览
+    /// 保存流程设计
     /// </summary>
     /// <param name="id">工作流定义ID</param>
-    /// <returns>预览数据</returns>
-    [HttpGet("{id}/preview")]
-    [DisplayName("获取工作流预览")]
-    public async Task<ActionResult<ApiResponse<object>>> GetWorkflowPreview(long id)
+    /// <param name="dto">流程设计DTO</param>
+    /// <returns>保存结果</returns>
+    [HttpPost("{id}/process-design")]
+    [DisplayName("保存流程设计")]
+    public async Task<ActionResult<ApiResponse>> SaveProcessDesign(long id, WorkflowProcessDesignDto dto)
     {
-        var result = await _workflowNodeService.GetWorkflowPreviewAsync(id);
-        return SuccessResponse(result);
+        // 确保DTO中的工作流ID与路径参数一致
+        dto.WorkflowDefinitionId = id;
+        
+        await _workflowNodeService.SaveProcessDesignAsync(dto);
+        return SuccessResponse("流程设计保存成功");
     }
 
     /// <summary>
-    /// 获取工作流预览数据（用于前端页面渲染）
+    /// 获取工作流预览数据（包含工作流信息和节点数据）
     /// </summary>
     /// <param name="id">工作流定义ID</param>
     /// <returns>预览数据</returns>
     [HttpGet("{id}/preview-data")]
-    [DisplayName("获取前端预览数据")]
-    public async Task<ActionResult<ApiResponse<object>>> GetWorkflowPreviewData(long id)
+    [DisplayName("获取工作流预览数据")]
+    public async Task<ActionResult<ApiResponse<FrontendPreviewDataDto>>> GetWorkflowPreviewData(long id)
     {
-        try
-        {
-            var previewData = await _workflowNodeService.GetWorkflowPreviewAsync(id);
+        var previewData = await _workflowNodeService.GetWorkflowPreviewAsync(id);
 
-            // 转换数据格式以适配前端页面
-            var adaptedData = new
-            {
-                nodes = ConvertNodesForFrontend(previewData)
-            };
+        // 转换数据格式以适配前端页面
+        var adaptedData = ConvertToFrontendFormat(previewData);
 
-            return SuccessResponse((object)adaptedData);
-        }
-        catch (Exception)
-        {
-            return BadRequest(ApiResponse.Error(400, "获取工作流预览数据失败"));
-        }
+        return SuccessResponse(adaptedData);
     }
 
     /// <summary>
@@ -233,8 +226,8 @@ public class WorkflowDefinitionsController : ApiControllerBase
     /// <param name="id">工作流定义ID</param>
     /// <returns>流程设计器UI配置</returns>
     [HttpGet("{id}/designer-ui")]
-    [Operation("流程设计器", "service", "/api/WorkflowDefinitions/{id}/designer-ui")]
-    [DisplayName("流程设计器")]
+    [Operation("节点管理", "service", "/api/WorkflowDefinitions/{id}/designer-ui")]
+    [DisplayName("节点管理")]
     public async Task<ActionResult<ApiResponse<object>>> GetWorkflowDesignerUI(long id)
     {
         var workflowDefinition = await _workflowDefinitionService.GetAsync(id);
@@ -253,9 +246,10 @@ public class WorkflowDefinitionsController : ApiControllerBase
                     className = "m-b-md",
                     body = new
                     {
+                        title = "",
                         type = "form",
-                        api = $"/approval/api/approval/WorkflowDefinitions/process-design",
-                        initApi = $"/approval/api/approval/WorkflowDefinitions/{id}/preview",
+                        api = $"post:/approval/api/approval/WorkflowDefinitions/{id}/process-design",
+                        initApi = $"get:/approval/api/approval/WorkflowDefinitions/{id}/preview-data",
                         body = new object[]
                         {
                             new
@@ -266,25 +260,10 @@ public class WorkflowDefinitionsController : ApiControllerBase
                             },
                             new
                             {
-                                type = "tabs",
-                                tabs = new[]
+                                type = "wrapper",
+                                body = new[]
                                 {
-                                    new
-                                    {
-                                        title = "可视化设计",
-                                        body = new[]
-                                        {
-                                            GenerateWorkflowDesignerConfig(id, existingNodes)
-                                        }
-                                    },
-                                    new
-                                    {
-                                        title = "节点配置",
-                                        body = new[]
-                                        {
-                                            GenerateNodeConfigForm(id)
-                                        }
-                                    }
+                                    GenerateNodeConfigForm(id)
                                 }
                             },
                             new
@@ -307,17 +286,9 @@ public class WorkflowDefinitionsController : ApiControllerBase
                                         type = "button",
                                         label = "预览流程",
                                         level = "info",
-                                        actionType = "dialog",
-                                        dialog = new
-                                        {
-                                            title = "流程预览",
-                                            size = "lg",
-                                            body = new
-                                            {
-                                                type = "service",
-                                                api = $"/approval/api/approval/WorkflowDefinitions/{id}/preview-ui"
-                                            }
-                                        }
+                                        actionType = "link",
+                                        link = $"/approval/workflow-preview/{id}",
+                                        blank = true
                                     }
                                 }
                             }
@@ -335,248 +306,38 @@ public class WorkflowDefinitionsController : ApiControllerBase
     #region 私有辅助方法
 
     /// <summary>
-    /// 转换节点数据格式以适配前端页面
+    /// 转换为前端格式
     /// </summary>
     /// <param name="previewData">预览数据</param>
-    /// <returns>转换后的节点数据</returns>
-    private object ConvertNodesForFrontend(dynamic previewData)
+    /// <returns>前端格式数据</returns>
+    private FrontendPreviewDataDto ConvertToFrontendFormat(WorkflowPreviewDto previewData)
     {
-        try
+        return new FrontendPreviewDataDto
         {
-            if (previewData?.nodes == null)
-                return new List<object>();
-
-            var nodesList = ((IEnumerable<dynamic>)previewData.nodes).ToList();
-
-            return nodesList.Select(node => new
+            Workflow = previewData.Workflow,
+            Nodes = previewData.Nodes.Select(node => new FrontendNodeDto
             {
-                id = node.id,
-                name = node.name?.ToString() ?? "未命名节点",
-                nodeType = node.type?.ToString() ?? "Approval",
-                approvalMode = node.approvalMode?.ToString() ?? "Sequential",
-                approvers = ConvertApproversForFrontend(node.approvers),
-                conditions = ConvertConditionsForFrontend(node.conditions)
-            }).ToList();
-        }
-        catch (Exception)
-        {
-            return new List<object>();
-        }
-    }
-
-    /// <summary>
-    /// 转换审批人数据格式
-    /// </summary>
-    /// <param name="approvers">审批人数据</param>
-    /// <returns>转换后的审批人数据</returns>
-    private object ConvertApproversForFrontend(dynamic approvers)
-    {
-        try
-        {
-            if (approvers == null)
-                return new List<object>();
-
-            var approversList = ((IEnumerable<dynamic>)approvers).ToList();
-
-            return approversList.Select(approver => new
-            {
-                approverType = approver.type?.ToString() ?? "User",
-                approverValue = approver.value?.ToString() ?? "",
-                approverName = approver.name?.ToString() ?? approver.value?.ToString() ?? ""
-            }).ToList();
-        }
-        catch (Exception)
-        {
-            return new List<object>();
-        }
-    }
-
-    /// <summary>
-    /// 转换条件数据格式
-    /// </summary>
-    /// <param name="conditions">条件数据</param>
-    /// <returns>转换后的条件数据</returns>
-    private object ConvertConditionsForFrontend(dynamic conditions)
-    {
-        try
-        {
-            if (conditions == null)
-                return new List<object>();
-
-            var conditionsList = ((IEnumerable<dynamic>)conditions).ToList();
-
-            return conditionsList.Select(condition => new
-            {
-                expression = condition.expression?.ToString() ?? "",
-                nextNodeName = condition.nextNodeName?.ToString() ?? "",
-                description = condition.description?.ToString() ?? condition.expression?.ToString() ?? ""
-            }).ToList();
-        }
-        catch (Exception)
-        {
-            return new List<object>();
-        }
-    }
-
-
-
-
-
-    /// <summary>
-    /// 生成工作流设计器配置
-    /// </summary>
-    /// <param name="workflowId">工作流ID</param>
-    /// <param name="existingNodes">现有节点</param>
-    /// <returns>设计器配置</returns>
-    private object GenerateWorkflowDesignerConfig(long workflowId, dynamic existingNodes)
-    {
-        return new
-        {
-            type = "container",
-            body = new object[]
-            {
-                new
+                Id = node.Id,
+                Name = node.Name,
+                NodeType = node.Type,
+                ApprovalMode = node.ApprovalMode,
+                Configuration = node.Configuration,
+                Approvers = node.Approvers.Select(approver => new FrontendApproverDto
                 {
-                    type = "alert",
-                    level = "info",
-                    body = "通过拖拽组件来设计您的工作流程。您可以添加审批节点、条件节点、网关等。"
-                },
-                new
+                    Type = approver.Type,
+                    Value = approver.Value,
+                    Name = approver.Name
+                }).ToList(),
+                Conditions = node.Conditions.Select(condition => new FrontendConditionDto
                 {
-                    type = "divider"
-                },
-                new
-                {
-                    type = "grid",
-                    columns = new object[]
-                    {
-                        new
-                        {
-                            md = 3,
-                            body = new
-                            {
-                                type = "panel",
-                                title = "组件库",
-                                body = new object[]
-                                {
-                                    new
-                                    {
-                                        type = "tpl",
-                                        tpl = "<div class='workflow-component-item antd-card p-3 m-b-sm' draggable='true' style='border: 1px solid #d9d9d9; border-radius: 6px; cursor: move; background: #fff;'>" +
-                                              "<i class='fa fa-play-circle antd-text-success' style='font-size: 16px; margin-right: 8px;'></i>" +
-                                              "<strong class='antd-text-dark'>开始节点</strong>" +
-                                              "<div class='antd-text-muted' style='font-size: 12px; margin-top: 4px;'>工作流开始节点</div>" +
-                                              "</div>"
-                                    },
-                                    new
-                                    {
-                                        type = "tpl",
-                                        tpl = "<div class='workflow-component-item antd-card p-3 m-b-sm' draggable='true' style='border: 1px solid #d9d9d9; border-radius: 6px; cursor: move; background: #fff;'>" +
-                                              "<i class='fa fa-user-check antd-text-primary' style='font-size: 16px; margin-right: 8px;'></i>" +
-                                              "<strong class='antd-text-dark'>审批节点</strong>" +
-                                              "<div class='antd-text-muted' style='font-size: 12px; margin-top: 4px;'>需要人工审批的节点</div>" +
-                                              "</div>"
-                                    },
-                                    new
-                                    {
-                                        type = "tpl",
-                                        tpl = "<div class='workflow-component-item antd-card p-3 m-b-sm' draggable='true' style='border: 1px solid #d9d9d9; border-radius: 6px; cursor: move; background: #fff;'>" +
-                                              "<i class='fa fa-question-circle antd-text-warning' style='font-size: 16px; margin-right: 8px;'></i>" +
-                                              "<strong class='antd-text-dark'>条件节点</strong>" +
-                                              "<div class='antd-text-muted' style='font-size: 12px; margin-top: 4px;'>根据条件分支的节点</div>" +
-                                              "</div>"
-                                    },
-                                    new
-                                    {
-                                        type = "tpl",
-                                        tpl = "<div class='workflow-component-item antd-card p-3 m-b-sm' draggable='true' style='border: 1px solid #d9d9d9; border-radius: 6px; cursor: move; background: #fff;'>" +
-                                              "<i class='fa fa-code-branch antd-text-info' style='font-size: 16px; margin-right: 8px;'></i>" +
-                                              "<strong class='antd-text-dark'>并行网关</strong>" +
-                                              "<div class='antd-text-muted' style='font-size: 12px; margin-top: 4px;'>并行处理多个分支</div>" +
-                                              "</div>"
-                                    },
-                                    new
-                                    {
-                                        type = "tpl",
-                                        tpl = "<div class='workflow-component-item antd-card p-3 m-b-sm' draggable='true' style='border: 1px solid #d9d9d9; border-radius: 6px; cursor: move; background: #fff;'>" +
-                                              "<i class='fa fa-random antd-text-secondary' style='font-size: 16px; margin-right: 8px;'></i>" +
-                                              "<strong class='antd-text-dark'>排他网关</strong>" +
-                                              "<div class='antd-text-muted' style='font-size: 12px; margin-top: 4px;'>根据条件选择一个分支</div>" +
-                                              "</div>"
-                                    },
-                                    new
-                                    {
-                                        type = "tpl",
-                                        tpl = "<div class='workflow-component-item antd-card p-3 m-b-sm' draggable='true' style='border: 1px solid #d9d9d9; border-radius: 6px; cursor: move; background: #fff;'>" +
-                                              "<i class='fa fa-copy antd-text-cyan' style='font-size: 16px; margin-right: 8px;'></i>" +
-                                              "<strong class='antd-text-dark'>抄送节点</strong>" +
-                                              "<div class='antd-text-muted' style='font-size: 12px; margin-top: 4px;'>抄送给相关人员</div>" +
-                                              "</div>"
-                                    },
-                                    new
-                                    {
-                                        type = "tpl",
-                                        tpl = "<div class='workflow-component-item antd-card p-3 m-b-sm' draggable='true' style='border: 1px solid #d9d9d9; border-radius: 6px; cursor: move; background: #fff;'>" +
-                                              "<i class='fa fa-stop-circle antd-text-danger' style='font-size: 16px; margin-right: 8px;'></i>" +
-                                              "<strong class='antd-text-dark'>结束节点</strong>" +
-                                              "<div class='antd-text-muted' style='font-size: 12px; margin-top: 4px;'>工作流结束节点</div>" +
-                                              "</div>"
-                                    }
-                                }
-                            }
-                        },
-                        new
-                        {
-                            md = 9,
-                            body = new
-                            {
-                                type = "panel",
-                                title = "设计画布",
-                                body = new
-                                {
-                                    type = "container",
-                                    className = "workflow-canvas",
-                                    style = new
-                                    {
-                                        minHeight = "400px",
-                                        border = "2px dashed #d9d9d9",
-                                        borderRadius = "4px",
-                                        position = "relative",
-                                        backgroundColor = "#fafafa"
-                                    },
-                                    body = new[]
-                                    {
-                                        new
-                                        {
-                                            type = "tpl",
-                                            tpl = "<div class='workflow-canvas-placeholder text-center p-lg'>" +
-                                                  "<i class='fa fa-plus fa-2x text-muted m-b-sm'></i>" +
-                                                  "<div class='text-muted'>拖拽左侧组件到此处开始设计流程</div>" +
-                                                  "</div>"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                new
-                {
-                    type = "textarea",
-                    name = "processConfig",
-                    label = "流程配置JSON",
-                    placeholder = "此处将自动生成流程配置JSON",
-                    minRows = 10,
-                    language = "json",
-                    options = new
-                    {
-                        lineNumbers = true,
-                        theme = "vs"
-                    }
-                }
-            }
+                    Expression = condition.Expression,
+                    NextNodeName = condition.NextNodeName,
+                    Description = condition.Description
+                }).ToList()
+            }).ToList()
         };
     }
+
 
     /// <summary>
     /// 生成节点配置表单
@@ -592,136 +353,137 @@ public class WorkflowDefinitionsController : ApiControllerBase
             {
                 new
                 {
-                    type = "input-array",
+                    type = "input-table",
                     name = "nodes",
                     label = "流程节点",
                     description = "配置工作流的各个节点",
-                    items = new
+                    columns = new object[]
                     {
-                        type = "container",
-                        body = new object[]
+                        new
                         {
-                            new
+                            name = "name",
+                            label = "节点名称",
+                            type = "input-text",
+                            required = true,
+                            placeholder = "请输入节点名称"
+                        },
+                        new
+                        {
+                            name = "nodeType",
+                            label = "节点类型",
+                            type = "select",
+                            required = true,
+                            options = new[]
                             {
-                                type = "input-text",
-                                name = "name",
-                                label = "节点名称",
-                                required = true,
-                                placeholder = "请输入节点名称"
-                            },
-                            new
-                            {
-                                type = "select",
-                                name = "nodeType",
-                                label = "节点类型",
-                                required = true,
-                                options = new[]
-                                {
-                                    new { label = "开始节点", value = "Start" },
-                                    new { label = "审批节点", value = "Approval" },
-                                    new { label = "条件节点", value = "Condition" },
-                                    new { label = "并行网关", value = "ParallelGateway" },
-                                    new { label = "排他网关", value = "ExclusiveGateway" },
-                                    new { label = "抄送节点", value = "CarbonCopy" },
-                                    new { label = "结束节点", value = "End" }
-                                }
-                            },
-                            new
-                            {
-                                type = "select",
-                                name = "approvalMode",
-                                label = "审批模式",
-                                visibleOn = "${nodeType == 'Approval'}",
-                                options = new[]
-                                {
-                                    new { label = "串行审批", value = "Sequential" },
-                                    new { label = "并行审批", value = "Parallel" },
-                                    new { label = "会签", value = "CounterSign" },
-                                    new { label = "或签", value = "OrSign" }
-                                },
-                                value = "Sequential"
-                            },
-                            new
-                            {
-                                type = "input-array",
-                                name = "approvers",
-                                label = "审批人配置",
-                                visibleOn = "${nodeType == 'Approval' || nodeType == 'CarbonCopy'}",
-                                items = new
-                                {
-                                    type = "container",
-                                    body = new object[]
-                                    {
-                                        new
-                                        {
-                                            type = "select",
-                                            name = "approverType",
-                                            label = "审批人类型",
-                                            options = new[]
-                                            {
-                                                new { label = "指定用户", value = "User" },
-                                                new { label = "角色", value = "Role" },
-                                                new { label = "部门", value = "Department" },
-                                                new { label = "发起人", value = "Initiator" },
-                                                new { label = "发起人上级", value = "InitiatorSuperior" },
-                                                new { label = "动态表达式", value = "Expression" }
-                                            },
-                                            value = "User"
-                                        },
-                                        new
-                                        {
-                                            type = "input-text",
-                                            name = "approverValue",
-                                            label = "审批人值",
-                                            placeholder = "根据审批人类型输入对应的值"
-                                        },
-                                        new
-                                        {
-                                            type = "input-text",
-                                            name = "approverName",
-                                            label = "审批人名称",
-                                            placeholder = "审批人显示名称"
-                                        }
-                                    }
-                                }
-                            },
-                            new
-                            {
-                                type = "input-array",
-                                name = "conditions",
-                                label = "条件配置",
-                                visibleOn = "${nodeType == 'Condition' || nodeType == 'ExclusiveGateway'}",
-                                items = new
-                                {
-                                    type = "container",
-                                    body = new[]
-                                    {
-                                        new
-                                        {
-                                            type = "input-text",
-                                            name = "conditionExpression",
-                                            label = "条件表达式",
-                                            placeholder = "例如: amount > 1000"
-                                        },
-                                        new
-                                        {
-                                            type = "input-text",
-                                            name = "conditionName",
-                                            label = "条件名称",
-                                            placeholder = "条件的显示名称"
-                                        }
-                                    }
-                                }
-                            },
-                            new
-                            {
-                                type = "textarea",
-                                name = "configuration",
-                                label = "节点配置",
-                                placeholder = "节点的额外配置（JSON格式）",
-                                minRows = 3,
-                                value = "{}"
+                                new { label = "开始节点", value = "Start" },
+                                new { label = "审批节点", value = "Approval" },
+                                new { label = "条件节点", value = "Condition" },
+                                new { label = "并行网关", value = "ParallelGateway" },
+                                new { label = "排他网关", value = "ExclusiveGateway" },
+                                new { label = "抄送节点", value = "CarbonCopy" },
+                                new { label = "结束节点", value = "End" }
                             }
+                        },
+                        new
+                        {
+                            name = "approvalMode",
+                            label = "审批模式",
+                            type = "select",
+                            visibleOn = "${nodeType == 'Approval'}",
+                            options = new[]
+                            {
+                                new { label = "串行审批", value = "Sequential" },
+                                new { label = "并行审批", value = "Parallel" },
+                                new { label = "会签", value = "CounterSign" },
+                                new { label = "或签", value = "OrSign" }
+                            },
+                            value = "Sequential"
+                        },
+                        new
+                        {
+                            name = "approvers",
+                            label = "审批人配置",
+                            type = "input-table",
+                            visibleOn = "${nodeType == 'Approval' || nodeType == 'CarbonCopy'}",
+                            columns = new object[]
+                            {
+                                new
+                                {
+                                    name = "type",
+                                    label = "审批人类型",
+                                    type = "select",
+                                    options = new[]
+                                    {
+                                        new { label = "指定用户", value = "User" },
+                                        new { label = "角色", value = "Role" },
+                                        new { label = "部门", value = "Department" },
+                                        new { label = "发起人", value = "Initiator" },
+                                        new { label = "发起人上级", value = "InitiatorSuperior" },
+                                        new { label = "动态表达式", value = "Expression" }
+                                    },
+                                    value = "User"
+                                },
+                                new
+                                {
+                                    name = "value",
+                                    label = "审批人值",
+                                    type = "input-text",
+                                    placeholder = "根据审批人类型输入对应的值"
+                                },
+                                new
+                                {
+                                    name = "name",
+                                    label = "审批人名称",
+                                    type = "input-text",
+                                    placeholder = "审批人显示名称"
+                                }
+                            },
+                            addable = true,
+                            removable = true,
+                            addButtonText = "添加审批人"
+                        },
+                        new
+                        {
+                            name = "conditions",
+                            label = "条件配置",
+                            type = "input-table",
+                            visibleOn = "${nodeType == 'Condition' || nodeType == 'ExclusiveGateway'}",
+                            columns = new object[]
+                            {
+                                new
+                                {
+                                    name = "expression",
+                                    label = "条件表达式",
+                                    type = "input-text",
+                                    placeholder = "例如: amount > 1000"
+                                },
+                                new
+                                {
+                                    name = "nextNodeName",
+                                    label = "下一节点名称",
+                                    type = "input-text",
+                                    placeholder = "满足条件时跳转的节点名称"
+                                },
+                                new
+                                {
+                                    name = "description",
+                                    label = "条件描述",
+                                    type = "input-text",
+                                    placeholder = "条件的显示描述"
+                                }
+                            },
+                            addable = true,
+                            removable = true,
+                            addButtonText = "添加条件"
+                        },
+                        new
+                        {
+                            name = "configuration",
+                            label = "节点配置",
+                            type = "textarea",
+                            placeholder = "节点的额外配置（JSON格式）",
+                            minRows = 3,
+                            value = "{}"
                         }
                     },
                     addable = true,

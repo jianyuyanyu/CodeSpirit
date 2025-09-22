@@ -4,6 +4,7 @@ using CodeSpirit.ApprovalApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CodeSpirit.ApprovalApi.Migrations.SqlServer
 {
     [DbContext(typeof(SqlServerApprovalDbContext))]
-    partial class SqlServerApprovalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250922040941_AddWorkflowCategory")]
+    partial class AddWorkflowCategory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

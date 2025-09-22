@@ -1,4 +1,5 @@
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Amis.Attributes.FormFields;
 using Elastic.Clients.Elasticsearch.TextStructure;
 
 namespace CodeSpirit.ApprovalApi.Dtos;
@@ -52,6 +53,19 @@ public class WorkflowDefinitionDto
     /// </summary>
     [DisplayName("是否启用")]
     public bool IsEnabled { get; set; }
+
+    /// <summary>
+    /// 流程分类ID
+    /// </summary>
+    [DisplayName("流程分类ID")]
+    [AmisColumn(Hidden = true)]
+    public int? CategoryId { get; set; }
+
+    /// <summary>
+    /// 流程分类名称
+    /// </summary>
+    [DisplayName("流程分类")]
+    public string? CategoryName { get; set; }
 
     /// <summary>
     /// 创建时间
@@ -112,6 +126,20 @@ public class UpdateWorkflowDefinitionDto
     /// </summary>
     [DisplayName("审批表单Schema")]
     public string? FormSchema { get; set; }
+
+    /// <summary>
+    /// 工作流分类ID
+    /// </summary>
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/approval/WorkflowCategories/enabled",
+        ValueField = "id",
+        LabelField = "name",
+        Searchable = true,
+        Multiple = false,
+        Clearable = true
+    )]
+    [DisplayName("工作流分类")]
+    public int? CategoryId { get; set; }
 }
 
 /// <summary>

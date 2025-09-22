@@ -286,3 +286,232 @@ public class WorkflowNodeBatchImportItemDto
     [DisplayName("节点配置")]
     public string Configuration { get; set; } = "{}";
 }
+
+/// <summary>
+/// 工作流预览数据DTO
+/// </summary>
+public class WorkflowPreviewDto
+{
+    /// <summary>
+    /// 工作流信息
+    /// </summary>
+    public WorkflowPreviewInfoDto Workflow { get; set; } = new();
+
+    /// <summary>
+    /// 节点列表
+    /// </summary>
+    public List<WorkflowNodePreviewDto> Nodes { get; set; } = new();
+}
+
+/// <summary>
+/// 工作流预览信息DTO
+/// </summary>
+public class WorkflowPreviewInfoDto
+{
+    /// <summary>
+    /// 工作流ID
+    /// </summary>
+    public long Id { get; set; }
+
+    /// <summary>
+    /// 工作流名称
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 工作流代码
+    /// </summary>
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 工作流描述
+    /// </summary>
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 工作流配置
+    /// </summary>
+    public string Configuration { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 工作流节点预览DTO
+/// </summary>
+public class WorkflowNodePreviewDto
+{
+    /// <summary>
+    /// 节点ID
+    /// </summary>
+    public long Id { get; set; }
+
+    /// <summary>
+    /// 节点名称
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 节点类型
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 审批模式
+    /// </summary>
+    public string ApprovalMode { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 节点配置
+    /// </summary>
+    public string Configuration { get; set; } = "{}";
+
+    /// <summary>
+    /// 审批人列表
+    /// </summary>
+    public List<WorkflowNodeApproverPreviewDto> Approvers { get; set; } = new();
+
+    /// <summary>
+    /// 条件列表
+    /// </summary>
+    public List<WorkflowNodeConditionPreviewDto> Conditions { get; set; } = new();
+}
+
+/// <summary>
+/// 工作流节点审批人预览DTO
+/// </summary>
+public class WorkflowNodeApproverPreviewDto
+{
+    /// <summary>
+    /// 审批人类型
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 审批人值
+    /// </summary>
+    public string Value { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 审批人名称
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 工作流节点条件预览DTO
+/// </summary>
+public class WorkflowNodeConditionPreviewDto
+{
+    /// <summary>
+    /// 条件表达式
+    /// </summary>
+    public string Expression { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 下一节点名称
+    /// </summary>
+    public string NextNodeName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 条件描述
+    /// </summary>
+    public string Description { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 前端预览数据DTO
+/// </summary>
+public class FrontendPreviewDataDto
+{
+    /// <summary>
+    /// 工作流信息
+    /// </summary>
+    public WorkflowPreviewInfoDto Workflow { get; set; } = new();
+
+    /// <summary>
+    /// 节点列表
+    /// </summary>
+    public List<FrontendNodeDto> Nodes { get; set; } = new();
+}
+
+/// <summary>
+/// 前端节点DTO
+/// </summary>
+public class FrontendNodeDto
+{
+    /// <summary>
+    /// 节点ID
+    /// </summary>
+    public long Id { get; set; }
+
+    /// <summary>
+    /// 节点名称
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 节点类型
+    /// </summary>
+    public string NodeType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 审批模式
+    /// </summary>
+    public string ApprovalMode { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 节点配置
+    /// </summary>
+    public string Configuration { get; set; } = "{}";
+
+    /// <summary>
+    /// 审批人列表
+    /// </summary>
+    public List<FrontendApproverDto> Approvers { get; set; } = new();
+
+    /// <summary>
+    /// 条件列表
+    /// </summary>
+    public List<FrontendConditionDto> Conditions { get; set; } = new();
+}
+
+/// <summary>
+/// 前端审批人DTO
+/// </summary>
+public class FrontendApproverDto
+{
+    /// <summary>
+    /// 审批人类型
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 审批人值
+    /// </summary>
+    public string Value { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 审批人名称
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 前端条件DTO
+/// </summary>
+public class FrontendConditionDto
+{
+    /// <summary>
+    /// 条件表达式
+    /// </summary>
+    public string Expression { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 下一节点名称
+    /// </summary>
+    public string NextNodeName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 条件描述
+    /// </summary>
+    public string Description { get; set; } = string.Empty;
+}

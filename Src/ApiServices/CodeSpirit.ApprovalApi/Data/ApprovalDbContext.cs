@@ -74,6 +74,11 @@ public class ApprovalDbContext : MultiDatabaseDbContextBase
     public DbSet<ApprovalLog> ApprovalLogs { get; set; }
 
     /// <summary>
+    /// 流程分类
+    /// </summary>
+    public DbSet<WorkflowCategory> WorkflowCategories { get; set; }
+
+    /// <summary>
     /// 配置模型
     /// </summary>
     /// <param name="modelBuilder">模型构建器</param>
@@ -101,6 +106,10 @@ public class ApprovalDbContext : MultiDatabaseDbContextBase
             entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
             // 配置为长文本字段，让DatabaseSpecificConfigurations处理具体类型
             entity.Property(e => e.Configuration).HasMaxLength(4000);
+            entity.HasOne(e => e.Category)
+                  .WithMany(e => e.WorkflowDefinitions)
+                  .HasForeignKey(e => e.CategoryId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         // 配置工作流节点
@@ -179,6 +188,19 @@ public class ApprovalDbContext : MultiDatabaseDbContextBase
             entity.HasIndex(e => e.OperationTime);
             // 配置为长文本字段，让DatabaseSpecificConfigurations处理具体类型
             entity.Property(e => e.ExtensionData).HasMaxLength(4000);
+        });
+
+        // 配置流程分类
+        modelBuilder.Entity<WorkflowCategory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.HasIndex(e => new { e.TenantId, e.Name });
+            entity.HasIndex(e => new { e.TenantId, e.ParentId });
+            entity.HasOne(e => e.Parent)
+                  .WithMany(e => e.Children)
+                  .HasForeignKey(e => e.ParentId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 

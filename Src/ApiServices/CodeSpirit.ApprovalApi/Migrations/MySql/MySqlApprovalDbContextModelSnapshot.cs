@@ -299,6 +299,83 @@ namespace CodeSpirit.ApprovalApi.Migrations.MySQL
                     b.ToTable("ApprovalTasks");
                 });
 
+            modelBuilder.Entity("CodeSpirit.ApprovalApi.Models.WorkflowCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("IX_WorkflowCategories_TenantId");
+
+                    b.HasIndex("TenantId", "Id")
+                        .HasDatabaseName("IX_WorkflowCategories_TenantId_Id");
+
+                    b.HasIndex("TenantId", "Name");
+
+                    b.HasIndex("TenantId", "ParentId");
+
+                    b.ToTable("WorkflowCategories");
+                });
+
             modelBuilder.Entity("CodeSpirit.ApprovalApi.Models.WorkflowDefinition", b =>
                 {
                     b.Property<long>("Id")
@@ -306,6 +383,9 @@ namespace CodeSpirit.ApprovalApi.Migrations.MySQL
                         .HasColumnType("bigint");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int?>("CategoryId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -364,6 +444,8 @@ namespace CodeSpirit.ApprovalApi.Migrations.MySQL
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("IX_WorkflowDefinitions_TenantId");
@@ -534,6 +616,26 @@ namespace CodeSpirit.ApprovalApi.Migrations.MySQL
                     b.Navigation("ApprovalInstance");
                 });
 
+            modelBuilder.Entity("CodeSpirit.ApprovalApi.Models.WorkflowCategory", b =>
+                {
+                    b.HasOne("CodeSpirit.ApprovalApi.Models.WorkflowCategory", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ApprovalApi.Models.WorkflowDefinition", b =>
+                {
+                    b.HasOne("CodeSpirit.ApprovalApi.Models.WorkflowCategory", "Category")
+                        .WithMany("WorkflowDefinitions")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Category");
+                });
+
             modelBuilder.Entity("CodeSpirit.ApprovalApi.Models.WorkflowNode", b =>
                 {
                     b.HasOne("CodeSpirit.ApprovalApi.Models.WorkflowDefinition", "WorkflowDefinition")
@@ -570,6 +672,13 @@ namespace CodeSpirit.ApprovalApi.Migrations.MySQL
             modelBuilder.Entity("CodeSpirit.ApprovalApi.Models.ApprovalInstance", b =>
                 {
                     b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("CodeSpirit.ApprovalApi.Models.WorkflowCategory", b =>
+                {
+                    b.Navigation("Children");
+
+                    b.Navigation("WorkflowDefinitions");
                 });
 
             modelBuilder.Entity("CodeSpirit.ApprovalApi.Models.WorkflowDefinition", b =>

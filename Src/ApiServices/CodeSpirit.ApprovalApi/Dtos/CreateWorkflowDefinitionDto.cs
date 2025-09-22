@@ -155,24 +155,18 @@ public class CreateWorkflowDefinitionDto
     [AmisTextareaField(Placeholder = "请输入自定义提示词（可选）")]
     public string? CustomPrompt { get; set; }
 
-    // /// <summary>
-    // /// 工作流分类ID
-    // /// </summary>
-    // [AmisInputTreeField(
-    //     DataSource = "${ROOT_API}/api/approval/WorkflowCategories/tree",
-    //     Multiple = false,
-    //     JoinValues = true,
-    //     ExtractValue = false,
-    //     ShowOutline = true,
-    //     LabelField = "name",
-    //     ValueField = "id",
-    //     Required = false,
-    //     ShowIcon = true,
-    //     Clearable = true,
-    //     HeightAuto = true,
-    //     SelectFirst = true
-    // )]
-    // [DisplayName("工作流分类")]
-    // [Description("选择工作流所属的分类")]
-    // public int? CategoryId { get; set; }
+    /// <summary>
+    /// 工作流分类ID
+    /// </summary>
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/approval/WorkflowCategories/enabled",
+        ValueField = "id",
+        LabelField = "name",
+        Searchable = true,
+        Multiple = false,
+        Clearable = true
+    )]
+    [DisplayName("工作流分类")]
+    [Description("选择工作流所属的分类")]
+    public int? CategoryId { get; set; }
 }

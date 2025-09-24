@@ -39,4 +39,13 @@ public interface IWorkflowDefinitionService : IBaseCRUDService<WorkflowDefinitio
     /// <param name="request">快速保存请求</param>
     /// <returns>操作结果</returns>
     Task QuickSaveWorkflowDefinitionsAsync(WorkflowDefinitionQuickSaveRequestDto request);
+
+    /// <summary>
+    /// 更新工作流表单Schema
+    /// </summary>
+    /// <param name="id">工作流ID</param>
+    /// <param name="formSchema">表单Schema</param>
+    /// <param name="formTitle">表单标题</param>
+    /// <returns>操作结果</returns>
+    Task UpdateFormSchemaAsync(long id, string formSchema, string? formTitle = null);
 }

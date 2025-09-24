@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Core.Attributes;
+using CodeSpirit.ApprovalApi.Models;
 
 namespace CodeSpirit.ApprovalApi.Dtos.WorkflowDefinition;
 

@@ -207,10 +207,10 @@ namespace CodeSpirit.Amis.Helpers
             }
 
             // 获取路由模板和 HTTP 方法
-            string routeTemplate = httpMethodAttribute.Template;
+            string routeTemplate = httpMethodAttribute.Template ?? string.Empty;
             string httpMethod = httpMethodAttribute.HttpMethods.FirstOrDefault();
 
-            if (string.IsNullOrEmpty(routeTemplate) || string.IsNullOrEmpty(httpMethod))
+            if (string.IsNullOrEmpty(httpMethod))
             {
                 return new ApiRouteInfo(string.Empty, string.Empty);
             }

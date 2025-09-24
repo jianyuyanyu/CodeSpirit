@@ -449,6 +449,50 @@ public class WorkflowDefinitionService : BaseCRUDService<WorkflowDefinition, Wor
     }
 
     /// <summary>
+    /// 更新工作流表单Schema
+    /// </summary>
+    /// <param name="id">工作流ID</param>
+    /// <param name="formSchema">表单Schema</param>
+    /// <param name="formTitle">表单标题</param>
+    /// <returns>操作结果</returns>
+    public async Task UpdateFormSchemaAsync(long id, string formSchema, string? formTitle = null)
+    {
+        var entity = await Repository.GetByIdAsync(id);
+        if (entity == null)
+            throw new BusinessException("工作流定义不存在");
+
+        // 更新表单Schema
+        entity.FormSchema = formSchema;
+        
+        // 如果提供了表单标题，也一起更新（可以存储在配置中）
+        if (!string.IsNullOrEmpty(formTitle))
+        {
+            // 解析现有配置
+            var config = string.IsNullOrEmpty(entity.Configuration) ? 
+                new Dictionary<string, object>() : 
+                JsonConvert.DeserializeObject<Dictionary<string, object>>(entity.Configuration) ?? new Dictionary<string, object>();
+            
+            // 添加或更新表单标题
+            config["formTitle"] = formTitle;
+            
+            // 序列化回JSON
+            entity.Configuration = JsonConvert.SerializeObject(config);
+        }
+
+        // 设置更新信息
+        entity.UpdatedAt = DateTime.UtcNow;
+        entity.UpdatedBy = _currentUser.Id ?? 0;
+        entity.Version++; // 版本号递增
+
+        await Repository.UpdateAsync(entity);
+
+        // 清除缓存
+        ClearWorkflowCache(entity.TenantId, entity.Code);
+
+        _logger.LogInformation("工作流表单Schema更新成功: ID={Id}, 代码={Code}", entity.Id, entity.Code);
+    }
+
+    /// <summary>
     /// 根据ID列表获取工作流定义
     /// </summary>
     /// <param name="ids">ID列表</param>

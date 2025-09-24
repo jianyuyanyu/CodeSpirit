@@ -434,7 +434,6 @@ namespace CodeSpirit.Amis.Helpers
                 var formOptions = new JObject
                 {
                     ["type"] = "form",
-                    ["data"] = !string.IsNullOrEmpty(op.Data) ? JsonConvert.DeserializeObject<JObject>(op.Data) : null,
                     ["api"] = new JObject
                     {
                         ["url"] = route.ApiPath,
@@ -442,6 +441,11 @@ namespace CodeSpirit.Amis.Helpers
                     },
                     ["controls"] = new JArray(GetFormFieldsWithAiSupport(method.GetParameters(), method))
                 };
+
+                if (!string.IsNullOrEmpty(op.Data))
+                {
+                    formOptions["data"] = JsonConvert.DeserializeObject<JObject>(op.Data);
+                }
 
                 if (!op.InitApi.IsNullOrWhiteSpace())
                 {

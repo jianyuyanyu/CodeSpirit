@@ -106,6 +106,8 @@ public static class ServiceCollectionExtensions
 
         // 注册文件服务
         services.AddScoped<ITempFileService, TempFileServiceImpl>();
+        // 添加唯一性验证服务
+        services.AddUniqueValidation();
 
         return services;
     }
@@ -218,8 +220,8 @@ public static class ServiceCollectionExtensions
                 var amisResponse = new
                 {
                     msg = "验证错误，请检查输入项！",
-                    status = 422,
-                    errors,
+                    status = (int)422,
+                    errors
                 };
 
                 return new BadRequestObjectResult(amisResponse)
@@ -245,6 +247,17 @@ public static class ServiceCollectionExtensions
         // 注册客户端IP地址获取服务
         services.AddSingleton<IClientIpService, ClientIpService>();
         
+        return services;
+    }
+
+    /// <summary>
+    /// 添加唯一性验证服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <returns>服务集合</returns>
+    public static IServiceCollection AddUniqueValidation(this IServiceCollection services)
+    {
+        services.AddScoped<IUniqueValidationService, UniqueValidationService>();
         return services;
     }
 }

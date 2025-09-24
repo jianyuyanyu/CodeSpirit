@@ -24,10 +24,21 @@ public class CreateWorkflowDefinitionDto
     /// </summary>
     [Required]
     [StringLength(100, ErrorMessage = "工作流名称长度不能超过100个字符")]
+    [Unique(typeof(CodeSpirit.ApprovalApi.Models.WorkflowDefinition))]
     [DisplayName("工作流名称")]
     [Description("请输入工作流名称，例如：请假审批流程、采购申请审批、合同审批等")]
     [AmisInputTextField(Placeholder = "请输入工作流名称")]
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 自定义提示词
+    /// </summary>
+    [StringLength(4000)]
+    [DisplayName("自定义提示词")]
+    [Description("可选：提供自定义的AI提示词来指导工作流和表单生成，留空则使用默认提示词")]
+    [AiFieldFill(Enabled = false)]
+    [AmisTextareaField(Placeholder = "请输入自定义提示词（可选）")]
+    public string? CustomPrompt { get; set; }
 
     /// <summary>
     /// 工作流代码（唯一标识）
@@ -35,6 +46,7 @@ public class CreateWorkflowDefinitionDto
     [Required]
     [StringLength(50, ErrorMessage = "工作流代码长度不能超过50个字符")]
     [RegularExpression(@"^[A-Z][A-Z0-9_]*$", ErrorMessage = "工作流代码必须以大写字母开头，只能包含大写字母、数字和下划线")]
+    [Unique(typeof(CodeSpirit.ApprovalApi.Models.WorkflowDefinition))]
     [DisplayName("工作流代码")]
     [Description("工作流的唯一标识代码，用于系统内部识别，建议使用英文大写字母和下划线")]
     [AiFieldFill(Weight = 2, Priority = 1)]
@@ -144,16 +156,6 @@ public class CreateWorkflowDefinitionDto
     [AiFieldFill(Weight = 3, Priority = 10, CustomDescription = "根据工作流名称、业务场景、预期审批层级、审批角色和条件分支描述，生成完整的工作流节点配置JSON数组。每个节点对象需包含：name(节点名称，使用中文命名)、nodeType(节点类型：Start/Approval/Condition/End)、approvalMode(审批模式：Sequential/Parallel/CounterSign/OrSign)、configuration(节点配置JSON字符串)、approvers(审批人数组，包含approverType和approverValue)、conditions(条件数组，包含expression和nextNodeName)。确保至少包含一个Start节点和一个End节点")]
     [AmisFormField(Type = "json", Placeholder = "将根据工作流信息自动生成")]
     public string? WorkflowNodeSchema { get; set; }
-
-    /// <summary>
-    /// 自定义提示词
-    /// </summary>
-    [StringLength(4000)]
-    [DisplayName("自定义提示词")]
-    [Description("可选：提供自定义的AI提示词来指导工作流和表单生成，留空则使用默认提示词")]
-    [AiFieldFill(Enabled = false)]
-    [AmisTextareaField(Placeholder = "请输入自定义提示词（可选）")]
-    public string? CustomPrompt { get; set; }
 
     /// <summary>
     /// 工作流分类ID

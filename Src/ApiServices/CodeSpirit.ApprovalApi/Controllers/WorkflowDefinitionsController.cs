@@ -62,6 +62,7 @@ public class WorkflowDefinitionsController : ApiControllerBase
     /// <returns>创建结果</returns>
     [HttpPost]
     [DisplayName("创建工作流定义")]
+    [HeaderOperation("AI创建", "form", Icon = "fa-solid fa-magic")]
     public async Task<ActionResult<ApiResponse<WorkflowDefinitionDto>>> CreateWorkflowDefinition(CreateWorkflowDefinitionDto dto)
     {
         var result = await _workflowDefinitionService.CreateAsync(dto);
@@ -154,6 +155,56 @@ public class WorkflowDefinitionsController : ApiControllerBase
     }
 
     /// <summary>
+    /// 表单设计
+    /// </summary>
+    /// <param name="dto">表单设计参数</param>
+    /// <returns>设计结果</returns>
+    [HttpPost("form-design")]
+    [Operation("表单设计", actionType: OperationActionType.AiForm, Icon = "fa-solid fa-palette")]
+    [DisplayName("表单设计")]
+    public async Task<ActionResult<ApiResponse<FormDesignDto>>> DesignForm(FormDesignDto dto)
+    {
+        // 如果关联了工作流，获取工作流信息用于显示
+        if (dto.WorkflowDefinitionId.HasValue)
+        {
+            var workflow = await _workflowDefinitionService.GetAsync(dto.WorkflowDefinitionId.Value);
+            if (workflow != null)
+            {
+                dto.WorkflowName = workflow.Name;
+                dto.WorkflowDescription = workflow.Description;
+            }
+        }
+
+        // 表单设计逻辑会通过AI自动填充功能来生成FormSchema
+        // 这里主要是验证和返回设计结果
+        return SuccessResponse(dto);
+    }
+
+    /// <summary>
+    /// 保存表单设计到工作流
+    /// </summary>
+    /// <param name="id">工作流定义ID</param>
+    /// <param name="dto">表单设计数据</param>
+    /// <returns>保存结果</returns>
+    [HttpPost("{id}/save-form-design")]
+    // [Operation("保存表单设计", "form", Icon = "fa-solid fa-save")]
+    [DisplayName("保存表单设计")]
+    public async Task<ActionResult<ApiResponse>> SaveFormDesign(long id, SaveFormDesignDto dto)
+    {
+        // 获取工作流定义
+        var workflow = await _workflowDefinitionService.GetAsync(id);
+        if (workflow == null)
+        {
+            return BadResponse("工作流定义不存在", statusCode: 404);
+        }
+
+        // 更新工作流的表单Schema
+        await _workflowDefinitionService.UpdateFormSchemaAsync(id, dto.FormSchema, dto.FormTitle);
+
+        return SuccessResponse("表单设计已保存");
+    }
+
+    /// <summary>
     /// 节点管理操作
     /// </summary>
     /// <returns>操作结果</returns>
@@ -178,7 +229,7 @@ public class WorkflowDefinitionsController : ApiControllerBase
     {
         // 确保DTO中的工作流ID与路径参数一致
         dto.WorkflowDefinitionId = id;
-        
+
         await _workflowNodeService.SaveProcessDesignAsync(dto);
         return SuccessResponse("流程设计保存成功");
     }

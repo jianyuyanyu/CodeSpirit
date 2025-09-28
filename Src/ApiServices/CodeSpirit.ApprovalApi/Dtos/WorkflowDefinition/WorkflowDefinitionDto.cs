@@ -79,6 +79,10 @@ public class WorkflowDefinitionDto
     /// </summary>
     [DisplayName("更新时间")]
     public DateTime? UpdatedAt { get; set; }
+
+    [DisplayName("审批表单Schema")]
+    [AmisColumn(Type = "json")]
+    public string FormSchema { get; set; }
 }
 
 /// <summary>

@@ -37,7 +37,7 @@ namespace CodeSpirit.Amis
             // 注册AI表单增强器
             services.AddScoped<AiFormFieldEnhancer>();
 
-            // 注册工厂
+            // 注册工厂 - 注意：更具体的工厂要先注册，通用工厂要后注册
             services.AddTransient<IAmisFieldFactory, AmisInputImageFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisInputTextFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisSelectFieldFactory>();
@@ -46,7 +46,6 @@ namespace CodeSpirit.Amis
             services.AddTransient<IAmisFieldFactory, AmisTreeSelectFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisInputExcelFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisIconFieldFactory>();
-            services.AddTransient<IAmisFieldFactory, AmisFieldAttributeFactory>();
             services.AddTransient<IAmisFieldFactory, AmisTextareaFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisNumberFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisTransferFieldFactory>();
@@ -56,6 +55,8 @@ namespace CodeSpirit.Amis
             services.AddTransient<IAmisFieldFactory, AmisTimeFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisDatetimeFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisSwitchFieldFactory>();
+            // 通用工厂放在最后，作为兜底
+            services.AddTransient<IAmisFieldFactory, AmisFieldAttributeFactory>();
 
             // 注册 AmisGenerator，并传递可选的 apiAssembly
             services.AddScoped<AmisGenerator>();

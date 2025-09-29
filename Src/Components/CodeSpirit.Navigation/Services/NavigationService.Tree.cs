@@ -221,7 +221,8 @@ namespace CodeSpirit.Navigation
                 Priority = attr.Priority,
                 Shortcut = attr.Shortcut,
                 Badge = attr.Badge,
-                BadgeType = attr.BadgeType
+                BadgeType = attr.BadgeType,
+                Visible = attr.Visible
             };
 
             // 解析元数据JSON

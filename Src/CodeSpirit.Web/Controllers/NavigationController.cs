@@ -52,7 +52,7 @@ namespace CodeSpirit.Web.Controllers
             try
             {
                 var tree = await _navigationService.GetNavigationTreeAsync(platformType);
-                
+
                 // 创建上下文过滤条件
                 var filterContext = new NavigationFilterContext
                 {
@@ -113,7 +113,7 @@ namespace CodeSpirit.Web.Controllers
 
                 // 获取租户平台的导航
                 var tree = await _navigationService.GetNavigationTreeAsync(PlatformType.Tenant);
-                
+
                 // 创建租户上下文过滤条件
                 var filterContext = new NavigationFilterContext
                 {
@@ -128,7 +128,7 @@ namespace CodeSpirit.Web.Controllers
 
                 // 使用新的上下文过滤功能
                 var filteredNodes = _navigationService.FilterNodesByContext(tree, filterContext);
-                
+
                 // 使用标准的页面格式转换，无需特殊处理租户路径
                 var pageTree = ConvertToPageFormat(filteredNodes)?.ToList() ?? [];
 
@@ -195,7 +195,7 @@ namespace CodeSpirit.Web.Controllers
                 else
                 {
                     await _navigationService.ClearModuleNavigationCacheAsync(moduleName, platformType);
-                    _logger.LogInformation("Navigation cache cleared for module {ModuleName}, platform {PlatformType} by user {User}", 
+                    _logger.LogInformation("Navigation cache cleared for module {ModuleName}, platform {PlatformType} by user {User}",
                         moduleName, platformType, User.Identity?.Name);
                 }
 
@@ -247,7 +247,7 @@ namespace CodeSpirit.Web.Controllers
             // 可以从用户Claims、数据库或其他地方获取用户标签
             // 这里简单示例，可以根据实际需求扩展
             var tags = new List<string>();
-            
+
             if (User.IsInRole("Admin"))
                 tags.Add("admin");
             if (User.IsInRole("Manager"))
@@ -270,7 +270,7 @@ namespace CodeSpirit.Web.Controllers
         private static bool IsValidNode(NavigationNode node, NavigationNode parent)
         {
             return !string.IsNullOrEmpty(node.Title) &&
-                   ((parent == null && node.Children != null && node.Children.Any()) || parent != null);
+                   ((parent == null && node.Children != null && node.Children.Count != 0) || parent != null);
         }
 
         private static object CreatePageNode(NavigationNode node)
@@ -278,10 +278,11 @@ namespace CodeSpirit.Web.Controllers
             var pageNode = new
             {
                 label = node.Title,
-                url = node.Path,
+                url = node.Children.Count != 0 ? null : node.Path,
                 link = node.Link,
                 icon = node.Icon,
                 permission = node.Permission,
+                visible = node.Visible,
                 children = ConvertToPageFormat(node.Children, node),
                 schemaApi = GetSchemaApi(node),
                 schema = GetScheme(node)
@@ -297,6 +298,7 @@ namespace CodeSpirit.Web.Controllers
                     pageNode.link,
                     pageNode.icon,
                     pageNode.permission,
+                    pageNode.visible,
                     pageNode.children,
                     pageNode.schemaApi,
                     pageNode.schema,
@@ -333,7 +335,7 @@ namespace CodeSpirit.Web.Controllers
         private static string GetSchemaApi(NavigationNode node)
         {
             if (node.IsExternal) return null;
-            
+
             // 如果有明确的Route信息，直接使用
             if (!string.IsNullOrEmpty(node.Route))
             {
@@ -342,12 +344,12 @@ namespace CodeSpirit.Web.Controllers
                 {
                     return $"options:/{node.Route}?amis";
                 }
-                
+
                 // 优先级：元数据配置 > Route自动解析 > 模块名
                 string apiPrefix = GetApiPrefix(node);
                 return $"options:/{apiPrefix}/{node.Route}?amis";
             }
-            
+
             return null;
         }
 
@@ -367,7 +369,7 @@ namespace CodeSpirit.Web.Controllers
                     return apiPrefix;
                 }
             }
-            
+
             // 方式2：从Route自动解析API前缀
             // Route格式通常是：api/{prefix}/[controller] 或 api/{prefix}/{controller}
             if (!string.IsNullOrEmpty(node.Route))
@@ -380,7 +382,7 @@ namespace CodeSpirit.Web.Controllers
                     return routeParts[1];
                 }
             }
-            
+
             // 方式3：Fallback到模块名
             return node.ModuleName.ToCamelCase();
         }

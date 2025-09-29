@@ -55,6 +55,7 @@ namespace CodeSpirit.Amis
             services.AddTransient<IAmisFieldFactory, AmisTimeFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisDatetimeFieldFactory>();
             services.AddTransient<IAmisFieldFactory, AmisSwitchFieldFactory>();
+            services.AddTransient<IAmisFieldFactory, FormGroupFieldFactory>();
             // 通用工厂放在最后，作为兜底
             services.AddTransient<IAmisFieldFactory, AmisFieldAttributeFactory>();
 

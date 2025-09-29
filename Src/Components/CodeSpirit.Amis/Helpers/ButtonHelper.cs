@@ -29,8 +29,28 @@ namespace CodeSpirit.Amis.Helpers
             _logger = logger;
         }
 
+        /// <summary>
+        /// 将 DialogSize 枚举转换为字符串
+        /// </summary>
+        /// <param name="dialogSize">对话框大小枚举</param>
+        /// <returns>对话框大小字符串</returns>
+        private static string ConvertDialogSizeToString(DialogSize dialogSize)
+        {
+            return dialogSize switch
+            {
+                DialogSize.XS => "xs",
+                DialogSize.SM => "sm",
+                DialogSize.MD => "md",
+                DialogSize.LG => "lg",
+                DialogSize.XL => "xl",
+                DialogSize.Full => "full",
+                DialogSize.Custom => "custom",
+                _ => "md"
+            };
+        }
+
         // 创建一个通用的按钮模板
-        private JObject CreateButton(string label, string actionType, JObject dialogOrDrawer = null, JObject api = null, string confirmText = null, bool? download = null, string visibleOn = null)
+        private JObject CreateButton(string label, string actionType, JObject dialogOrDrawer = null, JObject api = null, string confirmText = null, bool? download = null, string visibleOn = null, DialogSize dialogSize = DialogSize.MD)
         {
             JObject button = new()
             {
@@ -43,6 +63,12 @@ namespace CodeSpirit.Amis.Helpers
 
             if (dialogOrDrawer != null)
             {
+                // 如果对话框配置中没有指定size，则使用传入的dialogSize
+                if (dialogOrDrawer["size"] == null)
+                {
+                    dialogOrDrawer["size"] = ConvertDialogSizeToString(dialogSize);
+                }
+                
                 button["dialog"] = dialogOrDrawer;
             }
 
@@ -175,12 +201,15 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         // 创建"新增"按钮
-        public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null)
+        public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null, DialogSize dialogSize = DialogSize.MD)
         {
+            // 如果没有指定size，则使用dialogSize参数
+            string dialogSizeString = size ?? ConvertDialogSizeToString(dialogSize);
+
             JObject dialogBody = new()
             {
                 ["title"] = title,
-                ["size"] = size,
+                ["size"] = dialogSizeString,
                 ["body"] = new JObject
                 {
                     ["type"] = "form",
@@ -193,16 +222,19 @@ namespace CodeSpirit.Amis.Helpers
                 },
             };
 
-            return CreateButton(title, "dialog", dialogOrDrawer: dialogBody);
+            return CreateButton(title, "dialog", dialogOrDrawer: dialogBody, dialogSize: dialogSize);
         }
 
         // 创建"编辑"按钮
-        public JObject CreateEditButton(ApiRouteInfo updateRoute, IEnumerable<ParameterInfo> updateParameters)
+        public JObject CreateEditButton(ApiRouteInfo updateRoute, IEnumerable<ParameterInfo> updateParameters, DialogSize dialogSize = DialogSize.MD)
         {
             string title = "编辑";
+            string dialogSizeString = ConvertDialogSizeToString(dialogSize);
+
             JObject drawerBody = new()
             {
                 ["title"] = title,
+                ["size"] = dialogSizeString,
                 ["body"] = new JObject
                 {
                     ["type"] = "form",
@@ -214,10 +246,10 @@ namespace CodeSpirit.Amis.Helpers
                     ["controls"] = new JArray(GetFormFieldsWithAiSupport(updateParameters))
                 }
             };
-            return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+            return CreateButton(title, "dialog", dialogOrDrawer: drawerBody, dialogSize: dialogSize);
         }
 
-        public JObject CreateDetailButton(ApiRouteInfo detailRoute, IEnumerable<PropertyInfo> detailPropertites)
+        public JObject CreateDetailButton(ApiRouteInfo detailRoute, IEnumerable<PropertyInfo> detailPropertites, DialogSize dialogSize = DialogSize.LG)
         {
             string title = "查看";
             JArray controls = [];
@@ -258,10 +290,12 @@ namespace CodeSpirit.Amis.Helpers
                 }
             }
 
+            string dialogSizeString = ConvertDialogSizeToString(dialogSize);
+
             JObject drawerBody = new()
             {
                 ["title"] = title,
-                ["size"] = "lg",
+                ["size"] = dialogSizeString,
                 ["body"] = new JObject
                 {
                     ["type"] = "form",
@@ -290,7 +324,7 @@ namespace CodeSpirit.Amis.Helpers
                     }
                 }
             };
-            return CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+            return CreateButton(title, "dialog", dialogOrDrawer: drawerBody, dialogSize: dialogSize);
         }
 
         // 创建"删除"按钮
@@ -420,9 +454,11 @@ namespace CodeSpirit.Amis.Helpers
                             ["body"] = op.FeedbackBodyTpl
                         };
                     }
-                    if (!string.IsNullOrEmpty(op.FeedBackSize))
+                    
+                    // 优先使用新的DialogSizeEnum，如果没有则使用已弃用的FeedBackSize
+                    if (op.DialogSize != DialogSize.MD)
                     {
-                        button["feedback"]["size"] = op.FeedBackSize;
+                        button["feedback"]["size"] = op.DialogSizeString;
                     }
                 }
             }
@@ -455,11 +491,11 @@ namespace CodeSpirit.Amis.Helpers
                 JObject drawerBody = new()
                 {
                     ["title"] = title,
-                    ["size"] = "lg",
+                    ["size"] = op.DialogSizeString,
                     ["body"] = formOptions
                 };
 
-                button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody, visibleOn: op.VisibleOn);
+                button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody, visibleOn: op.VisibleOn, dialogSize: op.DialogSize);
                 if (!string.IsNullOrEmpty(op.Redirect))
                 {
                     button["redirect"] = op.Redirect;
@@ -470,7 +506,7 @@ namespace CodeSpirit.Amis.Helpers
             {
                 // 对于 service 类型，创建一个 service 弹窗
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
-                button = CreateServiceDialogButton(op.Label, route);
+                button = CreateServiceDialogButton(op.Label, route, op.DialogSize);
             }
             //出参表单
             else if (op.ActionType == "return-form")
@@ -480,7 +516,7 @@ namespace CodeSpirit.Amis.Helpers
                 JObject drawerBody = new()
                 {
                     ["title"] = title,
-                    ["size"] = "lg",
+                    ["size"] = op.DialogSizeString,
                     ["body"] = new JObject
                     {
                         ["type"] = "form",
@@ -494,7 +530,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["controls"] = new JArray(GetFormFieldsWithAiSupport(method.ReturnParameter.ParameterType?.GetUnderlyingDataType().GetProperties(), method.ReturnParameter.ParameterType?.GetUnderlyingDataType(), isReadOnly: true))
                     }
                 };
-                button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody);
+                button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody, dialogSize: op.DialogSize);
             }
             // AI表单
             else if (op.ActionType == "aiForm")
@@ -546,15 +582,18 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         /// <param name="title">按钮和弹窗标题</param>
         /// <param name="route">API路由信息</param>
+        /// <param name="dialogSize">对话框大小</param>
         /// <returns>按钮配置对象</returns>
-        public JObject CreateServiceDialogButton(string title, ApiRouteInfo route)
+        public JObject CreateServiceDialogButton(string title, ApiRouteInfo route, DialogSize dialogSize = DialogSize.LG)
         {
             ArgumentNullException.ThrowIfNull(route);
+
+            string sizeString = ConvertDialogSizeToString(dialogSize);
 
             JObject serviceBody = new()
             {
                 ["title"] = title,
-                ["size"] = "lg",
+                ["size"] = sizeString,
                 ["closeOnEsc"] = true,
                 ["closeOnOutside"] = false,
                 ["showCloseButton"] = true,
@@ -991,7 +1030,7 @@ namespace CodeSpirit.Amis.Helpers
             JObject aiFormDialog = new()
             {
                 ["title"] = title,
-                ["size"] = "lg", // 使用更大的弹窗
+                ["size"] = op.DialogSizeString, // 使用操作特性中的对话框大小
                 ["closeOnEsc"] = false,
                 ["closeOnOutside"] = false,
                 // ["showCloseButton"] = true,
@@ -1014,7 +1053,7 @@ namespace CodeSpirit.Amis.Helpers
                 }
             };
 
-            return CreateButton(title, "dialog", dialogOrDrawer: aiFormDialog, visibleOn: op.VisibleOn);
+            return CreateButton(title, "dialog", dialogOrDrawer: aiFormDialog, visibleOn: op.VisibleOn, dialogSize: op.DialogSize);
         }
 
 
@@ -1080,9 +1119,14 @@ namespace CodeSpirit.Amis.Helpers
         {
             if (properties == null) return new List<JObject>();
 
-            // 如果是只读表单（查看表单），不启用AI填充功能
+            // 如果是只读表单（查看表单），不启用AI填充功能，但仍然支持表单项组
             if (isReadOnly)
             {
+                if (dtoType != null)
+                {
+                    // 使用支持表单项组但不启用AI的方法
+                    return formFieldHelper.GetAmisFormFieldsFromPropertiesWithGroups(properties, dtoType);
+                }
                 return formFieldHelper.GetAmisFormFieldsFromProperties(properties);
             }
 
@@ -1111,8 +1155,13 @@ namespace CodeSpirit.Amis.Helpers
                 }
             }
 
-            // 否则使用原有方法（不启用AI填充）
+            // 否则使用原有方法（不启用AI填充），但仍然支持表单项组
             Console.WriteLine("[ButtonHelper调试] 使用原有方法（属性，不启用AI填充）");
+            if (dtoType != null)
+            {
+                // 使用支持表单项组但不启用AI的方法
+                return formFieldHelper.GetAmisFormFieldsFromPropertiesWithGroups(properties, dtoType);
+            }
             return formFieldHelper.GetAmisFormFieldsFromProperties(properties);
         }
     }

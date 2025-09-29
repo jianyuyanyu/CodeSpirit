@@ -158,7 +158,7 @@ public class WorkflowDefinitionsController : ApiControllerBase
     /// <param name="dto">表单设计参数</param>
     /// <returns>设计结果</returns>
     [HttpPost("{id}/form-design")]
-    [Operation("表单设计", actionType: OperationActionType.Form, Icon = "fa-solid fa-palette")]
+    [Operation("表单设计", actionType: OperationActionType.Form, Icon = "fa-solid fa-palette",DialogSize = DialogSize.Full)]
     [DisplayName("表单设计")]
     public async Task<ActionResult<ApiResponse<FormDesignDto>>> DesignForm(long id, FormDesignDto dto)
     {

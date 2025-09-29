@@ -348,7 +348,7 @@ public class SurveysController : ApiControllerBase
                 }
             ]
         }",
-        FeedBackSize = "md")]
+        DialogSize = DialogSize.LG)]
     [DisplayName("获取分享链接")]
     public async Task<ActionResult<ApiResponse<object>>> GetShareLink(int id)
     {
@@ -409,7 +409,7 @@ public class SurveysController : ApiControllerBase
     /// <param name="id">问卷ID</param>
     /// <returns>预览配置</returns>
     [HttpGet("{id}/preview")]
-    [Operation(label: "预览", actionType: "service")]
+    [Operation(label: "预览", actionType: "service", DialogSize = DialogSize.XL)]
     [DisplayName("预览")]
     public async Task<ActionResult<ApiResponse<JObject>>> PreviewSurvey(int id)
     {
@@ -796,7 +796,7 @@ public class SurveysController : ApiControllerBase
                 }
             }
         }",
-        FeedBackSize = "xl",
+        DialogSize = DialogSize.XL,
         Icon = "fa fa-magic")]
     [DisplayName("AI洞察分析")]
     public async Task<ActionResult<ApiResponse<SurveyInsightResult>>> GenerateInsights(int id)
@@ -920,7 +920,7 @@ public class SurveysController : ApiControllerBase
                 }
             ]
         }",
-        FeedBackSize = "lg",
+        DialogSize = DialogSize.LG,
         Icon = "fa fa-plus-circle")]
     public async Task<ActionResult<ApiResponse<ExpandQuestionsResult>>> ExpandQuestions([FromBody] ExpandQuestionsRequest request)
     {
@@ -1548,7 +1548,7 @@ public class SurveysController : ApiControllerBase
                 }
             ]
         }",
-        FeedBackSize = "lg",
+        DialogSize = DialogSize.LG,
         Icon = "fa fa-plus-circle")]
     public async Task<ActionResult<ApiResponse<ExpandQuestionsResult>>> ExpandQuestionsForSurvey([FromRoute] int id, [FromBody] ExpandQuestionsRequest request)
     {

@@ -56,8 +56,8 @@ public class AsideHelper
 
         if (!asideProperties.Any()) return null;
 
-        // 获取这些属性对应的表单字段
-        var allFormFields = _formFieldHelper.GetAmisFormFieldsFromProperties(asideProperties);
+        // 获取这些属性对应的表单字段，支持表单项组
+        var allFormFields = _formFieldHelper.GetAmisFormFieldsFromProperties(asideProperties, queryDtoType);
         var asideFields = new List<JObject>();
 
         foreach (var formField in allFormFields)

@@ -4,6 +4,7 @@ using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Form.Fields;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Amis.Attributes.FormFields;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 
@@ -137,8 +138,8 @@ namespace CodeSpirit.Amis.Form
                 }
             }
 
-            // 添加常规字段
-            fields.AddRange(GetAmisFormFieldsFromParameters(parameters));
+            // 添加常规字段，支持表单项组
+            fields.AddRange(ProcessParametersWithGroups(parameters, dtoType));
 
             return fields;
         }
@@ -160,10 +161,22 @@ namespace CodeSpirit.Amis.Form
                 fields.Add(globalAiComponent);
             }
 
-            // 添加常规字段
-            fields.AddRange(GetAmisFormFieldsFromProperties(properties));
+            // 处理表单项组
+            var groupedFields = ProcessFormGroups(properties, dtoType);
+            fields.AddRange(groupedFields);
 
             return fields;
+        }
+
+        /// <summary>
+        /// 从属性集合生成带表单项组的AMIS表单字段配置
+        /// </summary>
+        /// <param name="properties">属性集合</param>
+        /// <param name="dtoType">DTO类型（用于检测表单项组特性）</param>
+        /// <returns>AMIS字段配置列表</returns>
+        public List<JObject> GetAmisFormFieldsFromPropertiesWithGroups(IEnumerable<PropertyInfo> properties, Type dtoType)
+        {
+            return ProcessFormGroups(properties, dtoType);
         }
 
         #region 处理逻辑
@@ -341,6 +354,150 @@ namespace CodeSpirit.Amis.Form
             }
 
             return typeof(object); // 返回默认类型而不是null
+        }
+
+        /// <summary>
+        /// 处理表单项组，将属性按组织织并生成相应的AMIS配置
+        /// </summary>
+        /// <param name="properties">属性集合</param>
+        /// <param name="dtoType">DTO类型</param>
+        /// <returns>包含分组的字段配置列表</returns>
+        private List<JObject> ProcessFormGroups(IEnumerable<PropertyInfo> properties, Type dtoType)
+        {
+            List<JObject> result = [];
+            var propertyList = properties?.ToList() ?? [];
+
+            // 获取类型上的表单项组特性
+            var groupAttributes = dtoType?.GetCustomAttributes<FormGroupAttribute>(true)?.ToList() ?? [];
+
+            if (!groupAttributes.Any())
+            {
+                // 如果没有定义组，直接返回常规字段
+                return GetAmisFormFieldsFromProperties(propertyList);
+            }
+
+            // 按Order排序组
+            groupAttributes = groupAttributes.OrderBy(g => g.Order).ToList();
+
+            // 创建字段名到属性的映射
+            var propertyMap = propertyList.Where(ShouldProcess)
+                .ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
+
+            // 跟踪已分组的字段
+            var groupedProperties = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // 处理每个组
+            foreach (var groupAttr in groupAttributes)
+            {
+                var groupConfig = CreateGroupFromAttribute(groupAttr);
+                if (groupConfig == null) continue;
+
+                var groupFields = new List<JObject>();
+
+                // 解析组内字段
+                if (!string.IsNullOrEmpty(groupAttr.Fields))
+                {
+                    var fieldNames = groupAttr.Fields.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(f => f.Trim());
+
+                    foreach (var fieldName in fieldNames)
+                    {
+                        if (propertyMap.TryGetValue(fieldName, out var property))
+                        {
+                            var field = ProcessProperty(property);
+                            if (field != null)
+                            {
+                                groupFields.Add(field);
+                                groupedProperties.Add(fieldName);
+                            }
+                        }
+                    }
+                }
+
+                // 将字段添加到组的body中
+                if (groupFields.Any())
+                {
+                    groupConfig["body"] = new JArray(groupFields);
+                    result.Add(groupConfig);
+                    result.Add(new JObject { ["type"] = "divider" } ); // 添加分隔符
+                }
+            }
+
+            // 添加未分组的字段
+            var ungroupedProperties = propertyList.Where(p => 
+                ShouldProcess(p) && !groupedProperties.Contains(p.Name));
+
+            foreach (var property in ungroupedProperties)
+            {
+                var field = ProcessProperty(property);
+                if (field != null)
+                {
+                    result.Add(field);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 处理方法参数，支持表单项组
+        /// </summary>
+        /// <param name="parameters">方法参数集合</param>
+        /// <param name="dtoType">DTO类型</param>
+        /// <returns>字段配置列表</returns>
+        private List<JObject> ProcessParametersWithGroups(IEnumerable<ParameterInfo> parameters, Type dtoType)
+        {
+            var parameterList = parameters?.ToList() ?? [];
+            
+            // 如果只有一个复杂类型参数，且该参数类型有表单项组特性，则使用该参数类型的属性进行分组
+            var complexParam = parameterList.FirstOrDefault(p => !_utilityHelper.IsSimpleType(p.ParameterType));
+            if (complexParam != null && complexParam.ParameterType.HasFormGroups())
+            {
+                var properties = complexParam.ParameterType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                return ProcessFormGroups(properties, complexParam.ParameterType);
+            }
+            
+            // 如果指定了dtoType且有表单项组特性，使用dtoType的属性进行分组
+            if (dtoType != null && dtoType.HasFormGroups())
+            {
+                var properties = dtoType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                return ProcessFormGroups(properties, dtoType);
+            }
+            
+            // 否则使用原有的参数处理逻辑
+            return GetAmisFormFieldsFromParameters(parameterList);
+        }
+
+        /// <summary>
+        /// 从FormGroupAttribute创建组配置
+        /// </summary>
+        /// <param name="groupAttr">表单项组特性</param>
+        /// <returns>组配置</returns>
+        private JObject CreateGroupFromAttribute(FormGroupAttribute groupAttr)
+        {
+            if (groupAttr == null) return null;
+
+            // 使用工厂创建组字段（这里模拟特性在类型上的情况）
+            var factory = _fieldFactories.FirstOrDefault(f => f.CanHandle(typeof(FormGroupAttribute)));
+            if (factory is FormGroupFieldFactory groupFactory)
+            {
+                // 创建一个临时的特性提供者来传递给工厂
+                var attributeProvider = new FormGroupAttributeProvider(groupAttr);
+                return groupFactory.CreateField(attributeProvider, _utilityHelper);
+            }
+
+            // 如果没有找到工厂，手动创建基础配置
+            var jObj= new JObject
+            {
+                ["type"] = "group",
+                ["body"] = new JArray()
+            };
+
+            if (!string.IsNullOrEmpty(groupAttr.Title))
+            {
+                jObj["label"] = groupAttr.Title;
+            }
+            return jObj;
         }
         #endregion
 

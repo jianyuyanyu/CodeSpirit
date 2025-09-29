@@ -9,7 +9,7 @@ namespace CodeSpirit.ApprovalApi.Controllers;
 /// 审批节点管理控制器
 /// </summary>
 [DisplayName("审批节点管理")]
-[Navigation(Icon = "fa-solid fa-sitemap")]
+[Navigation(Icon = "fa-solid fa-sitemap", Visible = false)]
 public class WorkflowNodesController : ApiControllerBase
 {
     private readonly IWorkflowNodeService _workflowNodeService;

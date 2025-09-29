@@ -1,4 +1,4 @@
-﻿﻿// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
+﻿// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
 
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Attributes;
@@ -39,30 +39,34 @@ namespace CodeSpirit.Amis.Form.Fields
                 return (null, fieldAttr);
 
             if (fieldAttr == null) return (null, null);
-            
+
             // 计算是否为必填字段
             // 1. 检查AmisFormFieldAttribute的Required属性
             // 2. 检查DataAnnotations.RequiredAttribute特性
             // 3. 检查字段类型是否为非空类型
-            bool isRequired = fieldAttr.Required 
-                || HasRequiredAttribute(member) 
+            bool isRequired = fieldAttr.Required
+                || HasRequiredAttribute(member)
                 || !utilityHelper.IsNullable(utilityHelper.GetMemberType(member));
 
             // 创建字段配置
             JObject field = new JObject
             {
                 ["name"] = fieldName,
-                ["label"] = fieldAttr.Label ?? displayName,
                 ["type"] = fieldAttr.Type
             };
 
-            if(!string.IsNullOrEmpty(fieldAttr.Placeholder))
+            if (!string.IsNullOrEmpty(fieldAttr.Label ?? displayName))
+            {
+                field["label"] = fieldAttr.Label ?? displayName;
+            }
+
+            if (!string.IsNullOrEmpty(fieldAttr.Placeholder))
                 field["placeholder"] = fieldAttr.Placeholder;
 
-            if(!fieldAttr.Static)
+            if (!fieldAttr.Static)
                 field["required"] = isRequired;
 
-            if(!string.IsNullOrEmpty(fieldAttr.VisibleOn))
+            if (!string.IsNullOrEmpty(fieldAttr.VisibleOn))
                 field["visibleOn"] = fieldAttr.VisibleOn;
 
             if (fieldAttr.Hidden)
@@ -88,6 +92,11 @@ namespace CodeSpirit.Amis.Form.Fields
             bool shouldSubmitOnChange = fieldAttr.SubmitOnChange || HasPageAsideAttribute(member);
             if (shouldSubmitOnChange)
                 field["submitOnChange"] = true;
+
+            if (fieldAttr.ColumnRatio > 0 && fieldAttr.ColumnRatio <= 12)
+            {
+                field["columnRatio"] = fieldAttr.ColumnRatio;
+            }
 
             // 处理描述信息
             AddDescription(member, field);

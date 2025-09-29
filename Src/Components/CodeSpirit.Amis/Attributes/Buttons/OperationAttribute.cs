@@ -1,6 +1,54 @@
 using System.ComponentModel.DataAnnotations;
 
 /// <summary>
+/// 对话框大小枚举
+/// </summary>
+public enum DialogSize
+{
+    /// <summary>
+    /// 超小尺寸
+    /// </summary>
+    [Display(Name = "超小尺寸")]
+    XS = 1,
+
+    /// <summary>
+    /// 小尺寸
+    /// </summary>
+    [Display(Name = "小尺寸")]
+    SM = 2,
+
+    /// <summary>
+    /// 中等尺寸（默认）
+    /// </summary>
+    [Display(Name = "中等尺寸")]
+    MD = 3,
+
+    /// <summary>
+    /// 大尺寸
+    /// </summary>
+    [Display(Name = "大尺寸")]
+    LG = 4,
+
+    /// <summary>
+    /// 超大尺寸
+    /// </summary>
+    [Display(Name = "超大尺寸")]
+    XL = 5,
+
+    /// <summary>
+    /// 全屏
+    /// </summary>
+    [Display(Name = "全屏")]
+    Full = 6,
+
+    /// <summary>
+    /// 自定义尺寸
+    /// </summary>
+    [Display(Name = "自定义尺寸")]
+    Custom = 7
+}
+
+/// <summary>
 /// 操作类型枚举
 /// </summary>
 public enum OperationActionType
@@ -99,9 +147,24 @@ public class OperationAttribute : Attribute
     public string FeedbackBodyTpl { get; set; }
 
     /// <summary>
-    /// 指定 dialog 大小，支持: xs、sm、md、lg、xl、full、custom
+    /// 对话框大小（枚举）
     /// </summary>
-    public string FeedBackSize { get; set; }
+    public DialogSize DialogSize { get; set; } = DialogSize.MD;
+
+    /// <summary>
+    /// 指定 dialog 大小（字符串，用于向后兼容）
+    /// </summary>
+    public string DialogSizeString => DialogSize switch
+    {
+        DialogSize.XS => "xs",
+        DialogSize.SM => "sm",
+        DialogSize.MD => "md",
+        DialogSize.LG => "lg",
+        DialogSize.XL => "xl",
+        DialogSize.Full => "full",
+        DialogSize.Custom => "custom",
+        _ => "md"
+    };
 
     /// <summary>
     /// 仅当 ActionType 为 form 时可用，用于表单数据初始化

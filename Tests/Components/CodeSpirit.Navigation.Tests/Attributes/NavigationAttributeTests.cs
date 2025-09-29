@@ -27,6 +27,7 @@ namespace CodeSpirit.Navigation.Tests.Attributes
             Assert.False(attribute.IsExperimental);
             Assert.Equal(0, attribute.Priority);
             Assert.Equal("info", attribute.BadgeType);
+            Assert.True(attribute.Visible);
             Assert.NotNull(attribute.Tags);
             Assert.Empty(attribute.Tags);
             Assert.NotNull(attribute.SupportedDevices);
@@ -95,6 +96,7 @@ namespace CodeSpirit.Navigation.Tests.Attributes
             attribute.Shortcut = "Ctrl+T";
             attribute.Badge = "NEW";
             attribute.BadgeType = "success";
+            attribute.Visible = false;
 
             // Assert
             Assert.Equal("测试标题", attribute.Title);
@@ -123,6 +125,7 @@ namespace CodeSpirit.Navigation.Tests.Attributes
             Assert.Equal("Ctrl+T", attribute.Shortcut);
             Assert.Equal("NEW", attribute.Badge);
             Assert.Equal("success", attribute.BadgeType);
+            Assert.False(attribute.Visible);
         }
 
         /// <summary>
@@ -148,6 +151,31 @@ namespace CodeSpirit.Navigation.Tests.Attributes
             Assert.Null(attribute.MaxVersion);
             Assert.Null(attribute.Shortcut);
             Assert.Null(attribute.Badge);
+        }
+
+        /// <summary>
+        /// 测试NavigationAttribute的Visible属性
+        /// </summary>
+        [Fact]
+        public void NavigationAttribute_Visible_ShouldDefaultToTrueAndBeSettable()
+        {
+            // Arrange & Act
+            var attribute = new NavigationAttribute();
+
+            // Assert - 默认值应该为true
+            Assert.True(attribute.Visible);
+
+            // Act - 设置为false
+            attribute.Visible = false;
+
+            // Assert - 应该可以设置为false
+            Assert.False(attribute.Visible);
+
+            // Act - 设置为true
+            attribute.Visible = true;
+
+            // Assert - 应该可以设置为true
+            Assert.True(attribute.Visible);
         }
     }
 } 

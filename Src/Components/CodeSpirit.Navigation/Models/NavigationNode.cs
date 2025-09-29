@@ -155,6 +155,11 @@ namespace CodeSpirit.Navigation.Models
         /// </summary>
         public string BadgeType { get; set; } = "info";
 
+        /// <summary>
+        /// 是否在菜单中可见，有些页面可能不想出现在菜单中，可以配置成 false，另外带参数的路由无需配置，直接就是不可见的。
+        /// </summary>
+        public bool Visible { get; set; } = true;
+
         public NavigationNode(string name, string title, string path)
         {
             Name = name;
@@ -195,6 +200,7 @@ namespace CodeSpirit.Navigation.Models
                 Shortcut = Shortcut,
                 Badge = Badge,
                 BadgeType = BadgeType,
+                Visible = Visible,
                 Children = []
             };
 

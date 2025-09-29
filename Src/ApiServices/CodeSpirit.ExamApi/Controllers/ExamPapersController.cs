@@ -26,7 +26,7 @@ public class ExamPapersController : ApiControllerBase
     /// <summary>
     /// 构造函数
     /// </summary>
-    public ExamPapersController(IExamPaperService examPaperService, 
+    public ExamPapersController(IExamPaperService examPaperService,
         IExamSettingService examSettingService,
         IPracticeSettingService practiceSettingService)
     {
@@ -202,7 +202,7 @@ public class ExamPapersController : ApiControllerBase
     /// <param name="id">试卷ID</param>
     /// <returns>预览配置</returns>
     [HttpGet("{id}/preview")]
-    [Operation(label: "试卷预览", actionType: "service")]
+    [Operation(label: "试卷预览", actionType: "service", DialogSize = DialogSize.XL)]
     [DisplayName("试卷预览")]
     public async Task<ActionResult<ApiResponse<JObject>>> PreviewExamPaper(long id)
     {
@@ -374,8 +374,8 @@ public class ExamPapersController : ApiControllerBase
                 question.Analysis = WebUtility.HtmlDecode(question.Analysis ?? string.Empty);
 
                 // 题目分数显示（原始分数）
-                var scoreText = examPaper.EnableScoreConversion 
-                    ? $"{question.Score}分（原始分值）" 
+                var scoreText = examPaper.EnableScoreConversion
+                    ? $"{question.Score}分（原始分值）"
                     : $"{question.Score}分";
 
                 // 问题标题
@@ -546,10 +546,10 @@ public class ExamPapersController : ApiControllerBase
             }
 
             // 在不同题型之间添加更明显的分隔
-            formItems.Add(new JObject 
-            { 
-                ["type"] = "html", 
-                ["html"] = "<div style=\"margin: 30px 0; border-bottom: 1px solid #f0f0f0;\"></div>" 
+            formItems.Add(new JObject
+            {
+                ["type"] = "html",
+                ["html"] = "<div style=\"margin: 30px 0; border-bottom: 1px solid #f0f0f0;\"></div>"
             });
         }
 
@@ -558,7 +558,7 @@ public class ExamPapersController : ApiControllerBase
         {
             var exampleScore = 90;
             var convertedExampleScore = exampleScore * (double)examPaper.ConversionRatio.Value;
-            
+
             formItems.Add(new JObject
             {
                 ["type"] = "panel",

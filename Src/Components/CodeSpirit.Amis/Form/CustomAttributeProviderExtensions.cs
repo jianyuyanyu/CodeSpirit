@@ -379,5 +379,188 @@ namespace CodeSpirit.Amis.Form
             }
         }
         #endregion
+
+        #region 表单项组扩展方法
+        /// <summary>
+        /// 获取类型上的表单项组特性列表
+        /// </summary>
+        /// <param name="type">类型</param>
+        /// <returns>表单项组特性列表</returns>
+        public static List<FormGroupAttribute> GetFormGroups(this Type type)
+        {
+            if (type == null) return [];
+            
+            return type.GetCustomAttributes<FormGroupAttribute>(true)?.ToList() ?? [];
+        }
+
+        /// <summary>
+        /// 判断类型是否定义了表单项组
+        /// </summary>
+        /// <param name="type">类型</param>
+        /// <returns>是否定义了表单项组</returns>
+        public static bool HasFormGroups(this Type type)
+        {
+            return type?.GetCustomAttributes<FormGroupAttribute>(true)?.Any() == true;
+        }
+
+        /// <summary>
+        /// 获取属性所属的表单项组
+        /// </summary>
+        /// <param name="property">属性信息</param>
+        /// <param name="dtoType">DTO类型</param>
+        /// <returns>所属的表单项组，如果不属于任何组则返回null</returns>
+        public static FormGroupAttribute GetBelongingFormGroup(this PropertyInfo property, Type dtoType)
+        {
+            if (property == null || dtoType == null) return null;
+
+            var groups = dtoType.GetFormGroups();
+            return groups.FirstOrDefault(g => 
+                !string.IsNullOrEmpty(g.Fields) && 
+                g.Fields.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(f => f.Trim())
+                    .Contains(property.Name, StringComparer.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// 判断属性是否属于某个表单项组
+        /// </summary>
+        /// <param name="property">属性信息</param>
+        /// <param name="dtoType">DTO类型</param>
+        /// <returns>是否属于表单项组</returns>
+        public static bool BelongsToFormGroup(this PropertyInfo property, Type dtoType)
+        {
+            return property.GetBelongingFormGroup(dtoType) != null;
+        }
+
+        /// <summary>
+        /// 获取表单项组中的所有属性
+        /// </summary>
+        /// <param name="groupAttribute">表单项组特性</param>
+        /// <param name="dtoType">DTO类型</param>
+        /// <returns>组中的属性列表</returns>
+        public static List<PropertyInfo> GetGroupProperties(this FormGroupAttribute groupAttribute, Type dtoType)
+        {
+            if (groupAttribute == null || dtoType == null || string.IsNullOrEmpty(groupAttribute.Fields))
+                return [];
+
+            var fieldNames = groupAttribute.Fields.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(f => f.Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return dtoType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => fieldNames.Contains(p.Name))
+                .ToList();
+        }
+
+        ///// <summary>
+        ///// 创建表单项组的AMIS配置
+        ///// </summary>
+        ///// <param name="groupAttribute">表单项组特性</param>
+        ///// <param name="groupFields">组内字段配置列表</param>
+        ///// <returns>表单项组的AMIS配置</returns>
+        //public static JObject CreateFormGroupConfig(this FormGroupAttribute groupAttribute, List<JObject> groupFields = null)
+        //{
+        //    if (groupAttribute == null) return null;
+
+        //    var groupConfig = new JObject
+        //    {
+        //        ["type"] = "group"
+        //    };
+
+        //    // 设置基础属性
+        //    if (!string.IsNullOrEmpty(groupAttribute.Title))
+        //        groupConfig["label"] = groupAttribute.Title;
+
+        //    if (!string.IsNullOrEmpty(groupAttribute.Description))
+        //        groupConfig["description"] = groupAttribute.Description;
+
+        //    if (!string.IsNullOrEmpty(groupAttribute.Name))
+        //        groupConfig["name"] = groupAttribute.Name;
+
+        //    // 设置显示模式
+        //    if (groupAttribute.Mode != FormGroupMode.Normal)
+        //        groupConfig["mode"] = GetFormGroupModeString(groupAttribute.Mode);
+
+        //    // 设置间距
+        //    if (groupAttribute.Gap != FormGroupGap.Normal)
+        //        groupConfig["gap"] = GetFormGroupGapString(groupAttribute.Gap);
+
+        //    // 设置方向
+        //    if (groupAttribute.Direction == FormGroupDirection.Horizontal)
+        //        groupConfig["direction"] = "horizontal";
+
+        //    // 设置其他属性
+        //    if (groupAttribute.ShowBorder)
+        //        groupConfig["showBorder"] = true;
+
+        //    if (!string.IsNullOrEmpty(groupAttribute.ClassName))
+        //        groupConfig["className"] = groupAttribute.ClassName;
+
+        //    if (!string.IsNullOrEmpty(groupAttribute.VisibleOn))
+        //        groupConfig["visibleOn"] = groupAttribute.VisibleOn;
+
+        //    if (groupAttribute.Hidden)
+        //        groupConfig["hidden"] = true;
+
+        //    if (groupAttribute.Disabled)
+        //        groupConfig["disabled"] = true;
+
+        //    if (!string.IsNullOrEmpty(groupAttribute.DisabledOn))
+        //        groupConfig["disabledOn"] = groupAttribute.DisabledOn;
+
+        //    // 处理自定义配置
+        //    if (!string.IsNullOrEmpty(groupAttribute.AdditionalConfig))
+        //    {
+        //        try
+        //        {
+        //            var additionalConfig = JObject.Parse(groupAttribute.AdditionalConfig);
+        //            groupConfig.Merge(additionalConfig, new JsonMergeSettings
+        //            {
+        //                MergeArrayHandling = MergeArrayHandling.Union
+        //            });
+        //        }
+        //        catch (Exception)
+        //        {
+        //            // 忽略JSON解析错误
+        //        }
+        //    }
+
+        //    // 设置组内字段
+        //    groupConfig["body"] = new JArray(groupFields ?? []);
+
+        //    return groupConfig;
+        //}
+
+        /// <summary>
+        /// 获取表单项组模式字符串
+        /// </summary>
+        /// <param name="mode">模式枚举</param>
+        /// <returns>模式字符串</returns>
+        private static string GetFormGroupModeString(FormGroupMode mode)
+        {
+            return mode switch
+            {
+                FormGroupMode.Inline => "inline",
+                FormGroupMode.Horizontal => "horizontal",
+                _ => "normal"
+            };
+        }
+
+        /// <summary>
+        /// 获取表单项组间距字符串
+        /// </summary>
+        /// <param name="gap">间距枚举</param>
+        /// <returns>间距字符串</returns>
+        private static string GetFormGroupGapString(FormGroupGap gap)
+        {
+            return gap switch
+            {
+                FormGroupGap.None => "none",
+                FormGroupGap.Small => "sm",
+                FormGroupGap.Large => "lg",
+                _ => "base"
+            };
+        }
+        #endregion
     }
 }

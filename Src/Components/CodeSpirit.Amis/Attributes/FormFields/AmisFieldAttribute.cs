@@ -72,6 +72,11 @@
         public bool SubmitOnChange { get; set; } = false;
 
         /// <summary>
+        /// 仅在表单项组模式下有效，表示当前字段在一行中的宽度占比，默认为0表示不设置，最大值为12。
+        /// </summary>
+        public int ColumnRatio { get; set; } = 0;
+
+        /// <summary>
         /// 初始化一个新的 <see cref="AmisFormFieldAttribute"/> 实例。
         /// </summary>
         public AmisFormFieldAttribute()

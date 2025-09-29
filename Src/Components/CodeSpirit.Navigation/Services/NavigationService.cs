@@ -310,6 +310,9 @@ namespace CodeSpirit.Navigation
                     shouldInclude = false;
                 }
 
+                // 注意：Visible 字段不在服务端过滤，而是返回给前端让前端控制显示
+                // 这样前端可以根据 Visible 字段决定是否显示该导航项
+
                 // 如果节点本身不满足条件，但有子节点满足条件，则包含该节点
                 if (!shouldInclude && filteredChildren.Any())
                 {

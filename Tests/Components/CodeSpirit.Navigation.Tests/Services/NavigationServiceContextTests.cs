@@ -46,6 +46,45 @@ namespace CodeSpirit.Navigation.Tests.Services
         }
 
         [Fact]
+        public void FilterNodesByContext_VisibilityField_ShouldReturnAllNodesWithVisibleProperty()
+        {
+            // Arrange
+            var nodes = new List<NavigationNode>
+            {
+                new NavigationNode("visible1", "可见功能", "/visible1")
+                {
+                    Visible = true,
+                    PlatformType = PlatformType.Both
+                },
+                new NavigationNode("hidden1", "隐藏功能", "/hidden1")
+                {
+                    Visible = false,
+                    PlatformType = PlatformType.Both
+                },
+                new NavigationNode("visible2", "可见功能2", "/visible2")
+                {
+                    Visible = true,
+                    PlatformType = PlatformType.Both
+                }
+            };
+
+            var context = new NavigationFilterContext
+            {
+                PlatformType = PlatformType.Both,
+                IsAuthenticated = true
+            };
+
+            // Act
+            var result = NavigationService.FilterNodesByContext(nodes, context);
+
+            // Assert - 所有节点都应该返回，包括 Visible = false 的节点
+            Assert.Equal(3, result.Count);
+            Assert.Contains(result, n => n.Name == "visible1" && n.Visible == true);
+            Assert.Contains(result, n => n.Name == "hidden1" && n.Visible == false);
+            Assert.Contains(result, n => n.Name == "visible2" && n.Visible == true);
+        }
+
+        [Fact]
         public void FilterNodesByContext_ExperimentalFilter_ShouldFilterCorrectly()
         {
             // Arrange

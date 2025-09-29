@@ -32,6 +32,7 @@ namespace CodeSpirit.Navigation.Tests.Models
             Assert.Equal(0, node.Order);
             Assert.Equal(0, node.Priority);
             Assert.Equal("info", node.BadgeType);
+            Assert.True(node.Visible);
             Assert.NotNull(node.Children);
             Assert.Empty(node.Children);
             Assert.NotNull(node.Tags);
@@ -149,7 +150,8 @@ namespace CodeSpirit.Navigation.Tests.Models
                 Priority = 5,
                 Shortcut = "Ctrl+T",
                 Badge = "NEW",
-                BadgeType = "success"
+                BadgeType = "success",
+                Visible = false
             };
 
             // 添加元数据
@@ -185,6 +187,7 @@ namespace CodeSpirit.Navigation.Tests.Models
             Assert.Equal(original.Shortcut, clone.Shortcut);
             Assert.Equal(original.Badge, clone.Badge);
             Assert.Equal(original.BadgeType, clone.BadgeType);
+            Assert.Equal(original.Visible, clone.Visible);
         }
 
         /// <summary>
@@ -392,6 +395,31 @@ namespace CodeSpirit.Navigation.Tests.Models
             Assert.Equal("_blank", externalNode.Target);
             Assert.Equal("https://example.com", externalNode.Link);
             Assert.Empty(externalNode.Path);
+        }
+
+        /// <summary>
+        /// 测试NavigationNode的Visible属性
+        /// </summary>
+        [Fact]
+        public void NavigationNode_Visible_ShouldDefaultToTrueAndBeSettable()
+        {
+            // Arrange & Act
+            var node = new NavigationNode("test", "测试", "/test");
+
+            // Assert - 默认值应该为true
+            Assert.True(node.Visible);
+
+            // Act - 设置为false
+            node.Visible = false;
+
+            // Assert - 应该可以设置为false
+            Assert.False(node.Visible);
+
+            // Act - 设置为true
+            node.Visible = true;
+
+            // Assert - 应该可以设置为true
+            Assert.True(node.Visible);
         }
     }
 } 

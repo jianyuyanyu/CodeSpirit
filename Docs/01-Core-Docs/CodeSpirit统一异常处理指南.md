@@ -687,6 +687,344 @@ CodeSpirit 统一异常处理系统通过以下特性确保了企业级应用的
 - **运维便利**: 详细的日志记录和跟踪ID支持
 - **系统稳定**: 容错机制确保异常处理器本身不会成为故障点
 
+## 10. 批量导入异常处理
+
+### 10.1 批量导入异常类型
+
+批量导入过程中可能遇到的异常类型：
+
+```csharp
+/// <summary>
+/// 批量导入异常
+/// </summary>
+public class BatchImportException : BusinessException
+{
+    public string ImportId { get; }
+    public List<ImportFailedRecord> FailedRecords { get; }
+
+    public BatchImportException(string importId, string message) : base(message)
+    {
+        ImportId = importId;
+        FailedRecords = new List<ImportFailedRecord>();
+    }
+
+    public BatchImportException(string importId, string message, List<ImportFailedRecord> failedRecords) 
+        : base(message)
+    {
+        ImportId = importId;
+        FailedRecords = failedRecords;
+    }
+}
+
+/// <summary>
+/// 导入模板生成异常
+/// </summary>
+public class ImportTemplateException : BusinessException
+{
+    public string TypeName { get; }
+
+    public ImportTemplateException(string typeName, string message) : base(message)
+    {
+        TypeName = typeName;
+    }
+}
+
+/// <summary>
+/// 导入数据验证异常
+/// </summary>
+public class ImportValidationException : ValidationException
+{
+    public int RowIndex { get; }
+    public object ImportData { get; }
+
+    public ImportValidationException(int rowIndex, object importData, Dictionary<string, string[]> errors) 
+        : base(errors)
+    {
+        RowIndex = rowIndex;
+        ImportData = importData;
+    }
+}
+```
+
+### 10.2 批量导入异常处理策略
+
+#### 10.2.1 数据验证异常处理
+
+```csharp
+public class EnhancedBatchImportHelper<TBatchImportDto>
+{
+    private async Task<List<ValidationError>> ValidateImportDataAsync(
+        List<TBatchImportDto> importData,
+        Func<TBatchImportDto, int, Task<List<ValidationError>>>? customValidator)
+    {
+        var results = new List<ValidationError>();
+        
+        for (int i = 0; i < importData.Count; i++)
+        {
+            var item = importData[i];
+            
+            try
+            {
+                // DataAnnotations验证
+                var validationContext = new ValidationContext(item);
+                var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+                
+                if (!Validator.TryValidateObject(item, validationContext, validationResults, true))
+                {
+                    foreach (var validationResult in validationResults)
+                    {
+                        results.Add(new ValidationError
+                        {
+                            Index = i,
+                            ErrorMessage = validationResult.ErrorMessage ?? "验证失败",
+                            ErrorFields = validationResult.MemberNames.ToList()
+                        });
+                    }
+                }
+                
+                // 自定义验证
+                if (customValidator != null)
+                {
+                    var customValidationResults = await customValidator(item, i);
+                    results.AddRange(customValidationResults);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "验证第{Index}行数据时发生异常: {Error}", i + 1, ex.Message);
+                
+                results.Add(new ValidationError
+                {
+                    Index = i,
+                    ErrorMessage = $"数据验证异常：{ex.Message}",
+                    ErrorFields = new List<string>()
+                });
+            }
+        }
+        
+        return results;
+    }
+}
+```
+
+#### 10.2.2 导入处理异常处理
+
+```csharp
+public async Task<BatchImportResultDto> EnhancedBatchImportAsync(
+    IEnumerable<TBatchImportDto> importData,
+    Func<TBatchImportDto, int, Task<string?>> importProcessor,
+    Func<TBatchImportDto, int, Task<List<ValidationError>>>? validator = null)
+{
+    var importId = Guid.NewGuid().ToString();
+    var result = new BatchImportResultDto
+    {
+        ImportId = importId,
+        StartTime = DateTime.UtcNow,
+        Status = ImportStatus.Processing
+    };
+
+    try
+    {
+        // 处理有效数据
+        var successCount = 0;
+        var failedRecords = new List<ImportFailedRecord>();
+        
+        foreach (var (dto, index) in validItems)
+        {
+            try
+            {
+                var errorMessage = await importProcessor(dto, index);
+                if (errorMessage == null)
+                {
+                    successCount++;
+                }
+                else
+                {
+                    failedRecords.Add(new ImportFailedRecord
+                    {
+                        RowIndex = index + 1,
+                        ErrorMessage = errorMessage,
+                        Data = dto
+                    });
+                }
+            }
+            catch (BusinessException ex)
+            {
+                _logger.LogWarning(ex, "导入第{Index}行数据业务异常: {Error}", index + 1, ex.Message);
+                failedRecords.Add(new ImportFailedRecord
+                {
+                    RowIndex = index + 1,
+                    ErrorMessage = $"业务异常：{ex.Message}",
+                    Data = dto
+                });
+            }
+            catch (ValidationException ex)
+            {
+                _logger.LogWarning(ex, "导入第{Index}行数据验证异常: {Error}", index + 1, ex.Message);
+                failedRecords.Add(new ImportFailedRecord
+                {
+                    RowIndex = index + 1,
+                    ErrorMessage = $"数据验证失败：{ex.Message}",
+                    Data = dto,
+                    ErrorFields = ex.Errors.Keys.ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "导入第{Index}行数据时发生未知异常: {Error}", index + 1, ex.Message);
+                failedRecords.Add(new ImportFailedRecord
+                {
+                    RowIndex = index + 1,
+                    ErrorMessage = $"系统异常：{ex.Message}",
+                    Data = dto
+                });
+            }
+        }
+
+        // 更新结果状态
+        result.SuccessCount = successCount;
+        result.FailedCount = failedRecords.Count;
+        result.FailedRecords = failedRecords;
+        result.EndTime = DateTime.UtcNow;
+        
+        // 根据结果设置状态和消息
+        if (result.FailedCount == 0)
+        {
+            result.Status = ImportStatus.Success;
+            result.Message = $"成功导入 {result.SuccessCount} 条记录";
+        }
+        else if (result.SuccessCount > 0)
+        {
+            result.Status = ImportStatus.PartialSuccess;
+            result.Message = $"成功导入 {result.SuccessCount} 条记录，失败 {result.FailedCount} 条记录";
+        }
+        else
+        {
+            result.Status = ImportStatus.Failed;
+            result.Message = $"导入失败，共 {result.FailedCount} 条记录存在错误";
+        }
+
+        return result;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "批量导入过程中发生严重异常: {Error}", ex.Message);
+        
+        result.Status = ImportStatus.Failed;
+        result.Message = $"导入过程中发生异常：{ex.Message}";
+        result.EndTime = DateTime.UtcNow;
+        
+        return result;
+    }
+}
+```
+
+### 10.3 控制器层异常处理
+
+```csharp
+[HttpPost("enhanced-batch-import")]
+[DisplayName("增强批量导入")]
+public async Task<ActionResult<ApiResponse<BatchImportResultDto>>> EnhancedBatchImport(
+    [FromBody] EnhancedBatchImportDto<StudentBatchImportItemDto> request)
+{
+    try
+    {
+        if (request.ImportData == null || !request.ImportData.Any())
+        {
+            throw new BusinessException("导入数据不能为空");
+        }
+
+        if (request.ImportData.Count > 1000)
+        {
+            throw new BusinessException("单次导入数据不能超过1000条");
+        }
+
+        var result = await _studentService.EnhancedBatchImportAsync(request.ImportData);
+        
+        return SuccessResponse(result, "批量导入处理完成");
+    }
+    catch (BatchImportException ex)
+    {
+        _logger.LogWarning(ex, "批量导入异常: ImportId={ImportId}, Message={Message}", 
+            ex.ImportId, ex.Message);
+        return BadResponse<BatchImportResultDto>(ex.Message, 400);
+    }
+    catch (BusinessException ex)
+    {
+        return BadResponse<BatchImportResultDto>(ex.Message, ex.ErrorCode);
+    }
+    // 其他异常由全局异常处理器处理
+}
+
+[HttpGet("import-result/{importId}")]
+[DisplayName("获取导入结果")]
+public async Task<ActionResult<ApiResponse<BatchImportResultDto>>> GetImportResult(string importId)
+{
+    try
+    {
+        if (string.IsNullOrWhiteSpace(importId))
+        {
+            throw new BusinessException("导入ID不能为空");
+        }
+
+        var result = await _studentService.GetImportResultAsync(importId);
+        
+        if (result == null)
+        {
+            throw new BusinessException("导入结果不存在或已过期");
+        }
+
+        return SuccessResponse(result);
+    }
+    catch (BusinessException ex)
+    {
+        return BadResponse<BatchImportResultDto>(ex.Message, ex.ErrorCode);
+    }
+}
+
+[HttpPost("export-failed-records")]
+[DisplayName("导出失败记录")]
+public async Task<ActionResult> ExportFailedRecords([FromBody] ExportFailedRecordsRequest request)
+{
+    try
+    {
+        if (request.FailedRecords == null || !request.FailedRecords.Any())
+        {
+            throw new BusinessException("没有失败记录可导出");
+        }
+
+        var fileBytes = await _studentService.ExportFailedRecordsAsync(request.FailedRecords);
+        var fileName = $"导入失败记录_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
+        
+        return DownloadExcelFile(fileBytes, fileName);
+    }
+    catch (BusinessException ex)
+    {
+        return BadRequest(new ApiResponse(ex.ErrorCode, ex.Message));
+    }
+}
+```
+
+### 10.4 最佳实践
+
+#### 10.4.1 异常分类处理
+
+1. **数据验证异常**: 记录详细的字段错误信息，便于用户修正
+2. **业务逻辑异常**: 提供清晰的业务错误描述
+3. **系统异常**: 记录完整的异常堆栈，但向用户返回友好的错误消息
+
+#### 10.4.2 错误恢复机制
+
+1. **部分成功处理**: 允许部分数据导入成功，部分失败
+2. **失败记录导出**: 提供失败数据的详细信息和修正建议
+3. **重试机制**: 对于临时性错误，支持重试导入
+
+#### 10.4.3 性能考虑
+
+1. **批量处理**: 避免逐条处理导致的性能问题
+2. **内存管理**: 大批量数据导入时注意内存使用
+3. **异步处理**: 长时间运行的导入任务使用异步处理
+
 ---
 
 *本文档将持续更新，请定期查看最新版本* 

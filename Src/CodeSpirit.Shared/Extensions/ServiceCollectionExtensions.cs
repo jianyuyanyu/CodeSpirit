@@ -109,7 +109,12 @@ public static class ServiceCollectionExtensions
         // 添加唯一性验证服务
         services.AddUniqueValidation();
 
-        return services;
+        services.AddScoped<IImportTemplateService, ImportTemplateService>();
+
+        // 注册增强批量导入助手
+        services.AddScoped(typeof(EnhancedBatchImportHelper<>));
+         
+         return services;
     }
 
     /// <summary>

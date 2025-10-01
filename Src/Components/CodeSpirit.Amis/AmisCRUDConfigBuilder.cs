@@ -143,7 +143,8 @@ namespace CodeSpirit.Amis
                 },
                 ["data"] = new JObject()
                 {
-                    ["ROOT_API"] = _apiRouteHelper.GetRootApi()
+                    ["ROOT_API"] = _apiRouteHelper.GetRootApi(),
+                    ["BASE_API"] = $"{_apiRouteHelper.GetRootApi()}/{_apiRouteHelper.GetRoute().TrimStart('/')}"
                 }
             };
 

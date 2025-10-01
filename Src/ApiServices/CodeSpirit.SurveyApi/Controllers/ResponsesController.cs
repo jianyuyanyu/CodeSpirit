@@ -227,11 +227,9 @@ public class ResponsesController : ApiControllerBase
                 ? $"问卷回答数据_{surveyId}_{DateTime.Now:yyyyMMddHHmmss}.xlsx"
                 : $"问卷回答数据_{surveyId}_{DateTime.Now:yyyyMMddHHmmss}.csv";
 
-            var contentType = format.ToLower() == "excel"
-                ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                : "text/csv";
-
-            return File(data, contentType, fileName);
+            return format.ToLower() == "excel" 
+                ? DownloadExcelFile(data, fileName)
+                : DownloadCsvFile(data, fileName);
         }
         catch (Exception ex)
         {

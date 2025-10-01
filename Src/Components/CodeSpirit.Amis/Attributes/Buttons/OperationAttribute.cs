@@ -213,6 +213,13 @@ public class OperationAttribute : Attribute
     public string ResultTitle { get; set; } = "处理结果";
 
     /// <summary>
+    /// 自定义底部按钮配置，JSON格式的字符串数组
+    /// 如果为null，则使用默认按钮；如果为空数组，则不显示底部按钮
+    /// 示例：[{"type":"button","label":"确定","actionType":"submit"},{"type":"button","label":"取消","actionType":"close"}]
+    /// </summary>
+    public string Actions { get; set; }
+
+    /// <summary>
     /// 使用枚举类型的构造函数（推荐）
     /// </summary>
     /// <param name="label">按钮标签</param>

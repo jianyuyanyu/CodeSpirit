@@ -139,6 +139,18 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     }
 
     /// <summary>
+    /// 通过身份证号查找学生
+    /// </summary>
+    public async Task<StudentDto?> GetStudentByIdNoAsync(string idNo)
+    {
+        var student = await Repository
+            .Find(x => x.IdNo == idNo)
+            .FirstOrDefaultAsync();
+
+        return student != null ? Mapper.Map<StudentDto>(student) : null;
+    }
+
+    /// <summary>
     /// 删除学生重写
     /// </summary>
     public override async Task DeleteAsync(long id)

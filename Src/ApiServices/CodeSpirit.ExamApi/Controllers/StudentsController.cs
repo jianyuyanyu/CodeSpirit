@@ -1,8 +1,11 @@
+using AutoMapper;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Dtos.Student;
+using CodeSpirit.ExamApi.Services.Extensions;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Dtos.Common;
+using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Mvc;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.Core;
@@ -19,27 +22,37 @@ public class StudentsController : ApiControllerBase
     private readonly IStudentService _studentService;
     private readonly ILogger<StudentsController> _logger;
     private readonly ICurrentUser _currentUser;
-    
+    private readonly EnhancedBatchImportHelper<StudentBatchImportDto> _importHelper;
+    private readonly IMapper _mapper;
+
     /// <summary>
     /// 初始化考生管理控制器
     /// </summary>
     /// <param name="studentService">考生服务</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="currentUser">当前用户信息</param>
+    /// <param name="importHelper">批量导入助手</param>
+    /// <param name="mapper">映射器</param>
     public StudentsController(
         IStudentService studentService,
         ILogger<StudentsController> logger,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        EnhancedBatchImportHelper<StudentBatchImportDto> importHelper,
+        IMapper mapper)
     {
         ArgumentNullException.ThrowIfNull(studentService);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(currentUser);
-        
+        ArgumentNullException.ThrowIfNull(importHelper);
+        ArgumentNullException.ThrowIfNull(mapper);
+
         _studentService = studentService;
         _logger = logger;
         _currentUser = currentUser;
+        _importHelper = importHelper;
+        _mapper = mapper;
     }
-    
+
     /// <summary>
     /// 获取考生列表
     /// </summary>
@@ -52,7 +65,7 @@ public class StudentsController : ApiControllerBase
         var result = await _studentService.GetStudentsAsync(queryDto);
         return SuccessResponse(result);
     }
-    
+
     /// <summary>
     /// 导出考生列表
     /// </summary>
@@ -66,16 +79,16 @@ public class StudentsController : ApiControllerBase
         const int MaxExportLimit = 10000; // 最大导出数量限制
         queryDto.PerPage = MaxExportLimit;
         queryDto.Page = 1;
-        
+
         // 获取考生数据
         var result = await _studentService.GetStudentsAsync(queryDto);
-        
+
         // 如果数据为空则返回错误信息
-        return result.Items.Count == 0 
-            ? BadResponse<PageList<StudentDto>>("没有数据可供导出") 
+        return result.Items.Count == 0
+            ? BadResponse<PageList<StudentDto>>("没有数据可供导出")
             : SuccessResponse(result);
     }
-    
+
     /// <summary>
     /// 获取考生详情
     /// </summary>
@@ -86,11 +99,11 @@ public class StudentsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<StudentDto>>> GetStudent(long id)
     {
         if (id <= 0) return BadRequest("无效的ID");
-        
+
         var result = await _studentService.GetAsync(id);
         return SuccessResponse(result);
     }
-    
+
     /// <summary>
     /// 创建考生
     /// </summary>
@@ -103,7 +116,7 @@ public class StudentsController : ApiControllerBase
         var result = await _studentService.CreateAsync(createDto);
         return SuccessResponse(result);
     }
-    
+
     /// <summary>
     /// 更新考生信息
     /// </summary>
@@ -117,7 +130,7 @@ public class StudentsController : ApiControllerBase
         await _studentService.UpdateAsync(id, updateDto);
         return SuccessResponse();
     }
-    
+
     /// <summary>
     /// 删除考生
     /// </summary>
@@ -131,24 +144,38 @@ public class StudentsController : ApiControllerBase
         await _studentService.DeleteAsync(id);
         return SuccessResponse();
     }
-    
+
     /// <summary>
-    /// 批量导入考生
+    /// 批量导入考生（增强版）
     /// </summary>
     /// <param name="importDto">考生信息导入数据</param>
     /// <returns>导入结果</returns>
     [HttpPost("batch/import")]
     [DisplayName("批量导入考生")]
-    public async Task<ActionResult<ApiResponse>> BatchImport([FromBody] BatchImportDtoBase<StudentBatchImportDto> importDto)
+    [HeaderOperation("批量导入", "form", null, DialogSize = DialogSize.XL, Icon = "fa fa-upload", Actions = "")]
+    public async Task<ActionResult<ApiResponse<BatchImportResultDto>>> BatchImport([FromBody] EnhancedBatchImportDtoBase<StudentBatchImportDto> importDto)
     {
         ArgumentNullException.ThrowIfNull(importDto);
-        
-        var result = await _studentService.BatchImportAsync(importDto.ImportData);
-        return result.failedIds.Any()
-            ? SuccessResponse($"成功导入 {result.successCount} 个考生，但以下考生导入失败: {string.Join(", ", result.failedIds)}")
-            : SuccessResponse($"成功导入 {result.successCount} 个考生！");
+
+        var result = await _studentService.EnhancedBatchImportAsync(_importHelper, _mapper, importDto.ImportData);
+        return SuccessResponse(result);
     }
-    
+
+    /// <summary>
+    /// 下载考生导入模板
+    /// </summary>
+    /// <returns>Excel模板文件</returns>
+    [HttpGet("import/template")]
+    [DisplayName("下载考生导入模板")]
+    public async Task<ActionResult> DownloadImportTemplate()
+    {
+        var templateService = HttpContext.RequestServices.GetRequiredService<IImportTemplateService>();
+        var templateBytes = await templateService.GenerateExcelTemplateAsync<StudentBatchImportDto>();
+        var fileName = $"考生导入模板_{DateTime.Now:yyyyMMdd}.xlsx";
+
+        return DownloadExcelFile(templateBytes, fileName);
+    }
+
     /// <summary>
     /// 批量删除考生
     /// </summary>
@@ -160,15 +187,15 @@ public class StudentsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         (int successCount, List<long> failedIds) = await _studentService.BatchDeleteAsync(request.Ids);
-        
+
         return failedIds.Any()
             ? SuccessResponse($"成功删除 {successCount} 个考生，但以下考生删除失败: {string.Join(", ", failedIds)}")
             : SuccessResponse($"成功删除 {successCount} 个考生！");
     }
-    
-    
+
+
     /// <summary>
     /// 通过学号查询考生
     /// </summary>
@@ -179,11 +206,11 @@ public class StudentsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<StudentDto>>> GetByStudentNumber(string studentNumber)
     {
         if (string.IsNullOrEmpty(studentNumber)) return BadRequest("学号不能为空");
-        
+
         var result = await _studentService.GetByStudentNumberAsync(studentNumber);
         return SuccessResponse(result);
     }
-    
+
     /// <summary>
     /// 通过用户ID查询考生
     /// </summary>
@@ -196,7 +223,7 @@ public class StudentsController : ApiControllerBase
         var result = await _studentService.GetByUserIdAsync(userId);
         return SuccessResponse(result);
     }
-    
+
     /// <summary>
     /// 批量分配考生到考生组
     /// </summary>
@@ -208,14 +235,14 @@ public class StudentsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> BatchAssignGroups([FromBody] BatchAssignGroupsDto request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
+
         (int successCount, List<long> failedIds) = await _studentService.BatchAssignGroupsAsync(request.Ids, request.GroupIds);
-        
+
         return failedIds.Any()
             ? SuccessResponse($"成功分配 {successCount} 个考生到考生组，但以下考生分配失败: {string.Join(", ", failedIds)}")
             : SuccessResponse($"成功分配 {successCount} 个考生到考生组！");
     }
-    
+
     /// <summary>
     /// 客户端登录跳转
     /// </summary>
@@ -257,4 +284,4 @@ public class StudentsController : ApiControllerBase
             delay: 1000
         ));
     }
-} 
+}

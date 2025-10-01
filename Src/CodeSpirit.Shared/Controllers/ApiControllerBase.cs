@@ -69,4 +69,56 @@ public abstract class ApiControllerBase : AmisApiControllerBase
     {
         return StatusCode(statusCode, new ApiResponse(code, message));
     }
+
+    /// <summary>
+    /// 下载Excel文件（支持中文文件名）
+    /// </summary>
+    /// <param name="fileBytes">文件字节数组</param>
+    /// <param name="fileName">文件名（支持中文）</param>
+    /// <returns>文件下载结果</returns>
+    protected ActionResult DownloadExcelFile(byte[] fileBytes, string fileName)
+    {
+        return DownloadFile(fileBytes, fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+
+    /// <summary>
+    /// 下载CSV文件（支持中文文件名）
+    /// </summary>
+    /// <param name="fileBytes">文件字节数组</param>
+    /// <param name="fileName">文件名（支持中文）</param>
+    /// <returns>文件下载结果</returns>
+    protected ActionResult DownloadCsvFile(byte[] fileBytes, string fileName)
+    {
+        return DownloadFile(fileBytes, fileName, "text/csv");
+    }
+
+    /// <summary>
+    /// 下载文件（支持中文文件名）
+    /// </summary>
+    /// <param name="fileBytes">文件字节数组</param>
+    /// <param name="fileName">文件名（支持中文）</param>
+    /// <param name="contentType">MIME类型</param>
+    /// <returns>文件下载结果</returns>
+    protected ActionResult DownloadFile(byte[] fileBytes, string fileName, string contentType)
+    {
+        // 设置正确的Content-Disposition头以支持中文文件名
+        Response.Headers["Content-Disposition"] = $"attachment; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
+        
+        return File(fileBytes, contentType);
+    }
+
+    /// <summary>
+    /// 下载文件流（支持中文文件名）
+    /// </summary>
+    /// <param name="fileStream">文件流</param>
+    /// <param name="fileName">文件名（支持中文）</param>
+    /// <param name="contentType">MIME类型</param>
+    /// <returns>文件下载结果</returns>
+    protected ActionResult DownloadFile(Stream fileStream, string fileName, string contentType)
+    {
+        // 设置正确的Content-Disposition头以支持中文文件名
+        Response.Headers["Content-Disposition"] = $"attachment; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
+        
+        return File(fileStream, contentType);
+    }
 }

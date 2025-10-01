@@ -10,7 +10,7 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
-using OfficeOpenXml;
+using ClosedXML.Excel;
 using System.Text;
 
 namespace CodeSpirit.SurveyApi.Services.Implementations;
@@ -533,10 +533,8 @@ public class ResponseService : IResponseService, IScopedDependency
     /// <returns>Excel文件字节数组</returns>
     private async Task<byte[]> ExportToExcelAsync(Survey survey, List<SurveyResponse> responses)
     {
-        ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
-
-        using var package = new ExcelPackage();
-        var worksheet = package.Workbook.Worksheets.Add("问卷回答数据");
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("问卷回答数据");
 
         // 设置表头
         var headers = new List<string>
@@ -553,7 +551,7 @@ public class ResponseService : IResponseService, IScopedDependency
         // 写入表头
         for (int i = 0; i < headers.Count; i++)
         {
-            worksheet.Cells[1, i + 1].Value = headers[i];
+            worksheet.Cell(1, i + 1).Value = headers[i];
         }
 
         // 写入数据
@@ -562,14 +560,14 @@ public class ResponseService : IResponseService, IScopedDependency
             var response = responses[i];
             var row = i + 2;
 
-            worksheet.Cells[row, 1].Value = response.Id;
-            worksheet.Cells[row, 2].Value = response.RespondentId ?? "";
-            worksheet.Cells[row, 3].Value = response.SessionId;
-            worksheet.Cells[row, 4].Value = response.StartedAt.ToString("yyyy-MM-dd HH:mm:ss");
-            worksheet.Cells[row, 5].Value = response.CompletedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
-            worksheet.Cells[row, 6].Value = response.Status.ToString();
-            worksheet.Cells[row, 7].Value = response.IpAddress ?? "";
-            worksheet.Cells[row, 8].Value = response.CompletedAt.HasValue 
+            worksheet.Cell(row, 1).Value = response.Id;
+            worksheet.Cell(row, 2).Value = response.RespondentId ?? "";
+            worksheet.Cell(row, 3).Value = response.SessionId;
+            worksheet.Cell(row, 4).Value = response.StartedAt.ToString("yyyy-MM-dd HH:mm:ss");
+            worksheet.Cell(row, 5).Value = response.CompletedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
+            worksheet.Cell(row, 6).Value = response.Status.ToString();
+            worksheet.Cell(row, 7).Value = response.IpAddress ?? "";
+            worksheet.Cell(row, 8).Value = response.CompletedAt.HasValue 
                 ? (int)(response.CompletedAt.Value - response.StartedAt).TotalMinutes 
                 : 0;
 
@@ -579,14 +577,16 @@ public class ResponseService : IResponseService, IScopedDependency
             {
                 var question = survey.Questions.OrderBy(q => q.OrderIndex).ElementAt(j);
                 var answer = answerDict.GetValueOrDefault(question.Id, "");
-                worksheet.Cells[row, 9 + j].Value = answer;
+                worksheet.Cell(row, 9 + j).Value = answer;
             }
         }
 
         // 自动调整列宽
-        worksheet.Cells.AutoFitColumns();
+        worksheet.ColumnsUsed().AdjustToContents();
 
-        return await Task.FromResult(package.GetAsByteArray());
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return await Task.FromResult(stream.ToArray());
     }
 
     /// <summary>

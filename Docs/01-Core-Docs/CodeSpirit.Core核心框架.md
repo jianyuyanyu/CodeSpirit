@@ -689,9 +689,208 @@ public class UsersController : ControllerBase
 2. **合理的HTTP状态码**：根据操作结果返回合适的状态码
 3. **清晰的错误信息**：提供有助于调试的错误信息
 
+## 11. 共享服务组件 (CodeSpirit.Shared)
+
+### 11.1 增强批量导入服务
+
+**设计目的**: 提供统一的批量导入解决方案，支持Excel模板生成、数据验证和错误处理。
+
+#### 11.1.1 导入模板服务 (IImportTemplateService)
+
+```csharp
+/// <summary>
+/// 导入模板服务接口
+/// </summary>
+public interface IImportTemplateService
+{
+    /// <summary>
+    /// 生成Excel导入模板
+    /// </summary>
+    /// <typeparam name="T">导入DTO类型</typeparam>
+    /// <param name="fileName">文件名</param>
+    /// <returns>Excel文件字节数组</returns>
+    Task<byte[]> GenerateExcelTemplateAsync<T>(string? fileName = null) where T : class;
+
+    /// <summary>
+    /// 根据类型名称生成Excel导入模板
+    /// </summary>
+    /// <param name="typeName">类型名称</param>
+    /// <param name="fileName">文件名</param>
+    /// <returns>Excel文件字节数组</returns>
+    Task<byte[]> GenerateExcelTemplateByTypeNameAsync(string typeName, string? fileName = null);
+
+    /// <summary>
+    /// 获取导入模板的列信息
+    /// </summary>
+    /// <typeparam name="T">导入DTO类型</typeparam>
+    /// <returns>列信息列表</returns>
+    List<ImportColumnInfo> GetImportColumns<T>() where T : class;
+}
+```
+
+**特性**:
+- 基于DTO属性自动生成Excel模板
+- 支持字段验证规则（Required、DisplayName等）
+- 自动生成示例数据和字段说明
+- 支持中文列名和注释
+
+#### 11.1.2 增强批量导入助手 (EnhancedBatchImportHelper)
+
+```csharp
+/// <summary>
+/// 增强的批量导入助手类（使用组合模式）
+/// </summary>
+/// <typeparam name="TBatchImportDto">批量导入DTO类型</typeparam>
+public class EnhancedBatchImportHelper<TBatchImportDto> where TBatchImportDto : class
+{
+    /// <summary>
+    /// 增强的批量导入
+    /// </summary>
+    /// <param name="importData">导入数据</param>
+    /// <param name="importProcessor">导入处理器，返回null表示成功，返回错误消息表示失败</param>
+    /// <param name="validator">自定义验证器</param>
+    /// <returns>导入结果</returns>
+    public async Task<BatchImportResultDto> EnhancedBatchImportAsync(
+        IEnumerable<TBatchImportDto> importData,
+        Func<TBatchImportDto, int, Task<string?>> importProcessor,
+        Func<TBatchImportDto, int, Task<List<ValidationError>>>? validator = null);
+        
+    /// <summary>
+    /// 获取导入结果
+    /// </summary>
+    /// <param name="importId">导入ID</param>
+    /// <returns>导入结果</returns>
+    public async Task<BatchImportResultDto?> GetImportResultAsync(string importId);
+
+    /// <summary>
+    /// 导出失败记录
+    /// </summary>
+    /// <param name="failedRecords">失败记录</param>
+    /// <returns>Excel文件字节数组</returns>
+    public async Task<byte[]> ExportFailedRecordsAsync(List<ImportFailedRecord> failedRecords);
+}
+```
+
+**特性**:
+- 支持DataAnnotations验证和自定义验证器
+- 分布式缓存支持，可跟踪导入进度
+- 详细的错误记录和失败数据导出
+- 异步处理，支持大批量数据导入
+
+#### 11.1.3 批量导入DTO基类
+
+```csharp
+/// <summary>
+/// 增强的批量导入数据基础DTO类
+/// </summary>
+/// <typeparam name="T">要导入的数据类型</typeparam>
+public class EnhancedBatchImportDtoBase<T>
+{
+    /// <summary>
+    /// Excel导入的数据集合
+    /// </summary>
+    [AmisEnhancedImportField(
+        Label = "批量导入数据", 
+        Placeholder = "请先下载模板，填写数据后上传Excel文件",
+        MaxLength = 1000,
+        ShowTemplateDownload = true,
+        ShowImportResult = true,
+        TemplateDownloadText = "下载导入模板",
+        ImportButtonText = "开始导入"
+    )]
+    [DisplayName("导入数据")]
+    public List<T> ImportData { get; set; } = new List<T>();
+}
+```
+
+### 11.2 API控制器基类增强
+
+**新增功能**:
+- 支持中文文件名的文件下载方法
+- Excel和CSV文件下载的便捷方法
+- 统一的文件响应头处理
+
+```csharp
+/// <summary>
+/// 下载Excel文件（支持中文文件名）
+/// </summary>
+/// <param name="fileBytes">文件字节数组</param>
+/// <param name="fileName">文件名（支持中文）</param>
+/// <returns>文件下载结果</returns>
+protected ActionResult DownloadExcelFile(byte[] fileBytes, string fileName)
+{
+    return DownloadFile(fileBytes, fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+}
+
+/// <summary>
+/// 下载文件（支持中文文件名）
+/// </summary>
+/// <param name="fileBytes">文件字节数组</param>
+/// <param name="fileName">文件名（支持中文）</param>
+/// <param name="contentType">MIME类型</param>
+/// <returns>文件下载结果</returns>
+protected ActionResult DownloadFile(byte[] fileBytes, string fileName, string contentType)
+{
+    // 设置正确的Content-Disposition头以支持中文文件名
+    Response.Headers["Content-Disposition"] = $"attachment; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
+    
+    return File(fileBytes, contentType);
+}
+```
+
+## 12. AMIS组件增强
+
+### 12.1 增强导入字段特性
+
+```csharp
+/// <summary>
+/// 增强的批量导入字段特性，支持模板下载、结果展示等功能
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = false)]
+public class AmisEnhancedImportFieldAttribute : AmisFormFieldAttribute
+{
+    /// <summary>
+    /// 是否创建输入表格预览
+    /// </summary>
+    public bool CreateInputTable { get; set; } = true;
+
+    /// <summary>
+    /// 最大导入条数限制
+    /// </summary>
+    public int MaxLength { get; set; } = 1000;
+
+    /// <summary>
+    /// 是否显示模板下载按钮
+    /// </summary>
+    public bool ShowTemplateDownload { get; set; } = true;
+
+    /// <summary>
+    /// 是否显示导入结果
+    /// </summary>
+    public bool ShowImportResult { get; set; } = true;
+
+    /// <summary>
+    /// 模板下载按钮文本
+    /// </summary>
+    public string TemplateDownloadText { get; set; } = "下载导入模板";
+
+    /// <summary>
+    /// 导入按钮文本
+    /// </summary>
+    public string ImportButtonText { get; set; } = "开始导入";
+}
+```
+
+### 12.2 AMIS CRUD配置构建器增强
+
+**新增功能**:
+- 支持增强导入字段的自动识别和配置
+- 自动生成模板下载和导入结果查询API
+- 集成失败记录导出功能
+
 ## 总结
 
-CodeSpirit.Core作为框架的核心模块，提供了：
+CodeSpirit.Core作为框架的核心模块，现在提供了：
 
 1. **统一的API响应格式**：确保前后端交互的一致性
 2. **完善的异常处理体系**：支持不同类型的异常处理
@@ -699,5 +898,7 @@ CodeSpirit.Core作为框架的核心模块，提供了：
 4. **强大的权限体系**：支持细粒度的权限控制
 5. **事件驱动架构支持**：通过事件总线实现松耦合
 6. **丰富的扩展方法**：提供常用的工具方法
+7. **增强批量导入服务**：智能Excel模板生成、数据验证和错误处理
+8. **AMIS组件增强**：支持复杂的前端交互组件生成
 
-这些核心组件为整个框架提供了坚实的基础，确保了系统的稳定性、可扩展性和可维护性。 
+这些核心组件为整个框架提供了坚实的基础，确保了系统的稳定性、可扩展性和可维护性。新增的批量导入功能大大提升了数据处理效率，为用户提供了更好的使用体验。 

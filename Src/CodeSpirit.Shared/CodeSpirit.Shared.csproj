@@ -21,6 +21,7 @@
 		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
 		<PackageReference Include="StackExchange.Redis" Version="2.8.41" />
 		<PackageReference Include="LinqKit.Core" Version="1.2.8" />
+		<PackageReference Include="ClosedXML" Version="0.104.3" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -201,7 +201,7 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         // 创建"新增"按钮
-        public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null, DialogSize dialogSize = DialogSize.MD)
+        public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null, DialogSize dialogSize = DialogSize.MD, string customActions = null)
         {
             // 如果没有指定size，则使用dialogSize参数
             string dialogSizeString = size ?? ConvertDialogSizeToString(dialogSize);
@@ -221,6 +221,26 @@ namespace CodeSpirit.Amis.Helpers
                     ["controls"] = new JArray(GetFormFieldsWithAiSupport(formParameters))
                 },
             };
+
+            // 处理自定义 actions 配置
+            if (!string.IsNullOrEmpty(customActions))
+            {
+                try
+                {
+                    var actions = JsonConvert.DeserializeObject<JArray>(customActions);
+                    dialogBody["actions"] = actions;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning("解析 Header Button Actions 配置失败: {Error}, 使用默认配置", ex.Message);
+                }
+            }
+            else if (customActions == "")
+            {
+                // 空字符串表示不显示底部按钮
+                dialogBody["actions"] = new JArray();
+            }
+            // 如果 customActions 为 null，则使用默认按钮（不设置 actions 属性）
 
             return CreateButton(title, "dialog", dialogOrDrawer: dialogBody, dialogSize: dialogSize);
         }
@@ -495,6 +515,26 @@ namespace CodeSpirit.Amis.Helpers
                     ["body"] = formOptions
                 };
 
+                // 处理自定义 actions 配置
+                if (!string.IsNullOrEmpty(op.Actions))
+                {
+                    try
+                    {
+                        var customActions = JsonConvert.DeserializeObject<JArray>(op.Actions);
+                        drawerBody["actions"] = customActions;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning("解析 Actions 配置失败: {Error}, 使用默认配置", ex.Message);
+                    }
+                }
+                else if (op.Actions == "")
+                {
+                    // 空字符串表示不显示底部按钮
+                    drawerBody["actions"] = new JArray();
+                }
+                // 如果 Actions 为 null，则使用默认按钮（不设置 actions 属性）
+
                 button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody, visibleOn: op.VisibleOn, dialogSize: op.DialogSize);
                 if (!string.IsNullOrEmpty(op.Redirect))
                 {
@@ -506,7 +546,7 @@ namespace CodeSpirit.Amis.Helpers
             {
                 // 对于 service 类型，创建一个 service 弹窗
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
-                button = CreateServiceDialogButton(op.Label, route, op.DialogSize);
+                button = CreateServiceDialogButton(op.Label, route, op.DialogSize, op.Actions);
             }
             //出参表单
             else if (op.ActionType == "return-form")
@@ -530,6 +570,27 @@ namespace CodeSpirit.Amis.Helpers
                         ["controls"] = new JArray(GetFormFieldsWithAiSupport(method.ReturnParameter.ParameterType?.GetUnderlyingDataType().GetProperties(), method.ReturnParameter.ParameterType?.GetUnderlyingDataType(), isReadOnly: true))
                     }
                 };
+
+                // 处理自定义 actions 配置
+                if (!string.IsNullOrEmpty(op.Actions))
+                {
+                    try
+                    {
+                        var customActions = JsonConvert.DeserializeObject<JArray>(op.Actions);
+                        drawerBody["actions"] = customActions;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning("解析 Actions 配置失败: {Error}, 使用默认配置", ex.Message);
+                    }
+                }
+                else if (op.Actions == "")
+                {
+                    // 空字符串表示不显示底部按钮
+                    drawerBody["actions"] = new JArray();
+                }
+                // 如果 Actions 为 null，则使用默认按钮（不设置 actions 属性）
+
                 button = CreateButton(title, "dialog", dialogOrDrawer: drawerBody, dialogSize: op.DialogSize);
             }
             // AI表单
@@ -583,8 +644,9 @@ namespace CodeSpirit.Amis.Helpers
         /// <param name="title">按钮和弹窗标题</param>
         /// <param name="route">API路由信息</param>
         /// <param name="dialogSize">对话框大小</param>
+        /// <param name="customActions">自定义底部按钮配置</param>
         /// <returns>按钮配置对象</returns>
-        public JObject CreateServiceDialogButton(string title, ApiRouteInfo route, DialogSize dialogSize = DialogSize.LG)
+        public JObject CreateServiceDialogButton(string title, ApiRouteInfo route, DialogSize dialogSize = DialogSize.LG, string customActions = null)
         {
             ArgumentNullException.ThrowIfNull(route);
 
@@ -610,8 +672,42 @@ namespace CodeSpirit.Amis.Helpers
                         }
                     },
                     ["body"] = "${body}" // 使用Service返回的body内容
-                },
-                ["actions"] = new JArray
+                }
+            };
+
+            // 处理自定义 actions 配置
+            if (!string.IsNullOrEmpty(customActions))
+            {
+                try
+                {
+                    var actions = JsonConvert.DeserializeObject<JArray>(customActions);
+                    serviceBody["actions"] = actions;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning("解析 Service Actions 配置失败: {Error}, 使用默认配置", ex.Message);
+                    // 使用默认关闭按钮
+                    serviceBody["actions"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["type"] = "button",
+                            ["label"] = "关闭",
+                            ["actionType"] = "close",
+                            ["level"] = "default"
+                        }
+                    };
+                }
+            }
+            else if (customActions == "")
+            {
+                // 空字符串表示不显示底部按钮
+                serviceBody["actions"] = new JArray();
+            }
+            else
+            {
+                // 默认显示关闭按钮
+                serviceBody["actions"] = new JArray
                 {
                     new JObject
                     {
@@ -620,8 +716,8 @@ namespace CodeSpirit.Amis.Helpers
                         ["actionType"] = "close",
                         ["level"] = "default"
                     }
-                }
-            };
+                };
+            }
 
             JObject button = new()
             {
@@ -1047,13 +1143,40 @@ namespace CodeSpirit.Amis.Helpers
                         CreateAiStepsWizard(op, route, method)
                     }
                 },
-                ["actions"] = new JArray
-                {
-                    
-                }
+                ["actions"] = CreateAiFormDialogActions(op)
             };
 
             return CreateButton(title, "dialog", dialogOrDrawer: aiFormDialog, visibleOn: op.VisibleOn, dialogSize: op.DialogSize);
+        }
+
+        /// <summary>
+        /// 创建AI表单对话框的底部按钮配置
+        /// </summary>
+        /// <param name="op">操作特性</param>
+        /// <returns>按钮配置数组</returns>
+        private JArray CreateAiFormDialogActions(OperationAttribute op)
+        {
+            // 处理自定义 actions 配置
+            if (!string.IsNullOrEmpty(op.Actions))
+            {
+                try
+                {
+                    var customActions = JsonConvert.DeserializeObject<JArray>(op.Actions);
+                    return customActions;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning("解析 AI Form Actions 配置失败: {Error}, 使用默认配置", ex.Message);
+                }
+            }
+            else if (op.Actions == "")
+            {
+                // 空字符串表示不显示底部按钮
+                return new JArray();
+            }
+
+            // 默认不显示底部按钮（AI表单有自己的步骤控制）
+            return new JArray();
         }
 
 

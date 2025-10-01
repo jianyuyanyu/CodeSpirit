@@ -25,6 +25,11 @@ public interface IStudentService : IBaseCRUDIService<Student, StudentDto, long, 
     /// 通过用户ID查找学生
     /// </summary>
     Task<StudentDto?> GetByUserIdAsync(long userId);
+    
+    /// <summary>
+    /// 通过身份证号查找学生
+    /// </summary>
+    Task<StudentDto?> GetStudentByIdNoAsync(string idNo);
 
     /// <summary>
     /// 批量分配考生到考生组

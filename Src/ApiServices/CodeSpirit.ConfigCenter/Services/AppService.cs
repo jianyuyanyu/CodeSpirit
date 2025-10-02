@@ -3,6 +3,7 @@ using CodeSpirit.ConfigCenter.Dtos.App;
 using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Dynamic.Core;
@@ -19,8 +20,12 @@ public class AppService : BaseCRUDIService<App, AppDto, string, CreateAppDto, Up
     /// </summary>
     /// <param name="repository">应用仓储</param>
     /// <param name="mapper">对象映射器</param>
-    public AppService(IRepository<App> repository, IMapper mapper)
-        : base(repository, mapper)
+    /// <param name="importHelper">批量导入助手</param>
+    public AppService(
+        IRepository<App> repository, 
+        IMapper mapper,
+        EnhancedBatchImportHelper<AppBatchImportItemDto> importHelper)
+        : base(repository, mapper, importHelper)
     {
     }
 

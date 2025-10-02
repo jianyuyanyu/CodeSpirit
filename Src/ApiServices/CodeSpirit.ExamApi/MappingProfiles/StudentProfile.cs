@@ -26,9 +26,19 @@ public class StudentProfile : Profile
             .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
 
         CreateMap<UpdateStudentDto, Student>();
+        
+        // 批量导入映射到实体
         CreateMap<StudentBatchImportDto , Student>()
             .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
             .ForMember(dest => dest.Gender, opt => opt.Ignore());
+
+        // 批量导入映射到创建DTO（用于增强批量导入）
+        CreateMap<StudentBatchImportDto, CreateStudentDto>()
+            .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => 
+                src.Gender == "男" ? Gender.Male :
+                src.Gender == "女" ? Gender.Female :
+                Gender.Unknown))
+            .ForMember(dest => dest.StudentGroupIds, opt => opt.MapFrom(src => new List<long>()));
 
         CreateMap<PageList<Student>, PageList<StudentDto>>();
     }

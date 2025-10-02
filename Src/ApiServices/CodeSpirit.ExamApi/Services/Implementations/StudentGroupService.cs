@@ -8,6 +8,7 @@ using CodeSpirit.ExamApi.Dtos.StudentGroup;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -34,8 +35,9 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
         IRepository<StudentGroupMapping> mappingRepository,
         IMapper mapper,
         ILogger<StudentGroupService> logger,
-        IIdGenerator idGenerator)
-        : base(repository, mapper)
+        IIdGenerator idGenerator,
+        EnhancedBatchImportHelper<StudentGroupBatchImportDto> importHelper)
+        : base(repository, mapper, importHelper)
     {
         _studentRepository = studentRepository;
         _mappingRepository = mappingRepository;

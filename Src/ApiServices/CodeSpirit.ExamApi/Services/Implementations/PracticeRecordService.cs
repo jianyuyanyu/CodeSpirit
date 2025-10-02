@@ -8,6 +8,7 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -47,8 +48,9 @@ public class PracticeRecordService : BaseCRUDIService<PracticeRecord, PracticeRe
         IRepository<QuestionVersion> questionVersionRepository,
         IMapper mapper,
         ILogger<PracticeRecordService> logger,
-        IDistributedLockProvider distributedLockProvider)
-        : base(repository, mapper)
+        IDistributedLockProvider distributedLockProvider,
+        EnhancedBatchImportHelper<PracticeRecordBatchImportDto> importHelper)
+        : base(repository, mapper, importHelper)
     {
         _repository = repository;
         _studentRepository = studentRepository;

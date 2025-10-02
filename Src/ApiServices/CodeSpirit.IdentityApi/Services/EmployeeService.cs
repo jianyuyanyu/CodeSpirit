@@ -7,6 +7,7 @@ using CodeSpirit.IdentityApi.Dtos.Employee;
 using CodeSpirit.IdentityApi.Utilities;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using LinqKit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -41,8 +42,9 @@ public class EmployeeService : BaseCRUDIService<Employee, EmployeeDto, long, Cre
         ICurrentUser currentUser,
         ApplicationDbContext dbContext,
         IDepartmentService departmentService,
-        UserManager<ApplicationUser> userManager)
-        : base(employeeRepository, mapper)
+        UserManager<ApplicationUser> userManager,
+        EnhancedBatchImportHelper<EmployeeBatchImportItemDto> importHelper)
+        : base(employeeRepository, mapper, importHelper)
     {
         _employeeRepository = employeeRepository;
         _departmentRepository = departmentRepository;

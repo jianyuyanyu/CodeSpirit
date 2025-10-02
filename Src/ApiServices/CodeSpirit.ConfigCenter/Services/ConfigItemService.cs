@@ -5,6 +5,7 @@ using CodeSpirit.ConfigCenter.Models;
 using CodeSpirit.ConfigCenter.Models.Enums;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -36,8 +37,9 @@ public class ConfigItemService : BaseCRUDIService<ConfigItem, ConfigItemDto, int
         IConfigNotificationService notificationService,
         IConfigPublishHistoryService publishHistoryService,
         IMapper mapper,
-        ILogger<ConfigItemService> logger)
-        : base(repository, mapper)
+        ILogger<ConfigItemService> logger,
+        EnhancedBatchImportHelper<ConfigItemBatchImportDto> importHelper)
+        : base(repository, mapper, importHelper)
     {
         this.repository = repository;
         _appRepository = appRepository;

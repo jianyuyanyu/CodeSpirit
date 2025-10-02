@@ -6,6 +6,7 @@ using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Role;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
@@ -29,8 +30,9 @@ namespace CodeSpirit.IdentityApi.Services
             IDistributedCache cache,
             ILogger<RoleService> logger,
             IIdGenerator idGenerator,
-            IRepository<ApplicationUser> userRepository)
-            : base(roleRepository, mapper)
+            IRepository<ApplicationUser> userRepository,
+            EnhancedBatchImportHelper<RoleBatchImportItemDto> importHelper)
+            : base(roleRepository, mapper, importHelper)
         {
             _roleRepository = roleRepository;
             _cache = cache;

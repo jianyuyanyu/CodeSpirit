@@ -9,6 +9,7 @@ using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.IdentityApi.Utilities;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using LinqKit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -39,8 +40,9 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
         ICurrentUser currentUser,
         ApplicationDbContext dbContext,
         IPasswordHasher<ApplicationUser> passwordHasher,
-        IDistributedCache cache)
-        : base(userRepository, mapper)
+        IDistributedCache cache,
+        EnhancedBatchImportHelper<UserBatchImportItemDto> importHelper)
+        : base(userRepository, mapper, importHelper)
     {
         _userRepository = userRepository;
         _userManager = userManager;

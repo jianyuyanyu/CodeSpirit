@@ -12,6 +12,7 @@ using CodeSpirit.ExamApi.Settings.Enums;
 using CodeSpirit.Settings.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using LinqKit;
 using System.Net;
 using System.Text.Json;
@@ -45,8 +46,9 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             ILogger<QuestionService> logger,
             QuestionTextParserV2 questionTextParserV2,
             IIdGenerator idGenerator,
-            ISettingsService settingsService)
-            : base(repository, mapper)
+            ISettingsService settingsService,
+            EnhancedBatchImportHelper<QuestionBatchImportItemDto> importHelper)
+            : base(repository, mapper, importHelper)
         {
             _repository = repository;
             _categoryRepository = categoryRepository;

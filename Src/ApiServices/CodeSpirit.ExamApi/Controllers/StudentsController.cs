@@ -1,8 +1,6 @@
-using AutoMapper;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.ExamApi.Dtos.Student;
-using CodeSpirit.ExamApi.Services.Extensions;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Dtos.Common;
 using CodeSpirit.Shared.Services;
@@ -22,8 +20,6 @@ public class StudentsController : ApiControllerBase
     private readonly IStudentService _studentService;
     private readonly ILogger<StudentsController> _logger;
     private readonly ICurrentUser _currentUser;
-    private readonly EnhancedBatchImportHelper<StudentBatchImportDto> _importHelper;
-    private readonly IMapper _mapper;
 
     /// <summary>
     /// 初始化考生管理控制器
@@ -31,26 +27,18 @@ public class StudentsController : ApiControllerBase
     /// <param name="studentService">考生服务</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="currentUser">当前用户信息</param>
-    /// <param name="importHelper">批量导入助手</param>
-    /// <param name="mapper">映射器</param>
     public StudentsController(
         IStudentService studentService,
         ILogger<StudentsController> logger,
-        ICurrentUser currentUser,
-        EnhancedBatchImportHelper<StudentBatchImportDto> importHelper,
-        IMapper mapper)
+        ICurrentUser currentUser)
     {
         ArgumentNullException.ThrowIfNull(studentService);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(currentUser);
-        ArgumentNullException.ThrowIfNull(importHelper);
-        ArgumentNullException.ThrowIfNull(mapper);
 
         _studentService = studentService;
         _logger = logger;
         _currentUser = currentUser;
-        _importHelper = importHelper;
-        _mapper = mapper;
     }
 
     /// <summary>
@@ -157,7 +145,8 @@ public class StudentsController : ApiControllerBase
     {
         ArgumentNullException.ThrowIfNull(importDto);
 
-        var result = await _studentService.EnhancedBatchImportAsync(_importHelper, _mapper, importDto.ImportData);
+        // 直接调用服务的增强批量导入方法
+        var result = await _studentService.EnhancedBatchImportAsync(importDto.ImportData);
         return SuccessResponse(result);
     }
 

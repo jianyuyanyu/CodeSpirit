@@ -6,6 +6,7 @@ using CodeSpirit.ExamApi.Dtos.Student;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using CodeSpirit.Shared.EventBus.Interfaces;
 using CodeSpirit.Shared.EventBus.Events;
 using Humanizer;
@@ -45,8 +46,9 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         IMapper mapper,
         ILogger<StudentService> logger,
         IIdGenerator idGenerator,
-        ITenantAwareEventBus eventBus)
-        : base(repository, mapper)
+        ITenantAwareEventBus eventBus,
+        EnhancedBatchImportHelper<StudentBatchImportDto> importHelper)
+        : base(repository, mapper, importHelper)
     {
         _repository = repository;
         _mappingRepository = mappingRepository;
@@ -562,6 +564,96 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
 
         return (genderCode % 2 == 0) ? "女" : "男";
     }
+
+    #region Enhanced Batch Import Override
+
+    /// <summary>
+    /// 处理单条导入数据（重写）
+    /// </summary>
+    protected override async Task<string?> ProcessImportItemAsync(StudentBatchImportDto importDto, int index)
+    {
+        try
+        {
+            // 检查身份证号是否已存在
+            var existingStudent = await GetStudentByIdNoAsync(importDto.IdNo);
+            if (existingStudent != null)
+            {
+                return $"身份证号 {importDto.IdNo} 已存在";
+            }
+
+            // 映射并创建学生
+            var createDto = Mapper.Map<CreateStudentDto>(importDto);
+            await CreateAsync(createDto);
+            
+            return null; // 成功
+        }
+        catch (Exception ex)
+        {
+            return ex.Message; // 返回错误消息
+        }
+    }
+
+    /// <summary>
+    /// 验证单条导入数据（重写）
+    /// </summary>
+    protected override Task<List<ValidationError>> ValidateImportItemAsync(StudentBatchImportDto importDto, int index)
+    {
+        var errors = new List<ValidationError>();
+        
+        // 验证身份证号格式
+        if (!IsValidIdNumber(importDto.IdNo))
+        {
+            errors.Add(new ValidationError
+            {
+                Index = index,
+                ErrorMessage = "身份证号格式不正确",
+                ErrorFields = new List<string> { nameof(importDto.IdNo) }
+            });
+        }
+        
+        // 验证手机号格式
+        if (!string.IsNullOrEmpty(importDto.PhoneNumber) && !IsValidPhoneNumber(importDto.PhoneNumber))
+        {
+            errors.Add(new ValidationError
+            {
+                Index = index,
+                ErrorMessage = "手机号格式不正确",
+                ErrorFields = new List<string> { nameof(importDto.PhoneNumber) }
+            });
+        }
+        
+        return Task.FromResult(errors);
+    }
+
+    /// <summary>
+    /// 验证身份证号格式
+    /// </summary>
+    private static bool IsValidIdNumber(string idNumber)
+    {
+        if (string.IsNullOrWhiteSpace(idNumber))
+            return false;
+            
+        // 简单的身份证号验证（18位数字，最后一位可能是X）
+        return idNumber.Length == 18 && 
+               idNumber.Take(17).All(char.IsDigit) && 
+               (char.IsDigit(idNumber[17]) || idNumber[17] == 'X');
+    }
+
+    /// <summary>
+    /// 验证手机号格式
+    /// </summary>
+    private static bool IsValidPhoneNumber(string phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+            return true; // 允许为空
+            
+        // 简单的手机号验证（11位数字，以1开头）
+        return phoneNumber.Length == 11 && 
+               phoneNumber.All(char.IsDigit) && 
+               phoneNumber.StartsWith("1");
+    }
+
+    #endregion
 
     /// <summary>
     /// 批量分配考生到考生组

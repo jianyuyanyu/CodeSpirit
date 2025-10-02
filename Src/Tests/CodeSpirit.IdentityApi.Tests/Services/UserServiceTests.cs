@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using AutoMapper;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Tests.TestBase;
 using Microsoft.Extensions.Caching.Distributed;
@@ -22,6 +23,7 @@ namespace CodeSpirit.IdentityApi.Tests.Services
         private readonly IIdGenerator _idGenerator;
         private readonly Mock<IPasswordHasher<ApplicationUser>> _mockPasswordHasher;
         private readonly Mock<IDistributedCache> _mockCache;
+        private readonly Mock<EnhancedBatchImportHelper<UserBatchImportItemDto>> _mockImportHelper;
 
         public UserServiceTests()
             : base()
@@ -30,6 +32,10 @@ namespace CodeSpirit.IdentityApi.Tests.Services
             _idGenerator = new SnowflakeIdGenerator();
             _mockPasswordHasher = new Mock<IPasswordHasher<ApplicationUser>>();
             _mockCache = new Mock<IDistributedCache>();
+            _mockImportHelper = new Mock<EnhancedBatchImportHelper<UserBatchImportItemDto>>(
+                _mockCache.Object,
+                new Mock<ILogger<EnhancedBatchImportHelper<UserBatchImportItemDto>>>().Object
+            );
 
             // 设置密码哈希器的默认行为
             _mockPasswordHasher.Setup(x => x.HashPassword(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
@@ -46,7 +52,8 @@ namespace CodeSpirit.IdentityApi.Tests.Services
                 MockCurrentUser.Object,
                 DbContext,
                 _mockPasswordHasher.Object,
-                _mockCache.Object
+                _mockCache.Object,
+                _mockImportHelper.Object
             );
 
             // 准备测试数据

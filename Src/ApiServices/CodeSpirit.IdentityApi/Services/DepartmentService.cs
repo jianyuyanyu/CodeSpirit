@@ -6,6 +6,7 @@ using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Department;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
+using CodeSpirit.Shared.Dtos.Common;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,8 +32,9 @@ public class DepartmentService : BaseCRUDIService<Department, DepartmentDto, lon
         ILogger<DepartmentService> logger,
         IIdGenerator idGenerator,
         ICurrentUser currentUser,
-        ApplicationDbContext dbContext)
-        : base(departmentRepository, mapper)
+        ApplicationDbContext dbContext,
+        EnhancedBatchImportHelper<DepartmentBatchImportItemDto> importHelper)
+        : base(departmentRepository, mapper, importHelper)
     {
         _departmentRepository = departmentRepository;
         _logger = logger;

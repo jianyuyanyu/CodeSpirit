@@ -63,17 +63,20 @@ public class AsideHelper
         foreach (var formField in allFormFields)
         {
             var asideField = new JObject(formField);
-            
+
             // 为树形选择字段添加特殊配置
             if (formField["type"]?.ToString() == "input-tree")
             {
                 asideField["inputClassName"] = "no-border no-padder mt-1";
+
                 asideField["heightAuto"] = true;
+
                 asideField["submitOnChange"] = true;
-                asideField["selectFirst"] = true;
+
                 asideField["inputOnly"] = true;
+                // 不再强制覆盖 selectFirst，保留特性中的配置
             }
-            
+
             asideFields.Add(asideField);
         }
 

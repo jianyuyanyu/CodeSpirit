@@ -69,8 +69,7 @@ namespace CodeSpirit.Amis.Form.Fields
 
                 if (attr.HeightAuto)
                     field["heightAuto"] = attr.HeightAuto;
-
-                if (attr.SelectFirst)
+                    
                     field["selectFirst"] = attr.SelectFirst;
 
                 if (attr.InputOnly)

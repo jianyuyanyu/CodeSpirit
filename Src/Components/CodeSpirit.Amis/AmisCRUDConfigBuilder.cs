@@ -230,7 +230,7 @@ namespace CodeSpirit.Amis
             {
                 if (_amisContext.Actions.Create.GetCustomAttribute<HeaderOperationAttribute>() == null)
                 {
-                    buttons.Add(_buttonHelper.CreateHeaderButton("新增", _amisContext.ApiRoutes.Create, _amisContext.Actions.Create?.GetParameters()));
+                    buttons.Add(_buttonHelper.CreateHeaderButton("新增", _amisContext.ApiRoutes.Create, _amisContext.Actions.Create?.GetParameters(), method: _amisContext.Actions.Create));
                 }
             }
 
@@ -262,7 +262,7 @@ namespace CodeSpirit.Amis
             // 添加导入按钮（如果没有自定义的导入操作）
             if (_amisContext.ApiRoutes.Import != null && _amisContext.Actions.Import != null && !hasCustomImportOperation)
             {
-                buttons.Add(_buttonHelper.CreateHeaderButton("导入", _amisContext.ApiRoutes.Import, _amisContext.Actions.Import?.GetParameters(), size: "lg"));
+                buttons.Add(_buttonHelper.CreateHeaderButton("导入", _amisContext.ApiRoutes.Import, _amisContext.Actions.Import?.GetParameters(), size: "lg", method: _amisContext.Actions.Import));
             }
 
             // 添加自定义顶部按钮

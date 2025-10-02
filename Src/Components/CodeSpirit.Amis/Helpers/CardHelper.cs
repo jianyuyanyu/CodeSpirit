@@ -224,7 +224,7 @@ namespace CodeSpirit.Amis.Helpers
             // 添加编辑按钮
             if (_amisContext.ApiRoutes.Update != null && _amisContext.Actions.Update != null)
             {
-                var editButton = _buttonHelper.CreateEditButton(_amisContext.ApiRoutes.Update, _amisContext.Actions.Update.GetParameters());
+                var editButton = _buttonHelper.CreateEditButton(_amisContext.ApiRoutes.Update, _amisContext.Actions.Update.GetParameters(), method: _amisContext.Actions.Update);
                 if (editButton != null)
                 {
                     actions.Add(editButton);

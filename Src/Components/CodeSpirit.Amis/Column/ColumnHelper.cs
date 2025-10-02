@@ -1273,7 +1273,7 @@ namespace CodeSpirit.Amis.Column
             {
                 if (apiRoute.Update != null && actions.Update != null)
                 {
-                    JObject editButton = buttonHelper.CreateEditButton(apiRoute.Update, actions.Update?.GetParameters());
+                    JObject editButton = buttonHelper.CreateEditButton(apiRoute.Update, actions.Update?.GetParameters(), method: actions.Update);
                     buttons.Add(editButton);
                 }
             }

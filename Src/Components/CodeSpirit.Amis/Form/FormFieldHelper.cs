@@ -265,7 +265,30 @@ namespace CodeSpirit.Amis.Form
         {
             if (_utilityHelper.IsSimpleType(param.ParameterType))
             {
-                var field = param.CreateFormField();
+                // 优先使用工厂创建字段
+                var field = CreateFieldUsingFactories(param);
+                
+                // 如果工厂未创建字段，使用默认方法创建
+                if (field == null)
+                {
+                    field = param.CreateFormField();
+                }
+                else
+                {
+                    // 工厂创建的字段，检查type是否为null，如果为null则补充默认类型
+                    if (field["type"] == null || string.IsNullOrEmpty(field["type"]?.ToString()))
+                    {
+                        var fieldType = param.ParameterType.GetFormFieldType();
+                        if (!string.IsNullOrEmpty(fieldType))
+                        {
+                            field["type"] = fieldType;
+                            
+                            // 补充类型特定的配置（如枚举的选项）
+                            AddTypeSpecificConfig(param.ParameterType, field);
+                        }
+                    }
+                }
+                
                 if (field != null)
                 {
                     field = ApplyAiEnhancement(field, param);
@@ -309,6 +332,21 @@ namespace CodeSpirit.Amis.Form
                     field = ApplyAiEnhancement(field, prop);
                 }
             }
+            else
+            {
+                // 工厂创建的字段，检查type是否为null，如果为null则补充默认类型
+                if (field["type"] == null || string.IsNullOrEmpty(field["type"]?.ToString()))
+                {
+                    var fieldType = prop.PropertyType.GetFormFieldType();
+                    if (!string.IsNullOrEmpty(fieldType))
+                    {
+                        field["type"] = fieldType;
+                        
+                        // 补充类型特定的配置（如枚举的选项）
+                        AddTypeSpecificConfig(prop.PropertyType, field);
+                    }
+                }
+            }
             
             return field;
         }
@@ -332,6 +370,28 @@ namespace CodeSpirit.Amis.Form
             }
             
             return field;
+        }
+
+        /// <summary>
+        /// 为字段添加类型特定的配置（如枚举选项、日期格式等）
+        /// </summary>
+        /// <param name="type">字段类型</param>
+        /// <param name="field">字段配置</param>
+        private void AddTypeSpecificConfig(Type type, JObject field)
+        {
+            if (type == null || field == null) return;
+
+            // 为枚举类型添加选项
+            if (type.IsEnumType())
+            {
+                field["options"] = type.GetEnumOptions();
+            }
+
+            // 为日期类型添加格式
+            if (type.IsDateType())
+            {
+                field["format"] = "YYYY-MM-DD";
+            }
         }
 
         /// <summary>

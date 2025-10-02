@@ -301,6 +301,211 @@ namespace CodeSpirit.IdentityApi.Migrations.MySql
                     b.ToTable("AuditLogs");
                 });
 
+            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.Department", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<long?>("ManagerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<long?>("ParentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_Department_IsActive");
+
+                    b.HasIndex("ManagerId")
+                        .HasDatabaseName("IX_Department_ManagerId");
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("IX_Department_ParentId");
+
+                    b.HasIndex("TenantId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Department_TenantId_Code");
+
+                    b.ToTable("Department", (string)null);
+                });
+
+            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.Employee", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime?>("BirthDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DepartmentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("EmergencyContact")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("EmergencyPhone")
+                        .HasMaxLength(15)
+                        .HasColumnType("varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("EmployeeNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<int>("EmploymentStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Gender")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("HireDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("IdNo")
+                        .HasMaxLength(18)
+                        .HasColumnType("varchar(18) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("JobLevel")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(15)
+                        .HasColumnType("varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("Position")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime?>("TerminationDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId")
+                        .HasDatabaseName("IX_Employee_DepartmentId");
+
+                    b.HasIndex("EmploymentStatus")
+                        .HasDatabaseName("IX_Employee_EmploymentStatus");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_Employee_IsActive");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_Employee_UserId");
+
+                    b.HasIndex("TenantId", "EmployeeNo")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Employee_TenantId_EmployeeNo");
+
+                    b.HasIndex("TenantId", "IdNo")
+                        .HasDatabaseName("IX_Employee_TenantId_IdNo")
+                        .HasFilter("[IdNo] IS NOT NULL");
+
+                    b.ToTable("Employee", (string)null);
+                });
+
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.LoginLog", b =>
                 {
                     b.Property<int>("Id")
@@ -648,6 +853,40 @@ namespace CodeSpirit.IdentityApi.Migrations.MySql
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.Department", b =>
+                {
+                    b.HasOne("CodeSpirit.IdentityApi.Data.Models.Employee", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CodeSpirit.IdentityApi.Data.Models.Department", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Manager");
+
+                    b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.Employee", b =>
+                {
+                    b.HasOne("CodeSpirit.IdentityApi.Data.Models.Department", "Department")
+                        .WithMany("Employees")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Department");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.LoginLog", b =>
                 {
                     b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", "User")
@@ -726,6 +965,13 @@ namespace CodeSpirit.IdentityApi.Migrations.MySql
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", b =>
                 {
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.Department", b =>
+                {
+                    b.Navigation("Children");
+
+                    b.Navigation("Employees");
                 });
 #pragma warning restore 612, 618
         }

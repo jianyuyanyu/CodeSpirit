@@ -70,6 +70,16 @@ namespace CodeSpirit.IdentityApi.Data
         public DbSet<AuditLog> AuditLogs { get; set; }
 
         /// <summary>
+        /// 部门信息实体集
+        /// </summary>
+        public DbSet<Department> Departments { get; set; }
+
+        /// <summary>
+        /// 职工信息实体集
+        /// </summary>
+        public DbSet<Employee> Employees { get; set; }
+
+        /// <summary>
         /// 获取当前用户ID
         /// </summary>
         protected long? CurrentUserId => this.UserId ?? _currentUser?.Id;
@@ -328,6 +338,87 @@ namespace CodeSpirit.IdentityApi.Data
                 // 索引 ExpiresAt，便于查询过期租户
                 entity.HasIndex(t => t.ExpiresAt)
                       .HasDatabaseName("IX_Tenants_ExpiresAt");
+            });
+
+            // 配置 Department 实体
+            builder.Entity<Department>(entity =>
+            {
+                entity.ToTable(nameof(Department));
+                entity.Property(d => d.Id).ValueGeneratedNever();
+
+                // 租户感知的部门编码复合唯一索引：同一租户内部门编码唯一
+                entity.HasIndex(d => new { d.TenantId, d.Code })
+                    .IsUnique()
+                    .HasDatabaseName("IX_Department_TenantId_Code");
+
+                // 索引 ParentId，提高查询子部门的性能
+                entity.HasIndex(d => d.ParentId)
+                    .HasDatabaseName("IX_Department_ParentId");
+
+                // 索引 ManagerId，提高查询负责人的性能
+                entity.HasIndex(d => d.ManagerId)
+                    .HasDatabaseName("IX_Department_ManagerId");
+
+                // 索引 IsActive，提高按状态过滤的性能
+                entity.HasIndex(d => d.IsActive)
+                    .HasDatabaseName("IX_Department_IsActive");
+
+                // 配置自引用关系
+                entity.HasOne(d => d.Parent)
+                    .WithMany(d => d.Children)
+                    .HasForeignKey(d => d.ParentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // 配置与职工的关系（负责人）
+                entity.HasOne(d => d.Manager)
+                    .WithMany()
+                    .HasForeignKey(d => d.ManagerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // 配置 Employee 实体
+            builder.Entity<Employee>(entity =>
+            {
+                entity.ToTable(nameof(Employee));
+                entity.Property(e => e.Id).ValueGeneratedNever();
+
+                // 租户感知的工号复合唯一索引：同一租户内工号唯一
+                entity.HasIndex(e => new { e.TenantId, e.EmployeeNo })
+                    .IsUnique()
+                    .HasDatabaseName("IX_Employee_TenantId_EmployeeNo");
+
+                // 索引 DepartmentId，提高查询部门员工的性能
+                entity.HasIndex(e => e.DepartmentId)
+                    .HasDatabaseName("IX_Employee_DepartmentId");
+
+                // 索引 UserId，提高查询用户关联的性能
+                entity.HasIndex(e => e.UserId)
+                    .HasDatabaseName("IX_Employee_UserId");
+
+                // 索引 IsActive，提高按状态过滤的性能
+                entity.HasIndex(e => e.IsActive)
+                    .HasDatabaseName("IX_Employee_IsActive");
+
+                // 索引 EmploymentStatus，提高按在职状态过滤的性能
+                entity.HasIndex(e => e.EmploymentStatus)
+                    .HasDatabaseName("IX_Employee_EmploymentStatus");
+
+                // 索引 IdNo，提高按身份证查询的性能
+                entity.HasIndex(e => new { e.TenantId, e.IdNo })
+                    .HasDatabaseName("IX_Employee_TenantId_IdNo")
+                    .HasFilter("[IdNo] IS NOT NULL");
+
+                // 配置与部门的关系
+                entity.HasOne(e => e.Department)
+                    .WithMany(d => d.Employees)
+                    .HasForeignKey(e => e.DepartmentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // 配置与用户的关系
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             ConfigureGlobalFiltersOnModelCreating(builder);

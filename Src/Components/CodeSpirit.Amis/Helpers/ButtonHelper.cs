@@ -201,7 +201,7 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         // 创建"新增"按钮
-        public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null, DialogSize dialogSize = DialogSize.MD, string customActions = null)
+        public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null, DialogSize dialogSize = DialogSize.MD, string customActions = null, MethodInfo method = null)
         {
             // 如果没有指定size，则使用dialogSize参数
             string dialogSizeString = size ?? ConvertDialogSizeToString(dialogSize);
@@ -218,7 +218,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["url"] = route.ApiPath,
                         ["method"] = route.HttpMethod
                     },
-                    ["controls"] = new JArray(GetFormFieldsWithAiSupport(formParameters))
+                    ["controls"] = new JArray(GetFormFieldsWithAiSupport(formParameters, method))
                 },
             };
 
@@ -246,7 +246,7 @@ namespace CodeSpirit.Amis.Helpers
         }
 
         // 创建"编辑"按钮
-        public JObject CreateEditButton(ApiRouteInfo updateRoute, IEnumerable<ParameterInfo> updateParameters, DialogSize dialogSize = DialogSize.MD)
+        public JObject CreateEditButton(ApiRouteInfo updateRoute, IEnumerable<ParameterInfo> updateParameters, DialogSize dialogSize = DialogSize.MD, MethodInfo method = null)
         {
             string title = "编辑";
             string dialogSizeString = ConvertDialogSizeToString(dialogSize);
@@ -263,7 +263,7 @@ namespace CodeSpirit.Amis.Helpers
                         ["url"] = updateRoute.ApiPath,
                         ["method"] = updateRoute.HttpMethod
                     },
-                    ["controls"] = new JArray(GetFormFieldsWithAiSupport(updateParameters))
+                    ["controls"] = new JArray(GetFormFieldsWithAiSupport(updateParameters, method))
                 }
             };
             return CreateButton(title, "dialog", dialogOrDrawer: drawerBody, dialogSize: dialogSize);
@@ -1199,7 +1199,7 @@ namespace CodeSpirit.Amis.Helpers
                 var paramTypes = parameters.Select(p => p.ParameterType.Name).ToArray();
                 Console.WriteLine($"[ButtonHelper调试] 方法参数类型: [{string.Join(", ", paramTypes)}]");
 
-                // 查找带有 AiFormFillAttribute 的参数类型
+                // 首先查找带有 AiFormFillAttribute 的参数类型
                 var inputDtoParam = parameters.FirstOrDefault(p =>
                 {
                     var aiAttr = p.ParameterType.GetCustomAttribute<AiFormFillAttribute>();
@@ -1212,22 +1212,36 @@ namespace CodeSpirit.Amis.Helpers
                     dtoType = inputDtoParam.ParameterType;
                     Console.WriteLine($"[ButtonHelper调试] 找到AI输入DTO: {dtoType.Name}");
                 }
-
-                if (dtoType == null)
+                else
                 {
-                    Console.WriteLine($"[ButtonHelper调试] 未找到合适的输入DTO类型");
+                    // 如果没有 AI 特性，尝试查找带有 FormGroupAttribute 的复杂类型参数
+                    // 这样可以确保表单项组功能仍然生效
+                    var complexParam = parameters.FirstOrDefault(p => 
+                        p.ParameterType.IsClass && 
+                        p.ParameterType != typeof(string) &&
+                        p.ParameterType.HasFormGroups());
+                    
+                    if (complexParam != null)
+                    {
+                        dtoType = complexParam.ParameterType;
+                        Console.WriteLine($"[ButtonHelper调试] 找到带表单项组的DTO: {dtoType.Name}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[ButtonHelper调试] 未找到带AI特性或表单项组的DTO类型");
+                    }
                 }
             }
 
-            // 只有当找到输入DTO类型时才启用AI支持
+            // 如果找到了DTO类型（有AI特性或有表单项组），使用带类型的方法以支持完整功能
             if (dtoType != null)
             {
-                Console.WriteLine($"[ButtonHelper调试] 使用AI支持的表单字段生成，DTO类型: {dtoType.Name}");
+                Console.WriteLine($"[ButtonHelper调试] 使用完整功能的表单字段生成，DTO类型: {dtoType.Name}");
                 return formFieldHelper.GetAmisFormFieldsFromParameters(parameters, dtoType);
             }
 
-            // 否则使用原有方法（不启用AI填充）
-            Console.WriteLine("[ButtonHelper调试] 使用原有方法（不启用AI填充）");
+            // 否则使用原有方法（不启用AI填充和表单项组）
+            Console.WriteLine("[ButtonHelper调试] 使用原有方法（不启用AI填充和表单项组）");
             return formFieldHelper.GetAmisFormFieldsFromParameters(parameters);
         }
 

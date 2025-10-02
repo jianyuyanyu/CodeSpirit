@@ -31,6 +31,7 @@ public class PdfGenerationService : IPdfGenerationService
     /// </summary>
     /// <param name="options">PDF生成选项</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="browserPoolLogger">浏览器池日志记录器</param>
     public PdfGenerationService(
         PdfGenerationOptions options,
         ILogger<PdfGenerationService> logger,

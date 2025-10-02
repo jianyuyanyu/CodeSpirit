@@ -48,7 +48,38 @@ public class BrowserPool : IAsyncDisposable
         if (string.IsNullOrEmpty(_options.ExecutablePath))
         {
             _logger.LogInformation("未指定浏览器路径，正在下载浏览器...");
-            await new BrowserFetcher().DownloadAsync();
+            
+            // 使用 BrowserFetcher 下载浏览器，带重试机制
+            var retryCount = 0;
+            var maxRetries = 3;
+            
+            while (retryCount < maxRetries)
+            {
+                try
+                {
+                    var browserFetcher = new BrowserFetcher();
+                    
+                    // 确保浏览器已下载 (PuppeteerSharp 13.x 会自动检查是否已下载)
+                    _logger.LogInformation("正在确保 Chromium 浏览器已下载...");
+                    await browserFetcher.DownloadAsync();
+                    _logger.LogInformation("Chromium 浏览器准备就绪");
+                    
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    retryCount++;
+                    _logger.LogWarning(ex, "下载浏览器失败 (尝试 {RetryCount}/{MaxRetries})", retryCount, maxRetries);
+                    
+                    if (retryCount >= maxRetries)
+                    {
+                        _logger.LogError("下载浏览器失败，已达到最大重试次数");
+                        throw;
+                    }
+                    
+                    await Task.Delay(TimeSpan.FromSeconds(2));
+                }
+            }
         }
         
         // 预热浏览器池
@@ -57,8 +88,18 @@ public class BrowserPool : IAsyncDisposable
         {
             initTasks.Add(Task.Run(async () =>
             {
-                var browser = _pool.Get();
-                _pool.Return(browser);
+                try
+                {
+                    _logger.LogDebug("正在预热浏览器实例 {Index}...", i + 1);
+                    var browser = _pool.Get();
+                    _pool.Return(browser);
+                    _logger.LogDebug("浏览器实例 {Index} 预热完成", i + 1);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "预热浏览器实例 {Index} 失败", i + 1);
+                    throw;
+                }
                 await Task.CompletedTask;
             }));
         }
@@ -168,13 +209,30 @@ public class BrowserPool : IAsyncDisposable
                     launchOptions.ExecutablePath = _options.ExecutablePath;
                 }
                 
+                // 构建启动参数列表
+                var args = launchOptions.Args?.ToList() ?? new List<string>();
+                
                 // 如果指定了内存限制，则设置内存限制
                 if (_options.BrowserMemoryLimit.HasValue)
                 {
-                    var args = launchOptions.Args?.ToList() ?? new List<string>();
                     args.Add($"--js-flags=--max-old-space-size={_options.BrowserMemoryLimit}");
-                    launchOptions.Args = args.ToArray();
                 }
+                
+                // 在 Windows 环境下添加用户数据目录，避免权限问题
+                if (OperatingSystem.IsWindows())
+                {
+                    var userDataDir = Path.Combine(Path.GetTempPath(), "puppeteer_dev_chrome_profile");
+                    if (!Directory.Exists(userDataDir))
+                    {
+                        Directory.CreateDirectory(userDataDir);
+                        _logger.LogInformation("创建用户数据目录: {UserDataDir}", userDataDir);
+                    }
+                    args.Add($"--user-data-dir={userDataDir}");
+                }
+                
+                launchOptions.Args = args.ToArray();
+                
+                _logger.LogDebug("浏览器启动参数: {Args}", string.Join(" ", launchOptions.Args));
                 
                 return Puppeteer.LaunchAsync(launchOptions).GetAwaiter().GetResult();
             }

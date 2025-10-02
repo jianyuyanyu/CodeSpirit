@@ -4,6 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Aspire.Hosting.Elasticsearch;
 using System.Text;
+using CodeSpirit.AppHost.Configuration;
+using CodeSpirit.AppHost.Extensions;
+
+// 抑制实验性 API 警告 - WithDeploymentImageTag 是 Aspire 9.5 的实验性功能
+#pragma warning disable ASPIREEXP001
 
 /// <summary>
 /// Aspire应用宿主程序入口点
@@ -17,10 +22,16 @@ Console.OutputEncoding = Encoding.UTF8;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
+// === 创建集中的参数管理 ===
+var parameters = AppParameters.Create(builder);
+
+// === 基础设施服务 ===
+
 // 添加 Redis 缓存服务
 var cache = builder.AddRedis("cache")
                    .WithLifetime(ContainerLifetime.Persistent)
                    .WithHostPort(6380)  // 修改为安全端口范围
+                   // .WithDeploymentImageTag(_ => $"redis-7.0-alpine") // Aspire 9.5 实验性功能
                    .WithRedisCommander((op) =>
                    {
                        op
@@ -35,20 +46,18 @@ var seqService = builder.AddSeq("seq")
                     .WithImageTag("2024.3")
                  .WithDataVolume()
                  .WithLifetime(ContainerLifetime.Persistent)
+                 // .WithDeploymentImageTag(_ => $"seq-2024.3") // Aspire 9.5 实验性功能
                  //.WithHttpEndpoint(port: 5341, targetPort: 80, name: "seq-ui")
                  .WithUrlForEndpoint("seq", url => url.DisplayLocation = UrlDisplayLocation.SummaryAndDetails)
                  .WithEnvironment("ACCEPT_EULA", "Y")
                  .WithUrlForEndpoint("seq-ui", url =>
                      url.DisplayText = "Seq 日志界面");
 
-// 添加 RabbitMQ 服务的用户名和密码参数
-var rabbitmqUser = builder.AddParameter("rabbitmq-username", "admin");
-var rabbitmqPass = builder.AddParameter("rabbitmq-password", "Password123", secret: true);
-
-// 添加 RabbitMQ 服务 (在9.3中可能尚未支持WithUserName方法，使用旧方式)
-var rabbitmqService = builder.AddRabbitMQ("rabbitmq", rabbitmqUser, rabbitmqPass)
+// 添加 RabbitMQ 服务
+var rabbitmqService = builder.AddRabbitMQ("rabbitmq", parameters.RabbitMq.Username, parameters.RabbitMq.Password)
                      .WithManagementPlugin()
                      .WithLifetime(ContainerLifetime.Persistent)
+                     // .WithDeploymentImageTag(_ => $"rabbitmq-3.13-management") // Aspire 9.5 实验性功能
                      .WithUrlForEndpoint("management", url =>
                      {
                          url.DisplayText = "RabbitMQ 管理界面";
@@ -76,8 +85,10 @@ var greptimedbService = builder.AddContainer("greptimedb", "greptime/greptimedb"
                               //.WithHttpEndpoint(port: 4002, targetPort: 4002, name: "greptimedb-mysql")
                               //.WithHttpEndpoint(port: 4003, targetPort: 4003, name: "greptimedb-postgres")
                               .WithLifetime(ContainerLifetime.Persistent)
-                              .WithEnvironment("GREPTIME_OPTS", "--log-level=info")
-                              ;
+                              // .WithDeploymentImageTag(_ => $"greptimedb-v0.9.5") // Aspire 9.5 实验性功能
+                              .WithEnvironment("GREPTIME_OPTS", "--log-level=info");
+
+// === 数据库配置 ===
 
 // 获取数据库类型配置
 var databaseType = builder.Configuration.GetValue<string>("DatabaseType") ?? "MySql";
@@ -90,13 +101,11 @@ if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
 {
     Console.WriteLine("配置MySQL数据库资源...");
 
-    // 添加MySQL密码参数
-    var mysqlPassword = builder.AddParameter("mysql-password", "Password123", secret: true);
-
     // 添加MySQL服务器 - 使用默认端口3306
-    var mysql = builder.AddMySql("mysql", password: mysqlPassword, port: 3306)
+    var mysql = builder.AddMySql("mysql", password: parameters.Database.MySqlPassword!, port: 3306)
                        .WithLifetime(ContainerLifetime.Persistent)
                        .WithDataVolume()
+                       // .WithDeploymentImageTag(_ => $"mysql-8.0") // Aspire 9.5 实验性功能
                        .WithPhpMyAdmin();
 
     // 创建各个数据库
@@ -114,11 +123,10 @@ else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
     Console.WriteLine("配置SQL Server数据库资源...");
 
     // 添加SQL Server服务器
-    var sqlServerPassword = builder.AddParameter("sqlserver-password", "P@ssword123456", secret: true);
-    var sqlServer = builder.AddSqlServer("sqlserver", password: sqlServerPassword, port: 1433)
+    var sqlServer = builder.AddSqlServer("sqlserver", password: parameters.Database.SqlServerPassword!, port: 1433)
                            .WithLifetime(ContainerLifetime.Persistent)
-                           .WithDataVolume()
-                           ;
+                           .WithDataVolume();
+                           // .WithDeploymentImageTag(_ => $"sqlserver-2022-latest"); // Aspire 9.5 实验性功能
 
     // 创建各个数据库
     identityDb = sqlServer.AddDatabase("identity-api");
@@ -135,230 +143,124 @@ else
     throw new InvalidOperationException($"不支持的数据库类型: {databaseType}");
 }
 
-// 添加统一的JWT配置参数
-var jwtSecretKey = builder.AddParameter(name: "jwt-SecretKey", "ECBF8FA013844D77AE041A6800D7FF8F", secret: true);
-var jwtIssuer = builder.AddParameter(name: "jwt-Issuer", "codespirit.com");
-var jwtAudience = builder.AddParameter(name: "jwt-Audience", "CodeSpirit");
+// === 添加 API 服务 ===
 
-// 添加统一的LLM配置参数
-var llmApiKey = builder.AddParameter(name: "llm-ApiKey", secret: true);
-var llmApiBaseUrl = builder.AddParameter(name: "llm-ApiBaseUrl", "https://dashscope.aliyuncs.com/compatible-mode/v1");
-var llmModelName = builder.AddParameter(name: "llm-ModelName", "qwen-plus");
-var llmTimeoutSeconds = builder.AddParameter(name: "llm-TimeoutSeconds", "120");
-var llmMaxTokens = builder.AddParameter(name: "llm-MaxTokens", "2048");
-var llmUseProxy = builder.AddParameter(name: "llm-UseProxy", "false");
-var llmProxyAddress = builder.AddParameter(name: "llm-ProxyAddress", "", secret: false);
-
-// 添加AI表单填充专用LLM配置参数
-var aiFormFillLlmApiKey = builder.AddParameter(name: "ai-form-fill-llm-ApiKey", secret: true);
-var aiFormFillLlmApiBaseUrl = builder.AddParameter(name: "ai-form-fill-llm-ApiBaseUrl", "https://dashscope.aliyuncs.com/compatible-mode/v1");
-var aiFormFillLlmModelName = builder.AddParameter(name: "ai-form-fill-llm-ModelName", "qwen-flash");
-var aiFormFillLlmDisableThinking = builder.AddParameter(name: "ai-form-fill-llm-DisableThinking", "true");
-var aiFormFillLlmResponseFormatType = builder.AddParameter(name: "ai-form-fill-llm-ResponseFormatType", "json_object");
-var aiFormFillLlmTemperature = builder.AddParameter(name: "ai-form-fill-llm-Temperature", "0.1");
-var aiFormFillLlmTopP = builder.AddParameter(name: "ai-form-fill-llm-TopP", "0.9");
-var aiFormFillLlmEnableStreaming = builder.AddParameter(name: "ai-form-fill-llm-EnableStreaming", "true");
-
-// 添加 ConfigCenter 服务
+// 添加 ConfigCenter 服务（第一个服务，没有依赖其他 API）
 var configService = builder.AddProject<Projects.CodeSpirit_ConfigCenter>("config")
     .WithReference(configDb)
     .WithReference(seqService)
     .WithReference(cache)
     .WithEnvironment("DatabaseType", databaseType)
-    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
-    .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience)
-    .WithEnvironment("LLM__ApiKey", llmApiKey)
-    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
-    .WithEnvironment("LLM__ModelName", llmModelName)
-    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
-    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
-    .WithEnvironment("LLM__UseProxy", llmUseProxy)
-    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
-    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
-    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
-    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
-    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
-    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
-    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
-    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
-    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
-    .WaitFor(configDb);
+    .WithJwtConfiguration(parameters.Jwt.SecretKey, parameters.Jwt.Issuer, parameters.Jwt.Audience)
+    .WithLlmConfiguration(
+        parameters.Llm.ApiKey,
+        parameters.Llm.ApiBaseUrl,
+        parameters.Llm.ModelName,
+        parameters.Llm.TimeoutSeconds,
+        parameters.Llm.MaxTokens,
+        parameters.Llm.UseProxy,
+        parameters.Llm.ProxyAddress)
+    .WithAiFormFillLlmConfiguration(
+        parameters.AiFormFillLlm.ApiKey,
+        parameters.AiFormFillLlm.ApiBaseUrl,
+        parameters.AiFormFillLlm.ModelName,
+        parameters.AiFormFillLlm.DisableThinking,
+        parameters.AiFormFillLlm.ResponseFormatType,
+        parameters.AiFormFillLlm.Temperature,
+        parameters.AiFormFillLlm.TopP,
+        parameters.AiFormFillLlm.EnableStreaming)
+    .WaitFor(configDb)
+    .WithHealthCheck()
+    .WithEnvironmentAwareDeploymentTag("config", () => "2.0.0");
 
-var identityService = builder.AddProject<Projects.CodeSpirit_IdentityApi>("identity")
-    .WithReference(identityDb)
+// 添加 IdentityService 服务
+var identityService = builder.AddStandardApiService<Projects.CodeSpirit_IdentityApi>(
+        name: "identity",
+        database: identityDb,
+        parameters: parameters,
+        cache: cache,
+        rabbitmqService: rabbitmqService,
+        identityService: null!, // 第一个身份服务，传入 null
+        databaseType: databaseType)
     .WithReference(seqService)
-    .WithReference(cache)
     .WithReference(configService)
-    .WithReference(rabbitmqService)
-    .WithEnvironment("DatabaseType", databaseType)
-    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
-    .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience)
-    .WithEnvironment("LLM__ApiKey", llmApiKey)
-    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
-    .WithEnvironment("LLM__ModelName", llmModelName)
-    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
-    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
-    .WithEnvironment("LLM__UseProxy", llmUseProxy)
-    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
-    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
-    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
-    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
-    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
-    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
-    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
-    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
-    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
-    .WaitFor(identityDb);
+    .WithHealthCheck()
+    .WithEnvironmentAwareDeploymentTag("identity", () => "2.1.0");
 
 // 添加消息服务
-var messagingService = builder.AddProject<Projects.CodeSpirit_MessagingApi>("messaging")
-    .WithReference(messagingDb)
+var messagingService = builder.AddStandardApiService<Projects.CodeSpirit_MessagingApi>(
+        name: "messaging",
+        database: messagingDb,
+        parameters: parameters,
+        cache: cache,
+        rabbitmqService: rabbitmqService,
+        identityService: identityService,
+        databaseType: databaseType)
     .WithReference(seqService)
-    .WithReference(cache)
     .WithReference(configService)
-    .WithReference(identityService)
-    .WithEnvironment("DatabaseType", databaseType)
-    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
-    .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience)
-    .WithEnvironment("LLM__ApiKey", llmApiKey)
-    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
-    .WithEnvironment("LLM__ModelName", llmModelName)
-    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
-    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
-    .WithEnvironment("LLM__UseProxy", llmUseProxy)
-    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
-    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
-    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
-    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
-    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
-    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
-    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
-    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
-    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
-    .WaitFor(messagingDb);
+    .WithHealthCheck()
+    .WithEnvironmentAwareDeploymentTag("messaging", () => "2.0.0");
 
-var examService = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam")
-    .WithReference(examDb)
-    .WithReference(settingsDb)  // 考试服务需要访问设置数据库
+// 添加考试服务（需要访问设置数据库）
+var examService = builder.AddStandardApiService<Projects.CodeSpirit_ExamApi>(
+        name: "exam",
+        database: examDb,
+        parameters: parameters,
+        cache: cache,
+        rabbitmqService: rabbitmqService,
+        identityService: identityService,
+        databaseType: databaseType,
+        settingsDb: settingsDb)  // 考试服务需要访问设置数据库
     .WithReference(seqService)
-    .WithReference(cache)
     .WithReference(configService)
-    .WithReference(rabbitmqService)
-    .WithReference(identityService)
-    .WithEnvironment("DatabaseType", databaseType)
-    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
-    .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience)
-    .WithEnvironment("LLM__ApiKey", llmApiKey)
-    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
-    .WithEnvironment("LLM__ModelName", llmModelName)
-    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
-    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
-    .WithEnvironment("LLM__UseProxy", llmUseProxy)
-    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
-    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
-    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
-    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
-    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
-    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
-    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
-    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
-    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
-    .WaitFor(examDb)
-    .WaitFor(settingsDb);
+    .WithHealthCheck()
+    .WithEnvironmentAwareDeploymentTag("exam", () => "2.0.0");
 
-var fileService = builder.AddProject<Projects.CodeSpirit_FileStorageApi>("file")
-    .WithReference(fileDb)
+// 添加文件存储服务
+var fileService = builder.AddStandardApiService<Projects.CodeSpirit_FileStorageApi>(
+        name: "file",
+        database: fileDb,
+        parameters: parameters,
+        cache: cache,
+        rabbitmqService: rabbitmqService,
+        identityService: identityService,
+        databaseType: databaseType)
     .WithReference(seqService)
-    .WithReference(cache)
     .WithReference(configService)
-    .WithReference(rabbitmqService)
-    .WithReference(identityService)
-    .WithEnvironment("DatabaseType", databaseType)
-    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
-    .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience)
-    .WithEnvironment("LLM__ApiKey", llmApiKey)
-    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
-    .WithEnvironment("LLM__ModelName", llmModelName)
-    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
-    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
-    .WithEnvironment("LLM__UseProxy", llmUseProxy)
-    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
-    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
-    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
-    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
-    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
-    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
-    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
-    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
-    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
-    .WaitFor(fileDb);
+    .WithHealthCheck()
+    .WithEnvironmentAwareDeploymentTag("file", () => "2.0.0");
 
-var surveyService = builder.AddProject<Projects.CodeSpirit_SurveyApi>("survey")
-    .WithReference(surveyDb)
-    .WithReference(settingsDb)
+// 添加问卷调查服务（需要访问设置数据库）
+var surveyService = builder.AddStandardApiService<Projects.CodeSpirit_SurveyApi>(
+        name: "survey",
+        database: surveyDb,
+        parameters: parameters,
+        cache: cache,
+        rabbitmqService: rabbitmqService,
+        identityService: identityService,
+        databaseType: databaseType,
+        settingsDb: settingsDb)  // 问卷调查服务需要访问设置数据库
     .WithReference(seqService)
-    .WithReference(cache)
     .WithReference(configService)
-    .WithReference(rabbitmqService)
-    .WithReference(identityService)
-    .WithEnvironment("DatabaseType", databaseType)
-    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
-    .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience)
-    .WithEnvironment("LLM__ApiKey", llmApiKey)
-    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
-    .WithEnvironment("LLM__ModelName", llmModelName)
-    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
-    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
-    .WithEnvironment("LLM__UseProxy", llmUseProxy)
-    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
-    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
-    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
-    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
-    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
-    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
-    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
-    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
-    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
-    .WaitFor(surveyDb)
-    .WaitFor(settingsDb);
+    .WithHealthCheck()
+    .WithEnvironmentAwareDeploymentTag("survey", () => "2.0.0");
 
-// 添加审批服务
-var approvalService = builder.AddProject<Projects.CodeSpirit_ApprovalApi>("approval")
-    .WithReference(approvalDb)
-    .WithReference(settingsDb)
+// 添加审批服务（需要访问设置数据库）
+var approvalService = builder.AddStandardApiService<Projects.CodeSpirit_ApprovalApi>(
+        name: "approval",
+        database: approvalDb,
+        parameters: parameters,
+        cache: cache,
+        rabbitmqService: rabbitmqService,
+        identityService: identityService,
+        databaseType: databaseType,
+        settingsDb: settingsDb)  // 审批服务需要访问设置数据库
     .WithReference(seqService)
-    .WithReference(cache)
     .WithReference(configService)
-    .WithReference(rabbitmqService)
-    .WithReference(identityService)
-    .WithEnvironment("DatabaseType", databaseType)
-    .WithEnvironment("Jwt__SecretKey", jwtSecretKey)
-    .WithEnvironment("Jwt__Issuer", jwtIssuer)
-    .WithEnvironment("Jwt__Audience", jwtAudience)
-    .WithEnvironment("LLM__ApiKey", llmApiKey)
-    .WithEnvironment("LLM__ApiBaseUrl", llmApiBaseUrl)
-    .WithEnvironment("LLM__ModelName", llmModelName)
-    .WithEnvironment("LLM__TimeoutSeconds", llmTimeoutSeconds)
-    .WithEnvironment("LLM__MaxTokens", llmMaxTokens)
-    .WithEnvironment("LLM__UseProxy", llmUseProxy)
-    .WithEnvironment("LLM__ProxyAddress", llmProxyAddress)
-    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
-    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
-    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
-    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
-    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
-    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
-    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
-    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
-    .WaitFor(approvalDb)
-    .WaitFor(settingsDb);
+    .WithHealthCheck()
+    .WithEnvironmentAwareDeploymentTag("approval", () => "2.0.0");
 
+// 添加 Web 前端应用
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
     .WithReference(cache)
@@ -372,14 +274,15 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(surveyService)
     .WithReference(approvalService)
     .WithEnvironment("DatabaseType", databaseType)
-    .WithEnvironment("AiFormFillLLM__ApiKey", aiFormFillLlmApiKey)
-    .WithEnvironment("AiFormFillLLM__ApiBaseUrl", aiFormFillLlmApiBaseUrl)
-    .WithEnvironment("AiFormFillLLM__ModelName", aiFormFillLlmModelName)
-    .WithEnvironment("AiFormFillLLM__DisableThinking", aiFormFillLlmDisableThinking)
-    .WithEnvironment("AiFormFillLLM__ResponseFormatType", aiFormFillLlmResponseFormatType)
-    .WithEnvironment("AiFormFillLLM__Temperature", aiFormFillLlmTemperature)
-    .WithEnvironment("AiFormFillLLM__TopP", aiFormFillLlmTopP)
-    .WithEnvironment("AiFormFillLLM__EnableStreaming", aiFormFillLlmEnableStreaming)
+    .WithAiFormFillLlmConfiguration(
+        parameters.AiFormFillLlm.ApiKey,
+        parameters.AiFormFillLlm.ApiBaseUrl,
+        parameters.AiFormFillLlm.ModelName,
+        parameters.AiFormFillLlm.DisableThinking,
+        parameters.AiFormFillLlm.ResponseFormatType,
+        parameters.AiFormFillLlm.Temperature,
+        parameters.AiFormFillLlm.TopP,
+        parameters.AiFormFillLlm.EnableStreaming)
     .WithEnvironment("Audit__StorageProvider", "GreptimeDB")
     .WithEnvironment("Audit__GreptimeDB__Url", greptimedbService.GetEndpoint("greptimedb-http"))
     .WithEnvironment("Audit__GreptimeDB__Database", "audit_logs")
@@ -389,12 +292,8 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     {
         url.DisplayText = "Web 前端";
     })
-    .WithUrlForEndpoint("https", ep => new()
-    {
-        Url = "/health",
-        DisplayText = "健康检查",
-        DisplayLocation = UrlDisplayLocation.DetailsOnly
-    })
+    .WithHealthCheck()
+    .WithEnvironmentAwareDeploymentTag("webfrontend", () => "2.0.0")
     .WaitFor(greptimedbService);
 
 // 注册资源初始化事件，需要提供CancellationToken参数

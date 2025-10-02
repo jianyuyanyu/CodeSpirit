@@ -31,7 +31,11 @@ public class PdfGenerationOptions
         "--disable-gpu",
         "--no-first-run",
         "--no-zygote",
-        "--single-process"
+        "--single-process",
+        "--disable-features=RendererCodeIntegrity",  // Windows ICU 问题修复
+        "--disable-blink-features=AutomationControlled",
+        "--disable-features=IsolateOrigins,site-per-process",
+        "--disable-web-security"
     };
     
     /// <summary>

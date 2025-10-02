@@ -378,7 +378,7 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             var countSql = $"SELECT COUNT(*) as total FROM {tableName} {whereClause}";
             var countResult = await ExecuteQueryAsync(countSql);
             var totalValue = countResult.FirstOrDefault()?.GetValueOrDefault("total", 0L) ?? 0L;
-            var total = Convert.ToInt64(totalValue);
+            var total = ConvertToInt64(totalValue);
             
             // 分页查询
             var offset = (query.Page - 1) * query.PerPage;
@@ -465,7 +465,7 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             foreach (var result in results)
             {
                 var operationType = result.GetValueOrDefault("operation_type", "").ToString() ?? "";
-                var count = Convert.ToInt64(result.GetValueOrDefault("count", 0L));
+                var count = ConvertToInt64(result.GetValueOrDefault("count", 0L));
                 stats[operationType] = count;
             }
             
@@ -510,7 +510,7 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             foreach (var result in results)
             {
                 var userName = result.GetValueOrDefault("user_name", "").ToString() ?? "";
-                var count = Convert.ToInt64(result.GetValueOrDefault("count", 0L));
+                var count = ConvertToInt64(result.GetValueOrDefault("count", 0L));
                 stats[userName] = count;
             }
             
@@ -559,8 +559,8 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             
             foreach (var result in results)
             {
-                var timeBucket = Convert.ToDateTime(result.GetValueOrDefault("time_bucket", DateTime.MinValue));
-                var count = Convert.ToInt64(result.GetValueOrDefault("count", 0L));
+                var timeBucket = ConvertToDateTime(result.GetValueOrDefault("time_bucket", 0L));
+                var count = ConvertToInt64(result.GetValueOrDefault("count", 0L));
                 trend[timeBucket] = count;
             }
             

@@ -67,7 +67,6 @@ namespace CodeSpirit.IdentityApi.Data
         /// </summary>
         public IDataFilter DataFilter { get; private set; }
 
-        public DbSet<AuditLog> AuditLogs { get; set; }
 
         /// <summary>
         /// 部门信息实体集

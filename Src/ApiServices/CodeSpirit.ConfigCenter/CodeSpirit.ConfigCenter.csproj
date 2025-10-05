@@ -29,6 +29,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
 		<ProjectReference Include="..\..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.Audit\CodeSpirit.Audit.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj" />
 	</ItemGroup>

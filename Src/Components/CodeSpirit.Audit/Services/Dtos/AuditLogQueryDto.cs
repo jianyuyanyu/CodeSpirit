@@ -58,10 +58,72 @@ public class AuditLogQueryDto : QueryDtoBase
     [StringLength(50, ErrorMessage = "操作类型长度不能超过50个字符")]
     public string OperationType { get; set; } = string.Empty;
     
+    /// <summary>
+    /// HTTP请求方法
+    /// </summary>
+    [DisplayName("请求方法")]
+    [StringLength(10, ErrorMessage = "请求方法长度不能超过10个字符")]
+    public string RequestMethod { get; set; } = string.Empty;
+    
     
     /// <summary>
     /// 是否成功
     /// </summary>
     [DisplayName("是否成功")]
     public bool? IsSuccess { get; set; }
+    
+    /// <summary>
+    /// 操作名称（模糊搜索）
+    /// </summary>
+    [DisplayName("操作名称")]
+    [StringLength(200, ErrorMessage = "操作名称长度不能超过200个字符")]
+    public string OperationName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 控制器名称（模糊搜索）
+    /// </summary>
+    [DisplayName("控制器")]
+    [StringLength(100, ErrorMessage = "控制器名称长度不能超过100个字符")]
+    public string ApiController { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 实体名称
+    /// </summary>
+    [DisplayName("实体名称")]
+    [StringLength(100, ErrorMessage = "实体名称长度不能超过100个字符")]
+    public string EntityName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 操作交互类型
+    /// </summary>
+    [DisplayName("交互类型")]
+    [StringLength(20, ErrorMessage = "交互类型长度不能超过20个字符")]
+    public string OperationActionType { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 是否批量操作
+    /// </summary>
+    [DisplayName("批量操作")]
+    public bool? IsBulkOperation { get; set; }
+    
+    /// <summary>
+    /// HTTP状态码
+    /// </summary>
+    [DisplayName("HTTP状态码")]
+    [Range(100, 599, ErrorMessage = "HTTP状态码必须在100-599之间")]
+    public int? StatusCode { get; set; }
+    
+    /// <summary>
+    /// 最小执行时长(毫秒)
+    /// </summary>
+    [DisplayName("最小执行时长")]
+    [Range(0, long.MaxValue, ErrorMessage = "执行时长必须大于等于0")]
+    public long? MinExecutionDuration { get; set; }
+    
+    /// <summary>
+    /// 最大执行时长(毫秒)
+    /// </summary>
+    [DisplayName("最大执行时长")]
+    [Range(0, long.MaxValue, ErrorMessage = "执行时长必须大于等于0")]
+    public long? MaxExecutionDuration { get; set; }
 } 

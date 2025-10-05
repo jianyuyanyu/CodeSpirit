@@ -43,6 +43,11 @@ public static class AuditExtensions
         // 获取存储提供者类型
         var storageProvider = auditConfig.GetValue<string>("StorageProvider") ?? "Elasticsearch";
         
+        // 添加调试日志来确认配置
+        Console.WriteLine($"[审计配置] 存储提供者: {storageProvider}");
+        Console.WriteLine($"[审计配置] 配置节存在: {(auditConfig as IConfigurationSection)?.Exists() ?? true}");
+        Console.WriteLine($"[审计配置] 所有配置键: {string.Join(", ", auditConfig.AsEnumerable().Select(kv => kv.Key))}");
+        
         // 注册RabbitMQ服务
         services.AddSingleton<IRabbitMQService, RabbitMQService>();
         
@@ -50,6 +55,7 @@ public static class AuditExtensions
         switch (storageProvider.ToLowerInvariant())
         {
             case "greptimedb":
+                Console.WriteLine("[审计配置] 使用GreptimeDB存储提供者，跳过Elasticsearch服务注册");
                 // 注册GreptimeDB存储服务
                 services.AddHttpClient<GreptimeDbAuditStorageService>();
                 services.AddScoped<IAuditStorageService>(provider =>
@@ -65,10 +71,19 @@ public static class AuditExtensions
                 
                 // 注册GreptimeDB初始化服务，确保在应用启动时主动初始化数据库
                 services.AddHostedService<GreptimeDbInitializationService>();
+                
+                // 注册一个空的Elasticsearch服务实现，防止依赖注入错误
+                services.AddSingleton<IElasticsearchService>(provider =>
+                {
+                    var logger = provider.GetRequiredService<ILogger<ElasticsearchService>>();
+                    var configuration = provider.GetRequiredService<IConfiguration>();
+                    return new ElasticsearchService(logger, configuration);
+                });
                 break;
             
             case "elasticsearch":
             default:
+                Console.WriteLine("[审计配置] 使用Elasticsearch存储提供者");
                 // 注册Elasticsearch服务（默认）
                 services.AddSingleton<IElasticsearchService, ElasticsearchService>();
                 services.AddScoped<IAuditStorageService>(provider =>
@@ -160,5 +175,23 @@ public static class AuditExtensions
     public static IApplicationBuilder UseAudit(this IApplicationBuilder app)
     {
         return UseAuditMiddleware(app);
+    }
+    
+    /// <summary>
+    /// 添加审计元数据过滤器
+    /// 用于分布式环境中，通过响应头传递审计元数据给Web项目
+    /// </summary>
+    /// <param name="builder">MVC构建器</param>
+    /// <returns>MVC构建器</returns>
+    public static IMvcBuilder AddAuditMetadataFilter(this IMvcBuilder builder)
+    {
+        builder.Services.AddScoped<Filters.AuditMetadataFilter>();
+        
+        builder.AddMvcOptions(options =>
+        {
+            options.Filters.Add<Filters.AuditMetadataFilter>();
+        });
+        
+        return builder;
     }
 }

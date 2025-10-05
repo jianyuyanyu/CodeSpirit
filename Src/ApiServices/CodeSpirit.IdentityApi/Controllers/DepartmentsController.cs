@@ -7,6 +7,8 @@ using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
+using CodeSpirit.Audit.Attributes;
+using CodeSpirit.IdentityApi.Data.Models;
 
 namespace CodeSpirit.IdentityApi.Controllers;
 
@@ -15,6 +17,7 @@ namespace CodeSpirit.IdentityApi.Controllers;
 /// </summary>
 [DisplayName("部门管理")]
 [Navigation(Icon = "fa-solid fa-sitemap", PlatformType = PlatformType.Tenant)]
+[Audit(EntityName = nameof(Department), LogRequestParams = true, LogResponseData = true)] // 👈 添加审计特性，设置默认行为
 public class DepartmentsController : ApiControllerBase
 {
     private readonly IDepartmentService _departmentService;
@@ -70,6 +73,7 @@ public class DepartmentsController : ApiControllerBase
     /// </summary>
     [HttpPost]
     [DisplayName("创建部门")]
+    [Audit("创建新部门", AuditOperationType.Create)]  // 👈 添加明确的审计特性
     public async Task<ActionResult<ApiResponse<DepartmentDto>>> CreateDepartment(CreateDepartmentDto createDto)
     {
         var department = await _departmentService.CreateAsync(createDto);
@@ -81,6 +85,7 @@ public class DepartmentsController : ApiControllerBase
     /// </summary>
     [HttpPut("{id}")]
     [DisplayName("更新部门")]
+    [Audit("更新部门信息", AuditOperationType.Update)]  // 👈 添加明确的审计特性
     public async Task<ActionResult<ApiResponse>> UpdateDepartment(long id, UpdateDepartmentDto updateDto)
     {
         await _departmentService.UpdateAsync(id, updateDto);

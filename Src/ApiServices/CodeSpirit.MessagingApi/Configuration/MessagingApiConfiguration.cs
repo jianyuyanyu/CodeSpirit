@@ -1,3 +1,4 @@
+using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Messaging;
 using CodeSpirit.Messaging.Data;
 using CodeSpirit.Messaging.Extensions;
@@ -75,6 +76,22 @@ public class MessagingApiConfiguration : BaseApiConfiguration
                 options.PayloadSerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
                 options.PayloadSerializerSettings.NullValueHandling = NullValueHandling.Ignore;
             });
+        
+        // 配置控制器和审计元数据过滤器
+        ConfigureControllersWithAudit(services, configuration);
+    }
+    
+    /// <summary>
+    /// 配置控制器和审计元数据过滤器
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    private static void ConfigureControllersWithAudit(IServiceCollection services, IConfiguration configuration)
+    {
+        // 审计元数据过滤器将通过AddAuditMetadataFilter自动注册
+        
+        // 添加审计元数据过滤器到控制器
+        services.AddControllers().AddAuditMetadataFilter();
     }
     
     /// <summary>

@@ -17,7 +17,7 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.7")
+                .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -235,72 +235,6 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .HasDatabaseName("IX_ApplicationUserRole_UserId_RoleId_TenantId");
 
                     b.ToTable("ApplicationUserRole", (string)null);
-                });
-
-            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.AuditLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<decimal>("Duration")
-                        .HasColumnType("decimal(18,4)");
-
-                    b.Property<DateTime>("EventTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Headers")
-                        .HasColumnType("ntext");
-
-                    b.Property<string>("IpAddress")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Method")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("QueryString")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<string>("RequestBody")
-                        .HasColumnType("ntext");
-
-                    b.Property<string>("ResponseBody")
-                        .HasColumnType("ntext");
-
-                    b.Property<int>("StatusCode")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TenantId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<long?>("UserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.Department", b =>

@@ -36,6 +36,7 @@
         <ProjectReference Include="..\..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
         <ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
         <ProjectReference Include="..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
+        <ProjectReference Include="..\..\Components\CodeSpirit.Audit\CodeSpirit.Audit.csproj" />
         <ProjectReference Include="..\..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
     </ItemGroup>
 

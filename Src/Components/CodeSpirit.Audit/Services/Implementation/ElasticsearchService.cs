@@ -40,6 +40,18 @@ public class ElasticsearchService : IElasticsearchService
     {
         _logger = logger;
         
+        // 检查是否配置为使用GreptimeDB存储提供者
+        var storageProvider = configuration.GetSection("Audit").GetValue<string>("StorageProvider");
+        if (string.Equals(storageProvider, "GreptimeDB", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("审计配置为使用GreptimeDB存储提供者，跳过Elasticsearch客户端初始化");
+            // 创建一个空的配置选项，避免后续操作出错
+            _options = new ElasticsearchOptions();
+            // 创建一个虚拟客户端，不进行实际连接
+            _client = CreateDummyClient();
+            return;
+        }
+        
         // 使用配置助手简化配置绑定
         _options = ConfigurationHelper.BindElasticsearchOptions(configuration);
         
@@ -54,6 +66,36 @@ public class ElasticsearchService : IElasticsearchService
             // 回退到手动创建客户端
             _client = CreateManualClient();
             _logger.LogInformation("使用手动配置的Elasticsearch客户端");
+        }
+    }
+    
+    /// <summary>
+    /// 检查是否为GreptimeDB模式
+    /// </summary>
+    private bool IsGreptimeDbMode()
+    {
+        // 如果_options的Urls为空或者只包含dummy地址，说明是GreptimeDB模式
+        return _options?.Urls == null || 
+               !_options.Urls.Any() || 
+               _options.Urls.Any(url => url.Contains("dummy"));
+    }
+    
+    /// <summary>
+    /// 创建虚拟Elasticsearch客户端（用于GreptimeDB模式）
+    /// </summary>
+    private ElasticsearchClient CreateDummyClient()
+    {
+        try
+        {
+            // 创建一个不会实际连接的虚拟客户端
+            var settings = new ElasticsearchClientSettings(new Uri("http://dummy:9200"));
+            return new ElasticsearchClient(settings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "创建虚拟Elasticsearch客户端失败，这在GreptimeDB模式下是正常的");
+            // 如果连虚拟客户端都创建失败，返回null，后续方法需要处理null情况
+            return null!;
         }
     }
     
@@ -136,6 +178,13 @@ public class ElasticsearchService : IElasticsearchService
     /// </summary>
     public async Task<bool> CreateIndexAsync()
     {
+        // 如果是GreptimeDB模式，直接返回true
+        if (IsGreptimeDbMode())
+        {
+            _logger.LogDebug("GreptimeDB模式下跳过Elasticsearch索引创建");
+            return true;
+        }
+        
         try
         {
             // 检查索引是否存在
@@ -200,6 +249,13 @@ public class ElasticsearchService : IElasticsearchService
     /// </summary>
     public async Task<bool> IndexExistsAsync()
     {
+        // 如果是GreptimeDB模式，直接返回false
+        if (IsGreptimeDbMode())
+        {
+            _logger.LogDebug("GreptimeDB模式下跳过Elasticsearch索引存在检查");
+            return false;
+        }
+        
         try
         {
             var existsResponse = await _client.Indices.ExistsAsync(GetFinalIndexName());
@@ -217,6 +273,13 @@ public class ElasticsearchService : IElasticsearchService
     /// </summary>
     public async Task<bool> IndexDocumentAsync<T>(T document) where T : class
     {
+        // 如果是GreptimeDB模式，直接返回true
+        if (IsGreptimeDbMode())
+        {
+            _logger.LogDebug("GreptimeDB模式下跳过Elasticsearch文档索引");
+            return true;
+        }
+        
         try
         {
             // 确保索引存在
@@ -250,6 +313,13 @@ public class ElasticsearchService : IElasticsearchService
     /// </summary>
     public async Task<bool> BulkIndexAsync<T>(IEnumerable<T> documents) where T : class
     {
+        // 如果是GreptimeDB模式，直接返回true
+        if (IsGreptimeDbMode())
+        {
+            _logger.LogDebug("GreptimeDB模式下跳过Elasticsearch批量文档索引");
+            return true;
+        }
+        
         try
         {
             if (!documents.Any())

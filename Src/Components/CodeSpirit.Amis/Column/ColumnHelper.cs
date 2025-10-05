@@ -23,6 +23,7 @@ namespace CodeSpirit.Amis.Column
         private readonly AmisContext amisContext;
         private readonly ButtonHelper buttonHelper;
         private readonly LongTextColumnHandler _longTextHandler;
+        private readonly StatusColumnHandler _statusColumnHandler;
 
         /// <summary>
         /// 初始化 <see cref="ColumnHelper"/> 的新实例。
@@ -38,6 +39,7 @@ namespace CodeSpirit.Amis.Column
             this.amisContext = amisContext;
             this.buttonHelper = buttonHelper;
             _longTextHandler = new LongTextColumnHandler();
+            _statusColumnHandler = new StatusColumnHandler();
         }
 
         /// <summary>
@@ -112,10 +114,12 @@ namespace CodeSpirit.Amis.Column
         /// <returns>AMIS 表格列的 JSON 对象。</returns>
         private JObject CreateAmisColumn(PropertyInfo prop)
         {
-            // 获取属性的显示名称，优先使用 DisplayNameAttribute
-            string displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase();
-            // 将属性名称转换为 camelCase 以符合 AMIS 的命名约定
-            string fieldName = prop.Name.ToCamelCase();
+            try
+            {
+                // 获取属性的显示名称，优先使用 DisplayNameAttribute
+                string displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase();
+                // 将属性名称转换为 camelCase 以符合 AMIS 的命名约定
+                string fieldName = prop.Name.ToCamelCase();
 
             JObject column = new()
             {
@@ -136,6 +140,7 @@ namespace CodeSpirit.Amis.Column
             AmisColumnAttribute columnAttr = (AmisColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(AmisColumnAttribute));
             if (columnAttr != null)
             {
+                
                 if (!string.IsNullOrEmpty(columnAttr.Name))
                 {
                     column["name"] = columnAttr.Name;
@@ -193,6 +198,14 @@ namespace CodeSpirit.Amis.Column
                 // 但是 EachColumnAttribute 需要特殊处理，不能早期返回
                 if (!string.IsNullOrEmpty(columnAttr.Type) && !(columnAttr is EachColumnAttribute))
                 {
+                    // 在早期返回之前，先处理状态映射
+                    if (columnAttr.Type == "status" || 
+                        columnAttr.StatusMapping != StatusMapping.None || 
+                        !string.IsNullOrEmpty(columnAttr.CustomStatusMap))
+                    {
+                        _statusColumnHandler.ApplyStatusColumnConfiguration(column, prop);
+                    }
+                    
                     // 如果是主键，依然需要隐藏该列
                     if (IsPrimaryKey(prop))
                     {
@@ -278,7 +291,7 @@ namespace CodeSpirit.Amis.Column
                 // 应用AmisColumnAttribute的配置（如果有的话）
                 if (columnAttr != null)
                 {
-                    ApplyAmisColumnAttributeToColumn(tagsColumn, columnAttr);
+                    ApplyAmisColumnAttributeToColumn(tagsColumn, columnAttr, prop);
                 }
 
                 // 如果是主键，依然需要隐藏该列
@@ -298,7 +311,7 @@ namespace CodeSpirit.Amis.Column
                 // 应用AmisColumnAttribute的配置（如果有的话）
                 if (columnAttr != null)
                 {
-                    ApplyAmisColumnAttributeToColumn(stringArrayColumn, columnAttr);
+                    ApplyAmisColumnAttributeToColumn(stringArrayColumn, columnAttr, prop);
                 }
 
                 // 如果是主键，依然需要隐藏该列
@@ -502,14 +515,10 @@ namespace CodeSpirit.Amis.Column
                 }
             }
 
-            // 处理状态类字段的映射
-            if (prop.Name.IndexOf("Status", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                prop.Name.IndexOf("State", StringComparison.OrdinalIgnoreCase) >= 0)
+            // 处理状态列
+            if (_statusColumnHandler.IsStatusColumn(prop))
             {
-                if (numericUnderlyingType == typeof(string))
-                {
-                    column["type"] = "status";
-                }
+                _statusColumnHandler.ApplyStatusColumnConfiguration(column, prop);
             }
 
             // 处理链接字段
@@ -614,10 +623,25 @@ namespace CodeSpirit.Amis.Column
             // 最后再次应用AmisColumnAttribute的配置（确保覆盖所有自动推断的设置）
             if (columnAttr != null)
             {
-                ApplyAmisColumnAttributeToColumn(column, columnAttr);
+                ApplyAmisColumnAttributeToColumn(column, columnAttr, prop);
             }
 
-            return column;
+                return column;
+            }
+            catch (Exception)
+            {
+                // 返回一个基本的列配置
+                return new JObject
+                {
+                    ["name"] = prop.Name.ToCamelCase(),
+                    ["label"] = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase(),
+                    ["sortable"] = false,
+                    ["type"] = "text",
+                    ["quickEdit"] = false,
+                    ["copyable"] = false,
+                    ["hidden"] = false
+                };
+            }
         }
 
         /// <summary>
@@ -1442,7 +1466,8 @@ namespace CodeSpirit.Amis.Column
         /// </summary>
         /// <param name="column">列对象</param>
         /// <param name="columnAttr">AmisColumnAttribute特性</param>
-        private void ApplyAmisColumnAttributeToColumn(JObject column, AmisColumnAttribute columnAttr)
+        /// <param name="prop">属性信息</param>
+        private void ApplyAmisColumnAttributeToColumn(JObject column, AmisColumnAttribute columnAttr, PropertyInfo prop)
         {
             if (!string.IsNullOrEmpty(columnAttr.Name))
             {
@@ -1502,7 +1527,20 @@ namespace CodeSpirit.Amis.Column
                     ["colors"] = new JArray(columnAttr.BackgroundScaleColors)
                 };
             }
+
+            // 处理状态映射配置
+            // 如果明确设置了 Type = "status" 或者配置了状态映射，则应用状态映射
+            if (columnAttr.Type == "status" || 
+                columnAttr.StatusMapping != StatusMapping.None || 
+                !string.IsNullOrEmpty(columnAttr.CustomStatusMap))
+            {
+                _statusColumnHandler.ApplyStatusColumnConfiguration(column, prop);
+            }
         }
+
+
+
+
 
         /// <summary>
         /// 判断属性是否为时长字段

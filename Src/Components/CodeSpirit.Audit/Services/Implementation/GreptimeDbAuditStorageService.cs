@@ -106,6 +106,7 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                     operation_type STRING,
                     description STRING,
                     request_path STRING,
+                    request_method STRING,
                     request_params TEXT,
                     execution_duration BIGINT,
                     is_success BOOLEAN,
@@ -116,6 +117,8 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                     user_agent TEXT,
                     operation_name STRING,
                     tenant_id STRING,
+                    additional_data TEXT,
+                    attribute_properties TEXT,
                     PRIMARY KEY (audit_id)
                 )";
             
@@ -160,12 +163,21 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
         try
         {
             var tableName = GetFinalTableName();
+            // 序列化AdditionalData和AttributeProperties为JSON
+            var additionalDataJson = auditLog.AdditionalData?.Count > 0 
+                ? JsonConvert.SerializeObject(auditLog.AdditionalData) 
+                : "";
+            var attributePropertiesJson = auditLog.AttributeProperties?.Count > 0 
+                ? JsonConvert.SerializeObject(auditLog.AttributeProperties) 
+                : "";
+
             var insertSql = $@"
                 INSERT INTO {tableName} (
                     audit_id, user_id, user_name, ip_address, operation_time,
-                    operation_type, description, request_path, request_params,
+                    operation_type, description, request_path, request_method, request_params,
                     execution_duration, is_success, error_message, status_code,
-                    before_data, after_data, user_agent, operation_name, tenant_id
+                    before_data, after_data, user_agent, operation_name, tenant_id,
+                    additional_data, attribute_properties
                 ) VALUES (
                     '{EscapeSqlString(auditLog.Id)}',
                     '{EscapeSqlString(auditLog.UserId)}',
@@ -175,6 +187,7 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                     '{EscapeSqlString(auditLog.OperationType)}',
                     '{EscapeSqlString(auditLog.Description)}',
                     '{EscapeSqlString(auditLog.RequestPath)}',
+                    '{EscapeSqlString(auditLog.RequestMethod)}',
                     '{EscapeSqlString(auditLog.RequestParams)}',
                     {auditLog.ExecutionDuration},
                     {auditLog.IsSuccess.ToString().ToLower()},
@@ -184,7 +197,9 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                     '{EscapeSqlString(auditLog.AfterData)}',
                     '{EscapeSqlString(auditLog.UserAgent)}',
                     '{EscapeSqlString(auditLog.OperationName)}',
-                    '{EscapeSqlString(auditLog.TenantId ?? GetCurrentTenantId() ?? "")}'
+                    '{EscapeSqlString(auditLog.TenantId ?? GetCurrentTenantId() ?? "")}',
+                    '{EscapeSqlString(additionalDataJson)}',
+                    '{EscapeSqlString(attributePropertiesJson)}'
                 )";
             
             var success = await ExecuteSqlAsync(insertSql);
@@ -237,6 +252,14 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                         valuesBuilder.Append(",");
                     }
                     
+                    // 序列化AdditionalData和AttributeProperties为JSON
+                    var additionalDataJson = log.AdditionalData?.Count > 0 
+                        ? JsonConvert.SerializeObject(log.AdditionalData) 
+                        : "";
+                    var attributePropertiesJson = log.AttributeProperties?.Count > 0 
+                        ? JsonConvert.SerializeObject(log.AttributeProperties) 
+                        : "";
+                    
                     valuesBuilder.Append($@"
                         ('{EscapeSqlString(log.Id)}',
                          '{EscapeSqlString(log.UserId)}',
@@ -246,6 +269,7 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                          '{EscapeSqlString(log.OperationType)}',
                          '{EscapeSqlString(log.Description)}',
                          '{EscapeSqlString(log.RequestPath)}',
+                         '{EscapeSqlString(log.RequestMethod)}',
                          '{EscapeSqlString(log.RequestParams)}',
                          {log.ExecutionDuration},
                          {log.IsSuccess.ToString().ToLower()},
@@ -255,15 +279,18 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                          '{EscapeSqlString(log.AfterData)}',
                          '{EscapeSqlString(log.UserAgent)}',
                          '{EscapeSqlString(log.OperationName)}',
-                         '{EscapeSqlString(tenantId)}')");
+                         '{EscapeSqlString(tenantId)}',
+                         '{EscapeSqlString(additionalDataJson)}',
+                         '{EscapeSqlString(attributePropertiesJson)}')");
                 }
                 
                 var insertSql = $@"
                     INSERT INTO {tableName} (
                         audit_id, user_id, user_name, ip_address, operation_time,
-                        operation_type, description, request_path, request_params,
+                        operation_type, description, request_path, request_method, request_params,
                         execution_duration, is_success, error_message, status_code,
-                        before_data, after_data, user_agent, operation_name, tenant_id
+                        before_data, after_data, user_agent, operation_name, tenant_id,
+                        additional_data, attribute_properties
                     ) VALUES {valuesBuilder}";
                 
                 var success = await ExecuteSqlAsync(insertSql);
@@ -362,6 +389,11 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             if (!string.IsNullOrEmpty(query.OperationType))
             {
                 whereConditions.Add($"operation_type = '{EscapeSqlString(query.OperationType)}'");
+            }
+            
+            if (!string.IsNullOrEmpty(query.RequestMethod))
+            {
+                whereConditions.Add($"request_method = '{EscapeSqlString(query.RequestMethod)}'");
             }
             
             if (query.IsSuccess.HasValue)
@@ -1214,6 +1246,7 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             "OperationType" => "operation_type",
             "Description" => "description",
             "RequestPath" => "request_path",
+            "RequestMethod" => "request_method",
             "ExecutionDuration" => "execution_duration",
             "IsSuccess" => "is_success",
             "StatusCode" => "status_code",
@@ -1221,12 +1254,13 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
         };
     }
     
+    
     /// <summary>
     /// 将查询结果映射为AuditLog对象
     /// </summary>
     private AuditLog MapToAuditLog(Dictionary<string, object> record)
     {
-        return new AuditLog
+        var auditLog = new AuditLog
         {
             Id = record.GetValueOrDefault("audit_id", "").ToString() ?? "",
             UserId = record.GetValueOrDefault("user_id", "").ToString() ?? "",
@@ -1236,6 +1270,7 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             OperationType = record.GetValueOrDefault("operation_type", "").ToString() ?? "",
             Description = record.GetValueOrDefault("description", "").ToString() ?? "",
             RequestPath = record.GetValueOrDefault("request_path", "").ToString() ?? "",
+            RequestMethod = record.GetValueOrDefault("request_method", "").ToString() ?? "",
             RequestParams = record.GetValueOrDefault("request_params", "").ToString() ?? "",
             ExecutionDuration = ConvertToInt64(record.GetValueOrDefault("execution_duration", 0L)),
             IsSuccess = ConvertToBoolean(record.GetValueOrDefault("is_success", true)),
@@ -1247,6 +1282,61 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
             OperationName = record.GetValueOrDefault("operation_name", "").ToString() ?? "",
             TenantId = record.GetValueOrDefault("tenant_id", "").ToString() ?? ""
         };
+
+        // 反序列化AdditionalData
+        var additionalDataJson = record.GetValueOrDefault("additional_data", "").ToString();
+        if (!string.IsNullOrEmpty(additionalDataJson))
+        {
+            try
+            {
+                // 检查是否包含损坏的JsonElement数据
+                if (additionalDataJson.Contains("\"ValueKind\""))
+                {
+                    _logger.LogWarning("检测到损坏的历史数据，跳过反序列化。记录ID: {AuditId}, 操作时间: {OperationTime}, 表名: {TableName}, JSON: {Json}", 
+                        auditLog.Id, auditLog.OperationTime, GetFinalTableName(), additionalDataJson);
+                    auditLog.AdditionalData = new Dictionary<string, object>();
+                    return auditLog;
+                }
+                
+                // 使用Newtonsoft.Json反序列化
+                auditLog.AdditionalData = JsonConvert.DeserializeObject<Dictionary<string, object>>(additionalDataJson) 
+                    ?? new Dictionary<string, object>();
+                    
+                _logger.LogDebug("成功反序列化AdditionalData，包含 {Count} 个字段", auditLog.AdditionalData.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "反序列化AdditionalData失败: {Json}", additionalDataJson);
+                auditLog.AdditionalData = new Dictionary<string, object>();
+            }
+        }
+
+        // 反序列化AttributeProperties
+        var attributePropertiesJson = record.GetValueOrDefault("attribute_properties", "").ToString();
+        if (!string.IsNullOrEmpty(attributePropertiesJson))
+        {
+            try
+            {
+                // 检查是否包含损坏的JsonElement数据
+                if (attributePropertiesJson.Contains("\"ValueKind\""))
+                {
+                    _logger.LogWarning("检测到损坏的AttributeProperties历史数据，跳过反序列化: {Json}", attributePropertiesJson);
+                    auditLog.AttributeProperties = new Dictionary<string, string>();
+                }
+                else
+                {
+                    auditLog.AttributeProperties = JsonConvert.DeserializeObject<Dictionary<string, string>>(attributePropertiesJson) 
+                        ?? new Dictionary<string, string>();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "反序列化AttributeProperties失败: {Json}", attributePropertiesJson);
+                auditLog.AttributeProperties = new Dictionary<string, string>();
+            }
+        }
+
+        return auditLog;
     }
     
     /// <summary>

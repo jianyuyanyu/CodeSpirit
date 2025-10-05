@@ -1,11 +1,11 @@
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
-using System.Text.Json;
 using CodeSpirit.Audit.Models;
 using CodeSpirit.Audit.Helpers;
 using CodeSpirit.ServiceDefaults.Messaging;
 using System.Collections.Concurrent;
+using Newtonsoft.Json;
 
 namespace CodeSpirit.Audit.Services.Implementation;
 
@@ -20,7 +20,6 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     private readonly RabbitMQOptions _options;
     private readonly ConcurrentDictionary<string, IModel> _consumerChannels = new();
     private readonly object _subscriptionLock = new object();
-    private readonly JsonSerializerOptions _jsonOptions;
     
     // 线程安全的通道池
     private readonly ConcurrentQueue<IModel> _channelPool = new();
@@ -53,12 +52,6 @@ public class RabbitMQService : IRabbitMQService, IDisposable
         // 初始化通道池信号量
         _channelSemaphore = new SemaphoreSlim(_maxChannels, _maxChannels);
         
-        // 配置JSON序列化选项
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
-        };
         
         try
         {
@@ -206,7 +199,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
         
         try
         {
-            var json = JsonSerializer.Serialize(message, _jsonOptions);
+            var json = JsonConvert.SerializeObject(message);
             var body = Encoding.UTF8.GetBytes(json);
             
             _logger.LogDebug("准备发送消息，交换机: {Exchange}, 路由键: {RoutingKey}, 消息大小: {Size} bytes", 
@@ -336,7 +329,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                     try
                     {
                         _logger.LogDebug("开始反序列化消息...");
-                        var message = JsonSerializer.Deserialize<T>(json, _jsonOptions);
+                        var message = JsonConvert.DeserializeObject<T>(json);
                         if (message != null)
                         {
                             _logger.LogInformation("消息反序列化成功，开始处理...");

@@ -106,6 +106,13 @@ public class AuditLog : IMultiTenant
     [StringLength(500)]
     public string RequestPath { get; set; } = string.Empty;
     
+    /// <summary>
+    /// HTTP请求方法
+    /// </summary>
+    [DisplayName("HTTP请求方法")]
+    [StringLength(10)]
+    public string RequestMethod { get; set; } = string.Empty;
+    
     
     /// <summary>
     /// 请求参数

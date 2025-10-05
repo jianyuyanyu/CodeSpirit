@@ -2,8 +2,8 @@ using Audit.Core;
 using Audit.WebApi;
 using CodeSpirit.Aggregator;
 using CodeSpirit.AiFormFill;
+using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Charts.Extensions;
-using CodeSpirit.IdentityApi.Audit;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.EventHandlers;
@@ -18,7 +18,6 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql;
 
 
 namespace CodeSpirit.IdentityApi.Configuration;
@@ -110,8 +109,8 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         // 注册Charts服务
         RegisterChartServices(services);
         
-        // 配置审计
-        services.Configure<AuditConfig>(configuration.GetSection("Audit"));
+        
+        // 审计元数据过滤器将通过AddAuditMetadataFilter自动注册
         
         // 注册事件总线
         services.AddEventBus();
@@ -147,8 +146,7 @@ public class IdentityApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     public override Task ConfigurePreControllerMiddlewareAsync(WebApplication app)
     {
-        // 使用审计日志中间件（在控制器映射前）
-        app.UseAuditLogging();
+        // 审计中间件由网关层统一处理，API服务不需要使用
         
         return Task.CompletedTask;
     }
@@ -314,11 +312,7 @@ public class IdentityApiConfiguration : BaseApiConfiguration
     /// <param name="services">服务集合</param>
     private static void ConfigureCustomControllers(IServiceCollection services)
     {
-        //TODO:抽取独立的审计模块
-        // 配置审计
-        global::Audit.Core.Configuration.Setup()
-            .UseCustomProvider(new CustomAuditDataProvider(serviceProvider: services.BuildServiceProvider()))
-            .WithCreationPolicy(EventCreationPolicy.InsertOnEnd);
+        // 审计配置已由CodeSpirit.Audit组件统一处理
 
         services.ConfigureDefaultControllers((options) =>
         {
@@ -333,6 +327,11 @@ public class IdentityApiConfiguration : BaseApiConfiguration
                 .SerializeActionParameters()
             );
         });
+        
+        // 添加审计元数据过滤器，用于分布式环境中传递审计信息
+        // 注意：这里不能链式调用，因为ConfigureDefaultControllers返回的是IServiceCollection
+        // 需要使用AddControllers()来获取IMvcBuilder
+        services.AddControllers().AddAuditMetadataFilter();
     }
     
     /// <summary>

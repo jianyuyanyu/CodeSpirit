@@ -43,6 +43,7 @@ public static class CommonApiServiceExtensions
         
         // 控制器
         services.ConfigureDefaultControllers();
+        // 注意：审计元数据过滤器需要在各API项目的配置中单独添加：.AddAuditMetadataFilter()
         
         // 仓储模式
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

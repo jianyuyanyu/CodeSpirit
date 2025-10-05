@@ -1,5 +1,6 @@
 using CodeSpirit.Aggregator;
 using CodeSpirit.AiFormFill;
+using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Extensions;
@@ -77,6 +78,22 @@ public class ExamApiConfiguration : BaseApiConfiguration
         
         // 添加HTTP客户端服务
         services.AddHttpClient();
+        
+        // 配置控制器和审计元数据过滤器
+        ConfigureControllersWithAudit(services, configuration);
+    }
+    
+    /// <summary>
+    /// 配置控制器和审计元数据过滤器
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    private static void ConfigureControllersWithAudit(IServiceCollection services, IConfiguration configuration)
+    {
+        // 审计元数据过滤器将通过AddAuditMetadataFilter自动注册
+        
+        // 添加审计元数据过滤器到控制器
+        services.AddControllers().AddAuditMetadataFilter();
     }
     
     /// <summary>

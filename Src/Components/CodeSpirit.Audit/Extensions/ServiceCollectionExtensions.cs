@@ -47,12 +47,13 @@ public static class MultiTenantAuditExtensions
     }
     
     /// <summary>
-    /// 添加审计服务（包含多租户支持）
+    /// 添加审计服务（包含多租户支持）- 已弃用，请使用AuditExtensions.AddAuditServices
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置</param>
     /// <returns>服务集合</returns>
-    public static IServiceCollection AddAuditServices(this IServiceCollection services, IConfiguration configuration)
+    [Obsolete("此方法已弃用，请使用AuditExtensions.AddAuditServices，它支持GreptimeDB存储提供者")]
+    public static IServiceCollection AddLegacyAuditServices(this IServiceCollection services, IConfiguration configuration)
     {
         // 绑定配置
         var auditOptions = new AuditOptions();

@@ -6,8 +6,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Aspire.RabbitMQ.Client" Version="9.5.0" />
-		<PackageReference Include="Audit.WebApi.Core" Version="27.4.1" />
+		<PackageReference Include="Aspire.RabbitMQ.Client" Version="9.5.0" />		
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.2" />
 		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
 		<PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.0" />

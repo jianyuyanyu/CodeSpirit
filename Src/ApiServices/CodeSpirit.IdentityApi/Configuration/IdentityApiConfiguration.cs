@@ -1,5 +1,3 @@
-using Audit.Core;
-using Audit.WebApi;
 using CodeSpirit.Aggregator;
 using CodeSpirit.AiFormFill;
 using CodeSpirit.Audit.Extensions;
@@ -316,16 +314,7 @@ public class IdentityApiConfiguration : BaseApiConfiguration
 
         services.ConfigureDefaultControllers((options) =>
         {
-            // 修改审计过滤器配置
-            options.AddAuditFilter(config => config
-                .LogAllActions()
-                .WithEventType("{verb}.{controller}.{action}")
-                .IncludeHeaders(ctx => !ctx.ModelState.IsValid)
-                .IncludeRequestBody()
-                .IncludeResponseBody(ctx => ctx.HttpContext.Response.StatusCode != 200)
-                .IncludeModelState()
-                .SerializeActionParameters()
-            );
+            
         });
         
         // 添加审计元数据过滤器，用于分布式环境中传递审计信息

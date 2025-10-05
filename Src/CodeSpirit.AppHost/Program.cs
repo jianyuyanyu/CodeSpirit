@@ -296,12 +296,12 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithEnvironmentAwareDeploymentTag("webfrontend", () => "2.0.0")
     .WaitFor(greptimedbService);
 
-// 注册资源初始化事件，需要提供CancellationToken参数
-builder.Eventing.Subscribe<InitializeResourceEvent>((eventData, cancellationToken) =>
-{
-    Console.WriteLine($"资源初始化: {eventData.Resource.Name}");
-    return Task.CompletedTask;
-});
+//// 注册资源初始化事件，需要提供CancellationToken参数
+//builder.Eventing.Subscribe<InitializeResourceEvent>((eventData, cancellationToken) =>
+//{
+//    Console.WriteLine($"资源初始化: {eventData.Resource.Name}");
+//    return Task.CompletedTask;
+//});
 
 Console.WriteLine("审计存储：已配置GreptimeDB作为默认存储提供者");
 Console.WriteLine("正在启动应用...");

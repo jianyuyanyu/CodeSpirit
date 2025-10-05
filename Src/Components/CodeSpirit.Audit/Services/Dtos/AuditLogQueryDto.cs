@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Audit.Models;
 
 namespace CodeSpirit.Audit.Services.Dtos;
 
@@ -55,15 +56,13 @@ public class AuditLogQueryDto : QueryDtoBase
     /// 操作类型
     /// </summary>
     [DisplayName("操作类型")]
-    [StringLength(50, ErrorMessage = "操作类型长度不能超过50个字符")]
-    public string OperationType { get; set; } = string.Empty;
+    public AuditOperationTypeEnum? OperationType { get; set; }
     
     /// <summary>
     /// HTTP请求方法
     /// </summary>
     [DisplayName("请求方法")]
-    [StringLength(10, ErrorMessage = "请求方法长度不能超过10个字符")]
-    public string RequestMethod { get; set; } = string.Empty;
+    public HttpRequestMethod? RequestMethod { get; set; }
     
     
     /// <summary>
@@ -97,8 +96,7 @@ public class AuditLogQueryDto : QueryDtoBase
     /// 操作交互类型
     /// </summary>
     [DisplayName("交互类型")]
-    [StringLength(20, ErrorMessage = "交互类型长度不能超过20个字符")]
-    public string OperationActionType { get; set; } = string.Empty;
+    public OperationInteractionType? OperationActionType { get; set; }
     
     /// <summary>
     /// 是否批量操作
@@ -110,8 +108,14 @@ public class AuditLogQueryDto : QueryDtoBase
     /// HTTP状态码
     /// </summary>
     [DisplayName("HTTP状态码")]
+    public CommonHttpStatusCode? StatusCode { get; set; }
+    
+    /// <summary>
+    /// 自定义HTTP状态码（当StatusCode为null时使用）
+    /// </summary>
+    [DisplayName("自定义状态码")]
     [Range(100, 599, ErrorMessage = "HTTP状态码必须在100-599之间")]
-    public int? StatusCode { get; set; }
+    public int? CustomStatusCode { get; set; }
     
     /// <summary>
     /// 最小执行时长(毫秒)

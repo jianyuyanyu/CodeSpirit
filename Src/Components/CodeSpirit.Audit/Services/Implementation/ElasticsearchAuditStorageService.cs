@@ -148,9 +148,9 @@ public class ElasticsearchAuditStorageService : IAuditStorageService
             
             
             // 操作类型查询
-            if (!string.IsNullOrEmpty(query.OperationType))
+            if (query.OperationType.HasValue)
             {
-                queryFunctions.Add(AuditQueryHelper.CreateOperationQuery(query.OperationType));
+                queryFunctions.Add(AuditQueryHelper.CreateOperationQuery(query.OperationType.Value.ToString()));
             }
             
             

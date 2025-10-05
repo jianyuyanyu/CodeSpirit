@@ -35,8 +35,8 @@ public static class AuditLogMapping
         if (!string.IsNullOrEmpty(queryDto.TenantId))
             parameters["TenantId"] = queryDto.TenantId;
             
-        if (!string.IsNullOrEmpty(queryDto.OperationType))
-            parameters["OperationType"] = queryDto.OperationType;
+        if (queryDto.OperationType.HasValue)
+            parameters["OperationType"] = queryDto.OperationType.Value.ToString();
             
         if (queryDto.IsSuccess.HasValue)
             parameters["IsSuccess"] = queryDto.IsSuccess.Value;

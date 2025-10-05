@@ -100,8 +100,8 @@ public class AuditService : IAuditService
             
             if (!string.IsNullOrEmpty(query.UserId))
                 _logger.LogInformation("用户ID过滤: {UserId}", query.UserId);
-            if (!string.IsNullOrEmpty(query.OperationType))
-                _logger.LogInformation("操作类型过滤: {OperationType}", query.OperationType);
+            if (query.OperationType.HasValue)
+                _logger.LogInformation("操作类型过滤: {OperationType}", query.OperationType.Value);
             if (query.StartTime.HasValue || query.EndTime.HasValue)
                 _logger.LogInformation("时间范围: {StartTime} - {EndTime}", query.StartTime, query.EndTime);
             if (!string.IsNullOrEmpty(query.Keywords))
@@ -159,9 +159,9 @@ public class AuditService : IAuditService
         }
         
         // 操作类型查询
-        if (!string.IsNullOrEmpty(query.OperationType))
+        if (query.OperationType.HasValue)
         {
-            queries.Add(AuditQueryHelper.CreateOperationQuery(query.OperationType));
+            queries.Add(AuditQueryHelper.CreateOperationQuery(query.OperationType.Value.ToString()));
         }
         
         // 时间范围查询

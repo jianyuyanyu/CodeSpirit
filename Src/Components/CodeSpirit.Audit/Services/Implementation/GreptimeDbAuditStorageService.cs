@@ -386,19 +386,64 @@ public class GreptimeDbAuditStorageService : IAuditStorageService
                 whereConditions.Add($"operation_time <= '{query.EndTime.Value:yyyy-MM-dd HH:mm:ss}'");
             }
             
-            if (!string.IsNullOrEmpty(query.OperationType))
+            if (query.OperationType.HasValue)
             {
-                whereConditions.Add($"operation_type = '{EscapeSqlString(query.OperationType)}'");
+                whereConditions.Add($"operation_type = '{EscapeSqlString(query.OperationType.Value.ToString())}'");
             }
             
-            if (!string.IsNullOrEmpty(query.RequestMethod))
+            if (query.RequestMethod.HasValue)
             {
-                whereConditions.Add($"request_method = '{EscapeSqlString(query.RequestMethod)}'");
+                whereConditions.Add($"request_method = '{EscapeSqlString(query.RequestMethod.Value.ToString())}'");
             }
             
             if (query.IsSuccess.HasValue)
             {
                 whereConditions.Add($"is_success = {query.IsSuccess.Value.ToString().ToLower()}");
+            }
+            
+            // 添加其他查询条件
+            if (!string.IsNullOrEmpty(query.OperationName))
+            {
+                whereConditions.Add($"operation_name LIKE '%{EscapeSqlString(query.OperationName)}%'");
+            }
+            
+            if (!string.IsNullOrEmpty(query.ApiController))
+            {
+                whereConditions.Add($"api_controller LIKE '%{EscapeSqlString(query.ApiController)}%'");
+            }
+            
+            if (!string.IsNullOrEmpty(query.EntityName))
+            {
+                whereConditions.Add($"entity_name = '{EscapeSqlString(query.EntityName)}'");
+            }
+            
+            if (query.OperationActionType.HasValue)
+            {
+                whereConditions.Add($"operation_action_type = '{EscapeSqlString(query.OperationActionType.Value.ToString().ToLower())}'");
+            }
+            
+            if (query.IsBulkOperation.HasValue)
+            {
+                whereConditions.Add($"is_bulk_operation = {query.IsBulkOperation.Value.ToString().ToLower()}");
+            }
+            
+            if (query.StatusCode.HasValue)
+            {
+                whereConditions.Add($"status_code = {(int)query.StatusCode.Value}");
+            }
+            else if (query.CustomStatusCode.HasValue)
+            {
+                whereConditions.Add($"status_code = {query.CustomStatusCode.Value}");
+            }
+            
+            if (query.MinExecutionDuration.HasValue)
+            {
+                whereConditions.Add($"execution_duration >= {query.MinExecutionDuration.Value}");
+            }
+            
+            if (query.MaxExecutionDuration.HasValue)
+            {
+                whereConditions.Add($"execution_duration <= {query.MaxExecutionDuration.Value}");
             }
             
             var whereClause = whereConditions.Any() ? $"WHERE {string.Join(" AND ", whereConditions)}" : "";

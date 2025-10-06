@@ -4,6 +4,9 @@ using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.ExamApi.Services.Implementations;
+using CodeSpirit.Shared.Dtos.AI;
+using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
@@ -25,6 +28,8 @@ public class QuestionsController : ApiControllerBase
     private readonly ILogger<QuestionsController> _logger;
     private readonly IGeneratorNotificationService _notificationService;
     private readonly IDistributedCache _distributedCache;
+    private readonly QuestionAiGeneratorService _questionAiGeneratorService;
+    private readonly IAiTaskService _aiTaskService;
 
     /// <summary>
     /// 初始化题目管理控制器
@@ -34,24 +39,32 @@ public class QuestionsController : ApiControllerBase
     /// <param name="logger">日志记录器</param>
     /// <param name="notificationService">通知服务</param>
     /// <param name="distributedCache">分布式缓存</param>
+    /// <param name="questionAiGeneratorService">题目AI生成服务</param>
+    /// <param name="aiTaskService">AI任务服务</param>
     public QuestionsController(
         IQuestionService questionService,
         IAIQuestionGeneratorService aiQuestionGeneratorService,
         ILogger<QuestionsController> logger,
         IGeneratorNotificationService notificationService,
-        IDistributedCache distributedCache)
+        IDistributedCache distributedCache,
+        QuestionAiGeneratorService questionAiGeneratorService,
+        IAiTaskService aiTaskService)
     {
         ArgumentNullException.ThrowIfNull(questionService);
         ArgumentNullException.ThrowIfNull(aiQuestionGeneratorService);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(notificationService);
         ArgumentNullException.ThrowIfNull(distributedCache);
+        ArgumentNullException.ThrowIfNull(questionAiGeneratorService);
+        ArgumentNullException.ThrowIfNull(aiTaskService);
 
         _questionService = questionService;
         _aiQuestionGeneratorService = aiQuestionGeneratorService;
         _logger = logger;
         _notificationService = notificationService;
         _distributedCache = distributedCache;
+        _questionAiGeneratorService = questionAiGeneratorService;
+        _aiTaskService = aiTaskService;
     }
 
     /// <summary>
@@ -657,13 +670,52 @@ public class QuestionsController : ApiControllerBase
     //}
 
     /// <summary>
-    /// 使用AI生成并保存题目
+    /// 使用AI生成题目（新版本，基于aiForm）
+    /// </summary>
+    /// <param name="request">生成题目请求</param>
+    /// <returns>任务ID</returns>
+    [HttpPost("ai/generate-async")]
+    [HeaderOperation("AI题目生成", "aiForm",
+        Icon = "fa-solid fa-magic",
+        PollingInterval = 2000,
+        MaxPollingTime = 300000,
+        FormTitle = "题目生成配置",
+        StepsTitle = "AI生成进度",
+        LogTitle = "生成日志",
+        ResultTitle = "生成结果")]
+    [DisplayName("AI题目生成")]
+    public async Task<ActionResult<ApiResponse<object>>> GenerateQuestionsAsync([FromBody] AIGenerateQuestionDto request)
+    {
+        var taskId = await _questionAiGeneratorService.GenerateAsync(request);
+        return SuccessResponse<object>(new { taskId });
+    }
+
+    /// <summary>
+    /// 取消AI任务
+    /// </summary>
+    /// <param name="taskId">任务ID</param>
+    /// <returns>取消结果</returns>
+    [HttpPost("ai/cancel-task")]
+    [DisplayName("取消AI任务")]
+    public async Task<ActionResult<ApiResponse>> CancelTask([FromBody] string taskId)
+    {
+        if (string.IsNullOrEmpty(taskId))
+        {
+            return BadResponse("任务ID不能为空");
+        }
+
+        await _aiTaskService.CancelTaskAsync(taskId);
+        return SuccessResponse("任务已取消");
+    }
+
+    /// <summary>
+    /// 使用AI生成并保存题目（旧版本，保持兼容性）
     /// </summary>
     /// <param name="request">生成题目请求</param>
     /// <returns>保存结果</returns>
     [HttpPost("ai/generate-and-save")]
-    [DisplayName("AI题目生成")]
-    [HeaderOperation("AI题目生成", "link", "/Tasks/QuestionGeneration", null, Blank = true)]
+    [DisplayName("AI题目生成（旧版）")]
+    [HeaderOperation("AI题目生成（旧版）", "link", "/Tasks/QuestionGeneration", null, Blank = true)]
     public IActionResult GenerateQuestions()
     {
         try

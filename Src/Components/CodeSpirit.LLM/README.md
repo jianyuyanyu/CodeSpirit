@@ -4,12 +4,20 @@
 
 ## 🚀 功能特性
 
+### 核心功能
 - **支持多种大语言模型API**：OpenAI、阿里云灵积等
 - **统一的接口**：便于应用集成，一致的调用方式
 - **零配置使用**：默认使用配置文件，无需编写设置提供者
 - **流式响应处理**：支持流式响应，提升用户体验
 - **代理设置支持**：支持HTTP代理配置
 - **统一配置管理**：在Aspire主机中统一配置所有服务的LLM参数
+
+### 增强功能 🆕
+- **智能JSON处理**：自动修复AI返回的损坏JSON，处理截断、括号不匹配等问题
+- **提示词模板系统**：支持变量替换、条件语句、循环语句的模板引擎
+- **批量处理和重试**：智能分批处理、自动重试、并发控制
+- **结构化任务处理**：一站式AI任务处理，自动JSON解析和错误处理
+- **降级策略**：多层次的错误处理和降级机制
 
 ## 📦 安装方式
 
@@ -68,7 +76,7 @@ var llmModelName = builder.AddParameter("llm-ModelName", "qwen-plus");
 
 ### 4. 使用LLM服务
 
-#### 方式一：使用LLMAssistant（推荐）
+#### 方式一：基础内容生成
 
 ```csharp
 public class YourService
@@ -92,7 +100,56 @@ public class YourService
 }
 ```
 
-#### 方式二：使用LLMClientFactory
+#### 方式二：结构化任务处理（推荐） 🆕
+
+```csharp
+public class YourService
+{
+    private readonly LLMAssistant _llmAssistant;
+
+    public YourService(LLMAssistant llmAssistant)
+    {
+        _llmAssistant = llmAssistant;
+    }
+
+    // 使用模板处理结构化任务
+    public async Task<MyResult> ProcessStructuredTaskAsync(MyInput input)
+    {
+        var result = await _llmAssistant.ProcessStructuredTaskWithTemplateAsync<MyResult>(
+            "my_template", 
+            input,
+            new StructuredTaskOptions 
+            { 
+                EnableRetry = true, 
+                MaxRetries = 2 
+            });
+
+        if (result.IsSuccess)
+        {
+            return result.Result!;
+        }
+        
+        throw new InvalidOperationException($"处理失败: {string.Join("; ", result.Errors)}");
+    }
+
+    // 批量处理
+    public async Task<List<MyResult>> ProcessBatchAsync(List<MyInput> inputs)
+    {
+        var batchResult = await _llmAssistant.ProcessBatchStructuredTaskAsync<MyInput, MyResult>(
+            inputs,
+            batch => GeneratePromptForBatch(batch),
+            new BatchProcessingOptions 
+            { 
+                BatchSize = 10, 
+                MaxRetries = 2 
+            });
+
+        return batchResult.SuccessResults.Where(r => r.IsSuccess).Select(r => r.Result!).ToList();
+    }
+}
+```
+
+#### 方式三：使用LLMClientFactory
 
 ```csharp
 public class YourService
@@ -118,6 +175,56 @@ public class YourService
 ```
 
 ## 🔧 高级用法
+
+### 独立使用各个组件 🆕
+
+#### JSON处理器
+```csharp
+public class YourService
+{
+    private readonly ILLMJsonProcessor _jsonProcessor;
+
+    public async Task<T> ParseAiResponse<T>(string aiResponse) where T : class
+    {
+        var result = await _jsonProcessor.ParseStructuredResponseAsync<T>(aiResponse);
+        return result.IsSuccess ? result.Result! : throw new Exception("解析失败");
+    }
+}
+```
+
+#### 提示词构建器
+```csharp
+public class YourService
+{
+    private readonly ILLMPromptBuilder _promptBuilder;
+
+    public string BuildComplexPrompt(object data)
+    {
+        return _promptBuilder
+            .Reset()
+            .WithSystemPrompt("你是一个专业的助手")
+            .WithTemplate("my_template", data)
+            .WithValidationRules("规则1", "规则2")
+            .WithOutputFormat<MyResult>()
+            .Build();
+    }
+}
+```
+
+#### 批量处理器
+```csharp
+public class YourService
+{
+    private readonly ILLMBatchProcessor _batchProcessor;
+
+    public async Task<List<TResult>> ProcessWithRetry<TResult>(
+        Func<Task<TResult>> operation)
+    {
+        return await _batchProcessor.ProcessWithRetryAsync(operation, 
+            new RetryOptions { MaxRetries = 3 });
+    }
+}
+```
 
 ### 自定义设置提供者
 
@@ -215,4 +322,35 @@ builder.Services.AddLLMServices<DatabaseLLMSettingsProvider>();
     }
   }
 }
-``` 
+```
+
+## 📖 迁移指南
+
+如果您正在从旧版本的LLM组件迁移，请参阅 [迁移指南](./MIGRATION_GUIDE.md)，其中包含：
+
+- 详细的迁移步骤
+- 代码对比示例
+- 性能改善说明
+- 注意事项和最佳实践
+
+## 🎯 最佳实践
+
+### 1. 结构化任务处理
+- 优先使用 `ProcessStructuredTaskWithTemplateAsync` 而不是直接调用 `GenerateContentAsync`
+- 为复杂的AI任务创建专门的模板
+- 启用重试机制以提高稳定性
+
+### 2. 批量处理
+- 对于大量数据处理，使用批量处理功能
+- 根据AI模型的限制调整批次大小
+- 启用 `ContinueOnFailure` 以处理部分失败的情况
+
+### 3. 错误处理
+- 始终检查 `IsSuccess` 属性
+- 记录 `WasRepaired` 信息以监控JSON修复情况
+- 为失败情况提供降级策略
+
+### 4. 性能优化
+- 使用单例模式注册 `ILLMPromptTemplateManager`
+- 合理设置批次大小和重试参数
+- 监控处理时间和成功率

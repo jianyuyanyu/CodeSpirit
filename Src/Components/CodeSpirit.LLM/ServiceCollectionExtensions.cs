@@ -1,5 +1,7 @@
 using CodeSpirit.LLM.Clients;
 using CodeSpirit.LLM.Factories;
+using CodeSpirit.LLM.Processors;
+using CodeSpirit.LLM.Prompts;
 using CodeSpirit.LLM.Settings;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -29,6 +31,14 @@ public static class ServiceCollectionExtensions
         // 注册工厂和客户端
         services.AddScoped<ILLMClientFactory, DefaultLLMClientFactory>();
         
+        // 注册处理器
+        services.AddScoped<ILLMJsonProcessor, DefaultLLMJsonProcessor>();
+        services.AddScoped<ILLMBatchProcessor, DefaultLLMBatchProcessor>();
+        
+        // 注册提示词相关服务
+        services.AddSingleton<ILLMPromptTemplateManager, DefaultLLMPromptTemplateManager>();
+        services.AddScoped<ILLMPromptBuilder, DefaultLLMPromptBuilder>();
+        
         // 注册LLM助手
         services.AddScoped<LLMAssistant>();
         
@@ -55,6 +65,14 @@ public static class ServiceCollectionExtensions
         
         // 注册工厂和客户端
         services.AddScoped<ILLMClientFactory, DefaultLLMClientFactory>();
+        
+        // 注册处理器
+        services.AddScoped<ILLMJsonProcessor, DefaultLLMJsonProcessor>();
+        services.AddScoped<ILLMBatchProcessor, DefaultLLMBatchProcessor>();
+        
+        // 注册提示词相关服务
+        services.AddSingleton<ILLMPromptTemplateManager, DefaultLLMPromptTemplateManager>();
+        services.AddScoped<ILLMPromptBuilder, DefaultLLMPromptBuilder>();
         
         // 注册LLM助手
         services.AddScoped<LLMAssistant>();

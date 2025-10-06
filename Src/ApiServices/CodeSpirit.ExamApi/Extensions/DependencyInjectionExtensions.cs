@@ -1,4 +1,5 @@
 using CodeSpirit.ExamApi.Services.Helpers;
+using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.LLM;
 using CodeSpirit.Shared.Notifications;
 
@@ -25,6 +26,7 @@ public static class DependencyInjectionExtensions
         
         // 注册主服务
         services.AddScoped<IAIQuestionGeneratorService, AIQuestionGeneratorService>();
+        services.AddScoped<QuestionAiGeneratorService>();
         
         // 注册通知服务
         services.AddScoped<ISessionNotificationService, SessionNotificationService>();

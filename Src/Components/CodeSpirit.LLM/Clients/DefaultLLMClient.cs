@@ -104,8 +104,8 @@ public class DefaultLLMClient : ILLMClient
             using (var stream = await response.Content.ReadAsStreamAsync())
             using (var reader = new StreamReader(stream))
             {
-                string line;
-                while ((line = await reader.ReadLineAsync()) != null)
+                string? line;
+                while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
                 {
                     if (string.IsNullOrEmpty(line) || line == "data: [DONE]")
                     {
@@ -199,7 +199,7 @@ public class DefaultLLMClient : ILLMClient
             
             return "";
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // 记录错误但不抛出，以保持流式处理的连续性
             return "";

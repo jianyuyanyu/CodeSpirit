@@ -156,6 +156,203 @@ const diffEditorStyles = `
     border-left: 4px solid #faad14;
 }
 
+/* 失败题目确认面板样式 */
+.panel-warning {
+    border: 1px solid #faad14;
+    border-radius: 6px;
+}
+
+.panel-warning .panel-heading {
+    background-color: #faad14 !important;
+    color: white !important;
+    border-radius: 6px 6px 0 0;
+}
+
+.border-left-danger {
+    border-left: 4px solid #ff4d4f !important;
+    background-color: #fff2f0 !important;
+}
+
+.question-failed-item {
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.question-failed-item:hover {
+    background-color: #fff1f0 !important;
+    box-shadow: 0 2px 8px rgba(255, 77, 79, 0.15);
+}
+
+.failed-question-highlight {
+    animation: highlightFailed 2s ease-in-out;
+}
+
+@keyframes highlightFailed {
+    0% { background-color: #fff2f0; }
+    50% { background-color: #ffccc7; }
+    100% { background-color: #fff2f0; }
+}
+
+/* 简洁紧凑失败题目列表样式 */
+.failed-questions-list-compact {
+    max-height: 120px;
+    overflow-y: auto;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+    background-color: #fefefe;
+}
+
+.failed-question-item-compact {
+    border-bottom: 1px solid #fee2e2;
+    transition: background-color 0.2s ease;
+}
+
+.failed-question-item-compact:hover {
+    background-color: #fef2f2;
+}
+
+.failed-question-item-compact:last-child {
+    border-bottom: none;
+}
+
+.failed-question-row-compact {
+    padding: 6px 8px;
+    min-height: 36px;
+}
+
+.failed-question-index {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background-color: #ef4444;
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+.failed-question-title {
+    color: #374151;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.failed-question-error-msg {
+    color: #dc2626;
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1.2;
+}
+
+.failed-question-error-msg i {
+    color: #ef4444;
+    margin-right: 3px;
+}
+
+.failed-question-type-badge {
+    display: inline-block;
+    padding: 1px 4px;
+    background-color: #f59e0b;
+    color: white;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
+    text-align: center;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.failed-question-locate-link {
+    color: #3b82f6 !important;
+    font-size: 10px !important;
+    padding: 2px 4px !important;
+    text-decoration: none !important;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.failed-question-locate-link:hover {
+    color: #2563eb !important;
+    background-color: #eff6ff !important;
+    border-radius: 3px !important;
+}
+
+/* 简洁滚动条 */
+.failed-questions-list-compact::-webkit-scrollbar {
+    width: 3px;
+}
+
+.failed-questions-list-compact::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 2px;
+}
+
+.failed-questions-list-compact::-webkit-scrollbar-thumb {
+    background: #ef4444;
+    border-radius: 2px;
+}
+
+.failed-questions-list-compact::-webkit-scrollbar-thumb:hover {
+    background: #dc2626;
+}
+
+.antd-checkbox-group .cxd-Checkboxes-option {
+    padding: 12px;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    background-color: #fafafa;
+    margin-bottom: 8px;
+}
+
+.antd-checkbox-group .cxd-Checkboxes-option:hover {
+    border-color: #40a9ff;
+    background-color: #f0f8ff;
+}
+
+.antd-checkbox-group .cxd-Checkboxes-option.is-checked {
+    border-color: #1890ff;
+    background-color: #e6f7ff;
+}
+
+/* 失败确认选项特殊样式 */
+.bg-warning-light {
+    background-color: #fffbe6 !important;
+    border: 1px solid #fadb14 !important;
+    border-radius: 6px;
+}
+
+.border-warning {
+    border-color: #fadb14 !important;
+}
+
+.failed-confirmation-checkbox .cxd-Checkboxes-option {
+    background-color: #fff2e8 !important;
+    border: 2px solid #faad14 !important;
+    border-radius: 8px !important;
+    padding: 16px !important;
+    font-weight: 600 !important;
+    color: #d46b08 !important;
+}
+
+.failed-confirmation-checkbox .cxd-Checkboxes-option:hover {
+    border-color: #fa8c16 !important;
+    background-color: #fff7e6 !important;
+    box-shadow: 0 2px 8px rgba(250, 173, 20, 0.2) !important;
+}
+
+.failed-confirmation-checkbox .cxd-Checkboxes-option.is-checked {
+    border-color: #fa8c16 !important;
+    background-color: #fff1b8 !important;
+    color: #d48806 !important;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .question-diff-dialog .cxd-Modal-content {
@@ -195,6 +392,42 @@ const diffEditorStyles = `
     .question-header .cxd-Flex:last-child {
         margin-top: 8px;
         flex-wrap: wrap;
+    }
+    
+    /* 失败题目列表移动端优化 */
+    .failed-questions-list-compact {
+        max-height: 100px;
+    }
+    
+    .failed-question-row-compact {
+        padding: 4px 6px;
+        min-height: 32px;
+    }
+    
+    .failed-question-index {
+        width: 16px;
+        height: 16px;
+        font-size: 9px;
+    }
+    
+    .failed-question-title {
+        font-size: 11px;
+    }
+    
+    .failed-question-error-msg {
+        font-size: 9px;
+    }
+    
+    .failed-question-type-badge {
+        font-size: 8px;
+        padding: 1px 3px;
+        margin-left: 6px;
+    }
+    
+    .failed-question-locate-link {
+        font-size: 9px !important;
+        padding: 1px 3px !important;
+        margin-left: 6px;
     }
 }
 </style>
@@ -335,15 +568,172 @@ D、IBM
                             body: "AI审核完成：共解析 ${aiAuditSummary.totalCount} 个题目，通过 ${aiAuditSummary.passedCount} 个，修正 ${aiAuditSummary.correctedCount} 个，发现错误 ${aiAuditSummary.errorCount} 个。",
                             className: "antd-alert antd-alert-info m-b-md"
                         },
+                        // 失败题目警告提示
+                        {
+                            type: "alert",
+                            level: "warning",
+                            body: "检测到 ${failedQuestionsCount} 个题目审核失败，这些题目将不会被导入。请修改失败题目或确认忽略后继续。",
+                            className: "antd-alert antd-alert-warning m-b-md",
+                            visibleOn: "failedQuestionsCount > 0"
+                        },
                         {
                             type: "form",
                             actions: [],
                             className: "antd-form",
+                            // 添加表单级别的验证
+                            preventEnterSubmit: true,
                             body: [
                                 {
                                     type: "hidden",
                                     name: "sessionId",
                                     value: "${sessionId}"
+                                },
+                                // 失败题目确认字段 - 使用计算字段统计失败题目数量
+                                {
+                                    type: "formula",
+                                    name: "failedQuestionsCount",
+                                    formula: "questions && Array.isArray(questions) ? questions.reduce((count, q) => count + ((q.auditStatus === 2 || q.auditStatus === 3) ? 1 : 0), 0) : 0"
+                                },
+                                // 调试信息 - 可以在开发时查看数据结构
+                                {
+                                    type: "static",
+                                    name: "debugInfo",
+                                    label: "调试信息",
+                                    value: "失败题目数量: ${failedQuestionsCount}",
+                                    visibleOn: "false", // 设为false隐藏，需要时改为true
+                                    className: "text-muted"
+                                },
+                                // 人工确认失败题目处理
+                                {
+                                    type: "container",
+                                    visibleOn: "failedQuestionsCount > 0",
+                                    className: "m-b-md",
+                                    body: [
+                                        {
+                                            type: "panel",
+                                            title: "失败题目处理确认",
+                                            className: "antd-panel panel-warning",
+                                            headerClassName: "bg-warning text-white",
+                                            body: [
+                                                {
+                                                    type: "alert",
+                                                    level: "warning",
+                                                    body: "以下题目审核失败，请进行人工核查后确认是否导入：",
+                                                    className: "antd-alert antd-alert-warning m-b-sm"
+                                                },
+                                                {
+                                                    type: "list",
+                                                    source: "${questions}",
+                                                    className: "failed-questions-list-compact",
+                                                    placeholder: "暂无失败题目",
+                                                    listItem: {
+                                                        visibleOn: "auditStatus === 2 || auditStatus === 3",
+                                                        className: "failed-question-item-compact",
+                                                        body: [
+                                                            {
+                                                                type: "flex",
+                                                                justify: "space-between",
+                                                                alignItems: "center",
+                                                                className: "failed-question-row-compact",
+                                                                items: [
+                                                                    {
+                                                                        type: "tpl",
+                                                                        tpl: "<span class='failed-question-index'>${index + 1}</span>",
+                                                                        className: "failed-question-index-col"
+                                                                    },
+                                                                    {
+                                                                        type: "container",
+                                                                        className: "flex-1 px-2",
+                                                                        body: [
+                                                                            {
+                                                                                type: "tpl",
+                                                                                tpl: "<div class='failed-question-title'>${content | truncate:50}</div>",
+                                                                                className: "mb-1"
+                                                                            },
+                                                                            {
+                                                                                type: "tpl",
+                                                                                tpl: "<div class='failed-question-error-msg'><i class='fa fa-exclamation-circle'></i> ${auditMessage || '审核失败'}</div>"
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        type: "tpl",
+                                                                        tpl: "<span class='failed-question-type-badge'>${type == 1 ? '单选' : type == 2 ? '多选' : type == 3 ? '判断' : type == 4 ? '简答' : '未知'}</span>",
+                                                                        className: "failed-question-type-col"
+                                                                    },
+                                                                    {
+                                                                        type: "button",
+                                                                        label: "定位",
+                                                                        level: "link",
+                                                                        size: "xs",
+                                                                        icon: "fa fa-crosshairs",
+                                                                        className: "failed-question-locate-link",
+                                                                        onEvent: {
+                                                                            click: {
+                                                                                actions: [
+                                                                                    {
+                                                                                        actionType: "custom",
+                                                                                        script: `
+                                                                                            // 滚动到对应的题目编辑区域
+                                                                                            const index = event.data.index;
+                                                                                            setTimeout(() => {
+                                                                                                const questionElements = document.querySelectorAll('.question-combo-item');
+                                                                                                const targetElement = questionElements[index];
+                                                                                                if (targetElement) {
+                                                                                                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                                                    targetElement.classList.add('failed-question-highlight');
+                                                                                                    targetElement.style.border = '2px solid #ff4d4f';
+                                                                                                    setTimeout(() => {
+                                                                                                        targetElement.style.border = '';
+                                                                                                        targetElement.classList.remove('failed-question-highlight');
+                                                                                                    }, 3000);
+                                                                                                }
+                                                                                            }, 200);
+                                                                                        `
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                {
+                                                    type: "divider",
+                                                    className: "m-t-md m-b-md"
+                                                },
+                                                {
+                                                    type: "container",
+                                                    className: "bg-warning-light p-md border-warning",
+                                                    body: [
+                                                        {
+                                                            type: "checkboxes",
+                                                            name: "failedQuestionsConfirmation",
+                                                            label: "⚠️ 处理方式确认",
+                                                            required: true,
+                                                            requiredOn: "failedQuestionsCount > 0",
+                                                            options: [
+                                                                {
+                                                                    label: "我已知晓上述题目将不会被导入，确认继续导入其他正常题目",
+                                                                    value: "confirmed"
+                                                                }
+                                                            ],
+                                                            className: "antd-checkbox-group failed-confirmation-checkbox",
+                                                            description: "重要提醒：请确认您已了解失败题目的情况，并选择继续导入其他正常题目",
+                                                            validations: {
+                                                                isNotEmpty: true
+                                                            },
+                                                            validationErrors: {
+                                                                isNotEmpty: "存在审核失败的题目，必须确认处理方式才能继续导入！"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
                                 },
                                 // 题目统计信息
                                 {
@@ -566,7 +956,7 @@ D、IBM
                                                             actionType: "dialog",
                                                             dialog: {
                                                                 title: "AI修正对比 - 题目 ${index + 1}",
-                                                                size: "xl",
+                                                                size: "md",
                                                                 className: "question-diff-dialog",
                                                                 body: {
                                                                     type: "service",

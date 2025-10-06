@@ -117,7 +117,7 @@ public class AiFormFillLlmParameters
         {
             ApiKey = builder.AddParameter("ai-form-fill-llm-ApiKey", secret: true),
             ApiBaseUrl = builder.AddParameter("ai-form-fill-llm-ApiBaseUrl", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-            ModelName = builder.AddParameter("ai-form-fill-llm-ModelName", "qwen-flash"),
+            ModelName = builder.AddParameter("ai-form-fill-llm-ModelName", "qwen3-max-preview"),
             DisableThinking = builder.AddParameter("ai-form-fill-llm-DisableThinking", "true"),
             ResponseFormatType = builder.AddParameter("ai-form-fill-llm-ResponseFormatType", "json_object"),
             Temperature = builder.AddParameter("ai-form-fill-llm-Temperature", "0.1"),

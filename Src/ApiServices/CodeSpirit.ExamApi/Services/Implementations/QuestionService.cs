@@ -308,6 +308,9 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 }
             }
 
+            // 重复验证逻辑
+            await ValidateImportQuestionsAsync(questionsToImport, categoryId);
+
             var importResult = new ImportResultDto();
             var failedItems = new List<string>();
 
@@ -2113,6 +2116,17 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(400, "所选分类不存在");
             }
 
+            // 根据设置验证题目内容唯一性
+            var settings = await GetQuestionSettingsAsync();
+            var contentToValidate = createDto.Content?.Trim();
+            if (!string.IsNullOrWhiteSpace(contentToValidate))
+            {
+                await ValidateQuestionUniquenessAsync(
+                    new List<string> { contentToValidate },
+                    createDto.CategoryId,
+                    settings.UniquenessMode);
+            }
+
             var question = _mapper.Map<Question>(createDto);
             question.Id = _idGenerator.NewId();
             question.CreatedAt = DateTime.UtcNow;
@@ -2237,10 +2251,14 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
         public async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<QuestionBatchImportItemDto> items)
         {
+            var itemsList = items.ToList();
             var successCount = 0;
             var failedIds = new List<string>();
 
-            foreach (var item in items)
+            // 重复验证逻辑
+            await ValidateBatchImportItemsAsync(itemsList);
+
+            foreach (var item in itemsList)
             {
                 try
                 {
@@ -2265,18 +2283,164 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
         public async Task<QuestionSettingsDto> GetQuestionSettingsAsync()
         {
-            await Task.CompletedTask; // 避免async警告
+            // 从设置服务获取题目唯一性校验模式
+            var uniquenessModeString = await _settingsService.GetGlobalSettingAsync("Question", "UniquenessMode");
+            
+            // 解析枚举值，默认为分类唯一
+            var uniquenessMode = QuestionUniquenessMode.Category;
+            if (!string.IsNullOrEmpty(uniquenessModeString) && 
+                Enum.TryParse<QuestionUniquenessMode>(uniquenessModeString, out var parsedMode))
+            {
+                uniquenessMode = parsedMode;
+            }
 
-            // 返回默认设置
-            return new QuestionSettingsDto();
+            return new QuestionSettingsDto
+            {
+                UniquenessMode = uniquenessMode
+            };
         }
 
         public async Task<bool> UpdateQuestionSettingsAsync(QuestionSettingsDto settings)
         {
-            await Task.CompletedTask; // 避免async警告
+            // 保存题目唯一性校验模式设置
+            await _settingsService.SetGlobalSettingAsync(
+                "Question", 
+                "UniquenessMode", 
+                settings.UniquenessMode.ToString());
 
-            // 暂时返回成功，实际实现需要根据具体的设置服务接口
             return true;
+        }
+
+        /// <summary>
+        /// 验证导入题目的重复性
+        /// </summary>
+        /// <param name="questionsToImport">要导入的题目列表</param>
+        /// <param name="categoryId">分类ID</param>
+        /// <returns>验证任务</returns>
+        private async Task ValidateImportQuestionsAsync(List<QuestionPreviewDto> questionsToImport, long categoryId)
+        {
+            // 获取唯一性校验模式
+            var settings = await GetQuestionSettingsAsync();
+            
+            // 根据设置进行验证
+            await ValidateQuestionUniquenessAsync(
+                questionsToImport.Select(q => q.Content?.Trim()).Where(c => !string.IsNullOrWhiteSpace(c)).ToList(),
+                categoryId,
+                settings.UniquenessMode);
+        }
+
+        /// <summary>
+        /// 验证批量导入项的重复性
+        /// </summary>
+        /// <param name="items">批量导入项列表</param>
+        /// <returns>验证任务</returns>
+        private async Task ValidateBatchImportItemsAsync(List<QuestionBatchImportItemDto> items)
+        {
+            // 获取唯一性校验模式
+            var settings = await GetQuestionSettingsAsync();
+            
+            // 根据设置进行验证（注意：QuestionBatchImportItemDto没有CategoryId，所以使用null）
+            await ValidateQuestionUniquenessAsync(
+                items.Select(q => q.Content?.Trim()).Where(c => !string.IsNullOrWhiteSpace(c)).ToList(),
+                null,
+                settings.UniquenessMode);
+        }
+
+        /// <summary>
+        /// 根据唯一性校验模式验证题目内容的重复性
+        /// </summary>
+        /// <param name="contentList">要验证的题目内容列表</param>
+        /// <param name="categoryId">分类ID（可为null）</param>
+        /// <param name="uniquenessMode">唯一性校验模式</param>
+        /// <returns>验证任务</returns>
+        private async Task ValidateQuestionUniquenessAsync(List<string> contentList, long? categoryId, QuestionUniquenessMode uniquenessMode)
+        {
+            if (!contentList.Any())
+                return;
+
+            // 1. 检查导入数据内部重复
+            var duplicateContents = contentList
+                .GroupBy(c => c)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicateContents.Any())
+            {
+                var duplicateList = string.Join("、", duplicateContents.Select(c => 
+                    c.Length > 50 ? c.Substring(0, 50) + "..." : c));
+                throw new AppServiceException(400, $"导入数据中存在重复的题目内容：{duplicateList}");
+            }
+
+            // 2. 根据唯一性校验模式检查与数据库现有题目的重复
+            switch (uniquenessMode)
+            {
+                case QuestionUniquenessMode.None:
+                    // 不校验唯一性，直接返回
+                    return;
+
+                case QuestionUniquenessMode.Global:
+                    // 全局唯一校验
+                    await ValidateGlobalUniquenessAsync(contentList);
+                    break;
+
+                case QuestionUniquenessMode.Category:
+                    // 分类唯一校验
+                    if (categoryId.HasValue)
+                    {
+                        await ValidateCategoryUniquenessAsync(contentList, categoryId.Value);
+                    }
+                    else
+                    {
+                        // 如果没有分类ID，则按全局唯一校验
+                        await ValidateGlobalUniquenessAsync(contentList);
+                    }
+                    break;
+
+                default:
+                    throw new AppServiceException(400, "不支持的唯一性校验模式");
+            }
+        }
+
+        /// <summary>
+        /// 验证全局唯一性
+        /// </summary>
+        /// <param name="contentList">题目内容列表</param>
+        /// <returns>验证任务</returns>
+        private async Task ValidateGlobalUniquenessAsync(List<string> contentList)
+        {
+            var existingQuestions = await _repository.CreateQuery()
+                .Where(q => contentList.Contains(q.Content))
+                .Select(q => q.Content)
+                .ToListAsync();
+
+            if (existingQuestions.Any())
+            {
+                var existingList = string.Join("、", existingQuestions.Select(c => 
+                    c.Length > 50 ? c.Substring(0, 50) + "..." : c));
+                throw new AppServiceException(400, $"以下题目内容已存在于系统中：{existingList}");
+            }
+        }
+
+        /// <summary>
+        /// 验证分类唯一性
+        /// </summary>
+        /// <param name="contentList">题目内容列表</param>
+        /// <param name="categoryId">分类ID</param>
+        /// <returns>验证任务</returns>
+        private async Task ValidateCategoryUniquenessAsync(List<string> contentList, long categoryId)
+        {
+            var existingQuestions = await _repository.CreateQuery()
+                .Where(q => q.CategoryId == categoryId && contentList.Contains(q.Content))
+                .Select(q => q.Content)
+                .ToListAsync();
+
+            if (existingQuestions.Any())
+            {
+                var existingList = string.Join("、", existingQuestions.Select(c => 
+                    c.Length > 50 ? c.Substring(0, 50) + "..." : c));
+                throw new AppServiceException(400, $"以下题目内容已存在于该分类中：{existingList}");
+            }
         }
     }
 }

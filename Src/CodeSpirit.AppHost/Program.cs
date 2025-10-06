@@ -92,15 +92,12 @@ var greptimedbService = builder.AddContainer("greptimedb", "greptime/greptimedb"
 
 // 获取数据库类型配置
 var databaseType = builder.Configuration.GetValue<string>("DatabaseType") ?? "MySql";
-Console.WriteLine($"使用数据库类型: {databaseType}");
 
 // 数据库资源配置
 IResourceBuilder<IResourceWithConnectionString> identityDb, examDb, configDb, settingsDb, messagingDb, fileDb, surveyDb, approvalDb;
 
 if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
 {
-    Console.WriteLine("配置MySQL数据库资源...");
-
     // 添加MySQL服务器 - 使用默认端口3306
     var mysql = builder.AddMySql("mysql", password: parameters.Database.MySqlPassword!, port: 3306)
                        .WithLifetime(ContainerLifetime.Persistent)
@@ -120,8 +117,6 @@ if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
 }
 else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
 {
-    Console.WriteLine("配置SQL Server数据库资源...");
-
     // 添加SQL Server服务器
     var sqlServer = builder.AddSqlServer("sqlserver", password: parameters.Database.SqlServerPassword!, port: 1433)
                            .WithLifetime(ContainerLifetime.Persistent)
@@ -303,7 +298,80 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
 //    return Task.CompletedTask;
 //});
 
-Console.WriteLine("审计存储：已配置GreptimeDB作为默认存储提供者");
-Console.WriteLine("正在启动应用...");
-Console.WriteLine($"数据库类型 {databaseType} 配置完成，正在启动应用...");
+// 打印框架标识和基本信息
+PrintFrameworkInfo(databaseType);
+
 builder.Build().Run();
+
+/// <summary>
+/// 打印框架的基本信息和标识
+/// </summary>
+/// <param name="databaseType">数据库类型</param>
+static void PrintFrameworkInfo(string databaseType)
+{
+    Console.WriteLine();
+    Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
+    Console.WriteLine();
+    Console.WriteLine("   ██████╗ ██████╗ ██████╗ ███████╗    ███████╗██████╗ ██╗██████╗ ██╗████████╗");
+    Console.WriteLine("  ██╔════╝██╔═══██╗██╔══██╗██╔════╝    ██╔════╝██╔══██╗██║██╔══██╗██║╚══██╔══╝");
+    Console.WriteLine("  ██║     ██║   ██║██║  ██║█████╗      ███████╗██████╔╝██║██████╔╝██║   ██║");
+    Console.WriteLine("  ██║     ██║   ██║██║  ██║██╔══╝      ╚════██║██╔═══╝ ██║██╔══██╗██║   ██║");
+    Console.WriteLine("  ╚██████╗╚██████╔╝██████╔╝███████╗    ███████║██║     ██║██║  ██║██║   ██║");
+    Console.WriteLine("   ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝    ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝");
+    Console.WriteLine();
+    Console.WriteLine("                          全栈低代码 + AI开发框架");
+    Console.WriteLine();
+    Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
+    Console.WriteLine("  框架版本: v2.0.0");
+    Console.WriteLine("  .NET版本: .NET 9");
+    Console.WriteLine("  架构模式: 微服务 + 分布式");
+    Console.WriteLine("  容器编排: Aspire");
+    Console.WriteLine($"  数据库类型: {GetDatabaseTypeDisplay(databaseType)}");
+    Console.WriteLine();
+    Console.WriteLine("  服务组件:");
+    Console.WriteLine("  • 身份认证服务 (Identity API)");
+    Console.WriteLine("  • 考试系统服务 (Exam API)");
+    Console.WriteLine("  • 配置中心服务 (Config Center)");
+    Console.WriteLine("  • 消息服务 (Messaging API)");
+    Console.WriteLine("  • 文件存储服务 (File Storage API)");
+    Console.WriteLine("  • 问卷调查服务 (Survey API)");
+    Console.WriteLine("  • 审批流程服务 (Approval API)");
+    Console.WriteLine();
+    Console.WriteLine("  基础设施:");
+    Console.WriteLine("  • Redis (分布式缓存)");
+    Console.WriteLine("  • RabbitMQ (消息队列)");
+    Console.WriteLine("  • Seq (日志聚合)");
+    Console.WriteLine("  • GreptimeDB (时序数据库)");
+    Console.WriteLine();
+    Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
+    Console.WriteLine($"  启动时间: {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}");
+    Console.WriteLine($"  运行环境: {Environment.OSVersion}");
+    Console.WriteLine($"  工作目录: {Environment.CurrentDirectory}");
+    Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
+    // Console.WriteLine("  快捷访问地址:");
+    // Console.WriteLine("  • Aspire Dashboard: https://localhost:15888");
+    // Console.WriteLine("  • Seq 日志界面: http://localhost:5341");
+    // Console.WriteLine("  • Redis Commander: http://localhost:8081");
+    // Console.WriteLine("  • RabbitMQ 管理界面: http://localhost:15672");
+    // Console.WriteLine("  • GreptimeDB HTTP: http://localhost:4000");
+    // if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
+    // {
+    //     Console.WriteLine("  • phpMyAdmin: http://localhost:8080");
+    // }
+    // Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
+    Console.WriteLine();
+    Console.WriteLine("🚀 CodeSpirit 框架启动完成！");
+    Console.WriteLine("📖 访问 Aspire Dashboard 查看服务状态和监控信息");
+    Console.WriteLine("🔗 Web前端地址将在服务启动后显示");
+    Console.WriteLine();
+}
+
+/// <summary>
+/// 获取数据库类型的显示名称
+/// </summary>
+/// <param name="databaseType">数据库类型</param>
+/// <returns>数据库类型显示名称</returns>
+static string GetDatabaseTypeDisplay(string databaseType)
+{
+    return databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase) ? "MySQL 8.0" : "SQL Server 2022";
+}

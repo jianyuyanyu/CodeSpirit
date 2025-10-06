@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using CodeSpirit.Amis.Attributes;
 
 namespace CodeSpirit.Amis.Helpers
 {
@@ -156,8 +157,10 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>匹配的第一个方法，如果没有找到则返回 null。</returns>
         private MethodInfo FindMethodByActionPrefix(IEnumerable<MethodInfo> methods, string[] prefixes)
         {
-            // 遍历所有方法，查找第一个方法名以给定前缀开头的方法
-            return methods.FirstOrDefault(m => prefixes.Any(prefix => m.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
+            // 遍历所有方法，查找第一个方法名以给定前缀开头且未被IgnoreCrudAttribute标记的方法
+            return methods.FirstOrDefault(m => 
+                prefixes.Any(prefix => m.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) &&
+                m.GetCustomAttribute<IgnoreCrudAttribute>() == null);
         }
     }
 }

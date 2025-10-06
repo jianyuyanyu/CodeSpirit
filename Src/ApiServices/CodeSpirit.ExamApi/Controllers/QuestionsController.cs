@@ -1,12 +1,15 @@
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Dtos.Question;
+using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Net;
+using System.Text;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -207,7 +210,7 @@ public class QuestionsController : ApiControllerBase
     //}
 
     [HttpPost("batch/Parser-from-text")]
-    [HeaderOperation("从文本导入", "form")]
+    [HeaderOperation("从文本导入", "form", DialogSize = DialogSize.XL)]
     [DisplayName("从文本导入题目")]
     public async Task<ActionResult<ApiResponse>> BatchParserFromText([FromBody] QuestionImportFromTextDto input)
     {
@@ -221,6 +224,179 @@ public class QuestionsController : ApiControllerBase
             ? SuccessResponse($"{successCount} 个题目导入成功，{failedQuestions.Count} 个题目导入失败: \n{string.Join(", \n", failedQuestions)}")
             : SuccessResponse($"成功导入 {successCount} 个题目！");
     }
+
+    /// <summary>
+    /// 步骤1：解析文本并进行AI审核
+    /// </summary>
+    [HttpPost("import-wizard/step1-parse")]
+    [DisplayName("解析题目文本")]
+    public async Task<ActionResult<ApiResponse<QuestionBatchPreviewResponseDto>>> ParseQuestionsFromText([FromBody] QuestionImportStepDto input)
+    {
+        var result = await _questionService.ParseQuestionsFromTextAsync(input);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 步骤2：获取题目预览数据
+    /// </summary>
+    [HttpGet("import-wizard/step2-preview/{sessionId}")]
+    [DisplayName("获取题目预览")]
+    public async Task<ActionResult<ApiResponse<QuestionBatchPreviewResponseDto>>> GetQuestionPreview([FromRoute] string sessionId)
+    {
+
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            return BadRequest("会话ID不能为空");
+        }
+
+        var result = await _questionService.GetQuestionPreviewAsync(sessionId);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 步骤3：保存用户编辑的题目
+    /// </summary>
+    [HttpPost("import-wizard/step3-save-edits")]
+    [DisplayName("保存题目编辑")]
+    public async Task<ActionResult<ApiResponse<string>>> SaveQuestionEdits([FromBody] QuestionBatchPreviewResponseDto input)
+    {
+        await _questionService.SaveQuestionEditsAsync(input);
+        return SuccessResponse<string>("题目编辑已保存");
+    }
+
+    /// <summary>
+    /// 步骤4：确认导入题目
+    /// </summary>
+    [HttpPost("import-wizard/step4-import")]
+    [DisplayName("确认导入题目")]
+    [IgnoreCrud]
+    public async Task<ActionResult<ApiResponse<ImportResultDto>>> ImportQuestions([FromBody] QuestionBatchImportConfirmDto input)
+    {
+        var result = await _questionService.ImportQuestionsAsync(input);
+        return SuccessResponse(result);
+    }
+
+    /// <summary>
+    /// 获取题目修正对比数据（整体格式）
+    /// </summary>
+    /// <param name="sessionId">会话ID</param>
+    /// <param name="index">题目索引</param>
+    /// <returns>修正对比数据</returns>
+    [HttpGet("import-wizard/correction-diff/{sessionId}/{index}")]
+    [DisplayName("获取题目修正对比")]
+    public async Task<ActionResult<ApiResponse<object>>> GetQuestionCorrectionDiff(string sessionId, int index)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            return BadRequest("会话ID不能为空");
+        }
+
+        var previewData = await _questionService.GetQuestionPreviewAsync(sessionId);
+        if (previewData?.Questions == null || index >= previewData.Questions.Count)
+        {
+            return NotFound("题目不存在");
+        }
+
+        var question = previewData.Questions[index];
+
+        // 生成原始格式文本
+        var originalText = GenerateQuestionText(question, index + 1, true); // true表示使用原始内容
+
+        // 生成修正后格式文本
+        var correctedText = GenerateQuestionText(question, index + 1, false); // false表示使用修正后内容
+
+        var result = new
+        {
+            OriginalText = originalText,
+            CorrectedText = correctedText,
+            CorrectionNotes = question.CorrectionNotes ?? new List<string>(),
+            HasChanges = question.IsCorrected,
+            QuestionIndex = index + 1,
+            QuestionType = question.Type.ToString()
+        };
+
+        return SuccessResponse<object>(result);
+    }
+
+    /// <summary>
+    /// 生成题目文本格式
+    /// </summary>
+    /// <param name="question">题目数据</param>
+    /// <param name="questionIndex">题目序号</param>
+    /// <param name="useOriginal">是否使用原始内容</param>
+    /// <returns>格式化的题目文本</returns>
+    private string GenerateQuestionText(QuestionPreviewDto question, int questionIndex, bool useOriginal)
+    {
+        var content = useOriginal ? (question.OriginalContent ?? question.Content) : question.Content;
+        List<string> options = useOriginal && question.OriginalOptions != null ? question.OriginalOptions : question.Options;
+        var answer = useOriginal ? (question.OriginalAnswer ?? question.CorrectAnswer) : question.CorrectAnswer;
+        var analysis = useOriginal ? (question.OriginalAnalysis ?? question.Analysis) : question.Analysis;
+
+        var sb = new System.Text.StringBuilder();
+
+        // 题目内容
+        sb.AppendLine($"{questionIndex}、{content}");
+
+        // 选项（仅选择题和多选题）
+        if (question.Type == Data.Models.Enums.QuestionType.SingleChoice ||
+            question.Type == Data.Models.Enums.QuestionType.MultipleChoice)
+        {
+            for (int i = 0; i < options.Count; i++)
+            {
+                sb.AppendLine(options[i]);
+            }
+        }
+
+        sb.AppendLine($"【答案】{answer}");
+        // 难度标记
+        if (question.Difficulty != Data.Models.Enums.QuestionDifficulty.Easy)
+        {
+            var difficultyText = question.Difficulty switch
+            {
+                Data.Models.Enums.QuestionDifficulty.Medium => "中等",
+                Data.Models.Enums.QuestionDifficulty.Hard => "困难",
+                _ => "简单"
+            };
+            sb.AppendLine($"【难度】{difficultyText}");
+        }
+
+        // 解析
+        if (!string.IsNullOrWhiteSpace(analysis))
+        {
+            sb.AppendLine($"【解析】{analysis}");
+        }
+
+        // 知识点标签
+        if (!string.IsNullOrWhiteSpace(question.KnowledgePoints))
+        {
+            sb.AppendLine($"【标签】{question.KnowledgePoints}");
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// 题目导入向导（Wizard组件）
+    /// </summary>
+    [HttpPost("import-wizard")]
+    [HeaderOperation("AI导入", "service",
+        Icon = "fa-solid fa-magic", DialogSize = DialogSize.XL)]
+    [DisplayName("AI导入")]
+    public async Task<ActionResult<ApiResponse<JObject>>> QuestionImportWizard()
+    {
+        await Task.CompletedTask; // 避免async警告
+
+        // 使用Service组件加载外部配置文件
+        var serviceWrapper = new JObject
+        {
+            ["type"] = "service",
+            ["name"] = "questionImportWizardService",
+            ["schemaApi"] = "js:/amis/configs/question-import-wizard.js?type=wizard&baseApi=/exam/api/exam&rootApi=${ROOT_API}"
+        };
+
+        return SuccessResponse(serviceWrapper);
+    }
+
 
     /// <summary>
     /// 预览题目
@@ -238,19 +414,30 @@ public class QuestionsController : ApiControllerBase
             return NotFound("题目不存在");
         }
 
-        var panelConfig = new JObject
+        // 使用Service组件加载外部配置文件
+        var serviceWrapper = new JObject
         {
             ["type"] = "service",
-            ["schemaApi"] = $"get:/exam/api/exam/questions/{id}/question-preview",
-            ["body"] = new JObject
+            ["name"] = "questionPreviewService",
+            ["data"] = new JObject
             {
-                ["title"] = $"预览题目",
-                ["type"] = "panel",
-                ["body"] = "${content}"
-            }
+                ["id"] = id,
+                ["question"] = new JObject
+                {
+                    ["content"] = question.Content,
+                    ["type"] = (int)question.Type,
+                    ["options"] = new JArray(question.Options),
+                    ["correctAnswer"] = question.CorrectAnswer,
+                    ["analysis"] = question.Analysis,
+                    ["difficulty"] = (int)question.Difficulty,
+                    ["tags"] = question.KnowledgePoints,
+                    ["score"] = question.DefaultScore
+                }
+            },
+            ["schemaApi"] = "js:/amis/configs/question-preview.js?baseApi=/exam/api/exam"
         };
 
-        return SuccessResponse(panelConfig);
+        return SuccessResponse(serviceWrapper);
     }
 
     /// <summary>

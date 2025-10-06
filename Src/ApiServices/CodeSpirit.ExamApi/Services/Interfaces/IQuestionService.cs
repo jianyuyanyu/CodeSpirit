@@ -76,4 +76,32 @@ public interface IQuestionService
     /// <param name="settings">题目设置</param>
     /// <returns>是否更新成功</returns>
     Task<bool> UpdateQuestionSettingsAsync(QuestionSettingsDto settings);
+
+        /// <summary>
+        /// 步骤1：解析文本并进行AI审核
+        /// </summary>
+        /// <param name="input">解析配置</param>
+        /// <returns>审核结果</returns>
+        Task<QuestionBatchPreviewResponseDto> ParseQuestionsFromTextAsync(QuestionImportStepDto input);
+
+        /// <summary>
+        /// 步骤2：获取题目预览数据
+        /// </summary>
+        /// <param name="sessionId">会话ID</param>
+        /// <returns>预览数据</returns>
+        Task<QuestionBatchPreviewResponseDto> GetQuestionPreviewAsync(string sessionId);
+
+        /// <summary>
+        /// 步骤3：保存用户编辑的题目
+        /// </summary>
+        /// <param name="input">编辑数据</param>
+        /// <returns>任务</returns>
+        Task SaveQuestionEditsAsync(QuestionBatchPreviewResponseDto input);
+
+        /// <summary>
+        /// 步骤4：确认导入题目
+        /// </summary>
+        /// <param name="input">导入确认数据</param>
+        /// <returns>导入结果</returns>
+        Task<ImportResultDto> ImportQuestionsAsync(QuestionBatchImportConfirmDto input);
 } 

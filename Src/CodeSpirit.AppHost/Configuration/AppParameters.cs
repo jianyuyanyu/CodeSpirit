@@ -88,7 +88,7 @@ public class LlmParameters
         {
             ApiKey = builder.AddParameter("llm-ApiKey", secret: true),
             ApiBaseUrl = builder.AddParameter("llm-ApiBaseUrl", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-            ModelName = builder.AddParameter("llm-ModelName", "qwen-plus"),
+            ModelName = builder.AddParameter("llm-ModelName", "qwen-flash"),
             TimeoutSeconds = builder.AddParameter("llm-TimeoutSeconds", "120"),
             MaxTokens = builder.AddParameter("llm-MaxTokens", "2048"),
             UseProxy = builder.AddParameter("llm-UseProxy", "false"),

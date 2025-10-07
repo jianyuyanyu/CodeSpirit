@@ -7,37 +7,35 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using CodeSpirit.ExamApi.Controllers;
 using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.Core;
+using CodeSpirit.Shared.Services;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Caching.Distributed;
 
 namespace CodeSpirit.ExamApi.Tests.Controllers
 {
     public class QuestionsControllerTests
     {
         private readonly Mock<IQuestionService> _mockQuestionService;
-        private readonly Mock<IAIQuestionGeneratorService> _mockAIQuestionGeneratorService;
         private readonly Mock<ILogger<QuestionsController>> _mockLogger;
-        private readonly Mock<IGeneratorNotificationService> _mockNotificationService;
-        private readonly Mock<IDistributedCache> _mockDistributedCache;
+        private readonly Mock<QuestionAiGeneratorService> _mockQuestionAiGeneratorService;
+        private readonly Mock<IAiTaskService> _mockAiTaskService;
         private readonly QuestionsController _controller;
 
         public QuestionsControllerTests()
         {
             _mockQuestionService = new Mock<IQuestionService>();
-            _mockAIQuestionGeneratorService = new Mock<IAIQuestionGeneratorService>();
             _mockLogger = new Mock<ILogger<QuestionsController>>();
-            _mockNotificationService = new Mock<IGeneratorNotificationService>();
-            _mockDistributedCache = new Mock<IDistributedCache>();
+            _mockQuestionAiGeneratorService = new Mock<QuestionAiGeneratorService>();
+            _mockAiTaskService = new Mock<IAiTaskService>();
             
             _controller = new QuestionsController(
                 _mockQuestionService.Object,
-                _mockAIQuestionGeneratorService.Object,
                 _mockLogger.Object,
-                _mockNotificationService.Object,
-                _mockDistributedCache.Object);
+                _mockQuestionAiGeneratorService.Object,
+                _mockAiTaskService.Object);
         }
 
         [Fact]

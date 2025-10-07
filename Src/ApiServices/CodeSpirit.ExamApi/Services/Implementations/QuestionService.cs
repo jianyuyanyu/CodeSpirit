@@ -2276,9 +2276,98 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             return (successCount, failedIds);
         }
 
+        /// <summary>
+        /// 从文本导入题目（简化版本，直接解析并导入）
+        /// </summary>
+        /// <param name="input">导入请求</param>
+        /// <returns>导入结果：成功数量和失败项目列表</returns>
         public async Task<(int successCount, List<string> failedItems)> ImportFromTextAsync(QuestionImportFromTextDto input)
         {
-            throw new AppServiceException(400, "此方法已被新的多步骤导入向导替代，请使用题目导入向导功能");
+            ArgumentNullException.ThrowIfNull(input);
+            
+            if (string.IsNullOrWhiteSpace(input.Text))
+            {
+                throw new AppServiceException(400, "题目文本内容不能为空！");
+            }
+
+            // 验证分类是否存在
+            var category = await _categoryRepository.GetByIdAsync(input.CategoryId);
+            if (category == null)
+            {
+                throw new AppServiceException(400, "所选分类不存在！");
+            }
+
+            var successCount = 0;
+            var failedItems = new List<string>();
+
+            try
+            {
+                _logger.LogInformation("开始从文本导入题目，分类：{CategoryName}({CategoryId})", category.Name, input.CategoryId);
+
+                // 使用文本解析器解析题目
+                var parseResults = _questionTextParserV2.Parse(input.Text);
+                _logger.LogInformation("解析到 {Count} 个题目", parseResults.Count);
+
+                if (!parseResults.Any())
+                {
+                    return (0, new List<string> { "未能从文本中解析到任何题目，请检查文本格式是否正确" });
+                }
+
+                // 逐个导入题目
+                for (int i = 0; i < parseResults.Count; i++)
+                {
+                    var parsedQuestion = parseResults[i];
+                    try
+                    {
+                        // 转换为创建题目DTO
+                        var createDto = new CreateQuestionDto
+                        {
+                            Content = parsedQuestion.Content,
+                            Type = parsedQuestion.Type,
+                            Options = parsedQuestion.Options ?? new List<string>(),
+                            CorrectAnswer = parsedQuestion.CorrectAnswer,
+                            Analysis = parsedQuestion.Analysis,
+                            Difficulty = parsedQuestion.Difficulty,
+                            DefaultScore = (int)parsedQuestion.Score,
+                            CategoryId = input.CategoryId,
+                            KnowledgePoints = string.Join(",", parsedQuestion.Tags ?? new List<string>())
+                        };
+
+                        // 创建题目
+                        await CreateQuestionAsync(createDto);
+                        successCount++;
+
+                        _logger.LogDebug("成功导入第 {Index}/{Total} 个题目: {Content}", 
+                            i + 1, parseResults.Count, parsedQuestion.Content.Substring(0, Math.Min(50, parsedQuestion.Content.Length)));
+                    }
+                    catch (Exception ex)
+                    {
+                        var questionPreview = parsedQuestion.Content.Length > 30 
+                            ? parsedQuestion.Content.Substring(0, 30) + "..." 
+                            : parsedQuestion.Content;
+                        
+                        var errorMessage = $"题目 [{questionPreview}] 导入失败: {ex.Message}";
+                        failedItems.Add(errorMessage);
+                        
+                        _logger.LogError(ex, "导入第 {Index}/{Total} 个题目失败: {Content}", 
+                            i + 1, parseResults.Count, parsedQuestion.Content.Substring(0, Math.Min(50, parsedQuestion.Content.Length)));
+                    }
+                }
+
+                _logger.LogInformation("文本导入完成: 成功 {SuccessCount} 个，失败 {FailedCount} 个", successCount, failedItems.Count);
+                
+                if (failedItems.Any())
+                {
+                    _logger.LogWarning("以下题目导入失败: {FailedItems}", string.Join("; ", failedItems));
+                }
+
+                return (successCount, failedItems);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "从文本导入题目时发生错误");
+                throw new AppServiceException(500, $"导入题目失败: {ex.Message}");
+            }
         }
 
         public async Task<QuestionSettingsDto> GetQuestionSettingsAsync()

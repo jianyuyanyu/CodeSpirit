@@ -190,7 +190,8 @@ namespace CodeSpirit.Amis.Form.Fields
                     ["url"] = apiEndpoint,
                     ["data"] = new JObject
                     {
-                        ["&"] = "$$" // 传递整个表单数据
+                        ["&"] = "$$", // 传递整个表单数据
+                        ["aifill"] = true
                     },
                     ["responseData"] = new JObject
                     {

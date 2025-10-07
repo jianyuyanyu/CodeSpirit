@@ -4,6 +4,14 @@
 
 ## 文件列表
 
+### ai-form-wizard.js
+AI表单向导配置文件，包含以下功能：
+- AI智能表单生成的三步向导流程
+- 表单填写、AI处理进度、结果展示
+- 实时日志显示和进度跟踪
+- 支持自定义表单字段和API配置
+- 响应式设计和现代化UI
+
 ### enhanced-import.js
 增强的批量导入组件配置文件，用于生成批量导入界面。
 
@@ -61,6 +69,7 @@ var serviceWrapper = new JObject
 ```
 amis/configs/
 ├── README.md                      # 说明文档
+├── ai-form-wizard.js              # AI表单向导配置
 ├── enhanced-import.js             # 增强批量导入配置
 ├── question-import-wizard.js      # 题目导入向导配置
 ├── question-preview.js            # 题目预览专用配置

@@ -585,17 +585,6 @@ public class SurveysController : ApiControllerBase
 
     #region AI问卷生成相关方法
 
-    ///// <summary>
-    ///// 根据主题生成问卷建议
-    ///// </summary>
-    ///// <param name="request">生成建议请求</param>
-    ///// <returns>问卷建议数据</returns>
-    //[HttpPost("generate-suggestions")]
-    //[DisplayName("生成问卷建议")]
-    //public async Task<ActionResult<ApiResponse<GenerateSurveyRequest>>> GenerateSurveyFieldSuggestions([FromBody] GenerateSurveyRequest request)
-    //{
-    //    return await this.HandleAiFillAsync(_aiFormFillService, request);
-    //}
 
     /// <summary>
     /// 根据主题异步生成问卷（使用前端提供的任务ID）

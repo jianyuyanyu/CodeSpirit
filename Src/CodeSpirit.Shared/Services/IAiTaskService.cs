@@ -31,7 +31,8 @@ public interface IAiTaskService
     /// <param name="step">当前步骤</param>
     /// <param name="progress">进度百分比</param>
     /// <param name="message">状态消息</param>
-    Task UpdateTaskStatusAsync(string taskId, AiTaskStatus status, int step = 0, int progress = 0, string? message = null);
+    /// <param name="result">任务结果</param>
+    Task UpdateTaskStatusAsync(string taskId, AiTaskStatus status, int step = 0, int progress = 0, string? message = null, object? result = null);
 
     /// <summary>
     /// 添加任务日志

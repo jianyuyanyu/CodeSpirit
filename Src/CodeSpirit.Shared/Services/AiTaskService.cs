@@ -85,6 +85,10 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
             var elapsed = (task.EndTime ?? DateTime.UtcNow) - task.StartTime;
             task.ElapsedTime = FormatElapsedTime(elapsed);
         }
+        else
+        {
+            _logger.LogWarning("未找到任务：{TaskId}", taskId);
+        }
 
         return task;
     }
@@ -97,14 +101,20 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
     /// <param name="step">当前步骤</param>
     /// <param name="progress">进度百分比</param>
     /// <param name="message">状态消息</param>
-    public async Task UpdateTaskStatusAsync(string taskId, AiTaskStatus status, int step = 0, int progress = 0, string? message = null)
+    /// <param name="result">任务结果</param>
+    public async Task UpdateTaskStatusAsync(string taskId, AiTaskStatus status, int step = 0, int progress = 0, string? message = null, object? result = null)
     {
+        _logger.LogInformation("收到任务状态更新请求：{TaskId}，状态：{Status}，步骤：{Step}，进度：{Progress}%，消息：{Message}", 
+            taskId, status, step, progress, message);
+            
         var task = await GetTaskFromCache(taskId);
         if (task != null)
         {
+            var oldProgress = task.Progress;
             task.Status = status;
             task.Step = step;
             task.Progress = progress;
+            task.Result = result;
 
             if (!string.IsNullOrEmpty(message))
             {
@@ -129,8 +139,12 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
             }
 
             await SetTaskToCache(taskId, task);
-            _logger.LogInformation("AI任务状态已更新：{TaskId}，状态：{Status}，步骤：{Step}，进度：{Progress}%", 
-                taskId, status, step, progress);
+            _logger.LogInformation("AI任务状态已更新：{TaskId}，状态：{Status}，步骤：{Step}，进度：{OldProgress}% -> {Progress}%，消息：{Message}", 
+                taskId, status, step, oldProgress, progress, message);
+        }
+        else
+        {
+            _logger.LogWarning("更新任务状态时未找到任务：{TaskId}", taskId);
         }
     }
 
@@ -166,16 +180,40 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
     /// <param name="detailUrl">详情页面URL（可选）</param>
     public async Task CompleteTaskAsync(string taskId, object result, string? detailUrl = null)
     {
+        _logger.LogInformation("开始完成任务：{TaskId}", taskId);
+        
         var task = await GetTaskFromCache(taskId);
         if (task != null)
         {
+            _logger.LogInformation("找到任务，开始更新状态：{TaskId}", taskId);
+            
+            // 一次性更新所有字段，避免多次缓存操作
+            task.Status = AiTaskStatus.Completed;
+            task.Step = 4;
+            task.Progress = 100;
+            task.StatusText = "任务已成功完成";
             task.Result = result;
             task.DetailUrl = detailUrl;
+            task.EndTime = DateTime.UtcNow;
             
-            await UpdateTaskStatusAsync(taskId, AiTaskStatus.Completed, 4, 100, "任务已成功完成");
-            await AddTaskLogAsync(taskId, "任务执行成功完成");
-
-            _logger.LogInformation("AI任务已完成：{TaskId}", taskId);
+            // 添加完成日志
+            var logEntry = $"[{DateTime.Now:HH:mm:ss}] 任务执行成功完成";
+            task.Logs.Add(logEntry);
+            
+            // 保持日志数量在合理范围内
+            if (task.Logs.Count > 1000)
+            {
+                task.Logs.RemoveAt(0);
+            }
+            
+            // 一次性保存所有更改
+            await SetTaskToCache(taskId, task);
+            
+            _logger.LogInformation("任务完成状态已保存：{TaskId}，进度：100%", taskId);
+        }
+        else
+        {
+            _logger.LogWarning("完成任务时未找到任务：{TaskId}", taskId);
         }
     }
 
@@ -261,12 +299,18 @@ public class AiTaskService : IAiTaskService, ISingletonDependency
         try
         {
             string cacheKey = TaskKeyPrefix + taskId;
+            _logger.LogDebug("开始保存任务到缓存：{TaskId}，状态：{Status}，进度：{Progress}%", 
+                taskId, task.Status, task.Progress);
+            
             string json = JsonConvert.SerializeObject(task);
             await _distributedCache.SetStringAsync(cacheKey, json, _defaultCacheOptions);
+            
+            _logger.LogDebug("任务保存到缓存成功：{TaskId}", taskId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "保存AI任务到缓存失败：{TaskId}", taskId);
+            throw; // 重新抛出异常，让调用者知道保存失败
         }
     }
 

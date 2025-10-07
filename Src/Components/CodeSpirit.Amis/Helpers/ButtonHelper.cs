@@ -68,7 +68,7 @@ namespace CodeSpirit.Amis.Helpers
                 {
                     dialogOrDrawer["size"] = ConvertDialogSizeToString(dialogSize);
                 }
-                
+
                 button["dialog"] = dialogOrDrawer;
             }
 
@@ -379,10 +379,10 @@ namespace CodeSpirit.Amis.Helpers
                 {
                     var permissionCode = _permissionService.GetPermissionCode(method);
                     var hasPermission = _permissionService.HasPermission(permissionCode);
-                    
-                    _logger.LogWarning("[ButtonHelper权限检查] 方法: {MethodName}, 权限代码: {PermissionCode}, 检查结果: {HasPermission}", 
+
+                    _logger.LogWarning("[ButtonHelper权限检查] 方法: {MethodName}, 权限代码: {PermissionCode}, 检查结果: {HasPermission}",
                         method.Name, permissionCode, hasPermission);
-                    
+
                     if (hasPermission)
                     {
                         // 为每个操作方法创建按钮
@@ -474,7 +474,7 @@ namespace CodeSpirit.Amis.Helpers
                             ["body"] = op.FeedbackBodyTpl
                         };
                     }
-                    
+
                     // 优先使用新的DialogSizeEnum，如果没有则使用已弃用的FeedBackSize
                     if (op.DialogSize != DialogSize.MD)
                     {
@@ -740,380 +740,9 @@ namespace CodeSpirit.Amis.Helpers
         /// <param name="route">API路由信息</param>
         /// <param name="method">方法信息</param>
         /// <returns>按钮配置对象</returns>
-        /// <summary>
-        /// 创建AI步骤向导（包含所有步骤和内容）
-        /// </summary>
-        /// <param name="op">操作特性</param>
-        /// <param name="route">API路由信息</param>
-        /// <param name="method">方法信息</param>
-        /// <returns>步骤向导配置</returns>
-        private JObject CreateAiStepsWizard(OperationAttribute op, ApiRouteInfo route, MethodInfo method)
-        {
-            return new JObject
-            {
-                ["type"] = "wizard",
-                ["id"] = "aiSteps",
-                ["name"] = "aiSteps",
-                ["className"] = "mb-4",
-                ["mode"] = "horizontal",
-                ["actionNextLabel"] = "下一步",
-                ["actionPrevLabel"] = "上一步",
-                ["actionFinishLabel"] = "完成",
-                ["initApi"] = false, // 禁用自动初始化
-                ["steps"] = new JArray
-                {
-                    // 第一步：填写表单
-                    new JObject
-                    {
-                        ["title"] = "填写表单",
-                        ["description"] = "填写AI生成所需的参数信息",
-                        ["body"] = new JArray { CreateAiFormStep(op, route, method) },
-                        ["jumpableOn"] = "${!taskId}",
-                        ["actions"] = new JArray
-                        {
-
-                        }
-                    },
-                    // 第二步：AI处理中
-                    new JObject
-                    {
-                        ["title"] = "AI处理中",
-                        ["description"] = "AI正在分析您的需求并生成内容",
-                        ["body"] = new JArray { CreateAiProgressStep(op, route) },
-                        ["actions"] = new JArray
-                        {
-
-                        }
-                    },
-                    // 第三步：查看结果
-                    new JObject
-                    {
-                        ["title"] = "查看结果",
-                        ["description"] = "查看AI生成的结果内容",
-                        ["body"] = new JArray { CreateAiResultStep(op, route) },
-                        ["actions"] = new JArray
-                        {
-                            new JObject
-                            {
-                                ["type"] = "button",
-                                ["level"] = "primary",
-                                ["label"] = "完成",
-                                ["actionType"] = "close",
-                                ["onEvent"] = new JObject
-                                {
-                                    ["click"] = new JObject
-                                    {
-                                        ["actions"] = new JArray { 
-                                            new JObject { ["actionType"] = "reload", ["componentName"] = amisContext.CrudComponentName } 
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-        }
 
         /// <summary>
-        /// 创建AI表单步骤内容
-        /// </summary>
-        /// <param name="op">操作特性</param>
-        /// <param name="route">API路由信息</param>
-        /// <param name="method">方法信息</param>
-        /// <returns>表单步骤配置</returns>
-        private JObject CreateAiFormStep(OperationAttribute op, ApiRouteInfo route, MethodInfo method)
-        {
-            // 获取表单字段
-            var formFields = GetFormFieldsWithAiSupport(method.GetParameters(), method).ToList();
-
-            return new JObject
-            {
-                ["type"] = "container",
-                ["id"] = "aiFormStep",
-                ["className"] = "p-3",
-                ["body"] = new JArray(
-                    formFields
-                        .Append(new JObject
-                        {
-                            ["type"] = "divider",
-                            ["className"] = "my-3"
-                        })
-                        .Append(CreateAiFormSubmitButton(op, route))
-                )
-            };
-        }
-
-        /// <summary>
-        /// 创建AI进度步骤内容
-        /// </summary>
-        /// <param name="op">操作特性</param>
-        /// <param name="route">API路由信息</param>
-        /// <returns>进度步骤配置</returns>
-        private JObject CreateAiProgressStep(OperationAttribute op, ApiRouteInfo route)
-        {
-            return new JObject
-            {
-                ["type"] = "container",
-                ["id"] = "aiProgressStep",
-                ["className"] = "p-3",
-                ["body"] = new JArray
-                {
-                    // TaskId显示控件
-                    new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = "<div class='alert alert-info mb-3'><i class='fa fa-info-circle'></i> 任务ID: ${taskId}</div>"
-                    },
-                    // 进度状态显示
-                    new JObject
-                    {
-                        ["type"] = "container",
-                        ["className"] = "mb-3",
-                        ["body"] = new JArray
-                        {
-                            // 状态文本
-                            new JObject
-                            {
-                                ["type"] = "tpl",
-                                ["tpl"] = "<div class='mb-2'><strong>当前状态：</strong>${statusText || '准备中...'}</div>"
-                            },
-                            // 进度条
-                            new JObject
-                            {
-                                ["type"] = "progress",
-                                ["value"] = "${progress || 0}",
-                                ["showLabel"] = true,
-                                ["strokeWidth"] = 10,
-                                ["animate"] = true
-                            }
-                        }
-                    },
-                    // 分隔线
-                    new JObject
-                    {
-                        ["type"] = "divider",
-                        ["className"] = "my-3"
-                    },
-                    // 日志标题
-                    new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = "<h5><i class='fa fa-list-alt'></i> 生成日志</h5>",
-                        ["className"] = "mb-2"
-                    },
-                    // 实时日志显示
-                    CreateAiLogService(op, route)
-                }
-            };
-        }
-
-        /// <summary>
-        /// 创建AI结果步骤内容
-        /// </summary>
-        /// <param name="op">操作特性</param>
-        /// <param name="route">API路由信息</param>
-        /// <returns>结果步骤配置</returns>
-        private JObject CreateAiResultStep(OperationAttribute op, ApiRouteInfo route)
-        {
-            return new JObject
-            {
-                ["type"] = "service",
-                ["name"] = "aiResult",
-                ["id"] = "aiResultStep",
-                ["interval"] = op.PollingInterval,
-                ["silentPolling"] = true,
-                ["stopAutoRefreshWhen"] = "progress == 100",
-                ["initFetch"] = false, // 禁用初始加载
-                ["api"] = new JObject
-                {
-                    ["url"] = $"{op.StatusApi}/${{taskId}}",
-                    ["method"] = "get",
-                    ["data"] = new JObject
-                    {
-                        ["taskId"] = "${taskId}"
-                    }
-                },
-                ["body"] = CreateAiResultPanelBody()
-            };
-        }
-
-
-        /// <summary>
-        /// 创建AI表单提交按钮及其事件处理
-        /// </summary>
-        /// <param name="op">操作特性</param>
-        /// <param name="route">API路由信息</param>
-        /// <returns>提交按钮配置</returns>
-        private JObject CreateAiFormSubmitButton(OperationAttribute op, ApiRouteInfo route)
-        {
-            return new JObject
-            {
-                ["type"] = "button",
-                ["label"] = "开始生成",
-                ["level"] = "primary",
-                ["actionType"] = "ajax",
-                ["icon"] = "fa fa-rocket",
-                ["api"] = new JObject
-                {
-                    ["url"] = route.ApiPath,
-                    ["method"] = route.HttpMethod,
-                    ["data"] = new JObject
-                    {
-                        ["&"] = "$$"
-                    }
-                },
-                ["reload"] = "aiLogsService?taskId=${taskId}",
-                ["onEvent"] = new JObject
-                {
-                    ["click"] = new JObject
-                    {
-                        ["actions"] = CreateAiFormPostSubmitActions(op, route)
-                    }
-                }
-            };
-        }
-
-        /// <summary>
-        /// 创建AI表单提交后的动作序列（不包含AJAX提交，因为已移至按钮的api属性）
-        /// </summary>
-        /// <param name="op">操作特性</param>
-        /// <param name="route">API路由信息</param>
-        /// <returns>动作数组</returns>
-        private JArray CreateAiFormPostSubmitActions(OperationAttribute op, ApiRouteInfo route)
-        {
-            return new JArray
-            {
-                // 更新步骤指示器到第二步（AI处理中）
-                new JObject
-                {
-                    ["actionType"] = "next",
-                    ["componentId"] = "aiSteps",
-                }
-            };
-        }
-
-        /// <summary>
-        /// 创建AI日志服务组件
-        /// </summary>
-        /// <param name="op">操作特性</param>
-        /// <param name="route">API路由信息</param>
-        /// <returns>日志服务配置</returns>
-        private JObject CreateAiLogService(OperationAttribute op, ApiRouteInfo route)
-        {
-            return new JObject
-            {
-                ["type"] = "service",
-                ["id"] = "aiLogsService",
-                ["name"] = "aiLogsService",
-                ["interval"] = op.PollingInterval,
-                ["silentPolling"] = true,
-                ["stopAutoRefreshWhen"] = "progress == 100",
-                ["initFetch"] = true,
-                ["api"] = new JObject
-                {
-                    ["url"] = $"{op.StatusApi}/${{taskId}}",
-                    ["method"] = "get",
-                    ["sendOn"] = "taskId != ''"
-                },
-                ["onEvent"] = new JObject
-                {
-                    ["fetchInited"] = new JObject
-                    {
-                        ["actions"] = new JArray
-                        {
-                            // 等待300毫秒
-                            new JObject
-                            {
-                                ["actionType"] = "delay",
-                                ["args"] = new JObject
-                                {
-                                    ["delay"] = 300
-                                }
-                            },
-                            // 跳转到下一步
-                            new JObject
-                            {
-                                ["expression"] = "progress == 100",
-                                ["actionType"] = "next",
-                                ["componentId"] = "aiSteps"
-                            },
-                            new JObject
-                            {
-                                ["actionType"] = "setValue",
-                                ["args"] = new JObject
-                                {
-                                    ["value"] = new JObject
-                                    {
-                                        ["aiTaskCompleted"] = true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                ["body"] = new JObject
-                {
-                    ["type"] = "log",
-                    ["id"] = "aiLogs",
-                    ["height"] = 300,
-                    ["source"] = "${logs}",
-                    ["autoScroll"] = true,
-                    ["encoding"] = "utf-8"
-                }
-            };
-        }
-
-
-        /// <summary>
-        /// 创建AI结果面板内容
-        /// </summary>
-        /// <returns>结果面板内容配置</returns>
-        private JArray CreateAiResultPanelBody()
-        {
-            return new JArray
-            {
-                // 状态展示
-                new JObject
-                {
-                    ["type"] = "alert",
-                    ["level"] = "${status == 2 ? 'success' : (status == 'failed' ? 'danger' : 'info')}",
-                    ["body"] = new JObject
-                    {
-                        ["type"] = "tpl",
-                        ["tpl"] = "<strong>状态：</strong>${statusText}<br/><strong>进度：</strong>${progress}%<br/><strong>耗时：</strong>${elapsedTime}"
-                    }
-                },
-                // 结果展示
-                new JObject
-                {
-                    ["type"] = "container",
-                    ["visibleOn"] = "${status == 2}",
-                    ["body"] = new JArray
-                    {
-                        new JObject
-                        {
-                            ["type"] = "divider"
-                        },
-                        new JObject
-                        {
-                            ["type"] = "tpl",
-                            ["tpl"] = "<h4>生成结果</h4>"
-                        },
-                        new JObject
-                        {
-                            ["type"] = "json",
-                            ["name"] = "result",
-                            ["source"] = "${result}",
-                            ["levelExpand"] = 2
-                        }
-                    }
-                }
-            };
-        }
-
-        /// <summary>
-        /// 创建AI表单按钮（重构后的简洁版本）
+        /// 创建AI表单按钮（使用外部配置文件）
         /// </summary>
         /// <param name="op">操作特性</param>
         /// <param name="title">按钮标题</param>
@@ -1122,31 +751,54 @@ namespace CodeSpirit.Amis.Helpers
         /// <returns>按钮配置对象</returns>
         private JObject CreateAiFormButton(OperationAttribute op, string title, ApiRouteInfo route, MethodInfo method)
         {
-            // 创建AI表单弹窗配置
-            JObject aiFormDialog = new()
+            // 获取表单字段
+            var formFields = GetFormFieldsWithAiSupport(method.GetParameters(), method).ToList();
+
+            // 创建对话框配置，包含Service组件
+            var dialogBody = new JObject
             {
                 ["title"] = title,
-                ["size"] = op.DialogSizeString, // 使用操作特性中的对话框大小
+                ["size"] = op.DialogSizeString,
                 ["closeOnEsc"] = false,
                 ["closeOnOutside"] = false,
-                // ["showCloseButton"] = true,
-                ["name"] = "aiFormDialog",
+                ["showCloseButton"] = true,
                 ["body"] = new JObject
                 {
                     ["type"] = "form",
                     ["name"] = "aiForm",
                     ["title"] = "",
-                    ["data"] = !string.IsNullOrEmpty(op.Data) ? JsonConvert.DeserializeObject<JObject>(op.Data) : null,
+                    ["data"] = !string.IsNullOrEmpty(op.Data) ? JsonConvert.DeserializeObject<JObject>(op.Data) : new JObject(),
                     ["body"] = new JArray
                     {
-                        // AI步骤向导（包含所有步骤和内容）
-                        CreateAiStepsWizard(op, route, method)
-                    }
-                },
+                            // Service组件加载外部配置文件
+                        new JObject
+                        {
+                            ["type"] = "service",
+                            ["name"] = $"aiFormWizardService_{Guid.NewGuid():N}",
+                                ["data"] = new JObject
+                                {
+                                            // 通过数据链设置配置参数
+                                            ["aiFormConfig"] = new JObject
+                                            {
+                                                ["title"] = title,
+                                                ["dialogSize"] = op.DialogSizeString,
+                                                ["apiPath"] = route.ApiPath,
+                                                ["httpMethod"] = route.HttpMethod,
+                                                ["statusApi"] = op.StatusApi,
+                                                ["pollingInterval"] = op.PollingInterval,
+                                                ["formFields"] = new JArray(formFields),
+                                                ["data"] = !string.IsNullOrEmpty(op.Data) ? JsonConvert.DeserializeObject<JObject>(op.Data) : new JObject(),
+                                                ["crudComponentName"] = amisContext.CrudComponentName
+                                            }
+                                        },
+                                        ["schemaApi"] = "js:/amis/configs/ai-form-wizard.js"
+                          }
+                     }
+                    },
                 ["actions"] = CreateAiFormDialogActions(op)
             };
 
-            return CreateButton(title, "dialog", dialogOrDrawer: aiFormDialog, visibleOn: op.VisibleOn, dialogSize: op.DialogSize);
+            return CreateButton(title, "dialog", dialogOrDrawer: dialogBody, visibleOn: op.VisibleOn, dialogSize: op.DialogSize);
         }
 
         /// <summary>
@@ -1216,11 +868,11 @@ namespace CodeSpirit.Amis.Helpers
                 {
                     // 如果没有 AI 特性，尝试查找带有 FormGroupAttribute 的复杂类型参数
                     // 这样可以确保表单项组功能仍然生效
-                    var complexParam = parameters.FirstOrDefault(p => 
-                        p.ParameterType.IsClass && 
+                    var complexParam = parameters.FirstOrDefault(p =>
+                        p.ParameterType.IsClass &&
                         p.ParameterType != typeof(string) &&
                         p.ParameterType.HasFormGroups());
-                    
+
                     if (complexParam != null)
                     {
                         dtoType = complexParam.ParameterType;

@@ -16,6 +16,7 @@ public class AIGenerateQuestionDto
     [StringLength(100, ErrorMessage = "主题最多100字符")]
     [DisplayName("主题")]
     [AmisFormField(type: "input-text", Required = true)]
+    [Description("请输入题目主题或知识领域，例如：数学微积分、计算机网络、英语语法等")]
     public string Topic { get; set; } = string.Empty;
 
     /// <summary>
@@ -24,7 +25,8 @@ public class AIGenerateQuestionDto
     [Required(ErrorMessage = "请指定题目数量")]
     [Range(1, 10, ErrorMessage = "题目数量范围为1-10题")]
     [DisplayName("题目数量")]
-    [AmisNumberField(Min = 1, Max = 10, Step = 1)]
+    [AmisNumberField(Min = 1, Max = 10, Step = 1, DefaultValue = 10)]
+    [Description("请输入需要生成的题目数量，范围为1-10题")]
     public int Count { get; set; } = 1;
 
     /// <summary>
@@ -32,6 +34,7 @@ public class AIGenerateQuestionDto
     /// </summary>
     [Required(ErrorMessage = "请选择题目类型")]
     [DisplayName("题目类型")]
+    [Description("请选择题目类型，例如：单选题、多选题、判断题等")]
     public QuestionType Type { get; set; } = QuestionType.SingleChoice;
 
     /// <summary>
@@ -40,7 +43,7 @@ public class AIGenerateQuestionDto
     [Required(ErrorMessage = "请选择题目难度")]
     [DisplayName("难度")]
     public QuestionDifficulty Difficulty { get; set; } = QuestionDifficulty.Medium;
-    
+
     /// <summary>
     /// 分类ID
     /// </summary>
@@ -55,7 +58,7 @@ public class AIGenerateQuestionDto
         ValueField = "id"
     )]
     public long CategoryId { get; set; }
-    
+
     /// <summary>
     /// 生成要求
     /// </summary>
@@ -63,4 +66,4 @@ public class AIGenerateQuestionDto
     [StringLength(500, ErrorMessage = "生成要求最多500字符")]
     [AmisTextareaField(MaxLength = 500, ShowCounter = true, Placeholder = "请输入对生成题目的特定要求，例如：围绕某个特定概念、包含具体知识点等")]
     public string? Requirements { get; set; }
-} 
+}

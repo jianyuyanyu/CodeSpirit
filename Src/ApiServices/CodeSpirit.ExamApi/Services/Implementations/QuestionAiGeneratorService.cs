@@ -90,6 +90,130 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
     }
 
     /// <summary>
+    /// 重写执行生成任务方法，使用同步的进度更新机制
+    /// </summary>
+    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="taskId">任务ID</param>
+    /// <param name="request">生成请求</param>
+    protected override async Task ExecuteGenerationTaskAsyncWithScope(IServiceProvider serviceProvider, string taskId, AIGenerateQuestionDto request)
+    {
+        // 从独立的服务范围获取所需的服务
+        var aiTaskService = serviceProvider.GetRequiredService<IAiTaskService>();
+        
+        try
+        {
+            // 步骤 1: 准备阶段
+            await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Running, 1, 10, "正在初始化AI生成环境...");
+            await aiTaskService.AddTaskLogAsync(taskId, "开始初始化生成环境");
+            
+            await OnGenerationStartedWithScope(serviceProvider, request);
+            await OnTaskStepWithScope(serviceProvider, taskId, 1, "初始化完成");
+
+            // 步骤 2: AI处理中
+            await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Running, 2, 30, "AI正在分析您的需求并生成内容...");
+            await aiTaskService.AddTaskLogAsync(taskId, "开始AI内容生成");
+
+            // 创建同步的进度回调
+            var result = await DoGenerateAsyncWithScope(serviceProvider, request, (progress, message) => 
+            {
+                // 同步执行进度更新，不使用Task.Run
+                try
+                {
+                    var actualProgress = 30 + (int)(progress * 50); // 30% + 50% for generation
+                    _logger.LogInformation("同步更新进度: {Progress} -> {ActualProgress}%, {Message}", progress, actualProgress, message);
+                    
+                    // 同步调用，确保进度更新立即执行
+                    aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Running, 2, actualProgress, message).Wait();
+                    if (!string.IsNullOrEmpty(message))
+                    {
+                        aiTaskService.AddTaskLogAsync(taskId, message).Wait();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "更新任务进度时出错：{TaskId}", taskId);
+                }
+            });
+
+            // 步骤 3: 结果处理
+            await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Running, 3, 85, "正在处理生成结果...");
+            await aiTaskService.AddTaskLogAsync(taskId, "开始处理生成结果");
+
+            try
+            {
+                await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Running, 3, 87, "正在验证生成结果...");
+                await OnResultProcessingWithScope(serviceProvider, request, result);
+                
+                await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Running, 3, 95, "结果处理完成，准备完成任务...");
+                await OnTaskStepWithScope(serviceProvider, taskId, 3, "结果处理完成");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "结果处理阶段发生错误，但任务将继续完成");
+                await aiTaskService.AddTaskLogAsync(taskId, $"结果处理警告: {ex.Message}");
+                await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Running, 3, 90, "结果处理遇到问题，但任务继续...");
+            }
+
+            // 步骤 4: 完成
+            await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Running, 4, 97, "正在准备完成任务...");
+            _logger.LogInformation("开始任务完成阶段，TaskId: {TaskId}", taskId);
+            
+            try
+            {
+                // 设置任务完成阶段的超时时间
+                using var completionCts = new CancellationTokenSource(TimeSpan.FromMinutes(2)); // 2分钟超时
+                
+                _logger.LogInformation("获取详情页面URL...");
+                string? detailUrl = await GetDetailUrlWithScope(serviceProvider, result).WaitAsync(completionCts.Token);
+                _logger.LogInformation("详情页面URL: {DetailUrl}", detailUrl);
+                
+                await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Running, 4, 98, "正在完成任务...");
+                _logger.LogInformation("调用CompleteTaskAsync...");
+                
+                await aiTaskService.CompleteTaskAsync(taskId, result, detailUrl).WaitAsync(completionCts.Token);
+                _logger.LogInformation("CompleteTaskAsync调用完成");
+                
+                _logger.LogInformation("调用OnGenerationCompletedWithScope...");
+                await OnGenerationCompletedWithScope(serviceProvider, request, result).WaitAsync(completionCts.Token);
+                _logger.LogInformation("OnGenerationCompletedWithScope调用完成");
+                
+                _logger.LogInformation("任务完成阶段全部完成，TaskId: {TaskId}", taskId);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("任务完成阶段超时（2分钟），强制设置为完成状态，TaskId: {TaskId}", taskId);
+                try
+                {
+                    await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Completed, 4, 100, "任务完成（超时）");
+                }
+                catch (Exception timeoutEx)
+                {
+                    _logger.LogError(timeoutEx, "超时后强制完成任务也失败了，TaskId: {TaskId}", taskId);
+                }
+            }
+            catch (Exception completionEx)
+            {
+                _logger.LogError(completionEx, "任务完成阶段发生错误，TaskId: {TaskId}", taskId);
+                // 尝试手动设置任务为完成状态
+                try
+                {
+                    await aiTaskService.UpdateTaskStatusAsync(taskId, AiTaskStatus.Completed, 4, 100, "任务完成（有警告）");
+                }
+                catch (Exception finalEx)
+                {
+                    _logger.LogError(finalEx, "手动完成任务也失败了，TaskId: {TaskId}", taskId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AI生成任务失败：{TaskId}", taskId);
+            await aiTaskService.FailTaskAsync(taskId, ex.Message);
+            await OnGenerationFailedWithScope(serviceProvider, request, ex);
+        }
+    }
+
+    /// <summary>
     /// 获取任务类型名称
     /// </summary>
     /// <returns>任务类型</returns>
@@ -106,17 +230,17 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
     /// <returns>生成结果</returns>
     protected override async Task<List<CreateQuestionDto>> DoGenerateAsync(AIGenerateQuestionDto request, Action<double, string>? progressCallback = null)
     {
-        // 这里调用原有的同步生成方法
-        // 可以根据需要在适当的位置调用 progressCallback 来报告进度
-        
         progressCallback?.Invoke(0.1, "正在分析题目主题...");
-        await Task.Delay(500); // 模拟处理时间
         
-        progressCallback?.Invoke(0.3, "正在生成题目结构...");
-        await Task.Delay(500);
+        progressCallback?.Invoke(0.3, "正在生成题目内容...");
         
-        progressCallback?.Invoke(0.6, "正在生成题目内容...");
-        var result = await _aiQuestionGeneratorService.GenerateQuestionsAsync(request);
+        // 创建一个进度通知服务来桥接进度回调
+        var progressNotificationService = new ProgressCallbackNotificationService(progressCallback, _logger);
+        
+        // 调用AI生成服务，传递进度通知服务
+        var result = await _aiQuestionGeneratorService.GenerateQuestionsAsync(request, 
+            sessionId: Guid.NewGuid().ToString(), 
+            notificationService: progressNotificationService);
         
         progressCallback?.Invoke(1.0, "题目生成完成");
         
@@ -140,19 +264,26 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
         _logger.LogDebug("题目生成开始，当前租户上下文：TenantId={TenantId}, UserId={UserId}, UserName={UserName}", 
             scopedCurrentUser.TenantId, scopedCurrentUser.Id, scopedCurrentUser.UserName);
         
+        _logger.LogInformation("开始执行题目生成，进度回调是否为空: {IsNull}", progressCallback == null);
+        
         progressCallback?.Invoke(0.1, "正在分析题目主题...");
-        await Task.Delay(500); // 模拟处理时间
+        _logger.LogInformation("已调用进度回调: 0.1");
         
-        progressCallback?.Invoke(0.3, "正在生成题目结构...");
-        await Task.Delay(500);
+        progressCallback?.Invoke(0.3, "正在生成题目内容...");
+        _logger.LogInformation("已调用进度回调: 0.3");
         
-        progressCallback?.Invoke(0.6, "正在生成题目内容...");
-        var result = await aiQuestionGeneratorService.GenerateQuestionsAsync(request);
+        // 创建一个进度通知服务来桥接进度回调
+        var progressNotificationService = new ProgressCallbackNotificationService(progressCallback, _logger);
         
-        progressCallback?.Invoke(0.9, "正在优化题目格式...");
-        await Task.Delay(300);
+        // 调用AI生成服务，传递进度通知服务
+        _logger.LogInformation("开始调用AI生成服务");
+        var result = await aiQuestionGeneratorService.GenerateQuestionsAsync(request, 
+            sessionId: Guid.NewGuid().ToString(), 
+            notificationService: progressNotificationService);
+        _logger.LogInformation("AI生成服务调用完成，生成了 {Count} 个题目", result.Count);
         
         progressCallback?.Invoke(1.0, "题目生成完成");
+        _logger.LogInformation("已调用进度回调: 1.0");
         
         return result;
     }
@@ -207,15 +338,41 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
     /// <param name="result">生成结果</param>
     protected override async Task OnResultProcessingWithScope(IServiceProvider serviceProvider, AIGenerateQuestionDto request, List<CreateQuestionDto> result)
     {
+        _logger.LogInformation("开始结果处理阶段，生成了 {Count} 个题目", result.Count);
+        
         await base.OnResultProcessingWithScope(serviceProvider, request, result);
         
         if (result.Any())
         {
             _logger.LogInformation("正在处理生成的 {Count} 个题目", result.Count);
             
-            // 使用独立的服务范围保存题目到数据库
-            await SaveQuestionsToDatabaseWithScope(serviceProvider, result);
+            // 在后台异步保存题目到数据库，不阻塞任务完成
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _logger.LogInformation("开始在后台保存题目到数据库...");
+                    
+                    using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5)); // 5分钟超时
+                    await SaveQuestionsToDatabaseWithScope(serviceProvider, result).WaitAsync(cts.Token);
+                    
+                    _logger.LogInformation("题目保存到数据库完成");
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning("保存题目到数据库超时（5分钟）");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "后台保存题目到数据库时发生错误");
+                }
+            });
+            
+            // 立即标记为处理完成，不等待数据库保存
+            _logger.LogInformation("题目生成结果处理完成，数据库保存在后台进行");
         }
+        
+        _logger.LogInformation("结果处理阶段完成");
     }
 
     /// <summary>
@@ -257,32 +414,56 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
     /// <param name="questions">生成的题目列表</param>
     private async Task SaveQuestionsToDatabaseWithScope(IServiceProvider serviceProvider, List<CreateQuestionDto> questions)
     {
-        // 从独立的服务范围获取题目服务
-        var questionService = serviceProvider.GetRequiredService<IQuestionService>();
+        _logger.LogInformation("开始保存 {Count} 个题目到数据库", questions.Count);
         
-        int successCount = 0;
-        List<string> failedItems = new();
-
-        foreach (var question in questions)
+        try
         {
-            try
+            // 从独立的服务范围获取题目服务
+            var questionService = serviceProvider.GetRequiredService<IQuestionService>();
+            _logger.LogInformation("成功获取题目服务");
+            
+            int successCount = 0;
+            List<string> failedItems = new();
+
+            for (int i = 0; i < questions.Count; i++)
             {
-                await questionService.CreateQuestionAsync(question);
-                successCount++;
-                _logger.LogDebug("成功保存题目: {Content}", question.Content.Substring(0, Math.Min(50, question.Content.Length)));
+                var question = questions[i];
+                try
+                {
+                    _logger.LogDebug("正在保存第 {Index}/{Total} 个题目: {Content}", 
+                        i + 1, questions.Count, question.Content.Substring(0, Math.Min(50, question.Content.Length)));
+                    
+                    await questionService.CreateQuestionAsync(question);
+                    successCount++;
+                    
+                    _logger.LogDebug("成功保存第 {Index}/{Total} 个题目", i + 1, questions.Count);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "保存第 {Index}/{Total} 个题目失败: {Content}", 
+                        i + 1, questions.Count, question.Content.Substring(0, Math.Min(50, question.Content.Length)));
+                    failedItems.Add($"题目 [{question.Content.Substring(0, Math.Min(30, question.Content.Length))}...] 保存失败: {ex.Message}");
+                }
+                
+                // 每保存5个题目记录一次进度
+                if ((i + 1) % 5 == 0 || i == questions.Count - 1)
+                {
+                    _logger.LogInformation("保存进度: {Current}/{Total} ({Percentage:F1}%)", 
+                        i + 1, questions.Count, (double)(i + 1) / questions.Count * 100);
+                }
             }
-            catch (Exception ex)
+
+            _logger.LogInformation("题目保存完成: 成功 {SuccessCount} 个，失败 {FailedCount} 个", successCount, failedItems.Count);
+            
+            if (failedItems.Any())
             {
-                _logger.LogError(ex, "保存题目失败: {Content}", question.Content.Substring(0, Math.Min(50, question.Content.Length)));
-                failedItems.Add($"题目 [{question.Content.Substring(0, Math.Min(30, question.Content.Length))}...] 保存失败: {ex.Message}");
+                _logger.LogWarning("以下题目保存失败: {FailedItems}", string.Join("; ", failedItems));
             }
         }
-
-        _logger.LogInformation("题目保存完成: 成功 {SuccessCount} 个，失败 {FailedCount} 个", successCount, failedItems.Count);
-        
-        if (failedItems.Any())
+        catch (Exception ex)
         {
-            _logger.LogWarning("以下题目保存失败: {FailedItems}", string.Join("; ", failedItems));
+            _logger.LogError(ex, "保存题目到数据库时发生严重错误");
+            throw; // 重新抛出异常，让上层处理
         }
     }
 
@@ -307,5 +488,91 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
     {
         // 可以在这里添加更复杂的逻辑，比如获取保存成功的题目ID等
         return await GetDetailUrl(result);
+    }
+}
+
+/// <summary>
+/// 进度回调通知服务，用于桥接Action回调和IGeneratorNotificationService
+/// </summary>
+internal class ProgressCallbackNotificationService : IGeneratorNotificationService
+{
+    private readonly Action<double, string>? _progressCallback;
+    private readonly ILogger _logger;
+    private readonly SemaphoreSlim _progressSemaphore = new(1, 1);
+
+    /// <summary>
+    /// 初始化进度回调通知服务
+    /// </summary>
+    /// <param name="progressCallback">进度回调</param>
+    /// <param name="logger">日志记录器</param>
+    public ProgressCallbackNotificationService(Action<double, string>? progressCallback, ILogger logger)
+    {
+        _progressCallback = progressCallback;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// 发送题目生成开始通知
+    /// </summary>
+    /// <param name="sessionId">会话ID</param>
+    /// <param name="request">生成请求</param>
+    public Task NotifyGenerationStartedAsync(string sessionId, AIGenerateQuestionDto request)
+    {
+        _progressCallback?.Invoke(0.1, "开始生成题目...");
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 发送题目生成进度通知
+    /// </summary>
+    /// <param name="sessionId">会话ID</param>
+    /// <param name="stage">当前阶段</param>
+    /// <param name="message">消息</param>
+    /// <param name="percentage">完成百分比</param>
+    public async Task NotifyGenerationProgressAsync(string sessionId, string stage, string message, int percentage)
+    {
+        await _progressSemaphore.WaitAsync();
+        try
+        {
+            // 将百分比转换为0-1的进度值
+            double progress = percentage / 100.0;
+            _logger.LogInformation("桥接服务收到进度更新: {Stage} - {Message} ({Percentage}%) -> 转换为进度值: {Progress}", 
+                stage, message, percentage, progress);
+            
+            // 同步调用进度回调，确保进度更新能够立即执行
+            _progressCallback?.Invoke(progress, message);
+            
+            _logger.LogInformation("进度回调已调用: {Progress}, {Message}", progress, message);
+            
+            // 添加一个小延迟，确保进度更新有时间被处理
+            await Task.Delay(100);
+        }
+        finally
+        {
+            _progressSemaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// 发送题目生成完成通知
+    /// </summary>
+    /// <param name="sessionId">会话ID</param>
+    /// <param name="questions">生成的题目</param>
+    /// <param name="duration">耗时(毫秒)</param>
+    public Task NotifyGenerationCompletedAsync(string sessionId, List<CreateQuestionDto> questions, long duration)
+    {
+        _progressCallback?.Invoke(1.0, $"题目生成完成，共生成 {questions.Count} 道题目");
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 发送题目生成错误通知
+    /// </summary>
+    /// <param name="sessionId">会话ID</param>
+    /// <param name="error">错误信息</param>
+    public Task NotifyGenerationErrorAsync(string sessionId, string error)
+    {
+        _progressCallback?.Invoke(0.0, $"生成失败: {error}");
+        return Task.CompletedTask;
     }
 }

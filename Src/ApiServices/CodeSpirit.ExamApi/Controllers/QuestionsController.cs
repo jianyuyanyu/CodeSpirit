@@ -385,7 +385,7 @@ public class QuestionsController : ApiControllerBase
         {
             ["type"] = "service",
             ["name"] = "questionImportWizardService",
-            ["schemaApi"] = "js:/amis/configs/question-import-wizard.js?type=wizard&baseApi=/exam/api/exam&rootApi=${ROOT_API}"
+            ["schemaApi"] = "js:/amis/configs/exam/question-import-wizard.js?type=wizard&baseApi=/exam/api/exam&rootApi=${ROOT_API}"
         };
 
         return SuccessResponse(serviceWrapper);
@@ -428,7 +428,7 @@ public class QuestionsController : ApiControllerBase
                     ["score"] = question.DefaultScore
                 }
             },
-            ["schemaApi"] = "js:/amis/configs/question-preview.js?baseApi=/exam/api/exam"
+            ["schemaApi"] = "js:/amis/configs/exam/question-preview.js?baseApi=/exam/api/exam"
         };
 
         return SuccessResponse(serviceWrapper);

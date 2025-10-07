@@ -791,7 +791,7 @@ namespace CodeSpirit.Amis.Helpers
                                                 ["crudComponentName"] = amisContext.CrudComponentName
                                             }
                                         },
-                                        ["schemaApi"] = "js:/amis/configs/ai-form-wizard.js"
+                                        ["schemaApi"] = "js:/amis/configs/ai/ai-form-wizard.js"
                           }
                      }
                     },

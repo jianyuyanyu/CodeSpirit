@@ -459,7 +459,7 @@ if (configType === 'preview') {
     // 重定向到专门的预览配置文件
     return {
         type: "service",
-        schemaApi: `js:/amis/configs/question-preview.js?baseApi=${baseApi}`
+        schemaApi: `js:/amis/configs/exam/question-preview.js?baseApi=${baseApi}`
     };
 }
 
@@ -931,7 +931,7 @@ D、IBM
                                                                 size: "lg",
                                                                 body: {
                                                                     type: "service",
-                                                                    schemaApi: `js:/amis/configs/question-preview.js?baseApi=${baseApi}`,
+                                                                    schemaApi: `js:/amis/configs/exam/question-preview.js?baseApi=${baseApi}`,
                                                                     data: {
                                                                         question: {
                                                                             content: "$content",

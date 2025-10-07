@@ -72,7 +72,7 @@ namespace CodeSpirit.Amis.Form.Fields
                         ["columns"] = attr.CreateInputTable ? ExtractPropertyInfo(itemType) : new JArray()
                     }
                 },
-                ["schemaApi"] = $"js:/amis/configs/enhanced-import.js?type={itemType.Name}"
+                ["schemaApi"] = $"js:/amis/configs/common/enhanced-import.js?type={itemType.Name}"
             };
 
             return serviceWrapper;

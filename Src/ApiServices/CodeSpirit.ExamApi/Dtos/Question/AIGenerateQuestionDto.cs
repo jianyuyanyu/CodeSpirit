@@ -25,9 +25,9 @@ public class AIGenerateQuestionDto
     [Required(ErrorMessage = "请指定题目数量")]
     [Range(1, 10, ErrorMessage = "题目数量范围为1-10题")]
     [DisplayName("题目数量")]
-    [AmisNumberField(Min = 1, Max = 10, Step = 1, DefaultValue = 10)]
+    [AmisNumberField(Min = 1, Max = 10, Step = 1, DefaultValue = 5)]
     [Description("请输入需要生成的题目数量，范围为1-10题")]
-    public int Count { get; set; } = 1;
+    public int Count { get; set; } = 5;
 
     /// <summary>
     /// 题目类型

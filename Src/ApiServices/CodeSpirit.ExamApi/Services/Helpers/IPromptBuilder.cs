@@ -20,5 +20,5 @@ public interface IPromptBuilder
     /// <param name="request">生成请求</param>
     /// <param name="errorMessage">错误信息</param>
     /// <returns>提示词</returns>
-    string BuildCorrectionPrompt(AIGenerateQuestionDto request, string errorMessage = null);
+    string BuildCorrectionPrompt(AIGenerateQuestionDto request, string? errorMessage = null);
 } 

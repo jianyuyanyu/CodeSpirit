@@ -15,6 +15,7 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
     private readonly IAIQuestionGeneratorService _aiQuestionGeneratorService;
     private readonly IQuestionService _questionService;
     private readonly ICurrentUser _currentUser;
+    private readonly IQuestionValidationService _questionValidationService;
 
     /// <summary>
     /// 初始化题目AI生成服务
@@ -25,18 +26,21 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
     /// <param name="aiQuestionGeneratorService">AI题目生成服务</param>
     /// <param name="questionService">题目服务</param>
     /// <param name="currentUser">当前用户</param>
+    /// <param name="questionValidationService">题目验证服务</param>
     public QuestionAiGeneratorService(
         IAiTaskService aiTaskService,
         ILogger<QuestionAiGeneratorService> logger,
         IServiceScopeFactory serviceScopeFactory,
         IAIQuestionGeneratorService aiQuestionGeneratorService,
         IQuestionService questionService,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        IQuestionValidationService questionValidationService)
         : base(aiTaskService, logger, serviceScopeFactory)
     {
         _aiQuestionGeneratorService = aiQuestionGeneratorService ?? throw new ArgumentNullException(nameof(aiQuestionGeneratorService));
         _questionService = questionService ?? throw new ArgumentNullException(nameof(questionService));
         _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+        _questionValidationService = questionValidationService ?? throw new ArgumentNullException(nameof(questionValidationService));
     }
 
     /// <summary>
@@ -308,6 +312,26 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
     {
         await base.OnGenerationCompleted(request, result);
         _logger.LogInformation("题目生成完成，共生成 {Count} 个题目", result.Count);
+        
+        // 验证和修复生成的题目
+        if (result.Any())
+        {
+            _logger.LogInformation("开始验证和修复生成的题目...");
+            try
+            {
+                var validatedQuestions = await _questionValidationService.ValidateAndFixQuestionsAsync(result);
+                
+                // 替换原始结果
+                result.Clear();
+                result.AddRange(validatedQuestions);
+                
+                _logger.LogInformation("题目验证和修复完成");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "验证和修复题目时发生错误，将使用原始题目");
+            }
+        }
     }
 
     /// <summary>

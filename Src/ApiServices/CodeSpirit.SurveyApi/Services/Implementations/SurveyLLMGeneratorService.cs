@@ -125,7 +125,23 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
             // 解析LLM响应
             var generatedSurvey = await ParseLLMResponseAsync(llmResponse, request, prompt);
 
-            _logger.LogInformation("问卷生成成功，题目数量：{QuestionCount}", generatedSurvey.Questions.Count);
+            // 验证生成结果
+            if (generatedSurvey.Questions == null || !generatedSurvey.Questions.Any())
+            {
+                _logger.LogWarning("LLM生成的问卷没有包含题目，尝试重新解析或创建备用题目");
+                
+                // 尝试不同的解析策略
+                generatedSurvey = await TryAlternativeParsingAsync(llmResponse, request, prompt);
+                
+                // 如果仍然没有题目，创建基础题目
+                if (generatedSurvey.Questions == null || !generatedSurvey.Questions.Any())
+                {
+                    _logger.LogWarning("所有解析策略都失败，创建基础题目作为备用方案");
+                    generatedSurvey.Questions = await CreateBasicQuestionsAsync(request);
+                }
+            }
+
+            _logger.LogInformation("问卷生成成功，题目数量：{QuestionCount}", generatedSurvey.Questions?.Count ?? 0);
 
             // 保存生成的问卷及题目
             var savedSurvey = await SaveGeneratedSurveyAsync(generatedSurvey, request, llmResponse);
@@ -1618,6 +1634,327 @@ public class SurveyLLMGeneratorService : ISurveyLLMGeneratorService, IScopedDepe
             "Ranking" => "排序题",
             _ => questionType
         };
+    }
+
+    /// <summary>
+    /// 尝试备用解析策略
+    /// </summary>
+    /// <param name="llmResponse">LLM响应</param>
+    /// <param name="request">原始请求</param>
+    /// <param name="usedPrompt">使用的提示词</param>
+    /// <returns>解析结果</returns>
+    private async Task<GeneratedSurveyDto> TryAlternativeParsingAsync(string llmResponse, GenerateSurveyRequest request, string usedPrompt)
+    {
+        try
+        {
+            _logger.LogInformation("尝试备用解析策略");
+
+            // 策略1：尝试提取更宽松的JSON格式
+            var result = await TryLooseJsonParsingAsync(llmResponse, request, usedPrompt);
+            if (result.Questions?.Any() == true)
+            {
+                _logger.LogInformation("宽松JSON解析成功，题目数量：{Count}", result.Questions.Count);
+                return result;
+            }
+
+            // 策略2：尝试从文本中提取题目信息
+            result = await TryTextBasedParsingAsync(llmResponse, request, usedPrompt);
+            if (result.Questions?.Any() == true)
+            {
+                _logger.LogInformation("文本解析成功，题目数量：{Count}", result.Questions.Count);
+                return result;
+            }
+
+            _logger.LogWarning("所有备用解析策略都失败");
+            return new GeneratedSurveyDto
+            {
+                Title = request.Topic ?? "未知主题",
+                Description = request.Description,
+                Questions = new List<GeneratedQuestionDto>(),
+                UsedPrompt = usedPrompt,
+                GeneratedAt = DateTime.UtcNow,
+                QualityScore = 1
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "备用解析策略执行失败");
+            return new GeneratedSurveyDto
+            {
+                Title = request.Topic ?? "未知主题",
+                Description = request.Description,
+                Questions = new List<GeneratedQuestionDto>(),
+                UsedPrompt = usedPrompt,
+                GeneratedAt = DateTime.UtcNow,
+                QualityScore = 1
+            };
+        }
+    }
+
+    /// <summary>
+    /// 尝试宽松的JSON解析
+    /// </summary>
+    /// <param name="llmResponse">LLM响应</param>
+    /// <param name="request">原始请求</param>
+    /// <param name="usedPrompt">使用的提示词</param>
+    /// <returns>解析结果</returns>
+    private async Task<GeneratedSurveyDto> TryLooseJsonParsingAsync(string llmResponse, GenerateSurveyRequest request, string usedPrompt)
+    {
+        try
+        {
+            // 尝试多种JSON提取模式
+            var jsonPatterns = new[]
+            {
+                @"\{[\s\S]*\}",  // 原始模式
+                @"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}",  // 嵌套模式
+                @"```json\s*(\{[\s\S]*?\})\s*```",  // Markdown代码块
+                @"```\s*(\{[\s\S]*?\})\s*```"  // 通用代码块
+            };
+
+            foreach (var pattern in jsonPatterns)
+            {
+                var matches = Regex.Matches(llmResponse, pattern, RegexOptions.Multiline);
+                foreach (Match match in matches)
+                {
+                    try
+                    {
+                        var jsonContent = match.Groups.Count > 1 ? match.Groups[1].Value : match.Value;
+                        var surveyData = JsonConvert.DeserializeObject<dynamic>(jsonContent);
+                        
+                        var result = await BuildSurveyFromDynamicData(surveyData, request, usedPrompt);
+                        if (result.Questions?.Any() == true)
+                        {
+                            return result;
+                        }
+                    }
+                    catch
+                    {
+                        // 继续尝试下一个匹配
+                        continue;
+                    }
+                }
+            }
+
+            return new GeneratedSurveyDto
+            {
+                Title = request.Topic ?? "未知主题",
+                Description = request.Description,
+                Questions = new List<GeneratedQuestionDto>(),
+                UsedPrompt = usedPrompt,
+                GeneratedAt = DateTime.UtcNow,
+                QualityScore = 1
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "宽松JSON解析失败");
+            return new GeneratedSurveyDto
+            {
+                Title = request.Topic ?? "未知主题",
+                Description = request.Description,
+                Questions = new List<GeneratedQuestionDto>(),
+                UsedPrompt = usedPrompt,
+                GeneratedAt = DateTime.UtcNow,
+                QualityScore = 1
+            };
+        }
+    }
+
+    /// <summary>
+    /// 尝试基于文本的解析
+    /// </summary>
+    /// <param name="llmResponse">LLM响应</param>
+    /// <param name="request">原始请求</param>
+    /// <param name="usedPrompt">使用的提示词</param>
+    /// <returns>解析结果</returns>
+    private async Task<GeneratedSurveyDto> TryTextBasedParsingAsync(string llmResponse, GenerateSurveyRequest request, string usedPrompt)
+    {
+        try
+        {
+            var questions = new List<GeneratedQuestionDto>();
+            var lines = llmResponse.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            
+            var currentQuestion = new GeneratedQuestionDto();
+            var orderIndex = 1;
+            var optionIndex = 1;
+
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.Trim();
+                
+                // 检测题目标题（数字开头的行）
+                if (Regex.IsMatch(trimmedLine, @"^\d+[\.\)]\s*(.+)"))
+                {
+                    // 保存前一个题目
+                    if (!string.IsNullOrWhiteSpace(currentQuestion.Title))
+                    {
+                        questions.Add(currentQuestion);
+                    }
+                    
+                    // 开始新题目
+                    var match = Regex.Match(trimmedLine, @"^\d+[\.\)]\s*(.+)");
+                    currentQuestion = new GeneratedQuestionDto
+                    {
+                        Title = match.Groups[1].Value.Trim(),
+                        Type = "Text", // 默认类型
+                        OrderIndex = orderIndex++,
+                        Options = new List<GeneratedQuestionOptionDto>()
+                    };
+                    optionIndex = 1;
+                }
+                // 检测选项（字母或符号开头）
+                else if (Regex.IsMatch(trimmedLine, @"^[A-Za-z\)\-\*]\s*(.+)") && !string.IsNullOrWhiteSpace(currentQuestion.Title))
+                {
+                    var match = Regex.Match(trimmedLine, @"^[A-Za-z\)\-\*]\s*(.+)");
+                    currentQuestion.Options.Add(new GeneratedQuestionOptionDto
+                    {
+                        Text = match.Groups[1].Value.Trim(),
+                        Value = match.Groups[1].Value.Trim(),
+                        OrderIndex = optionIndex++
+                    });
+                    
+                    // 如果有选项，设置为单选题
+                    if (currentQuestion.Type == "Text")
+                    {
+                        currentQuestion.Type = "SingleChoice";
+                    }
+                }
+            }
+
+            // 添加最后一个题目
+            if (!string.IsNullOrWhiteSpace(currentQuestion.Title))
+            {
+                questions.Add(currentQuestion);
+            }
+
+            return new GeneratedSurveyDto
+            {
+                Title = request.Topic ?? "未知主题",
+                Description = request.Description,
+                Questions = questions,
+                UsedPrompt = usedPrompt,
+                GeneratedAt = DateTime.UtcNow,
+                QualityScore = questions.Any() ? 6 : 1
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "文本解析失败");
+            return new GeneratedSurveyDto
+            {
+                Title = request.Topic ?? "未知主题",
+                Description = request.Description,
+                Questions = new List<GeneratedQuestionDto>(),
+                UsedPrompt = usedPrompt,
+                GeneratedAt = DateTime.UtcNow,
+                QualityScore = 1
+            };
+        }
+    }
+
+    /// <summary>
+    /// 从动态数据构建问卷
+    /// </summary>
+    /// <param name="surveyData">动态数据</param>
+    /// <param name="request">原始请求</param>
+    /// <param name="usedPrompt">使用的提示词</param>
+    /// <returns>问卷DTO</returns>
+    private async Task<GeneratedSurveyDto> BuildSurveyFromDynamicData(dynamic surveyData, GenerateSurveyRequest request, string usedPrompt)
+    {
+        var result = new GeneratedSurveyDto
+        {
+            Title = surveyData?.title ?? request.Topic ?? "未知主题",
+            Description = surveyData?.description ?? request.Description,
+            Questions = new List<GeneratedQuestionDto>(),
+            UsedPrompt = usedPrompt,
+            GeneratedAt = DateTime.UtcNow,
+            QualityScore = 1
+        };
+
+        // 解析题目
+        if (surveyData?.questions != null)
+        {
+            int orderIndex = 1;
+            foreach (var questionData in surveyData.questions)
+            {
+                var question = new GeneratedQuestionDto
+                {
+                    Title = questionData?.title ?? "",
+                    Description = questionData?.description,
+                    Type = questionData?.type ?? "Text",
+                    IsRequired = questionData?.isRequired ?? false,
+                    OrderIndex = orderIndex++,
+                    Options = new List<GeneratedQuestionOptionDto>()
+                };
+
+                // 解析选项
+                if (questionData?.options != null)
+                {
+                    int optionIndex = 1;
+                    foreach (var optionData in questionData.options)
+                    {
+                        question.Options.Add(new GeneratedQuestionOptionDto
+                        {
+                            Text = optionData?.text ?? "",
+                            Value = optionData?.value,
+                            OrderIndex = optionIndex++
+                        });
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(question.Title))
+                {
+                    result.Questions.Add(question);
+                }
+            }
+        }
+
+        result.QualityScore = CalculateQualityScore(surveyData);
+        await Task.CompletedTask;
+        return result;
+    }
+
+    /// <summary>
+    /// 创建基础题目
+    /// </summary>
+    /// <param name="request">生成请求</param>
+    /// <returns>基础题目列表</returns>
+    private async Task<List<GeneratedQuestionDto>> CreateBasicQuestionsAsync(GenerateSurveyRequest request)
+    {
+        var questions = new List<GeneratedQuestionDto>();
+        var questionCount = Math.Min(request.QuestionCount, 5); // 最多5个基础题目
+
+        for (int i = 1; i <= questionCount; i++)
+        {
+            var question = new GeneratedQuestionDto
+            {
+                Title = $"关于{request.Topic}的问题{i}",
+                Description = $"请就{request.Topic}相关内容提供您的看法",
+                Type = i == 1 ? "SingleChoice" : (i == questionCount ? "Textarea" : "Text"),
+                IsRequired = i <= 2,
+                OrderIndex = i,
+                Options = new List<GeneratedQuestionOptionDto>()
+            };
+
+            // 为选择题添加选项
+            if (question.Type == "SingleChoice")
+            {
+                question.Options.AddRange(new[]
+                {
+                    new GeneratedQuestionOptionDto { Text = "非常满意", Value = "5", OrderIndex = 1 },
+                    new GeneratedQuestionOptionDto { Text = "满意", Value = "4", OrderIndex = 2 },
+                    new GeneratedQuestionOptionDto { Text = "一般", Value = "3", OrderIndex = 3 },
+                    new GeneratedQuestionOptionDto { Text = "不满意", Value = "2", OrderIndex = 4 },
+                    new GeneratedQuestionOptionDto { Text = "非常不满意", Value = "1", OrderIndex = 5 }
+                });
+            }
+
+            questions.Add(question);
+        }
+
+        _logger.LogInformation("已创建 {Count} 个基础题目", questions.Count);
+        await Task.CompletedTask;
+        return questions;
     }
 
     #endregion

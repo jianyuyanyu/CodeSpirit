@@ -217,7 +217,10 @@ public class DefaultQuestionParser : IQuestionParser
                     {
                         foreach (var option in options.EnumerateArray())
                         {
-                            dto.Options.Add(option.GetString() ?? string.Empty);
+                            string optionText = option.GetString() ?? string.Empty;
+                            // 清理选项中的序号
+                            optionText = CleanOptionText(optionText);
+                            dto.Options.Add(optionText);
                         }
                         _logger.LogDebug("题目选项数量: {Count}", dto.Options.Count);
 
@@ -248,6 +251,11 @@ public class DefaultQuestionParser : IQuestionParser
                         // 有时模型可能输出选项字符串而不是数组
                         string optionsText = options.GetString() ?? string.Empty;
                         var optionsList = ParseOptionsFromText(optionsText);
+                        // 清理每个选项中的序号
+                        for (int i = 0; i < optionsList.Count; i++)
+                        {
+                            optionsList[i] = CleanOptionText(optionsList[i]);
+                        }
                         dto.Options.AddRange(optionsList);
                         _logger.LogDebug("从文本解析选项: {Count} 个", optionsList.Count);
 
@@ -472,12 +480,12 @@ public class DefaultQuestionParser : IQuestionParser
                     string trimmedLine = line.Trim();
                     if (!string.IsNullOrEmpty(trimmedLine))
                     {
-                        // 去掉可能的选项前缀 A. B. C. 等
-                        if (trimmedLine.Length >= 2 && char.IsLetter(trimmedLine[0]) && trimmedLine[1] == '.')
+                        // 使用统一的选项清理方法
+                        trimmedLine = CleanOptionText(trimmedLine);
+                        if (!string.IsNullOrWhiteSpace(trimmedLine))
                         {
-                            trimmedLine = trimmedLine.Substring(2).Trim();
+                            options.Add(trimmedLine);
                         }
-                        options.Add(trimmedLine);
                     }
                 }
             }
@@ -487,7 +495,11 @@ public class DefaultQuestionParser : IQuestionParser
                 string[] parts = optionsText.Split(new[] { ',', '，', ';', '；', '|' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (var part in parts)
                 {
-                    options.Add(part.Trim());
+                    string cleanedPart = CleanOptionText(part.Trim());
+                    if (!string.IsNullOrWhiteSpace(cleanedPart))
+                    {
+                        options.Add(cleanedPart);
+                    }
                 }
             }
 
@@ -557,6 +569,62 @@ public class DefaultQuestionParser : IQuestionParser
         {
             _logger.LogError(ex, "转换选项字母为文本时出错: {Letter}", letterAnswer);
             return letterAnswer;
+        }
+    }
+
+    /// <summary>
+    /// 清理选项文本，移除字母或数字序号
+    /// </summary>
+    /// <param name="optionText">原始选项文本</param>
+    /// <returns>清理后的选项文本</returns>
+    private string CleanOptionText(string optionText)
+    {
+        if (string.IsNullOrWhiteSpace(optionText))
+        {
+            return optionText;
+        }
+
+        try
+        {
+            string cleanedText = optionText.Trim();
+
+            // 移除常见的选项序号格式
+            // 匹配模式：A. B. C. D. 或 A、B、C、D、或 1. 2. 3. 4. 或 1、2、3、4、等
+            var patterns = new[]
+            {
+                @"^[A-Za-z]\.\s*",      // A. B. C. D.
+                @"^[A-Za-z]、\s*",      // A、B、C、D、
+                @"^[A-Za-z]\)\s*",      // A) B) C) D)
+                @"^[A-Za-z]\s*[\.\)、]\s*", // A. A) A、等的通用模式
+                @"^\d+\.\s*",           // 1. 2. 3. 4.
+                @"^\d+、\s*",           // 1、2、3、4、
+                @"^\d+\)\s*",           // 1) 2) 3) 4)
+                @"^\d+\s*[\.\)、]\s*",  // 1. 1) 1、等的通用模式
+                @"^[(（]\d+[)）]\s*",   // (1) (2) (3) (4) 或 （1）（2）（3）（4）
+                @"^[(（][A-Za-z][)）]\s*", // (A) (B) (C) (D) 或 （A）（B）（C）（D）
+                @"^[①②③④⑤⑥⑦⑧⑨⑩]\s*", // 圆圈数字
+                @"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]\s*[\.\)、]?\s*", // 罗马数字
+                @"^[ⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹ]\s*[\.\)、]?\s*"  // 小写罗马数字
+            };
+
+            foreach (var pattern in patterns)
+            {
+                cleanedText = Regex.Replace(cleanedText, pattern, "", RegexOptions.IgnoreCase);
+            }
+
+            // 移除开头的空白字符
+            cleanedText = cleanedText.TrimStart();
+
+            _logger.LogDebug("选项文本清理: '{Original}' -> '{Cleaned}'", 
+                optionText.Length > 30 ? optionText.Substring(0, 30) + "..." : optionText,
+                cleanedText.Length > 30 ? cleanedText.Substring(0, 30) + "..." : cleanedText);
+
+            return string.IsNullOrWhiteSpace(cleanedText) ? optionText : cleanedText;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清理选项文本时发生错误: {OptionText}", optionText);
+            return optionText;
         }
     }
 }

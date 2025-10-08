@@ -57,6 +57,14 @@ public abstract class RabbitMQEventBusBase : IDisposable
     }
 
     /// <summary>
+    /// 终结器，确保资源得到释放
+    /// </summary>
+    ~RabbitMQEventBusBase()
+    {
+        Dispose(false);
+    }
+
+    /// <summary>
     /// 注册连接事件处理程序
     /// </summary>
     protected void RegisterConnectionEventHandlers()
@@ -298,7 +306,17 @@ public abstract class RabbitMQEventBusBase : IDisposable
     /// <summary>
     /// 释放资源
     /// </summary>
-    public virtual void Dispose()
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// 释放资源的具体实现
+    /// </summary>
+    /// <param name="disposing">是否正在释放托管资源</param>
+    protected virtual void Dispose(bool disposing)
     {
         if (_disposed) return;
 
@@ -309,17 +327,42 @@ public abstract class RabbitMQEventBusBase : IDisposable
 
             try
             {
-                _channel?.Close();
-                _channel?.Dispose();
-                _channel = null;
+                if (disposing)
+                {
+                    // 释放托管资源
+                    // 先注销事件处理程序，避免在释放过程中触发事件
+                    UnregisterConnectionEventHandlers();
 
-                UnregisterConnectionEventHandlers();
+                    // 释放通道资源
+                    if (_channel != null)
+                    {
+                        try
+                        {
+                            if (_channel.IsOpen)
+                            {
+                                _channel.Close();
+                            }
+                        }
+                        catch (Exception channelEx)
+                        {
+                            _logger?.LogDebug(channelEx, "关闭RabbitMQ通道时发生异常，将继续释放资源");
+                        }
+                        finally
+                        {
+                            _channel.Dispose();
+                            _channel = null;
+                        }
+                    }
 
-                _logger.LogInformation("RabbitMQ事件总线已成功释放资源");
+                    _logger?.LogInformation("RabbitMQ事件总线已成功释放资源");
+                }
+
+                // 释放非托管资源（如果有的话）
+                // 在这个类中主要是托管资源，所以这里暂时为空
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "释放RabbitMQ资源时出错");
+                _logger?.LogError(ex, "释放RabbitMQ资源时出错");
             }
         }
     }
@@ -329,8 +372,25 @@ public abstract class RabbitMQEventBusBase : IDisposable
     /// </summary>
     protected void UnregisterConnectionEventHandlers()
     {
-        _connection.ConnectionShutdown -= OnConnectionShutdown;
-        _connection.CallbackException -= OnCallbackException;
-        _connection.ConnectionBlocked -= OnConnectionBlocked;
+        try
+        {
+            // 检查连接是否仍然可用，避免在已释放的对象上操作
+            if (_connection != null)
+            {
+                _connection.ConnectionShutdown -= OnConnectionShutdown;
+                _connection.CallbackException -= OnCallbackException;
+                _connection.ConnectionBlocked -= OnConnectionBlocked;
+            }
+        }
+        catch (ObjectDisposedException ex)
+        {
+            // 连接已被释放，记录日志但不抛出异常
+            _logger.LogDebug(ex, "尝试注销事件处理程序时连接已被释放，这是正常的清理过程");
+        }
+        catch (Exception ex)
+        {
+            // 其他异常也记录但不抛出
+            _logger.LogWarning(ex, "注销连接事件处理程序时发生异常");
+        }
     }
 } 

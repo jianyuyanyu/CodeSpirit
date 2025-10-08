@@ -347,6 +347,7 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
             _logger.LogInformation("正在处理生成的 {Count} 个题目", result.Count);
             
             // 在后台异步保存题目到数据库，不阻塞任务完成
+            // 使用独立的 Task.Run 确保完全脱离当前的服务范围
             _ = Task.Run(async () =>
             {
                 try
@@ -354,13 +355,17 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
                     _logger.LogInformation("开始在后台保存题目到数据库...");
                     
                     using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5)); // 5分钟超时
-                    await SaveQuestionsToDatabaseWithScope(serviceProvider, result).WaitAsync(cts.Token);
+                    await SaveQuestionsToDatabaseWithScope(result).WaitAsync(cts.Token);
                     
                     _logger.LogInformation("题目保存到数据库完成");
                 }
                 catch (OperationCanceledException)
                 {
                     _logger.LogWarning("保存题目到数据库超时（5分钟）");
+                }
+                catch (ObjectDisposedException ex)
+                {
+                    _logger.LogWarning(ex, "后台保存题目时检测到对象已释放，这通常发生在应用程序关闭时");
                 }
                 catch (Exception ex)
                 {
@@ -410,16 +415,18 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
     /// <summary>
     /// 使用独立的服务范围保存题目到数据库
     /// </summary>
-    /// <param name="serviceProvider">服务提供者</param>
     /// <param name="questions">生成的题目列表</param>
-    private async Task SaveQuestionsToDatabaseWithScope(IServiceProvider serviceProvider, List<CreateQuestionDto> questions)
+    private async Task SaveQuestionsToDatabaseWithScope(List<CreateQuestionDto> questions)
     {
         _logger.LogInformation("开始保存 {Count} 个题目到数据库", questions.Count);
         
         try
         {
-            // 从独立的服务范围获取题目服务
-            var questionService = serviceProvider.GetRequiredService<IQuestionService>();
+            // 创建新的服务范围，确保 DbContext 不会被释放
+            using var scope = _serviceScopeFactory.CreateScope();
+            
+            // 从新创建的服务范围获取题目服务
+            var questionService = scope.ServiceProvider.GetRequiredService<IQuestionService>();
             _logger.LogInformation("成功获取题目服务");
             
             int successCount = 0;
@@ -437,6 +444,16 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
                     successCount++;
                     
                     _logger.LogDebug("成功保存第 {Index}/{Total} 个题目", i + 1, questions.Count);
+                }
+                catch (ObjectDisposedException ex)
+                {
+                    _logger.LogWarning(ex, "保存第 {Index}/{Total} 个题目时检测到对象已释放: {Content}", 
+                        i + 1, questions.Count, question.Content.Substring(0, Math.Min(50, question.Content.Length)));
+                    failedItems.Add($"题目 [{question.Content.Substring(0, Math.Min(30, question.Content.Length))}...] 保存失败: 数据库连接已释放");
+                    
+                    // 如果是 DbContext 已释放，停止继续保存
+                    _logger.LogWarning("检测到数据库上下文已释放，停止保存剩余题目");
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -459,6 +476,10 @@ public class QuestionAiGeneratorService : BaseAiGeneratorService<AIGenerateQuest
             {
                 _logger.LogWarning("以下题目保存失败: {FailedItems}", string.Join("; ", failedItems));
             }
+        }
+        catch (ObjectDisposedException ex)
+        {
+            _logger.LogWarning(ex, "创建服务范围时检测到对象已释放，这通常发生在应用程序关闭时");
         }
         catch (Exception ex)
         {

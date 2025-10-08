@@ -39,6 +39,46 @@
 .\Scripts\fix-mysql-port.ps1
 ```
 
+### 数据库创建脚本
+
+#### database-setup/ 目录 ⭐ 新增
+**SQL Server数据库创建脚本集合**，专门用于创建CodeSpirit项目所需的所有数据库和用户。
+
+**脚本位置：** `Scripts/database-setup/`
+
+**包含文件：**
+- `create-sqlserver-databases.ps1` - PowerShell自动化脚本（推荐）
+- `create-sqlserver-databases.sql` - 完整版SQL脚本
+- `create-databases-simple.sql` - 简化版SQL脚本
+- `README.md` - 详细使用说明
+
+**功能特性：**
+- 自动创建 `codespirit` 登录用户（如不存在）
+- 创建所有API项目所需的数据库
+- 为用户分配数据库owner权限
+- 支持重复执行（幂等性）
+- 提供详细的执行日志和验证
+
+**包含的数据库：**
+- `codespirit-identity` - 身份认证系统
+- `codespirit-exam` - 考试系统
+- `codespirit-messaging` - 消息服务
+- `codespirit-config` - 配置中心
+- `codespirit-settings` - 设置管理
+- `codespirit-file` - 文件存储
+- `codespirit-survey` - 问卷调查
+
+**快速使用：**
+```powershell
+# 进入脚本目录
+cd Scripts\database-setup
+
+# 执行PowerShell脚本（推荐）
+.\create-sqlserver-databases.ps1 -ServerInstance "10.0.1.15" -AdminUser "sa"
+```
+
+**详细说明：** 请查看 `Scripts/database-setup/README.md` 获取完整的使用指南和故障排除信息。
+
 ### 数据库迁移脚本
 
 #### manage-multi-database-migrations.ps1 ⭐ 推荐使用

@@ -40,13 +40,41 @@ public static class AuditExtensions
         // 注册选项
         services.Configure<AuditOptions>(auditConfig);
         
-        // 获取存储提供者类型
-        var storageProvider = auditConfig.GetValue<string>("StorageProvider") ?? "Elasticsearch";
+        // 获取存储提供者类型 - 明确检查多个可能的配置位置
+        var storageProvider = auditConfig.GetValue<string>("StorageProvider") 
+                            ?? configuration.GetValue<string>("Audit:StorageProvider")
+                            ?? configuration.GetValue<string>("StorageProvider")
+                            ?? "Elasticsearch";
+        
+        // 强制检查 Elasticsearch 配置是否存在
+        var hasElasticsearchConfig = auditConfig.GetSection("Elasticsearch:Urls").Exists() 
+                                   && auditConfig.GetSection("Elasticsearch:Urls").Get<List<string>>()?.Any() == true;
+        
+        // 如果有 Elasticsearch 配置但没有明确设置存储提供者，强制使用 Elasticsearch
+        if (hasElasticsearchConfig && string.Equals(storageProvider, "Elasticsearch", StringComparison.OrdinalIgnoreCase))
+        {
+            storageProvider = "Elasticsearch";
+            Console.WriteLine($"[审计配置] 检测到 Elasticsearch 配置，强制使用 Elasticsearch 存储提供者");
+        }
         
         // 添加调试日志来确认配置
-        Console.WriteLine($"[审计配置] 存储提供者: {storageProvider}");
+        Console.WriteLine($"[审计配置] === 配置检测开始 ===");
+        Console.WriteLine($"[审计配置] 存储提供者: '{storageProvider}'");
         Console.WriteLine($"[审计配置] 配置节存在: {(auditConfig as IConfigurationSection)?.Exists() ?? true}");
-        Console.WriteLine($"[审计配置] 所有配置键: {string.Join(", ", auditConfig.AsEnumerable().Select(kv => kv.Key))}");
+        Console.WriteLine($"[审计配置] 配置节路径: {(auditConfig as IConfigurationSection)?.Path ?? "根配置"}");
+        
+        // 显示所有审计相关的配置键
+        var allConfigs = auditConfig.AsEnumerable().Where(kv => !string.IsNullOrEmpty(kv.Key)).ToList();
+        Console.WriteLine($"[审计配置] 找到 {allConfigs.Count} 个配置项:");
+        foreach (var config in allConfigs.Take(10)) // 只显示前10个避免日志过长
+        {
+            Console.WriteLine($"[审计配置]   {config.Key} = {config.Value}");
+        }
+        
+        // 特别检查 Elasticsearch 配置
+        var esUrls = auditConfig.GetSection("Elasticsearch:Urls").Get<List<string>>();
+        Console.WriteLine($"[审计配置] Elasticsearch URLs: {string.Join(", ", esUrls ?? new List<string>())}");
+        Console.WriteLine($"[审计配置] === 配置检测结束 ===");
         
         // 注册RabbitMQ服务
         services.AddSingleton<IRabbitMQService, RabbitMQService>();

@@ -185,7 +185,7 @@ public class ElasticsearchOptions
     /// <summary>
     /// Elasticsearch URLs
     /// </summary>
-    public List<string> Urls { get; set; } = new List<string> { "http://localhost:9200" };
+    public List<string> Urls { get; set; } = new List<string>();
     
     /// <summary>
     /// 索引名称

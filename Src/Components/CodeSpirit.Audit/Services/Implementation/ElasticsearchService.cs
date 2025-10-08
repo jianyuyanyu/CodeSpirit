@@ -40,8 +40,24 @@ public class ElasticsearchService : IElasticsearchService
     {
         _logger = logger;
         
-        // 检查是否配置为使用GreptimeDB存储提供者
-        var storageProvider = configuration.GetSection("Audit").GetValue<string>("StorageProvider");
+        // 添加构造函数开始日志
+        _logger.LogInformation("=== ElasticsearchService 构造函数开始 ===");
+        
+        // 检查是否配置为使用GreptimeDB存储提供者 - 检查多个可能的配置位置
+        var storageProvider = configuration.GetSection("Audit").GetValue<string>("StorageProvider")
+                            ?? configuration.GetValue<string>("Audit:StorageProvider")
+                            ?? configuration.GetValue<string>("StorageProvider");
+        
+        _logger.LogInformation("检测到的存储提供者配置: '{StorageProvider}'", storageProvider ?? "未配置(默认Elasticsearch)");
+        
+        // 检查是否有 Elasticsearch 配置
+        var auditConfig = configuration.GetSection("Audit");
+        var hasElasticsearchConfig = auditConfig.GetSection("Elasticsearch:Urls").Exists() 
+                                   && auditConfig.GetSection("Elasticsearch:Urls").Get<List<string>>()?.Any() == true;
+        
+        _logger.LogInformation("Elasticsearch 配置存在: {HasElasticsearchConfig}", hasElasticsearchConfig);
+        
+        // 只有明确配置为 GreptimeDB 时才跳过 Elasticsearch 初始化
         if (string.Equals(storageProvider, "GreptimeDB", StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogInformation("审计配置为使用GreptimeDB存储提供者，跳过Elasticsearch客户端初始化");
@@ -52,8 +68,21 @@ public class ElasticsearchService : IElasticsearchService
             return;
         }
         
+        // 如果有 Elasticsearch 配置，强制初始化 Elasticsearch
+        if (hasElasticsearchConfig)
+        {
+            _logger.LogInformation("检测到 Elasticsearch 配置，继续初始化 Elasticsearch 客户端");
+        }
+        
         // 使用配置助手简化配置绑定
         _options = ConfigurationHelper.BindElasticsearchOptions(configuration);
+        
+        // 记录配置信息用于调试
+        _logger.LogInformation("Elasticsearch配置加载完成");
+        _logger.LogInformation("配置的URLs: {Urls}", string.Join(", ", _options.Urls ?? new List<string>()));
+        _logger.LogInformation("用户名: {UserName}", _options.UserName ?? "未配置");
+        _logger.LogInformation("索引名称: {IndexName}", _options.IndexName);
+        _logger.LogInformation("索引前缀: {IndexPrefix}", _options.IndexPrefix ?? "无");
         
         if (elasticsearchClient != null)
         {
@@ -64,9 +93,12 @@ public class ElasticsearchService : IElasticsearchService
         else
         {
             // 回退到手动创建客户端
+            _logger.LogInformation("Aspire客户端未注入，回退到手动创建客户端");
             _client = CreateManualClient();
             _logger.LogInformation("使用手动配置的Elasticsearch客户端");
         }
+        
+        _logger.LogInformation("=== ElasticsearchService 构造函数完成 ===");
     }
     
     /// <summary>
@@ -106,15 +138,24 @@ public class ElasticsearchService : IElasticsearchService
     {
         try
         {
-            // 创建连接设置
-            var settings = new ElasticsearchClientSettings();
+        // 检查是否有配置的URL
+        if (_options.Urls?.Any() != true)
+        {
+            _logger.LogError("Elasticsearch配置中没有找到有效的URL地址");
+            throw new InvalidOperationException("Elasticsearch配置中没有找到有效的URL地址");
+        }
+        
+        // 优先选择非localhost的URL，如果没有则使用第一个
+        var selectedUrl = _options.Urls.FirstOrDefault(url => !url.Contains("localhost") && !url.Contains("127.0.0.1")) 
+                         ?? _options.Urls.First();
+        
+        var uri = new Uri(selectedUrl);
+        _logger.LogInformation("从 {TotalUrls} 个URL中选择: {SelectedUrl}", _options.Urls.Count, selectedUrl);
+        _logger.LogInformation("所有可用URLs: {AllUrls}", string.Join(", ", _options.Urls));
+        _logger.LogInformation("正在连接到Elasticsearch: {Url}", uri);
             
-            // 设置节点地址
-            if (_options.Urls?.Any() == true)
-            {
-                var uri = new Uri(_options.Urls.First());
-                settings = new ElasticsearchClientSettings(uri);
-            }
+            // 创建连接设置
+            var settings = new ElasticsearchClientSettings(uri);
             
             // 设置默认索引
             settings = settings.DefaultIndex(GetFinalIndexName());
@@ -123,17 +164,22 @@ public class ElasticsearchService : IElasticsearchService
             if (!string.IsNullOrEmpty(_options.UserName) && !string.IsNullOrEmpty(_options.Password))
             {
                 settings = settings.Authentication(new Elastic.Transport.BasicAuthentication(_options.UserName, _options.Password));
+                _logger.LogInformation("已配置Elasticsearch基本认证，用户名: {UserName}", _options.UserName);
             }
+            
+            // 禁用SSL证书验证（仅用于开发环境）
+            settings = settings.ServerCertificateValidationCallback((_, _, _, _) => true);
             
             // 创建客户端
             var client = new ElasticsearchClient(settings);
             
-            _logger.LogInformation("Elasticsearch手动连接已建立");
+            _logger.LogInformation("Elasticsearch手动连接已建立，目标地址: {Url}", uri);
             return client;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Elasticsearch连接建立失败");
+            _logger.LogError(ex, "Elasticsearch连接建立失败，配置的URLs: {Urls}", 
+                string.Join(", ", _options.Urls ?? new List<string>()));
             throw;
         }
     }

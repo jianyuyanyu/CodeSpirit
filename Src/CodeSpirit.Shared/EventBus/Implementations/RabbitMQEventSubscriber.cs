@@ -1134,16 +1134,15 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
     }
 
     /// <summary>
-    /// 释放资源
+    /// 释放资源的具体实现
     /// </summary>
-    public override void Dispose()
+    /// <param name="disposing">是否正在释放托管资源</param>
+    protected override void Dispose(bool disposing)
     {
         if (_disposed) return;
 
-        lock (_lockObj)
+        if (disposing)
         {
-            if (_disposed) return;
-
             try
             {
                 // 关闭所有消费者通道
@@ -1161,13 +1160,15 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
                 _consumerChannels.Clear();
 
                 UnbindAllQueues();
-                base.Dispose();
             }
             catch (Exception ex)
             {
                 _subscriberLogger.LogError(ex, "释放订阅者资源时出错");
             }
         }
+
+        // 调用基类的 Dispose 方法
+        base.Dispose(disposing);
     }
 
     /// <summary>

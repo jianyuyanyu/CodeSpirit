@@ -1,0 +1,119 @@
+{
+  "Audit": {
+    "Enabled": true,
+    "StorageProvider": "Elasticsearch",
+    "LogRequestParams": true,
+    "LogResponseData": false,
+    "Elasticsearch": {
+      "Uri": "http://localhost:9200",
+      "Username": "",
+      "Password": "",
+      "IndexPrefix": "codespirit",
+      "NumberOfShards": 3,
+      "NumberOfReplicas": 1
+    },
+    "RabbitMQ": {
+      "HostName": "localhost",
+      "Port": 5672,
+      "UserName": "guest",
+      "Password": "guest",
+      "VirtualHost": "/",
+      "ExchangeName": "audit.exchange",
+      "QueueName": "audit.queue",
+      "RoutingKey": "audit.log"
+    },
+    "LLMAudit": {
+      "Enabled": true,
+      "LogPrompts": true,
+      "LogResponses": true,
+      "LogProcessedData": false,
+      "MaxPromptLength": 10000,
+      "MaxResponseLength": 50000,
+      "RabbitMQ": {
+        "ExchangeName": "llm.audit.exchange",
+        "QueueName": "llm.audit.queue",
+        "RoutingKey": "llm.audit.log"
+      },
+      "Elasticsearch": {
+        "IndexName": "llm_audit_logs",
+        "IndexPrefix": "codespirit",
+        "NumberOfShards": 3,
+        "NumberOfReplicas": 1
+      },
+      "GreptimeDB": {
+        "TableName": "llm_audit_logs",
+        "TablePrefix": "codespirit",
+        "BatchSize": 500
+      },
+      "SensitiveData": {
+        "Enabled": true,
+        "SensitiveFieldPatterns": [
+          "password",
+          "pwd",
+          "secret",
+          "token",
+          "apiKey",
+          "key",
+          "personalInfo",
+          "idCard",
+          "phone",
+          "email",
+          "address"
+        ],
+        "MaskCharacter": "*",
+        "KeepFirstChars": 0,
+        "KeepLastChars": 0
+      },
+      "CostCalculation": {
+        "Enabled": true,
+        "ModelPricing": {
+          "gpt-4": {
+            "InputPer1K": 0.03,
+            "OutputPer1K": 0.06
+          },
+          "gpt-4-turbo": {
+            "InputPer1K": 0.01,
+            "OutputPer1K": 0.03
+          },
+          "gpt-4o": {
+            "InputPer1K": 0.005,
+            "OutputPer1K": 0.015
+          },
+          "gpt-3.5-turbo": {
+            "InputPer1K": 0.0015,
+            "OutputPer1K": 0.002
+          },
+          "qwen-plus": {
+            "InputPer1K": 0.004,
+            "OutputPer1K": 0.012
+          },
+          "qwen-turbo": {
+            "InputPer1K": 0.002,
+            "OutputPer1K": 0.006
+          },
+          "qwen-max": {
+            "InputPer1K": 0.04,
+            "OutputPer1K": 0.12
+          },
+          "claude-3-opus": {
+            "InputPer1K": 0.015,
+            "OutputPer1K": 0.075
+          },
+          "claude-3-sonnet": {
+            "InputPer1K": 0.003,
+            "OutputPer1K": 0.015
+          }
+        }
+      },
+      "ScenarioMapping": {
+        "QuestionGeneration": "题目生成",
+        "QuestionAudit": "题目审核",
+        "QuestionCorrection": "题目校正",
+        "ContentGeneration": "内容生成",
+        "ExamPaperGeneration": "试卷生成",
+        "AnswerAnalysis": "答案解析"
+      }
+    }
+  }
+}
+

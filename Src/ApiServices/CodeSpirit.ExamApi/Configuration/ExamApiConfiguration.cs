@@ -68,7 +68,7 @@ public class ExamApiConfiguration : BaseApiConfiguration
         AddChartServices(services);
         
         // 注册AI题目生成和SignalR服务
-        AddAIAndSignalRServices(services);
+        AddAIAndSignalRServices(services, configuration);
         
         // 注册PDF生成服务
         services.AddPdfGeneration(configuration);
@@ -203,10 +203,11 @@ public class ExamApiConfiguration : BaseApiConfiguration
     /// 添加AI题目生成和SignalR服务
     /// </summary>
     /// <param name="services">服务集合</param>
-    private static void AddAIAndSignalRServices(IServiceCollection services)
+    /// <param name="configuration">配置对象</param>
+    private static void AddAIAndSignalRServices(IServiceCollection services, IConfiguration configuration)
     {
         // 使用扩展方法注册AI题目生成相关服务
-        services.AddAIQuestionGeneratorServices();
+        services.AddAIQuestionGeneratorServices(configuration);
         
         // 添加AI表单填充服务（包含自动端点功能）
         services.AddAiFormFillEndpoints();

@@ -222,4 +222,59 @@ public static class AuditExtensions
         
         return builder;
     }
+    
+    /// <summary>
+    /// 添加LLM审计服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置</param>
+    /// <returns>服务集合</returns>
+    public static IServiceCollection AddLLMAuditServices(
+        this IServiceCollection services, 
+        IConfiguration configuration)
+    {
+        // 获取审计配置，LLM审计跟随统一的存储提供者配置
+        var auditConfig = configuration.GetSection("Audit");
+        var storageProvider = auditConfig.GetValue<string>("StorageProvider") 
+                            ?? configuration.GetValue<string>("Audit:StorageProvider")
+                            ?? "Elasticsearch";
+        
+        Console.WriteLine($"[LLM审计配置] 跟随通用审计存储提供者: '{storageProvider}'");
+        
+        // 根据配置注册存储服务
+        switch (storageProvider.ToLowerInvariant())
+        {
+            case "greptimedb":
+                Console.WriteLine("[LLM审计配置] 使用GreptimeDB存储提供者");
+                services.AddHttpClient<Services.LLM.Implementation.LLMGreptimeDbStorageService>();
+                services.AddScoped<Services.LLM.ILLMAuditStorageService, Services.LLM.Implementation.LLMGreptimeDbStorageService>();
+                break;
+            
+            case "rabbitmq":
+                Console.WriteLine("[LLM审计配置] 使用RabbitMQ存储提供者，LLM审计将通过消息队列异步处理");
+                // RabbitMQ模式下，LLM审计通过消息队列异步处理，但仍需要一个存储服务作为最终存储
+                // 默认使用GreptimeDB作为最终存储，如果需要其他存储可以通过配置指定
+                services.AddHttpClient<Services.LLM.Implementation.LLMGreptimeDbStorageService>();
+                services.AddScoped<Services.LLM.ILLMAuditStorageService, Services.LLM.Implementation.LLMGreptimeDbStorageService>();
+                break;
+            
+            case "elasticsearch":
+            default:
+                Console.WriteLine("[LLM审计配置] 使用Elasticsearch存储提供者");
+                services.AddScoped<Services.LLM.ILLMAuditStorageService, Services.LLM.Implementation.LLMElasticsearchStorageService>();
+                break;
+        }
+        
+        // 注册LLM审计服务
+        services.AddScoped<Services.LLM.ILLMAuditService, Services.LLM.Implementation.LLMAuditService>();
+        
+        // 注册LLM审计消费者后台服务
+        services.AddHostedService<Services.LLM.Implementation.LLMAuditConsumerService>();
+        
+        // 注册可审计的LLM助手
+        services.AddScoped<LLM.AuditableLLMAssistant>();
+        
+        return services;
+    }
+    
 }

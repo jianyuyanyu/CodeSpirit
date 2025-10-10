@@ -5,8 +5,7 @@ using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.Messaging.Extensions;
 using CodeSpirit.Messaging.Hubs;
-// using CodeSpirit.MultiTenant.Extensions;
-// using CodeSpirit.MultiTenant.Abstractions;
+using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults;
 using CodeSpirit.Shared.EventBus.Extensions;
@@ -15,6 +14,9 @@ using CodeSpirit.Shared.Notifications.Events;
 using CodeSpirit.Shared.Services.Background;
 using CodeSpirit.Shared.Services.Files;
 using CodeSpirit.UdlCards.Extensions;
+using CodeSpirit.MultiTenant.Abstractions;
+using CodeSpirit.Web.Services;
+using CodeSpirit.LLM;
 using CodeSpirit.Web.Extensions;
 using CodeSpirit.Web.Hubs;
 using CodeSpirit.Web.Middlewares;
@@ -72,8 +74,8 @@ public class Program
         builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
         // 添加多租户支持
-        // builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
-
+        builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
+       
         // 使用共享项目中的JWT认证扩展方法
         builder.Services.AddJwtAuthentication(builder.Configuration);
 
@@ -131,8 +133,14 @@ public class Program
         //     clientSettings.ServerCertificateValidationCallback((_, _, _, _) => true); // 禁用SSL验证
         // });
 
+        // 添加LLM服务（必须在LLM审计服务之前注册）
+        builder.Services.AddLLMServices();
+        
         // 添加审计组件配置 - 使用原始扩展方法避免冲突
         AuditExtensions.AddAuditServices(builder.Services, builder.Configuration);
+        
+        // 添加LLM审计服务
+        AuditExtensions.AddLLMAuditServices(builder.Services, builder.Configuration);
 
         //注册 AMIS 服务
         builder.Services.AddAmisServices(builder.Configuration, apiAssembly: typeof(Program).Assembly);
@@ -159,7 +167,7 @@ public class Program
         app.UseCors("AllowSpecificOriginsWithCredentials");
 
         // 在认证之前添加租户路径解析中间件
-        // app.UseMiddleware<TenantPathMiddleware>();
+        app.UseCodeSpiritMultiTenant();
 
         app.UseAuthentication();
         app.UseAuthorization();

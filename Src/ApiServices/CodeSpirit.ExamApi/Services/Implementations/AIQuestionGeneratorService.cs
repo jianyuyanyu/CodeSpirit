@@ -3,6 +3,7 @@ using CodeSpirit.ExamApi.Services.Helpers;
 using CodeSpirit.LLM;
 using CodeSpirit.LLM.Factories;
 using CodeSpirit.Settings.Services.Interfaces;
+using CodeSpirit.Audit.LLM;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -14,7 +15,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
     private readonly ILogger<AIQuestionGeneratorService> _logger;
     private readonly IPromptBuilder _promptBuilder;
     private readonly IQuestionParser _questionParser;
-    private readonly LLMAssistant _llmAssistant;
+    private readonly AuditableLLMAssistant _auditableLLM;
 
     /// <summary>
     /// 初始化AI题目生成服务
@@ -22,21 +23,21 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
     /// <param name="logger">日志记录器</param>
     /// <param name="promptBuilder">提示词构建器</param>
     /// <param name="questionParser">题目解析器</param>
-    /// <param name="llmAssistant">LLM助手</param>
+    /// <param name="auditableLLM">可审计的LLM助手</param>
     public AIQuestionGeneratorService(
         ILogger<AIQuestionGeneratorService> logger,
         IPromptBuilder promptBuilder,
         IQuestionParser questionParser,
-        LLMAssistant llmAssistant)
+        AuditableLLMAssistant auditableLLM)
     {
         _logger = logger;
         _promptBuilder = promptBuilder;
         _questionParser = questionParser;
-        _llmAssistant = llmAssistant;
+        _auditableLLM = auditableLLM;
     }
 
     /// <inheritdoc/>
-    public async Task<List<CreateQuestionDto>> GenerateQuestionsAsync(AIGenerateQuestionDto request, string sessionId = null, IGeneratorNotificationService notificationService = null)
+    public async Task<List<CreateQuestionDto>> GenerateQuestionsAsync(AIGenerateQuestionDto request, string? sessionId = null, IGeneratorNotificationService? notificationService = null)
     {
         _logger.LogInformation("开始生成题目: 主题={Topic}, 数量={Count}, 类型={Type}, 难度={Difficulty}", 
             request.Topic, request.Count, request.Type, request.Difficulty);
@@ -47,6 +48,9 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
             await notificationService.NotifyGenerationProgressAsync(sessionId, "preparing", "正在构建提示词...", 20);
         }
 
+        // 生成批次ID用于关联审计记录
+        var batchId = Guid.NewGuid().ToString();
+        
         // 重试策略
         int maxRetries = 3;
         int retryCount = 0;
@@ -66,8 +70,17 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     await notificationService.NotifyGenerationProgressAsync(sessionId, "prompt_ready", "提示词构建完成，开始生成题目...", 30);
                 }
 
-                // 使用LLM助手生成内容
-                var generatedContent = await _llmAssistant.GenerateContentAsync(prompt);
+                // 使用可审计的LLM助手生成内容，配置审计上下文
+                var generatedContent = await _auditableLLM
+                    .WithBusinessScenario("QuestionGeneration")
+                    .WithInteractionType("Generation")
+                    .WithBatch(batchId)
+                    .WithBusinessEntity("Question", request.CategoryId.ToString(), request.Count)
+                    .WithMetadata("topic", request.Topic)
+                    .WithMetadata("difficulty", request.Difficulty.ToString())
+                    .WithMetadata("type", request.Type.ToString())
+                    .WithMetadata("sessionId", sessionId ?? "unknown")
+                    .GenerateContentAsync(prompt);
                 
                 // 如果提供了通知服务和会话ID，则发送内容生成完成通知
                 if (notificationService != null && !string.IsNullOrEmpty(sessionId))
@@ -112,7 +125,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     try
                     {
                         // 请求LLM修正格式
-                        string correctedContent = await RequestFormatCorrectionAsync(request, ex.Message);
+                        string correctedContent = await RequestFormatCorrectionAsync(request, ex.Message, batchId);
                         
                         // 使用修正后的内容尝试重新解析
                         _logger.LogInformation("获取到修正内容，尝试重新解析");
@@ -173,7 +186,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     try 
                     {
                         // 请求LLM修正格式
-                        string correctedContent = await RequestFormatCorrectionAsync(request, ex.Message);
+                        string correctedContent = await RequestFormatCorrectionAsync(request, ex.Message, batchId);
                         
                         // 使用修正后的内容尝试重新解析
                         _logger.LogInformation("获取到修正内容，尝试重新处理");
@@ -216,7 +229,7 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
                     try
                     {
                         // 请求LLM修正格式
-                        string correctedContent = await RequestFormatCorrectionAsync(request, ex.Message);
+                        string correctedContent = await RequestFormatCorrectionAsync(request, ex.Message, batchId);
                         
                         // 使用修正后的内容尝试重新解析
                         _logger.LogInformation("获取到修正内容，尝试重新处理");
@@ -282,7 +295,11 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
     /// <summary>
     /// 请求LLM修正格式问题
     /// </summary>
-    private async Task<string> RequestFormatCorrectionAsync(AIGenerateQuestionDto request, string errorMessage = null)
+    /// <param name="request">生成请求</param>
+    /// <param name="errorMessage">错误消息</param>
+    /// <param name="batchId">批次ID，用于关联审计记录</param>
+    /// <returns>修正后的内容</returns>
+    private async Task<string> RequestFormatCorrectionAsync(AIGenerateQuestionDto request, string? errorMessage = null, string? batchId = null)
     {
         _logger.LogInformation("请求LLM修正格式问题");
         
@@ -293,8 +310,23 @@ public class AIQuestionGeneratorService : IAIQuestionGeneratorService
             
             _logger.LogDebug("发送格式修正请求");
             
-            // 使用LLM助手发送请求
-            string correctedContent = await _llmAssistant.GenerateContentAsync(prompt);
+            // 使用可审计的LLM助手发送请求，配置审计上下文
+            var correctionBuilder = _auditableLLM
+                .WithBusinessScenario("QuestionGeneration")
+                .WithInteractionType("Correction")
+                .WithBusinessEntity("Question", request.CategoryId.ToString(), request.Count)
+                .WithMetadata("topic", request.Topic)
+                .WithMetadata("difficulty", request.Difficulty.ToString())
+                .WithMetadata("type", request.Type.ToString())
+                .WithMetadata("errorMessage", errorMessage ?? "unknown");
+            
+            // 如果有批次ID，则关联到批次
+            if (!string.IsNullOrEmpty(batchId))
+            {
+                correctionBuilder = correctionBuilder.WithBatch(batchId);
+            }
+            
+            string correctedContent = await correctionBuilder.GenerateContentAsync(prompt);
             
             _logger.LogInformation("成功获取修正后的内容");
             return correctedContent;

@@ -97,6 +97,11 @@ public class AuditOptions
     /// GreptimeDB配置
     /// </summary>
     public GreptimeDbOptions GreptimeDB { get; set; } = new GreptimeDbOptions();
+    
+    /// <summary>
+    /// LLM审计配置
+    /// </summary>
+    public LLM.LLMAuditOptions LLMAudit { get; set; } = new LLM.LLMAuditOptions();
 }
 
 /// <summary>

@@ -3,6 +3,8 @@ using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.LLM;
 using CodeSpirit.Shared.Notifications;
+using CodeSpirit.Audit.Extensions;
+using Microsoft.Extensions.Configuration;
 
 namespace CodeSpirit.ExamApi.Extensions;
 
@@ -15,11 +17,15 @@ public static class DependencyInjectionExtensions
     /// 添加AI题目生成相关服务
     /// </summary>
     /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
     /// <returns>服务集合</returns>
-    public static IServiceCollection AddAIQuestionGeneratorServices(this IServiceCollection services)
+    public static IServiceCollection AddAIQuestionGeneratorServices(this IServiceCollection services, IConfiguration configuration)
     {
         // 添加LLM服务（使用统一配置）
         services.AddLLMServices();
+        
+        // 添加LLM审计服务（自动根据StorageProvider配置选择RabbitMQ模式）
+        services.AddLLMAuditServices(configuration);
         
         // 注册工具类
         services.AddSingleton<IPromptBuilder, DefaultPromptBuilder>();

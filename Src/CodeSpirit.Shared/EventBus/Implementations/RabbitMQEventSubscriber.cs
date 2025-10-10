@@ -1219,6 +1219,14 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
             throw new ObjectDisposedException(nameof(RabbitMQEventSubscriber));
         }
 
+        // 检查连接状态
+        if (_connection == null || !_connection.IsOpen)
+        {
+            _subscriberLogger.LogWarning("RabbitMQ连接不可用，无法订阅事件: {EventType} -> {HandlerType}", 
+                typeof(TEvent).Name, typeof(THandler).Name);
+            return;
+        }
+
         var eventName = typeof(TEvent).Name;
         var handlerType = typeof(THandler);
 
@@ -1352,12 +1360,33 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
             // 注册消费者取消事件
             consumer.Shutdown += (sender, args) => {
                 _subscriberLogger.LogWarning("消费者已关闭: {QueueName}, 原因: {Reason}", queueName, args.ReplyText);
+                
+                // 检查订阅者是否已被释放，如果已释放则不尝试重新订阅
+                if (_disposed)
+                {
+                    _subscriberLogger.LogInformation("事件订阅者已被释放，跳过重新订阅: {QueueName}", queueName);
+                    return;
+                }
+                
                 // 尝试重新创建消费者
                 Task.Run(async () => {
                     try
                     {
                         await Task.Delay(1000); // 等待1秒后重试
-                        await Subscribe<TEvent, THandler>();
+                        
+                        // 再次检查是否已被释放
+                        if (!_disposed)
+                        {
+                            await Subscribe<TEvent, THandler>();
+                        }
+                        else
+                        {
+                            _subscriberLogger.LogInformation("重试时发现订阅者已被释放，取消重新订阅: {QueueName}", queueName);
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        _subscriberLogger.LogInformation("重新订阅时订阅者已被释放: {QueueName}", queueName);
                     }
                     catch (Exception ex)
                     {

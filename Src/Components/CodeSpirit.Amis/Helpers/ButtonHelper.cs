@@ -370,7 +370,19 @@ namespace CodeSpirit.Amis.Helpers
             foreach (MethodInfo method in methods)
             {
                 TOperation op = method.GetCustomAttribute<TOperation>(inherit: false);
-                if (op != null && !isHeader && op is HeaderOperationAttribute)
+                var hasHeaderOp = method.GetCustomAttribute<HeaderOperationAttribute>(inherit: false) != null;
+                
+                // 如果是查找头部操作，只处理真正的HeaderOperationAttribute
+                if (isHeader && typeof(TOperation) == typeof(HeaderOperationAttribute))
+                {
+                    // 确保方法确实有HeaderOperationAttribute
+                    if (op == null || !hasHeaderOp)
+                    {
+                        continue;
+                    }
+                }
+                // 如果不是查找头部操作，排除有HeaderOperationAttribute的方法
+                else if (!isHeader && hasHeaderOp)
                 {
                     continue;
                 }
@@ -415,7 +427,31 @@ namespace CodeSpirit.Amis.Helpers
         // 获取顶部操作按钮
         public List<JObject> GetHeaderOperationButtons()
         {
-            return GetCustomOperationsButtons<HeaderOperationAttribute>(isBulkOperation: false, isHeader: true);
+            // 直接只查找HeaderOperationAttribute
+            List<JObject> buttons = [];
+            var methods = amisContext.ControllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+            
+            foreach (MethodInfo method in methods)
+            {
+                var headerOp = method.GetCustomAttribute<HeaderOperationAttribute>(inherit: false);
+                if (headerOp != null && !headerOp.IsBulkOperation)
+                {
+                    var permissionCode = _permissionService.GetPermissionCode(method);
+                    var hasPermission = _permissionService.HasPermission(permissionCode);
+
+                    if (hasPermission)
+                    {
+                        JObject button = CreateCustomOperationButton(headerOp, method);
+                        if (headerOp.ActionType == "ajax" && !string.IsNullOrEmpty(headerOp.Redirect))
+                        {
+                            button["redirect"] = headerOp.Redirect;
+                        }
+                        buttons.Add(button);
+                    }
+                }
+            }
+            
+            return buttons;
         }
 
         // 创建自定义操作按钮

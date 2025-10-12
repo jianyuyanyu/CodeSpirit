@@ -228,7 +228,12 @@ namespace CodeSpirit.Amis
             // 添加新增按钮（如果没有自定义的新增操作）
             if (_amisContext.ApiRoutes.Create != null && _amisContext.Actions.Create != null && !hasCustomCreateOperation)
             {
-                if (_amisContext.Actions.Create.GetCustomAttribute<HeaderOperationAttribute>() == null)
+                // 检查Create方法是否有Operation特性（如果有，说明它是自定义操作，不应该作为标准新增按钮）
+                var hasOperationAttribute = _amisContext.Actions.Create.GetCustomAttribute<OperationAttribute>() != null;
+                var hasHeaderOperationAttribute = _amisContext.Actions.Create.GetCustomAttribute<HeaderOperationAttribute>() != null;
+                
+                // 只有当Create方法没有Operation特性且没有HeaderOperation特性时，才添加标准新增按钮
+                if (!hasOperationAttribute && !hasHeaderOperationAttribute)
                 {
                     buttons.Add(_buttonHelper.CreateHeaderButton("新增", _amisContext.ApiRoutes.Create, _amisContext.Actions.Create?.GetParameters(), method: _amisContext.Actions.Create));
                 }

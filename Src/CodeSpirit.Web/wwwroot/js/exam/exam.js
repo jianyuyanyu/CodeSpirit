@@ -454,12 +454,31 @@
                 console.log("使用当前时间作为备用", examStartTime);
             }
 
-            // 计算考试结束时间
+            // 计算基于考试时长的结束时间
             const examEndTimeByDuration = new Date(examStartTime.getTime() + duration * 60 * 1000);
-            console.log("计算出的结束时间", examEndTimeByDuration);
+            console.log("基于时长的结束时间", examEndTimeByDuration);
+
+            // 获取系统设置的结束时间（如果存在）
+            const systemEndTime = window.globalData?.exam?.endTime;
+
+            // 取两者中较早的时间作为实际结束时间
+            let actualEndTime = examEndTimeByDuration;
+            if (systemEndTime) {
+                const systemEndTimeMs = new Date(systemEndTime).getTime();
+                const durationEndTimeMs = examEndTimeByDuration.getTime();
+                
+                // 使用较早的结束时间
+                actualEndTime = new Date(Math.min(systemEndTimeMs, durationEndTimeMs));
+                
+                console.log("考试结束时间对比", {
+                    基于时长的结束时间: new Date(durationEndTimeMs).toLocaleString(),
+                    系统设置的结束时间: new Date(systemEndTimeMs).toLocaleString(),
+                    实际使用的结束时间: actualEndTime.toLocaleString()
+                });
+            }
 
             // 存储精确的结束时间戳
-            examEndTimeMs = examEndTimeByDuration.getTime();
+            examEndTimeMs = actualEndTime.getTime();
             console.log("考试结束时间戳(ms)", examEndTimeMs);
 
             // 获取当前时间

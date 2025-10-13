@@ -58,7 +58,7 @@ D、IBM
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.SingleChoice, question.Type);
-        Assert.Equal("SSL协议最早是由提出的。", question.Content);
+        Assert.Equal("SSL协议最早是由____提出的。", question.Content);
         Assert.Equal("Netscape", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Equal("SSL协议是由Netscape公司提出的，用于在互联网上提供安全通信。", question.Analysis);
@@ -476,7 +476,7 @@ D、RSA
         var question1 = result[0];
         Assert.Equal(QuestionType.SingleChoice, question1.Type);
         Assert.Equal(QuestionDifficulty.Easy, question1.Difficulty);
-        Assert.Equal("SSL协议最早是由提出的。", question1.Content);
+        Assert.Equal("SSL协议最早是由____提出的。", question1.Content);
 
         // 验证第二题（中等难度）
         var question2 = result[1];
@@ -871,7 +871,7 @@ D、INVALID SYNTAX users SET name;
         var singleChoice1 = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice1.Type);
         Assert.Equal("在C#中，以下哪个字符串插值表达式是正确的？", singleChoice1.Content);
-        Assert.Equal("$\"Hello {name}!\"", singleChoice1.CorrectAnswer);
+        Assert.Equal("\\$\"Hello {name}!\"", singleChoice1.CorrectAnswer);
         Assert.Contains("\\$\"Hello {name}!\"", singleChoice1.Options);
         Assert.Contains("@\"Hello {name}!\"", singleChoice1.Options);
         
@@ -951,7 +951,7 @@ D、# (井号)
         var singleChoice1 = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice1.Type);
         Assert.Equal("在JavaScript中，以下哪个变量声明包含$字符？", singleChoice1.Content);
-        Assert.Equal("var $userName = \"admin\";", singleChoice1.CorrectAnswer);
+        Assert.Equal("var \\$userName = \"admin\";", singleChoice1.CorrectAnswer);
         Assert.Contains("var \\$userName = \"admin\";", singleChoice1.Options);
         
         // 验证包含HTML标签的单选题
@@ -1035,5 +1035,144 @@ D、$123invalid
         Assert.Contains("\\$PATH", multipleChoice.Options);
         Assert.Contains("\\$123invalid", multipleChoice.Options);
         Assert.Equal("Shell脚本中的变量名不能以数字开头。", multipleChoice.Analysis);
+    }
+
+    [Fact]
+    public void Parse_SingleChoiceWithAnswerInMiddle_ReplacesWithPlaceholder()
+    {
+        // Arrange - 测试答案标记在题目中间位置的情况
+        var text = @"一、单项选择题（每题1分）
+1、油性皮肤按摩时应选用(B)手法帮助排泄油脂。
+A、震顿
+B、捏按
+C、抹动
+D、按抚
+【解析】捏按手法适合油性皮肤，有助于排泄油脂。
+【标签】皮肤护理、按摩手法";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        var question = result[0];
+        Assert.Equal(QuestionType.SingleChoice, question.Type);
+        Assert.Equal("油性皮肤按摩时应选用____手法帮助排泄油脂。", question.Content);
+        Assert.Equal("捏按", question.CorrectAnswer);
+        Assert.Equal(4, question.Options.Count);
+        Assert.Contains("震顿", question.Options);
+        Assert.Contains("捏按", question.Options);
+        Assert.Contains("抹动", question.Options);
+        Assert.Contains("按抚", question.Options);
+        Assert.Equal("捏按手法适合油性皮肤，有助于排泄油脂。", question.Analysis);
+        Assert.Equal(2, question.Tags.Count);
+        Assert.Contains("皮肤护理", question.Tags);
+        Assert.Contains("按摩手法", question.Tags);
+    }
+
+    [Fact]
+    public void Parse_MultipleChoiceWithAnswerInMiddle_ReplacesWithPlaceholder()
+    {
+        // Arrange - 测试多选题答案标记在题目中间位置的情况
+        var text = @"三、多项选择题（每题2分）
+1、以下哪些是有效的编程语言(ABC)特性？
+A、面向对象
+B、函数式编程
+C、动态类型
+D、静态编译
+【解析】前三个都是编程语言的重要特性。
+【标签】编程语言、特性";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        var question = result[0];
+        Assert.Equal(QuestionType.MultipleChoice, question.Type);
+        Assert.Equal("以下哪些是有效的编程语言____特性？", question.Content);
+        Assert.Equal("面向对象,函数式编程,动态类型", question.CorrectAnswer);
+        Assert.Equal(4, question.Options.Count);
+        Assert.Contains("面向对象", question.Options);
+        Assert.Contains("函数式编程", question.Options);
+        Assert.Contains("动态类型", question.Options);
+        Assert.Contains("静态编译", question.Options);
+        Assert.Equal("前三个都是编程语言的重要特性。", question.Analysis);
+        Assert.Equal(2, question.Tags.Count);
+        Assert.Contains("编程语言", question.Tags);
+        Assert.Contains("特性", question.Tags);
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithAnswerAtEnd_RemovesAnswerNormally()
+    {
+        // Arrange - 测试答案标记在题目末尾的正常情况
+        var text = @"一、单项选择题（每题1分）
+1、以下哪个是Web服务器软件(A)？
+A、Apache
+B、MySQL
+C、Redis
+D、MongoDB
+【解析】Apache是最流行的Web服务器软件之一。
+【标签】Web服务器、Apache";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        var question = result[0];
+        Assert.Equal(QuestionType.SingleChoice, question.Type);
+        Assert.Equal("以下哪个是Web服务器软件？", question.Content);
+        Assert.Equal("Apache", question.CorrectAnswer);
+        Assert.Equal(4, question.Options.Count);
+        Assert.Contains("Apache", question.Options);
+        Assert.Contains("MySQL", question.Options);
+        Assert.Contains("Redis", question.Options);
+        Assert.Contains("MongoDB", question.Options);
+        Assert.Equal("Apache是最流行的Web服务器软件之一。", question.Analysis);
+        Assert.Equal(2, question.Tags.Count);
+        Assert.Contains("Web服务器", question.Tags);
+        Assert.Contains("Apache", question.Tags);
+    }
+
+    [Fact]
+    public void Parse_QuestionsWithMultipleAnswersInMiddle_ReplacesWithPlaceholder()
+    {
+        // Arrange - 测试多个答案标记在题目中间位置的情况
+        var text = @"一、单项选择题（每题1分）
+1、数据库中的主键(A)不能为空，外键(B)可以为空。
+A、Primary Key
+B、Foreign Key
+C、Index Key
+D、Unique Key
+【解析】主键不能为空，外键可以为空。
+【标签】数据库、键约束
+
+2、在编程中，变量(C)用于存储数据。
+A、函数
+B、类
+C、变量
+D、方法
+【解析】变量是用于存储数据的容器。
+【标签】编程、变量";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        
+        // 验证第一题 - 有多个答案标记在中间
+        var question1 = result[0];
+        Assert.Equal(QuestionType.SingleChoice, question1.Type);
+        Assert.Equal("数据库中的主键____不能为空，外键____可以为空。", question1.Content);
+        Assert.Equal("Primary Key", question1.CorrectAnswer);
+        
+        // 验证第二题 - 有一个答案标记在中间
+        var question2 = result[1];
+        Assert.Equal(QuestionType.SingleChoice, question2.Type);
+        Assert.Equal("在编程中，变量____用于存储数据。", question2.Content);
+        Assert.Equal("变量", question2.CorrectAnswer);
     }
 } 

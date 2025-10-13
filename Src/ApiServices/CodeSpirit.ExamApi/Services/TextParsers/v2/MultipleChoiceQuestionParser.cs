@@ -49,19 +49,31 @@ public class MultipleChoiceQuestionParser : BaseQuestionParser, IScopedDependenc
             if (answerMatch.Success)
             {
                 var answerText = answerMatch.Value;
-                // 只移除题目末尾的答案标记，保留题目内容中的其他括号
-                var index = result.Content.LastIndexOf(answerText);
-                if (index >= 0)
+                // 智能处理答案标记：
+                // 1. 如果答案标记在题目末尾，直接移除
+                // 2. 如果答案标记在题目中间，用占位符替换
+                var answerIndex = result.Content.IndexOf(answerText);
+                var afterAnswerText = result.Content.Substring(answerIndex + answerText.Length);
+                
+                // 如果答案标记后面只有空格、标点符号或为空，认为是在末尾
+                if (Regex.IsMatch(afterAnswerText, @"^[\s？?。.]*$"))
                 {
-                    result.Content = result.Content.Remove(index, answerText.Length).Trim();
+                    // 在末尾，直接移除答案标记，但保留标点符号
+                    var punctuation = Regex.Match(afterAnswerText, @"[？?。.]").Value;
+                    result.Content = result.Content.Substring(0, answerIndex).Trim() + punctuation;
+                }
+                else
+                {
+                    // 在中间位置，用占位符替换
+                    result.Content = result.Content.Replace(answerText, "____").Trim();
                 }
             }
 
             // 移除序号和分数标记
             result.Content = CleanContent(result.Content);
 
-            // 添加问号（如果没有）
-            if (!result.Content.EndsWith("？") && !result.Content.EndsWith("?"))
+            // 添加问号（如果需要）
+            if (!result.Content.EndsWith("？") && !result.Content.EndsWith("?") && !result.Content.EndsWith("。"))
             {
                 result.Content += "？";
             }

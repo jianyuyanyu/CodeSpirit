@@ -67,24 +67,31 @@ public class SingleChoiceQuestionParser : BaseQuestionParser, IScopedDependency
             if (answerMatch.Success)
             {
                 result.CorrectAnswer = answerMatch.Groups[1].Value;
-                // 智能移除答案标记：
-                // 1. 如果答案标记在题目末尾，直接移除
-                // 2. 如果答案标记在题目中间，需要判断是否为真正的答案标记
-                var answerText = answerMatch.Value;
-
-                // 检查是否在末尾
-                if (currentContent.EndsWith(answerText))
+                
+                // 处理所有答案标记
+                var singleLetterPattern = @"[\(（]\s*[A-Z]\s*[\)）]";
+                var allAnswerMatches = Regex.Matches(currentContent, singleLetterPattern);
+                
+                // 从后往前替换，避免索引变化问题
+                for (int i = allAnswerMatches.Count - 1; i >= 0; i--)
                 {
-                    currentContent = currentContent.Substring(0, currentContent.Length - answerText.Length).Trim();
-                }
-                else
-                {
-                    // 在中间位置，需要更谨慎地处理
-                    // 只有当括号内只包含单个大写字母时才认为是答案标记
-                    var singleLetterPattern = @"[\(（]\s*[A-Z]\s*[\)）]";
-                    if (Regex.IsMatch(answerText, singleLetterPattern))
+                    var match = allAnswerMatches[i];
+                    var answerText = match.Value;
+                    var answerIndex = match.Index;
+                    var afterAnswerText = currentContent.Substring(answerIndex + answerText.Length);
+                    
+                    // 如果答案标记后面只有空格、标点符号或为空，认为是在末尾
+                    if (Regex.IsMatch(afterAnswerText, @"^[\s？?。.]*$"))
                     {
-                        currentContent = currentContent.Replace(answerText, "").Trim();
+                        // 在末尾，直接移除答案标记，但保留标点符号
+                        var punctuation = Regex.Match(afterAnswerText, @"[？?。.]").Value;
+                        currentContent = currentContent.Substring(0, answerIndex).Trim() + punctuation;
+                    }
+                    else
+                    {
+                        // 在中间位置，用占位符替换
+                        currentContent = currentContent.Substring(0, answerIndex) + "____" + 
+                                       currentContent.Substring(answerIndex + answerText.Length);
                     }
                 }
             }
@@ -108,6 +115,13 @@ public class SingleChoiceQuestionParser : BaseQuestionParser, IScopedDependency
 
             // 合并所有内容行
             result.Content = string.Join("\r\n", contentLines);
+            
+            // 清理内容并添加问号（如果需要）
+            result.Content = CleanContent(result.Content);
+            if (!result.Content.EndsWith("？") && !result.Content.EndsWith("?") && !result.Content.EndsWith("。"))
+            {
+                result.Content += "？";
+            }
 
             // 解析选项
             var options = new Dictionary<string, string>();

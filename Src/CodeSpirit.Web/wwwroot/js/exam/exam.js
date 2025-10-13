@@ -265,6 +265,78 @@
     // 将性能监控器暴露到全局，便于调试
     window.PerformanceMonitor = PerformanceMonitor;
 
+    /**
+     * 加载租户信息
+     * 参考application.js中的实现方式
+     */
+    async function loadTenantInfo() {
+        try {
+            const response = await fetch(`/identity/api/identity/tenants/${window.tenantId}/login-config`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Forwarded-With': 'CodeSpirit'
+                }
+            });
+            
+            // 处理HTTP错误状态
+            if (response.status === 404) {
+                throw new Error('租户不存在或已停用');
+            } else if (response.status === 403) {
+                throw new Error('您没有权限访问此租户');
+            } else if (response.status >= 500) {
+                throw new Error('服务器内部错误，请稍后重试');
+            } else if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            // 处理业务错误
+            if (result.status !== 0) {
+                throw new Error(result.msg || '获取租户配置失败');
+            }
+            
+            // 转换为考试页面需要的格式
+            const tenantConfig = result.data;
+            const tenantInfo = {
+                id: window.tenantId,
+                name: tenantConfig.displayName || tenantConfig.name || '考试平台',
+                logo: tenantConfig.logoUrl || '/logo.png',
+                description: tenantConfig.description || ''
+            };
+            
+            // 更新全局数据
+            window.globalData.tenant = tenantInfo;
+            
+            // 同步到AMIS实例
+            if (window.amisInstance) {
+                window.GlobalData.syncToAmis(window.amisInstance, ['tenant']);
+            }
+            
+            console.log('[租户信息] 加载成功:', tenantInfo);
+            return tenantInfo;
+        } catch (error) {
+            console.warn('[租户信息] 加载失败:', error);
+            const fallbackInfo = { 
+                id: window.tenantId,
+                name: '考试平台', 
+                logo: '/logo.png',
+                description: '' 
+            };
+            
+            // 更新全局数据为默认值
+            window.globalData.tenant = fallbackInfo;
+            
+            // 同步到AMIS实例
+            if (window.amisInstance) {
+                window.GlobalData.syncToAmis(window.amisInstance, ['tenant']);
+            }
+            
+            return fallbackInfo;
+        }
+    }
+
     // 全局数据对象，用于存储用户信息和考试数据
     window.globalData = {
         user: {
@@ -291,6 +363,12 @@
             minutes: 0,
             seconds: 0,
             remainingSeconds: 0
+        },
+        tenant: {
+            id: window.tenantId,
+            name: '考试平台',
+            logo: '/logo.png',
+            description: ''
         }
     };
 
@@ -1167,7 +1245,7 @@
                                 items: [
                                     {
                                         type: 'tpl',
-                                        tpl: '<div class="logo"><img src="' + (window.siteSettings ? window.siteSettings.logoUrl : '/logo.png') + '" /><span>' + (window.siteSettings ? window.siteSettings.clientAppName : '考试系统') + '</span></div>',
+                                        tpl: '<div class="logo"><img src="${tenant.logo}" /><span>${tenant.name}</span></div>',
                                         className: 'client-logo'
                                     },
                                     {
@@ -1786,7 +1864,8 @@
                     remainingSeconds: 0
                 },
                 name: '',
-                questions: [] // 初始化为空数组
+                questions: [], // 初始化为空数组
+                tenant: window.globalData.tenant // 添加租户信息
             },
             locale: 'zh-CN',
             context: {
@@ -1858,6 +1937,22 @@
 
     // 立即设置全局amis实例以确保计时器可以使用
     window.amisInstance = amisInstance;
+
+    // 立即加载租户信息以更新页面显示
+    loadTenantInfo().then(tenantInfo => {
+        console.log('[考试页] 租户信息初始化完成:', tenantInfo);
+        // 强制更新AMIS实例的数据
+        if (window.amisInstance) {
+            window.amisInstance.updateProps({
+                data: {
+                    ...window.amisInstance.props.data,
+                    tenant: tenantInfo
+                }
+            });
+        }
+    }).catch(error => {
+        console.error('[考试页] 租户信息初始化失败:', error);
+    });
 
     // 更新固定头部高度的函数
     function updateFixedHeaderHeight() {
@@ -2018,6 +2113,13 @@
 
         // 初始化考试全局变量
         window.examAnswers = [];
+
+        // 加载租户信息
+        loadTenantInfo().then(tenantInfo => {
+            console.log('[考试页] 租户信息加载完成:', tenantInfo);
+        }).catch(error => {
+            console.error('[考试页] 租户信息加载失败:', error);
+        });
 
         // 设置切屏检测
         if (typeof window.ScreenSwitchDetector !== 'undefined' && typeof window.ScreenSwitchDetector.setup === 'function') {

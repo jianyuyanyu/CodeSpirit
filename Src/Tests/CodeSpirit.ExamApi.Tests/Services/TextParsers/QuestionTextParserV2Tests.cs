@@ -799,7 +799,7 @@ D、$123invalid
         var singleChoice = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
         Assert.Equal("在JavaScript中，以下哪个变量声明是正确的？", singleChoice.Content);
-        Assert.Equal("var $userName = \"admin\";", singleChoice.CorrectAnswer);
+        Assert.Equal("var \\$userName = \"admin\";", singleChoice.CorrectAnswer);
         Assert.Contains("var \\$name = \"test\";", singleChoice.Options);
         Assert.Contains("var \\$userName = \"admin\";", singleChoice.Options);
         Assert.Contains("在JavaScript中，变量名可以包含$字符，但不能以数字开头，也不能使用保留字。", singleChoice.Analysis);
@@ -1014,7 +1014,7 @@ D、$123invalid
         var singleChoice = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
         Assert.Equal("在JavaScript中，以下哪个变量声明是正确的？", singleChoice.Content);
-        Assert.Equal("var $userName = \"admin\";", singleChoice.CorrectAnswer);
+        Assert.Equal("var \\$userName = \"admin\";", singleChoice.CorrectAnswer);
         Assert.Contains("var \\$name = \"test\";", singleChoice.Options);
         Assert.Contains("var \\$userName = \"admin\";", singleChoice.Options);
         Assert.Equal("在JavaScript中，变量名可以包含$字符，但不能以数字开头，也不能使用保留字。", singleChoice.Analysis);
@@ -1035,6 +1035,39 @@ D、$123invalid
         Assert.Contains("\\$PATH", multipleChoice.Options);
         Assert.Contains("\\$123invalid", multipleChoice.Options);
         Assert.Equal("Shell脚本中的变量名不能以数字开头。", multipleChoice.Analysis);
+    }
+
+    [Fact]
+    public void Parse_QuestionWithDuplicateOptionMarks_ReturnsCorrectFourOptions()
+    {
+        // Arrange - 测试重复选项标记的问题（如两个B选项）
+        var text = @"一、单项选择题（每题1分）
+20、在安装气环时，各个气环的切口应该（C）。
+A、对正 
+B、错开 60 度以内
+B、错开
+D、没有要求
+【解析】在安装气环时，各个气环的切口应该错开，以确保密封效果。
+【标签】气环安装、切口";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        var question = result[0];
+        Assert.Equal(QuestionType.SingleChoice, question.Type);
+        Assert.Equal("在安装气环时，各个气环的切口应该。", question.Content);
+        Assert.Equal("错开", question.CorrectAnswer);
+        Assert.Equal(4, question.Options.Count);
+        Assert.Contains("对正", question.Options);
+        Assert.Contains("错开 60 度以内", question.Options);
+        Assert.Contains("错开", question.Options);
+        Assert.Contains("没有要求", question.Options);
+        Assert.Equal("在安装气环时，各个气环的切口应该错开，以确保密封效果。", question.Analysis);
+        Assert.Equal(2, question.Tags.Count);
+        Assert.Contains("气环安装", question.Tags);
+        Assert.Contains("切口", question.Tags);
     }
 
     [Fact]

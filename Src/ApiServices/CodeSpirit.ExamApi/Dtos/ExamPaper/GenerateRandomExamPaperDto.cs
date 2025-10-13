@@ -65,14 +65,14 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("题型分布规则")]
     [Required(ErrorMessage = "题型分布规则不能为空")]
-    [AmisTableField(Addable = true, Removable = true, Draggable = true, Editable = true)]
+    [AmisTableField(Addable = true, Removable = true, Draggable = true, Editable = true, QuickEdit = true)]
     public List<QuestionTypeRule> QuestionTypeRules { get; set; } = [];
 
     /// <summary>
     /// 难度分布规则
     /// </summary>
     [DisplayName("难度分布规则")]
-    [AmisTableField(Addable = true, Removable = true, Draggable = true)]
+    [AmisTableField(Addable = true, Removable = true, Draggable = true, QuickEdit = true)]
     public List<DifficultyRule>? DifficultyRules { get; set; }
 
     ///// <summary>

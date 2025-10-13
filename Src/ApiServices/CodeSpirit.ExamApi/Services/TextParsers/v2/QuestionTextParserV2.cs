@@ -197,7 +197,7 @@ namespace CodeSpirit.ExamApi.Services.TextParsers.v2
         private void ProcessSpecialCharacters(QuestionParseResult result)
         {
             // 处理题目内容中的$字符，避免被AMIS解析为模板变量
-            // 仅处理选项中的$字符，其他内容可以直接输出原始内容
+            // 对选项和正确答案中的$字符进行转义处理，确保评分时的一致性
             if (result.Options != null)
             {
                 for (int i = 0; i < result.Options.Count; i++)
@@ -210,7 +210,7 @@ namespace CodeSpirit.ExamApi.Services.TextParsers.v2
                 }
             }
 
-            // 处理正确答案中的$字符，确保与选项保持一致
+            // 对正确答案中的$字符进行转义处理，确保与选项转义保持一致，避免评分时不匹配
             if (!string.IsNullOrEmpty(result.CorrectAnswer) && result.CorrectAnswer.Contains("$"))
             {
                 result.CorrectAnswer = result.CorrectAnswer.Replace("$", "\\$");

@@ -116,15 +116,11 @@ public class SingleChoiceQuestionParser : BaseQuestionParser, IScopedDependency
             // 合并所有内容行
             result.Content = string.Join("\r\n", contentLines);
             
-            // 清理内容并添加问号（如果需要）
+            // 清理内容
             result.Content = CleanContent(result.Content);
-            if (!result.Content.EndsWith("？") && !result.Content.EndsWith("?") && !result.Content.EndsWith("。"))
-            {
-                result.Content += "？";
-            }
 
-            // 解析选项
-            var options = new Dictionary<string, string>();
+            // 解析选项 - 修复重复选项标记的问题
+            var options = new List<(string Mark, string Content)>();
             var currentOption = "";
             var currentOptionMark = "";
 
@@ -139,7 +135,7 @@ public class SingleChoiceQuestionParser : BaseQuestionParser, IScopedDependency
                 {
                     if (!string.IsNullOrWhiteSpace(currentOption))
                     {
-                        options[currentOptionMark] = currentOption.Trim();
+                        options.Add((currentOptionMark, currentOption.Trim()));
                     }
                     currentOptionMark = line[0].ToString();
                     currentOption = optionMatch.Groups[1].Value;
@@ -153,23 +149,31 @@ public class SingleChoiceQuestionParser : BaseQuestionParser, IScopedDependency
 
             if (!string.IsNullOrWhiteSpace(currentOption))
             {
-                options[currentOptionMark] = currentOption.Trim();
+                options.Add((currentOptionMark, currentOption.Trim()));
             }
 
-            // 按选项标记排序
-            result.Options = options.OrderBy(kv => kv.Key)
-                                 .Select(kv => kv.Value)
-                                 .ToList();
-
-            // 如果有答案标记，转换为选项内容
+            // 如果有答案标记，转换为选项内容（使用原始内容，不转义）
             if (!string.IsNullOrEmpty(result.CorrectAnswer))
             {
-                var answerIndex = result.CorrectAnswer[0] - 'A';
-                if (answerIndex >= 0 && answerIndex < result.Options.Count)
+                var answerMark = result.CorrectAnswer[0].ToString();
+                var matchingOption = options.FirstOrDefault(opt => opt.Mark == answerMark);
+                if (matchingOption != default)
                 {
-                    result.CorrectAnswer = result.Options[answerIndex];
+                    result.CorrectAnswer = matchingOption.Content;
+                }
+                else
+                {
+                    // 如果找不到匹配的选项标记，回退到索引方式（兼容性处理）
+                    var answerIndex = result.CorrectAnswer[0] - 'A';
+                    if (answerIndex >= 0 && answerIndex < options.Count)
+                    {
+                        result.CorrectAnswer = options[answerIndex].Content;
+                    }
                 }
             }
+
+            // 按出现顺序保存选项内容，确保索引对应关系正确
+            result.Options = options.Select(opt => opt.Content).ToList();
 
             // 解析解析和标签
             result.Analysis = ExtractAnalysis(lineList);

@@ -368,3 +368,5 @@ publish.ps1
 /Src/ApiServices/CodeSpirit.FileStorageApi/wwwroot/uploads
 /publish-all-apis.ps1
 /PUBLISH-README.md
+/Tests/CodeSpirit.ExamApi.LoadTests/reports
+/Tests/CodeSpirit.ExamApi.LoadTests/testusers.json

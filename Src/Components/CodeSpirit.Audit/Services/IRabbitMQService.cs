@@ -24,6 +24,12 @@ public interface IRabbitMQService
     string SubscribeMessage<T>(Func<T, Task> handler, string? routingKey = null);
     
     /// <summary>
+    /// 获取订阅者状态信息
+    /// </summary>
+    /// <returns>订阅者状态信息</returns>
+    (int CurrentSubscribers, int MaxSubscribers, bool CanSubscribe) GetSubscriberStatus();
+    
+    /// <summary>
     /// 取消订阅
     /// </summary>
     /// <param name="consumerTag">消费者标识</param>

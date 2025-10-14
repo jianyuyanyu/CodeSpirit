@@ -18,6 +18,7 @@ using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -79,6 +80,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
         // 添加HTTP客户端服务
         services.AddHttpClient();
         
+        // 添加输出缓存服务
+        AddOutputCacheServices(services);
+        
         // 配置控制器和审计元数据过滤器
         ConfigureControllersWithAudit(services, configuration);
     }
@@ -105,6 +109,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
     {
         // 使用多租户中间件
         app.UseCodeSpiritMultiTenant();
+        
+        // 使用输出缓存中间件
+        app.UseOutputCache();
         
         // 初始化设置管理
         await app.UseSettingsManagerAsync();
@@ -161,6 +168,20 @@ public class ExamApiConfiguration : BaseApiConfiguration
             
             throw;
         }
+    }
+    
+    /// <summary>
+    /// 添加输出缓存服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    private static void AddOutputCacheServices(IServiceCollection services)
+    {
+        services.AddOutputCache(options =>
+        {
+            // 配置默认缓存策略
+            options.AddBasePolicy(builder => 
+                builder.Expire(TimeSpan.FromMinutes(5))); // 默认5分钟过期
+        });
     }
     
     /// <summary>

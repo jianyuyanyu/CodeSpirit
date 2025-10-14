@@ -1,4 +1,5 @@
 ﻿// Controllers/AuthController.cs
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Data.Models;
@@ -19,6 +20,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     /// </summary>
     [AllowAnonymous]
     [Navigation(Hidden = true)]
+    [NoAudit("授权控制器不需要审计")]
     public class AuthController : ApiControllerBase
     {
         private readonly IAuthService _authService;

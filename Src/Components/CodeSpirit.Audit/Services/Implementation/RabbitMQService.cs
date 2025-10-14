@@ -25,6 +25,9 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     private readonly ConcurrentQueue<IModel> _channelPool = new();
     private readonly SemaphoreSlim _channelSemaphore;
     private readonly int _maxChannels = 10;
+    
+    // 订阅限制
+    private readonly int _maxSubscribers;
     private volatile bool _disposed = false;
     
     /// <summary>
@@ -52,14 +55,17 @@ public class RabbitMQService : IRabbitMQService, IDisposable
         // 初始化通道池信号量
         _channelSemaphore = new SemaphoreSlim(_maxChannels, _maxChannels);
         
+        // 设置最大订阅者数量（从配置读取，默认为3）
+        _maxSubscribers = _options.MaxSubscribers > 0 ? _options.MaxSubscribers : 3;
+        
         
         try
         {
             // 初始化通道池
             InitializeChannelPool();
             
-            _logger.LogInformation("审计RabbitMQ服务已初始化，通道池大小: {MaxChannels}, 交换机: {ExchangeName}, 队列: {QueueName}",
-                _maxChannels, _options.ExchangeName, _options.QueueName);
+            _logger.LogInformation("审计RabbitMQ服务已初始化，通道池大小: {MaxChannels}, 最大订阅者: {MaxSubscribers}, 交换机: {ExchangeName}, 队列: {QueueName}",
+                _maxChannels, _maxSubscribers, _options.ExchangeName, _options.QueueName);
         }
         catch (Exception ex)
         {
@@ -248,6 +254,14 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             throw new InvalidOperationException("RabbitMQ连接未打开");
         }
         
+        // 检查订阅者数量限制
+        if (_consumerChannels.Count >= _maxSubscribers)
+        {
+            _logger.LogWarning("已达到最大订阅者数量限制: {MaxSubscribers}，当前订阅者: {CurrentCount}", 
+                _maxSubscribers, _consumerChannels.Count);
+            throw new InvalidOperationException($"已达到最大订阅者数量限制: {_maxSubscribers}");
+        }
+        
         routingKey ??= _options.RoutingKey;
         
         _logger.LogInformation("=== 开始创建RabbitMQ消费者 ===");
@@ -407,6 +421,18 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                 throw;
             }
         }
+    }
+    
+    /// <summary>
+    /// 获取订阅者状态信息
+    /// </summary>
+    /// <returns>订阅者状态信息</returns>
+    public (int CurrentSubscribers, int MaxSubscribers, bool CanSubscribe) GetSubscriberStatus()
+    {
+        var currentCount = _consumerChannels.Count;
+        var canSubscribe = currentCount < _maxSubscribers && !_disposed;
+        
+        return (currentCount, _maxSubscribers, canSubscribe);
     }
     
     /// <summary>

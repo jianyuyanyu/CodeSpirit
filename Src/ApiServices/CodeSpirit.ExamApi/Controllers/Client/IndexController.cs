@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Audit.Attributes;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace CodeSpirit.ExamApi.Controllers.Client;
 
@@ -94,6 +95,7 @@ public class IndexController : ApiControllerBase
     /// </summary>
     /// <returns>考试历史记录</returns>
     [HttpGet("history")]
+    [OutputCache(Duration = 600, VaryByHeaderNames = new string[] { "Authorization" }, Tags = new string[] { "byUser" })]
     public async Task<ActionResult<ApiResponse<List<ClientExamHistoryDto>>>> GetExamHistory()
     {
         var currentUserId = GetCurrentUserId();
@@ -136,6 +138,7 @@ public class IndexController : ApiControllerBase
     /// <param name="id">考试记录ID</param>
     /// <returns>考试结果</returns>
     [HttpGet("result/{id}")]
+    [OutputCache(Duration = 600, VaryByHeaderNames = new string[] { "Authorization" }, VaryByRouteValueNames = new string[] { "id" }, Tags = new string[] { "byUser" })]
     public async Task<ActionResult<ApiResponse<ClientExamResultDto>>> GetExamResult(long id)
     {
         var currentUserId = GetCurrentUserId();
@@ -167,7 +170,7 @@ public class IndexController : ApiControllerBase
 
         // 获取考试详情，包括题目列表
         var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
-        
+
         // 获取基本信息
         var basicInfo = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
 
@@ -182,30 +185,30 @@ public class IndexController : ApiControllerBase
                 option.Label = WebUtility.HtmlDecode(option.Label);
             }
         }
-        
+
         // 获取用户已提交的答案
         var recordId = basicInfo.RecordId;
         if (recordId.HasValue)
         {
             try
             {
-                _logger.LogDebug("获取考试答案，考试ID: {ExamId}, 记录ID: {RecordId}, 用户ID: {UserId}", 
+                _logger.LogDebug("获取考试答案，考试ID: {ExamId}, 记录ID: {RecordId}, 用户ID: {UserId}",
                     id, recordId.Value, currentUserId);
-                    
+
                 var submittedAnswers = await _clientService.GetSubmittedAnswersAsync(recordId.Value, currentUserId);
-                
+
                 foreach (var item in basicInfo.Questions)
                 {
                     item.Answer = submittedAnswers.FirstOrDefault(p => p.QuestionId == item.QuestionId)?.Answer ?? string.Empty;
                 }
-                
-                _logger.LogDebug("成功获取考试答案，题目数: {QuestionCount}, 答案数: {AnswerCount}", 
+
+                _logger.LogDebug("成功获取考试答案，题目数: {QuestionCount}, 答案数: {AnswerCount}",
                     basicInfo.Questions.Count, submittedAnswers.Count);
             }
             catch (Exception ex)
             {
                 // 记录错误但不影响整体返回
-                _logger.LogError(ex, "获取考试答案时出现未处理错误，考试ID: {ExamId}, 记录ID: {RecordId}, 用户ID: {UserId}", 
+                _logger.LogError(ex, "获取考试答案时出现未处理错误，考试ID: {ExamId}, 记录ID: {RecordId}, 用户ID: {UserId}",
                     id, recordId.Value, currentUserId);
             }
         }
@@ -331,6 +334,7 @@ public class IndexController : ApiControllerBase
     /// </summary>
     /// <returns>考生个人信息</returns>
     [HttpGet("profile")]
+    [OutputCache(Duration = 600, VaryByHeaderNames = new string[] { "Authorization" }, Tags = new string[] { "byUser" })]
     public async Task<ActionResult<ApiResponse<ClientProfileDto>>> GetProfile()
     {
         var currentUserId = GetCurrentUserId();

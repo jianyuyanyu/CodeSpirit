@@ -180,6 +180,11 @@ public class RabbitMQOptions
     /// 路由键
     /// </summary>
     public string RoutingKey { get; set; } = "audit.log";
+
+    /// <summary>
+    /// 最大订阅者
+    /// </summary>
+    public int MaxSubscribers { get; set; } = 3;
 }
 
 /// <summary>

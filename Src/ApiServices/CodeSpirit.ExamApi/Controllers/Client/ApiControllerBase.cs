@@ -9,7 +9,7 @@ namespace CodeSpirit.ExamApi.Controllers.Client
     /// 考试系统客户端API控制器基类
     /// </summary>
     [ApiController]
-    [Authorize(policy: "DynamicPermissions")]
+    // [Authorize(policy: "DynamicPermissions")] 客户端不需要认证
     [Module("default", displayName: "默认")]
     public abstract class ApiControllerBase : CodeSpirit.Shared.Controllers.ApiControllerBase
     {

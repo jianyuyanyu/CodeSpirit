@@ -296,6 +296,13 @@ public class AuditMiddleware
                     $"成功 - 控制器: {controllerActionDescriptor.ControllerName}, 操作: {controllerActionDescriptor.ActionName}" :
                     "失败 - 未能提取控制器和操作信息");
 
+            // 如果无法提取控制器信息，记录请求路径以便调试
+            if (controllerActionDescriptor == null)
+            {
+                _logger.LogWarning("无法提取控制器操作描述符 - 请求路径: {RequestPath}, 方法: {Method}",
+                    context.Request.Path.Value, context.Request.Method);
+            }
+
             // 提取控制器和方法信息
             if (controllerActionDescriptor != null)
             {
@@ -306,30 +313,40 @@ public class AuditMiddleware
                     controllerActionDescriptor.ControllerName,
                     controllerActionDescriptor.ActionName);
 
-                // 检查是否有NoAudit特性（方法级别优先于控制器级别）
-                var methodNoAuditAttr = actionMethodInfo.GetCustomAttribute<NoAuditAttribute>();
-                var controllerNoAuditAttr = controllerType.GetCustomAttribute<NoAuditAttribute>();
+            // 检查是否有NoAudit特性（方法级别优先于控制器级别）
+            var methodNoAuditAttr = actionMethodInfo.GetCustomAttribute<NoAuditAttribute>();
+            var controllerNoAuditAttr = controllerType.GetCustomAttribute<NoAuditAttribute>();
 
-                if (methodNoAuditAttr != null || controllerNoAuditAttr != null)
+            _logger.LogInformation("NoAudit特性检查 - 控制器: {Controller}, 操作: {Action}, 控制器类型: {ControllerType}, 方法NoAudit: {MethodNoAudit}, 控制器NoAudit: {ControllerNoAudit}",
+                controllerActionDescriptor.ControllerName,
+                controllerActionDescriptor.ActionName,
+                controllerType.FullName,
+                methodNoAuditAttr != null,
+                controllerNoAuditAttr != null);
+
+            if (methodNoAuditAttr != null || controllerNoAuditAttr != null)
+            {
+                var noAuditAttr = methodNoAuditAttr ?? controllerNoAuditAttr;
+                var reason = !string.IsNullOrEmpty(noAuditAttr.Reason) ? $" - 原因: {noAuditAttr.Reason}" : "";
+                
+                _logger.LogInformation("跳过审计 - 控制器或方法标记了NoAudit特性: {Controller}.{Action}{Reason}",
+                    controllerActionDescriptor.ControllerName,
+                    controllerActionDescriptor.ActionName,
+                    reason);
+                
+                shouldSkipAudit = true;
+                // 不要在这里return，让代码继续执行到finally块，在那里通过shouldSkipAudit标志决定是否记录审计日志
+            }
+
+                // 只有在不跳过审计的情况下才处理审计特性
+                if (!shouldSkipAudit)
                 {
-                    var noAuditAttr = methodNoAuditAttr ?? controllerNoAuditAttr;
-                    var reason = !string.IsNullOrEmpty(noAuditAttr.Reason) ? $" - 原因: {noAuditAttr.Reason}" : "";
-                    
-                    _logger.LogDebug("跳过审计 - 控制器或方法标记了NoAudit特性: {Controller}.{Action}{Reason}",
-                        controllerActionDescriptor.ControllerName,
-                        controllerActionDescriptor.ActionName,
-                        reason);
-                    
-                    shouldSkipAudit = true;
-                    return;
-                }
+                    // 获取控制器和方法上的审计特性
+                    var controllerAuditAttr = controllerType.GetCustomAttribute<AuditAttribute>();
+                    var methodAuditAttr = actionMethodInfo.GetCustomAttribute<AuditAttribute>();
 
-                // 获取控制器和方法上的审计特性
-                var controllerAuditAttr = controllerType.GetCustomAttribute<AuditAttribute>();
-                var methodAuditAttr = actionMethodInfo.GetCustomAttribute<AuditAttribute>();
-
-                // 只有在控制器或方法上有审计特性时才记录详细信息
-                if (controllerAuditAttr != null || methodAuditAttr != null)
+                    // 只有在控制器或方法上有审计特性时才记录详细信息
+                    if (controllerAuditAttr != null || methodAuditAttr != null)
                 {
                     // 优先使用方法上的审计特性
                     var auditAttr = methodAuditAttr ?? controllerAuditAttr;
@@ -397,17 +414,18 @@ public class AuditMiddleware
                             auditLog.AttributeProperties.Add(prop.Key, prop.Value);
                         }
                     }
-                }
-                else if (_options.EnableOperationTypeInference && controllerType != null && actionMethodInfo != null)
-                {
-                    // 自动推断审计信息
-                    AutoInferAuditInformation(auditLog, context, controllerActionDescriptor);
-
-                    // 获取控制器上的DisplayName特性
-                    var displayNameAttr = controllerType.GetCustomAttribute<DisplayNameAttribute>();
-                    if (displayNameAttr != null)
+                    }
+                    else if (_options.EnableOperationTypeInference && controllerType != null && actionMethodInfo != null)
                     {
-                        auditLog.OperationName = displayNameAttr.DisplayName;
+                        // 自动推断审计信息
+                        AutoInferAuditInformation(auditLog, context, controllerActionDescriptor);
+
+                        // 获取控制器上的DisplayName特性
+                        var displayNameAttr = controllerType.GetCustomAttribute<DisplayNameAttribute>();
+                        if (displayNameAttr != null)
+                        {
+                            auditLog.OperationName = displayNameAttr.DisplayName;
+                        }
                     }
                 }
             }

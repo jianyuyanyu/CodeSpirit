@@ -253,6 +253,7 @@ namespace CodeSpirit.Authorization
                     return new HashSet<string>();
                 }
 
+                //TODO: 后续针对客户端用户可以将少量权限直接存入Claims中，减少缓存依赖
                 // 定义缓存键，必须包含租户信息
                 string cacheKey = CacheKeys.GetUserPermissionsCacheKey(Id.Value, TenantId);
 

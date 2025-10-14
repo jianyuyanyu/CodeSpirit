@@ -1,6 +1,7 @@
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Profile;
 using CodeSpirit.IdentityApi.Services;
@@ -11,6 +12,7 @@ namespace CodeSpirit.IdentityApi.Controllers
 {
     [Module("default", displayName: "默认")]
     [Navigation(Hidden = true)]
+    [NoAudit("个人资料控制器不需要审计")]
     public class ProfileController : ApiControllerBase
     {
         private readonly IUserService _userService;

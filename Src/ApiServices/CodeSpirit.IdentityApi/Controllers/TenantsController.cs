@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using CodeSpirit.Audit.Attributes;
 
 namespace CodeSpirit.IdentityApi.Controllers
 {
@@ -306,6 +307,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// </summary>
         /// <returns>活跃租户列表</returns>
         [HttpGet("active")]
+        [NoAudit("获取活跃租户列表控制器不需要审计")]
         [AllowAnonymous]
         [DisplayName("获取活跃租户列表")]
         public async Task<ActionResult<ApiResponse<IEnumerable<TenantSelectDto>>>> GetActiveTenants()
@@ -398,6 +400,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="tenantId">租户ID</param>
         /// <returns>登录页面配置</returns>
         [HttpGet("{tenantId}/login-config")]
+        [NoAudit("获取租户登录配置控制器不需要审计")]
         [AllowAnonymous]
         [DisplayName("获取租户登录配置")]
         public async Task<ActionResult<ApiResponse<object>>> GetTenantLoginConfig(string tenantId)

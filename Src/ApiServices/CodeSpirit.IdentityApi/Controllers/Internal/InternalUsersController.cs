@@ -2,6 +2,7 @@ using CodeSpirit.Aggregator.Attributes;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.MultiTenant.Abstractions;
@@ -19,6 +20,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Internal
     [DisplayName("内部用户信息")]
     [Module("default")]
     [Route("api/identity/internal/users")]
+    [NoAudit("内部用户信息访问控制器不需要审计")]
     public class InternalUsersController : ControllerBase
     {
         private readonly IUserService _userService;

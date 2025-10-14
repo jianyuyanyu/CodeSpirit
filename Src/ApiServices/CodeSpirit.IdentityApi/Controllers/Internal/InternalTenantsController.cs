@@ -1,6 +1,7 @@
 using CodeSpirit.Aggregator.Attributes;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.IdentityApi.Dtos.Tenant;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Shared.Data;
@@ -19,6 +20,7 @@ namespace CodeSpirit.IdentityApi.Controllers.Internal
     [DisplayName("内部租户信息")]
     [Module("default")]
     [Route("api/identity/internal/tenants")]
+    [NoAudit("内部租户信息访问控制器不需要审计")]
     public class InternalTenantsController : ControllerBase
     {
         private readonly ITenantService _tenantService;

@@ -302,3 +302,45 @@ public class StartExamResponse
     [JsonProperty("recordId")]
     public long RecordId { get; set; }
 }
+
+/// <summary>
+/// 负载测试场景配置
+/// </summary>
+public class LoadTestScenario
+{
+    /// <summary>
+    /// 持续时间
+    /// </summary>
+    public string Duration { get; set; } = "00:01:00";
+
+    /// <summary>
+    /// 请求速率（每秒请求数）
+    /// </summary>
+    public int Rate { get; set; } = 1;
+}
+
+/// <summary>
+/// 负载测试场景配置集合
+/// </summary>
+public class LoadTestScenarios
+{
+    /// <summary>
+    /// 预热场景
+    /// </summary>
+    public LoadTestScenario WarmUp { get; set; } = new();
+
+    /// <summary>
+    /// 正常负载场景
+    /// </summary>
+    public LoadTestScenario NormalLoad { get; set; } = new();
+
+    /// <summary>
+    /// 峰值负载场景
+    /// </summary>
+    public LoadTestScenario PeakLoad { get; set; } = new();
+
+    /// <summary>
+    /// 压力测试场景
+    /// </summary>
+    public LoadTestScenario StressTest { get; set; } = new();
+}

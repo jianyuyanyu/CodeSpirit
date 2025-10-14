@@ -11,6 +11,13 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="publish\**" />
+	  <Content Remove="publish\**" />
+	  <EmbeddedResource Remove="publish\**" />
+	  <None Remove="publish\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="9.5.0" />
 		<PackageReference Include="Aspire.Pomelo.EntityFrameworkCore.MySql" Version="9.5.0" />
 		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />

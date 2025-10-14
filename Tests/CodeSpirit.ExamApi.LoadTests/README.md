@@ -42,15 +42,40 @@
 ```json
 {
   "TestConfiguration": {
-    "BaseUrl": "https://localhost:7001",
-    "IdentityApiUrl": "https://localhost:7002",
-    "ExamApiUrl": "https://localhost:7001",
+    "BaseUrl": "https://localhost:7120",
+    "IdentityApiUrl": "https://localhost:7120/identity",
+    "ExamApiUrl": "https://localhost:7120/exam",
     "TenantId": "default",
     "ClientType": "exam",
     "TestUsersFile": "testusers.json"
+  },
+  "LoadTestScenarios": {
+    "WarmUp": {
+      "Duration": "00:02:00",
+      "Rate": 10
+    },
+    "NormalLoad": {
+      "Duration": "00:10:00", 
+      "Rate": 40
+    },
+    "PeakLoad": {
+      "Duration": "00:05:00",
+      "Rate": 100
+    },
+    "StressTest": {
+      "Duration": "00:03:00",
+      "Rate": 200
+    }
   }
 }
 ```
+
+#### 负载场景说明
+
+- **WarmUp**: 预热场景，2分钟，10 RPS
+- **NormalLoad**: 正常负载，10分钟，40 RPS  
+- **PeakLoad**: 峰值负载，5分钟，100 RPS
+- **StressTest**: 压力测试，3分钟，200 RPS
 
 ### 3. 启动 CodeSpirit 服务
 
@@ -68,6 +93,44 @@ dotnet run
 
 ### 4. 运行测试
 
+#### 方式一：使用 PowerShell 脚本（推荐）
+
+```powershell
+# 运行预热场景
+.\run-load-tests.ps1 -Scenario WarmUp
+
+# 运行正常负载场景
+.\run-load-tests.ps1 -Scenario NormalLoad
+
+# 运行峰值负载场景  
+.\run-load-tests.ps1 -Scenario PeakLoad
+
+# 运行压力测试场景
+.\run-load-tests.ps1 -Scenario StressTest
+
+# 指定特定的测试场景
+.\run-load-tests.ps1 -Scenario NormalLoad -TestScenario mixed-operations
+```
+
+#### 方式二：使用环境变量
+
+```bash
+# 设置负载场景环境变量
+export LOAD_SCENARIO=PeakLoad  # Linux/Mac
+# 或
+$env:LOAD_SCENARIO="PeakLoad"  # Windows PowerShell
+
+# 运行测试
+dotnet run
+
+# 运行特定测试场景
+dotnet run -- full-exam-flow
+dotnet run -- mixed-operations
+dotnet run -- get-profile
+```
+
+#### 方式三：直接运行（使用默认配置）
+
 ```bash
 # 返回测试项目目录
 cd ../../Tests/CodeSpirit.ExamApi.LoadTests
@@ -76,27 +139,14 @@ cd ../../Tests/CodeSpirit.ExamApi.LoadTests
 dotnet restore
 dotnet build
 
-# 运行默认测试场景（完整流程）
+# 运行默认测试（NormalLoad + full-exam-flow）
 dotnet run
 
-# 运行特定场景
-dotnet run -- --scenario=complete-flow
-
-# 运行多个场景
-dotnet run -- --scenario=client-login,get-profile
-
-# 运行默认场景（包含所有接口）
-dotnet run
-
-# 运行特定新接口测试
-dotnet run -- --scenario=get-exam-light-info
-dotnet run -- --scenario=start-exam
-dotnet run -- --scenario=record-screen-switch
-
-# 运行完整流程
-dotnet run -- --scenario=full-exam-flow
-
-# 运行多个场景
+# 运行特定测试场景
+dotnet run -- get-exam-light-info
+dotnet run -- start-exam
+dotnet run -- record-screen-switch
+dotnet run -- mixed-operations
 ```
 
 ## 📊 测试场景

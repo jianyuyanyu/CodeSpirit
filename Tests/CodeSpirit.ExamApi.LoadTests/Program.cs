@@ -4,6 +4,7 @@ using NBomber.CSharp;
 using Serilog;
 using CodeSpirit.ExamApi.LoadTests.Scenarios;
 using CodeSpirit.ExamApi.LoadTests.Services;
+using CodeSpirit.ExamApi.LoadTests.Models;
 
 namespace CodeSpirit.ExamApi.LoadTests;
 
@@ -128,15 +129,66 @@ class Program
     {
         logger.LogInformation("开始执行负载测试，场景数量: {Count}", scenarios.Count);
 
-        var testName = $"CodeSpirit_ExamClient_LoadTest_{DateTime.Now:yyyyMMdd_HHmmss}";
+        // 读取负载测试场景配置
+        var loadTestScenarios = configuration.GetSection("LoadTestScenarios").Get<LoadTestScenarios>();
+        if (loadTestScenarios == null)
+        {
+            logger.LogWarning("未找到负载测试场景配置，使用默认配置");
+            loadTestScenarios = new LoadTestScenarios();
+        }
 
+        var testName = $"CodeSpirit_ExamClient_LoadTest_{DateTime.Now:yyyyMMdd_HHmmss}";
+        logger.LogInformation("测试名称: {TestName}", testName);
+
+        // 选择要执行的负载场景（可以通过命令行参数指定）
+        var selectedLoadScenario = SelectLoadScenario(loadTestScenarios, logger);
+        
+        logger.LogInformation("负载场景配置: 持续时间={Duration}, 速率={Rate}RPS", 
+            selectedLoadScenario.Duration, selectedLoadScenario.Rate);
+
+        // 解析持续时间
+        if (!TimeSpan.TryParse(selectedLoadScenario.Duration, out var duration))
+        {
+            logger.LogWarning("无法解析持续时间 {Duration}，使用默认值 1 分钟", selectedLoadScenario.Duration);
+            duration = TimeSpan.FromMinutes(1);
+        }
+
+        // 为每个场景应用负载配置
+        var configuredScenarios = scenarios.Select(scenario => 
+            scenario.WithLoadSimulations(
+                Simulation.Inject(rate: selectedLoadScenario.Rate, interval: TimeSpan.FromSeconds(1), during: duration)
+            )
+        ).ToArray();
+
+        // 配置并运行负载测试
         var stats = NBomberRunner
-            .RegisterScenarios(scenarios.First())
+            .RegisterScenarios(configuredScenarios)
             .WithReportFolder("reports")
             .WithReportFileName(testName)
             .Run();
         
         logger.LogInformation("负载测试执行完成");
         logger.LogInformation("测试报告已生成到 reports 目录");
+    }
+
+    /// <summary>
+    /// 选择负载场景
+    /// </summary>
+    private static LoadTestScenario SelectLoadScenario(LoadTestScenarios scenarios, Microsoft.Extensions.Logging.ILogger logger)
+    {
+        // 可以通过环境变量指定负载场景
+        var loadScenarioName = Environment.GetEnvironmentVariable("LOAD_SCENARIO") ?? "NormalLoad";
+        
+        var selectedScenario = loadScenarioName.ToLower() switch
+        {
+            "warmup" => scenarios.WarmUp,
+            "normalload" => scenarios.NormalLoad,
+            "peakload" => scenarios.PeakLoad,
+            "stresstest" => scenarios.StressTest,
+            _ => scenarios.NormalLoad
+        };
+        
+        logger.LogInformation("使用负载场景: {ScenarioName}", loadScenarioName);
+        return selectedScenario;
     }
 }

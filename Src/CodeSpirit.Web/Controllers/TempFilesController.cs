@@ -5,6 +5,7 @@ using CodeSpirit.Shared.Services.Files.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
+using CodeSpirit.Audit.Attributes;
 
 namespace CodeSpirit.Web.Controllers
 {
@@ -15,6 +16,7 @@ namespace CodeSpirit.Web.Controllers
     [ApiController]
     [Route("api/tempfiles")]
     [Authorize(policy: "DynamicPermissions")]
+    [NoAudit("文件操作控制器不需要审计")]
     public class TempFilesController : ControllerBase
     {
         private readonly ITempFileService _fileService;

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Audit.Services.LLM;
 using CodeSpirit.Audit.Services.LLM.Dtos;
 using CodeSpirit.Core;
@@ -14,6 +15,7 @@ namespace CodeSpirit.Web.Controllers
     /// </summary>
     [DisplayName("LLM审计")]
     [Navigation(Icon = "fa-solid fa-brain", PlatformType = PlatformType.Both)]
+    [NoAudit("LLM审计日志控制器不需要审计")]
     public class LLMAuditController : ApiControllerBase
     {
         private readonly ILLMAuditService _auditService;

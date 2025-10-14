@@ -4,6 +4,7 @@ using CodeSpirit.ConfigCenter.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using CodeSpirit.Audit.Attributes;
 
 namespace CodeSpirit.ConfigCenter.Controllers.ClientApi;
 
@@ -12,6 +13,7 @@ namespace CodeSpirit.ConfigCenter.Controllers.ClientApi;
 /// </summary>
 [Route("api/config/client/apps")]
 [ApiController]
+[NoAudit("应用注册接口，系统内部调用，不需要审计")]
 public class ClientAppController : ControllerBase
 {
     private readonly IAppService _appService;

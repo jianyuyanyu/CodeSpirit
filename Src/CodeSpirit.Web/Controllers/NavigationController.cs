@@ -1,4 +1,5 @@
 using CodeSpirit.Core.Authorization;
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.Navigation;
@@ -15,6 +16,7 @@ namespace CodeSpirit.Web.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(policy: "DynamicPermissions")]
+    [NoAudit("导航控制器不需要审计")]
     public class NavigationController : ControllerBase
     {
         private const string DefaultDashboardUrl = "/";

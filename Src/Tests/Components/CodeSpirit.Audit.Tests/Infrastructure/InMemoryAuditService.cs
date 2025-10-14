@@ -108,10 +108,10 @@ public class InMemoryAuditService : IAuditService
             logs = logs.Where(l => l.UserId == query.UserId);
         }
         
-        if (!string.IsNullOrEmpty(query.OperationType))
-        {
-            logs = logs.Where(l => l.OperationType == query.OperationType);
-        }
+        //if (!string.IsNullOrEmpty(query.OperationType))
+        //{
+        //    logs = logs.Where(l => l.OperationType == query.OperationType);
+        //}
         
         if (query.StartTime.HasValue)
         {

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Audit.Attributes;
 
 namespace CodeSpirit.Web.Controllers
 {
@@ -19,6 +20,7 @@ namespace CodeSpirit.Web.Controllers
     [DisplayName("系统审计日志")]
     [Navigation(Icon = "fa-solid fa-shield-halved", PlatformType = PlatformType.System)]
     [Platform(PlatformType.System)]
+    [NoAudit("系统审计日志控制器不需要审计")]
     public class SystemAuditLogController : ApiControllerBase
     {
         private readonly IAuditService _auditService;

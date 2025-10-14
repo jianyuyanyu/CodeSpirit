@@ -12,6 +12,7 @@ using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Audit.Attributes;
 
 namespace CodeSpirit.ExamApi.Controllers.Client;
 
@@ -21,6 +22,7 @@ namespace CodeSpirit.ExamApi.Controllers.Client;
 [Authorize]
 [DisplayName("考试客户端")]
 [Route("api/exam/client")]
+[NoAudit("考试客户端接口频繁调用，不需要记录审计日志")]
 public class IndexController : ApiControllerBase
 {
     private readonly IClientService _clientService;

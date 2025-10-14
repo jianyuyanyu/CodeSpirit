@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Audit.Extensions;
 using CodeSpirit.Audit.Services;
 using CodeSpirit.Audit.Services.Dtos;
@@ -17,6 +18,7 @@ namespace CodeSpirit.Web.Controllers
     /// </summary>
     [DisplayName("审计日志")]
     [Navigation(Icon = "fa-solid fa-clipboard-list", PlatformType = PlatformType.Tenant)]
+    [NoAudit("审计日志控制器不需要审计")]
     public class AuditLogController : ApiControllerBase
     {
         private readonly IAuditService _auditService;

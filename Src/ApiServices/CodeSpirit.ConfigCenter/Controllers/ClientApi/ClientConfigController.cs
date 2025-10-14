@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using CodeSpirit.Audit.Attributes;
 
 namespace CodeSpirit.ConfigCenter.Controllers.ClientApi;
 
@@ -14,6 +15,7 @@ namespace CodeSpirit.ConfigCenter.Controllers.ClientApi;
 [Route("api/config/client/config")]
 [ApiController]
 [AllowAnonymous]
+[NoAudit("配置中心客户端API频繁调用，不需要记录审计日志")]
 public class ClientConfigController : ControllerBase
 {
     private readonly IConfigItemService _configItemService;

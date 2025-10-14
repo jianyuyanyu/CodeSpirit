@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Audit.Models;
 using CodeSpirit.Audit.Services;
 using CodeSpirit.Charts.Attributes;
@@ -16,6 +17,7 @@ namespace CodeSpirit.Web.Controllers
     /// </summary>
     [DisplayName("审计统计")]
     [Navigation(Icon = "fa-solid fa-chart-bar", PlatformType = PlatformType.Both)]
+    [NoAudit("审计统计控制器不需要审计")]
     public class AuditStatisticsController : ApiControllerBase
     {
         private readonly IAuditService _auditService;

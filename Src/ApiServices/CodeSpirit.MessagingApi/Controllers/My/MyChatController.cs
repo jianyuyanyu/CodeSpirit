@@ -6,6 +6,7 @@ using CodeSpirit.Messaging.Hubs;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using CodeSpirit.Audit.Attributes;
 
 namespace CodeSpirit.MessagingApi.Controllers.Default;
 
@@ -15,6 +16,7 @@ namespace CodeSpirit.MessagingApi.Controllers.Default;
 [DisplayName("聊天")]
 [Module("default")]
 [Route("api/messaging/chat/my")]
+[NoAudit("聊天接口频繁调用，实时性要求高，不需要审计")]
 public class MyChatController : ApiControllerBase
 {
     private readonly IChatService _chatService;

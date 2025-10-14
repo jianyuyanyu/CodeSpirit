@@ -68,6 +68,23 @@ public class AuditMetadataFilter : IActionFilter
 
             var methodInfo = actionDescriptor.MethodInfo;
 
+            // 检查是否有NoAudit特性（方法级别优先于控制器级别）
+            var methodNoAuditAttr = methodInfo.GetCustomAttribute<NoAuditAttribute>();
+            var controllerNoAuditAttr = controllerType.GetCustomAttribute<NoAuditAttribute>();
+
+            if (methodNoAuditAttr != null || controllerNoAuditAttr != null)
+            {
+                var noAuditAttr = methodNoAuditAttr ?? controllerNoAuditAttr;
+                var reason = !string.IsNullOrEmpty(noAuditAttr.Reason) ? $" - 原因: {noAuditAttr.Reason}" : "";
+                
+                _logger.LogDebug("跳过审计元数据添加 - 控制器或方法标记了NoAudit特性: {Controller}.{Action}{Reason}",
+                    actionDescriptor.ControllerName,
+                    actionDescriptor.ActionName,
+                    reason);
+                
+                return;
+            }
+
             // 获取控制器的DisplayName
             var controllerDisplayName = controllerType
                 .GetCustomAttribute<DisplayNameAttribute>()?.DisplayName 

@@ -15,6 +15,7 @@ using System.Web;
 using MvcControllerActionDescriptor = Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor;
 using CodeSpirit.Core;
 using CodeSpirit.MultiTenant.Extensions;
+using CodeSpirit.Audit.Attributes;
 
 namespace CodeSpirit.Audit.Middleware;
 
@@ -192,6 +193,7 @@ public class AuditMiddleware
 
         var isSuccess = true;
         var errorMessage = string.Empty;
+        var shouldSkipAudit = false; // 添加跳过审计的标志
 
         try
         {
@@ -304,6 +306,23 @@ public class AuditMiddleware
                     controllerActionDescriptor.ControllerName,
                     controllerActionDescriptor.ActionName);
 
+                // 检查是否有NoAudit特性（方法级别优先于控制器级别）
+                var methodNoAuditAttr = actionMethodInfo.GetCustomAttribute<NoAuditAttribute>();
+                var controllerNoAuditAttr = controllerType.GetCustomAttribute<NoAuditAttribute>();
+
+                if (methodNoAuditAttr != null || controllerNoAuditAttr != null)
+                {
+                    var noAuditAttr = methodNoAuditAttr ?? controllerNoAuditAttr;
+                    var reason = !string.IsNullOrEmpty(noAuditAttr.Reason) ? $" - 原因: {noAuditAttr.Reason}" : "";
+                    
+                    _logger.LogDebug("跳过审计 - 控制器或方法标记了NoAudit特性: {Controller}.{Action}{Reason}",
+                        controllerActionDescriptor.ControllerName,
+                        controllerActionDescriptor.ActionName,
+                        reason);
+                    
+                    shouldSkipAudit = true;
+                    return;
+                }
 
                 // 获取控制器和方法上的审计特性
                 var controllerAuditAttr = controllerType.GetCustomAttribute<AuditAttribute>();
@@ -582,17 +601,24 @@ public class AuditMiddleware
                 }
             }
 
-            // 记录审计日志
-            try
+            // 记录审计日志（只有在不应该跳过审计时才记录）
+            if (!shouldSkipAudit)
             {
-                await auditService.LogAsync(auditLog);
-                
-                // 标记请求已被审计处理（用于性能监控）
-                context.Items["AuditProcessed"] = true;
+                try
+                {
+                    await auditService.LogAsync(auditLog);
+                    
+                    // 标记请求已被审计处理（用于性能监控）
+                    context.Items["AuditProcessed"] = true;
+                }
+                catch (Exception logEx)
+                {
+                    _logger.LogError(logEx, "记录审计日志失败");
+                }
             }
-            catch (Exception logEx)
+            else
             {
-                _logger.LogError(logEx, "记录审计日志失败");
+                _logger.LogDebug("跳过审计日志记录 - 请求路径: {RequestPath}", auditLog.RequestPath);
             }
         }
     }

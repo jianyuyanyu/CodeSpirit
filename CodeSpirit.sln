@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.13.35617.110
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11109.219 d18.0-oob
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiServices", "ApiServices", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 EndProject
@@ -90,6 +90,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.AiFormFill", "Src\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj", "{1B9315A4-CD24-4314-834F-95E4AECE4FF8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.ApprovalApi", "Src\ApiServices\CodeSpirit.ApprovalApi\CodeSpirit.ApprovalApi.csproj", "{D952C387-A64E-4D8D-AFB0-74C5DB20A539}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeSpirit.ExamApi.LoadTests", "Tests\CodeSpirit.ExamApi.LoadTests\CodeSpirit.ExamApi.LoadTests.csproj", "{BA474548-B370-481A-6341-31469BD4B4C5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -545,6 +547,18 @@ Global
 		{D952C387-A64E-4D8D-AFB0-74C5DB20A539}.Release|x64.Build.0 = Release|Any CPU
 		{D952C387-A64E-4D8D-AFB0-74C5DB20A539}.Release|x86.ActiveCfg = Release|Any CPU
 		{D952C387-A64E-4D8D-AFB0-74C5DB20A539}.Release|x86.Build.0 = Release|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Debug|x64.Build.0 = Debug|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Debug|x86.Build.0 = Debug|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Release|x64.ActiveCfg = Release|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Release|x64.Build.0 = Release|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Release|x86.ActiveCfg = Release|Any CPU
+		{BA474548-B370-481A-6341-31469BD4B4C5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -586,6 +600,7 @@ Global
 		{A6DE483B-E706-44A4-A488-D174CD34FC39} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{1B9315A4-CD24-4314-834F-95E4AECE4FF8} = {28E19F6A-7ADD-4941-9E72-EFA73162E871}
 		{D952C387-A64E-4D8D-AFB0-74C5DB20A539} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{BA474548-B370-481A-6341-31469BD4B4C5} = {F8A99996-D181-441D-8912-7B30A4A3778D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FA2D98D6-8906-4629-AE73-437BD9C6A177}

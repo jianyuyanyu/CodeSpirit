@@ -339,11 +339,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                         await _repository.AddAsync(question);
 
                         // 创建初始版本记录
+                        var versionNumber = await GetNextVersionNumberAsync(question.Id);
                         var version = new QuestionVersion
                         {
                             Id = _idGenerator.NewId(),
                             QuestionId = question.Id,
-                            Version = question.Version,
+                            Version = versionNumber,
                             Content = question.Content,
                             Options = question.Options,
                             CorrectAnswer = question.CorrectAnswer,
@@ -351,7 +352,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                             KnowledgePoints = question.KnowledgePoints,
                             DefaultScore = (int)question.DefaultScore,
                             Tags = question.Tags,
-                            ChangeReason = questionPreview.IsCorrected ? "AI修正后导入" : "初始创建"
+                            ChangeReason = questionPreview.IsCorrected ? "AI修正后导入" : "初始创建",
+                            TenantId = question.TenantId
                         };
 
                         await _versionRepository.AddAsync(version);
@@ -2139,6 +2141,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             {
                 Id = _idGenerator.NewId(),
                 QuestionId = question.Id,
+                Version = await GetNextVersionNumberAsync(question.Id),
                 Content = question.Content,
                 Options = question.Options,
                 CorrectAnswer = question.CorrectAnswer,
@@ -2147,6 +2150,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 Tags = question.Tags,
                 KnowledgePoints = question.KnowledgePoints,
                 ChangeReason = "创建题目",
+                TenantId = question.TenantId,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -2193,6 +2197,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 {
                     Id = _idGenerator.NewId(),
                     QuestionId = question.Id,
+                    Version = await GetNextVersionNumberAsync(question.Id),
                     Content = question.Content,
                     Options = question.Options,
                     CorrectAnswer = question.CorrectAnswer,
@@ -2201,6 +2206,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     Tags = question.Tags,
                     KnowledgePoints = question.KnowledgePoints,
                     ChangeReason = "更新题目",
+                    TenantId = question.TenantId,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -2247,6 +2253,20 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             }
 
             return (successCount, failedIds);
+        }
+
+        /// <summary>
+        /// 获取题目的下一个版本号
+        /// </summary>
+        /// <param name="questionId">题目ID</param>
+        /// <returns>下一个版本号</returns>
+        private async Task<int> GetNextVersionNumberAsync(long questionId)
+        {
+            var maxVersion = await _versionRepository.CreateQuery()
+                .Where(v => v.QuestionId == questionId)
+                .MaxAsync(v => (int?)v.Version);
+
+            return (maxVersion ?? -1) + 1;
         }
 
         public async Task<(int successCount, List<string> failedIds)> BatchImportAsync(IEnumerable<QuestionBatchImportItemDto> items)

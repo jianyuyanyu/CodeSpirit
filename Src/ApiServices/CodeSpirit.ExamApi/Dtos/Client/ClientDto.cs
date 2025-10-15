@@ -268,6 +268,7 @@ public class ClientExamQuestionDto
     /// 答案
     /// </summary>
     public string? Answer { get; set; }
+    public int TypeValue { get; internal set; }
 }
 
 public class OptionDisplayDto

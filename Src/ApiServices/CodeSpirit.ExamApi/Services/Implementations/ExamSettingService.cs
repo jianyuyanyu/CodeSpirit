@@ -4,9 +4,11 @@ using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Dtos.ExamSetting;
+using CodeSpirit.ExamApi.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -22,6 +24,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     private readonly IMapper _mapper;
     private readonly ILogger<ExamSettingService> _logger;
     private readonly ExamDbContext _context;
+    private readonly IDistributedCache _distributedCache;
 
     /// <summary>
     /// 构造函数
@@ -33,7 +36,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         IRepository<ExamSettingStudentGroup> examSettingStudentGroupRepository,
         IMapper mapper,
         ILogger<ExamSettingService> logger,
-        ExamDbContext context)
+        ExamDbContext context,
+        IDistributedCache distributedCache)
         : base(repository, mapper)
     {
         _repository = repository;
@@ -43,6 +47,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         _mapper = mapper;
         _logger = logger;
         _context = context;
+        _distributedCache = distributedCache;
     }
 
     /// <summary>
@@ -426,6 +431,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     {
         try
         {
+            // 获取考试基本信息
             var examSetting = await _context.ExamSettings
                 .Include(e => e.ExamPaper)
                 .Where(e => e.Id == examId)
@@ -436,13 +442,9 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                 throw new ArgumentException("考试不存在", nameof(examId));
             }
 
-            // 加载试卷题目
-            await _context.Entry(examSetting.ExamPaper)
-                .Collection(p => p.ExamPaperQuestions)
-                .LoadAsync();
-
-            // 获取考试记录
+            // 获取考试记录（包含答题记录，其中保存了用户的题目顺序）
             var examRecord = await _context.ExamRecords
+                .Include(r => r.AnswerRecords)
                 .Where(r => r.Id == recordId)
                 .FirstOrDefaultAsync();
 
@@ -450,41 +452,89 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             {
                 throw new InvalidOperationException("考试记录不存在");
             }
-
-            // 预先加载ExamPaperQuestions的关联对象
-            foreach (var question in examSetting.ExamPaper.ExamPaperQuestions)
+            
+            // ⚠️ 如果AnswerRecords为空，可能是因为刚创建记录，需要重新加载
+            if (examRecord.AnswerRecords == null || !examRecord.AnswerRecords.Any())
             {
-                await _context.Entry(question)
-                    .Reference(q => q.Question)
-                    .LoadAsync();
-
-                await _context.Entry(question)
-                    .Reference(q => q.QuestionVersion)
-                    .LoadAsync();
-            }
-
-            // 处理题目乱序
-            var questions = examSetting.ExamPaper.ExamPaperQuestions.ToList();
-            if (examSetting.EnableRandomQuestionOrder)
-            {
-                Random rnd = new Random();
-                questions = questions.OrderBy(q => rnd.Next()).ToList();
-            }
-
-            // 处理选项乱序
-            if (examSetting.EnableRandomOptionOrder)
-            {
-                var randomGenerator = new Random();
-                foreach (var question in questions)
+                _logger.LogWarning("考试记录 {RecordId} 的答题记录为空，尝试重新加载", recordId);
+                
+                // 重新从数据库加载答题记录
+                examRecord.AnswerRecords = await _context.ExamAnswerRecords
+                    .Where(a => a.ExamRecordId == recordId)
+                    .ToListAsync();
+                    
+                if (!examRecord.AnswerRecords.Any())
                 {
-                    // 只对单选题和多选题进行选项乱序处理
-                    if (question.Question.Type == QuestionType.SingleChoice ||
-                        question.Question.Type == QuestionType.MultipleChoice)
-                    {
-                        var options = question.QuestionVersion.Options.OrderBy(o => randomGenerator.Next()).ToList();
-                        question.QuestionVersion.Options = options;
-                    }
+                    _logger.LogError("考试记录 {RecordId} 没有答题记录，无法构建题目列表", recordId);
+                    throw new InvalidOperationException("考试记录没有答题记录");
                 }
+            }
+
+            // ✅ 优化：尝试从缓存获取题目数据
+            Dictionary<long, ClientExamQuestionDto> questionDataDict;
+            var cacheKey = Constants.CacheKeys.GetExamQuestionsDataKey(examId);
+            
+            try
+            {
+                var cachedData = await _distributedCache.GetAsync<ExamQuestionsDataCacheDto>(cacheKey);
+                
+                if (cachedData != null && cachedData.QuestionsData.Any())
+                {
+                    _logger.LogDebug("从缓存获取题目数据，考试ID: {ExamId}, 题目数: {Count}", 
+                        examId, cachedData.QuestionsData.Count);
+                    questionDataDict = cachedData.QuestionsData;
+                }
+                else
+                {
+                    // 缓存未命中，从数据库加载
+                    _logger.LogDebug("缓存未命中，从数据库加载题目数据，考试ID: {ExamId}", examId);
+                    questionDataDict = await LoadQuestionsFromDatabaseAsync(examId);
+                    
+                    // 存入缓存
+                    var questionsCacheDto = new ExamQuestionsDataCacheDto { QuestionsData = questionDataDict };
+                    await _distributedCache.SetAsync(
+                        cacheKey,
+                        questionsCacheDto,
+                        TimeSpan.FromMinutes(30),
+                        TimeSpan.FromMinutes(15));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "获取题目数据缓存时出错，将从数据库加载，考试ID: {ExamId}", examId);
+                questionDataDict = await LoadQuestionsFromDatabaseAsync(examId);
+            }
+
+            // ✅ 使用已保存的 OrderNumber，而不是每次重新随机
+            // 题目顺序在创建 ExamRecord 时已经确定并保存在 AnswerRecord.OrderNumber 中
+            
+            // 按照用户的 AnswerRecord.OrderNumber 排序构建题目列表，然后再按题型分组排序
+            var questions = examRecord.AnswerRecords
+                .OrderBy(a => a.OrderNumber)
+                .Where(a => questionDataDict.ContainsKey(a.QuestionId))
+                .Select(answerRecord =>
+                {
+                    var cachedQuestion = questionDataDict[answerRecord.QuestionId];
+                    // 创建新对象，避免修改缓存中的数据
+                    return new ClientExamQuestionDto
+                    {
+                        Id = cachedQuestion.Id,
+                        QuestionId = cachedQuestion.QuestionId,
+                        QuestionVersionId = cachedQuestion.QuestionVersionId,
+                        Content = cachedQuestion.Content,
+                        Type = cachedQuestion.Type,
+                        Options = cachedQuestion.Options,
+                        Score = cachedQuestion.Score,
+                        IsRequired = cachedQuestion.IsRequired,
+                        SequenceNumber = answerRecord.OrderNumber  // 设置用户特定的顺序号
+                    };
+                })
+                .ToList();
+            
+            // 重新分配连续的序号
+            for (int i = 0; i < questions.Count; i++)
+            {
+                questions[i].SequenceNumber = i + 1;
             }
 
             // 组装考试详情
@@ -500,20 +550,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                 TotalScore = examSetting.ExamPaper.TotalScore,
                 AttemptNumber = examRecord.AttemptNumber,
                 AllowedAttempts = examSetting.AllowedAttempts,
-                Questions = questions.OrderBy(q => (int)q.Question.Type)
-                .Select(q => new ClientExamQuestionDto
-                {
-                    Id = q.Id,
-                    QuestionId = q.QuestionId,
-                    QuestionVersionId = q.QuestionVersionId,
-                    Content = q.QuestionVersion.Content,
-                    Type = q.Question.Type.ToString(),
-                    Options = q.QuestionVersion.Options.Select(p => new OptionDisplayDto{ Label = p, Value = p }).ToList(),
-                    Score = q.Score,
-                    SequenceNumber = q.OrderNumber,
-                    IsRequired = q.IsRequired
-                })
-                .ToList()
+                Questions = questions
             };
 
             return examDetail;
@@ -525,6 +562,55 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             _logger.LogError(ex, "获取考试详情时发生错误");
             throw;
         }
+    }
+
+    /// <summary>
+    /// 从数据库加载题目数据（仅在缓存未命中时调用）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <returns>题目数据字典</returns>
+    private async Task<Dictionary<long, ClientExamQuestionDto>> LoadQuestionsFromDatabaseAsync(long examId)
+    {
+        var examSetting = await _context.ExamSettings
+            .Include(e => e.ExamPaper)
+            .ThenInclude(p => p.ExamPaperQuestions)
+            .ThenInclude(q => q.Question)
+            .Where(e => e.Id == examId)
+            .FirstOrDefaultAsync();
+
+        if (examSetting == null)
+        {
+            return new Dictionary<long, ClientExamQuestionDto>();
+        }
+
+        // 加载题目版本信息
+        foreach (var paperQuestion in examSetting.ExamPaper.ExamPaperQuestions)
+        {
+            await _context.Entry(paperQuestion)
+                .Reference(q => q.QuestionVersion)
+                .LoadAsync();
+        }
+
+        // 构建题目字典
+        return examSetting.ExamPaper.ExamPaperQuestions
+            .Where(q => q.Question != null && q.QuestionVersion != null)
+            .ToDictionary(
+                q => q.QuestionId,
+                q => new ClientExamQuestionDto
+                {
+                    Id = q.Id,
+                    QuestionId = q.QuestionId,
+                    QuestionVersionId = q.QuestionVersionId,
+                    Content = q.QuestionVersion.Content,
+                    Type = q.Question.Type.ToString(),
+                    Options = q.QuestionVersion.Options
+                        .Select(option => new OptionDisplayDto { Label = option, Value = option })
+                        .ToList(),
+                    Score = q.Score,
+                    IsRequired = q.IsRequired,
+                    SequenceNumber = 0  // 将由调用者设置
+                }
+            );
     }
 
     /// <summary>
@@ -668,6 +754,177 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             ex is not UnauthorizedAccessException)
         {
             _logger.LogError(ex, "获取考试轻量信息时发生错误");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取考试信息用于缓存预热（不进行学生权限验证）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <returns>考试基本配置信息，如果考试不存在则返回null</returns>
+    public async Task<ExamBasicInfoCacheDto?> GetExamInfoForWarmupAsync(long examId)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                return null;
+            }
+
+            // 只返回共享的考试配置信息，不包含用户特定的数据
+            return new ExamBasicInfoCacheDto
+            {
+                Id = examSetting.Id,
+                Name = examSetting.Name,
+                Description = examSetting.Description,
+                Duration = examSetting.Duration,
+                StartTime = examSetting.StartTime,
+                EndTime = examSetting.EndTime,
+                TotalScore = examSetting.ExamPaper.TotalScore,
+                AllowedScreenSwitchCount = examSetting.AllowedScreenSwitchCount,
+                EnableViewResult = examSetting.EnableViewResult,
+                MinExamTime = examSetting.MinExamTime,
+                AllowedAttempts = examSetting.AllowedAttempts,
+                EnableRandomQuestionOrder = examSetting.EnableRandomQuestionOrder,
+                EnableRandomOptionOrder = examSetting.EnableRandomOptionOrder
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试信息用于预热时发生错误，考试ID: {ExamId}", examId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取考试题目数据用于缓存预热（不进行学生权限验证）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <returns>题目数据字典（QuestionId -> 题目详情），如果考试不存在则返回null</returns>
+    public async Task<Dictionary<long, ClientExamQuestionDto>?> GetExamQuestionsForWarmupAsync(long examId)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .ThenInclude(p => p.ExamPaperQuestions)
+                .ThenInclude(q => q.Question)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                return null;
+            }
+
+            // 加载题目版本信息
+            foreach (var paperQuestion in examSetting.ExamPaper.ExamPaperQuestions)
+            {
+                await _context.Entry(paperQuestion)
+                    .Reference(q => q.QuestionVersion)
+                    .LoadAsync();
+            }
+
+            // 构建题目字典（QuestionId -> 题目详情）
+            // 注意：这里只包含题目内容，不包含用户特定的顺序
+            var questionsDict = examSetting.ExamPaper.ExamPaperQuestions
+                .Where(q => q.Question != null && q.QuestionVersion != null)
+                .ToDictionary(
+                    q => q.QuestionId,
+                    q => new ClientExamQuestionDto
+                    {
+                        Id = q.Id,
+                        QuestionId = q.QuestionId,
+                        QuestionVersionId = q.QuestionVersionId,
+                        Content = q.QuestionVersion.Content,
+                        Type = q.Question.Type.ToString(),
+                        Options = q.QuestionVersion.Options
+                            .Select(option => new OptionDisplayDto { Label = option, Value = option })
+                            .ToList(),
+                        Score = q.Score,
+                        IsRequired = q.IsRequired,
+                        // SequenceNumber 不在预热时设置，因为它是用户特定的
+                        SequenceNumber = 0
+                    }
+                );
+
+            _logger.LogDebug("成功获取考试题目数据用于预热，考试ID: {ExamId}, 题目数: {Count}", 
+                examId, questionsDict.Count);
+
+            return questionsDict;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试题目数据用于预热时发生错误，考试ID: {ExamId}", examId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取考试详情用于缓存（包含题目数据）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <returns>考试详情</returns>
+    public async Task<ClientExamDetailDto?> GetExamDetailForCacheAsync(long examId)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .ThenInclude(p => p.ExamPaperQuestions)
+                .ThenInclude(q => q.Question)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                return null;
+            }
+
+            // 加载题目版本信息
+            foreach (var paperQuestion in examSetting.ExamPaper.ExamPaperQuestions)
+            {
+                await _context.Entry(paperQuestion)
+                    .Reference(q => q.QuestionVersion)
+                    .LoadAsync();
+            }
+
+            // 构建题目列表（不包含用户特定的排序）
+            var questions = examSetting.ExamPaper.ExamPaperQuestions
+                .Select(pq => new ClientExamQuestionDto
+                {
+                    QuestionId = pq.QuestionId,
+                    Content = pq.QuestionVersion?.Content ?? pq.Question.Content,
+                    Type = pq.Question.Type.ToString(),
+                    QuestionVersionId = pq.QuestionVersionId,
+                    IsRequired = pq.IsRequired,
+                    TypeValue = (int)pq.Question.Type,
+                    Score = pq.Score,
+                    Options = pq.Question.Options?.Select((option, index) => new OptionDisplayDto
+                    {
+                        Label = option,
+                        Value = index.ToString()
+                    }).ToList() ?? new List<OptionDisplayDto>()
+                })
+                .ToList();
+
+            return new ClientExamDetailDto
+            {
+                Id = examSetting.Id,
+                Name = examSetting.Name,
+                Questions = questions,
+                RecordId = 0 // 这个值在实际使用时会被替换
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试详情用于缓存时发生错误，考试ID: {ExamId}", examId);
             throw;
         }
     }

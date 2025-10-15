@@ -70,11 +70,19 @@
                 throw new Error('认证失败，请重新登录');
             }
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
             const result = await response.json();
+            
+            if (!response.ok) {
+                // 如果服务器返回了结构化的错误信息，使用它
+                if (result && result.msg) {
+                    const error = new Error(result.msg);
+                    error.status = result.status;
+                    error.msg = result.msg;
+                    throw error;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            }
             
             // 特殊处理：对于start API，如果返回的不是标准ApiResponse格式，直接返回
             if (url.includes('/start') && result && typeof result === 'object' && !result.hasOwnProperty('status')) {
@@ -486,7 +494,9 @@
                 
             }).catch(error => {
                 console.error('❌ 开始考试失败:', error);
-                alert('开始考试失败：' + error.message);
+                // 优先显示服务器返回的具体错误信息
+                const errorMessage = error.msg || error.message || '未知错误';
+                alert('开始考试失败：' + errorMessage);
             });
         } catch (error) {
             console.error('💥 开始考试出错:', error);

@@ -1,23 +1,22 @@
 using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.MultiTenant.Models;
-using Microsoft.Extensions.Caching.Distributed;
+using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Models;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using System.Collections.Concurrent;
-using System.Text;
 
 namespace CodeSpirit.MultiTenant.Services;
 
 /// <summary>
 /// 分布式租户存储实现
-/// 基于IDistributedCache，支持多实例部署和数据持久化
+/// 基于统一缓存组件，支持多实例部署和数据持久化
 /// </summary>
 public class DistributedTenantStore : ITenantStore
 {
-    private readonly IDistributedCache _cache;
+    private readonly ICacheService _cache;
     private readonly ILogger<DistributedTenantStore> _logger;
     private readonly TenantOptions _options;
-    private readonly DistributedCacheEntryOptions _defaultCacheOptions;
+    private readonly CacheOptions _defaultCacheOptions;
     
     // 缓存键前缀
     private const string TenantKeyPrefix = "Tenant:";
@@ -30,11 +29,11 @@ public class DistributedTenantStore : ITenantStore
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="cache">分布式缓存</param>
+    /// <param name="cache">统一缓存服务</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="options">多租户配置选项</param>
     public DistributedTenantStore(
-        IDistributedCache cache,
+        ICacheService cache,
         ILogger<DistributedTenantStore> logger,
         IOptions<TenantOptions> options)
     {
@@ -43,11 +42,13 @@ public class DistributedTenantStore : ITenantStore
         _options = options.Value;
         _localTenantRegistry = new ConcurrentDictionary<string, bool>();
         
-        // 配置默认缓存选项
-        _defaultCacheOptions = new DistributedCacheEntryOptions
+        // 配置默认缓存选项 - 使用L2分布式缓存
+        _defaultCacheOptions = new CacheOptions
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.CacheExpirationMinutes),
-            SlidingExpiration = TimeSpan.FromMinutes(_options.CacheExpirationMinutes / 2)
+            SlidingExpiration = TimeSpan.FromMinutes(_options.CacheExpirationMinutes / 2),
+            Level = CacheLevel.L2Only, // 仅使用分布式缓存
+            EnableBreakthroughProtection = true
         };
     }
 
@@ -68,13 +69,10 @@ public class DistributedTenantStore : ITenantStore
         try
         {
             var cacheKey = GetTenantCacheKey(tenantId);
-            var cachedData = await _cache.GetAsync(cacheKey);
+            var tenant = await _cache.GetAsync<TenantInfo>(cacheKey);
             
-            if (cachedData != null)
+            if (tenant != null)
             {
-                var json = Encoding.UTF8.GetString(cachedData);
-                var tenant = JsonConvert.DeserializeObject<TenantInfo>(json);
-                
                 // 更新本地注册表
                 _localTenantRegistry.TryAdd(tenantId, true);
                 
@@ -100,30 +98,24 @@ public class DistributedTenantStore : ITenantStore
     {
         try
         {
-            var cachedData = await _cache.GetAsync(ActiveTenantsKey);
+            var tenantIds = await _cache.GetAsync<List<string>>(ActiveTenantsKey);
             
-            if (cachedData != null)
+            if (tenantIds?.Any() == true)
             {
-                var json = Encoding.UTF8.GetString(cachedData);
-                var tenantIds = JsonConvert.DeserializeObject<List<string>>(json);
+                var tenants = new List<ITenantInfo>();
                 
-                if (tenantIds?.Any() == true)
+                // 并行获取所有租户信息
+                var tasks = tenantIds.Select(async tenantId =>
                 {
-                    var tenants = new List<ITenantInfo>();
-                    
-                    // 并行获取所有租户信息
-                    var tasks = tenantIds.Select(async tenantId =>
-                    {
-                        var tenant = await GetTenantAsync(tenantId);
-                        return tenant;
-                    });
-                    
-                    var results = await Task.WhenAll(tasks);
-                    tenants.AddRange(results.Where(t => t != null && t.IsActive));
-                    
-                    _logger.LogDebug("成功从分布式缓存获取 {Count} 个活跃租户", tenants.Count);
-                    return tenants;
-                }
+                    var tenant = await GetTenantAsync(tenantId);
+                    return tenant;
+                });
+                
+                var results = await Task.WhenAll(tasks);
+                tenants.AddRange(results.Where(t => t != null && t.IsActive));
+                
+                _logger.LogDebug("成功从分布式缓存获取 {Count} 个活跃租户", tenants.Count);
+                return tenants;
             }
 
             _logger.LogDebug("分布式缓存中未找到活跃租户列表");
@@ -160,10 +152,7 @@ public class DistributedTenantStore : ITenantStore
 
             // 缓存租户信息
             var cacheKey = GetTenantCacheKey(tenantInfo.TenantId);
-            var json = JsonConvert.SerializeObject(tenantInfo);
-            var data = Encoding.UTF8.GetBytes(json);
-            
-            await _cache.SetAsync(cacheKey, data, _defaultCacheOptions);
+            await _cache.SetAsync(cacheKey, tenantInfo, _defaultCacheOptions);
 
             // 更新租户存在性标记
             await SetTenantExistsAsync(tenantInfo.TenantId, true);
@@ -206,10 +195,7 @@ public class DistributedTenantStore : ITenantStore
             
             // 更新租户信息
             var cacheKey = GetTenantCacheKey(tenantInfo.TenantId);
-            var json = JsonConvert.SerializeObject(tenantInfo);
-            var data = Encoding.UTF8.GetBytes(json);
-            
-            await _cache.SetAsync(cacheKey, data, _defaultCacheOptions);
+            await _cache.SetAsync(cacheKey, tenantInfo, _defaultCacheOptions);
 
             // 处理活跃状态变化
             if (existingTenant != null)
@@ -307,16 +293,15 @@ public class DistributedTenantStore : ITenantStore
         {
             // 检查存在性缓存
             var existsKey = GetTenantExistsCacheKey(tenantId);
-            var existsData = await _cache.GetAsync(existsKey);
+            var existsData = await _cache.GetAsync<bool?>(existsKey);
             
-            if (existsData != null)
+            if (existsData.HasValue)
             {
-                var exists = Encoding.UTF8.GetString(existsData) == "true";
-                if (exists)
+                if (existsData.Value)
                 {
                     _localTenantRegistry.TryAdd(tenantId, true);
                 }
-                return exists;
+                return existsData.Value;
             }
 
             // 如果存在性缓存中没有，尝试直接获取租户信息
@@ -366,15 +351,15 @@ public class DistributedTenantStore : ITenantStore
         try
         {
             var existsKey = GetTenantExistsCacheKey(tenantId);
-            var data = Encoding.UTF8.GetBytes(exists.ToString().ToLower());
             
             // 存在性标记使用较短的过期时间
-            var options = new DistributedCacheEntryOptions
+            var options = new CacheOptions
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.CacheExpirationMinutes / 2)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.CacheExpirationMinutes / 2),
+                Level = CacheLevel.L2Only
             };
             
-            await _cache.SetAsync(existsKey, data, options);
+            await _cache.SetAsync(existsKey, exists, options);
         }
         catch (Exception ex)
         {
@@ -439,13 +424,8 @@ public class DistributedTenantStore : ITenantStore
     {
         try
         {
-            var cachedData = await _cache.GetAsync(ActiveTenantsKey);
-            
-            if (cachedData != null)
-            {
-                var json = Encoding.UTF8.GetString(cachedData);
-                return JsonConvert.DeserializeObject<List<string>>(json) ?? new List<string>();
-            }
+            var tenantIds = await _cache.GetAsync<List<string>>(ActiveTenantsKey);
+            return tenantIds ?? new List<string>();
         }
         catch (Exception ex)
         {
@@ -464,10 +444,7 @@ public class DistributedTenantStore : ITenantStore
     {
         try
         {
-            var json = JsonConvert.SerializeObject(tenantIds);
-            var data = Encoding.UTF8.GetBytes(json);
-            
-            await _cache.SetAsync(ActiveTenantsKey, data, _defaultCacheOptions);
+            await _cache.SetAsync(ActiveTenantsKey, tenantIds, _defaultCacheOptions);
         }
         catch (Exception ex)
         {

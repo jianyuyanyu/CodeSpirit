@@ -37,4 +37,9 @@ public class MockRabbitMQService : IRabbitMQService
     {
         _logger.LogInformation("释放模拟的RabbitMQ服务");
     }
+
+    public (int CurrentSubscribers, int MaxSubscribers, bool CanSubscribe) GetSubscriberStatus()
+    {
+        return (0, 3, true);
+    }
 } 

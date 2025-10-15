@@ -2193,7 +2193,12 @@
         CONSTANTS.PERFORMANCE_THRESHOLDS.INITIALIZATION
     );
 
-    // 题型分组函数
+    /**
+     * 题型分组函数
+     * 按题型对题目进行分组，题目已由后端按题型顺序排序
+     * @param {Array} questions - 题目数组（后端已排序）
+     * @returns {Array} 分组后的题目数组
+     */
     function groupQuestionsByType(questions) {
         const groups = [];
         const typeOrder = ['SingleChoice', 'MultipleChoice', 'TrueFalse', 'Essay']; // 题型顺序
@@ -2204,7 +2209,7 @@
             'Essay': '主观题'
         };
         
-        // 按题型分组
+        // 按题型分组，题目保持后端返回的顺序
         const groupedByType = {};
         let questionIndex = 0; // 全局题目编号
         
@@ -2219,7 +2224,7 @@
                 groupedByType[type] = [];
             }
             
-            // 添加全局题目编号
+            // 添加全局题目编号（题目已由后端按题型排序）
             question.globalIndex = questionIndex++;
             groupedByType[type].push(question);
         });

@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
-
 using Microsoft.Extensions.Logging;
 
 namespace CodeSpirit.ExamApi.Controllers;
@@ -24,6 +23,7 @@ public class ExamSettingsController : ApiControllerBase
     private readonly IExamSettingService _examSettingService;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<ExamSettingsController> _logger;
+    private readonly IClientService _clientService;
 
     /// <summary>
     /// 构造函数
@@ -31,11 +31,13 @@ public class ExamSettingsController : ApiControllerBase
     public ExamSettingsController(
         IExamSettingService examSettingService,
         ICurrentUser currentUser,
-        ILogger<ExamSettingsController> logger)
+        ILogger<ExamSettingsController> logger,
+        IClientService clientService)
     {
         _examSettingService = examSettingService;
         _currentUser = currentUser;
         _logger = logger;
+        _clientService = clientService;
     }
 
     /// <summary>
@@ -207,6 +209,94 @@ public class ExamSettingsController : ApiControllerBase
         {
             _logger.LogError(ex, "监考大屏跳转失败，考试ID: {ExamId}", id);
             return BadRequest(ApiResponse.Error(1, "跳转失败，请重试"));
+        }
+    }
+
+    /// <summary>
+    /// 预热考试缓存
+    /// </summary>
+    /// <param name="id">考试设置ID</param>
+    /// <returns>预热结果</returns>
+    [HttpPost("{id}/warmup-cache")]
+    [Operation("预热缓存", "ajax", null, "确定要预热此考试的缓存吗？这将提前加载考试数据到缓存中。")]
+    [DisplayName("预热考试缓存")]
+    public async Task<ActionResult<ApiResponse>> WarmupExamCache(long id)
+    {
+        try
+        {
+            // 验证考试设置是否存在
+            var examSetting = await _examSettingService.GetAsync(id);
+            if (examSetting == null)
+            {
+                return BadRequest(ApiResponse.Error(1, "考试设置不存在"));
+            }
+
+            // 获取当前用户ID
+            var currentUserId = _currentUser.Id ?? 0;
+            if (currentUserId == 0)
+            {
+                return BadRequest(ApiResponse.Error(1, "无法获取当前用户信息"));
+            }
+
+            // 执行缓存预热
+            var result = await _clientService.WarmUpExamCacheAsync(id, currentUserId);
+
+            if (result)
+            {
+                _logger.LogInformation("考试缓存预热成功，考试ID: {ExamId}, 操作用户: {UserId}", id, currentUserId);
+                return SuccessResponse("缓存预热成功！考试数据已加载到缓存中。");
+            }
+            else
+            {
+                _logger.LogWarning("考试缓存预热失败，考试ID: {ExamId}, 操作用户: {UserId}", id, currentUserId);
+                return BadRequest(ApiResponse.Error(1, "缓存预热失败，请查看日志了解详情"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "预热考试缓存时发生错误，考试ID: {ExamId}", id);
+            return BadRequest(ApiResponse.Error(1, "预热缓存失败，请重试"));
+        }
+    }
+
+    /// <summary>
+    /// 清空考试缓存
+    /// </summary>
+    /// <param name="id">考试设置ID</param>
+    /// <returns>清空结果</returns>
+    [HttpPost("{id}/clear-cache")]
+    [Operation("清空缓存", "ajax", "warning", "确定要清空此考试的缓存吗？下次访问将重新从数据库加载数据。")]
+    [DisplayName("清空考试缓存")]
+    public async Task<ActionResult<ApiResponse>> ClearExamCache(long id)
+    {
+        try
+        {
+            // 验证考试设置是否存在
+            var examSetting = await _examSettingService.GetAsync(id);
+            if (examSetting == null)
+            {
+                return BadRequest(ApiResponse.Error(1, "考试设置不存在"));
+            }
+
+            // 执行缓存清空
+            var result = await _clientService.ClearExamCacheAsync(id);
+
+            if (result)
+            {
+                _logger.LogInformation("考试缓存清空成功，考试ID: {ExamId}, 操作用户: {UserId}", 
+                    id, _currentUser.Id ?? 0);
+                return SuccessResponse("缓存清空成功！下次访问将重新加载数据。");
+            }
+            else
+            {
+                _logger.LogWarning("考试缓存清空失败（可能缓存本身就是空的），考试ID: {ExamId}", id);
+                return SuccessResponse("缓存清空完成（缓存可能已经是空的）。");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清空考试缓存时发生错误，考试ID: {ExamId}", id);
+            return BadRequest(ApiResponse.Error(1, "清空缓存失败，请重试"));
         }
     }
 }

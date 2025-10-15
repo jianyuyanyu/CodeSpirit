@@ -126,7 +126,7 @@ public class IndexController : ApiControllerBase
         }
 
         // 调用提交服务更改考试状态（不再传递答案参数）
-        var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId, null);
+        var (success, enableViewResult) = await _clientService.SubmitExamAsync(id, currentUserId);
 
         // 返回提交结果和是否允许查看结果
         return Ok(new ApiResponse<dynamic>(0, "提交成功！", new { success, enableViewResult }));
@@ -168,23 +168,53 @@ public class IndexController : ApiControllerBase
         var userIp = GetClientIpAddress();
         var deviceInfo = HttpContext.Request.Headers["User-Agent"].ToString();
 
-        // 获取考试详情，包括题目列表
+        // ✅ 使用优化后的缓存方案：
+        // 1. 题目数据可以缓存（所有用户共享）
+        // 2. 用户的题目顺序保存在 AnswerRecord.OrderNumber 中
+        // 3. 按用户的 OrderNumber 排序题目即可
+        
+        // 获取考试详情（包含 RecordId 和按用户顺序排列的题目）
+        // 注意：GetExamDetailAsync 已经修复，现在使用 AnswerRecord.OrderNumber 排序
         var examDetail = await _clientService.GetExamDetailAsync(id, currentUserId, userIp, deviceInfo);
+        
+        _logger.LogInformation("获取考试详情完成，考试ID: {ExamId}, 用户ID: {UserId}, RecordId: {RecordId}, 题目数: {QuestionCount}, TotalScore: {TotalScore}",
+            id, currentUserId, examDetail.RecordId, examDetail.Questions?.Count ?? 0, examDetail.TotalScore);
 
-        // 获取基本信息
-        var basicInfo = await _clientService.GetExamBasicInfoAsync(id, currentUserId);
-
-        // 将题目信息添加到基本信息中
-        basicInfo.Questions = examDetail.Questions.ToList();
-
-        foreach (var item in basicInfo.Questions)
+        // 获取基本信息（使用缓存的共享数据）
+        var basicInfoCache = await _clientService.GetExamBasicInfoWithCacheAsync(id);
+        
+        if (basicInfoCache == null)
         {
-            item.Content = WebUtility.HtmlDecode(item.Content);
-            foreach (var option in item.Options)
-            {
-                option.Label = WebUtility.HtmlDecode(option.Label);
-            }
+            _logger.LogError("无法获取考试基本信息，考试ID: {ExamId}, 用户ID: {UserId}", id, currentUserId);
+            return BadRequest(new ApiResponse(-1, "无法获取考试信息"));
         }
+        
+        _logger.LogInformation("获取缓存基本信息完成，考试ID: {ExamId}, Name: {Name}, TotalScore: {TotalScore}, Duration: {Duration}",
+            id, basicInfoCache.Name, basicInfoCache.TotalScore, basicInfoCache.Duration);
+
+        // 获取切屏次数（从用户记录缓存）
+        var userRecord = await _clientService.GetUserExamRecordWithCacheAsync(id, currentUserId);
+
+        // 合并数据：缓存的基本信息 + 按用户顺序排列的题目列表
+        var basicInfo = new ClientExamBasicInfoDto
+        {
+            // 使用缓存的共享数据
+            Id = basicInfoCache.Id,
+            Name = basicInfoCache.Name,
+            Description = basicInfoCache.Description ?? string.Empty,
+            Duration = basicInfoCache.Duration,
+            StartTime = examDetail.StartTime,  // ✅ 使用用户实际开始时间
+            EndTime = examDetail.EndTime,      // ✅ 使用examDetail的结束时间以保持一致性
+            TotalScore = (double)basicInfoCache.TotalScore,
+            AllowedScreenSwitchCount = basicInfoCache.AllowedScreenSwitchCount,
+            EnableViewResult = basicInfoCache.EnableViewResult,
+            MinExamTime = basicInfoCache.MinExamTime ?? 0,
+            
+            // 使用用户特定的数据
+            RecordId = examDetail.RecordId,
+            ScreenSwitchCount = userRecord.ScreenSwitchCount,
+            Questions = examDetail.Questions?.ToList() ?? new List<ClientExamQuestionDto>()  // 已按用户的OrderNumber排序
+        };
 
         // 获取用户已提交的答案
         var recordId = basicInfo.RecordId;
@@ -195,15 +225,33 @@ public class IndexController : ApiControllerBase
                 _logger.LogDebug("获取考试答案，考试ID: {ExamId}, 记录ID: {RecordId}, 用户ID: {UserId}",
                     id, recordId.Value, currentUserId);
 
-                var submittedAnswers = await _clientService.GetSubmittedAnswersAsync(recordId.Value, currentUserId);
+                // 使用带缓存的方法获取答案
+                var submittedAnswers = await _clientService.GetSubmittedAnswersWithCacheAsync(recordId.Value, currentUserId);
+                
+                _logger.LogInformation("获取到的答案列表，记录ID: {RecordId}, 答案数: {AnswerCount}, 答案详情: {Answers}", 
+                    recordId.Value, submittedAnswers.Count, 
+                    string.Join(", ", submittedAnswers.Where(p=> !string.IsNullOrEmpty(p.Answer)).Select(a => $"Q{a.QuestionId}:{a.Answer}")));
+
+                // 创建答案字典，提高查找性能
+                var answerDict = submittedAnswers.ToDictionary(a => a.QuestionId, a => a.Answer);
 
                 foreach (var item in basicInfo.Questions)
                 {
-                    item.Answer = submittedAnswers.FirstOrDefault(p => p.QuestionId == item.QuestionId)?.Answer ?? string.Empty;
+                    // 使用QuestionId匹配答案
+                    if (answerDict.TryGetValue(item.QuestionId, out var answer))
+                    {
+                        item.Answer = answer;
+                        _logger.LogDebug("题目 {QuestionId} 匹配到答案: {Answer}", item.QuestionId, answer);
+                    }
+                    else
+                    {
+                        item.Answer = string.Empty;
+                        _logger.LogDebug("题目 {QuestionId} 未找到答案", item.QuestionId);
+                    }
                 }
 
-                _logger.LogDebug("成功获取考试答案，题目数: {QuestionCount}, 答案数: {AnswerCount}",
-                    basicInfo.Questions.Count, submittedAnswers.Count);
+                _logger.LogInformation("成功加载考试答案，题目数: {QuestionCount}, 答案数: {AnswerCount}, 已填答案数: {FilledCount}",
+                    basicInfo.Questions.Count, submittedAnswers.Count, basicInfo.Questions.Count(q => !string.IsNullOrEmpty(q.Answer)));
             }
             catch (Exception ex)
             {
@@ -273,6 +321,11 @@ public class IndexController : ApiControllerBase
             var record = await _clientService.CreateExamRecordAsync(id, currentUserId, userIp, deviceInfo);
             return new { id = record.ExamSettingId };
         }
+        catch(BusinessException ex)
+        {
+            _logger.LogWarning(ex, "创建考试记录时发生业务逻辑错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
+            return BadRequest(new ApiResponse(-1, ex.Message));
+        }
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "创建考试记录时发生业务逻辑错误，用户 {UserId}，考试 {ExamId}", currentUserId, id);
@@ -334,7 +387,7 @@ public class IndexController : ApiControllerBase
     /// </summary>
     /// <returns>考生个人信息</returns>
     [HttpGet("profile")]
-    [OutputCache(Duration = 600, VaryByHeaderNames = new string[] { "Authorization" }, Tags = new string[] { "byUser" })]
+    [DisplayName("获取个人信息")]
     public async Task<ActionResult<ApiResponse<ClientProfileDto>>> GetProfile()
     {
         var currentUserId = GetCurrentUserId();
@@ -345,7 +398,7 @@ public class IndexController : ApiControllerBase
 
         try
         {
-            var result = await _clientService.GetStudentProfileAsync(currentUserId);
+            var result = await _clientService.GetStudentProfileWithCacheAsync(currentUserId);
             return SuccessResponse(result);
         }
         catch (InvalidOperationException ex)

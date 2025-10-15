@@ -207,6 +207,11 @@ public class RabbitMQServiceTests : TestBase
                 _logger.LogError(ex, "关闭RabbitMQ连接失败");
             }
         }
+
+        public (int CurrentSubscribers, int MaxSubscribers, bool CanSubscribe) GetSubscriberStatus()
+        {
+            return (_consumerChannels.Count, 100, true);
+        }
     }
 
     public RabbitMQServiceTests(ITestOutputHelper output) : base(output)

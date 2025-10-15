@@ -46,6 +46,7 @@
 		<ProjectReference Include="..\..\Components\CodeSpirit.LLM\CodeSpirit.LLM.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.PdfGeneration\CodeSpirit.PdfGeneration.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.Caching\CodeSpirit.Caching.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -99,15 +99,15 @@
                     className: "tenant-info-bar",
                     body: [
                         {
-                            type: "tpl",
-                            tpl: "<div class='tenant-name'><i class='fa fa-building'></i> ${tenant.name || '考试平台'}</div>"
-                        },
-                        {
                             type: "flex",
-                            justify: "flex-end",
+                            justify: "flex-start",
                             alignItems: "center",
-                            className: "tenant-actions",
+                            className: "tenant-info-content",
                             items: [
+                                {
+                                    type: "tpl",
+                                    tpl: "<div class='tenant-name'><i class='fa fa-building'></i> ${tenant.name || '考试平台'}</div>"
+                                },
                                 {
                                     type: "tpl", 
                                     tpl: "<div class='current-time'><i class='fa fa-clock-o'></i> ${now | date:'HH:mm'}</div>",
@@ -116,8 +116,11 @@
                                 {
                                     type: "html",
                                     html: `
-                                        <div class="logout-btn" onclick="window.handleLogout()" title="退出登录">
-                                            <i class="fa fa-sign-out"></i>
+                                        <div class="logout-container">
+                                            <div class="logout-btn" onclick="window.handleLogout()" title="安全退出">
+                                                <i class="fa fa-sign-out logout-icon"></i>
+                                                <span class="logout-text">退出</span>
+                                            </div>
                                         </div>
                                     `
                                 }
@@ -400,10 +403,12 @@
                                         <i class="fa fa-exclamation-triangle nav-menu-icon"></i>
                                         <div class="nav-menu-text">错题管理</div>
                                     </div>
+                                    <!-- 暂时注释掉开始考试菜单
                                     <div class="nav-menu-item nav-profile" onclick="window.navigateTo('profile')" data-animate="4">
                                         <i class="fa fa-user nav-menu-icon"></i>
                                         <div class="nav-menu-text">个人中心</div>
                                     </div>
+                                    -->
                                 </div>
                             `
                         }
@@ -441,38 +446,117 @@
     };
     
     /**
-     * 处理退出登录
+     * 处理退出登录 - 优化版本
      */
     window.handleLogout = function() {
-        // 显示确认对话框
-        if (confirm('🚪 确定要退出登录吗？\n\n退出后需要重新输入账号密码才能登录。')) {
-            try {
-                // 清除Token
-                TokenManager.clearToken();
-                
-                // 显示退出动画
-                const logoutBtn = document.querySelector('.logout-btn');
-                if (logoutBtn) {
-                    logoutBtn.style.transform = 'scale(0.8) rotate(180deg)';
-                    logoutBtn.style.opacity = '0.5';
-                    logoutBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
-                }
-                
-                // 页面渐出效果
-                document.body.style.opacity = '0.7';
-                document.body.style.transform = 'scale(0.95)';
-                document.body.style.filter = 'blur(2px)';
-                
-                // 延迟跳转到登录页
-                setTimeout(() => {
-                    window.location.href = `/${window.tenantId}/exam/login`;
-                }, 500);
-                
-            } catch (error) {
-                console.error('退出登录失败:', error);
-                // 即使出错也要跳转到登录页
-                window.location.href = `/${window.tenantId}/exam/login`;
+        // 创建自定义确认对话框
+        showLogoutConfirmDialog();
+    };
+
+    /**
+     * 显示退出登录确认对话框
+     */
+    function showLogoutConfirmDialog() {
+        // 创建遮罩层
+        const overlay = document.createElement('div');
+        overlay.className = 'logout-overlay';
+        
+        // 创建对话框
+        const dialog = document.createElement('div');
+        dialog.className = 'logout-dialog';
+        dialog.innerHTML = `
+            <div class="logout-dialog-header">
+                <div class="logout-dialog-icon">
+                    <i class="fa fa-sign-out"></i>
+                </div>
+                <h3>确认退出登录</h3>
+            </div>
+            <div class="logout-dialog-body">
+                <p>🔒 您确定要退出当前账户吗？</p>
+                <p class="logout-dialog-note">退出后需要重新输入账号密码才能登录</p>
+            </div>
+            <div class="logout-dialog-actions">
+                <button class="logout-cancel-btn" onclick="window.closeLogoutDialog()">
+                    <i class="fa fa-times"></i> 取消
+                </button>
+                <button class="logout-confirm-btn" onclick="window.confirmLogout()">
+                    <i class="fa fa-sign-out"></i> 确认退出
+                </button>
+            </div>
+        `;
+        
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+        
+        // 添加动画效果
+        setTimeout(() => {
+            overlay.classList.add('show');
+            dialog.classList.add('show');
+        }, 10);
+        
+        // 点击遮罩关闭对话框
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                window.closeLogoutDialog();
             }
+        });
+        
+        // ESC键关闭对话框
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                window.closeLogoutDialog();
+                document.removeEventListener('keydown', handleEsc);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
+    }
+
+    /**
+     * 关闭退出登录对话框
+     */
+    window.closeLogoutDialog = function() {
+        const overlay = document.querySelector('.logout-overlay');
+        if (overlay) {
+            overlay.classList.remove('show');
+            setTimeout(() => {
+                document.body.removeChild(overlay);
+            }, 300);
+        }
+    };
+
+    /**
+     * 确认退出登录
+     */
+    window.confirmLogout = function() {
+        try {
+            // 关闭对话框
+            window.closeLogoutDialog();
+            
+            // 显示退出动画
+            const logoutBtn = document.querySelector('.logout-btn');
+            if (logoutBtn) {
+                logoutBtn.classList.add('logging-out');
+                logoutBtn.innerHTML = '<i class="fa fa-spinner fa-spin logout-icon"></i><span class="logout-text">退出中...</span>';
+            }
+            
+            // 页面渐出效果
+            document.body.style.transition = 'all 0.5s ease';
+            document.body.style.opacity = '0.7';
+            document.body.style.transform = 'scale(0.98)';
+            document.body.style.filter = 'blur(1px)';
+            
+            // 清除Token
+            TokenManager.clearToken();
+            
+            // 延迟跳转到登录页
+            setTimeout(() => {
+                window.location.href = `/${window.tenantId}/exam/login`;
+            }, 800);
+            
+        } catch (error) {
+            console.error('退出登录失败:', error);
+            // 即使出错也要跳转到登录页
+            window.location.href = `/${window.tenantId}/exam/login`;
         }
     };
     

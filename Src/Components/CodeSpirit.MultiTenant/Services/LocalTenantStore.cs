@@ -2,8 +2,9 @@ using CodeSpirit.Core;
 using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.MultiTenant.Models;
 using CodeSpirit.Shared.Data;
+using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace CodeSpirit.MultiTenant.Services;
@@ -11,36 +12,45 @@ namespace CodeSpirit.MultiTenant.Services;
 /// <summary>
 /// 本地租户存储实现
 /// 用于Identity服务内部直接访问数据库，避免HTTP循环调用
+/// 使用L1内存缓存提升性能
 /// </summary>
 public class LocalTenantStore : ITenantStore
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<LocalTenantStore> _logger;
-    private readonly IMemoryCache _memoryCache;
+    private readonly ICacheService _cache;
     private readonly LocalTenantStoreOptions _options;
+    private readonly CacheOptions _defaultCacheOptions;
 
     // 缓存相关常量
     private const string TENANT_CACHE_KEY_PREFIX = "local_tenant_";
     private const string ACTIVE_TENANTS_CACHE_KEY = "local_active_tenants";
-    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(30);
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="serviceProvider">服务提供者</param>
     /// <param name="logger">日志记录器</param>
-    /// <param name="memoryCache">内存缓存</param>
+    /// <param name="cache">统一缓存服务</param>
     /// <param name="options">本地租户存储配置选项</param>
     public LocalTenantStore(
         IServiceProvider serviceProvider,
         ILogger<LocalTenantStore> logger,
-        IMemoryCache memoryCache,
+        ICacheService cache,
         IOptions<LocalTenantStoreOptions> options)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        
+        // 配置默认缓存选项 - 使用L1内存缓存
+        _defaultCacheOptions = new CacheOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.CacheExpirationMinutes),
+            Level = CacheLevel.L1Only, // 仅使用本地内存缓存
+            EnableBreakthroughProtection = false // 本地缓存不需要击穿保护
+        };
     }
 
     /// <summary>
@@ -62,7 +72,8 @@ public class LocalTenantStore : ITenantStore
             var cacheKey = $"{TENANT_CACHE_KEY_PREFIX}{tenantId}";
             
             // 先尝试从缓存获取
-            if (_memoryCache.TryGetValue(cacheKey, out TenantInfo cachedTenant))
+            var cachedTenant = await _cache.GetAsync<TenantInfo>(cacheKey);
+            if (cachedTenant != null)
             {
                 _logger.LogDebug("从缓存中获取到租户信息: {TenantId}", tenantId);
                 return cachedTenant;
@@ -91,9 +102,6 @@ public class LocalTenantStore : ITenantStore
                 if (tenantEntity == null)
                 {
                     _logger.LogDebug("租户不存在: {TenantId}", tenantId);
-                    
-                    // 缓存不存在的结果，避免频繁查询不存在的租户
-                    _memoryCache.Set<TenantInfo>(cacheKey, null, TimeSpan.FromMinutes(5));
                     return null;
                 }
 
@@ -101,7 +109,7 @@ public class LocalTenantStore : ITenantStore
                     tenantEntity.TenantId, tenantEntity.Name, tenantEntity.IsActive);
 
                 // 缓存结果
-                _memoryCache.Set(cacheKey, tenantEntity, CacheExpiration);
+                await _cache.SetAsync(cacheKey, tenantEntity, _defaultCacheOptions);
                 _logger.LogDebug("已缓存租户信息: {TenantId}", tenantId);
 
                 return tenantEntity;
@@ -123,7 +131,8 @@ public class LocalTenantStore : ITenantStore
         try
         {
             // 先尝试从缓存获取
-            if (_memoryCache.TryGetValue(ACTIVE_TENANTS_CACHE_KEY, out List<TenantInfo> cachedTenants))
+            var cachedTenants = await _cache.GetAsync<List<TenantInfo>>(ACTIVE_TENANTS_CACHE_KEY);
+            if (cachedTenants != null)
             {
                 _logger.LogDebug("从缓存中获取到活跃租户列表，数量: {Count}", cachedTenants.Count);
                 return cachedTenants.Cast<ITenantInfo>();
@@ -153,7 +162,7 @@ public class LocalTenantStore : ITenantStore
                 _logger.LogDebug("查询到 {Count} 个活跃租户", activeTenants.Count);
 
                 // 缓存结果
-                _memoryCache.Set(ACTIVE_TENANTS_CACHE_KEY, activeTenants, CacheExpiration);
+                await _cache.SetAsync(ACTIVE_TENANTS_CACHE_KEY, activeTenants, _defaultCacheOptions);
                 _logger.LogDebug("已缓存活跃租户列表");
 
                 return activeTenants.Cast<ITenantInfo>();
@@ -216,7 +225,7 @@ public class LocalTenantStore : ITenantStore
                 await dbContext.SaveChangesAsync();
 
                 // 清除相关缓存
-                ClearTenantCache(tenantInfo.TenantId);
+                await ClearTenantCacheAsync(tenantInfo.TenantId);
                 
                 _logger.LogInformation("成功创建租户: {TenantId}", tenantInfo.TenantId);
                 return true;
@@ -283,7 +292,7 @@ public class LocalTenantStore : ITenantStore
                 await dbContext.SaveChangesAsync();
 
                 // 清除相关缓存
-                ClearTenantCache(tenantInfo.TenantId);
+                await ClearTenantCacheAsync(tenantInfo.TenantId);
                 
                 _logger.LogInformation("成功更新租户: {TenantId}", tenantInfo.TenantId);
                 return true;
@@ -337,7 +346,7 @@ public class LocalTenantStore : ITenantStore
                 await dbContext.SaveChangesAsync();
 
                 // 清除相关缓存
-                ClearTenantCache(tenantId);
+                await ClearTenantCacheAsync(tenantId);
                 
                 _logger.LogInformation("成功删除租户: {TenantId}", tenantId);
                 return true;
@@ -378,12 +387,12 @@ public class LocalTenantStore : ITenantStore
     /// 清除指定租户的缓存
     /// </summary>
     /// <param name="tenantId">租户ID</param>
-    private void ClearTenantCache(string tenantId)
+    private async Task ClearTenantCacheAsync(string tenantId)
     {
         var tenantCacheKey = $"{TENANT_CACHE_KEY_PREFIX}{tenantId}";
         
-        _memoryCache.Remove(tenantCacheKey);
-        _memoryCache.Remove(ACTIVE_TENANTS_CACHE_KEY);
+        await _cache.RemoveAsync(tenantCacheKey);
+        await _cache.RemoveAsync(ACTIVE_TENANTS_CACHE_KEY);
         
         _logger.LogDebug("已清除租户缓存: {TenantId}", tenantId);
     }

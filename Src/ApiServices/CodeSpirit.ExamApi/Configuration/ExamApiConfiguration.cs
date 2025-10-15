@@ -1,6 +1,7 @@
 using CodeSpirit.Aggregator;
 using CodeSpirit.AiFormFill;
 using CodeSpirit.Audit.Extensions;
+using CodeSpirit.Caching.Extensions;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Extensions;
@@ -82,6 +83,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
         
         // 添加输出缓存服务
         AddOutputCacheServices(services);
+        
+        // 添加CodeSpirit缓存服务
+        AddCachingServices(services, configuration);
         
         // 配置控制器和审计元数据过滤器
         ConfigureControllersWithAudit(services, configuration);
@@ -240,5 +244,24 @@ public class ExamApiConfiguration : BaseApiConfiguration
                 options.PayloadSerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
                 options.PayloadSerializerSettings.NullValueHandling = NullValueHandling.Ignore;
             });
+    }
+    
+    /// <summary>
+    /// 添加考试API特定的缓存服务
+    /// 注意：通用缓存服务已在CommonApiServices中统一配置
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    private static void AddCachingServices(IServiceCollection services, IConfiguration configuration)
+    {
+        try
+        {
+            // 注册考试API特定的缓存服务
+            services.AddScoped<IExamCacheService, ExamCacheService>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"警告: 注册考试缓存服务时出错: {ex.Message}，但应用程序将继续启动");
+        }
     }
 }

@@ -1,9 +1,9 @@
 using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.MultiTenant.Models;
+using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Models;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 
 namespace CodeSpirit.MultiTenant.Services;
 
@@ -14,7 +14,7 @@ namespace CodeSpirit.MultiTenant.Services;
 public class TenantResolver : ITenantResolver
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IDistributedCache _cache;
+    private readonly ICacheService _cache;
     private readonly ILogger<TenantResolver> _logger;
     private readonly ITenantStore _tenantStore;
     private readonly TenantOptions _options;
@@ -23,13 +23,13 @@ public class TenantResolver : ITenantResolver
     /// 构造函数
     /// </summary>
     /// <param name="httpContextAccessor">HTTP上下文访问器</param>
-    /// <param name="cache">分布式缓存</param>
+    /// <param name="cache">统一缓存服务</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="tenantStore">租户存储</param>
     /// <param name="options">租户配置选项</param>
     public TenantResolver(
         IHttpContextAccessor httpContextAccessor,
-        IDistributedCache cache,
+        ICacheService cache,
         ILogger<TenantResolver> logger,
         ITenantStore tenantStore,
         IOptions<TenantOptions> options)
@@ -230,31 +230,24 @@ public class TenantResolver : ITenantResolver
             return null;
         }
 
-        // 先从缓存获取
+        // 使用二级缓存获取租户信息
         if (_options.EnableTenantCache)
         {
             var cacheKey = $"tenant_info_{tenantId}";
-            var cachedInfo = await _cache.GetStringAsync(cacheKey);
-            if (!string.IsNullOrEmpty(cachedInfo))
-            {
-                return JsonConvert.DeserializeObject<TenantInfo>(cachedInfo);
-            }
-        }
-
-        // 从存储获取
-        var tenantInfo = await _tenantStore.GetTenantAsync(tenantId);
-        if (tenantInfo != null && _options.EnableTenantCache)
-        {
-            // 缓存租户信息
-            var cacheKey = $"tenant_info_{tenantId}";
-            await _cache.SetStringAsync(cacheKey, JsonConvert.SerializeObject(tenantInfo), 
-                new DistributedCacheEntryOptions
+            
+            return await _cache.GetOrSetAsync(
+                cacheKey,
+                async () => await _tenantStore.GetTenantAsync(tenantId),
+                new CacheOptions
                 {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.CacheExpirationMinutes)
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.CacheExpirationMinutes),
+                    Level = CacheLevel.Both, // 使用两级缓存提升性能
+                    EnableBreakthroughProtection = true
                 });
         }
 
-        return tenantInfo;
+        // 不启用缓存时直接从存储获取
+        return await _tenantStore.GetTenantAsync(tenantId);
     }
 
     /// <summary>

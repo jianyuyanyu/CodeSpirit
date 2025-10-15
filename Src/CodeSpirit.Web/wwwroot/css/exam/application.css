@@ -73,15 +73,17 @@ body::before {
     color: white;
     padding: 8px 16px;
     font-size: 13px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     box-shadow: var(--exam-shadow);
     position: sticky;
     top: 0;
     z-index: 100;
     backdrop-filter: blur(10px);
     animation: slideDown 0.6s var(--exam-bounce);
+}
+
+.tenant-info-content {
+    width: 100%;
+    gap: 16px !important;
 }
 
 @keyframes slideDown {
@@ -126,45 +128,248 @@ body::before {
     margin-right: 4px;
 }
 
+/* ===== 退出登录容器 ===== */
+.logout-container {
+    position: relative;
+}
+
 .logout-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.15);
+    min-width: 60px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9));
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: var(--exam-transition);
-    font-size: 14px;
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 13px;
+    color: white;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    gap: 4px;
+    padding: 0 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.logout-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: var(--exam-transition);
 }
 
 .logout-btn:hover {
-    background: rgba(255, 255, 255, 0.25);
-    transform: scale(1.05);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 1), rgba(220, 38, 38, 1));
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.logout-btn:hover::before {
+    left: 100%;
+    animation: shimmerLogout 0.6s ease-in-out;
 }
 
 .logout-btn:active {
-    transform: scale(0.95);
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+}
+
+.logout-icon {
+    font-size: 14px;
+    transition: var(--exam-transition);
+}
+
+.logout-text {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.logout-btn:hover .logout-icon {
+    transform: rotate(-10deg) scale(1.1);
 }
 
 .logout-btn.logging-out {
     pointer-events: none;
-    background: rgba(239, 68, 68, 0.2);
-    animation: logoutPulse 1s ease-in-out infinite;
+    background: linear-gradient(135deg, rgba(156, 163, 175, 0.9), rgba(107, 114, 128, 0.9));
+    animation: logoutPulse 1.5s ease-in-out infinite;
+    cursor: not-allowed;
+}
+
+.logout-btn.logging-out .logout-icon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes shimmerLogout {
+    0% { left: -100%; }
+    100% { left: 100%; }
 }
 
 @keyframes logoutPulse {
     0%, 100% { 
-        background: rgba(239, 68, 68, 0.15);
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
     }
     50% { 
-        background: rgba(239, 68, 68, 0.25);
-        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(156, 163, 175, 0.4);
     }
+}
+
+/* ===== 退出登录对话框样式 ===== */
+.logout-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+}
+
+.logout-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.logout-dialog {
+    background: var(--exam-card-bg);
+    border-radius: var(--exam-radius-large);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+    margin: 20px;
+    transform: scale(0.7) translateY(50px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+    position: relative;
+}
+
+.logout-dialog.show {
+    transform: scale(1) translateY(0);
+}
+
+.logout-dialog::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--exam-danger), #dc2626, var(--exam-danger));
+}
+
+.logout-dialog-header {
+    padding: 24px 24px 16px 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--exam-border);
+    background: linear-gradient(135deg, #fef2f2, #ffffff);
+}
+
+.logout-dialog-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--exam-danger), #dc2626);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px auto;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.logout-dialog-header h3 {
+    margin: 0;
+    color: var(--exam-text);
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.logout-dialog-body {
+    padding: 20px 24px;
+    text-align: center;
+}
+
+.logout-dialog-body p {
+    margin: 0 0 12px 0;
+    color: var(--exam-text);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.logout-dialog-note {
+    font-size: 14px !important;
+    color: var(--exam-text-secondary) !important;
+    margin-bottom: 0 !important;
+}
+
+.logout-dialog-actions {
+    padding: 16px 24px 24px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.logout-cancel-btn,
+.logout-confirm-btn {
+    padding: 12px 24px;
+    border-radius: var(--exam-radius);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--exam-transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 100px;
+    justify-content: center;
+}
+
+.logout-cancel-btn {
+    background: #f8fafc;
+    color: var(--exam-text);
+    border: 2px solid var(--exam-border);
+}
+
+.logout-cancel-btn:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+.logout-confirm-btn {
+    background: linear-gradient(135deg, var(--exam-danger), #dc2626);
+    color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.logout-confirm-btn:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.logout-cancel-btn:active,
+.logout-confirm-btn:active {
+    transform: translateY(0);
 }
 
 /* ===== 考生信息卡片 ===== */
@@ -1008,13 +1213,28 @@ body::before {
         font-size: 12px;
     }
     
-    .tenant-actions {
-        gap: 8px;
+    .tenant-info-content {
+        gap: 12px !important;
+        flex-wrap: wrap;
+    }
+    
+    .tenant-name {
+        flex: 1;
+        min-width: 120px;
     }
     
     .logout-btn {
-        width: 24px;
-        height: 24px;
+        min-width: 50px;
+        height: 28px;
+        font-size: 11px;
+        padding: 0 6px;
+    }
+    
+    .logout-text {
+        font-size: 10px;
+    }
+    
+    .logout-icon {
         font-size: 12px;
     }
     
@@ -1241,8 +1461,56 @@ body::before {
     }
     
     .logout-btn {
-        min-height: 36px;
-        min-width: 36px;
+        min-height: 32px;
+        min-width: 50px;
+    }
+    
+    /* 移动端退出登录对话框适配 */
+    .logout-dialog {
+        max-width: 320px;
+        width: 95%;
+        margin: 10px;
+    }
+    
+    .logout-dialog-header {
+        padding: 20px 16px 12px 16px;
+    }
+    
+    .logout-dialog-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+    
+    .logout-dialog-header h3 {
+        font-size: 18px;
+    }
+    
+    .logout-dialog-body {
+        padding: 16px;
+    }
+    
+    .logout-dialog-body p {
+        font-size: 15px;
+    }
+    
+    .logout-dialog-note {
+        font-size: 13px !important;
+    }
+    
+    .logout-dialog-actions {
+        padding: 12px 16px 20px 16px;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .logout-cancel-btn,
+    .logout-confirm-btn {
+        width: 100%;
+        min-height: 44px;
+        font-size: 15px;
+        padding: 12px 16px;
     }
     
     /* 移动端滚动优化 */
@@ -1552,11 +1820,13 @@ body::before {
 @supports (-webkit-appearance: none) {
     .exam-start-btn {
         -webkit-appearance: none;
+        appearance: none;
         -webkit-tap-highlight-color: transparent;
     }
     
     .logout-btn {
         -webkit-appearance: none;
+        appearance: none;
         -webkit-tap-highlight-color: transparent;
     }
     

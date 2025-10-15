@@ -15,7 +15,7 @@ using CodeSpirit.Shared.Services.Background;
 using CodeSpirit.Shared.Services.Files;
 using CodeSpirit.UdlCards.Extensions;
 using CodeSpirit.MultiTenant.Abstractions;
-using CodeSpirit.Web.Services;
+using CodeSpirit.Caching.Extensions;
 using CodeSpirit.LLM;
 using CodeSpirit.Web.Extensions;
 using CodeSpirit.Web.Hubs;
@@ -69,6 +69,16 @@ public class Program
 
         // 添加 HttpContextAccessor 和内存缓存
         builder.Services.AddHttpContextAccessor();
+        
+        // 添加Redis分布式缓存（缓存组件依赖）
+        var cacheConnectionString = builder.Configuration.GetConnectionString("cache");
+        if (!string.IsNullOrEmpty(cacheConnectionString))
+        {
+            builder.Services.AddRedisDistributedCacheAndLock(builder.Configuration, "cache");
+        }
+        
+        // 统一缓存服务（使用配置文件中的Caching节）
+        builder.Services.AddCodeSpiritCaching(builder.Configuration, "webfrontend");
         builder.Services.AddMemoryCache();
         builder.Services.AddCorsPolicy();
         builder.Services.AddScoped<ICurrentUser, CurrentUser>();

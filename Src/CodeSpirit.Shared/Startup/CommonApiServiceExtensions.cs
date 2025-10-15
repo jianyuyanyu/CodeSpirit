@@ -1,5 +1,6 @@
 using CodeSpirit.Amis;
 using CodeSpirit.Authorization.Extensions;
+using CodeSpirit.Caching.Extensions;
 // using CodeSpirit.MultiTenant.Extensions; // 注释掉，避免循环引用
 using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults.Middleware;
@@ -29,7 +30,8 @@ public static class CommonApiServiceExtensions
     public static IServiceCollection AddCommonApiServices(
         this IServiceCollection services, 
         IConfiguration configuration,
-        string connectionStringKey)
+        string connectionStringKey,
+        string serviceName)
     {
         // 输出连接字符串信息
         var connectionString = configuration.GetConnectionString(connectionStringKey);
@@ -37,6 +39,16 @@ public static class CommonApiServiceExtensions
         
         // JWT认证
         services.AddJwtAuthentication(configuration);
+        
+        // 添加Redis分布式缓存（缓存组件依赖）
+        var cacheConnectionString = configuration.GetConnectionString("cache");
+        if (!string.IsNullOrEmpty(cacheConnectionString))
+        {
+            services.AddRedisDistributedCacheAndLock(configuration, "cache");
+        }
+        
+        // 统一缓存服务（使用配置文件中的Caching节）
+        services.AddCodeSpiritCaching(configuration, serviceName);
         
         // 多租户 - 需要在具体API项目中添加
         // services.AddCodeSpiritMultiTenant(configuration);

@@ -5,9 +5,16 @@ using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
 using CodeSpirit.ExamApi.Dtos.Student;
+using CodeSpirit.ExamApi.Extensions;
+using CodeSpirit.ExamApi.Constants;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Net;
+using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.Caching.Extensions;
+using CodeSpirit.Caching.Models;
+using CodeSpirit.ExamApi.Caching;
 
 namespace CodeSpirit.ExamApi.Services;
 
@@ -19,6 +26,8 @@ public class ClientService : IClientService, IScopedDependency
     private readonly IExamSettingService _examSettingService;
     private readonly IExamRecordService _examRecordService;
     private readonly IStudentService _studentService;
+    private readonly IExamCacheService _examCacheService;
+    private readonly ICacheService _cacheService;
     private readonly ILogger<ClientService> _logger;
     private readonly IDistributedCache _distributedCache;
     private readonly ConcurrentDictionary<long, StudentDto> _studentCache = new();
@@ -26,7 +35,11 @@ public class ClientService : IClientService, IScopedDependency
     // 进程内考试详情缓存，有效期更短
     private readonly ConcurrentDictionary<long, ClientExamDto> _examDetailsCache = new();
 
+    // 缓存过期时间配置
     private static readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan _examInfoCacheExpiration = TimeSpan.FromMinutes(30);  // 考试信息缓存30分钟
+    private static readonly TimeSpan _userRecordCacheExpiration = TimeSpan.FromMinutes(10);  // 用户记录缓存10分钟
+    private static readonly TimeSpan _userAnswersCacheExpiration = TimeSpan.FromMinutes(1);  // 用户答案缓存1分钟
 
     /// <summary>
     /// 构造函数
@@ -34,18 +47,24 @@ public class ClientService : IClientService, IScopedDependency
     /// <param name="examSettingService">考试设置服务</param>
     /// <param name="examRecordService">考试记录服务</param>
     /// <param name="studentService">学生服务</param>
+    /// <param name="examCacheService">考试缓存服务</param>
+    /// <param name="cacheService">通用缓存服务</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="distributedCache">分布式缓存</param>
     public ClientService(
         IExamSettingService examSettingService,
         IExamRecordService examRecordService,
         IStudentService studentService,
+        IExamCacheService examCacheService,
+        ICacheService cacheService,
         ILogger<ClientService> logger,
         IDistributedCache distributedCache)
     {
         _examSettingService = examSettingService;
         _examRecordService = examRecordService;
         _studentService = studentService;
+        _examCacheService = examCacheService;
+        _cacheService = cacheService;
         _logger = logger;
         _distributedCache = distributedCache;
     }
@@ -298,6 +317,104 @@ public class ClientService : IClientService, IScopedDependency
     }
 
     /// <summary>
+    /// 获取考试题目数据（带缓存，字典格式）
+    /// 说明：缓存原始题目数据，不包含用户特定的题目顺序
+    /// 用户的题目顺序保存在 AnswerRecord.OrderNumber 中
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <returns>题目数据字典（QuestionId -> 题目详情）</returns>
+    /// <remarks>
+    /// 注意：由于题目数据已经在 GetExamDetailAsync 中被优化处理（使用 OrderNumber），
+    /// 这个方法暂时不实现独立的缓存逻辑。实际的缓存优化已经在 ExamSettingService.GetExamDetailForClientAsync 中完成。
+    /// 未来如果需要进一步优化，可以考虑分离题目数据的查询和排序逻辑。
+    /// </remarks>
+    public async Task<Dictionary<long, ClientExamQuestionDto>> GetExamQuestionsDataWithCacheAsync(long examId)
+    {
+        try
+        {
+            // 尝试从分布式缓存获取题目数据
+            var cacheKey = CacheKeys.GetExamQuestionsDataKey(examId);
+            var cachedData = await _distributedCache.GetAsync<ExamQuestionsDataCacheDto>(cacheKey);
+            
+            if (cachedData != null && cachedData.QuestionsData.Any())
+            {
+                _logger.LogDebug("从缓存获取考试题目数据，考试ID: {ExamId}，题目数: {Count}", 
+                    examId, cachedData.QuestionsData.Count);
+                return cachedData.QuestionsData;
+            }
+
+            // 缓存未命中，记录日志
+            // 注意：题目数据的实际获取在 GetExamDetailAsync 中进行，这里返回空字典表示需要通过正常流程获取
+            _logger.LogDebug("题目数据缓存未命中，考试ID: {ExamId}，将通过GetExamDetailAsync获取", examId);
+            
+            return new Dictionary<long, ClientExamQuestionDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试题目数据缓存时发生错误，考试ID: {ExamId}", examId);
+            return new Dictionary<long, ClientExamQuestionDto>();
+        }
+    }
+
+    /// <summary>
+    /// 获取考试基本信息（带缓存，不包含用户特定数据）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <returns>考试基本信息</returns>
+    public async Task<ExamBasicInfoCacheDto> GetExamBasicInfoWithCacheAsync(long examId)
+    {
+        try
+        {
+            var result = await _examCacheService.GetExamBasicInfoWithCacheAsync(examId);
+            return result ?? throw new InvalidOperationException($"考试不存在或已删除: {examId}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试基本信息时发生错误，考试ID: {ExamId}", examId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取用户考试记录信息（带缓存）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>用户考试记录信息</returns>
+    public async Task<UserExamRecordCacheDto> GetUserExamRecordWithCacheAsync(long examId, long userId)
+    {
+        try
+        {
+            var result = await _examCacheService.GetUserExamRecordWithCacheAsync(examId, userId);
+            return result ?? throw new InvalidOperationException($"用户考试记录不存在: ExamId={examId}, UserId={userId}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取用户考试记录时发生错误，考试ID: {ExamId}, 用户ID: {UserId}", examId, userId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取用户已提交的答案（带缓存）
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="userId">用户ID</param>
+    /// <returns>用户答案列表</returns>
+    public async Task<List<ClientExamAnswerDto>> GetSubmittedAnswersWithCacheAsync(long recordId, long userId)
+    {
+        try
+        {
+            return await _examCacheService.GetSubmittedAnswersWithCacheAsync(recordId, userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取用户答案时发生错误，记录ID: {RecordId}, 用户ID: {UserId}", recordId, userId);
+            return new List<ClientExamAnswerDto>();
+        }
+    }
+
+    /// <summary>
     /// 获取考试轻量信息（用于倒计时页面）
     /// </summary>
     /// <param name="examId">考试ID</param>
@@ -433,6 +550,19 @@ public class ClientService : IClientService, IScopedDependency
     }
 
     /// <summary>
+    /// 获取考生个人信息（带二级缓存）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>考生个人信息</returns>
+    public async Task<ClientProfileDto> GetStudentProfileWithCacheAsync(long userId)
+    {
+        // 使用强类型缓存键，配置已在键定义中
+        return await _cacheService.GetOrSetAsync(
+            new ExamCacheOptions.ClientProfile(userId),
+            async () => await GetStudentProfileAsync(userId));
+    }
+
+    /// <summary>
     /// 获取已提交的答案
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
@@ -530,11 +660,75 @@ public class ClientService : IClientService, IScopedDependency
             }
             _logger.LogDebug("已保存考试 {RecordId} 的 {Count} 个答案", recordId, answers.Count);
 
+            // 直接更新用户答案缓存，使用已有数据，无需再次查询数据库
+            try
+            {
+                await _examCacheService.UpdateUserAnswersCacheAsync(recordId, userId, answers);
+                _logger.LogDebug("已直接更新用户答案缓存，记录ID: {RecordId}, 答案数: {AnswerCount}", recordId, answers.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "直接更新用户答案缓存失败，记录ID: {RecordId}", recordId);
+                // 缓存更新失败不影响主流程，但尝试清除缓存以避免脏数据
+                try
+                {
+                    await _examCacheService.ClearUserAnswersCacheAsync(recordId, userId);
+                    _logger.LogDebug("已清除可能的脏缓存数据，记录ID: {RecordId}", recordId);
+                }
+                catch
+                {
+                    // 忽略清除缓存的异常
+                }
+            }
+
             return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "保存答案时发生错误，考试记录ID: {RecordId}", recordId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 预热考试缓存（提前加载考试数据到缓存）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="userId">触发预热的用户ID（未使用，仅保持接口兼容性）</param>
+    /// <returns>预热是否成功</returns>
+    public async Task<bool> WarmUpExamCacheAsync(long examId, long userId)
+    {
+        try
+        {
+            _logger.LogInformation("开始预热考试缓存，考试ID: {ExamId}", examId);
+            await _examCacheService.WarmupExamCacheAsync(examId);
+            _logger.LogInformation("考试缓存预热完成，考试ID: {ExamId}", examId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "预热考试缓存时发生错误，考试ID: {ExamId}", examId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 清空考试相关的所有缓存
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <returns>清空是否成功</returns>
+    public async Task<bool> ClearExamCacheAsync(long examId)
+    {
+        try
+        {
+            _logger.LogInformation("开始清空考试缓存，考试ID: {ExamId}", examId);
+            await _examCacheService.ClearExamCacheAsync(examId);
+            _logger.LogInformation("考试缓存清空完成，考试ID: {ExamId}", examId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清空考试缓存时发生错误，考试ID: {ExamId}", examId);
             return false;
         }
     }

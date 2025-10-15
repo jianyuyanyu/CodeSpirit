@@ -1,6 +1,6 @@
 using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.MultiTenant.Models;
-using Microsoft.Extensions.Caching.Distributed;
+using CodeSpirit.Caching.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 
@@ -20,14 +20,14 @@ public class UnifiedTenantStore : ITenantStore
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="distributedCache">分布式缓存</param>
+    /// <param name="cacheService">统一缓存服务</param>
     /// <param name="httpClientFactory">HTTP客户端工厂</param>
     /// <param name="tenantOptions">租户配置选项</param>
     /// <param name="apiStoreOptions">API存储配置选项</param>
     /// <param name="loggerFactory">日志工厂</param>
     /// <param name="logger">日志记录器</param>
     public UnifiedTenantStore(
-        IDistributedCache distributedCache,
+        ICacheService cacheService,
         IHttpClientFactory httpClientFactory,
         IOptions<TenantOptions> tenantOptions,
         IOptions<ApiTenantStoreOptions> apiStoreOptions,
@@ -39,7 +39,7 @@ public class UnifiedTenantStore : ITenantStore
         // 初始化三个存储实现，使用注入的日志工厂
         _memoryStore = new MemoryTenantStore(loggerFactory.CreateLogger<MemoryTenantStore>());
         _distributedStore = new DistributedTenantStore(
-            distributedCache, 
+            cacheService, 
             loggerFactory.CreateLogger<DistributedTenantStore>(),
             tenantOptions);
         _apiStore = new ApiTenantStore(

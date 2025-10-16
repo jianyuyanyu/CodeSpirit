@@ -28,7 +28,7 @@
                 tenantId: options.tenantId || window.tenantId,
                 recordId: options.recordId || window.recordId,
                 debug: false,
-                idleTimeout: 30000, // 30秒无活动超时
+                idleTimeout: 300000, // 5分钟无活动超时
                 ...options
             };
 

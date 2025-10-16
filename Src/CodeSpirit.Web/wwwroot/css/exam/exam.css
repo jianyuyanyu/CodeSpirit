@@ -367,6 +367,8 @@
 /* 题目样式 */
 .question-container {
     margin-top: 20px;
+    margin-bottom: 48px;
+    padding-bottom: 20px;
 }
 
 .question-item {
@@ -404,22 +406,32 @@
     }
 
 .question-label {
-    font-size: 15px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
     font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     display: block;
-    padding-left: 15px;
+    padding: 12px 16px 12px 20px;
+    background-color: #f8f9fa;
     border-left: 4px solid var(--primary-color);
-    line-height: 1.5;
+    border-radius: 0 4px 4px 0;
+    line-height: 1.6;
+    color: #2c3e50;
+    border: 1px solid #e9ecef;
 }
 
-    .question-label pre {
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        margin: 0; /* 重置 pre 标签可能存在的默认 margin */
-        font-family: inherit; /* 继承父元素的字体 */
-    }
+/* 简化的悬停效果 */
+.question-label:hover {
+    background-color: #f1f3f4;
+}
+
+.question-label pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0; /* 重置 pre 标签可能存在的默认 margin */
+    font-family: inherit; /* 继承父元素的字体 */
+    color: inherit;
+}
 
 .question-type-tag {
     display: inline-block;
@@ -433,7 +445,7 @@
 }
 
 .question-score {
-    display: inline-block;
+    display: block;
     padding: 2px 8px;
     border-radius: 12px;
     background-color: rgba(76, 175, 80, 0.1);
@@ -453,10 +465,31 @@
 /* 选项样式 */
 .am-RadioControl-group,
 .am-CheckboxControl-group {
-    padding: 10px 0;
+    padding: 5px 0 10px 0 !important;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* 题目容器内的选项组样式 */
+.question-container .am-RadioControl-group,
+.question-container .am-CheckboxControl-group {
+    padding: 0 0 5px 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* 表单项样式优化 */
+.question-container .am-Form-item {
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+}
+
+.question-container .am-Form-control {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
 }
 
 /* 计时器样式 */
@@ -658,35 +691,42 @@
     color: #4caf50;
 }
 
-/* 选项样式 */
+/* 选项样式 - 重复定义，与上面保持一致 */
 .am-RadioControl-group,
 .am-CheckboxControl-group {
-    padding: 10px 0;
+    padding: 5px 0 10px 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+    margin-top: 0;
 }
 
 .am-RadioControl,
 .am-CheckboxControl {
-    margin-bottom: 0;
-    padding: 12px 16px;
+    margin-bottom: 0 !important;
+    padding: 10px 15px !important;
     border-radius: var(--border-radius);
-    transition: all 0.3s ease;
+    transition: border-color 0.2s ease;
     border: 1px solid #e8e8e8;
     background-color: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    position: relative;
-    overflow: hidden;
     cursor: pointer;
+    display: flex !important;
+    align-items: flex-start !important;
+}
+
+/* 更具体的选择器来覆盖AMIS默认样式 */
+.question-container .am-RadioControl,
+.question-container .am-CheckboxControl {
+    margin-bottom: 6px !important;
+    margin-top: 0 !important;
+    display: flex !important;
+    align-items: flex-start !important;
 }
 
     .am-RadioControl:hover,
     .am-CheckboxControl:hover {
         background-color: #f9f9ff;
-        border-color: #d0d5ff;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.05);
-        transform: translateY(-1px);
+        border-color: var(--primary-color);
     }
 
 .enhanced-options .am-RadioControl,
@@ -699,8 +739,122 @@
 .question-container .am-CheckboxControl {
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     transition: all 0.2s ease-in-out;
+}
+
+/* 选项容器样式优化 */
+.question-container .am-Form-item {
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+}
+
+.question-container .am-Form-item .am-Form-control {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* 强制覆盖AMIS的默认间距 */
+.exam-container .am-Form-item {
+    margin-bottom: 0 !important;
+}
+
+.exam-container .am-Form-control {
+    margin-top: 0 !important;
+}
+
+/* 题目和选项之间的间距控制 */
+.question-container > div {
+    margin-top: 0 !important;
+    margin-bottom: 32px !important;
+}
+
+.question-container > div:last-child {
+    margin-bottom: 40px !important;
+}
+
+/* 选项容器的直接控制 */
+.question-container [data-role="form-item"] {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* 专门针对题目选项的样式 */
+.question-options {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 10px;
+}
+
+/* 针对实际的ANTD选项控件样式 */
+.question-options .antd-CheckboxesControl,
+.question-options .antd-RadiosControl {
+    padding-bottom: 16px;
+}
+
+.question-options .antd-Checkbox,
+.question-options .antd-Radio {
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.question-options .antd-Checkbox:hover,
+.question-options .antd-Radio:hover {
+    background-color: #f8f9ff;
+}
+
+.question-options .am-RadioControl-group,
+.question-options .am-CheckboxControl-group {
+    padding: 8px 0 24px 0 !important;
+    margin: 0 !important;
+    gap: 10px !important;
+}
+
+.question-options .am-RadioControl,
+.question-options .am-CheckboxControl {
+    margin-bottom: 12px !important;
+    margin-top: 0 !important;
+    padding: 14px 18px !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    transition: border-color 0.2s ease;
+}
+
+.question-options .am-RadioControl-label,
+.question-options .am-CheckboxControl-label {
+    padding-left: 10px !important;
+    flex: 1;
+    text-align: left;
+    line-height: 1.5;
+    font-size: 15px;
+    color: #374151;
+    font-weight: 400;
+}
+
+/* 简化的选项悬停效果 */
+.question-options .am-RadioControl:hover,
+.question-options .am-CheckboxControl:hover {
+    border-color: var(--primary-color);
+    background-color: #f8f9ff;
+}
+
+/* 简化的选项选中效果 */
+.question-options .am-RadioControl.is-checked,
+.question-options .am-CheckboxControl.is-checked {
+    background-color: rgba(63, 81, 181, 0.05);
+    border-color: var(--primary-color);
+    border-width: 2px;
+}
+
+.question-options .am-RadioControl.is-checked .am-RadioControl-label,
+.question-options .am-CheckboxControl.is-checked .am-CheckboxControl-label {
+    color: var(--primary-color);
+    font-weight: 500;
 }
 
 .am-RadioControl-input:checked + .am-RadioControl-icon,
@@ -722,7 +876,10 @@
     font-size: 15px;
     line-height: 1.5;
     font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-    padding-left: 5px;
+    padding-left: 8px;
+    flex: 1;
+    text-align: left;
+    word-wrap: break-word;
 }
 
 /* 选项字母标记 */
@@ -834,9 +991,50 @@
 
     .question-label {
         font-size: 15px;
-        padding-left: 10px;
-        line-height: 1.4;
-        margin-bottom: 15px;
+        padding: 10px 12px 10px 16px;
+        line-height: 1.5;
+        margin-bottom: 12px;
+        border-radius: 0 4px 4px 0;
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+    }
+    
+    .question-label:hover {
+        background-color: #f1f3f4;
+    }
+    
+    .question-container {
+        margin-bottom: 32px;
+        padding-bottom: 16px;
+    }
+    
+    .question-container > div {
+        margin-bottom: 24px !important;
+    }
+    
+    .question-container > div:last-child {
+        margin-bottom: 32px !important;
+    }
+    
+    .question-options {
+        padding-bottom: 8px;
+    }
+    
+    .question-options .antd-CheckboxesControl,
+    .question-options .antd-RadiosControl {
+        padding-bottom: 12px;
+    }
+    
+    .question-options .antd-Checkbox,
+    .question-options .antd-Radio {
+        margin-bottom: 6px;
+        padding: 6px 10px;
+    }
+    
+    .question-options .am-RadioControl,
+    .question-options .am-CheckboxControl {
+        margin-bottom: 10px !important;
+        padding: 12px 14px !important;
     }
 
     .question-content {
@@ -859,13 +1057,18 @@
     .am-RadioControl,
     .am-CheckboxControl {
         padding: 8px 12px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: flex-start;
     }
 
     .am-RadioControl-label,
     .am-CheckboxControl-label {
         font-size: 14px;
         line-height: 1.4;
+        padding-left: 6px;
+        flex: 1;
+        text-align: left;
     }
 
     .option-label {
@@ -1307,6 +1510,8 @@
 .highlight-question {
     animation: highlight-question 1.5s ease;
 }
+
+/* 移除进入动画以提高性能 */
 
 @keyframes highlight-question {
     0% {

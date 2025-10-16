@@ -1657,9 +1657,10 @@
                                                                         type: "radios",
                                                                         name: "question_${item.id}",
                                                                         source: "${options}",
-                                                                        mode: "horizontal",
+                                                                        mode: "vertical",
                                                                         value: "${answer}",
                                                                         visibleOn: "item.type === 'SingleChoice'",
+                                                                        className: "question-options",
                                                                         onEvent: {
                                                                             change: {
                                                                                 actions: [
@@ -1675,10 +1676,11 @@
                                                                         type: "checkboxes",
                                                                         name: "question_${item.id}",
                                                                         source: "${options}",
-                                                                        mode: "horizontal",
+                                                                        mode: "vertical",
                                                                         value: "${answer}",
                                                                         required: "${item.isRequired}",
                                                                         visibleOn: "item.type === 'MultipleChoice'",
+                                                                        className: "question-options",
                                                                         onEvent: {
                                                                             change: {
                                                                                 actions: [
@@ -1703,9 +1705,10 @@
                                                                                 value: "False"
                                                                             }
                                                                         ],
-                                                                        mode: "horizontal",
+                                                                        mode: "vertical",
                                                                         value: "${answer}",
                                                                         visibleOn: "${item.type === 'TrueFalse'}",
+                                                                        className: "question-options",
                                                                         onEvent: {
                                                                             change: {
                                                                                 actions: [

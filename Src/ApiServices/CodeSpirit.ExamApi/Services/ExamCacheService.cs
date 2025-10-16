@@ -536,7 +536,10 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                 TotalScore = examSetting.ExamPaper?.TotalScore ?? 0,
                 AllowedScreenSwitchCount = examSetting.AllowedScreenSwitchCount,
                 EnableViewResult = examSetting.EnableViewResult,
-                MinExamTime = examSetting.MinExamTime
+                MinExamTime = examSetting.MinExamTime,
+                AllowedAttempts = examSetting.AllowedAttempts,
+                EnableRandomQuestionOrder = examSetting.EnableRandomQuestionOrder,
+                EnableRandomOptionOrder = examSetting.EnableRandomOptionOrder
             };
 
             _logger.LogDebug("成功从数据库加载考试基本信息: ExamId={ExamId}, Name={Name}", examId, basicInfo.Name);

@@ -814,9 +814,10 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 var currentAttemptCount = await Repository.CreateQuery()
                     .CountAsync(r => r.ExamSettingId == examId && r.StudentId == studentId);
 
-                if (currentAttemptCount >= examBasicInfo.AllowedAttempts)
+                if (examBasicInfo.AllowedAttempts != 0 && currentAttemptCount >= examBasicInfo.AllowedAttempts)
                 {
-                    throw new BusinessException("已超过允许的考试次数");
+                    _logger.LogInformation("考生 {StudentId} 已超过允许的考试次数，考试ID: {ExamId}，允许考试次数: {AllowedAttempts}", studentId, examId, examBasicInfo.AllowedAttempts);
+                    throw new BusinessException($"考生 {student.Name} 已超过允许的考试次数，考试ID: {examId}");
                 }
 
                 // 创建考试记录
@@ -849,7 +850,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 {
                     var random = new Random();
                     // 先随机打乱，再按题型排序，确保同类型题目相对顺序一致
-                    questionsList = questionsList.OrderBy(q => random.Next()).OrderBy(q=>q.TypeValue).ToList();
+                    questionsList = questionsList.OrderBy(q => random.Next()).OrderBy(q => q.TypeValue).ToList();
                 }
 
                 // 创建答题记录

@@ -120,8 +120,8 @@ public class CreateExamSettingDto
     /// 是否在结果页显示题目分析
     /// </summary>
     [DisplayName("显示题目分析")]
-    [AmisSwitchField(DefaultValue = true)]
-    public bool EnableQuestionAnalysis { get; set; } = true;
+    [AmisSwitchField(DefaultValue = false)]
+    public bool EnableQuestionAnalysis { get; set; } = false;
 
     /// <summary>
     /// 参加考试的学生分组ID列表

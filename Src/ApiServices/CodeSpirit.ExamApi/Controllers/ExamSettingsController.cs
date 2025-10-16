@@ -107,6 +107,7 @@ public class ExamSettingsController : ApiControllerBase
     /// <returns>创建结果</returns>
     [HttpPost]
     [DisplayName("创建考试设置")]
+    [HeaderOperation("新增", "form", "fa-solid fa-plus", null, DialogSize = DialogSize.Full)]
     public async Task<ActionResult<ApiResponse<ExamSettingDto>>> CreateExamSetting([FromBody] CreateExamSettingDto createDto)
     {
         var result = await _examSettingService.CreateAsync(createDto);

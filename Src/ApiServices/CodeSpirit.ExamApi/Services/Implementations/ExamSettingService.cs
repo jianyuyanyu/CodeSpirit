@@ -5,10 +5,10 @@ using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Dtos.ExamSetting;
 using CodeSpirit.ExamApi.Extensions;
+using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
-using Microsoft.Extensions.Caching.Distributed;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -24,11 +24,19 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     private readonly IMapper _mapper;
     private readonly ILogger<ExamSettingService> _logger;
     private readonly ExamDbContext _context;
-    private readonly IDistributedCache _distributedCache;
+    private readonly IExamCacheService _examCacheService;
 
     /// <summary>
     /// 构造函数
     /// </summary>
+    /// <param name="repository">考试设置仓储</param>
+    /// <param name="examPaperRepository">试卷仓储</param>
+    /// <param name="studentGroupRepository">学生组仓储</param>
+    /// <param name="examSettingStudentGroupRepository">考试设置学生组仓储</param>
+    /// <param name="mapper">对象映射器</param>
+    /// <param name="logger">日志记录器</param>
+    /// <param name="context">数据库上下文</param>
+    /// <param name="examCacheService">考试缓存服务</param>
     public ExamSettingService(
         IRepository<ExamSetting> repository,
         IRepository<ExamPaper> examPaperRepository,
@@ -37,7 +45,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         IMapper mapper,
         ILogger<ExamSettingService> logger,
         ExamDbContext context,
-        IDistributedCache distributedCache)
+        IExamCacheService examCacheService)
         : base(repository, mapper)
     {
         _repository = repository;
@@ -47,7 +55,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         _mapper = mapper;
         _logger = logger;
         _context = context;
-        _distributedCache = distributedCache;
+        _examCacheService = examCacheService;
     }
 
     /// <summary>
@@ -259,6 +267,17 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         });
 
         await _repository.UpdateAsync(examSetting);
+        
+        // 清理相关缓存
+        try
+        {
+            await _examCacheService.ClearExamCacheAsync(id);
+            _logger.LogDebug("已清理考试设置更新后的缓存: {ExamId}", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "清理考试设置更新后的缓存失败: {ExamId}", id);
+        }
     }
 
     /// <summary>
@@ -282,6 +301,17 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         }
 
         await _repository.DeleteAsync(examSetting);
+        
+        // 清理相关缓存
+        try
+        {
+            await _examCacheService.ClearExamCacheAsync(id);
+            _logger.LogDebug("已清理考试设置删除后的缓存: {ExamId}", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "清理考试设置删除后的缓存失败: {ExamId}", id);
+        }
     }
 
     /// <summary>
@@ -321,6 +351,17 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
 
         examSetting.Status = ExamSettingStatus.Published;
         await _repository.UpdateAsync(examSetting);
+        
+        // 发布时预热缓存（仅预热即将开始的考试）
+        try
+        {
+            await _examCacheService.WarmupExamCacheAsync(id);
+            _logger.LogDebug("已尝试预热考试发布后的缓存: {ExamId}", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "预热考试发布后的缓存失败: {ExamId}", id);
+        }
     }
 
     /// <summary>
@@ -351,6 +392,17 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
 
         examSetting.Status = ExamSettingStatus.Draft;
         await _repository.UpdateAsync(examSetting);
+        
+        // 取消发布时清理缓存
+        try
+        {
+            await _examCacheService.ClearExamCacheAsync(id);
+            _logger.LogDebug("已清理考试取消发布后的缓存: {ExamId}", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "清理考试取消发布后的缓存失败: {ExamId}", id);
+        }
     }
 
     /// <summary>
@@ -439,7 +491,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
 
             if (examSetting == null)
             {
-                throw new ArgumentException("考试不存在", nameof(examId));
+                throw new BusinessException("考试不存在");
             }
 
             // 获取考试记录（包含答题记录，其中保存了用户的题目顺序）
@@ -450,7 +502,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
 
             if (examRecord == null)
             {
-                throw new InvalidOperationException("考试记录不存在");
+                throw new BusinessException("考试记录不存在");
             }
             
             // ⚠️ 如果AnswerRecords为空，可能是因为刚创建记录，需要重新加载
@@ -466,43 +518,16 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                 if (!examRecord.AnswerRecords.Any())
                 {
                     _logger.LogError("考试记录 {RecordId} 没有答题记录，无法构建题目列表", recordId);
-                    throw new InvalidOperationException("考试记录没有答题记录");
+                    throw new BusinessException("考试记录没有答题记录");
                 }
             }
 
-            // ✅ 优化：尝试从缓存获取题目数据
-            Dictionary<long, ClientExamQuestionDto> questionDataDict;
-            var cacheKey = Constants.CacheKeys.GetExamQuestionsDataKey(examId);
-            
-            try
+            // 使用统一的缓存组件获取题目数据
+            var questionDataDict = await _examCacheService.GetExamQuestionsDataWithCacheAsync(examId);
+            if (questionDataDict == null || !questionDataDict.Any())
             {
-                var cachedData = await _distributedCache.GetAsync<ExamQuestionsDataCacheDto>(cacheKey);
-                
-                if (cachedData != null && cachedData.QuestionsData.Any())
-                {
-                    _logger.LogDebug("从缓存获取题目数据，考试ID: {ExamId}, 题目数: {Count}", 
-                        examId, cachedData.QuestionsData.Count);
-                    questionDataDict = cachedData.QuestionsData;
-                }
-                else
-                {
-                    // 缓存未命中，从数据库加载
-                    _logger.LogDebug("缓存未命中，从数据库加载题目数据，考试ID: {ExamId}", examId);
-                    questionDataDict = await LoadQuestionsFromDatabaseAsync(examId);
-                    
-                    // 存入缓存
-                    var questionsCacheDto = new ExamQuestionsDataCacheDto { QuestionsData = questionDataDict };
-                    await _distributedCache.SetAsync(
-                        cacheKey,
-                        questionsCacheDto,
-                        TimeSpan.FromMinutes(30),
-                        TimeSpan.FromMinutes(15));
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "获取题目数据缓存时出错，将从数据库加载，考试ID: {ExamId}", examId);
-                questionDataDict = await LoadQuestionsFromDatabaseAsync(examId);
+                _logger.LogError("无法获取考试 {ExamId} 的题目数据", examId);
+                throw new BusinessException("无法获取考试题目数据");
             }
 
             // ✅ 使用已保存的 OrderNumber，而不是每次重新随机
@@ -564,54 +589,6 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         }
     }
 
-    /// <summary>
-    /// 从数据库加载题目数据（仅在缓存未命中时调用）
-    /// </summary>
-    /// <param name="examId">考试ID</param>
-    /// <returns>题目数据字典</returns>
-    private async Task<Dictionary<long, ClientExamQuestionDto>> LoadQuestionsFromDatabaseAsync(long examId)
-    {
-        var examSetting = await _context.ExamSettings
-            .Include(e => e.ExamPaper)
-            .ThenInclude(p => p.ExamPaperQuestions)
-            .ThenInclude(q => q.Question)
-            .Where(e => e.Id == examId)
-            .FirstOrDefaultAsync();
-
-        if (examSetting == null)
-        {
-            return new Dictionary<long, ClientExamQuestionDto>();
-        }
-
-        // 加载题目版本信息
-        foreach (var paperQuestion in examSetting.ExamPaper.ExamPaperQuestions)
-        {
-            await _context.Entry(paperQuestion)
-                .Reference(q => q.QuestionVersion)
-                .LoadAsync();
-        }
-
-        // 构建题目字典
-        return examSetting.ExamPaper.ExamPaperQuestions
-            .Where(q => q.Question != null && q.QuestionVersion != null)
-            .ToDictionary(
-                q => q.QuestionId,
-                q => new ClientExamQuestionDto
-                {
-                    Id = q.Id,
-                    QuestionId = q.QuestionId,
-                    QuestionVersionId = q.QuestionVersionId,
-                    Content = q.QuestionVersion.Content,
-                    Type = q.Question.Type.ToString(),
-                    Options = q.QuestionVersion.Options
-                        .Select(option => new OptionDisplayDto { Label = option, Value = option })
-                        .ToList(),
-                    Score = q.Score,
-                    IsRequired = q.IsRequired,
-                    SequenceNumber = 0  // 将由调用者设置
-                }
-            );
-    }
 
     /// <summary>
     /// 获取考试基本信息（客户端视图）
@@ -866,66 +843,4 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         }
     }
 
-    /// <summary>
-    /// 获取考试详情用于缓存（包含题目数据）
-    /// </summary>
-    /// <param name="examId">考试ID</param>
-    /// <returns>考试详情</returns>
-    public async Task<ClientExamDetailDto?> GetExamDetailForCacheAsync(long examId)
-    {
-        try
-        {
-            var examSetting = await _context.ExamSettings
-                .Include(e => e.ExamPaper)
-                .ThenInclude(p => p.ExamPaperQuestions)
-                .ThenInclude(q => q.Question)
-                .Where(e => e.Id == examId)
-                .FirstOrDefaultAsync();
-
-            if (examSetting == null)
-            {
-                return null;
-            }
-
-            // 加载题目版本信息
-            foreach (var paperQuestion in examSetting.ExamPaper.ExamPaperQuestions)
-            {
-                await _context.Entry(paperQuestion)
-                    .Reference(q => q.QuestionVersion)
-                    .LoadAsync();
-            }
-
-            // 构建题目列表（不包含用户特定的排序）
-            var questions = examSetting.ExamPaper.ExamPaperQuestions
-                .Select(pq => new ClientExamQuestionDto
-                {
-                    QuestionId = pq.QuestionId,
-                    Content = pq.QuestionVersion?.Content ?? pq.Question.Content,
-                    Type = pq.Question.Type.ToString(),
-                    QuestionVersionId = pq.QuestionVersionId,
-                    IsRequired = pq.IsRequired,
-                    TypeValue = (int)pq.Question.Type,
-                    Score = pq.Score,
-                    Options = pq.Question.Options?.Select((option, index) => new OptionDisplayDto
-                    {
-                        Label = option,
-                        Value = index.ToString()
-                    }).ToList() ?? new List<OptionDisplayDto>()
-                })
-                .ToList();
-
-            return new ClientExamDetailDto
-            {
-                Id = examSetting.Id,
-                Name = examSetting.Name,
-                Questions = questions,
-                RecordId = 0 // 这个值在实际使用时会被替换
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取考试详情用于缓存时发生错误，考试ID: {ExamId}", examId);
-            throw;
-        }
-    }
 }

@@ -1,3 +1,5 @@
+using CodeSpirit.Aggregator.Attributes;
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
@@ -8,7 +10,6 @@ using CodeSpirit.ExamApi.Dtos.PracticeSetting;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using CodeSpirit.Audit.Attributes;
 
 namespace CodeSpirit.ExamApi.Controllers.Client;
 
@@ -18,6 +19,7 @@ namespace CodeSpirit.ExamApi.Controllers.Client;
 [DisplayName("练习")]
 [Route("api/client/practice")]
 [NoAudit("练习系统客户端接口频繁调用，不需要记录审计日志")]
+[DisableAggregator]
 public class PracticeController : ApiControllerBase
 {
     private readonly IPracticeSettingService _practiceSettingService;

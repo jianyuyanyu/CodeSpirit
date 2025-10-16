@@ -1,19 +1,20 @@
-using CodeSpirit.ExamApi.Dtos.Client;
-using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json.Linq;
-using CodeSpirit.ExamApi.Services.Interfaces;
-using CodeSpirit.ExamApi.Dtos.Student;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Caching.Distributed;
-using System.Net;
+using CodeSpirit.Aggregator.Attributes;
+using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Attributes;
+using CodeSpirit.ExamApi.Dtos.Client;
+using CodeSpirit.ExamApi.Dtos.Student;
 using CodeSpirit.ExamApi.Services;
+using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
-using System.ComponentModel;
-using CodeSpirit.Core.Attributes;
-using CodeSpirit.Audit.Attributes;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.Extensions.Caching.Distributed;
+using Newtonsoft.Json.Linq;
+using System.ComponentModel;
+using System.Net;
+using System.Threading.Tasks;
 
 namespace CodeSpirit.ExamApi.Controllers.Client;
 
@@ -24,13 +25,13 @@ namespace CodeSpirit.ExamApi.Controllers.Client;
 [DisplayName("考试客户端")]
 [Route("api/exam/client")]
 [NoAudit("考试客户端接口频繁调用，不需要记录审计日志")]
+[DisableAggregator]
 public class IndexController : ApiControllerBase
 {
     private readonly IClientService _clientService;
     private readonly ILogger<IndexController> _logger;
     private readonly ICurrentUser _currentUser;
     private readonly IStudentService _studentService;
-    private readonly IDistributedCache _distributedCache;
     private readonly IClientIpService _clientIpService;
     private const string CLIENT_IP_HEADER = "X-Client-IP";
 
@@ -41,21 +42,18 @@ public class IndexController : ApiControllerBase
     /// <param name="logger">日志服务</param>
     /// <param name="currentUser">当前用户</param>
     /// <param name="studentService">考生服务</param>
-    /// <param name="distributedCache">分布式缓存服务</param>
     /// <param name="clientIpService">客户端IP地址获取服务</param>
     public IndexController(
         IClientService clientService,
         ILogger<IndexController> logger,
         ICurrentUser currentUser,
         IStudentService studentService,
-        IDistributedCache distributedCache,
         IClientIpService clientIpService)
     {
         _clientService = clientService;
         _logger = logger;
         _currentUser = currentUser;
         _studentService = studentService;
-        _distributedCache = distributedCache;
         _clientIpService = clientIpService;
     }
 
@@ -241,12 +239,10 @@ public class IndexController : ApiControllerBase
                     if (answerDict.TryGetValue(item.QuestionId, out var answer))
                     {
                         item.Answer = answer;
-                        _logger.LogDebug("题目 {QuestionId} 匹配到答案: {Answer}", item.QuestionId, answer);
                     }
                     else
                     {
                         item.Answer = string.Empty;
-                        _logger.LogDebug("题目 {QuestionId} 未找到答案", item.QuestionId);
                     }
                 }
 

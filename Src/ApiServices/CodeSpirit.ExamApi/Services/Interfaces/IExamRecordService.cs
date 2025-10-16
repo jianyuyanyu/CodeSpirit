@@ -96,7 +96,7 @@ public interface IExamRecordService : IBaseCRUDService<ExamRecord, ExamRecordDto
     /// <param name="studentId">学生ID</param>
     /// <param name="answers">可选的答案列表，用于最后提交前保存</param>
     /// <returns>提交结果和是否可查看结果</returns>
-    Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto> answers = null);
+    Task<(bool Success, bool EnableViewResult)> SubmitExamForClientAsync(long recordId, long studentId, List<ClientExamAnswerDto>? answers = null);
     
     /// <summary>
     /// 获取用户的考试历史记录

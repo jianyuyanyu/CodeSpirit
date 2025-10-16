@@ -60,11 +60,17 @@ public interface IExamCacheService
     Task UpdateUserAnswersCacheAsync(long recordId, long userId, List<ClientExamAnswerDto> newAnswers);
 
     /// <summary>
-    /// 预热考试缓存
+    /// 预热考试缓存（仅预热即将开始的考试）
     /// </summary>
     /// <param name="examId">考试ID</param>
     /// <returns>预热任务</returns>
     Task WarmupExamCacheAsync(long examId);
+
+    /// <summary>
+    /// 批量预热即将开始的考试缓存
+    /// </summary>
+    /// <returns>预热任务</returns>
+    Task WarmupUpcomingExamsCacheAsync();
 
     /// <summary>
     /// 清空考试缓存

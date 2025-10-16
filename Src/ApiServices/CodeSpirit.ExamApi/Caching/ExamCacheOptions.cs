@@ -1,6 +1,7 @@
 using CodeSpirit.Caching.Keys;
 using CodeSpirit.Caching.Models;
 using CodeSpirit.ExamApi.Dtos.Client;
+using CodeSpirit.ExamApi.Dtos.Student;
 
 namespace CodeSpirit.ExamApi.Caching;
 
@@ -35,9 +36,10 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
-            SlidingExpiration = TimeSpan.FromMinutes(15),
-            Level = CacheLevel.Both
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(300),
+            SlidingExpiration = TimeSpan.FromMinutes(90),
+            Level = CacheLevel.L2Only, // 题目数据量大，仅使用分布式缓存
+            EnableBreakthroughProtection = true // 启用缓存击穿保护
         };
         
         public IReadOnlyList<string> Tags => [$"exam:{Id}", "questions"];
@@ -52,9 +54,10 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
-            SlidingExpiration = TimeSpan.FromMinutes(5),
-            Level = CacheLevel.Both
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(60),
+            SlidingExpiration = TimeSpan.FromMinutes(15),
+            Level = CacheLevel.L2Only,
+            EnableBreakthroughProtection = true
         };
         
         public IReadOnlyList<string> Tags => [$"exam:{ExamId}", $"user:{UserId}"];
@@ -69,7 +72,7 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(120),
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(300),
             SlidingExpiration = TimeSpan.FromMinutes(30),
             Level = CacheLevel.L2Only
         };
@@ -86,12 +89,46 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(60),
             Level = CacheLevel.Both,
             EnableBreakthroughProtection = true
         };
         
         public IReadOnlyList<string> Tags => [$"user:{UserId}", "profile"];
     }
+    
+    /// <summary>
+    /// 学生信息缓存键
+    /// </summary>
+    public record StudentInfo(long UserId) : ICacheKey<StudentDto>
+    {
+        public string Key => $"{nameof(ExamCacheOptions)}_{nameof(StudentInfo)}_{UserId}";
+        
+        public CacheOptions Options => new()
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(2),
+            SlidingExpiration = TimeSpan.FromMinutes(30),
+            Level = CacheLevel.Both,
+            EnableBreakthroughProtection = true
+        };
+        
+        public IReadOnlyList<string> Tags => [$"user:{UserId}", "student"];
+    }
+    
+    ///// <summary>
+    ///// 题目预览会话缓存键
+    ///// </summary>
+    //public record QuestionPreviewSession(string SessionId) : ICacheKey<object>
+    //{
+    //    public string Key => $"{nameof(ExamCacheOptions)}_{nameof(QuestionPreviewSession)}_{SessionId}";
+        
+    //    public CacheOptions Options => new()
+    //    {
+    //        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(2),
+    //        Level = CacheLevel.L2Only // 临时会话数据只存储在分布式缓存中
+    //    };
+        
+    //    public IReadOnlyList<string> Tags => [$"session:{SessionId}", "preview"];
+    //}
 }
 

@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using CodeSpirit.ExamApi.Caching;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
+using CodeSpirit.ExamApi.Data;
 
 namespace CodeSpirit.ExamApi.Services;
 
@@ -21,38 +22,37 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
 {
     private readonly ICacheService _cacheService;
     private readonly ICacheWarmupService _warmupService;
-    private readonly IExamSettingService _examSettingService;
     private readonly IRepository<ExamRecord> _examRecordRepository;
     private readonly IRepository<ExamAnswerRecord> _answerRecordRepository;
-    private readonly IStudentService _studentService;
     private readonly ILogger<ExamCacheService> _logger;
+    private readonly ExamDbContext _context;
+    
+    // 缓存预热配置
+    private static readonly TimeSpan WarmupWindowBeforeStart = TimeSpan.FromMinutes(30); // 考试开始前30分钟开始预热
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="cacheService">缓存服务</param>
     /// <param name="warmupService">缓存预热服务</param>
-    /// <param name="examSettingService">考试设置服务</param>
     /// <param name="examRecordRepository">考试记录仓储</param>
     /// <param name="answerRecordRepository">答题记录仓储</param>
-    /// <param name="studentService">学生服务</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="context">数据库上下文</param>
     public ExamCacheService(
         ICacheService cacheService,
         ICacheWarmupService warmupService,
-        IExamSettingService examSettingService,
         IRepository<ExamRecord> examRecordRepository,
         IRepository<ExamAnswerRecord> answerRecordRepository,
-        IStudentService studentService,
-        ILogger<ExamCacheService> logger)
+        ILogger<ExamCacheService> logger,
+        ExamDbContext context)
     {
         _cacheService = cacheService;
         _warmupService = warmupService;
-        _examSettingService = examSettingService;
         _examRecordRepository = examRecordRepository;
         _answerRecordRepository = answerRecordRepository;
-        _studentService = studentService;
         _logger = logger;
+        _context = context;
     }
 
     /// <summary>
@@ -68,10 +68,10 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             {
                 _logger.LogDebug("从数据库获取考试基本信息: {ExamId}", examId);
                 
-                // 使用GetExamInfoForWarmupAsync方法，它正确加载了ExamPaper导航属性
-                var examInfo = await _examSettingService.GetExamInfoForWarmupAsync(examId);
+                // 直接从数据库加载考试基本信息，避免依赖其他服务
+                var examBasicInfo = await LoadExamBasicInfoFromDatabaseAsync(examId);
                 
-                return examInfo;
+                return examBasicInfo;
             });
     }
 
@@ -87,17 +87,11 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             async () =>
             {
                 _logger.LogDebug("从数据库获取考试题目数据: {ExamId}", examId);
-                var examDetail = await _examSettingService.GetExamDetailForCacheAsync(examId);
                 
-                if (examDetail?.Questions == null)
-                {
-                    return null;
-                }
-
-                return examDetail.Questions.ToDictionary(
-                    q => q.QuestionId,
-                    q => q
-                );
+                // 直接从数据库加载题目数据，避免循环依赖
+                var questionsDict = await LoadQuestionsFromDatabaseAsync(examId);
+                
+                return questionsDict;
             });
     }
 
@@ -115,8 +109,11 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             {
                 _logger.LogDebug("从数据库获取用户考试记录: ExamId={ExamId}, UserId={UserId}", examId, userId);
                 
-                // 首先获取学生信息
-                var student = await _studentService.GetByUserIdAsync(userId);
+                // 直接查询学生信息，避免依赖其他服务
+                var student = await _context.Students
+                    .Where(s => s.UserId == userId)
+                    .FirstOrDefaultAsync();
+                    
                 if (student == null)
                 {
                     return null;
@@ -302,7 +299,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     }
 
     /// <summary>
-    /// 预热考试缓存
+    /// 预热考试缓存（仅预热即将开始的考试）
     /// </summary>
     /// <param name="examId">考试ID</param>
     /// <returns>预热任务</returns>
@@ -310,9 +307,36 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     {
         _logger.LogInformation("开始预热考试缓存: {ExamId}", examId);
 
-        // 使用普通缓存服务进行预热，确保键生成逻辑一致
         try
         {
+            // 首先检查考试是否即将开始
+            var examSetting = await _context.ExamSettings
+                .Where(e => e.Id == examId)
+                .Select(e => new { e.StartTime, e.EndTime, e.Status })
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                _logger.LogWarning("考试不存在，跳过缓存预热: {ExamId}", examId);
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+
+            // 检查考试是否即将开始（开始前预热窗口时间内）或正在进行中
+            var isUpcoming = examSetting.StartTime <= now.Add(WarmupWindowBeforeStart) && examSetting.StartTime > now;
+            var isOngoing = now >= examSetting.StartTime && now <= examSetting.EndTime;
+
+            if (!isUpcoming && !isOngoing)
+            {
+                _logger.LogInformation("考试未在预热窗口期内，跳过缓存预热: {ExamId}, 开始时间: {StartTime}, 当前时间: {Now}", 
+                    examId, examSetting.StartTime, now);
+                return;
+            }
+
+            _logger.LogInformation("考试在预热窗口期内，开始预热缓存: {ExamId}, 开始时间: {StartTime}", 
+                examId, examSetting.StartTime);
+
             // 预热考试基本信息
             await GetExamBasicInfoWithCacheAsync(examId);
             _logger.LogDebug("考试基本信息预热完成: {ExamId}", examId);
@@ -326,6 +350,59 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
         catch (Exception ex)
         {
             _logger.LogError(ex, "考试缓存预热失败: {ExamId}", examId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 批量预热即将开始的考试缓存
+    /// </summary>
+    /// <returns>预热任务</returns>
+    public async Task WarmupUpcomingExamsCacheAsync()
+    {
+        _logger.LogInformation("开始批量预热即将开始的考试缓存");
+
+        try
+        {
+            var now = DateTime.UtcNow;
+            var warmupStartTime = now;
+            var warmupEndTime = now.Add(WarmupWindowBeforeStart);
+
+            // 查找即将开始的考试（开始时间在预热窗口内）
+            var upcomingExams = await _context.ExamSettings
+                .Where(e => e.Status == ExamSettingStatus.Published && 
+                           e.StartTime >= warmupStartTime && 
+                           e.StartTime <= warmupEndTime)
+                .Select(e => new { e.Id, e.StartTime, e.Name })
+                .ToListAsync();
+
+            if (!upcomingExams.Any())
+            {
+                _logger.LogInformation("没有找到即将开始的考试，跳过批量预热");
+                return;
+            }
+
+            _logger.LogInformation("找到 {Count} 个即将开始的考试，开始批量预热", upcomingExams.Count);
+
+            var warmupTasks = upcomingExams.Select(async exam =>
+            {
+                try
+                {
+                    await WarmupExamCacheAsync(exam.Id);
+                    _logger.LogDebug("考试缓存预热成功: {ExamId} - {ExamName}", exam.Id, exam.Name);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "考试缓存预热失败: {ExamId} - {ExamName}", exam.Id, exam.Name);
+                }
+            });
+
+            await Task.WhenAll(warmupTasks);
+            _logger.LogInformation("批量预热即将开始的考试缓存完成，处理了 {Count} 个考试", upcomingExams.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "批量预热即将开始的考试缓存时发生错误");
             throw;
         }
     }
@@ -365,6 +442,111 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     {
         await _cacheService.RemoveAsync(new ExamCacheOptions.UserRecord(examId, userId));
         _logger.LogDebug("已清除用户考试记录缓存: ExamId={ExamId}, UserId={UserId}", examId, userId);
+    }
+
+    /// <summary>
+    /// 从数据库加载题目数据（仅在缓存未命中时调用）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <returns>题目数据字典</returns>
+    private async Task<Dictionary<long, ClientExamQuestionDto>?> LoadQuestionsFromDatabaseAsync(long examId)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .ThenInclude(p => p.ExamPaperQuestions)
+                .ThenInclude(q => q.Question)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                _logger.LogWarning("考试不存在: {ExamId}", examId);
+                return null;
+            }
+
+            // 加载题目版本信息
+            foreach (var paperQuestion in examSetting.ExamPaper.ExamPaperQuestions)
+            {
+                await _context.Entry(paperQuestion)
+                    .Reference(q => q.QuestionVersion)
+                    .LoadAsync();
+            }
+
+            // 构建题目字典
+            var questionsDict = examSetting.ExamPaper.ExamPaperQuestions
+                .Where(q => q.Question != null && q.QuestionVersion != null)
+                .ToDictionary(
+                    q => q.QuestionId,
+                    q => new ClientExamQuestionDto
+                    {
+                        Id = q.Id,
+                        QuestionId = q.QuestionId,
+                        QuestionVersionId = q.QuestionVersionId,
+                        Content = q.QuestionVersion.Content,
+                        Type = q.Question.Type.ToString(),
+                        Options = q.QuestionVersion.Options
+                            .Select(option => new OptionDisplayDto { Label = option, Value = option })
+                            .ToList(),
+                        Score = q.Score,
+                        IsRequired = q.IsRequired,
+                        SequenceNumber = 0  // 将由调用者设置
+                    }
+                );
+
+            _logger.LogDebug("成功从数据库加载题目数据: ExamId={ExamId}, 题目数={Count}", examId, questionsDict.Count);
+            return questionsDict;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从数据库加载题目数据时发生错误: ExamId={ExamId}", examId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 从数据库加载考试基本信息（仅在缓存未命中时调用）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <returns>考试基本信息</returns>
+    private async Task<ExamBasicInfoCacheDto?> LoadExamBasicInfoFromDatabaseAsync(long examId)
+    {
+        try
+        {
+            var examSetting = await _context.ExamSettings
+                .Include(e => e.ExamPaper)
+                .Where(e => e.Id == examId)
+                .FirstOrDefaultAsync();
+
+            if (examSetting == null)
+            {
+                _logger.LogWarning("考试不存在: {ExamId}", examId);
+                return null;
+            }
+
+            var basicInfo = new ExamBasicInfoCacheDto
+            {
+                Id = examSetting.Id,
+                Name = examSetting.Name,
+                Description = examSetting.Description,
+                Duration = examSetting.Duration,
+                StartTime = examSetting.StartTime,
+                EndTime = examSetting.EndTime,
+                TotalScore = examSetting.ExamPaper?.TotalScore ?? 0,
+                AllowedScreenSwitchCount = examSetting.AllowedScreenSwitchCount,
+                EnableViewResult = examSetting.EnableViewResult,
+                MinExamTime = examSetting.MinExamTime
+            };
+
+            _logger.LogDebug("成功从数据库加载考试基本信息: ExamId={ExamId}, Name={Name}", examId, basicInfo.Name);
+            return basicInfo;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从数据库加载考试基本信息时发生错误: ExamId={ExamId}", examId);
+            throw;
+        }
     }
 
 }

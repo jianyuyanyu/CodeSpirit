@@ -140,11 +140,32 @@ public static class ServiceCollectionExtensions
 
             options.AddPolicy("AllowSpecificOriginsWithCredentials", builder =>
             {
-                builder.WithOrigins(allowedOrigins);
-                
-                if (allowWildcardSubdomains)
+                // 当启用凭据时，不能使用通配符域名，必须明确指定域名
+                if (allowCredentials)
                 {
-                    builder.SetIsOriginAllowedToAllowWildcardSubdomains();
+                    // 过滤掉通配符域名，只保留明确的域名
+                    var explicitOrigins = allowedOrigins.Where(origin => !origin.Contains("*")).ToArray();
+                    if (explicitOrigins.Length > 0)
+                    {
+                        builder.WithOrigins(explicitOrigins);
+                    }
+                    else
+                    {
+                        // 如果没有明确的域名，则使用默认的安全域名
+                        builder.WithOrigins("http://localhost:3000", "https://localhost:7120");
+                    }
+                    
+                    builder.AllowCredentials();
+                }
+                else
+                {
+                    // 不使用凭据时，可以使用通配符域名
+                    builder.WithOrigins(allowedOrigins);
+                    
+                    if (allowWildcardSubdomains)
+                    {
+                        builder.SetIsOriginAllowedToAllowWildcardSubdomains();
+                    }
                 }
                 
                 if (allowAnyHeader)
@@ -171,11 +192,6 @@ public static class ServiceCollectionExtensions
                     {
                         builder.WithMethods(allowedMethods);
                     }
-                }
-                
-                if (allowCredentials)
-                {
-                    builder.AllowCredentials();
                 }
             });
         });

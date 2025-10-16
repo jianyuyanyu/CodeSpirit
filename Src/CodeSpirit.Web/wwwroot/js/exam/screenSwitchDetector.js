@@ -209,7 +209,7 @@
 
                 try {
                     // 发送切屏记录到服务器
-                    const response = await fetch(`/exam/api/exam/client/${recordId}/screen-switch`, {
+                    const response = await fetch(window.ExamApiManager.transformUrl(`/exam/api/exam/client/${recordId}/screen-switch`), {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

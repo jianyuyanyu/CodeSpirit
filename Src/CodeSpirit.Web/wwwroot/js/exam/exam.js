@@ -860,7 +860,7 @@
             answer: answer
         };
 
-        fetch(`/exam/api/exam/client/${recordId}/save-answer`, {
+        fetch(window.ExamApiManager.transformUrl(`/exam/api/exam/client/${recordId}/save-answer`), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1071,7 +1071,7 @@
             console.log('[提交考试] 正在同步答案...', answersToSync);
 
             // 使用批量保存接口一次性提交所有未同步的答案
-            fetch(`/exam/api/exam/client/${recordId}/save-answers`, {
+            fetch(window.ExamApiManager.transformUrl(`/exam/api/exam/client/${recordId}/save-answers`), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1147,7 +1147,7 @@
         }
 
         // 提交考试
-        fetch(`/exam/api/exam/client/${recordId}/submit`, {
+        fetch(window.ExamApiManager.transformUrl(`/exam/api/exam/client/${recordId}/submit`), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

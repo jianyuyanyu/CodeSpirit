@@ -32,7 +32,7 @@
         try {
             console.log('[我的练习] 开始加载练习统计数据');
             
-            const response = await fetch('/exam/api/client/practice/analysis', {
+            const response = await fetch(window.ExamApiManager.transformUrl('/exam/api/client/practice/analysis'), {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -134,7 +134,7 @@
                 console.log('[我的练习] 添加状态筛选:', statusFilter);
             }
 
-            const url = `/exam/api/client/practice/records?${queryParams}`;
+            const url = window.ExamApiManager.transformUrl(`/exam/api/client/practice/records?${queryParams}`);
             console.log('[我的练习] 请求URL:', url);
 
             const response = await fetch(url, {

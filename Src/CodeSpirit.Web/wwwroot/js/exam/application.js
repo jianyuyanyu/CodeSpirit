@@ -40,40 +40,10 @@
     
     /**
      * 通用API请求函数
+     * 使用ExamApiManager进行统一的API请求处理
      */
     async function apiRequest(url, options = {}) {
-        try {
-            const token = TokenManager.getToken();
-            const response = await fetch(url, {
-                ...options,
-                headers: {
-                    'Authorization': token ? 'Bearer ' + token : '',
-                    'TenantId': window.tenantId,
-                    'X-Forwarded-With': 'CodeSpirit',
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
-            });
-            
-            if (response.status === 401) {
-                window.location.href = `/${window.tenantId}/exam/login`;
-                throw new Error('认证失败，请重新登录');
-            }
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            if (result.status !== 0) {
-                throw new Error(result.msg || '请求失败');
-            }
-            
-            return result.data;
-        } catch (error) {
-            console.error(`API请求失败 [${url}]:`, error);
-            throw error;
-        }
+        return window.ExamApiManager.request(url, options);
     }
     
     /**

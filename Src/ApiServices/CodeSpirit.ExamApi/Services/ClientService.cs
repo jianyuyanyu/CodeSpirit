@@ -9,10 +9,6 @@ using CodeSpirit.ExamApi.Extensions;
 using CodeSpirit.ExamApi.Constants;
 using System.Collections.Concurrent;
 using System.Net;
-using CodeSpirit.Caching.Abstractions;
-using CodeSpirit.Caching.Extensions;
-using CodeSpirit.Caching.Models;
-using CodeSpirit.ExamApi.Caching;
 
 namespace CodeSpirit.ExamApi.Services;
 
@@ -25,7 +21,6 @@ public class ClientService : IClientService, IScopedDependency
     private readonly IExamRecordService _examRecordService;
     private readonly IStudentService _studentService;
     private readonly IExamCacheService _examCacheService;
-    private readonly ICacheService _cacheService;
     private readonly ILogger<ClientService> _logger;
     // 移除重复的缓存机制，统一使用 ExamCacheService
 
@@ -36,21 +31,18 @@ public class ClientService : IClientService, IScopedDependency
     /// <param name="examRecordService">考试记录服务</param>
     /// <param name="studentService">学生服务</param>
     /// <param name="examCacheService">考试缓存服务</param>
-    /// <param name="cacheService">通用缓存服务</param>
     /// <param name="logger">日志记录器</param>
     public ClientService(
         IExamSettingService examSettingService,
         IExamRecordService examRecordService,
         IStudentService studentService,
         IExamCacheService examCacheService,
-        ICacheService cacheService,
         ILogger<ClientService> logger)
     {
         _examSettingService = examSettingService;
         _examRecordService = examRecordService;
         _studentService = studentService;
         _examCacheService = examCacheService;
-        _cacheService = cacheService;
         _logger = logger;
     }
 
@@ -63,15 +55,13 @@ public class ClientService : IClientService, IScopedDependency
     {
         try
         {
-            // 使用统一缓存服务获取学生信息
-            return await _cacheService.GetOrSetAsync(
-                new ExamCacheOptions.StudentInfo(userId),
-                async () => await _studentService.GetByUserIdAsync(userId));
+            // 使用统一的考试缓存服务获取学生信息
+            return await _examCacheService.GetStudentInfoWithCacheAsync(userId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "获取学生信息时出错，用户ID: {UserId}", userId);
-            // 缓存失败时直接从数据库获取
+            // 缓存失败时直接从学生服务获取
             return await _studentService.GetByUserIdAsync(userId);
         }
     }
@@ -442,25 +432,8 @@ public class ClientService : IClientService, IScopedDependency
     /// <returns>考生个人信息</returns>
     public async Task<ClientProfileDto> GetStudentProfileAsync(long userId)
     {
-        // 获取学生实体
-        var student = await GetStudentByUserIdAsync(userId);
-        if (student == null)
-        {
-            throw new InvalidOperationException("未找到考生信息");
-        }
-
-        return new ClientProfileDto
-        {
-            Id = student.Id,
-            UserId = student.UserId,
-            Name = student.Name,
-            StudentNumber = student.StudentNumber,
-            IdNo = student.IdNo,
-            Gender = student.Gender.GetDisplayName(),
-            AdmissionTicket = student.AdmissionTicket,
-            PhoneNumber = student.PhoneNumber,
-            StudentGroups = student.StudentGroups ?? new List<string>()
-        };
+        // 直接调用缓存版本，保持接口兼容性
+        return await GetStudentProfileWithCacheAsync(userId);
     }
 
     /// <summary>
@@ -470,10 +443,8 @@ public class ClientService : IClientService, IScopedDependency
     /// <returns>考生个人信息</returns>
     public async Task<ClientProfileDto> GetStudentProfileWithCacheAsync(long userId)
     {
-        // 使用强类型缓存键，配置已在键定义中
-        return await _cacheService.GetOrSetAsync(
-            new ExamCacheOptions.ClientProfile(userId),
-            async () => await GetStudentProfileAsync(userId));
+        // 使用统一的考试缓存服务获取客户端档案信息
+        return await _examCacheService.GetClientProfileWithCacheAsync(userId);
     }
 
     /// <summary>

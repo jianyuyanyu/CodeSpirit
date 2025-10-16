@@ -40,7 +40,8 @@
             logoUrl: '@SiteOptions.Value.LogoUrl',
             cdnEnabled: @(cdnEnabled ? "true" : "false"),
             cdnUrl: '@SiteOptions.Value.CdnUrl',
-            resourceBase: '@resourceBase'
+            resourceBase: '@resourceBase',
+            apiBaseUrl: '@SiteOptions.Value.ApiBaseUrl'
         };
     </script>
 
@@ -55,6 +56,8 @@
         @RenderBody()  <!-- 页面主体内容 -->
     </div>
     <resource path="js/token-manager.js" type="js" />
+    <!-- 考试系统API请求管理器 TODO:迁移到考试系统模板页-->
+    <resource path="js/exam/api-manager.js" type="js" />
     @await RenderSectionAsync("Scripts", required: false)
     <script src="_framework/blazor.server.js"></script>
     <resource path="js/chat.js" type="js" />

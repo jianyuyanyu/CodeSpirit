@@ -8,6 +8,7 @@ using Microsoft.Extensions.Primitives;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -249,43 +250,58 @@ public class AuditMiddleware
                     _logger.LogInformation("尝试从路由数据提取 - 路由数据: {RouteData}",
                         routeData != null ? "存在" : "不存在");
 
-                    if (routeData != null &&
-                        routeData.Values.TryGetValue("controller", out var controllerName) &&
-                        routeData.Values.TryGetValue("action", out var actionName))
+                    if (routeData != null)
                     {
-                        var controllerStr = controllerName?.ToString();
-                        var actionStr = actionName?.ToString();
-
-                        _logger.LogInformation("从路由数据提取到控制器和操作 - 控制器: {Controller}, 操作: {Action}",
-                            controllerStr, actionStr);
-
-                        if (!string.IsNullOrEmpty(controllerStr) && !string.IsNullOrEmpty(actionStr))
+                        // 记录所有路由值以便调试
+                        _logger.LogDebug("路由数据详情:");
+                        foreach (var kvp in routeData.Values)
                         {
-                            // 尝试获取控制器类型
-                            var controllerType = FindControllerType(controllerStr);
-                            _logger.LogInformation("查找控制器类型 - 结果: {Result}",
-                                controllerType != null ? "成功" : "失败");
+                            _logger.LogDebug("  {Key}: {Value}", kvp.Key, kvp.Value);
+                        }
 
-                            if (controllerType != null)
+                        if (routeData.Values.TryGetValue("controller", out var controllerName) &&
+                            routeData.Values.TryGetValue("action", out var actionName))
+                        {
+                            var controllerStr = controllerName?.ToString();
+                            var actionStr = actionName?.ToString();
+
+                            _logger.LogInformation("从路由数据提取到控制器和操作 - 控制器: {Controller}, 操作: {Action}",
+                                controllerStr, actionStr);
+
+                            if (!string.IsNullOrEmpty(controllerStr) && !string.IsNullOrEmpty(actionStr))
                             {
-                                // 尝试获取操作方法
-                                var methodInfo = FindActionMethod(controllerType, actionStr);
-                                _logger.LogInformation("查找操作方法 - 结果: {Result}",
-                                    methodInfo != null ? "成功" : "失败");
+                                // 尝试获取控制器类型
+                                var controllerType = FindControllerType(controllerStr);
+                                _logger.LogInformation("查找控制器类型 - 结果: {Result}",
+                                    controllerType != null ? "成功" : "失败");
 
-                                if (methodInfo != null)
+                                if (controllerType != null)
                                 {
-                                    controllerActionDescriptor = new AuditControllerActionDescriptor
-                                    {
-                                        ControllerName = controllerStr,
-                                        ActionName = actionStr,
-                                        ControllerTypeInfo = controllerType.GetTypeInfo(),
-                                        MethodInfo = methodInfo
-                                    };
+                                    // 尝试获取操作方法
+                                    var methodInfo = FindActionMethod(controllerType, actionStr);
+                                    _logger.LogInformation("查找操作方法 - 结果: {Result}",
+                                        methodInfo != null ? "成功" : "失败");
 
-                                    _logger.LogInformation("成功创建控制器操作描述符");
+                                    if (methodInfo != null)
+                                    {
+                                        controllerActionDescriptor = new AuditControllerActionDescriptor
+                                        {
+                                            ControllerName = controllerStr,
+                                            ActionName = actionStr,
+                                            ControllerTypeInfo = controllerType.GetTypeInfo(),
+                                            MethodInfo = methodInfo
+                                        };
+
+                                        _logger.LogInformation("成功创建控制器操作描述符");
+                                    }
                                 }
                             }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("路由数据中缺少控制器或操作信息 - 控制器存在: {ControllerExists}, 操作存在: {ActionExists}",
+                                routeData.Values.ContainsKey("controller"),
+                                routeData.Values.ContainsKey("action"));
                         }
                     }
                 }
@@ -313,30 +329,30 @@ public class AuditMiddleware
                     controllerActionDescriptor.ControllerName,
                     controllerActionDescriptor.ActionName);
 
-            // 检查是否有NoAudit特性（方法级别优先于控制器级别）
-            var methodNoAuditAttr = actionMethodInfo.GetCustomAttribute<NoAuditAttribute>();
-            var controllerNoAuditAttr = controllerType.GetCustomAttribute<NoAuditAttribute>();
+                // 检查是否有NoAudit特性（方法级别优先于控制器级别）
+                var methodNoAuditAttr = actionMethodInfo.GetCustomAttribute<NoAuditAttribute>();
+                var controllerNoAuditAttr = controllerType.GetCustomAttribute<NoAuditAttribute>();
 
-            _logger.LogInformation("NoAudit特性检查 - 控制器: {Controller}, 操作: {Action}, 控制器类型: {ControllerType}, 方法NoAudit: {MethodNoAudit}, 控制器NoAudit: {ControllerNoAudit}",
-                controllerActionDescriptor.ControllerName,
-                controllerActionDescriptor.ActionName,
-                controllerType.FullName,
-                methodNoAuditAttr != null,
-                controllerNoAuditAttr != null);
-
-            if (methodNoAuditAttr != null || controllerNoAuditAttr != null)
-            {
-                var noAuditAttr = methodNoAuditAttr ?? controllerNoAuditAttr;
-                var reason = !string.IsNullOrEmpty(noAuditAttr.Reason) ? $" - 原因: {noAuditAttr.Reason}" : "";
-                
-                _logger.LogInformation("跳过审计 - 控制器或方法标记了NoAudit特性: {Controller}.{Action}{Reason}",
+                _logger.LogInformation("NoAudit特性检查 - 控制器: {Controller}, 操作: {Action}, 控制器类型: {ControllerType}, 方法NoAudit: {MethodNoAudit}, 控制器NoAudit: {ControllerNoAudit}",
                     controllerActionDescriptor.ControllerName,
                     controllerActionDescriptor.ActionName,
-                    reason);
-                
-                shouldSkipAudit = true;
-                // 不要在这里return，让代码继续执行到finally块，在那里通过shouldSkipAudit标志决定是否记录审计日志
-            }
+                    controllerType.FullName,
+                    methodNoAuditAttr != null,
+                    controllerNoAuditAttr != null);
+
+                if (methodNoAuditAttr != null || controllerNoAuditAttr != null)
+                {
+                    var noAuditAttr = methodNoAuditAttr ?? controllerNoAuditAttr;
+                    var reason = !string.IsNullOrEmpty(noAuditAttr.Reason) ? $" - 原因: {noAuditAttr.Reason}" : "";
+                    
+                    _logger.LogInformation("跳过审计 - 控制器或方法标记了NoAudit特性: {Controller}.{Action}{Reason}",
+                        controllerActionDescriptor.ControllerName,
+                        controllerActionDescriptor.ActionName,
+                        reason);
+                    
+                    shouldSkipAudit = true;
+                    // 不要在这里return，让代码继续执行到finally块，在那里通过shouldSkipAudit标志决定是否记录审计日志
+                }
 
                 // 只有在不跳过审计的情况下才处理审计特性
                 if (!shouldSkipAudit)
@@ -782,6 +798,8 @@ public class AuditMiddleware
     /// </summary>
     private Type? FindAndCacheControllerType(string controllerName)
     {
+        _logger.LogDebug("开始查找控制器类型: {ControllerName}", controllerName);
+        
         // 优先搜索应用程序程序集
         var appAssemblies = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.FullName?.StartsWith("Microsoft.") == true &&
@@ -790,22 +808,54 @@ public class AuditMiddleware
                        !a.IsDynamic)
             .ToList();
 
+        _logger.LogDebug("搜索控制器类型，程序集数量: {AssemblyCount}", appAssemblies.Count);
+
         foreach (var assembly in appAssemblies)
         {
             try
             {
-                // 使用更高效的类型查找
+                _logger.LogTrace("在程序集 {Assembly} 中搜索控制器 {ControllerName}", 
+                    assembly.GetName().Name, controllerName);
+
+                // 改进的类型查找逻辑，支持多种命名模式
                 var controllerType = assembly.GetTypes()
                     .FirstOrDefault(type => 
-                        (type.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase) ||
-                         type.Name.Equals(controllerName, StringComparison.OrdinalIgnoreCase)) &&
-                        type.IsClass && !type.IsAbstract);
+                    {
+                        // 检查类型是否为控制器
+                        if (!type.IsClass || type.IsAbstract || !type.Name.EndsWith("Controller"))
+                            return false;
+
+                        // 多种匹配模式：
+                        // 1. 完全匹配控制器名称（如 "Index" 匹配 "IndexController"）
+                        var typeControllerName = type.Name.Substring(0, type.Name.Length - "Controller".Length);
+                        if (typeControllerName.Equals(controllerName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogTrace("找到匹配的控制器类型: {ControllerType} (模式1: 控制器名称匹配)", type.FullName);
+                            return true;
+                        }
+
+                        // 2. 完整类名匹配（如 "IndexController" 匹配 "IndexController"）
+                        if (type.Name.Equals($"{controllerName}Controller", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogTrace("找到匹配的控制器类型: {ControllerType} (模式2: 完整类名匹配)", type.FullName);
+                            return true;
+                        }
+
+                        // 3. 直接类名匹配（向后兼容）
+                        if (type.Name.Equals(controllerName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogTrace("找到匹配的控制器类型: {ControllerType} (模式3: 直接类名匹配)", type.FullName);
+                            return true;
+                        }
+
+                        return false;
+                    });
 
                 if (controllerType != null)
                 {
                     _controllerTypeCache.TryAdd(controllerName, new WeakReference<Type>(controllerType));
-                    _logger.LogDebug("在程序集 {Assembly} 中发现控制器 {Controller}", 
-                        assembly.GetName().Name, controllerType.Name);
+                    _logger.LogDebug("在程序集 {Assembly} 中发现控制器 {Controller}，完整类型: {FullName}", 
+                        assembly.GetName().Name, controllerType.Name, controllerType.FullName);
                     return controllerType;
                 }
             }
@@ -829,8 +879,29 @@ public class AuditMiddleware
     /// </summary>
     private MethodInfo FindActionMethod(Type controllerType, string actionName)
     {
+        _logger.LogTrace("在控制器 {ControllerType} 中查找操作方法: {ActionName}", 
+            controllerType.FullName, actionName);
+
         // 查找与操作名称匹配的公共方法
-        return controllerType.GetMethod(actionName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+        var methodInfo = controllerType.GetMethod(actionName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+        
+        if (methodInfo != null)
+        {
+            _logger.LogTrace("找到操作方法: {MethodName}", methodInfo.Name);
+        }
+        else
+        {
+            // 如果找不到方法，记录控制器中所有可用的公共方法以便调试
+            var availableMethods = controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.DeclaringType == controllerType)
+                .Select(m => m.Name)
+                .ToList();
+            
+            _logger.LogTrace("未找到操作方法 {ActionName}，控制器 {ControllerType} 中可用的方法: {AvailableMethods}", 
+                actionName, controllerType.Name, string.Join(", ", availableMethods));
+        }
+
+        return methodInfo;
     }
 
     /// <summary>

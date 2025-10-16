@@ -50,51 +50,18 @@
     
     /**
      * 通用API请求函数
+     * 使用ExamApiManager进行统一的API请求处理
      */
     async function apiRequest(url, options = {}) {
         try {
-            const token = TokenManager.getToken();
-            const response = await fetch(url, {
-                ...options,
-                headers: {
-                    'Authorization': token ? 'Bearer ' + token : '',
-                    'TenantId': window.tenantId,
-                    'X-Forwarded-With': 'CodeSpirit',
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
-            });
+            const response = await window.ExamApiManager.request(url, options);
             
-            if (response.status === 401) {
-                window.location.href = `/${window.tenantId}/exam/login`;
-                throw new Error('认证失败，请重新登录');
+            // 特殊处理：对于start API，如果返回的不是标准格式，直接返回
+            if (url.includes('/start') && response && typeof response === 'object' && !response.hasOwnProperty('status')) {
+                return response;
             }
             
-            const result = await response.json();
-            
-            if (!response.ok) {
-                // 如果服务器返回了结构化的错误信息，使用它
-                if (result && result.msg) {
-                    const error = new Error(result.msg);
-                    error.status = result.status;
-                    error.msg = result.msg;
-                    throw error;
-                } else {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-            }
-            
-            // 特殊处理：对于start API，如果返回的不是标准ApiResponse格式，直接返回
-            if (url.includes('/start') && result && typeof result === 'object' && !result.hasOwnProperty('status')) {
-                return result;
-            }
-            
-            // 标准ApiResponse格式检查
-            if (result.status !== 0) {
-                throw new Error(result.msg || '请求失败');
-            }
-            
-            return result.data;
+            return response;
         } catch (error) {
             console.error(`API请求失败 [${url}]:`, error);
             throw error;

@@ -1,4 +1,5 @@
 using CodeSpirit.ExamApi.Dtos.Client;
+using CodeSpirit.ExamApi.Dtos.Student;
 
 namespace CodeSpirit.ExamApi.Services.Interfaces;
 
@@ -85,4 +86,30 @@ public interface IExamCacheService
     /// <param name="examId">考试ID</param>
     /// <param name="userId">用户ID</param>
     Task ClearUserExamRecordCacheAsync(long examId, long userId);
+
+    /// <summary>
+    /// 获取学生信息（带缓存）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>学生信息</returns>
+    Task<StudentDto?> GetStudentInfoWithCacheAsync(long userId);
+
+    /// <summary>
+    /// 清除学生信息缓存
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    Task ClearStudentInfoCacheAsync(long userId);
+
+    /// <summary>
+    /// 获取客户端档案信息（带缓存）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>客户端档案信息</returns>
+    Task<ClientProfileDto> GetClientProfileWithCacheAsync(long userId);
+
+    /// <summary>
+    /// 清除客户端档案信息缓存
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    Task ClearClientProfileCacheAsync(long userId);
 }

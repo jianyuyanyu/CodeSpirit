@@ -33,6 +33,14 @@ namespace CodeSpirit.Web.Options
         public string WebHost { get; set; } = "https://codespirit-app.xin-lai.com";
 
         /// <summary>
+        /// API基础地址，用于生产环境直连API服务
+        /// 如果设置了此值，前端将直接请求API服务而不使用代理
+        /// 例如：https://api.example.com
+        /// 留空则使用默认的代理方式
+        /// </summary>
+        public string ApiBaseUrl { get; set; } = "";
+
+        /// <summary>
         /// 资源版本号，用于CDN缓存控制
         /// </summary>
         public string ResourceVersion { get; set; } = "";

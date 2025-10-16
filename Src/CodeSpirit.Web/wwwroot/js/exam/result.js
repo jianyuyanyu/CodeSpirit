@@ -83,7 +83,7 @@
         async loadResultData() {
             try {
                 const token = TokenManager.getToken();
-                const response = await fetch(`/exam/api/exam/client/result/${this.options.recordId}`, {
+                const response = await fetch(window.ExamApiManager.transformUrl(`/exam/api/exam/client/result/${this.options.recordId}`), {
                     headers: {
                         'Authorization': token ? 'Bearer ' + token : '',
                         'TenantId': this.options.tenantId,

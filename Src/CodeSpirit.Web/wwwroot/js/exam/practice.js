@@ -150,7 +150,7 @@
         console.log('[练习] 开始加载练习数据:', practiceId);
         
         try {
-            const response = await fetch(`/exam/api/client/practice/${practiceId}/start`, {
+            const response = await fetch(window.ExamApiManager.transformUrl(`/exam/api/client/practice/${practiceId}/start`), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -480,7 +480,7 @@
      */
     async function sendAnswerToServer(recordId, questionId, answer, retryCount = 0) {
         try {
-            const response = await fetch(`/exam/api/client/practice/${recordId}/save-answer`, {
+            const response = await fetch(window.ExamApiManager.transformUrl(`/exam/api/client/practice/${recordId}/save-answer`), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -595,7 +595,7 @@
             showLoading('正在提交练习...');
             
             // 调用完成练习API
-            const response = await fetch(`/exam/api/client/practice/${recordId}/complete`, {
+            const response = await fetch(window.ExamApiManager.transformUrl(`/exam/api/client/practice/${recordId}/complete`), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

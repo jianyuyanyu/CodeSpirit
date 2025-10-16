@@ -45,7 +45,7 @@
     async function apiRequest(url, options = {}) {
         try {
             const token = TokenManager?.getToken();
-            const response = await fetch(url, {
+            const response = await fetch(window.ExamApiManager.transformUrl(url), {
                 ...options,
                 headers: {
                     'Authorization': token ? 'Bearer ' + token : '',

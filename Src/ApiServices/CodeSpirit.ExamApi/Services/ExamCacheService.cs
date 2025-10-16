@@ -2,8 +2,10 @@ using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.Caching.Extensions;
 using CodeSpirit.Caching.Models;
 using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.Core.Extensions;
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
+using CodeSpirit.ExamApi.Dtos.Student;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Services.Interfaces;
@@ -24,6 +26,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     private readonly ICacheWarmupService _warmupService;
     private readonly IRepository<ExamRecord> _examRecordRepository;
     private readonly IRepository<ExamAnswerRecord> _answerRecordRepository;
+    private readonly IRepository<Student> _studentRepository;
     private readonly ILogger<ExamCacheService> _logger;
     private readonly ExamDbContext _context;
     
@@ -37,6 +40,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     /// <param name="warmupService">缓存预热服务</param>
     /// <param name="examRecordRepository">考试记录仓储</param>
     /// <param name="answerRecordRepository">答题记录仓储</param>
+    /// <param name="studentRepository">学生仓储</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="context">数据库上下文</param>
     public ExamCacheService(
@@ -44,6 +48,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
         ICacheWarmupService warmupService,
         IRepository<ExamRecord> examRecordRepository,
         IRepository<ExamAnswerRecord> answerRecordRepository,
+        IRepository<Student> studentRepository,
         ILogger<ExamCacheService> logger,
         ExamDbContext context)
     {
@@ -51,6 +56,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
         _warmupService = warmupService;
         _examRecordRepository = examRecordRepository;
         _answerRecordRepository = answerRecordRepository;
+        _studentRepository = studentRepository;
         _logger = logger;
         _context = context;
     }
@@ -548,6 +554,156 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
         catch (Exception ex)
         {
             _logger.LogError(ex, "从数据库加载考试基本信息时发生错误: ExamId={ExamId}", examId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 获取学生信息（带缓存）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>学生信息</returns>
+    public async Task<StudentDto?> GetStudentInfoWithCacheAsync(long userId)
+    {
+        return await _cacheService.GetOrSetAsync(
+            new ExamCacheOptions.StudentInfo(userId),
+            async () =>
+            {
+                _logger.LogDebug("从数据库获取学生信息: UserId={UserId}", userId);
+                
+                // 直接从数据库加载学生信息，避免循环依赖
+                var studentInfo = await LoadStudentInfoFromDatabaseAsync(userId);
+                
+                return studentInfo;
+            });
+    }
+
+    /// <summary>
+    /// 清除学生信息缓存
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    public async Task ClearStudentInfoCacheAsync(long userId)
+    {
+        await _cacheService.RemoveAsync(new ExamCacheOptions.StudentInfo(userId));
+        _logger.LogDebug("已清除学生信息缓存: UserId={UserId}", userId);
+    }
+
+    /// <summary>
+    /// 获取客户端档案信息（带缓存）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>客户端档案信息</returns>
+    public async Task<ClientProfileDto> GetClientProfileWithCacheAsync(long userId)
+    {
+        return await _cacheService.GetOrSetAsync(
+            new ExamCacheOptions.ClientProfile(userId),
+            async () =>
+            {
+                _logger.LogDebug("从数据库获取客户端档案信息: UserId={UserId}", userId);
+                
+                // 直接从数据库加载客户端档案信息，避免循环依赖
+                var clientProfile = await LoadClientProfileFromDatabaseAsync(userId);
+                
+                return clientProfile;
+            });
+    }
+
+    /// <summary>
+    /// 清除客户端档案信息缓存
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    public async Task ClearClientProfileCacheAsync(long userId)
+    {
+        await _cacheService.RemoveAsync(new ExamCacheOptions.ClientProfile(userId));
+        _logger.LogDebug("已清除客户端档案信息缓存: UserId={UserId}", userId);
+    }
+
+    /// <summary>
+    /// 从数据库加载学生信息（仅在缓存未命中时调用）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>学生信息</returns>
+    private async Task<StudentDto?> LoadStudentInfoFromDatabaseAsync(long userId)
+    {
+        try
+        {
+            var student = await _studentRepository.CreateQuery()
+                .Include(s => s.StudentGroups)
+                .ThenInclude(sg => sg.StudentGroup)
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                _logger.LogWarning("学生不存在: UserId={UserId}", userId);
+                return null;
+            }
+
+            var studentDto = new StudentDto
+            {
+                Id = student.Id,
+                UserId = student.UserId,
+                Name = student.Name,
+                IdNo = student.IdNo,
+                Gender = student.Gender,
+                AdmissionTicket = student.AdmissionTicket,
+                StudentNumber = student.StudentNumber,
+                PhoneNumber = student.PhoneNumber,
+                IsActive = student.IsActive,
+                CreatedAt = student.CreatedAt,
+                StudentGroups = student.StudentGroups?.Select(sg => sg.StudentGroup.Name).ToList() ?? new List<string>(),
+                StudentGroupIds = student.StudentGroups?.Select(sg => sg.StudentGroupId).ToList() ?? new List<long>()
+            };
+
+            _logger.LogDebug("成功从数据库加载学生信息: UserId={UserId}, Name={Name}", userId, studentDto.Name);
+            return studentDto;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从数据库加载学生信息时发生错误: UserId={UserId}", userId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 从数据库加载客户端档案信息（仅在缓存未命中时调用）
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>客户端档案信息</returns>
+    private async Task<ClientProfileDto> LoadClientProfileFromDatabaseAsync(long userId)
+    {
+        try
+        {
+            var student = await _studentRepository.CreateQuery()
+                .Include(s => s.StudentGroups)
+                .ThenInclude(sg => sg.StudentGroup)
+                .Where(s => s.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                throw new InvalidOperationException("未找到考生信息");
+            }
+
+            var clientProfile = new ClientProfileDto
+            {
+                Id = student.Id,
+                UserId = student.UserId,
+                Name = student.Name,
+                StudentNumber = student.StudentNumber,
+                IdNo = student.IdNo,
+                Gender = student.Gender.GetDisplayName(),
+                AdmissionTicket = student.AdmissionTicket,
+                PhoneNumber = student.PhoneNumber,
+                StudentGroups = student.StudentGroups?.Select(sg => sg.StudentGroup.Name).ToList() ?? new List<string>()
+            };
+
+            _logger.LogDebug("成功从数据库加载客户端档案信息: UserId={UserId}, Name={Name}", userId, clientProfile.Name);
+            return clientProfile;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从数据库加载客户端档案信息时发生错误: UserId={UserId}", userId);
             throw;
         }
     }

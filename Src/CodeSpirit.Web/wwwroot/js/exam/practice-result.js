@@ -67,7 +67,7 @@
         try {
             console.log('[练习详情] 开始加载练习结果数据, recordId:', recordId);
             
-            const response = await fetch(`/exam/api/client/practice/result/${recordId}`, {
+            const response = await fetch(window.ExamApiManager.transformUrl(`/exam/api/client/practice/result/${recordId}`), {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',

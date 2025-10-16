@@ -84,7 +84,7 @@
             pageTitle: '<i class="fa fa-desktop"></i> ${name || "考试监控大屏"}',
             pageClass: 'exam-monitor-dashboard-page amis-cards-page',
             pageTitleClass: 'exam-monitor-page-title exam-monitor-title',
-            initApi: `/exam/api/exam/Monitor/exam/${window.examId}`,
+            initApi: window.ExamApiManager ? window.ExamApiManager.transformUrl(`/exam/api/exam/Monitor/exam/${window.examId}`) : `/exam/api/exam/Monitor/exam/${window.examId}`,
             features: [
                 { icon: 'fa fa-chart-line', text: '实时监控考试进度' },
                 { icon: 'fa fa-shield-alt', text: '智能防作弊检测' },

@@ -17,6 +17,11 @@
             return;
         }
         
+        // API URL转换函数
+        function transformApiUrl(url) {
+            return window.ExamApiManager ? window.ExamApiManager.transformUrl(url) : url;
+        }
+        
         // 初始化为租户模式（参考 tenant-admin.js）
         if (window.TokenManager && window.TokenManager.initTenantMode) {
             window.TokenManager.initTenantMode(tenantId);
@@ -53,7 +58,7 @@
         },
         initApi: {
             method: 'get',
-            url: `/exam/api/exam/ExamSettings/${examId}`
+            url: transformApiUrl(`/exam/api/exam/ExamSettings/${examId}`)
         },
 
         body: [
@@ -69,7 +74,7 @@
                 type: 'service',
                 name: 'exam-monitor-service',
                 testid: 'exam-monitor-service',
-                api: `/exam/api/exam/Monitor/exam/${examId}`,
+                api: transformApiUrl(`/exam/api/exam/Monitor/exam/${examId}`),
                 interval: 10000,
                 body: [
                     // 统计卡片区域
@@ -186,7 +191,7 @@
                                 type: 'crud',
                                 syncLocation: false,
                                 source: '${students}',
-                                api: `/exam/api/exam/Monitor/exam/${examId}`,
+                                api: transformApiUrl(`/exam/api/exam/Monitor/exam/${examId}`),
                                 filter: {
                                     title: '',
                                     body: [
@@ -288,7 +293,7 @@
                                                     size: 'lg',
                                                     body: {
                                                         type: 'service',
-                                                        api: `/exam/api/exam/Monitor/student/\${recordId}`,
+                                                        api: transformApiUrl(`/exam/api/exam/Monitor/student/\${recordId}`),
                                                         body: [
                                                             {
                                                                 type: 'form',
@@ -352,7 +357,7 @@
                                                 confirmText: '确定要强制该考生交卷吗？',
                                                 api: {
                                                     method: 'post',
-                                                    url: `/exam/api/Monitor/student/\${recordId}/terminate`
+                                                    url: transformApiUrl(`/exam/api/Monitor/student/\${recordId}/terminate`)
                                                 }
                                             }
                                         ]

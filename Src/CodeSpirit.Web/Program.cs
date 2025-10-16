@@ -17,6 +17,7 @@ using CodeSpirit.UdlCards.Extensions;
 using CodeSpirit.MultiTenant.Abstractions;
 using CodeSpirit.Caching.Extensions;
 using CodeSpirit.LLM;
+using CodeSpirit.ScheduledTasks.Extensions;
 using CodeSpirit.Web.Extensions;
 using CodeSpirit.Web.Hubs;
 using CodeSpirit.Web.Middlewares;
@@ -132,6 +133,9 @@ public class Program
             provider.GetRequiredService<IEnumerable<IHostedService>>()
                 .OfType<BackgroundJobServiceImpl>()
                 .First());
+
+        // 添加定时任务服务
+        builder.Services.AddCodeSpiritScheduledTasks(builder.Configuration, "webfrontend");
 
         // 注册文件服务
         builder.Services.AddScoped<ITempFileService, TempFileServiceImpl>();

@@ -6,6 +6,8 @@ using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.ServiceDefaults.Middleware;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Repositories;
+using CodeSpirit.Shared.Configuration;
+using CodeSpirit.Shared.Routing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -26,12 +28,15 @@ public static class CommonApiServiceExtensions
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置对象</param>
     /// <param name="connectionStringKey">数据库连接字符串键名</param>
+    /// <param name="serviceName">服务名称</param>
+    /// <param name="pathPrefixOptions">路径前缀配置选项</param>
     /// <returns>服务集合</returns>
     public static IServiceCollection AddCommonApiServices(
         this IServiceCollection services, 
         IConfiguration configuration,
         string connectionStringKey,
-        string serviceName)
+        string serviceName,
+        PathPrefixOptions? pathPrefixOptions = null)
     {
         // 输出连接字符串信息
         var connectionString = configuration.GetConnectionString(connectionStringKey);
@@ -54,7 +59,14 @@ public static class CommonApiServiceExtensions
         // services.AddCodeSpiritMultiTenant(configuration);
         
         // 控制器
-        services.ConfigureDefaultControllers();
+        services.ConfigureDefaultControllers(options =>
+        {
+            // 添加路径前缀路由约定
+            if (pathPrefixOptions != null && pathPrefixOptions.Enabled)
+            {
+                options.Conventions.Add(new PathPrefixControllerConvention(pathPrefixOptions));
+            }
+        });
         // 注意：审计元数据过滤器需要在各API项目的配置中单独添加：.AddAuditMetadataFilter()
         
         // 仓储模式

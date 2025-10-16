@@ -46,7 +46,7 @@ public static class ApiStartupExtensions
         builder.Services.AddSystemServices(builder.Configuration, programType, builder.Environment);
         
         // 通用API服务
-        builder.Services.AddCommonApiServices(builder.Configuration, config.ConnectionStringKey, config.ServiceName);
+        builder.Services.AddCommonApiServices(builder.Configuration, config.ConnectionStringKey, config.ServiceName, config.PathPrefixOptions);
         
         // 特定服务配置
         config.ConfigureServices(builder.Services, builder.Configuration);

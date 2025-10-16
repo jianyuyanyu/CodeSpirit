@@ -16,6 +16,7 @@ namespace CodeSpirit.Web.Middlewares
 {
     /// <summary>
     /// 代理中间件，负责将API请求转发到相应的微服务
+    /// 注意：仅用于后台管理，高频的客户端、用户端请使用负载均衡直接访问各应用服务(如：/api/exam/get-exam-detail)，避免频繁的代理转发导致性能问题
     /// </summary>
     /// <remarks>
     /// 该中间件会解析请求路径，将请求转发到对应的微服务，
@@ -433,7 +434,7 @@ namespace CodeSpirit.Web.Middlewares
             {
                 // 使用聚合器处理 JSON 内容（保持现有逻辑）
                 string jsonContent = await response.Content.ReadAsStringAsync();
-                logger.LogInformation("jsonContent：{jsonContent}", jsonContent);
+                //logger.LogInformation("jsonContent：{jsonContent}", jsonContent);
                 try
                 {
                     var aggregatedJson = await _aggregatorService.AggregateJsonContent(jsonContent, aggregationRules, context);

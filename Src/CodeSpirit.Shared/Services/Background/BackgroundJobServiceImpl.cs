@@ -68,7 +68,7 @@ public class BackgroundJobServiceImpl : BackgroundService, IBackgroundJobService
     /// <param name="stoppingToken">取消令牌</param>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("后台任务服务已启动");
+        _logger.LogDebug("后台任务服务已启动");
 
         while (!stoppingToken.IsCancellationRequested)
         {

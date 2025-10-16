@@ -47,6 +47,7 @@
 		<ProjectReference Include="..\..\Components\CodeSpirit.PdfGeneration\CodeSpirit.PdfGeneration.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.Caching\CodeSpirit.Caching.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.ScheduledTasks\CodeSpirit.ScheduledTasks.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using CodeSpirit.Shared.Configuration;
 
 namespace CodeSpirit.Shared.Startup;
 
@@ -20,12 +21,24 @@ public abstract class BaseApiConfiguration : IApiServiceConfiguration
     public abstract string ConnectionStringKey { get; }
     
     /// <summary>
+    /// 路径前缀配置选项
+    /// </summary>
+    /// <remarks>
+    /// 默认实现从配置文件和环境变量中读取PathPrefix配置节
+    /// 子类可以重写此属性以提供自定义配置
+    /// </remarks>
+    public virtual PathPrefixOptions PathPrefixOptions { get; protected set; } = new();
+    
+    /// <summary>
     /// 配置特定服务
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置对象</param>
     public virtual void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        // 初始化路径前缀配置
+        InitializePathPrefixOptions(configuration);
+        
         // 默认实现为空，子类可以重写
     }
     
@@ -71,5 +84,31 @@ public abstract class BaseApiConfiguration : IApiServiceConfiguration
     {
         // 默认实现为空，子类可以重写
         return Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// 初始化路径前缀配置选项
+    /// </summary>
+    /// <param name="configuration">配置对象</param>
+    /// <remarks>
+    /// 从配置文件和环境变量中读取PathPrefix配置节
+    /// 环境变量优先级高于配置文件
+    /// </remarks>
+    protected virtual void InitializePathPrefixOptions(IConfiguration configuration)
+    {
+        var options = new PathPrefixOptions();
+        
+        // 绑定配置文件中的PathPrefix节
+        configuration.GetSection(PathPrefixOptions.SectionName).Bind(options);
+        
+        // 环境变量会自动覆盖配置文件中的值（通过ASP.NET Core的配置系统）
+        PathPrefixOptions = options;
+        
+        // 验证配置的有效性
+        var validationResult = PathPrefixOptions.Validate();
+        if (validationResult != System.ComponentModel.DataAnnotations.ValidationResult.Success)
+        {
+            throw new InvalidOperationException($"路径前缀配置无效: {validationResult.ErrorMessage}");
+        }
     }
 }

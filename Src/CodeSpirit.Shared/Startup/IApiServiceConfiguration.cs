@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using CodeSpirit.Shared.Configuration;
 
 namespace CodeSpirit.Shared.Startup;
 
@@ -18,6 +19,14 @@ public interface IApiServiceConfiguration
     /// 数据库连接字符串键名
     /// </summary>
     string ConnectionStringKey { get; }
+    
+    /// <summary>
+    /// 路径前缀配置选项
+    /// </summary>
+    /// <remarks>
+    /// 用于配置API服务的路径前缀，支持负载均衡器路由转发
+    /// </remarks>
+    PathPrefixOptions PathPrefixOptions { get; }
     
     /// <summary>
     /// 配置特定服务

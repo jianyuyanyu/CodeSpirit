@@ -9,8 +9,10 @@ using CodeSpirit.ExamApi.Services;
 using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
+using CodeSpirit.ExamApi.Tasks;
 using CodeSpirit.MultiTenant.Extensions;
 using CodeSpirit.PdfGeneration.Extensions;
+using CodeSpirit.ScheduledTasks.Extensions;
 using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.DistributedLock;
@@ -50,6 +52,8 @@ public class ExamApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        // 调用基类方法以初始化路径前缀配置
+        base.ConfigureServices(services, configuration);
         // 配置多数据库支持的考试系统数据库
         DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<ExamDbContext, MySqlExamDbContext, SqlServerExamDbContext>(
             services, configuration, ConnectionStringKey);
@@ -86,6 +90,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
         
         // 添加CodeSpirit缓存服务
         AddCachingServices(services, configuration);
+        
+        // 添加定时任务服务
+        AddScheduledTasksServices(services, configuration);
         
         // 配置控制器和审计元数据过滤器
         ConfigureControllersWithAudit(services, configuration);
@@ -262,6 +269,27 @@ public class ExamApiConfiguration : BaseApiConfiguration
         catch (Exception ex)
         {
             Console.WriteLine($"警告: 注册考试缓存服务时出错: {ex.Message}，但应用程序将继续启动");
+        }
+    }
+    
+    /// <summary>
+    /// 添加定时任务服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    /// <param name="configuration">配置对象</param>
+    private static void AddScheduledTasksServices(IServiceCollection services, IConfiguration configuration)
+    {
+        try
+        {
+            // 注册定时任务组件
+            services.AddCodeSpiritScheduledTasks(configuration, "ExamApi");
+            
+            // 注册考试缓存预热任务处理器
+            services.AddTaskHandler<ExamCacheWarmupTaskHandler>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"警告: 注册定时任务服务时出错: {ex.Message}，但应用程序将继续启动");
         }
     }
 }

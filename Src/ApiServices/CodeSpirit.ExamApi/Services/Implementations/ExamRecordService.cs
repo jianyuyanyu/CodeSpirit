@@ -16,6 +16,7 @@ using CodeSpirit.Shared.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Linq.Expressions;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
@@ -851,6 +852,10 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     var random = new Random();
                     // 先随机打乱，再按题型排序，确保同类型题目相对顺序一致
                     questionsList = questionsList.OrderBy(q => random.Next()).OrderBy(q => q.TypeValue).ToList();
+                }
+                else
+                {
+                    questionsList = questionsList.OrderBy(q => q.TypeValue).ToList();
                 }
 
                 // 创建答题记录

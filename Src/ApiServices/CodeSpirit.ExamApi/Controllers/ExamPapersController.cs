@@ -22,17 +22,20 @@ public class ExamPapersController : ApiControllerBase
     private readonly IExamPaperService _examPaperService;
     private readonly IExamSettingService _examSettingService;
     private readonly IPracticeSettingService _practiceSettingService;
+    private readonly IExamPaperCheckService _examPaperCheckService;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     public ExamPapersController(IExamPaperService examPaperService,
         IExamSettingService examSettingService,
-        IPracticeSettingService practiceSettingService)
+        IPracticeSettingService practiceSettingService,
+        IExamPaperCheckService examPaperCheckService)
     {
         _examPaperService = examPaperService;
         _examSettingService = examSettingService;
         _practiceSettingService = practiceSettingService;
+        _examPaperCheckService = examPaperCheckService;
     }
 
     /// <summary>
@@ -279,6 +282,9 @@ public class ExamPapersController : ApiControllerBase
             return NotFound("试卷不存在");
         }
 
+        // 执行试卷和题目验证
+        var validationResult = _examPaperCheckService.ValidateExamPaper(examPaper);
+
         // 使用JObject/JArray构建表单
         var formItems = new JArray();
 
@@ -308,6 +314,42 @@ public class ExamPapersController : ApiControllerBase
             "
         });
 
+        // 试卷级别错误提示
+        if (validationResult.HasPaperErrors)
+        {
+            var errorMessages = string.Join("<br/>", validationResult.PaperErrors.Select((e, i) => $"{i + 1}. {e}"));
+            headerBody!.Add(new JObject
+            {
+                ["type"] = "alert",
+                ["level"] = "danger",
+                ["className"] = "paper-validation-error",
+                ["body"] = $@"
+                    <div class=""validation-error"">
+                        <strong>❌ 试卷错误</strong><br/>
+                        {errorMessages}
+                    </div>
+                "
+            });
+        }
+
+        // 试卷级别警告提示
+        if (validationResult.HasPaperWarnings)
+        {
+            var warningMessages = string.Join("<br/>", validationResult.PaperWarnings.Select((w, i) => $"{i + 1}. {w}"));
+            headerBody!.Add(new JObject
+            {
+                ["type"] = "alert",
+                ["level"] = "warning",
+                ["className"] = "paper-validation-warning",
+                ["body"] = $@"
+                    <div class=""validation-warning"">
+                        <strong>⚠️ 试卷警告</strong><br/>
+                        {warningMessages}
+                    </div>
+                "
+            });
+        }
+
         // 成绩换算提醒
         if (examPaper.EnableScoreConversion)
         {
@@ -326,7 +368,7 @@ public class ExamPapersController : ApiControllerBase
                 ["className"] = "score-conversion-alert",
                 ["body"] = $@"
                     <div class=""conversion-reminder"">
-                        <strong>⚠️ 成绩换算提醒</strong><br/>
+                        <strong>📊 成绩换算提醒</strong><br/>
                         本试卷启用了成绩换算功能：{conversionDescription}<br/>
                         考生最终成绩将按照换算规则自动转换为<strong>{examPaper.TotalScore}分制</strong>显示。
                     </div>
@@ -536,6 +578,48 @@ public class ExamPapersController : ApiControllerBase
                         break;
                 }
 
+                // 添加题目级别的验证信息
+                if (validationResult.QuestionValidations.TryGetValue(question.Id, out var questionValidation))
+                {
+                    // 显示题目错误
+                    if (questionValidation.HasErrors)
+                    {
+                        var errorMessages = string.Join("<br/>", questionValidation.Errors.Select((e, idx) => $"• {e}"));
+                        formItems.Add(new JObject
+                        {
+                            ["type"] = "alert",
+                            ["level"] = "danger",
+                            ["className"] = "question-validation-error",
+                            ["showCloseButton"] = false,
+                            ["body"] = $@"
+                                <div style=""font-size: 13px;"">
+                                    <strong>❌ 错误</strong><br/>
+                                    {errorMessages}
+                                </div>
+                            "
+                        });
+                    }
+
+                    // 显示题目警告
+                    if (questionValidation.HasWarnings)
+                    {
+                        var warningMessages = string.Join("<br/>", questionValidation.Warnings.Select((w, idx) => $"• {w}"));
+                        formItems.Add(new JObject
+                        {
+                            ["type"] = "alert",
+                            ["level"] = "warning",
+                            ["className"] = "question-validation-warning",
+                            ["showCloseButton"] = false,
+                            ["body"] = $@"
+                                <div style=""font-size: 13px;"">
+                                    <strong>⚠️ 警告</strong><br/>
+                                    {warningMessages}
+                                </div>
+                            "
+                        });
+                    }
+                }
+
                 // 如果不是该题型的最后一个题目，添加分隔线
                 if (i < questions.Count - 1)
                 {
@@ -671,4 +755,5 @@ public class ExamPapersController : ApiControllerBase
             _ => questionType
         };
     }
+
 }

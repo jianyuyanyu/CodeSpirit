@@ -268,7 +268,12 @@ public class ClientExamQuestionDto
     /// 答案
     /// </summary>
     public string? Answer { get; set; }
-    public int TypeValue { get; internal set; }
+    
+    /// <summary>
+    /// 题目类型值（用于排序）
+    /// </summary>
+    [DisplayName("题目类型值")]
+    public int TypeValue { get; set; }
 }
 
 public class OptionDisplayDto

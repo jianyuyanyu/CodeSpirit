@@ -29,7 +29,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     private readonly IRepository<Student> _studentRepository;
     private readonly ILogger<ExamCacheService> _logger;
     private readonly ExamDbContext _context;
-    
+
     // 缓存预热配置
     private static readonly TimeSpan WarmupWindowBeforeStart = TimeSpan.FromMinutes(30); // 考试开始前30分钟开始预热
 
@@ -73,10 +73,10 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             async () =>
             {
                 _logger.LogDebug("从数据库获取考试基本信息: {ExamId}", examId);
-                
+
                 // 直接从数据库加载考试基本信息，避免依赖其他服务
                 var examBasicInfo = await LoadExamBasicInfoFromDatabaseAsync(examId);
-                
+
                 return examBasicInfo;
             });
     }
@@ -93,10 +93,10 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             async () =>
             {
                 _logger.LogDebug("从数据库获取考试题目数据: {ExamId}", examId);
-                
+
                 // 直接从数据库加载题目数据，避免循环依赖
                 var questionsDict = await LoadQuestionsFromDatabaseAsync(examId);
-                
+
                 return questionsDict;
             });
     }
@@ -114,23 +114,23 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             async () =>
             {
                 _logger.LogDebug("从数据库获取用户考试记录: ExamId={ExamId}, UserId={UserId}", examId, userId);
-                
+
                 // 直接查询学生信息，避免依赖其他服务
                 var student = await _context.Students
                     .Where(s => s.UserId == userId)
                     .FirstOrDefaultAsync();
-                    
+
                 if (student == null)
                 {
                     return null;
                 }
-                
+
                 // 查找考试记录
                 var record = await _examRecordRepository.CreateQuery()
                     .Where(r => r.ExamSettingId == examId && r.StudentId == student.Id)
                     .OrderByDescending(r => r.StartTime)
                     .FirstOrDefaultAsync();
-                
+
                 if (record == null)
                 {
                     return null;
@@ -153,9 +153,9 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     public async Task<List<ClientExamAnswerDto>> GetSubmittedAnswersWithCacheAsync(long recordId, long userId)
     {
         var cacheKey = new ExamCacheOptions.UserAnswers(recordId, userId);
-        _logger.LogInformation("获取用户答案缓存，缓存键: {CacheKey}, RecordId={RecordId}, UserId={UserId}", 
+        _logger.LogInformation("获取用户答案缓存，缓存键: {CacheKey}, RecordId={RecordId}, UserId={UserId}",
             cacheKey.Key, recordId, userId);
-            
+
         return await _cacheService.GetOrSetAsync(
             cacheKey,
             async () =>
@@ -180,7 +180,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     public async Task ClearUserAnswersCacheAsync(long recordId, long userId)
     {
         var cacheKey = new ExamCacheOptions.UserAnswers(recordId, userId);
-        _logger.LogInformation("清除用户答案缓存，缓存键: {CacheKey}, RecordId={RecordId}, UserId={UserId}", 
+        _logger.LogInformation("清除用户答案缓存，缓存键: {CacheKey}, RecordId={RecordId}, UserId={UserId}",
             cacheKey.Key, recordId, userId);
         await _cacheService.RemoveAsync(cacheKey);
         _logger.LogDebug("已清除用户答案缓存: RecordId={RecordId}, UserId={UserId}", recordId, userId);
@@ -195,7 +195,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     {
         // 先清除旧缓存
         await _cacheService.RemoveAsync(new ExamCacheOptions.UserAnswers(recordId, userId));
-        
+
         // 立即重新加载最新数据到缓存
         await _cacheService.GetOrSetAsync(
             new ExamCacheOptions.UserAnswers(recordId, userId),
@@ -211,7 +211,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                     Answer = a.Answer ?? string.Empty
                 }).ToList();
             });
-        
+
         _logger.LogDebug("已刷新用户答案缓存: RecordId={RecordId}, UserId={UserId}", recordId, userId);
     }
 
@@ -227,9 +227,9 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
         {
             // 获取当前缓存中的答案
             var cacheKey = new ExamCacheOptions.UserAnswers(recordId, userId);
-            _logger.LogInformation("更新用户答案缓存，缓存键: {CacheKey}, RecordId={RecordId}, UserId={UserId}", 
+            _logger.LogInformation("更新用户答案缓存，缓存键: {CacheKey}, RecordId={RecordId}, UserId={UserId}",
                 cacheKey.Key, recordId, userId);
-            
+
             var existingAnswers = await _cacheService.GetAsync(cacheKey);
 
             List<ClientExamAnswerDto> updatedAnswers;
@@ -238,7 +238,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             {
                 // 如果缓存中有数据，则合并新答案
                 var answerDict = existingAnswers.ToDictionary(a => a.QuestionId, a => a);
-                
+
                 // 更新新答案到字典中
                 foreach (var newAnswer in newAnswers)
                 {
@@ -254,9 +254,9 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                         _logger.LogWarning("发现缓存中缺少题目 {QuestionId} 的记录，已添加", newAnswer.QuestionId);
                     }
                 }
-                
+
                 updatedAnswers = answerDict.Values.ToList();
-                _logger.LogDebug("合并缓存答案: RecordId={RecordId}, 原有答案数={ExistingCount}, 更新答案数={NewCount}, 合并后答案数={TotalCount}", 
+                _logger.LogDebug("合并缓存答案: RecordId={RecordId}, 原有答案数={ExistingCount}, 更新答案数={NewCount}, 合并后答案数={TotalCount}",
                     recordId, existingAnswers.Count, newAnswers.Count, updatedAnswers.Count);
             }
             else
@@ -267,16 +267,16 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                 var answerEntities = await _answerRecordRepository.CreateQuery()
                     .Where(a => a.ExamRecordId == recordId)
                     .ToListAsync();
-                
+
                 // 创建答案字典，包含所有题目
                 var answerDict = answerEntities.ToDictionary(
-                    a => a.QuestionId, 
+                    a => a.QuestionId,
                     a => new ClientExamAnswerDto
                     {
                         QuestionId = a.QuestionId,
                         Answer = a.Answer ?? string.Empty
                     });
-                
+
                 // 更新新保存的答案
                 foreach (var newAnswer in newAnswers)
                 {
@@ -285,16 +285,16 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                         answerDict[newAnswer.QuestionId].Answer = newAnswer.Answer;
                     }
                 }
-                
+
                 updatedAnswers = answerDict.Values.ToList();
-                _logger.LogDebug("从数据库重建缓存: RecordId={RecordId}, 数据库答案数={DbCount}, 更新答案数={NewCount}, 最终答案数={TotalCount}", 
+                _logger.LogDebug("从数据库重建缓存: RecordId={RecordId}, 数据库答案数={DbCount}, 更新答案数={NewCount}, 最终答案数={TotalCount}",
                     recordId, answerEntities.Count, newAnswers.Count, updatedAnswers.Count);
             }
 
             // 直接设置缓存
             await _cacheService.SetAsync(cacheKey, updatedAnswers);
-            
-            _logger.LogDebug("已直接更新用户答案缓存: RecordId={RecordId}, UserId={UserId}, 答案数={AnswerCount}", 
+
+            _logger.LogDebug("已直接更新用户答案缓存: RecordId={RecordId}, UserId={UserId}, 答案数={AnswerCount}",
                 recordId, userId, updatedAnswers.Count);
         }
         catch (Exception ex)
@@ -335,12 +335,12 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
 
             if (!isUpcoming && !isOngoing)
             {
-                _logger.LogInformation("考试未在预热窗口期内，跳过缓存预热: {ExamId}, 开始时间: {StartTime}, 当前时间: {Now}", 
+                _logger.LogInformation("考试未在预热窗口期内，跳过缓存预热: {ExamId}, 开始时间: {StartTime}, 当前时间: {Now}",
                     examId, examSetting.StartTime, now);
                 return;
             }
 
-            _logger.LogInformation("考试在预热窗口期内，开始预热缓存: {ExamId}, 开始时间: {StartTime}", 
+            _logger.LogInformation("考试在预热窗口期内，开始预热缓存: {ExamId}, 开始时间: {StartTime}",
                 examId, examSetting.StartTime);
 
             // 预热考试基本信息
@@ -376,8 +376,8 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
 
             // 查找即将开始的考试（开始时间在预热窗口内）
             var upcomingExams = await _context.ExamSettings
-                .Where(e => e.Status == ExamSettingStatus.Published && 
-                           e.StartTime >= warmupStartTime && 
+                .Where(e => e.Status == ExamSettingStatus.Published &&
+                           e.StartTime >= warmupStartTime &&
                            e.StartTime <= warmupEndTime)
                 .Select(e => new { e.Id, e.StartTime, e.Name })
                 .ToListAsync();
@@ -432,10 +432,10 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
         };
 
         await _cacheService.RemoveManyAsync(keysToRemove);
-        
+
         // 也可以按模式清除（如果支持的话）
         await _cacheService.RemoveByPatternAsync($"*exam:{examId}*");
-        
+
         _logger.LogInformation("考试缓存清空完成: {ExamId}", examId);
     }
 
@@ -497,6 +497,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                             .ToList(),
                         Score = q.Score,
                         IsRequired = q.IsRequired,
+                        TypeValue = (int)q.Question.Type,
                         SequenceNumber = 0  // 将由调用者设置
                     }
                 );
@@ -570,10 +571,10 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             async () =>
             {
                 _logger.LogDebug("从数据库获取学生信息: UserId={UserId}", userId);
-                
+
                 // 直接从数据库加载学生信息，避免循环依赖
                 var studentInfo = await LoadStudentInfoFromDatabaseAsync(userId);
-                
+
                 return studentInfo;
             });
     }
@@ -600,10 +601,10 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             async () =>
             {
                 _logger.LogDebug("从数据库获取客户端档案信息: UserId={UserId}", userId);
-                
+
                 // 直接从数据库加载客户端档案信息，避免循环依赖
                 var clientProfile = await LoadClientProfileFromDatabaseAsync(userId);
-                
+
                 return clientProfile;
             });
     }

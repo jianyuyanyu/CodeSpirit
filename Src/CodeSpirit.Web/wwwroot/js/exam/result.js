@@ -365,10 +365,10 @@
         buildResultDetails() {
             const correctCount = this.questionResults.filter(q => q.isCorrect).length;
             const incorrectCount = this.questionResults.filter(q => {
-                return q.isAnswered === true && !q.isCorrect;
+                return !this.isQuestionUnanswered(q) && !q.isCorrect;
             }).length;
             const unansweredCount = this.questionResults.filter(q => {
-                return q.isAnswered === false;
+                return this.isQuestionUnanswered(q);
             }).length;
             
             // 现在后端返回所有题目（包括未作答），可以直接使用questionResults长度
@@ -610,16 +610,45 @@
 
 
         /**
+         * 判断题目是否未作答
+         * @param {Object} question - 题目对象
+         * @returns {boolean} - 是否未作答
+         */
+        isQuestionUnanswered(question) {
+            // 检查isAnswered标志
+            if (question.isAnswered === false) {
+                return true;
+            }
+            
+            // 检查答案是否为空（null、undefined、空字符串、空数组）
+            const answer = question.userAnswer || question.answer;
+            
+            if (answer === null || answer === undefined || answer === '') {
+                return true;
+            }
+            
+            // 如果是数组类型的答案（多选题），检查是否为空数组
+            if (Array.isArray(answer) && answer.length === 0) {
+                return true;
+            }
+            
+            // 如果是字符串类型，去除空格后检查是否为空
+            if (typeof answer === 'string' && answer.trim() === '') {
+                return true;
+            }
+            
+            return false;
+        }
+
+        /**
          * 获取题目状态样式类
          */
         getQuestionStatusClass(question) {
-            // 使用后端提供的isAnswered字段
             const isCorrect = question.isCorrect;
-            const isAnswered = question.isAnswered;
             
             if (isCorrect) {
                 return 'correct';
-            } else if (!isAnswered) {
+            } else if (this.isQuestionUnanswered(question)) {
                 return 'unanswered';
             } else {
                 return 'incorrect';
@@ -630,13 +659,11 @@
          * 获取题目状态文本
          */
         getQuestionStatusText(question) {
-            // 使用后端提供的isAnswered字段
             const isCorrect = question.isCorrect;
-            const isAnswered = question.isAnswered;
             
             if (isCorrect) {
                 return '正确';
-            } else if (!isAnswered) {
+            } else if (this.isQuestionUnanswered(question)) {
                 return '未作答';
             } else {
                 return '错误';

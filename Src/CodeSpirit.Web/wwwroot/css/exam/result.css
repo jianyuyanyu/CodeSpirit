@@ -322,6 +322,10 @@
     background: linear-gradient(135deg, #f44336, #e57373);
 }
 
+.question-result-number.unanswered {
+    background: linear-gradient(135deg, #9e9e9e, #bdbdbd);
+}
+
 /* 内容区域样式 */
 .question-result-content {
     flex: 1;
@@ -418,6 +422,10 @@
 
 .status-icon-incorrect {
     color: #f44336;
+}
+
+.status-icon-unanswered {
+    color: #9e9e9e;
 }
 
 .status-text {

@@ -14,6 +14,7 @@ using CodeSpirit.ExamApi.Caching;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
 using CodeSpirit.ExamApi.Data;
+using CodeSpirit.Shared.DistributedLock;
 
 namespace CodeSpirit.ExamApi.Services;
 
@@ -29,6 +30,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     private readonly IRepository<Student> _studentRepository;
     private readonly ILogger<ExamCacheService> _logger;
     private readonly ExamDbContext _context;
+    private readonly IDistributedLockProvider _distributedLockProvider;
 
     // 缓存预热配置
     private static readonly TimeSpan WarmupWindowBeforeStart = TimeSpan.FromMinutes(30); // 考试开始前30分钟开始预热
@@ -43,6 +45,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     /// <param name="studentRepository">学生仓储</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="context">数据库上下文</param>
+    /// <param name="distributedLockProvider">分布式锁提供程序</param>
     public ExamCacheService(
         ICacheService cacheService,
         ICacheWarmupService warmupService,
@@ -50,7 +53,8 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
         IRepository<ExamAnswerRecord> answerRecordRepository,
         IRepository<Student> studentRepository,
         ILogger<ExamCacheService> logger,
-        ExamDbContext context)
+        ExamDbContext context,
+        IDistributedLockProvider distributedLockProvider)
     {
         _cacheService = cacheService;
         _warmupService = warmupService;
@@ -59,6 +63,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
         _studentRepository = studentRepository;
         _logger = logger;
         _context = context;
+        _distributedLockProvider = distributedLockProvider;
     }
 
     /// <summary>
@@ -223,84 +228,109 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     /// <param name="newAnswers">新保存的答案</param>
     public async Task UpdateUserAnswersCacheAsync(long recordId, long userId, List<ClientExamAnswerDto> newAnswers)
     {
+        // 使用分布式锁防止并发更新导致的缓存覆盖问题
+        var lockKey = $"exam_answer_cache_{recordId}_{userId}";
+        
         try
         {
-            // 获取当前缓存中的答案
+            using (await _distributedLockProvider.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(10)))
+            {
+                _logger.LogDebug("已获取答案缓存更新锁: {LockKey}", lockKey);
+
+                // 获取当前缓存中的答案
+                var cacheKey = new ExamCacheOptions.UserAnswers(recordId, userId);
+                _logger.LogInformation("更新用户答案缓存，缓存键: {CacheKey}, RecordId={RecordId}, UserId={UserId}",
+                    cacheKey.Key, recordId, userId);
+
+                var existingAnswers = await _cacheService.GetAsync(cacheKey);
+
+                List<ClientExamAnswerDto> updatedAnswers;
+
+                if (existingAnswers != null && existingAnswers.Count > 0)
+                {
+                    // 如果缓存中有数据，则合并新答案
+                    var answerDict = existingAnswers.ToDictionary(a => a.QuestionId, a => a);
+
+                    // 更新新答案到字典中
+                    foreach (var newAnswer in newAnswers)
+                    {
+                        if (answerDict.ContainsKey(newAnswer.QuestionId))
+                        {
+                            // 更新现有答案
+                            answerDict[newAnswer.QuestionId].Answer = newAnswer.Answer;
+                        }
+                        else
+                        {
+                            // 添加新答案（理论上不应该发生，因为所有题目在考试开始时就创建了记录）
+                            answerDict[newAnswer.QuestionId] = newAnswer;
+                            _logger.LogWarning("发现缓存中缺少题目 {QuestionId} 的记录，已添加", newAnswer.QuestionId);
+                        }
+                    }
+
+                    updatedAnswers = answerDict.Values.ToList();
+                    _logger.LogDebug("合并缓存答案: RecordId={RecordId}, 原有答案数={ExistingCount}, 更新答案数={NewCount}, 合并后答案数={TotalCount}",
+                        recordId, existingAnswers.Count, newAnswers.Count, updatedAnswers.Count);
+                }
+                else
+                {
+                    // 如果缓存中没有数据，需要从数据库获取完整答案列表
+                    // 这种情况可能发生在缓存过期或首次访问时，需要确保获取所有题目的答案记录
+                    _logger.LogDebug("缓存为空，从数据库获取完整答案列表: RecordId={RecordId}", recordId);
+                    var answerEntities = await _answerRecordRepository.CreateQuery()
+                        .Where(a => a.ExamRecordId == recordId)
+                        .ToListAsync();
+
+                    // 创建答案字典，包含所有题目
+                    var answerDict = answerEntities.ToDictionary(
+                        a => a.QuestionId,
+                        a => new ClientExamAnswerDto
+                        {
+                            QuestionId = a.QuestionId,
+                            Answer = a.Answer ?? string.Empty
+                        });
+
+                    // 更新新保存的答案
+                    foreach (var newAnswer in newAnswers)
+                    {
+                        if (answerDict.ContainsKey(newAnswer.QuestionId))
+                        {
+                            answerDict[newAnswer.QuestionId].Answer = newAnswer.Answer;
+                        }
+                    }
+
+                    updatedAnswers = answerDict.Values.ToList();
+                    _logger.LogDebug("从数据库重建缓存: RecordId={RecordId}, 数据库答案数={DbCount}, 更新答案数={NewCount}, 最终答案数={TotalCount}",
+                        recordId, answerEntities.Count, newAnswers.Count, updatedAnswers.Count);
+                }
+
+                // 直接设置缓存
+                await _cacheService.SetAsync(cacheKey, updatedAnswers);
+
+                _logger.LogDebug("已直接更新用户答案缓存: RecordId={RecordId}, UserId={UserId}, 答案数={AnswerCount}",
+                    recordId, userId, updatedAnswers.Count);
+            }
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "获取答案缓存更新锁超时: {LockKey}，将清除缓存以确保数据一致性", lockKey);
+            // 获取锁超时，清除缓存以确保下次从数据库读取最新数据
             var cacheKey = new ExamCacheOptions.UserAnswers(recordId, userId);
-            _logger.LogInformation("更新用户答案缓存，缓存键: {CacheKey}, RecordId={RecordId}, UserId={UserId}",
-                cacheKey.Key, recordId, userId);
-
-            var existingAnswers = await _cacheService.GetAsync(cacheKey);
-
-            List<ClientExamAnswerDto> updatedAnswers;
-
-            if (existingAnswers != null && existingAnswers.Count > 0)
-            {
-                // 如果缓存中有数据，则合并新答案
-                var answerDict = existingAnswers.ToDictionary(a => a.QuestionId, a => a);
-
-                // 更新新答案到字典中
-                foreach (var newAnswer in newAnswers)
-                {
-                    if (answerDict.ContainsKey(newAnswer.QuestionId))
-                    {
-                        // 更新现有答案
-                        answerDict[newAnswer.QuestionId].Answer = newAnswer.Answer;
-                    }
-                    else
-                    {
-                        // 添加新答案（理论上不应该发生，因为所有题目在考试开始时就创建了记录）
-                        answerDict[newAnswer.QuestionId] = newAnswer;
-                        _logger.LogWarning("发现缓存中缺少题目 {QuestionId} 的记录，已添加", newAnswer.QuestionId);
-                    }
-                }
-
-                updatedAnswers = answerDict.Values.ToList();
-                _logger.LogDebug("合并缓存答案: RecordId={RecordId}, 原有答案数={ExistingCount}, 更新答案数={NewCount}, 合并后答案数={TotalCount}",
-                    recordId, existingAnswers.Count, newAnswers.Count, updatedAnswers.Count);
-            }
-            else
-            {
-                // 如果缓存中没有数据，需要从数据库获取完整答案列表
-                // 这种情况可能发生在缓存过期或首次访问时，需要确保获取所有题目的答案记录
-                _logger.LogDebug("缓存为空，从数据库获取完整答案列表: RecordId={RecordId}", recordId);
-                var answerEntities = await _answerRecordRepository.CreateQuery()
-                    .Where(a => a.ExamRecordId == recordId)
-                    .ToListAsync();
-
-                // 创建答案字典，包含所有题目
-                var answerDict = answerEntities.ToDictionary(
-                    a => a.QuestionId,
-                    a => new ClientExamAnswerDto
-                    {
-                        QuestionId = a.QuestionId,
-                        Answer = a.Answer ?? string.Empty
-                    });
-
-                // 更新新保存的答案
-                foreach (var newAnswer in newAnswers)
-                {
-                    if (answerDict.ContainsKey(newAnswer.QuestionId))
-                    {
-                        answerDict[newAnswer.QuestionId].Answer = newAnswer.Answer;
-                    }
-                }
-
-                updatedAnswers = answerDict.Values.ToList();
-                _logger.LogDebug("从数据库重建缓存: RecordId={RecordId}, 数据库答案数={DbCount}, 更新答案数={NewCount}, 最终答案数={TotalCount}",
-                    recordId, answerEntities.Count, newAnswers.Count, updatedAnswers.Count);
-            }
-
-            // 直接设置缓存
-            await _cacheService.SetAsync(cacheKey, updatedAnswers);
-
-            _logger.LogDebug("已直接更新用户答案缓存: RecordId={RecordId}, UserId={UserId}, 答案数={AnswerCount}",
-                recordId, userId, updatedAnswers.Count);
+            await _cacheService.RemoveAsync(cacheKey);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "直接更新用户答案缓存失败: RecordId={RecordId}, UserId={UserId}", recordId, userId);
-            throw;
+            // 更新失败时清除缓存，避免脏数据
+            try
+            {
+                var cacheKey = new ExamCacheOptions.UserAnswers(recordId, userId);
+                await _cacheService.RemoveAsync(cacheKey);
+                _logger.LogDebug("已清除可能的脏缓存数据: RecordId={RecordId}, UserId={UserId}", recordId, userId);
+            }
+            catch
+            {
+                // 忽略清除缓存的异常
+            }
         }
     }
 

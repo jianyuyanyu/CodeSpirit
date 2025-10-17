@@ -1003,22 +1003,30 @@
         }
 
         // 检查最小考试时间限制（仅对手动提交进行检查）
+        // 但如果考试只剩最后5分钟，则允许提交
         if (!isAutoSubmit) {
             const examStartTime = window.globalData?.exam?.startTime;
             const minExamTime = window.globalData?.exam?.minExamTime; // 最小考试时间（分钟）
+            
+            // 获取当前剩余时间（秒）
+            const currentRemainingTime = remainingTime;
             
             if (examStartTime && minExamTime && minExamTime > 0) {
                 const currentTime = new Date();
                 const startTime = new Date(examStartTime);
                 const elapsedMinutes = Math.floor((currentTime - startTime) / (1000 * 60)); // 已用时间（分钟）
                 
-                if (elapsedMinutes < minExamTime) {
+                // 如果剩余时间大于5分钟（300秒），才检查最小考试时间
+                if (currentRemainingTime > 300 && elapsedMinutes < minExamTime) {
                     const remainingMinutes = minExamTime - elapsedMinutes;
                     const message = `请不要提前交卷！您需要再考试 ${remainingMinutes} 分钟后才能提交试卷。\n\n当前已考试时间：${elapsedMinutes} 分钟\n最低要求时间：${minExamTime} 分钟`;
                     
                     console.log(`[提交限制] 考试时间不足，已用时间：${elapsedMinutes}分钟，最低要求：${minExamTime}分钟`);
                     createCustomNotification('提交失败', message, 'error', 5000);
                     return;
+                } else if (currentRemainingTime <= 300 && elapsedMinutes < minExamTime) {
+                    // 剩余时间不足5分钟，允许提交，但给予提示
+                    console.log(`[提交限制] 考试剩余时间不足5分钟，允许提交（已用时间：${elapsedMinutes}分钟，最低要求：${minExamTime}分钟）`);
                 }
             }
         }

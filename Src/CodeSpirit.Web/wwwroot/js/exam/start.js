@@ -520,26 +520,27 @@
                                     className: "exam-info-title"
                                 },
                                 {
-                                    type: "container",
-                                    className: "exam-info-grid",
-                                    body: [
-                                        {
-                                            type: "tpl",
-                                            tpl: "<div class='exam-info-item'><div class='label'>考试时长</div><div class='value'>${exam.duration}分钟</div></div>"
-                                        },
-                                        {
-                                            type: "tpl",
-                                            tpl: "<div class='exam-info-item'><div class='label'>题目数量</div><div class='value'>${exam.totalQuestions}题</div></div>"
-                                        },
-                                        {
-                                            type: "tpl",
-                                            tpl: "<div class='exam-info-item'><div class='label'>总分</div><div class='value'>${exam.totalScore}分</div></div>"
-                                        },
-                                        {
-                                            type: "tpl",
-                                            tpl: "<div class='exam-info-item'><div class='label'>考生姓名</div><div class='value'>${student.displayName}</div></div>"
-                                        }
-                                    ]
+                                    type: "html",
+                                    html: `
+                                        <div class="exam-info-grid">
+                                            <div class='exam-info-item'>
+                                                <div class='label'>考试时长</div>
+                                                <div class='value'>\${exam.duration}分钟</div>
+                                            </div>
+                                            <div class='exam-info-item'>
+                                                <div class='label'>题目数量</div>
+                                                <div class='value'>\${exam.totalQuestions}题</div>
+                                            </div>
+                                            <div class='exam-info-item'>
+                                                <div class='label'>总分</div>
+                                                <div class='value'>\${exam.totalScore}分</div>
+                                            </div>
+                                            <div class='exam-info-item'>
+                                                <div class='label'>考生姓名</div>
+                                                <div class='value'>\${student.displayName}</div>
+                                            </div>
+                                        </div>
+                                    `
                                 }
                             ]
                         },

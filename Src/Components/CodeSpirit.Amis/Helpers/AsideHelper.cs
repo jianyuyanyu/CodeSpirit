@@ -105,4 +105,20 @@ public class AsideHelper
             ["body"] = new JArray(asideFields)
         };
     }
+
+    /// <summary>
+    /// 获取 PageAsideAttribute 配置
+    /// </summary>
+    /// <param name="queryDtoType">查询DTO类型</param>
+    /// <returns>PageAsideAttribute 实例，如果不存在则返回 null</returns>
+    public PageAsideAttribute? GetPageAsideAttribute(Type? queryDtoType)
+    {
+        if (queryDtoType == null) return null;
+
+        // 获取第一个带有 PageAsideAttribute 特性的属性
+        var asideProperty = queryDtoType.GetProperties()
+            .FirstOrDefault(prop => prop.GetCustomAttribute<PageAsideAttribute>() != null);
+
+        return asideProperty?.GetCustomAttribute<PageAsideAttribute>();
+    }
 }

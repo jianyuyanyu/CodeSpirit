@@ -152,6 +152,32 @@ namespace CodeSpirit.Amis
             if (asideConfig != null)
             {
                 pageConfig["aside"] = asideConfig;
+                
+                // 获取 PageAsideAttribute 配置并设置到 page 组件
+                var pageAsideAttr = _asideHelper.GetPageAsideAttribute(queryDtoType);
+                if (pageAsideAttr != null)
+                {
+                    // 设置宽度是否可调整
+                    pageConfig["asideResizor"] = pageAsideAttr.AsideResizor;
+                    
+                    // 设置最小宽度
+                    if (pageAsideAttr.AsideMinWidth.HasValue)
+                    {
+                        pageConfig["asideMinWidth"] = pageAsideAttr.AsideMinWidth.Value;
+                    }
+                    
+                    // 设置最大宽度
+                    if (pageAsideAttr.AsideMaxWidth.HasValue)
+                    {
+                        pageConfig["asideMaxWidth"] = pageAsideAttr.AsideMaxWidth.Value;
+                    }
+                    
+                    // 设置边栏是否固定
+                    pageConfig["asideSticky"] = pageAsideAttr.AsideSticky;
+                    
+                    // 设置边栏位置
+                    pageConfig["asidePosition"] = pageAsideAttr.AsidePosition == AsidePosition.Left ? "left" : "right";
+                }
             }
 
             return pageConfig;

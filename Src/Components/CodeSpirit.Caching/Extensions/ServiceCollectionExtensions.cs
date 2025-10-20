@@ -1,3 +1,4 @@
+using System.Threading;
 using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.Caching.Configuration;
 using CodeSpirit.Caching.DistributedLock;
@@ -120,14 +121,54 @@ public static class ServiceCollectionExtensions
         // 添加Redis连接
         services.AddSingleton<IConnectionMultiplexer>(provider =>
         {
+            var logger = provider.GetService<ILogger<IConnectionMultiplexer>>();
             var configuration = ConfigurationOptions.Parse(connectionString);
-            return ConnectionMultiplexer.Connect(configuration);
+            
+            // 高并发优化配置
+            configuration.AbortOnConnectFail = false;  // 连接失败不中止
+            configuration.ConnectTimeout = 10000;      // 10秒连接超时
+            configuration.SyncTimeout = 10000;         // 10秒同步超时
+            configuration.AsyncTimeout = 10000;        // 10秒异步超时
+            configuration.ConnectRetry = 3;            // 重试3次
+            configuration.KeepAlive = 60;              // 60秒保活
+            configuration.DefaultDatabase = 0;
+            
+            // 配置线程池设置（考虑分布式环境中的多实例部署）
+            // 根据服务层级和实例数量，适度增加最小线程数
+            ThreadPool.GetMinThreads(out int workerThreads, out int completionPortThreads);
+            var minThreads = Math.Max(workerThreads, 50); // 每个实例最小50个线程（适合3副本场景）
+            ThreadPool.SetMinThreads(minThreads, Math.Max(completionPortThreads, 50));
+            
+            var multiplexer = ConnectionMultiplexer.Connect(configuration);
+            
+            // 添加连接事件监听
+            if (logger != null)
+            {
+                multiplexer.ConnectionFailed += (sender, args) =>
+                {
+                    logger.LogError("Redis连接失败: {EndPoint}, {FailureType}, {Exception}", 
+                        args.EndPoint, args.FailureType, args.Exception?.Message);
+                };
+                
+                multiplexer.ConnectionRestored += (sender, args) =>
+                {
+                    logger.LogInformation("Redis连接恢复: {EndPoint}", args.EndPoint);
+                };
+                
+                multiplexer.ErrorMessage += (sender, args) =>
+                {
+                    logger.LogWarning("Redis错误消息: {EndPoint}, {Message}", args.EndPoint, args.Message);
+                };
+            }
+            
+            return multiplexer;
         });
 
         // 添加分布式缓存
         services.AddStackExchangeRedisCache(options =>
         {
             options.Configuration = connectionString;
+            //options.InstanceName = "CS:"; // 添加实例前缀避免键冲突
         });
 
         return services;

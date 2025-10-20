@@ -145,7 +145,13 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 predicateBuilder = predicateBuilder.And(x => x.CheatingSuspicionLevel >= examRecordQueryDto.MinCheatingSuspicionLevel.Value);
             }
 
-            // 必须包含Student表关联，以支持姓名搜索和准考证号
+            // 按身份证号码筛选
+            if (!string.IsNullOrWhiteSpace(examRecordQueryDto.IdNo))
+            {
+                predicateBuilder = predicateBuilder.And(x => x.Student.IdNo.Contains(examRecordQueryDto.IdNo));
+            }
+
+            // 必须包含Student表关联，以支持姓名搜索、准考证号和身份证号码搜索
             var includesList = includes.ToList();
             if (!includesList.Contains("Student"))
             {
@@ -170,11 +176,13 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
 
             // 获取查询结果总数
             var totalCount = await Repository.CreateQuery()
+                .AsNoTracking() // 🚀 性能优化：只读查询无需跟踪
                 .Where(predicateBuilder)
                 .CountAsync();
 
             // 获取分页数据
             var query = Repository.CreateQuery()
+                .AsNoTracking() // 🚀 性能优化：只读查询无需跟踪，大幅减少内存占用
                 .Where(predicateBuilder);
 
             // 应用包含
@@ -596,6 +604,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
 
         // 查询错题记录
         var query = _answerRecordRepository.CreateQuery()
+            .AsNoTracking() // 🚀 性能优化：只读查询无需跟踪
             .Where(predicate);
 
         // 按时间范围筛选
@@ -684,6 +693,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     public async Task<ExamRecordDto> GetExamRecordDetailAsync(long recordId)
     {
         var examRecord = await Repository.CreateQuery()
+            .AsNoTracking() // 🚀 性能优化：只读查询无需跟踪
             .Include(r => r.ExamSetting)
             .Include(r => r.Student)
             .Include(r => r.AnswerRecords)
@@ -708,6 +718,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     public async Task<AnswerPreviewDto> GetAnswerPreviewAsync(long recordId)
     {
         var examRecord = await Repository.CreateQuery()
+            .AsNoTracking() // 🚀 性能优化：只读查询无需跟踪
             .Include(r => r.ExamSetting)
             .ThenInclude(es => es.ExamPaper)
             .Include(r => r.AnswerRecords)
@@ -769,7 +780,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
 
         try
         {
-            using (await _distributedLockProvider.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(30)))
+            using (await _distributedLockProvider.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(10)))
             {
                 _logger.LogInformation("已获取考试创建锁: {LockKey}", lockKey);
 
@@ -788,14 +799,6 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     throw new BusinessException("不在考试时间范围内");
                 }
 
-                // 获取学生实体
-                var student = await _studentRepository.GetByIdAsync(studentId);
-
-                if (student == null)
-                {
-                    throw new BusinessException("未找到考生信息");
-                }
-
                 // 查找是否已存在未完成的考试记录（在锁内再次检查，确保并发安全）
                 var existingRecord = await Repository.CreateQuery()
                     .Where(r => r.ExamSettingId == examId &&
@@ -803,89 +806,116 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                             r.Status == ExamRecordStatus.InProgress)
                     .FirstOrDefaultAsync();
 
-                // 如果存在进行中的考试记录，直接返回
+                // 如果存在进行中的考试记录，验证是否有答题记录
                 if (existingRecord != null)
                 {
-                    _logger.LogInformation("用户已有进行中的考试记录，直接返回: 考试ID={ExamId}, 学生ID={StudentId}, 记录ID={RecordId}",
-                        examId, studentId, existingRecord.Id);
-                    return existingRecord;
-                }
+                    // 检查该考试记录是否有答题记录
+                    var answerRecordCount = await _answerRecordRepository.CreateQuery()
+                        .Where(ar => ar.ExamRecordId == existingRecord.Id)
+                        .CountAsync();
 
-                // 检查是否超过允许的考试次数
-                var currentAttemptCount = await Repository.CreateQuery()
-                    .CountAsync(r => r.ExamSettingId == examId && r.StudentId == studentId);
-
-                if (examBasicInfo.AllowedAttempts != 0 && currentAttemptCount >= examBasicInfo.AllowedAttempts)
-                {
-                    _logger.LogInformation("考生 {StudentId} 已超过允许的考试次数，考试ID: {ExamId}，允许考试次数: {AllowedAttempts}", studentId, examId, examBasicInfo.AllowedAttempts);
-                    throw new BusinessException($"考生 {student.Name} 已超过允许的考试次数，考试ID: {examId}");
-                }
-
-                // 创建考试记录
-                var examRecord = new ExamRecord
-                {
-                    ExamSettingId = examId,
-                    StudentId = studentId,
-                    AttemptNumber = currentAttemptCount + 1,
-                    StartTime = now,
-                    Status = ExamRecordStatus.InProgress,
-                    IpAddress = userIp,
-                    DeviceInfo = deviceInfo
-                };
-
-                await Repository.AddAsync(examRecord);
-
-                // ✅ 创建答题记录（使用缓存获取题目数据）
-                var questionsData = await _examCacheService.GetExamQuestionsDataWithCacheAsync(examId);
-
-                if (questionsData == null || !questionsData.Any())
-                {
-                    _logger.LogError("考试 {ExamId} 没有试卷题目，无法创建答题记录", examId);
-                    throw new BusinessException("试卷题目不存在");
-                }
-
-                var questionsList = questionsData.Values.ToList();
-
-                // 题目乱序处理
-                if (examBasicInfo.EnableRandomQuestionOrder)
-                {
-                    var random = new Random();
-                    // 先随机打乱，再按题型排序，确保同类型题目相对顺序一致
-                    questionsList = questionsList.OrderBy(q => random.Next()).OrderBy(q => q.TypeValue).ToList();
-                }
-                else
-                {
-                    questionsList = questionsList.OrderBy(q => q.TypeValue).ToList();
-                }
-
-                // 创建答题记录
-                var answerRecords = new List<ExamAnswerRecord>();
-                for (int i = 0; i < questionsList.Count; i++)
-                {
-                    var question = questionsList[i];
-                    answerRecords.Add(new ExamAnswerRecord
+                    if (answerRecordCount > 0)
                     {
-                        ExamRecordId = examRecord.Id,
-                        QuestionId = question.QuestionId,
-                        QuestionVersionId = question.QuestionVersionId,
-                        OrderNumber = i + 1,
-                        IsMarked = false
-                    });
+                        _logger.LogInformation("用户已有进行中的考试记录，直接返回: 考试ID={ExamId}, 学生ID={StudentId}, 记录ID={RecordId}, 答题记录数={AnswerCount}",
+                            examId, studentId, existingRecord.Id, answerRecordCount);
+                        return existingRecord;
+                    }
+                    else
+                    {
+                        // 存在考试记录但没有答题记录，这是异常情况，删除该记录并重新创建
+                        _logger.LogWarning("发现异常的考试记录（无答题记录），将删除并重新创建: 考试ID={ExamId}, 学生ID={StudentId}, 记录ID={RecordId}",
+                            examId, studentId, existingRecord.Id);
+                        await Repository.DeleteAsync(existingRecord);
+                    }
                 }
 
-                await _answerRecordRepository.AddRangeAsync(answerRecords);
+                // // 检查是否超过允许的考试次数
+                // var currentAttemptCount = await Repository.CreateQuery()
+                //     .CountAsync(r => r.ExamSettingId == examId && r.StudentId == studentId);
 
-                _logger.LogInformation("成功创建考试记录和答题记录，考试ID: {ExamId}, 记录ID: {RecordId}, 学生ID: {StudentId}, 题目数: {QuestionCount}",
-                    examId, examRecord.Id, studentId, answerRecords.Count);
+                // if (examBasicInfo.AllowedAttempts != 0 && currentAttemptCount >= examBasicInfo.AllowedAttempts)
+                // {
+                //     _logger.LogInformation("考生 {StudentId} 已超过允许的考试次数，考试ID: {ExamId}，允许考试次数: {AllowedAttempts}", studentId, examId, examBasicInfo.AllowedAttempts);
+                //     throw new BusinessException($"已超过允许的考试次数，考试ID: {examId}");
+                // }
 
-                // 清除相关缓存，确保数据一致性
+                // ✅ 使用数据库事务确保考试记录和答题记录的原子性
+                // 分布式锁 + 数据库事务：双重保障数据一致性
+                ExamRecord? examRecord = null;
+
+                await Repository.ExecuteInTransactionAsync(async () =>
+                {
+                    // 创建考试记录
+                    examRecord = new ExamRecord
+                    {
+                        ExamSettingId = examId,
+                        StudentId = studentId,
+                        AttemptNumber = existingRecord?.AttemptNumber ?? 0 + 1,
+                        StartTime = now,
+                        Status = ExamRecordStatus.InProgress,
+                        IpAddress = userIp,
+                        DeviceInfo = deviceInfo
+                    };
+
+                    await Repository.AddAsync(examRecord);
+
+                    // ✅ 创建答题记录（使用缓存获取题目数据）
+                    var questionsData = await _examCacheService.GetExamQuestionsDataWithCacheAsync(examId);
+
+                    if (questionsData == null || !questionsData.Any())
+                    {
+                        _logger.LogError("考试 {ExamId} 没有试卷题目，无法创建答题记录", examId);
+                        throw new BusinessException("试卷题目不存在");
+                    }
+
+                    var questionsList = questionsData.Values.ToList();
+
+                    // 题目乱序处理
+                    if (examBasicInfo.EnableRandomQuestionOrder)
+                    {
+                        var random = new Random();
+                        // 先随机打乱，再按题型排序，确保同类型题目相对顺序一致
+                        questionsList = questionsList.OrderBy(q => random.Next()).OrderBy(q => q.TypeValue).ToList();
+                    }
+                    else
+                    {
+                        questionsList = questionsList.OrderBy(q => q.TypeValue).ToList();
+                    }
+
+                    // 创建答题记录
+                    var answerRecords = new List<ExamAnswerRecord>();
+                    for (int i = 0; i < questionsList.Count; i++)
+                    {
+                        var question = questionsList[i];
+                        answerRecords.Add(new ExamAnswerRecord
+                        {
+                            ExamRecordId = examRecord.Id,
+                            QuestionId = question.QuestionId,
+                            QuestionVersionId = question.QuestionVersionId,
+                            OrderNumber = i + 1,
+                            IsMarked = false
+                        });
+                    }
+
+                    await _answerRecordRepository.AddRangeAsync(answerRecords);
+
+                    // ✅ 验证答题记录是否成功创建
+                    if (answerRecords.Count == 0)
+                    {
+                        throw new BusinessException("答题记录创建失败");
+                    }
+
+                    _logger.LogInformation("✅ 成功创建考试记录和答题记录（事务已提交），考试ID: {ExamId}, 记录ID: {RecordId}, 学生ID: {StudentId}, 题目数: {QuestionCount}",
+                        examId, examRecord.Id, studentId, answerRecords.Count);
+                });
+
+                // 清除相关缓存，确保数据一致性（在事务外执行，失败不影响主流程）
                 try
                 {
-                    if (student?.UserId != null)
+                    if (existingRecord != null && existingRecord.CreatedBy != 0)
                     {
                         // 清除用户考试记录缓存
-                        await _examCacheService.ClearUserExamRecordCacheAsync(examId, student.UserId);
-                        _logger.LogDebug("已清除用户考试记录缓存: ExamId={ExamId}, UserId={UserId}", examId, student.UserId);
+                        await _examCacheService.ClearUserExamRecordCacheAsync(examId, existingRecord.CreatedBy);
                     }
                 }
                 catch (Exception ex)
@@ -894,7 +924,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     _logger.LogWarning(ex, "清除考试记录缓存时发生错误: ExamId={ExamId}, StudentId={StudentId}", examId, studentId);
                 }
 
-                return examRecord;
+                return examRecord!;
             }
         }
         catch (TimeoutException ex)
@@ -1091,6 +1121,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     public async Task<List<ClientExamHistoryDto>> GetExamHistoryForClientAsync(long studentId)
     {
         var examHistory = await Repository.CreateQuery()
+                .AsNoTracking() // 🚀 性能优化：只读查询无需跟踪
                 .Include(r => r.ExamSetting)
                 .ThenInclude(s => s.ExamPaper)
                 .Where(r => r.StudentId == studentId)
@@ -1125,6 +1156,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         try
         {
             var examRecord = await Repository.CreateQuery()
+                .AsNoTracking() // 🚀 性能优化：只读查询无需跟踪
                 .Include(r => r.ExamSetting)
                 .ThenInclude(s => s.ExamPaper)
                 .ThenInclude(p => p.ExamPaperQuestions)
@@ -1149,6 +1181,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
 
             // 加载答案记录的题目关系
             var answerRecords = await _answerRecordRepository.CreateQuery()
+                .AsNoTracking() // 🚀 性能优化：只读查询无需跟踪
                 .Include(a => a.Question)
                 .Include(a => a.QuestionVersion)
                 .Where(a => a.ExamRecordId == recordId)
@@ -1188,8 +1221,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             // 获取试卷中的所有题目（包括未作答的）
             var allQuestions = (examPaper.ExamPaperQuestions ?? new List<ExamPaperQuestion>())
                 .Where(q => q.Question != null && q.QuestionVersion != null)
-                .OrderBy(q => q.OrderNumber)
-                .ThenBy(q => q.Question.Type)
+                .OrderBy(q => q.Question.Type)
+                .ThenBy(q => q.OrderNumber)
                 .ToList();
 
             // 创建答案字典以便快速查找
@@ -1329,6 +1362,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     public async Task<List<ExamAnswerRecord>> GetExamAnswersAsync(long recordId)
     {
         return await _answerRecordRepository.CreateQuery()
+            .AsNoTracking() // 🚀 性能优化：只读查询无需跟踪
             .Where(a => a.ExamRecordId == recordId)
             .OrderBy(a => a.OrderNumber)
             .ToListAsync();
@@ -2112,5 +2146,125 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             settings);
 
         return result;
+    }
+
+    /// <summary>
+    /// 自动批改考试记录
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>批改后的考试记录</returns>
+    public async Task<ExamRecordDto> AutoGradeExamRecordAsync(long recordId)
+    {
+        // 获取考试记录及相关信息
+        var examRecord = await Repository.CreateQuery()
+            .Include(r => r.ExamSetting)
+            .ThenInclude(es => es.ExamPaper)
+            .FirstOrDefaultAsync(r => r.Id == recordId);
+
+        if (examRecord == null)
+        {
+            throw new BusinessException("考试记录不存在");
+        }
+
+        // 验证考试状态 - 只能批改已提交的记录
+        if (examRecord.Status == ExamRecordStatus.InProgress)
+        {
+            throw new BusinessException("考试尚未提交，无法进行批改");
+        }
+
+        // 获取试卷信息
+        var examPaper = examRecord.ExamSetting?.ExamPaper;
+        if (examPaper == null)
+        {
+            throw new BusinessException("试卷信息不存在");
+        }
+
+        // 使用现有的自动批改方法
+        await AutoGradeObjectiveQuestions(examRecord);
+
+        // 重新加载完整的考试记录数据以返回
+        var updatedRecord = await Repository.CreateQuery()
+            .Include(r => r.ExamSetting)
+            .Include(r => r.Student)
+            .FirstOrDefaultAsync(r => r.Id == recordId);
+
+        return Mapper.Map<ExamRecordDto>(updatedRecord);
+    }
+
+    /// <summary>
+    /// 更新考试记录状态为已提交
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <param name="submitTime">提交时间</param>
+    /// <returns>是否更新成功</returns>
+    public async Task<bool> UpdateExamRecordToSubmittedAsync(long recordId, DateTime submitTime)
+    {
+        try
+        {
+            var examRecord = await Repository.CreateQuery()
+                .Include(r => r.ExamSetting)
+                .FirstOrDefaultAsync(r => r.Id == recordId);
+
+            if (examRecord == null)
+            {
+                return false;
+            }
+
+            // 只有进行中的考试记录才能更新为已提交
+            if (examRecord.Status != ExamRecordStatus.InProgress)
+            {
+                return false;
+            }
+
+            // 更新状态和提交时间
+            examRecord.Status = ExamRecordStatus.Submitted;
+            examRecord.SubmitTime = submitTime;
+
+            // 计算考试时长
+            examRecord.Duration = (int)Math.Ceiling((submitTime - examRecord.StartTime).TotalMinutes);
+
+            // 确保时长不超过考试设置的最大时长
+            if (examRecord.ExamSetting != null && examRecord.Duration > examRecord.ExamSetting.Duration)
+            {
+                examRecord.Duration = examRecord.ExamSetting.Duration;
+            }
+
+            await Repository.UpdateAsync(examRecord);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "更新考试记录状态为已提交失败，记录ID: {RecordId}", recordId);
+            // 记录日志但不抛出异常
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 获取考试记录的答题记录数量
+    /// </summary>
+    /// <remarks>
+    /// ⚠️ 注意：由于CreateExamRecordAsync已使用事务保护，此方法通常不需要调用。
+    /// 如果CreateExamRecordAsync成功返回，说明答题记录必然已创建。
+    /// 此方法保留用于特殊场景或向后兼容。
+    /// </remarks>
+    /// <param name="examRecordId">考试记录ID</param>
+    /// <returns>答题记录数量</returns>
+    public async Task<int> GetAnswerRecordCountAsync(long examRecordId)
+    {
+        try
+        {
+            var count = await _answerRecordRepository.CreateQuery()
+                .Where(ar => ar.ExamRecordId == examRecordId)
+                .CountAsync();
+
+            _logger.LogDebug("获取答题记录数量成功，记录ID: {ExamRecordId}, 数量: {Count}", examRecordId, count);
+            return count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取答题记录数量失败，记录ID: {ExamRecordId}", examRecordId);
+            throw;
+        }
     }
 }

@@ -85,6 +85,11 @@ public class UserExamRecordCacheDto
     /// 当前切屏次数
     /// </summary>
     public int ScreenSwitchCount { get; set; }
+    
+    /// <summary>
+    /// 用户实际开始考试的时间
+    /// </summary>
+    public DateTime StartTime { get; set; }
 }
 
 /// <summary>

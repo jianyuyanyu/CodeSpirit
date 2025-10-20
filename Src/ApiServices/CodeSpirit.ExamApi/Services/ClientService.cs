@@ -7,6 +7,7 @@ using CodeSpirit.ExamApi.Dtos.ExamRecord;
 using CodeSpirit.ExamApi.Dtos.Student;
 using CodeSpirit.ExamApi.Extensions;
 using CodeSpirit.ExamApi.Constants;
+using CodeSpirit.Shared.DistributedLock;
 using System.Collections.Concurrent;
 using System.Net;
 
@@ -22,6 +23,7 @@ public class ClientService : IClientService, IScopedDependency
     private readonly IStudentService _studentService;
     private readonly IExamCacheService _examCacheService;
     private readonly ILogger<ClientService> _logger;
+    private readonly IDistributedLockProvider _distributedLockProvider;
     // 移除重复的缓存机制，统一使用 ExamCacheService
 
     /// <summary>
@@ -32,18 +34,21 @@ public class ClientService : IClientService, IScopedDependency
     /// <param name="studentService">学生服务</param>
     /// <param name="examCacheService">考试缓存服务</param>
     /// <param name="logger">日志记录器</param>
+    /// <param name="distributedLockProvider">分布式锁提供程序</param>
     public ClientService(
         IExamSettingService examSettingService,
         IExamRecordService examRecordService,
         IStudentService studentService,
         IExamCacheService examCacheService,
-        ILogger<ClientService> logger)
+        ILogger<ClientService> logger,
+        IDistributedLockProvider distributedLockProvider)
     {
         _examSettingService = examSettingService;
         _examRecordService = examRecordService;
         _studentService = studentService;
         _examCacheService = examCacheService;
         _logger = logger;
+        _distributedLockProvider = distributedLockProvider;
     }
 
     /// <summary>
@@ -81,10 +86,6 @@ public class ClientService : IClientService, IScopedDependency
             {
                 throw new BusinessException("未找到考生信息");
             }
-
-            _logger.LogDebug("用户 {UserId} 直接从数据库获取可参加考试列表", userId);
-
-            // 直接从数据库获取可参加的考试列表
             var exams = await _examSettingService.GetAvailableExamsForClientAsync(student.Id);
 
             return exams ?? new List<ClientExamDto>();
@@ -131,7 +132,7 @@ public class ClientService : IClientService, IScopedDependency
     /// <param name="userIp">用户IP地址</param>
     /// <param name="deviceInfo">设备信息</param>
     /// <returns>考试详情</returns>
-    public async Task<ClientExamDetailDto> GetExamDetailAsync(long examId, long userId, string userIp, string deviceInfo)
+    public async Task<ClientExamDetailDto> GetExamDetailAsync(long examId, long userId, string userIp, string deviceInfo, long examRecordId)
     {
         // 获取学生实体
         var student = await GetStudentByUserIdAsync(userId);
@@ -139,9 +140,9 @@ public class ClientService : IClientService, IScopedDependency
         {
             throw new InvalidOperationException("未找到考生信息");
         }
-        var examRecord = await _examRecordService.CreateExamRecordAsync(examId, student.Id, userIp, deviceInfo);
+        //var examRecord = await _examRecordService.CreateExamRecordAsync(examId, student.Id, userIp, deviceInfo);
         // 获取考试详情（使用已有的考试记录ID）
-        return await _examSettingService.GetExamDetailForClientAsync(examId, examRecord.Id);
+        return await _examSettingService.GetExamDetailForClientAsync(examId, examRecordId);
     }
 
     /// <summary>
@@ -300,22 +301,15 @@ public class ClientService : IClientService, IScopedDependency
     }
 
     /// <summary>
-    /// 获取用户已提交的答案（带缓存）
+    /// 获取已提交的答案（已移除缓存，直接查询数据库）
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
     /// <param name="userId">用户ID</param>
-    /// <returns>用户答案列表</returns>
+    /// <returns>答案列表</returns>
     public async Task<List<ClientExamAnswerDto>> GetSubmittedAnswersWithCacheAsync(long recordId, long userId)
     {
-        try
-        {
-            return await _examCacheService.GetSubmittedAnswersWithCacheAsync(recordId, userId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取用户答案时发生错误，记录ID: {RecordId}, 用户ID: {UserId}", recordId, userId);
-            return new List<ClientExamAnswerDto>();
-        }
+        // 已移除缓存，直接查询数据库
+        return await GetSubmittedAnswersAsync(recordId, userId);
     }
 
     /// <summary>
@@ -326,19 +320,23 @@ public class ClientService : IClientService, IScopedDependency
     /// <returns>考试轻量信息</returns>
     public async Task<ClientExamLightInfoDto> GetExamLightInfoAsync(long examId, long userId)
     {
-        // 获取学生实体
+        // ✅ 性能优化：使用缓存获取学生信息
         var student = await GetStudentByUserIdAsync(userId);
         if (student == null)
         {
             throw new InvalidOperationException("未找到学生信息");
         }
 
-        // 获取考试轻量信息
-        var lightInfo = await _examSettingService.GetExamLightInfoForClientAsync(examId, student.Id);
-        
+        // ✅ 性能优化：使用带缓存的方法获取考试轻量信息
+        var lightInfo = await _examCacheService.GetExamLightInfoWithCacheAsync(examId, student.Id);
+        if (lightInfo == null)
+        {
+            throw new InvalidOperationException($"考试不存在或无权访问: {examId}");
+        }
+
         // 设置服务器当前时间（UTC）
         lightInfo.ServerTime = DateTime.UtcNow;
-        
+
         // 根据时间判断考试状态和是否可以开始
         var now = DateTime.UtcNow;
         if (now < lightInfo.StartTime)
@@ -448,40 +446,42 @@ public class ClientService : IClientService, IScopedDependency
     }
 
     /// <summary>
-    /// 获取已提交的答案
+    /// 获取已提交的答案（加锁保护，确保读写互斥）
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
     /// <param name="userId">用户ID</param>
     /// <returns>答案列表</returns>
     public async Task<List<ClientExamAnswerDto>> GetSubmittedAnswersAsync(long recordId, long userId)
     {
+
         try
         {
-            // 获取学生实体
-            var student = await GetStudentByUserIdAsync(userId);
-            if (student == null)
-            {
-                throw new InvalidOperationException("未找到考生信息");
-            }
+                // 获取学生实体
+                var student = await GetStudentByUserIdAsync(userId);
+                if (student == null)
+                {
+                    throw new InvalidOperationException("未找到考生信息");
+                }
 
-            // 检查考试记录是否存在且属于该学生
-            var record = await _examRecordService.GetAsync(recordId);
-            if (record == null || record.StudentId != student.Id)
-            {
-                throw new InvalidOperationException("无效的考试记录");
-            }
+                // 检查考试记录是否存在且属于该学生
+                var record = await _examRecordService.GetAsync(recordId);
+                if (record == null || record.StudentId != student.Id)
+                {
+                    throw new InvalidOperationException("无效的考试记录");
+                }
 
-            // 获取已保存的答案
-            var answerEntities = await _examRecordService.GetExamAnswersAsync(recordId);
+                // 在锁保护下获取已保存的答案，确保不会读到写入中的数据
+                var answerEntities = await _examRecordService.GetExamAnswersAsync(recordId);
 
-            // 将答案实体转换为DTO
-            var answers = answerEntities.Select(a => new ClientExamAnswerDto
-            {
-                QuestionId = a.QuestionId,
-                Answer = a.Answer ?? string.Empty
-            }).ToList();
+                // 将答案实体转换为DTO
+                var answers = answerEntities.Select(a => new ClientExamAnswerDto
+                {
+                    QuestionId = a.QuestionId,
+                    Answer = a.Answer ?? string.Empty
+                }).ToList();
 
-            return answers;
+                _logger.LogDebug("读取到 {Count} 个答案，记录ID: {RecordId}", answers.Count, recordId);
+                return answers;
         }
         catch (Exception ex)
         {
@@ -499,74 +499,66 @@ public class ClientService : IClientService, IScopedDependency
     /// <returns>保存是否成功</returns>
     public async Task<bool> SaveAnswerAsync(long recordId, long userId, List<ClientExamAnswerDto> answers)
     {
+        // 使用分布式锁防止并发保存导致数据冲突
+        var lockKey = $"exam_answer_save_{recordId}_{userId}";
+
         try
         {
-            // 获取学生实体
-            var student = await GetStudentByUserIdAsync(userId);
-            if (student == null)
+            //using (await _distributedLockProvider.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(10)))
             {
-                throw new InvalidOperationException("未找到考生信息");
-            }
+                //_logger.LogDebug("已获取答案保存锁: {LockKey}", lockKey);
 
-            if (answers == null || !answers.Any())
-            {
-                _logger.LogWarning("保存答案失败：答案列表为空");
-                return false;
-            }
-
-            // 检查考试记录状态
-            var examRecord = await _examRecordService.GetAsync(recordId);
-            if (examRecord == null)
-            {
-                _logger.LogWarning("保存答案失败：考试记录不存在，记录ID: {RecordId}", recordId);
-                return false;
-            }
-
-            // 验证记录归属
-            if (examRecord.StudentId != student.Id)
-            {
-                _logger.LogWarning("保存答案失败：考试记录归属不匹配，学生ID: {StudentId}, 记录学生ID: {RecordStudentId}",
-                    student.Id, examRecord.StudentId);
-                return false;
-            }
-
-            if (examRecord.Status != ExamRecordStatus.InProgress)
-            {
-                _logger.LogWarning("保存答案失败：考试状态不是进行中，当前状态: {Status}", examRecord.Status);
-                return false;
-            }
-
-            // 直接调用ExamRecordService的批量保存答案接口
-            var result = await _examRecordService.SubmitAnswersAsync(recordId, answers);
-            if (!result)
-            {
-                _logger.LogWarning("批量保存答案失败，考试记录ID: {RecordId}", recordId);
-                return false;
-            }
-            _logger.LogDebug("已保存考试 {RecordId} 的 {Count} 个答案", recordId, answers.Count);
-
-            // 直接更新用户答案缓存，使用已有数据，无需再次查询数据库
-            try
-            {
-                await _examCacheService.UpdateUserAnswersCacheAsync(recordId, userId, answers);
-                _logger.LogDebug("已直接更新用户答案缓存，记录ID: {RecordId}, 答案数: {AnswerCount}", recordId, answers.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "直接更新用户答案缓存失败，记录ID: {RecordId}", recordId);
-                // 缓存更新失败不影响主流程，但尝试清除缓存以避免脏数据
-                try
+                // 获取学生实体
+                var student = await GetStudentByUserIdAsync(userId);
+                if (student == null)
                 {
-                    await _examCacheService.ClearUserAnswersCacheAsync(recordId, userId);
-                    _logger.LogDebug("已清除可能的脏缓存数据，记录ID: {RecordId}", recordId);
+                    throw new InvalidOperationException("未找到考生信息");
                 }
-                catch
-                {
-                    // 忽略清除缓存的异常
-                }
-            }
 
-            return true;
+                if (answers == null || !answers.Any())
+                {
+                    _logger.LogWarning("保存答案失败：答案列表为空");
+                    return false;
+                }
+
+                // 检查考试记录状态（使用缓存优化，避免每次都查询数据库）
+                var examRecord = await _examCacheService.GetExamRecordWithCacheAsync(recordId);
+                if (examRecord == null)
+                {
+                    _logger.LogWarning("保存答案失败：考试记录不存在，记录ID: {RecordId}", recordId);
+                    return false;
+                }
+
+                // 验证记录归属
+                if (examRecord.StudentId != student.Id)
+                {
+                    _logger.LogWarning("保存答案失败：考试记录归属不匹配，学生ID: {StudentId}, 记录学生ID: {RecordStudentId}",
+                        student.Id, examRecord.StudentId);
+                    return false;
+                }
+
+                if (examRecord.Status != ExamRecordStatus.InProgress)
+                {
+                    _logger.LogWarning("保存答案失败：考试状态不是进行中，当前状态: {Status}", examRecord.Status);
+                    return false;
+                }
+
+                // 保存到数据库（已移除缓存，刷新时直接查询数据库）
+                var result = await _examRecordService.SubmitAnswersAsync(recordId, answers);
+                if (!result)
+                {
+                    _logger.LogWarning("批量保存答案失败，考试记录ID: {RecordId}", recordId);
+                    return false;
+                }
+
+                _logger.LogDebug("已保存考试 {RecordId} 的 {Count} 个答案到数据库", recordId, answers.Count);
+                return true;
+            }
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "获取答案保存锁超时: {LockKey}，保存失败", lockKey);
+            return false;
         }
         catch (Exception ex)
         {

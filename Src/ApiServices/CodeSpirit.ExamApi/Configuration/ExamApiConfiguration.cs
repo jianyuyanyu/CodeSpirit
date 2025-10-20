@@ -11,13 +11,15 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.ExamApi.Tasks;
 using CodeSpirit.MultiTenant.Extensions;
-using CodeSpirit.PdfGeneration.Extensions;
+// ⚠️ 临时注释：负载测试期间禁用PDF组件
+// using CodeSpirit.PdfGeneration.Extensions;
 using CodeSpirit.ScheduledTasks.Extensions;
 using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Extensions;
 using CodeSpirit.Shared.Extensions;
+using CodeSpirit.Shared.Performance;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Builder;
@@ -52,6 +54,10 @@ public class ExamApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        // 配置线程池（高并发服务等级）
+        var logger = services.BuildServiceProvider().GetService<ILoggerFactory>()?.CreateLogger<ExamApiConfiguration>();
+        ThreadPoolConfiguration.ConfigureThreadPool(ThreadPoolConfiguration.ServiceTier.High, expectedInstances: 3, logger);
+        
         // 调用基类方法以初始化路径前缀配置
         base.ConfigureServices(services, configuration);
         // 配置多数据库支持的考试系统数据库
@@ -76,8 +82,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
         // 注册AI题目生成和SignalR服务
         AddAIAndSignalRServices(services, configuration);
         
+        // ⚠️ 临时注释：负载测试期间禁用PDF组件以减少内存占用（节省约1.5GB内存）
         // 注册PDF生成服务
-        services.AddPdfGeneration(configuration);
+        // services.AddPdfGeneration(configuration);
         
         // 添加设置管理
         services.AddSettingsManagerWithDatabase(configuration);
@@ -93,7 +100,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
         
         // 添加定时任务服务
         AddScheduledTasksServices(services, configuration);
-        
+
+        // 🚨 紧急优化：添加请求限流保护
+        AddRateLimiterServices(services);
         // 配置控制器和审计元数据过滤器
         ConfigureControllersWithAudit(services, configuration);
     }
@@ -121,6 +130,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
         // 使用多租户中间件
         app.UseCodeSpiritMultiTenant();
         
+        // 🚨 紧急优化：启用请求限流中间件（必须在路由之前）
+        app.UseRateLimiter();
+        
         // 使用输出缓存中间件
         app.UseOutputCache();
         
@@ -133,8 +145,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
         // 使用AI表单填充自动端点
         app.UseAiFormFillEndpoints();
         
+        // ⚠️ 临时注释：负载测试期间禁用PDF组件
         // 初始化PDF生成服务
-        await app.UsePdfGenerationAsync();
+        // await app.UsePdfGenerationAsync();
     }
     
     /// <summary>
@@ -191,8 +204,29 @@ public class ExamApiConfiguration : BaseApiConfiguration
         {
             // 配置默认缓存策略
             options.AddBasePolicy(builder => 
-                builder.Expire(TimeSpan.FromMinutes(5))); // 默认5分钟过期
+            {
+                builder.Expire(TimeSpan.FromMinutes(5)); // 默认5分钟过期
+                
+                // ⚠️ 重要安全控制：只缓存已认证用户的请求
+                // 作用：避免缓存401 Unauthorized响应
+                builder.With(context => 
+                {
+                    return context.HttpContext.User.Identity?.IsAuthenticated == true;
+                });
+            });
+            
+            // 📝 ASP.NET Core OutputCache默认行为说明：
+            // ✅ 只缓存成功响应（200-299状态码）
+            // ❌ 不缓存客户端错误（4xx：401, 404, 400等）
+            // ❌ 不缓存服务器错误（5xx：500, 502, 503等）
+            // ❌ 不缓存重定向响应（3xx）
+            // 
+            // 通过builder.With()我们进一步限制：
+            // ✅ 只缓存已认证用户的成功响应
+            // ❌ 未认证用户的401响应不会被缓存
         });
+        
+        Console.WriteLine("已配置HTTP输出缓存：仅缓存已认证用户的成功响应（2xx）");
     }
     
     /// <summary>
@@ -291,5 +325,69 @@ public class ExamApiConfiguration : BaseApiConfiguration
         {
             Console.WriteLine($"警告: 注册定时任务服务时出错: {ex.Message}，但应用程序将继续启动");
         }
+    }
+    
+    /// <summary>
+    /// 添加请求限流服务 - 紧急优化
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    private static void AddRateLimiterServices(IServiceCollection services)
+    {
+        services.AddRateLimiter(options =>
+        {
+            // 全局固定窗口限流策略 - 基于用户身份
+            options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<Microsoft.AspNetCore.Http.HttpContext, string>(context =>
+            {
+                // 优先使用用户ID（从JWT Token中获取），避免多用户共享IP的问题
+                var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                             ?? context.User?.FindFirst("sub")?.Value
+                             ?? context.User?.FindFirst("userId")?.Value;
+                
+                // 如果未登录，则基于IP限流（匿名访问场景）
+                var partitionKey = userId ?? $"anonymous:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+                
+                return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: partitionKey,
+                    factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 200, // 每个用户每10秒允许200个请求（适应正常使用场景）
+                        Window = TimeSpan.FromSeconds(10), // 10秒窗口
+                        QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 100 // 队列最多100个请求
+                    });
+            });
+            
+            // 添加特定端点的限流策略（针对高频考试API）
+            options.AddPolicy("client-api", context =>
+            {
+                // 基于用户ID限流
+                var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                             ?? context.User?.FindFirst("sub")?.Value
+                             ?? context.User?.FindFirst("userId")?.Value;
+                
+                var partitionKey = userId ?? $"anonymous:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+                
+                return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: partitionKey,
+                    factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 100, // 客户端API每10秒最多100个请求（考试场景频繁保存答案）
+                        Window = TimeSpan.FromSeconds(10),
+                        QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 50
+                    });
+            });
+            
+            // 拒绝请求时的响应
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                context.HttpContext.Response.StatusCode = 429; // Too Many Requests
+                await context.HttpContext.Response.WriteAsync(
+                    "{\"status\":-1,\"msg\":\"请求过于频繁，请稍后再试\"}",
+                    cancellationToken);
+            };
+        });
+        
+        Console.WriteLine("已配置请求限流：基于用户ID，全局200次/10秒，客户端API 100次/10秒");
     }
 }

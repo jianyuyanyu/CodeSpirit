@@ -474,11 +474,70 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     }
 
     /// <summary>
-    /// 获取考试详情（客户端视图）
+    /// 获取考试题目及答案（轻量级方法，复用缓存）
     /// </summary>
     /// <param name="examId">考试ID</param>
     /// <param name="recordId">考试记录ID</param>
-    /// <returns>考试详情</returns>
+    /// <returns>按用户顺序排列的题目列表（包含答案）</returns>
+    public async Task<List<ClientExamQuestionDto>> GetExamQuestionsWithAnswersAsync(long examId, long recordId)
+    {
+        try
+        {
+            // 获取考试记录的答题记录（包含用户的题目顺序和答案）
+            var answerRecords = await _context.ExamAnswerRecords.AsNoTracking()
+                .Where(a => a.ExamRecordId == recordId)
+                .OrderBy(a => a.OrderNumber)
+                .ToListAsync();
+                
+            if (!answerRecords.Any())
+            {
+                _logger.LogError("考试记录 {RecordId} 没有答题记录，无法构建题目列表", recordId);
+                throw new BusinessException("考试记录没有答题记录");
+            }
+
+            // 使用统一的缓存组件获取题目数据
+            var questionDataDict = await _examCacheService.GetExamQuestionsDataWithCacheAsync(examId);
+            if (questionDataDict == null || !questionDataDict.Any())
+            {
+                _logger.LogError("无法获取考试 {ExamId} 的题目数据", examId);
+                throw new BusinessException("无法获取考试题目数据");
+            }
+
+            // 按照用户的 AnswerRecord.OrderNumber 排序构建题目列表，并填充答案
+            var questions = answerRecords
+                .Where(a => questionDataDict.ContainsKey(a.QuestionId))
+                .Select((answerRecord, index) =>
+                {
+                    var cachedQuestion = questionDataDict[answerRecord.QuestionId];
+                    // 创建新对象，避免修改缓存中的数据
+                    return new ClientExamQuestionDto
+                    {
+                        Id = cachedQuestion.Id,
+                        QuestionId = cachedQuestion.QuestionId,
+                        QuestionVersionId = cachedQuestion.QuestionVersionId,
+                        Content = cachedQuestion.Content,
+                        Type = cachedQuestion.Type,
+                        Options = cachedQuestion.Options,
+                        Score = cachedQuestion.Score,
+                        IsRequired = cachedQuestion.IsRequired,
+                        SequenceNumber = index + 1,  // 使用连续的序号
+                        Answer = answerRecord.Answer ?? string.Empty  // 填充用户的答案
+                    };
+                })
+                .ToList();
+
+            _logger.LogInformation("获取考试题目及答案完成，考试ID: {ExamId}, 记录ID: {RecordId}, 题目数: {QuestionCount}",
+                examId, recordId, questions.Count);
+
+            return questions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取考试题目及答案失败，考试ID: {ExamId}, 记录ID: {RecordId}", examId, recordId);
+            throw;
+        }
+    }
+
     public async Task<ClientExamDetailDto> GetExamDetailForClientAsync(long examId, long recordId)
     {
         try

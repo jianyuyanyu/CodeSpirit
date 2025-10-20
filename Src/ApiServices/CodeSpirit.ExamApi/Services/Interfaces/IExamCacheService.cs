@@ -1,5 +1,6 @@
 using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Dtos.Student;
+using CodeSpirit.ExamApi.Dtos.ExamRecord;
 
 namespace CodeSpirit.ExamApi.Services.Interfaces;
 
@@ -112,4 +113,32 @@ public interface IExamCacheService
     /// </summary>
     /// <param name="userId">用户ID</param>
     Task ClearClientProfileCacheAsync(long userId);
+
+    /// <summary>
+    /// 获取考试轻量信息（带缓存，用于倒计时页面）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>考试轻量信息</returns>
+    Task<ClientExamLightInfoDto?> GetExamLightInfoWithCacheAsync(long examId, long studentId);
+
+    /// <summary>
+    /// 清除考试轻量信息缓存
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    Task ClearExamLightInfoCacheAsync(long examId, long studentId);
+    
+    /// <summary>
+    /// 获取考试记录（带缓存，轻量级）
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>考试记录缓存DTO</returns>
+    Task<ExamRecordCacheDto?> GetExamRecordWithCacheAsync(long recordId);
+    
+    /// <summary>
+    /// 清除考试记录缓存
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    Task ClearExamRecordCacheAsync(long recordId);
 }

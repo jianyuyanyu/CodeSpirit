@@ -7,6 +7,104 @@
     'use strict';
 
     /**
+     * 缓存管理器
+     */
+    const CacheManager = {
+        /**
+         * 获取缓存的key
+         * @param {string} key - 基础key
+         * @param {string} tenantId - 租户ID
+         * @returns {string} 完整的缓存key
+         */
+        getCacheKey: function(key, tenantId) {
+            return `exam_cache_${tenantId}_${key}`;
+        },
+
+        /**
+         * 获取缓存数据
+         * @param {string} key - 缓存key
+         * @param {string} tenantId - 租户ID
+         * @returns {Object|null} 缓存的数据，如果不存在或已过期返回null
+         */
+        get: function(key, tenantId) {
+            try {
+                const cacheKey = this.getCacheKey(key, tenantId);
+                const cached = sessionStorage.getItem(cacheKey);
+                if (!cached) return null;
+
+                const data = JSON.parse(cached);
+                
+                // 检查是否过期（默认30分钟）
+                if (data.expiry && Date.now() > data.expiry) {
+                    sessionStorage.removeItem(cacheKey);
+                    return null;
+                }
+                
+                return data.value;
+            } catch (error) {
+                console.error('[缓存读取失败]', error);
+                return null;
+            }
+        },
+
+        /**
+         * 设置缓存数据
+         * @param {string} key - 缓存key
+         * @param {string} tenantId - 租户ID
+         * @param {Object} value - 要缓存的数据
+         * @param {number} ttl - 过期时间（毫秒），默认30分钟
+         */
+        set: function(key, tenantId, value, ttl = 30 * 60 * 1000) {
+            try {
+                const cacheKey = this.getCacheKey(key, tenantId);
+                const data = {
+                    value: value,
+                    expiry: ttl ? Date.now() + ttl : null
+                };
+                sessionStorage.setItem(cacheKey, JSON.stringify(data));
+            } catch (error) {
+                console.error('[缓存写入失败]', error);
+            }
+        },
+
+        /**
+         * 清除指定租户的所有缓存
+         * @param {string} tenantId - 租户ID
+         */
+        clearTenantCache: function(tenantId) {
+            try {
+                const prefix = `exam_cache_${tenantId}_`;
+                const keys = Object.keys(sessionStorage);
+                keys.forEach(key => {
+                    if (key.startsWith(prefix)) {
+                        sessionStorage.removeItem(key);
+                    }
+                });
+                console.log(`[缓存清理] 已清除租户 ${tenantId} 的所有缓存`);
+            } catch (error) {
+                console.error('[缓存清理失败]', error);
+            }
+        },
+
+        /**
+         * 清除所有缓存
+         */
+        clearAll: function() {
+            try {
+                const keys = Object.keys(sessionStorage);
+                keys.forEach(key => {
+                    if (key.startsWith('exam_cache_')) {
+                        sessionStorage.removeItem(key);
+                    }
+                });
+                console.log('[缓存清理] 已清除所有考试缓存');
+            } catch (error) {
+                console.error('[缓存清理失败]', error);
+            }
+        }
+    };
+
+    /**
      * API地址管理器
      */
     window.ExamApiManager = {
@@ -145,6 +243,68 @@
          */
         delete: function(url, options = {}) {
             return this.request(url, { ...options, method: 'DELETE' });
+        },
+
+        /**
+         * 获取租户登录配置（带缓存）
+         * @param {string} tenantId - 租户ID
+         * @param {boolean} forceRefresh - 是否强制刷新缓存
+         * @returns {Promise<Object>} 登录配置数据
+         */
+        getLoginConfig: async function(tenantId, forceRefresh = false) {
+            const cacheKey = 'login_config';
+            
+            // 检查缓存
+            if (!forceRefresh) {
+                const cached = CacheManager.get(cacheKey, tenantId);
+                if (cached) {
+                    console.log(`[登录配置] 使用缓存数据 (租户: ${tenantId})`);
+                    return cached;
+                }
+            }
+            
+            // 缓存未命中或强制刷新，请求API
+            console.log(`[登录配置] 请求API数据 (租户: ${tenantId})`);
+            try {
+                const url = `/identity/api/identity/tenants/${tenantId}/login-config`;
+                
+                // 发送请求（login-config 接口无需认证）
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'TenantId': tenantId,
+                        'X-Forwarded-With': 'CodeSpirit',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                const data = result.data || result;
+                
+                // 缓存数据（2小时）
+                CacheManager.set(cacheKey, tenantId, data, 2 * 60 * 60 * 1000);
+                
+                return data;
+            } catch (error) {
+                console.error('[登录配置获取失败]', error);
+                throw error;
+            }
+        },
+
+        /**
+         * 清除缓存
+         * @param {string} tenantId - 可选，指定租户ID则只清除该租户的缓存
+         */
+        clearCache: function(tenantId = null) {
+            if (tenantId) {
+                CacheManager.clearTenantCache(tenantId);
+            } else {
+                CacheManager.clearAll();
+            }
         }
     };
 

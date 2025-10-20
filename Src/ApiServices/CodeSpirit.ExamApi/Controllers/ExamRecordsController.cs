@@ -1,17 +1,18 @@
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
+// using CodeSpirit.PdfGeneration.Services;
 using CodeSpirit.Shared.Services.Background;
 using CodeSpirit.Shared.Services.Background.Dtos;
 using CodeSpirit.Shared.Services.Files;
-using CodeSpirit.PdfGeneration.Services;
-using PuppeteerSharp;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+// using PuppeteerSharp;
+// using PuppeteerSharp.Media;
 using System.IO.Compression;
 using System.Text;
-using PuppeteerSharp.Media;
 using CodeSpirit.Core.Enums;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -25,7 +26,7 @@ public class ExamRecordsController : ApiControllerBase
     private readonly IExamRecordService _examRecordService;
     private readonly IExamPaperService _examPaperService;
     private readonly IBackgroundJobService _backgroundJobService;
-    private readonly IPdfGenerationService _pdfGenerationService;
+    // private readonly IPdfGenerationService _pdfGenerationService;
     private readonly ILogger<ExamRecordsController> _logger;
 
     /// <summary>
@@ -34,19 +35,18 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="examRecordService">考试记录服务</param>
     /// <param name="examPaperService">试卷服务</param>
     /// <param name="backgroundJobService">后台任务服务</param>
-    /// <param name="pdfGenerationService">PDF生成服务</param>
     /// <param name="logger">日志服务</param>
     public ExamRecordsController(
         IExamRecordService examRecordService,
         IExamPaperService examPaperService,
         IBackgroundJobService backgroundJobService,
-        IPdfGenerationService pdfGenerationService,
+        // IPdfGenerationService pdfGenerationService,
         ILogger<ExamRecordsController> logger)
     {
         _examRecordService = examRecordService;
         _examPaperService = examPaperService;
         _backgroundJobService = backgroundJobService;
-        _pdfGenerationService = pdfGenerationService;
+        // _pdfGenerationService = pdfGenerationService;
         _logger = logger;
     }
 
@@ -531,6 +531,9 @@ public class ExamRecordsController : ApiControllerBase
         };
     }
 
+    // ⚠️⚠️⚠️ 临时禁用：负载测试期间禁用PDF导出功能（节省内存） ⚠️⚠️⚠️
+    // 如需启用，请删除下一行的 #if false 和方法末尾的 #endif
+    #if false
     /// <summary>
     /// 批量导出考生试卷
     /// </summary>
@@ -1259,4 +1262,6 @@ public class ExamRecordsController : ApiControllerBase
 
         return result;
     }
+    #endif
+    // ⚠️⚠️⚠️ PDF导出功能已禁用结束 ⚠️⚠️⚠️
 }

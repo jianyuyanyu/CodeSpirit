@@ -26,16 +26,6 @@ public interface IClientService : IScopedDependency
     Task<List<ClientExamHistoryDto>> GetExamHistoryAsync(long userId);
     
     /// <summary>
-    /// 获取考试详情并创建考试记录
-    /// </summary>
-    /// <param name="examId">考试ID</param>
-    /// <param name="userId">用户ID</param>
-    /// <param name="userIp">用户IP地址</param>
-    /// <param name="deviceInfo">设备信息</param>
-    /// <returns>考试详情</returns>
-    Task<ClientExamDetailDto> GetExamDetailAsync(long examId, long userId, string userIp, string deviceInfo);
-    
-    /// <summary>
     /// 提交考试答案
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
@@ -166,4 +156,5 @@ public interface IClientService : IScopedDependency
     /// <param name="examId">考试ID</param>
     /// <returns>清空是否成功</returns>
     Task<bool> ClearExamCacheAsync(long examId);
+    Task<ClientExamDetailDto> GetExamDetailAsync(long examId, long userId, string userIp, string deviceInfo, long examRecordId);
 } 

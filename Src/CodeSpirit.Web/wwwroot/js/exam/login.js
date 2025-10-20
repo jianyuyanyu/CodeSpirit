@@ -231,9 +231,9 @@
     }
 
     /**
-     * 获取租户配置信息
-     * @param {string} tenantId 租户ID
-     * @returns {Promise<Object>} 租户配置
+     * 获取租户配置（使用缓存）
+     * @param {string} tenantId - 租户ID
+     * @returns {Promise<Object>} 租户配置数据
      */
     async function fetchTenantConfig(tenantId) {
         if (!tenantId) {
@@ -241,33 +241,8 @@
         }
         
         try {
-            const response = await fetch(`/identity/api/identity/tenants/${tenantId}/login-config`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Forwarded-With': 'CodeSpirit'
-                }
-            });
-            
-            // 处理HTTP错误状态
-            if (response.status === 404) {
-                throw new Error('租户不存在或已停用');
-            } else if (response.status === 403) {
-                throw new Error('您没有权限访问此租户');
-            } else if (response.status >= 500) {
-                throw new Error('服务器内部错误，请稍后重试');
-            } else if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            // 处理业务错误
-            if (result.status !== 0) {
-                throw new Error(result.msg || '获取租户配置失败');
-            }
-            
-            return result.data;
+            // 使用缓存的登录配置接口
+            return await window.ExamApiManager.getLoginConfig(tenantId);
         } catch (error) {
             console.error('获取租户配置失败:', error);
             throw error;

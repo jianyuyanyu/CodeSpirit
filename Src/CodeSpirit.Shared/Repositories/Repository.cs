@@ -184,19 +184,30 @@ namespace CodeSpirit.Shared.Repositories
             return new PageList<TEntity>(items, totalCount);
         }
 
+        /// <summary>
+        /// 在事务中执行操作（支持重试执行策略）
+        /// </summary>
+        /// <param name="operation">要执行的操作</param>
         public async Task ExecuteInTransactionAsync(Func<Task> operation)
         {
-            using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // 获取执行策略以支持重试
+            var strategy = _context.Database.CreateExecutionStrategy();
+            
+            await strategy.ExecuteAsync(async () =>
             {
-                await operation();
-                await transaction.CommitAsync();
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                // 在执行策略内部开启事务
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    await operation();
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         /// <summary>

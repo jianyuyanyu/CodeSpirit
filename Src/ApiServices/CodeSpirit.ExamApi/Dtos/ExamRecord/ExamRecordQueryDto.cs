@@ -62,4 +62,7 @@ public class ExamRecordQueryDto : QueryDtoBase
     /// </summary>
     [DisplayName("作弊嫌疑等级(最小值)")]
     public int? MinCheatingSuspicionLevel { get; set; }
+
+    [DisplayName("身份证号")]
+    public string? IdNo { get; internal set; }
 } 

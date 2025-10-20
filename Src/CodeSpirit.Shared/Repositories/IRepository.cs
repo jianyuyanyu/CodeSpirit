@@ -21,6 +21,10 @@ namespace CodeSpirit.Shared.Repositories
             Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null,
             params string[] includes);
 
+        /// <summary>
+        /// 在事务中执行操作（支持重试执行策略）
+        /// </summary>
+        /// <param name="operation">要执行的操作</param>
         Task ExecuteInTransactionAsync(Func<Task> operation);
 
         IQueryable<TEntity> CreateQuery();

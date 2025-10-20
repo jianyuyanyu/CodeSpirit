@@ -235,6 +235,9 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         entity.Id = _idGenerator.NewId();
         entity.UserId = entity.Id;
         
+        // 去除字段首尾空格
+        TrimStudentFields(entity);
+        
         // 如果学号为空，生成唯一的短号
         if (string.IsNullOrWhiteSpace(entity.StudentNumber))
         {
@@ -414,6 +417,9 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     }
     protected override async Task OnUpdating(Student entity, UpdateStudentDto updateDto)
     {
+        // 去除字段首尾空格
+        TrimStudentFields(entity);
+        
         // 检查学号是否已存在
         var existsStudentNumberQueryable = Repository.Find(x => x.StudentNumber == updateDto.StudentNumber && x.Id != entity.Id);
         if (!updateDto.StudentNumber.IsNullOrWhiteSpace() && await existsStudentNumberQueryable.AnyAsync())
@@ -455,8 +461,6 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
         var successCount = 0;
         var importList = importData.ToList();
         var failedItems = new List<string>();
-
-        importData.ForEach(s => s.IdNo = s.IdNo.Trim());
 
         var studentNumberRepetition = importList.Where(s => !s.StudentNumber.IsNullOrWhiteSpace()).GroupBy(x => x.StudentNumber).Select(s => new { studentNumber = s.Key, count = s.Count() });
         if (studentNumberRepetition.Any(x => x.count > 1))
@@ -526,6 +530,9 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
             entity.Gender = genderType;
             entity.Id = _idGenerator.NewId();
             entity.UserId = entity.Id;
+            
+            // 去除字段首尾空格
+            TrimStudentFields(entity);
             
             // 如果学号为空，生成唯一的短号
             if (string.IsNullOrWhiteSpace(entity.StudentNumber))
@@ -654,6 +661,44 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     }
 
     #endregion
+
+    /// <summary>
+    /// 去除考生字段的首尾空格
+    /// </summary>
+    private static void TrimStudentFields(Student entity)
+    {
+        if (entity == null) return;
+        
+        // 姓名去空格
+        if (!string.IsNullOrEmpty(entity.Name))
+        {
+            entity.Name = entity.Name.Trim();
+        }
+        
+        // 身份证号码去空格
+        if (!string.IsNullOrEmpty(entity.IdNo))
+        {
+            entity.IdNo = entity.IdNo.Trim();
+        }
+        
+        // 手机号码去空格
+        if (!string.IsNullOrEmpty(entity.PhoneNumber))
+        {
+            entity.PhoneNumber = entity.PhoneNumber.Trim();
+        }
+        
+        // 学号/工号去空格
+        if (!string.IsNullOrEmpty(entity.StudentNumber))
+        {
+            entity.StudentNumber = entity.StudentNumber.Trim();
+        }
+        
+        // 准考证去空格
+        if (!string.IsNullOrEmpty(entity.AdmissionTicket))
+        {
+            entity.AdmissionTicket = entity.AdmissionTicket.Trim();
+        }
+    }
 
     /// <summary>
     /// 批量分配考生到考生组

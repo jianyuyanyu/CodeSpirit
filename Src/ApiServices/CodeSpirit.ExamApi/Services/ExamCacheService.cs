@@ -122,6 +122,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
 
                 // 直接查询学生信息，避免依赖其他服务
                 var student = await _context.Students
+                    .AsNoTracking()
                     .Where(s => s.UserId == userId)
                     .FirstOrDefaultAsync();
 
@@ -132,6 +133,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
 
                 // 查找考试记录
                 var record = await _examRecordRepository.CreateQuery()
+                    .AsNoTracking()
                     .Where(r => r.ExamSettingId == examId && r.StudentId == student.Id)
                     .OrderByDescending(r => r.StartTime)
                     .FirstOrDefaultAsync();
@@ -144,7 +146,8 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                 return new UserExamRecordCacheDto
                 {
                     RecordId = record.Id,
-                    ScreenSwitchCount = record.ScreenSwitchCount
+                    ScreenSwitchCount = record.ScreenSwitchCount,
+                    StartTime = record.StartTime
                 };
             });
     }
@@ -157,24 +160,76 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     /// <returns>用户答案列表</returns>
     public async Task<List<ClientExamAnswerDto>> GetSubmittedAnswersWithCacheAsync(long recordId, long userId)
     {
+        // 使用分布式锁确保读取操作也是串行的，避免多实例下的缓存不一致
+        var lockKey = $"exam_answer_cache_{recordId}_{userId}";
         var cacheKey = new ExamCacheOptions.UserAnswers(recordId, userId);
+        
         _logger.LogInformation("获取用户答案缓存，缓存键: {CacheKey}, RecordId={RecordId}, UserId={UserId}",
             cacheKey.Key, recordId, userId);
 
-        return await _cacheService.GetOrSetAsync(
-            cacheKey,
-            async () =>
+        try
+        {
+            // 获取分布式锁，超时时间5秒（读取操作相对较快）
+            using (await _distributedLockProvider.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5)))
             {
-                _logger.LogDebug("从数据库获取用户答案: RecordId={RecordId}, UserId={UserId}", recordId, userId);
-                var answerEntities = await _answerRecordRepository.CreateQuery()
-                    .Where(a => a.ExamRecordId == recordId)
-                    .ToListAsync();
-                return answerEntities.Select(a => new ClientExamAnswerDto
-                {
-                    QuestionId = a.QuestionId,
-                    Answer = a.Answer ?? string.Empty
-                }).ToList();
-            });
+                _logger.LogDebug("已获取答案缓存读取锁: {LockKey}", lockKey);
+
+                return await _cacheService.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
+                    {
+                        _logger.LogDebug("从数据库获取用户答案: RecordId={RecordId}, UserId={UserId}", recordId, userId);
+                        var answerEntities = await _answerRecordRepository.CreateQuery()
+                            .AsNoTracking()
+                            .Where(a => a.ExamRecordId == recordId)
+                            .ToListAsync();
+                        
+                        var answers = answerEntities.Select(a => new ClientExamAnswerDto
+                        {
+                            QuestionId = a.QuestionId,
+                            Answer = a.Answer ?? string.Empty
+                        }).ToList();
+                        
+                        _logger.LogDebug("从数据库加载答案并写入缓存: RecordId={RecordId}, 答案数={Count}", 
+                            recordId, answers.Count);
+                        
+                        return answers;
+                    });
+            }
+        }
+        catch (TimeoutException ex)
+        {
+            // 获取锁超时，直接从数据库读取（不使用缓存）
+            _logger.LogWarning(ex, "获取答案缓存读取锁超时: {LockKey}，直接从数据库读取", lockKey);
+            
+            var answerEntities = await _answerRecordRepository.CreateQuery()
+                .AsNoTracking()
+                .Where(a => a.ExamRecordId == recordId)
+                .ToListAsync();
+            
+            return answerEntities.Select(a => new ClientExamAnswerDto
+            {
+                QuestionId = a.QuestionId,
+                Answer = a.Answer ?? string.Empty
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取用户答案缓存失败: RecordId={RecordId}, UserId={UserId}，直接从数据库读取", 
+                recordId, userId);
+            
+            // 出错时直接从数据库读取，确保数据可靠性
+            var answerEntities = await _answerRecordRepository.CreateQuery()
+                .AsNoTracking()
+                .Where(a => a.ExamRecordId == recordId)
+                .ToListAsync();
+            
+            return answerEntities.Select(a => new ClientExamAnswerDto
+            {
+                QuestionId = a.QuestionId,
+                Answer = a.Answer ?? string.Empty
+            }).ToList();
+        }
     }
 
     /// <summary>
@@ -198,26 +253,51 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     /// <param name="userId">用户ID</param>
     public async Task RefreshUserAnswersCacheAsync(long recordId, long userId)
     {
-        // 先清除旧缓存
-        await _cacheService.RemoveAsync(new ExamCacheOptions.UserAnswers(recordId, userId));
+        // 使用分布式锁确保刷新操作的原子性
+        var lockKey = $"exam_answer_cache_{recordId}_{userId}";
+        var cacheKey = new ExamCacheOptions.UserAnswers(recordId, userId);
 
-        // 立即重新加载最新数据到缓存
-        await _cacheService.GetOrSetAsync(
-            new ExamCacheOptions.UserAnswers(recordId, userId),
-            async () =>
+        try
+        {
+            using (await _distributedLockProvider.AcquireLockAsync(lockKey, TimeSpan.FromSeconds(5)))
             {
-                _logger.LogDebug("刷新缓存：从数据库获取最新用户答案: RecordId={RecordId}, UserId={UserId}", recordId, userId);
-                var answerEntities = await _answerRecordRepository.CreateQuery()
-                    .Where(a => a.ExamRecordId == recordId)
-                    .ToListAsync();
-                return answerEntities.Select(a => new ClientExamAnswerDto
-                {
-                    QuestionId = a.QuestionId,
-                    Answer = a.Answer ?? string.Empty
-                }).ToList();
-            });
+                _logger.LogDebug("已获取答案缓存刷新锁: {LockKey}", lockKey);
 
-        _logger.LogDebug("已刷新用户答案缓存: RecordId={RecordId}, UserId={UserId}", recordId, userId);
+                // 先清除旧缓存
+                await _cacheService.RemoveAsync(cacheKey);
+
+                // 立即重新加载最新数据到缓存
+                await _cacheService.GetOrSetAsync(
+                    cacheKey,
+                    async () =>
+                    {
+                        _logger.LogDebug("刷新缓存：从数据库获取最新用户答案: RecordId={RecordId}, UserId={UserId}", recordId, userId);
+                        var answerEntities = await _answerRecordRepository.CreateQuery()
+                            .AsNoTracking()
+                            .Where(a => a.ExamRecordId == recordId)
+                            .ToListAsync();
+                        return answerEntities.Select(a => new ClientExamAnswerDto
+                        {
+                            QuestionId = a.QuestionId,
+                            Answer = a.Answer ?? string.Empty
+                        }).ToList();
+                    });
+
+                _logger.LogDebug("已刷新用户答案缓存: RecordId={RecordId}, UserId={UserId}", recordId, userId);
+            }
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "获取答案缓存刷新锁超时: {LockKey}，清除缓存", lockKey);
+            // 超时则清除缓存，下次读取时重新加载
+            await _cacheService.RemoveAsync(cacheKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "刷新用户答案缓存失败: RecordId={RecordId}, UserId={UserId}", recordId, userId);
+            // 失败则清除缓存
+            await _cacheService.RemoveAsync(cacheKey);
+        }
     }
 
     /// <summary>
@@ -277,6 +357,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                     // 这种情况可能发生在缓存过期或首次访问时，需要确保获取所有题目的答案记录
                     _logger.LogDebug("缓存为空，从数据库获取完整答案列表: RecordId={RecordId}", recordId);
                     var answerEntities = await _answerRecordRepository.CreateQuery()
+                        .AsNoTracking()
                         .Where(a => a.ExamRecordId == recordId)
                         .ToListAsync();
 
@@ -444,7 +525,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     }
 
     /// <summary>
-    /// 清空考试缓存
+    /// 清空考试缓存（清除所有与指定考试相关的缓存）
     /// </summary>
     /// <param name="examId">考试ID</param>
     /// <returns>清空任务</returns>
@@ -452,21 +533,39 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
     {
         _logger.LogInformation("开始清空考试缓存: {ExamId}", examId);
 
-        var basicInfoKey = new ExamCacheOptions.BasicInfo(examId);
-        var questionsKey = new ExamCacheOptions.Questions(examId);
-
-        var keysToRemove = new[]
+        try
         {
-            basicInfoKey.Key,
-            questionsKey.Key
-        };
+            // 1. 清除考试基本信息缓存
+            await _cacheService.RemoveAsync(new ExamCacheOptions.BasicInfo(examId));
+            _logger.LogDebug("已清除考试基本信息缓存: {ExamId}", examId);
 
-        await _cacheService.RemoveManyAsync(keysToRemove);
+            // 2. 清除考试题目数据缓存
+            await _cacheService.RemoveAsync(new ExamCacheOptions.Questions(examId));
+            _logger.LogDebug("已清除考试题目数据缓存: {ExamId}", examId);
 
-        // 也可以按模式清除（如果支持的话）
-        await _cacheService.RemoveByPatternAsync($"*exam:{examId}*");
+            // 3. 清除所有与该考试相关的用户记录和轻量信息缓存（通过模式匹配）
+            // 格式：ExamCacheOptions_UserRecord_{ExamId}_{UserId} 和 ExamCacheOptions_LightInfo_{ExamId}_{StudentId}
+            await _cacheService.RemoveByPatternAsync($"*UserRecord_{examId}_*");
+            await _cacheService.RemoveByPatternAsync($"*LightInfo_{examId}_*");
+            _logger.LogDebug("已清除考试用户记录和轻量信息缓存: {ExamId}", examId);
 
-        _logger.LogInformation("考试缓存清空完成: {ExamId}", examId);
+            // 4. ⚠️ 重要：清除所有学生的"可参加考试列表"缓存
+            // 因为考试信息变更（时间、状态、权限等）可能影响所有学生的可用考试列表
+            // AvailableExams 的 Key 格式：ExamCacheOptions_AvailableExams_{StudentId}
+            await _cacheService.RemoveByPatternAsync("*AvailableExams_*");
+            _logger.LogDebug("已清除所有学生的可参加考试列表缓存");
+
+            // 5. 清除 OutputCache（如果使用了 ASP.NET Core OutputCache）
+            // 注意：需要在 Controller 层面处理，或通过 IOutputCacheStore 清除
+            // 这里只清除应用层缓存
+
+            _logger.LogInformation("考试缓存清空完成: {ExamId}，已清除以下缓存：BasicInfo, Questions, UserRecord, LightInfo, AvailableExams", examId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清空考试缓存时发生错误: {ExamId}", examId);
+            throw;
+        }
     }
 
     /// <summary>
@@ -739,4 +838,170 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
         }
     }
 
+    /// <summary>
+    /// 获取考试轻量信息（带缓存，用于倒计时页面）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>考试轻量信息</returns>
+    public async Task<ClientExamLightInfoDto?> GetExamLightInfoWithCacheAsync(long examId, long studentId)
+    {
+        return await _cacheService.GetOrSetAsync(
+            new ExamCacheOptions.LightInfo(examId, studentId),
+            async () =>
+            {
+                _logger.LogDebug("从数据库获取考试轻量信息: ExamId={ExamId}, StudentId={StudentId}", examId, studentId);
+
+                // 直接从数据库加载轻量信息，避免循环依赖
+                var lightInfo = await LoadExamLightInfoFromDatabaseAsync(examId, studentId);
+
+                return lightInfo;
+            });
+    }
+
+    /// <summary>
+    /// 清除考试轻量信息缓存
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    public async Task ClearExamLightInfoCacheAsync(long examId, long studentId)
+    {
+        await _cacheService.RemoveAsync(new ExamCacheOptions.LightInfo(examId, studentId));
+        _logger.LogDebug("已清除考试轻量信息缓存: ExamId={ExamId}, StudentId={StudentId}", examId, studentId);
+    }
+
+    /// <summary>
+    /// 从数据库加载考试轻量信息（仅在缓存未命中时调用）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="studentId">学生ID</param>
+    /// <returns>考试轻量信息</returns>
+    private async Task<ClientExamLightInfoDto?> LoadExamLightInfoFromDatabaseAsync(long examId, long studentId)
+    {
+        try
+        {
+            // ✅ 性能优化：使用投影查询，只获取需要的字段，避免加载关联数据
+            var examQuery = await _context.ExamSettings
+                .Where(e => e.Id == examId)
+                .Select(e => new 
+                {
+                    e.Id,
+                    e.Name,
+                    e.Description,
+                    e.Duration,
+                    e.StartTime,
+                    e.EndTime,
+                    TotalScore = e.ExamPaper != null ? e.ExamPaper.TotalScore : 0,
+                    QuestionCount = e.ExamPaper != null ? e.ExamPaper.ExamPaperQuestions.Count : 0,
+                    // ✅ 直接在查询中检查权限，避免额外查询
+                    HasPermission = !e.StudentGroups.Any() || 
+                        e.StudentGroups.Any(g => g.StudentGroup.Students.Any(m => m.StudentId == studentId))
+                })
+                .FirstOrDefaultAsync();
+
+            if (examQuery == null)
+            {
+                _logger.LogWarning("考试不存在: ExamId={ExamId}", examId);
+                return null;
+            }
+
+            if (!examQuery.HasPermission)
+            {
+                _logger.LogWarning("学生无权参加此考试: ExamId={ExamId}, StudentId={StudentId}", examId, studentId);
+                throw new UnauthorizedAccessException("无权参加此考试");
+            }
+
+            // 组装考试轻量信息
+            var lightInfo = new ClientExamLightInfoDto
+            {
+                Id = examQuery.Id,
+                Name = examQuery.Name,
+                Description = examQuery.Description,
+                Duration = examQuery.Duration,
+                StartTime = examQuery.StartTime,
+                EndTime = examQuery.EndTime,
+                TotalScore = examQuery.TotalScore,
+                QuestionCount = examQuery.QuestionCount,
+                ServerTime = DateTime.UtcNow,
+                Status = string.Empty, // 将由调用者设置
+                CanStart = false // 将由调用者设置
+            };
+
+            _logger.LogDebug("成功从数据库加载考试轻量信息: ExamId={ExamId}, Name={Name}", examId, lightInfo.Name);
+            return lightInfo;
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException)
+        {
+            _logger.LogError(ex, "从数据库加载考试轻量信息时发生错误: ExamId={ExamId}, StudentId={StudentId}", examId, studentId);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// 获取考试记录（带缓存，轻量级）
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>考试记录缓存DTO</returns>
+    public async Task<ExamRecordCacheDto?> GetExamRecordWithCacheAsync(long recordId)
+    {
+        return await _cacheService.GetOrSetAsync(
+            new ExamCacheOptions.ExamRecordCache(recordId),
+            async () =>
+            {
+                _logger.LogDebug("从数据库获取考试记录（轻量级）: RecordId={RecordId}", recordId);
+                
+                // 直接从数据库加载考试记录，避免循环依赖
+                var examRecord = await LoadExamRecordFromDatabaseAsync(recordId);
+                
+                return examRecord;
+            });
+    }
+    
+    /// <summary>
+    /// 清除考试记录缓存
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    public async Task ClearExamRecordCacheAsync(long recordId)
+    {
+        await _cacheService.RemoveAsync(new ExamCacheOptions.ExamRecordCache(recordId));
+        _logger.LogDebug("已清除考试记录缓存: RecordId={RecordId}", recordId);
+    }
+    
+    /// <summary>
+    /// 从数据库加载考试记录（仅在缓存未命中时调用，轻量级查询）
+    /// </summary>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>考试记录缓存DTO</returns>
+    private async Task<ExamRecordCacheDto?> LoadExamRecordFromDatabaseAsync(long recordId)
+    {
+        try
+        {
+            // 仅查询答题验证所需的关键字段，不关联查询其他表，提高性能
+            var examRecord = await _examRecordRepository.CreateQuery()
+                .Where(r => r.Id == recordId)
+                .Select(r => new ExamRecordCacheDto
+                {
+                    Id = r.Id,
+                    StudentId = r.StudentId,
+                    Status = r.Status,
+                    ExamSettingId = r.ExamSettingId
+                })
+                .FirstOrDefaultAsync();
+            
+            if (examRecord == null)
+            {
+                _logger.LogWarning("考试记录不存在: RecordId={RecordId}", recordId);
+                return null;
+            }
+            
+            _logger.LogDebug("成功从数据库加载考试记录（轻量级）: RecordId={RecordId}, StudentId={StudentId}, Status={Status}", 
+                recordId, examRecord.StudentId, examRecord.Status);
+            return examRecord;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从数据库加载考试记录（轻量级）时发生错误: RecordId={RecordId}", recordId);
+            throw;
+        }
+    }
 }

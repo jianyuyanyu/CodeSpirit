@@ -85,5 +85,13 @@ public interface IExamSettingService : IBaseCRUDService<ExamSetting, ExamSetting
     /// <param name="examId">考试ID</param>
     /// <returns>题目数据字典（QuestionId -> 题目详情），如果考试不存在则返回null</returns>
     Task<Dictionary<long, ClientExamQuestionDto>?> GetExamQuestionsForWarmupAsync(long examId);
+    
+    /// <summary>
+    /// 获取考试题目及答案（轻量级方法，复用缓存）
+    /// </summary>
+    /// <param name="examId">考试ID</param>
+    /// <param name="recordId">考试记录ID</param>
+    /// <returns>按用户顺序排列的题目列表（包含答案）</returns>
+    Task<List<ClientExamQuestionDto>> GetExamQuestionsWithAnswersAsync(long examId, long recordId);
 
 } 

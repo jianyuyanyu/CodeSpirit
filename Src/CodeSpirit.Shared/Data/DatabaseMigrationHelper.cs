@@ -125,24 +125,44 @@ public static class DatabaseMigrationHelper
             // 只注册MySQL特定的DbContext
             services.AddDbContext<TMySqlContext>(options =>
             {
-                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
+                {
+                    // 🚨 紧急优化：添加查询超时保护（从默认30秒降低到15秒）
+                    mysqlOptions.CommandTimeout(15);
+                    // 启用重试机制
+                    mysqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 3,
+                        maxRetryDelay: TimeSpan.FromSeconds(5),
+                        errorNumbersToAdd: null);
+                });
                 // 为迁移专用上下文禁用自动迁移检测
                 options.EnableServiceProviderCaching(false);
             });
 
-            Console.WriteLine("已配置MySql数据库");
+            Console.WriteLine("已配置MySql数据库（连接池优化：查询超时15秒，重试3次）");
         }
         else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
         {
             // 只注册SQL Server特定的DbContext
             services.AddDbContext<TSqlServerContext>(options =>
             {
-                options.UseSqlServer(connectionString);
+                options.UseSqlServer(connectionString, sqlServerOptions =>
+                {
+                    // 🚨 紧急优化：添加查询超时保护（从默认30秒降低到15秒）
+                    sqlServerOptions.CommandTimeout(15);
+                    // 启用重试机制
+                    sqlServerOptions.EnableRetryOnFailure(
+                        maxRetryCount: 3,
+                        maxRetryDelay: TimeSpan.FromSeconds(5),
+                        errorNumbersToAdd: null);
+                    // 批处理优化
+                    sqlServerOptions.MaxBatchSize(100);
+                });
                 // 为迁移专用上下文禁用自动迁移检测
                 options.EnableServiceProviderCaching(false);
             });
 
-            Console.WriteLine("已配置SqlServer数据库");
+            Console.WriteLine("已配置SqlServer数据库（连接池优化：查询超时15秒，重试3次，批处理100）");
         }
         else
         {

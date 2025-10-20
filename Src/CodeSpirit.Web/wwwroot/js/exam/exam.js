@@ -266,39 +266,15 @@
     window.PerformanceMonitor = PerformanceMonitor;
 
     /**
-     * 加载租户信息
+     * 加载租户信息（使用缓存）
      * 参考application.js中的实现方式
      */
     async function loadTenantInfo() {
         try {
-            const response = await fetch(`/identity/api/identity/tenants/${window.tenantId}/login-config`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Forwarded-With': 'CodeSpirit'
-                }
-            });
-            
-            // 处理HTTP错误状态
-            if (response.status === 404) {
-                throw new Error('租户不存在或已停用');
-            } else if (response.status === 403) {
-                throw new Error('您没有权限访问此租户');
-            } else if (response.status >= 500) {
-                throw new Error('服务器内部错误，请稍后重试');
-            } else if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            // 处理业务错误
-            if (result.status !== 0) {
-                throw new Error(result.msg || '获取租户配置失败');
-            }
+            // 使用缓存的登录配置接口
+            const tenantConfig = await window.ExamApiManager.getLoginConfig(window.tenantId);
             
             // 转换为考试页面需要的格式
-            const tenantConfig = result.data;
             const tenantInfo = {
                 id: window.tenantId,
                 name: tenantConfig.displayName || tenantConfig.name || '考试平台',

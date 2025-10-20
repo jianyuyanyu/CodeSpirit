@@ -44,7 +44,8 @@
 		<ProjectReference Include="..\..\Components\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.Settings\CodeSpirit.Settings.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.LLM\CodeSpirit.LLM.csproj" />
-		<ProjectReference Include="..\..\Components\CodeSpirit.PdfGeneration\CodeSpirit.PdfGeneration.csproj" />
+		<!-- ⚠️ 临时注释：负载测试期间禁用PDF组件以减少内存占用（节省约1.5GB内存） -->
+		<!-- <ProjectReference Include="..\..\Components\CodeSpirit.PdfGeneration\CodeSpirit.PdfGeneration.csproj" /> -->
 		<ProjectReference Include="..\..\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.Caching\CodeSpirit.Caching.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.ScheduledTasks\CodeSpirit.ScheduledTasks.csproj" />

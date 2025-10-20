@@ -47,6 +47,7 @@
     let countdownTimer = null;
     let previousCountdown = null; // 用于检测数字变化
     let timeSyncTimer = null; // 时间同步定时器
+    let isStarting = false; // 防重复点击标志
     
     /**
      * 通用API请求函数
@@ -69,11 +70,11 @@
     }
     
     /**
-     * 加载租户信息
+     * 加载租户信息（使用缓存）
      */
     async function loadTenantInfo() {
         try {
-            const data = await apiRequest(`/identity/api/identity/tenants/${window.tenantId}/login-config`);
+            const data = await window.ExamApiManager.getLoginConfig(window.tenantId);
             examData.tenant = {
                 id: data.tenantId || window.tenantId,
                 name: data.tenantName || '考试平台',
@@ -435,39 +436,212 @@
     }
     
     /**
+     * 设置开始按钮加载状态
+     */
+    function setStartButtonLoading(loading) {
+        const startBtn = document.getElementById('startExamBtn');
+        if (!startBtn) return;
+        
+        if (loading) {
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>正在进入考试...';
+            startBtn.style.opacity = '0.8';
+            startBtn.style.cursor = 'wait';
+        } else {
+            startBtn.disabled = !examData.countdown.canStart;
+            startBtn.innerHTML = '<i class="fa fa-play"></i>开始考试';
+            startBtn.style.opacity = examData.countdown.canStart ? '1' : '0.6';
+            startBtn.style.cursor = examData.countdown.canStart ? 'pointer' : 'not-allowed';
+        }
+    }
+    
+    /**
+     * 将错误转换为友好的消息
+     * @returns {Object} { title: '错误标题', message: '错误详情' }
+     */
+    function convertToFriendlyMessage(error, defaultTitle = '操作失败') {
+        let friendlyTitle = defaultTitle;
+        let friendlyMessage = '';
+        
+        // 获取错误消息
+        const errorMsg = (error.msg || error.message || error || '').toLowerCase();
+        const originalMsg = error.msg || error.message || error || '';
+        
+        // 优先检测网络相关的原生错误（如 Failed to fetch）
+        if (errorMsg.includes('failed to fetch') || 
+            errorMsg.includes('network error') || 
+            errorMsg.includes('networkerror') ||
+            errorMsg.includes('net::err')) {
+            friendlyTitle = '网络连接失败';
+            friendlyMessage = '无法连接到服务器，请检查您的网络连接后重试';
+        } 
+        // 超时错误
+        else if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+            friendlyTitle = '请求超时';
+            friendlyMessage = '服务器响应超时，请检查网络状况后重试';
+        }
+        // CORS 跨域错误
+        else if (errorMsg.includes('cors') || errorMsg.includes('cross-origin')) {
+            friendlyTitle = '访问受限';
+            friendlyMessage = '无法访问考试服务，请联系技术支持';
+        }
+        // 服务器错误（5xx）
+        else if (errorMsg.includes('500') || errorMsg.includes('502') || 
+                 errorMsg.includes('503') || errorMsg.includes('504') ||
+                 errorMsg.includes('internal server error')) {
+            friendlyTitle = '服务器繁忙';
+            friendlyMessage = '服务器暂时无法处理请求，请稍后重试';
+        }
+        // 未授权错误（401, 403）
+        else if (errorMsg.includes('401') || errorMsg.includes('403') || 
+                 errorMsg.includes('unauthorized') || errorMsg.includes('forbidden')) {
+            friendlyTitle = '身份验证失败';
+            friendlyMessage = '您的登录状态已过期，请重新登录';
+        }
+        // 资源未找到（404）
+        else if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+            friendlyTitle = '考试不存在';
+            friendlyMessage = '未找到指定的考试信息，请确认考试链接是否正确';
+        }
+        // 缺少参数
+        else if (originalMsg.includes('缺少') || originalMsg.includes('参数')) {
+            friendlyTitle = '参数错误';
+            friendlyMessage = originalMsg || '访问参数有误，请确认链接是否正确';
+        }
+        // 业务错误：考试已开始
+        else if (originalMsg.includes('已经开始') || originalMsg.includes('已存在')) {
+            friendlyTitle = '您已经开始了这场考试';
+            friendlyMessage = '系统检测到您已有进行中的考试记录，请直接进入考试页面';
+        } 
+        // 业务错误：时间未到
+        else if (originalMsg.includes('未开始') || originalMsg.includes('时间')) {
+            friendlyTitle = '考试时间未到';
+            friendlyMessage = '请等待考试开始时间后再试';
+        } 
+        // 业务错误：考试已结束
+        else if (originalMsg.includes('已结束')) {
+            friendlyTitle = '考试已结束';
+            friendlyMessage = '很抱歉，该场考试已经结束';
+        } 
+        // 业务错误：网络连接
+        else if (originalMsg.includes('网络') || originalMsg.includes('连接')) {
+            friendlyTitle = '网络连接失败';
+            friendlyMessage = '请检查您的网络连接后重试';
+        } 
+        // 业务错误：权限问题
+        else if (originalMsg.includes('权限') || originalMsg.includes('授权')) {
+            friendlyTitle = '没有考试权限';
+            friendlyMessage = '您可能没有参加此考试的权限，请联系管理员';
+        } 
+        // 有具体错误消息（中文错误）
+        else if (originalMsg && /[\u4e00-\u9fa5]/.test(originalMsg)) {
+            friendlyTitle = defaultTitle;
+            friendlyMessage = originalMsg;
+        }
+        // 英文原生错误或其他未知错误
+        else if (originalMsg) {
+            friendlyTitle = '系统异常';
+            friendlyMessage = '操作失败，请稍后重试或联系技术支持';
+        } 
+        // 完全没有错误信息
+        else {
+            friendlyTitle = '系统异常';
+            friendlyMessage = '请稍后重试或联系技术支持';
+        }
+        
+        return {
+            title: friendlyTitle,
+            message: friendlyMessage
+        };
+    }
+    
+    /**
+     * 显示友好的错误提示（用于操作失败时的alert弹窗）
+     */
+    function showFriendlyError(error) {
+        const friendly = convertToFriendlyMessage(error, '抱歉，无法开始考试');
+        
+        // 显示友好的提示对话框
+        const alertMessage = friendly.message 
+            ? `${friendly.title}\n\n${friendly.message}` 
+            : friendly.title;
+        
+        alert(alertMessage);
+        console.error('❌ 开始考试失败:', error.msg || error.message || error);
+    }
+    
+    /**
      * 开始考试
      */
-    function startExam() {
+    async function startExam() {
+        // 防重复点击
+        if (isStarting) {
+            console.warn('⚠️ 正在处理开始考试请求，请勿重复点击');
+            return;
+        }
+        
+        // 验证是否可以开始考试
         if (!examData.countdown.canStart) {
-            alert('考试尚未开始或已结束');
+            alert('考试尚未开始或已结束\n\n请等待考试开始时间');
+            return;
+        }
+        
+        // 验证考试ID
+        if (!examData.exam.id) {
+            alert('系统错误\n\n无法获取考试信息，请刷新页面重试');
             return;
         }
         
         try {
+            // 设置防重复标志
+            isStarting = true;
+            
+            // 显示按钮加载状态
+            setStartButtonLoading(true);
             console.log('🚀 开始考试，考试ID:', examData.exam.id);
             
-            // 首先调用开始考试API创建考试记录
-            apiRequest(`/exam/api/exam/client/${examData.exam.id}/start`, {
+            // 调用开始考试API创建考试记录（在整个请求过程中保持加载状态）
+            const response = await apiRequest(`/exam/api/exam/client/${examData.exam.id}/start`, {
                 method: 'POST'
-            }).then(response => {
-                console.log('✅ 考试记录创建成功:', response);
-                
-                // 无论response格式如何，都跳转到考试页面
-                const examId = response.id || response.examId || examData.exam.id;
-                const targetUrl = `/${window.tenantId}/exam/${examId}`;
-                
-                console.log('🔄 跳转到考试页面:', targetUrl);
-                window.location.href = targetUrl;
-                
-            }).catch(error => {
-                console.error('❌ 开始考试失败:', error);
-                // 优先显示服务器返回的具体错误信息
-                const errorMessage = error.msg || error.message || '未知错误';
-                alert('开始考试失败：' + errorMessage);
             });
+            
+            console.log('✅ 考试记录创建成功:', response);
+            
+            // 获取考试ID（优先使用API返回值，否则使用本地数据）
+            const examId = response.id || response.examId || examData.exam.id;
+            
+            // 更新按钮状态为正在跳转
+            const startBtn = document.getElementById('startExamBtn');
+            if (startBtn) {
+                startBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>正在跳转到考试页面...';
+                console.log('🔄 更新按钮状态：正在跳转');
+            }
+            
+            // 构建目标URL（使用考试ID）
+            const targetUrl = `/${window.tenantId}/exam/${examId}`;
+            console.log('🔄 跳转到考试页面:', targetUrl);
+            
+            // 跳转到考试页面（加载状态保持到页面跳转完成）
+            window.location.href = targetUrl;
+            
+            // 注意：成功跳转后不需要恢复状态，因为页面会卸载
+            // 如果页面没有跳转（极端情况），3秒后恢复状态
+            setTimeout(() => {
+                if (isStarting) {
+                    console.warn('⚠️ 页面跳转超时，恢复按钮状态');
+                    isStarting = false;
+                    setStartButtonLoading(false);
+                }
+            }, 3000);
+            
         } catch (error) {
-            console.error('💥 开始考试出错:', error);
-            alert('开始考试失败，请重试');
+            // 只有在发生错误时才恢复按钮状态
+            console.error('❌ 开始考试失败，恢复按钮状态');
+            isStarting = false;
+            setStartButtonLoading(false);
+            
+            // 显示友好的错误提示
+            showFriendlyError(error);
         }
     }
     
@@ -635,9 +809,12 @@
     }
     
     /**
-     * 显示错误信息
+     * 显示错误信息（用于页面加载失败时的全屏错误页面）
      */
-    function showError(message) {
+    function showError(error) {
+        // 转换为友好的错误消息
+        const friendly = convertToFriendlyMessage(error, '页面加载失败');
+        
         const errorConfig = {
             type: "page",
             body: [
@@ -655,8 +832,8 @@
                                         <div class="error-icon">
                                             <i class="fa fa-exclamation-triangle"></i>
                                         </div>
-                                        <h3>加载失败</h3>
-                                        <p>${message}</p>
+                                        <h3>${friendly.title}</h3>
+                                        <p>${friendly.message || '请尝试刷新页面或返回首页'}</p>
                                         <button class="exam-start-btn" onclick="window.location.reload()">
                                             <i class="fa fa-refresh"></i>重新加载
                                         </button>
@@ -725,7 +902,7 @@
             
         } catch (error) {
             console.error('初始化页面失败:', error);
-            showError(error.message || '页面加载失败');
+            showError(error);
         }
     }
     

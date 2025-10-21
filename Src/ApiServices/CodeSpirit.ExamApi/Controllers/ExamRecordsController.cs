@@ -2,15 +2,18 @@ using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
-#if ENABLE_PDF_EXPORT
-using CodeSpirit.PdfGeneration.Services;
-#endif
 using CodeSpirit.Shared.Services.Background;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 #if ENABLE_PDF_EXPORT
+using CodeSpirit.Shared.Services.Files;
+using CodeSpirit.ExamApi.Services.Interfaces;
+using System.Text;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
+using CodeSpirit.PdfGeneration.Services;
+using CodeSpirit.Shared.Services.Background.Dtos;
+using System.IO.Compression;
 #endif
 
 namespace CodeSpirit.ExamApi.Controllers;

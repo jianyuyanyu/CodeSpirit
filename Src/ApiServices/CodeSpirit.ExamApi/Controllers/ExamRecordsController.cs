@@ -1,18 +1,17 @@
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Dtos.ExamRecord;
-// using CodeSpirit.PdfGeneration.Services;
+#if ENABLE_PDF_EXPORT
+using CodeSpirit.PdfGeneration.Services;
+#endif
 using CodeSpirit.Shared.Services.Background;
-using CodeSpirit.Shared.Services.Background.Dtos;
-using CodeSpirit.Shared.Services.Files;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-// using PuppeteerSharp;
-// using PuppeteerSharp.Media;
-using System.IO.Compression;
-using System.Text;
-using CodeSpirit.Core.Enums;
-using CodeSpirit.ExamApi.Data.Models.Enums;
+#if ENABLE_PDF_EXPORT
+using PuppeteerSharp;
+using PuppeteerSharp.Media;
+#endif
 
 namespace CodeSpirit.ExamApi.Controllers;
 
@@ -26,7 +25,10 @@ public class ExamRecordsController : ApiControllerBase
     private readonly IExamRecordService _examRecordService;
     private readonly IExamPaperService _examPaperService;
     private readonly IBackgroundJobService _backgroundJobService;
-    // private readonly IPdfGenerationService _pdfGenerationService;
+#if ENABLE_PDF_EXPORT
+    private readonly IPdfGenerationService _pdfGenerationService;
+#endif
+    private readonly ICurrentUser _currentUser;
     private readonly ILogger<ExamRecordsController> _logger;
 
     /// <summary>
@@ -35,18 +37,25 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="examRecordService">考试记录服务</param>
     /// <param name="examPaperService">试卷服务</param>
     /// <param name="backgroundJobService">后台任务服务</param>
+    /// <param name="currentUser">当前用户信息</param>
     /// <param name="logger">日志服务</param>
     public ExamRecordsController(
         IExamRecordService examRecordService,
         IExamPaperService examPaperService,
         IBackgroundJobService backgroundJobService,
-        // IPdfGenerationService pdfGenerationService,
+#if ENABLE_PDF_EXPORT
+        IPdfGenerationService pdfGenerationService,
+#endif
+        ICurrentUser currentUser,
         ILogger<ExamRecordsController> logger)
     {
         _examRecordService = examRecordService;
         _examPaperService = examPaperService;
         _backgroundJobService = backgroundJobService;
-        // _pdfGenerationService = pdfGenerationService;
+#if ENABLE_PDF_EXPORT
+        _pdfGenerationService = pdfGenerationService;
+#endif
+        _currentUser = currentUser;
         _logger = logger;
     }
 
@@ -531,9 +540,7 @@ public class ExamRecordsController : ApiControllerBase
         };
     }
 
-    // ⚠️⚠️⚠️ 临时禁用：负载测试期间禁用PDF导出功能（节省内存） ⚠️⚠️⚠️
-    // 如需启用，请删除下一行的 #if false 和方法末尾的 #endif
-    #if false
+    #if ENABLE_PDF_EXPORT
     /// <summary>
     /// 批量导出考生试卷
     /// </summary>
@@ -548,6 +555,14 @@ public class ExamRecordsController : ApiControllerBase
         {
             return BadResponse<JObject>("请至少选择一条考试记录");
         }
+
+        // 捕获当前租户上下文，在后台任务中恢复
+        var capturedTenantId = _currentUser.TenantId;
+        var capturedUserId = _currentUser.Id;
+        var capturedUserName = _currentUser.UserName;
+        
+        _logger.LogDebug("捕获租户上下文用于PDF导出任务：TenantId={TenantId}, UserId={UserId}, UserName={UserName}", 
+            capturedTenantId, capturedUserId, capturedUserName);
 
         // 创建导出任务
         var taskId = Guid.NewGuid().ToString();
@@ -567,6 +582,37 @@ public class ExamRecordsController : ApiControllerBase
         await _backgroundJobService.EnqueueAsync(async (serviceScopeFactory, cancellationToken) =>
         {
             using var scope = serviceScopeFactory.CreateScope();
+            
+            // 在后台任务的作用域中恢复租户上下文
+            if (!string.IsNullOrEmpty(capturedTenantId))
+            {
+                try
+                {
+                    var currentUser = scope.ServiceProvider.GetService<ICurrentUser>();
+                    if (currentUser is ISettableCurrentUser settableCurrentUser)
+                    {
+                        settableCurrentUser.SetTenantId(capturedTenantId);
+                        if (capturedUserId.HasValue)
+                        {
+                            settableCurrentUser.SetUserId(capturedUserId);
+                        }
+                        if (!string.IsNullOrEmpty(capturedUserName))
+                        {
+                            settableCurrentUser.SetUserName(capturedUserName);
+                        }
+                        _logger.LogDebug("已在后台任务中设置租户上下文：TenantId={TenantId}", capturedTenantId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("无法设置租户上下文，ICurrentUser不支持设置租户ID");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "设置租户上下文时发生错误，任务ID: {TaskId}", taskId);
+                }
+            }
+            
             var scopedFileService = scope.ServiceProvider.GetRequiredService<ITempFileService>();
             await scopedFileService.UpdateExportTaskAsync(taskInfo);
             
@@ -598,6 +644,32 @@ public class ExamRecordsController : ApiControllerBase
                             // 使用独立的作用域处理每个记录，确保DbContext正确释放
                             using (var recordScope = serviceScopeFactory.CreateScope())
                             {
+                                // 在每个记录的作用域中也设置租户上下文
+                                if (!string.IsNullOrEmpty(capturedTenantId))
+                                {
+                                    try
+                                    {
+                                        var recordCurrentUser = recordScope.ServiceProvider.GetService<ICurrentUser>();
+                                        if (recordCurrentUser is ISettableCurrentUser recordSettableUser)
+                                        {
+                                            recordSettableUser.SetTenantId(capturedTenantId);
+                                            if (capturedUserId.HasValue)
+                                            {
+                                                recordSettableUser.SetUserId(capturedUserId);
+                                            }
+                                            if (!string.IsNullOrEmpty(capturedUserName))
+                                            {
+                                                recordSettableUser.SetUserName(capturedUserName);
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        var recordLogger = recordScope.ServiceProvider.GetService<ILogger<ExamRecordsController>>();
+                                        recordLogger?.LogWarning(ex, "设置记录作用域租户上下文失败，记录ID: {RecordId}", recordId);
+                                    }
+                                }
+                                
                                 var recordExamService = recordScope.ServiceProvider.GetRequiredService<IExamRecordService>();
                                 var recordExamPaperService = recordScope.ServiceProvider.GetRequiredService<IExamPaperService>();
                                 var recordPdfService = recordScope.ServiceProvider.GetRequiredService<IPdfGenerationService>();
@@ -1263,5 +1335,4 @@ public class ExamRecordsController : ApiControllerBase
         return result;
     }
     #endif
-    // ⚠️⚠️⚠️ PDF导出功能已禁用结束 ⚠️⚠️⚠️
 }

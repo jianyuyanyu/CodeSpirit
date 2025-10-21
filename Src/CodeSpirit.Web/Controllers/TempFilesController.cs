@@ -15,9 +15,10 @@ namespace CodeSpirit.Web.Controllers
     [DisplayName("文件服务")]
     [ApiController]
     [Route("api/tempfiles")]
-    [Authorize(policy: "DynamicPermissions")]
+    //[Authorize(policy: "DynamicPermissions")]
+    [AllowAnonymous]
     [NoAudit("文件操作控制器不需要审计")]
-    public class TempFilesController : ControllerBase
+    public class TempFilesController : ApiControllerBase
     {
         private readonly ITempFileService _fileService;
         private readonly ILogger<TempFilesController> _logger;
@@ -120,7 +121,7 @@ namespace CodeSpirit.Web.Controllers
                     return NotFound(new ApiResponse(1, result.ErrorMessage ?? "找不到指定的文件"));
                 }
 
-                return File(result.FileStream, result.ContentType, result.FileName);
+                return base.DownloadFile(result.FileStream, result.FileName, result.ContentType);
             }
             catch (Exception ex)
             {

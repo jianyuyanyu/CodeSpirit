@@ -11,8 +11,9 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.ExamApi.Tasks;
 using CodeSpirit.MultiTenant.Extensions;
-// ⚠️ 临时注释：负载测试期间禁用PDF组件
-// using CodeSpirit.PdfGeneration.Extensions;
+#if ENABLE_PDF_EXPORT
+using CodeSpirit.PdfGeneration.Extensions;
+#endif
 using CodeSpirit.ScheduledTasks.Extensions;
 using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.Data;
@@ -82,9 +83,10 @@ public class ExamApiConfiguration : BaseApiConfiguration
         // 注册AI题目生成和SignalR服务
         AddAIAndSignalRServices(services, configuration);
         
-        // ⚠️ 临时注释：负载测试期间禁用PDF组件以减少内存占用（节省约1.5GB内存）
+#if ENABLE_PDF_EXPORT
         // 注册PDF生成服务
-        // services.AddPdfGeneration(configuration);
+        services.AddPdfGeneration(configuration);
+#endif
         
         // 添加设置管理
         services.AddSettingsManagerWithDatabase(configuration);
@@ -145,9 +147,10 @@ public class ExamApiConfiguration : BaseApiConfiguration
         // 使用AI表单填充自动端点
         app.UseAiFormFillEndpoints();
         
-        // ⚠️ 临时注释：负载测试期间禁用PDF组件
+#if ENABLE_PDF_EXPORT
         // 初始化PDF生成服务
-        // await app.UsePdfGenerationAsync();
+        await app.UsePdfGenerationAsync();
+#endif
     }
     
     /// <summary>

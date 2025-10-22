@@ -434,65 +434,89 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 18. [🎯 UDL Cards Detailed Implementation](./Docs/02-UI-Generation/UDL-Cards详细实现方案.md) - Card component library implementation guide
 19. [🎮 UDL Cards Simple Implementation](./Docs/02-UI-Generation/UDL-Cards简易实现方案.md) - Quick implementation guide for UDL Cards
 20. [🔗 AMIS Sidebar Linkage Usage Guide](./Docs/02-UI-Generation/CodeSpirit.Amis侧边栏联动功能使用指南.md) - Sidebar linkage feature for dynamic filtering and navigation
+21. [🤖 AI Smart Form Usage Guide](./Docs/02-UI-Generation/CodeSpirit.Amis.AiForm智能表单使用指南.md) - AI-driven long-running task processing framework
+22. [⚙️ OperationAttribute Configuration Guide](./Docs/02-UI-Generation/OperationAttribute-Actions配置使用指南.md) - Operation attribute configuration and action button customization
+23. [📦 Enhanced Batch Import Component Guide](./Docs/02-UI-Generation/增强批量导入组件使用指南.md) - Enhanced batch data import functionality
 
 ### 🔧 Core Components
 
-21. [🤖 AI Form Intelligent Fill Component Usage Guide](./Docs/03-Core-Components/CodeSpirit.AI表单智能填充组件使用指南.md) - Independent AI form filling component with global and field-trigger modes, zero-code auto endpoint generation, NuGet-ready architecture
-22. [🧭 Navigation Component](./Docs/03-Core-Components/CodeSpirit.Navigation导航组件使用指南.md) - Smart navigation system with multi-platform, permission filtering and context awareness
-23. [🔗 Aggregator Usage Guide](./Docs/03-Core-Components/CodeSpirit.Aggregator聚合器使用指南.md) - Data aggregation and field replacement
-24. [⚙️ Settings Management Component](./Docs/03-Core-Components/CodeSpirit.Settings设置管理组件使用指南.md) - Configuration management solution
-25. [🔒 Distributed Lock Usage Guide](./Docs/03-Core-Components/CodeSpirit分布式锁使用指南.md) - Distributed lock implementation and usage
-26. [📄 PDF Generation Component](./Docs/03-Core-Components/CodeSpirit.PdfGeneration使用指南.md) - PDF document generation service
-27. [🕒 Time Processing Mechanism](./Docs/03-Core-Components/CodeSpirit时间处理机制.md) - Unified time processing solution
-28. [🌐 Client IP Service](./Docs/03-Core-Components/ClientIpService使用指南.md) - Client IP acquisition and processing
-29. [📋 Audit Component Integration Guide](./Docs/03-Core-Components/CodeSpirit.Audit审计组件集成使用指南.md) - Complete audit system integration and usage
-30. [🚀 Unified Startup Framework Usage Guide](./Docs/03-Core-Components/CodeSpirit统一启动框架使用指南.md) - Unified API project startup framework, simplifying project creation and configuration
-31. [🏗️ Unified Startup Framework Core Architecture](./Docs/03-Core-Components/CodeSpirit统一启动框架核心架构.md) - Architecture design and implementation principles of the unified startup framework
-32. [📦 API Configuration Class Development Guide](./Docs/03-Core-Components/CodeSpirit.API配置类开发指南.md) - Development standards and best practices for API configuration classes
-33. [🔌 Middleware Injection Point Usage Guide](./Docs/03-Core-Components/CodeSpirit中间件插入点使用指南.md) - Usage methods and extension mechanisms for middleware injection points
-34. [🔄 Unified Startup Framework Migration Guide](./Docs/03-Core-Components/CodeSpirit统一启动框架迁移指南.md) - Detailed guide for migrating existing projects to the unified startup framework
-35. [📝 Scrutor Dependency Injection Integration Guide](./Docs/03-Core-Components/Scrutor依赖注入集成指南.md) - Integration and usage methods of Scrutor library in the framework
-36. [🖼️ Image Processing Service Integration Guide](./Docs/03-Core-Components/CodeSpirit.ImageProcessingService图片处理服务集成指南.md) - Integration and usage of image processing services
-37. [📎 Entity File Reference Event Handler Usage Guide](./Docs/03-Core-Components/CodeSpirit.EntityFileReferenceHandler实体文件引用事件处理器使用指南.md) - Automatic management of entity file references
-38. [🏷️ Resource Management Component Usage Guide](./Docs/03-Core-Components/ResourceTagHelper资源管理组件使用指南.md) - Usage methods of resource tag helpers
+24. [🤖 AI Form Intelligent Fill Component Usage Guide](./Docs/03-Core-Components/CodeSpirit.AI表单智能填充组件使用指南.md) - Independent AI form filling component with global and field-trigger modes, zero-code auto endpoint generation, NuGet-ready architecture
+25. [🧭 Navigation Component](./Docs/03-Core-Components/CodeSpirit.Navigation导航组件使用指南.md) - Smart navigation system with multi-platform, permission filtering and context awareness
+26. [🔗 Aggregator Usage Guide](./Docs/03-Core-Components/CodeSpirit.Aggregator聚合器使用指南.md) - Data aggregation and field replacement
+27. [⚙️ Settings Management Component](./Docs/03-Core-Components/CodeSpirit.Settings设置管理组件使用指南.md) - Configuration management solution
+28. [🔒 Distributed Lock Usage Guide](./Docs/03-Core-Components/CodeSpirit分布式锁使用指南.md) - Distributed lock implementation and usage
+29. [📄 PDF Generation Component](./Docs/03-Core-Components/CodeSpirit.PdfGeneration使用指南.md) - PDF document generation service
+30. [🕒 Time Processing Mechanism](./Docs/03-Core-Components/CodeSpirit时间处理机制.md) - Unified time processing solution
+31. [🌐 Client IP Service](./Docs/03-Core-Components/ClientIpService使用指南.md) - Client IP acquisition and processing
+32. [📋 Audit Component Integration Guide](./Docs/03-Core-Components/CodeSpirit.Audit审计组件集成使用指南.md) - Complete audit system integration and usage
+33. [🤖 LLM Audit Component Design](./Docs/03-Core-Components/CodeSpirit.LLM.Audit-LLM审计组件设计方案.md) - LLM call audit tracking design
+34. [📊 LLM Audit Usage Guide](./Docs/03-Core-Components/CodeSpirit.LLM.Audit-使用指南.md) - LLM audit component usage methods
+35. [⏰ Scheduled Tasks Component README](./Docs/03-Core-Components/CodeSpirit.ScheduledTasks-README.md) - Scheduled tasks component overview
+36. [📅 Scheduled Tasks Component Usage Guide](./Docs/03-Core-Components/CodeSpirit.ScheduledTasks定时任务组件使用指南.md) - Detailed scheduled tasks component usage
+37. [🏗️ Scheduled Tasks Technical Design](./Docs/03-Core-Components/CodeSpirit.ScheduledTasks技术设计文档.md) - Scheduled tasks component architecture design
+38. [🚫 NoAudit Attribute Usage Guide](./Docs/03-Core-Components/NoAuditAttribute-README.md) - Audit exclusion attribute usage instructions
+39. [🚀 Unified Startup Framework Usage Guide](./Docs/03-Core-Components/CodeSpirit统一启动框架使用指南.md) - Unified API project startup framework, simplifying project creation and configuration
+40. [🏗️ Unified Startup Framework Core Architecture](./Docs/03-Core-Components/CodeSpirit统一启动框架核心架构.md) - Architecture design and implementation principles of the unified startup framework
+41. [📦 API Configuration Class Development Guide](./Docs/03-Core-Components/CodeSpirit.API配置类开发指南.md) - Development standards and best practices for API configuration classes
+42. [🔌 Middleware Injection Point Usage Guide](./Docs/03-Core-Components/CodeSpirit中间件插入点使用指南.md) - Usage methods and extension mechanisms for middleware injection points
+43. [🔄 Unified Startup Framework Migration Guide](./Docs/03-Core-Components/CodeSpirit统一启动框架迁移指南.md) - Detailed guide for migrating existing projects to the unified startup framework
+44. [📝 Scrutor Dependency Injection Integration Guide](./Docs/03-Core-Components/Scrutor依赖注入集成指南.md) - Integration and usage methods of Scrutor library in the framework
+45. [🖼️ Image Processing Service Integration Guide](./Docs/03-Core-Components/CodeSpirit.ImageProcessingService图片处理服务集成指南.md) - Integration and usage of image processing services
+46. [📎 Entity File Reference Event Handler Usage Guide](./Docs/03-Core-Components/CodeSpirit.EntityFileReferenceHandler实体文件引用事件处理器使用指南.md) - Automatic management of entity file references
+47. [🏷️ Resource Management Component Usage Guide](./Docs/03-Core-Components/ResourceTagHelper资源管理组件使用指南.md) - Usage methods of resource tag helpers
 
 ### 🔐 Identity & Authorization
 
-39. [🔑 IdentityApi Identity Service](./Docs/04-Identity-Auth/CodeSpirit.IdentityApi身份认证服务.md) - Complete identity authentication service architecture
-40. [👮 Authorization Component](./Docs/04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md) - Comprehensive permission system with RBAC+ABAC hybrid model
-41. [🎫 TokenManager Frontend Authentication Manager](./Docs/04-Identity-Auth/CodeSpirit.TokenManager前端认证管理器使用指南.md) - Frontend authentication management and token handling
-42. [⚙️ ISettableCurrentUser Interface Guide](./Docs/04-Identity-Auth/ISettableCurrentUser可设置用户接口使用指南.md) - Settable current user interface for dynamic user context scenarios
+48. [🔑 IdentityApi Identity Service](./Docs/04-Identity-Auth/CodeSpirit.IdentityApi身份认证服务.md) - Complete identity authentication service architecture
+49. [👮 Authorization Component](./Docs/04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md) - Comprehensive permission system with RBAC+ABAC hybrid model
+50. [🎫 TokenManager Frontend Authentication Manager](./Docs/04-Identity-Auth/CodeSpirit.TokenManager前端认证管理器使用指南.md) - Frontend authentication management and token handling
+51. [⚙️ ISettableCurrentUser Interface Guide](./Docs/04-Identity-Auth/ISettableCurrentUser可设置用户接口使用指南.md) - Settable current user interface for dynamic user context scenarios
+52. [👥 Employee and Organization Management Guide](./Docs/04-Identity-Auth/职工管理及组织结构管理功能说明.md) - Employee and organizational structure management features
+53. [🏢 Department AI Quick Initialization Guide](./Docs/04-Identity-Auth/部门管理AI快速初始化功能说明.md) - AI-assisted department structure initialization
 
 ### 🏢 Multi-Tenancy Architecture
 
-43. [🏗️ Multi-Tenant Component Refactoring Plan](./Docs/05-Multi-Tenancy/CodeSpirit多租户组件整改计划.md) - Multi-tenancy architecture improvement and implementation plan
-44. [🎯 TenantResolver Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.TenantResolver租户解析器使用指南.md) - Tenant resolution and context management
-45. [🔍 DataFilter Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.DataFilter数据筛选器使用指南.md) - Data filtering and tenant isolation mechanisms
-46. [🗄️ Multi-Tenant Database Context Architecture](./Docs/05-Multi-Tenancy/CodeSpirit 多租户数据库上下文架构.md) - Database architecture design for multi-tenancy
-47. [🖥️ Multi-Tenant Login Page Usage Guide](./Docs/05-Multi-Tenancy/多租户登录页面使用指南.md) - Multi-tenant login interface implementation
-48. [🎯 Tenant-Aware Event System Design](./Docs/05-Multi-Tenancy/CodeSpirit 租户感知事件系统设计.md) - Comprehensive tenant-aware event bus architecture and implementation
+54. [🏗️ Multi-Tenant Component Refactoring Plan](./Docs/05-Multi-Tenancy/CodeSpirit多租户组件整改计划.md) - Multi-tenancy architecture improvement and implementation plan
+55. [🎯 TenantResolver Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.TenantResolver租户解析器使用指南.md) - Tenant resolution and context management
+56. [🔍 DataFilter Usage Guide](./Docs/05-Multi-Tenancy/CodeSpirit.DataFilter数据筛选器使用指南.md) - Data filtering and tenant isolation mechanisms
+57. [🗄️ Multi-Tenant Database Context Architecture](./Docs/05-Multi-Tenancy/CodeSpirit 多租户数据库上下文架构.md) - Database architecture design for multi-tenancy
+58. [🖥️ Multi-Tenant Login Page Usage Guide](./Docs/05-Multi-Tenancy/多租户登录页面使用指南.md) - Multi-tenant login interface implementation
+59. [🎯 Tenant-Aware Event System Design](./Docs/05-Multi-Tenancy/CodeSpirit 租户感知事件系统设计.md) - Comprehensive tenant-aware event bus architecture and implementation
 
 ### 🚀 Infrastructure & DevOps
 
-49. [🐰 RabbitMQ Integration Guide](./Docs/06-Infrastructure/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
-50. [🔧 RabbitMQ Troubleshooting](./Docs/06-Infrastructure/RabbitMQ故障排除指南.md) - Common problem solutions
-51. [🔍 Elasticsearch Migration Summary](./Docs/06-Infrastructure/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
-52. [🌐 CORS Policy Configuration Guide](./Docs/06-Infrastructure/CodeSpirit跨域策略配置指南.md) - CORS cross-origin resource sharing configuration and security policies
-53. [📁 File Storage Service Implementation](./Docs/06-Infrastructure/CodeSpirit文件存储服务方案实现.md) - File storage service architecture design and implementation
+60. [🐰 RabbitMQ Integration Guide](./Docs/06-Infrastructure/RabbitMQ-Aspire-Integration.md) - Message queue integration solution
+61. [🔧 RabbitMQ Troubleshooting](./Docs/06-Infrastructure/RabbitMQ故障排除指南.md) - Common problem solutions
+62. [🔍 Elasticsearch Migration Summary](./Docs/06-Infrastructure/Elasticsearch-Aspire-Migration-Summary.md) - Search engine integration guide
+63. [🌐 CORS Policy Configuration Guide](./Docs/06-Infrastructure/CodeSpirit跨域策略配置指南.md) - CORS cross-origin resource sharing configuration and security policies
+64. [📁 File Storage Service Implementation](./Docs/06-Infrastructure/CodeSpirit文件存储服务方案实现.md) - File storage service architecture design and implementation
+65. [🌐 API Address Configuration Guide](./Docs/06-Infrastructure/API地址配置指南.md) - API service address configuration instructions
+66. [🔧 API Path Prefix Configuration Guide](./Docs/06-Infrastructure/API路径前缀配置指南.md) - API path prefix configuration methods
+67. [🚀 Aspire 9.5 Optimization Guide](./Docs/06-Infrastructure/CodeSpirit.AppHost-Aspire9.5优化指南.md) - Aspire 9.5 version optimization practices
+68. [🗄️ Aspire Database Integration Implementation Guide](./Docs/06-Infrastructure/CodeSpirit.Aspire数据库集成实现指南.md) - Detailed Aspire database integration implementation
+69. [🎯 Aspire Database Integration Unified Solution](./Docs/06-Infrastructure/CodeSpirit.Aspire数据库集成统一方案.md) - Aspire database integration unified architecture
+70. [💾 Unified Caching Component Guide](./Docs/06-Infrastructure/CodeSpirit.Caching统一缓存组件指南.md) - Distributed caching component usage instructions
+71. [📄 PuppeteerSharp Problem Solving Guide](./Docs/06-Infrastructure/CodeSpirit.PdfGeneration-PuppeteerSharp问题解决指南.md) - PDF generation component common problem solutions
+72. [🗄️ Multi-Database DbContext Architecture Guide](./Docs/06-Infrastructure/多数据库DbContext架构使用指南.md) - Multi-database support architecture design
 
 ### 🌐 API & Communication
 
-54. [🔗 Universal API Jump Mechanism Usage Guide](./Docs/07-API-Communication/CodeSpirit通用API跳转机制使用指南.md) - Universal API routing and communication mechanisms
+73. [🔗 Universal API Jump Mechanism Usage Guide](./Docs/07-API-Communication/CodeSpirit通用API跳转机制使用指南.md) - Universal API routing and communication mechanisms
 
 ### 📊 Project Management
 
-55. [📋 Technical Debt Management](./Docs/08-Project-Management/技术债管理文档.md) - Technical debt tracking and management standards
+74. [📋 Technical Debt Management](./Docs/08-Project-Management/技术债管理文档.md) - Technical debt tracking and management standards
 
 ### 📝 Exam System
 
-56. [📚 Exam System Overview](./Docs/09-Exam-System/README.md) - Complete exam system documentation navigation and quick reference
-57. [🏗️ Exam System Technical Architecture](./Docs/09-Exam-System/考试系统完整说明文档.md) - Comprehensive technical architecture, API design and security mechanisms
-58. [📋 Exam System Business Functions](./Docs/09-Exam-System/考试系统业务功能清单.md) - Complete business function list with 200+ features across 12 modules
+75. [📚 Exam System Overview](./Docs/09-Exam-System/README.md) - Complete exam system documentation navigation and quick reference
+76. [🏗️ Exam System Technical Architecture](./Docs/09-Exam-System/考试系统完整说明文档.md) - Comprehensive technical architecture, API design and security mechanisms
+77. [📋 Exam System Business Functions](./Docs/09-Exam-System/考试系统业务功能清单.md) - Complete business function list with 200+ features across 12 modules
+
+### 📋 Survey System
+
+78. [📊 Survey Module Design Proposal](./Docs/09-Survey-System/问卷调查模块方案设计.md) - Survey system architecture design proposal
+79. [📝 Question Type Specific Fields Implementation](./Docs/09-Survey-System/题目类型特定字段实现说明.md) - Question type field implementation details
 
 ### 💬 Technical Community
 

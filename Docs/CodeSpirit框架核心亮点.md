@@ -27,20 +27,9 @@ CodeSpirit（码灵）是一款基于 .NET 9 构建的革命性全栈低代码�
 - ✅ **灵活切换**: 支持全局LLM和独立LLM配置,满足不同场景需求
 
 #### 技术架构
-```csharp
-// 统一的接口设计
-public interface ILLMClient
-{
-    Task<string> GenerateContentAsync(string prompt, int? maxTokens = null);
-    IAsyncEnumerable<string> GenerateContentStreamAsync(string prompt, int? maxTokens = null);
-}
-
-// 工厂模式创建客户端
-public interface ILLMClientFactory
-{
-    Task<ILLMClient> CreateClientAsync(string? settingsKey = null);
-}
-```
+- **统一接口设计**: `ILLMClient` 提供同步和流式响应接口
+- **工厂模式**: `ILLMClientFactory` 创建不同提供商的客户端
+- **配置驱动**: 支持全局和独立LLM配置
 
 #### 应用场景
 - 🎯 **智能题目生成**: 考试系统中基于主题、难度自动生成试题
@@ -96,22 +85,9 @@ public class CreateQuestionDto
 #### 智能提示词构建
 
 系统自动分析DTO结构,生成结构化提示词:
-
-```
-根据以下信息生成JSON格式的数据:
-- 触发值: "数据库基础知识"
-
-字段要求:
-1. content (题目内容): 必填, 最大长度500
-2. optionA (选项A): 必填, 最大长度100
-3. optionB (选项B): 必填, 最大长度100
-4. optionC (选项C): 必填, 最大长度100
-5. optionD (选项D): 必填, 最大长度100
-6. correctAnswer (正确答案): 必填, 枚举值: A, B, C, D
-7. difficulty (难度): 枚举值: Easy, Medium, Hard
-
-请返回JSON格式数据...
-```
+- 自动提取字段名称、显示名、数据类型
+- 自动读取验证规则(必填、长度、枚举等)
+- 智能构建结构化JSON格式提示词
 
 #### 中间件自动处理流程
 
@@ -206,33 +182,12 @@ public async Task<ActionResult<ApiResponse<string>>> GenerateSurveyAsync(
 - 🔄 **批量处理**: 支持批量生成多道题目
 - 🎨 **灵活配置**: 支持自定义提示词模板
 
-#### 实现示例
+#### 实现方式
 
-```csharp
-public class AIQuestionGeneratorService : IAIQuestionGeneratorService
-{
-    private readonly LLMAssistant _llmAssistant;
-    private readonly IPromptBuilder _promptBuilder;
-    private readonly IQuestionParser _questionParser;
-
-    public async Task<List<CreateQuestionDto>> GenerateQuestionsAsync(
-        AIGenerateQuestionDto request, 
-        string sessionId = null, 
-        IGeneratorNotificationService notificationService = null)
-    {
-        // 构建提示词
-        var prompt = _promptBuilder.BuildPrompt(request);
-        
-        // 调用LLM生成
-        var response = await _llmAssistant.GenerateContentAsync(prompt);
-        
-        // 解析响应
-        var questions = _questionParser.ParseQuestions(response);
-        
-        return questions;
-    }
-}
-```
+- 构建智能提示词,指定题型、难度、数量等参数
+- 调用LLM生成接口批量生成题目
+- 解析响应并转换为题目DTO
+- 支持实时进度回调和通知
 
 ## 二、智能界面生成引擎 🎨
 
@@ -330,33 +285,10 @@ public async Task<IActionResult> GetUserGrowthStatisticsAsync(
 #### 智能推荐机制
 
 系统会自动分析数据特征并推荐最合适的图表类型:
-
-```csharp
-public class ChartRecommender : IChartRecommender
-{
-    public async Task<IEnumerable<ChartRecommendation>> RecommendChartTypesAsync(
-        object data, string providerName)
-    {
-        // 分析数据特征
-        var features = await AnalyzeDataFeaturesAsync(data);
-        
-        // 评分推荐
-        var recommendations = new List<ChartRecommendation>();
-        foreach (var chartType in _chartTypeDescriptions)
-        {
-            var score = CalculateScore(features, chartType);
-            recommendations.Add(new ChartRecommendation
-            {
-                ChartType = chartType,
-                Score = score,
-                Reason = GenerateRecommendationReason(features, chartType)
-            });
-        }
-        
-        return recommendations.OrderByDescending(r => r.Score);
-    }
-}
-```
+- 分析数据维度(时间序列、分类、数值等)
+- 计算数据分布特征
+- 基于规则引擎评分推荐
+- 返回排序的推荐结果和理由
 
 ### 2.3 UDL (UI描述语言) 引擎 🆕
 
@@ -425,33 +357,10 @@ graph TB
 
 #### 技术架构
 
-```csharp
-// 1. 导入模板服务 - 智能生成Excel模板
-public interface IImportTemplateService
-{
-    Task<byte[]> GenerateExcelTemplateAsync<T>(string? fileName = null);
-    List<ImportColumnInfo> GetImportColumns<T>();
-}
-
-// 2. 增强批量导入助手 - 处理导入逻辑
-public class EnhancedBatchImportHelper<TBatchImportDto>
-{
-    public async Task<BatchImportResultDto> EnhancedBatchImportAsync(
-        IEnumerable<TBatchImportDto> importData,
-        Func<TBatchImportDto, int, Task<string?>> importProcessor,
-        Func<TBatchImportDto, int, Task<List<ValidationError>>>? validator = null);
-}
-
-// 3. 前端特性 - 自动生成导入界面
-[AmisEnhancedImportField(
-    Label = "批量导入数据", 
-    Placeholder = "请先下载模板，填写数据后上传Excel文件",
-    MaxLength = 1000,
-    ShowTemplateDownload = true,
-    ShowImportResult = true
-)]
-public List<StudentBatchImportDto> ImportData { get; set; }
-```
+- **导入模板服务**: 基于DTO自动生成带验证规则的Excel模板
+- **批量导入助手**: 处理导入逻辑、数据验证和错误追踪
+- **前端特性驱动**: 通过特性自动生成完整导入界面
+- **分布式缓存支持**: 导入结果跨实例共享
 
 #### 核心优势
 1. **组合模式解决多重继承**: 灵活扩展,任何服务都可获得增强导入功能
@@ -489,14 +398,10 @@ public List<StudentBatchImportDto> ImportData { get; set; }
 
 #### 使用示例
 
-```csharp
-[Authorize]
-[RequirePermission("User.Create")]
-public async Task<IActionResult> CreateUser(CreateUserDto dto)
-{
-    // 业务逻辑
-}
-```
+通过特性标记即可实现权限控制:
+- `[Authorize]` - 需要身份认证
+- `[RequirePermission("User.Create")]` - 需要特定权限
+- 支持角色、部门、数据范围等多维度权限控制
 
 ### 3.3 多租户支持
 
@@ -510,20 +415,9 @@ public async Task<IActionResult> CreateUser(CreateUserDto dto)
 
 #### 实现机制
 
-```csharp
-// 租户感知的数据过滤器
-public class TenantDataFilter : IDataFilter
-{
-    public void ApplyFilter<T>(IQueryable<T> query) where T : ITenantEntity
-    {
-        var currentTenantId = _tenantResolver.GetCurrentTenantId();
-        if (!string.IsNullOrEmpty(currentTenantId))
-        {
-            query = query.Where(e => e.TenantId == currentTenantId);
-        }
-    }
-}
-```
+- **自动租户过滤器**: EF Core全局查询过滤器自动应用租户ID过滤
+- **租户解析器**: 支持多种租户识别策略(域名、路径、Header等)
+- **租户上下文**: 请求生命周期内自动维护租户上下文
 
 ### 3.4 审计追踪系统
 
@@ -546,29 +440,13 @@ public class TenantDataFilter : IDataFilter
 
 #### 语法规则
 
-```csharp
-// 1. 静态替换
-createdBy#User-{value}
-// 效果: 10001 → User-10001
+- **静态替换**: `fieldName#prefix-{value}` - 添加前缀或后缀
+- **动态替换**: `fieldName=/api/{value}.propertyPath` - 从API获取数据替换
+- **动态补充**: `fieldName=/api/{value}.name#{value} ({field})` - 保留原值并补充信息
 
-// 2. 动态替换
-updatedBy=/user/{value}.name
-// 请求 /user/10002 获取 name 字段值
+#### 使用方式
 
-// 3. 动态补充
-items.createdBy=/user/{value}.fullName#{value} ({field})
-// 效果: 10003 → 10003 (User-10003)
-```
-
-#### 使用示例
-
-```csharp
-[DisplayName("发布人")]
-[AggregateField(
-    dataSource: "http://identity/api/identity/users/{value}.data.name", 
-    template: "用户: {field}")]
-public string CreatedBy { get; set; }
-```
+通过 `[AggregateField]` 特性标记字段,指定数据源和模板,系统自动处理数据聚合和字段替换
 
 ### 3.6 多数据库支持 🗄️
 
@@ -941,66 +819,12 @@ app.Run();
 
 **2. API配置类**
 
-```csharp
-public class ExamApiConfiguration : BaseApiConfiguration
-{
-    // 服务名称(用于Aspire服务发现)
-    public override string ServiceName => "exam-api";
-    
-    // 数据库连接字符串键
-    public override string ConnectionStringKey => "exam-api";
-    
-    // 配置特定服务
-    public override void ConfigureServices(
-        IServiceCollection services, 
-        IConfiguration configuration)
-    {
-        // 配置数据库
-        ConfigureDatabase(services, configuration);
-        
-        // 配置业务服务
-        services.AddScoped<IQuestionService, QuestionService>();
-        services.AddScoped<IExamService, ExamService>();
-        
-        // 配置LLM服务
-        services.AddLLMServices();
-    }
-    
-    // 认证前中间件(如多租户)
-    public override Task ConfigurePreAuthenticationMiddlewareAsync(
-        WebApplication app)
-    {
-        // 添加租户解析中间件
-        app.UseMultiTenancy();
-        return Task.CompletedTask;
-    }
-    
-    // 控制器前中间件(如审计)
-    public override Task ConfigurePreControllerMiddlewareAsync(
-        WebApplication app)
-    {
-        // 添加审计日志中间件
-        app.UseAuditLogging();
-        return Task.CompletedTask;
-    }
-    
-    // 数据库初始化
-    public override async Task InitializeDatabaseAsync(WebApplication app)
-    {
-        using var scope = app.Services.CreateScope();
-        var services = scope.ServiceProvider;
-        
-        // 自动应用数据库迁移
-        await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<
-            MySqlExamDbContext, 
-            SqlServerExamDbContext>(services, configuration, logger, "ExamApi");
-        
-        // 初始化种子数据
-        var context = services.GetRequiredService<ExamDbContext>();
-        await context.InitializeDatabaseAsync();
-    }
-}
-```
+创建配置类继承 `BaseApiConfiguration`,重写关键方法:
+- `ServiceName`: 指定服务名称
+- `ConfigureServices`: 配置数据库和业务服务
+- `ConfigurePreAuthenticationMiddleware`: 添加认证前中间件(如多租户)
+- `ConfigurePreControllerMiddleware`: 添加控制器前中间件(如审计)
+- `InitializeDatabaseAsync`: 自动应用迁移和初始化种子数据
 
 #### 自动化内容
 
@@ -1067,88 +891,12 @@ public interface ISingletonDependency { }   // Singleton生命周期
 
 #### 使用示例
 
-**1. 服务实现**
+**使用方式**
 
-```csharp
-// 只需实现标记接口,无需手动注册!
-public class StudentService : 
-    BaseCRUDService<Student, StudentDto>,
-    IStudentService,
-    IScopedDependency  // 标记为Scoped生命周期
-{
-    public StudentService(
-        IRepository<Student> repository,
-        IMapper mapper)
-    {
-        // 构造函数
-    }
-}
-
-// 单例服务示例
-public class CacheManager : ICacheManager, ISingletonDependency
-{
-    // 自动注册为单例
-}
-
-// 瞬态服务示例
-public class EmailSender : IEmailSender, ITransientDependency
-{
-    // 自动注册为瞬态
-}
-```
-
-**2. 自动注册配置**
-
-```csharp
-// 在统一启动框架中自动配置
-public static IServiceCollection AddCodeSpiritApi<TConfig>(
-    this WebApplicationBuilder builder,
-    TConfig? configuration = null) 
-{
-    // 获取入口程序集和共享程序集
-    var entryAssembly = Assembly.GetEntryAssembly();
-    var assembliesToScan = new[]
-    {
-        entryAssembly,
-        typeof(IScopedDependency).Assembly  // CodeSpirit.Shared
-    };
-    
-    // 使用Scrutor批量注册
-    builder.Services.AddDependencyInjectionWithScrutor(assembliesToScan);
-    
-    return builder.Services;
-}
-```
-
-**3. Scrutor配置实现**
-
-```csharp
-public static IServiceCollection AddDependencyInjectionWithScrutor(
-    this IServiceCollection services,
-    params Assembly[] assemblies)
-{
-    services.Scan(scan => scan
-        .FromAssemblies(assemblies)
-        
-        // 注册Scoped服务
-        .AddClasses(classes => classes.AssignableTo<IScopedDependency>())
-        .AsImplementedInterfaces()
-        .WithScopedLifetime()
-        
-        // 注册Transient服务
-        .AddClasses(classes => classes.AssignableTo<ITransientDependency>())
-        .AsImplementedInterfaces()
-        .WithTransientLifetime()
-        
-        // 注册Singleton服务
-        .AddClasses(classes => classes.AssignableTo<ISingletonDependency>())
-        .AsImplementedInterfaces()
-        .WithSingletonLifetime()
-    );
-    
-    return services;
-}
-```
+1. **服务实现**: 实现业务接口和标记接口(`IScopedDependency`/`ITransientDependency`/`ISingletonDependency`)
+2. **自动扫描**: 统一启动框架自动扫描指定程序集
+3. **批量注册**: Scrutor批量注册所有标记的服务
+4. **零配置**: 无需手动添加 `services.AddScoped<IService, Service>()`
 
 #### 核心优势
 
@@ -1197,210 +945,26 @@ RabbitMQ Message Broker
 
 #### 使用示例
 
-**1. 定义事件**
+**使用方式**
 
-```csharp
-// 普通事件
-public class UserCreatedEvent
-{
-    public long UserId { get; set; }
-    public string UserName { get; set; }
-    public string Email { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
-// 租户感知事件
-public class OrderCreatedEvent : TenantAwareEventBase
-{
-    public long OrderId { get; set; }
-    public decimal Amount { get; set; }
-    public string CustomerName { get; set; }
-    
-    // TenantId 由基类提供,自动设置
-}
-```
-
-**2. 发布事件**
-
-```csharp
-public class UserService : IUserService
-{
-    private readonly IEventBus _eventBus;
-    private readonly ITenantAwareEventBus _tenantEventBus;
-    
-    public async Task<UserDto> CreateUserAsync(CreateUserDto dto)
-    {
-        // 创建用户
-        var user = await _userRepository.AddAsync(newUser);
-        
-        // 发布普通事件
-        await _eventBus.PublishAsync(new UserCreatedEvent
-        {
-            UserId = user.Id,
-            UserName = user.Username,
-            Email = user.Email,
-            CreatedAt = DateTime.UtcNow
-        });
-        
-        return userDto;
-    }
-    
-    public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto)
-    {
-        var order = await _orderRepository.AddAsync(newOrder);
-        
-        // 发布租户感知事件(自动添加租户ID)
-        await _tenantEventBus.PublishAsync(new OrderCreatedEvent
-        {
-            OrderId = order.Id,
-            Amount = order.Amount,
-            CustomerName = order.CustomerName
-            // TenantId 自动从当前上下文获取
-        });
-        
-        return orderDto;
-    }
-}
-```
-
-**3. 事件处理器**
-
-```csharp
-// 普通事件处理器
-public class UserCreatedEventHandler : IEventHandler<UserCreatedEvent>
-{
-    private readonly IEmailService _emailService;
-    private readonly IPermissionService _permissionService;
-    private readonly ILogger<UserCreatedEventHandler> _logger;
-    
-    public async Task HandleAsync(UserCreatedEvent @event)
-    {
-        try
-        {
-            // 发送欢迎邮件
-            await _emailService.SendWelcomeEmailAsync(
-                @event.Email, 
-                @event.UserName);
-            
-            // 初始化默认权限
-            await _permissionService.AssignDefaultPermissionsAsync(
-                @event.UserId);
-            
-            _logger.LogInformation(
-                "用户 {UserId} 创建成功,已完成初始化", 
-                @event.UserId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, 
-                "处理用户创建事件失败: {UserId}", 
-                @event.UserId);
-        }
-    }
-}
-
-// 租户感知事件处理器
-public class OrderCreatedEventHandler : 
-    ITenantAwareEventHandler<OrderCreatedEvent>
-{
-    private readonly INotificationService _notificationService;
-    
-    public async Task HandleAsync(OrderCreatedEvent @event)
-    {
-        // 事件处理时,租户上下文自动设置
-        // 所有数据操作自动应用租户过滤
-        
-        await _notificationService.NotifyOrderCreatedAsync(
-            @event.OrderId,
-            @event.TenantId);
-    }
-}
-```
-
-**4. 注册事件处理器**
-
-```csharp
-// 在API配置类中注册
-public override void ConfigureServices(
-    IServiceCollection services, 
-    IConfiguration configuration)
-{
-    // 添加事件总线
-    services.AddEventBus();
-    
-    // 注册事件处理器
-    services.AddEventHandler<UserCreatedEvent, UserCreatedEventHandler>();
-    services.AddEventHandler<OrderCreatedEvent, OrderCreatedEventHandler>();
-}
-```
+1. **定义事件**: 创建事件类,继承 `TenantAwareEventBase`(租户感知)或普通类
+2. **发布事件**: 通过 `IEventBus` 或 `ITenantAwareEventBus` 发布事件
+3. **事件处理器**: 实现 `IEventHandler<TEvent>` 接口处理事件
+4. **注册处理器**: 在服务配置中注册事件处理器
 
 #### 租户感知事件机制
 
-**自动租户ID注入**
+**租户感知机制**
 
-```csharp
-public class TenantAwareEventBus : ITenantAwareEventBus
-{
-    public async Task PublishAsync<TEvent>(TEvent @event) 
-        where TEvent : ITenantAwareEvent
-    {
-        // 自动从当前上下文获取租户ID
-        if (string.IsNullOrEmpty(@event.TenantId))
-        {
-            @event.TenantId = _currentUser.TenantId ?? _defaultTenantId;
-        }
-        
-        // 发布事件
-        await _eventBus.PublishAsync(@event);
-    }
-}
-```
-
-**自动租户上下文设置**
-
-```csharp
-public class TenantAwareEventHandler<TEvent> 
-    where TEvent : ITenantAwareEvent
-{
-    public async Task HandleAsync(TEvent @event)
-    {
-        // 处理前设置租户上下文
-        using var tenantScope = _tenantResolver.SetCurrentTenant(@event.TenantId);
-        
-        // 执行具体处理器
-        await _handler.HandleAsync(@event);
-        
-        // 自动清理租户上下文
-    }
-}
-```
+- **自动租户ID注入**: 发布事件时自动从当前上下文获取租户ID
+- **自动租户上下文设置**: 处理事件时自动设置租户上下文,确保数据隔离
 
 #### 应用场景
 
-1. **跨服务通信**
-   ```csharp
-   // 用户服务发布事件
-   await _eventBus.PublishAsync(new UserCreatedEvent());
-   
-   // 订单服务订阅并处理
-   // 权限服务订阅并初始化权限
-   // 通知服务订阅并发送通知
-   ```
-
-2. **异步解耦**
-   - 主流程快速返回
-   - 耗时操作异步处理
-   - 失败不影响主流程
-
-3. **事件溯源**
-   - 记录所有领域事件
-   - 重建系统状态
-   - 审计和追溯
-
-4. **多租户场景**
-   - 租户数据自动隔离
-   - 跨租户事件过滤
-   - 租户级事件统计
+1. **跨服务通信**: 用户服务发布事件,订单、权限、通知服务订阅处理
+2. **异步解耦**: 主流程快速返回,耗时操作异步处理
+3. **事件溯源**: 记录所有领域事件,支持重建系统状态和审计追溯
+4. **多租户场景**: 租户数据自动隔离,支持租户级事件统计
 
 #### 核心优势
 
@@ -1424,7 +988,142 @@ public class TenantAwareEventHandler<TEvent>
    - 租户上下文自动传递
    - 避免跨租户数据泄露
 
-### 3.10 分布式组件库 🔧
+### 3.10 CodeSpirit.Caching - 统一缓存组件 💾
+
+**企业级多级缓存解决方案**
+
+#### 核心特性
+- 🔄 **多级缓存**: L1内存缓存 + L2分布式缓存(Redis)
+- 🛡️ **缓存穿透防护**: 分布式锁防止缓存击穿
+- 🔥 **缓存预热**: 支持应用启动时批量预热热点数据
+- ⏰ **灵活过期策略**: 绝对过期、相对过期、滑动过期
+- 🏷️ **缓存标签**: 支持按标签批量清除关联缓存
+- 🔒 **分布式锁**: 基于Redis的高性能分布式锁实现
+
+#### 多级缓存架构
+
+```
+请求 → L1缓存(内存) → L2缓存(Redis) → 数据源
+         ↓ 命中返回    ↓ 命中回写L1     ↓ 写入L2和L1
+```
+
+#### 使用方式
+
+```csharp
+// 1. 注册服务
+services.AddCodeSpiritCaching(configuration.GetSection("Caching"), "ServiceName");
+
+// 2. 使用缓存
+public class ExampleService
+{
+    private readonly ICacheService _cacheService;
+    
+    public async Task<UserDto> GetUserAsync(long userId)
+    {
+        return await _cacheService.GetOrSetAsync(
+            $"user:{userId}",
+            async () => await _userRepository.GetByIdAsync(userId),
+            new CacheOptions 
+            { 
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
+                Level = CacheLevel.L1AndL2  // 两级缓存
+            });
+    }
+}
+```
+
+#### 核心优势
+
+1. **极致性能**: L1毫秒级访问,L2分布式共享
+2. **穿透防护**: 分布式锁防止缓存雪崩
+3. **标签管理**: 便于批量清除关联缓存
+4. **监控友好**: 内置缓存命中率统计
+
+### 3.11 CodeSpirit.ScheduledTasks - 定时任务组件 ⏰
+
+**分布式定时任务调度解决方案**
+
+#### 核心特性
+- 📅 **Cron定时任务**: 支持标准Cron表达式,秒级精度
+- ⏱️ **延迟任务**: 支持一次性定时任务
+- 🔒 **分布式执行**: 基于分布式锁,多实例环境不重复执行
+- ⏰ **超时控制**: 支持任务执行超时自动终止
+- 💾 **缓存存储**: 基于Redis缓存,无需数据库
+- 📝 **配置文件定义**: 支持通过appsettings.json预定义任务
+- 🎨 **Web管理界面**: 基于AMIS的完整管理界面
+- 📊 **执行历史**: 完整的任务执行记录和日志
+
+#### 架构设计
+
+```
+┌─────────────────┐
+│   Web UI(AMIS)  │
+└─────────────────┘
+        ↓
+┌─────────────────────────────┐
+│  TaskService/QueryService   │
+│  TaskExecutor/Scheduler     │
+└─────────────────────────────┘
+        ↓
+┌─────────────────────────────┐
+│  Cache + Lock Provider      │
+└─────────────────────────────┘
+        ↓
+    Redis (缓存+锁)
+```
+
+#### 使用方式
+
+```csharp
+// 1. 注册服务
+builder.Services.AddCodeSpiritScheduledTasks(builder.Configuration, "ServiceName");
+
+// 2. 配置文件定义任务
+{
+  "ScheduledTasks": {
+    "Enabled": true,
+    "DefaultTimeout": "00:30:00",
+    "Tasks": [
+      {
+        "Id": "daily-cleanup",
+        "Name": "每日清理任务",
+        "Type": "Cron",
+        "CronExpression": "0 2 * * *",
+        "HandlerType": "YourApp.Tasks.DailyCleanupTaskHandler"
+      }
+    ]
+  }
+}
+
+// 3. 创建任务处理器
+public class DailyCleanupTaskHandler : ITaskHandler
+{
+    public async Task ExecuteAsync(TaskExecutionContext context, 
+        CancellationToken cancellationToken)
+    {
+        // 实现任务逻辑
+        await DoCleanupAsync(cancellationToken);
+    }
+}
+```
+
+#### 核心优势
+
+1. **分布式优先**: 天然支持多实例部署,自动协调
+2. **高可用性**: 基于Redis,无单点故障
+3. **简单易用**: 配置文件定义 + Web界面管理
+4. **可观测性**: 完整的执行历史和日志追踪
+
+#### 典型应用场景
+
+- 📋 **数据清理**: 定期清理过期数据、临时文件
+- 🔄 **数据同步**: 定时从外部系统同步数据
+- 📊 **报表生成**: 定时生成日报、周报、月报
+- 🔍 **健康检查**: 定期检查系统健康状态
+- 💾 **缓存预热**: 定时预热常用数据缓存
+- 📧 **消息提醒**: 定时发送通知、提醒消息
+
+### 3.12 分布式组件库 🔧
 
 **丰富的分布式场景支持**
 
@@ -1440,60 +1139,11 @@ public class TenantAwareEventHandler<TEvent>
 - 🔄 **自动续期**: 长时间操作支持
 - 🎯 **简单易用**: 一行代码实现锁定
 
-**使用示例**
+**使用方式**
 
-```csharp
-public class OrderService
-{
-    private readonly IDistributedLock _distributedLock;
-    
-    public async Task ProcessOrderAsync(long orderId)
-    {
-        // 获取分布式锁,确保只有一个实例处理该订单
-        using (await _distributedLock.AcquireAsync(
-            $"order-process-{orderId}", 
-            expiry: TimeSpan.FromMinutes(5)))
-        {
-            // 处理订单逻辑
-            var order = await _orderRepository.GetByIdAsync(orderId);
-            
-            // 复杂的订单处理...
-            await UpdateInventory(order);
-            await CalculateShipping(order);
-            await ProcessPayment(order);
-            
-            // 锁会在using结束时自动释放
-        }
-    }
-    
-    // 防止重复提交
-    public async Task<bool> SubmitFormAsync(string formId, FormData data)
-    {
-        var lockKey = $"form-submit-{formId}-{data.UserId}";
-        
-        // 尝试获取锁,如果失败则说明正在提交
-        var lockAcquired = await _distributedLock.TryAcquireAsync(
-            lockKey, 
-            TimeSpan.FromSeconds(10));
-        
-        if (!lockAcquired)
-        {
-            throw new BusinessException("请勿重复提交");
-        }
-        
-        try
-        {
-            // 提交表单
-            await _formRepository.SubmitAsync(data);
-            return true;
-        }
-        finally
-        {
-            await _distributedLock.ReleaseAsync(lockKey);
-        }
-    }
-}
-```
+- 使用 `using` 语句获取分布式锁,自动释放
+- 支持 `TryAcquire` 尝试获取锁,避免阻塞
+- 常见场景: 防止重复提交、订单处理、定时任务执行等
 
 **2. 文件存储服务 📁**
 
@@ -1506,57 +1156,12 @@ public class OrderService
 - 🗑️ **自动清理**: 无引用文件自动删除
 - ☁️ **多存储支持**: 本地存储、OSS、S3等
 
-**使用示例**
+**使用方式**
 
-```csharp
-public class ArticleService
-{
-    private readonly IFileStorageService _fileStorage;
-    private readonly IEventBus _eventBus;
-    
-    public async Task<ArticleDto> CreateArticleAsync(CreateArticleDto dto)
-    {
-        // 1. 创建文章
-        var article = await _articleRepository.AddAsync(newArticle);
-        
-        // 2. 确认文件引用
-        if (!string.IsNullOrEmpty(dto.CoverImageFileId))
-        {
-            // 发布文件引用事件,引用计数+1
-            await _eventBus.PublishAsync(new FileReferenceEvent
-            {
-                FileId = long.Parse(dto.CoverImageFileId),
-                SourceEntityType = "Article",
-                SourceEntityId = article.Id.ToString(),
-                Action = FileReferenceAction.Confirm
-            });
-        }
-        
-        return articleDto;
-    }
-    
-    public async Task DeleteArticleAsync(long articleId)
-    {
-        var article = await _articleRepository.GetByIdAsync(articleId);
-        
-        // 删除文章
-        await _articleRepository.DeleteAsync(articleId);
-        
-        // 取消文件引用,引用计数-1
-        // 当引用计数为0时,文件自动删除
-        if (!string.IsNullOrEmpty(article.CoverImageFileId))
-        {
-            await _eventBus.PublishAsync(new FileReferenceEvent
-            {
-                FileId = long.Parse(article.CoverImageFileId),
-                SourceEntityType = "Article",
-                SourceEntityId = articleId.ToString(),
-                Action = FileReferenceAction.Cancel
-            });
-        }
-    }
-}
-```
+- 上传文件时自动生成文件ID和临时引用
+- 创建实体时发布确认引用事件,引用计数+1
+- 删除实体时发布取消引用事件,引用计数-1
+- 引用计数为0时,文件自动删除
 
 **文件引用生命周期**
 
@@ -1582,25 +1187,13 @@ public class ArticleService
 - 🎨 **格式转换**: WebP等现代格式支持
 - 💾 **智能压缩**: 保持质量前提下减小体积
 
-**使用示例**
+**使用方式**
 
-```csharp
-// 上传图片时自动处理
-var uploadResult = await _fileStorage.UploadImageAsync(
-    imageStream, 
-    new ImageProcessOptions
-    {
-        GenerateThumbnails = true,
-        ThumbnailSizes = new[] { 128, 256, 512 },
-        MaxWidth = 1920,
-        MaxHeight = 1080,
-        Quality = 85
-    });
-
-// 返回原图和缩略图URL
-// uploadResult.OriginalUrl
-// uploadResult.ThumbnailUrls["128"]
-```
+上传时自动处理,支持配置:
+- 自动生成多尺寸缩略图
+- 限制最大宽高并自动压缩
+- 设置压缩质量和格式转换
+- 返回原图和各尺寸缩略图URL
 
 **4. 时间处理机制 ⏰**
 
@@ -1612,21 +1205,12 @@ var uploadResult = await _fileStorage.UploadImageAsync(
 - ⏰ **时区支持**: 多时区场景支持
 - 📊 **统计友好**: 时间统计准确可靠
 
-**使用示例**
+**使用方式**
 
-```csharp
-// 实体基类自动处理
-public class AuditableEntityBase<TKey> : EntityBase<TKey>
-{
-    // 自动设置为UTC时间
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; set; }
-}
-
-// 前端自动本地化
-// API返回: "2025-01-10T08:00:00Z" (UTC)
-// 前端显示: "2025-01-10 16:00:00" (UTC+8)
-```
+- 实体基类自动使用UTC时间存储
+- API返回标准UTC时间格式
+- 前端自动转换为本地时区显示
+- 避免跨时区数据统计错误
 
 **5. PDF生成服务 📄**
 
@@ -1768,13 +1352,23 @@ sequenceDiagram
 - 📜 版本控制
 - 🔄 动态更新
 
-### 6.4 考试系统
+### 6.4 缓存管理
+- 💾 多级缓存支持
+- 🔍 缓存监控和统计
+- 🏷️ 标签化缓存管理
+
+### 6.5 定时任务
+- ⏰ Cron定时任务调度
+- 📊 任务执行历史
+- 🎨 Web可视化管理
+
+### 6.6 考试系统
 - 📝 智能题目生成
 - 📊 考试统计分析
 - 🎯 答题卡系统
 - 📱 监考大屏
 
-### 6.5 问卷系统
+### 6.7 问卷系统
 - 📋 问卷设计
 - 📊 数据收集
 - 📈 统计分析
@@ -1823,8 +1417,10 @@ sequenceDiagram
 5. **RBAC + ABAC**: 混合权限模型
 6. **多租户支持**: 完善的数据隔离和资源管理
 7. **多数据库支持**: MySQL和SQL Server灵活切换,独立迁移管理
-8. **分布式组件库**: 分布式锁、文件存储、图片处理、PDF生成等
-9. **分布式友好**: 云原生底座,分布式架构支持
+8. **统一缓存组件**: 多级缓存(L1+L2)、穿透防护、标签管理
+9. **定时任务组件**: 分布式Cron调度、Web管理界面、超时控制
+10. **分布式组件库**: 分布式锁、文件存储、图片处理、PDF生成等
+11. **分布式友好**: 云原生底座,分布式架构支持
 
 ### 📈 开发效率提升
 1. **零前端代码**: 80%的界面代码自动生成

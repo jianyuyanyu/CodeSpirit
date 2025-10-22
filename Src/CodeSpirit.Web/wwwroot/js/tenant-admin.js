@@ -18,6 +18,31 @@
 
     // 初始化为租户模式
     TokenManager.initTenantMode(tenantId);
+    
+    // 验证localStorage中的租户ID是否与URL中的租户ID匹配
+    if (TokenManager.hasToken()) {
+        const tenantInfo = TokenManager.getTenantInfo();
+        
+        if (tenantInfo && tenantInfo.tenantId) {
+            // 比对localStorage中的租户ID与URL中的租户ID
+            if (tenantInfo.tenantId !== tenantId) {
+                console.warn(
+                    `租户ID不匹配！已登录的租户ID: ${tenantInfo.tenantId}, 当前访问的租户ID: ${tenantId}`
+                );
+                
+                // 清除不匹配的Token
+                TokenManager.clearToken();
+                
+                // 提示用户并跳转到登录页
+                const loginUrl = `/${tenantId}/login`;
+                console.log(`正在跳转到登录页: ${loginUrl}`);
+                window.location.href = loginUrl;
+                return;
+            } else {
+                console.log('租户ID验证通过:', tenantId);
+            }
+        }
+    }
 
     // 基础依赖
     const amis = amisRequire('amis/embed');

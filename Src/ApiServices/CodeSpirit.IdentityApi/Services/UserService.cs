@@ -399,12 +399,19 @@ public class UserService : BaseCRUDIService<ApplicationUser, UserDto, long, Crea
             ?? throw new AppServiceException(404, "用户不存在");
 
         string newPassword = PasswordGenerator.GenerateRandomPassword(12);
-        string resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-
-        IdentityResult result = await _userManager.ResetPasswordAsync(user, resetToken, newPassword);
-        return !result.Succeeded
-            ? throw new AppServiceException(400, string.Join(", ", result.Errors.Select(e => e.Description)))
-            : newPassword;
+        
+        // 直接使用 PasswordHasher 设置密码，避免触发 UserValidator
+        // 这样可以避免在多租户环境下的用户名唯一性验证问题
+        var passwordHasher = new PasswordHasher<ApplicationUser>();
+        user.PasswordHash = passwordHasher.HashPassword(user, newPassword);
+        
+        // 更新安全戳，使现有的令牌失效
+        user.SecurityStamp = Guid.NewGuid().ToString();
+        
+        // 直接通过 Repository 保存，绕过 UserManager 的验证
+        await _userRepository.UpdateAsync(user);
+        
+        return newPassword;
     }
 
     public async Task UnlockUserAsync(long id)

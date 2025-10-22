@@ -16,6 +16,7 @@ using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Startup;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 
 namespace CodeSpirit.IdentityApi.Configuration;
@@ -276,7 +277,7 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         int.TryParse(configuration["User:Lockout:MaxFailedAttempts"], out maxFailedAttempts);
 
         // 使用 AddIdentityCore 替代 AddIdentity，避免覆盖JWT认证方案
-        services.AddIdentityCore<ApplicationUser>(options =>
+        var identityBuilder = services.AddIdentityCore<ApplicationUser>(options =>
         {
             // 密码设置
             options.Password.RequireDigit = requireDigit;
@@ -294,12 +295,26 @@ public class IdentityApiConfiguration : BaseApiConfiguration
             // 用户设置
             options.User.AllowedUserNameCharacters =
                 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
-            options.User.RequireUniqueEmail = true;
-        })
-        .AddRoles<ApplicationRole>()
-        .AddEntityFrameworkStores<ApplicationDbContext>()
-        .AddDefaultTokenProviders()
-        .AddSignInManager<SignInManager<ApplicationUser>>();
+            // 禁用默认的用户名唯一性要求，我们将在自定义验证器中处理
+            options.User.RequireUniqueEmail = false;
+        });
+        
+        // 添加角色支持
+        identityBuilder.AddRoles<ApplicationRole>();
+        
+        // 添加 Entity Framework 存储
+        identityBuilder.AddEntityFrameworkStores<ApplicationDbContext>();
+        
+        // 添加默认令牌提供程序
+        identityBuilder.AddDefaultTokenProviders();
+        
+        // 添加登录管理器
+        identityBuilder.AddSignInManager<SignInManager<ApplicationUser>>();
+        
+        // 完全替换默认的用户验证器和角色验证器
+        // 注意：必须在 AddEntityFrameworkStores 之后执行，因为 EF Store 会注册默认验证器
+        services.Replace(ServiceDescriptor.Scoped<IUserValidator<ApplicationUser>, TenantAwareUserValidator>());
+        services.Replace(ServiceDescriptor.Scoped<IRoleValidator<ApplicationRole>, TenantAwareRoleValidator>());
     }
     
 

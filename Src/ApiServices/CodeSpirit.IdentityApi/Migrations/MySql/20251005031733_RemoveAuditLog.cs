@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace CodeSpirit.IdentityApi.Data.Migrations.MySql
+namespace CodeSpirit.IdentityApi.Migrations.MySql
 {
     /// <inheritdoc />
     public partial class RemoveAuditLog : Migration

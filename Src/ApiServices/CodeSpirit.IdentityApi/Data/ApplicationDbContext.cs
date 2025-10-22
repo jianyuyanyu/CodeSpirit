@@ -201,6 +201,19 @@ namespace CodeSpirit.IdentityApi.Data
                 b.Property(q => q.Id).ValueGeneratedNever();
                 b.Property(q => q.PhoneNumber).HasColumnType("varchar(15)");
                 
+                // 移除ASP.NET Core Identity默认创建的UserNameIndex
+                var userNameIndex = b.Metadata.GetIndexes()
+                    .FirstOrDefault(i => i.GetDatabaseName() == "UserNameIndex");
+                if (userNameIndex != null)
+                {
+                    b.Metadata.RemoveIndex(userNameIndex);
+                }
+                
+                // 重新配置用户名索引，包含租户ID以支持多租户
+                b.HasIndex(u => new { u.NormalizedUserName, u.TenantId })
+                    .HasDatabaseName("IX_ApplicationUser_NormalizedUserName_TenantId")
+                    .IsUnique();
+                
                 // 租户感知的IdNo复合唯一索引：同一租户内身份证号码唯一，但不同租户可以有相同身份证号码
                 b.HasIndex(q => new { q.TenantId, q.IdNo })
                     .IsUnique(true)

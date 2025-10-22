@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace CodeSpirit.IdentityApi.Data.Migrations.SqlServer
+namespace CodeSpirit.IdentityApi.Migrations.SqlServer
 {
     /// <inheritdoc />
     public partial class RemoveAuditLog : Migration

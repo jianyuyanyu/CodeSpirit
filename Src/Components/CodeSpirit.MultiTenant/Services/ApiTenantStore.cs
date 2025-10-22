@@ -463,7 +463,7 @@ public class ApiTenantStoreOptions
     /// <summary>
     /// 请求超时时间（秒）
     /// </summary>
-    public int Timeout { get; set; } = 2;
+    public int Timeout { get; set; } = 30;
 
     /// <summary>
     /// 是否使用ApiResponse格式

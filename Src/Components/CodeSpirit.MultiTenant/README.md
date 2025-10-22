@@ -786,7 +786,7 @@ builder.Services.Replace(ServiceDescriptor.Scoped<ITenantStore, CustomTenantStor
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `BaseUrl` | string | "http://identity" | API存储基础URL，支持服务发现 |
-| `Timeout` | int | 2 | API请求超时时间（秒） |
+| `Timeout` | int | 30 | API请求超时时间（秒） |
 | `UseApiResponseFormat` | bool | true | 是否使用ApiResponse格式 |
 | `GetTenantEndpoint` | string | "api/identity/internal/tenants/{tenantId}" | 获取租户信息端点 |
 | `GetActiveTenantsEndpoint` | string | "api/identity/internal/tenants/active" | 获取活跃租户列表端点 |

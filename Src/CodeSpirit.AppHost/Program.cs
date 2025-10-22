@@ -309,61 +309,161 @@ builder.Build().Run();
 /// <param name="databaseType">数据库类型</param>
 static void PrintFrameworkInfo(string databaseType)
 {
-    Console.WriteLine();
-    Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
-    Console.WriteLine();
-    Console.WriteLine("   ██████╗ ██████╗ ██████╗ ███████╗    ███████╗██████╗ ██╗██████╗ ██╗████████╗");
-    Console.WriteLine("  ██╔════╝██╔═══██╗██╔══██╗██╔════╝    ██╔════╝██╔══██╗██║██╔══██╗██║╚══██╔══╝");
-    Console.WriteLine("  ██║     ██║   ██║██║  ██║█████╗      ███████╗██████╔╝██║██████╔╝██║   ██║");
-    Console.WriteLine("  ██║     ██║   ██║██║  ██║██╔══╝      ╚════██║██╔═══╝ ██║██╔══██╗██║   ██║");
-    Console.WriteLine("  ╚██████╗╚██████╔╝██████╔╝███████╗    ███████║██║     ██║██║  ██║██║   ██║");
-    Console.WriteLine("   ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝    ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝");
-    Console.WriteLine();
-    Console.WriteLine("                          全栈低代码 + AI开发框架");
-    Console.WriteLine();
-    Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
-    Console.WriteLine("  框架版本: v2.0.0");
-    Console.WriteLine("  .NET版本: .NET 9");
-    Console.WriteLine("  架构模式: 微服务 + 分布式");
-    Console.WriteLine("  容器编排: Aspire");
-    Console.WriteLine($"  数据库类型: {GetDatabaseTypeDisplay(databaseType)}");
-    Console.WriteLine();
-    Console.WriteLine("  服务组件:");
-    Console.WriteLine("  • 身份认证服务 (Identity API)");
-    Console.WriteLine("  • 考试系统服务 (Exam API)");
-    Console.WriteLine("  • 配置中心服务 (Config Center)");
-    Console.WriteLine("  • 消息服务 (Messaging API)");
-    Console.WriteLine("  • 文件存储服务 (File Storage API)");
-    Console.WriteLine("  • 问卷调查服务 (Survey API)");
-    Console.WriteLine("  • 审批流程服务 (Approval API)");
-    Console.WriteLine();
-    Console.WriteLine("  基础设施:");
-    Console.WriteLine("  • Redis (分布式缓存)");
-    Console.WriteLine("  • RabbitMQ (消息队列)");
-    Console.WriteLine("  • Seq (日志聚合)");
-    Console.WriteLine("  • GreptimeDB (时序数据库)");
-    Console.WriteLine();
-    Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
-    Console.WriteLine($"  启动时间: {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}");
-    Console.WriteLine($"  运行环境: {Environment.OSVersion}");
-    Console.WriteLine($"  工作目录: {Environment.CurrentDirectory}");
-    Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
-    // Console.WriteLine("  快捷访问地址:");
-    // Console.WriteLine("  • Aspire Dashboard: https://localhost:15888");
-    // Console.WriteLine("  • Seq 日志界面: http://localhost:5341");
-    // Console.WriteLine("  • Redis Commander: http://localhost:8081");
-    // Console.WriteLine("  • RabbitMQ 管理界面: http://localhost:15672");
-    // Console.WriteLine("  • GreptimeDB HTTP: http://localhost:4000");
-    // if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
-    // {
-    //     Console.WriteLine("  • phpMyAdmin: http://localhost:8080");
-    // }
-    // Console.WriteLine("════════════════════════════════════════════════════════════════════════════════════");
-    Console.WriteLine();
-    Console.WriteLine("🚀 CodeSpirit 框架启动完成！");
-    Console.WriteLine("📖 访问 Aspire Dashboard 查看服务状态和监控信息");
-    Console.WriteLine("🔗 Web前端地址将在服务启动后显示");
-    Console.WriteLine();
+    var originalColor = Console.ForegroundColor;
+    
+    try
+    {
+        Console.WriteLine();
+        
+        // 顶部边框 - 亮黄色
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("╔══════════════════════════════════════════════════════════════════════════════════╗");
+        Console.ResetColor();
+        
+        Console.WriteLine();
+        
+        // Logo 渐变效果 - 从青色到品红色
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("   ██████╗ ██████╗ ██████╗ ███████╗    ███████╗██████╗ ██╗██████╗ ██╗████████╗");
+        
+        Console.ForegroundColor = ConsoleColor.Blue;
+        Console.WriteLine("  ██╔════╝██╔═══██╗██╔══██╗██╔════╝    ██╔════╝██╔══██╗██║██╔══██╗██║╚══██╔══╝");
+        
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine("  ██║     ██║   ██║██║  ██║█████╗      ███████╗██████╔╝██║██████╔╝██║   ██║");
+        
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine("  ██║     ██║   ██║██║  ██║██╔══╝      ╚════██║██╔═══╝ ██║██╔══██╗██║   ██║");
+        
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("  ╚██████╗╚██████╔╝██████╔╝███████╗    ███████║██║     ██║██║  ██║██║   ██║");
+        
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("   ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝    ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝");
+        
+        Console.WriteLine();
+        
+        // 标题 - 亮绿色
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.Write("                          ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.Write("全栈低代码");
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.Write(" + ");
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine("AI开发框架");
+        
+        Console.WriteLine();
+        
+        // 分隔线
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════════╣");
+        Console.ResetColor();
+        
+        // 版本信息 - 青色
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.Write("  框架版本: ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("v2.0.0");
+        
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.Write("  .NET版本: ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(".NET 9");
+        
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.Write("  架构模式: ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("微服务 + 分布式");
+        
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.Write("  容器编排: ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("Aspire");
+        
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.Write("  数据库类型: ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(GetDatabaseTypeDisplay(databaseType));
+        
+        Console.WriteLine();
+        
+        // 服务组件 - 绿色
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("  📦 服务组件:");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("  • 身份认证服务 (Identity API)");
+        Console.WriteLine("  • 考试系统服务 (Exam API)");
+        Console.WriteLine("  • 配置中心服务 (Config Center)");
+        Console.WriteLine("  • 消息服务 (Messaging API)");
+        Console.WriteLine("  • 文件存储服务 (File Storage API)");
+        Console.WriteLine("  • 问卷调查服务 (Survey API)");
+        Console.WriteLine("  • 审批流程服务 (Approval API)");
+        
+        Console.WriteLine();
+        
+        // 基础设施 - 蓝色
+        Console.ForegroundColor = ConsoleColor.Blue;
+        Console.WriteLine("  🔧 基础设施:");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("  • Redis (分布式缓存)");
+        Console.WriteLine("  • RabbitMQ (消息队列)");
+        Console.WriteLine("  • Seq (日志聚合)");
+        Console.WriteLine("  • GreptimeDB (时序数据库)");
+        
+        Console.WriteLine();
+        
+        // 底部边框和运行信息
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════════╣");
+        Console.ResetColor();
+        
+        Console.ForegroundColor = ConsoleColor.DarkYellow;
+        Console.Write("  ⏰ 启动时间: ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        
+        Console.ForegroundColor = ConsoleColor.DarkYellow;
+        Console.Write("  💻 运行环境: ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(Environment.OSVersion);
+        
+        Console.ForegroundColor = ConsoleColor.DarkYellow;
+        Console.Write("  📁 工作目录: ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(Environment.CurrentDirectory);
+        
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════════════╝");
+        Console.ResetColor();
+        
+        Console.WriteLine();
+        
+        // 启动提示 - 带彩色
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.Write("🚀 ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.Write("CodeSpirit 框架");
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("启动完成！");
+        
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.Write("📖 ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("访问 Aspire Dashboard 查看服务状态和监控信息");
+        
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.Write("🔗 ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("Web前端地址将在服务启动后显示");
+        
+        Console.WriteLine();
+    }
+    finally
+    {
+        // 确保恢复原始颜色
+        Console.ForegroundColor = originalColor;
+    }
 }
 
 /// <summary>

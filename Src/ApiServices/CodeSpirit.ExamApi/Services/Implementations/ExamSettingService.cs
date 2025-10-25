@@ -352,6 +352,17 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         examSetting.Status = ExamSettingStatus.Published;
         await _repository.UpdateAsync(examSetting);
         
+        // ✅ 发布时清除共享考试列表缓存，确保新发布的考试能被查询到
+        try
+        {
+            await _examCacheService.ClearSharedAvailableExamsCacheAsync();
+            _logger.LogDebug("已清除共享考试列表缓存: {ExamId}", id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "清除共享考试列表缓存失败: {ExamId}", id);
+        }
+        
         // 发布时预热缓存（仅预热即将开始的考试）
         try
         {
@@ -408,34 +419,59 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     /// <summary>
     /// 获取用户可参加的考试列表
     /// </summary>
+    /// <param name="userId">用户ID</param>
     /// <param name="studentId">学生ID</param>
     /// <returns>可参加的考试列表</returns>
-    public async Task<List<ClientExamDto>> GetAvailableExamsForClientAsync(long studentId)
+    public async Task<List<ClientExamDto>> GetAvailableExamsForClientAsync(long userId, long studentId)
     {
         try
         {
-            // 查询当前用户所属的学生组
-            var studentGroups = await _context.StudentGroupMappings
-                .Where(m => m.StudentId == studentId)
-                .Select(m => m.StudentGroupId)
-                .ToListAsync();
+            _logger.LogDebug("开始获取学生可参加的考试列表: UserId={UserId}, StudentId={StudentId}", userId, studentId);
+            
+            // ✅ 第1步：从缓存获取学生档案信息（包含学生组ID列表）
+            var clientProfile = await _examCacheService.GetClientProfileWithCacheAsync(userId);
+            var studentGroups = clientProfile.StudentGroupIds;
+            
+            _logger.LogDebug("从缓存获取学生所属的学生组数量: {Count}, StudentId={StudentId}", studentGroups.Count, studentId);
 
-            // 获取可参加的考试
+            // ✅ 第2步：从共享缓存获取可用考试列表（所有学生共享）
+            var sharedExams = await _examCacheService.GetSharedAvailableExamsWithCacheAsync();
+            
+            _logger.LogDebug("从共享缓存获取到考试数量: {Count}", sharedExams.Count);
+
+            // ✅ 第3步：在内存中根据学生组过滤考试
+            var filteredExams = sharedExams
+                .Where(e => e.IsOpenToAll || e.StudentGroupIds.Any(gid => studentGroups.Contains(gid)))
+                .ToList();
+            
+            _logger.LogDebug("根据学生组过滤后的考试数量: {Count}, StudentId={StudentId}", filteredExams.Count, studentId);
+
+            if (!filteredExams.Any())
+            {
+                _logger.LogDebug("没有可参加的考试，StudentId={StudentId}", studentId);
+                return new List<ClientExamDto>();
+            }
+
+            // ✅ 第4步：在内存中根据考试时间判断状态（开始考试时会有专门的判断逻辑）
             var now = DateTime.UtcNow;
-            // 定义预展示时间，开考前半小时（30分钟）可见
-            var previewTime = now.AddMinutes(30);
+            var result = filteredExams.Select(e =>
+            {
+                // 根据考试时间确定状态
+                string status;
+                if (e.StartTime <= now && e.EndTime >= now)
+                {
+                    status = "进行中";
+                }
+                else if (e.StartTime > now)
+                {
+                    status = "未开始";
+                }
+                else
+                {
+                    status = "已结束";
+                }
 
-            var availableExams = await _context.ExamSettings
-                .Include(e => e.StudentGroups)
-                .Include(e => e.ExamPaper)
-                .Where(e => e.Status == ExamSettingStatus.Published)
-                .Where(e =>
-                    // 正在进行中的考试或即将开始的考试（开考前半小时）
-                    ((e.StartTime <= now && e.EndTime >= now) ||
-                     (e.StartTime > now && e.StartTime <= previewTime))
-                )
-                .Where(e => e.StudentGroups.Any() == false || e.StudentGroups.Any(g => studentGroups.Contains(g.StudentGroupId)))
-                .Select(e => new ClientExamDto
+                return new ClientExamDto
                 {
                     Id = e.Id,
                     Name = e.Name,
@@ -443,32 +479,18 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                     StartTime = e.StartTime,
                     EndTime = e.EndTime,
                     Duration = e.Duration,
-                    TotalScore = e.ExamPaper.TotalScore,
-                    Status = _context.ExamRecords.Any(r =>
-                        r.ExamSettingId == e.Id &&
-                        r.StudentId == studentId &&
-                        r.Status == ExamRecordStatus.InProgress)
-                        ? "进行中"
-                        : (_context.ExamRecords.Any(r =>
-                            r.ExamSettingId == e.Id &&
-                            r.StudentId == studentId &&
-                            (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
-                            ? "已完成"
-                            : (e.StartTime <= now && e.EndTime >= now ? "进行中" :
-                               (e.StartTime > now ? "未开始" : "已结束"))),
-                    // 检查是否已参加并获取成绩
-                    HasResult = _context.ExamRecords.Any(r =>
-                        r.ExamSettingId == e.Id &&
-                        r.StudentId == studentId &&
-                        (r.Status == ExamRecordStatus.Graded || r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.InProgress))
-                })
-                .ToListAsync();
+                    TotalScore = e.TotalScore,
+                    Status = status,
+                    HasResult = false // 开始考试时会进行详细判断
+                };
+            }).ToList();
 
-            return availableExams;
+            _logger.LogInformation("成功获取学生可参加的考试列表，考试数量: {Count}, StudentId={StudentId}", result.Count, studentId);
+            return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取可参加的考试列表时发生错误");
+            _logger.LogError(ex, "获取可参加的考试列表时发生错误，StudentId={StudentId}", studentId);
             throw;
         }
     }

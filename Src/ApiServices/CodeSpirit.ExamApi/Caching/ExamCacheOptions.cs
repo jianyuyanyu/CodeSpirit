@@ -84,15 +84,24 @@ public static class ExamCacheOptions
     /// <summary>
     /// 客户端用户档案缓存键
     /// </summary>
+    /// <remarks>
+    /// ✅ 性能优化说明：
+    /// - 包含学生的基本信息和所属学生组ID列表
+    /// - 用于减少查询学生组的数据库开销
+    /// - 缓存时间较长（2小时），学生组信息变化不频繁
+    /// - 使用两级缓存提高访问性能
+    /// - 学生信息或学生组变更时应主动清除此缓存
+    /// </remarks>
     public record ClientProfile(long UserId) : ICacheKey<ClientProfileDto>
     {
         public string Key => $"{nameof(ExamCacheOptions)}_{nameof(ClientProfile)}_{UserId}";
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(60),
-            Level = CacheLevel.Both,
-            EnableBreakthroughProtection = true
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(2), // 2小时绝对过期
+            SlidingExpiration = TimeSpan.FromMinutes(30), // 30分钟滑动过期
+            Level = CacheLevel.Both, // 两级缓存提高性能
+            EnableBreakthroughProtection = true // 防止缓存击穿
         };
         
         public IReadOnlyList<string> Tags => [$"user:{UserId}", "profile"];
@@ -206,6 +215,32 @@ public static class ExamCacheOptions
         };
         
         public IReadOnlyList<string> Tags => [$"record:{RecordId}"];
+    }
+    
+    /// <summary>
+    /// 共享的可用考试列表缓存键（全局共享）
+    /// </summary>
+    /// <remarks>
+    /// ✅ 性能优化说明：
+    /// - 所有学生共享同一份可用考试列表缓存，大幅降低数据库压力
+    /// - 包含考生组信息，支持在内存中进行个性化过滤
+    /// - 缓存时间为30分钟，考试信息变更时主动清除缓存确保实时性
+    /// - 使用分布式缓存确保多实例数据一致性
+    /// - 启用击穿保护防止高并发时的缓存雪崩
+    /// - 考试信息变更时应主动清除此缓存
+    /// </remarks>
+    public record SharedAvailableExams() : ICacheKey<List<SharedAvailableExamDto>>
+    {
+        public string Key => $"{nameof(ExamCacheOptions)}_{nameof(SharedAvailableExams)}";
+        
+        public CacheOptions Options => new()
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30), // 30分钟绝对过期
+            Level = CacheLevel.L2Only, // 仅使用分布式缓存，确保多实例一致性
+            EnableBreakthroughProtection = true // 防止缓存击穿
+        };
+        
+        public IReadOnlyList<string> Tags => ["shared-available-exams"];
     }
 }
 

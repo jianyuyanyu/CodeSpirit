@@ -43,9 +43,10 @@ public interface IExamSettingService : IBaseCRUDService<ExamSetting, ExamSetting
     /// <summary>
     /// 获取用户可参加的考试列表
     /// </summary>
+    /// <param name="userId">用户ID</param>
     /// <param name="studentId">学生ID</param>
     /// <returns>可参加的考试列表</returns>
-    Task<List<ClientExamDto>> GetAvailableExamsForClientAsync(long studentId);
+    Task<List<ClientExamDto>> GetAvailableExamsForClientAsync(long userId, long studentId);
     
     /// <summary>
     /// 获取考试详情（客户端视图）

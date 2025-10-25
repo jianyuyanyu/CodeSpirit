@@ -532,6 +532,12 @@ public class ClientProfileDto
     /// </summary>
     [DisplayName("所属考生组")]
     public List<string> StudentGroups { get; set; } = new List<string>();
+    
+    /// <summary>
+    /// 所属考生组ID列表
+    /// </summary>
+    [DisplayName("所属考生组ID")]
+    public List<long> StudentGroupIds { get; set; } = new List<long>();
 }
 
 /// <summary>

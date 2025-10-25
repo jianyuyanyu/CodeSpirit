@@ -481,6 +481,11 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
 
         try
         {
+            // ✅ 优先预热共享的可用考试列表缓存
+            _logger.LogDebug("开始预热共享的可用考试列表缓存");
+            await GetSharedAvailableExamsWithCacheAsync();
+            _logger.LogDebug("共享的可用考试列表缓存预热完成");
+            
             var now = DateTime.UtcNow;
             var warmupStartTime = now;
             var warmupEndTime = now.Add(WarmupWindowBeforeStart);
@@ -555,11 +560,16 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             await _cacheService.RemoveByPatternAsync("*AvailableExams_*");
             _logger.LogDebug("已清除所有学生的可参加考试列表缓存");
 
-            // 5. 清除 OutputCache（如果使用了 ASP.NET Core OutputCache）
+            // 5. ✅ 清除共享的可用考试列表缓存
+            // 考试信息变更时，需要清除共享缓存以确保所有学生获取最新数据
+            await ClearSharedAvailableExamsCacheAsync();
+            _logger.LogDebug("已清除共享的可用考试列表缓存");
+
+            // 6. 清除 OutputCache（如果使用了 ASP.NET Core OutputCache）
             // 注意：需要在 Controller 层面处理，或通过 IOutputCacheStore 清除
             // 这里只清除应用层缓存
 
-            _logger.LogInformation("考试缓存清空完成: {ExamId}，已清除以下缓存：BasicInfo, Questions, UserRecord, LightInfo, AvailableExams", examId);
+            _logger.LogInformation("考试缓存清空完成: {ExamId}，已清除以下缓存：BasicInfo, Questions, UserRecord, LightInfo, AvailableExams, SharedAvailableExams", examId);
         }
         catch (Exception ex)
         {
@@ -825,10 +835,12 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                 Gender = student.Gender.GetDisplayName(),
                 AdmissionTicket = student.AdmissionTicket,
                 PhoneNumber = student.PhoneNumber,
-                StudentGroups = student.StudentGroups?.Select(sg => sg.StudentGroup.Name).ToList() ?? new List<string>()
+                StudentGroups = student.StudentGroups?.Select(sg => sg.StudentGroup.Name).ToList() ?? new List<string>(),
+                StudentGroupIds = student.StudentGroups?.Select(sg => sg.StudentGroupId).ToList() ?? new List<long>()
             };
 
-            _logger.LogDebug("成功从数据库加载客户端档案信息: UserId={UserId}, Name={Name}", userId, clientProfile.Name);
+            _logger.LogDebug("成功从数据库加载客户端档案信息: UserId={UserId}, Name={Name}, StudentGroupCount={Count}", 
+                userId, clientProfile.Name, clientProfile.StudentGroupIds.Count);
             return clientProfile;
         }
         catch (Exception ex)
@@ -1003,5 +1015,109 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
             _logger.LogError(ex, "从数据库加载考试记录（轻量级）时发生错误: RecordId={RecordId}", recordId);
             throw;
         }
+    }
+    
+    /// <summary>
+    /// 获取共享的可用考试列表（带缓存）
+    /// </summary>
+    /// <returns>可用考试列表</returns>
+    public async Task<List<SharedAvailableExamDto>> GetSharedAvailableExamsWithCacheAsync()
+    {
+        var cacheKey = new ExamCacheOptions.SharedAvailableExams();
+        
+        // 先尝试从缓存获取
+        var cachedExams = await _cacheService.GetAsync(cacheKey);
+        if (cachedExams != null)
+        {
+            _logger.LogDebug("从缓存获取到共享的可用考试列表，数量: {Count}", cachedExams.Count);
+            return cachedExams;
+        }
+        
+        // 缓存未命中，从数据库加载
+        _logger.LogDebug("缓存未命中，从数据库获取共享的可用考试列表");
+        var exams = await LoadSharedAvailableExamsFromDatabaseAsync();
+        
+        // ✅ 关键优化：只有当结果不为空时才缓存
+        // 空结果不缓存，避免在压测或系统初始化时缓存空数组
+        // 导致后续即使有可用考试也查询不到
+        if (exams.Count > 0)
+        {
+            await _cacheService.SetAsync(cacheKey, exams);
+            _logger.LogDebug("已缓存共享的可用考试列表，数量: {Count}", exams.Count);
+        }
+        else
+        {
+            _logger.LogWarning("数据库中没有可用的考试，不缓存空结果，确保下次查询时重新加载");
+        }
+        
+        return exams;
+    }
+    
+    /// <summary>
+    /// 从数据库加载共享的可用考试列表（仅在缓存未命中时调用）
+    /// </summary>
+    /// <returns>可用考试列表</returns>
+    private async Task<List<SharedAvailableExamDto>> LoadSharedAvailableExamsFromDatabaseAsync()
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var previewTime = now.AddMinutes(30); // 开考前30分钟可见
+            
+            _logger.LogDebug("开始从数据库加载共享的可用考试列表，当前时间: {Now}", now);
+            
+            // 查询已发布且正在进行或即将开始的考试
+            var exams = await _context.ExamSettings
+                .Where(e => e.Status == ExamSettingStatus.Published)
+                .Where(e =>
+                    // 正在进行中的考试或即将开始的考试（开考前半小时）
+                    ((e.StartTime <= now && e.EndTime >= now) ||
+                     (e.StartTime > now && e.StartTime <= previewTime))
+                )
+                .Select(e => new
+                {
+                    e.Id,
+                    e.Name,
+                    e.Description,
+                    e.StartTime,
+                    e.EndTime,
+                    e.Duration,
+                    TotalScore = e.ExamPaper != null ? e.ExamPaper.TotalScore : 0,
+                    // 获取考生组ID列表
+                    StudentGroupIds = e.StudentGroups.Select(sg => sg.StudentGroupId).ToList()
+                })
+                .ToListAsync();
+            
+            // 转换为 SharedAvailableExamDto
+            var result = exams.Select(e => new SharedAvailableExamDto
+            {
+                Id = e.Id,
+                Name = e.Name,
+                Description = e.Description,
+                StartTime = e.StartTime,
+                EndTime = e.EndTime,
+                Duration = e.Duration,
+                TotalScore = e.TotalScore,
+                StudentGroupIds = e.StudentGroupIds,
+                IsOpenToAll = !e.StudentGroupIds.Any() // 如果没有考生组限制，则对所有人开放
+            }).ToList();
+            
+            _logger.LogDebug("成功从数据库加载共享的可用考试列表，考试数量: {Count}", result.Count);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "从数据库加载共享的可用考试列表时发生错误");
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// 清除共享的可用考试列表缓存
+    /// </summary>
+    public async Task ClearSharedAvailableExamsCacheAsync()
+    {
+        await _cacheService.RemoveAsync(new ExamCacheOptions.SharedAvailableExams());
+        _logger.LogDebug("已清除共享的可用考试列表缓存");
     }
 }

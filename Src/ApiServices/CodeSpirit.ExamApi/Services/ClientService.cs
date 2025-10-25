@@ -86,7 +86,8 @@ public class ClientService : IClientService, IScopedDependency
             {
                 throw new BusinessException("未找到考生信息");
             }
-            var exams = await _examSettingService.GetAvailableExamsForClientAsync(student.Id);
+            // ✅ 传递 userId 和 studentId，避免下游再次查询
+            var exams = await _examSettingService.GetAvailableExamsForClientAsync(userId, student.Id);
 
             return exams ?? new List<ClientExamDto>();
         }

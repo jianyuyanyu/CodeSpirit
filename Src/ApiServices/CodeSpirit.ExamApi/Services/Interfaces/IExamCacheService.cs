@@ -141,4 +141,15 @@ public interface IExamCacheService
     /// </summary>
     /// <param name="recordId">考试记录ID</param>
     Task ClearExamRecordCacheAsync(long recordId);
+    
+    /// <summary>
+    /// 获取共享的可用考试列表（带缓存）
+    /// </summary>
+    /// <returns>可用考试列表</returns>
+    Task<List<SharedAvailableExamDto>> GetSharedAvailableExamsWithCacheAsync();
+    
+    /// <summary>
+    /// 清除共享的可用考试列表缓存
+    /// </summary>
+    Task ClearSharedAvailableExamsCacheAsync();
 }

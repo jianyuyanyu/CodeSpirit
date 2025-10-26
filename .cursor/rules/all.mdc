@@ -1,20 +1,71 @@
 ---
-description: 
+description: CodeSpirit项目全局开发规范 - 定义代码风格、架构模式、技术栈和项目结构要求
 globs: 
 alwaysApply: true
 ---
 
 # 通用要求
 
-- 请使用.NET 9、.NET Aspired等技术栈
-- 所有公共成员必须添加文档注释
-- 复杂业务逻辑必须添加行内注释
-- 注释应清晰描述功能、参数和返回
+- 请结合下方的技术栈
 - 请基于下面的项目结构理解当前项目，必须严格遵守下面的项目结构要求及规范
-- 如需调试运行需运行协调程序CodeSpirit.AppHost
 - 创建EF迁移时必须按数据库目录进行创建迁移，目前已支持SQL Server和MySQL
-- 每个 .cs文件只允许定义一个顶级类型​（类、结构体、接口、枚举或委托）
-- 当前是分布式程序，需优先考虑符合分布式服务的场景，优先支持分布式缓存
+- 当前是分布式程序，需优先考虑符合分布式服务的场景，考虑服务高可用、容错、降级
+
+# CodeSpirit 开发规范
+
+## 技术栈
+
+- 框架：.NET 9
+- 编排：.NET Aspire
+- 数据库：SQL Server / MySQL（多数据库支持）
+- 缓存：分布式缓存（Redis）
+- 消息队列：RabbitMQ
+- 前端：React + AMIS (AntD主题)
+
+## 代码规范
+
+### 文件组织
+- 每个 .cs 文件只定义一个顶级类型
+- 文件夹结构反映命名空间结构
+- 添加新项目/文件时遵循项目结构规范
+
+### 文档注释
+- 所有公共成员必须添加 XML 文档注释
+- 必须包含：`<summary>`、`<param>`、`<returns>`、`<exception>`
+- 复杂业务逻辑添加详细行内注释
+
+## 数据访问
+
+### Entity Framework Core
+- 使用 Code First 迁移
+- 实体配置使用 `IEntityTypeConfiguration<T>`
+- 按数据库创建独立迁移（SqlServer/MySql）
+- 只读查询使用 `AsNoTracking()`
+- 避免 N+1 查询，合理使用 `Include`
+
+### 多租户
+- 所有实体考虑租户隔离
+- 自动应用租户过滤器
+
+## 性能优化
+
+### 异步编程
+- I/O 操作必须使用异步方法（`async/await`）
+- 避免 `Task.Result` 和 `Task.Wait()`
+
+## 组件使用
+
+### LLM集成
+- 使用 `CodeSpirit.LLM` 抽象
+
+### AMIS
+- 使用 `antd` 主题
+- CSS类使用 `antd-` 前缀
+
+## 调试运行
+
+- 启动项目：`CodeSpirit.AppHost`（Aspire 协调程序）
+
 
 # 项目结构
 

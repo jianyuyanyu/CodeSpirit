@@ -1,0 +1,19 @@
+2025-10-25 00:06:53.087 +08:00 [INF] [ThreadId:8] NBomber 5.8.2 started a new session: 2025-10-24_16.06.06_session_36141c47
+2025-10-25 00:06:53.108 +08:00 [INF] [ThreadId:8] NBomber started as single node
+2025-10-25 00:06:53.110 +08:00 [INF] [ThreadId:8] License validation....
+2025-10-25 00:06:53.110 +08:00 [WRN] [ThreadId:8] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.
+2025-10-25 00:06:53.119 +08:00 [INF] [ThreadId:8] Reports folder: D:\repos\code-spirit\Tests\CodeSpirit.ExamApi.LoadTests\bin\Debug\net9.0\reports
+2025-10-25 00:06:53.119 +08:00 [INF] [ThreadId:8] Plugins: no plugins were loaded
+2025-10-25 00:06:53.119 +08:00 [INF] [ThreadId:8] Reporting sinks: no reporting sinks were loaded
+2025-10-25 00:06:53.120 +08:00 [INF] [ThreadId:8] Starting init...
+2025-10-25 00:06:53.124 +08:00 [INF] [ThreadId:8] Target scenarios: start_exam
+2025-10-25 00:06:53.126 +08:00 [INF] [ThreadId:8] Init finished
+2025-10-25 00:06:53.135 +08:00 [INF] [ThreadId:8] Starting warm up...
+2025-10-25 00:06:53.136 +08:00 [INF] [ThreadId:8] Warm up for scenarios: start_exam
+2025-10-25 00:06:53.138 +08:00 [INF] [ThreadId:8] Warm up duration: 00:00:30
+2025-10-25 00:07:24.159 +08:00 [INF] [ThreadId:20] Starting bombing...
+2025-10-25 00:15:49.744 +08:00 [INF] [ThreadId:33] Waiting on scenarios completion...
+2025-10-25 00:15:50.748 +08:00 [WRN] [ThreadId:33] Stopping test early: Stopping test because of too many fails. Scenario 'start_exam' contains '5019' fails.
+2025-10-25 00:15:53.749 +08:00 [INF] [ThreadId:33] Calculating final statistics...
+2025-10-25 00:15:54.036 +08:00 [INF] [ThreadId:33] Reports saved in folder: D:\repos\code-spirit\Tests\CodeSpirit.ExamApi.LoadTests\reports
+2025-10-25 00:15:54.037 +08:00 [WRN] [ThreadId:33] THIS VERSION IS FREE ONLY FOR PERSONAL USE. You can't use it for an organization.

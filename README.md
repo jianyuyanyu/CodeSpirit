@@ -179,6 +179,7 @@ graph TB
 Src/
 ├── ApiServices/                          # API Service Layer
 │   ├── CodeSpirit.AiCardsApi/           # AI Cards API Service
+│   ├── CodeSpirit.ApprovalApi/          # Approval Workflow API Service
 │   ├── CodeSpirit.ConfigCenter/         # Configuration Center API
 │   ├── CodeSpirit.ExamApi/              # Exam System API
 │   ├── CodeSpirit.FileStorageApi/       # File Storage API
@@ -191,6 +192,7 @@ Src/
 │   ├── CodeSpirit.Amis/                 # AMIS UI Generation Engine
 │   ├── CodeSpirit.Audit/                # Audit Tracking Component
 │   ├── CodeSpirit.Authorization/        # Authorization Management Component
+│   ├── CodeSpirit.Caching/              # Distributed Caching Component
 │   ├── CodeSpirit.Charts/               # Smart Chart Component
 │   ├── CodeSpirit.ConfigCenter.Client/ # Configuration Center Client
 │   ├── CodeSpirit.LLM/                  # Large Language Model Integration
@@ -198,6 +200,7 @@ Src/
 │   ├── CodeSpirit.MultiTenant/          # Multi-Tenancy Component
 │   ├── CodeSpirit.Navigation/           # Navigation Component
 │   ├── CodeSpirit.PdfGeneration/        # PDF Generation Component
+│   ├── CodeSpirit.ScheduledTasks/       # Scheduled Tasks Component
 │   ├── CodeSpirit.Settings/             # Settings Management Component
 │   ├── CodeSpirit.Shared/               # Component Shared Library
 │   └── CodeSpirit.UdlCards/             # UDL Cards Component
@@ -208,8 +211,21 @@ Src/
 ├── CodeSpirit.Web/                       # Web Frontend Project
 └── Tests/                                # Test Project Collection
     ├── ApiServices/                      # API Service Tests
+    │   ├── CodeSpirit.IdentityApi.Tests/
+    │   └── CodeSpirit.ExamApi.Tests/
     ├── Components/                       # Component Tests
-    └── CodeSpirit.*.Tests/               # Module Unit Tests
+    │   ├── CodeSpirit.Aggregator.Tests/
+    │   ├── CodeSpirit.Authorization.Tests/
+    │   ├── CodeSpirit.Caching.Tests/
+    │   ├── CodeSpirit.Charts.Tests/
+    │   └── ... (Other Component Tests)
+    ├── Shared/                           # Shared Test Infrastructure
+    │   ├── CodeSpirit.Shared.Tests/
+    │   └── CodeSpirit.Components.TestsBase/
+    ├── Infrastructure/                   # Infrastructure Tests
+    │   └── CodeSpirit.PdfGeneration.Tests/
+    └── LoadTests/                        # Performance Load Tests
+        └── CodeSpirit.ExamApi.LoadTests/
 ```
 
 ## Functional Architecture Overview

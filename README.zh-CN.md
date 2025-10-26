@@ -197,6 +197,7 @@ graph TB
 Src/
 ├── ApiServices/                          # API服务层
 │   ├── CodeSpirit.AiCardsApi/           # AI卡片API服务
+│   ├── CodeSpirit.ApprovalApi/          # 审批工作流API服务
 │   ├── CodeSpirit.ConfigCenter/         # 配置中心API
 │   ├── CodeSpirit.ExamApi/              # 考试系统API
 │   ├── CodeSpirit.FileStorageApi/       # 文件存储API
@@ -209,6 +210,7 @@ Src/
 │   ├── CodeSpirit.Amis/                 # AMIS界面生成引擎
 │   ├── CodeSpirit.Audit/                # 审计追踪组件
 │   ├── CodeSpirit.Authorization/        # 权限管理组件
+│   ├── CodeSpirit.Caching/              # 分布式缓存组件
 │   ├── CodeSpirit.Charts/               # 智能图表组件
 │   ├── CodeSpirit.ConfigCenter.Client/ # 配置中心客户端
 │   ├── CodeSpirit.LLM/                  # 大语言模型集成组件
@@ -216,6 +218,7 @@ Src/
 │   ├── CodeSpirit.MultiTenant/          # 多租户组件
 │   ├── CodeSpirit.Navigation/           # 导航组件
 │   ├── CodeSpirit.PdfGeneration/        # PDF生成组件
+│   ├── CodeSpirit.ScheduledTasks/       # 定时任务组件
 │   ├── CodeSpirit.Settings/             # 设置管理组件
 │   ├── CodeSpirit.Shared/               # 组件共享库
 │   └── CodeSpirit.UdlCards/             # UDL卡片组件
@@ -226,8 +229,21 @@ Src/
 ├── CodeSpirit.Web/                       # Web前端项目
 └── Tests/                                # 测试项目集合
     ├── ApiServices/                      # API服务测试
+    │   ├── CodeSpirit.IdentityApi.Tests/
+    │   └── CodeSpirit.ExamApi.Tests/
     ├── Components/                       # 组件测试
-    └── CodeSpirit.*.Tests/               # 各模块单元测试
+    │   ├── CodeSpirit.Aggregator.Tests/
+    │   ├── CodeSpirit.Authorization.Tests/
+    │   ├── CodeSpirit.Caching.Tests/
+    │   ├── CodeSpirit.Charts.Tests/
+    │   └── ... (其他组件测试)
+    ├── Shared/                           # 共享测试基础设施
+    │   ├── CodeSpirit.Shared.Tests/
+    │   └── CodeSpirit.Components.TestsBase/
+    ├── Infrastructure/                   # 基础设施测试
+    │   └── CodeSpirit.PdfGeneration.Tests/
+    └── LoadTests/                        # 性能负载测试
+        └── CodeSpirit.ExamApi.LoadTests/
 ```
 
 ## 功能架构全景

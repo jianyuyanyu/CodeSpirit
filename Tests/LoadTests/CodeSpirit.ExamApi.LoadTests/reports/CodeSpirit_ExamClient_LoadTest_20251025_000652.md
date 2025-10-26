@@ -1,0 +1,46 @@
+> test info
+
+
+
+test suite: `nbomber_default_test_suite_name`
+
+test name: `nbomber_default_test_name`
+
+session id: `2025-10-24_16.06.06_session_36141c47`
+
+> scenario stats
+
+
+
+scenario: `start_exam`
+
+  - ok count: `5061`
+
+  - fail count: `5019`
+
+  - all data: `0` MB
+
+  - duration: `00:08:24`
+
+load simulations:
+
+  - `inject`, rate: `20`, interval: `00:00:01`, during: `00:10:00`
+
+|step|ok stats|
+|---|---|
+|name|`global information`|
+|request count|all = `10080`, ok = `5061`, RPS = `10`|
+|latency (ms)|min = `105.52`, mean = `653.15`, max = `24063.99`, StdDev = `2948.31`|
+|latency percentile (ms)|p50 = `181.38`, p75 = `206.59`, p95 = `441.09`, p99 = `21086.21`|
+
+
+|step|failures stats|
+|---|---|
+|name|`global information`|
+|request count|all = `10080`, fail = `5019`, RPS = `10`|
+|latency (ms)|min = `1.23`, mean = `556.31`, max = `23759.4`, StdDev = `3192.94`|
+|latency percentile (ms)|p50 = `2.46`, p75 = `3.16`, p95 = `5.66`, p99 = `21086.21`|
+
+
+
+

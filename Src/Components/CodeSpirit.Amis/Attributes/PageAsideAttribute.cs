@@ -48,14 +48,14 @@ public class PageAsideAttribute : Attribute
     public bool AsideResizor { get; set; } = true;
     
     /// <summary>
-    /// 页面边栏区域的最小宽度(像素)
+    /// 页面边栏区域的最小宽度(像素)，默认为0表示未设置
     /// </summary>
-    public int? AsideMinWidth { get; set; }
+    public int AsideMinWidth { get; set; } = 0;
     
     /// <summary>
-    /// 页面边栏区域的最大宽度(像素)
+    /// 页面边栏区域的最大宽度(像素)，默认为0表示未设置
     /// </summary>
-    public int? AsideMaxWidth { get; set; }
+    public int AsideMaxWidth { get; set; } = 0;
     
     /// <summary>
     /// 用来控制边栏固定与否，默认为true

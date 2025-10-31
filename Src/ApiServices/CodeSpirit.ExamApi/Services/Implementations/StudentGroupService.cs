@@ -9,6 +9,7 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using CodeSpirit.Shared.Dtos.Common;
+using CodeSpirit.Shared.Extensions;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -46,23 +47,49 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
     }
 
     /// <summary>
-    /// 获取题目分页列表
+    /// 获取考生组分页列表
     /// </summary>
     public async Task<PageList<StudentGroupDto>> GetStudentGroupsAsync(StudentGroupQueryDto queryDto)
     {
-        var predicate = PredicateBuilder.New<StudentGroup>(true);
+        var query = Repository.CreateQuery();
 
+        // 关键字搜索
         if (!string.IsNullOrEmpty(queryDto.Keywords))
         {
-            predicate = predicate.Or(x => x.Name.Contains(queryDto.Keywords));
-            predicate = predicate.Or(x => x.Description != null && x.Description.Contains(queryDto.Keywords));
+            query = query.Where(x => x.Name.Contains(queryDto.Keywords) 
+                || (x.Description != null && x.Description.Contains(queryDto.Keywords)));
         }
 
-        return await GetPagedListAsync(
-            queryDto,
-            predicate,
-            includes: ["Students"]
-        );
+        // 获取总数
+        var totalCount = await query.CountAsync();
+
+        // 排序
+        if (!string.IsNullOrEmpty(queryDto.OrderBy))
+        {
+            query = query.ApplySorting(queryDto.OrderBy, queryDto.OrderDir);
+        }
+        else
+        {
+            query = query.OrderByDescending(x => x.UpdatedAt);
+        }
+
+        // 投影查询，只获取需要的数据并统计未删除的考生数量
+        var items = await query
+            .Skip((queryDto.Page - 1) * queryDto.PerPage)
+            .Take(queryDto.PerPage)
+            .Select(x => new StudentGroupDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Description = x.Description,
+                // 统计未删除的考生数量
+                StudentCount = x.Students.Count(s => !s.Student.IsDeleted),
+                UpdatedAt = x.UpdatedAt,
+                UpdatedBy = x.UpdatedBy.HasValue ? x.UpdatedBy.Value.ToString() : null
+            })
+            .ToListAsync();
+
+        return new PageList<StudentGroupDto>(items, totalCount);
     }
 
     /// <summary>
@@ -248,7 +275,7 @@ public class StudentGroupService : BaseCRUDIService<StudentGroup, StudentGroupDt
     /// </summary>
     public async Task<List<StudentGroupDto>> GetAllActiveGroupsAsync()
     {
-        var entities = await Repository.GetAllAsync();
+        var entities = await Repository.CreateQuery().OrderByDescending(p => p.CreatedAt).ToListAsync();
         return Mapper.Map<List<StudentGroupDto>>(entities.Where(x => !x.IsDeleted));
     }
 }

@@ -13,7 +13,7 @@ public class StudentQueryDto : QueryDtoBase
     /// 学生组ID, -1 表示查询无分组的学生
     /// </summary>
     [DisplayName("所属分组")]
-    [PageAside()]
+    [PageAside(AsideMinWidth = 1000)]
     [AmisInputTreeField(
         DataSource = "${ROOT_API}/api/exam/StudentGroups/select?hasNoGroup=true",
         Multiple = false,

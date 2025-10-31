@@ -160,16 +160,16 @@ namespace CodeSpirit.Amis
                     // 设置宽度是否可调整
                     pageConfig["asideResizor"] = pageAsideAttr.AsideResizor;
                     
-                    // 设置最小宽度
-                    if (pageAsideAttr.AsideMinWidth.HasValue)
+                    // 设置最小宽度(大于0时才设置)
+                    if (pageAsideAttr.AsideMinWidth > 0)
                     {
-                        pageConfig["asideMinWidth"] = pageAsideAttr.AsideMinWidth.Value;
+                        pageConfig["asideMinWidth"] = pageAsideAttr.AsideMinWidth;
                     }
                     
-                    // 设置最大宽度
-                    if (pageAsideAttr.AsideMaxWidth.HasValue)
+                    // 设置最大宽度(大于0时才设置)
+                    if (pageAsideAttr.AsideMaxWidth > 0)
                     {
-                        pageConfig["asideMaxWidth"] = pageAsideAttr.AsideMaxWidth.Value;
+                        pageConfig["asideMaxWidth"] = pageAsideAttr.AsideMaxWidth;
                     }
                     
                     // 设置边栏是否固定

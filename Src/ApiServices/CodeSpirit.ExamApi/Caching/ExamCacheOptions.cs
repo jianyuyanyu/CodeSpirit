@@ -20,8 +20,8 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
-            SlidingExpiration = TimeSpan.FromMinutes(15),
+            L2Expiration = TimeSpan.FromMinutes(30), // 明确指定L2缓存过期时间（1800秒）
+            SlidingExpiration = null, // 禁用滑动过期，避免被默认值（5分钟）覆盖
             Level = CacheLevel.L2Only  //仅使用分布式缓存，避免频繁更新时本地缓存不一致
         };
         
@@ -37,8 +37,8 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(300),
-            SlidingExpiration = TimeSpan.FromMinutes(90),
+            L2Expiration = TimeSpan.FromMinutes(300), // 明确指定L2缓存过期时间（5小时，18000秒）
+            SlidingExpiration = null, // 禁用滑动过期，避免被默认值（5分钟）覆盖
             Level = CacheLevel.L2Only, // 题目数据量大，仅使用分布式缓存
             EnableBreakthroughProtection = true // 启用缓存击穿保护
         };
@@ -55,8 +55,8 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(60),
-            SlidingExpiration = TimeSpan.FromMinutes(15),
+            L2Expiration = TimeSpan.FromMinutes(60), // 明确指定L2缓存过期时间（3600秒）
+            SlidingExpiration = null, // 禁用滑动过期，避免被默认值（5分钟）覆盖
             Level = CacheLevel.L2Only,
             EnableBreakthroughProtection = true
         };
@@ -73,8 +73,8 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(300),
-            SlidingExpiration = TimeSpan.FromMinutes(30),
+            L2Expiration = TimeSpan.FromMinutes(300), // 明确指定L2缓存过期时间（5小时，18000秒）
+            SlidingExpiration = null, // 禁用滑动过期，避免被默认值（5分钟）覆盖
             Level = CacheLevel.L2Only
         };
         
@@ -208,8 +208,8 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(5), // 5小时绝对过期（覆盖大部分考试场景）
-            SlidingExpiration = TimeSpan.FromMinutes(30), // 30分钟滑动过期
+            L2Expiration = TimeSpan.FromHours(5), // 明确指定L2缓存过期时间，5小时绝对过期（覆盖大部分考试场景，18000秒）
+            SlidingExpiration = null, // 禁用滑动过期，避免被默认值（5分钟）覆盖
             Level = CacheLevel.L2Only, // 仅使用分布式缓存，确保多实例一致性
             EnableBreakthroughProtection = true // 防止缓存击穿
         };
@@ -235,12 +235,41 @@ public static class ExamCacheOptions
         
         public CacheOptions Options => new()
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30), // 30分钟绝对过期
+            L2Expiration = TimeSpan.FromMinutes(30), // 明确指定L2缓存过期时间，30分钟绝对过期（1800秒）
+            SlidingExpiration = null, // 禁用滑动过期，避免被默认值（5分钟）覆盖
             Level = CacheLevel.L2Only, // 仅使用分布式缓存，确保多实例一致性
             EnableBreakthroughProtection = true // 防止缓存击穿
         };
         
         public IReadOnlyList<string> Tags => ["shared-available-exams"];
+    }
+    
+    /// <summary>
+    /// 考试提交记录缓存键（记录已完成的考试次数）
+    /// </summary>
+    /// <remarks>
+    /// ✅ 性能优化说明：
+    /// - 用于记录考生对某个考试的已完成次数（Submitted + Graded）
+    /// - 在考试提交时设置，3小时过期
+    /// - 在创建考试记录时检查，避免查询数据库
+    /// - 缓存值为整数，表示已完成的考试次数
+    /// - 使用分布式缓存确保多实例数据一致性
+    /// </remarks>
+    public record CompletedExamCount(long ExamId, long StudentId) : ICacheKey<int>
+    {
+        public string Key => $"{nameof(ExamCacheOptions)}_{nameof(CompletedExamCount)}_{ExamId}_{StudentId}";
+        
+        public CacheOptions Options => new()
+        {
+            // ✅ 重要：使用L2Expiration明确指定L2缓存的过期时间，避免被默认配置覆盖
+            // TimeSpan.FromHours(3) = 10800秒，确保缓存3小时过期
+            L2Expiration = TimeSpan.FromHours(3), // 3小时绝对过期（10800秒）
+            SlidingExpiration = null, // ✅ 禁用滑动过期，避免被默认值（5分钟=300秒）覆盖导致TTL错误
+            Level = CacheLevel.L2Only, // 仅使用分布式缓存，确保多实例一致性
+            EnableBreakthroughProtection = false // 不需要击穿保护，计数操作本身就是安全的
+        };
+        
+        public IReadOnlyList<string> Tags => [$"exam:{ExamId}", $"student:{StudentId}", "completed-count"];
     }
 }
 

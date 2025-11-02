@@ -562,12 +562,15 @@ public class MultiLevelCacheService : ICacheService
             memoryCacheOptions.AbsoluteExpirationRelativeToNow = _options.DefaultL1Expiration;
         }
 
+        // ✅ 修复：仅在未显式设置时应用默认滑动过期
+        // 如果 L1Expiration 已设置，则不应用默认滑动过期，避免 TTL 被覆盖
         if (options.SlidingExpiration.HasValue)
         {
             memoryCacheOptions.SlidingExpiration = options.SlidingExpiration;
         }
-        else if (_options.DefaultSlidingExpiration.HasValue)
+        else if (!options.L1Expiration.HasValue && _options.DefaultSlidingExpiration.HasValue)
         {
+            // 仅在未设置 L1Expiration 时才应用默认滑动过期
             memoryCacheOptions.SlidingExpiration = _options.DefaultSlidingExpiration;
         }
 
@@ -609,12 +612,15 @@ public class MultiLevelCacheService : ICacheService
             distributedCacheOptions.AbsoluteExpirationRelativeToNow = _options.DefaultL2Expiration;
         }
 
+        // ✅ 修复：仅在未显式设置时应用默认滑动过期
+        // 如果 L2Expiration 已设置，则不应用默认滑动过期，避免 TTL 被覆盖
         if (options.SlidingExpiration.HasValue)
         {
             distributedCacheOptions.SlidingExpiration = options.SlidingExpiration;
         }
-        else if (_options.DefaultSlidingExpiration.HasValue)
+        else if (!options.L2Expiration.HasValue && _options.DefaultSlidingExpiration.HasValue)
         {
+            // 仅在未设置 L2Expiration 时才应用默认滑动过期
             distributedCacheOptions.SlidingExpiration = _options.DefaultSlidingExpiration;
         }
 

@@ -173,15 +173,47 @@
                     throw new Error('认证失败，请重新登录');
                 }
                 
-                // 处理HTTP错误
+                // 处理HTTP错误（尝试读取响应体中的业务错误消息）
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    
+                    // 尝试读取响应体中的JSON错误消息
+                    try {
+                        const contentType = response.headers.get('content-type');
+                        
+                        // 如果是JSON格式，尝试解析业务错误消息
+                        if (contentType && contentType.includes('application/json')) {
+                            const errorResult = await response.json();
+                            
+                            // 如果响应包含业务错误消息，使用它
+                            if (errorResult && typeof errorResult === 'object') {
+                                if (errorResult.msg) {
+                                    errorMessage = errorResult.msg;
+                                } else if (errorResult.message) {
+                                    errorMessage = errorResult.message;
+                                } else if (errorResult.status !== undefined && errorResult.status !== 0) {
+                                    // 如果有status但不为0，至少使用status和默认消息
+                                    errorMessage = errorResult.msg || `请求失败 (状态码: ${errorResult.status})`;
+                                }
+                            }
+                        }
+                    } catch (parseError) {
+                        // 如果解析失败，使用默认的HTTP错误消息
+                        console.warn('无法解析错误响应体:', parseError);
+                    }
+                    
+                    // 创建错误对象，包含业务错误消息
+                    const error = new Error(errorMessage);
+                    // 附加原始HTTP信息，方便调试
+                    error.httpStatus = response.status;
+                    error.httpStatusText = response.statusText;
+                    throw error;
                 }
                 
                 // 解析响应
                 const result = await response.json();
                 
-                // 处理业务错误
+                // 处理业务错误（正常情况下，成功响应但status不为0）
                 if (result.status !== undefined && result.status !== 0) {
                     throw new Error(result.msg || '请求失败');
                 }

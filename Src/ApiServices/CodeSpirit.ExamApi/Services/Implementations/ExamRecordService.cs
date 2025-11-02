@@ -1,6 +1,8 @@
 using AutoMapper;
+using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.Core;
 using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.ExamApi.Caching;
 using CodeSpirit.ExamApi.Constants;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
@@ -36,6 +38,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     private readonly ISettingsService _settingsService;
     private readonly IScoreConversionService _scoreConversionService;
     private readonly IExamCacheService _examCacheService;
+    private readonly ICacheService _cacheService;
 
     /// <summary>
     /// 构造函数
@@ -51,6 +54,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     /// <param name="settingsService">设置服务</param>
     /// <param name="scoreConversionService">分数转换服务</param>
     /// <param name="examCacheService">考试缓存服务</param>
+    /// <param name="cacheService">缓存服务</param>
     public ExamRecordService(
         IRepository<ExamRecord> repository,
         IRepository<ExamAnswerRecord> answerRecordRepository,
@@ -62,7 +66,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         IDistributedLockProvider distributedLockProvider,
         ISettingsService settingsService,
         IScoreConversionService scoreConversionService,
-        IExamCacheService examCacheService) : base(repository, mapper)
+        IExamCacheService examCacheService,
+        ICacheService cacheService) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
         _examSettingRepository = examSettingRepository;
@@ -73,6 +78,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         _scoreConversionService = scoreConversionService ?? throw new ArgumentNullException(nameof(scoreConversionService));
         _examCacheService = examCacheService ?? throw new ArgumentNullException(nameof(examCacheService));
+        _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
     }
 
     /// <summary>
@@ -794,15 +800,39 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     }
                 }
 
-                // // 检查是否超过允许的考试次数
-                // var currentAttemptCount = await Repository.CreateQuery()
-                //     .CountAsync(r => r.ExamSettingId == examId && r.StudentId == studentId);
+                // ✅ 从缓存中获取已完成的考试次数（避免数据库查询）
+                var completedCountCacheKey = new ExamCacheOptions.CompletedExamCount(examId, studentId);
+                int? completedCountValue = await _cacheService.GetAsync<int>(completedCountCacheKey.Key);
+                var completedCount = completedCountValue ?? 0;
 
-                // if (examBasicInfo.AllowedAttempts != 0 && currentAttemptCount >= examBasicInfo.AllowedAttempts)
-                // {
-                //     _logger.LogInformation("考生 {StudentId} 已超过允许的考试次数，考试ID: {ExamId}，允许考试次数: {AllowedAttempts}", studentId, examId, examBasicInfo.AllowedAttempts);
-                //     throw new BusinessException($"已超过允许的考试次数，考试ID: {examId}");
-                // }
+                if (completedCount > 0)
+                {
+                    // ✅ 检查是否超过允许的考试次数
+                    if (examBasicInfo.AllowedAttempts > 0 && completedCount >= examBasicInfo.AllowedAttempts)
+                    {
+                        _logger.LogInformation("考生 {StudentId} 已超过允许的考试次数，考试ID: {ExamId}，已完成次数: {CompletedCount}，允许考试次数: {AllowedAttempts}",
+                            studentId, examId, completedCount, examBasicInfo.AllowedAttempts);
+                        throw new BusinessException($"您已完成该考试的 {completedCount} 次，已达到允许的最大次数 {examBasicInfo.AllowedAttempts} 次，无法重新开始考试");
+                    }
+
+                    // ✅ 如果允许重新开始，记录日志
+                    _logger.LogInformation("考生 {StudentId} 已有已提交的考试记录，但未超过允许次数，允许重新开始: 考试ID={ExamId}，已完成次数={CompletedCount}，允许次数={AllowedAttempts}",
+                        studentId, examId, completedCount, examBasicInfo.AllowedAttempts);
+                }
+
+                // ✅ 计算新的尝试次数
+                // 如果没有进行中的记录，根据已完成的次数计算新的尝试次数
+                int nextAttemptNumber = 1;
+                if (completedCount > 0)
+                {
+                    // 如果存在已完成的记录，新的尝试次数 = 已完成次数 + 1
+                    nextAttemptNumber = completedCount + 1;
+                }
+                else if (existingRecord != null)
+                {
+                    // 如果存在进行中的记录（但没有答题记录，将被删除），使用其尝试次数
+                    nextAttemptNumber = existingRecord.AttemptNumber;
+                }
 
                 // ✅ 使用数据库事务确保考试记录和答题记录的原子性
                 // 分布式锁 + 数据库事务：双重保障数据一致性
@@ -815,7 +845,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     {
                         ExamSettingId = examId,
                         StudentId = studentId,
-                        AttemptNumber = existingRecord?.AttemptNumber ?? 0 + 1,
+                        AttemptNumber = nextAttemptNumber,
                         StartTime = now,
                         Status = ExamRecordStatus.InProgress,
                         IpAddress = userIp,
@@ -1060,7 +1090,15 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 // 如果是客观题，可以自动评分
                 await AutoGradeObjectiveQuestions(examRecord);
 
-                _logger.LogInformation("考试提交成功: 记录ID={RecordId}, 学生ID={StudentId}", recordId, studentId);
+                // ✅ 设置已完成考试次数缓存（3小时过期）
+                var completedCountCacheKey = new ExamCacheOptions.CompletedExamCount(examRecord.ExamSettingId, studentId);
+                int? currentCountValue = await _cacheService.GetAsync<int>(completedCountCacheKey.Key);
+                var currentCount = currentCountValue ?? 0;
+                var newCount = currentCount + 1;
+                await _cacheService.SetAsync(completedCountCacheKey.Key, newCount, completedCountCacheKey.Options);
+                
+                _logger.LogInformation("考试提交成功: 记录ID={RecordId}, 学生ID={StudentId}, 已完成次数={CompletedCount}",
+                    recordId, studentId, newCount);
 
                 // 返回提交成功状态和是否可以查看结果的设置
                 return (true, examRecord.ExamSetting.EnableViewResult);

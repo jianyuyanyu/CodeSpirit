@@ -65,6 +65,21 @@
             return response;
         } catch (error) {
             console.error(`API请求失败 [${url}]:`, error);
+            
+            // 如果错误是Error对象且包含消息，尝试提取原始响应数据
+            // ExamApiManager.request 在业务错误时会抛出 Error(result.msg)
+            // 但我们需要保留原始响应以便错误处理函数能识别特定错误类型
+            if (error instanceof Error && error.message) {
+                // 创建一个包含msg属性的错误对象，方便convertToFriendlyMessage处理
+                const errorObj = {
+                    msg: error.message,
+                    message: error.message
+                };
+                // 保留原始error对象以便调试
+                errorObj.originalError = error;
+                throw errorObj;
+            }
+            
             throw error;
         }
     }
@@ -463,9 +478,39 @@
         let friendlyTitle = defaultTitle;
         let friendlyMessage = '';
         
-        // 获取错误消息
-        const errorMsg = (error.msg || error.message || error || '').toLowerCase();
-        const originalMsg = error.msg || error.message || error || '';
+        // 获取错误消息（优先从error.msg获取，因为API返回的错误格式是 {status: -1, msg: "..."}）
+        // 如果error是Error对象，则从error.message获取
+        // 如果error是字符串，则直接使用
+        let errorMsg = '';
+        let originalMsg = '';
+        
+        if (typeof error === 'object' && error !== null) {
+            // 如果是业务错误响应对象 {status: -1, msg: "..."}
+            if (error.msg) {
+                errorMsg = error.msg.toLowerCase();
+                originalMsg = error.msg;
+            } 
+            // 如果是Error对象
+            else if (error.message) {
+                errorMsg = error.message.toLowerCase();
+                originalMsg = error.message;
+            }
+            // 如果是其他对象，尝试转换为字符串
+            else {
+                originalMsg = String(error);
+                errorMsg = originalMsg.toLowerCase();
+            }
+        } else {
+            // 如果error是字符串或其他类型
+            originalMsg = String(error || '');
+            errorMsg = originalMsg.toLowerCase();
+        }
+        
+        // 调试日志：输出原始错误信息（开发环境）
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('🔍 [错误处理] 原始错误:', error);
+            console.log('🔍 [错误处理] 提取的错误消息:', originalMsg);
+        }
         
         // 优先检测网络相关的原生错误（如 Failed to fetch）
         if (errorMsg.includes('failed to fetch') || 
@@ -522,6 +567,25 @@
         else if (originalMsg.includes('已结束')) {
             friendlyTitle = '考试已结束';
             friendlyMessage = '很抱歉，该场考试已经结束';
+        } 
+        // 业务错误：已完成考试次数达到限制（优先检查，放在其他业务错误之前）
+        // 检查完整的错误消息，支持多种表达方式
+        else if (originalMsg.includes('已完成该考试') || 
+                 originalMsg.includes('已完成') && originalMsg.includes('次') ||
+                 originalMsg.includes('已达到允许的最大次数') || 
+                 originalMsg.includes('达到允许的最大次数') ||
+                 originalMsg.includes('无法重新开始考试') ||
+                 originalMsg.includes('无法重新开始') ||
+                 originalMsg.includes('超过允许的考试次数') ||
+                 originalMsg.includes('超过允许次数')) {
+            friendlyTitle = '考试次数已用完';
+            // 直接使用原始消息，确保用户看到完整的错误信息
+            friendlyMessage = originalMsg || '您已完成该考试，无法重新开始';
+            
+            // 调试日志
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.log('✅ [错误处理] 识别为考试次数限制错误:', friendlyMessage);
+            }
         } 
         // 业务错误：网络连接
         else if (originalMsg.includes('网络') || originalMsg.includes('连接')) {
@@ -636,12 +700,57 @@
             
         } catch (error) {
             // 只有在发生错误时才恢复按钮状态
-            console.error('❌ 开始考试失败，恢复按钮状态');
+            console.error('❌ 开始考试失败，恢复按钮状态', error);
             isStarting = false;
             setStartButtonLoading(false);
             
+            // 确保错误消息被正确提取和传递
+            let errorToShow = error;
+            
+            // 如果是Error对象，提取message并创建包含msg属性的对象
+            if (error instanceof Error) {
+                errorToShow = {
+                    msg: error.message,
+                    message: error.message,
+                    originalError: error
+                };
+            }
+            // 如果错误对象没有msg或message，尝试从其他位置获取
+            else if (error && typeof error === 'object') {
+                if (!error.msg && !error.message) {
+                    // 尝试从响应的data中获取
+                    if (error.data && error.data.msg) {
+                        errorToShow = { msg: error.data.msg, message: error.data.msg };
+                    } else if (error.response && error.response.msg) {
+                        errorToShow = { msg: error.response.msg, message: error.response.msg };
+                    } else {
+                        // 如果都没有，尝试从对象的任何属性中查找
+                        const msgKey = Object.keys(error).find(key => 
+                            key.toLowerCase() === 'msg' || 
+                            key.toLowerCase() === 'message' ||
+                            (typeof error[key] === 'string' && error[key].length > 0)
+                        );
+                        if (msgKey && typeof error[msgKey] === 'string') {
+                            errorToShow = { msg: error[msgKey], message: error[msgKey] };
+                        }
+                    }
+                } else {
+                    // 确保既有msg也有message属性
+                    if (error.msg && !error.message) {
+                        errorToShow = { ...error, message: error.msg };
+                    } else if (error.message && !error.msg) {
+                        errorToShow = { ...error, msg: error.message };
+                    }
+                }
+            }
+            
+            // 调试日志：输出最终的错误对象（仅在开发环境）
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.log('🔍 [错误处理] 最终传递给showFriendlyError的错误对象:', errorToShow);
+            }
+            
             // 显示友好的错误提示
-            showFriendlyError(error);
+            showFriendlyError(errorToShow);
         }
     }
     

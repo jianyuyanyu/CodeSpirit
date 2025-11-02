@@ -37,34 +37,34 @@ namespace CodeSpirit.Authorization.Services
         /// <returns>true 表示权限存在，false 表示权限不存在</returns>
         public override bool HasPermission(string permissionCode)
         {
-            _logger.LogWarning("[HasPermissionService] 开始权限检查: 权限代码={PermissionCode}", permissionCode);
+            _logger.LogDebug("[HasPermissionService] 开始权限检查: 权限代码={PermissionCode}", permissionCode);
             
             if (!_currentUser.IsAuthenticated)
             {
-                _logger.LogWarning("[HasPermissionService] 用户未认证，权限检查失败");
+                _logger.LogDebug("[HasPermissionService] 用户未认证，权限检查失败");
                 return false;
             }
 
-            _logger.LogWarning("[HasPermissionService] 用户已认证: 用户名={UserName}, 角色=[{Roles}]", 
+            _logger.LogDebug("[HasPermissionService] 用户已认证: 用户名={UserName}, 角色=[{Roles}]", 
                 _currentUser.UserName, string.Join(",", _currentUser.Roles ?? Array.Empty<string>()));
 
             // 管理员角色直接通过
             if (_currentUser.Roles.Contains("Admin"))
             {
-                _logger.LogWarning("[HasPermissionService] 用户拥有Admin角色，权限检查通过");
+                _logger.LogDebug("[HasPermissionService] 用户拥有Admin角色，权限检查通过");
                 return true;
             }
 
-            _logger.LogWarning("[HasPermissionService] 用户权限数量: {PermissionCount}", _currentUser.Permissions?.Count ?? 0);
+            _logger.LogDebug("[HasPermissionService] 用户权限数量: {PermissionCount}", _currentUser.Permissions?.Count ?? 0);
             if (_currentUser.Permissions?.Count > 0)
             {
-                _logger.LogWarning("[HasPermissionService] 用户权限列表: [{Permissions}]", string.Join(",", _currentUser.Permissions));
+                _logger.LogDebug("[HasPermissionService] 用户权限列表: [{Permissions}]", string.Join(",", _currentUser.Permissions));
             }
 
             // 使用权限服务检查具体权限
             var hasPermission = _permissionService.HasPermission(permissionCode, _currentUser.Permissions);
 
-            _logger.LogWarning("[HasPermissionService] 权限检查结果: {HasPermission}", hasPermission);
+            _logger.LogDebug("[HasPermissionService] 权限检查结果: {HasPermission}", hasPermission);
 
             return hasPermission;
         }
@@ -119,7 +119,7 @@ namespace CodeSpirit.Authorization.Services
         }
 
         /// <summary>
-        /// 从用户权限列表中提取导航权限（仅二级以及已有的一级权限）
+        /// 从用户权限列表中提取导航权限（只保留明确的二级权限和通配权限）
         /// </summary>
         /// <param name="permissions">用户权限集合</param>
         /// <returns>导航权限集合</returns>
@@ -130,20 +130,38 @@ namespace CodeSpirit.Authorization.Services
                 return new HashSet<string>();
             }
 
-            var navigationPermissions = new HashSet<string>();
+            var navigationPermissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var permission in permissions)
             {
-                var parts = permission.Split('_');
-                // 只添加一级权限（模块级）
-                if (parts.Length == 1)
+                if (string.IsNullOrEmpty(permission)) continue;
+
+                // 检查是否为通配权限（以 _* 结尾）
+                if (permission.EndsWith("_*", StringComparison.OrdinalIgnoreCase))
                 {
-                    navigationPermissions.Add(permission);
+                    // 通配权限：保留一级通配和二级通配
+                    var parts = permission.Split('_');
+                    
+                    // parts.Length <= 3 表示：
+                    // - module_* (2部分：module 和 *)
+                    // - module_controller_* (3部分：module、controller 和 *)
+                    if (parts.Length <= 3)
+                    {
+                        navigationPermissions.Add(permission);
+                        _logger.LogDebug("提取通配导航权限: {Permission}", permission);
+                    }
                 }
-                // 添加二级权限（控制器级）
-                else if (parts.Length > 1)
+                else
                 {
-                    navigationPermissions.Add($"{parts[0]}_{parts[1]}");
+                    // 具体权限：只保留二级权限（module_controller）
+                    var parts = permission.Split('_');
+                    if (parts.Length == 2)
+                    {
+                        navigationPermissions.Add(permission);
+                        _logger.LogDebug("提取二级导航权限: {Permission}", permission);
+                    }
+                    // 三级权限（module_controller_action）不会自动提升为二级导航权限
+                    // 一级权限（module）也不会被提取，除非是通配权限 module_*
                 }
             }
 

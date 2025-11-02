@@ -384,8 +384,7 @@ namespace CodeSpirit.IdentityApi.Services
         }
 
         /// <summary>
-        /// 优化权限ID数组，仅移除冗余的一级权限
-        /// 当存在二级或三级权限时，移除对应的一级权限以避免冗余，但保留二级权限
+        /// 优化权限ID数组，移除被通配权限覆盖的具体权限
         /// </summary>
         /// <param name="permissionIds">原始权限ID数组</param>
         /// <returns>优化后的权限ID数组</returns>
@@ -399,31 +398,41 @@ namespace CodeSpirit.IdentityApi.Services
             var optimizedPermissions = new HashSet<string>(permissionIds, StringComparer.OrdinalIgnoreCase);
             var permissionsToRemove = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // 遍历所有权限，仅检查一级权限是否需要移除
+            // 新的优化逻辑：
+            // 1. 找出所有通配权限（以 _* 结尾）
+            // 2. 移除被通配权限覆盖的具体权限
+            // 示例：如果有 identity_*，则移除所有 identity_ 开头的具体权限
+
             foreach (var permission in permissionIds)
             {
                 if (string.IsNullOrEmpty(permission)) continue;
 
-                var parts = permission.Split('_');
-                
-                // 仅对一级权限（如 "identity"）进行优化，检查是否有二级或三级权限
-                if (parts.Length == 1)
+                // 检查是否为通配权限（以 _* 结尾）
+                if (permission.EndsWith("_*", StringComparison.OrdinalIgnoreCase))
                 {
-                    var hasChildPermissions = permissionIds.Any(p => 
-                        !string.IsNullOrEmpty(p) && 
-                        p.StartsWith(permission + "_", StringComparison.OrdinalIgnoreCase) && 
-                        p != permission);
+                    // 获取通配权限的前缀（移除 _*）
+                    var prefix = permission.Substring(0, permission.Length - 2) + "_";
                     
-                    if (hasChildPermissions)
+                    _logger.LogDebug("发现通配权限: {Permission}，检查被覆盖的权限（前缀: {Prefix}）", permission, prefix);
+
+                    // 找出所有被该通配权限覆盖的具体权限
+                    foreach (var other in permissionIds)
                     {
-                        permissionsToRemove.Add(permission);
-                        _logger.LogDebug("移除冗余的一级权限: {Permission}，因为存在子权限", permission);
+                        if (string.IsNullOrEmpty(other) || other.Equals(permission, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        // 如果其他权限以该前缀开头，则被通配权限覆盖
+                        if (other.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            permissionsToRemove.Add(other);
+                            _logger.LogDebug("权限 {Permission} 被通配权限 {WildcardPermission} 覆盖，将被移除", 
+                                other, permission);
+                        }
                     }
                 }
-                // 保留所有二级权限和三级权限，不进行优化
             }
 
-            // 移除冗余权限
+            // 移除被通配权限覆盖的权限
             foreach (var permissionToRemove in permissionsToRemove)
             {
                 optimizedPermissions.Remove(permissionToRemove);
@@ -433,9 +442,13 @@ namespace CodeSpirit.IdentityApi.Services
             
             if (permissionsToRemove.Any())
             {
-                _logger.LogInformation("权限优化完成，移除了 {RemovedCount} 个冗余的一级权限: [{RemovedPermissions}]", 
+                _logger.LogInformation("权限优化完成，移除了 {RemovedCount} 个被通配权限覆盖的权限: [{RemovedPermissions}]", 
                     permissionsToRemove.Count, 
                     string.Join(", ", permissionsToRemove));
+            }
+            else
+            {
+                _logger.LogDebug("权限优化完成，没有需要移除的冗余权限");
             }
 
             return result;

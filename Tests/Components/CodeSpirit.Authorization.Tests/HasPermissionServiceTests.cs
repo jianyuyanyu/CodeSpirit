@@ -470,17 +470,14 @@ namespace CodeSpirit.Authorization.Tests
             bool identityModuleResult = service.HasNavigationPermission("identity");
             bool identityUsersResult = service.HasNavigationPermission("identity_users");
             
-            // 断言 - 一级菜单不再有权限，二级菜单有权限
-            Assert.False(examModuleResult, "用户不应能访问考试模块导航（仅提取二级权限）");
-            Assert.True(examPapersResult, "用户应能访问试卷管理导航");
-            Assert.False(identityModuleResult, "用户不应能访问身份模块导航（仅提取二级权限）");
-            Assert.True(identityUsersResult, "用户应能访问用户管理导航");
+            // 断言 - 新逻辑：三级权限不会自动提取为二级导航权限
+            Assert.False(examModuleResult, "用户不应能访问考试模块导航（没有一级权限）");
+            Assert.False(examPapersResult, "用户不应能访问试卷管理导航（三级权限不提取为二级导航权限）");
+            Assert.False(identityModuleResult, "用户不应能访问身份模块导航（没有一级权限）");
+            Assert.False(identityUsersResult, "用户不应能访问用户管理导航（三级权限不提取为二级导航权限）");
             
-            // 验证调用，应提取出导航权限集合：["exam_examPapers", "identity_users"]
-            _mockPermissionService.Verify(p => p.HasPermission("exam", It.Is<ISet<string>>(
-                s => !s.Contains("exam") && s.Contains("exam_examPapers") && 
-                     !s.Contains("identity") && s.Contains("identity_users"))), 
-                Times.Once);
+            // 验证调用，新逻辑：三级权限不会被提取，所以导航权限集合为空
+            _mockPermissionService.Verify(p => p.HasPermission(It.IsAny<string>(), It.Is<ISet<string>>(s => s.Count == 0)), Times.AtLeastOnce);
         }
 
         /// <summary>
@@ -524,19 +521,17 @@ namespace CodeSpirit.Authorization.Tests
             bool identityUsersActionResult = service.HasNavigationPermission("identity_users_createUser");
             
             // 断言
-            // 新行为：只能访问二级导航权限，一级模块导航权限不再自动生成
-            Assert.False(examModuleResult, "用户不应能访问考试模块（仅提取二级权限）");
-            Assert.True(examPapersControllerResult, "用户应能访问试卷控制器（提取二级权限）");
-            Assert.False(examPapersActionResult, "用户不应能直接访问试卷操作（HasNavigationPermission不应用于三级权限）");
+            // 新逻辑：三级权限不会被提取为二级导航权限
+            Assert.False(examModuleResult, "用户不应能访问考试模块（没有一级权限）");
+            Assert.False(examPapersControllerResult, "用户不应能访问试卷控制器（三级权限不提取为二级导航权限）");
+            Assert.False(examPapersActionResult, "用户不应能直接访问试卷操作（三级权限不提取）");
             
-            Assert.False(identityModuleResult, "用户不应能访问身份模块（仅提取二级权限）");
-            Assert.True(identityUsersControllerResult, "用户应能访问用户控制器（提取二级权限）");
-            Assert.False(identityUsersActionResult, "用户不应能直接访问用户操作（HasNavigationPermission不应用于三级权限）");
+            Assert.False(identityModuleResult, "用户不应能访问身份模块（没有一级权限）");
+            Assert.False(identityUsersControllerResult, "用户不应能访问用户控制器（三级权限不提取为二级导航权限）");
+            Assert.False(identityUsersActionResult, "用户不应能直接访问用户操作（三级权限不提取）");
             
-            // 验证提取到的导航权限集合只包含二级权限
-            _mockPermissionService.Verify(p => p.HasPermission("exam", It.Is<ISet<string>>(
-                s => !s.Contains("exam") && s.Contains("exam_examPapers"))), 
-                Times.Once);
+            // 验证提取到的导航权限集合为空（因为三级权限不提取）
+            _mockPermissionService.Verify(p => p.HasPermission(It.IsAny<string>(), It.Is<ISet<string>>(s => s.Count == 0)), Times.AtLeastOnce);
         }
 
         /// <summary>
@@ -628,12 +623,9 @@ namespace CodeSpirit.Authorization.Tests
             _mockCurrentUser.SetupGet(u => u.Roles).Returns(new[] { "User" });
             _mockCurrentUser.SetupGet(u => u.Permissions).Returns(permissions);
             
-            // 预期导航权限集合
-            var expectedNavigationPermissions = new HashSet<string>
-            {
-                "exam", "exam_examPapers",
-                "system", "system_users"
-            };
+            // 新逻辑：预期导航权限集合只包含二级权限，不包含一级具体权限
+            // 三级权限不会被提取，所以导航权限集合为空
+            var expectedNavigationPermissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             
             _mockPermissionService
                 .Setup(p => p.HasPermission(It.IsAny<string>(), It.IsAny<ISet<string>>()))
@@ -643,26 +635,22 @@ namespace CodeSpirit.Authorization.Tests
             var service = new HasPermissionService(_mockLogger.Object, _mockPermissionService.Object, _mockCurrentUser.Object);
 
             // 执行和断言
-            // 1. 用户有权限的导航
-            Assert.True(service.HasNavigationPermission("exam"), "用户应能访问考试模块");
-            Assert.True(service.HasNavigationPermission("exam_examPapers"), "用户应能访问试卷管理");
-            Assert.True(service.HasNavigationPermission("system"), "用户应能访问系统模块");
-            Assert.True(service.HasNavigationPermission("system_users"), "用户应能访问用户管理");
+            // 新逻辑：三级权限不会被提取为二级导航权限，所以所有导航权限检查都应返回 false
+            // 1. 用户没有明确的二级权限或通配权限
+            Assert.False(service.HasNavigationPermission("exam"), "用户不应能访问考试模块（没有一级权限）");
+            Assert.False(service.HasNavigationPermission("exam_examPapers"), "用户不应能访问试卷管理（三级权限不提取）");
+            Assert.False(service.HasNavigationPermission("system"), "用户不应能访问系统模块（没有一级权限）");
+            Assert.False(service.HasNavigationPermission("system_users"), "用户不应能访问用户管理（三级权限不提取）");
             
-            // 2. 用户无权限的导航
+            // 2. 用户无权限的导航（同样没有权限）
             Assert.False(service.HasNavigationPermission("exam_examRecords"), "用户不应能访问考试记录");
             Assert.False(service.HasNavigationPermission("system_roles"), "用户不应能访问角色管理");
             Assert.False(service.HasNavigationPermission("reports"), "用户不应能访问报表模块");
             
-            // 3. 验证权限服务调用
-            foreach (var navPermission in new[] { "exam", "exam_examPapers", "system", "system_users",
-                                                 "exam_examRecords", "system_roles", "reports" })
-            {
-                _mockPermissionService.Verify(
-                    p => p.HasPermission(navPermission, It.Is<ISet<string>>(
-                        s => s.SetEquals(expectedNavigationPermissions))),
-                    Times.Once);
-            }
+            // 3. 验证权限服务调用（所有调用传入的导航权限集合都应该是空的）
+            _mockPermissionService.Verify(
+                p => p.HasPermission(It.IsAny<string>(), It.Is<ISet<string>>(s => s.Count == 0)),
+                Times.AtLeast(7));
         }
 
         /// <summary>
@@ -724,8 +712,10 @@ namespace CodeSpirit.Authorization.Tests
             
             _mockCurrentUser.SetupGet(u => u.Permissions).Returns(specialPermissions);
             
-            // 模拟提取导航权限后的结果集
-            var extractedPermissions = new HashSet<string> { "exam", "examPapers" };
+            // 新逻辑：提取导航权限后的结果集
+            // "exam" 是一级具体权限，不会被提取
+            // "examPapers" 不包含下划线，不符合标准格式，不会被提取
+            var extractedPermissions = new HashSet<string>();
             
             // 模拟权限服务对导航权限的处理
             _mockPermissionService
@@ -741,22 +731,15 @@ namespace CodeSpirit.Authorization.Tests
             bool examPapersUnderscoreNavResult = service.HasNavigationPermission("exam_examPapers");
             
             // 断言
-            Assert.True(examNavResult, "用户应能访问exam导航（直接拥有权限）");
-            Assert.True(examPapersNavResult, "用户应能访问examPapers导航（直接拥有权限）");
+            // 新逻辑：一级具体权限和不规范的权限名称都不会被提取为导航权限
+            Assert.False(examNavResult, "用户不应能访问exam导航（一级具体权限不提取）");
+            Assert.False(examPapersNavResult, "用户不应能访问examPapers导航（不规范权限不提取）");
             Assert.False(examPapersUnderscoreNavResult, "用户不应能访问exam_examPapers导航（未直接拥有权限）");
             
-            // 验证提取导航权限的调用
-            _mockPermissionService.Verify(p => p.HasPermission("exam", 
-                It.Is<ISet<string>>(s => s.Contains("exam") && s.Contains("examPapers"))), 
-                Times.Once);
-            
-            _mockPermissionService.Verify(p => p.HasPermission("examPapers", 
-                It.Is<ISet<string>>(s => s.Contains("exam") && s.Contains("examPapers"))), 
-                Times.Once);
-            
-            _mockPermissionService.Verify(p => p.HasPermission("exam_examPapers", 
-                It.Is<ISet<string>>(s => s.Contains("exam") && s.Contains("examPapers"))), 
-                Times.Once);
+            // 验证提取导航权限的调用（导航权限集合应为空）
+            _mockPermissionService.Verify(p => p.HasPermission(It.IsAny<string>(), 
+                It.Is<ISet<string>>(s => s.Count == 0)), 
+                Times.AtLeast(3));
         }
     }
 } 

@@ -39,7 +39,7 @@ namespace CodeSpirit.Authorization.Tests.Services
         }
 
         /// <summary>
-        /// 测试 HasPermission 方法，当用户拥有父级权限时，应返回 true
+        /// 测试 HasPermission 方法，当用户拥有父级通配权限时，应返回 true
         /// </summary>
         [Fact]
         public void HasPermission_WhenParentPermissionExists_ReturnsTrue()
@@ -56,8 +56,8 @@ namespace CodeSpirit.Authorization.Tests.Services
 
             var permissionName = "module_controller_action";
 
-            // 用户拥有控制器级别的权限
-            var userPermissions = new HashSet<string> { "module_controller" };
+            // 用户拥有控制器级别的通配权限（新逻辑：必须显式使用 * 号）
+            var userPermissions = new HashSet<string> { "module_controller_*" };
 
             // Act
             var result = permissionService.HasPermission(permissionName, userPermissions);
@@ -67,8 +67,8 @@ namespace CodeSpirit.Authorization.Tests.Services
         }
 
         /// <summary>
-        /// 测试 HasPermission 方法，当用户只拥有模块级权限时，应返回 true。
-        /// 验证权限继承机制：模块级权限应当能够访问该模块下所有子权限。
+        /// 测试 HasPermission 方法，当用户只拥有模块级通配权限时，应返回 true。
+        /// 验证显式通配机制：模块级通配权限（module_*）应当能够访问该模块下所有子权限。
         /// </summary>
         [Fact]
         public void HasPermission_WhenModuleLevelPermissionExists_ReturnsTrue()
@@ -86,15 +86,15 @@ namespace CodeSpirit.Authorization.Tests.Services
             // 需要验证的完整权限名称（模块_控制器_操作）
             var permissionName = "module_controller_action";
 
-            // 用户只拥有模块级别的权限（只有"module"，没有具体控制器或操作的权限）
-            // 测试目的：验证模块级权限可以授权访问该模块下的所有功能
-            var userPermissions = new HashSet<string> { "module" };
+            // 用户只拥有模块级别的通配权限（新逻辑：必须使用 "module_*" 而不是 "module"）
+            // 测试目的：验证模块级通配权限可以授权访问该模块下的所有功能
+            var userPermissions = new HashSet<string> { "module_*" };
 
             // Act
             var result = permissionService.HasPermission(permissionName, userPermissions);
 
             // Assert
-            // 期望结果为True，因为模块级权限应当能够访问该模块下的所有权限
+            // 期望结果为True，因为模块级通配权限应当能够访问该模块下的所有权限
             Assert.True(result);
         }
 
@@ -236,7 +236,7 @@ namespace CodeSpirit.Authorization.Tests.Services
         }
 
         /// <summary>
-        /// 测试 HasPermission 方法，当权限层级较深且用户有中间层级权限时，应返回 true
+        /// 测试 HasPermission 方法，当权限层级较深且用户有中间层级通配权限时，应返回 true
         /// </summary>
         [Fact]
         public void HasPermission_WhenDeepLevelHierarchyWithMiddlePermission_ReturnsTrue()
@@ -254,8 +254,8 @@ namespace CodeSpirit.Authorization.Tests.Services
             // 深层次权限，例如：模块_控制器_分组_子分组_动作
             var permissionName = "module_controller_group_subgroup_action";
 
-            // 用户拥有中间层级的权限
-            var userPermissions = new HashSet<string> { "module_controller_group" };
+            // 用户拥有中间层级的通配权限（新逻辑：必须使用 * 号）
+            var userPermissions = new HashSet<string> { "module_controller_group_*" };
 
             // Act
             var result = permissionService.HasPermission(permissionName, userPermissions);
@@ -265,7 +265,7 @@ namespace CodeSpirit.Authorization.Tests.Services
         }
 
         /// <summary>
-        /// 测试 HasPermission 方法，当权限有多级且用户只拥有最高层级权限时，应返回 true
+        /// 测试 HasPermission 方法，当权限有多级且用户只拥有最高层级通配权限时，应返回 true
         /// </summary>
         [Fact]
         public void HasPermission_WhenMultiLevelPermissionWithTopLevelAccess_ReturnsTrue()
@@ -283,8 +283,8 @@ namespace CodeSpirit.Authorization.Tests.Services
             // 多级权限名称
             var permissionName = "module_controller_group_action";
 
-            // 用户拥有顶级权限
-            var userPermissions = new HashSet<string> { "module" };
+            // 用户拥有顶级通配权限（新逻辑：必须使用 * 号）
+            var userPermissions = new HashSet<string> { "module_*" };
 
             // Act
             var result = permissionService.HasPermission(permissionName, userPermissions);
@@ -312,8 +312,8 @@ namespace CodeSpirit.Authorization.Tests.Services
             // 包含多个下划线的权限名称
             var permissionName = "module_controller_action_with_multiple_underscores";
 
-            // 用户拥有控制器级别权限
-            var userPermissions = new HashSet<string> { "module_controller" };
+            // 用户拥有控制器级别通配权限（新逻辑：必须使用 * 号）
+            var userPermissions = new HashSet<string> { "module_controller_*" };
 
             // Act
             var result = permissionService.HasPermission(permissionName, userPermissions);
@@ -411,7 +411,7 @@ namespace CodeSpirit.Authorization.Tests.Services
         }
 
         /// <summary>
-        /// 测试 HasPermission 方法，验证权限名称比较是否区分大小写
+        /// 测试 HasPermission 方法，验证权限名称比较是大小写不敏感的
         /// </summary>
         [Fact]
         public void HasPermission_CaseSensitivity_WorksAsExpected()
@@ -435,8 +435,13 @@ namespace CodeSpirit.Authorization.Tests.Services
             var result = permissionService.HasPermission(permissionName, userPermissions);
 
             // Assert
-            // 由于默认实现是使用字符串直接比较，应该区分大小写
-            Assert.False(result);
+            // 新逻辑：权限匹配是大小写不敏感的
+            Assert.True(result);
+            
+            // 再测试通配权限的大小写不敏感
+            var wildcardPermissions = new HashSet<string> { "MODULE_*" };
+            var result2 = permissionService.HasPermission("module_controller_action", wildcardPermissions);
+            Assert.True(result2);
         }
 
         /// <summary>

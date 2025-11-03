@@ -578,6 +578,42 @@ public class ExamPapersController : ApiControllerBase
                         break;
                 }
 
+                // 显示正确答案
+                var correctAnswerDisplay = string.IsNullOrWhiteSpace(question.CorrectAnswer) 
+                    ? "<span style='color: #ff4d4f;'>未设置正确答案</span>" 
+                    : $"<span style='color: #52c41a;'>{question.CorrectAnswer}</span>";
+                
+                formItems.Add(new JObject
+                {
+                    ["type"] = "alert",
+                    ["level"] = "success",
+                    ["className"] = "correct-answer-display",
+                    ["showCloseButton"] = false,
+                    ["body"] = $@"
+                        <div style=""font-size: 13px;"">
+                            <strong>✅ 正确答案：</strong>{correctAnswerDisplay}
+                        </div>
+                    "
+                });
+
+                // 显示题目解析（如果有）
+                if (!string.IsNullOrWhiteSpace(question.Analysis))
+                {
+                    formItems.Add(new JObject
+                    {
+                        ["type"] = "alert",
+                        ["level"] = "info",
+                        ["className"] = "question-analysis",
+                        ["showCloseButton"] = false,
+                        ["body"] = $@"
+                            <div style=""font-size: 13px;"">
+                                <strong>💡 题目解析：</strong><br/>
+                                <pre style=""margin: 5px 0 0 0; white-space: pre-wrap; font-family: inherit;"">{question.Analysis}</pre>
+                            </div>
+                        "
+                    });
+                }
+
                 // 添加题目级别的验证信息
                 if (validationResult.QuestionValidations.TryGetValue(question.Id, out var questionValidation))
                 {

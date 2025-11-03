@@ -34,6 +34,9 @@ public class ExamPaperCheckService : IExamPaperCheckService, IScopedDependency
                 QuestionIndex = questionIndex
             };
 
+            // 检查正确答案是否为空
+            ValidateCorrectAnswerExists(question, questionValidation);
+
             // 只对单选题和多选题进行选项相关检查
             if (question.Type == QuestionType.SingleChoice || 
                 question.Type == QuestionType.MultipleChoice)
@@ -84,6 +87,19 @@ public class ExamPaperCheckService : IExamPaperCheckService, IScopedDependency
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 验证正确答案是否存在
+    /// </summary>
+    /// <param name="question">题目</param>
+    /// <param name="validation">验证结果</param>
+    private void ValidateCorrectAnswerExists(ExamPaperQuestionDto question, QuestionCheckResult validation)
+    {
+        if (string.IsNullOrWhiteSpace(question.CorrectAnswer))
+        {
+            validation.Errors.Add("缺少正确答案");
+        }
     }
 
     /// <summary>

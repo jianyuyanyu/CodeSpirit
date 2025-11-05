@@ -13,6 +13,24 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <returns>服务集合</returns>
+    /// <remarks>
+    /// 此方法注册AI表单填充的核心服务。
+    /// 
+    /// <para>
+    /// <strong>LLM审计支持（可选）：</strong>
+    /// 如果在调用此方法前已通过 AddLLMAuditServices() 注册了LLM审计服务，
+    /// AI表单填充组件将自动记录所有LLM交互的审计日志，包括：
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><description>提示词和响应内容</description></item>
+    ///   <item><description>处理时间和Token使用量</description></item>
+    ///   <item><description>成功/失败状态</description></item>
+    ///   <item><description>业务元数据（DTO类型、触发字段等）</description></item>
+    /// </list>
+    /// <para>
+    /// 如果未注册审计服务，AI表单填充功能仍可正常工作，只是不会记录审计日志。
+    /// </para>
+    /// </remarks>
     public static IServiceCollection AddAiFormFill(this IServiceCollection services)
     {
         // 注册核心服务
@@ -29,6 +47,10 @@ public static class ServiceCollectionExtensions
         // 添加内存缓存
         services.AddMemoryCache();
         
+        // 注意：LLM审计服务（ILLMAuditService）、租户上下文（ITenantContext）
+        // 和HTTP上下文访问器（IHttpContextAccessor）作为可选依赖，
+        // 如果已注册，将自动启用审计功能；如果未注册，不影响表单填充功能。
+        
         return services;
     }
     
@@ -37,6 +59,30 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <returns>服务集合</returns>
+    /// <remarks>
+    /// 此方法在 AddAiFormFill() 的基础上增加了自动端点扫描功能。
+    /// 
+    /// <para>
+    /// <strong>依赖要求：</strong>
+    /// </para>
+    /// <list type="number">
+    ///   <item><description>必需：LLM服务（通过 AddLLMServices() 注册）</description></item>
+    ///   <item><description>可选：LLM审计服务（通过 AddLLMAuditServices() 注册）</description></item>
+    /// </list>
+    /// <para>
+    /// <strong>推荐的服务注册顺序：</strong>
+    /// </para>
+    /// <code>
+    /// // 1. 注册LLM服务（必需）
+    /// services.AddLLMServices();
+    /// 
+    /// // 2. 注册LLM审计服务（可选，用于成本统计和合规审计）
+    /// services.AddLLMAuditServices(configuration);
+    /// 
+    /// // 3. 注册AI表单填充服务
+    /// services.AddAiFormFillEndpoints();
+    /// </code>
+    /// </remarks>
     public static IServiceCollection AddAiFormFillEndpoints(this IServiceCollection services)
     {
         // 检查LLM服务依赖
@@ -45,7 +91,7 @@ public static class ServiceCollectionExtensions
         // 注册端点扫描器
         services.AddSingleton<AiFormFillEndpointScanner>();
         
-        // 注册基础服务
+        // 注册基础服务（包含审计支持）
         services.AddAiFormFill();
         
         return services;

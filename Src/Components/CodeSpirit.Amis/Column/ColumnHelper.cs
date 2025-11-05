@@ -119,7 +119,9 @@ namespace CodeSpirit.Amis.Column
                 // 获取属性的显示名称，优先使用 DisplayNameAttribute
                 string displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase();
                 // 将属性名称转换为 camelCase 以符合 AMIS 的命名约定
-                string fieldName = prop.Name.ToCamelCase();
+                // 优先使用 JsonProperty 特性的 PropertyName，确保与 JSON 序列化一致
+                var jsonPropertyAttr = prop.GetCustomAttribute<Newtonsoft.Json.JsonPropertyAttribute>();
+                string fieldName = jsonPropertyAttr?.PropertyName ?? prop.Name.ToCamelCase();
 
             JObject column = new()
             {
@@ -631,9 +633,13 @@ namespace CodeSpirit.Amis.Column
             catch (Exception)
             {
                 // 返回一个基本的列配置
+                // 优先使用 JsonProperty 特性的 PropertyName
+                var jsonPropertyAttr = prop.GetCustomAttribute<Newtonsoft.Json.JsonPropertyAttribute>();
+                string fieldName = jsonPropertyAttr?.PropertyName ?? prop.Name.ToCamelCase();
+                
                 return new JObject
                 {
-                    ["name"] = prop.Name.ToCamelCase(),
+                    ["name"] = fieldName,
                     ["label"] = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase(),
                     ["sortable"] = false,
                     ["type"] = "text",
@@ -686,7 +692,7 @@ namespace CodeSpirit.Amis.Column
             string titleField = listItemAttr?.Title ?? "title";
             string subTitleField = listItemAttr?.SubTitle ?? "subTitle";
 
-            // 确保字段名是camelCase格式
+            // 确保字段名是camelCase格式（这里通常是字符串字段名，不需要JsonProperty处理）
             listItem["title"] = $"${{{titleField.ToCamelCase()}}}";
             listItem["subTitle"] = $"${{{subTitleField.ToCamelCase()}}}";
 

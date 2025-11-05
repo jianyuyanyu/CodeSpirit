@@ -102,7 +102,7 @@ public class DefaultLLMJsonProcessor : ILLMJsonProcessor
             throw new ArgumentException("AI响应内容为空", nameof(aiResponse));
         }
 
-        _logger.LogDebug("开始提取JSON，原始响应长度: {Length}", aiResponse.Length);
+        _logger.LogDebug("开始提取JSON，原始响应长度: {Length}，原始JSON：{Response}", aiResponse.Length, aiResponse);
 
         // 移除可能的Markdown代码块标记
         var cleaned = aiResponse.Trim();

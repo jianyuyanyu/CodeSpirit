@@ -1,7 +1,13 @@
 using CodeSpirit.AiFormFill.Models;
+using CodeSpirit.Audit.Models.LLM;
+using CodeSpirit.Audit.Services.LLM;
+using CodeSpirit.MultiTenant.Abstractions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 using JsonDocument = System.Text.Json.JsonDocument;
@@ -19,6 +25,9 @@ public class AiFormFillLLMClient : IScopedDependency
     private readonly ILogger<AiFormFillLLMClient> _logger;
     private readonly HttpClient _httpClient;
     private readonly AiFormFillLLMSettings _settings;
+    private readonly ILLMAuditService? _auditService;
+    private readonly ITenantContext? _tenantContext;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
 
     /// <summary>
     /// 获取LLM设置
@@ -31,14 +40,23 @@ public class AiFormFillLLMClient : IScopedDependency
     /// <param name="logger">日志记录器</param>
     /// <param name="settings">LLM设置</param>
     /// <param name="httpClientFactory">HTTP客户端工厂</param>
+    /// <param name="auditService">LLM审计服务（可选）</param>
+    /// <param name="tenantContext">租户上下文（可选）</param>
+    /// <param name="httpContextAccessor">HTTP上下文访问器（可选）</param>
     public AiFormFillLLMClient(
         ILogger<AiFormFillLLMClient> logger,
         AiFormFillLLMSettings settings,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        ILLMAuditService? auditService = null,
+        ITenantContext? tenantContext = null,
+        IHttpContextAccessor? httpContextAccessor = null)
     {
         _logger = logger;
         _settings = settings;
         _httpClient = CreateHttpClient(settings, httpClientFactory);
+        _auditService = auditService;
+        _tenantContext = tenantContext;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     /// <summary>
@@ -90,6 +108,11 @@ public class AiFormFillLLMClient : IScopedDependency
         double? topP = null)
     {
         _logger.LogDebug("开始生成AI表单填充内容");
+
+        var stopwatch = Stopwatch.StartNew();
+        string llmResponse = string.Empty;
+        bool isSuccess = false;
+        string errorMessage = string.Empty;
 
         try
         {
@@ -181,7 +204,7 @@ public class AiFormFillLLMClient : IScopedDependency
                 }
                 
                 // 抛出包含错误内容的异常
-                var errorMessage = string.IsNullOrEmpty(errorContent) 
+                errorMessage = string.IsNullOrEmpty(errorContent) 
                     ? $"AI表单填充API请求失败，状态码: {response.StatusCode}" 
                     : $"AI表单填充API请求失败，状态码: {response.StatusCode}, 错误: {errorContent}";
                 throw new HttpRequestException(errorMessage);
@@ -190,15 +213,19 @@ public class AiFormFillLLMClient : IScopedDependency
             // 处理响应
             if (_settings.EnableStreaming)
             {
-                return await ProcessStreamingResponse(response);
+                llmResponse = await ProcessStreamingResponse(response);
             }
             else
             {
-                return await ProcessNonStreamingResponse(response);
+                llmResponse = await ProcessNonStreamingResponse(response);
             }
+            
+            isSuccess = true;
+            return llmResponse;
         }
         catch (HttpRequestException ex)
         {
+            errorMessage = ex.Message;
             _logger.LogError(ex, "AI表单填充HTTP请求失败: {Message}", ex.Message);
             
             // 尝试从异常消息中提取更多信息
@@ -211,19 +238,39 @@ public class AiFormFillLLMClient : IScopedDependency
         }
         catch (JsonException ex)
         {
+            errorMessage = ex.Message;
             _logger.LogError(ex, "AI表单填充JSON格式错误: {Message}", ex.Message);
             throw new FormatException("解析AI表单填充内容时出现JSON格式错误", ex);
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
+            errorMessage = "请求超时";
             _logger.LogError(ex, "AI表单填充请求超时: {Message}", ex.Message);
             throw new TimeoutException("AI表单填充请求超时", ex);
         }
         catch (Exception ex)
         {
+            errorMessage = ex.Message;
             _logger.LogError(ex, "AI表单填充生成内容时发生未知错误: {Message}, 异常类型: {ExceptionType}", 
                 ex.Message, ex.GetType().Name);
             throw;
+        }
+        finally
+        {
+            stopwatch.Stop();
+            
+            // 记录审计日志
+            await CreateAuditLogAsync(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                llmResponse: llmResponse,
+                processingTimeMs: stopwatch.ElapsedMilliseconds,
+                isSuccess: isSuccess,
+                errorMessage: errorMessage,
+                maxTokens: maxTokens ?? _settings.MaxTokens,
+                temperature: temperature ?? _settings.Temperature,
+                topP: topP ?? _settings.TopP
+            );
         }
     }
 
@@ -710,5 +757,163 @@ public class AiFormFillLLMClient : IScopedDependency
         }
 
         return requestBody;
+    }
+
+    /// <summary>
+    /// 创建审计日志
+    /// </summary>
+    /// <param name="systemPrompt">系统提示词</param>
+    /// <param name="userPrompt">用户提示词</param>
+    /// <param name="llmResponse">LLM响应</param>
+    /// <param name="processingTimeMs">处理时间（毫秒）</param>
+    /// <param name="isSuccess">是否成功</param>
+    /// <param name="errorMessage">错误消息</param>
+    /// <param name="maxTokens">最大令牌数</param>
+    /// <param name="temperature">温度参数</param>
+    /// <param name="topP">Top-p参数</param>
+    private async Task CreateAuditLogAsync(
+        string systemPrompt,
+        string userPrompt,
+        string llmResponse,
+        long processingTimeMs,
+        bool isSuccess,
+        string errorMessage,
+        int maxTokens,
+        double temperature,
+        double topP)
+    {
+        // 如果审计服务未注册，则跳过
+        if (_auditService == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var tenantId = _tenantContext?.TenantId ?? "default";
+            var userId = string.Empty;
+            var userName = string.Empty;
+
+            // 从HttpContext获取用户信息
+            if (_httpContextAccessor?.HttpContext?.User?.Identity?.IsAuthenticated == true)
+            {
+                var user = _httpContextAccessor.HttpContext.User;
+                userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+                userName = user.FindFirst(ClaimTypes.Name)?.Value
+                          ?? user.FindFirst("name")?.Value
+                          ?? string.Empty;
+            }
+
+            // 推断LLM提供商
+            string llmProvider = InferProviderFromUrl(_settings.ApiBaseUrl);
+
+            var auditLog = new LLMAuditLog
+            {
+                Id = Guid.NewGuid().ToString(),
+                TenantId = tenantId,
+                UserId = userId,
+                UserName = userName,
+                OperationTime = DateTime.UtcNow,
+                LLMProvider = llmProvider,
+                ModelName = _settings.ModelName,
+                InteractionType = "FormAutoFill",
+                BusinessScenario = "AiFormFill",
+                SystemPrompt = systemPrompt,
+                UserPrompt = userPrompt,
+                LLMResponse = llmResponse,
+                ProcessedData = string.Empty,
+                ProcessingTimeMs = processingTimeMs,
+                IsSuccess = isSuccess,
+                ErrorMessage = errorMessage,
+                WasJsonRepaired = false,
+                Metadata = new Dictionary<string, object>
+                {
+                    ["SettingsKey"] = _settings.SettingsKey ?? "default",
+                    ["MaxTokens"] = maxTokens,
+                    ["Temperature"] = temperature,
+                    ["TopP"] = topP,
+                    ["EnableStreaming"] = _settings.EnableStreaming,
+                    ["DisableThinking"] = _settings.DisableThinking
+                }
+            };
+
+            // 估算Token使用
+            auditLog.TokenUsage = new LLMTokenUsage
+            {
+                InputTokens = EstimateTokens(systemPrompt + userPrompt),
+                OutputTokens = EstimateTokens(llmResponse),
+                TotalTokens = 0
+            };
+            auditLog.TokenUsage.TotalTokens = auditLog.TokenUsage.InputTokens + auditLog.TokenUsage.OutputTokens;
+
+            _logger.LogDebug("记录AI表单填充LLM审计日志，审计ID: {AuditId}", auditLog.Id);
+            await _auditService.LogLLMInteractionAsync(auditLog);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "创建AI表单填充LLM审计日志失败");
+        }
+    }
+
+    /// <summary>
+    /// 根据API URL推断提供商
+    /// </summary>
+    /// <param name="apiUrl">API基础URL</param>
+    /// <returns>提供商名称</returns>
+    private string InferProviderFromUrl(string apiUrl)
+    {
+        if (string.IsNullOrEmpty(apiUrl))
+        {
+            return "Unknown";
+        }
+
+        apiUrl = apiUrl.ToLowerInvariant();
+
+        if (apiUrl.Contains("openai.com") || apiUrl.Contains("api.openai"))
+        {
+            return "OpenAI";
+        }
+        else if (apiUrl.Contains("dashscope.aliyuncs.com") || apiUrl.Contains("qwen"))
+        {
+            return "Alibaba-Qwen";
+        }
+        else if (apiUrl.Contains("anthropic.com") || apiUrl.Contains("claude"))
+        {
+            return "Anthropic";
+        }
+        else if (apiUrl.Contains("gemini") || apiUrl.Contains("google"))
+        {
+            return "Google";
+        }
+        else if (apiUrl.Contains("huggingface"))
+        {
+            return "HuggingFace";
+        }
+        else if (apiUrl.Contains("localhost") || apiUrl.Contains("127.0.0.1"))
+        {
+            return "Local";
+        }
+
+        return "Custom";
+    }
+
+    /// <summary>
+    /// 估算文本的Token数量
+    /// 这是一个粗略估算，实际应从LLM API响应中提取
+    /// 英文大约 1 token ≈ 4 字符
+    /// 中文大约 1 token ≈ 1.5-2 字符
+    /// </summary>
+    /// <param name="text">文本内容</param>
+    /// <returns>估算的Token数量</returns>
+    private int EstimateTokens(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return 0;
+        }
+
+        // 简单估算：平均每2.5个字符为1个token
+        // 这个估算适用于中英文混合文本
+        return (int)Math.Ceiling(text.Length / 2.5);
     }
 }

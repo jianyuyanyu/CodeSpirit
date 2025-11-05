@@ -32,6 +32,8 @@
 - **DTO结构解析**：自动分析DTO结构，提取字段信息
 - **上下文感知**：基于字段的DisplayName、Description等特性构建上下文
 - **智能提示词生成**：根据业务场景自动生成结构化提示词
+- **智能JSON结构检测**：自动检测自定义模板中的JSON结构说明，避免重复追加
+- **CustomDescription集成**：自动在JSON结构注释中包含字段的CustomDescription
 - **验证约束集成**：自动将字段验证规则集成到提示词中
 - **提示词优化**：支持提示词压缩和长度验证
 
@@ -166,7 +168,70 @@ CodeSpirit.AI表单智能填充组件提供了两种实现方案，以满足不�
 1. **字段分析**：提取所有可填充的字段信息
 2. **描述获取**：按优先级获取字段描述（CustomDescription > Description > DisplayName）
 3. **验证规则集成**：自动读取验证特性并集成到提示词中
-4. **格式化输出**：生成标准化的JSON格式要求
+4. **JSON结构检测**：智能检测自定义模板中是否已包含JSON结构说明
+5. **格式化输出**：生成标准化的JSON格式要求（如未在自定义模板中提供）
+
+#### 智能JSON结构检测
+
+系统会自动检测自定义提示词模板中是否已包含JSON结构说明，避免重复追加。
+
+**检测关键词：**
+- **中文**：` ```json `、` ```JSON `、`JSON结构说明`、`返回JSON结构`、`JSON格式说明`、`以JSON格式回复`
+- **英文**：`JSON Schema`、`return JSON structure`、`response format`、`output format`
+
+**工作原理：**
+```csharp
+// 场景1：简单自定义模板
+[AiFormFill(CustomPromptTemplate = "请基于以下信息生成内容")]
+// → 系统自动追加完整的JSON结构说明
+
+// 场景2：包含JSON结构的完整模板
+[AiFormFill(CustomPromptTemplate = @"请生成内容
+**返回JSON结构：**
+```json
+{ ""field"": ""value"" }
+```")]
+// → 检测到```json关键词，不会重复追加
+```
+
+#### CustomDescription自动集成
+
+系统会自动在JSON结构注释中包含字段的`CustomDescription`，为LLM提供更详细的指导。
+
+**优先级规则：**
+1. **CustomDescription**（最高优先级）- 专为AI设计的详细描述
+2. **DisplayName** - 字段显示名称
+
+**示例：**
+```csharp
+public class GoalDto
+{
+    [DisplayName("目标描述")]
+    [Required]
+    [MaxLength(2000)]
+    [AiFieldFill(CustomDescription = "明确、具体、可执行的目标描述")]
+    public string? Description { get; set; }
+    
+    [DisplayName("目标标题")]
+    [MaxLength(200)]
+    [AiFieldFill(CustomDescription = "从目标描述中提取的简短标题（10字以内）")]
+    public string? Title { get; set; }
+}
+```
+
+**自动生成的JSON结构：**
+```json
+{
+  "Description": "字段值" // 明确、具体、可执行的目标描述, 必填, 最多2000字符
+  "Title": "字段值" // 从目标描述中提取的简短标题（10字以内), 最多200字符
+}
+```
+
+**优势：**
+- **更清晰的AI指导**：CustomDescription为LLM提供了更详细的字段说明
+- **更好的上下文**：LLM能够更准确地理解每个字段的用途和要求
+- **更高质量的输出**：详细的描述帮助LLM生成更符合预期的内容
+- **验证信息可见**：字段的约束条件（必填、长度限制等）直接显示在JSON结构中
 
 ### 4. 服务集成与处理流程
 
@@ -382,7 +447,7 @@ public class CreateSurveyDto
 }
 ```
 
-#### 高级配置示例
+#### 高级配置示例（简单自定义模板）
 ```csharp
 [AiFormFill(
     TriggerField = nameof(Topic),
@@ -390,7 +455,8 @@ public class CreateSurveyDto
     ApiEndpoint = "generate-suggestions",
     MaxTokens = 1500,
     EnableCache = true,
-    CacheExpirationMinutes = 60)]
+    CacheExpirationMinutes = 60,
+    CustomPromptTemplate = "请基于问卷主题：{Topic}，生成相关的问卷信息")]
 public class GenerateSurveyRequest
 {
     [Required]
@@ -399,11 +465,11 @@ public class GenerateSurveyRequest
     public string Topic { get; set; } = string.Empty;
 
     [DisplayName("问卷描述")]
-    [AiFieldFill(Weight = 2, Priority = 1, CustomDescription = "生成与主题高度相关的详细描述")]
+    [AiFieldFill(Weight = 2, Priority = 1, CustomDescription = "生成与主题高度相关的详细描述，包含问卷目的和预期成果")]
     public string? Description { get; set; }
 
     [DisplayName("问卷类型")]
-    [AiFieldFill(Weight = 1, Priority = 2)]
+    [AiFieldFill(Weight = 1, Priority = 2, CustomDescription = "根据主题推断问卷类型，如：满意度调查、市场调研、员工反馈等")]
     public string? SurveyType { get; set; }
 
     [DisplayName("自定义提示词")]
@@ -411,6 +477,71 @@ public class GenerateSurveyRequest
     public string? CustomPrompt { get; set; }
 }
 ```
+
+系统会自动追加JSON结构：
+```json
+{
+  "Description": "字段值" // 生成与主题高度相关的详细描述，包含问卷目的和预期成果
+  "SurveyType": "字段值" // 根据主题推断问卷类型，如：满意度调查、市场调研、员工反馈等
+}
+```
+
+#### 完整自定义模板示例（避免重复追加）
+```csharp
+[AiFormFill(
+    TriggerField = nameof(Description),
+    CustomPromptTemplate = @"你是一个目标管理专家，需要完成以下任务：
+
+**任务1：优化目标描述**
+用户输入：{Description}
+- 使目标更明确、具体、可执行
+- 补充必要的细节
+- 建议合理的完成日期
+
+**任务2：提取目标信息**
+- 从目标描述中提取简短标题（10字以内）
+- 识别目标类型（个人成长/工作项目/生活管理/学习提升/健康管理等）
+
+**返回JSON结构说明：**
+```json
+{
+  ""description"": ""string, 必填。明确、具体、可执行的目标描述"",
+  ""targetDate"": ""string (ISO 8601格式), 可选。基于目标复杂度建议的合理完成日期"",
+  ""title"": ""string, 必填。从目标描述中提取的简短标题（10字以内）"",
+  ""category"": ""string, 必填。目标类型""
+}
+```
+
+请严格按照上述JSON结构返回完整响应。",
+    UseIndependentLLM = true,
+    LLMSettingsKey = "AiFormFillLLM",
+    DisableThinking = true,
+    ResponseFormatType = "json_object")]
+public class CreateGoalDto
+{
+    [Required]
+    [MaxLength(2000)]
+    [DisplayName("目标描述")]
+    [AiFieldFill(Priority = 1, CustomDescription = "明确、具体、可执行的目标描述")]
+    public string Description { get; set; } = string.Empty;
+    
+    [DisplayName("目标日期")]
+    [AiFieldFill(Priority = 2, CustomDescription = "基于目标复杂度建议的合理完成日期")]
+    public DateTime? TargetDate { get; set; }
+    
+    [DisplayName("目标标题")]
+    [MaxLength(200)]
+    [AiFieldFill(Priority = 9, CustomDescription = "从目标描述中提取的简短标题（10字以内）")]
+    public string? Title { get; set; }
+    
+    [DisplayName("目标类型")]
+    [MaxLength(50)]
+    [AiFieldFill(Priority = 10, CustomDescription = "目标类型（个人成长/工作项目/生活管理/学习提升/健康管理等）")]
+    public string? Category { get; set; }
+}
+```
+
+系统检测到模板中包含` ```json `关键词，**不会**重复追加JSON结构说明。
 
 ### 2. 控制器实现示例
 
@@ -794,10 +925,15 @@ public string? InternalNote { get; set; }
 ### 3. 优化建议
 
 - **上下文丰富**：提供足够的上下文信息帮助AI理解业务场景
-- **格式规范**：明确指定返回的JSON格式和字段要求
+- **合理使用CustomDescription**：为AI填充字段添加详细的CustomDescription，提高生成质量
+- **自定义模板优化**：
+  - 简单场景：使用简短的自定义模板，让系统自动追加JSON结构
+  - 复杂场景：提供包含完整JSON结构的自定义模板，系统会智能检测并避免重复
+- **格式规范**：在自定义模板中明确指定返回的JSON格式和字段要求
 - **自动约束集成**：系统会自动将验证特性集成到提示词中，无需手动添加
 - **示例引导**：在复杂场景下提供示例数据
 - **描述优先级**：合理使用Description特性，系统会自动用于提示词生成
+- **避免冗余**：CustomDescription应该为AI提供额外的指导信息，而不是简单重复DisplayName
 
 ### 4. 注意事项
 
@@ -892,11 +1028,13 @@ public interface IAiFormFillService
 4. **双模式支持**：支持全局AI填充模式和字段触发模式，满足不同使用场景
 5. **工业级简化**：从15行+控制器代码简化到0行，100%消除样板代码
 6. **智能自动化**：自动读取字段描述、验证规则，自动生成UI增强和API端点
-7. **即插即用**：简单的项目引用和服务注册即可在任何CodeSpirit项目中使用
-8. **扩展性强**：支持自定义提示词、字段配置等高级功能
-9. **性能优秀**：内置缓存和优化机制，支持异步处理
-10. **易于维护**：统一的架构和清晰的职责分离，向后兼容现有配置
-11. **用户体验佳**：自动添加AI按钮和加载状态，全局模式支持自定义提示词
+7. **智能JSON结构检测**：自动检测自定义模板中的JSON结构说明，避免重复追加
+8. **CustomDescription集成**：自动在JSON结构注释中包含字段的详细描述，提高AI生成质量
+9. **即插即用**：简单的项目引用和服务注册即可在任何CodeSpirit项目中使用
+10. **扩展性强**：支持自定义提示词、字段配置等高级功能
+11. **性能优秀**：内置缓存和优化机制，支持异步处理
+12. **易于维护**：统一的架构和清晰的职责分离，向后兼容现有配置
+13. **用户体验佳**：自动添加AI按钮和加载状态，全局模式支持自定义提示词
 
 ### 方案二革命性改进
 
@@ -939,3 +1077,38 @@ public interface IAiFormFillService
 - **字段触发模式**：适用于基于关键信息的内容扩展，用户输入触发字段后，AI智能填充其他相关字段
 
 两种模式无缝集成，开发者只需通过简单的特性配置即可选择合适的模式，系统自动处理所有技术细节。
+
+## 版本更新记录
+
+### v1.5.0 (2025-11-05)
+
+#### 新增特性
+
+1. **智能JSON结构检测**
+   - 自动检测自定义提示词模板中是否已包含JSON结构说明
+   - 支持多种检测关键词（中英文）
+   - 避免重复追加JSON格式说明，提示词更简洁
+
+2. **CustomDescription自动集成**
+   - 自动在JSON结构注释中包含字段的CustomDescription
+   - 为LLM提供更详细的字段说明和指导
+   - 验证信息（必填、长度限制等）自动显示在JSON结构中
+
+#### 改进内容
+
+- 优化了提示词构建逻辑，支持更灵活的自定义模板
+- 增强了字段描述的优先级处理（CustomDescription > DisplayName）
+- 改进了JSON结构生成，包含完整的字段注释信息
+
+#### 技术细节
+
+- 修改文件：`AiFormPromptBuilder.cs`
+- 新增方法：`HasJsonStructureDescription` - JSON结构检测
+- 优化方法：`AppendJsonStructure` - JSON结构追加逻辑
+- 优化方法：`BuildObjectStructure` - 对象结构构建逻辑
+
+#### 向后兼容性
+
+- ✅ 完全向后兼容
+- ✅ 现有代码无需修改
+- ✅ 所有现有测试通过（31个测试用例）

@@ -235,6 +235,10 @@ public static class AuditExtensions
     {
         // 获取审计配置，LLM审计跟随统一的存储提供者配置
         var auditConfig = configuration.GetSection("Audit");
+        
+        // ⚠️ 重要：配置绑定 AuditOptions（包含 LLMAudit 配置）
+        services.Configure<AuditOptions>(auditConfig);
+        
         var storageProvider = auditConfig.GetValue<string>("StorageProvider") 
                             ?? configuration.GetValue<string>("Audit:StorageProvider")
                             ?? "Elasticsearch";

@@ -8,6 +8,8 @@ CodeSpirit AI表单智能填充组件，提供基于LLM的表单内容自动生�
 - **双模式支持**：支持全局AI填充和字段触发模式
 - **自动端点生成**：基于DTO自动生成API端点，无需手动编写控制器代码
 - **智能提示词构建**：自动分析DTO结构，生成结构化提示词
+- **智能JSON结构检测**：自动检测自定义模板中的JSON结构说明，避免重复追加
+- **CustomDescription集成**：自动在JSON结构注释中包含字段的CustomDescription，为LLM提供更详细的指导
 - **完整的缓存机制**：内置智能缓存提升性能
 - **响应解析与验证**：自动解析LLM返回的JSON格式数据
 - **独立LLM配置**：支持为AI表单填充配置专用的LLM设置，包括禁用思考、JSON响应格式等
@@ -244,16 +246,63 @@ builder.Services.AddAiFormFillIndependentLLM(options =>
 
 ### 自定义提示词模板
 
+#### 基础自定义模板（自动追加JSON结构）
+
 ```csharp
 [AiFormFill(
     TriggerField = nameof(Topic),
-    CustomPromptTemplate = "基于主题 '{0}' 生成相关内容...")]
+    CustomPromptTemplate = "基于主题 '{Topic}' 生成相关内容...")]
 public class CustomPromptDto
 {
     public string Topic { get; set; } = string.Empty;
+    
+    [DisplayName("生成的内容")]
+    [AiFieldFill(CustomDescription = "与主题高度相关的详细内容")]
     public string? GeneratedContent { get; set; }
 }
 ```
+
+系统会自动追加JSON结构说明：
+```json
+请以JSON格式回复，格式如下：
+{
+  "GeneratedContent": "字段值" // 与主题高度相关的详细内容
+}
+```
+
+#### 完整自定义模板（包含JSON结构，不会重复追加）
+
+```csharp
+[AiFormFill(
+    TriggerField = nameof(Description),
+    CustomPromptTemplate = @"你是一个目标管理专家。
+
+用户输入：{Description}
+请优化目标描述，并提取关键信息。
+
+**返回JSON结构说明：**
+```json
+{
+  ""description"": ""string, 必填。优化后的目标描述"",
+  ""title"": ""string, 必填。提取的简短标题"",
+  ""category"": ""string, 必填。目标类型""
+}
+```
+
+请严格按照上述JSON结构返回。")]
+public class GoalDto
+{
+    public string Description { get; set; } = string.Empty;
+    
+    [AiFieldFill(Priority = 1, CustomDescription = "优化后的目标描述")]
+    public string? Title { get; set; }
+    
+    [AiFieldFill(Priority = 2, CustomDescription = "目标分类")]
+    public string? Category { get; set; }
+}
+```
+
+系统会智能检测到模板中已包含JSON结构说明（关键词：` ```json `），不会重复追加。
 
 ### 字段级控制
 
@@ -269,6 +318,84 @@ public class DetailedDto
     public string? InternalNote { get; set; }
 }
 ```
+
+## 🎨 智能提示词特性
+
+### 1. 智能JSON结构检测
+
+系统会自动检测自定义提示词模板中是否已包含JSON结构说明，避免重复追加。
+
+#### 检测关键词
+
+**中文关键词：**
+- ` ```json ` / ` ```JSON ` - Markdown JSON代码块
+- `JSON结构说明`
+- `返回JSON结构`
+- `JSON格式说明`
+- `以JSON格式回复`
+
+**英文关键词：**
+- `JSON Schema`
+- `return JSON structure`
+- `response format`
+- `output format`
+
+#### 工作原理
+
+```csharp
+// 场景1：简单模板 - 系统自动追加JSON结构
+[AiFormFill(CustomPromptTemplate = "请生成相关内容")]
+// 结果：模板 + 自动追加的JSON结构说明
+
+// 场景2：包含JSON结构的完整模板 - 不会重复追加
+[AiFormFill(CustomPromptTemplate = @"请生成内容
+**返回JSON结构：**
+```json
+{ ""field"": ""value"" }
+```")]
+// 结果：仅使用自定义模板，不追加额外JSON结构
+```
+
+### 2. CustomDescription自动集成
+
+系统会自动在JSON结构注释中包含字段的`CustomDescription`，为LLM提供更详细的指导。
+
+#### 字段描述优先级
+
+1. **CustomDescription**（最高优先级）- 专为AI设计的详细描述
+2. **DisplayName** - 字段显示名称
+
+#### 示例效果
+
+```csharp
+public class ExampleDto
+{
+    [DisplayName("标题")]
+    [AiFieldFill(CustomDescription = "简短精炼的标题，不超过20字")]
+    public string? Title { get; set; }
+    
+    [DisplayName("内容")]
+    [Required]
+    [MaxLength(500)]
+    [AiFieldFill(CustomDescription = "详细内容，需包含关键信息和上下文")]
+    public string? Content { get; set; }
+}
+```
+
+**自动生成的JSON结构：**
+```json
+{
+  "Title": "字段值" // 简短精炼的标题，不超过20字
+  "Content": "字段值" // 详细内容，需包含关键信息和上下文, 必填, 最多500字符
+}
+```
+
+#### 优势
+
+- **更清晰的AI指导**：CustomDescription为LLM提供了更详细的字段说明
+- **更好的上下文**：LLM能够更准确地理解每个字段的用途和要求
+- **更高质量的输出**：详细的描述帮助LLM生成更符合预期的内容
+- **验证信息可见**：字段的约束条件直接显示在JSON结构中
 
 ## 🚀 自动生成的端点
 

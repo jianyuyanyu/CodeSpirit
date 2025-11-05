@@ -68,8 +68,8 @@ namespace CodeSpirit.Authorization
             PermissionAttribute permissionAttr = action.GetCustomAttribute<PermissionAttribute>();
             DisplayNameAttribute displayNameAttr = action.GetCustomAttribute<DisplayNameAttribute>();
 
-            // 确定动作名称
-            string actionName = action.Name.ToCamelCase();
+            // 确定动作名称（移除Async后缀以与ASP.NET Core运行时行为保持一致）
+            string actionName = action.Name.RemovePostFix("Async").ToCamelCase();
             string name = permissionAttr?.Name ?? actionName;
             string description = permissionAttr?.Description ?? actionName;
             string displayName = permissionAttr?.DisplayName ??

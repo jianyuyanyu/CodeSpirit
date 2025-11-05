@@ -104,7 +104,7 @@ namespace CodeSpirit.Amis.Form.Fields
                     ["background"] = "#ffffff",
                     ["borderRadius"] = "8px",
                     ["border"] = "1px solid #e8f2ff",
-                    ["padding"] = "16px",
+                    ["padding"] = "16px 16px 16px 16px",
                     ["boxShadow"] = "0 2px 8px rgba(0, 0, 0, 0.06)"
                 },
                 ["body"] = new JArray
@@ -114,6 +114,13 @@ namespace CodeSpirit.Amis.Form.Fields
                     {
                         ["type"] = "input-group",
                         ["className"] = "ai-fill-group",
+                        ["mode"] = "horizontal",
+                        ["label"] = false,
+                        ["horizontal"] = new JObject
+                        {
+                            ["left"] = 0,
+                            ["right"] = 12
+                        },
                         ["body"] = new JArray
                         {
                             new JObject

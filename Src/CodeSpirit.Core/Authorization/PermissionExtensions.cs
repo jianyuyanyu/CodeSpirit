@@ -35,8 +35,8 @@ namespace CodeSpirit.Core.Authorization
             // 获取控制器名称
             string controllerName = controllerType.Name.RemovePostFix("Controller").ToCamelCase();
 
-            // 获取动作名称
-            string actionName = methodInfo.Name.ToCamelCase();
+            // 获取动作名称（移除Async后缀以与ASP.NET Core运行时行为保持一致）
+            string actionName = methodInfo.Name.RemovePostFix("Async").ToCamelCase();
 
             // 获取模块名称
             string moduleName = controllerType.GetCustomAttribute<ModuleAttribute>()?.Name ?? "default";

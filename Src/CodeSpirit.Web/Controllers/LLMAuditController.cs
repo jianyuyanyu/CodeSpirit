@@ -45,7 +45,7 @@ namespace CodeSpirit.Web.Controllers
         /// <returns>审计日志列表</returns>
         [HttpGet]
         [DisplayName("获取LLM审计日志列表")]
-        public async Task<ActionResult<ApiResponse<PageList<Audit.Models.LLM.LLMAuditLog>>>> GetLLMAuditLogs([FromQuery] LLMAuditQueryDto queryDto)
+        public async Task<ActionResult<ApiResponse<PageList<LLMAuditLogListDto>>>> GetLLMAuditLogs([FromQuery] LLMAuditQueryDto queryDto)
         {
             try
             {
@@ -55,17 +55,22 @@ namespace CodeSpirit.Web.Controllers
                 var (logs, total) = await _auditService.SearchAsync(queryDto);
                 
                 var logList = logs.ToList();
-                var pageList = new PageList<Audit.Models.LLM.LLMAuditLog>(logList, (int)total);
+                
+                // 转换为列表DTO（优化显示，截断长文本）
+                // 根据字段类型设置不同的截断长度：提示词和响应较长，错误信息较短
+                var listDtos = logList.Select(log => LLMAuditLogListDto.FromAuditLog(log, maxTextLength: 5000)).ToList();
+                
+                var pageList = new PageList<LLMAuditLogListDto>(listDtos, (int)total);
 
                 _logger.LogInformation("租户 {TenantId} 用户 {UserId} 获取LLM审计日志列表成功，返回 {Count} 条记录",
-                    _currentUser.TenantId, _currentUser.Id, logList.Count);
+                    _currentUser.TenantId, _currentUser.Id, listDtos.Count);
 
                 return SuccessResponse(pageList);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "获取LLM审计日志列表失败");
-                return BadResponse<PageList<Audit.Models.LLM.LLMAuditLog>>("获取LLM审计日志列表失败: " + ex.Message);
+                return BadResponse<PageList<LLMAuditLogListDto>>("获取LLM审计日志列表失败: " + ex.Message);
             }
         }
         

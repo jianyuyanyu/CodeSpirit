@@ -153,6 +153,17 @@ public class LLMGreptimeDbStorageService : ILLMAuditStorageService
             var tableName = GetTableName();
             var tenantId = auditLog.TenantId ?? GetCurrentTenantId();
             
+            // 确保字符串不为null
+            auditLog.SystemPrompt ??= string.Empty;
+            auditLog.UserPrompt ??= string.Empty;
+            auditLog.LLMResponse ??= string.Empty;
+            auditLog.ProcessedData ??= string.Empty;
+            auditLog.ErrorMessage ??= string.Empty;
+            
+            _logger.LogInformation("准备存储LLM审计日志到GreptimeDB: {Id}, 响应长度: {ResponseLength}, 提示词长度: {PromptLength}, 成本: {Cost}", 
+                auditLog.Id, auditLog.LLMResponse.Length, auditLog.UserPrompt.Length, auditLog.CostUsd);
+            
+            
             // 序列化元数据为JSON
             var metadataJson = auditLog.Metadata?.Count > 0 
                 ? JsonConvert.SerializeObject(auditLog.Metadata) 
@@ -204,11 +215,12 @@ public class LLMGreptimeDbStorageService : ILLMAuditStorageService
             
             if (success)
             {
-                _logger.LogDebug("LLM审计日志已成功存储到GreptimeDB: {Id}", auditLog.Id);
+                _logger.LogInformation("✓ LLM审计日志已成功存储到GreptimeDB: {Id}, 响应长度: {ResponseLength}", 
+                    auditLog.Id, auditLog.LLMResponse.Length);
             }
             else
             {
-                _logger.LogError("存储LLM审计日志到GreptimeDB失败: {Id}", auditLog.Id);
+                _logger.LogError("✗ 存储LLM审计日志到GreptimeDB失败: {Id}", auditLog.Id);
             }
             
             return success;
@@ -246,6 +258,13 @@ public class LLMGreptimeDbStorageService : ILLMAuditStorageService
                     {
                         valuesBuilder.Append(",");
                     }
+                    
+                    // 确保字符串不为null
+                    log.SystemPrompt ??= string.Empty;
+                    log.UserPrompt ??= string.Empty;
+                    log.LLMResponse ??= string.Empty;
+                    log.ProcessedData ??= string.Empty;
+                    log.ErrorMessage ??= string.Empty;
                     
                     var tenantId = log.TenantId ?? GetCurrentTenantId();
                     var metadataJson = log.Metadata?.Count > 0 
@@ -684,6 +703,16 @@ public class LLMGreptimeDbStorageService : ILLMAuditStorageService
     /// </summary>
     private LLMAuditLog MapToLLMAuditLog(Dictionary<string, object> row)
     {
+        // 调试：记录所有字段的原始数据
+        var llmResponseRaw = row.GetValueOrDefault("llm_response");
+        var llmResponseStr = llmResponseRaw?.ToString() ?? "";
+        var userPromptRaw = row.GetValueOrDefault("user_prompt");
+        var userPromptStr = userPromptRaw?.ToString() ?? "";
+        var systemPromptRaw = row.GetValueOrDefault("system_prompt");
+        var systemPromptStr = systemPromptRaw?.ToString() ?? "";
+        
+       
+        
         var auditLog = new LLMAuditLog
         {
             Id = row.GetValueOrDefault("id")?.ToString() ?? "",
@@ -694,9 +723,9 @@ public class LLMGreptimeDbStorageService : ILLMAuditStorageService
             ModelName = row.GetValueOrDefault("model_name")?.ToString() ?? "",
             InteractionType = row.GetValueOrDefault("interaction_type")?.ToString() ?? "",
             BusinessScenario = row.GetValueOrDefault("business_scenario")?.ToString() ?? "",
-            SystemPrompt = row.GetValueOrDefault("system_prompt")?.ToString() ?? "",
-            UserPrompt = row.GetValueOrDefault("user_prompt")?.ToString() ?? "",
-            LLMResponse = row.GetValueOrDefault("llm_response")?.ToString() ?? "",
+            SystemPrompt = systemPromptStr,
+            UserPrompt = userPromptStr,
+            LLMResponse = llmResponseStr,
             ProcessedData = row.GetValueOrDefault("processed_data")?.ToString() ?? "",
             ErrorMessage = row.GetValueOrDefault("error_message")?.ToString() ?? "",
             BatchId = row.GetValueOrDefault("batch_id")?.ToString(),
@@ -705,10 +734,26 @@ public class LLMGreptimeDbStorageService : ILLMAuditStorageService
             BusinessEntityType = row.GetValueOrDefault("business_entity_type")?.ToString()
         };
         
-        // 解析时间
-        if (DateTime.TryParse(row.GetValueOrDefault("operation_time")?.ToString(), out var operationTime))
+        // 解析时间 - GreptimeDB可能返回long（毫秒时间戳）或字符串
+        var operationTimeRaw = row.GetValueOrDefault("operation_time");
+        if (operationTimeRaw != null)
         {
-            auditLog.OperationTime = operationTime;
+            if (operationTimeRaw is long timestamp)
+            {
+                // Unix毫秒时间戳
+                auditLog.OperationTime = DateTimeOffset.FromUnixTimeMilliseconds(timestamp).UtcDateTime;
+                _logger.LogDebug("时间字段是long类型(毫秒时间戳): {Timestamp}, 解析为: {ParsedTime}", timestamp, auditLog.OperationTime);
+            }
+            else if (DateTime.TryParse(operationTimeRaw.ToString(), out var parsedTime))
+            {
+                auditLog.OperationTime = parsedTime;
+                _logger.LogDebug("时间字段解析为DateTime: {ParsedTime}", parsedTime);
+            }
+            else
+            {
+                _logger.LogWarning("时间字段解析失败！原始值: {RawValue}, 类型: {Type}", 
+                    operationTimeRaw, operationTimeRaw.GetType().Name);
+            }
         }
         
         // 解析数值字段

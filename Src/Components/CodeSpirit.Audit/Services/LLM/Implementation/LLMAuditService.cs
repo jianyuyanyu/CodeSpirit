@@ -274,12 +274,19 @@ public class LLMAuditService : ILLMAuditService
             return;
         }
         
+        // 确保字符串不为null
+        auditLog.SystemPrompt ??= string.Empty;
+        auditLog.UserPrompt ??= string.Empty;
+        auditLog.LLMResponse ??= string.Empty;
+        auditLog.ErrorMessage ??= string.Empty;
+        
         // 对提示词和响应中的敏感信息进行脱敏
         foreach (var pattern in _options.SensitiveData.SensitiveFieldPatterns)
         {
             auditLog.SystemPrompt = MaskSensitiveData(auditLog.SystemPrompt, pattern);
             auditLog.UserPrompt = MaskSensitiveData(auditLog.UserPrompt, pattern);
             auditLog.LLMResponse = MaskSensitiveData(auditLog.LLMResponse, pattern);
+            auditLog.ErrorMessage = MaskSensitiveData(auditLog.ErrorMessage, pattern);
         }
     }
     
@@ -303,6 +310,12 @@ public class LLMAuditService : ILLMAuditService
     /// </summary>
     private void TruncateContent(LLMAuditLog auditLog)
     {
+        // 确保字符串不为null
+        auditLog.SystemPrompt ??= string.Empty;
+        auditLog.UserPrompt ??= string.Empty;
+        auditLog.LLMResponse ??= string.Empty;
+        auditLog.ProcessedData ??= string.Empty;
+        
         if (!_options.LogPrompts)
         {
             auditLog.SystemPrompt = string.Empty;
@@ -342,6 +355,8 @@ public class LLMAuditService : ILLMAuditService
     {
         if (!_options.CostCalculation.Enabled || auditLog.TokenUsage == null)
         {
+            _logger.LogWarning(">>> 跳过成本计算：Enabled={Enabled}, TokenUsage={HasValue}", 
+                _options.CostCalculation.Enabled, auditLog.TokenUsage != null);
             return;
         }
         
@@ -350,6 +365,13 @@ public class LLMAuditService : ILLMAuditService
             var inputCost = (auditLog.TokenUsage.InputTokens / 1000m) * pricing.InputPer1K;
             var outputCost = (auditLog.TokenUsage.OutputTokens / 1000m) * pricing.OutputPer1K;
             auditLog.CostUsd = inputCost + outputCost;
+            
+            _logger.LogWarning(">>> 成本计算成功: 输入成本={InputCost:F6}, 输出成本={OutputCost:F6}, 总成本={TotalCost:F6}", 
+                inputCost, outputCost, auditLog.CostUsd);
+        }
+        else
+        {
+            _logger.LogWarning(">>> 未找到模型 '{ModelName}' 的价格配置！", auditLog.ModelName);
         }
     }
 }

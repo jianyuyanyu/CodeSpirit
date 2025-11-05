@@ -253,7 +253,8 @@ namespace CodeSpirit.Navigation
                     // For action: moduleName_controllerName_actionName
                     controllerType = methodInfo.DeclaringType;
                     var controllerName = controllerType.Name.Replace("Controller", "", StringComparison.OrdinalIgnoreCase);
-                    var actionName = methodInfo.Name;
+                    // 移除Async后缀以与ASP.NET Core运行时行为保持一致
+                    var actionName = methodInfo.Name.RemovePostFix("Async");
                     node.Permission = $"{moduleName.ToCamelCase()}_{controllerName.ToCamelCase()}_{actionName.ToCamelCase()}";
                 }
             }

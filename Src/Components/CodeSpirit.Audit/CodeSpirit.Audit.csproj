@@ -10,6 +10,7 @@
 		<ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
 		<ProjectReference Include="..\..\CodeSpirit.ServiceDefaults\CodeSpirit.ServiceDefaults.csproj" />
 		<ProjectReference Include="..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
+		<ProjectReference Include="..\CodeSpirit.LLM\CodeSpirit.LLM.csproj" />
 		<ProjectReference Include="..\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
 	</ItemGroup>
 

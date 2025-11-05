@@ -9,6 +9,13 @@ namespace CodeSpirit.AiFormFill.Models;
 public class AiFormFillLLMSettings
 {
     /// <summary>
+    /// 设置键名
+    /// </summary>
+    [DisplayName("设置键名")]
+    [Description("用于标识此LLM设置的键名")]
+    public string? SettingsKey { get; set; }
+
+    /// <summary>
     /// API基础地址
     /// </summary>
     [Required]

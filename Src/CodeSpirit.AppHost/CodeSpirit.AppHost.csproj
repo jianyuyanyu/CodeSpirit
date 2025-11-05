@@ -18,6 +18,7 @@
 		<ProjectReference Include="..\ApiServices\CodeSpirit.ConfigCenter\CodeSpirit.ConfigCenter.csproj" />
 		<ProjectReference Include="..\ApiServices\CodeSpirit.IdentityApi\CodeSpirit.IdentityApi.csproj" />
 		<ProjectReference Include="..\ApiServices\CodeSpirit.MessagingApi\CodeSpirit.MessagingApi.csproj" />
+		<ProjectReference Include="..\ApiServices\CodeSpirit.PathfinderApi\CodeSpirit.PathfinderApi.csproj" />
 		<ProjectReference Include="..\ApiServices\CodeSpirit.SurveyApi\CodeSpirit.SurveyApi.csproj" />
 		<ProjectReference Include="..\CodeSpirit.Web\CodeSpirit.Web.csproj" />
 	</ItemGroup>

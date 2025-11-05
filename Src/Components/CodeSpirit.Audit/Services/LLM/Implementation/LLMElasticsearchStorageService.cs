@@ -87,16 +87,16 @@ public class LLMElasticsearchStorageService : ILLMAuditStorageService
                         .Text(f => f.ProcessedData)
                         .LongNumber(f => f.ProcessingTimeMs)
                         .Boolean(f => f.IsSuccess)
-                        .Text(f => f.ErrorMessage)
+                        .Text(f => f.ErrorMessage!)
                         .IntegerNumber(f => f.RetryCount)
                         .Boolean(f => f.WasJsonRepaired)
-                        .IntegerNumber(f => f.QualityScore)
-                        .Keyword(f => f.BatchId)
-                        .IntegerNumber(f => f.BatchSequence)
-                        .Keyword(f => f.ParentAuditId)
-                        .Keyword(f => f.BusinessEntityId)
-                        .Keyword(f => f.BusinessEntityType)
-                        .IntegerNumber(f => f.DataCount)
+                        .IntegerNumber(f => f.QualityScore!.Value)
+                        .Keyword(f => f.BatchId!)
+                        .IntegerNumber(f => f.BatchSequence!.Value)
+                        .Keyword(f => f.ParentAuditId!)
+                        .Keyword(f => f.BusinessEntityId!)
+                        .Keyword(f => f.BusinessEntityType!)
+                        .IntegerNumber(f => f.DataCount!.Value)
                     )
                 )
             );
@@ -124,23 +124,34 @@ public class LLMElasticsearchStorageService : ILLMAuditStorageService
     {
         try
         {
+            // 确保字符串不为null
+            auditLog.SystemPrompt ??= string.Empty;
+            auditLog.UserPrompt ??= string.Empty;
+            auditLog.LLMResponse ??= string.Empty;
+            auditLog.ProcessedData ??= string.Empty;
+            auditLog.ErrorMessage ??= string.Empty;
+            
+            _logger.LogDebug("准备存储LLM审计日志到Elasticsearch: {Id}, 响应长度: {ResponseLength}", 
+                auditLog.Id, auditLog.LLMResponse.Length);
+            
             var indexName = GetIndexName();
             var indexResponse = await _client.IndexAsync(auditLog, idx => idx.Index(indexName));
             
             if (indexResponse.IsValidResponse)
             {
-                _logger.LogDebug("LLM审计日志已成功存储: {Id}", auditLog.Id);
+                _logger.LogDebug("LLM审计日志已成功存储到Elasticsearch: {Id}, 响应长度: {ResponseLength}", 
+                    auditLog.Id, auditLog.LLMResponse.Length);
                 return true;
             }
             else
             {
-                _logger.LogError("存储LLM审计日志失败: {Error}", indexResponse.DebugInformation);
+                _logger.LogError("存储LLM审计日志到Elasticsearch失败: {Error}", indexResponse.DebugInformation);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "存储LLM审计日志时发生异常");
+            _logger.LogError(ex, "存储LLM审计日志到Elasticsearch时发生异常");
             return false;
         }
     }
@@ -156,6 +167,16 @@ public class LLMElasticsearchStorageService : ILLMAuditStorageService
                 return true;
             }
             
+            // 确保字符串不为null
+            foreach (var log in logsList)
+            {
+                log.SystemPrompt ??= string.Empty;
+                log.UserPrompt ??= string.Empty;
+                log.LLMResponse ??= string.Empty;
+                log.ProcessedData ??= string.Empty;
+                log.ErrorMessage ??= string.Empty;
+            }
+            
             var indexName = GetIndexName();
             var bulkResponse = await _client.BulkAsync(b => b
                 .Index(indexName)
@@ -164,18 +185,18 @@ public class LLMElasticsearchStorageService : ILLMAuditStorageService
             
             if (bulkResponse.IsValidResponse)
             {
-                _logger.LogInformation("批量存储LLM审计日志成功: {Count}条", logsList.Count);
+                _logger.LogInformation("批量存储LLM审计日志到Elasticsearch成功: {Count}条", logsList.Count);
                 return true;
             }
             else
             {
-                _logger.LogError("批量存储LLM审计日志失败: {Error}", bulkResponse.DebugInformation);
+                _logger.LogError("批量存储LLM审计日志到Elasticsearch失败: {Error}", bulkResponse.DebugInformation);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "批量存储LLM审计日志时发生异常");
+            _logger.LogError(ex, "批量存储LLM审计日志到Elasticsearch时发生异常");
             return false;
         }
     }

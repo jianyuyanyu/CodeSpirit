@@ -15,12 +15,14 @@
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.2" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
+        <ProjectReference Include="..\CodeSpirit.Audit\CodeSpirit.Audit.csproj" />
         <ProjectReference Include="..\CodeSpirit.LLM\CodeSpirit.LLM.csproj" />
+        <ProjectReference Include="..\CodeSpirit.MultiTenant\CodeSpirit.MultiTenant.csproj" />
     </ItemGroup>
 
 </Project>

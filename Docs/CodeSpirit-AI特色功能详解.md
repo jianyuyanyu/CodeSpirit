@@ -1,4 +1,4 @@
-# CodeSpirit AI特色功能详解
+# CodeSpirit 之 AI赋能
 
 ## 概述
 
@@ -18,9 +18,14 @@ CodeSpirit 不是简单地"添加AI功能",而是从架构设计之初就将AI�
 ### 1.2 设计原则
 
 1. **零学习成本**: 开发者无需了解AI模型细节,只需标记特性
+
 2. **渐进式增强**: 可以从传统功能逐步升级为AI增强功能
+
 3. **完全可控**: AI生成的内容可审核、可修改、可降级
+
 4. **性能优先**: 智能缓存机制,避免重复调用AI模型
+
+   ![image-20251104171119936](../Res/image-20251104171119936.png)
 
 ## 二、AI核心组件详解 🔧
 
@@ -54,761 +59,172 @@ CodeSpirit 不是简单地"添加AI功能",而是从架构设计之初就将AI�
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### 统一接口设计
+#### 核心特性
 
-```csharp
-/// <summary>
-/// LLM客户端统一接口
-/// </summary>
-public interface ILLMClient
-{
-    /// <summary>
-    /// 生成文本内容(非流式)
-    /// </summary>
-    Task<string> GenerateContentAsync(
-        string prompt, 
-        int? maxTokens = null,
-        bool disableThinking = false,
-        string? responseFormatType = null,
-        double? temperature = null,
-        double? topP = null);
+**统一接口设计**:
+- 提供统一的LLM客户端接口,屏蔽不同AI提供商的API差异
+- 支持文本生成、流式响应、结构化任务处理等核心功能
 
-    /// <summary>
-    /// 生成文本内容(流式)
-    /// </summary>
-    IAsyncEnumerable<string> GenerateContentStreamAsync(
-        string prompt, 
-        int? maxTokens = null);
+**多模型支持策略**:
+1. **配置驱动** - 通过配置文件灵活切换不同的AI提供商和模型
+2. **运行时切换** - 支持在运行时根据业务需要使用不同的LLM配置
+3. **统一管理** - 在Aspire应用宿主中集中管理所有服务的LLM配置
 
-    /// <summary>
-    /// 获取模型信息
-    /// </summary>
-    Task<LLMModelInfo> GetModelInfoAsync();
-}
-```
-
-#### 多模型支持策略
-
-**1. 配置驱动的模型选择**
-
-```json
-{
-  "LLM": {
-    "ApiBaseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "ApiKey": "your-api-key",
-    "ModelName": "qwen-plus",
-    "TimeoutSeconds": 120,
-    "MaxTokens": 2048,
-    "UseProxy": false,
-    "ProxyAddress": null
-  }
-}
-```
-
-**2. 运行时动态切换**
-
-```csharp
-// 使用全局LLM配置
-var globalClient = await _llmFactory.CreateClientAsync();
-var result1 = await globalClient.GenerateContentAsync(prompt);
-
-// 使用独立LLM配置
-var customClient = await _llmFactory.CreateClientAsync("CustomLLMSettings");
-var result2 = await customClient.GenerateContentAsync(prompt);
-```
-
-**3. Aspire统一配置管理**
-
-```csharp
-// 在Aspire AppHost中统一配置
-var llmApiKey = builder.AddParameter("llm-ApiKey", secret: true);
-var llmModelName = builder.AddParameter("llm-ModelName", "qwen-plus");
-
-var examApi = builder.AddProject<Projects.CodeSpirit_ExamApi>("exam-api")
-    .WithEnvironment("LLM__ApiKey", llmApiKey)
-    .WithEnvironment("LLM__ModelName", llmModelName);
-```
-
-#### 核心优势
-
-1. **统一抽象**: 业务代码不依赖具体的AI提供商
-2. **灵活切换**: 配置文件即可切换不同的LLM服务
-3. **性能优化**: 
-   - 连接池管理
-   - 智能重试机制
-   - 超时控制
-4. **安全性**: 
-   - API密钥安全存储
-   - 请求限流
-   - 敏感信息过滤
+**核心优势**:
+- ✅ **统一抽象**: 业务代码不依赖具体的AI提供商
+- ✅ **灵活切换**: 配置文件即可切换不同的LLM服务
+- ✅ **性能优化**: 连接池管理、智能重试机制、超时控制
+- ✅ **安全性**: API密钥安全存储、请求限流、敏感信息过滤
 
 ### 2.2 CodeSpirit.AiFormFill - 革命性的AI表单填充 ⭐
 
 #### 创新点分析
 
 **传统AI表单填充方案的痛点**:
-1. ❌ 需要手动编写API端点
-2. ❌ 需要手动实现前端调用逻辑
-3. ❌ 需要手动处理提示词构建
-4. ❌ 需要手动解析AI响应
-5. ❌ 前后端需要大量协调工作
+- ❌ 需要手动编写API端点和前端调用逻辑
+- ❌ 需要手动处理提示词构建和AI响应解析
+- ❌ 前后端需要大量协调工作
 
 **CodeSpirit.AiFormFill的解决方案**:
-1. ✅ **零配置自动端点生成** - 业界首创!
-2. ✅ **自动UI增强** - 前端自动显示AI按钮
-3. ✅ **智能提示词构建** - 自动分析DTO结构
-4. ✅ **自动响应解析** - 类型安全的数据绑定
-5. ✅ **完全自动化** - 开发者只需一个特性标记
 
+- ✅ **零配置自动端点生成** - 业界首创!
+- ✅ **自动UI增强** - 前端自动显示AI按钮
+- ✅ **智能提示词构建** - 自动分析DTO结构
+  - 支持子对象结构自动构建
+  - 时间、日期字段自动限定  ![image-20251105093047879](../Res/image-20251105093047879.png)
 
+- ✅ **自动响应解析** - 类型安全的数据绑定
+- ✅ **完全自动化** - 开发者只需一个特性标记
 
-#### 技术实现深度剖析
+![image-20251104173140379](../Res/image-20251104173140379.png)
+
+#### 核心工作原理
 
 **1. 自动端点扫描与注册**
-
-```csharp
-/// <summary>
-/// 启动时自动扫描所有标记了[AiFormFill]的DTO
-/// </summary>
-public class AiFormFillEndpointScanner
-{
-    public void ScanAndRegisterEndpoints(IServiceProvider serviceProvider)
-    {
-        // 1. 扫描所有程序集
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        
-        // 2. 查找标记了[AiFormFill]的类型
-        foreach (var assembly in assemblies)
-        {
-            var dtoTypes = assembly.GetTypes()
-                .Where(t => t.GetCustomAttribute<AiFormFillAttribute>() != null);
-            
-            foreach (var dtoType in dtoTypes)
-            {
-                // 3. 推断API路由
-                var route = InferApiRoute(dtoType);
-                
-                // 4. 注册端点映射
-                RegisterEndpoint(dtoType, route);
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 智能路由推断
-    /// 示例: CreateQuestionDto → /api/exam/questions/ai-fill
-    /// </summary>
-    private string InferApiRoute(Type dtoType)
-    {
-        // 从DTO命名空间推断服务名称
-        var namespaceParts = dtoType.Namespace.Split('.');
-        var serviceName = namespaceParts
-            .FirstOrDefault(p => p.EndsWith("Api"))
-            ?.Replace("CodeSpirit.", "")
-            ?.Replace("Api", "")
-            ?.ToLower();
-        
-        // 从DTO类名推断控制器名称
-        var controllerName = dtoType.Name
-            .Replace("Dto", "")
-            .Replace("Request", "")
-            .Replace("Create", "")
-            .Replace("Update", "")
-            .ToPlural()  // 转换为复数
-            .ToLower();
-        
-        return $"/api/{serviceName}/{controllerName}/ai-fill";
-    }
-}
-```
+- 启动时扫描所有标记了 `[AiFormFill]` 特性的DTO
+- 智能推断API路由 (如: `CreateQuestionDto` → `/api/exam/questions/ai-fill`)
+- 自动注册端点映射,无需手动编写控制器
 
 **2. 中间件拦截与处理**
+- 拦截所有 `/ai-fill` 结尾的POST请求
+- 根据路由查找对应的DTO类型
+- 调用AI填充服务并返回结果
 
-```csharp
-/// <summary>
-/// AI表单填充中间件 - 拦截并自动处理AI填充请求
-/// </summary>
-public class AiFormFillMiddleware
-{
-    private readonly RequestDelegate _next;
-    private readonly IAiFormFillEndpointRegistry _endpointRegistry;
+**3. 智能提示词构建**
+- 自动分析DTO结构和验证规则
+- 提取字段描述和约束条件
+- 构建结构化的提示词模板
+- 支持自定义提示词模板
 
-    public async Task InvokeAsync(HttpContext context)
-    {
-        var path = context.Request.Path.Value;
-        
-        // 1. 检查是否是AI填充端点
-        if (path?.EndsWith("/ai-fill") == true && 
-            context.Request.Method == "POST")
-        {
-            // 2. 查找对应的DTO类型
-            var dtoType = _endpointRegistry.GetDtoType(path);
-            if (dtoType != null)
-            {
-                // 3. 解析请求体
-                var requestBody = await ReadRequestBodyAsync(context.Request);
-                
-                // 4. 调用AI填充服务
-                var result = await FillFormAsync(dtoType, requestBody);
-                
-                // 5. 返回填充后的数据
-                await WriteResponseAsync(context.Response, result);
-                return;
-            }
-        }
-        
-        await _next(context);
-    }
-    
-    private async Task<object> FillFormAsync(Type dtoType, dynamic requestData)
-    {
-        // 使用反射调用泛型方法
-        var method = typeof(IAiFormFillService)
-            .GetMethod("FillFormAsync")
-            .MakeGenericMethod(dtoType);
-        
-        var fillService = _serviceProvider.GetRequiredService<IAiFormFillService>();
-        var result = await (Task<object>)method.Invoke(
-            fillService, 
-            new object[] { requestData.triggerValue, requestData.existingData });
-        
-        return result;
-    }
-}
-```
+**4. 自动响应解析**
+- 智能提取JSON内容(支持Markdown代码块)
+- 类型安全的字段映射
+- 自动类型转换(枚举、日期、基础类型)
+- 支持增量更新现有数据
 
-**3. 智能提示词构建引擎**
+**5. 智能缓存机制**
+- 基于触发值的自动缓存
+- 可配置缓存过期时间
+- 提升响应速度,降低AI调用成本
 
-```csharp
-/// <summary>
-/// 智能提示词构建器
-/// </summary>
-public class AiFormPromptBuilder
-{
-    /// <summary>
-    /// 自动构建提示词
-    /// </summary>
-    public string BuildPrompt<T>(string triggerValue, string customTemplate = null)
-    {
-        if (!string.IsNullOrEmpty(customTemplate))
-        {
-            return customTemplate.Replace("{triggerValue}", triggerValue);
-        }
-        
-        var sb = new StringBuilder();
-        sb.AppendLine($"根据以下信息生成JSON格式的数据:");
-        sb.AppendLine($"- 触发值: \"{triggerValue}\"");
-        sb.AppendLine();
-        sb.AppendLine("字段要求:");
-        
-        var properties = typeof(T).GetProperties();
-        var index = 1;
-        
-        foreach (var prop in properties)
-        {
-            // 跳过忽略的字段
-            if (ShouldIgnoreProperty(prop)) continue;
-            
-            // 获取字段描述
-            var description = GetPropertyDescription(prop);
-            
-            // 获取验证规则
-            var validationRules = GetValidationRules(prop);
-            
-            sb.AppendLine($"{index}. {prop.Name} ({description}): {validationRules}");
-            index++;
-        }
-        
-        sb.AppendLine();
-        sb.AppendLine("请返回JSON格式数据,确保:");
-        sb.AppendLine("1. 字段名称使用驼峰命名");
-        sb.AppendLine("2. 所有必填字段都有值");
-        sb.AppendLine("3. 数据符合验证规则");
-        sb.AppendLine("4. 内容与触发值相关");
-        
-        return sb.ToString();
-    }
-    
-    /// <summary>
-    /// 自动提取验证规则
-    /// </summary>
-    private string GetValidationRules(PropertyInfo property)
-    {
-        var rules = new List<string>();
-        
-        // Required验证
-        if (property.GetCustomAttribute<RequiredAttribute>() != null)
-        {
-            rules.Add("必填");
-        }
-        
-        // StringLength验证
-        var stringLengthAttr = property.GetCustomAttribute<StringLengthAttribute>();
-        if (stringLengthAttr != null)
-        {
-            rules.Add($"最大长度{stringLengthAttr.MaximumLength}");
-            if (stringLengthAttr.MinimumLength > 0)
-            {
-                rules.Add($"最小长度{stringLengthAttr.MinimumLength}");
-            }
-        }
-        
-        // Range验证
-        var rangeAttr = property.GetCustomAttribute<RangeAttribute>();
-        if (rangeAttr != null)
-        {
-            rules.Add($"范围: {rangeAttr.Minimum} - {rangeAttr.Maximum}");
-        }
-        
-        // 枚举类型
-        if (property.PropertyType.IsEnum)
-        {
-            var enumValues = Enum.GetNames(property.PropertyType);
-            rules.Add($"枚举值: {string.Join(", ", enumValues)}");
-        }
-        
-        return rules.Any() ? string.Join(", ", rules) : "无限制";
-    }
-}
-```
-
-**4. 自动响应解析器**
-
-```csharp
-/// <summary>
-/// AI响应自动解析器
-/// </summary>
-public class AiFormResponseParser
-{
-    /// <summary>
-    /// 解析AI响应并映射到DTO
-    /// </summary>
-    public async Task<T> ParseResponseAsync<T>(string llmResponse, T existingData = null) 
-        where T : class, new()
-    {
-        try
-        {
-            // 1. 提取JSON部分
-            var jsonContent = ExtractJsonContent(llmResponse);
-            
-            // 2. 反序列化为JObject
-            var jObject = JObject.Parse(jsonContent);
-            
-            // 3. 创建或使用现有对象
-            var result = existingData ?? new T();
-            
-            // 4. 智能映射字段
-            var properties = typeof(T).GetProperties();
-            foreach (var prop in properties)
-            {
-                if (!prop.CanWrite) continue;
-                
-                // 尝试多种命名格式
-                var value = TryGetValue(jObject, prop.Name);
-                if (value != null)
-                {
-                    // 类型转换
-                    var convertedValue = ConvertValue(value, prop.PropertyType);
-                    prop.SetValue(result, convertedValue);
-                }
-            }
-            
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "解析AI响应失败: {Response}", llmResponse);
-            throw new AiFormFillException("AI响应解析失败", ex);
-        }
-    }
-    
-    /// <summary>
-    /// 提取JSON内容(支持Markdown代码块等格式)
-    /// </summary>
-    private string ExtractJsonContent(string response)
-    {
-        // 移除Markdown代码块标记
-        response = Regex.Replace(response, @"```json\s*", "");
-        response = Regex.Replace(response, @"```\s*$", "");
-        
-        // 查找JSON对象
-        var match = Regex.Match(response, @"\{[\s\S]*\}");
-        if (match.Success)
-        {
-            return match.Value;
-        }
-        
-        // 查找JSON数组
-        match = Regex.Match(response, @"\[[\s\S]*\]");
-        if (match.Success)
-        {
-            return match.Value;
-        }
-        
-        return response.Trim();
-    }
-    
-    /// <summary>
-    /// 智能类型转换
-    /// </summary>
-    private object ConvertValue(JToken value, Type targetType)
-    {
-        // 处理Nullable类型
-        var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
-        
-        if (underlyingType.IsEnum)
-        {
-            // 枚举类型
-            return Enum.Parse(underlyingType, value.ToString(), ignoreCase: true);
-        }
-        else if (underlyingType == typeof(DateTime))
-        {
-            // 日期类型
-            return value.ToObject<DateTime>();
-        }
-        else if (underlyingType == typeof(DateTimeOffset))
-        {
-            return value.ToObject<DateTimeOffset>();
-        }
-        else
-        {
-            // 基础类型
-            return Convert.ChangeType(value.ToObject<object>(), underlyingType);
-        }
-    }
-}
-```
-
-#### 缓存机制
-
-```csharp
-/// <summary>
-/// 智能缓存管理
-/// </summary>
-public class AiFormFillCacheManager
-{
-    private readonly IMemoryCache _cache;
-    
-    public async Task<T> GetOrCreateAsync<T>(
-        string cacheKey, 
-        Func<Task<T>> factory,
-        TimeSpan? expiration = null) where T : class
-    {
-        if (_cache.TryGetValue(cacheKey, out T cachedValue))
-        {
-            return cachedValue;
-        }
-        
-        var value = await factory();
-        
-        var cacheOptions = new MemoryCacheEntryOptions
-        {
-            AbsoluteExpirationRelativeToNow = expiration ?? TimeSpan.FromMinutes(30)
-        };
-        
-        _cache.Set(cacheKey, value, cacheOptions);
-        
-        return value;
-    }
-}
-```
+![image-20251104181002371](../Res/image-20251104181002371.png)
 
 #### 应用场景实例
 
 **场景1: 考试题目智能生成**
-
-```csharp
-[AiFormFill(
-    TriggerField = "Topic",
-    MaxTokens = 1500,
-    EnableCache = true,
-    CacheExpirationMinutes = 60
-)]
-public class CreateQuestionDto
-{
-    [DisplayName("主题")]
-    [Description("题目的主要主题或知识点")]
-    public string Topic { get; set; }
-    
-    [DisplayName("题目内容")]
-    [Required(ErrorMessage = "题目内容不能为空")]
-    [StringLength(500, ErrorMessage = "题目内容不能超过500字")]
-    public string Content { get; set; }
-    
-    [DisplayName("选项A")]
-    [Required]
-    [StringLength(100)]
-    public string OptionA { get; set; }
-    
-    [DisplayName("选项B")]
-    [Required]
-    [StringLength(100)]
-    public string OptionB { get; set; }
-    
-    [DisplayName("选项C")]
-    [Required]
-    [StringLength(100)]
-    public string OptionC { get; set; }
-    
-    [DisplayName("选项D")]
-    [Required]
-    [StringLength(100)]
-    public string OptionD { get; set; }
-    
-    [DisplayName("正确答案")]
-    [Required]
-    public CorrectAnswer CorrectAnswer { get; set; }
-    
-    [DisplayName("难度")]
-    public QuestionDifficulty Difficulty { get; set; }
-}
-
-// 使用效果:
-// 1. 用户在"主题"字段输入"数据库索引"
-// 2. 点击AI填充按钮
-// 3. 系统自动:
-//    - 发送请求到 /api/exam/questions/ai-fill
-//    - 构建智能提示词
-//    - 调用LLM生成内容
-//    - 解析响应并填充表单
-// 4. 用户查看并确认/修改生成的内容
-```
+- 用户在"主题"字段输入关键词(如"数据库索引")
+- 点击AI填充按钮,系统自动生成题目内容、选项、正确答案等
+- 用户可预览、修改后提交
 
 **场景2: 问卷智能生成**
+- 支持自定义提示词模板
+- 根据问卷描述自动生成标题、介绍、问题列表
+- 支持使用独立的LLM配置
 
-```csharp
-[AiFormFill(
-    TriggerField = "Description",
-    CustomPromptTemplate = @"
-        根据以下问卷描述,生成完整的问卷配置:
-        描述: {triggerValue}
-        
-        请生成:
-        1. 问卷标题 (title)
-        2. 问卷介绍 (introduction)
-        3. 5-10个问题列表 (questions),每个问题包含:
-           - 问题文本 (questionText)
-           - 问题类型 (questionType): SingleChoice, MultipleChoice, Text等
-           - 选项列表 (options): 如果是选择题
-        
-        返回JSON格式数据。
-    ",
-    MaxTokens = 2000,
-    UseIndependentLLM = true,
-    LLMSettingsKey = "SurveyLLM"
-)]
-public class CreateSurveyDto
-{
-    [DisplayName("问卷描述")]
-    [Description("简要描述问卷的目的和内容")]
-    public string Description { get; set; }
-    
-    [DisplayName("问卷标题")]
-    [Required]
-    [StringLength(100)]
-    public string Title { get; set; }
-    
-    [DisplayName("问卷介绍")]
-    [StringLength(500)]
-    public string Introduction { get; set; }
-    
-    [DisplayName("问题列表")]
-    public List<SurveyQuestionDto> Questions { get; set; }
-}
-```
-
-**场景3: 用户简历信息填充**
-
-```csharp
-[AiFormFill(
-    TriggerField = "Name",
-    IgnoreFields = new[] { "Id", "CreatedAt", "UpdatedAt" }
-)]
-public class CreateResumeDto
-{
-    [DisplayName("姓名")]
-    public string Name { get; set; }
-    
-    [DisplayName("职位")]
-    [Description("期望的职位或当前职位")]
-    public string Position { get; set; }
-    
-    [DisplayName("工作经验")]
-    [Description("工作年限或主要工作经历")]
-    public string WorkExperience { get; set; }
-    
-    [DisplayName("教育背景")]
-    public string Education { get; set; }
-    
-    [DisplayName("技能特长")]
-    public List<string> Skills { get; set; }
-}
-```
+**场景3: 内容智能填充**
+- 支持简历、文章、商品描述等多种场景
+- 可配置忽略字段(如Id、时间戳)
+- 支持复杂类型的智能解析
 
 ### 2.3 CodeSpirit.AiImportWizard - 革命性的AI导入向导 ⭐
 
 #### 创新点分析
 
 **传统题目导入方案的痛点**:
-1. ❌ 需要严格按照固定格式准备题目文本
-2. ❌ 格式错误导致导入失败，无法预览和修正
-3. ❌ 无法智能识别和修正题目中的错误
-4. ❌ 导入过程不透明，失败后难以定位问题
-5. ❌ 无法批量处理和智能审核
+- ❌ 需要严格按照固定格式准备题目文本
+- ❌ 格式错误导致导入失败,无法预览和修正
+- ❌ 导入过程不透明,失败后难以定位问题
 
 **CodeSpirit.AiImportWizard的解决方案**:
-1. ✅ **智能文本解析** - 自动识别多种题目格式
-2. ✅ **AI智能审核** - 自动检测和修正题目错误
-3. ✅ **可视化预览** - 导入前可预览和编辑所有题目
-4. ✅ **分步式向导** - 清晰的4步导入流程
-5. ✅ **批量智能处理** - 支持大批量题目的智能处理
+- ✅ **智能文本解析** - 自动识别多种题目格式
+- ✅ **AI智能审核** - 自动检测和修正题目错误
+- ✅ **可视化预览** - 导入前可预览和编辑所有题目
+- ✅ **分步式向导** - 清晰的4步导入流程
+- ✅ **批量智能处理** - 支持大批量题目的智能处理
 
-#### 技术实现深度剖析
+#### 核心架构
 
-**1. 四步式导入向导架构**
+**四步式导入向导流程**
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                AI Import Wizard Flow                     │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  Step 1: Parse & AI Audit                              │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │ Text Input → Parser → AI Audit → Preview Cache   │   │
-│  └──────────────────────────────────────────────────┘   │
-│                         │                               │
-│                         ▼                               │
-│  Step 2: Preview & Edit                                │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │ Cache → Preview UI → User Edit → Update Cache    │   │
-│  └──────────────────────────────────────────────────┘   │
-│                         │                               │
-│                         ▼                               │
-│  Step 3: Save Edits                                    │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │ User Changes → Validation → Cache Update         │   │
-│  └──────────────────────────────────────────────────┘   │
-│                         │                               │
-│                         ▼                               │
-│  Step 4: Confirm Import                                │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │ Final Review → Batch Import → Result Report      │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
+Step 1: 文本解析 & AI审核 → 
+Step 2: 预览 & 编辑 → 
+Step 3: 保存编辑 → 
+Step 4: 确认导入
 ```
 
-**2. 智能文本解析引擎**
+**核心特性**:
 
-核心流程：
-- 📝 **文本输入**: 支持Word文档格式的题目文本
+1. **智能文本解析**
+   - 支持Word文档格式的题目文本
+   - 自动识别题目类型、选项、答案、解析等
+   - 将解析结果缓存供后续步骤使用
+   
+   ![image-20251006155447638](../Res/image-20251006155447638.png)
 
-- 🔍 **智能解析**: 自动识别题目类型、选项、答案、解析等
+2. **批量AI审核**
+   - 自动分批处理(每批最多10道题目)
+   - 容错机制:单批失败不影响其他批次
+   - 智能延迟,避免频繁请求
+   - 实时统计审核进度和结果
+   
+   ![image-20251006155712938](../Res/image-20251006155712938.png)
+   
+   ![image-20251006155750172](../Res/image-20251006155750172.png)
+   
+   ![image-20251006162127893](../Res/image-20251006162127893.png)
 
-- 🤖 **AI审核**: 批量检测题目格式和内容错误
+3. **智能审核标准**
+   - 内容规范检查(移除序号、选项标记等)
+   - 选项格式检查(移除ABCD标记)
+   - 答案匹配验证
+   - 错别字和标点符号检查
+   - 解析合理性验证
 
-- 💾 **缓存预览**: 将解析结果缓存供后续步骤使用
+4. **智能JSON修复**
+   - 自动处理AI响应截断问题
+   - 格式清理和括号平衡
+   - 从损坏的JSON中提取有效部分
+   - 降级处理保证系统稳定性
 
-  ![image-20251006155447638](../Res/image-20251006155447638.png)
+5. **可视化界面**
+   - 分类选择器和代码编辑器
+   - 审核统计卡片和题目列表
+   - Diff对比查看器
+   - 导入结果统计报告
+   
+   ![image-20251006162224669](../Res/image-20251006162224669.png)
 
-**3. 批量AI审核引擎**
+#### 应用价值
 
-核心特性：
-- 🔄 **自动分批**: 每批最多10道题目，避免AI响应截断
+**支持多种题目格式**:
+- 单选题、多选题、判断题、简答题等
+- 自动识别题目类型和格式
 
-- 🛡️ **容错机制**: 单批失败不影响其他批次处理
-
-- ⏱️ **智能延迟**: 批次间自动延迟，避免频繁请求
-
-- 📊 **实时统计**: 详细的审核进度和结果统计
-
-  ![image-20251006155712938](../Res/image-20251006155712938.png)
-
-  ![image-20251006155750172](../Res/image-20251006155750172.png)
-
-  ![image-20251006162127893](../Res/image-20251006162127893.png)
-
-**4. 智能提示词构建**
-
-审核标准：
-1. 📝 **内容规范**: 题目内容应完整清晰，不包含序号、选项、答案
-2. 🔤 **选项格式**: 选项不应包含ABCD标记，避免重复
-3. ✅ **答案匹配**: 正确答案与选项匹配，格式规范
-4. 🔍 **错别字检查**: 自动检测和修正错别字、标点符号错误
-5. 💡 **解析合理性**: 验证解析内容的准确性和完整性
-
-修正规则：
-- ✅ 允许修正格式错误和错别字
-- ❌ 禁止补充题目中缺失的关键信息
-- 🔄  返回结构化JSON格式的审核结果
-
-**5. 智能JSON解析与修复**
-
-修复策略：
-- 🔧 **截断处理**: 自动处理AI响应截断问题
-- 🧹 **格式清理**: 移除非JSON前缀文本和代码块标记
-- ⚖️ **括号平衡**: 自动补充缺失的括号和引号
-- 🗑️ **尾随逗号**: 移除多余的尾随逗号
-- 🔄 **部分提取**: 从损坏的JSON中提取有效部分
-- 📊 **降级处理**: 解析失败时返回空结构避免崩溃
-
-#### 前端向导界面实现
-
-**1. 四步式向导界面**
-
-- **步骤1 - 文本解析**: 
-  - 📁 分类选择器（树形结构）
-  - 📝 代码编辑器（支持Markdown语法高亮）
-  - ⚙️ AI审核开关和自动修正选项
-
-- **步骤2 - 预览编辑**:
-  - 📊 审核统计卡片（总数、通过、错误、修正统计）
-  - 📋 题目列表表格（支持在线编辑）
-  - 🔍 修正对比查看器（Diff编辑器）
-
-- **步骤3 - 保存编辑**:
-  - 💾 用户编辑内容保存确认
-  - 🔄 缓存数据更新
-
-- **步骤4 - 确认导入**:
-  - ✅ 最终确认界面
-  
-  - 📈 导入结果统计报告
-  
-    ![image-20251006162224669](../Res/image-20251006162224669.png)
-
-#### 应用场景实例
-
-**场景1: 考试题库批量导入**
-
-支持的题目格式：
-- 📝 **单选题**: 自动识别ABCD选项和正确答案
-- 📝 **多选题**: 支持多个正确答案的组合格式
-- 📝 **判断题**: 识别对错、是否等多种表达方式
-- 📝 **简答题**: 支持开放性题目和参考答案
-
-使用流程：
-1. 📋 用户粘贴Word文档中的题目文本
-2. 🔍 系统自动解析识别题目类型、选项、答案等
-3. 🤖 AI自动审核题目格式和内容错误
-4. 👀 用户可预览和编辑所有题目
-5. ✅ 确认后批量导入到数据库
-
-**场景2: 智能错误检测与修正**
-
-AI能够检测和修正的错误类型：
-- 🔢 题目内容包含序号、选项标记
-- 🔤 选项格式不规范（包含ABCD标记）
-- ❌ 正确答案与选项不匹配
-- ✏️ 错别字和标点符号错误
-- 💡 解析内容不合理
-
-修正示例：
-- **修正前**: `1、以下哪个是正确的？(A) A.选项A B.选项B 答案：A`
-- **修正后**: 
-  - 内容: `以下哪个是正确的？` (移除序号)
-  - 选项: `["选项A", "选项B", "选项C"]` (移除ABCD标记)
-  - 答案: `选项A` (修正为选项文本)
+**智能错误检测与修正**:
+- 自动检测并修正格式错误
+- 智能修正错别字和标点符号
+- 验证答案与选项的匹配性
 
 ### 2.4 AI Form - 长时间任务处理框架
 
@@ -818,912 +234,301 @@ AI能够检测和修正的错误类型：
 - 🎨 **AI内容创作**: 批量内容生成
 - 🔄 **AI批量处理**: 大规模数据的AI处理
 
-#### 任务状态管理
+![image-20251104173706022](../Res/image-20251104173706022.png)
 
-```csharp
-/// <summary>
-/// AI任务状态
-/// </summary>
-public enum AiTaskStatus
-{
-    Pending = 0,      // 待开始
-    InProgress = 1,   // 进行中
-    Completed = 2,    // 已完成
-    Failed = 3,       // 失败
-    Cancelled = 4     // 已取消
-}
+#### 核心特性
 
-/// <summary>
-/// AI任务状态DTO
-/// </summary>
-public class AiTaskStatusDto
-{
-    public string TaskId { get; set; }
-    public AiTaskStatus Status { get; set; }
-    public string StatusText { get; set; }
-    public int Step { get; set; }          // 当前步骤 0-3
-    public int Progress { get; set; }       // 进度百分比 0-100
-    public List<string> Logs { get; set; }  // 任务日志
-    public object Result { get; set; }      // 任务结果
-    public DateTime StartTime { get; set; }
-    public DateTime? EndTime { get; set; }
-    public string ElapsedTime { get; set; }
-    public string DetailUrl { get; set; }   // 结果详情页URL
-}
-```
+**1. 任务状态管理**
+- 支持待开始、进行中、已完成、失败、已取消等状态
+- 实时进度跟踪(0-100%)
+- 详细的任务日志记录
+- 结果详情页URL
 
-#### 基础AI生成服务
+![image-20251104173732014](../Res/image-20251104173732014.png)
 
-```csharp
-/// <summary>
-/// AI生成服务基类
-/// </summary>
-public abstract class BaseAiGeneratorService<TRequest, TResult>
-{
-    protected readonly IAiTaskService _taskService;
-    protected readonly LLMAssistant _llmAssistant;
-    protected readonly ILogger _logger;
+**2. 基础AI生成服务**
+- 统一的异步生成任务接口
+- 自动任务状态管理
+- 进度回调支持
+- 异常处理和降级
 
-    /// <summary>
-    /// 异步生成任务
-    /// </summary>
-    public async Task<string> GenerateAsync(TRequest request)
-    {
-        // 1. 创建任务
-        var taskId = await _taskService.CreateTaskAsync(
-            GetTaskType(), 
-            request);
-        
-        // 2. 后台执行生成
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _taskService.UpdateStatusAsync(
-                    taskId, 
-                    AiTaskStatus.InProgress, 
-                    "开始生成...");
-                
-                // 3. 执行具体生成逻辑
-                var result = await DoGenerateAsync(
-                    request, 
-                    (progress, message) =>
-                    {
-                        _taskService.ReportProgressAsync(
-                            taskId, 
-                            progress, 
-                            message).Wait();
-                    });
-                
-                // 4. 更新完成状态
-                await _taskService.CompleteTaskAsync(taskId, result);
-            }
-            catch (Exception ex)
-            {
-                await _taskService.FailTaskAsync(taskId, ex.Message);
-            }
-        });
-        
-        return taskId;
-    }
-    
-    /// <summary>
-    /// 子类实现具体的生成逻辑
-    /// </summary>
-    protected abstract Task<TResult> DoGenerateAsync(
-        TRequest request, 
-        Action<double, string> progressCallback = null);
-    
-    /// <summary>
-    /// 获取任务类型名称
-    /// </summary>
-    protected abstract string GetTaskType();
-}
-```
+**3. 前端自动轮询**
+- 提交任务后自动切换到进度页
+- 每2秒自动查询任务状态
+- 步骤进度可视化展示
+- 任务完成后自动停止轮询
 
-#### 实际应用示例
-
-```csharp
-/// <summary>
-/// 问卷AI生成服务
-/// </summary>
-public class SurveyAiGeneratorService 
-    : BaseAiGeneratorService<GenerateSurveyRequest, GeneratedSurveyDto>
-{
-    protected override string GetTaskType() => "问卷生成";
-
-    protected override async Task<GeneratedSurveyDto> DoGenerateAsync(
-        GenerateSurveyRequest request, 
-        Action<double, string> progressCallback = null)
-    {
-        progressCallback?.Invoke(0.1, "正在分析需求...");
-        
-        // 1. 构建提示词
-        var prompt = BuildSurveyPrompt(request);
-        
-        progressCallback?.Invoke(0.3, "正在调用AI生成问卷...");
-        
-        // 2. 调用LLM生成
-        var response = await _llmAssistant.GenerateContentAsync(
-            prompt, 
-            maxTokens: 2000);
-        
-        progressCallback?.Invoke(0.6, "正在解析AI响应...");
-        
-        // 3. 解析响应
-        var survey = ParseSurveyResponse(response);
-        
-        progressCallback?.Invoke(0.8, "正在保存问卷...");
-        
-        // 4. 保存到数据库
-        var savedSurvey = await _surveyService.CreateAsync(survey);
-        
-        progressCallback?.Invoke(1.0, "生成完成!");
-        
-        return new GeneratedSurveyDto
-        {
-            SurveyId = savedSurvey.Id,
-            Title = savedSurvey.Title,
-            QuestionCount = savedSurvey.Questions.Count
-        };
-    }
-}
-```
-
-#### 前端自动轮询机制
-
-```javascript
-// 由OperationAttribute自动生成的前端配置
-{
-  "type": "page",
-  "body": [
-    {
-      "type": "tabs",
-      "tabs": [
-        {
-          "title": "问卷生成配置",
-          "body": {
-            "type": "form",
-            "api": "/survey/api/survey/Surveys/ai/generate-async",
-            "onEvent": {
-              "submitSucc": {
-                "actions": [
-                  {
-                    "actionType": "switchTab",
-                    "args": { "activeKey": "progress" }
-                  },
-                  {
-                    "actionType": "setValue",
-                    "args": { "value": "${event.data.data}" },
-                    "componentId": "taskId"
-                  },
-                  {
-                    "actionType": "loop",
-                    "loopName": "polling",
-                    "children": [
-                      {
-                        "actionType": "wait",
-                        "args": { "duration": 2000 }
-                      },
-                      {
-                        "actionType": "ajax",
-                        "api": "/survey/api/survey/Surveys/ai/task-status?taskId=${taskId}",
-                        "onSuccess": [
-                          {
-                            "actionType": "setValue",
-                            "componentId": "taskStatus",
-                            "args": { "value": "${event.data.data}" }
-                          },
-                          {
-                            "actionType": "condition",
-                            "expression": "${event.data.data.status == 2 || event.data.data.status == 3}",
-                            "onTrue": [
-                              {
-                                "actionType": "break",
-                                "loopName": "polling"
-                              }
-                            ]
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          }
-        },
-        {
-          "title": "AI生成进度",
-          "key": "progress",
-          "body": {
-            "type": "steps",
-            "value": "${taskStatus.step}",
-            "steps": [
-              { "title": "初始化" },
-              { "title": "AI处理中" },
-              { "title": "结果处理" },
-              { "title": "完成" }
-            ]
-          }
-        },
-        {
-          "title": "生成日志",
-          "body": {
-            "type": "log",
-            "source": "${taskStatus.logs}"
-          }
-        },
-        {
-          "title": "生成结果",
-          "body": {
-            "type": "panel",
-            "body": [
-              {
-                "type": "status",
-                "value": "${taskStatus.statusText}"
-              },
-              {
-                "type": "progress",
-                "value": "${taskStatus.progress}"
-              },
-              {
-                "type": "json",
-                "value": "${taskStatus.result}"
-              }
-            ]
-          }
-        }
-      ]
-    }
-  ]
-}
-```
+![image-20251104173800450](../Res/image-20251104173800450.png)
 
 #### 核心优势
+- ✅ **用户体验优秀**: 分步式向导,实时反馈
+- ✅ **技术实现先进**: 分布式缓存,异步处理
+- ✅ **容错能力强**: 多重错误检测,智能降级
 
-1. **智能化程度高**: 
-   - 自动识别多种题目格式
-   - AI智能审核和修正
-   - 批量处理能力强
+### 2.5 CodeSpirit.LLM.Audit - LLM审计组件 ⭐
 
-2. **用户体验优秀**:
-   - 分步式向导，操作简单
-   - 可视化预览和编辑
-   - 实时反馈和错误提示
+#### 设计背景
 
-3. **技术实现先进**:
-   - 分布式缓存支持
-   - 智能JSON解析修复
-   - 批量AI处理优化
+随着AI功能的广泛应用,需要对LLM的提示词、输出结果、处理过程进行全面审计,以实现:
+- 🔍 **合规性追溯**: 记录AI决策过程,满足合规要求
+- 📊 **质量监控**: 监控LLM输出质量和准确性
+- 💰 **成本分析**: 统计Token使用和API调用成本
+- ⚡ **性能优化**: 分析LLM响应时间和成功率
+- 🛡️ **安全防护**: 检测异常调用和敏感信息泄露
 
-4. **容错能力强**:
-   - 多重错误检测机制
-   - 智能降级处理
-   - 详细的日志记录
+#### 核心架构
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              LLM业务服务 → LLMAssistant                   │
+│                      ↓ (自动记录)                         │
+│              LLM审计服务 (ILLMAuditService)                │
+│                      ↓                                   │
+│              RabbitMQ (异步消息队列)                       │
+│                      ↓                                   │
+│              LLM审计消费者 (批量处理)                       │
+│                      ↓                                   │
+│        Elasticsearch / GreptimeDB (存储)                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+![image-20251104180640652](../Res/image-20251104180640652.png)
+
+#### 核心功能
+
+**1. 完整的审计数据模型**
+- 基础信息: 租户、用户、时间戳
+- LLM信息: 提供商、模型名称、交互类型、业务场景
+- 内容记录: 系统提示词、用户提示词、LLM响应、处理后数据
+- 性能指标: Token使用量、处理时间、成本(USD)
+- 状态跟踪: 成功状态、错误信息、重试次数、JSON修复标记
+- 业务关联: 批次ID、父审计ID、业务实体ID/类型、数据量
+
+**2. 智能数据处理**
+- 敏感数据自动脱敏(密码、密钥、个人信息等)
+- 内容自动截断(提示词10000字符,响应50000字符)
+- 自动成本计算(基于Token使用量和模型定价)
+- 多租户数据隔离
+
+**3. 异步高性能处理**
+- RabbitMQ异步消息队列
+- 批量写入存储(100条/批次或10秒间隔)
+- 独立的消费者后台服务
+- 审计记录延迟 < 100ms
+
+**4. 多存储后端支持**
+- **Elasticsearch**: 文档型存储,强大的全文搜索
+- **GreptimeDB**: 时序数据库,高性能时序查询
+- 统一配置管理,自动适配
+
+**5. 丰富的查询和统计**
+- 灵活的条件查询(按时间、模型、场景、用户等)
+- 使用统计(总交互数、成功率、Token使用量等)
+- 成本统计(按模型、场景、时间段)
+- 质量统计(平均质量评分、JSON修复率)
+- 使用趋势分析(按小时/天聚合)
+
+![image-20251105094141829](../Res/image-20251105094141829.png)
+
+#### 集成方式
+
+**装饰器模式自动审计**:
+- 通过 `AuditableLLMAssistant` 包装 `LLMAssistant`
+- 自动捕获所有LLM调用
+- 无需修改业务代码
+- 低侵入性设计
+
+**业务上下文传递**:
+- 支持设置业务场景、交互类型
+- 支持批次关联和父子关联
+- 支持业务实体关联
+- 灵活的元数据扩展
+
+#### 应用价值
+
+**1. 合规性保障**
+- 完整记录AI决策过程
+- 支持审计追溯和问题定位
+- 满足监管合规要求
+
+**2. 成本控制**
+- 实时监控Token使用量
+- 精确计算API调用成本
+- 支持按租户、场景、模型的成本分析
+
+**3. 质量优化**
+- 监控LLM输出质量
+- 统计JSON修复率
+- 分析常见错误模式
+
+**4. 性能监控**
+- 追踪LLM响应时间
+- 分析成功率和失败原因
+- 优化提示词和参数配置
 
 ## 三、AI应用场景实战 🎯
 
 ### 3.1 考试系统 - AI题目导入向导
 
-#### 功能描述
-- 🔍 **智能文本解析**: 自动识别Word文档中的题目格式
-- 🤖 **AI智能审核**: 自动检测和修正题目中的错误
-- 👀 **可视化预览**: 导入前可预览和编辑所有题目
-- 📊 **统计报告**: 详细的审核统计和导入结果报告
-
-#### 核心特性
-
-- 🎯 **一键启动**: 通过HeaderOperation特性自动生成导入按钮
-- 📱 **响应式界面**: 支持桌面端和移动端的完美适配
-- 🔄 **会话管理**: 基于SessionId的状态保持和数据缓存
-- 📊 **实时反馈**: 每个步骤都有详细的进度和状态提示
-- 🛡️ **错误处理**: 完善的异常处理和用户友好的错误提示
+**核心特性**:
+- 一键启动导入向导
+- 智能文本解析和AI审核
+- 可视化预览和编辑
+- 详细的统计报告
 
 ### 3.2 考试系统 - AI题目生成
 
-#### 功能描述
+**功能特点**:
 - 根据主题、难度、题型自动生成试题
-- 支持批量生成
+- 支持批量生成(1-50道)
 - 实时进度反馈
-- 生成结果可编辑
+- 生成结果可预览和编辑
 
-#### 实现代码
+### 3.3 问卷系统 - AI问卷生成
 
-```csharp
-/// <summary>
-/// AI题目生成请求
-/// </summary>
-public class AIGenerateQuestionDto
-{
-    [DisplayName("主题")]
-    [Required]
-    public string Topic { get; set; }
-    
-    [DisplayName("题型")]
-    public QuestionType Type { get; set; }
-    
-    [DisplayName("难度")]
-    public QuestionDifficulty Difficulty { get; set; }
-    
-    [DisplayName("生成数量")]
-    [Range(1, 50)]
-    public int Count { get; set; } = 5;
-}
+**生成流程**:
+1. 生成问卷框架(标题、介绍、大纲)
+2. 逐个生成问题(单选、多选、文本等)
+3. 优化和完善问卷内容
+4. 保存并返回结果
 
-/// <summary>
-/// AI题目生成服务
-/// </summary>
-public class AIQuestionGeneratorService : IAIQuestionGeneratorService
-{
-    public async Task<List<CreateQuestionDto>> GenerateQuestionsAsync(
-        AIGenerateQuestionDto request, 
-        string sessionId = null, 
-        IGeneratorNotificationService notificationService = null)
-    {
-        _logger.LogInformation(
-            "开始生成题目: 主题={Topic}, 数量={Count}, 类型={Type}, 难度={Difficulty}", 
-            request.Topic, request.Count, request.Type, request.Difficulty);
+### 3.4 内容管理系统 - AI文章生成
 
-        // 构建提示词
-        var prompt = _promptBuilder.BuildPrompt(request);
-        
-        await notificationService?.NotifyAsync(
-            sessionId, 
-            "构建提示词", 
-            "正在构建AI提示词...");
-        
-        // 调用LLM
-        var response = await _llmAssistant.GenerateContentAsync(
-            prompt, 
-            maxTokens: 2000);
-        
-        await notificationService?.NotifyAsync(
-            sessionId, 
-            "解析响应", 
-            "正在解析AI生成的题目...");
-        
-        // 解析题目
-        var questions = _questionParser.ParseQuestions(response);
-        
-        await notificationService?.NotifyAsync(
-            sessionId, 
-            "生成完成", 
-            $"成功生成{questions.Count}道题目");
-        
-        return questions;
-    }
-}
-```
-
-### 3.2 问卷系统 - AI问卷生成
-
-#### 实现示例
-
-```csharp
-/// <summary>
-/// 问卷生成请求
-/// </summary>
-public class GenerateSurveyRequest
-{
-    [DisplayName("问卷主题")]
-    [Required]
-    [StringLength(100)]
-    public string Theme { get; set; }
-    
-    [DisplayName("目标受众")]
-    public string TargetAudience { get; set; }
-    
-    [DisplayName("问题数量")]
-    [Range(5, 30)]
-    public int QuestionCount { get; set; } = 10;
-    
-    [DisplayName("包含题型")]
-    public List<SurveyQuestionType> QuestionTypes { get; set; }
-}
-
-/// <summary>
-/// 问卷AI生成服务
-/// </summary>
-public class SurveyAiGeneratorService 
-    : BaseAiGeneratorService<GenerateSurveyRequest, GeneratedSurveyDto>
-{
-    protected override async Task<GeneratedSurveyDto> DoGenerateAsync(
-        GenerateSurveyRequest request, 
-        Action<double, string> progressCallback = null)
-    {
-        // 第一阶段: 生成问卷框架
-        progressCallback?.Invoke(0.2, "正在生成问卷框架...");
-        
-        var frameworkPrompt = $@"
-            请为以下主题设计一份问卷调查:
-            主题: {request.Theme}
-            目标受众: {request.TargetAudience}
-            问题数量: {request.QuestionCount}
-            
-            请生成问卷标题、介绍和大纲。
-        ";
-        
-        var frameworkResponse = await _llmAssistant.GenerateContentAsync(
-            frameworkPrompt, 
-            maxTokens: 500);
-        
-        var framework = ParseFramework(frameworkResponse);
-        
-        // 第二阶段: 生成具体问题
-        progressCallback?.Invoke(0.5, "正在生成具体问题...");
-        
-        var questions = new List<SurveyQuestionDto>();
-        for (int i = 0; i < request.QuestionCount; i++)
-        {
-            var questionPrompt = BuildQuestionPrompt(
-                framework, 
-                i, 
-                request.QuestionTypes);
-            
-            var questionResponse = await _llmAssistant.GenerateContentAsync(
-                questionPrompt, 
-                maxTokens: 300);
-            
-            var question = ParseQuestion(questionResponse);
-            questions.Add(question);
-            
-            var progress = 0.5 + (0.3 * (i + 1) / request.QuestionCount);
-            progressCallback?.Invoke(
-                progress, 
-                $"已生成{i + 1}/{request.QuestionCount}个问题");
-        }
-        
-        // 第三阶段: 优化和完善
-        progressCallback?.Invoke(0.8, "正在优化问卷内容...");
-        
-        var optimizedSurvey = await OptimizeSurvey(framework, questions);
-        
-        // 第四阶段: 保存
-        progressCallback?.Invoke(0.9, "正在保存问卷...");
-        
-        var savedSurvey = await SaveSurvey(optimizedSurvey);
-        
-        progressCallback?.Invoke(1.0, "问卷生成完成!");
-        
-        return new GeneratedSurveyDto
-        {
-            SurveyId = savedSurvey.Id,
-            Title = savedSurvey.Title,
-            QuestionCount = savedSurvey.Questions.Count,
-            DetailUrl = $"/surveys/{savedSurvey.Id}/edit"
-        };
-    }
-}
-```
-
-### 3.3 内容管理系统 - AI文章生成
-
-```csharp
-[AiFormFill(
-    TriggerField = "Title",
-    CustomPromptTemplate = @"
-        请根据以下标题撰写一篇文章:
-        标题: {triggerValue}
-        
-        要求:
-        1. 生成文章摘要 (summary) - 100-200字
-        2. 生成文章内容 (content) - 800-1500字,使用Markdown格式
-        3. 生成3-5个标签 (tags)
-        4. 生成SEO关键词 (keywords)
-        5. 生成封面图描述 (coverDescription)
-        
-        返回JSON格式。
-    ",
-    MaxTokens = 3000,
-    EnableCache = false  // 文章生成不使用缓存,保证每次都是新内容
-)]
-public class CreateArticleDto
-{
-    [DisplayName("标题")]
-    [Required]
-    [StringLength(200)]
-    public string Title { get; set; }
-    
-    [DisplayName("摘要")]
-    [StringLength(500)]
-    [DataType(DataType.MultilineText)]
-    public string Summary { get; set; }
-    
-    [DisplayName("内容")]
-    [Required]
-    [DataType(DataType.MultilineText)]
-    public string Content { get; set; }
-    
-    [DisplayName("标签")]
-    public List<string> Tags { get; set; }
-    
-    [DisplayName("关键词")]
-    public string Keywords { get; set; }
-    
-    [DisplayName("封面图描述")]
-    public string CoverDescription { get; set; }
-}
-```
+**自动生成内容**:
+- 文章摘要(100-200字)
+- 文章正文(800-1500字,Markdown格式)
+- 3-5个标签
+- SEO关键词
+- 封面图描述
 
 ## 四、AI性能优化策略 ⚡
 
 ### 4.1 智能缓存机制
 
-**多级缓存策略**
-
-```csharp
-/// <summary>
-/// AI响应缓存管理器
-/// </summary>
-public class AiResponseCacheManager
-{
-    private readonly IMemoryCache _memoryCache;
-    private readonly IDistributedCache _distributedCache;
-    
-    /// <summary>
-    /// 获取或创建缓存
-    /// </summary>
-    public async Task<T> GetOrCreateAsync<T>(
-        string cacheKey,
-        Func<Task<T>> factory,
-        CacheOptions options = null)
-    {
-        // 1. 尝试从内存缓存获取
-        if (_memoryCache.TryGetValue(cacheKey, out T memoryValue))
-        {
-            return memoryValue;
-        }
-        
-        // 2. 尝试从分布式缓存获取
-        var distributedValue = await _distributedCache.GetStringAsync(cacheKey);
-        if (!string.IsNullOrEmpty(distributedValue))
-        {
-            var value = JsonConvert.DeserializeObject<T>(distributedValue);
-            
-            // 写入内存缓存
-            _memoryCache.Set(cacheKey, value, TimeSpan.FromMinutes(5));
-            
-            return value;
-        }
-        
-        // 3. 执行工厂方法生成值
-        var newValue = await factory();
-        
-        // 4. 写入两级缓存
-        _memoryCache.Set(
-            cacheKey, 
-            newValue, 
-            options?.MemoryCacheExpiration ?? TimeSpan.FromMinutes(5));
-        
-        await _distributedCache.SetStringAsync(
-            cacheKey, 
-            JsonConvert.SerializeObject(newValue),
-            new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = 
-                    options?.DistributedCacheExpiration ?? TimeSpan.FromHours(1)
-            });
-        
-        return newValue;
-    }
-}
-```
+**多级缓存策略**:
+- **L1缓存**: 内存缓存(5分钟),快速响应
+- **L2缓存**: 分布式缓存Redis(1小时),跨实例共享
+- **自动降级**: L1失效查L2,L2失效才调用AI
+- **智能更新**: 自动维护缓存一致性
 
 ### 4.2 请求合并与批处理
 
-```csharp
-/// <summary>
-/// AI请求批处理器
-/// </summary>
-public class AiBatchProcessor
-{
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
-    private readonly List<BatchRequest> _pendingRequests = new();
-    
-    public async Task<string> QueueRequestAsync(string prompt)
-    {
-        var tcs = new TaskCompletionSource<string>();
-        
-        await _semaphore.WaitAsync();
-        try
-        {
-            _pendingRequests.Add(new BatchRequest
-            {
-                Prompt = prompt,
-                TaskCompletionSource = tcs
-            });
-            
-            // 如果队列已满或等待超时,立即处理
-            if (_pendingRequests.Count >= 5 || 
-                _pendingRequests.First().CreateTime.AddSeconds(2) < DateTime.UtcNow)
-            {
-                await ProcessBatchAsync();
-            }
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
-        
-        return await tcs.Task;
-    }
-    
-    private async Task ProcessBatchAsync()
-    {
-        var batch = _pendingRequests.ToList();
-        _pendingRequests.Clear();
-        
-        // 合并提示词
-        var combinedPrompt = string.Join("\n---\n", 
-            batch.Select((r, i) => $"[{i}] {r.Prompt}"));
-        
-        try
-        {
-            var response = await _llmClient.GenerateContentAsync(combinedPrompt);
-            
-            // 解析并分发响应
-            var responses = SplitResponse(response, batch.Count);
-            
-            for (int i = 0; i < batch.Count; i++)
-            {
-                batch[i].TaskCompletionSource.SetResult(responses[i]);
-            }
-        }
-        catch (Exception ex)
-        {
-            foreach (var request in batch)
-            {
-                request.TaskCompletionSource.SetException(ex);
-            }
-        }
-    }
-}
-```
+**批处理策略**:
+- 将多个小请求合并为一个大请求
+- 队列满(5个)或超时(2秒)时触发处理
+- 自动解析和分发响应
+- 降低API调用频率和成本
 
 ### 4.3 流式响应优化
 
-```csharp
-/// <summary>
-/// 流式响应处理器
-/// </summary>
-public class StreamingResponseHandler
-{
-    public async IAsyncEnumerable<string> HandleStreamAsync(
-        string prompt,
-        Action<string> onChunk = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var buffer = new StringBuilder();
-        
-        await foreach (var chunk in _llmClient.GenerateContentStreamAsync(prompt)
-            .WithCancellation(cancellationToken))
-        {
-            buffer.Append(chunk);
-            onChunk?.Invoke(chunk);
-            
-            yield return chunk;
-            
-            // 每收到100个字符,检查一次取消令牌
-            if (buffer.Length % 100 == 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-        }
-    }
-}
-```
+**流式处理优势**:
+- 边生成边返回,提升用户体验
+- 支持取消令牌,可中断长时间任务
+- 缓冲区管理,优化内存使用
+- 实时进度反馈
 
 ## 五、AI最佳实践 ✨
 
 ### 5.1 提示词工程
 
-**1. 结构化提示词模板**
+**结构化提示词模板**:
+- 角色定义: 明确AI的角色和专业背景
+- 任务描述: 清晰说明要完成的任务
+- 输入信息: 提供必要的上下文信息
+- 输出要求: 明确期望的输出格式和内容
+- 约束条件: 限定生成内容的范围和规则
+- 示例格式: 提供输出样例(Few-Shot Learning)
 
-```csharp
-public class StructuredPromptTemplate
-{
-    public string BuildPrompt(PromptContext context)
-    {
-        return $@"
-# 角色定义
-你是一位经验丰富的{context.Role}。
-
-# 任务描述
-{context.Task}
-
-# 输入信息
-{context.Input}
-
-# 输出要求
-{context.OutputRequirements}
-
-# 约束条件
-{context.Constraints}
-
-# 示例格式
-{context.ExampleFormat}
-
-请严格按照要求生成内容。
-";
-    }
-}
-```
-
-**2. Few-Shot Learning示例**
-
-```csharp
-var prompt = $@"
-以下是几个题目生成的示例:
-
-示例1:
-主题: 数据库索引
-题目: 以下哪种索引类型适合处理范围查询?
-A. 哈希索引
-B. B+树索引
-C. 位图索引
-D. 全文索引
-答案: B
-
-示例2:
-主题: 网络协议
-题目: HTTP和HTTPS的主要区别是什么?
-A. 端口号不同
-B. 传输速度不同
-C. HTTPS使用SSL/TLS加密
-D. HTTP只能传输文本
-答案: C
-
-现在请为以下主题生成一道类似的题目:
-主题: {topic}
-";
-```
+**Few-Shot Learning策略**:
+- 提供2-3个高质量示例
+- 示例应涵盖不同场景
+- 突出关键格式和要求
+- 提升AI输出的准确性和一致性
 
 ### 5.2 错误处理与降级
 
-```csharp
-public class RobustAiService
-{
-    public async Task<T> ExecuteWithRetryAsync<T>(
-        Func<Task<T>> operation,
-        int maxRetries = 3,
-        Func<Task<T>> fallback = null)
-    {
-        Exception lastException = null;
-        
-        for (int i = 0; i < maxRetries; i++)
-        {
-            try
-            {
-                return await operation();
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-                _logger.LogWarning(
-                    ex, 
-                    "AI操作失败,尝试重试 {Attempt}/{MaxRetries}", 
-                    i + 1, 
-                    maxRetries);
-                
-                // 指数退避
-                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, i)));
-            }
-        }
-        
-        // 如果有降级方案,使用降级
-        if (fallback != null)
-        {
-            _logger.LogWarning("AI操作多次失败,使用降级方案");
-            return await fallback();
-        }
-        
-        throw new AiServiceException(
-            "AI服务调用失败", 
-            lastException);
-    }
-}
-```
+**重试机制**:
+- 自动重试(最多3次)
+- 指数退避延迟(1s, 2s, 4s)
+- 记录失败原因和重试次数
+
+**降级策略**:
+- AI失败时使用预设内容
+- 提示用户手动输入
+- 记录降级事件用于优化
 
 ### 5.3 成本控制
 
-```csharp
-/// <summary>
-/// Token使用量监控
-/// </summary>
-public class TokenUsageMonitor
-{
-    private readonly IDistributedCache _cache;
-    
-    public async Task<bool> CheckQuotaAsync(string userId, int estimatedTokens)
-    {
-        var key = $"token_usage:{userId}:{DateTime.UtcNow:yyyyMMdd}";
-        
-        var currentUsage = await GetCurrentUsageAsync(key);
-        var dailyQuota = await GetUserQuotaAsync(userId);
-        
-        if (currentUsage + estimatedTokens > dailyQuota)
-        {
-            _logger.LogWarning(
-                "用户 {UserId} 超出每日Token配额: {CurrentUsage}/{DailyQuota}", 
-                userId, 
-                currentUsage, 
-                dailyQuota);
-            
-            return false;
-        }
-        
-        return true;
-    }
-    
-    public async Task RecordUsageAsync(
-        string userId, 
-        int tokensUsed, 
-        decimal cost)
-    {
-        var key = $"token_usage:{userId}:{DateTime.UtcNow:yyyyMMdd}";
-        
-        await IncrementUsageAsync(key, tokensUsed);
-        await RecordCostAsync(userId, cost);
-    }
-}
-```
+**配额管理**:
+- 按用户/租户设置每日Token配额
+- 实时监控使用量
+- 超出配额时拒绝请求
 
-## 六、未来AI规划 🚀
+**成本优化**:
+- 使用缓存减少重复调用
+- 选择性使用高成本模型
+- 定期分析和优化提示词长度
 
-### 6.1 自然语言编程
-
-**概念阶段**:
-- 💬 自然语言描述需求 → 自动生成代码
-- 🖼️ UI截图 → 自动生成页面
-- 🎤 语音指令 → 实时修改应用
-
-### 6.2 AI代码审查
-
-- 🔍 自动代码审查
-- 🐛 智能Bug检测
-- 💡 性能优化建议
-- 📝 自动文档生成
-
-### 6.3 AI测试生成
-
-- 🧪 自动生成单元测试
-- 🎯 智能集成测试
-- 📊 测试覆盖率分析
-
-### 6.4 AI运维助手
-
-- 📈 智能性能分析
-- 🚨 异常检测和预警
-- 🔧 自动故障诊断
-- 💊 智能修复建议
-
-## 七、总结
+## 六、总结
 
 CodeSpirit 框架在AI集成方面的创新主要体现在:
 
 ### 🌟 核心创新
-1. **零配置自动化**: 业界首创的AI端点自动生成机制
-2. **深度集成**: AI能力渗透到框架的每个层面
-3. **开发者友好**: 特性驱动,学习成本极低
-4. **性能优化**: 多级缓存,请求合并,流式响应
-5. **智能导入向导**: 革命性的AI辅助数据导入解决方案
+
+1. **零配置自动化**
+   - 业界首创的AI端点自动生成机制
+   - 特性驱动,开发者只需一个标记
+   - 自动UI增强和响应解析
+
+2. **深度集成**
+   - AI能力渗透到框架的每个层面
+   - 统一的LLM抽象,支持多提供商
+   - 装饰器模式的低侵入集成
+
+3. **完整的LLM审计**
+   - 记录AI决策全过程,满足合规要求
+   - 实时成本监控和质量分析
+   - 支持Elasticsearch和GreptimeDB双存储
+   - 装饰器模式自动审计,零侵入
+
+4. **智能导入向导**
+   - 革命性的AI辅助数据导入解决方案
+   - 四步式向导,可视化预览
+   - 批量AI审核和智能JSON修复
+
+5. **性能优化**
+   - 多级缓存(内存+分布式)
+   - 请求合并与批处理
+   - 流式响应和异步处理
 
 ### 🎯 实用价值
+
 1. **效率提升**: AI辅助开发,效率提升10倍+
 2. **降低门槛**: 无需AI专业知识,开箱即用
-3. **成本可控**: 智能缓存和配额管理
+3. **成本可控**: 智能缓存和配额管理,精确成本追踪
 4. **质量保证**: 完善的错误处理和降级机制
-5. **数据处理智能化**: AI导入向导让数据导入变得简单可靠
+5. **合规保障**: 完整的LLM审计追溯,满足监管要求
+6. **数据处理智能化**: AI导入向导让数据导入变得简单可靠
 
-### 🚀 AI导入向导的突破性价值
-1. **解决行业痛点**: 彻底解决传统数据导入的格式限制问题
-2. **智能化程度高**: AI自动审核和修正,大幅减少人工干预
-3. **用户体验优秀**: 分步式向导,可视化预览,操作简单直观
-4. **技术实现先进**: 分布式缓存,智能JSON修复,批量处理优化
-5. **容错能力强**: 多重错误检测,智能降级,详细日志记录
+### 🚀 突破性价值
 
-### 🚀 技术前瞻
+**AI Form Fill**:
+- 彻底解决传统表单填充的繁琐流程
+- 智能提示词构建和类型安全解析
+- 支持缓存和独立LLM配置
+
+**AI Import Wizard**:
+- 解决传统数据导入的格式限制问题
+- AI自动审核和修正,大幅减少人工干预
+- 智能JSON修复,容错能力强
+
+**LLM Audit**:
+- 首个提供完整LLM审计的企业级框架
+- 实时成本监控和质量分析
+- 支持合规追溯和性能优化
+
+### 🔮 技术前瞻
+
 CodeSpirit 的AI能力还在不断演进,未来将实现:
 - 更强大的自然语言编程能力
 - 更智能的代码生成和审查

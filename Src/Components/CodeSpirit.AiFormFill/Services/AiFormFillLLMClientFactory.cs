@@ -1,5 +1,8 @@
 using CodeSpirit.AiFormFill.Models;
+using CodeSpirit.Audit.Services.LLM;
 using CodeSpirit.LLM.Settings;
+using CodeSpirit.MultiTenant.Abstractions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +19,9 @@ public class AiFormFillLLMClientFactory : IScopedDependency
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ILLMAuditService? _auditService;
+    private readonly ITenantContext? _tenantContext;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
 
     private AiFormFillLLMSettings? _cachedSettings;
 
@@ -27,18 +33,27 @@ public class AiFormFillLLMClientFactory : IScopedDependency
     /// <param name="configuration">配置</param>
     /// <param name="httpClientFactory">HTTP客户端工厂</param>
     /// <param name="loggerFactory">日志工厂</param>
+    /// <param name="auditService">LLM审计服务（可选）</param>
+    /// <param name="tenantContext">租户上下文（可选）</param>
+    /// <param name="httpContextAccessor">HTTP上下文访问器（可选）</param>
     public AiFormFillLLMClientFactory(
         ISettingsProvider settingsProvider,
         ILogger<AiFormFillLLMClientFactory> logger,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        ILLMAuditService? auditService = null,
+        ITenantContext? tenantContext = null,
+        IHttpContextAccessor? httpContextAccessor = null)
     {
         _settingsProvider = settingsProvider;
         _logger = logger;
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
         _loggerFactory = loggerFactory;
+        _auditService = auditService;
+        _tenantContext = tenantContext;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     /// <summary>
@@ -64,8 +79,14 @@ public class AiFormFillLLMClientFactory : IScopedDependency
         // 创建日志记录器（使用注入的日志工厂）
         var clientLogger = _loggerFactory.CreateLogger<AiFormFillLLMClient>();
 
-        // 创建客户端
-        return new AiFormFillLLMClient(clientLogger, _cachedSettings, _httpClientFactory);
+        // 创建客户端，传递审计相关依赖
+        return new AiFormFillLLMClient(
+            clientLogger, 
+            _cachedSettings, 
+            _httpClientFactory,
+            _auditService,
+            _tenantContext,
+            _httpContextAccessor);
     }
 
     /// <summary>
@@ -86,6 +107,7 @@ public class AiFormFillLLMClientFactory : IScopedDependency
             // 如果设置不为null且API密钥不为空，则返回
             if (settings != null && !string.IsNullOrEmpty(settings.ApiKey))
             {
+                settings.SettingsKey = settingsKey; // 设置键名
                 _logger.LogInformation("成功从设置提供程序获取AI表单填充LLM设置: 模型={ModelName}, API={ApiBaseUrl}",
                     settings.ModelName, settings.ApiBaseUrl);
                 return settings;
@@ -97,6 +119,7 @@ public class AiFormFillLLMClientFactory : IScopedDependency
             var configSectionKey = settingsKey == "AiFormFillLLM" ? "AiFormFillLLM" : "LLM";
             var llmSettings = new AiFormFillLLMSettings
             {
+                SettingsKey = settingsKey,
                 ApiBaseUrl = _configuration[$"{configSectionKey}:ApiBaseUrl"] ?? "https://dashscope.aliyuncs.com/compatible-mode/v1",
                 ApiKey = _configuration[$"{configSectionKey}:ApiKey"] ?? string.Empty,
                 ModelName = _configuration[$"{configSectionKey}:ModelName"] ?? "qwq-plus",
@@ -134,6 +157,7 @@ public class AiFormFillLLMClientFactory : IScopedDependency
             _logger.LogWarning("使用默认AI表单填充LLM设置");
             return new AiFormFillLLMSettings
             {
+                SettingsKey = settingsKey,
                 ApiBaseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1",
                 ApiKey = _configuration["LLM:ApiKey"] ?? string.Empty,
                 ModelName = "qwq-plus",

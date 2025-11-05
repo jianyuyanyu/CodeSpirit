@@ -94,7 +94,7 @@ var greptimedbService = builder.AddContainer("greptimedb", "greptime/greptimedb"
 var databaseType = builder.Configuration.GetValue<string>("DatabaseType") ?? "MySql";
 
 // 数据库资源配置
-IResourceBuilder<IResourceWithConnectionString> identityDb, examDb, configDb, settingsDb, messagingDb, fileDb, surveyDb, approvalDb;
+IResourceBuilder<IResourceWithConnectionString> identityDb, examDb, configDb, settingsDb, messagingDb, fileDb, surveyDb, approvalDb, pathfinderDb;
 
 if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
 {
@@ -114,6 +114,7 @@ if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
     fileDb = mysql.AddDatabase("file-api");
     surveyDb = mysql.AddDatabase("survey-api");
     approvalDb = mysql.AddDatabase("approval-api");
+    pathfinderDb = mysql.AddDatabase("pathfinder-api");
 }
 else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
 {
@@ -132,6 +133,7 @@ else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
     fileDb = sqlServer.AddDatabase("file-api");
     surveyDb = sqlServer.AddDatabase("survey-api");
     approvalDb = sqlServer.AddDatabase("approval-api");
+    pathfinderDb = sqlServer.AddDatabase("pathfinder-api");
 }
 else
 {
@@ -255,6 +257,20 @@ var approvalService = builder.AddStandardApiService<Projects.CodeSpirit_Approval
     .WithHealthCheck()
     .WithEnvironmentAwareDeploymentTag("approval", () => "2.0.0");
 
+// 添加Pathfinder服务（AI目标管理）
+var pathfinderService = builder.AddStandardApiService<Projects.CodeSpirit_PathfinderApi>(
+        name: "pathfinder",
+        database: pathfinderDb,
+        parameters: parameters,
+        cache: cache,
+        rabbitmqService: rabbitmqService,
+        identityService: identityService,
+        databaseType: databaseType)
+    .WithReference(seqService)
+    .WithReference(configService)
+    .WithHealthCheck()
+    .WithEnvironmentAwareDeploymentTag("pathfinder", () => "1.0.0");
+
 // 添加 Web 前端应用
 builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithExternalHttpEndpoints()
@@ -268,6 +284,7 @@ builder.AddProject<Projects.CodeSpirit_Web>("webfrontend")
     .WithReference(fileService)
     .WithReference(surveyService)
     .WithReference(approvalService)
+    .WithReference(pathfinderService)
     .WithEnvironment("DatabaseType", databaseType)
     .WithAiFormFillLlmConfiguration(
         parameters.AiFormFillLlm.ApiKey,

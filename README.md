@@ -8,9 +8,6 @@ CodeSpirit is a revolutionary full-stack low-code + AI development framework tha
 
 - **Backend-Driven Development Paradigm · Enterprise-Grade Open Architecture · AI-Enhanced Engineering Loop**
 
-[![Try Now](https://img.shields.io/badge/Try%20Now-Professional%20Edition-brightgreen)](https://codespirit-app.xin-lai.com/)
-*Please follow our WeChat Official Account below for the latest demo account and password.*
-
 ***CodeSpirit, bringing elegant simplicity to complex system development!***
 
 ### 🌟 Core Innovation Highlights
@@ -533,10 +530,4 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 
 78. [📊 Survey Module Design Proposal](./Docs/09-Survey-System/问卷调查模块方案设计.md) - Survey system architecture design proposal
 79. [📝 Question Type Specific Fields Implementation](./Docs/09-Survey-System/题目类型特定字段实现说明.md) - Question type field implementation details
-
-### 💬 Technical Community
-
-[💬 Join Technical Community (Not yet open, please follow WeChat Official Account)](https://codespirit-chat.xin-lai.com/)
-
-![WeChat Official Account](./Res/qrcode.jpg)
 

@@ -370,3 +370,6 @@ publish.ps1
 /PUBLISH-README.md
 /Tests/CodeSpirit.ExamApi.LoadTests/reports
 /Src/ApiServices/CodeSpirit.ExamApi/publish-no-chromium.Dockerfile
+*.db
+*.db-shm
+*.db-wal

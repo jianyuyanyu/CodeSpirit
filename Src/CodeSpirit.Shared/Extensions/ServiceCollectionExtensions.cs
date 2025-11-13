@@ -25,6 +25,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 namespace CodeSpirit.Shared.Extensions;
+
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddDatabase<TDbContext>(this IServiceCollection services, IConfiguration configuration, string appName) where TDbContext : DbContext
@@ -113,8 +114,8 @@ public static class ServiceCollectionExtensions
 
         // 注册增强批量导入助手
         services.AddScoped(typeof(EnhancedBatchImportHelper<>));
-         
-         return services;
+
+        return services;
     }
 
     /// <summary>
@@ -130,9 +131,9 @@ public static class ServiceCollectionExtensions
         {
             // 从配置文件读取跨域设置
             var corsSection = configuration?.GetSection("Cors");
-            var allowedOrigins = corsSection?.GetSection("AllowedOrigins")?.Get<string[]>() 
+            var allowedOrigins = corsSection?.GetSection("AllowedOrigins")?.Get<string[]>()
                 ?? new[] { "http://localhost:3000", "https://localhost:7120", "https://*.xin-lai.com", "http://*.xin-lai.com" };
-            
+
             var allowCredentials = corsSection?.GetValue<bool>("AllowCredentials") ?? true;
             var allowAnyHeader = corsSection?.GetValue<bool>("AllowAnyHeader") ?? true;
             var allowAnyMethod = corsSection?.GetValue<bool>("AllowAnyMethod") ?? true;
@@ -154,20 +155,20 @@ public static class ServiceCollectionExtensions
                         // 如果没有明确的域名，则使用默认的安全域名
                         builder.WithOrigins("http://localhost:3000", "https://localhost:7120");
                     }
-                    
+
                     builder.AllowCredentials();
                 }
                 else
                 {
                     // 不使用凭据时，可以使用通配符域名
                     builder.WithOrigins(allowedOrigins);
-                    
+
                     if (allowWildcardSubdomains)
                     {
                         builder.SetIsOriginAllowedToAllowWildcardSubdomains();
                     }
                 }
-                
+
                 if (allowAnyHeader)
                 {
                     builder.AllowAnyHeader();
@@ -180,7 +181,7 @@ public static class ServiceCollectionExtensions
                         builder.WithHeaders(allowedHeaders);
                     }
                 }
-                
+
                 if (allowAnyMethod)
                 {
                     builder.AllowAnyMethod();
@@ -240,7 +241,7 @@ public static class ServiceCollectionExtensions
                 // 构建 Amis 期望的响应格式
                 var amisResponse = new
                 {
-                    msg = "验证错误，请检查输入项！",
+                    msg = errors.Any() ? errors.First().Value : "验证错误，请检查输入项！",
                     status = (int)422,
                     errors
                 };
@@ -264,10 +265,10 @@ public static class ServiceCollectionExtensions
     {
         // 添加 HttpContextAccessor
         services.AddHttpContextAccessor();
-        
+
         // 注册客户端IP地址获取服务
         services.AddSingleton<IClientIpService, ClientIpService>();
-        
+
         return services;
     }
 

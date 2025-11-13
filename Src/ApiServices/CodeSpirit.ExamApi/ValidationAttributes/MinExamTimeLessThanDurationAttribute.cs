@@ -16,7 +16,7 @@ public class MinExamTimeLessThanDurationAttribute : ValidationAttribute
     public MinExamTimeLessThanDurationAttribute(string durationPropertyName = "Duration")
     {
         _durationPropertyName = durationPropertyName;
-        ErrorMessage = "最小考试时间不能大于或等于考试时长";
+        ErrorMessage = "最小考试时间不能大于考试时长";
     }
 
     /// <summary>
@@ -48,10 +48,10 @@ public class MinExamTimeLessThanDurationAttribute : ValidationAttribute
         // 比较最小考试时间和考试时长
         if (value is int minExamTime && durationValue is int duration)
         {
-            if (minExamTime >= duration)
+            if (minExamTime > duration)
             {
                 return new ValidationResult(
-                    $"最小考试时间（{minExamTime}分钟）必须小于考试时长（{duration}分钟）",
+                    $"最小考试时间（{minExamTime}分钟）必须小于等于考试时长（{duration}分钟）",
                     new[] { validationContext.MemberName ?? "" });
             }
         }

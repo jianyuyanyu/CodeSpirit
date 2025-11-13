@@ -105,9 +105,9 @@ public class UpdateExamSettingDto
     /// 最小考试时间（分钟），低于此时间不允许提交
     /// </summary>
     [DisplayName("最小考试时间（分钟）")]
-    [Range(1, 1440, ErrorMessage = "最小考试时间必须在1-1440分钟之间")]
+    [Range(1, 120, ErrorMessage = "最小考试时间必须在1-120分钟之间")]
     [MinExamTimeLessThanDuration]
-    [AmisNumberField(DefaultValue = 30, Min = 1, Max = 1440)]
+    [AmisNumberField(DefaultValue = 30, Min = 1, Max = 120)]
     public int MinExamTime { get; set; } = 30;
 
     /// <summary>

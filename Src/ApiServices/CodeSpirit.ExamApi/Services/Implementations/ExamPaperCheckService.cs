@@ -192,7 +192,11 @@ public class ExamPaperCheckService : IExamPaperCheckService, IScopedDependency
         // 检查选项文本是否带序号
         if (question.Options != null && question.Options.Any())
         {
-            var optionSequencePattern = @"^\s*([A-Za-z][、.．。)\)）]|\d+[、.．。)\)）]|[①②③④⑤⑥⑦⑧⑨⑩])";
+            // 优化后的序号检测模式：
+            // 1. 字母序号：A. B) C、 等（字母+分隔符+空格或非数字）
+            // 2. 数字序号：限制为1-2位数字，且后面必须有空格或中文，避免误判小数和数量
+            // 3. 特殊序号：圆圈数字
+            var optionSequencePattern = @"^\s*([A-Za-z][、.．。)\)）]\s*|[①②③④⑤⑥⑦⑧⑨⑩]|\d{1,2}[、)\)）]\s*|\d{1,2}[.．。]\s+(?!\d))";
             var optionsWithSequence = question.Options
                 .Where(opt => System.Text.RegularExpressions.Regex.IsMatch(opt, optionSequencePattern))
                 .ToList();

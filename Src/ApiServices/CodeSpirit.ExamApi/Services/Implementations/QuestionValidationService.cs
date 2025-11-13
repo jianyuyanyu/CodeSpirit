@@ -208,9 +208,15 @@ public class QuestionValidationService : IQuestionValidationService
         }
 
         // 检查选项是否包含序号
+        // 优化后的序号检测模式，减少误判：
+        // 1. 字母序号：A. B) C、等
+        // 2. 数字序号：限制为1-2位数字，避免误判小数和数量（如3.14、100.5）
+        // 3. 特殊序号：圆圈数字、罗马数字
         bool hasSequenceNumbers = question.Options.Any(option => 
             !string.IsNullOrWhiteSpace(option) && 
-            Regex.IsMatch(option.Trim(), @"^[A-Za-z0-9①②③④⑤⑥⑦⑧⑨⑩ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ][\.\)、]\s*"));
+            (Regex.IsMatch(option.Trim(), @"^[A-Za-z][\.\)、]\s*") ||
+             Regex.IsMatch(option.Trim(), @"^\d{1,2}[\.\)、]\s+(?!\d)") ||
+             Regex.IsMatch(option.Trim(), @"^[①②③④⑤⑥⑦⑧⑨⑩ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ][\.\)、]?\s*")));
 
         if (hasSequenceNumbers)
         {

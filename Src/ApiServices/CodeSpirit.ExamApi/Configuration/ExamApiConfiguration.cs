@@ -88,6 +88,9 @@ public class ExamApiConfiguration : BaseApiConfiguration
         services.AddPdfGeneration(configuration);
 #endif
         
+        // 注册 QuestPDF 服务（轻量级PDF生成，默认启用）
+        AddQuestPdfServices(services);
+        
         // 添加设置管理
         services.AddSettingsManagerWithDatabase(configuration);
         
@@ -327,6 +330,28 @@ public class ExamApiConfiguration : BaseApiConfiguration
         catch (Exception ex)
         {
             Console.WriteLine($"警告: 注册定时任务服务时出错: {ex.Message}，但应用程序将继续启动");
+        }
+    }
+    
+    /// <summary>
+    /// 添加 QuestPDF 服务
+    /// </summary>
+    /// <param name="services">服务集合</param>
+    private static void AddQuestPdfServices(IServiceCollection services)
+    {
+        try
+        {
+            // 配置 QuestPDF 许可证（Community版）
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+            
+            // 注册 QuestPDF 生成服务
+            services.AddScoped<Services.PdfGeneration.IQuestPdfGenerationService, Services.PdfGeneration.QuestPdfGenerationService>();
+            
+            Console.WriteLine("已配置 QuestPDF 服务：使用 Community 许可证");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"警告: 注册 QuestPDF 服务时出错: {ex.Message}，PDF导出功能可能不可用");
         }
     }
     

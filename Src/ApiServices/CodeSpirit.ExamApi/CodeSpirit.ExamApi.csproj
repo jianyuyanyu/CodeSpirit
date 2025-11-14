@@ -8,6 +8,8 @@
 		<UserSecretsId>5edcf4b6-a4ef-47c6-b452-ede79ea812f6</UserSecretsId>
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 		<DockerfileContext>..\..</DockerfileContext>
+		<!-- 定义条件编译符号，启用 PDF 导出功能 -->
+		<DefineConstants>$(DefineConstants);ENABLE_PDF_EXPORT</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -33,6 +35,8 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
+		<PackageReference Include="QuestPDF" Version="2024.12.3" />
+		<PackageReference Include="QRCoder" Version="1.6.0" />
 	</ItemGroup>
 
 	<ItemGroup>

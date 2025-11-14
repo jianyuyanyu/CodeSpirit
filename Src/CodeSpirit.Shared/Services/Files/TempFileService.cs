@@ -75,10 +75,10 @@ public class TempFileServiceImpl : ITempFileService
             // 生成唯一的文件ID
             var fileId = Guid.NewGuid().ToString();
             
-            // 确保文件名是安全的
-            var safeFileName = Path.GetFileNameWithoutExtension(fileName).Replace(" ", "_");
-            var fileExtension = Path.GetExtension(fileName);
-            var newFileName = $"{safeFileName}_{fileId}{fileExtension}";
+            //// 确保文件名是安全的
+            //var safeFileName = Path.GetFileNameWithoutExtension(fileName).Replace(" ", "_");
+            //var fileExtension = Path.GetExtension(fileName);
+            //var newFileName = $"{safeFileName}_{fileId}{fileExtension}";
             
             // 将文件内容读入内存
             using var memoryStream = new MemoryStream();
@@ -102,7 +102,7 @@ public class TempFileServiceImpl : ITempFileService
             var fileInfo = new TempFileInfo
             {
                 FileId = fileId,
-                FileName = newFileName,
+                FileName = fileName,
                 ContentType = contentType,
                 FileSize = fileSize,
                 CreatedTime = DateTime.UtcNow,
@@ -120,7 +120,7 @@ public class TempFileServiceImpl : ITempFileService
             return new FileUploadResult
             {
                 FileId = fileId,
-                FileName = newFileName,
+                FileName = fileName,
                 FileUrl = fileUrl
             };
         }

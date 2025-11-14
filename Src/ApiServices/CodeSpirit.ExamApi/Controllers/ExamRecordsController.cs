@@ -5,15 +5,15 @@ using CodeSpirit.ExamApi.Dtos.ExamRecord;
 using CodeSpirit.Shared.Services.Background;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-#if ENABLE_PDF_EXPORT
 using CodeSpirit.Shared.Services.Files;
 using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.Shared.Services.Background.Dtos;
+using System.IO.Compression;
+#if ENABLE_PDF_EXPORT
 using System.Text;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
 using CodeSpirit.PdfGeneration.Services;
-using CodeSpirit.Shared.Services.Background.Dtos;
-using System.IO.Compression;
 #endif
 
 namespace CodeSpirit.ExamApi.Controllers;
@@ -31,6 +31,7 @@ public class ExamRecordsController : ApiControllerBase
 #if ENABLE_PDF_EXPORT
     private readonly IPdfGenerationService _pdfGenerationService;
 #endif
+    private readonly Services.PdfGeneration.IQuestPdfGenerationService? _questPdfGenerationService;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger<ExamRecordsController> _logger;
 
@@ -42,6 +43,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="backgroundJobService">后台任务服务</param>
     /// <param name="currentUser">当前用户信息</param>
     /// <param name="logger">日志服务</param>
+    /// <param name="questPdfGenerationService">QuestPDF生成服务（可选）</param>
     public ExamRecordsController(
         IExamRecordService examRecordService,
         IExamPaperService examPaperService,
@@ -50,7 +52,8 @@ public class ExamRecordsController : ApiControllerBase
         IPdfGenerationService pdfGenerationService,
 #endif
         ICurrentUser currentUser,
-        ILogger<ExamRecordsController> logger)
+        ILogger<ExamRecordsController> logger,
+        Services.PdfGeneration.IQuestPdfGenerationService? questPdfGenerationService = null)
     {
         _examRecordService = examRecordService;
         _examPaperService = examPaperService;
@@ -58,6 +61,7 @@ public class ExamRecordsController : ApiControllerBase
 #if ENABLE_PDF_EXPORT
         _pdfGenerationService = pdfGenerationService;
 #endif
+        _questPdfGenerationService = questPdfGenerationService;
         _currentUser = currentUser;
         _logger = logger;
     }
@@ -550,7 +554,7 @@ public class ExamRecordsController : ApiControllerBase
     /// <param name="dto">批量导出参数</param>
     /// <returns>导出任务信息</returns>
     [HttpPost("BatchExportPdf")]
-    [Operation("批量导出试卷", "form", null, null, isBulkOperation: true, Redirect = "${WEB_HOST|raw}${redirect|raw}")]
+    [Operation("批量导出试卷", "form", null, null, isBulkOperation: true, Redirect = "${WEB_HOST|raw}${redirect|raw}", Blank = true)]
     [DisplayName("批量导出试卷")]
     public async Task<ActionResult<ApiResponse<JObject>>> BatchExportExamPapersPdf([FromBody] BatchExportExamPapersDto dto)
     {
@@ -1236,47 +1240,6 @@ public class ExamRecordsController : ApiControllerBase
     }
 
     /// <summary>
-    /// 更新导出任务进度
-    /// </summary>
-    private async Task UpdateExportTaskProgress(string taskId, int progress, int processedCount, ITempFileService fileService)
-    {
-        var taskInfo = await fileService.GetExportTaskAsync(taskId);
-        if (taskInfo != null)
-        {
-            taskInfo.Progress = progress;
-            taskInfo.ProcessedRecords = processedCount;
-            taskInfo.UpdateTime = DateTime.UtcNow;
-
-            await fileService.UpdateExportTaskAsync(taskInfo);
-        }
-    }
-
-    /// <summary>
-    /// 更新导出任务状态
-    /// </summary>
-    private async Task UpdateExportTaskStatus(
-        string taskId,
-        string status,
-        int progress,
-        int processedCount,
-        string fileUrl,
-        ITempFileService fileService)
-    {
-        var taskInfo = await fileService.GetExportTaskAsync(taskId);
-        if (taskInfo != null)
-        {
-            taskInfo.Status = status;
-            taskInfo.Progress = progress;
-            taskInfo.ProcessedRecords = processedCount;
-            taskInfo.FileUrl = fileUrl;
-            taskInfo.UpdateTime = DateTime.UtcNow;
-            taskInfo.CompletionTime = status == "已完成" ? DateTime.UtcNow : null;
-
-            await fileService.UpdateExportTaskAsync(taskInfo);
-        }
-    }
-
-    /// <summary>
     /// 获取答卷导出设置
     /// </summary>
     /// <returns>答卷导出设置</returns>
@@ -1338,4 +1301,306 @@ public class ExamRecordsController : ApiControllerBase
         return result;
     }
     #endif
+
+    /// <summary>
+    /// 批量导出考生试卷（使用 QuestPDF，优化版）
+    /// </summary>
+    /// <param name="dto">批量导出参数</param>
+    /// <returns>导出任务信息</returns>
+    [HttpPost("BatchExportPdfV2")]
+    [Operation("批量导出试卷(V2)", "form", null, null, isBulkOperation: true, Redirect = "${WEB_HOST|raw}${redirect|raw}", Blank = true)]
+    [DisplayName("批量导出试卷(V2)")]
+    public async Task<ActionResult<ApiResponse<JObject>>> BatchExportExamPapersPdfV2([FromBody] BatchExportExamPapersDto dto)
+    {
+        if (_questPdfGenerationService == null)
+        {
+            return BadResponse<JObject>("QuestPDF 服务未启用，请使用原版导出功能");
+        }
+
+        if (dto.Ids == null || !dto.Ids.Any())
+        {
+            return BadResponse<JObject>("请至少选择一条考试记录");
+        }
+
+        // 捕获当前租户上下文，在后台任务中恢复
+        var capturedTenantId = _currentUser.TenantId;
+        var capturedUserId = _currentUser.Id;
+        var capturedUserName = _currentUser.UserName;
+
+        _logger.LogDebug("捕获租户上下文用于PDF导出任务：TenantId={TenantId}, UserId={UserId}, UserName={UserName}",
+            capturedTenantId, capturedUserId, capturedUserName);
+
+        // 创建导出任务
+        var taskId = Guid.NewGuid().ToString();
+        var fileName = $"考试试卷导出_{DateTime.Now:yyyyMMddHHmmss}.zip";
+        var taskInfo = new ExportTaskDto
+        {
+            TaskId = taskId,
+            FileName = fileName,
+            Status = "处理中",
+            Progress = 0,
+            ProcessedRecords = 0,
+            TotalRecords = dto.Ids.Count,
+            CreateTime = DateTime.UtcNow
+        };
+
+        // 启动后台任务处理导出
+        await _backgroundJobService.EnqueueAsync(async (serviceScopeFactory, cancellationToken) =>
+        {
+            using var scope = serviceScopeFactory.CreateScope();
+
+            // 在后台任务的作用域中恢复租户上下文
+            if (!string.IsNullOrEmpty(capturedTenantId))
+            {
+                try
+                {
+                    var currentUser = scope.ServiceProvider.GetService<ICurrentUser>();
+                    if (currentUser is ISettableCurrentUser settableCurrentUser)
+                    {
+                        settableCurrentUser.SetTenantId(capturedTenantId);
+                        if (capturedUserId.HasValue)
+                        {
+                            settableCurrentUser.SetUserId(capturedUserId);
+                        }
+                        if (!string.IsNullOrEmpty(capturedUserName))
+                        {
+                            settableCurrentUser.SetUserName(capturedUserName);
+                        }
+                        _logger.LogDebug("已在后台任务中设置租户上下文：TenantId={TenantId}", capturedTenantId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("无法设置租户上下文，ICurrentUser不支持设置租户ID");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "设置租户上下文时发生错误，任务ID: {TaskId}", taskId);
+                }
+            }
+
+            var scopedFileService = scope.ServiceProvider.GetRequiredService<ITempFileService>();
+            await scopedFileService.UpdateExportTaskAsync(taskInfo);
+
+            // 设置整体任务超时，防止任务无限期运行
+            using var overallCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            overallCts.CancelAfter(TimeSpan.FromMinutes(30)); // 30分钟整体超时
+
+            int processedCount = 0; // 移到try块之前，使catch块能够访问
+
+            try
+            {
+                // 创建临时目录
+                var tempDir = Path.Combine(Path.GetTempPath(), $"exam_export_{taskId}");
+                Directory.CreateDirectory(tempDir);
+                var zipPath = Path.Combine(tempDir, fileName);
+
+                using (var zipArchive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+                {
+                    foreach (var recordId in dto.Ids)
+                    {
+                        // 检查整体任务取消状态
+                        if (overallCts.Token.IsCancellationRequested)
+                        {
+                            break;
+                        }
+
+                        try
+                        {
+                            // 使用独立的作用域处理每个记录，确保DbContext正确释放
+                            using (var recordScope = serviceScopeFactory.CreateScope())
+                            {
+                                // 在每个记录的作用域中也设置租户上下文
+                                if (!string.IsNullOrEmpty(capturedTenantId))
+                                {
+                                    try
+                                    {
+                                        var recordCurrentUser = recordScope.ServiceProvider.GetService<ICurrentUser>();
+                                        if (recordCurrentUser is ISettableCurrentUser recordSettableUser)
+                                        {
+                                            recordSettableUser.SetTenantId(capturedTenantId);
+                                            if (capturedUserId.HasValue)
+                                            {
+                                                recordSettableUser.SetUserId(capturedUserId);
+                                            }
+                                            if (!string.IsNullOrEmpty(capturedUserName))
+                                            {
+                                                recordSettableUser.SetUserName(capturedUserName);
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        var recordLogger = recordScope.ServiceProvider.GetService<ILogger<ExamRecordsController>>();
+                                        recordLogger?.LogWarning(ex, "设置记录作用域租户上下文失败，记录ID: {RecordId}", recordId);
+                                    }
+                                }
+
+                                var recordExamService = recordScope.ServiceProvider.GetRequiredService<IExamRecordService>();
+                                var recordExamPaperService = recordScope.ServiceProvider.GetRequiredService<IExamPaperService>();
+                                var recordQuestPdfService = recordScope.ServiceProvider.GetRequiredService<Services.PdfGeneration.IQuestPdfGenerationService>();
+
+                                // 获取考试记录详情
+                                var record = await recordExamService.GetStudentExamPaperDetailAsync(recordId);
+                                if (record == null) continue;
+
+                                var examPaper = await recordExamPaperService.GetAsync(record.ExamPaperId);
+                                if (examPaper == null) continue;
+
+                                // 获取导出设置（在作用域内获取）
+                                var exportSettings = await recordExamService.GetExamPaperExportSettingsAsync();
+
+                                // 使用 QuestPDF 生成PDF字节数组
+                                var pdfBytes = await recordQuestPdfService.GenerateExamPaperPdfAsync(record, examPaper, exportSettings);
+
+                                // 将PDF添加到ZIP
+                                var studentName = record.StudentName ?? "未知学生";
+                                var examName = record.ExamName ?? "未知考试";
+                                var entryName = $"{examName}_{studentName}_{record.ExamRecordId}.pdf";
+
+                                // 添加到ZIP文件
+                                var entry = zipArchive.CreateEntry(entryName, CompressionLevel.Optimal);
+                                using (var entryStream = entry.Open())
+                                {
+                                    await entryStream.WriteAsync(pdfBytes, 0, pdfBytes.Length, cancellationToken);
+                                    await entryStream.FlushAsync(cancellationToken);
+                                }
+                            }
+
+                            // 更新进度
+                            processedCount++;
+                            int progress = (int)((double)processedCount / dto.Ids.Count * 100);
+                            await UpdateExportTaskProgress(taskId, progress, processedCount, scopedFileService);
+                        }
+                        catch (Exception ex)
+                        {
+                            // 记录单个试卷处理错误但继续处理其他试卷
+                            var logger = scope.ServiceProvider.GetService<ILogger<ExamRecordsController>>();
+                            logger?.LogError(ex, "处理考试记录 {RecordId} 导出PDF时发生错误", recordId);
+
+                            // 尝试更新任务中添加错误信息
+                            try
+                            {
+                                var currentTask = await scopedFileService.GetExportTaskAsync(taskId);
+                                if (currentTask != null)
+                                {
+                                    currentTask.ErrorMessages = currentTask.ErrorMessages ?? new List<string>();
+                                    currentTask.ErrorMessages.Add($"记录ID {recordId}: {ex.Message}");
+                                    await scopedFileService.UpdateExportTaskAsync(currentTask);
+                                }
+                            }
+                            catch
+                            {
+                                // 忽略更新任务时的错误
+                            }
+                        }
+                    }
+                }
+
+                // 上传ZIP文件到文件存储服务
+                using var fileStream = System.IO.File.OpenRead(zipPath);
+                var fileUploadResult = await scopedFileService.UploadToCacheAsync(fileStream, fileName, "application/zip");
+
+                // 关闭文件流后再清理
+                fileStream.Close();
+
+                // 更新任务状态为完成并添加下载链接
+                await UpdateExportTaskStatus(taskId, "已完成", 100, processedCount, fileUploadResult.FileUrl, scopedFileService);
+
+                // 清理临时文件
+                try
+                {
+                    if (System.IO.File.Exists(zipPath))
+                    {
+                        System.IO.File.Delete(zipPath);
+                    }
+
+                    if (Directory.Exists(tempDir))
+                    {
+                        Directory.Delete(tempDir, true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // 记录清理错误但不影响任务完成
+                    var logger = scope.ServiceProvider.GetService<ILogger<ExamRecordsController>>();
+                    logger?.LogWarning(ex, "清理临时文件失败: {Message}", ex.Message);
+                }
+            }
+            catch (OperationCanceledException) when (overallCts.Token.IsCancellationRequested)
+            {
+                // 整体任务超时或取消
+                var logger = scope.ServiceProvider.GetService<ILogger<ExamRecordsController>>();
+                logger?.LogWarning("批量导出PDF任务被取消或超时，任务ID: {TaskId}", taskId);
+
+                // 更新任务状态为取消
+                await UpdateExportTaskStatus(taskId, "任务超时或被取消", 0, processedCount, null, scopedFileService);
+            }
+            catch (Exception ex)
+            {
+                // 记录详细错误日志
+                var logger = scope.ServiceProvider.GetService<ILogger<ExamRecordsController>>();
+                logger?.LogError(ex, "批量导出PDF任务失败: {Message}", ex.Message);
+
+                // 更新任务状态为失败
+                await UpdateExportTaskStatus(taskId, $"失败: {ex.Message}", 0, processedCount, null, scopedFileService);
+            }
+        });
+
+        // 返回进度页面链接
+        var result = new JObject
+        {
+            ["status"] = 0,
+            ["msg"] = "导出任务已创建，请稍后查看结果",
+            ["data"] = new JObject
+            {
+                ["taskId"] = taskId,
+                ["redirect"] = "/Tasks/Export-Task/" + taskId
+            }
+        };
+
+        Thread.Sleep(1000);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// 更新导出任务进度
+    /// </summary>
+    private async Task UpdateExportTaskProgress(string taskId, int progress, int processedCount, ITempFileService fileService)
+    {
+        var taskInfo = await fileService.GetExportTaskAsync(taskId);
+        if (taskInfo != null)
+        {
+            taskInfo.Progress = progress;
+            taskInfo.ProcessedRecords = processedCount;
+            taskInfo.UpdateTime = DateTime.UtcNow;
+
+            await fileService.UpdateExportTaskAsync(taskInfo);
+        }
+    }
+
+    /// <summary>
+    /// 更新导出任务状态
+    /// </summary>
+    private async Task UpdateExportTaskStatus(
+        string taskId,
+        string status,
+        int progress,
+        int processedCount,
+        string fileUrl,
+        ITempFileService fileService)
+    {
+        var taskInfo = await fileService.GetExportTaskAsync(taskId);
+        if (taskInfo != null)
+        {
+            taskInfo.Status = status;
+            taskInfo.Progress = progress;
+            taskInfo.ProcessedRecords = processedCount;
+            taskInfo.FileUrl = fileUrl;
+            taskInfo.UpdateTime = DateTime.UtcNow;
+            taskInfo.CompletionTime = status == "已完成" ? DateTime.UtcNow : null;
+
+            await fileService.UpdateExportTaskAsync(taskInfo);
+        }
+    }
 }

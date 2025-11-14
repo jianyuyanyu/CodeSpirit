@@ -9,7 +9,7 @@
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 		<DockerfileContext>..\..</DockerfileContext>
 		<!-- 定义条件编译符号，启用 PDF 导出功能 -->
-		<DefineConstants>$(DefineConstants);ENABLE_PDF_EXPORT</DefineConstants>
+		<!--<DefineConstants>$(DefineConstants);ENABLE_PDF_EXPORT</DefineConstants>-->
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -34,6 +34,7 @@ public class IndexController : ApiControllerBase
     private readonly IStudentService _studentService;
     private readonly IClientIpService _clientIpService;
     private readonly IExamSettingService _examSettingService;
+    private readonly IDistributedCache _distributedCache;
     private const string CLIENT_IP_HEADER = "X-Client-IP";
 
     /// <summary>
@@ -45,13 +46,15 @@ public class IndexController : ApiControllerBase
     /// <param name="studentService">考生服务</param>
     /// <param name="clientIpService">客户端IP地址获取服务</param>
     /// <param name="examSettingService">考试设置服务</param>
+    /// <param name="distributedCache">分布式缓存</param>
     public IndexController(
         IClientService clientService,
         ILogger<IndexController> logger,
         ICurrentUser currentUser,
         IStudentService studentService,
         IClientIpService clientIpService,
-        IExamSettingService examSettingService)
+        IExamSettingService examSettingService,
+        IDistributedCache distributedCache)
     {
         _clientService = clientService;
         _logger = logger;
@@ -59,6 +62,7 @@ public class IndexController : ApiControllerBase
         _studentService = studentService;
         _clientIpService = clientIpService;
         _examSettingService = examSettingService;
+        _distributedCache = distributedCache;
     }
 
     /// <summary>
@@ -124,7 +128,7 @@ public class IndexController : ApiControllerBase
         // 如果有未保存的答案，先保存这些答案
         if (answers != null && answers.Count > 0)
         {
-            _logger.LogInformation("提交考试前保存 {Count} 个答案", answers.Count);
+            _logger.LogDebug("提交考试前保存 {Count} 个答案", answers.Count);
             await _clientService.SaveAnswerAsync(id, currentUserId, answers);
         }
 
@@ -159,10 +163,13 @@ public class IndexController : ApiControllerBase
     /// <param name="id">考试ID</param>
     /// <returns>考试基本信息</returns>
     [HttpGet("{id}/basic")]
-    [OutputCache(Duration = 30, VaryByHeaderNames = new string[] { "Authorization" },
+    [OutputCache(Duration = 60, VaryByHeaderNames = new string[] { "Authorization" },
     VaryByRouteValueNames = new string[] { "id" }, Tags = new string[] { "byUser", "exam-basic" })]
     public async Task<ActionResult<ApiResponse<ClientExamBasicInfoDto>>> GetExamBasicInfo(long id)
     {
+        // ⚡ 性能监控：记录方法执行时间
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        
         var currentUserId = GetCurrentUserId();
         if (!EnsureUserLoggedIn())
         {
@@ -174,8 +181,14 @@ public class IndexController : ApiControllerBase
         // 2. 用户的题目顺序保存在 AnswerRecord.OrderNumber 中
         // 3. 直接调用轻量级方法获取题目和答案，最大化利用缓存
 
-        // 获取基本信息（使用缓存的共享数据）
-        var basicInfoCache = await _clientService.GetExamBasicInfoWithCacheAsync(id);
+        // ⚡ 性能优化：并行获取基本信息和用户记录（两者无依赖关系）
+        var basicInfoTask = _clientService.GetExamBasicInfoWithCacheAsync(id);
+        var userRecordTask = _clientService.GetUserExamRecordWithCacheAsync(id, currentUserId);
+
+        await Task.WhenAll(basicInfoTask, userRecordTask);
+
+        var basicInfoCache = await basicInfoTask;
+        var userRecord = await userRecordTask;
 
         if (basicInfoCache == null)
         {
@@ -183,21 +196,18 @@ public class IndexController : ApiControllerBase
             return BadRequest(new ApiResponse(-1, "无法获取考试信息"));
         }
 
-        _logger.LogInformation("获取缓存基本信息完成，考试ID: {ExamId}, Name: {Name}, TotalScore: {TotalScore}, Duration: {Duration}",
-            id, basicInfoCache.Name, basicInfoCache.TotalScore, basicInfoCache.Duration);
-
-        // 获取用户考试记录（从缓存）
-        var userRecord = await _clientService.GetUserExamRecordWithCacheAsync(id, currentUserId);
-
         if (userRecord == null)
         {
             throw new BusinessException("无法获取用户考试记录，请重新登陆！");
         }
 
+        _logger.LogDebug("获取缓存基本信息完成，考试ID: {ExamId}, Name: {Name}, TotalScore: {TotalScore}, Duration: {Duration}",
+            id, basicInfoCache.Name, basicInfoCache.TotalScore, basicInfoCache.Duration);
+
         // ✅ 使用新的轻量级方法直接获取题目和答案（最大化利用缓存）
         var questions = await _examSettingService.GetExamQuestionsWithAnswersAsync(id, userRecord.RecordId);
 
-        _logger.LogInformation("获取考试题目及答案完成，考试ID: {ExamId}, 用户ID: {UserId}, RecordId: {RecordId}, 题目数: {QuestionCount}",
+        _logger.LogDebug("获取考试题目及答案完成，考试ID: {ExamId}, 用户ID: {UserId}, RecordId: {RecordId}, 题目数: {QuestionCount}",
             id, currentUserId, userRecord.RecordId, questions.Count);
 
         // 合并数据：缓存的基本信息 + 按用户顺序排列的题目列表（已包含答案）
@@ -221,8 +231,21 @@ public class IndexController : ApiControllerBase
             Questions = questions  // 已包含答案，按用户的OrderNumber排序
         };
 
-        _logger.LogInformation("成功构建考试基本信息，题目数: {QuestionCount}, 已填答案数: {FilledCount}",
+        _logger.LogDebug("成功构建考试基本信息，题目数: {QuestionCount}, 已填答案数: {FilledCount}",
             basicInfo.Questions.Count, basicInfo.Questions.Count(q => !string.IsNullOrEmpty(q.Answer)));
+
+        // ⚡ 性能监控：记录执行时间，超过阈值时警告
+        stopwatch.Stop();
+        var elapsedMs = stopwatch.ElapsedMilliseconds;
+        if (elapsedMs > 500)
+        {
+            _logger.LogWarning("GetExamBasicInfo 执行时间过长: {ElapsedMs}ms, 考试ID: {ExamId}, 用户ID: {UserId}", 
+                elapsedMs, id, currentUserId);
+        }
+        else
+        {
+            _logger.LogDebug("GetExamBasicInfo 执行完成: {ElapsedMs}ms, 考试ID: {ExamId}", elapsedMs, id);
+        }
 
         return SuccessResponse(basicInfo);
     }
@@ -234,7 +257,7 @@ public class IndexController : ApiControllerBase
     /// <returns>考试轻量信息</returns>
     [HttpGet("{id}/light")]
     [DisplayName("获取考试轻量信息")]
-    [OutputCache(Duration = 30, VaryByHeaderNames = new string[] { "Authorization" }, VaryByRouteValueNames = new string[] { "id" }, Tags = new string[] { "byUser", "exam-light" })]
+    [OutputCache(Duration = 60, VaryByHeaderNames = new string[] { "Authorization" }, VaryByRouteValueNames = new string[] { "id" }, Tags = new string[] { "byUser", "exam-light" })]
     public async Task<ActionResult<ApiResponse<ClientExamLightInfoDto>>> GetExamLightInfo(long id)
     {
         var currentUserId = GetCurrentUserId();
@@ -384,6 +407,9 @@ public class IndexController : ApiControllerBase
     [HttpPost("{id}/save-answer")]
     public async Task<ActionResult<ApiResponse>> SaveAnswer(long id, [FromBody] ClientExamAnswerDto answer)
     {
+        // ⚡ 性能监控：记录方法执行时间
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        
         var currentUserId = GetCurrentUserId();
         if (!EnsureUserLoggedIn())
         {
@@ -397,11 +423,34 @@ public class IndexController : ApiControllerBase
                 return BadRequest(new ApiResponse(-1, "答案数据无效"));
             }
 
+            // ⚡ 性能优化：请求去重机制 - 5秒内相同答案不重复保存
+            var deduplicationKey = $"answer_dedup_{id}_{currentUserId}_{answer.QuestionId}_{answer.Answer?.GetHashCode() ?? 0}";
+            var existingRequest = await _distributedCache.GetStringAsync(deduplicationKey);
+            
+            if (!string.IsNullOrEmpty(existingRequest))
+            {
+                _logger.LogDebug("检测到重复的答案保存请求，直接返回成功: {Key}", deduplicationKey);
+                return SuccessResponse();
+            }
+
             // 将单个答案转换为列表，以便重用现有的服务方法
             var answers = new List<ClientExamAnswerDto> { answer };
 
             // 保存单个答案到服务器
             var success = await _clientService.SaveAnswerAsync(id, currentUserId, answers);
+
+            // 记录请求，5秒内防止重复提交
+            await _distributedCache.SetStringAsync(deduplicationKey, "1", 
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5) });
+
+            // ⚡ 性能监控：记录执行时间
+            stopwatch.Stop();
+            var elapsedMs = stopwatch.ElapsedMilliseconds;
+            if (elapsedMs > 200)
+            {
+                _logger.LogWarning("SaveAnswer 执行时间过长: {ElapsedMs}ms, 考试记录ID: {RecordId}, 题目ID: {QuestionId}", 
+                    elapsedMs, id, answer.QuestionId);
+            }
 
             return SuccessResponse();
         }

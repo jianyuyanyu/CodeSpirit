@@ -26,5 +26,15 @@ public class ExamRecordCacheDto
     /// 考试设置ID
     /// </summary>
     public long ExamSettingId { get; set; }
+    
+    /// <summary>
+    /// 考试开始时间
+    /// </summary>
+    public DateTime StartTime { get; set; }
+    
+    /// <summary>
+    /// 切屏次数
+    /// </summary>
+    public int ScreenSwitchCount { get; set; }
 }
 

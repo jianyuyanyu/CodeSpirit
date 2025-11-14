@@ -505,11 +505,18 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     {
         try
         {
-            // 获取考试记录的答题记录（包含用户的题目顺序和答案）
-            var answerRecords = await _context.ExamAnswerRecords.AsNoTracking()
+            // ⚡ 性能优化：并行获取答题记录和题目数据（两者无依赖关系）
+            var answerRecordsTask = _context.ExamAnswerRecords.AsNoTracking()
                 .Where(a => a.ExamRecordId == recordId)
                 .OrderBy(a => a.OrderNumber)
                 .ToListAsync();
+
+            var questionDataTask = _examCacheService.GetExamQuestionsDataWithCacheAsync(examId);
+
+            await Task.WhenAll(answerRecordsTask, questionDataTask);
+
+            var answerRecords = await answerRecordsTask;
+            var questionDataDict = await questionDataTask;
                 
             if (!answerRecords.Any())
             {
@@ -517,8 +524,6 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                 throw new BusinessException("考试记录没有答题记录");
             }
 
-            // 使用统一的缓存组件获取题目数据
-            var questionDataDict = await _examCacheService.GetExamQuestionsDataWithCacheAsync(examId);
             if (questionDataDict == null || !questionDataDict.Any())
             {
                 _logger.LogError("无法获取考试 {ExamId} 的题目数据", examId);

@@ -262,49 +262,34 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             throw new ArgumentException("答案列表不能为空", nameof(answers));
         }
 
-        // 验证考试记录是否存在
-        var examRecord = await Repository.GetByIdAsync(examRecordId);
-        if (examRecord == null)
+        // ⚡⚡⚡ 极致性能优化：使用缓存验证考试记录状态，无需查询数据库
+        var cachedExamRecord = await _examCacheService.GetExamRecordWithCacheAsync(examRecordId);
+        
+        if (cachedExamRecord == null)
         {
             throw new BusinessException("考试记录不存在");
         }
 
         // 检查考试状态
-        if (examRecord.Status != ExamRecordStatus.InProgress)
+        if (cachedExamRecord.Status != ExamRecordStatus.InProgress)
         {
             throw new BusinessException("考试已结束，无法提交答案");
         }
 
-        // 检查考试是否超时但仍然接受最后的答案提交
-        bool isOvertime = false;
-        if (examRecord.StartTime != null && examRecord.ExamSetting?.Duration > 0)
-        {
-            var endTime = examRecord.StartTime.AddMinutes(examRecord.ExamSetting.Duration);
-            if (DateTime.UtcNow > endTime)
-            {
-                isOvertime = true;
-                _logger.LogWarning($"考试已超时，但仍接受最后的答案提交。考试记录ID: {examRecord.Id}");
-            }
-        }
-
-        // 获取考试试卷信息
-        var examPaper = await _examSettingRepository.CreateQuery()
-            .Include(es => es.ExamPaper)
-            .ThenInclude(ep => ep.ExamPaperQuestions)
-            .FirstOrDefaultAsync(es => es.Id == examRecord.ExamSettingId);
-
-        if (examPaper == null || examPaper.ExamPaper == null || examPaper.ExamPaper.ExamPaperQuestions == null)
+        // ⚡ 性能优化：使用缓存获取试卷题目映射，避免数据库查询
+        var questionDataDict = await _examCacheService.GetExamQuestionsDataWithCacheAsync(cachedExamRecord.ExamSettingId);
+        
+        if (questionDataDict == null || !questionDataDict.Any())
         {
             throw new BusinessException("试卷信息不存在，无法提交答案");
         }
 
-        // 获取所有试卷题目的映射，用于验证提交的答案
-        var examPaperQuestionsMap = examPaper.ExamPaper.ExamPaperQuestions
-            .ToDictionary(q => q.QuestionId, q => q);
+        // 提取需要的题目ID列表
+        var submittedQuestionIds = answers.Select(a => a.QuestionId).ToList();
 
-        // 获取所有已有的答题记录
+        // ⚡⚡⚡ 极致性能优化：只查询需要更新的答题记录（无法完全缓存，因为需要跟踪实体以便更新）
         var existingAnswerRecords = await _answerRecordRepository.CreateQuery()
-            .Where(a => a.ExamRecordId == examRecordId)
+            .Where(a => a.ExamRecordId == examRecordId && submittedQuestionIds.Contains(a.QuestionId))
             .ToListAsync();
 
         var existingAnswerMap = existingAnswerRecords
@@ -312,13 +297,14 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
 
         List<ExamAnswerRecord> recordsToUpdate = new List<ExamAnswerRecord>();
         List<ExamAnswerRecord> recordsToAdd = new List<ExamAnswerRecord>();
+        var now = DateTime.UtcNow;
 
         foreach (var answer in answers)
         {
-            // 验证题目是否存在于试卷中
-            if (!examPaperQuestionsMap.TryGetValue(answer.QuestionId, out var examPaperQuestion))
+            // ⚡ 性能优化：使用缓存中的题目数据验证
+            if (!questionDataDict.TryGetValue(answer.QuestionId, out var questionData))
             {
-                _logger.LogWarning($"题目 {answer.QuestionId} 不在试卷中，已跳过");
+                _logger.LogWarning("题目 {QuestionId} 不在试卷中，已跳过", answer.QuestionId);
                 continue;
             }
 
@@ -327,33 +313,26 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             {
                 // 更新已有记录
                 answerRecord.Answer = answer.Answer;
-                answerRecord.SubmitTime = DateTime.UtcNow;
+                answerRecord.SubmitTime = now;
 
                 // 计算答题用时
                 if (answerRecord.StartTime.HasValue)
                 {
-                    answerRecord.Duration = (int)(answerRecord.SubmitTime.Value - answerRecord.StartTime.Value).TotalSeconds;
+                    answerRecord.Duration = (int)(now - answerRecord.StartTime.Value).TotalSeconds;
                 }
 
                 recordsToUpdate.Add(answerRecord);
             }
             else
             {
-                // 创建新记录
-                var newRecord = new ExamAnswerRecord
-                {
-                    ExamRecordId = examRecordId,
-                    QuestionId = answer.QuestionId,
-                    QuestionVersionId = examPaperQuestion.QuestionVersionId,
-                    Answer = answer.Answer,
-                    SubmitTime = DateTime.UtcNow,
-                    StartTime = DateTime.UtcNow, // 设置相同的开始时间和提交时间
-                    Duration = 0,
-                    OrderNumber = examPaperQuestion.OrderNumber,
-                    IsMarked = false
-                };
-
-                recordsToAdd.Add(newRecord);
+                // ⚠️ 严重错误：答题记录应该在CreateExamRecordAsync时已全部创建
+                // 如果走到这里，说明数据不一致，不能简单补充创建，因为：
+                // 1. 无法获取正确的OrderNumber（可能经过乱序处理）
+                // 2. 补充创建会导致题目顺序错乱
+                // 3. 可能存在其他数据完整性问题
+                _logger.LogError("数据异常：答题记录不存在，无法提交答案。ExamRecordId={ExamRecordId}, QuestionId={QuestionId}", 
+                    examRecordId, answer.QuestionId);
+                throw new BusinessException($"答题记录数据异常（题目ID: {answer.QuestionId}），请重新开始考试");
             }
         }
 
@@ -371,13 +350,14 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             }
 
             // 记录日志
-            _logger.LogInformation($"批量答案提交成功。考试记录ID: {examRecordId}, 更新: {recordsToUpdate.Count}, 新增: {recordsToAdd.Count}");
+            _logger.LogDebug("批量答案提交成功。考试记录ID: {ExamRecordId}, 更新: {UpdateCount}, 新增: {AddCount}", 
+                examRecordId, recordsToUpdate.Count, recordsToAdd.Count);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"批量答案保存失败。考试记录ID: {examRecordId}");
+            _logger.LogError(ex, "批量答案保存失败。考试记录ID: {ExamRecordId}", examRecordId);
             throw new BusinessException("答案保存失败，请重试");
         }
     }
@@ -1021,6 +1001,29 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
 
             // 保存更改
             await Repository.UpdateAsync(examRecord);
+            
+                // ⚡⚡⚡ 极致性能优化：更新考试记录缓存（Write-Through模式），避免缓存穿透
+                try
+                {
+                    var cacheKey = new ExamCacheOptions.ExamRecordCache(recordId);
+                    var updatedCache = new ExamRecordCacheDto
+                    {
+                        Id = examRecord.Id,
+                        ExamSettingId = examRecord.ExamSettingId,
+                        StudentId = examRecord.StudentId,
+                        Status = examRecord.Status,
+                        StartTime = examRecord.StartTime,
+                        ScreenSwitchCount = examRecord.ScreenSwitchCount // 更新切屏次数
+                    };
+                    await _cacheService.SetAsync(cacheKey.Key, updatedCache, cacheKey.Options);
+                    _logger.LogDebug("切屏记录后已更新考试记录缓存: RecordId={RecordId}, ScreenSwitchCount={Count}", 
+                        recordId, examRecord.ScreenSwitchCount);
+                }
+                catch (Exception ex)
+                {
+                    // 缓存更新失败不影响主流程，但记录警告
+                    _logger.LogWarning(ex, "更新考试记录缓存失败: RecordId={RecordId}", recordId);
+                }
         }
         catch (Exception ex) when (ex is not ArgumentException && ex is not InvalidOperationException)
         {
@@ -1096,6 +1099,28 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 var currentCount = currentCountValue ?? 0;
                 var newCount = currentCount + 1;
                 await _cacheService.SetAsync(completedCountCacheKey.Key, newCount, completedCountCacheKey.Options);
+                
+                // ⚡⚡⚡ 极致性能优化：更新考试记录缓存（Write-Through模式），避免缓存穿透
+                try
+                {
+                    var cacheKey = new ExamCacheOptions.ExamRecordCache(recordId);
+                    var updatedCache = new ExamRecordCacheDto
+                    {
+                        Id = examRecord.Id,
+                        ExamSettingId = examRecord.ExamSettingId,
+                        StudentId = examRecord.StudentId,
+                        Status = ExamRecordStatus.Submitted, // 已提交
+                        StartTime = examRecord.StartTime,
+                        ScreenSwitchCount = examRecord.ScreenSwitchCount
+                    };
+                    await _cacheService.SetAsync(cacheKey.Key, updatedCache, cacheKey.Options);
+                    _logger.LogDebug("已更新考试记录缓存: RecordId={RecordId}, Status=Submitted", recordId);
+                }
+                catch (Exception ex)
+                {
+                    // 缓存更新失败不影响主流程，但记录警告
+                    _logger.LogWarning(ex, "更新考试记录缓存失败: RecordId={RecordId}", recordId);
+                }
                 
                 _logger.LogInformation("考试提交成功: 记录ID={RecordId}, 学生ID={StudentId}, 已完成次数={CompletedCount}",
                     recordId, studentId, newCount);

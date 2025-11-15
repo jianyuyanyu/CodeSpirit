@@ -109,7 +109,7 @@ public class ExamPaperDocument : IDocument
         }
 
         page.Margin(10, Unit.Millimetre);
-        page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Microsoft YaHei"));
+        page.DefaultTextStyle(x => x.FontSize(10).FontFamily("SimSun"));
     }
 
     /// <summary>

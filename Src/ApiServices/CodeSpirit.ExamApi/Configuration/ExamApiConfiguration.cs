@@ -350,9 +350,11 @@ public class ExamApiConfiguration : BaseApiConfiguration
             // 输出字体配置信息
             var font = Services.PdfGeneration.FontHelper.GetChineseFont();
             var fallback = Services.PdfGeneration.FontHelper.GetFallbackFont();
+            var symbolFont = Services.PdfGeneration.FontHelper.GetSymbolFont();
             var os = OperatingSystem.IsWindows() ? "Windows" : OperatingSystem.IsLinux() ? "Linux" : "Other";
             
-            Console.WriteLine($"已配置 QuestPDF 服务：许可证=Community，操作系统={os}，主字体={font}，后备字体={fallback}");
+            Console.WriteLine($"已配置 QuestPDF 服务：许可证=Community，操作系统={os}");
+            Console.WriteLine($"  主字体={font}，后备字体={fallback}，符号字体={symbolFont}");
         }
         catch (Exception ex)
         {

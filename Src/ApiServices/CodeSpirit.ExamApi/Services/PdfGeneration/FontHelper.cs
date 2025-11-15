@@ -13,8 +13,6 @@ public static class FontHelper
     /// <code>
     /// # Dockerfile 中添加：
     /// RUN apt-get update &amp;&amp; apt-get install -y \
-    ///     fonts-wqy-microhei \
-    ///     fonts-wqy-zenhei \
     ///     fonts-noto-cjk \
     ///     fontconfig \
     ///     &amp;&amp; fc-cache -f -v \
@@ -24,8 +22,8 @@ public static class FontHelper
     /// <para>字体优先级：</para>
     /// <list type="number">
     /// <item>Windows: SimSun (宋体)</item>
-    /// <item>Linux: WenQuanYi Micro Hei (文泉驿微米黑)</item>
-    /// <item>Linux 备选: Noto Sans CJK SC</item>
+    /// <item>Linux: Noto Sans CJK SC (思源黑体)</item>
+    /// <item>macOS: PingFang SC (苹方)</item>
     /// </list>
     /// </remarks>
     /// <returns>字体名称</returns>
@@ -39,8 +37,8 @@ public static class FontHelper
         else if (OperatingSystem.IsLinux())
         {
             // Linux 容器环境
-            // QuestPDF 会自动查找系统中可用的字体
-            return "WenQuanYi Micro Hei"; // 文泉驿微米黑
+            // 使用 Google 思源黑体
+            return "Noto Sans CJK SC"; // 思源黑体
         }
         else
         {
@@ -55,11 +53,35 @@ public static class FontHelper
     /// <returns>后备字体名称</returns>
     public static string GetFallbackFont()
     {
-        if (OperatingSystem.IsLinux())
-        {
-            return "Noto Sans CJK SC"; // 思源黑体
-        }
+        // 统一使用 SimSun 作为后备字体
         return "SimSun";
+    }
+
+    /// <summary>
+    /// 获取支持符号的字体名称（用于特殊符号如 ✓、✗、☑、☐）
+    /// </summary>
+    /// <remarks>
+    /// 这些符号字体通常包含 Unicode 符号字符。
+    /// 如果系统字体不支持，可以使用 DejaVu Sans 或 Noto Sans Symbols。
+    /// </remarks>
+    /// <returns>符号字体名称</returns>
+    public static string GetSymbolFont()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            // Windows 默认符号字体
+            return "Segoe UI Symbol";
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            // Linux 容器环境使用 DejaVu Sans（通常预装）
+            return "DejaVu Sans";
+        }
+        else
+        {
+            // macOS
+            return "Apple Symbols";
+        }
     }
 }
 

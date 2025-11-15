@@ -441,11 +441,11 @@ public class ExamPaperDocument : IDocument
                 {
                     if (isCorrect)
                     {
-                        text.Span("✓ ").FontColor(Colors.Green.Medium);
+                        text.Span("✓ ").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Green.Medium);
                     }
                     else
                     {
-                        text.Span("✗ ").FontColor(Colors.Red.Medium);
+                        text.Span("✗ ").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Red.Medium);
                     }
                     text.Span($"{score}/{maxScore}分");
                 });
@@ -487,16 +487,16 @@ public class ExamPaperDocument : IDocument
 
                 column.Item().Text(text =>
                 {
-                    text.Span(isSelected ? "☑ " : "☐ ");
+                    text.Span(isSelected ? "☑ " : "☐ ").FontFamily(FontHelper.GetSymbolFont());
                     text.Span(option);
 
                     if (isCorrectOption)
                     {
-                        text.Span(" ✓").FontColor(Colors.Green.Medium);
+                        text.Span(" ✓").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Green.Medium);
                     }
                     else if (isSelected)
                     {
-                        text.Span(" ✗").FontColor(Colors.Red.Medium);
+                        text.Span(" ✗").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Red.Medium);
                     }
                 });
             }
@@ -520,16 +520,16 @@ public class ExamPaperDocument : IDocument
 
                 column.Item().Text(text =>
                 {
-                    text.Span(isSelected ? "☑ " : "☐ ");
+                    text.Span(isSelected ? "☑ " : "☐ ").FontFamily(FontHelper.GetSymbolFont());
                     text.Span(option);
 
                     if (isCorrectOption)
                     {
-                        text.Span(" ✓").FontColor(Colors.Green.Medium);
+                        text.Span(" ✓").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Green.Medium);
                     }
                     else if (isSelected)
                     {
-                        text.Span(" ✗").FontColor(Colors.Red.Medium);
+                        text.Span(" ✗").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Red.Medium);
                     }
                 });
             }
@@ -548,31 +548,31 @@ public class ExamPaperDocument : IDocument
         {
             column.Item().Text(text =>
             {
-                text.Span(isTrue ? "☑ " : "☐ ");
+                text.Span(isTrue ? "☑ " : "☐ ").FontFamily(FontHelper.GetSymbolFont());
                 text.Span("正确");
 
                 if (correctIsTrue)
                 {
-                    text.Span(" ✓").FontColor(Colors.Green.Medium);
+                    text.Span(" ✓").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Green.Medium);
                 }
                 else if (isTrue)
                 {
-                    text.Span(" ✗").FontColor(Colors.Red.Medium);
+                    text.Span(" ✗").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Red.Medium);
                 }
             });
 
             column.Item().Text(text =>
             {
-                text.Span(!isTrue ? "☑ " : "☐ ");
+                text.Span(!isTrue ? "☑ " : "☐ ").FontFamily(FontHelper.GetSymbolFont());
                 text.Span("错误");
 
                 if (!correctIsTrue)
                 {
-                    text.Span(" ✓").FontColor(Colors.Green.Medium);
+                    text.Span(" ✓").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Green.Medium);
                 }
                 else if (!isTrue)
                 {
-                    text.Span(" ✗").FontColor(Colors.Red.Medium);
+                    text.Span(" ✗").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Red.Medium);
                 }
             });
         });

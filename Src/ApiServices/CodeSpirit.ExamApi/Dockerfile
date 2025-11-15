@@ -26,13 +26,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装中文字体
-# 文泉驿微米黑（推荐，体积小）
-# 文泉驿正黑（质量高）
 # 思源黑体（完整支持）
+# 安装中文字体（仅思源黑体）
 RUN apt-get update && apt-get install -y \
-    fonts-wqy-microhei \
-    fonts-wqy-zenhei \      
-    fonts-noto-cjk \        
+    fonts-noto-cjk \
     fontconfig \
     && fc-cache -f -v \
     && apt-get clean \

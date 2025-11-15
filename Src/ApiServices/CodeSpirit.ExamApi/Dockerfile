@@ -25,6 +25,22 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# 安装中文字体
+# 文泉驿微米黑（推荐，体积小）
+# 文泉驿正黑（质量高）
+# 思源黑体（完整支持）
+RUN apt-get update && apt-get install -y \
+    fonts-wqy-microhei \
+    fonts-wqy-zenhei \      
+    fonts-noto-cjk \        
+    fontconfig \
+    && fc-cache -f -v \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 验证字体安装（可选，调试时使用）
+RUN echo "已安装的中文字体：" && fc-list :lang=zh | head -5
+
 # 设置环境变量
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PDF_GENERATION_MAX_CONCURRENT=5

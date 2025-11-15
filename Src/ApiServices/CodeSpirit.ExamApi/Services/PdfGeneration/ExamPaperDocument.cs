@@ -109,7 +109,10 @@ public class ExamPaperDocument : IDocument
         }
 
         page.Margin(10, Unit.Millimetre);
-        page.DefaultTextStyle(x => x.FontSize(10).FontFamily("SimSun"));
+        page.DefaultTextStyle(x => x
+            .FontSize(10)
+            .FontFamily(FontHelper.GetChineseFont())
+            .Fallback(style => style.FontFamily(FontHelper.GetFallbackFont())));
     }
 
     /// <summary>

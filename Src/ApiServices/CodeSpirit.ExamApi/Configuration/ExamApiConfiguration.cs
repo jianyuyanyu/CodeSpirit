@@ -347,7 +347,12 @@ public class ExamApiConfiguration : BaseApiConfiguration
             // 注册 QuestPDF 生成服务
             services.AddScoped<Services.PdfGeneration.IQuestPdfGenerationService, Services.PdfGeneration.QuestPdfGenerationService>();
             
-            Console.WriteLine("已配置 QuestPDF 服务：使用 Community 许可证");
+            // 输出字体配置信息
+            var font = Services.PdfGeneration.FontHelper.GetChineseFont();
+            var fallback = Services.PdfGeneration.FontHelper.GetFallbackFont();
+            var os = OperatingSystem.IsWindows() ? "Windows" : OperatingSystem.IsLinux() ? "Linux" : "Other";
+            
+            Console.WriteLine($"已配置 QuestPDF 服务：许可证=Community，操作系统={os}，主字体={font}，后备字体={fallback}");
         }
         catch (Exception ex)
         {

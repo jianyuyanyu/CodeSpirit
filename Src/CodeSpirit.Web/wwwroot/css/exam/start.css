@@ -79,29 +79,22 @@ body::before {
 
 /* ===== 考试准备卡片 ===== */
 .exam-prepare-card {
-    background: var(--exam-card-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    margin: 12px auto;
-    max-width: 700px;
-    border-radius: var(--exam-radius-large);
-    box-shadow: var(--exam-shadow);
+    background: white;
+    border: 1px solid #e0e0e0;
+    margin: 0 auto;
+    max-width: 900px;
+    min-height: 100vh;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     overflow: hidden;
-    animation: fadeInUp 0.6s var(--exam-bounce) 0.1s both;
-    position: relative;
-    transition: var(--exam-transition);
+    animation: fadeInUp 0.5s ease 0.1s both;
+    display: flex;
+    flex-direction: column;
 }
 
-.exam-prepare-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--exam-primary), var(--exam-purple), var(--exam-pink), var(--exam-info));
-    background-size: 200% 100%;
-    animation: shimmer 3s ease-in-out infinite;
+@media (min-width: 1200px) {
+    .exam-prepare-card {
+        max-width: 1000px;
+    }
 }
 
 @keyframes shimmer {
@@ -109,141 +102,31 @@ body::before {
     100% { background-position: 200% 0; }
 }
 
-/* 移除悬停效果，避免干扰考生 */
-
 .exam-prepare-header {
     background: linear-gradient(135deg, var(--exam-primary), var(--exam-secondary));
     color: white;
-    padding: 20px 16px;
+    padding: 24px 20px;
     text-align: center;
     position: relative;
+    flex-shrink: 0;
 }
-
-/* 移除复杂头部动画效果 */
 
 .exam-prepare-header h2 {
     margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.exam-prepare-header p {
-    margin: 8px 0 0 0;
-    opacity: 0.9;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-/* ===== 考试信息展示 ===== */
-.exam-info-section {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--exam-border);
-}
-
-.exam-info-title {
-    font-size: 14px;
+    font-size: 20px;
     font-weight: 600;
-    color: var(--exam-text);
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-}
-
-.exam-info-title i {
-    margin-right: 6px;
-    color: var(--exam-primary);
-}
-
-.exam-info-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
-}
-
-/* 覆盖Amis框架的默认Container样式 */
-.exam-info-grid .cxd-Container-body {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
-}
-
-.exam-info-grid .cxd-TplField {
-    margin: 0 !important;
-    width: 100% !important;
-}
-
-.exam-info-item {
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-    padding: 10px 12px;
-    border-radius: var(--exam-radius);
-    border: 1px solid rgba(30, 136, 229, 0.1);
-    position: relative;
-    transition: var(--exam-transition);
-    overflow: hidden;
-    width: 100%;
-}
-
-.exam-info-item::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: linear-gradient(180deg, var(--exam-primary), var(--exam-secondary));
-    border-radius: 0 2px 2px 0;
-}
-
-.exam-info-item:nth-child(1)::before { background: linear-gradient(180deg, var(--exam-primary), var(--exam-info)); }
-.exam-info-item:nth-child(2)::before { background: linear-gradient(180deg, var(--exam-success), var(--exam-primary)); }
-.exam-info-item:nth-child(3)::before { background: linear-gradient(180deg, var(--exam-warning), var(--exam-success)); }
-.exam-info-item:nth-child(4)::before { background: linear-gradient(180deg, var(--exam-purple), var(--exam-pink)); }
-
-/* 移除信息卡片悬停效果 */
-
-.exam-info-item .label {
-    font-size: 11px;
-    color: var(--exam-text-secondary);
-    margin-bottom: 3px;
-    font-weight: 500;
-}
-
-.exam-info-item .value {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--exam-text);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.exam-info-item .value::before {
-    content: '';
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--exam-primary);
-    animation: pulse 2s ease-in-out infinite;
-}
-
-.exam-info-item:nth-child(1) .value::before { background: var(--exam-info); }
-.exam-info-item:nth-child(2) .value::before { background: var(--exam-success); }
-.exam-info-item:nth-child(3) .value::before { background: var(--exam-warning); }
-.exam-info-item:nth-child(4) .value::before { background: var(--exam-purple); }
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.2); }
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    letter-spacing: 0.5px;
 }
 
 /* ===== 倒计时器 ===== */
 .countdown-section {
-    padding: 20px 16px;
+    padding: 32px 20px;
     text-align: center;
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    background: #f8f9fa;
     position: relative;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .countdown-section::before {
@@ -252,27 +135,17 @@ body::before {
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    background: 
-        radial-gradient(circle at 30% 70%, rgba(30, 136, 229, 0.04) 0%, transparent 50%),
-        radial-gradient(circle at 70% 30%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
-    pointer-events: none;
-    animation: backgroundShift 6s ease-in-out infinite;
-}
-
-@keyframes backgroundShift {
-    0%, 100% { transform: translateX(0); }
-    50% { transform: translateX(10px); }
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--exam-primary), transparent);
 }
 
 .countdown-title {
-    font-size: 16px;
-    color: var(--exam-text);
-    margin-bottom: 16px;
+    font-size: 18px;
+    color: var(--exam-primary);
+    margin-bottom: 24px;
     font-weight: 600;
     position: relative;
     z-index: 1;
-    letter-spacing: 0.5px;
 }
 
 .countdown-display {
@@ -323,8 +196,8 @@ body::before {
 }
 
 .countdown-unit {
-    width: 70px;
-    height: 70px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
     color: white;
@@ -332,66 +205,51 @@ body::before {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    box-shadow: 
-        0 8px 24px rgba(30, 136, 229, 0.3),
-        0 4px 12px rgba(30, 136, 229, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 20px rgba(30, 136, 229, 0.25);
     position: relative;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    animation: countdownPulse 2s ease-in-out infinite;
+    transition: all 0.3s ease;
 }
 
 .countdown-unit::before {
     content: '';
     position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgba(66, 165, 245, 0.5), rgba(30, 136, 229, 0.5));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: -1;
-}
-
-.countdown-unit:hover::before {
-    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+    pointer-events: none;
 }
 
 @keyframes countdownPulse {
     0%, 100% { 
         transform: scale(1);
-        box-shadow: 
-            0 8px 24px rgba(30, 136, 229, 0.3),
-            0 4px 12px rgba(30, 136, 229, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 20px rgba(30, 136, 229, 0.25);
     }
     50% { 
-        transform: scale(1.05);
-        box-shadow: 
-            0 12px 28px rgba(30, 136, 229, 0.4),
-            0 6px 16px rgba(30, 136, 229, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        transform: scale(1.03);
+        box-shadow: 0 10px 24px rgba(30, 136, 229, 0.3);
     }
 }
 
 .countdown-unit .number {
-    font-size: 24px;
+    font-size: 32px;
     font-weight: 900;
     display: block;
     line-height: 1;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    margin-bottom: 2px;
-    letter-spacing: -1px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.2);
+    margin-bottom: 4px;
+    letter-spacing: -2px;
 }
 
 .countdown-unit .label {
-    font-size: 9px;
-    opacity: 0.9;
-    font-weight: 600;
+    font-size: 11px;
+    opacity: 0.95;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* 不同时间段的倒计时颜色状态 */
@@ -544,37 +402,49 @@ body::before {
 
 /* ===== 考试规则 ===== */
 .exam-rules-section {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--exam-border);
+    padding: 32px 24px;
+    background: #fffbf5;
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .exam-rules-title {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 700;
     color: var(--exam-text);
-    margin-bottom: 10px;
+    margin-bottom: 24px;
     display: flex;
     align-items: center;
+    position: relative;
+    z-index: 1;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--exam-warning);
 }
 
 .exam-rules-title i {
-    margin-right: 6px;
+    margin-right: 10px;
     color: var(--exam-warning);
+    font-size: 20px;
 }
 
 .exam-rules-list {
     list-style: none;
     padding: 0;
     margin: 0;
+    position: relative;
+    z-index: 1;
 }
 
 .exam-rules-list li {
-    padding: 6px 0;
-    border-bottom: 1px solid #f1f5f9;
+    padding: 16px 0;
+    border-bottom: 1px solid #f0f0f0;
     display: flex;
     align-items: flex-start;
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--exam-text);
 }
 
 .exam-rules-list li:last-child {
@@ -585,95 +455,69 @@ body::before {
     content: '✓';
     color: var(--exam-success);
     font-weight: bold;
-    margin-right: 10px;
-    margin-top: 1px;
-    width: 16px;
-    height: 16px;
+    margin-right: 14px;
+    margin-top: 3px;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--exam-success), var(--exam-primary));
+    background: rgba(16, 185, 129, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    font-size: 10px;
+    font-size: 13px;
     flex-shrink: 0;
-    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.exam-rules-list li strong {
+    color: var(--exam-primary);
+    font-weight: 700;
+}
+
+.exam-rules-list li .text-danger {
+    color: var(--exam-danger);
+    font-weight: 600;
 }
 
 /* ===== 操作按钮 ===== */
 .exam-actions {
-    padding: 16px;
+    padding: 24px 20px;
     text-align: center;
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-    position: relative;
-    overflow: hidden;
-}
-
-.exam-actions::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--exam-primary), transparent);
-    opacity: 0.3;
+    background: #fafbfc;
+    border-top: 1px solid var(--exam-border);
+    flex-shrink: 0;
 }
 
 .exam-start-btn {
-    background: linear-gradient(135deg, var(--exam-success), var(--exam-primary));
+    background: var(--exam-primary);
     color: white;
     border: none;
     padding: 14px 40px;
-    border-radius: var(--exam-radius-large);
+    border-radius: var(--exam-radius);
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
-    transition: var(--exam-transition);
-    box-shadow: var(--exam-shadow);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(30, 136, 229, 0.25);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .exam-start-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--exam-shadow-hover);
+    background: var(--exam-secondary);
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
 }
 
 .exam-start-btn:active {
-    transform: translateY(0);
+    transform: translateY(1px);
 }
 
 .exam-start-btn:disabled {
     background: #94a3b8;
     cursor: not-allowed;
-    transform: none;
     box-shadow: none;
-}
-
-.back-btn {
-    background: transparent;
-    color: var(--exam-text-secondary);
-    border: 1px solid var(--exam-border);
-    padding: 10px 20px;
-    border-radius: var(--exam-radius);
-    font-size: 14px;
-    cursor: pointer;
-    transition: var(--exam-transition);
-    margin-right: 12px;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.back-btn:hover {
-    border-color: var(--exam-primary);
-    color: var(--exam-primary);
 }
 
 /* ===== 加载状态 ===== */
@@ -804,7 +648,6 @@ body::before {
 
 /* ===== 内容层级调整 ===== */
 .exam-prepare-header,
-.exam-info-section,
 .countdown-section,
 .exam-rules-section,
 .exam-actions {
@@ -815,48 +658,37 @@ body::before {
 /* ===== 移动端适配 ===== */
 @media (max-width: 768px) {
     .exam-prepare-card {
-        margin: 8px;
-        border-radius: var(--exam-radius);
+        margin: 0;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
     }
     
     .exam-prepare-header {
-        padding: 16px 12px;
+        padding: 20px 16px;
     }
     
-    .exam-info-section,
     .exam-rules-section {
-        padding: 10px 12px;
+        padding: 24px 16px;
+    }
+    
+    .exam-rules-title {
+        font-size: 17px;
+        margin-bottom: 20px;
+    }
+    
+    .exam-rules-list li {
+        padding: 14px 0;
+        font-size: 14px;
     }
     
     .countdown-section {
-        padding: 16px 12px;
+        padding: 24px 16px;
     }
     
     .countdown-title {
-        font-size: 15px;
-        margin-bottom: 14px;
-    }
-    
-    .exam-info-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 6px !important;
-    }
-    
-    .exam-info-grid .cxd-Container-body {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 6px !important;
-    }
-    
-    .exam-info-item {
-        padding: 8px 10px;
-    }
-    
-    .exam-info-item .label {
-        font-size: 10px;
-    }
-    
-    .exam-info-item .value {
-        font-size: 14px;
+        font-size: 16px;
+        margin-bottom: 20px;
     }
     
     .countdown-timer {
@@ -868,24 +700,29 @@ body::before {
     }
     
     .countdown-unit {
-        width: 60px;
-        height: 60px;
+        width: 80px;
+        height: 80px;
     }
     
     .countdown-unit .number {
-        font-size: 20px;
+        font-size: 28px;
     }
     
     .countdown-unit .label {
-        font-size: 8px;
+        font-size: 10px;
+    }
+    
+    .exam-rules-list li {
+        padding: 10px 0;
+        font-size: 13px;
     }
     
     .exam-actions {
-        padding: 16px 12px;
+        padding: 18px 16px;
     }
     
     .exam-start-btn {
-        padding: 12px 32px;
+        padding: 13px 36px;
         font-size: 15px;
         gap: 6px;
     }
@@ -893,43 +730,47 @@ body::before {
 
 @media (max-width: 480px) {
     .exam-prepare-header {
-        padding: 16px 12px;
+        padding: 18px 16px;
     }
     
     .exam-prepare-header h2 {
-        font-size: 20px;
+        font-size: 18px;
     }
     
-    .exam-info-section,
     .exam-rules-section {
-        padding: 12px;
+        padding: 20px 16px;
     }
     
-    .exam-info-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 6px !important;
+    .exam-rules-title {
+        font-size: 16px;
+        margin-bottom: 18px;
+        padding-bottom: 10px;
     }
     
-    .exam-info-grid .cxd-Container-body {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 6px !important;
+    .exam-rules-title i {
+        font-size: 18px;
     }
     
-    .exam-info-item {
-        padding: 8px 10px;
+    .exam-rules-list li {
+        padding: 12px 0;
+        font-size: 14px;
+        line-height: 1.7;
     }
     
-    .exam-info-item .label {
-        font-size: 10px;
+    .exam-rules-list li::before {
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        margin-right: 12px;
     }
     
     .countdown-section {
-        padding: 16px 12px;
+        padding: 20px 16px;
     }
     
     .countdown-title {
-        font-size: 14px;
-        margin-bottom: 12px;
+        font-size: 16px;
+        margin-bottom: 20px;
     }
     
     .countdown-timer {
@@ -941,112 +782,69 @@ body::before {
     }
     
     .countdown-unit {
-        width: 55px;
-        height: 55px;
+        width: 75px;
+        height: 75px;
     }
     
     .countdown-unit .number {
-        font-size: 18px;
+        font-size: 26px;
     }
     
     .countdown-unit .label {
-        font-size: 8px;
+        font-size: 10px;
     }
     
     .exam-start-btn {
-        padding: 16px 40px;
+        padding: 13px 36px;
+        font-size: 15px;
+    }
+    
+    .exam-rules-list li {
+        padding: 10px 0;
+        font-size: 13px;
+    }
+    
+    .exam-rules-title {
+        font-size: 14px;
+    }
+    
+    .countdown-title {
         font-size: 16px;
-        letter-spacing: 0.5px;
-    }
-    
-    .exam-info-item .value {
-        font-size: 16px;
-    }
-    
-    /* 移动端禁用某些动画以提升性能 */
-    .exam-prepare-card::after,
-    .cursor-follower {
-        display: none;
-    }
-    
-    .countdown-unit::before {
-        opacity: 0 !important;
-    }
-    
-    .countdown-unit {
-        animation: none;
-    }
-    
-    .exam-info-item .value::before {
-        animation: none;
-    }
-    
-    /* 移动端简化危险状态动画 */
-    .countdown-timer.time-critical .countdown-unit {
-        animation: simpleEnergeticPulse 1.5s ease-in-out infinite;
-    }
-    
-    @keyframes simpleEnergeticPulse {
-        0%, 100% { 
-            opacity: 1; 
-            transform: scale(1);
-        }
-        50% { 
-            opacity: 0.85; 
-            transform: scale(1.02);
-        }
     }
 }
 
 /* 超小屏幕适配 */
 @media (max-width: 360px) {
-    .exam-prepare-card {
-        margin: 8px;
-        border-radius: var(--exam-radius);
-    }
-    
     .exam-prepare-header {
-        padding: 16px 12px;
+        padding: 16px;
     }
     
     .exam-prepare-header h2 {
-        font-size: 18px;
+        font-size: 17px;
     }
     
-    .exam-info-section,
     .exam-rules-section {
-        padding: 10px;
+        padding: 18px 14px;
     }
     
-    .exam-info-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 5px !important;
+    .exam-rules-title {
+        font-size: 15px;
+        margin-bottom: 16px;
+        padding-bottom: 10px;
     }
     
-    .exam-info-grid .cxd-Container-body {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 5px !important;
-    }
-    
-    .exam-info-item {
-        padding: 7px 9px;
-    }
-    
-    .exam-info-item .label {
-        font-size: 9px;
-    }
-    
-    .exam-info-item .value {
+    .exam-rules-list li {
+        padding: 11px 0;
         font-size: 13px;
     }
     
     .countdown-section {
-        padding: 14px 10px;
+        padding: 18px 14px;
     }
     
     .countdown-title {
-        font-size: 13px;
-        margin-bottom: 10px;
+        font-size: 15px;
+        margin-bottom: 16px;
     }
     
     .countdown-timer {
@@ -1058,24 +856,33 @@ body::before {
     }
     
     .countdown-unit {
-        width: 48px;
-        height: 48px;
+        width: 65px;
+        height: 65px;
     }
     
     .countdown-unit .number {
-        font-size: 16px;
+        font-size: 22px;
     }
     
     .countdown-unit .label {
-        font-size: 7px;
+        font-size: 9px;
     }
     
     .exam-actions {
-        padding: 20px 12px;
+        padding: 16px;
     }
     
     .exam-start-btn {
-        padding: 14px 32px;
+        padding: 12px 30px;
         font-size: 15px;
+    }
+    
+    .exam-rules-list li {
+        padding: 9px 0;
+        font-size: 12px;
+    }
+    
+    .exam-rules-title {
+        font-size: 14px;
     }
 } 

@@ -755,13 +755,6 @@
     }
     
     /**
-     * 返回应用首页
-     */
-    function goBack() {
-        window.location.href = `/${window.tenantId}/exam/app`;
-    }
-    
-    /**
      * 构建AMIS页面配置
      */
     function buildPageConfig() {
@@ -787,43 +780,7 @@
                             body: [
                                 {
                                     type: "tpl",
-                                    tpl: "<h2>${exam.title}</h2><p>${exam.description}</p>"
-                                }
-                            ]
-                        },
-                        
-                        // 考试信息
-                        {
-                            type: "container",
-                            className: "exam-info-section",
-                            body: [
-                                {
-                                    type: "tpl",
-                                    tpl: "<div class='exam-info-title'><i class='fa fa-info-circle'></i>考试信息</div>",
-                                    className: "exam-info-title"
-                                },
-                                {
-                                    type: "html",
-                                    html: `
-                                        <div class="exam-info-grid">
-                                            <div class='exam-info-item'>
-                                                <div class='label'>考试时长</div>
-                                                <div class='value'>\${exam.duration}分钟</div>
-                                            </div>
-                                            <div class='exam-info-item'>
-                                                <div class='label'>题目数量</div>
-                                                <div class='value'>\${exam.totalQuestions}题</div>
-                                            </div>
-                                            <div class='exam-info-item'>
-                                                <div class='label'>总分</div>
-                                                <div class='value'>\${exam.totalScore}分</div>
-                                            </div>
-                                            <div class='exam-info-item'>
-                                                <div class='label'>考生姓名</div>
-                                                <div class='value'>\${student.displayName}</div>
-                                            </div>
-                                        </div>
-                                    `
+                                    tpl: "<h2>${exam.title}</h2>"
                                 }
                             ]
                         },
@@ -878,13 +835,12 @@
                                     type: "html",
                                     html: `
                                         <ul class="exam-rules-list">
-                                            <li>考试开始前请仔细阅读考试规则和注意事项</li>
-                                            <li>考试过程中请保持安静，不得交头接耳</li>
-                                            <li>考试时间到后系统将自动提交试卷</li>
-                                            <li>考试过程中如遇技术问题请及时联系监考老师</li>
-                                            <li>严禁作弊，一经发现立即取消考试资格</li>
-                                            <li>请确保网络连接稳定，避免因网络问题影响考试</li>
-                                            <li>考试结束后请等待系统提示再离开考场</li>
+                                            <li>本次考试时长<strong>\${exam.duration}分钟</strong>，请合理安排时间。请在安静环境下考试，严禁在机场、商场等公共场所进行</li>
+                                            <li>考试开始后<strong>禁止退出系统</strong>，超过2次将<span class="text-danger">强制终止考试</span></li>
+                                            <li>离开考试界面超过<strong>3秒</strong>将被记录并可能认定为作弊，超过2次将<span class="text-danger">强制终止考试</span></li>
+                                            <li>考试前需关闭可能影响考试的软件（微信、QQ、飞书、钉钉、腾讯会议、电脑管家、VPN等）以免自动弹窗</li>
+                                            <li>考试时间到后系统将<strong>自动提交试卷</strong>，请确保网络连接稳定</li>
+                                            <li>考试过程中如遇技术问题请及时联系监考老师，<span class="text-danger">严禁作弊</span>，一经发现立即取消考试资格</li>
                                         </ul>
                                     `
                                 }
@@ -899,9 +855,6 @@
                                 {
                                     type: "html",
                                     html: `
-                                        <button class="back-btn" onclick="window.goBack()">
-                                            <i class="fa fa-arrow-left"></i>返回
-                                        </button>
                                         <button class="exam-start-btn" onclick="window.startExam()" 
                                                 id="startExamBtn" 
                                                 \${countdown.canStart ? '' : 'disabled'}>
@@ -942,12 +895,9 @@
                                             <i class="fa fa-exclamation-triangle"></i>
                                         </div>
                                         <h3>${friendly.title}</h3>
-                                        <p>${friendly.message || '请尝试刷新页面或返回首页'}</p>
+                                        <p>${friendly.message || '请尝试刷新页面'}</p>
                                         <button class="exam-start-btn" onclick="window.location.reload()">
                                             <i class="fa fa-refresh"></i>重新加载
-                                        </button>
-                                        <button class="back-btn" onclick="window.goBack()">
-                                            <i class="fa fa-arrow-left"></i>返回首页
                                         </button>
                                     `
                                 }
@@ -1007,7 +957,6 @@
             
             // 绑定全局函数
             window.startExam = startExam;
-            window.goBack = goBack;
             
         } catch (error) {
             console.error('初始化页面失败:', error);

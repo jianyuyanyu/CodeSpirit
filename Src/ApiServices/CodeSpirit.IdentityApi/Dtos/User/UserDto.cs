@@ -26,6 +26,7 @@ public class UserDto
     public string Email { get; set; }
 
     [DisplayName("是否激活")]
+    [AmisColumn(Type = "switch")]
     public bool IsActive { get; set; }
 
     [DisplayName("身份证")]

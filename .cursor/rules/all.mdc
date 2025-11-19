@@ -44,7 +44,7 @@ alwaysApply: true
 - 避免 N+1 查询，合理使用 `Include`
 
 ### 多租户
-- 所有实体考虑租户隔离
+- 所有实体应分析是否需要租户隔离，并实现接口 IMultiTenant
 - 自动应用租户过滤器
 
 ## 性能优化
@@ -102,20 +102,3 @@ Src/
 ├── CodeSpirit.ServiceDefaults/           # 服务默认配置
 ├── CodeSpirit.Shared/                    # 全局共享库
 ├── CodeSpirit.Web/                       # Web前端项目
-└── Tests/                                # 测试项目集合
-    ├── ApiServices/                      # API服务测试
-    │   ├── CodeSpirit.IdentityApi.Tests/
-    │   └── CodeSpirit.ExamApi.Tests/
-    ├── Components/                       # 组件测试
-    │   ├── CodeSpirit.Aggregator.Tests/
-    │   ├── CodeSpirit.Authorization.Tests/
-    │   ├── CodeSpirit.Caching.Tests/
-    │   ├── CodeSpirit.Charts.Tests/
-    │   └── ... (其他组件测试)
-    ├── Shared/                           # 共享测试基础设施
-    │   ├── CodeSpirit.Shared.Tests/
-    │   └── CodeSpirit.Components.TestsBase/
-    ├── Infrastructure/                   # 基础设施测试
-    │   └── CodeSpirit.PdfGeneration.Tests/
-    └── LoadTests/                        # 性能负载测试
-        └── CodeSpirit.ExamApi.LoadTests/

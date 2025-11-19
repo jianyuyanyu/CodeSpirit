@@ -204,7 +204,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             TotalParticipants = item.ExamRecordsCount,
             PassedParticipants = item.PassedCount,
             PassRate = item.ExamRecordsCount > 0 
-                ? Math.Round((decimal)item.PassedCount / item.ExamRecordsCount, 2)
+                ? Math.Round((decimal)item.PassedCount / item.ExamRecordsCount * 100, 2)
                 : null
         }).ToList();
 
@@ -303,7 +303,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             TotalParticipants = result.ExamRecordsCount,
             PassedParticipants = result.PassedCount,
             PassRate = result.ExamRecordsCount > 0 
-                ? Math.Round((decimal)result.PassedCount / result.ExamRecordsCount, 2)
+                ? Math.Round((decimal)result.PassedCount / result.ExamRecordsCount * 100, 2)
                 : null
         };
     }

@@ -58,7 +58,7 @@ D、IBM
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.SingleChoice, question.Type);
-        Assert.Equal("SSL协议最早是由____提出的。", question.Content);
+        Assert.Equal("SSL协议最早是由(  )提出的。", question.Content);
         Assert.Equal("Netscape", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Equal("SSL协议是由Netscape公司提出的，用于在互联网上提供安全通信。", question.Analysis);
@@ -112,7 +112,7 @@ D、合法访问
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.MultipleChoice, question.Type);
-        Assert.Equal("以下哪些是常见的Web安全威胁？", question.Content);
+        Assert.Equal("以下哪些是常见的Web安全威胁(  )？", question.Content);
         Assert.Equal("SQL注入,跨站脚本攻击,跨站请求伪造", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Equal("SQL注入、XSS和CSRF都是常见的Web安全威胁。", question.Analysis);
@@ -201,7 +201,7 @@ D、C2B
 
         // 验证第一道单选题
         Assert.Equal(QuestionType.SingleChoice, question1.Type);
-        Assert.Equal("电商平台中，最常用的支付方式是。", question1.Content);
+        Assert.Equal("电商平台中，最常用的支付方式是(  )。", question1.Content);
         Assert.Equal("在线支付", question1.CorrectAnswer);
         Assert.Equal(4, question1.Options.Count);
         Assert.Equal("在线支付是目前电商平台最常用的支付方式，方便快捷。", question1.Analysis);
@@ -211,7 +211,7 @@ D、C2B
 
         // 验证第二道单选题
         Assert.Equal(QuestionType.SingleChoice, question2.Type);
-        Assert.Equal("以下哪种电商模式主要依靠第三方平台来完成交易？", question2.Content);
+        Assert.Equal("以下哪种电商模式主要依靠第三方平台来完成交易(  )？", question2.Content);
         Assert.Equal("B2C", question2.CorrectAnswer);
         Assert.Equal(4, question2.Options.Count);
         Assert.Equal("C2C（Consumer to Consumer）是指消费者之间通过第三方平台完成交易。", question2.Analysis);
@@ -404,7 +404,7 @@ D、情人节
 
         // 验证具体题目内容（以第一题为例）
         var firstSingleChoice = singleChoiceResult[0];
-        Assert.Equal("电商平台中，最常用的支付方式是。", firstSingleChoice.Content);
+        Assert.Equal("电商平台中，最常用的支付方式是(  )。", firstSingleChoice.Content);
         Assert.Equal("在线支付", firstSingleChoice.CorrectAnswer);
         Assert.Equal("在线支付是目前电商平台最常用的支付方式，方便快捷。", firstSingleChoice.Analysis);
         Assert.Contains("支付方式", firstSingleChoice.Tags);
@@ -476,19 +476,19 @@ D、RSA
         var question1 = result[0];
         Assert.Equal(QuestionType.SingleChoice, question1.Type);
         Assert.Equal(QuestionDifficulty.Easy, question1.Difficulty);
-        Assert.Equal("SSL协议最早是由____提出的。", question1.Content);
+        Assert.Equal("SSL协议最早是由(  )提出的。", question1.Content);
 
         // 验证第二题（中等难度）
         var question2 = result[1];
         Assert.Equal(QuestionType.SingleChoice, question2.Type);
         Assert.Equal(QuestionDifficulty.Medium, question2.Difficulty);
-        Assert.Equal("以下关于HTTPS的说法正确的是？", question2.Content);
+        Assert.Equal("以下关于HTTPS的说法正确的是(  )？", question2.Content);
 
         // 验证第三题（困难难度）
         var question3 = result[2];
         Assert.Equal(QuestionType.SingleChoice, question3.Type);
         Assert.Equal(QuestionDifficulty.Hard, question3.Difficulty);
-        Assert.Equal("以下哪个不是对称加密算法？", question3.Content);
+        Assert.Equal("以下哪个不是对称加密算法(  )？", question3.Content);
     }
 
     [Fact]
@@ -586,7 +586,7 @@ D、勤劳节俭只有利于节省资源，但与提高生产力无关
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.SingleChoice, question.Type);
-        Assert.Equal("勤劳节俭的现代意义在于。", question.Content);
+        Assert.Equal("勤劳节俭的现代意义在于(  )。", question.Content);
         Assert.Equal("勤劳节俭是促进经济和社会发展的重要手段", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Equal("勤劳节俭是促进经济和社会发展的重要手段。", question.Analysis);
@@ -615,7 +615,7 @@ D、<title>
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.SingleChoice, question.Type);
-        Assert.Equal("以下标记符中，没有对应的结果标签的是。", question.Content);
+        Assert.Equal("以下标记符中，没有对应的结果标签的是(  )。", question.Content);
         Assert.Equal("<br>", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Equal("HTML中，<br>是单标签，不需要结束标签，而其他选项都需要对应的结束标签（如</body>、</html>、</title>）。", question.Analysis);
@@ -644,7 +644,7 @@ D、.form
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.SingleChoice, question.Type);
-        Assert.Equal("在C# WinForms程序中，创建一个窗体的后缀名为。", question.Content);
+        Assert.Equal("在C# WinForms程序中，创建一个窗体的后缀名为(  )。", question.Content);
         Assert.Equal(".cs", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Equal("在C# WinForms应用程序中，窗体文件使用.cs后缀，这是C#源代码文件的标准扩展名。", question.Analysis);
@@ -689,7 +689,7 @@ D、HTML（标记语言）
         // 验证单选题保留括号
         var singleChoice = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
-        Assert.Equal("以下关于HTTP协议（超文本传输协议）的说法，正确的是", singleChoice.Content);
+        Assert.Equal("以下关于HTTP协议（超文本传输协议）的说法，正确的是(  )", singleChoice.Content);
         Assert.Equal("HTTP是应用层协议（基于TCP）", singleChoice.CorrectAnswer);
         Assert.Contains("HTTP是应用层协议（基于TCP）", singleChoice.Options);
         
@@ -702,7 +702,7 @@ D、HTML（标记语言）
         // 验证多选题保留括号
         var multipleChoice = result[2];
         Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
-        Assert.Equal("以下哪些是常见的编程语言（Programming Language）？", multipleChoice.Content);
+        Assert.Equal("以下哪些是常见的编程语言（Programming Language）(  )？", multipleChoice.Content);
         Assert.Contains("Java（面向对象）", multipleChoice.Options);
         Assert.Contains("Python（解释型）", multipleChoice.Options);
         Assert.Contains("C++（编译型）", multipleChoice.Options);
@@ -744,7 +744,7 @@ D、HTML
         // 验证单选题
         var singleChoice = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
-        Assert.Equal("以下关于HTTP协议的说法，正确的是", singleChoice.Content);
+        Assert.Equal("以下关于HTTP协议的说法，正确的是(  )", singleChoice.Content);
         Assert.Equal("HTTP是应用层协议", singleChoice.CorrectAnswer);
         
         // 验证判断题
@@ -756,7 +756,7 @@ D、HTML
         // 验证多选题
         var multipleChoice = result[2];
         Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
-        Assert.Equal("以下哪些是常见的编程语言？", multipleChoice.Content);
+        Assert.Equal("以下哪些是常见的编程语言(  )？", multipleChoice.Content);
         Assert.Contains("Java", multipleChoice.CorrectAnswer);
         Assert.Contains("Python", multipleChoice.CorrectAnswer);
         Assert.Contains("C++", multipleChoice.CorrectAnswer);
@@ -798,7 +798,7 @@ D、$123invalid
         // 验证单选题中$字符被转义
         var singleChoice = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
-        Assert.Equal("在JavaScript中，以下哪个变量声明是正确的？", singleChoice.Content);
+        Assert.Equal("在JavaScript中，以下哪个变量声明是正确的(  )？", singleChoice.Content);
         Assert.Equal("var \\$userName = \"admin\";", singleChoice.CorrectAnswer);
         Assert.Contains("var \\$name = \"test\";", singleChoice.Options);
         Assert.Contains("var \\$userName = \"admin\";", singleChoice.Options);
@@ -814,7 +814,7 @@ D、$123invalid
         // 验证多选题中$字符被转义
         var multipleChoice = result[2];
         Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
-        Assert.Equal("以下哪些是Shell脚本中的有效变量声明？", multipleChoice.Content);
+        Assert.Equal("以下哪些是Shell脚本中的有效变量声明(  )？", multipleChoice.Content);
         Assert.Contains("\\$HOME", multipleChoice.Options);
         Assert.Contains("\\$USER", multipleChoice.Options);
         Assert.Contains("\\$PATH", multipleChoice.Options);
@@ -870,7 +870,7 @@ D、INVALID SYNTAX users SET name;
         // 验证单选题1 - C#字符串插值
         var singleChoice1 = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice1.Type);
-        Assert.Equal("在C#中，以下哪个字符串插值表达式是正确的？", singleChoice1.Content);
+        Assert.Equal("在C#中，以下哪个字符串插值表达式是正确的(  )？", singleChoice1.Content);
         Assert.Equal("\\$\"Hello {name}!\"", singleChoice1.CorrectAnswer);
         Assert.Contains("\\$\"Hello {name}!\"", singleChoice1.Options);
         Assert.Contains("@\"Hello {name}!\"", singleChoice1.Options);
@@ -878,7 +878,7 @@ D、INVALID SYNTAX users SET name;
         // 验证单选题2 - 正则表达式
         var singleChoice2 = result[1];
         Assert.Equal(QuestionType.SingleChoice, singleChoice2.Type);
-        Assert.Equal("在正则表达式中，以下哪个模式匹配任意数字？", singleChoice2.Content);
+        Assert.Equal("在正则表达式中，以下哪个模式匹配任意数字(  )？", singleChoice2.Content);
         Assert.Equal("\\d", singleChoice2.CorrectAnswer);
         Assert.Contains("\\d", singleChoice2.Options);
         Assert.Contains("\\w", singleChoice2.Options);
@@ -887,7 +887,7 @@ D、INVALID SYNTAX users SET name;
         // 验证多选题 - SQL语句
         var multipleChoice = result[2];
         Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
-        Assert.Equal("以下哪些是有效的SQL查询语句？", multipleChoice.Content);
+        Assert.Equal("以下哪些是有效的SQL查询语句(  )？", multipleChoice.Content);
         Assert.Contains("SELECT * FROM users WHERE id = 1;", multipleChoice.Options);
         Assert.Contains("UPDATE users SET name = 'John' WHERE id = 1;", multipleChoice.Options);
         Assert.Contains("DELETE FROM users WHERE age > 65;", multipleChoice.Options);
@@ -950,14 +950,14 @@ D、# (井号)
         // 验证包含$字符的单选题
         var singleChoice1 = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice1.Type);
-        Assert.Equal("在JavaScript中，以下哪个变量声明包含$字符？", singleChoice1.Content);
+        Assert.Equal("在JavaScript中，以下哪个变量声明包含$字符(  )？", singleChoice1.Content);
         Assert.Equal("var \\$userName = \"admin\";", singleChoice1.CorrectAnswer);
         Assert.Contains("var \\$userName = \"admin\";", singleChoice1.Options);
         
         // 验证包含HTML标签的单选题
         var singleChoice2 = result[1];
         Assert.Equal(QuestionType.SingleChoice, singleChoice2.Type);
-        Assert.Equal("以下哪个HTML标签是正确的？", singleChoice2.Content);
+        Assert.Equal("以下哪个HTML标签是正确的(  )？", singleChoice2.Content);
         Assert.Equal("<div>内容</div>", singleChoice2.CorrectAnswer);
         Assert.Contains("<div>内容</div>", singleChoice2.Options);
         Assert.Contains("<div>内容<div>", singleChoice2.Options);
@@ -965,7 +965,7 @@ D、# (井号)
         // 验证包含特殊字符的多选题
         var multipleChoice = result[2];
         Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
-        Assert.Equal("以下哪些字符在编程中有特殊含义？", multipleChoice.Content);
+        Assert.Equal("以下哪些字符在编程中有特殊含义(  )？", multipleChoice.Content);
         Assert.Contains("\\$ (美元符号)", multipleChoice.Options);
         Assert.Contains("& (与符号)", multipleChoice.Options);
         Assert.Contains("< > (尖括号)", multipleChoice.Options);
@@ -1013,7 +1013,7 @@ D、$123invalid
         // 验证单选题中$字符被转义
         var singleChoice = result[0];
         Assert.Equal(QuestionType.SingleChoice, singleChoice.Type);
-        Assert.Equal("在JavaScript中，以下哪个变量声明是正确的？", singleChoice.Content);
+        Assert.Equal("在JavaScript中，以下哪个变量声明是正确的(  )？", singleChoice.Content);
         Assert.Equal("var \\$userName = \"admin\";", singleChoice.CorrectAnswer);
         Assert.Contains("var \\$name = \"test\";", singleChoice.Options);
         Assert.Contains("var \\$userName = \"admin\";", singleChoice.Options);
@@ -1029,7 +1029,7 @@ D、$123invalid
         // 验证多选题中$字符被转义
         var multipleChoice = result[2];
         Assert.Equal(QuestionType.MultipleChoice, multipleChoice.Type);
-        Assert.Equal("以下哪些是Shell脚本中的有效变量声明？", multipleChoice.Content);
+        Assert.Equal("以下哪些是Shell脚本中的有效变量声明(  )？", multipleChoice.Content);
         Assert.Contains("\\$HOME", multipleChoice.Options);
         Assert.Contains("\\$USER", multipleChoice.Options);
         Assert.Contains("\\$PATH", multipleChoice.Options);
@@ -1057,7 +1057,7 @@ D、没有要求
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.SingleChoice, question.Type);
-        Assert.Equal("在安装气环时，各个气环的切口应该。", question.Content);
+        Assert.Equal("在安装气环时，各个气环的切口应该(  )。", question.Content);
         Assert.Equal("错开", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Contains("对正", question.Options);
@@ -1090,7 +1090,7 @@ D、按抚
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.SingleChoice, question.Type);
-        Assert.Equal("油性皮肤按摩时应选用____手法帮助排泄油脂。", question.Content);
+        Assert.Equal("油性皮肤按摩时应选用(  )手法帮助排泄油脂。", question.Content);
         Assert.Equal("捏按", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Contains("震顿", question.Options);
@@ -1123,7 +1123,7 @@ D、静态编译
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.MultipleChoice, question.Type);
-        Assert.Equal("以下哪些是有效的编程语言____特性？", question.Content);
+        Assert.Equal("以下哪些是有效的编程语言(  )特性？", question.Content);
         Assert.Equal("面向对象,函数式编程,动态类型", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Contains("面向对象", question.Options);
@@ -1156,7 +1156,7 @@ D、MongoDB
         Assert.Single(result);
         var question = result[0];
         Assert.Equal(QuestionType.SingleChoice, question.Type);
-        Assert.Equal("以下哪个是Web服务器软件？", question.Content);
+        Assert.Equal("以下哪个是Web服务器软件(  )？", question.Content);
         Assert.Equal("Apache", question.CorrectAnswer);
         Assert.Equal(4, question.Options.Count);
         Assert.Contains("Apache", question.Options);
@@ -1199,13 +1199,62 @@ D、方法
         // 验证第一题 - 有多个答案标记在中间
         var question1 = result[0];
         Assert.Equal(QuestionType.SingleChoice, question1.Type);
-        Assert.Equal("数据库中的主键____不能为空，外键____可以为空。", question1.Content);
+        Assert.Equal("数据库中的主键(  )不能为空，外键(  )可以为空。", question1.Content);
         Assert.Equal("Primary Key", question1.CorrectAnswer);
         
         // 验证第二题 - 有一个答案标记在中间
         var question2 = result[1];
         Assert.Equal(QuestionType.SingleChoice, question2.Type);
-        Assert.Equal("在编程中，变量____用于存储数据。", question2.Content);
+        Assert.Equal("在编程中，变量(  )用于存储数据。", question2.Content);
         Assert.Equal("变量", question2.CorrectAnswer);
+    }
+
+    [Fact]
+    public void Parse_TCPFourWayHandshakeQuestion_ReturnsCorrectResult()
+    {
+        // Arrange - 测试TCP四次挥手的题目解析
+        var text = @"一、单项选择题（每题1分）
+70、TCP 协议的四次挥手过程中，第一次挥手发送的报文段类型是？(D)
+A、SYN
+B、SYN+ACK
+C、ACK
+D、FIN
+【难度】困难
+【解析】TCP 四次挥手的第一次挥手由一方发送 FIN（结束）报文段，请求断开连接。
+【标签】TCP、四次挥手";
+
+        // Act
+        var result = _parser.Parse(text);
+
+        // Assert
+        Assert.Single(result);
+        var question = result[0];
+        
+        // 验证题目类型
+        Assert.Equal(QuestionType.SingleChoice, question.Type);
+        
+        // 验证题目内容
+        Assert.Equal("TCP 协议的四次挥手过程中，第一次挥手发送的报文段类型是(  )？", question.Content);
+        
+        // 验证正确答案
+        Assert.Equal("FIN", question.CorrectAnswer);
+        
+        // 验证选项数量和内容
+        Assert.Equal(4, question.Options.Count);
+        Assert.Contains("SYN", question.Options);
+        Assert.Contains("SYN+ACK", question.Options);
+        Assert.Contains("ACK", question.Options);
+        Assert.Contains("FIN", question.Options);
+        
+        // 验证难度
+        Assert.Equal(QuestionDifficulty.Hard, question.Difficulty);
+        
+        // 验证解析
+        Assert.Equal("TCP 四次挥手的第一次挥手由一方发送 FIN（结束）报文段，请求断开连接。", question.Analysis);
+        
+        // 验证标签
+        Assert.Equal(2, question.Tags.Count);
+        Assert.Contains("TCP", question.Tags);
+        Assert.Contains("四次挥手", question.Tags);
     }
 } 

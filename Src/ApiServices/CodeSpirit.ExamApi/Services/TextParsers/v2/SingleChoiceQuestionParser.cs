@@ -78,19 +78,32 @@ public class SingleChoiceQuestionParser : BaseQuestionParser, IScopedDependency
                     var match = allAnswerMatches[i];
                     var answerText = match.Value;
                     var answerIndex = match.Index;
+                    var beforeAnswerText = currentContent.Substring(0, answerIndex);
                     var afterAnswerText = currentContent.Substring(answerIndex + answerText.Length);
                     
                     // 如果答案标记后面只有空格、标点符号或为空，认为是在末尾
                     if (Regex.IsMatch(afterAnswerText, @"^[\s？?。.]*$"))
                     {
-                        // 在末尾，直接移除答案标记，但保留标点符号
-                        var punctuation = Regex.Match(afterAnswerText, @"[？?。.]").Value;
-                        currentContent = currentContent.Substring(0, answerIndex).Trim() + punctuation;
+                        // 在末尾，保留带空格的括号，标点符号放在括号后面
+                        // 检查答案标记前面是否有标点符号
+                        var punctuationBeforeMatch = Regex.Match(beforeAnswerText, @"[？?。.]$");
+                        if (punctuationBeforeMatch.Success)
+                        {
+                            // 标点符号在答案标记前面，移到括号后面
+                            var beforePunctuation = beforeAnswerText.Substring(0, beforeAnswerText.Length - 1);
+                            currentContent = beforePunctuation + "(  )" + punctuationBeforeMatch.Value;
+                        }
+                        else
+                        {
+                            // 标点符号在答案标记后面或没有标点符号
+                            var punctuation = Regex.Match(afterAnswerText, @"[？?。.]").Value;
+                            currentContent = beforeAnswerText + "(  )" + punctuation;
+                        }
                     }
                     else
                     {
-                        // 在中间位置，用占位符替换
-                        currentContent = currentContent.Substring(0, answerIndex) + "____" + 
+                        // 在中间位置，保留括号并用占位符替换
+                        currentContent = currentContent.Substring(0, answerIndex) + "(  )" + 
                                        currentContent.Substring(answerIndex + answerText.Length);
                     }
                 }
@@ -127,7 +140,7 @@ public class SingleChoiceQuestionParser : BaseQuestionParser, IScopedDependency
             for (var i = optionStartIndex; i < lineList.Count; i++)
             {
                 var line = lineList[i];
-                if (line.StartsWith("【解析】") || line.StartsWith("【标签】"))
+                if (line.StartsWith("【解析】") || line.StartsWith("【标签】") || line.StartsWith("【难度】"))
                     break;
 
                 var optionMatch = OptionPattern.Match(line);

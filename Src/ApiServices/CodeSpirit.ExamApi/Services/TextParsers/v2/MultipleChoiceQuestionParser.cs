@@ -50,22 +50,35 @@ public class MultipleChoiceQuestionParser : BaseQuestionParser, IScopedDependenc
             {
                 var answerText = answerMatch.Value;
                 // 智能处理答案标记：
-                // 1. 如果答案标记在题目末尾，直接移除
-                // 2. 如果答案标记在题目中间，用占位符替换
+                // 1. 如果答案标记在题目末尾，保留带空格的括号
+                // 2. 如果答案标记在题目中间，保留带空格的括号
                 var answerIndex = result.Content.IndexOf(answerText);
+                var beforeAnswerText = result.Content.Substring(0, answerIndex);
                 var afterAnswerText = result.Content.Substring(answerIndex + answerText.Length);
                 
                 // 如果答案标记后面只有空格、标点符号或为空，认为是在末尾
                 if (Regex.IsMatch(afterAnswerText, @"^[\s？?。.]*$"))
                 {
-                    // 在末尾，直接移除答案标记，但保留标点符号
-                    var punctuation = Regex.Match(afterAnswerText, @"[？?。.]").Value;
-                    result.Content = result.Content.Substring(0, answerIndex).Trim() + punctuation;
+                    // 在末尾，保留带空格的括号，标点符号放在括号后面
+                    // 检查答案标记前面是否有标点符号
+                    var punctuationBeforeMatch = Regex.Match(beforeAnswerText, @"[？?。.]$");
+                    if (punctuationBeforeMatch.Success)
+                    {
+                        // 标点符号在答案标记前面，移到括号后面
+                        var beforePunctuation = beforeAnswerText.Substring(0, beforeAnswerText.Length - 1);
+                        result.Content = beforePunctuation + "(  )" + punctuationBeforeMatch.Value;
+                    }
+                    else
+                    {
+                        // 标点符号在答案标记后面或没有标点符号
+                        var punctuation = Regex.Match(afterAnswerText, @"[？?。.]").Value;
+                        result.Content = beforeAnswerText + "(  )" + punctuation;
+                    }
                 }
                 else
                 {
-                    // 在中间位置，用占位符替换
-                    result.Content = result.Content.Replace(answerText, "____").Trim();
+                    // 在中间位置，保留括号并用占位符替换
+                    result.Content = result.Content.Replace(answerText, "(  )").Trim();
                 }
             }
 
@@ -82,6 +95,10 @@ public class MultipleChoiceQuestionParser : BaseQuestionParser, IScopedDependenc
             var options = new Dictionary<string, string>();
             foreach (var line in lineList.Skip(1))
             {
+                // 如果遇到解析、标签或难度标记，停止解析选项
+                if (line.StartsWith("【解析】") || line.StartsWith("【标签】") || line.StartsWith("【难度】"))
+                    break;
+                    
                 var optionMatch = Regex.Match(line, OptionPattern);
                 if (optionMatch.Success)
                 {

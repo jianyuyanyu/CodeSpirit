@@ -357,8 +357,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 {
                     QuestionTypeRules = createDto.QuestionTypeRules,
                     DifficultyRules = createDto.DifficultyRules,
-                    CategoryIds = createDto.CategoryIds,
-                    Tags = createDto.Tags
+                    TagRules = createDto.TagRules,
+                    CategoryIds = createDto.CategoryIds
                 };
                 examPaper.RandomRules = JsonSerializer.Serialize(randomRules);
 
@@ -394,43 +394,69 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(400, "总分与各题型分数之和必须相等");
             }
 
+            // 验证标签规则比例总和不超过100%
+            if (createDto.TagRules != null && createDto.TagRules.Any())
+            {
+                var totalTagPercentage = createDto.TagRules.Sum(r => r.Percentage);
+                if (totalTagPercentage > 100)
+                {
+                    throw new AppServiceException(400, $"标签规则比例总和不能超过100%，当前为{totalTagPercentage}%");
+                }
+            }
+
             // 预先检查题库是否有足够的题目
             foreach (var typeRule in createDto.QuestionTypeRules)
             {
-                var query = _questionRepository.Find(q => q.Type == typeRule.QuestionType);
-                
-                // 如果指定了分类ID，则添加分类条件
-                if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
+                // 如果有标签规则，需要验证每个标签对应的题目是否足够
+                if (createDto.TagRules != null && createDto.TagRules.Any())
                 {
-                    query = query.Where(q => createDto.CategoryIds.Contains(q.CategoryId));
+                    foreach (var tagRule in createDto.TagRules.Where(r => r.Percentage > 0))
+                    {
+                        var tagQuestionCount = (int)Math.Ceiling(typeRule.Count * tagRule.Percentage / 100.0);
+                        
+                        var tagQuery = _questionRepository.Find(q => 
+                            q.Type == typeRule.QuestionType &&
+                            q.Tags != null && q.Tags.Contains(tagRule.Tag));
+                        
+                        // 如果指定了分类ID，则添加分类条件
+                        if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
+                        {
+                            tagQuery = tagQuery.Where(q => createDto.CategoryIds.Contains(q.CategoryId));
+                        }
+                        
+                        var availableCount = await tagQuery.CountAsync();
+                        
+                        if (availableCount < tagQuestionCount)
+                        {
+                            var categoryText = (createDto.CategoryIds != null && createDto.CategoryIds.Any()) 
+                                ? "在指定的分类中，" : "";
+                            
+                            throw new AppServiceException(400,
+                                $"{categoryText}标签'{tagRule.Tag}'的题型{typeRule.QuestionType}题目不足，需要{tagQuestionCount}题，实际只有{availableCount}题");
+                        }
+                    }
                 }
-                
-                // 如果指定了标签，则添加标签条件
-                if (createDto.Tags != null && createDto.Tags.Any())
+                else
                 {
-                    query = query.Where(q => q.Tags != null && createDto.Tags.All(tag => q.Tags.Contains(tag)));
-                }
-                
-                var availableCount = await query.CountAsync();
-
-                if (availableCount < typeRule.Count)
-                {
-                    var filterMessage = new List<string>();
+                    // 没有标签规则，检查整体题目数量
+                    var query = _questionRepository.Find(q => q.Type == typeRule.QuestionType);
                     
+                    // 如果指定了分类ID，则添加分类条件
                     if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
                     {
-                        filterMessage.Add("指定的分类");
+                        query = query.Where(q => createDto.CategoryIds.Contains(q.CategoryId));
                     }
                     
-                    if (createDto.Tags != null && createDto.Tags.Any())
+                    var availableCount = await query.CountAsync();
+
+                    if (availableCount < typeRule.Count)
                     {
-                        filterMessage.Add("指定的标签");
+                        var categoryText = (createDto.CategoryIds != null && createDto.CategoryIds.Any()) 
+                            ? "在指定的分类中，" : "";
+                        
+                        throw new AppServiceException(400,
+                            $"{categoryText}题库中类型为{typeRule.QuestionType}的题目不足，需要{typeRule.Count}题，实际只有{availableCount}题");
                     }
-                    
-                    var filterText = filterMessage.Any() ? $"在{string.Join("和", filterMessage)}中，" : "";
-                    
-                    throw new AppServiceException(400,
-                        $"{filterText}题库中类型为{typeRule.QuestionType}的题目不足，需要{typeRule.Count}题，实际只有{availableCount}题");
                 }
             }
         }
@@ -439,11 +465,18 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         {
             var examPaperQuestions = new List<ExamPaperQuestion>();
             var orderNumber = 1;
+            // 全局已选题目ID集合，确保题目不重复
+            var selectedQuestionIds = new HashSet<long>();
 
             foreach (var typeRule in createDto.QuestionTypeRules)
             {
-                // 按难度比例选择题目，并考虑标签筛选
-                var questions = await SelectQuestionsByDifficulty(typeRule, createDto.DifficultyRules, createDto.CategoryIds, createDto.Tags);
+                // 按标签比例和难度比例选择题目
+                var questions = await SelectQuestionsByRules(
+                    typeRule, 
+                    createDto.DifficultyRules, 
+                    createDto.TagRules, 
+                    createDto.CategoryIds, 
+                    selectedQuestionIds);
 
                 foreach (var question in questions)
                 {
@@ -459,6 +492,9 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                             Score = typeRule.ScorePerQuestion,
                             IsRequired = true
                         });
+                        
+                        // 添加到已选题目集合
+                        selectedQuestionIds.Add(question.Id);
                     }
                 }
             }
@@ -466,47 +502,179 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             return examPaperQuestions;
         }
 
-        private async Task<List<Question>> SelectQuestionsByDifficulty(
+        /// <summary>
+        /// 根据规则选择题目（支持标签比例、难度比例和去重）
+        /// </summary>
+        /// <param name="typeRule">题型规则</param>
+        /// <param name="difficultyRules">难度规则</param>
+        /// <param name="tagRules">标签规则</param>
+        /// <param name="categoryIds">分类ID限制</param>
+        /// <param name="selectedQuestionIds">已选题目ID集合（用于全局去重）</param>
+        /// <returns>选中的题目列表</returns>
+        private async Task<List<Question>> SelectQuestionsByRules(
             QuestionTypeRule typeRule,
-            List<DifficultyRule> difficultyRules,
-            List<long> categoryIds = null,
-            List<string> tags = null)
+            List<DifficultyRule>? difficultyRules,
+            List<TagRule>? tagRules,
+            List<long> categoryIds,
+            HashSet<long> selectedQuestionIds)
         {
             var questions = new List<Question>();
 
-            // 基础查询条件：题目类型
-            var baseQuery = _questionRepository.Find(q => q.Type == typeRule.QuestionType);
+            // 基础查询条件：题目类型 + 分类 + 排除已选题目
+            var baseQuery = _questionRepository.Find(q => 
+                q.Type == typeRule.QuestionType && 
+                !selectedQuestionIds.Contains(q.Id));
             
             // 如果指定了分类ID，则添加分类条件
             if (categoryIds != null && categoryIds.Any())
             {
                 baseQuery = baseQuery.Where(q => categoryIds.Contains(q.CategoryId));
             }
-            
-            // 如果指定了标签，则添加标签条件
-            if (tags != null && tags.Any())
+
+            // 如果有标签规则，按标签比例选题
+            if (tagRules != null && tagRules.Any())
             {
-                baseQuery = baseQuery.Where(q => q.Tags != null && tags.All(tag => q.Tags.Contains(tag)));
+                questions.AddRange(await SelectQuestionsByTagRules(
+                    typeRule, 
+                    tagRules, 
+                    difficultyRules, 
+                    baseQuery, 
+                    selectedQuestionIds));
+            }
+            else
+            {
+                // 没有标签规则，直接按难度规则选题
+                questions.AddRange(await SelectQuestionsByDifficultyOnly(
+                    typeRule, 
+                    difficultyRules, 
+                    baseQuery));
             }
 
-            // 如果没有难度规则，则随机选择指定数量的题目
-            if (difficultyRules == null || !difficultyRules.Any())
+            // 如果题目数量不足，补充随机题目
+            if (questions.Count < typeRule.Count)
             {
-                var randomQuestions = await baseQuery
+                var remainingCount = typeRule.Count - questions.Count;
+                var currentSelectedIds = questions.Select(q => q.Id).ToHashSet();
+                currentSelectedIds.UnionWith(selectedQuestionIds);
+
+                var additionalQuestions = await _questionRepository
+                    .Find(q => 
+                        q.Type == typeRule.QuestionType && 
+                        !currentSelectedIds.Contains(q.Id))
+                    .Where(q => categoryIds == null || !categoryIds.Any() || categoryIds.Contains(q.CategoryId))
                     .OrderBy(q => Guid.NewGuid())
-                    .Take(typeRule.Count)
+                    .Take(remainingCount)
                     .ToListAsync();
 
-                questions.AddRange(randomQuestions);
-                return questions;
+                questions.AddRange(additionalQuestions);
             }
 
-            // 如果有难度规则，按难度比例选择题目
+            return questions.Take(typeRule.Count).ToList();
+        }
+
+        /// <summary>
+        /// 按标签规则选择题目
+        /// </summary>
+        private async Task<List<Question>> SelectQuestionsByTagRules(
+            QuestionTypeRule typeRule,
+            List<TagRule> tagRules,
+            List<DifficultyRule>? difficultyRules,
+            IQueryable<Question> baseQuery,
+            HashSet<long> selectedQuestionIds)
+        {
+            var questions = new List<Question>();
+            var totalPercentage = tagRules.Sum(r => r.Percentage);
+            
+            // 按每个标签规则选择题目
+            foreach (var tagRule in tagRules.Where(r => r.Percentage > 0))
+            {
+                // 计算该标签应选的题目数量
+                var count = (int)Math.Ceiling(typeRule.Count * tagRule.Percentage / 100.0);
+                
+                // 构建该标签的查询（题目的Tags字段包含指定标签）
+                var tagQuery = baseQuery.Where(q => 
+                    q.Tags != null && q.Tags.Contains(tagRule.Tag));
+                
+                // 排除当前已选题目
+                var currentSelectedIds = questions.Select(q => q.Id).ToHashSet();
+                currentSelectedIds.UnionWith(selectedQuestionIds);
+                tagQuery = tagQuery.Where(q => !currentSelectedIds.Contains(q.Id));
+
+                // 在该标签范围内按难度规则选题
+                var tagQuestions = await SelectQuestionsByDifficultyFromQuery(
+                    count, 
+                    difficultyRules, 
+                    tagQuery);
+                
+                questions.AddRange(tagQuestions);
+            }
+
+            // 如果标签比例不足100%，补充无标签限制的随机题目
+            if (totalPercentage < 100)
+            {
+                var remainingPercentage = 100 - totalPercentage;
+                var remainingCount = (int)Math.Ceiling(typeRule.Count * remainingPercentage / 100.0);
+                
+                var currentSelectedIds = questions.Select(q => q.Id).ToHashSet();
+                currentSelectedIds.UnionWith(selectedQuestionIds);
+                
+                var remainingQuestions = await baseQuery
+                    .Where(q => !currentSelectedIds.Contains(q.Id))
+                    .OrderBy(q => Guid.NewGuid())
+                    .Take(remainingCount)
+                    .ToListAsync();
+                
+                questions.AddRange(remainingQuestions);
+            }
+
+            return questions;
+        }
+
+        /// <summary>
+        /// 只按难度规则选择题目（无标签规则）
+        /// </summary>
+        private async Task<List<Question>> SelectQuestionsByDifficultyOnly(
+            QuestionTypeRule typeRule,
+            List<DifficultyRule>? difficultyRules,
+            IQueryable<Question> baseQuery)
+        {
+            return await SelectQuestionsByDifficultyFromQuery(
+                typeRule.Count, 
+                difficultyRules, 
+                baseQuery);
+        }
+
+        /// <summary>
+        /// 从指定查询中按难度规则选择题目
+        /// </summary>
+        private async Task<List<Question>> SelectQuestionsByDifficultyFromQuery(
+            int targetCount,
+            List<DifficultyRule>? difficultyRules,
+            IQueryable<Question> query)
+        {
+            var questions = new List<Question>();
+
+            // 如果没有难度规则，则随机选择
+            if (difficultyRules == null || !difficultyRules.Any())
+            {
+                var randomQuestions = await query
+                    .OrderBy(q => Guid.NewGuid())
+                    .Take(targetCount)
+                    .ToListAsync();
+
+                return randomQuestions;
+            }
+
+            // 按难度比例选择题目
             foreach (var difficultyRule in difficultyRules.Where(r => r.Percentage > 0))
             {
-                var count = (int)Math.Ceiling(typeRule.Count * difficultyRule.Percentage / 100.0);
-                var difficultyQuestions = await baseQuery
-                    .Where(q => q.Difficulty == difficultyRule.Difficulty)
+                var count = (int)Math.Ceiling(targetCount * difficultyRule.Percentage / 100.0);
+                
+                var currentSelectedIds = questions.Select(q => q.Id).ToList();
+                var difficultyQuestions = await query
+                    .Where(q => 
+                        q.Difficulty == difficultyRule.Difficulty && 
+                        !currentSelectedIds.Contains(q.Id))
                     .OrderBy(q => Guid.NewGuid())
                     .Take(count)
                     .ToListAsync();
@@ -515,12 +683,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             }
 
             // 如果按难度规则选择的题目数量不足，则补充随机题目
-            if (questions.Count < typeRule.Count)
+            if (questions.Count < targetCount)
             {
-                var remainingCount = typeRule.Count - questions.Count;
+                var remainingCount = targetCount - questions.Count;
                 var existingQuestionIds = questions.Select(q => q.Id).ToList();
 
-                var additionalQuestions = await baseQuery
+                var additionalQuestions = await query
                     .Where(q => !existingQuestionIds.Contains(q.Id))
                     .OrderBy(q => Guid.NewGuid())
                     .Take(remainingCount)

@@ -1,10 +1,12 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Services.Implementations;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -69,12 +71,25 @@ namespace CodeSpirit.ExamApi.Tests.TestBase
         {
             var services = new ServiceCollection();
             
+            // 注册ID生成器（测试用简单递增ID）
+            var idGenerator = new TestIdGenerator();
+            services.AddSingleton<IIdGenerator>(idGenerator);
+            
             // 注册DbContext
             services.AddDbContext<ExamDbContext>(options =>
             {
                 options.UseInMemoryDatabase(DatabaseName);
-                options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+                // 移除NoTracking配置，因为AddRangeAsync需要跟踪实体
+                // options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+                options.EnableSensitiveDataLogging(); // 启用敏感数据日志以查看冲突的ID
+                options.ConfigureWarnings(warnings =>
+                    warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
+                // 添加ID生成拦截器
+                options.AddInterceptors(new TestIdGenerationInterceptor(idGenerator));
             });
+            
+            // 注册IHttpContextAccessor
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             
             // 添加AutoMapper配置
             services.AddAutoMapper(cfg => {
@@ -170,6 +185,66 @@ namespace CodeSpirit.ExamApi.Tests.TestBase
         protected Mock<IRepository<T>> CreateMockRepository<T>() where T : class
         {
             return new Mock<IRepository<T>>();
+        }
+    }
+
+    /// <summary>
+    /// 测试用ID生成器（简单递增）
+    /// </summary>
+    internal class TestIdGenerator : IIdGenerator
+    {
+        private long _currentId = 0;
+
+        public long NewId()
+        {
+            return Interlocked.Increment(ref _currentId);
+        }
+    }
+
+    /// <summary>
+    /// 测试用SaveChanges拦截器（自动生成ID）
+    /// </summary>
+    internal class TestIdGenerationInterceptor : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+    {
+        private readonly IIdGenerator _idGenerator;
+
+        public TestIdGenerationInterceptor(IIdGenerator idGenerator)
+        {
+            _idGenerator = idGenerator;
+        }
+
+        public override Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> SavingChanges(Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData, Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> result)
+        {
+            GenerateIds(eventData.Context);
+            return base.SavingChanges(eventData, result);
+        }
+
+        public override ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int>> SavingChangesAsync(Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData, Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            GenerateIds(eventData.Context);
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+
+        private void GenerateIds(DbContext? context)
+        {
+            if (context == null) return;
+
+            var entries = context.ChangeTracker.Entries()
+                .Where(e => e.State == EntityState.Added && e.Entity != null)
+                .ToList();
+
+            foreach (var entry in entries)
+            {
+                var idProperty = entry.Property("Id");
+                if (idProperty != null && idProperty.Metadata.ClrType == typeof(long))
+                {
+                    var currentValue = (long)idProperty.CurrentValue!;
+                    if (currentValue == 0)
+                    {
+                        idProperty.CurrentValue = _idGenerator.NewId();
+                    }
+                }
+            }
         }
     }
 } 

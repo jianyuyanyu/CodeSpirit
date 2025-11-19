@@ -75,24 +75,18 @@ public class GenerateRandomExamPaperDto
     [AmisTableField(Addable = true, Removable = true, Draggable = true, QuickEdit = true)]
     public List<DifficultyRule>? DifficultyRules { get; set; }
 
+    /// <summary>
+    /// 标签分布规则
+    /// </summary>
+    [DisplayName("标签分布规则")]
+    [AmisTableField(Addable = true, Removable = true, Draggable = true, QuickEdit = true)]
+    public List<TagRule>? TagRules { get; set; }
+
     ///// <summary>
     ///// 知识点分布规则
     ///// </summary>
     //[DisplayName("知识点分布规则")]
     //public List<KnowledgePointRule>? KnowledgePointRules { get; set; }
-
-    /// <summary>
-    /// 标签
-    /// </summary>
-    [DisplayName("题目标签")]
-    [AmisArrayField(
-        Items = "{ \"type\":\"input-text\" }",
-        Addable = true,
-        Removable = true,
-        Draggable = true,
-        MaxLength = 5
-    )]
-    public List<string>? Tags { get; set; }
 
     /// <summary>
     /// 分类ID限制

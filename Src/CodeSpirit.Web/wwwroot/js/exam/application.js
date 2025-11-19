@@ -1,7 +1,7 @@
 /**
- * 考试应用页面 - 基于AMIS框架
- * 包含租户信息、考生信息、公告通知、导航菜单等功能
- * 支持移动端适配，前端获取用户信息
+ * 我的考试页面 - 基于AMIS框架
+ * 专注于显示和管理可参加的考试
+ * 支持移动端适配
  */
 (function () {
     'use strict';
@@ -34,7 +34,6 @@
             userId: 0,
             candidateId: 0
         },
-        announcements: [],
         availableExams: []
     };
     
@@ -58,7 +57,6 @@
                 // 初始数据，将通过API更新
                 tenant: appData.tenant,
                 student: appData.student,
-                announcements: appData.announcements,
                 availableExams: appData.availableExams,
                 now: new Date()
             },
@@ -99,82 +97,70 @@
                     ]
                 },
                 
-                // 考生信息卡片
+                // 考生信息卡片 - 优化布局
                 {
                     type: "container",
                     className: "student-info-card",
                     body: [
+                        // 卡片标题
+                        {
+                            type: "tpl",
+                            tpl: "<div class='card-header'><i class='fa fa-user-circle'></i> 考生信息</div>"
+                        },
+                        // 头像区域（居中）
+                        {
+                            type: "container",
+                            className: "student-avatar-section",
+                            body: [
+                                {
+                                    type: "avatar",
+                                    src: "${student.avatar}",
+                                    text: "${student.displayName || student.name || '用户' | substring:0:1}",
+                                    className: "student-avatar",
+                                    size: 80
+                                }
+                            ]
+                        },
+                        // 信息网格（对称布局）
                         {
                             type: "flex",
+                            className: "student-info-grid",
                             justify: "flex-start",
-                            alignItems: "center",
+                            alignItems: "flex-start",
                             items: [
-                                // 头像区域
                                 {
                                     type: "container",
-                                    className: "flex-shrink-0",
+                                    className: "student-info-column student-info-left-column",
                                     body: [
-                                        // 头像图片（如果有的话）
                                         {
-                                            type: "avatar",
-                                            src: "${student.avatar}",
-                                            text: "${student.displayName || student.name || '用户' | substring:0:1}",
-                                            className: "student-avatar",
-                                            size: 60
+                                            type: "tpl",
+                                            tpl: "<div class='student-info-item'><i class='fa fa-user info-icon'></i><span class='info-label'>姓名</span><span class='info-value'>\${student.displayName || student.name || '未知'}</span></div>"
+                                        },
+                                        {
+                                            type: "tpl",
+                                            tpl: "<div class='student-info-item'><i class='fa fa-id-card info-icon'></i><span class='info-label'>准考证</span><span class='info-value exam-number-link'>\${student.examNumber || '未设置'}</span></div>"
+                                        },
+                                        {
+                                            type: "tpl",
+                                            tpl: "<div class='student-info-item'><i class='fa fa-phone info-icon'></i><span class='info-label'>手机</span><span class='info-value'>\${student.phone || '未设置'}</span></div>"
                                         }
                                     ]
                                 },
-                                // 信息区域
                                 {
                                     type: "container",
-                                    className: "flex-grow-1 ml-3",
+                                    className: "student-info-column student-info-right-column",
                                     body: [
                                         {
-                                            type: "grid",
-                                            columns: [
-                                                {
-                                                    md: 6,
-                                                    body: {
-                                                        type: "tpl",
-                                                        tpl: "<div class='student-info-item'><span class='info-label'>姓名:</span><span class='info-value'>\${student.displayName || student.name || '未知'}</span></div>"
-                                                    }
-                                                },
-                                                {
-                                                    md: 6,
-                                                    body: {
-                                                        type: "tpl",
-                                                        tpl: "<div class='student-info-item'><span class='info-label'>性别:</span><span class='info-value'>\${student.gender || '未知'}</span></div>"
-                                                    }
-                                                },
-                                                {
-                                                    md: 6,
-                                                    body: {
-                                                        type: "tpl",
-                                                        tpl: "<div class='student-info-item'><span class='info-label'>准考证:</span><span class='info-value'>\${student.examNumber || '未设置'}</span></div>"
-                                                    }
-                                                },
-                                                {
-                                                    md: 6,
-                                                    body: {
-                                                        type: "tpl",
-                                                        tpl: "<div class='student-info-item'><span class='info-label'>学号:</span><span class='info-value'>\${student.studentId || '未设置'}</span></div>"
-                                                    }
-                                                },
-                                                {
-                                                    md: 6,
-                                                    body: {
-                                                        type: "tpl",
-                                                        tpl: "<div class='student-info-item'><span class='info-label'>手机:</span><span class='info-value'>\${student.phone || '未设置'}</span></div>"
-                                                    }
-                                                },
-                                                {
-                                                    md: 6,
-                                                    body: {
-                                                        type: "tpl",
-                                                        tpl: "<div class='student-info-item'><span class='info-label'>身份证:</span><span class='info-value'>\${student.idCard}</span></div>"
-                                                    }
-                                                }
-                                            ]
+                                            type: "tpl",
+                                            tpl: "<div class='student-info-item'><i class='fa fa-venus-mars info-icon'></i><span class='info-label'>性别</span><span class='info-value'>\${student.gender || '未知'}</span></div>"
+                                        },
+                                        {
+                                            type: "tpl",
+                                            tpl: "<div class='student-info-item'><i class='fa fa-graduation-cap info-icon'></i><span class='info-label'>学号</span><span class='info-value'>\${student.studentId || '未设置'}</span></div>"
+                                        },
+                                        {
+                                            type: "tpl",
+                                            tpl: "<div class='student-info-item'><i class='fa fa-id-card-o info-icon'></i><span class='info-label'>身份证</span><span class='info-value'>\${student.idCard || '未设置'}</span></div>"
                                         }
                                     ]
                                 }
@@ -239,12 +225,13 @@
                                                         html: `
                                                             <div class="exam-actions">
                                                                 <div class="exam-status-badge \${status === '未开始' || status === '进行中' ? 'status-available' : (status === '已结束' ? 'status-ended' : 'status-unknown')}">
+                                                                    <i class="fa fa-\${status === '进行中' ? 'hourglass-half' : (status === '未开始' ? 'clock-o' : 'check-circle')}"></i>
                                                                     \${status}
                                                                 </div>
                                                                 <button class="exam-start-btn" onclick="window.goToExamStart('\${id}')" 
                                                                         \${status === '未开始' || status === '进行中' ? '' : 'disabled'}>
-                                                                    <i class="fa fa-play"></i>
-                                                                    \${status === '未开始' ? '开始考试' : (status === '进行中' ? '继续考试' : '考试已结束')}
+                                                                    <i class="fa fa-\${status === '进行中' ? 'refresh' : 'play-circle'}"></i>
+                                                                    <span>\${status === '未开始' ? '开始考试' : (status === '进行中' ? '继续考试' : '考试已结束')}</span>
                                                                 </button>
                                                             </div>
                                                         `
@@ -259,128 +246,21 @@
                                         body: [
                                             {
                                                 type: "tpl",
-                                                tpl: "<i class='fa fa-calendar-times-o'></i><div>暂无可参加的考试</div>"
+                                                tpl: `
+                                                    <div class='empty-illustration'>
+                                                        <i class='fa fa-calendar-o'></i>
+                                                    </div>
+                                                    <h3 class='empty-title'>暂无可参加的考试</h3>
+                                                    <p class='empty-description'>当考试时间到了，您可参加的考试将会显示在这里</p>
+                                                    <button class='empty-action' onclick='location.reload()'>
+                                                        <i class='fa fa-refresh'></i> 刷新页面
+                                                    </button>
+                                                `
                                             }
                                         ]
                                     }
                                 }
                             ]
-                        }
-                    ]
-                },
-                
-                // 暂时注释掉公告通知区域
-                /*
-                {
-                    type: "container",
-                    className: "announcement-section",
-                    body: [
-                        {
-                            type: "container",
-                            className: "announcement-header",
-                            body: [
-                                {
-                                    type: "tpl",
-                                    tpl: "<i class='fa fa-bullhorn'></i> 公告通知"
-                                }
-                            ]
-                        },
-                        {
-                            type: "container",
-                            className: "announcement-content",
-                            body: [
-                                {
-                                    type: "each",
-                                    name: "announcements",
-                                    items: {
-                                        type: "container",
-                                        className: "announcement-item",
-                                        body: [
-                                            {
-                                                type: "flex",
-                                                justify: "space-between",
-                                                alignItems: "flex-start",
-                                                items: [
-                                                    {
-                                                        type: "container",
-                                                        className: "flex-grow-1",
-                                                        body: [
-                                                            {
-                                                                type: "tpl",
-                                                                tpl: "<div class='announcement-title'>\${title}</div>"
-                                                            },
-                                                            {
-                                                                type: "tpl",
-                                                                tpl: "<div class='announcement-content-text'>\${content}</div>"
-                                                            }
-                                                        ]
-                                                    },
-                                                    {
-                                                        type: "tpl",
-                                                        tpl: "<span class='announcement-time'>\${publishTime | date:'MM-DD HH:mm'}</span>"
-                                                    }
-                                                ]
-                                            }
-                                        ]
-                                    },
-                                    placeholder: {
-                                        type: "container",
-                                        className: "announcement-empty",
-                                        body: [
-                                            {
-                                                type: "tpl",
-                                                tpl: "<i class='fa fa-info-circle'></i><div>暂无公告通知</div>"
-                                            }
-                                        ]
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
-                */
-                
-                // 导航菜单
-                {
-                    type: "container",
-                    className: "nav-menu-section",
-                    body: [
-                        {
-                            type: "html",
-                            html: `
-                                <div class="nav-menu-grid">
-                                    <div class="nav-menu-item nav-practice" onclick="window.navigateTo('practice')" data-animate="0">
-                                        <i class="fa fa-pencil nav-menu-icon"></i>
-                                        <div class="nav-menu-text">开始练习</div>
-                                    </div>
-                                    <!-- 暂时注释掉开始考试菜单
-                                    <div class="nav-menu-item nav-exam" onclick="window.navigateTo('exam')" data-animate="1">
-                                        <i class="fa fa-graduation-cap nav-menu-icon"></i>
-                                        <div class="nav-menu-text">开始考试</div>
-                                    </div>
-                                    -->
-                                    <!-- 暂时注释掉我的考试菜单
-                                    <div class="nav-menu-item nav-my-exams" onclick="window.navigateTo('my-exams')" data-animate="2">
-                                        <i class="fa fa-file-text nav-menu-icon"></i>
-                                        <div class="nav-menu-text">我的考试</div>
-                                    </div>
-                                    -->
-                                    <div class="nav-menu-item nav-my-practice" onclick="window.navigateTo('my-practice')" data-animate="2">
-                                        <i class="fa fa-history nav-menu-icon"></i>
-                                        <div class="nav-menu-text">我的练习</div>
-                                    </div>
-                                    <div class="nav-menu-item nav-wrong-questions" onclick="window.navigateTo('wrong-questions')" data-animate="3">
-                                        <i class="fa fa-exclamation-triangle nav-menu-icon"></i>
-                                        <div class="nav-menu-text">错题管理</div>
-                                    </div>
-                                    <!-- 暂时注释掉开始考试菜单
-                                    <div class="nav-menu-item nav-profile" onclick="window.navigateTo('profile')" data-animate="4">
-                                        <i class="fa fa-user nav-menu-icon"></i>
-                                        <div class="nav-menu-text">个人中心</div>
-                                    </div>
-                                    -->
-                                </div>
-                            `
                         }
                     ]
                 }
@@ -389,30 +269,10 @@
     }
     
     /**
-     * 导航到指定页面
+     * 返回主页
      */
-    window.navigateTo = function(page) {
-        const routes = {
-            'practice': `/${window.tenantId}/exam/practice`,
-            'exam': `/${window.tenantId}/exam/start`,
-            'my-exams': `/${window.tenantId}/exam/history`,
-            'my-practice': `/${window.tenantId}/exam/practice-history`,
-            'wrong-questions': `/${window.tenantId}/exam/wrong-questions`,
-            'profile': `/${window.tenantId}/exam/profile`
-        };
-        
-        if (routes[page]) {
-            // 添加点击反馈动画
-            const clickedItem = event.target.closest('.nav-menu-item');
-            if (clickedItem) {
-                clickedItem.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    window.location.href = routes[page];
-                }, 150);
-            } else {
-                window.location.href = routes[page];
-            }
-        }
+    window.goToHome = function() {
+        window.location.href = `/${window.tenantId}/exam`;
     };
     
     /**
@@ -550,70 +410,6 @@
     // 将函数暴露到全局
     window.goToExamStart = goToExamStart;
 
-    /**
-     * 显示功能提示（用于新功能）
-     */
-    function showFeatureTip() {
-        // 可以在这里添加新功能的介绍提示
-        const isFirstVisit = !localStorage.getItem('exam-app-visited');
-        if (isFirstVisit) {
-            setTimeout(() => {
-                console.log('🎉 欢迎使用考试管理平台！新增了错题管理和个人中心功能。');
-                localStorage.setItem('exam-app-visited', 'true');
-            }, 2000);
-        }
-    }
-    
-    /**
-     * 增强导航菜单动画效果
-     */
-    function enhanceNavigationAnimations() {
-        // 为导航菜单项添加交错动画
-        setTimeout(() => {
-            const menuItems = document.querySelectorAll('[data-animate]');
-            menuItems.forEach((item, index) => {
-                const delay = index * 120; // 稍微延长间隔以适应6个菜单项
-                setTimeout(() => {
-                    item.style.animation = `fadeInUp 0.6s var(--exam-bounce) both`;
-                    item.style.opacity = '1';
-                }, delay);
-            });
-        }, 800);
-        
-        // 初始隐藏菜单项
-        const menuItems = document.querySelectorAll('[data-animate]');
-        menuItems.forEach(item => {
-            item.style.opacity = '0';
-        });
-        
-        // 添加鼠标移动视差效果
-        document.addEventListener('mousemove', handleMouseMove);
-    }
-    
-    /**
-     * 处理鼠标移动视差效果
-     */
-    function handleMouseMove(e) {
-        // 检测是否为触摸设备，如果是则跳过视差效果
-        if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
-            return;
-        }
-        
-        const cards = document.querySelectorAll('.student-info-card, .announcement-section');
-        const { clientX: x, clientY: y } = e;
-        const { innerWidth: width, innerHeight: height } = window;
-        
-        cards.forEach(card => {
-            const rect = card.getBoundingClientRect();
-            const cardCenterX = rect.left + rect.width / 2;
-            const cardCenterY = rect.top + rect.height / 2;
-            
-            const deltaX = (x - cardCenterX) / width * 8;
-            const deltaY = (y - cardCenterY) / height * 8;
-            
-            card.style.transform = `translateX(${deltaX}px) translateY(${deltaY}px)`;
-        });
-    }
     
     /**
      * 加载初始数据
@@ -625,7 +421,7 @@
             Object.assign(appData.tenant, tenantInfo);
             
             // 然后并行加载其他数据
-            const [studentInfo, announcements, availableExams] = await Promise.all([
+            const [studentInfo, availableExams] = await Promise.all([
                 loadStudentInfo().catch(error => {
                     console.warn('加载学生信息失败:', error);
                     return { 
@@ -642,10 +438,6 @@
                         candidateId: 0
                     };
                 }),
-                loadAnnouncements().catch(error => {
-                    console.warn('加载公告失败:', error);
-                    return [];
-                }),
                 loadAvailableExams().catch(error => {
                     console.warn('加载可用考试失败:', error);
                     return [];
@@ -654,7 +446,6 @@
             
             // 更新应用数据
             Object.assign(appData.student, studentInfo);
-            appData.announcements = announcements;
             appData.availableExams = availableExams;
             
             // 更新AMIS数据
@@ -846,45 +637,6 @@
         }
     }
 
-    /**
-     * 加载公告信息（模拟数据）
-     */
-    async function loadAnnouncements() {
-        try {
-            // 尝试从API加载公告
-            // return await apiRequest('/exam/api/announcements');
-            
-            // 暂时使用模拟数据
-            return [
-                {
-                    id: 1,
-                    title: "重要通知：考试系统维护",
-                    content: "系统将在本周日凌晨2:00-4:00进行维护，请合理安排考试时间。",
-                    publishTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-                    priority: "high"
-                },
-                {
-                    id: 2,
-                    title: "考试规则提醒",
-                    content: "请考生严格遵守考试纪律，诚信考试，违规行为将被记录。",
-                    publishTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-                    priority: "normal"
-                },
-                {
-                    id: 3,
-                    title: "技术支持联系方式",
-                    content: "如遇技术问题，请联系技术支持：400-123-4567",
-                    publishTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                    priority: "normal"
-                }
-            ];
-        } catch (error) {
-            console.warn('加载公告信息失败:', error);
-            return [];
-        }
-    }
-    
-
     
     /**
      * 显示错误信息
@@ -986,11 +738,6 @@
                 }
             }, 30000); // 每30秒更新一次时间
             
-            // 增强导航菜单动画效果
-            enhanceNavigationAnimations();
-            
-            // 显示功能提示
-            showFeatureTip();
             
         } catch (error) {
             console.error('页面初始化失败:', error);

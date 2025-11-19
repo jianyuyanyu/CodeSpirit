@@ -1,23 +1,23 @@
-@page "/{tenantId}/exam/app"
-@model CodeSpirit.Web.Pages.Exam.ApplicationModel
+@page "/{tenantId}/exam"
+@model CodeSpirit.Web.Pages.Exam.IndexModel
 @{
-    ViewData["Title"] = "我的考试";
+    ViewData["Title"] = "考试系统";
 }
 
 @section Head {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="我的考试 - 查看和管理可参加的考试">
+    <meta name="description" content="考试系统主页 - 移动端适配的考试管理平台">
     <meta name="theme-color" content="#1e88e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
-    <resource path="css/exam/application.css" type="css" />
+    <resource path="css/exam/index.css" type="css" />
 }
 
-<div id="root" class="exam-app-container">
+<div id="root" class="exam-index-container">
     <div id="loading" class="exam-loading">
         <div class="exam-loading-spinner"></div>
-        <p class="exam-loading-text">正在加载考试信息...</p>
+        <p class="exam-loading-text">正在加载考试系统...</p>
     </div>
 </div>
 
@@ -27,5 +27,6 @@
         window.tenantId = '@Model.TenantId';
     </script>
     
-    <resource path="js/exam/application.js" type="js" />
-} 
+    <resource path="js/exam/index.js" type="js" />
+}
+

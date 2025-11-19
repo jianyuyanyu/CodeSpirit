@@ -1,0 +1,608 @@
+/**
+ * 考试系统主页样式
+ * 移动端适配的考试系统主页样式
+ */
+
+/* ===== CSS变量定义 ===== */
+:root {
+    --exam-primary: #1e88e5;
+    --exam-secondary: #42a5f5;
+    --exam-success: #10b981;
+    --exam-warning: #f59e0b;
+    --exam-danger: #ef4444;
+    --exam-bg: linear-gradient(135deg, #f8fafc 0%, #e3f2fd 100%);
+    --exam-card-bg: #ffffff;
+    --exam-border: #e2e8f0;
+    --exam-text: #334155;
+    --exam-text-secondary: #64748b;
+    --exam-shadow: 0 4px 12px rgba(30, 136, 229, 0.08);
+    --exam-shadow-hover: 0 8px 24px rgba(30, 136, 229, 0.15);
+    --exam-shadow-strong: 0 10px 40px rgba(30, 136, 229, 0.12);
+    --exam-radius: 12px;
+    --exam-radius-large: 16px;
+    --exam-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --exam-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ===== 基础样式 ===== */
+body {
+    background: var(--exam-bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    color: var(--exam-text);
+    line-height: 1.6;
+    position: relative;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(30, 136, 229, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(66, 165, 245, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.02) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 隐藏默认布局元素 */
+.navbar, .sidebar, .main-header, .main-sidebar, 
+.content-header, .main-footer {
+    display: none !important;
+}
+
+.content-wrapper, .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ===== 主页容器 ===== */
+.exam-index-container {
+    min-height: 100vh;
+    background: var(--exam-bg);
+}
+
+/* ===== 租户信息条 ===== */
+.tenant-info-bar {
+    background: linear-gradient(135deg, var(--exam-primary), var(--exam-secondary));
+    color: white;
+    padding: 8px 16px;
+    font-size: 13px;
+    box-shadow: var(--exam-shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    animation: slideDown 0.6s var(--exam-bounce);
+}
+
+.tenant-info-content {
+    width: 100%;
+    gap: 16px !important;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.tenant-name {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.tenant-name i {
+    margin-right: 6px;
+}
+
+.current-time {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.current-time i {
+    margin-right: 4px;
+}
+
+/* ===== 退出登录容器 ===== */
+.logout-container {
+    position: relative;
+}
+
+.logout-btn {
+    min-width: 60px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--exam-transition);
+    font-size: 13px;
+    color: white;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    gap: 4px;
+    padding: 0 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.logout-btn:hover {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 1), rgba(220, 38, 38, 1));
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.logout-icon {
+    font-size: 14px;
+    transition: var(--exam-transition);
+}
+
+.logout-text {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.logout-btn.logging-out {
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(156, 163, 175, 0.9), rgba(107, 114, 128, 0.9));
+    animation: logoutPulse 1.5s ease-in-out infinite;
+    cursor: not-allowed;
+}
+
+.logout-btn.logging-out .logout-icon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes logoutPulse {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
+    }
+    50% { 
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(156, 163, 175, 0.4);
+    }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ===== 退出登录对话框样式 ===== */
+.logout-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+}
+
+.logout-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.logout-dialog {
+    background: var(--exam-card-bg);
+    border-radius: var(--exam-radius-large);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+    margin: 20px;
+    transform: scale(0.7) translateY(50px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+    position: relative;
+}
+
+.logout-dialog.show {
+    transform: scale(1) translateY(0);
+}
+
+.logout-dialog-header {
+    padding: 24px 24px 16px 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--exam-border);
+    background: linear-gradient(135deg, #fef2f2, #ffffff);
+}
+
+.logout-dialog-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--exam-danger), #dc2626);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px auto;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.logout-dialog-header h3 {
+    margin: 0;
+    color: var(--exam-text);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.logout-dialog-body {
+    padding: 20px 24px;
+    text-align: center;
+}
+
+.logout-dialog-body p {
+    margin: 8px 0;
+    color: var(--exam-text);
+    font-size: 14px;
+}
+
+.logout-dialog-note {
+    color: var(--exam-text-secondary);
+    font-size: 12px !important;
+}
+
+.logout-dialog-actions {
+    padding: 16px 24px 24px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.logout-cancel-btn,
+.logout-confirm-btn {
+    flex: 1;
+    padding: 10px 20px;
+    border-radius: var(--exam-radius);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--exam-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.logout-cancel-btn {
+    background: #f1f5f9;
+    color: var(--exam-text);
+}
+
+.logout-cancel-btn:hover {
+    background: #e2e8f0;
+    transform: translateY(-1px);
+}
+
+.logout-confirm-btn {
+    background: linear-gradient(135deg, var(--exam-danger), #dc2626);
+    color: white;
+}
+
+.logout-confirm-btn:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* ===== 考生信息卡片 ===== */
+.student-info-card {
+    background: var(--exam-card-bg);
+    border-radius: var(--exam-radius-large);
+    padding: 16px;
+    margin: 12px 16px;
+    box-shadow: var(--exam-shadow);
+    animation: fadeInUp 0.6s var(--exam-bounce) 0.2s both;
+}
+
+.student-avatar {
+    flex-shrink: 0;
+}
+
+.student-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--exam-text);
+    margin-bottom: 4px;
+}
+
+.student-welcome {
+    font-size: 13px;
+    color: var(--exam-text-secondary);
+}
+
+/* ===== 导航菜单 ===== */
+.nav-menu-section {
+    margin: 12px 16px;
+    animation: fadeInUp 0.8s var(--exam-bounce) 0.6s both;
+}
+
+.nav-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+@media (min-width: 768px) {
+    .nav-menu-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.nav-menu-item {
+    background: var(--exam-card-bg);
+    border-radius: var(--exam-radius-large);
+    padding: 24px 20px;
+    text-align: center;
+    box-shadow: var(--exam-shadow);
+    transition: var(--exam-transition);
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-menu-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    opacity: 0;
+    transition: var(--exam-transition);
+}
+
+.nav-menu-item:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: var(--exam-shadow-strong);
+    border-color: currentColor;
+}
+
+.nav-menu-item:hover::before {
+    opacity: 1;
+}
+
+.nav-menu-item:active {
+    transform: translateY(-2px) scale(1.01);
+}
+
+.nav-menu-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    display: block;
+    transition: var(--exam-transition);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.nav-menu-item:hover .nav-menu-icon {
+    transform: scale(1.15) rotate(5deg);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+}
+
+.nav-menu-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--exam-text);
+    transition: var(--exam-transition);
+    position: relative;
+}
+
+.nav-menu-item:hover .nav-menu-text {
+    transform: translateY(-2px);
+    font-weight: 700;
+}
+
+/* 导航菜单颜色主题 */
+.nav-practice {
+    color: var(--exam-success);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.01));
+}
+
+.nav-practice:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.02));
+    border-color: var(--exam-success);
+}
+
+.nav-exam {
+    color: var(--exam-primary);
+    background: linear-gradient(135deg, rgba(30, 136, 229, 0.05), rgba(30, 136, 229, 0.01));
+}
+
+.nav-exam:hover {
+    background: linear-gradient(135deg, rgba(30, 136, 229, 0.1), rgba(30, 136, 229, 0.02));
+    border-color: var(--exam-primary);
+}
+
+.nav-my-practice {
+    color: var(--exam-danger);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.01));
+}
+
+.nav-my-practice:hover {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02));
+    border-color: var(--exam-danger);
+}
+
+.nav-wrong-questions {
+    color: #dc2626;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.05), rgba(220, 38, 38, 0.01));
+}
+
+.nav-wrong-questions:hover {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(220, 38, 38, 0.02));
+    border-color: #dc2626;
+}
+
+/* ===== 加载状态 ===== */
+.exam-loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.exam-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f4f6;
+    border-top: 4px solid var(--exam-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+.exam-loading-text {
+    color: var(--exam-text-secondary);
+    font-size: 14px;
+}
+
+/* ===== 错误状态 ===== */
+.exam-error {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.error-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.error-icon {
+    font-size: 64px;
+    color: var(--exam-danger);
+    margin-bottom: 16px;
+}
+
+.error-content h3 {
+    margin: 0 0 12px 0;
+    color: var(--exam-text);
+    font-size: 20px;
+}
+
+.error-content p {
+    color: var(--exam-text-secondary);
+    margin-bottom: 24px;
+}
+
+.error-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: var(--exam-radius);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--exam-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-primary {
+    background: var(--exam-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--exam-secondary);
+    transform: translateY(-1px);
+}
+
+/* ===== 动画 ===== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== 响应式设计 ===== */
+@media (max-width: 768px) {
+    .nav-menu-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .nav-menu-item {
+        padding: 20px 16px;
+    }
+    
+    .nav-menu-icon {
+        font-size: 32px;
+    }
+    
+    .nav-menu-text {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .student-info-card {
+        margin: 8px 12px;
+        padding: 12px;
+    }
+    
+    .nav-menu-section {
+        margin: 8px 12px;
+    }
+    
+    .nav-menu-item {
+        padding: 18px 12px;
+    }
+}
+

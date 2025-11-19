@@ -12,21 +12,21 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["ApiServices/CodeSpirit.SurveyApi/CodeSpirit.SurveyApi.csproj", "ApiServices/CodeSpirit.SurveyApi/"]
-COPY ["CodeSpirit.ServiceDefaults/CodeSpirit.ServiceDefaults.csproj", "CodeSpirit.ServiceDefaults/"]
-COPY ["CodeSpirit.Core/CodeSpirit.Core.csproj", "CodeSpirit.Core/"]
-COPY ["CodeSpirit.Shared/CodeSpirit.Shared.csproj", "CodeSpirit.Shared/"]
-COPY ["Components/CodeSpirit.Aggregator/CodeSpirit.Aggregator.csproj", "Components/CodeSpirit.Aggregator/"]
-COPY ["Components/CodeSpirit.Amis/CodeSpirit.Amis.csproj", "Components/CodeSpirit.Amis/"]
-COPY ["Components/CodeSpirit.Authorization/CodeSpirit.Authorization.csproj", "Components/CodeSpirit.Authorization/"]
-COPY ["Components/CodeSpirit.LLM/CodeSpirit.LLM.csproj", "Components/CodeSpirit.LLM/"]
-COPY ["Components/CodeSpirit.Navigation/CodeSpirit.Navigation.csproj", "Components/CodeSpirit.Navigation/"]
-COPY ["Components/CodeSpirit.MultiTenant/CodeSpirit.MultiTenant.csproj", "Components/CodeSpirit.MultiTenant/"]
-COPY ["Components/CodeSpirit.Settings/CodeSpirit.Settings.csproj", "Components/CodeSpirit.Settings/"]
-COPY ["Components/CodeSpirit.Charts/CodeSpirit.Charts.csproj", "Components/CodeSpirit.Charts/"]
-RUN dotnet restore "./ApiServices/CodeSpirit.SurveyApi/CodeSpirit.SurveyApi.csproj"
+COPY ["Src/ApiServices/CodeSpirit.SurveyApi/CodeSpirit.SurveyApi.csproj", "Src/ApiServices/CodeSpirit.SurveyApi/"]
+COPY ["Src/CodeSpirit.ServiceDefaults/CodeSpirit.ServiceDefaults.csproj", "Src/CodeSpirit.ServiceDefaults/"]
+COPY ["Src/CodeSpirit.Core/CodeSpirit.Core.csproj", "Src/CodeSpirit.Core/"]
+COPY ["Src/CodeSpirit.Shared/CodeSpirit.Shared.csproj", "Src/CodeSpirit.Shared/"]
+COPY ["Src/Components/CodeSpirit.Aggregator/CodeSpirit.Aggregator.csproj", "Src/Components/CodeSpirit.Aggregator/"]
+COPY ["Src/Components/CodeSpirit.Amis/CodeSpirit.Amis.csproj", "Src/Components/CodeSpirit.Amis/"]
+COPY ["Src/Components/CodeSpirit.Authorization/CodeSpirit.Authorization.csproj", "Src/Components/CodeSpirit.Authorization/"]
+COPY ["Src/Components/CodeSpirit.LLM/CodeSpirit.LLM.csproj", "Src/Components/CodeSpirit.LLM/"]
+COPY ["Src/Components/CodeSpirit.Navigation/CodeSpirit.Navigation.csproj", "Src/Components/CodeSpirit.Navigation/"]
+COPY ["Src/Components/CodeSpirit.MultiTenant/CodeSpirit.MultiTenant.csproj", "Src/Components/CodeSpirit.MultiTenant/"]
+COPY ["Src/Components/CodeSpirit.Settings/CodeSpirit.Settings.csproj", "Src/Components/CodeSpirit.Settings/"]
+COPY ["Src/Components/CodeSpirit.Charts/CodeSpirit.Charts.csproj", "Src/Components/CodeSpirit.Charts/"]
+RUN dotnet restore "./Src/ApiServices/CodeSpirit.SurveyApi/CodeSpirit.SurveyApi.csproj"
 COPY . .
-WORKDIR "/src/ApiServices/CodeSpirit.SurveyApi"
+WORKDIR "/src/Src/ApiServices/CodeSpirit.SurveyApi"
 RUN dotnet build "./CodeSpirit.SurveyApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # 此阶段用于发布要复制到最终阶段的服务项目

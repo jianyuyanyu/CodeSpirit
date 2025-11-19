@@ -104,7 +104,6 @@
 /k8s/
 **/*.yaml
 **/*.yml
-**/Dockerfile*
 **/docker-compose*
 **/.dockerignore
 

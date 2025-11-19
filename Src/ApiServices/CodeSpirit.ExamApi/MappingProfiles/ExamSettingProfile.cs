@@ -26,6 +26,10 @@ public class ExamSettingProfile : Profile
             CreateExamSettingDto>();
 
 
+        // StudentGroup -> ExamSettingStudentGroupDto 映射（简化版）
+        CreateMap<Data.Models.StudentGroup, ExamSettingStudentGroupDto>()
+            .ForMember(dest => dest.StudentCount, opt => opt.MapFrom(src => src.Students.Count));
+
         CreateMap<ExamSetting, ExamSettingDto>()
             .ForMember(dest => dest.ExamPaperName, opt => opt.MapFrom(src => src.ExamPaper.Name))
             .ForMember(dest => dest.StudentGroups, opt => opt.MapFrom(src => src.StudentGroups.Select(x => x.StudentGroup)))

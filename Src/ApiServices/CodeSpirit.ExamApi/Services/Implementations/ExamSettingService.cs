@@ -98,12 +98,49 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             predicate = predicate.And(x => x.EndTime <= queryDto.EndTimeTo.Value);
         }
 
+        // 使用投影查询，只获取需要的数据，避免笛卡尔积和过度加载
         var query = _repository.CreateQuery()
-            .Include(x => x.ExamPaper)
-            .Include(x => x.StudentGroups)
-                .ThenInclude(x => x.StudentGroup)
-            .Include(x => x.ExamRecords) // 添加考试记录关联
-            .Where(predicate);
+            .Where(predicate)
+            .Select(x => new 
+            {
+                // 考试设置基本信息
+                Id = x.Id,
+                Name = x.Name,
+                Description = x.Description,
+                ExamPaperId = x.ExamPaperId,
+                StartTime = x.StartTime,
+                EndTime = x.EndTime,
+                Duration = x.Duration,
+                AllowedAttempts = x.AllowedAttempts,
+                EnableRandomQuestionOrder = x.EnableRandomQuestionOrder,
+                EnableRandomOptionOrder = x.EnableRandomOptionOrder,
+                AllowedScreenSwitchCount = x.AllowedScreenSwitchCount,
+                EnableViewResult = x.EnableViewResult,
+                MinExamTime = x.MinExamTime,
+                EnableQuestionAnalysis = x.EnableQuestionAnalysis,
+                Status = x.Status,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt,
+                
+                // 试卷信息
+                ExamPaperName = x.ExamPaper.Name,
+                PassScore = x.ExamPaper.PassScore,
+                TotalScore = x.ExamPaper.TotalScore,
+                
+                // 学生分组信息（在数据库层面计算考生数量）
+                StudentGroupsInfo = x.StudentGroups.Select(sg => new
+                {
+                    Id = sg.StudentGroup.Id,
+                    Name = sg.StudentGroup.Name,
+                    Description = sg.StudentGroup.Description,
+                    StudentCount = sg.StudentGroup.Students.Count, // SQL: COUNT(*)
+                    UpdatedAt = sg.StudentGroup.UpdatedAt
+                }).ToList(),
+                
+                // 考试统计信息（在数据库层面计算）
+                ExamRecordsCount = x.ExamRecords.Count,
+                PassedCount = x.ExamRecords.Count(r => r.Score >= x.ExamPaper.PassScore)
+            });
 
         // 通过率范围筛选
         // 注意：由于通过率是计算得出的值，我们需要在内存中进行筛选
@@ -116,8 +153,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         {
             items = items.Where(x =>
             {
-                if (!x.ExamRecords.Any()) return false;
-                var passRate = (decimal)x.ExamRecords.Count(r => r.Score >= x.ExamPaper.PassScore) / x.ExamRecords.Count * 100;
+                if (x.ExamRecordsCount == 0) return false;
+                var passRate = (decimal)x.PassedCount / x.ExamRecordsCount * 100;
                 return (!queryDto.MinPassRate.HasValue || passRate >= queryDto.MinPassRate.Value) &&
                        (!queryDto.MaxPassRate.HasValue || passRate <= queryDto.MaxPassRate.Value);
             }).ToList();
@@ -130,21 +167,45 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
             .Take(queryDto.PerPage)
             .ToList();
 
-        var dtos = _mapper.Map<List<ExamSettingDto>>(items);
-
-        // 计算通过率信息
-        foreach (var dto in dtos)
+        // 手动映射到 DTO
+        var dtos = items.Select(item => new ExamSettingDto
         {
-            var examSetting = items.First(x => x.Id == dto.Id);
-            var examRecords = examSetting.ExamRecords;
-            var passScore = examSetting.ExamPaper.PassScore;
+            Id = item.Id,
+            Name = item.Name,
+            Description = item.Description,
+            ExamPaperId = item.ExamPaperId,
+            ExamPaperName = item.ExamPaperName,
+            StartTime = item.StartTime,
+            EndTime = item.EndTime,
+            Duration = item.Duration,
+            AllowedAttempts = item.AllowedAttempts,
+            EnableRandomQuestionOrder = item.EnableRandomQuestionOrder,
+            EnableRandomOptionOrder = item.EnableRandomOptionOrder,
+            AllowedScreenSwitchCount = item.AllowedScreenSwitchCount,
+            EnableViewResult = item.EnableViewResult,
+            MinExamTime = item.MinExamTime,
+            EnableQuestionAnalysis = item.EnableQuestionAnalysis,
+            Status = item.Status,
+            CreatedAt = item.CreatedAt,
+            UpdatedAt = item.UpdatedAt,
             
-            dto.TotalParticipants = examRecords.Count;
-            dto.PassedParticipants = examRecords.Count(r => r.Score >= passScore);
-            dto.PassRate = dto.TotalParticipants > 0 
-                ? Math.Round((decimal)dto.PassedParticipants / dto.TotalParticipants, 2)
-                : null;
-        }
+            // 学生分组信息（考生数量已在数据库层面计算）
+            StudentGroups = item.StudentGroupsInfo.Select(sg => new ExamSettingStudentGroupDto
+            {
+                Name = sg.Name,
+                Description = sg.Description,
+                StudentCount = sg.StudentCount,
+                UpdatedAt = sg.UpdatedAt
+            }).ToList(),
+            StudentGroupIds = item.StudentGroupsInfo.Select(sg => sg.Id).ToList(),
+            
+            // 考试统计信息
+            TotalParticipants = item.ExamRecordsCount,
+            PassedParticipants = item.PassedCount,
+            PassRate = item.ExamRecordsCount > 0 
+                ? Math.Round((decimal)item.PassedCount / item.ExamRecordsCount, 2)
+                : null
+        }).ToList();
 
         return new PageList<ExamSettingDto>(dtos, total);
     }
@@ -154,18 +215,95 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     /// </summary>
     public async Task<ExamSettingDto> GetExamSettingDetailAsync(long id)
     {
-        var examSetting = await _repository.CreateQuery()
-            .Include(x => x.ExamPaper)
-            .Include(x => x.StudentGroups)
-                .ThenInclude(x => x.StudentGroup)
-            .FirstOrDefaultAsync(x => x.Id == id);
+        // 使用投影查询，只获取需要的数据
+        var result = await _repository.CreateQuery()
+            .Where(x => x.Id == id)
+            .Select(x => new 
+            {
+                // 考试设置基本信息
+                Id = x.Id,
+                Name = x.Name,
+                Description = x.Description,
+                ExamPaperId = x.ExamPaperId,
+                StartTime = x.StartTime,
+                EndTime = x.EndTime,
+                Duration = x.Duration,
+                AllowedAttempts = x.AllowedAttempts,
+                EnableRandomQuestionOrder = x.EnableRandomQuestionOrder,
+                EnableRandomOptionOrder = x.EnableRandomOptionOrder,
+                AllowedScreenSwitchCount = x.AllowedScreenSwitchCount,
+                EnableViewResult = x.EnableViewResult,
+                MinExamTime = x.MinExamTime,
+                EnableQuestionAnalysis = x.EnableQuestionAnalysis,
+                Status = x.Status,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt,
+                
+                // 试卷信息
+                ExamPaperName = x.ExamPaper.Name,
+                PassScore = x.ExamPaper.PassScore,
+                TotalScore = x.ExamPaper.TotalScore,
+                
+                // 学生分组信息（在数据库层面计算考生数量）
+                StudentGroupsInfo = x.StudentGroups.Select(sg => new
+                {
+                    Id = sg.StudentGroup.Id,
+                    Name = sg.StudentGroup.Name,
+                    Description = sg.StudentGroup.Description,
+                    StudentCount = sg.StudentGroup.Students.Count, // SQL: COUNT(*)
+                    UpdatedAt = sg.StudentGroup.UpdatedAt
+                }).ToList(),
+                
+                // 考试统计信息（在数据库层面计算）
+                ExamRecordsCount = x.ExamRecords.Count,
+                PassedCount = x.ExamRecords.Count(r => r.Score >= x.ExamPaper.PassScore)
+            })
+            .FirstOrDefaultAsync();
 
-        if (examSetting == null)
+        if (result == null)
         {
-            return null;
+            return null!;
         }
 
-        return _mapper.Map<ExamSettingDto>(examSetting);
+        // 手动映射到 DTO
+        return new ExamSettingDto
+        {
+            Id = result.Id,
+            Name = result.Name,
+            Description = result.Description,
+            ExamPaperId = result.ExamPaperId,
+            ExamPaperName = result.ExamPaperName,
+            StartTime = result.StartTime,
+            EndTime = result.EndTime,
+            Duration = result.Duration,
+            AllowedAttempts = result.AllowedAttempts,
+            EnableRandomQuestionOrder = result.EnableRandomQuestionOrder,
+            EnableRandomOptionOrder = result.EnableRandomOptionOrder,
+            AllowedScreenSwitchCount = result.AllowedScreenSwitchCount,
+            EnableViewResult = result.EnableViewResult,
+            MinExamTime = result.MinExamTime,
+            EnableQuestionAnalysis = result.EnableQuestionAnalysis,
+            Status = result.Status,
+            CreatedAt = result.CreatedAt,
+            UpdatedAt = result.UpdatedAt,
+            
+            // 学生分组信息（考生数量已在数据库层面计算）
+            StudentGroups = result.StudentGroupsInfo.Select(sg => new ExamSettingStudentGroupDto
+            {
+                Name = sg.Name,
+                Description = sg.Description,
+                StudentCount = sg.StudentCount,
+                UpdatedAt = sg.UpdatedAt
+            }).ToList(),
+            StudentGroupIds = result.StudentGroupsInfo.Select(sg => sg.Id).ToList(),
+            
+            // 考试统计信息
+            TotalParticipants = result.ExamRecordsCount,
+            PassedParticipants = result.PassedCount,
+            PassRate = result.ExamRecordsCount > 0 
+                ? Math.Round((decimal)result.PassedCount / result.ExamRecordsCount, 2)
+                : null
+        };
     }
 
     /// <summary>

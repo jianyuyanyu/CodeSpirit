@@ -3,7 +3,6 @@ using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
-using CodeSpirit.ExamApi.Dtos.StudentGroup;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamSetting;
 
@@ -114,9 +113,9 @@ public class ExamSettingDto
     /// 参加考试的学生分组
     /// </summary>
     [DisplayName("参加考试的学生分组")]
-    [ListColumn(title: "name", subTitle: "description")]
+    [ListColumn(title: "name")]
     [AmisTableField()]
-    public List<StudentGroupDto> StudentGroups { get; set; } = [];
+    public List<ExamSettingStudentGroupDto> StudentGroups { get; set; } = [];
 
     /// <summary>
     /// 分组ID列表

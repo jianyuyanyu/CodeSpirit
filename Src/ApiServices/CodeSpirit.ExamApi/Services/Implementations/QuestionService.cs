@@ -2350,7 +2350,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                             Difficulty = parsedQuestion.Difficulty,
                             DefaultScore = (int)parsedQuestion.Score,
                             CategoryId = input.CategoryId,
-                            KnowledgePoints = string.Join(",", parsedQuestion.Tags ?? new List<string>())
+                            Tags = parsedQuestion.Tags ?? new List<string>()
                         };
 
                         // 创建题目

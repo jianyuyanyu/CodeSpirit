@@ -138,8 +138,9 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                 }).ToList(),
                 
                 // 考试统计信息（在数据库层面计算）
-                ExamRecordsCount = x.ExamRecords.Count,
-                PassedCount = x.ExamRecords.Count(r => r.Score >= x.ExamPaper.PassScore)
+                // 只统计已提交和已批改的考试记录，不包括进行中的
+                ExamRecordsCount = x.ExamRecords.Count(r => r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.Graded),
+                PassedCount = x.ExamRecords.Count(r => (r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.Graded) && r.Score >= x.ExamPaper.PassScore)
             });
 
         // 通过率范围筛选
@@ -255,8 +256,9 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                 }).ToList(),
                 
                 // 考试统计信息（在数据库层面计算）
-                ExamRecordsCount = x.ExamRecords.Count,
-                PassedCount = x.ExamRecords.Count(r => r.Score >= x.ExamPaper.PassScore)
+                // 只统计已提交和已批改的考试记录，不包括进行中的
+                ExamRecordsCount = x.ExamRecords.Count(r => r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.Graded),
+                PassedCount = x.ExamRecords.Count(r => (r.Status == ExamRecordStatus.Submitted || r.Status == ExamRecordStatus.Graded) && r.Score >= x.ExamPaper.PassScore)
             })
             .FirstOrDefaultAsync();
 

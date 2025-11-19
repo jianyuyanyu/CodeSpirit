@@ -46,4 +46,9 @@ public class UserCreatedOrUpdatedEvent : TenantAwareEventBase
     /// 性别
     /// </summary>
     public string Gender { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 密码（可选，仅在需要更新密码时传递）
+    /// </summary>
+    public string? Password { get; set; }
 } 

@@ -41,6 +41,20 @@ public interface IUserService : IBaseCRUDIService<ApplicationUser, UserDto, long
     Task<string> ResetRandomPasswordAsync(long id);
 
     /// <summary>
+    /// 重置为指定密码
+    /// </summary>
+    /// <param name="id">用户ID</param>
+    /// <param name="password">新密码</param>
+    Task ResetPasswordAsync(long id, string password);
+
+    /// <summary>
+    /// 更新用户名
+    /// </summary>
+    /// <param name="id">用户ID</param>
+    /// <param name="userName">新用户名</param>
+    Task UpdateUserNameAsync(long id, string userName);
+
+    /// <summary>
     /// 解锁用户
     /// </summary>
     Task UnlockUserAsync(long id);

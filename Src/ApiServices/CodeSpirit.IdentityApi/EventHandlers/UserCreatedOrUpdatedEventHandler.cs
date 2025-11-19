@@ -146,6 +146,23 @@ public class UserCreatedOrUpdatedEventHandler : ITenantAwareEventHandler<UserCre
                     };
 
                     await userService.UpdateAsync(@event.UserId, updateUserDto);
+                    
+                    // 如果传递了用户名，更新用户名
+                    if (!string.IsNullOrWhiteSpace(@event.UserName))
+                    {
+                        _logger.LogInformation("更新用户名: 租户={TenantId}, 用户ID={UserId}, 用户名={UserName}", 
+                            tenantContext.TenantId, @event.UserId, @event.UserName);
+                        await userService.UpdateUserNameAsync(@event.UserId, @event.UserName);
+                    }
+                    
+                    // 如果传递了密码，更新密码
+                    if (!string.IsNullOrWhiteSpace(@event.Password))
+                    {
+                        _logger.LogInformation("更新用户密码: 租户={TenantId}, 用户ID={UserId}", 
+                            tenantContext.TenantId, @event.UserId);
+                        await userService.ResetPasswordAsync(@event.UserId, @event.Password);
+                    }
+                    
                     _logger.LogInformation("用户更新完成: 租户={TenantId}, 用户ID={UserId}", 
                         tenantContext.TenantId, @event.UserId);
                 }
@@ -164,7 +181,17 @@ public class UserCreatedOrUpdatedEventHandler : ITenantAwareEventHandler<UserCre
                     IdNo = @event.IdNo,
                     Gender = gender,
                 };
-                var pwd = @event.IdNo.IsNullOrWhiteSpace() || @event.IdNo.Length < 6 ? "123456" : @event.IdNo[^6..];
+                
+                // 确定密码：优先使用事件传递的密码，否则使用身份证后6位或默认密码
+                string pwd;
+                if (!string.IsNullOrWhiteSpace(@event.Password))
+                {
+                    pwd = @event.Password;
+                }
+                else
+                {
+                    pwd = @event.IdNo.IsNullOrWhiteSpace() || @event.IdNo.Length < 6 ? "123456" : @event.IdNo[^6..];
+                }
                 
                 try
                 {

@@ -310,12 +310,17 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
     }
 
     /// <summary>
-    /// 发布用户创建事件
+    /// 发布用户创建或更新事件
     /// </summary>
     private async Task PublishUserCreatedEventAsync(Student student)
     {
         try
         {
+            // 使用身份证后6位作为密码，如果身份证号不足6位则使用默认密码
+            var password = student.IdNo.IsNullOrWhiteSpace() || student.IdNo.Length < 6 
+                ? "123456" 
+                : student.IdNo[^6..];
+            
             var @event = new UserCreatedOrUpdatedEvent
             {
                 UserId = student.UserId,
@@ -325,15 +330,16 @@ public class StudentService : BaseCRUDIService<Student, StudentDto, long, Create
                 PhoneNumber = student.PhoneNumber,
                 Email = $"{student.IdNo}@example.com", // 默认邮箱
                 IsActive = student.IsActive,
-                IdNo = student.IdNo
+                IdNo = student.IdNo,
+                Password = password
             };
 
             await _eventBus.PublishAsync(@event);
-            _logger.LogInformation("已发布用户创建事件: {@UserId}", student.UserId);
+            _logger.LogInformation("已发布用户创建或更新事件: 用户ID={UserId}", student.UserId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发布用户创建事件失败: {@UserId}", student.UserId);
+            _logger.LogError(ex, "发布用户创建或更新事件失败: 用户ID={UserId}", student.UserId);
         }
     }
 

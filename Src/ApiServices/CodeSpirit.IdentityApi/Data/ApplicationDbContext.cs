@@ -40,6 +40,11 @@ namespace CodeSpirit.IdentityApi.Data
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         /// <summary>
+        /// API密钥实体集。
+        /// </summary>
+        public DbSet<ApiKey> ApiKeys { get; set; }
+
+        /// <summary>
         /// 租户信息实体集。
         /// </summary>
         public DbSet<TenantInfo> Tenants { get; set; }

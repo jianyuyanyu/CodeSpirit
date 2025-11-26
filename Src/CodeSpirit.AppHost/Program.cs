@@ -210,6 +210,7 @@ var examService = builder.AddStandardApiService<Projects.CodeSpirit_ExamApi>(
         settingsDb: settingsDb)  // 考试服务需要访问设置数据库
     .WithReference(seqService)
     .WithReference(configService)
+    .WithReference(identityService)
     .WithHealthCheck()
     .WithEnvironmentAwareDeploymentTag("exam", () => "2.0.0");
 

@@ -414,9 +414,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     {
                         var tagQuestionCount = (int)Math.Ceiling(typeRule.Count * tagRule.Percentage / 100.0);
                         
+                        // 将标签转义为 Unicode 形式以匹配数据库中的存储格式
+                        var escapedTag = EscapeTagForSearch(tagRule.Tag);
+                        
                         var tagQuery = _questionRepository.Find(q => 
                             q.Type == typeRule.QuestionType &&
-                            q.Tags != null && q.Tags.Contains(tagRule.Tag));
+                            q.Tags != null && q.Tags.Contains(escapedTag));
                         
                         // 如果指定了分类ID，则添加分类条件
                         if (createDto.CategoryIds != null && createDto.CategoryIds.Any())
@@ -432,7 +435,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                                 ? "在指定的分类中，" : "";
                             
                             throw new AppServiceException(400,
-                                $"{categoryText}标签'{tagRule.Tag}'的题型{typeRule.QuestionType}题目不足，需要{tagQuestionCount}题，实际只有{availableCount}题");
+                                $"{categoryText}标签'{tagRule.Tag}'的题型{typeRule.QuestionType.GetDisplayName()}题目不足，需要{tagQuestionCount}题，实际只有{availableCount}题");
                         }
                     }
                 }
@@ -455,7 +458,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                             ? "在指定的分类中，" : "";
                         
                         throw new AppServiceException(400,
-                            $"{categoryText}题库中类型为{typeRule.QuestionType}的题目不足，需要{typeRule.Count}题，实际只有{availableCount}题");
+                            $"{categoryText}题库中类型为{typeRule.QuestionType.GetDisplayName()}的题目不足，需要{typeRule.Count}题，实际只有{availableCount}题");
                     }
                 }
             }
@@ -591,9 +594,12 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 // 计算该标签应选的题目数量
                 var count = (int)Math.Ceiling(typeRule.Count * tagRule.Percentage / 100.0);
                 
+                // 将标签转义为 Unicode 形式以匹配数据库中的存储格式
+                var escapedTag = EscapeTagForSearch(tagRule.Tag);
+                
                 // 构建该标签的查询（题目的Tags字段包含指定标签）
                 var tagQuery = baseQuery.Where(q => 
-                    q.Tags != null && q.Tags.Contains(tagRule.Tag));
+                    q.Tags != null && q.Tags.Contains(escapedTag));
                 
                 // 排除当前已选题目
                 var currentSelectedIds = questions.Select(q => q.Id).ToHashSet();
@@ -828,6 +834,26 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             await _examPaperRepository.UpdateAsync(examPaper);
             
             _logger.LogInformation("试卷 {ExamPaperId} 已完成预览检查", id);
+        }
+
+        /// <summary>
+        /// 将标签转义为 Unicode 形式以匹配数据库中的存储格式
+        /// </summary>
+        /// <param name="tag">原始标签文本</param>
+        /// <returns>转义后的标签模式（用于 Contains 查询）</returns>
+        private static string EscapeTagForSearch(string tag)
+        {
+            // 将标签转义为 JSON 数组元素格式：例如 "中文" → "\"\u4E2D\u6587\""
+            var escaped = string.Concat(tag.Select(c =>
+            {
+                // ASCII 字符不转义，非 ASCII 字符转为 \uXXXX 形式
+                if (c < 128)
+                    return c.ToString();
+                else
+                    return $"\\u{((int)c):X4}";
+            }));
+            
+            return $"\"{escaped}\"";
         }
     }
 }

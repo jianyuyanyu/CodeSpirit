@@ -228,6 +228,7 @@ public class IndexController : ApiControllerBase
             // 使用用户特定的数据
             RecordId = userRecord.RecordId,
             ScreenSwitchCount = userRecord.ScreenSwitchCount,
+            Status = userRecord.Status,  // ✅ 设置考试记录状态
             Questions = questions  // 已包含答案，按用户的OrderNumber排序
         };
 

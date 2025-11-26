@@ -144,6 +144,66 @@ namespace CodeSpirit.Amis.Form.Factories
         {
             var type = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
 
+            // 优先检查是否有自定义的 Amis 字段特性
+            
+            // 检查 AmisSelectField
+            var amisSelectFieldAttr = prop.GetCustomAttribute<AmisSelectFieldAttribute>();
+            if (amisSelectFieldAttr != null)
+            {
+                var config = new JObject
+                {
+                    ["type"] = "select"
+                };
+
+                // 应用 AmisSelectField 的配置（与 AmisSelectFieldFactory 保持一致）
+                if (!string.IsNullOrEmpty(amisSelectFieldAttr.Source))
+                    config["source"] = amisSelectFieldAttr.Source;
+                
+                if (!string.IsNullOrEmpty(amisSelectFieldAttr.LabelField))
+                    config["labelField"] = amisSelectFieldAttr.LabelField;
+                
+                if (!string.IsNullOrEmpty(amisSelectFieldAttr.ValueField))
+                    config["valueField"] = amisSelectFieldAttr.ValueField;
+                
+                config["multiple"] = amisSelectFieldAttr.Multiple;
+                config["joinValues"] = amisSelectFieldAttr.JoinValues;
+                config["extractValue"] = amisSelectFieldAttr.ExtractValue;
+                config["searchable"] = amisSelectFieldAttr.Searchable;
+                config["clearable"] = amisSelectFieldAttr.Clearable;
+                
+                if (!string.IsNullOrEmpty(amisSelectFieldAttr.Placeholder))
+                    config["placeholder"] = amisSelectFieldAttr.Placeholder;
+
+                return config;
+            }
+
+            // 检查 AmisNumberField
+            var amisNumberFieldAttr = prop.GetCustomAttribute<AmisNumberFieldAttribute>();
+            if (amisNumberFieldAttr != null)
+            {
+                var config = new JObject
+                {
+                    ["type"] = "input-number"
+                };
+
+                // 应用 AmisNumberField 的配置
+                if (!double.IsNaN(amisNumberFieldAttr.Min))
+                    config["min"] = amisNumberFieldAttr.Min;
+                
+                if (!double.IsNaN(amisNumberFieldAttr.Max))
+                    config["max"] = amisNumberFieldAttr.Max;
+                
+                if (!double.IsNaN(amisNumberFieldAttr.Step))
+                    config["step"] = amisNumberFieldAttr.Step;
+                
+                config["precision"] = amisNumberFieldAttr.Precision;
+                
+                if (!string.IsNullOrEmpty(amisNumberFieldAttr.Placeholder))
+                    config["placeholder"] = amisNumberFieldAttr.Placeholder;
+
+                return config;
+            }
+
             // 处理枚举类型
             if (type.IsEnum)
             {

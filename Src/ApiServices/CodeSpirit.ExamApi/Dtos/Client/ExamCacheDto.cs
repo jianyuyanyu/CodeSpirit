@@ -1,3 +1,5 @@
+using CodeSpirit.ExamApi.Data.Models.Enums;
+
 namespace CodeSpirit.ExamApi.Dtos.Client;
 
 /// <summary>
@@ -90,6 +92,11 @@ public class UserExamRecordCacheDto
     /// 用户实际开始考试的时间
     /// </summary>
     public DateTime StartTime { get; set; }
+    
+    /// <summary>
+    /// 考试记录状态
+    /// </summary>
+    public ExamRecordStatus Status { get; set; }
 }
 
 /// <summary>

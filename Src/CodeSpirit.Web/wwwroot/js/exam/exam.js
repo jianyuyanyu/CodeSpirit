@@ -1681,11 +1681,11 @@
                                                                         name: "question_${item.id}",
                                                                         options: [
                                                                             {
-                                                                                label: "正确",
+                                                                                label: "✓",
                                                                                 value: "True"
                                                                             },
                                                                             {
-                                                                                label: "错误",
+                                                                                label: "✗",
                                                                                 value: "False"
                                                                             }
                                                                         ],

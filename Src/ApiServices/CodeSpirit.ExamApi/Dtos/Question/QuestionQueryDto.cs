@@ -65,5 +65,13 @@ public class QuestionQueryDto : QueryDtoBase
     /// 标签
     /// </summary>
     [DisplayName("标签")]
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/exam/Questions/tags",
+        ValueField = "id",
+        LabelField = "name",
+        Searchable = true,
+        Clearable = true,
+        Placeholder = "请选择标签"
+    )]
     public string? Tag { get; set; }
 } 

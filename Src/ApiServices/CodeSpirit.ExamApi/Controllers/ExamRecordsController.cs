@@ -490,12 +490,12 @@ public class ExamRecordsController : ApiControllerBase
                     {
                         new JObject
                         {
-                            ["label"] = $"正确 {(correctAnswer == "True" ? "✓" : "")}",
+                            ["label"] = $"✓ {(string.Equals(correctAnswer, "True", StringComparison.OrdinalIgnoreCase) ? "✓" : "")}",
                             ["value"] = "True"
                         },
                         new JObject
                         {
-                            ["label"] = $"错误 {(correctAnswer == "False" ? "✓" : "")}",
+                            ["label"] = $"✗ {(string.Equals(correctAnswer, "False", StringComparison.OrdinalIgnoreCase) ? "✓" : "")}",
                             ["value"] = "False"
                         }
                     }
@@ -1181,12 +1181,12 @@ public class ExamRecordsController : ApiControllerBase
                         break;
 
                     case "TrueFalse":
-                        // 判断题
-                        bool isTrue = studentAnswer == "True";
-                        bool correctIsTrue = correctAnswer == "True";
+                        // 判断题（仅勾叉符号）
+                        bool isTrue = string.Equals(studentAnswer, "True", StringComparison.OrdinalIgnoreCase);
+                        bool correctIsTrue = string.Equals(correctAnswer, "True", StringComparison.OrdinalIgnoreCase);
 
                         htmlBuilder.AppendLine("      <div class=\"option\">");
-                        htmlBuilder.Append($"        {(isTrue ? "☑" : "☐")} 正确");
+                        htmlBuilder.Append($"        {(isTrue ? "☑" : "☐")} <span style=\"color: #52c41a; font-size: 18px;\">✓</span>");
 
                         if (correctIsTrue)
                         {
@@ -1200,7 +1200,7 @@ public class ExamRecordsController : ApiControllerBase
                         htmlBuilder.AppendLine("</div>");
 
                         htmlBuilder.AppendLine("      <div class=\"option\">");
-                        htmlBuilder.Append($"        {(!isTrue ? "☑" : "☐")} 错误");
+                        htmlBuilder.Append($"        {(!isTrue ? "☑" : "☐")} <span style=\"color: #f5222d; font-size: 18px;\">✗</span>");
 
                         if (!correctIsTrue)
                         {

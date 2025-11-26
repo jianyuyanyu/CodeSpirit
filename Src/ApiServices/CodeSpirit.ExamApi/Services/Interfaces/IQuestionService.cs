@@ -1,6 +1,7 @@
 using CodeSpirit.ExamApi.Dtos.Question;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Dtos.QuestionVersion;
+using CodeSpirit.Core.Dtos;
 
 /// <summary>
 /// 题目服务接口
@@ -104,4 +105,10 @@ public interface IQuestionService
         /// <param name="input">导入确认数据</param>
         /// <returns>导入结果</returns>
         Task<ImportResultDto> ImportQuestionsAsync(QuestionBatchImportConfirmDto input);
+
+    /// <summary>
+    /// 获取所有标签列表（去重）
+    /// </summary>
+    /// <returns>标签列表</returns>
+    Task<List<OptionDto<string>>> GetAllTagsAsync();
 } 

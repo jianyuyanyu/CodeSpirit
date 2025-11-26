@@ -806,18 +806,19 @@
                                                             }
                                                         }
                                                     },
-                                                    // 判断题
+                                                    // 判断题（仅勾叉符号）
                                                     {
                                                         type: 'radios',
                                                         name: 'currentAnswer',
                                                         options: [
-                                                            { label: '正确', value: 'True' },
-                                                            { label: '错误', value: 'False' }
+                                                            { label: '✓', value: 'True' },
+                                                            { label: '✗', value: 'False' }
                                                         ],
                                                         mode: 'vertical',
                                                         value: '${practice.currentQuestion.answer}',
                                                         visibleOn: "${practice.currentQuestion.type === 'TrueFalse'}",
                                                         className: 'question-options true-false-options',
+                                                        labelClassName: 'true-false-label',
                                                         onEvent: {
                                                             change: {
                                                                 actions: [

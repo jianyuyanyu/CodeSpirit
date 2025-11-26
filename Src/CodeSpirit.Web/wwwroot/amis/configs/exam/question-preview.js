@@ -100,6 +100,26 @@ return {
             "display": "flex",
             "align-items": "center",
             "gap": "6px"
+        },
+        ".tag-badge": {
+            "display": "inline-flex",
+            "align-items": "center",
+            "padding": "2px 8px",
+            "background": "#e6f7ff",
+            "border": "1px solid #91d5ff",
+            "border-radius": "12px",
+            "font-size": "12px",
+            "color": "#1890ff",
+            "margin-right": "8px",
+            "margin-bottom": "8px"
+        },
+        ".knowledge-box": {
+            "padding": "8px 12px",
+            "background": "#fff7e6",
+            "border-radius": "6px",
+            "font-size": "13px",
+            "color": "#595959",
+            "line-height": "1.5"
         }
     },
     body: [
@@ -115,7 +135,7 @@ return {
                 // 题目元信息
                 {
                     type: "tpl",
-                    tpl: "<div class='question-meta'><div class='meta-item'><i class='fa fa-tag'></i><span>${question.type == 1 ? '单选题' : question.type == 2 ? '多选题' : question.type == 3 ? '判断题' : question.type == 4 ? '简答题' : question.type}</span></div><div class='meta-item'><i class='fa fa-signal'></i><span>${question.difficulty == 1 ? '简单' : question.difficulty == 2 ? '中等' : question.difficulty == 3 ? '困难' : question.difficulty}</span></div></div>"
+                    tpl: "<div class='question-meta'><div class='meta-item'><i class='fa fa-tag'></i><span>${question.type == 1 ? '单选题' : question.type == 2 ? '多选题' : question.type == 3 ? '判断题' : question.type == 4 ? '简答题' : question.type}</span></div><div class='meta-item'><i class='fa fa-signal'></i><span>${question.difficulty == 1 ? '简单' : question.difficulty == 2 ? '中等' : question.difficulty == 3 ? '困难' : question.difficulty}</span></div><div class='meta-item'><i class='fa fa-star'></i><span>${question.score}分</span></div></div>"
                 },
                 // 选项显示（仅选择题）
                 {
@@ -133,6 +153,22 @@ return {
                         }
                     ]
                 },
+                // 判断题选项显示（仅勾叉符号）
+                {
+                    type: "container",
+                    className: "question-options",
+                    visibleOn: "${question.type == 3}",
+                    body: [
+                        {
+                            type: "tpl",
+                            tpl: "<div class='option-item'><div class='option-label'>✓</div></div>"
+                        },
+                        {
+                            type: "tpl",
+                            tpl: "<div class='option-item'><div class='option-label'>✗</div></div>"
+                        }
+                    ]
+                },
                 // 正确答案
                 {
                     type: "container",
@@ -140,7 +176,7 @@ return {
                     body: [
                         {
                             type: "tpl",
-                            tpl: "<div class='section-title'><i class='fa fa-check-circle' style='color: #52c41a'></i><span>正确答案</span></div><div>${question.correctAnswer}</div>"
+                            tpl: "<div class='section-title'><i class='fa fa-check-circle' style='color: #52c41a'></i><span>正确答案</span></div><div>${question.type == 3 ? (question.correctAnswer == 'True' ? '✓' : '✗') : question.correctAnswer}</div>"
                         }
                     ]
                 },
@@ -158,9 +194,47 @@ return {
                 },
                 // 标签（如果有）
                 {
-                    type: "tpl",
-                    visibleOn: "${question.tags}",
-                    tpl: "<div style='margin-top: 16px; padding-top: 16px; border-top: 1px solid #e8e8e8;'><div class='section-title'><i class='fa fa-tags' style='color: #722ed1'></i><span>知识点标签</span></div><div style='padding: 2px 8px; background: #f0f0f0; border-radius: 12px; font-size: 12px; color: #666; display: inline-block;'>${question.tags}</div></div>"
+                    type: "container",
+                    visibleOn: "${question.tags && question.tags.length > 0}",
+                    style: {
+                        marginTop: "16px",
+                        paddingTop: "16px",
+                        borderTop: "1px solid #e8e8e8"
+                    },
+                    body: [
+                        {
+                            type: "tpl",
+                            tpl: "<div class='section-title'><i class='fa fa-tags' style='color: #1890ff'></i><span>标签</span></div>"
+                        },
+                        {
+                            type: "each",
+                            name: "question.tags",
+                            items: {
+                                type: "tpl",
+                                tpl: "<span class='tag-badge'><i class='fa fa-tag' style='margin-right: 4px'></i>${item}</span>"
+                            }
+                        }
+                    ]
+                },
+                // 知识点（如果有）
+                {
+                    type: "container",
+                    visibleOn: "${question.knowledgePoints}",
+                    style: {
+                        marginTop: "16px",
+                        paddingTop: "16px",
+                        borderTop: "1px solid #e8e8e8"
+                    },
+                    body: [
+                        {
+                            type: "tpl",
+                            tpl: "<div class='section-title'><i class='fa fa-book' style='color: #722ed1'></i><span>知识点</span></div>"
+                        },
+                        {
+                            type: "tpl",
+                            tpl: "<div class='knowledge-box'>${question.knowledgePoints}</div>"
+                        }
+                    ]
                 }
             ]
         }

@@ -110,12 +110,16 @@ public class CreateQuestionDto
     [DisplayName("标签")]
     [Description("为题目添加相关标签，便于分类和搜索")]
     [AiFieldFill(Weight = 1, Priority = 5)]
-    [AmisArrayField(
-        Items = "{ \"type\":\"input-text\" }",
-        Addable = true,
-        Removable = true,
-        Draggable = true,
-        MaxLength = 5
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/exam/Questions/tags",
+        ValueField = "id",
+        LabelField = "name",
+        Multiple = true,
+        Searchable = true,
+        Clearable = true,
+        JoinValues = false,
+        ExtractValue = true,
+        Placeholder = "请选择或输入标签"
     )]
     public List<string>? Tags { get; set; }
 }

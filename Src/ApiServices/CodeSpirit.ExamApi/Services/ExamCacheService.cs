@@ -147,7 +147,8 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                 {
                     RecordId = record.Id,
                     ScreenSwitchCount = record.ScreenSwitchCount,
-                    StartTime = record.StartTime
+                    StartTime = record.StartTime,
+                    Status = record.Status
                 };
             });
     }

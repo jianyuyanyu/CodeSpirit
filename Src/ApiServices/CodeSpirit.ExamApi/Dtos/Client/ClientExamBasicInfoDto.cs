@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel;
+using CodeSpirit.ExamApi.Data.Models.Enums;
 
 namespace CodeSpirit.ExamApi.Dtos.Client;
 
@@ -79,6 +80,12 @@ public class ClientExamBasicInfoDto
     /// </summary>
     [DisplayName("最小考试时间（分钟）")]
     public int MinExamTime { get; set; }
+    
+    /// <summary>
+    /// 考试记录状态
+    /// </summary>
+    [DisplayName("考试状态")]
+    public ExamRecordStatus? Status { get; set; }
     
     /// <summary>
     /// 是否启用切屏检测

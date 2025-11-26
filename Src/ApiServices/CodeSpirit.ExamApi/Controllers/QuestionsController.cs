@@ -408,6 +408,27 @@ public class QuestionsController : ApiControllerBase
             return NotFound("题目不存在");
         }
 
+        // 处理知识点：如果是JSON格式则反序列化为友好格式
+        string? knowledgePointsDisplay = null;
+        if (!string.IsNullOrEmpty(question.KnowledgePoints))
+        {
+            try
+            {
+                // 尝试解析为JSON数组
+                var knowledgePointsArray = System.Text.Json.JsonSerializer.Deserialize<List<string>>(question.KnowledgePoints);
+                if (knowledgePointsArray != null && knowledgePointsArray.Any())
+                {
+                    // 用顿号或逗号分隔显示
+                    knowledgePointsDisplay = string.Join("、", knowledgePointsArray);
+                }
+            }
+            catch
+            {
+                // 如果不是JSON格式，直接使用原始字符串
+                knowledgePointsDisplay = question.KnowledgePoints;
+            }
+        }
+
         // 使用Service组件加载外部配置文件
         var serviceWrapper = new JObject
         {
@@ -424,7 +445,8 @@ public class QuestionsController : ApiControllerBase
                     ["correctAnswer"] = question.CorrectAnswer,
                     ["analysis"] = question.Analysis,
                     ["difficulty"] = (int)question.Difficulty,
-                    ["tags"] = question.KnowledgePoints,
+                    ["knowledgePoints"] = knowledgePointsDisplay,
+                    ["tags"] = question.Tags != null ? new JArray(question.Tags) : null,
                     ["score"] = question.DefaultScore
                 }
             },
@@ -665,5 +687,17 @@ public class QuestionsController : ApiControllerBase
 
         await _aiTaskService.CancelTaskAsync(taskId);
         return SuccessResponse("任务已取消");
+    }
+
+    /// <summary>
+    /// 获取所有标签（用于下拉选择）
+    /// </summary>
+    /// <returns>标签列表</returns>
+    [HttpGet("tags")]
+    [DisplayName("获取标签列表")]
+    public async Task<ActionResult<ApiResponse<List<OptionDto<string>>>>> GetTags()
+    {
+        var tags = await _questionService.GetAllTagsAsync();
+        return SuccessResponse(tags);
     }
 }

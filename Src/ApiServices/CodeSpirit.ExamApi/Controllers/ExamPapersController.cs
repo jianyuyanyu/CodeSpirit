@@ -516,8 +516,8 @@ public class ExamPapersController : ApiControllerBase
                         // 创建判断题选项（统一使用radios组件）
                         var tfOptions = new JArray
                         {
-                            new JObject { ["label"] = "正确", ["value"] = "True" },
-                            new JObject { ["label"] = "错误", ["value"] = "False" }
+                            new JObject { ["label"] = "✓", ["value"] = "True" },
+                            new JObject { ["label"] = "✗", ["value"] = "False" }
                         };
 
                         var tfObj = new JObject

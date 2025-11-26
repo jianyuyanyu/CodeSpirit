@@ -22,6 +22,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using CodeSpirit.Core.Dtos;
 
 namespace CodeSpirit.ExamApi.Services.Implementations
 {
@@ -2045,18 +2046,38 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 predicate = predicate.And(x => x.CategoryId == query.CategoryId.Value);
             }
 
-            // 知识点筛选
+            // 知识点筛选（转义搜索以匹配数据库中的 Unicode 转义格式）
             if (!string.IsNullOrEmpty(query.KnowledgePoint))
             {
+                // 将查询字符串转义为 Unicode 形式
+                var escapedKnowledgePoint = string.Concat(query.KnowledgePoint.Select(c => 
+                {
+                    // ASCII 字符不转义，非 ASCII 字符转为 \uXXXX 形式
+                    if (c < 128)
+                        return c.ToString();
+                    else
+                        return $"\\u{((int)c):X4}";
+                }));
+                
                 predicate = predicate.And(x => x.KnowledgePoints != null &&
-                                              x.KnowledgePoints.Contains(query.KnowledgePoint));
+                                              x.KnowledgePoints.Contains(escapedKnowledgePoint));
             }
 
-            // 标签筛选
+            // 标签筛选（转义搜索以匹配数据库中的 Unicode 转义格式）
             if (!string.IsNullOrEmpty(query.Tag))
             {
-                predicate = predicate.And(x => x.Tags != null &&
-                                              x.Tags.Contains(query.Tag));
+                // 将查询字符串转义为 Unicode 形式：例如 "中文" → "\"\u4E2D\u6587\""
+                var escapedPattern = "\"" + string.Concat(query.Tag.Select(c => 
+                {
+                    // ASCII 字符不转义，非 ASCII 字符转为 \uXXXX 形式
+                    if (c < 128)
+                        return c.ToString();
+                    else
+                        return $"\\u{((int)c):X4}";
+                })) + "\"";
+                
+                // 匹配转义后的 Unicode 格式
+                predicate = predicate.And(x => x.Tags != null && x.Tags.Contains(escapedPattern));
             }
 
             // 构建查询并排序
@@ -2550,6 +2571,49 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     c.Length > 50 ? c.Substring(0, 50) + "..." : c));
                 throw new AppServiceException(400, $"以下题目内容已存在于该分类中：{existingList}");
             }
+        }
+
+        /// <summary>
+        /// 获取所有标签列表（去重）
+        /// </summary>
+        /// <returns>标签列表</returns>
+        public async Task<List<OptionDto<string>>> GetAllTagsAsync()
+        {
+            // 获取所有非空的标签字段
+            var allTags = await _repository.CreateQuery()
+                .Where(q => !string.IsNullOrEmpty(q.Tags))
+                .Select(q => q.Tags)
+                .ToListAsync();
+
+            // 解析JSON并提取所有标签（默认配置会自动处理转义的 Unicode 字符）
+            var tagSet = new HashSet<string>();
+            foreach (var tagsJson in allTags)
+            {
+                try
+                {
+                    var tags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(tagsJson!);
+                    if (tags != null)
+                    {
+                        foreach (var tag in tags)
+                        {
+                            if (!string.IsNullOrWhiteSpace(tag))
+                            {
+                                tagSet.Add(tag.Trim());
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "解析标签JSON失败: {TagsJson}", tagsJson);
+                }
+            }
+
+            // 转换为OptionDto列表并按字母排序
+            return tagSet
+                .OrderBy(t => t)
+                .Select(tag => new OptionDto<string> { Id = tag, Name = tag })
+                .ToList();
         }
     }
 }

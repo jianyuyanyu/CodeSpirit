@@ -513,8 +513,19 @@
                 const questionTitle = question.content || question.title || `第${index + 1}题`;
                 const obtainedScore = question.obtainedScore !== undefined ? question.obtainedScore : question.score;
                 const totalScore = question.score || question.totalScore || 0;
-                const userAnswer = question.userAnswer || question.answer || '未作答';
-                const correctAnswer = question.correctAnswer || '暂无';
+                const questionType = question.type || question.questionType;
+                
+                // 处理判断题答案显示为勾叉符号
+                let userAnswer = question.userAnswer || question.answer || '未作答';
+                let correctAnswer = question.correctAnswer || '暂无';
+                
+                if (questionType === 'TrueFalse' || questionType === 3) {
+                    if (userAnswer && userAnswer.toLowerCase() === 'true') userAnswer = '✓';
+                    else if (userAnswer && userAnswer.toLowerCase() === 'false') userAnswer = '✗';
+                    
+                    if (correctAnswer && correctAnswer.toLowerCase() === 'true') correctAnswer = '✓';
+                    else if (correctAnswer && correctAnswer.toLowerCase() === 'false') correctAnswer = '✗';
+                }
                 
                 // 状态图标
                 const statusIcon = statusClass === 'correct' ? '✓' : 

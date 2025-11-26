@@ -541,39 +541,39 @@ public class ExamPaperDocument : IDocument
     /// </summary>
     private void ComposeTrueFalse(IContainer container, string studentAnswer, string correctAnswer)
     {
-        bool isTrue = studentAnswer == "True";
-        bool correctIsTrue = correctAnswer == "True";
+        bool isTrue = string.Equals(studentAnswer, "True", StringComparison.OrdinalIgnoreCase);
+        bool correctIsTrue = string.Equals(correctAnswer, "True", StringComparison.OrdinalIgnoreCase);
 
         container.Column(column =>
         {
             column.Item().Text(text =>
             {
                 text.Span(isTrue ? "☑ " : "☐ ").FontFamily(FontHelper.GetSymbolFont());
-                text.Span("正确");
+                text.Span("✓").FontFamily(FontHelper.GetSymbolFont());
 
                 if (correctIsTrue)
                 {
                     text.Span(" ✓").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Green.Medium);
                 }
-                else if (isTrue)
-                {
-                    text.Span(" ✗").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Red.Medium);
-                }
+                // else if (isTrue)
+                // {
+                //     text.Span(" ✗").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Red.Medium);
+                // }
             });
 
             column.Item().Text(text =>
             {
                 text.Span(!isTrue ? "☑ " : "☐ ").FontFamily(FontHelper.GetSymbolFont());
-                text.Span("错误");
+                text.Span("✗").FontFamily(FontHelper.GetSymbolFont());
 
                 if (!correctIsTrue)
                 {
                     text.Span(" ✓").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Green.Medium);
                 }
-                else if (!isTrue)
-                {
-                    text.Span(" ✗").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Red.Medium);
-                }
+                // else if (!isTrue)
+                // {
+                //     text.Span(" ✗").FontFamily(FontHelper.GetSymbolFont()).FontColor(Colors.Red.Medium);
+                // }
             });
         });
     }

@@ -215,40 +215,6 @@ public class ClientService : IClientService, IScopedDependency
         }
     }
 
-    /// <summary>
-    /// 获取考试基本信息
-    /// </summary>
-    /// <param name="examId">考试ID</param>
-    /// <param name="userId">用户ID</param>
-    /// <returns>考试基本信息</returns>
-    public async Task<ClientExamBasicInfoDto> GetExamBasicInfoAsync(long examId, long userId)
-    {
-        // 获取学生实体
-        var student = await GetStudentByUserIdAsync(userId);
-        if (student == null)
-        {
-            throw new InvalidOperationException("未找到学生信息");
-        }
-
-        // 优化查找进行中的考试记录 - 减少查询参数
-        var recordQuery = new ExamRecordQueryDto
-        {
-            Page = 1,
-            PerPage = 1,
-            ExamSettingId = examId
-        };
-
-        // 批量获取考试基本信息和考试记录
-        var recordsTask = _examRecordService.GetPagedListAsync(
-            recordQuery,
-            r => r.StudentId == student.Id && r.Status == ExamRecordStatus.InProgress);
-
-        var records = await recordsTask;
-        long? recordId = records.Items.FirstOrDefault()?.Id;
-
-        // 直接获取考试基本信息，不缓存
-        return await _examSettingService.GetExamBasicInfoForClientAsync(examId, student.Id, recordId);
-    }
 
     /// <summary>
     /// 获取考试题目数据（带缓存，字典格式）

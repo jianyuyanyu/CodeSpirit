@@ -1344,7 +1344,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             return string.Empty;
         }
 
-        return answer.Equals("True", StringComparison.OrdinalIgnoreCase) ? "对" : "错";
+        return answer.Equals("True", StringComparison.OrdinalIgnoreCase) ? "✓" : "✗";
     }
 
     // 客观题自动评分

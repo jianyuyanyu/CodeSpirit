@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using CodeSpirit.Amis.Attributes.FormFields;
 
 namespace CodeSpirit.ExamApi.Dtos.ExamPaper;
 
@@ -15,6 +16,14 @@ public class TagRule
     [DisplayName("标签")]
     [Required(ErrorMessage = "标签不能为空")]
     [StringLength(50, ErrorMessage = "标签长度不能超过50个字符")]
+    [AmisSelectField(
+        Source = "${ROOT_API}/api/exam/Questions/tags",
+        ValueField = "id",
+        LabelField = "name",
+        Searchable = true,
+        Clearable = true,
+        Placeholder = "请选择或输入标签"
+    )]
     public string Tag { get; set; } = string.Empty;
     
     /// <summary>

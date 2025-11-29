@@ -43,7 +43,8 @@ public class ExamPaperProfile : Profile
             .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Question.Type))
             .ForMember(dest => dest.Options, opt => opt.MapFrom(src => src.QuestionVersion.Options))
             .ForMember(dest => dest.CorrectAnswer, opt => opt.MapFrom(src => src.QuestionVersion.CorrectAnswer))
-            .ForMember(dest => dest.Analysis, opt => opt.MapFrom(src => src.QuestionVersion.Analysis));
+            .ForMember(dest => dest.Analysis, opt => opt.MapFrom(src => src.QuestionVersion.Analysis))
+            .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Question.Tags));
 
         // 创建试卷题目映射
         CreateMap<CreateExamPaperQuestionDto, ExamPaperQuestion>();

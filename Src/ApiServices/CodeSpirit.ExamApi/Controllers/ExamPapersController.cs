@@ -586,7 +586,7 @@ public class ExamPapersController : ApiControllerBase
                 formItems.Add(new JObject
                 {
                     ["type"] = "alert",
-                    ["level"] = "success",
+                    ["level"] = "info",
                     ["className"] = "correct-answer-display",
                     ["showCloseButton"] = false,
                     ["body"] = $@"
@@ -612,6 +612,35 @@ public class ExamPapersController : ApiControllerBase
                             </div>
                         "
                     });
+                }
+
+                // 显示题目标签（如果有）
+                if (!string.IsNullOrWhiteSpace(question.Tags))
+                {
+                    try
+                    {
+                        var tags = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(question.Tags);
+                        if (tags != null && tags.Any())
+                        {
+                            var tagElements = tags.Select(tag => 
+                                $"<span class=\"antd-tag antd-tag-blue\" style=\"margin-right: 4px; padding: 2px 8px; border-radius: 4px; background: #e6f7ff; border: 1px solid #91d5ff; color: #1890ff; font-size: 12px;\">{WebUtility.HtmlEncode(tag)}</span>");
+                            var tagsHtml = string.Join("", tagElements);
+                            
+                            formItems.Add(new JObject
+                            {
+                                ["type"] = "tpl",
+                                ["tpl"] = $@"
+                                    <div style=""margin-top: 8px; font-size: 12px; color: #666;"">
+                                        <span style=""margin-right: 4px;"">🏷️ 标签：</span>{tagsHtml}
+                                    </div>
+                                "
+                            });
+                        }
+                    }
+                    catch
+                    {
+                        // 标签解析失败，忽略
+                    }
                 }
 
                 // 添加题目级别的验证信息

@@ -65,6 +65,7 @@ public class GenerateRandomExamPaperDto
     /// </summary>
     [DisplayName("题型分布规则")]
     [Required(ErrorMessage = "题型分布规则不能为空")]
+    [Description("定义试卷中各题型的数量和分值。所有题型的总分之和必须等于试卷总分")]
     [AmisTableField(Addable = true, Removable = true, Draggable = true, Editable = true, QuickEdit = true)]
     public List<QuestionTypeRule> QuestionTypeRules { get; set; } = [];
 
@@ -72,6 +73,7 @@ public class GenerateRandomExamPaperDto
     /// 难度分布规则
     /// </summary>
     [DisplayName("难度分布规则")]
+    [Description("控制各题型中不同难度题目的比例分布。可选配置，如不设置则随机选择题目")]
     [AmisTableField(Addable = true, Removable = true, Draggable = true, QuickEdit = true)]
     public List<DifficultyRule>? DifficultyRules { get; set; }
 
@@ -79,6 +81,7 @@ public class GenerateRandomExamPaperDto
     /// 标签分布规则
     /// </summary>
     [DisplayName("标签分布规则")]
+    [Description("按标签比例选择题目。规则按列表顺序执行，多标签题目将被第一个匹配的规则选中。可拖拽调整规则优先级。所有规则的比例总和必须为100%")]
     [AmisTableField(Addable = true, Removable = true, Draggable = true, QuickEdit = true)]
     public List<TagRule>? TagRules { get; set; }
 
@@ -103,7 +106,7 @@ public class GenerateRandomExamPaperDto
         JoinValues = false,
         ExtractValue = true
     )]
-    public List<long> CategoryIds { get; set; }
+    public List<long> CategoryIds { get; set; } = [];
 
     /// <summary>
     /// 是否启用成绩换算

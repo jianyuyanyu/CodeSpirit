@@ -48,6 +48,25 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
         SeedTestData();
     }
 
+    /// <summary>
+    /// 辅助方法：检查题目是否包含指定标签（处理Unicode转义格式）
+    /// </summary>
+    private static bool HasTag(Question question, string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(question.Tags))
+            return false;
+            
+        try
+        {
+            var tags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(question.Tags);
+            return tags != null && tags.Contains(tagName);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     protected override void SeedTestData()
     {
         // 创建测试分类
@@ -75,7 +94,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
                 Options = new List<string> { "选项1", "选项2", "选项3", "选项4" },
                 CorrectAnswer = "选项1",
                 CategoryId = 1,
-                Tags = "[\"标签A\"]",
+                Tags = System.Text.Json.JsonSerializer.Serialize(new List<string> { "标签A" }),
                 DefaultScore = 5,
                 TenantId = "tenant1"
             });
@@ -94,7 +113,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
                 Options = new List<string> { "选项1", "选项2", "选项3", "选项4" },
                 CorrectAnswer = "选项1",
                 CategoryId = 1,
-                Tags = "[\"标签B\"]",
+                Tags = System.Text.Json.JsonSerializer.Serialize(new List<string> { "标签B" }),
                 DefaultScore = 5,
                 TenantId = "tenant1"
             });
@@ -130,7 +149,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
                 Options = new List<string> { "选项1", "选项2", "选项3", "选项4" },
                 CorrectAnswer = "选项1,选项2",
                 CategoryId = 1,
-                Tags = "[\"标签A\"]",
+                Tags = System.Text.Json.JsonSerializer.Serialize(new List<string> { "标签A" }),
                 DefaultScore = 10,
                 TenantId = "tenant1"
             });
@@ -148,7 +167,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
                 Options = new List<string> { "选项1", "选项2", "选项3", "选项4" },
                 CorrectAnswer = "选项1,选项2",
                 CategoryId = 1,
-                Tags = "[\"标签B\"]",
+                Tags = System.Text.Json.JsonSerializer.Serialize(new List<string> { "标签B" }),
                 DefaultScore = 10,
                 TenantId = "tenant1"
             });
@@ -199,7 +218,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             },
             TagRules = new List<TagRule>
             {
-                new TagRule { Tag = "标签A", Percentage = 60 }
+                new TagRule { Tag = "标签A", Percentage = 100 }
             },
             CategoryIds = new List<long> { 1 }
         };
@@ -217,14 +236,14 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
         Assert.NotNull(examPaper);
         Assert.Equal(10, examPaper.ExamPaperQuestions.Count);
 
-        // 验证标签A的题目数量（60% = 6题，剩余40%可能也包含标签A）
+        // 验证标签A的题目数量（100% = 10题）
         var questionIds = examPaper.ExamPaperQuestions.Select(epq => epq.QuestionId).ToList();
         var questions = await DbContext.Set<Question>()
             .Where(q => questionIds.Contains(q.Id))
             .ToListAsync();
 
-        var tagAQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签A")).ToList();
-        Assert.True(tagAQuestions.Count >= 6, $"标签A应至少有6题，实际{tagAQuestions.Count}题");
+        var tagAQuestions = questions.Where(q => HasTag(q, "标签A")).ToList();
+        Assert.Equal(10, tagAQuestions.Count);
 
         // 验证分数设置
         Assert.All(examPaper.ExamPaperQuestions, epq => Assert.Equal(5, epq.Score));
@@ -252,7 +271,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             },
             TagRules = new List<TagRule>
             {
-                new TagRule { Tag = "标签B", Percentage = 80 }
+                new TagRule { Tag = "标签B", Percentage = 100 }
             },
             CategoryIds = new List<long> { 1 }
         };
@@ -271,9 +290,9 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             .Where(q => questionIds.Contains(q.Id))
             .ToListAsync();
 
-        // 验证标签B的题目（80% = 8题，剩余20%可能也包含标签B）
-        var tagBQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签B")).ToList();
-        Assert.True(tagBQuestions.Count >= 8, $"标签B应至少有8题，实际{tagBQuestions.Count}题");
+        // 验证标签B的题目（100% = 10题）
+        var tagBQuestions = questions.Where(q => HasTag(q, "标签B")).ToList();
+        Assert.Equal(10, tagBQuestions.Count);
 
         // 验证所有标签B的题目都是单选题
         Assert.All(tagBQuestions, q => Assert.Equal(QuestionType.SingleChoice, q.Type));
@@ -310,8 +329,8 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             },
             TagRules = new List<TagRule>
             {
-                new TagRule { Tag = "标签A", Percentage = 50 },
-                new TagRule { Tag = "标签B", Percentage = 30 }
+                new TagRule { Tag = "标签A", Percentage = 60 },
+                new TagRule { Tag = "标签B", Percentage = 40 }
             },
             CategoryIds = new List<long> { 1 }
         };
@@ -333,14 +352,13 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             .Where(q => questionIds.Contains(q.Id))
             .ToListAsync();
 
-        // 验证标签分布（至少满足规则要求）
-        var tagAQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签A")).ToList();
-        var tagBQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签B")).ToList();
+        // 验证标签分布（精确匹配）
+        var tagAQuestions = questions.Where(q => HasTag(q, "标签A")).ToList();
+        var tagBQuestions = questions.Where(q => HasTag(q, "标签B")).ToList();
 
-        // 标签A应至少有5题（50%），标签B应至少有3题（30%）
-        // 剩余的20%可能是任意题目，所以使用"至少"判断
-        Assert.True(tagAQuestions.Count >= 5, $"标签A应至少有5题，实际{tagAQuestions.Count}题");
-        Assert.True(tagBQuestions.Count >= 3, $"标签B应至少有3题，实际{tagBQuestions.Count}题");
+        // 标签A应有6题（60%），标签B应有4题（40%）
+        Assert.Equal(6, tagAQuestions.Count);
+        Assert.Equal(4, tagBQuestions.Count);
     }
 
     [Fact]
@@ -385,14 +403,15 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             .ToListAsync();
 
         // 验证精确的标签分布：70% = 7题，30% = 3题
-        var tagAQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签A")).ToList();
-        var tagBQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签B")).ToList();
+        var tagAQuestions = questions.Where(q => HasTag(q, "标签A")).ToList();
+        var tagBQuestions = questions.Where(q => HasTag(q, "标签B")).ToList();
 
         Assert.Equal(7, tagAQuestions.Count);
         Assert.Equal(3, tagBQuestions.Count);
 
-        // 100%的标签规则，所有题目都应该有标签
-        Assert.Equal(10, tagAQuestions.Count + tagBQuestions.Count);
+        // 100%的标签规则，所有题目都应该有标签（验证没有无标签的题目）
+        var questionsWithTags = questions.Where(q => !string.IsNullOrWhiteSpace(q.Tags)).ToList();
+        Assert.Equal(10, questionsWithTags.Count);
     }
 
     #endregion
@@ -458,14 +477,14 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
 
         // 验证标签在各题型中的分布
         // 单选题：60% = 6题标签A，40% = 4题标签B
-        var singleChoiceTagA = singleChoiceQuestions.Where(q => q.Tags != null && q.Tags.Contains("标签A")).ToList();
-        var singleChoiceTagB = singleChoiceQuestions.Where(q => q.Tags != null && q.Tags.Contains("标签B")).ToList();
+        var singleChoiceTagA = singleChoiceQuestions.Where(q => HasTag(q, "标签A")).ToList();
+        var singleChoiceTagB = singleChoiceQuestions.Where(q => HasTag(q, "标签B")).ToList();
         Assert.Equal(6, singleChoiceTagA.Count);
         Assert.Equal(4, singleChoiceTagB.Count);
 
         // 多选题：60% = 3题标签A，40% = 2题标签B
-        var multipleChoiceTagA = multipleChoiceQuestions.Where(q => q.Tags != null && q.Tags.Contains("标签A")).ToList();
-        var multipleChoiceTagB = multipleChoiceQuestions.Where(q => q.Tags != null && q.Tags.Contains("标签B")).ToList();
+        var multipleChoiceTagA = multipleChoiceQuestions.Where(q => HasTag(q, "标签A")).ToList();
+        var multipleChoiceTagB = multipleChoiceQuestions.Where(q => HasTag(q, "标签B")).ToList();
         Assert.Equal(3, multipleChoiceTagA.Count);
         Assert.Equal(2, multipleChoiceTagB.Count);
 
@@ -535,7 +554,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             .ToListAsync();
 
         // 所有题目都应该来自标签A
-        Assert.All(questions, q => Assert.Contains("标签A", q.Tags ?? ""));
+        Assert.All(questions, q => Assert.True(HasTag(q, "标签A")));
 
         // 验证难度分布：30% = 3题简单，40% = 4题中等，30% = 3题困难
         var easyQuestions = questions.Where(q => q.Difficulty == QuestionDifficulty.Easy).ToList();
@@ -594,8 +613,8 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             .ToListAsync();
 
         // 验证标签分布：60% = 6题标签A，40% = 4题标签B
-        var tagAQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签A")).ToList();
-        var tagBQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签B")).ToList();
+        var tagAQuestions = questions.Where(q => HasTag(q, "标签A")).ToList();
+        var tagBQuestions = questions.Where(q => HasTag(q, "标签B")).ToList();
 
         Assert.Equal(6, tagAQuestions.Count);
         Assert.Equal(4, tagBQuestions.Count);
@@ -645,7 +664,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             },
             TagRules = new List<TagRule>
             {
-                new TagRule { Tag = "标签A", Percentage = 50 }
+                new TagRule { Tag = "标签A", Percentage = 100 }
             },
             CategoryIds = new List<long> { 1 }
         };
@@ -712,7 +731,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             .ToListAsync();
 
         var question = Assert.Single(questions);
-        Assert.Contains("标签A", question.Tags ?? "");
+        Assert.True(HasTag(question, "标签A"));
     }
 
     [Fact]
@@ -832,7 +851,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             .ToListAsync();
 
         // 所有题目都应该来自标签A
-        Assert.All(questions, q => Assert.Contains("标签A", q.Tags ?? ""));
+        Assert.All(questions, q => Assert.True(HasTag(q, "标签A")));
 
         // 题目不重复
         Assert.Equal(10, questionIds.Distinct().Count());
@@ -905,10 +924,10 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
 
     #endregion
 
-    #region 标签比例不足100%测试
+    #region 标签比例验证测试
 
     [Fact]
-    public async Task GenerateRandomExamPaper_WithTagPercentageLessThan100_ShouldFillWithRandomQuestions()
+    public async Task GenerateRandomExamPaper_WithTagPercentageLessThan100_ShouldThrowException()
     {
         // Arrange
         var createDto = new GenerateRandomExamPaperDto
@@ -933,30 +952,12 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             CategoryIds = new List<long> { 1 }
         };
 
-        // Act
-        var result = await _examPaperService.GenerateRandomExamPaperAsync(createDto);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<AppServiceException>(
+            () => _examPaperService.GenerateRandomExamPaperAsync(createDto));
 
-        // Assert
-        var examPaper = await _examPaperRepository
-            .Find(p => p.Id == result.Id)
-            .Include(p => p.ExamPaperQuestions)
-            .FirstOrDefaultAsync();
-
-        Assert.Equal(10, examPaper!.ExamPaperQuestions.Count);
-
-        // 获取题目详细信息
-        var questionIds = examPaper.ExamPaperQuestions.Select(epq => epq.QuestionId).ToList();
-        var questions = await DbContext.Set<Question>()
-            .Where(q => questionIds.Contains(q.Id))
-            .ToListAsync();
-
-        // 标签A应至少有5题（50%），剩余5题可以是任意题目（包括标签A）
-        var tagAQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签A")).ToList();
-        Assert.True(tagAQuestions.Count >= 5, $"标签A应至少有5题，实际{tagAQuestions.Count}题");
-
-        // 验证总题目数正确且无重复
-        Assert.Equal(10, questions.Count);
-        Assert.Equal(10, questionIds.Distinct().Count());
+        Assert.Contains("标签规则比例总和必须等于100%", exception.Message);
+        Assert.Contains("当前为50%", exception.Message);
     }
 
     #endregion
@@ -994,7 +995,8 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
         var exception = await Assert.ThrowsAsync<AppServiceException>(
             () => _examPaperService.GenerateRandomExamPaperAsync(createDto));
 
-        Assert.Contains("标签规则比例总和不能超过100%", exception.Message);
+        Assert.Contains("标签规则比例总和必须等于100%", exception.Message);
+        Assert.Contains("当前为110%", exception.Message);
     }
 
     [Fact]
@@ -1052,8 +1054,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             },
             TagRules = new List<TagRule>
             {
-                new TagRule { Tag = "标签A", Percentage = 0 },
-                new TagRule { Tag = "标签B", Percentage = 50 }
+                new TagRule { Tag = "标签B", Percentage = 100 }
             },
             CategoryIds = new List<long> { 1 }
         };
@@ -1075,7 +1076,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             .Where(q => questionIds.Contains(q.Id))
             .ToListAsync();
 
-        var tagBQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签B")).ToList();
+        var tagBQuestions = questions.Where(q => HasTag(q, "标签B")).ToList();
         Assert.True(tagBQuestions.Count >= 5, $"标签B应至少有5题，实际{tagBQuestions.Count}题");
     }
 
@@ -1104,7 +1105,7 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
             },
             TagRules = new List<TagRule>
             {
-                new TagRule { Tag = "标签A", Percentage = 50 }
+                new TagRule { Tag = "标签A", Percentage = 100 }
             },
             CategoryIds = new List<long> { 1 }
         };
@@ -1182,8 +1183,8 @@ public class ExamPaperServiceTagRuleTests : ExamServiceTestBase
                 .ToListAsync();
 
             // 验证标签分布
-            var tagAQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签A")).ToList();
-            var tagBQuestions = questions.Where(q => q.Tags != null && q.Tags.Contains("标签B")).ToList();
+            var tagAQuestions = questions.Where(q => HasTag(q, "标签A")).ToList();
+            var tagBQuestions = questions.Where(q => HasTag(q, "标签B")).ToList();
 
             Assert.Equal(6, tagAQuestions.Count);
             Assert.Equal(4, tagBQuestions.Count);

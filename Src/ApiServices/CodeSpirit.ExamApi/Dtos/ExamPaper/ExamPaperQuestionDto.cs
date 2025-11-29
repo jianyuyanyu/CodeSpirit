@@ -73,4 +73,10 @@ public class ExamPaperQuestionDto
     /// </summary>
     [DisplayName("是否必答")]
     public bool IsRequired { get; set; } = true;
+    
+    /// <summary>
+    /// 题目标签（JSON数组格式）
+    /// </summary>
+    [DisplayName("题目标签")]
+    public string? Tags { get; set; }
 }

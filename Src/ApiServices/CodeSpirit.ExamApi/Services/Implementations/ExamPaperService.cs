@@ -394,13 +394,13 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                 throw new AppServiceException(400, "总分与各题型分数之和必须相等");
             }
 
-            // 验证标签规则比例总和不超过100%
+            // 验证标签规则比例：如果配置了标签规则，总和必须等于100%
             if (createDto.TagRules != null && createDto.TagRules.Any())
             {
                 var totalTagPercentage = createDto.TagRules.Sum(r => r.Percentage);
-                if (totalTagPercentage > 100)
+                if (totalTagPercentage != 100)
                 {
-                    throw new AppServiceException(400, $"标签规则比例总和不能超过100%，当前为{totalTagPercentage}%");
+                    throw new AppServiceException(400, $"标签规则比例总和必须等于100%，当前为{totalTagPercentage}%。请调整标签规则的比例分配，使其总和为100%");
                 }
             }
 

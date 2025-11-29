@@ -4,6 +4,7 @@ using CodeSpirit.Amis.Helpers;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Linq;
@@ -42,6 +43,13 @@ namespace CodeSpirit.Amis.Form.Factories
                 ["editable"] = attr.Editable,
                 ["copyable"] = attr.Copyable
             };
+
+            // 添加描述信息（如果有）
+            var description = prop.GetAttribute<DescriptionAttribute>()?.Description;
+            if (!string.IsNullOrEmpty(description))
+            {
+                field["description"] = description;
+            }
 
             if (attr.Perpage != default)
             {
@@ -83,6 +91,13 @@ namespace CodeSpirit.Amis.Form.Factories
                     ["name"] = prop.Name.ToCamelCase(),
                     ["label"] = prop.GetDisplayName()
                 };
+
+                // 添加描述信息（如果有）
+                var description = prop.GetAttribute<DescriptionAttribute>()?.Description;
+                if (!string.IsNullOrEmpty(description))
+                {
+                    column["remark"] = description;
+                }
 
                 // 只有在启用快速编辑时才添加快速编辑配置
                 if (tableFieldAttr?.QuickEdit == true)
@@ -143,6 +158,9 @@ namespace CodeSpirit.Amis.Form.Factories
         private JObject GetQuickEditConfig(PropertyInfo prop, UtilityHelper utilityHelper)
         {
             var type = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+            
+            // 获取描述信息（用于所有快速编辑配置）
+            var description = prop.GetAttribute<DescriptionAttribute>()?.Description;
 
             // 优先检查是否有自定义的 Amis 字段特性
             
@@ -173,6 +191,10 @@ namespace CodeSpirit.Amis.Form.Factories
                 
                 if (!string.IsNullOrEmpty(amisSelectFieldAttr.Placeholder))
                     config["placeholder"] = amisSelectFieldAttr.Placeholder;
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
 
                 return config;
             }
@@ -200,6 +222,10 @@ namespace CodeSpirit.Amis.Form.Factories
                 
                 if (!string.IsNullOrEmpty(amisNumberFieldAttr.Placeholder))
                     config["placeholder"] = amisNumberFieldAttr.Placeholder;
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
 
                 return config;
             }
@@ -207,11 +233,17 @@ namespace CodeSpirit.Amis.Form.Factories
             // 处理枚举类型
             if (type.IsEnum)
             {
-                return new JObject
+                var config = new JObject
                 {
                     ["type"] = "select",
                     ["options"] = JArray.FromObject(type.GetEnumOptions())
                 };
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
+                
+                return config;
             }
 
             // 处理数值类型
@@ -230,6 +262,10 @@ namespace CodeSpirit.Amis.Form.Factories
                     config["min"] = Convert.ToInt64(rangeAttr.Minimum);
                     config["max"] = Convert.ToInt64(rangeAttr.Maximum);
                 }
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
 
                 return config;
             }
@@ -250,6 +286,10 @@ namespace CodeSpirit.Amis.Form.Factories
                     config["min"] = Convert.ToDouble(rangeAttr.Minimum);
                     config["max"] = Convert.ToDouble(rangeAttr.Maximum);
                 }
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
 
                 return config;
             }
@@ -257,37 +297,61 @@ namespace CodeSpirit.Amis.Form.Factories
             // 处理布尔类型
             if (type == typeof(bool))
             {
-                return new JObject
+                var config = new JObject
                 {
                     ["type"] = "switch"
                 };
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
+                
+                return config;
             }
 
             // 处理日期时间类型
             if (type == typeof(DateTime))
             {
-                return new JObject
+                var config = new JObject
                 {
                     ["type"] = "input-datetime"
                 };
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
+                
+                return config;
             }
 
             // 处理日期类型
             if (type == typeof(DateOnly))
             {
-                return new JObject
+                var config = new JObject
                 {
                     ["type"] = "input-date"
                 };
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
+                
+                return config;
             }
 
             // 处理时间类型
             if (type == typeof(TimeOnly))
             {
-                return new JObject
+                var config = new JObject
                 {
                     ["type"] = "input-time"
                 };
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
+                
+                return config;
             }
 
             // 获取字符串相关的验证特性
@@ -312,15 +376,25 @@ namespace CodeSpirit.Amis.Form.Factories
                     config["required"] = true;
                     config["requiredErrorMsg"] = requiredAttr.ErrorMessage;
                 }
+                
+                // 添加描述信息
+                if (!string.IsNullOrEmpty(description))
+                    config["remark"] = description;
 
                 return config;
             }
 
             // 默认使用文本输入
-            return new JObject
+            var defaultConfig = new JObject
             {
                 ["type"] = "input-text"
             };
+            
+            // 添加描述信息
+            if (!string.IsNullOrEmpty(description))
+                defaultConfig["remark"] = description;
+            
+            return defaultConfig;
         }
     }
 }

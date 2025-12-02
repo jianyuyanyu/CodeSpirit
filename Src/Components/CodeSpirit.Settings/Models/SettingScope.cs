@@ -28,5 +28,10 @@ public enum SettingScope
     /// <summary>
     /// 角色设置
     /// </summary>
-    Role = 4
+    Role = 4,
+    
+    /// <summary>
+    /// 租户设置
+    /// </summary>
+    Tenant = 5
 } 

@@ -926,6 +926,307 @@ public class SettingsService : ISettingsService
         }
     }
     
+    /// <inheritdoc/>
+    public async Task<string?> GetTenantSettingAsync(string module, string key, string tenantId)
+    {
+        var cacheKey = GenerateCacheKey("Tenant", module, key, tenantId);
+        var cachedValue = await GetFromCacheAsync<string>(cacheKey);
+        
+        if (cachedValue != null)
+        {
+            return cachedValue;
+        }
+        
+        // 先查询租户特定设置
+        var tenantSetting = await _context.SettingItems
+            .Where(s => s.Module == module && s.Key == key && s.Scope == SettingScope.Tenant && s.ScopeId == tenantId)
+            .FirstOrDefaultAsync();
+            
+        if (tenantSetting != null)
+        {
+            await SetCacheAsync(cacheKey, tenantSetting.Value);
+            return tenantSetting.Value;
+        }
+        
+        // 如果租户没有特定设置，返回全局设置
+        return await GetGlobalSettingAsync(module, key);
+    }
+    
+    /// <inheritdoc/>
+    public async Task<T?> GetTenantSettingAsync<T>(string module, string key, string tenantId) where T : class, new()
+    {
+        var cacheKey = GenerateCacheKey("TenantObj", module, key, tenantId, typeof(T).Name);
+        var cachedValue = await GetFromCacheAsync<T>(cacheKey);
+        
+        if (cachedValue != null)
+        {
+            return cachedValue;
+        }
+        
+        var settingValue = await GetTenantSettingAsync(module, key, tenantId);
+        
+        if (string.IsNullOrEmpty(settingValue))
+        {
+            return null;
+        }
+        
+        try
+        {
+            var result = System.Text.Json.JsonSerializer.Deserialize<T>(settingValue);
+            if (result != null)
+            {
+                await SetCacheAsync(cacheKey, result);
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "反序列化租户设置值时出错: {Module}, {Key}, {TenantId}", module, key, tenantId);
+            return null;
+        }
+    }
+    
+    /// <inheritdoc/>
+    public async Task<Dictionary<string, string>> GetAllTenantSettingsAsync(string module, string tenantId)
+    {
+        var cacheKey = GenerateCacheKey("AllTenant", module, tenantId);
+        var cachedSettings = await GetFromCacheAsync<Dictionary<string, string>>(cacheKey);
+        
+        if (cachedSettings != null)
+        {
+            return cachedSettings;
+        }
+        
+        // 获取全局设置
+        var globalSettings = await GetAllGlobalSettingsAsync(module);
+        
+        // 获取租户特定设置
+        var tenantSettings = await _context.SettingItems
+            .Where(s => s.Module == module && s.Scope == SettingScope.Tenant && s.ScopeId == tenantId)
+            .ToDictionaryAsync(s => s.Key, s => s.Value);
+            
+        // 合并设置（租户设置优先）
+        foreach (var key in tenantSettings.Keys)
+        {
+            globalSettings[key] = tenantSettings[key];
+        }
+        
+        await SetCacheAsync(cacheKey, globalSettings);
+        return globalSettings;
+    }
+    
+    /// <inheritdoc/>
+    public async Task<bool> SetTenantSettingAsync(string module, string key, string value, string tenantId, string? reason = null)
+    {
+        try
+        {
+            var setting = await _context.SettingItems
+                .Where(s => s.Module == module && s.Key == key && s.Scope == SettingScope.Tenant && s.ScopeId == tenantId)
+                .FirstOrDefaultAsync();
+                
+            if (setting == null)
+            {
+                // 查询全局设置项定义
+                var globalSetting = await _context.SettingItems
+                    .Where(s => s.Module == module && s.Key == key && s.Scope == SettingScope.Global)
+                    .FirstOrDefaultAsync();
+                
+                // 创建新租户设置
+                setting = new SettingItem
+                {
+                    Module = module,
+                    Key = key,
+                    Value = value,
+                    Name = globalSetting?.Name ?? key, // 使用全局设置的名称，如果不存在则使用键
+                    Description = globalSetting?.Description,
+                    Scope = SettingScope.Tenant,
+                    ScopeId = tenantId,
+                    TenantId = tenantId, // 设置租户ID
+                    ValueType = globalSetting?.ValueType ?? SettingValueType.String,
+                    Version = 1
+                };
+                
+                _context.SettingItems.Add(setting);
+            }
+            else
+            {
+                // 记录历史
+                await CreateHistoryAsync(setting, value, reason);
+                
+                // 更新设置
+                setting.Value = value;
+                setting.Version++;
+                
+                // 在NoTracking模式下，需要手动标记实体为已修改
+                _context.SettingItems.Update(setting);
+            }
+            
+            await _context.SaveChangesAsync();
+            
+            // 更新缓存
+            var cacheKey = GenerateCacheKey("Tenant", module, key, tenantId);
+            await SetCacheAsync(cacheKey, value);
+            
+            // 移除相关联的缓存
+            await RemoveCacheAsync(GenerateCacheKey("AllTenant", module, tenantId));
+            await RemoveCacheAsync(GenerateCacheKey("TenantObj", module, key, tenantId));
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "设置租户设置时出错: {Module}, {Key}, {TenantId}", module, key, tenantId);
+            return false;
+        }
+    }
+    
+    /// <inheritdoc/>
+    public async Task<bool> SetTenantSettingAsync<T>(string module, string key, T value, string tenantId, string? reason = null) where T : class
+    {
+        try
+        {
+            string jsonValue = System.Text.Json.JsonSerializer.Serialize(value);
+            
+            var setting = await _context.SettingItems
+                .Where(s => s.Module == module && s.Key == key && s.Scope == SettingScope.Tenant && s.ScopeId == tenantId)
+                .FirstOrDefaultAsync();
+                
+            if (setting == null)
+            {
+                // 查询全局设置项定义
+                var globalSetting = await _context.SettingItems
+                    .Where(s => s.Module == module && s.Key == key && s.Scope == SettingScope.Global)
+                    .FirstOrDefaultAsync();
+                
+                // 创建新租户设置
+                setting = new SettingItem
+                {
+                    Module = module,
+                    Key = key,
+                    Value = jsonValue,
+                    Name = globalSetting?.Name ?? key, // 使用全局设置的名称，如果不存在则使用键
+                    Description = globalSetting?.Description,
+                    Scope = SettingScope.Tenant,
+                    ScopeId = tenantId,
+                    TenantId = tenantId, // 设置租户ID
+                    ValueType = SettingValueType.Json, // 设置值类型为JSON
+                    Version = 1
+                };
+                
+                _context.SettingItems.Add(setting);
+            }
+            else
+            {
+                // 记录历史
+                await CreateHistoryAsync(setting, jsonValue, reason);
+                
+                // 更新设置
+                setting.Value = jsonValue;
+                setting.ValueType = SettingValueType.Json; // 确保值类型为JSON
+                setting.Version++;
+                
+                // 在NoTracking模式下，需要手动标记实体为已修改
+                _context.SettingItems.Update(setting);
+            }
+            
+            await _context.SaveChangesAsync();
+            
+            // 更新缓存
+            var cacheKey = GenerateCacheKey("Tenant", module, key, tenantId);
+            await SetCacheAsync(cacheKey, jsonValue);
+            
+            var objCacheKey = GenerateCacheKey("TenantObj", module, key, tenantId, typeof(T).Name);
+            await SetCacheAsync(objCacheKey, value);
+            
+            // 移除相关联的缓存
+            await RemoveCacheAsync(GenerateCacheKey("AllTenant", module, tenantId));
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "序列化并设置租户设置对象时出错: {Module}, {Key}, {TenantId}", module, key, tenantId);
+            return false;
+        }
+    }
+    
+    /// <inheritdoc/>
+    public async Task<bool> BatchSetTenantSettingsAsync(string module, Dictionary<string, string> settings, string tenantId, string? reason = null)
+    {
+        try
+        {
+            // 获取当前所有租户设置（合并全局设置）
+            var currentSettings = await GetAllTenantSettingsAsync(module, tenantId);
+            
+            foreach (var kvp in settings)
+            {
+                await SetTenantSettingAsync(module, kvp.Key, kvp.Value, tenantId, reason);
+                currentSettings[kvp.Key] = kvp.Value;
+            }
+            
+            // 更新合并后的缓存
+            var cacheKey = GenerateCacheKey("AllTenant", module, tenantId);
+            await SetCacheAsync(cacheKey, currentSettings);
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "批量设置租户设置时出错: {Module}, {TenantId}", module, tenantId);
+            return false;
+        }
+    }
+    
+    /// <inheritdoc/>
+    public async Task<bool> ResetTenantSettingToDefaultAsync(string module, string? key, string tenantId)
+    {
+        try
+        {
+            if (key == null)
+            {
+                // 删除所有租户设置
+                var tenantSettings = await _context.SettingItems
+                    .Where(s => s.Module == module && s.Scope == SettingScope.Tenant && s.ScopeId == tenantId)
+                    .ToListAsync();
+                    
+                _context.SettingItems.RemoveRange(tenantSettings);
+                
+                // 清除与租户相关的所有缓存
+                await RemoveCacheAsync(GenerateCacheKey("AllTenant", module, tenantId));
+                foreach (var setting in tenantSettings)
+                {
+                    await RemoveCacheAsync(GenerateCacheKey("Tenant", module, setting.Key, tenantId));
+                    await RemoveCacheAsync(GenerateCacheKey("TenantObj", module, setting.Key, tenantId));
+                }
+            }
+            else
+            {
+                // 删除特定租户设置
+                var tenantSetting = await _context.SettingItems
+                    .Where(s => s.Module == module && s.Key == key && s.Scope == SettingScope.Tenant && s.ScopeId == tenantId)
+                    .FirstOrDefaultAsync();
+                    
+                if (tenantSetting != null)
+                {
+                    _context.SettingItems.Remove(tenantSetting);
+                    
+                    // 清除相关缓存
+                    await RemoveCacheAsync(GenerateCacheKey("Tenant", module, key, tenantId));
+                    await RemoveCacheAsync(GenerateCacheKey("TenantObj", module, key, tenantId));
+                    await RemoveCacheAsync(GenerateCacheKey("AllTenant", module, tenantId));
+                }
+            }
+            
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "重置租户设置时出错: {Module}, {Key}, {TenantId}", module, key, tenantId);
+            return false;
+        }
+    }
+    
     /// <summary>
     /// 创建设置历史记录
     /// </summary>

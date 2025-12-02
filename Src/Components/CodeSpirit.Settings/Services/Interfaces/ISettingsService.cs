@@ -129,6 +129,75 @@ public interface ISettingsService
     Task<bool> ResetUserSettingToDefaultAsync(string module, string? key, string userId);
     
     /// <summary>
+    /// 获取租户设置
+    /// </summary>
+    /// <param name="module">模块名称</param>
+    /// <param name="key">设置键</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <returns>设置值</returns>
+    Task<string?> GetTenantSettingAsync(string module, string key, string tenantId);
+    
+    /// <summary>
+    /// 获取租户设置并反序列化为指定类型
+    /// </summary>
+    /// <typeparam name="T">返回类型</typeparam>
+    /// <param name="module">模块名称</param>
+    /// <param name="key">设置键</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <returns>反序列化后的对象</returns>
+    Task<T?> GetTenantSettingAsync<T>(string module, string key, string tenantId) where T : class, new();
+    
+    /// <summary>
+    /// 获取租户所有设置
+    /// </summary>
+    /// <param name="module">模块名称</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <returns>设置集合</returns>
+    Task<Dictionary<string, string>> GetAllTenantSettingsAsync(string module, string tenantId);
+    
+    /// <summary>
+    /// 设置租户设置
+    /// </summary>
+    /// <param name="module">模块名称</param>
+    /// <param name="key">设置键</param>
+    /// <param name="value">设置值</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <param name="reason">变更原因</param>
+    /// <returns>操作结果</returns>
+    Task<bool> SetTenantSettingAsync(string module, string key, string value, string tenantId, string? reason = null);
+    
+    /// <summary>
+    /// 设置租户设置对象
+    /// </summary>
+    /// <typeparam name="T">对象类型</typeparam>
+    /// <param name="module">模块名称</param>
+    /// <param name="key">设置键</param>
+    /// <param name="value">设置对象</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <param name="reason">变更原因</param>
+    /// <returns>操作结果</returns>
+    Task<bool> SetTenantSettingAsync<T>(string module, string key, T value, string tenantId, string? reason = null) where T : class;
+    
+    /// <summary>
+    /// 批量设置租户设置
+    /// </summary>
+    /// <param name="module">模块名称</param>
+    /// <param name="settings">设置集合</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <param name="reason">变更原因</param>
+    /// <returns>操作结果</returns>
+    Task<bool> BatchSetTenantSettingsAsync(string module, Dictionary<string, string> settings, string tenantId, string? reason = null);
+    
+    /// <summary>
+    /// 重置租户设置为全局默认值
+    /// </summary>
+    /// <param name="module">模块名称</param>
+    /// <param name="key">设置键，为null则重置该模块所有设置</param>
+    /// <param name="tenantId">租户ID</param>
+    /// <returns>操作结果</returns>
+    Task<bool> ResetTenantSettingToDefaultAsync(string module, string? key, string tenantId);
+    
+    /// <summary>
     /// 获取设置项定义
     /// </summary>
     /// <param name="module">模块名称</param>

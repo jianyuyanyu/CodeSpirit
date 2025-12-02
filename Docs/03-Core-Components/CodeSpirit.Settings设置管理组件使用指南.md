@@ -92,6 +92,7 @@ await _settingsService.SetGlobalSettingAsync("System", "Configuration", config);
 - **模块(Module)**：特定模块的设置
 - **组织(Organization)**：组织级别的设置
 - **角色(Role)**：角色级别的设置
+- **租户(Tenant)**：租户级别的设置
 
 ### 3.3 设置值类型
 
@@ -139,7 +140,39 @@ var definition = await _settingsService.GetSettingDefinitionAsync("System", "Max
 var history = await _settingsService.GetSettingHistoryAsync("System", "Theme");
 ```
 
-### 4.3 设置导入导出
+### 4.3 租户设置管理
+
+租户设置允许为每个租户配置独立的设置值，当租户设置不存在时，会自动继承全局设置。
+
+```csharp
+// 获取租户设置（如果租户设置不存在，返回全局设置）
+var tenantTheme = await _settingsService.GetTenantSettingAsync("System", "Theme", tenantId);
+
+// 设置租户设置
+await _settingsService.SetTenantSettingAsync("System", "Theme", "Dark", tenantId, "租户主题设置");
+
+// 获取租户所有设置（合并全局设置和租户设置）
+var allTenantSettings = await _settingsService.GetAllTenantSettingsAsync("System", tenantId);
+
+// 批量设置租户设置
+var settings = new Dictionary<string, string>
+{
+    { "Theme", "Dark" },
+    { "Language", "zh-CN" }
+};
+await _settingsService.BatchSetTenantSettingsAsync("System", settings, tenantId, "批量更新租户设置");
+
+// 重置租户设置为全局默认值
+await _settingsService.ResetTenantSettingToDefaultAsync("System", "Theme", tenantId);
+```
+
+**租户设置与全局设置的关系：**
+- 租户设置优先于全局设置
+- 如果租户设置不存在，自动返回全局设置值
+- 重置租户设置后，将恢复为全局设置值
+- 租户设置完全隔离，不同租户之间的设置互不影响
+
+### 4.4 设置导入导出
 
 ```csharp
 // 导出设置
@@ -296,6 +329,15 @@ public IActionResult GetSettingsForm()
 - `SetUserSettingAsync<T>(string module, string key, T value, string userId, string? reason)` - 设置类型化用户设置
 - `BatchSetUserSettingsAsync(string module, Dictionary<string, string> settings, string userId, string? reason)` - 批量设置用户设置
 - `ResetUserSettingToDefaultAsync(string module, string? key, string userId)` - 重置用户设置为全局默认值
+
+### 租户设置管理
+- `GetTenantSettingAsync(string module, string key, string tenantId)` - 获取租户设置
+- `GetTenantSettingAsync<T>(string module, string key, string tenantId)` - 获取类型化租户设置
+- `GetAllTenantSettingsAsync(string module, string tenantId)` - 获取租户的所有设置
+- `SetTenantSettingAsync(string module, string key, string value, string tenantId, string? reason)` - 设置租户设置
+- `SetTenantSettingAsync<T>(string module, string key, T value, string tenantId, string? reason)` - 设置类型化租户设置
+- `BatchSetTenantSettingsAsync(string module, Dictionary<string, string> settings, string tenantId, string? reason)` - 批量设置租户设置
+- `ResetTenantSettingToDefaultAsync(string module, string? key, string tenantId)` - 重置租户设置为全局默认值
 
 ### 设置定义管理
 - `GetSettingDefinitionAsync(string module, string key)` - 获取设置定义

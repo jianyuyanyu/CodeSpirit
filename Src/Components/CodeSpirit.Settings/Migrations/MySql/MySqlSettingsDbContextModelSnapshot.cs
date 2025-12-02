@@ -17,7 +17,7 @@ namespace CodeSpirit.Settings.Migrations.MySql
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.7")
+                .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -184,8 +184,7 @@ namespace CodeSpirit.Settings.Migrations.MySql
 
                     b.HasIndex("TenantId");
 
-                    b.HasIndex("Module", "Key")
-                        .IsUnique();
+                    b.HasIndex("Module", "Key");
 
                     b.HasIndex("TenantId", "Id");
 

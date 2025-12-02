@@ -67,7 +67,8 @@ public class SettingsDbContext : MultiDatabaseDbContextBase
             entity.HasKey(e => e.Id);
 
             // 基础索引
-            entity.HasIndex(e => new { e.Module, e.Key }).IsUnique();
+            // 注意：Module+Key 不应该是唯一的，因为不同 Scope（Global/Tenant/User等）可以有相同的 Module+Key
+            entity.HasIndex(e => new { e.Module, e.Key });
             entity.HasIndex(e => new { e.Module, e.Scope, e.ScopeId });
             
             // 多租户索引

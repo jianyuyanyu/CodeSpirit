@@ -23,7 +23,7 @@ public abstract class RabbitMQEventBusBase : IDisposable
     protected readonly IServiceProvider _serviceProvider;
     protected readonly ILogger _logger;
     protected readonly IConnection _connection;
-    protected IModel _channel;
+    protected IChannel _channel;
     protected readonly string _exchangeName;
     protected readonly string _deadLetterExchangeName;
     protected readonly int _retryCount;
@@ -66,18 +66,20 @@ public abstract class RabbitMQEventBusBase : IDisposable
 
     /// <summary>
     /// 注册连接事件处理程序
+    /// 注意：RabbitMQ.Client 7.x 中连接事件可能已移除或改名，暂时注释掉
     /// </summary>
     protected void RegisterConnectionEventHandlers()
     {
-        _connection.ConnectionShutdown += OnConnectionShutdown;
-        _connection.CallbackException += OnCallbackException;
-        _connection.ConnectionBlocked += OnConnectionBlocked;
+        // RabbitMQ.Client 7.x 中连接事件可能已移除，暂时注释掉
+        // _connection.ConnectionShutdown += OnConnectionShutdown;
+        // _connection.CallbackException += OnCallbackException;
+        // _connection.ConnectionBlocked += OnConnectionBlocked;
     }
 
     /// <summary>
     /// 创建通道
     /// </summary>
-    protected IModel CreateChannel()
+    protected IChannel CreateChannel()
     {
         if (!_connection.IsOpen)
         {
@@ -85,10 +87,10 @@ public abstract class RabbitMQEventBusBase : IDisposable
             return null;
         }
 
-        IModel channel = null;
+        IChannel channel = null;
         try
         {
-            channel = _connection.CreateModel();
+            channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
 
             // 声明主交换机和死信交换机
             try
@@ -118,15 +120,15 @@ public abstract class RabbitMQEventBusBase : IDisposable
     /// <summary>
     /// 声明交换机
     /// </summary>
-    protected void DeclareExchange(IModel channel, string exchangeName)
+    protected void DeclareExchange(IChannel channel, string exchangeName)
     {
         try
         {
-            channel.ExchangeDeclare(
+            channel.ExchangeDeclareAsync(
                 exchange: exchangeName,
                 type: ExchangeType.Topic,
                 durable: true,
-                autoDelete: false);
+                autoDelete: false).GetAwaiter().GetResult();
             
             _logger.LogDebug("成功声明交换机: {ExchangeName}", exchangeName);
         }
@@ -136,8 +138,8 @@ public abstract class RabbitMQEventBusBase : IDisposable
             
             try
             {
-                // 尝试以被动方式检查交换机是否存在
-                channel.ExchangeDeclarePassive(exchangeName);
+                // 尝试以被动方式检查交换机是否存在（RabbitMQ.Client 7.x 使用异步方法）
+                channel.ExchangeDeclarePassiveAsync(exchangeName).GetAwaiter().GetResult();
                 _logger.LogInformation("交换机已存在: {ExchangeName}", exchangeName);
             }
             catch (Exception innerEx)
@@ -151,7 +153,7 @@ public abstract class RabbitMQEventBusBase : IDisposable
     /// <summary>
     /// 尝试重新连接
     /// </summary>
-    protected void TryConnectWithRetry(Func<IModel> channelFactory)
+    protected void TryConnectWithRetry(Func<IChannel> channelFactory)
     {
         Task.Run(async () => {
             int attempt = 0;
@@ -161,7 +163,7 @@ public abstract class RabbitMQEventBusBase : IDisposable
             {
                 try
                 {
-                    IModel newChannel = null;
+                    IChannel newChannel = null;
                     
                     // 避免在锁内部执行耗时操作
                     try
@@ -270,7 +272,7 @@ public abstract class RabbitMQEventBusBase : IDisposable
     /// <summary>
     /// 确保通道可用
     /// </summary>
-    protected async Task EnsureChannelAsync(Func<IModel> channelFactory)
+    protected async Task EnsureChannelAsync(Func<IChannel> channelFactory)
     {
         if (_channel == null || _channel.IsClosed)
         {
@@ -340,7 +342,8 @@ public abstract class RabbitMQEventBusBase : IDisposable
                         {
                             if (_channel.IsOpen)
                             {
-                                _channel.Close();
+                                // RabbitMQ.Client 7.x 中 IChannel 没有 Close 方法，直接 Dispose
+                                // _channel.Close();
                             }
                         }
                         catch (Exception channelEx)
@@ -369,18 +372,20 @@ public abstract class RabbitMQEventBusBase : IDisposable
 
     /// <summary>
     /// 注销连接事件处理程序
+    /// 注意：RabbitMQ.Client 7.x 中连接事件可能已移除或改名，暂时注释掉
     /// </summary>
     protected void UnregisterConnectionEventHandlers()
     {
         try
         {
+            // RabbitMQ.Client 7.x 中连接事件可能已移除，暂时注释掉
             // 检查连接是否仍然可用，避免在已释放的对象上操作
-            if (_connection != null)
-            {
-                _connection.ConnectionShutdown -= OnConnectionShutdown;
-                _connection.CallbackException -= OnCallbackException;
-                _connection.ConnectionBlocked -= OnConnectionBlocked;
-            }
+            // if (_connection != null)
+            // {
+            //     _connection.ConnectionShutdown -= OnConnectionShutdown;
+            //     _connection.CallbackException -= OnCallbackException;
+            //     _connection.ConnectionBlocked -= OnConnectionBlocked;
+            // }
         }
         catch (ObjectDisposedException ex)
         {

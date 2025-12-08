@@ -362,10 +362,10 @@ public class AspireIntegrationTests
         
         // 创建模拟�?RabbitMQ 连接和通道
         var mockConnection = new Mock<IConnection>();
-        var mockChannel = new Mock<IModel>();
+        var mockChannel = new Mock<IChannel>();
         
         mockConnection.Setup(c => c.IsOpen).Returns(true);
-        mockConnection.Setup(c => c.CreateModel()).Returns(mockChannel.Object);
+        mockConnection.Setup(c => c.CreateChannelAsync(It.IsAny<CreateChannelOptions>())).ReturnsAsync(mockChannel.Object);
         mockChannel.Setup(c => c.IsOpen).Returns(true);
         
         // 注册模拟�?IRabbitMQServiceFactory

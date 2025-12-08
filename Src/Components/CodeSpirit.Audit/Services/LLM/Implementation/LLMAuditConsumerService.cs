@@ -19,7 +19,7 @@ public class LLMAuditConsumerService : BackgroundService
     private readonly ILogger<LLMAuditConsumerService> _logger;
     private readonly LLMAuditOptions _options;
     private readonly IConnection? _rabbitMqConnection;
-    private IModel? _channel;
+    private IChannel? _channel;
     
     /// <summary>
     /// 初始化LLM审计消费者服务
@@ -53,16 +53,17 @@ public class LLMAuditConsumerService : BackgroundService
         
         try
         {
-            _channel = _rabbitMqConnection.CreateModel();
+            _channel = _rabbitMqConnection.CreateChannelAsync().GetAwaiter().GetResult();
             
             // 声明交换机和队列（确保它们存在）
             InitializeRabbitMQInfrastructure();
             
-            // 设置预取数量
-            _channel.BasicQos(prefetchSize: 0, prefetchCount: 10, global: false);
+            // 设置预取数量（RabbitMQ.Client 7.x 使用异步方法）
+            _channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 10, global: false).GetAwaiter().GetResult();
             
-            var consumer = new EventingBasicConsumer(_channel);
-            consumer.Received += async (model, ea) =>
+            // 创建消费者（RabbitMQ.Client 7.x 使用 AsyncEventingBasicConsumer）
+            var consumer = new AsyncEventingBasicConsumer(_channel);
+            consumer.ReceivedAsync += async (model, ea) =>
             {
                 try
                 {
@@ -82,20 +83,20 @@ public class LLMAuditConsumerService : BackgroundService
                         
                         if (success)
                         {
-                            _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                            await _channel.BasicAckAsync(deliveryTag: ea.DeliveryTag, multiple: false);
                             _logger.LogDebug("LLM审计日志已成功存储并确认: {Id}", auditLog.Id);
                         }
                         else
                         {
                             // 存储失败，拒绝消息并重新入队
-                            _channel.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: true);
+                            await _channel.BasicNackAsync(deliveryTag: ea.DeliveryTag, multiple: false, requeue: true);
                             _logger.LogWarning("LLM审计日志存储失败，消息已重新入队: {Id}", auditLog.Id);
                         }
                     }
                     else
                     {
                         _logger.LogError("无法反序列化LLM审计日志消息");
-                        _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                        await _channel.BasicAckAsync(deliveryTag: ea.DeliveryTag, multiple: false);
                     }
                 }
                 catch (Exception ex)
@@ -103,14 +104,14 @@ public class LLMAuditConsumerService : BackgroundService
                     _logger.LogError(ex, "处理LLM审计日志消息时发生异常");
                     
                     // 异常情况下也确认消息，避免死循环
-                    _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                    await _channel.BasicAckAsync(deliveryTag: ea.DeliveryTag, multiple: false);
                 }
             };
             
-            _channel.BasicConsume(
+            _channel.BasicConsumeAsync(
                 queue: _options.RabbitMQ.QueueName,
                 autoAck: false,
-                consumer: consumer);
+                consumer: consumer).GetAwaiter().GetResult();
             
             _logger.LogInformation("LLM审计消费者服务已启动，监听队列: {QueueName}", _options.RabbitMQ.QueueName);
             
@@ -139,25 +140,25 @@ public class LLMAuditConsumerService : BackgroundService
     {
         try
         {
-            // 声明交换机
-            _channel.ExchangeDeclare(
+            // 声明交换机（RabbitMQ.Client 7.x 使用异步方法）
+            _channel.ExchangeDeclareAsync(
                 exchange: _options.RabbitMQ.ExchangeName,
                 type: ExchangeType.Topic,
                 durable: true,
-                autoDelete: false);
+                autoDelete: false).GetAwaiter().GetResult();
             
             // 声明队列
-            _channel.QueueDeclare(
+            _channel.QueueDeclareAsync(
                 queue: _options.RabbitMQ.QueueName,
                 durable: true,
                 exclusive: false,
-                autoDelete: false);
+                autoDelete: false).GetAwaiter().GetResult();
             
             // 绑定队列到交换机
-            _channel.QueueBind(
+            _channel.QueueBindAsync(
                 queue: _options.RabbitMQ.QueueName,
                 exchange: _options.RabbitMQ.ExchangeName,
-                routingKey: _options.RabbitMQ.RoutingKey);
+                routingKey: _options.RabbitMQ.RoutingKey).GetAwaiter().GetResult();
             
             _logger.LogInformation("LLM审计消费者RabbitMQ基础设施初始化成功 - 交换机: {Exchange}, 队列: {Queue}", 
                 _options.RabbitMQ.ExchangeName, _options.RabbitMQ.QueueName);
@@ -172,7 +173,7 @@ public class LLMAuditConsumerService : BackgroundService
     /// <inheritdoc/>
     public override void Dispose()
     {
-        _channel?.Close();
+        // RabbitMQ.Client 7.x 中 IChannel 没有 Close 方法，直接 Dispose
         _channel?.Dispose();
         base.Dispose();
         

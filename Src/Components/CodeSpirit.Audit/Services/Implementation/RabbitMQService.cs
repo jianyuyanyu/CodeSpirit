@@ -18,11 +18,11 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     private readonly RabbitMQ.Client.IConnection _connection;
     private readonly ILogger<RabbitMQService> _logger;
     private readonly RabbitMQOptions _options;
-    private readonly ConcurrentDictionary<string, IModel> _consumerChannels = new();
+    private readonly ConcurrentDictionary<string, IChannel> _consumerChannels = new();
     private readonly object _subscriptionLock = new object();
     
     // 线程安全的通道池
-    private readonly ConcurrentQueue<IModel> _channelPool = new();
+    private readonly ConcurrentQueue<IChannel> _channelPool = new();
     private readonly SemaphoreSlim _channelSemaphore;
     private readonly int _maxChannels = 10;
     
@@ -93,31 +93,31 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     /// <summary>
     /// 创建并配置通道
     /// </summary>
-    private IModel? CreateAndConfigureChannel()
+    private IChannel? CreateAndConfigureChannel()
     {
         try
         {
-            var channel = _connection.CreateModel();
+            var channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
             
-            // 声明交换机
-            channel.ExchangeDeclare(
-                exchange: _options.ExchangeName,
-                type: ExchangeType.Topic,
-                durable: true,
-                autoDelete: false);
-            
-            // 声明队列
-            channel.QueueDeclare(
-                queue: _options.QueueName,
-                durable: true,
-                exclusive: false,
-                autoDelete: false);
-            
-            // 绑定队列到交换机
-            channel.QueueBind(
-                queue: _options.QueueName,
-                exchange: _options.ExchangeName,
-                routingKey: _options.RoutingKey);
+                    // 声明交换机（RabbitMQ.Client 7.x 使用异步方法）
+                    channel.ExchangeDeclareAsync(
+                        exchange: _options.ExchangeName,
+                        type: ExchangeType.Topic,
+                        durable: true,
+                        autoDelete: false).GetAwaiter().GetResult();
+                    
+                    // 声明队列
+                    channel.QueueDeclareAsync(
+                        queue: _options.QueueName,
+                        durable: true,
+                        exclusive: false,
+                        autoDelete: false).GetAwaiter().GetResult();
+                    
+                    // 绑定队列到交换机
+                    channel.QueueBindAsync(
+                        queue: _options.QueueName,
+                        exchange: _options.ExchangeName,
+                        routingKey: _options.RoutingKey).GetAwaiter().GetResult();
             
             return channel;
         }
@@ -131,7 +131,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     /// <summary>
     /// 获取通道（线程安全）
     /// </summary>
-    private async Task<IModel?> GetChannelAsync()
+    private async Task<IChannel?> GetChannelAsync()
     {
         if (_disposed)
             return null;
@@ -167,7 +167,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     /// <summary>
     /// 归还通道到池中
     /// </summary>
-    private void ReturnChannel(IModel channel)
+    private void ReturnChannel(IChannel channel)
     {
         try
         {
@@ -211,20 +211,23 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             _logger.LogDebug("准备发送消息，交换机: {Exchange}, 路由键: {RoutingKey}, 消息大小: {Size} bytes", 
                 _options.ExchangeName, routingKey, body.Length);
             
-            // 创建消息属性
-            var properties = channel.CreateBasicProperties();
-            properties.Persistent = true; // 消息持久化
-            properties.MessageId = Guid.NewGuid().ToString();
-            properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-            properties.ContentType = "application/json";
-            properties.ContentEncoding = "utf-8";
+            // 创建消息属性（RabbitMQ.Client 7.x 直接实例化 BasicProperties）
+            var properties = new BasicProperties
+            {
+                Persistent = true, // 消息持久化
+                MessageId = Guid.NewGuid().ToString(),
+                Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                ContentType = "application/json",
+                ContentEncoding = "utf-8"
+            };
             
-            // 发布消息
-            channel.BasicPublish(
+            // 发布消息（RabbitMQ.Client 7.x 使用异步方法）
+            channel.BasicPublishAsync(
                 exchange: _options.ExchangeName,
                 routingKey: routingKey,
+                mandatory: false,
                 basicProperties: properties,
-                body: body);
+                body: new ReadOnlyMemory<byte>(body)).GetAwaiter().GetResult();
             
             _logger.LogDebug("审计消息已发送到RabbitMQ: 交换机={Exchange}, 路由键={RoutingKey}, 消息ID={MessageId}", 
                 _options.ExchangeName, routingKey, properties.MessageId);
@@ -272,13 +275,13 @@ public class RabbitMQService : IRabbitMQService, IDisposable
         // 使用锁确保线程安全
         lock (_subscriptionLock)
         {
-            IModel? consumerChannel = null;
+            IChannel? consumerChannel = null;
             try
             {
                 _logger.LogInformation("开始创建审计RabbitMQ消费者，路由键: {RoutingKey}", routingKey);
                 
-                // 为消费者创建单独的通道
-                consumerChannel = _connection.CreateModel();
+                // 为消费者创建单独的通道（RabbitMQ.Client 7.x 使用异步方法）
+                consumerChannel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
                 _logger.LogInformation("消费者通道创建成功，通道号: {ChannelNumber}, 是否打开: {IsOpen}", 
                     consumerChannel.ChannelNumber, consumerChannel.IsOpen);
                 
@@ -286,26 +289,26 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                 _logger.LogInformation("在消费者通道中重新声明队列和绑定...");
                 try
                 {
-                    consumerChannel.QueueDeclare(
+                    consumerChannel.QueueDeclareAsync(
                         queue: _options.QueueName,
                         durable: true,
                         exclusive: false,
-                        autoDelete: false);
+                        autoDelete: false).GetAwaiter().GetResult();
                     
                     // 绑定默认路由键
-                    consumerChannel.QueueBind(
+                    consumerChannel.QueueBindAsync(
                         queue: _options.QueueName,
                         exchange: _options.ExchangeName,
-                        routingKey: _options.RoutingKey);
+                        routingKey: _options.RoutingKey).GetAwaiter().GetResult();
                     
                     // 如果传入的路由键与默认不同，绑定额外的路由键
                     if (routingKey != _options.RoutingKey)
                     {
                         _logger.LogInformation("绑定额外的路由键: {RoutingKey}", routingKey);
-                        consumerChannel.QueueBind(
+                        consumerChannel.QueueBindAsync(
                             queue: _options.QueueName,
                             exchange: _options.ExchangeName,
-                            routingKey: routingKey);
+                            routingKey: routingKey).GetAwaiter().GetResult();
                     }
                     
                     _logger.LogInformation("消费者通道中队列声明和绑定完成");
@@ -318,17 +321,17 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                 
                 // 设置QoS
                 _logger.LogDebug("设置消费者QoS...");
-                consumerChannel.BasicQos(prefetchSize: 0, prefetchCount: 10, global: false);
+                consumerChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 10, global: false).GetAwaiter().GetResult();
                 _logger.LogDebug("QoS设置完成");
                 
-                // 创建消费者
-                _logger.LogInformation("创建EventingBasicConsumer...");
-                var consumer = new EventingBasicConsumer(consumerChannel);
+                // 创建消费者（RabbitMQ.Client 7.x 使用 AsyncEventingBasicConsumer）
+                _logger.LogInformation("创建AsyncEventingBasicConsumer...");
+                var consumer = new AsyncEventingBasicConsumer(consumerChannel);
                 _logger.LogInformation("消费者对象创建成功，类型: {Type}", consumer.GetType().Name);
                 
-                // 注册消息接收事件
+                // 注册消息接收事件（RabbitMQ.Client 7.x 使用 ReceivedAsync 事件）
                 _logger.LogInformation("注册消息接收事件处理器...");
-                consumer.Received += (sender, e) =>
+                consumer.ReceivedAsync += async (sender, e) =>
                 {
                     var body = e.Body.ToArray();
                     var json = Encoding.UTF8.GetString(body);
@@ -348,17 +351,17 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                         {
                             _logger.LogInformation("消息反序列化成功，开始处理...");
                             
-                            // 同步调用处理器
-                            handler(message).Wait();
+                            // 异步调用处理器
+                            await handler(message);
                             
-                            // 确认消息
-                            consumerChannel.BasicAck(e.DeliveryTag, false);
+                            // 确认消息（RabbitMQ.Client 7.x 使用异步方法）
+                            await consumerChannel.BasicAckAsync(e.DeliveryTag, false);
                             _logger.LogInformation("=== 消息处理完成 === DeliveryTag: {DeliveryTag}", e.DeliveryTag);
                         }
                         else
                         {
                             _logger.LogWarning("消息反序列化结果为null，DeliveryTag: {DeliveryTag}", e.DeliveryTag);
-                            consumerChannel.BasicNack(e.DeliveryTag, false, false); // 不重新入队
+                            await consumerChannel.BasicNackAsync(e.DeliveryTag, false, false); // 不重新入队
                         }
                     }
                     catch (JsonException ex)
@@ -366,24 +369,24 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                         _logger.LogError(ex, "消息反序列化失败，DeliveryTag: {DeliveryTag}, 消息内容: {Json}", 
                             e.DeliveryTag, json);
                         // 序列化错误的消息不重新入队
-                        consumerChannel.BasicNack(e.DeliveryTag, false, false);
+                        await consumerChannel.BasicNackAsync(e.DeliveryTag, false, false);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "处理审计RabbitMQ消息失败，DeliveryTag: {DeliveryTag}", e.DeliveryTag);
                         
                         // 业务处理错误，重新入队重试
-                        consumerChannel.BasicNack(e.DeliveryTag, false, true);
+                        await consumerChannel.BasicNackAsync(e.DeliveryTag, false, true);
                     }
                 };
                 _logger.LogInformation("事件处理器注册完成");
                 
                 // 开始消费
                 _logger.LogInformation("调用BasicConsume开始消费，队列: {Queue}, autoAck: false", _options.QueueName);
-                var consumerTag = consumerChannel.BasicConsume(
+                var consumerTag = consumerChannel.BasicConsumeAsync(
                     queue: _options.QueueName,
                     autoAck: false,
-                    consumer: consumer);
+                    consumer: consumer).GetAwaiter().GetResult();
                 
                 _logger.LogInformation("BasicConsume调用成功，返回消费者标签: {ConsumerTag}", consumerTag);
                 
@@ -444,7 +447,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
         {
             try
             {
-                channel.BasicCancel(consumerTag);
+                channel.BasicCancelAsync(consumerTag).GetAwaiter().GetResult();
                 channel.Dispose();
                 
                 _logger.LogInformation("审计RabbitMQ消费者已取消订阅: {ConsumerTag}", consumerTag);
@@ -472,7 +475,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             {
                 try
                 {
-                    kvp.Value.BasicCancel(kvp.Key);
+                    kvp.Value.BasicCancelAsync(kvp.Key).GetAwaiter().GetResult();
                     kvp.Value.Dispose();
                 }
                 catch (Exception ex)

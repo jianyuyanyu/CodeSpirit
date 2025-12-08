@@ -20,7 +20,7 @@ public class RabbitMQServiceTests : TestBase
 {
     private readonly Mock<IConnectionFactory> _mockConnectionFactory;
     private readonly Mock<IConnection> _mockConnection;
-    private readonly Mock<IModel> _mockChannel;
+    private readonly Mock<IChannel> _mockChannel;
     private readonly Mock<ILogger<RabbitMQService>> _mockLogger;
     private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly IRabbitMQService _rabbitMQService;
@@ -37,10 +37,10 @@ public class RabbitMQServiceTests : TestBase
     private class TestRabbitMQService : IRabbitMQService, IDisposable
     {
         private readonly IConnection _connection;
-        private readonly IModel _channel;
+        private readonly IChannel _channel;
         private readonly ILogger<RabbitMQService> _logger;
         private readonly RabbitMQOptions _options;
-        private readonly Dictionary<string, IModel> _consumerChannels = new Dictionary<string, IModel>();
+        private readonly Dictionary<string, IChannel> _consumerChannels = new Dictionary<string, IChannel>();
         
         // 实际使用的交换机、队列和路由键
         private readonly string _exchangeName = ACTUAL_EXCHANGE_NAME;
@@ -51,7 +51,7 @@ public class RabbitMQServiceTests : TestBase
             ILogger<RabbitMQService> logger,
             IConfiguration configuration,
             IConnection connection,
-            IModel channel)
+            IChannel channel)
         {
             _logger = logger;
             _connection = connection;
@@ -63,24 +63,24 @@ public class RabbitMQServiceTests : TestBase
             _options = options.RabbitMQ;
             
             // 声明交换机
-            _channel.ExchangeDeclare(
+            _channel.ExchangeDeclareAsync(
                 exchange: _exchangeName,
-                type: "direct",
+                type: ExchangeType.Direct,
                 durable: true,
-                autoDelete: false);
+                autoDelete: false).GetAwaiter().GetResult();
             
             // 声明队列
-            _channel.QueueDeclare(
+            _channel.QueueDeclareAsync(
                 queue: _queueName,
                 durable: true,
                 exclusive: false,
-                autoDelete: false);
+                autoDelete: false).GetAwaiter().GetResult();
             
             // 绑定队列到交换机
-            _channel.QueueBind(
+            _channel.QueueBindAsync(
                 queue: _queueName,
                 exchange: _exchangeName,
-                routingKey: _routingKey);
+                routingKey: _routingKey).GetAwaiter().GetResult();
             
             _logger.LogInformation("RabbitMQ连接已建立");
         }
@@ -100,11 +100,12 @@ public class RabbitMQServiceTests : TestBase
                 var body = Encoding.UTF8.GetBytes(json);
                 
                 // 发布消息
-                _channel.BasicPublish(
+                _channel.BasicPublishAsync<BasicProperties>(
                     exchange: _exchangeName,
                     routingKey: routingKey,
+                    mandatory: false,
                     basicProperties: null,
-                    body: body);
+                    body: new ReadOnlyMemory<byte>(body)).GetAwaiter().GetResult();
                 
                 _logger.LogDebug("消息已发送到RabbitMQ: {RoutingKey}", routingKey);
                 return Task.CompletedTask;
@@ -128,14 +129,14 @@ public class RabbitMQServiceTests : TestBase
             try
             {
                 // 为消费者创建单独的通道
-                var consumerChannel = _connection.CreateModel();
+                var consumerChannel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
                 
                 // 声明队列
                 var queueName = $"{_queueName}.{Guid.NewGuid()}";
-                consumerChannel.QueueDeclare(queueName, true, false, true);
+                consumerChannel.QueueDeclareAsync(queueName, true, false, true).GetAwaiter().GetResult();
                 
                 // 绑定队列到交换机
-                consumerChannel.QueueBind(queueName, _exchangeName, routingKey);
+                consumerChannel.QueueBindAsync(queueName, _exchangeName, routingKey).GetAwaiter().GetResult();
                 
                 // 创建消费者标识
                 var consumerTag = Guid.NewGuid().ToString();
@@ -163,8 +164,8 @@ public class RabbitMQServiceTests : TestBase
             try
             {
                 var channel = _consumerChannels[consumerTag];
-                channel.BasicCancel(consumerTag);
-                channel.Close();
+                channel.BasicCancelAsync(consumerTag).GetAwaiter().GetResult();
+                channel.CloseAsync().GetAwaiter().GetResult();
                 _consumerChannels.Remove(consumerTag);
                 
                 _logger.LogInformation("已取消订阅RabbitMQ消息: {ConsumerTag}", consumerTag);
@@ -184,20 +185,20 @@ public class RabbitMQServiceTests : TestBase
                 {
                     if (channel.IsOpen)
                     {
-                        channel.Close();
+                        channel.CloseAsync().GetAwaiter().GetResult();
                     }
                 }
                 
                 // 关闭主通道
                 if (_channel != null && _channel.IsOpen)
                 {
-                    _channel.Close();
+                    _channel.CloseAsync().GetAwaiter().GetResult();
                 }
                 
                 // 关闭连接
                 if (_connection != null && _connection.IsOpen)
                 {
-                    _connection.Close();
+                    _connection.CloseAsync().GetAwaiter().GetResult();
                 }
                 
                 _logger.LogInformation("RabbitMQ连接已关闭");
@@ -218,7 +219,7 @@ public class RabbitMQServiceTests : TestBase
     {
         _mockConnectionFactory = new Mock<IConnectionFactory>();
         _mockConnection = new Mock<IConnection>();
-        _mockChannel = new Mock<IModel>();
+        _mockChannel = new Mock<IChannel>();
         _mockLogger = new Mock<ILogger<RabbitMQService>>();
         _mockConfiguration = new Mock<IConfiguration>();
 
@@ -262,8 +263,8 @@ public class RabbitMQServiceTests : TestBase
         
         _mockConfiguration.Setup(c => c.GetSection("Audit")).Returns(auditSection.Object);
 
-        _mockConnectionFactory.Setup(f => f.CreateConnection()).Returns(_mockConnection.Object);
-        _mockConnection.Setup(c => c.CreateModel()).Returns(_mockChannel.Object);
+        _mockConnectionFactory.Setup(f => f.CreateConnectionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(_mockConnection.Object);
+        _mockConnection.Setup(c => c.CreateChannelAsync(It.IsAny<CreateChannelOptions>())).ReturnsAsync(_mockChannel.Object);
 
         // 使用测试专用的 RabbitMQService 类
         _rabbitMQService = new TestRabbitMQService(
@@ -281,25 +282,22 @@ public class RabbitMQServiceTests : TestBase
         _output.WriteLine("测试RabbitMQ服务初始化");
 
         // 断言
-        _mockChannel.Verify(c => c.ExchangeDeclare(
+        _mockChannel.Verify(c => c.ExchangeDeclareAsync(
             It.Is<string>(s => s == ACTUAL_EXCHANGE_NAME),
-            It.Is<string>(s => s == "direct"),
+            ExchangeType.Direct,
             It.Is<bool>(b => b == true),
-            It.Is<bool>(b => b == false),
-            It.IsAny<IDictionary<string, object>>()), Times.Once);
+            It.Is<bool>(b => b == false)), Times.Once);
 
-        _mockChannel.Verify(c => c.QueueDeclare(
+        _mockChannel.Verify(c => c.QueueDeclareAsync(
             It.Is<string>(s => s == ACTUAL_QUEUE_NAME),
             It.Is<bool>(b => b == true),
             It.Is<bool>(b => b == false),
-            It.Is<bool>(b => b == false),
-            It.IsAny<IDictionary<string, object>>()), Times.Once);
+            It.Is<bool>(b => b == false)), Times.Once);
 
-        _mockChannel.Verify(c => c.QueueBind(
+        _mockChannel.Verify(c => c.QueueBindAsync(
             It.Is<string>(s => s == ACTUAL_QUEUE_NAME),
             It.Is<string>(s => s == ACTUAL_EXCHANGE_NAME),
-            It.Is<string>(s => s == ACTUAL_ROUTING_KEY),
-            It.IsAny<IDictionary<string, object>>()), Times.Once);
+            It.Is<string>(s => s == ACTUAL_ROUTING_KEY)), Times.Once);
 
         _output.WriteLine("RabbitMQ服务初始化成功验证");
     }
@@ -326,12 +324,13 @@ public class RabbitMQServiceTests : TestBase
         await _rabbitMQService.SendMessageAsync(auditLog);
 
         // 断言
-        _mockChannel.Verify(c => c.BasicPublish(
+        _mockChannel.Verify(c => c.BasicPublishAsync<BasicProperties>(
             It.Is<string>(s => s == ACTUAL_EXCHANGE_NAME),
             It.Is<string>(s => s == ACTUAL_ROUTING_KEY),
             It.IsAny<bool>(),
-            It.IsAny<IBasicProperties>(),
-            It.IsAny<ReadOnlyMemory<byte>>()), Times.Once);
+            It.IsAny<BasicProperties>(),
+            It.IsAny<ReadOnlyMemory<byte>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
 
         _output.WriteLine($"消息成功发布到RabbitMQ - ID: {auditLog.Id}");
     }
@@ -349,12 +348,13 @@ public class RabbitMQServiceTests : TestBase
 
         // 模拟第一次发布失败，第二次成功
         int callCount = 0;
-        _mockChannel.Setup(c => c.BasicPublish(
+        _mockChannel.Setup(c => c.BasicPublishAsync<BasicProperties>(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<bool>(),
-                It.IsAny<IBasicProperties>(),
-                It.IsAny<ReadOnlyMemory<byte>>()))
+                It.IsAny<BasicProperties>(),
+                It.IsAny<ReadOnlyMemory<byte>>(),
+                It.IsAny<CancellationToken>()))
             .Callback(() =>
             {
                 callCount++;
@@ -377,12 +377,13 @@ public class RabbitMQServiceTests : TestBase
 
         // 断言
         // 验证基本发布被调用了一次（失败）
-        _mockChannel.Verify(c => c.BasicPublish(
+        _mockChannel.Verify(c => c.BasicPublishAsync<BasicProperties>(
             It.IsAny<string>(),
             It.IsAny<string>(),
             It.IsAny<bool>(),
-            It.IsAny<IBasicProperties>(),
-            It.IsAny<ReadOnlyMemory<byte>>()), Times.Once);
+            It.IsAny<BasicProperties>(),
+            It.IsAny<ReadOnlyMemory<byte>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
 
         _output.WriteLine("RabbitMQ错误处理验证成功");
     }
@@ -397,8 +398,8 @@ public class RabbitMQServiceTests : TestBase
         ((TestRabbitMQService)_rabbitMQService).Dispose();
 
         // 断言
-        _mockChannel.Verify(c => c.Close(), Times.Once);
-        _mockConnection.Verify(c => c.Close(), Times.Once);
+        _mockChannel.Verify(c => c.CloseAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockConnection.Verify(c => c.CloseAsync(It.IsAny<CancellationToken>()), Times.Once);
 
         _output.WriteLine("RabbitMQ服务资源释放验证成功");
     }

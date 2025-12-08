@@ -79,17 +79,19 @@ public class RabbitMQEventPublisher : RabbitMQEventBusBase, IEventPublisher
                 // 确保有可用的通道
                 await EnsureChannelAsync(CreateChannel);
 
-                var properties = _channel.CreateBasicProperties();
-                properties.DeliveryMode = 2; // 持久化消息
-                properties.MessageId = Guid.NewGuid().ToString();
-                properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                var properties = new BasicProperties
+                {
+                    DeliveryMode = DeliveryModes.Persistent, // 持久化消息（RabbitMQ.Client 7.x 使用枚举）
+                    MessageId = Guid.NewGuid().ToString(),
+                    Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+                };
 
-                _channel.BasicPublish(
+                await _channel.BasicPublishAsync(
                     exchange: _exchangeName,
                     routingKey: eventName,
                     mandatory: true,
                     basicProperties: properties,
-                    body: body);
+                    body: new ReadOnlyMemory<byte>(body));
 
                 _publisherLogger.LogInformation("已发布事件: {EventName}，MessageId: {MessageId}", 
                     eventName, properties.MessageId);

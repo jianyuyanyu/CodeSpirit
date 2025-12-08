@@ -19,7 +19,7 @@ public class LLMAuditService : ILLMAuditService
     private readonly ILogger<LLMAuditService> _logger;
     private readonly LLMAuditOptions _options;
     private readonly IConnection? _rabbitMqConnection;
-    private IModel? _rabbitMqChannel;
+    private IChannel? _rabbitMqChannel;
     
     /// <summary>
     /// 初始化LLM审计服务
@@ -53,27 +53,27 @@ public class LLMAuditService : ILLMAuditService
                 return;
             }
             
-            _rabbitMqChannel = _rabbitMqConnection.CreateModel();
+            _rabbitMqChannel = _rabbitMqConnection.CreateChannelAsync().GetAwaiter().GetResult();
             
-            // 声明交换机
-            _rabbitMqChannel.ExchangeDeclare(
+            // 声明交换机（RabbitMQ.Client 7.x 使用异步方法）
+            _rabbitMqChannel.ExchangeDeclareAsync(
                 exchange: _options.RabbitMQ.ExchangeName,
                 type: ExchangeType.Topic,
                 durable: true,
-                autoDelete: false);
+                autoDelete: false).GetAwaiter().GetResult();
             
             // 声明队列
-            _rabbitMqChannel.QueueDeclare(
+            _rabbitMqChannel.QueueDeclareAsync(
                 queue: _options.RabbitMQ.QueueName,
                 durable: true,
                 exclusive: false,
-                autoDelete: false);
+                autoDelete: false).GetAwaiter().GetResult();
             
             // 绑定队列到交换机
-            _rabbitMqChannel.QueueBind(
+            _rabbitMqChannel.QueueBindAsync(
                 queue: _options.RabbitMQ.QueueName,
                 exchange: _options.RabbitMQ.ExchangeName,
-                routingKey: _options.RabbitMQ.RoutingKey);
+                routingKey: _options.RabbitMQ.RoutingKey).GetAwaiter().GetResult();
             
             _logger.LogInformation("LLM审计RabbitMQ初始化成功");
         }
@@ -109,11 +109,12 @@ public class LLMAuditService : ILLMAuditService
                 var message = JsonSerializer.Serialize(auditLog);
                 var body = Encoding.UTF8.GetBytes(message);
                 
-                _rabbitMqChannel.BasicPublish(
+                _rabbitMqChannel.BasicPublishAsync<BasicProperties>(
                     exchange: _options.RabbitMQ.ExchangeName,
                     routingKey: _options.RabbitMQ.RoutingKey,
+                    mandatory: false,
                     basicProperties: null,
-                    body: body);
+                    body: new ReadOnlyMemory<byte>(body)).GetAwaiter().GetResult();
                 
                 _logger.LogDebug("LLM审计日志已发送到消息队列: {Id}", auditLog.Id);
             }

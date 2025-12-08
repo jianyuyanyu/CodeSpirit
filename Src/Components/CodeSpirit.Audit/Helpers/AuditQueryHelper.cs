@@ -251,10 +251,7 @@ public static class AuditQueryHelper
             var elasticsearchFieldName = ConvertToElasticsearchFieldName(fieldName);
             
             return s.Sort(sort => sort
-                .Field(elasticsearchFieldName, new FieldSort 
-                { 
-                    Order = ascending ? SortOrder.Asc : SortOrder.Desc 
-                })
+                .Field(elasticsearchFieldName, sd => sd.Order(ascending ? SortOrder.Asc : SortOrder.Desc))
             );
         };
     }

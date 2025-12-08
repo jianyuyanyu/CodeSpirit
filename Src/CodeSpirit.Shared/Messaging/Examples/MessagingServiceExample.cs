@@ -16,7 +16,7 @@ public class MessagingServiceExample : IDisposable
     private readonly IRabbitMQServiceFactory _rabbitMQFactory;
     private readonly ILogger<MessagingServiceExample> _logger;
     private readonly IConnection _connection;
-    private readonly IModel _channel;
+    private readonly IChannel _channel;
     private readonly string _exchangeName = "codespirit.messaging";
     private readonly string _queueName = "example.queue";
 
@@ -35,8 +35,8 @@ public class MessagingServiceExample : IDisposable
         // 获取专用的消息连接
         _connection = _rabbitMQFactory.GetMessagingConnection();
         
-        // 创建通道
-        _channel = _connection.CreateModel();
+        // 创建通道（RabbitMQ.Client 7.x 使用异步方法）
+        _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
         
         // 初始化交换机和队列
         InitializeRabbitMQ();
@@ -49,25 +49,25 @@ public class MessagingServiceExample : IDisposable
     {
         try
         {
-            // 声明交换机
-            _channel.ExchangeDeclare(
+            // 声明交换机（RabbitMQ.Client 7.x 使用异步方法）
+            _channel.ExchangeDeclareAsync(
                 exchange: _exchangeName,
                 type: ExchangeType.Topic,
                 durable: true,
-                autoDelete: false);
+                autoDelete: false).GetAwaiter().GetResult();
 
             // 声明队列
-            _channel.QueueDeclare(
+            _channel.QueueDeclareAsync(
                 queue: _queueName,
                 durable: true,
                 exclusive: false,
-                autoDelete: false);
+                autoDelete: false).GetAwaiter().GetResult();
 
             // 绑定队列到交换机
-            _channel.QueueBind(
+            _channel.QueueBindAsync(
                 queue: _queueName,
                 exchange: _exchangeName,
-                routingKey: "example.*");
+                routingKey: "example.*").GetAwaiter().GetResult();
 
             _logger.LogInformation("消息服务RabbitMQ初始化完成，交换机: {ExchangeName}, 队列: {QueueName}",
                 _exchangeName, _queueName);
@@ -86,7 +86,7 @@ public class MessagingServiceExample : IDisposable
     /// <param name="message">消息内容</param>
     /// <param name="routingKey">路由键</param>
     /// <returns>发送任务</returns>
-    public Task SendMessageAsync<T>(T message, string routingKey = "example.message")
+    public async Task SendMessageAsync<T>(T message, string routingKey = "example.message")
     {
         if (_channel == null || !_channel.IsOpen)
         {
@@ -102,25 +102,27 @@ public class MessagingServiceExample : IDisposable
             
             var body = Encoding.UTF8.GetBytes(json);
 
-            // 创建消息属性
-            var properties = _channel.CreateBasicProperties();
-            properties.Persistent = true; // 消息持久化
-            properties.MessageId = Guid.NewGuid().ToString();
-            properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-            properties.ContentType = "application/json";
-            properties.ContentEncoding = "utf-8";
+            // 创建消息属性（RabbitMQ.Client 7.x 直接实例化 BasicProperties）
+            var properties = new BasicProperties
+            {
+                Persistent = true, // 消息持久化
+                MessageId = Guid.NewGuid().ToString(),
+                Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                ContentType = "application/json",
+                ContentEncoding = "utf-8"
+            };
 
-            // 发布消息
-            _channel.BasicPublish(
+            // 发布消息（RabbitMQ.Client 7.x 使用异步方法，body 类型改为 ReadOnlyMemory<byte>）
+            // 注意：BasicPublishAsync 可能不包含 mandatory 参数，或参数顺序不同
+            await _channel.BasicPublishAsync(
                 exchange: _exchangeName,
                 routingKey: routingKey,
+                mandatory: false,
                 basicProperties: properties,
-                body: body);
+                body: new ReadOnlyMemory<byte>(body));
 
             _logger.LogInformation("消息已发送，路由键: {RoutingKey}, 消息ID: {MessageId}, 类型: {MessageType}",
                 routingKey, properties.MessageId, typeof(T).Name);
-
-            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -145,31 +147,31 @@ public class MessagingServiceExample : IDisposable
 
         try
         {
-            // 为消费者创建单独的通道
-            var consumerChannel = _connection.CreateModel();
+            // 为消费者创建单独的通道（RabbitMQ.Client 7.x 使用异步方法）
+            var consumerChannel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
 
-            // 声明临时队列用于订阅
+            // 声明临时队列用于订阅（RabbitMQ.Client 7.x 使用异步方法）
             var tempQueueName = $"{_queueName}.subscriber.{Guid.NewGuid()}";
-            consumerChannel.QueueDeclare(
+            consumerChannel.QueueDeclareAsync(
                 queue: tempQueueName,
                 durable: false,
                 exclusive: true,
-                autoDelete: true);
+                autoDelete: true).GetAwaiter().GetResult();
 
             // 绑定队列到交换机
-            consumerChannel.QueueBind(
+            consumerChannel.QueueBindAsync(
                 queue: tempQueueName,
                 exchange: _exchangeName,
-                routingKey: routingKey);
+                routingKey: routingKey).GetAwaiter().GetResult();
 
-            // 设置QoS
-            consumerChannel.BasicQos(prefetchSize: 0, prefetchCount: 10, global: false);
+            // 设置QoS（RabbitMQ.Client 7.x 使用异步方法）
+            consumerChannel.BasicQosAsync(prefetchSize: 0, prefetchCount: 10, global: false).GetAwaiter().GetResult();
 
-            // 创建消费者
+            // 创建消费者（RabbitMQ.Client 7.x 使用 AsyncEventingBasicConsumer）
             var consumer = new AsyncEventingBasicConsumer(consumerChannel);
 
-            // 注册消息接收事件
-            consumer.Received += async (sender, e) =>
+            // 注册消息接收事件（RabbitMQ.Client 7.x 事件签名可能变化）
+            consumer.ReceivedAsync += async (sender, e) =>
             {
                 var body = e.Body.ToArray();
                 var json = Encoding.UTF8.GetString(body);
@@ -186,8 +188,8 @@ public class MessagingServiceExample : IDisposable
 
                     await handler(message);
 
-                    // 确认消息
-                    consumerChannel.BasicAck(e.DeliveryTag, false);
+                    // 确认消息（RabbitMQ.Client 7.x 使用异步方法）
+                    await consumerChannel.BasicAckAsync(e.DeliveryTag, false);
 
                     _logger.LogDebug("消息处理完成，路由键: {RoutingKey}, 消息ID: {MessageId}",
                         e.RoutingKey, e.BasicProperties?.MessageId);
@@ -197,16 +199,16 @@ public class MessagingServiceExample : IDisposable
                     _logger.LogError(ex, "处理消息失败，路由键: {RoutingKey}, 消息ID: {MessageId}",
                         e.RoutingKey, e.BasicProperties?.MessageId);
 
-                    // 拒绝消息并重新入队
-                    consumerChannel.BasicNack(e.DeliveryTag, false, true);
+                    // 拒绝消息并重新入队（RabbitMQ.Client 7.x 使用异步方法）
+                    await consumerChannel.BasicNackAsync(e.DeliveryTag, false, true);
                 }
             };
 
-            // 开始消费
-            var consumerTag = consumerChannel.BasicConsume(
+            // 开始消费（RabbitMQ.Client 7.x 使用异步方法）
+            var consumerTag = consumerChannel.BasicConsumeAsync(
                 queue: tempQueueName,
                 autoAck: false,
-                consumer: consumer);
+                consumer: consumer).GetAwaiter().GetResult();
 
             _logger.LogInformation("消息订阅已创建，队列: {QueueName}, 消费者标签: {ConsumerTag}, 路由键: {RoutingKey}",
                 tempQueueName, consumerTag, routingKey);
@@ -228,7 +230,7 @@ public class MessagingServiceExample : IDisposable
     {
         try
         {
-            var queueInfo = _channel.QueueDeclarePassive(_queueName);
+            var queueInfo = _channel.QueueDeclarePassiveAsync(_queueName).GetAwaiter().GetResult();
             return queueInfo.MessageCount;
         }
         catch (Exception ex)
@@ -246,7 +248,7 @@ public class MessagingServiceExample : IDisposable
     {
         try
         {
-            var purgedCount = _channel.QueuePurge(_queueName);
+            var purgedCount = _channel.QueuePurgeAsync(_queueName).GetAwaiter().GetResult();
             _logger.LogInformation("队列已清空，清除消息数量: {Count}", purgedCount);
             return purgedCount;
         }

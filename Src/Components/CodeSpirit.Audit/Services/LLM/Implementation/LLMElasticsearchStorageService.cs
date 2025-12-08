@@ -236,43 +236,43 @@ public class LLMElasticsearchStorageService : ILLMAuditStorageService
             // 租户过滤
             if (!string.IsNullOrEmpty(query.TenantId))
             {
-                mustQueries.Add(new TermQuery(new Field("tenantId")) { Value = query.TenantId });
+                mustQueries.Add(new TermQuery { Field = new Field("tenantId"), Value = query.TenantId });
             }
             
             // 用户过滤
             if (!string.IsNullOrEmpty(query.UserId))
             {
-                mustQueries.Add(new TermQuery(new Field("userId")) { Value = query.UserId });
+                mustQueries.Add(new TermQuery { Field = new Field("userId"), Value = query.UserId });
             }
             
             // 模型过滤
             if (!string.IsNullOrEmpty(query.ModelName))
             {
-                mustQueries.Add(new TermQuery(new Field("modelName")) { Value = query.ModelName });
+                mustQueries.Add(new TermQuery { Field = new Field("modelName"), Value = query.ModelName });
             }
             
             // 交互类型过滤
             if (!string.IsNullOrEmpty(query.InteractionType))
             {
-                mustQueries.Add(new TermQuery(new Field("interactionType")) { Value = query.InteractionType });
+                mustQueries.Add(new TermQuery { Field = new Field("interactionType"), Value = query.InteractionType });
             }
             
             // 业务场景过滤
             if (!string.IsNullOrEmpty(query.BusinessScenario))
             {
-                mustQueries.Add(new TermQuery(new Field("businessScenario")) { Value = query.BusinessScenario });
+                mustQueries.Add(new TermQuery { Field = new Field("businessScenario"), Value = query.BusinessScenario });
             }
             
             // 成功状态过滤
             if (query.IsSuccess.HasValue)
             {
-                mustQueries.Add(new TermQuery(new Field("isSuccess")) { Value = query.IsSuccess.Value });
+                mustQueries.Add(new TermQuery { Field = new Field("isSuccess"), Value = query.IsSuccess.Value });
             }
             
             // 时间范围过滤
             if (query.StartTime.HasValue || query.EndTime.HasValue)
             {
-                var rangeQuery = new DateRangeQuery(new Field("operationTime"));
+                var rangeQuery = new DateRangeQuery { Field = new Field("operationTime") };
                 if (query.StartTime.HasValue)
                 {
                     rangeQuery.Gte = DateMath.FromString(query.StartTime.Value.ToString("o"));
@@ -287,17 +287,17 @@ public class LLMElasticsearchStorageService : ILLMAuditStorageService
             // 批次ID过滤
             if (!string.IsNullOrEmpty(query.BatchId))
             {
-                mustQueries.Add(new TermQuery(new Field("batchId")) { Value = query.BatchId });
+                mustQueries.Add(new TermQuery { Field = new Field("batchId"), Value = query.BatchId });
             }
             
             // 业务实体过滤
             if (!string.IsNullOrEmpty(query.BusinessEntityType))
             {
-                mustQueries.Add(new TermQuery(new Field("businessEntityType")) { Value = query.BusinessEntityType });
+                mustQueries.Add(new TermQuery { Field = new Field("businessEntityType"), Value = query.BusinessEntityType });
             }
             if (!string.IsNullOrEmpty(query.BusinessEntityId))
             {
-                mustQueries.Add(new TermQuery(new Field("businessEntityId")) { Value = query.BusinessEntityId });
+                mustQueries.Add(new TermQuery { Field = new Field("businessEntityId"), Value = query.BusinessEntityId });
             }
             
             // 关键词搜索
@@ -305,8 +305,8 @@ public class LLMElasticsearchStorageService : ILLMAuditStorageService
             {
                 var shouldQueries = new List<Query>
                 {
-                    new MatchQuery(new Field("userPrompt")) { Query = query.Keyword },
-                    new MatchQuery(new Field("llmResponse")) { Query = query.Keyword }
+                    new MatchQuery { Field = new Field("userPrompt"), Query = query.Keyword },
+                    new MatchQuery { Field = new Field("llmResponse"), Query = query.Keyword }
                 };
                 mustQueries.Add(new BoolQuery { Should = shouldQueries, MinimumShouldMatch = 1 });
             }
@@ -322,7 +322,7 @@ public class LLMElasticsearchStorageService : ILLMAuditStorageService
                 .From((query.Page - 1) * query.PerPage)
                 .Size(query.PerPage)
                 .Sort(sort => sort
-                    .Field(f => f.OperationTime, new FieldSort { Order = SortOrder.Desc })
+                    .Field(f => f.OperationTime, sd => sd.Order(SortOrder.Desc))
                 )
             );
             
@@ -360,14 +360,10 @@ public class LLMElasticsearchStorageService : ILLMAuditStorageService
             
             if (!string.IsNullOrEmpty(tenantId))
             {
-                mustQueries.Add(new TermQuery(new Field("tenantId")) { Value = tenantId });
+                mustQueries.Add(new TermQuery { Field = new Field("tenantId"), Value = tenantId });
             }
             
-            mustQueries.Add(new DateRangeQuery(new Field("operationTime"))
-            {
-                Gte = DateMath.FromString(startTime.ToString("o")),
-                Lte = DateMath.FromString(endTime.ToString("o"))
-            });
+            mustQueries.Add(new DateRangeQuery { Field = new Field("operationTime"), Gte = DateMath.FromString(startTime.ToString("o")), Lte = DateMath.FromString(endTime.ToString("o")) });
             
             // 执行聚合查询
             var searchResponse = await _client.SearchAsync<LLMAuditLog>(s => s

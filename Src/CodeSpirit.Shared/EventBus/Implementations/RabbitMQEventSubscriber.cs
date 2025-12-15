@@ -21,7 +21,7 @@ namespace CodeSpirit.Shared.EventBus.Implementations;
 public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
 {
     private readonly ILogger<RabbitMQEventSubscriber> _subscriberLogger;
-    private readonly Dictionary<string, List<Type>> _eventHandlers;
+    private readonly ConcurrentDictionary<string, List<Type>> _eventHandlers;
     private readonly List<string> _queueNames = new();
     private readonly Dictionary<string, string> _consumerTags = new();
     private readonly Dictionary<string, IChannel> _consumerChannels = new();
@@ -38,7 +38,7 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
         : base(connection, serviceProvider, logger, exchangeName, retryCount)
     {
         _subscriberLogger = logger;
-        _eventHandlers = new Dictionary<string, List<Type>>();
+        _eventHandlers = new ConcurrentDictionary<string, List<Type>>();
     }
 
     /// <summary>
@@ -770,20 +770,23 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
     /// </summary>
     private void RegisterEventHandler(string eventName, Type handlerType)
     {
-        if (!_eventHandlers.ContainsKey(eventName))
+        var handlerList = _eventHandlers.GetOrAdd(eventName, _ =>
         {
-            _eventHandlers.Add(eventName, new List<Type>());
             _subscriberLogger.LogInformation("创建事件 {EventName} 的处理器列表", eventName);
-        }
+            return new List<Type>();
+        });
 
-        if (_eventHandlers[eventName].Contains(handlerType))
+        lock (handlerList)
         {
-            _subscriberLogger.LogWarning("处理器类型 {HandlerType} 已经订阅事件 {EventName}", handlerType.Name, eventName);
-            return;
-        }
+            if (handlerList.Contains(handlerType))
+            {
+                _subscriberLogger.LogWarning("处理器类型 {HandlerType} 已经订阅事件 {EventName}", handlerType.Name, eventName);
+                return;
+            }
 
-        _eventHandlers[eventName].Add(handlerType);
-        _subscriberLogger.LogInformation("事件 {EventName} 添加处理器 {HandlerType}", eventName, handlerType.Name);
+            handlerList.Add(handlerType);
+            _subscriberLogger.LogInformation("事件 {EventName} 添加处理器 {HandlerType}", eventName, handlerType.Name);
+        }
     }
 
     /// <summary>
@@ -801,14 +804,17 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
         var eventName = typeof(TEvent).Name;
         var handlerType = typeof(THandler);
 
-        if (!_eventHandlers.ContainsKey(eventName)) return;
+        if (!_eventHandlers.TryGetValue(eventName, out var handlerList)) return;
 
-        _eventHandlers[eventName].Remove(handlerType);
-
-        if (_eventHandlers[eventName].Count == 0)
+        lock (handlerList)
         {
-            _eventHandlers.Remove(eventName);
-            UnbindQueueAsync(eventName).GetAwaiter().GetResult();
+            handlerList.Remove(handlerType);
+
+            if (_eventHandlers[eventName].Count == 0)
+            {
+                _eventHandlers.TryRemove(eventName, out _);
+                UnbindQueueAsync(eventName).GetAwaiter().GetResult();
+            }
         }
     }
 
@@ -873,7 +879,7 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
             return false;
         }
 
-        if (!_eventHandlers.ContainsKey(eventName))
+        if (!_eventHandlers.TryGetValue(eventName, out var handlerTypes))
         {
             _subscriberLogger.LogWarning("没有找到事件 {EventName} 的处理器", eventName);
             return false;
@@ -882,7 +888,13 @@ public class RabbitMQEventSubscriber : RabbitMQEventBusBase, IEventSubscriber
         bool processedSuccessfully = true;
 
         using var scope = _serviceProvider.CreateScope();
-        foreach (var handlerType in _eventHandlers[eventName])
+        List<Type> handlerTypesSnapshot;
+        lock (handlerTypes)
+        {
+            handlerTypesSnapshot = new List<Type>(handlerTypes);
+        }
+        
+        foreach (var handlerType in handlerTypesSnapshot)
         {
             try
             {

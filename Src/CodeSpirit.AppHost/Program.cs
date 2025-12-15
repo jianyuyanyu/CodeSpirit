@@ -43,8 +43,9 @@ var cache = builder.AddRedis("cache")
 
 // 添加 Seq 日志服务
 var seqService = builder.AddSeq("seq")
-                    .WithImageTag("2024.3")
+                    //.WithImageTag("2024.3")
                  .WithDataVolume()
+                 .ExcludeFromManifest()
                  .WithLifetime(ContainerLifetime.Persistent)
                  // .WithDeploymentImageTag(_ => $"seq-2024.3") // Aspire 9.5 实验性功能
                  //.WithHttpEndpoint(port: 5341, targetPort: 80, name: "seq-ui")

@@ -456,7 +456,7 @@ dotnet test Tests/Components/CodeSpirit.ScheduledTasks.Tests/
 ## 版本信息
 
 - **当前版本**: v1.0.0
-- **兼容框架**: .NET 9.0+
+- **兼容框架**: .NET 10.0+
 - **创建日期**: 2024年
 - **开发状态**: 🎉 开发完成，生产可用
 
@@ -481,7 +481,7 @@ dotnet test Tests/Components/CodeSpirit.ScheduledTasks.Tests/
 ## 部署建议
 
 ### 环境要求
-- **.NET 9.0+**
+- **.NET 10.0+**
 - **Redis 6.0+** (支持分布式锁)
 - **内存**: 建议至少512MB可用内存
 - **CPU**: 支持多核处理器

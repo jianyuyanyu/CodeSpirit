@@ -9,7 +9,7 @@
 | **创建日期** | 2025年11月3日 |
 | **目标读者** | 开发团队、架构师、技术负责人 |
 | **依赖文档** | pathfinder目录下的设计文档、CodeSpirit框架文档 |
-| **基础框架** | CodeSpirit + .NET 9 + Aspire |
+| **基础框架** | CodeSpirit + .NET 10 + Aspire |
 
 ---
 
@@ -26,10 +26,10 @@
 基于现有 CodeSpirit 框架的技术栈：
 
 **后端框架：**
-- ✅ .NET 9.0
+- ✅ .NET 10.0
 - ✅ .NET Aspire（服务编排）
 - ✅ ASP.NET Core Web API
-- ✅ Entity Framework Core 9.0（多数据库支持）
+- ✅ Entity Framework Core 10.0（多数据库支持）
 
 **数据库：**
 - ✅ SQL Server / MySQL（多数据库支持）
@@ -1983,7 +1983,7 @@ public class GoalIntegrationTests : IClassFixture<WebApplicationFactory<Program>
         // Arrange
         var request = new CreateGoalDto
         {
-            Description = "学习.NET 9"
+            Description = "学习.NET 10"
         };
         
         // Act

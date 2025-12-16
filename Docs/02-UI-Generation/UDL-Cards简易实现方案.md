@@ -1548,7 +1548,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 ### 兼容性
 - 与现有CRUD表格生成功能完全兼容
-- 支持.NET 9和ASP.NET Core
+- 支持 .NET 10 和 ASP.NET Core
 - 前端继续使用AMIS框架
 
 ## 优势总结

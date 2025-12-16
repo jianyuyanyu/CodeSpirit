@@ -77,7 +77,7 @@ cat D:\repos\pathfinder\精益画布.md
 
 ### 技术栈
 
-- **后端框架：** .NET 9 + ASP.NET Core + Entity Framework Core
+- **后端框架：** .NET 10 + ASP.NET Core + Entity Framework Core
 - **服务编排：** .NET Aspire
 - **数据库：** SQL Server / MySQL（多数据库支持）
 - **缓存：** Redis

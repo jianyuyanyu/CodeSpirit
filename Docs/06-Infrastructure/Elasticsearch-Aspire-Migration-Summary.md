@@ -209,7 +209,7 @@ Elasticsearch 客户端迁移已完成了大部分基础工作，但仍需要解
 **技术架构改进**：
 1. **依赖包升级**：
    - 从 `NEST` 7.17.5 升级到 `Aspire.Elastic.Clients.Elasticsearch` 9.2.1-preview.1.25222.1
-   - 支持 .NET 9 和 Aspire 架构
+   - 支持 .NET 10 和 Aspire 架构
 
 2. **API现代化**：
    - 使用新的 `ElasticsearchClient` 替代 `IElasticClient`
@@ -234,7 +234,7 @@ Elasticsearch 客户端迁移已完成了大部分基础工作，但仍需要解
 
 ### 🎯 迁移价值
 
-1. **技术现代化**：成功迁移到最新的.NET 9和Aspire架构
+1. **技术现代化**：成功迁移到最新的 .NET 10 和 Aspire 架构
 2. **性能提升**：新客户端提供更好的性能和内存管理
 3. **功能完整性**：保持了原有的所有核心功能
 4. **扩展性**：为未来的Aspire集成奠定了基础

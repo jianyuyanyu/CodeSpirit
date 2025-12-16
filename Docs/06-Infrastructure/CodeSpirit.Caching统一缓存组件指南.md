@@ -14,11 +14,11 @@
 
 ## 概述
 
-`CodeSpirit.Caching` 是一个基于 .NET 9 的统一缓存组件，旨在简化分布式系统中的缓存管理。它提供了多级缓存、缓存穿透防护、缓存预热和灵活的过期策略等功能，帮助开发者轻松构建高性能的缓存架构。
+`CodeSpirit.Caching` 是一个基于 .NET 10 的统一缓存组件，旨在简化分布式系统中的缓存管理。它提供了多级缓存、缓存穿透防护、缓存预热和灵活的过期策略等功能，帮助开发者轻松构建高性能的缓存架构。
 
 ### 技术栈
 
-- .NET 9.0
+- .NET 10.0
 - Microsoft.Extensions.Caching.Memory (L1缓存)
 - Microsoft.Extensions.Caching.StackExchangeRedis (L2缓存)
 - StackExchange.Redis (Redis客户端)

@@ -34,12 +34,12 @@ https://localhost:7120/amis-cards/demo/monitor-dashboard-api.html
 
 ### 1. 项目依赖
 
-确保你的项目使用 .NET 9 并引用必要的包：
+确保你的项目使用 .NET 10 并引用必要的包：
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   
   <ItemGroup>
@@ -886,7 +886,7 @@ services.AddUdlCards(options =>
 ## 🔄 版本信息
 
 - **当前版本**: 1.0.0
-- **目标框架**: .NET 9.0
+- **目标框架**: .NET 10.0
 - **兼容性**: Amis Cards V2.0+
 - **最后更新**: 2025年
 

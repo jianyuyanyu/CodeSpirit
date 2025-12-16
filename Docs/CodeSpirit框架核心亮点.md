@@ -2,7 +2,7 @@
 
 ## 概述
 
-CodeSpirit（码灵）是一款基于 .NET 9 构建的革命性全栈低代码开发框架,通过**智能代码生成引擎与AI深度协同**,实现后端驱动式全栈开发范式。框架采用 Clean Architecture 分层设计,提供从界面生成、业务逻辑编排到系统运维的全生命周期支持。
+CodeSpirit（码灵）是一款基于 .NET 10 构建的革命性全栈低代码开发框架,通过**智能代码生成引擎与AI深度协同**,实现后端驱动式全栈开发范式。框架采用 Clean Architecture 分层设计,提供从界面生成、业务逻辑编排到系统运维的全生命周期支持。
 
 ## 核心价值主张
 
@@ -1447,7 +1447,7 @@ sequenceDiagram
 ## 十、快速开始
 
 ### 环境要求
-- .NET 9 SDK
+- .NET 10 SDK
 - Docker Desktop
 - Visual Studio 2022 或 JetBrains Rider
 

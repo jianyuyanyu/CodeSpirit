@@ -2,7 +2,7 @@
 
 ## Framework Overview
 
-CodeSpirit is a revolutionary full-stack low-code + AI development framework that achieves **backend-driven full-stack development paradigm** through **intelligent code generation engine and deep AI collaboration**. Built on .NET 9 technology stack, it provides enterprise-level technical depth and cloud-native scalability, supporting the entire lifecycle from UI generation and business logic orchestration to system operations.
+CodeSpirit is a revolutionary full-stack low-code + AI development framework that achieves **backend-driven full-stack development paradigm** through **intelligent code generation engine and deep AI collaboration**. Built on .NET 10 technology stack, it provides enterprise-level technical depth and cloud-native scalability, supporting the entire lifecycle from UI generation and business logic orchestration to system operations.
 
 **Return Full-Stack Development to Engineering Essence**
 
@@ -157,7 +157,7 @@ graph TB
 
 | Category | Technology Selection |
 | :--- | :--- |
-| **Framework** | .NET 9 |
+| **Framework** | .NET 10 |
 | **Language** | C# 12 (Supporting Primary Constructor and other new features) |
 | **Backend Architecture** | Clean Architecture + DDD |
 | **ORM** | Entity Framework Core (with soft delete, audit tracking) |

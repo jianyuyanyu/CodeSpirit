@@ -308,7 +308,7 @@ audit.queue     211     1
 ```
 
 #### **根本原因**
-在 .NET 9 + RabbitMQ.Client 环境下，`AsyncEventingBasicConsumer` 的异步事件处理机制存在兼容性问题，导致 `Received` 事件处理器无法正确触发。
+在 .NET 10 + RabbitMQ.Client 环境下，`AsyncEventingBasicConsumer` 的异步事件处理机制存在兼容性问题，导致 `Received` 事件处理器无法正确触发。
 
 #### **解决方案**
 将 `AsyncEventingBasicConsumer` 替换为同步的 `EventingBasicConsumer`：

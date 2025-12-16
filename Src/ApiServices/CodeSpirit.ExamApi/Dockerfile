@@ -3,28 +3,6 @@
 # 此阶段用于在快速模式(默认为调试配置)下从 VS 运行时
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER root
-# 安装Chrome依赖
-RUN apt-get update && apt-get install -y \
-    chromium \
-    libgbm1 \
-    libnss3 \
-    libxss1 \
-    libasound2 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libpango-1.0-0 \
-    libcairo2 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
 # 安装中文字体
 # 思源黑体（完整支持）
 # 安装中文字体（仅思源黑体）
@@ -37,11 +15,6 @@ RUN apt-get update && apt-get install -y \
 
 # 验证字体安装（可选，调试时使用）
 RUN echo "已安装的中文字体：" && fc-list :lang=zh | head -5
-
-# 设置环境变量
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-ENV PDF_GENERATION_MAX_CONCURRENT=5
-ENV PDF_GENERATION_POOL_SIZE=3
 
 USER $APP_UID
 WORKDIR /app
@@ -63,7 +36,6 @@ COPY ["Src/Components/CodeSpirit.Amis/CodeSpirit.Amis.csproj", "Src/Components/C
 COPY ["Src/Components/CodeSpirit.Authorization/CodeSpirit.Authorization.csproj", "Src/Components/CodeSpirit.Authorization/"]
 COPY ["Src/Components/CodeSpirit.Navigation/CodeSpirit.Navigation.csproj", "Src/Components/CodeSpirit.Navigation/"]
 COPY ["Src/Components/CodeSpirit.Charts/CodeSpirit.Charts.csproj", "Src/Components/CodeSpirit.Charts/"]
-COPY ["Src/Components/CodeSpirit.PdfGeneration/CodeSpirit.PdfGeneration.csproj", "Src/Components/CodeSpirit.PdfGeneration/"]
 RUN dotnet restore "./Src/CodeSpirit.ExamApi/CodeSpirit.ExamApi.csproj"
 COPY . .
 WORKDIR "/src/Src/CodeSpirit.ExamApi"

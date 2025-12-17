@@ -4,6 +4,9 @@
 
 CodeSpirit.Core是整个框架的核心模块，定义了系统的基础抽象、通用类型和核心接口。它遵循Clean Architecture的领域层设计原则，不依赖任何外部框架，为整个系统提供稳定的基础。
 
+**框架版本**: .NET 10  
+**最后更新**: 2025年12月
+
 ## 核心组件架构
 
 ```mermaid
@@ -54,6 +57,58 @@ graph TB
 
 ```csharp
 /// <summary>
+/// 跳转方式枚举
+/// </summary>
+public enum RedirectType
+{
+    /// <summary>
+    /// 当前窗口跳转
+    /// </summary>
+    Self = 0,
+    
+    /// <summary>
+    /// 新窗口打开
+    /// </summary>
+    Blank = 1,
+    
+    /// <summary>
+    /// 替换当前页面
+    /// </summary>
+    Replace = 2
+}
+
+/// <summary>
+/// 跳转信息
+/// </summary>
+public class RedirectInfo
+{
+    /// <summary>
+    /// 跳转地址
+    /// </summary>
+    public string Url { get; set; }
+    
+    /// <summary>
+    /// 跳转方式
+    /// </summary>
+    public RedirectType Type { get; set; } = RedirectType.Self;
+    
+    /// <summary>
+    /// 延迟时间（毫秒）
+    /// </summary>
+    public int Delay { get; set; } = 0;
+    
+    /// <summary>
+    /// 是否显示跳转提示
+    /// </summary>
+    public bool ShowMessage { get; set; } = true;
+    
+    /// <summary>
+    /// 跳转提示文本
+    /// </summary>
+    public string Message { get; set; } = "正在跳转...";
+}
+
+/// <summary>
 /// 通用 API 响应封装类
 /// </summary>
 /// <typeparam name="T">数据类型</typeparam>
@@ -73,13 +128,35 @@ public class ApiResponse<T> where T : class
     /// 响应数据
     /// </summary>
     public T Data { get; set; }
+    
+    /// <summary>
+    /// 跳转信息
+    /// </summary>
+    public RedirectInfo Redirect { get; set; }
 
     /// <summary>
     /// 创建成功响应
     /// </summary>
     public static ApiResponse<T> Success(T data, string msg = "操作成功！")
     {
-        return new ApiResponse<T>(0, msg, data);
+        return data == null ? throw new ArgumentNullException(nameof(data)) : new ApiResponse<T>(0, msg, data);
+    }
+    
+    /// <summary>
+    /// 创建成功响应并跳转
+    /// </summary>
+    public static ApiResponse<T> SuccessWithRedirect(T data, string url, string msg = "操作成功！", RedirectType redirectType = RedirectType.Self, int delay = 1500)
+    {
+        if (data == null) throw new ArgumentNullException(nameof(data));
+        if (string.IsNullOrEmpty(url)) throw new ArgumentNullException(nameof(url));
+        
+        return new ApiResponse<T>(0, msg, data, new RedirectInfo
+        {
+            Url = url,
+            Type = redirectType,
+            Delay = delay,
+            Message = msg
+        });
     }
 
     /// <summary>
@@ -87,7 +164,49 @@ public class ApiResponse<T> where T : class
     /// </summary>
     public static ApiResponse<T> Error(int status, string msg, T data = null)
     {
+        if (status == 0) throw new ArgumentException("Error status code cannot be 0.", nameof(status));
+        if (string.IsNullOrWhiteSpace(msg)) throw new ArgumentException("Error message cannot be empty.", nameof(msg));
         return new ApiResponse<T>(status, msg, data);
+    }
+}
+
+/// <summary>
+/// 非泛型 API 响应类
+/// </summary>
+public class ApiResponse : ApiResponse<string>
+{
+    /// <summary>
+    /// 创建成功响应
+    /// </summary>
+    public static ApiResponse Success(string msg = "操作成功！")
+    {
+        return new ApiResponse(0, msg);
+    }
+    
+    /// <summary>
+    /// 创建成功响应并跳转
+    /// </summary>
+    public static ApiResponse SuccessWithRedirect(string url, string msg = "操作成功！", RedirectType redirectType = RedirectType.Self, int delay = 1500)
+    {
+        if (string.IsNullOrEmpty(url)) throw new ArgumentNullException(nameof(url));
+        
+        return new ApiResponse(0, msg, new RedirectInfo
+        {
+            Url = url,
+            Type = redirectType,
+            Delay = delay,
+            Message = msg
+        });
+    }
+    
+    /// <summary>
+    /// 创建错误响应
+    /// </summary>
+    public static ApiResponse Error(int status, string msg)
+    {
+        if (status == 0) throw new ArgumentException("Error status code cannot be 0.", nameof(status));
+        if (string.IsNullOrWhiteSpace(msg)) throw new ArgumentException("Error message cannot be empty.", nameof(msg));
+        return new ApiResponse(status, msg);
     }
 }
 ```
@@ -224,49 +343,63 @@ public class AppServiceException : Exception
 
 ```csharp
 /// <summary>
-/// 当前用户接口
+/// 当前用户接口，定义获取当前用户信息的基本操作
 /// </summary>
-public interface ICurrentUser
+public interface ICurrentUser : IScopedDependency
 {
     /// <summary>
-    /// 用户ID
+    /// 获取用户ID
     /// </summary>
     long? Id { get; }
 
     /// <summary>
-    /// 用户名
+    /// 获取用户名
     /// </summary>
     string UserName { get; }
 
     /// <summary>
-    /// 用户邮箱
+    /// 获取用户角色列表
     /// </summary>
-    string Email { get; }
+    string[] Roles { get; }
 
     /// <summary>
-    /// 用户角色
-    /// </summary>
-    IEnumerable<string> Roles { get; }
-
-    /// <summary>
-    /// 是否已认证
+    /// 判断用户是否已认证
     /// </summary>
     bool IsAuthenticated { get; }
 
     /// <summary>
-    /// 获取声明值
+    /// 获取用户的所有声明（Claims）
     /// </summary>
-    string GetClaimValue(string claimType);
+    IEnumerable<Claim> Claims { get; }
 
     /// <summary>
-    /// 是否在角色中
+    /// 获取用户权限集合
     /// </summary>
+    HashSet<string> Permissions { get; }
+
+    /// <summary>
+    /// 获取当前用户的租户ID
+    /// </summary>
+    string? TenantId { get; }
+
+    /// <summary>
+    /// 获取当前用户的租户名称
+    /// </summary>
+    string? TenantName { get; }
+
+    /// <summary>
+    /// 判断用户是否属于指定角色
+    /// </summary>
+    /// <param name="role">角色名称</param>
+    /// <returns>如果用户属于该角色返回true，否则返回false</returns>
     bool IsInRole(string role);
 
     /// <summary>
-    /// 是否有权限
+    /// 判断用户是否属于指定租户
     /// </summary>
-    bool HasPermission(string permission);
+    /// <param name="tenantId">租户ID</param>
+    /// <returns>如果用户属于该租户返回true，否则返回false</returns>
+    bool IsInTenant(string tenantId);
 }
 ```
 
@@ -346,24 +479,35 @@ public static class ServiceCollectionExtensions
 
 ```csharp
 /// <summary>
-/// 权限服务接口
+/// 权限服务接口：用于管理和查询应用的权限
 /// </summary>
-public interface IPermissionService
+public interface IHasPermissionService
 {
     /// <summary>
-    /// 检查用户是否有指定权限
+    /// 检查权限代码是否存在
     /// </summary>
-    Task<bool> HasPermissionAsync(long userId, string permission);
+    /// <param name="permissionCode">权限代码</param>
+    /// <returns>true 表示权限存在，false 表示权限不存在</returns>
+    bool HasPermission(string permissionCode);
 
     /// <summary>
-    /// 获取用户所有权限
+    /// 获取指定方法的权限代码
     /// </summary>
-    Task<IEnumerable<string>> GetUserPermissionsAsync(long userId);
+    /// <param name="methodInfo">方法信息</param>
+    /// <returns>权限代码</returns>
+    string GetPermissionCode(System.Reflection.MethodInfo methodInfo);
 
     /// <summary>
-    /// 获取权限树
+    /// 检查导航权限代码是否存在
     /// </summary>
-    List<PermissionNode> GetPermissionTree();
+    /// <param name="permissionCode">导航权限代码</param>
+    /// <returns>true 表示权限存在，false 表示权限不存在</returns>
+    /// <remarks>
+    /// 导航权限仅检查一级和二级权限。
+    /// 例如，对于权限 "exam_examPapers_createExamPaper"，
+    /// 只会检查 "exam" 和 "exam_examPapers" 的权限。
+    /// </remarks>
+    bool HasNavigationPermission(string permissionCode);
 }
 ```
 
@@ -385,63 +529,80 @@ public class RequirePermissionAttribute : Attribute
 }
 ```
 
-## 6. 事件总线体系
+## 6. 多租户支持
 
-### 6.1 领域事件接口
-
-```csharp
-/// <summary>
-/// 领域事件接口
-/// </summary>
-public interface IDomainEvent
-{
-    /// <summary>
-    /// 事件ID
-    /// </summary>
-    Guid EventId { get; }
-
-    /// <summary>
-    /// 发生时间
-    /// </summary>
-    DateTime OccurredOn { get; }
-}
-
-/// <summary>
-/// 事件处理器接口
-/// </summary>
-/// <typeparam name="T">事件类型</typeparam>
-public interface IEventHandler<in T> where T : IDomainEvent
-{
-    /// <summary>
-    /// 处理事件
-    /// </summary>
-    Task HandleAsync(T @event);
-}
-```
-
-### 6.2 事件总线接口
+### 6.1 IMultiTenant 接口
 
 ```csharp
 /// <summary>
-/// 事件总线接口
+/// 多租户接口，标识实体支持租户隔离
 /// </summary>
-public interface IEventBus
+public interface IMultiTenant
 {
     /// <summary>
-    /// 发布事件
+    /// 租户ID
     /// </summary>
-    Task PublishAsync<T>(T @event) where T : IDomainEvent;
-
-    /// <summary>
-    /// 订阅事件
-    /// </summary>
-    void Subscribe<T, TH>()
-        where T : IDomainEvent
-        where TH : IEventHandler<T>;
+    string TenantId { get; set; }
 }
 ```
 
-## 7. 扩展方法集合
+### 6.2 租户常量
+
+```csharp
+/// <summary>
+/// 租户相关常量
+/// </summary>
+public static class TenantConstants
+{
+    /// <summary>
+    /// 默认租户ID
+    /// </summary>
+    public const string DefaultTenantId = "default";
+}
+```
+
+## 7. 其他核心组件
+
+### 7.1 唯一性验证服务
+
+```csharp
+/// <summary>
+/// 唯一性验证服务接口
+/// </summary>
+public interface IUniqueValidationService
+{
+    /// <summary>
+    /// 验证字段值是否唯一
+    /// </summary>
+    Task<bool> IsUniqueAsync<T>(string propertyName, object value, object? excludeId = null) where T : class;
+}
+```
+
+### 7.2 唯一性验证特性
+
+```csharp
+/// <summary>
+/// 唯一性验证特性
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public class UniqueAttribute : ValidationAttribute
+{
+    /// <summary>
+    /// 实体类型
+    /// </summary>
+    public Type EntityType { get; set; }
+    
+    /// <summary>
+    /// 验证字段值是否唯一
+    /// </summary>
+    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    {
+        // 实现唯一性验证逻辑
+    }
+}
+```
+
+## 8. 扩展方法集合
 
 ### 7.1 字符串扩展
 
@@ -509,7 +670,7 @@ public static class CollectionExtensions
 }
 ```
 
-## 8. 工具类
+## 9. 工具类
 
 ### 8.1 ID生成器
 
@@ -517,23 +678,19 @@ public static class CollectionExtensions
 /// <summary>
 /// ID生成器接口
 /// </summary>
-public interface IIdGenerator
+public interface IIdGenerator : ISingletonDependency
 {
     /// <summary>
-    /// 生成长整型ID
+    /// 生成新的ID
     /// </summary>
-    long NextId();
-
-    /// <summary>
-    /// 生成字符串ID
-    /// </summary>
-    string NextStringId();
+    /// <returns>生成的ID</returns>
+    long NewId();
 }
 
 /// <summary>
 /// 雪花算法ID生成器
 /// </summary>
-public class SnowflakeIdGenerator : IIdGenerator, ISingletonDependency
+public class SnowflakeIdGenerator : IIdGenerator
 {
     // 雪花算法实现...
 }
@@ -573,7 +730,7 @@ public static class TimeHelper
 }
 ```
 
-## 9. 使用示例
+## 10. 使用示例
 
 ### 9.1 创建业务服务
 
@@ -669,7 +826,7 @@ public class UsersController : ControllerBase
 }
 ```
 
-## 10. 最佳实践
+## 11. 最佳实践
 
 ### 10.1 异常处理
 
@@ -689,7 +846,7 @@ public class UsersController : ControllerBase
 2. **合理的HTTP状态码**：根据操作结果返回合适的状态码
 3. **清晰的错误信息**：提供有助于调试的错误信息
 
-## 11. 共享服务组件 (CodeSpirit.Shared)
+## 12. 共享服务组件 (CodeSpirit.Shared)
 
 ### 11.1 增强批量导入服务
 
@@ -838,7 +995,7 @@ protected ActionResult DownloadFile(byte[] fileBytes, string fileName, string co
 }
 ```
 
-## 12. AMIS组件增强
+## 13. AMIS组件增强
 
 ### 12.1 增强导入字段特性
 
@@ -892,13 +1049,15 @@ public class AmisEnhancedImportFieldAttribute : AmisFormFieldAttribute
 
 CodeSpirit.Core作为框架的核心模块，现在提供了：
 
-1. **统一的API响应格式**：确保前后端交互的一致性
+1. **统一的API响应格式**：确保前后端交互的一致性，支持跳转信息
 2. **完善的异常处理体系**：支持不同类型的异常处理
 3. **灵活的依赖注入机制**：通过标记接口简化服务注册
-4. **强大的权限体系**：支持细粒度的权限控制
-5. **事件驱动架构支持**：通过事件总线实现松耦合
+4. **强大的权限体系**：支持细粒度的权限控制和导航权限检查
+5. **多租户支持**：通过IMultiTenant接口实现数据隔离
 6. **丰富的扩展方法**：提供常用的工具方法
-7. **增强批量导入服务**：智能Excel模板生成、数据验证和错误处理
-8. **AMIS组件增强**：支持复杂的前端交互组件生成
+7. **唯一性验证服务**：支持数据唯一性验证
+8. **增强批量导入服务**：智能Excel模板生成、数据验证和错误处理
+9. **AMIS组件增强**：支持复杂的前端交互组件生成
+10. **ID生成器**：基于雪花算法的分布式ID生成
 
-这些核心组件为整个框架提供了坚实的基础，确保了系统的稳定性、可扩展性和可维护性。新增的批量导入功能大大提升了数据处理效率，为用户提供了更好的使用体验。 
+这些核心组件为整个框架提供了坚实的基础，确保了系统的稳定性、可扩展性和可维护性。基于.NET 10构建，充分利用了最新的C# 13特性，为开发者提供了更好的开发体验。 

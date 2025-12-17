@@ -4,9 +4,10 @@
 
 CodeSpirit 框架提供了统一的异常处理机制，通过 `HttpResponseExceptionFilter` 全局异常过滤器实现标准化的错误处理和响应格式。本文档详细介绍异常处理的设计原理、使用方法和 Amis API 兼容性。
 
-**最后更新**: 2025年1月27日  
+**最后更新**: 2025年12月  
 **负责人**: 开发团队  
-**版本**: v1.1.0
+**版本**: v1.1.0  
+**框架版本**: CodeSpirit v2.0.0 (.NET 10)
 
 ## 🎯 设计目标
 
@@ -660,8 +661,9 @@ public class UsersController : ControllerBase
 - [Amis API 文档](https://aisuda.bce.baidu.com/amis/zh-CN/docs/types/api)
 - [ASP.NET Core 异常处理](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/error-handling)
 - [CodeSpirit.Core 核心框架](./CodeSpirit.Core核心框架.md)
-- [技术债管理文档](./技术债管理文档.md)
-- [CodeSpirit（码灵）开发指南](./CodeSpirit（码灵）开发指南（初稿）.md)
+- [项目整体架构设计](./项目整体架构设计.md)
+- [总体技术体系说明](./总体技术体系说明.md)
+- [开发环境搭建指南](./开发环境搭建指南.md)
 
 ## 🎯 总结
 

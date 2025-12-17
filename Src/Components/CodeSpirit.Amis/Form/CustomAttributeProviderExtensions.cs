@@ -72,9 +72,13 @@ namespace CodeSpirit.Amis.Form
             return false;
         }
 
-        public static JObject CreateFormField(this ICustomAttributeProvider member, string fieldName = null, string lableName = null)
+        public static JObject CreateFormField(
+            this ICustomAttributeProvider member, 
+            string fieldName = null, 
+            string lableName = null,
+            UtilityHelper? utilityHelper = null)
         {
-            (string name, Type type, string label) = member.GetMemberMetadata();
+            (string name, Type type, string label) = member.GetMemberMetadata(utilityHelper);
             bool isRequired = IsRequired(member);
 
             JObject field = new()
@@ -94,19 +98,23 @@ namespace CodeSpirit.Amis.Form
         /// <summary>
         /// 获取成员元数据
         /// </summary>
-        public static (string name, Type type, string label) GetMemberMetadata(this ICustomAttributeProvider member)
+        /// <param name="member">成员信息</param>
+        /// <param name="utilityHelper">实用工具类（可选，用于获取当前语言）</param>
+        public static (string name, Type type, string label) GetMemberMetadata(
+            this ICustomAttributeProvider member, 
+            UtilityHelper? utilityHelper = null)
         {
             return member switch
             {
                 ParameterInfo p => (
                     p.GetFieldName(null),
                     p.ParameterType,
-                    p.GetDisplayName()
+                    p.GetDisplayName(utilityHelper)
                 ),
                 PropertyInfo prop => (
                     prop.GetFieldName(null),
                     prop.PropertyType,
-                    prop.GetDisplayName()
+                    prop.GetDisplayName(utilityHelper)
                 ),
                 _ => throw new NotSupportedException("不支持除参数和属性外的其他成员类型")
             };

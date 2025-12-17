@@ -429,13 +429,13 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 
 1. [🤖 CodeSpirit AI Feature Deep Dive](./Docs/CodeSpirit-AI特色功能详解.md) - Detailed introduction to AI-related core features and innovations ⭐
 2. [💎 CodeSpirit Framework Core Highlights](./Docs/CodeSpirit框架核心亮点.md) - Framework technical architecture, core components and best practices ⭐
-3. [🏗️ Overall Technical System Description](./Docs/01-Core-Docs/总体技术体系说明.md) - Technical architecture and design philosophy
+3. [🏗️ Overall Technical System Overview](./Docs/01-Core-Docs/Overall%20Technical%20System%20Overview.md) - Technical architecture and design philosophy | [中文版](./Docs/01-Core-Docs/总体技术体系说明.md)
 4. [🏛️ Backend Architecture](./Docs/01-Core-Docs/后端架构.md) - Backend architecture design description
-5. [🏗️ Project Architecture Design](./Docs/01-Core-Docs/项目整体架构设计.md) - Overall project architecture design and principles
-6. [🔧 Development Environment Setup Guide](./Docs/01-Core-Docs/开发环境搭建指南.md) - Complete development environment configuration guide
-7. [💎 CodeSpirit.Core Framework](./Docs/01-Core-Docs/CodeSpirit.Core核心框架.md) - Core framework components and architecture
-8. [⚠️ Unified Exception Handling Guide](./Docs/01-Core-Docs/CodeSpirit统一异常处理指南.md) - Enterprise-level exception handling mechanisms and AMIS API compatibility
-9. [💻 CRUD Development Example](./Docs/01-Core-Docs/CRUD开发示例.md) - Complete CRUD development example based on QuestionCategory module ⭐
+5. [🏗️ Project Overall Architecture Design](./Docs/01-Core-Docs/Project%20Overall%20Architecture%20Design.md) - Overall project architecture design and principles | [中文版](./Docs/01-Core-Docs/项目整体架构设计.md)
+6. [🔧 Development Environment Setup Guide](./Docs/01-Core-Docs/Development%20Environment%20Setup%20Guide.md) - Complete development environment configuration guide | [中文版](./Docs/01-Core-Docs/开发环境搭建指南.md)
+7. [💎 CodeSpirit.Core Core Framework](./Docs/01-Core-Docs/CodeSpirit.Core%20Core%20Framework.md) - Core framework components and architecture | [中文版](./Docs/01-Core-Docs/CodeSpirit.Core核心框架.md)
+8. [⚠️ CodeSpirit Unified Exception Handling Guide](./Docs/01-Core-Docs/CodeSpirit%20Unified%20Exception%20Handling%20Guide.md) - Enterprise-level exception handling mechanisms and AMIS API compatibility | [中文版](./Docs/01-Core-Docs/CodeSpirit统一异常处理指南.md)
+9. [💻 CRUD Development Example](./Docs/01-Core-Docs/CRUD%20Development%20Example.md) - Complete CRUD development example based on QuestionCategory module ⭐ | [中文版](./Docs/01-Core-Docs/CRUD开发示例.md)
 
 ### 🎨 UI Generation Engine
 

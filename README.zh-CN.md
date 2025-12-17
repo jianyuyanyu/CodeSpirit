@@ -2,7 +2,7 @@
 
 ## 框架概览
 
-CodeSpirit（码灵）是一款革命性的全栈低代码+AI（智能体）开发框架，通过**智能代码生成引擎与AI深度协同**，实现**后端驱动式全栈开发范式**。基于 .NET 10 技术栈构建，具备企业级技术深度与云原生扩展能力，提供从界面生成、业务逻辑编排到系统运维的全生命周期支持。
+CodeSpirit（码灵）是一款革命性的全栈低代码+AI（智能体）开发框架，通过**智能代码生成引擎与AI深度协同**，实现**后端驱动式全栈开发范式**。基于 .NET 10 和 Aspire 13.0 技术栈构建，具备企业级技术深度与云原生扩展能力，提供从界面生成、业务逻辑编排到系统运维的全生命周期支持。
 
 **让全栈开发回归工程本质**
 
@@ -185,12 +185,14 @@ graph TB
 | 类别         | 技术选型                                    |
 | :----------- | :------------------------------------------ |
 | **框架**     | .NET 10                                     |
-| **语言**     | C# 12（支持Primary Constructor等新特性）    |
+| **语言**     | C# 13（支持Primary Constructor等新特性）    |
 | **后端架构** | Clean Architecture + DDD                    |
 | **ORM**      | Entity Framework Core（含软删除、审计追踪） |
 | **前端生成** | AMIS（动态表单/表格生成）                   |
 | **UI描述语言** | UDL（统一UI描述语言 + Cards组件库）       |
-| **微服务**   | .NET Aspire（服务发现、健康检查）           |
+| **微服务**   | .NET Aspire 13.0（服务发现、健康检查）           |
+| **数据库**   | MySQL 8.0 / SQL Server 2022（多数据库支持） |
+| **时序数据库** | GreptimeDB（用于审计日志）                |
 | **容器编排** | Kubernetes（支持自动扩缩容）                |
 | **身份认证** | JWT + OAuth2.0（RBAC/ABAC混合模型）         |
 | **数据访问** | Repository Pattern + CQRS（部分模块）       |
@@ -209,6 +211,7 @@ Src/
 │   ├── CodeSpirit.FileStorageApi/       # 文件存储API
 │   ├── CodeSpirit.IdentityApi/          # 身份认证API
 │   ├── CodeSpirit.MessagingApi/         # 消息服务API
+│   ├── CodeSpirit.PathfinderApi/        # Pathfinder AI目标管理API
 │   └── CodeSpirit.SurveyApi/            # 问卷调查API
 ├── Components/                           # 独立组件库
 │   ├── CodeSpirit.Aggregator/           # 数据聚合器组件
@@ -727,7 +730,7 @@ https://codespirit-app.xin-lai.com/
 
 3. 启动（启动时会拉取redis、seq、rabbitmq等镜像，如无法拉取，请采取方式进行加速）
 
-   **注意：当前基于.NET Aspire简化了分布式应用开发时的编排，服务发现、环境变量、容器设置的配置，以便更轻松地在开发阶段进行管理。**
+   **注意：当前基于.NET Aspire 13.0简化了分布式应用开发时的编排，服务发现、环境变量、容器设置的配置，以便更轻松地在开发阶段进行管理。**
 
 ## 开发文档
 
@@ -744,6 +747,7 @@ https://codespirit-app.xin-lai.com/
 6. [🔧 开发环境搭建指南](./Docs/01-Core-Docs/开发环境搭建指南.md) - 完整的开发环境配置指南
 7. [💎 CodeSpirit.Core核心框架](./Docs/01-Core-Docs/CodeSpirit.Core核心框架.md) - 核心框架组件和架构
 8. [⚠️ 统一异常处理指南](./Docs/01-Core-Docs/CodeSpirit统一异常处理指南.md) - 企业级异常处理机制和Amis API兼容性
+9. [💻 CRUD开发示例](./Docs/01-Core-Docs/CRUD开发示例.md) - 基于题目分类管理模块的完整CRUD开发示例 ⭐
 
 ### 🎨 界面生成引擎
 

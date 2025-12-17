@@ -2,7 +2,7 @@
 
 ## Framework Overview
 
-CodeSpirit is a revolutionary full-stack low-code + AI development framework that achieves **backend-driven full-stack development paradigm** through **intelligent code generation engine and deep AI collaboration**. Built on .NET 10 technology stack, it provides enterprise-level technical depth and cloud-native scalability, supporting the entire lifecycle from UI generation and business logic orchestration to system operations.
+CodeSpirit is a revolutionary full-stack low-code + AI development framework that achieves **backend-driven full-stack development paradigm** through **intelligent code generation engine and deep AI collaboration**. Built on .NET 10 and Aspire 13.0 technology stack, it provides enterprise-level technical depth and cloud-native scalability, supporting the entire lifecycle from UI generation and business logic orchestration to system operations.
 
 **Return Full-Stack Development to Engineering Essence**
 
@@ -158,12 +158,14 @@ graph TB
 | Category | Technology Selection |
 | :--- | :--- |
 | **Framework** | .NET 10 |
-| **Language** | C# 12 (Supporting Primary Constructor and other new features) |
+| **Language** | C# 13 (Supporting Primary Constructor and other new features) |
 | **Backend Architecture** | Clean Architecture + DDD |
 | **ORM** | Entity Framework Core (with soft delete, audit tracking) |
 | **Frontend Generation** | AMIS (Dynamic form/table generation) |
 | **UI Description Language** | UDL (Unified UI Description Language + Cards Library) |
-| **Microservices** | .NET Aspire (Service discovery, health checks) |
+| **Microservices** | .NET Aspire 13.0 (Service discovery, health checks) |
+| **Database** | MySQL 8.0 / SQL Server 2022 (Multi-database support) |
+| **Time-Series DB** | GreptimeDB (For audit logging) |
 | **Container Orchestration** | Kubernetes (Supporting auto-scaling) |
 | **Identity Authentication** | JWT + OAuth2.0 (RBAC/ABAC hybrid model) |
 | **Data Access** | Repository Pattern + CQRS (partial modules) |
@@ -182,6 +184,7 @@ Src/
 │   ├── CodeSpirit.FileStorageApi/       # File Storage API
 │   ├── CodeSpirit.IdentityApi/          # Identity Authentication API
 │   ├── CodeSpirit.MessagingApi/         # Messaging Service API
+│   ├── CodeSpirit.PathfinderApi/        # Pathfinder AI Goal Management API
 │   └── CodeSpirit.SurveyApi/            # Survey System API
 ├── Components/                           # Independent Component Library
 │   ├── CodeSpirit.Aggregator/           # Data Aggregator Component
@@ -415,7 +418,7 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 
 3. Start (Docker images like redis, seq, rabbitmq will be pulled during startup. If unable to pull, please use acceleration methods)
 
-   **Note: Currently based on .NET Aspire to simplify orchestration, service discovery, environment variables, and container settings configuration for distributed application development, making it easier to manage during the development phase.**
+   **Note: Currently based on .NET Aspire 13.0 to simplify orchestration, service discovery, environment variables, and container settings configuration for distributed application development, making it easier to manage during the development phase.**
 
 ## Development Documentation
 
@@ -432,6 +435,7 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 6. [🔧 Development Environment Setup Guide](./Docs/01-Core-Docs/开发环境搭建指南.md) - Complete development environment configuration guide
 7. [💎 CodeSpirit.Core Framework](./Docs/01-Core-Docs/CodeSpirit.Core核心框架.md) - Core framework components and architecture
 8. [⚠️ Unified Exception Handling Guide](./Docs/01-Core-Docs/CodeSpirit统一异常处理指南.md) - Enterprise-level exception handling mechanisms and AMIS API compatibility
+9. [💻 CRUD Development Example](./Docs/01-Core-Docs/CRUD开发示例.md) - Complete CRUD development example based on QuestionCategory module ⭐
 
 ### 🎨 UI Generation Engine
 

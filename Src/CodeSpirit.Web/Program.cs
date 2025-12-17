@@ -23,6 +23,9 @@ using CodeSpirit.Web.Hubs;
 using CodeSpirit.Web.Middlewares;
 using CodeSpirit.Web.Options;
 using CodeSpirit.Web.Services.EventHandlers;
+using CodeSpirit.Localization.Extensions;
+using CodeSpirit.Localization.Services;
+using CodeSpirit.Settings.Extensions;
 using System.Text;
 
 /// <summary>
@@ -86,6 +89,12 @@ public class Program
 
         // 添加多租户支持
         builder.Services.AddCodeSpiritMultiTenant(builder.Configuration);
+        
+        // 添加设置管理服务（本地化服务依赖它）
+        builder.Services.AddSettingsManagerWithDatabase(builder.Configuration);
+        
+        // 添加本地化服务
+        builder.Services.AddCodeSpiritLocalization(builder.Configuration);
        
         // 使用共享项目中的JWT认证扩展方法
         builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -114,6 +123,11 @@ public class Program
         builder.Services.AddRealtimeChat();
         builder.Services.AddCodeSpiritAuthorization();
         builder.Services.AddCodeSpiritNavigation();
+        
+        // 配置 DataAnnotations 本地化（必须在 AddControllers 之后）
+        builder.Services.AddControllers()
+            .AddCodeSpiritDataAnnotationsLocalization();
+        
         builder.Services.ConfigureDefaultControllers();
         // 添加代理相关服务，包括聚合器
         builder.Services.AddProxyServices();
@@ -161,6 +175,17 @@ public class Program
 
         WebApplication app = builder.Build();
 
+        // 初始化设置数据库
+        await app.UseSettingsManagerAsync();
+
+        // 初始化语言配置
+        using (var scope = app.Services.CreateScope())
+        {
+            var initializer = scope.ServiceProvider
+                .GetRequiredService<LocalizationSettingsInitializer>();
+            await initializer.InitializeAsync();
+        }
+
         if (!app.Environment.IsDevelopment())
         {
             app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -182,6 +207,9 @@ public class Program
 
         // 在认证之前添加租户路径解析中间件
         app.UseCodeSpiritMultiTenant();
+
+        // 添加本地化中间件（在多租户中间件之后）
+        app.UseCodeSpiritRequestLocalization();
 
         app.UseAuthentication();
         app.UseAuthorization();

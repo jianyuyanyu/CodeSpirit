@@ -3,8 +3,10 @@
 @using CodeSpirit.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
+@using System.Globalization
 @inject NavigationManager NavigationManager
 @inject IJwtAuthService AuthService
+@inject IJSRuntime JS
 
 <nav class="main-nav">
     <div class="nav-logo">
@@ -21,6 +23,13 @@
     @if (_isAuthenticated)
     {
         <div class="nav-actions">
+            <!-- 语言切换器 -->
+            <div class="language-switcher">
+                <select @onchange="OnLanguageChanged" value="@CurrentLanguage">
+                    <option value="zh-CN" selected="@(CurrentLanguage == "zh-CN")">简体中文</option>
+                    <option value="en" selected="@(CurrentLanguage == "en")">English</option>
+                </select>
+            </div>
             <NotificationBadge />
             <div class="user-dropdown">
                 <div class="user-info">
@@ -38,6 +47,13 @@
     else
     {
         <div class="nav-actions">
+            <!-- 语言切换器 -->
+            <div class="language-switcher">
+                <select @onchange="OnLanguageChanged" value="@CurrentLanguage">
+                    <option value="zh-CN" selected="@(CurrentLanguage == "zh-CN")">简体中文</option>
+                    <option value="en" selected="@(CurrentLanguage == "en")">English</option>
+                </select>
+            </div>
             <a href="/login" class="login-btn">登录</a>
             <a href="/register" class="register-btn">注册</a>
         </div>
@@ -51,6 +67,8 @@
     private bool _isAuthenticated;
     private string _userId;
     private string _username;
+    
+    private string CurrentLanguage => CultureInfo.CurrentUICulture.Name;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -107,6 +125,15 @@
     {
         var currentPathString = CurrentPath?.ToString() ?? string.Empty;
         return currentPathString.StartsWith(path);
+    }
+    
+    private async Task OnLanguageChanged(ChangeEventArgs e)
+    {
+        var language = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(language) && language != CurrentLanguage)
+        {
+            await JS.InvokeVoidAsync("CodeSpirit.i18n.switchLanguage", language);
+        }
     }
 }
 
@@ -236,5 +263,28 @@
     
     .register-btn:hover {
         background-color: #40a9ff;
+    }
+    
+    .language-switcher {
+        margin-right: 15px;
+    }
+    
+    .language-switcher select {
+        padding: 4px 8px;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        background-color: #fff;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    
+    .language-switcher select:hover {
+        border-color: #1890ff;
+    }
+    
+    .language-switcher select:focus {
+        outline: none;
+        border-color: #1890ff;
+        box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
     }
 </style> 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -57,9 +58,94 @@ public static class Extensions
         //    //options.AllowedSchemes = ["https"];
         //});
 
-        
+        // 添加基础本地化服务（确保 IStringLocalizerFactory 始终可用）
+        builder.Services.AddLocalization();
+
+        // 添加Settings和本地化服务（通过反射动态加载，避免循环依赖）
+        TryAddSettingsAndLocalizationServices(builder);
 
         return builder;
+    }
+
+    /// <summary>
+    /// 尝试添加Settings和本地化服务（通过反射，避免循环依赖）
+    /// </summary>
+    private static void TryAddSettingsAndLocalizationServices(IHostApplicationBuilder builder)
+    {
+        try
+        {
+            // 1. 先尝试加载 Settings 服务（本地化服务依赖它）
+            try
+            {
+                var settingsAssembly = System.Reflection.Assembly.Load("CodeSpirit.Settings");
+                var settingsExtensionsType = settingsAssembly.GetType("CodeSpirit.Settings.Extensions.SettingsExtensions");
+                if (settingsExtensionsType != null)
+                {
+                    // 获取所有 AddSettingsManagerWithDatabase 方法（有重载）
+                    var methods = settingsExtensionsType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                        .Where(m => m.Name == "AddSettingsManagerWithDatabase")
+                        .ToArray();
+                    
+                    // 查找只需要 IServiceCollection 和 IConfiguration 的重载
+                    var method = methods.FirstOrDefault(m =>
+                    {
+                        var parameters = m.GetParameters();
+                        return parameters.Length == 2 &&
+                               parameters[0].ParameterType == typeof(IServiceCollection) &&
+                               parameters[1].ParameterType == typeof(IConfiguration);
+                    });
+                    
+                    // 如果找不到，使用有3个参数的版本，第三个参数传null
+                    if (method == null)
+                    {
+                        method = methods.FirstOrDefault(m => m.GetParameters().Length >= 2);
+                    }
+                    
+                    if (method != null)
+                    {
+                        var parameters = method.GetParameters();
+                        var args = new object[parameters.Length];
+                        args[0] = builder.Services;
+                        args[1] = builder.Configuration;
+                        // 剩余参数设为null（可选参数）
+                        for (int i = 2; i < parameters.Length; i++)
+                        {
+                            args[i] = null;
+                        }
+                        method.Invoke(null, args);
+                    }
+                }
+            }
+            catch
+            {
+                // Settings 服务加载失败，继续尝试加载本地化服务（可能不需要Settings）
+            }
+            
+            // 2. 然后加载 Localization 服务
+            var localizationAssembly = System.Reflection.Assembly.Load("CodeSpirit.Localization");
+            var extensionsType = localizationAssembly.GetType("CodeSpirit.Localization.Extensions.LocalizationExtensions");
+            if (extensionsType != null)
+            {
+                // AddCodeSpiritLocalization 方法签名: IServiceCollection AddCodeSpiritLocalization(this IServiceCollection services, IConfiguration configuration)
+                var method = extensionsType.GetMethod("AddCodeSpiritLocalization", 
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+                    null,
+                    new[] { typeof(IServiceCollection), typeof(IConfiguration) },
+                    null);
+                if (method != null)
+                {
+                    method.Invoke(null, new object[] { builder.Services, builder.Configuration });
+                }
+            }
+        }
+        catch
+        {
+            // 如果 Settings 或 Localization 组件未加载，忽略错误
+            // 各个服务项目可以在自己的 Program.cs 中单独注册
+            // 例如：
+            // builder.Services.AddSettingsManagerWithDatabase(builder.Configuration);
+            // builder.Services.AddCodeSpiritLocalization(builder.Configuration);
+        }
     }
 
     /// <summary>

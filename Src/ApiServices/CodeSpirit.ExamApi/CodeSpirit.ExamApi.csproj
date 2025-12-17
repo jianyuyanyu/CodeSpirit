@@ -51,6 +51,7 @@
 		<ProjectReference Include="..\..\Components\CodeSpirit.AiFormFill\CodeSpirit.AiFormFill.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.Caching\CodeSpirit.Caching.csproj" />
 		<ProjectReference Include="..\..\Components\CodeSpirit.ScheduledTasks\CodeSpirit.ScheduledTasks.csproj" />
+		<ProjectReference Include="..\..\Components\CodeSpirit.Localization\CodeSpirit.Localization.csproj" />
 	</ItemGroup>
 
 </Project>

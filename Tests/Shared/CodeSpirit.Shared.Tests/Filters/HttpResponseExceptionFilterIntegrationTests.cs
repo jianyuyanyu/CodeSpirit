@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Text.Json;
@@ -19,13 +20,15 @@ public class HttpResponseExceptionFilterPerformanceTests
 {
     private readonly Mock<ILogger<HttpResponseExceptionFilter>> _mockLogger;
     private readonly Mock<IWebHostEnvironment> _mockEnvironment;
+    private readonly Mock<IStringLocalizerFactory> _mockLocalizerFactory;
     private readonly HttpResponseExceptionFilter _filter;
 
     public HttpResponseExceptionFilterPerformanceTests()
     {
         _mockLogger = new Mock<ILogger<HttpResponseExceptionFilter>>();
         _mockEnvironment = new Mock<IWebHostEnvironment>();
-        _filter = new HttpResponseExceptionFilter(_mockLogger.Object, _mockEnvironment.Object);
+        _mockLocalizerFactory = new Mock<IStringLocalizerFactory>();
+        _filter = new HttpResponseExceptionFilter(_mockLogger.Object, _mockEnvironment.Object, _mockLocalizerFactory.Object);
     }
 
     /// <summary>
@@ -253,7 +256,7 @@ public class HttpResponseExceptionFilterPerformanceTests
             It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
             .Throws(new Exception("日志记录失败"));
 
-        var filter = new HttpResponseExceptionFilter(mockLogger.Object, _mockEnvironment.Object);
+        var filter = new HttpResponseExceptionFilter(mockLogger.Object, _mockEnvironment.Object, _mockLocalizerFactory.Object);
         var exception = new BusinessException("日志失败测试");
         var context = CreateExceptionContext(exception);
 

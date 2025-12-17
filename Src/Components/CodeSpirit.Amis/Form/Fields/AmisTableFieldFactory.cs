@@ -32,7 +32,7 @@ namespace CodeSpirit.Amis.Form.Factories
             {
                 ["type"] = "input-table",
                 ["name"] = prop.Name.ToCamelCase(),
-                ["label"] = prop.GetDisplayName(),
+                ["label"] = prop.GetDisplayName(utilityHelper),
                 ["addable"] = attr.Addable,
                 ["removable"] = attr.Removable,
                 ["draggable"] = attr.Draggable,
@@ -89,7 +89,7 @@ namespace CodeSpirit.Amis.Form.Factories
                 var column = new JObject
                 {
                     ["name"] = prop.Name.ToCamelCase(),
-                    ["label"] = prop.GetDisplayName()
+                    ["label"] = prop.GetDisplayName(utilityHelper)
                 };
 
                 // 添加描述信息（如果有）

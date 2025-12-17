@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Reflection;
 using CodeSpirit.Core.Extensions;
 
@@ -9,6 +10,20 @@ namespace CodeSpirit.Amis.Helpers
 {
     public class UtilityHelper
     {
+        private readonly CultureResolver _cultureResolver;
+
+        public UtilityHelper(CultureResolver cultureResolver)
+        {
+            _cultureResolver = cultureResolver;
+        }
+
+        /// <summary>
+        /// 获取当前请求的语言文化信息
+        /// </summary>
+        public CultureInfo GetCurrentCulture()
+        {
+            return _cultureResolver.GetCurrentCulture();
+        }
         public void HandleAdditionalConfig(string additionalConfig, JObject field)
         {
             if (string.IsNullOrEmpty(additionalConfig))

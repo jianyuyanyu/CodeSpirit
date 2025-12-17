@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using System.Data;
 using System.Text.Json;
@@ -19,13 +20,16 @@ namespace CodeSpirit.Shared.Filters
     {
         private readonly ILogger<HttpResponseExceptionFilter> _logger;
         private readonly IWebHostEnvironment _environment;
+        private readonly IStringLocalizerFactory _localizerFactory;
 
         public HttpResponseExceptionFilter(
             ILogger<HttpResponseExceptionFilter> logger,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IStringLocalizerFactory localizerFactory)
         {
             _logger = logger;
             _environment = environment;
+            _localizerFactory = localizerFactory;
         }
 
         /// <summary>
@@ -45,7 +49,7 @@ namespace CodeSpirit.Shared.Filters
             {
                 BusinessException businessException => CreateAmisErrorResponse(
                     StatusCodes.Status400BadRequest,
-                    businessException.Message,
+                    GetLocalizedMessage(businessException.ResourceKey ?? businessException.Message, businessException.Parameters),
                     "BUSINESS_ERROR",
                     traceId),
 
@@ -55,19 +59,19 @@ namespace CodeSpirit.Shared.Filters
 
                 AppServiceException appException => CreateAmisErrorResponse(
                     appException.Code >= 1000 ? StatusCodes.Status500InternalServerError : appException.Code,
-                    appException.Message,
+                    GetLocalizedMessage(appException.Message),
                     "BUSINESS_ERROR",
                     traceId),
 
                 ArgumentNullException => CreateAmisErrorResponse(
                     StatusCodes.Status400BadRequest,
-                    "请求参数不能为空",
+                    GetLocalizedMessage("Errors.InvalidArgument"),
                     "INVALID_ARGUMENT",
                     traceId),
 
                 ArgumentException => CreateAmisErrorResponse(
                     StatusCodes.Status400BadRequest,
-                    "请求参数无效",
+                    GetLocalizedMessage("Errors.InvalidArgument"),
                     "INVALID_ARGUMENT",
                     traceId),
 
@@ -79,43 +83,43 @@ namespace CodeSpirit.Shared.Filters
 
                 UnauthorizedAccessException => CreateAmisErrorResponse(
                     StatusCodes.Status403Forbidden,
-                    "访问被拒绝，权限不足",
+                    GetLocalizedMessage("Errors.Unauthorized"),
                     "FORBIDDEN",
                     traceId),
 
                 FileNotFoundException => CreateAmisErrorResponse(
                     StatusCodes.Status404NotFound,
-                    "请求的资源未找到",
+                    GetLocalizedMessage("Errors.NotFound"),
                     "NOT_FOUND",
                     traceId),
 
                 KeyNotFoundException => CreateAmisErrorResponse(
                     StatusCodes.Status404NotFound,
-                    "请求的数据未找到",
+                    GetLocalizedMessage("Errors.NotFound"),
                     "NOT_FOUND",
                     traceId),
 
                 NotImplementedException => CreateAmisErrorResponse(
                     StatusCodes.Status501NotImplemented,
-                    "功能尚未实现",
+                    GetLocalizedMessage("Errors.NotImplemented"),
                     "NOT_IMPLEMENTED",
                     traceId),
 
                 TimeoutException => CreateAmisErrorResponse(
                     StatusCodes.Status504GatewayTimeout,
-                    "请求超时，请稍后重试",
+                    GetLocalizedMessage("Errors.Timeout"),
                     "TIMEOUT",
                     traceId),
 
                 OperationCanceledException => CreateAmisErrorResponse(
                     StatusCodes.Status499ClientClosedRequest,
-                    "请求已取消",
+                    GetLocalizedMessage("Errors.Cancelled"),
                     "CANCELLED",
                     traceId),
 
                 DBConcurrencyException => CreateAmisErrorResponse(
                     StatusCodes.Status409Conflict,
-                    "数据并发冲突，请刷新后重试",
+                    GetLocalizedMessage("Errors.ConcurrencyConflict"),
                     "CONCURRENCY_CONFLICT",
                     traceId),
 
@@ -123,19 +127,19 @@ namespace CodeSpirit.Shared.Filters
 
                 InvalidOperationException => CreateAmisErrorResponse(
                     StatusCodes.Status409Conflict,
-                    "当前操作无效",
+                    GetLocalizedMessage("Errors.InvalidOperation"),
                     "INVALID_OPERATION",
                     traceId),
 
                 FormatException => CreateAmisErrorResponse(
                     StatusCodes.Status400BadRequest,
-                    "数据格式错误",
+                    GetLocalizedMessage("Errors.FormatError"),
                     "FORMAT_ERROR",
                     traceId),
 
                 _ => CreateAmisErrorResponse(
                     StatusCodes.Status500InternalServerError,
-                    _environment.IsDevelopment() ? exception.Message : "服务器内部错误",
+                    _environment.IsDevelopment() ? exception.Message : GetLocalizedMessage("Errors.InternalError"),
                     "INTERNAL_ERROR",
                     traceId,
                     _environment.IsDevelopment() ? exception.StackTrace : null)
@@ -382,9 +386,38 @@ namespace CodeSpirit.Shared.Filters
             // 对于验证异常，使用 Amis 兼容格式
             return CreateAmisErrorResponse(
                 StatusCodes.Status422UnprocessableEntity,
-                validationException.Message,
+                GetLocalizedMessage(validationException.ResourceKey ?? validationException.Message, validationException.Parameters),
                 "VALIDATION_ERROR",
                 traceId);
+        }
+
+        /// <summary>
+        /// 获取本地化消息
+        /// </summary>
+        /// <param name="resourceKey">资源键</param>
+        /// <param name="parameters">参数</param>
+        /// <returns>本地化后的消息</returns>
+        private string GetLocalizedMessage(string resourceKey, object[]? parameters = null)
+        {
+            try
+            {
+                // 动态创建 ErrorsResources 资源的本地化器，避免编译时依赖
+                var errorsType = Type.GetType("CodeSpirit.Localization.Resources.ErrorsResources, CodeSpirit.Localization");
+                if (errorsType != null)
+                {
+                    var localizer = _localizerFactory.Create(errorsType);
+                    if (parameters != null && parameters.Length > 0)
+                    {
+                        return localizer[resourceKey, parameters].Value;
+                    }
+                    return localizer[resourceKey].Value;
+                }
+            }
+            catch
+            {
+                // 如果本地化失败，返回原始键或消息
+            }
+            return resourceKey;
         }
 
         /// <summary>

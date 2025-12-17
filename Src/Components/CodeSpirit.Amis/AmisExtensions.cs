@@ -1,10 +1,12 @@
-﻿using CodeSpirit.Amis.Column;
+using CodeSpirit.Amis.Column;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Form.Factories;
 using CodeSpirit.Amis.Form.Fields;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Middleware;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -18,10 +20,17 @@ namespace CodeSpirit.Amis
     {
         public static IServiceCollection AddAmisServices(this IServiceCollection services, IConfiguration configuration, Assembly apiAssembly = null)
         {
+            // 注册 CultureResolver（统一的文化信息解析器）
+            services.AddScoped<CultureResolver>();
+            
+            // 注册 CachingHelper（使用 CultureResolver）
             services.AddScoped<CachingHelper>();
+            
             services.AddScoped<ControllerHelper>();
             services.AddScoped<CrudHelper>();
-            services.AddSingleton<UtilityHelper>();
+            
+            // 注册 UtilityHelper（使用 CultureResolver）
+            services.AddScoped<UtilityHelper>();
             services.AddScoped<AmisApiHelper>();
             services.AddScoped<ApiRouteHelper>();
             services.AddScoped<ColumnHelper>();
@@ -33,7 +42,7 @@ namespace CodeSpirit.Amis
             services.AddScoped<AmisCRUDConfigBuilder>();
             services.AddScoped<StatisticsConfigBuilder>();
             services.AddScoped<AmisContext>();
-            
+
             // 注册AI表单增强器
             services.AddScoped<AiFormFieldEnhancer>();
 

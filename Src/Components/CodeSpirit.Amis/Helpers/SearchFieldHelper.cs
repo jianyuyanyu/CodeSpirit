@@ -1,4 +1,4 @@
-﻿using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Core.Attributes;
@@ -182,7 +182,7 @@ namespace CodeSpirit.Amis.Helpers
 
         private JObject CreateDefaultSearchField(ICustomAttributeProvider member, string parentName = null)
         {
-            string label = member.GetDisplayName();
+            string label = member.GetDisplayName(_utilityHelper);
             string fieldName = member.GetFieldName(parentName);
             string fieldType = DetermineSearchFieldType(member.GetMemberType());
 

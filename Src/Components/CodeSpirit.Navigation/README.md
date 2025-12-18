@@ -6,7 +6,7 @@
 
 **当前版本：2.1.0** - 支持多平台、元数据丰富、上下文感知的高级导航框架
 
-> **重构完成**：架构已简化为职责分离的服务模式，采用过滤器责任链模式统一过滤逻辑，缓存策略优化为单一缓存 + 内存过滤。
+> **架构特性**：采用职责分离的服务模式，过滤器责任链模式统一过滤逻辑，优化的单一缓存策略。
 
 ## 主要特性
 
@@ -15,17 +15,22 @@
 - **配置文件支持**：支持通过 `appsettings.json` 定义导航结构
 - **权限集成**：集成权限系统，自动过滤用户无权访问的导航项
 - **分布式缓存**：使用分布式缓存提升导航树查询性能
-- **模块化设计**：支持多模块导航管理，每个模块独立缓存
+- **模块化设计**：支持多模块导航管理
 - **层次结构**：支持多级导航菜单结构
 - **外部链接**：支持外部链接和 iframe 嵌入
 - **图标支持**：支持 FontAwesome 等图标库
 - **优先级策略**：`NavigationAttribute` 优先于 `ModuleAttribute`，提供精细化控制
 
+### 2.1.0 新特性 🎉
+- **架构优化**：职责分离的服务模式，提升代码可维护性
+- **过滤器体系**：责任链模式的过滤器体系，8个内置过滤器，支持动态注册
+- **缓存优化**：单一缓存 + 内存过滤策略，内存占用降低 66%
+- **测试覆盖**：完整的单元测试覆盖（70个测试用例）
+
 ### 2.0.0 新特性 🎉
 - **多平台支持**：`PlatformType` 枚举（None, System, Tenant, Both）
 - **扩展属性**：15+ 个新的导航属性（分组、标签、元数据、版本约束等）
 - **高级过滤**：基于上下文的多维度过滤（平台、权限、版本、设备等）
-- **缓存优化**：按平台类型独立缓存，提升性能
 - **深拷贝支持**：NavigationNode 深拷贝方法
 - **版本约束**：内置版本比较逻辑，支持语义化版本
 - **设备类型**：支持按设备类型过滤导航项
@@ -42,7 +47,7 @@ CodeSpirit.Navigation/
 │   └── NavigationConfiguration.cs  # 配置项模型
 ├── Services/
 │   ├── INavigationService.cs        # 导航服务接口
-│   ├── NavigationService.cs         # 导航服务主实现（重构后）
+│   ├── NavigationService.cs         # 导航服务主实现
 │   ├── INavigationTreeBuilder.cs    # 导航树构建器接口
 │   ├── NavigationTreeBuilder.cs     # 导航树构建器实现
 │   ├── INavigationCacheManager.cs   # 缓存管理器接口
@@ -62,7 +67,7 @@ CodeSpirit.Navigation/
 ├── Extensions/
 │   └── ServiceCollectionExtensions.cs # 依赖注入扩展
 ├── README.md                        # 主文档
-└── REFACTORING_*.md                 # 重构文档（参考）
+└── REFACTORING_*.md                 # 重构参考文档（可选）
 ```
 
 ## 快速开始
@@ -72,7 +77,7 @@ CodeSpirit.Navigation/
 在 `Program.cs` 中注册导航服务：
 
 ```csharp
-// 注册导航服务（重构后自动注册所有服务和过滤器）
+// 注册导航服务（自动注册所有服务和过滤器）
 builder.Services.AddCodeSpiritNavigation();
 
 // 在应用启动时初始化导航树
@@ -80,7 +85,7 @@ var app = builder.Build();
 await app.UseCodeSpiritNavigationAsync();
 ```
 
-**重构后的服务注册**：
+**服务注册说明**：
 - `INavigationTreeBuilder` - 导航树构建器
 - `INavigationCacheManager` - 缓存管理器
 - `INavigationFilterService` - 过滤服务
@@ -666,7 +671,7 @@ public class NavigationFilterContext
 
 ## 缓存管理
 
-### 统一缓存策略（重构后）
+### 统一缓存策略
 
 ```csharp
 public class NavigationManagementController : ControllerBase
@@ -677,7 +682,7 @@ public class NavigationManagementController : ControllerBase
     public async Task<IActionResult> ClearModuleCache(string moduleName)
     {
         // 注意：platformType 参数保留以保持API兼容性，但不再使用
-        // 重构后统一清除整个缓存，下次访问时自动重建
+        // 统一清除整个缓存，下次访问时自动重建
         await _navigationService.ClearModuleNavigationCacheAsync(moduleName);
         return Ok($"已清除模块 {moduleName} 的缓存");
     }
@@ -700,7 +705,7 @@ public class NavigationManagementController : ControllerBase
 
 ### 缓存键格式
 
-导航组件使用以下缓存键格式（重构后）：
+导航组件使用以下缓存键格式：
 
 - **统一缓存键**：`CodeSpirit:Navigation:All` - 存储完整的导航树
 - **缓存策略**：单一缓存 + 内存过滤，简化缓存管理，降低内存占用
@@ -723,7 +728,7 @@ public class NavigationManagementController : ControllerBase
 // 动作权限：{moduleName}_{controllerName}_{actionName}
 ```
 
-### 2. 缓存策略（重构后）
+### 2. 缓存策略
 
 - **分布式缓存**：支持 Redis 等分布式缓存
 - **统一缓存**：单一缓存键存储完整导航树，简化管理
@@ -980,7 +985,7 @@ public class BlogController : ControllerBase { }
 
 ## 单元测试
 
-框架提供了完整的单元测试覆盖（重构后），包括：
+框架提供了完整的单元测试覆盖，包括：
 
 ### 服务测试
 - **NavigationTreeBuilderTests** - 导航树构建器测试
@@ -1101,9 +1106,9 @@ dotnet test Tests/Components/CodeSpirit.Navigation.Tests/
 - 支持多维度过滤：平台、权限、版本、设备、分组、标签、认证、实验性功能
 
 **缓存优化**
-- 按平台类型独立缓存（System, Tenant, Both）
-- 优化缓存键格式：`模块名:平台类型`
-- 支持指定平台清除缓存
+- 支持按平台类型过滤导航
+- 优化缓存键格式：`CodeSpirit:Navigation:All`
+- 支持清除缓存和重新构建
 
 **模型增强**
 - `NavigationNode` 新增深拷贝 `Clone()` 方法
@@ -1135,17 +1140,18 @@ dotnet test Tests/Components/CodeSpirit.Navigation.Tests/
 - 自动处理版本约束
 
 **性能优化**
-- 按平台独立缓存提高性能
+- 单一缓存 + 内存过滤策略
 - 减少不必要的数据加载
 - 优化过滤算法
 
 #### 测试覆盖 ✅
 
 **单元测试**
-- 平台类型过滤测试 (`NavigationServicePlatformTests`)
-- 上下文过滤测试 (`NavigationServiceContextTests`)
-- 缓存管理测试 (`NavigationServiceCacheTests`)
-- 扩展属性测试 (`NavigationServiceExtendedPropertiesTests`)
+- NavigationTreeBuilder 测试
+- NavigationCacheManager 测试
+- NavigationFilterService 测试
+- NavigationService 集成测试
+- 8个过滤器测试（Platform, Permission, Authentication, Version, Device, Experimental, Group, Tag）
 
 **测试覆盖项目**
 - 认证和权限过滤
@@ -1164,7 +1170,7 @@ dotnet test Tests/Components/CodeSpirit.Navigation.Tests/
 - `ClearModuleNavigationCacheAsync` 新增 `platformType` 参数（可选）
 
 **缓存键变更**
-- 缓存键格式从 `模块名` 改为 `模块名:平台类型`
+- 缓存键格式从 `模块名:平台类型` 改为 `CodeSpirit:Navigation:All`（2.1.0）
 - 需要清除旧缓存数据
 
 #### 迁移指南 📋

@@ -70,7 +70,26 @@ namespace CodeSpirit.Navigation
                     IsAuthenticated = true
                 };
 
-                return _filterService.FilterNodes(cachedNodes, context);
+                // 调试日志：记录过滤前的节点平台类型
+                if (cachedNodes != null && cachedNodes.Any())
+                {
+                    var platformTypes = cachedNodes.Select(n => n.PlatformType).Distinct().ToList();
+                    _logger.LogDebug(
+                        "Filtering {Count} nodes for platform {PlatformType}. Node platform types: {NodePlatformTypes}",
+                        cachedNodes.Count,
+                        platformType,
+                        string.Join(", ", platformTypes));
+                }
+
+                var filtered = _filterService.FilterNodes(cachedNodes, context);
+                
+                _logger.LogDebug(
+                    "Filtered {Count} nodes for platform {PlatformType}, result: {ResultCount} nodes",
+                    cachedNodes?.Count ?? 0,
+                    platformType,
+                    filtered?.Count ?? 0);
+
+                return filtered;
             }
             catch (Exception ex)
             {

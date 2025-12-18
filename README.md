@@ -535,3 +535,24 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 78. [📊 Survey Module Design Proposal](./Docs/09-Survey-System/问卷调查模块方案设计.md) - Survey system architecture design proposal
 79. [📝 Question Type Specific Fields Implementation](./Docs/09-Survey-System/题目类型特定字段实现说明.md) - Question type field implementation details
 
+## 🚀 Sponsorship & Technical Support
+
+### Open Source Project Support
+
+CodeSpirit is a fully open-source project. We are committed to providing high-quality low-code development frameworks for the developer community. If this project is helpful to you, please consider giving us a ⭐ Star, or support the continuous development of the project through the following methods:
+
+### 💰 Sponsorship Methods
+
+**Personal Sponsorship**
+- Support continuous project updates and maintenance
+- Promote new feature development and performance optimization
+- Help build a better developer community
+
+**Sponsorship Benefits**
+- 💬 **Sponsor $100**: Get one one-on-one communication and guidance opportunity to answer technical questions and provide architecture advice
+- 🎯 **Sponsor $1000**: Get free commercial license for commercial project development and deployment
+
+**PayPal Sponsorship**: [https://paypal.me/magicodes](https://paypal.me/magicodes)
+
+**Thank you to every supporter and contributor! Your support is the driving force behind our continuous progress!** 🙏
+

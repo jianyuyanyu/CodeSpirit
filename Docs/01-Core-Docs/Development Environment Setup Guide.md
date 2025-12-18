@@ -7,6 +7,8 @@ This guide will help you quickly set up the development environment for CodeSpir
 **Last Updated**: December 2025  
 **Framework Version**: v2.0.0
 
+![image-20251218200855805](../../Res/image-20251218200855805.png)
+
 ## Quick Start
 
 ### Prerequisites
@@ -92,7 +94,7 @@ docker --version
 ### 1. Clone Project
 
 ```bash
-git clone https://github.com/your-org/code-spirit.git
+git clone https://gitee.com/magicodes/code-spirit.git
 cd code-spirit
 ```
 
@@ -128,25 +130,29 @@ cd Src/CodeSpirit.AppHost
 dotnet run
 ```
 
+If startup is successful, you will see colorful console output like this:
+
+![image-20251218200658849](../../Res/image-20251218200658849.png)
+
 After startup, access:
-- **Aspire Dashboard**: http://localhost:18888 (opens automatically)
+- **Aspire Dashboard**: http://localhost:17109 (opens automatically)
 - **Web Application**: https://localhost:7120 (specific port displayed after startup)
-- **Identity API**: https://localhost:17134 (specific port displayed after startup)
-- **Config Center API**: https://localhost:62144 (specific port displayed after startup)
-- **Exam API**: https://localhost:61882 (specific port displayed after startup)
-- **Messaging API**: https://localhost:7252 (specific port displayed after startup)
-- **File Storage API**: (specific port displayed after startup)
-- **Survey API**: (specific port displayed after startup)
-- **Approval API**: (specific port displayed after startup)
-- **Pathfinder API**: (specific port displayed after startup)
 
 > **Note**: Actual port numbers may vary based on system configuration. Please check the Aspire Dashboard for accurate port information.
 
 #### Or Using Visual Studio
 
 1. Open `CodeSpirit.sln`
+
 2. Set `CodeSpirit.AppHost` as startup project
+
 3. Press F5 to run
+
+   ![image-20251218194717769](../../Res/image-20251218194717769.png)
+
+   Note: Ensure all the following services start normally:
+
+   ![image-20251218195227522](../../Res/image-20251218195227522.png)
 
 ## Project Structure
 
@@ -200,31 +206,43 @@ The project uses the following default configurations, automatically managed by 
 
 ### Database Connections
 - **Database Type**: Supports both MySQL and SQL Server (selected via `DatabaseType` configuration)
+
 - **MySQL**: Port 3306, automatically configured by Aspire
+
+  You can access the management UI (phpmyadmin) from the resource panel:
+
+  ![image-20251218195543876](../../Res/image-20251218195543876.png)
+
+  ![image-20251218195454570](../../Res/image-20251218195454570.png)
+
 - **SQL Server**: Port 1433, automatically configured by Aspire
+
 - **Database**: Automatically created and migrated
+
 - **Connection String**: Automatically managed by Aspire
 
 ### Cache and Message Queue
-- **Redis**: `localhost:6380` (port updated)
+- **Redis**: `localhost:6380` (see management UI for specific port)
+
 - **RabbitMQ**: `localhost:5672` (Management interface: http://localhost:15672, username/password: admin/Password123)
+
+  ![image-20251218195618899](../../Res/image-20251218195618899.png)
 
 ### Other Service Ports
 - **GreptimeDB**: 
+  
   - HTTP port: `localhost:4000`
   - gRPC port: `localhost:4001`
   - Health check: http://localhost:4000/health
-- **Seq Logging Service**: `localhost:5341` (port updated)
+  
+- **Seq Logging Service**: `localhost:5341` (see resource panel for specific port)
+
+  ![image-20251218195323985](../../Res/image-20251218195323985.png)
+
 - **Redis Commander**: Access via Aspire Dashboard
 
-### Default User Account
-The system automatically creates an administrator account:
-- **Username**: `admin`
-- **Email**: `admin@example.com`
-- **Password**: `123@Admin`
-- **Role**: `Admin` (System Administrator)
+  ![image-20251218195358167](../../Res/image-20251218195358167.png)
 
-> **Note**: Please change the default password immediately after first login to ensure system security.
 
 ## Development Tool Configuration
 
@@ -272,7 +290,7 @@ Create `.vscode/tasks.json`:
 
 ### 1. Check Service Status
 
-Access Aspire Dashboard (http://localhost:18888) to confirm all services are running normally:
+Access Aspire Dashboard (http://localhost:17109) to confirm all services are running normally:
 
 - ✅ CodeSpirit.Web (Web Frontend)
 - ✅ CodeSpirit.IdentityApi (Identity Authentication)
@@ -289,34 +307,49 @@ Access Aspire Dashboard (http://localhost:18888) to confirm all services are run
 - ✅ GreptimeDB (Time-series Database)
 - ✅ Seq (Logging Service)
 
-### 2. Test API
+### 2. Check Errors
 
-```bash
-# Test health check
-curl https://localhost:17134/health
+Open the structured logging panel to check for any errors:
 
-# Test login
-curl -X POST "https://localhost:17134/api/identity/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{"userName": "admin", "password": "123456"}'
-```
+![image-20251218195748771](../../Res/image-20251218195748771.png)
 
-### 3. Verify GreptimeDB
+### 3. Access Web Interface
 
-```bash
-# Check GreptimeDB health status
-curl http://localhost:4000/health
+System Platform: https://localhost:7120
 
-# View database information (via HTTP API)
-curl http://localhost:4000/v1/sql -X POST -H "Content-Type: application/json" \
-  -d '{"sql": "SHOW DATABASES"}'
-```
+Account: systemadmin 
 
-### 4. Access Web Interface
+Password: CodeSpirit@2025
 
-Open browser and access https://localhost:7120, login with default account.
+![image-20251218195825029](../../Res/image-20251218195825029.png)
+
+After login, you can see the system platform backend management UI:
+
+![image-20251218200130419](../../Res/image-20251218200130419.png)
+
+Tenant Platform (default tenant): https://localhost:7120/default/login
+
+Account: admin
+
+Password: 123@Admin
+
+![image-20251218195939141](../../Res/image-20251218195939141.png)
+
+![image-20251218200156112](../../Res/image-20251218200156112.png)
 
 ## Common Issues
+
+### Unable to Open Web Pages
+
+This is usually caused by the following situations:
+
+1. Unable to pull images, which can usually be seen in the Docker panel or Aspire management panel logs. It is recommended to configure image sources or use a VPN.
+
+2. Critical service failure, such as Web service failure.
+
+3. Port conflicts or network errors. Check the startup console for errors:
+
+   ![image-20251218200528327](../../Res/image-20251218200528327.png)
 
 ### Port Conflicts
 If encountering port conflicts, modify port configuration in `Src/CodeSpirit.AppHost/Program.cs`.
@@ -330,7 +363,7 @@ cd Src/CodeSpirit.AppHost
 dotnet run --force
 
 # Check service status in Aspire Dashboard
-# Access http://localhost:18888
+# Access http://localhost:17109
 ```
 
 ### GreptimeDB Startup Failure
@@ -428,6 +461,6 @@ After environment setup is complete, you can:
 If you encounter issues, please refer to:
 - [GitHub Issues](https://github.com/your-org/code-spirit/issues)
 - [Project Wiki](https://github.com/your-org/code-spirit/wiki)
-- [Discussions](https://github.com/your-org/code-spirit/discussions)
+- [Discussion Forum](https://github.com/your-org/code-spirit/discussions)
 
 Happy coding! 🚀

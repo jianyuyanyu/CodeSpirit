@@ -531,6 +531,21 @@ namespace CodeSpirit.Navigation.Services
                 {
                     node.PlatformType = ResolvePlatformType(PlatformType.Inherit, parentPlatformType);
                 }
+                // 如果节点的平台类型本身是继承（可能是在序列化/反序列化过程中丢失了OriginalPlatformType），也需要处理
+                else if (node.PlatformType == PlatformType.Inherit)
+                {
+                    node.PlatformType = ResolvePlatformType(PlatformType.Inherit, parentPlatformType);
+                    // 如果OriginalPlatformType也是Inherit，更新它以便后续处理
+                    if (node.OriginalPlatformType == PlatformType.Inherit)
+                    {
+                        node.OriginalPlatformType = node.PlatformType;
+                    }
+                }
+                // 如果节点没有设置平台类型（默认值），确保设置为Both
+                else if (node.PlatformType == PlatformType.None)
+                {
+                    node.PlatformType = PlatformType.Both;
+                }
 
                 // 递归处理子节点，传递当前节点的解析后平台类型
                 if (node.Children.Any())

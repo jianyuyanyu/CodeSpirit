@@ -61,9 +61,13 @@ namespace CodeSpirit.Navigation
                 }
 
                 // 4. 根据平台类型在内存中过滤
+                // 注意：这里只应用平台过滤，认证和权限过滤应该在 Controller 层通过 FilterNodesByContext 进行
                 var context = new NavigationFilterContext
                 {
-                    PlatformType = platformType
+                    PlatformType = platformType,
+                    // 设置 IsAuthenticated = true，避免 AuthenticationFilter 过滤掉所有节点
+                    // 实际的认证过滤应该在 Controller 层根据用户实际状态进行
+                    IsAuthenticated = true
                 };
 
                 return _filterService.FilterNodes(cachedNodes, context);

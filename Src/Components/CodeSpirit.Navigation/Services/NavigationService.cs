@@ -153,12 +153,20 @@ namespace CodeSpirit.Navigation
                 // 1. 构建导航树
                 var navigationTree = _treeBuilder.BuildNavigationTree();
 
+                _logger.LogInformation(
+                    "Built navigation tree with {Count} modules before caching: {Modules}",
+                    navigationTree.Count,
+                    string.Join(", ", navigationTree.Select(m => $"{m.Name}({m.PlatformType})")));
+
                 // 2. 写入缓存
                 await _cacheManager.SetCachedNavigationAsync(navigationTree);
 
+                // 3. 验证缓存写入
+                var cached = await _cacheManager.GetCachedNavigationAsync();
                 _logger.LogInformation(
-                    "Navigation tree initialization completed, {Count} modules",
-                    navigationTree.Count);
+                    "Navigation tree initialization completed. Cached {CachedCount} modules, verified {VerifiedCount} modules",
+                    navigationTree.Count,
+                    cached?.Count ?? 0);
             }
             catch (Exception ex)
             {

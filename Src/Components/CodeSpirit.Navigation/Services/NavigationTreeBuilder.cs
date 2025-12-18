@@ -60,16 +60,18 @@ namespace CodeSpirit.Navigation.Services
             {
                 try
                 {
+                    _logger.LogDebug("Building navigation for module: {ModuleName}", moduleName);
                     var moduleNodes = BuildModuleNavigationTree(moduleName);
                     if (moduleNodes != null && moduleNodes.Any())
                     {
-                        _logger.LogDebug("Built navigation for module {ModuleName}: {NodeCount} nodes, PlatformType={PlatformType}", 
+                        _logger.LogInformation("Built navigation for module {ModuleName}: {NodeCount} nodes, PlatformType={PlatformType}", 
                             moduleName, moduleNodes.Count, moduleNodes.First().PlatformType);
                         allModules.AddRange(moduleNodes);
+                        _logger.LogDebug("Total modules so far: {Count}", allModules.Count);
                     }
                     else
                     {
-                        _logger.LogDebug("Module {ModuleName} returned empty navigation tree", moduleName);
+                        _logger.LogWarning("Module {ModuleName} returned empty navigation tree (no controllers or all hidden)", moduleName);
                     }
                 }
                 catch (Exception ex)
@@ -78,7 +80,9 @@ namespace CodeSpirit.Navigation.Services
                 }
             }
 
-            _logger.LogInformation("Built navigation tree with {Count} modules", allModules.Count);
+            _logger.LogInformation("Built navigation tree with {Count} modules: {Modules}", 
+                allModules.Count, 
+                string.Join(", ", allModules.Select(m => $"{m.Name}({m.PlatformType})")));
             return allModules;
         }
 

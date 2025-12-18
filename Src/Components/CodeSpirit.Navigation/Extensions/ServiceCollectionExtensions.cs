@@ -1,4 +1,5 @@
-﻿using CodeSpirit.Navigation.Services;
+using CodeSpirit.Navigation.Services;
+using CodeSpirit.Navigation.Services.Filters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -7,15 +8,43 @@ using System.Threading.Tasks;
 
 namespace CodeSpirit.Navigation.Extensions
 {
+    /// <summary>
+    /// 服务集合扩展方法
+    /// </summary>
     public static class ServiceCollectionExtensions
     {
+        /// <summary>
+        /// 注册导航服务（重构后）
+        /// </summary>
+        /// <param name="services">服务集合</param>
+        /// <returns>服务集合</returns>
         public static IServiceCollection AddCodeSpiritNavigation(this IServiceCollection services)
         {
+            // 注册核心服务
+            services.AddSingleton<INavigationTreeBuilder, NavigationTreeBuilder>();
+            services.AddSingleton<INavigationCacheManager, NavigationCacheManager>();
+            services.AddSingleton<INavigationFilterService, NavigationFilterService>();
             services.AddSingleton<INavigationService, NavigationService>();
+
+            // 注册所有过滤器
+            services.AddSingleton<INavigationFilter, PlatformFilter>();
+            services.AddSingleton<INavigationFilter, PermissionFilter>();
+            services.AddSingleton<INavigationFilter, AuthenticationFilter>();
+            services.AddSingleton<INavigationFilter, VersionFilter>();
+            services.AddSingleton<INavigationFilter, DeviceFilter>();
+            services.AddSingleton<INavigationFilter, ExperimentalFilter>();
+            services.AddSingleton<INavigationFilter, GroupFilter>();
+            services.AddSingleton<INavigationFilter, TagFilter>();
+
             return services;
         }
 
-        public static async Task UseCodeSpiritNavigationAsync(this IApplicationBuilder builder)
+        /// <summary>
+        /// 初始化导航服务
+        /// </summary>
+        /// <param name="builder">应用构建器</param>
+        /// <returns>应用构建器</returns>
+        public static async Task<IApplicationBuilder> UseCodeSpiritNavigationAsync(this IApplicationBuilder builder)
         {
             try
             {
@@ -28,6 +57,8 @@ namespace CodeSpirit.Navigation.Extensions
                 var logger = builder.ApplicationServices.GetService<ILogger<NavigationService>>();
                 logger?.LogError(ex, "Failed to initialize navigation tree. Application will continue with empty navigation.");
             }
+
+            return builder;
         }
     }
 }

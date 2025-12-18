@@ -55,6 +55,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Compile Update="Resources\ExamDisplay.Designer.cs">
+	    <DesignTime>True</DesignTime>
+	    <AutoGen>True</AutoGen>
+	    <DependentUpon>ExamDisplay.resx</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- 嵌入资源文件 -->
 		<EmbeddedResource Update="Resources\ExamDisplay.resx">
 			<Generator>PublicResXFileCodeGenerator</Generator>

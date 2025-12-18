@@ -115,24 +115,48 @@ namespace CodeSpirit.Web.Controllers
 
                 // 获取租户平台的导航
                 var tree = await _navigationService.GetNavigationTreeAsync(PlatformType.Tenant);
+                
+                _logger.LogInformation("Retrieved navigation tree with {Count} nodes for platform {PlatformType}", tree?.Count ?? 0, PlatformType.Tenant);
 
                 // 创建租户上下文过滤条件
+                var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
                 var filterContext = new NavigationFilterContext
                 {
                     PlatformType = PlatformType.Tenant,
                     PermissionService = _hasPermissionService,
                     DeviceType = deviceType,
-                    IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
+                    IsAuthenticated = isAuthenticated,
                     IsDevelopment = IsEnvironmentDevelopment(),
                     GroupFilter = groupFilter ?? [],
                     UserTags = GetUserTags()
                 };
 
+                _logger.LogInformation("Filter context: IsAuthenticated={IsAuthenticated}, DeviceType={DeviceType}, IsDevelopment={IsDevelopment}, User={User}", 
+                    filterContext.IsAuthenticated, filterContext.DeviceType, filterContext.IsDevelopment, User.Identity?.Name ?? "Anonymous");
+
                 // 使用新的上下文过滤功能
                 var filteredNodes = _navigationService.FilterNodesByContext(tree, filterContext);
+                
+                _logger.LogInformation("Filtered navigation tree has {Count} nodes", filteredNodes?.Count ?? 0);
+                
+                // 调试：记录第一个节点的子节点数量
+                if (filteredNodes != null && filteredNodes.Any())
+                {
+                    var firstNode = filteredNodes.First();
+                    _logger.LogInformation("First node: Name={Name}, Title={Title}, ChildrenCount={ChildrenCount}", 
+                        firstNode.Name, firstNode.Title, firstNode.Children?.Count ?? 0);
+                    
+                    if (firstNode.Children != null && firstNode.Children.Any())
+                    {
+                        _logger.LogInformation("First node children: {Children}", 
+                            string.Join(", ", firstNode.Children.Select(c => $"{c.Name}({c.Title})")));
+                    }
+                }
 
                 // 使用标准的页面格式转换，无需特殊处理租户路径
                 var pageTree = ConvertToPageFormat(filteredNodes)?.ToList() ?? [];
+                
+                _logger.LogInformation("Converted page tree has {Count} items", pageTree?.Count ?? 0);
 
                 if (pageTree.Any() && includeDashboard)
                 {
@@ -264,28 +288,45 @@ namespace CodeSpirit.Web.Controllers
         {
             if (nodes == null || !nodes.Any()) return null;
 
-            return nodes
-                .Where(node => IsValidNode(node, parent))
-                .Select(node => CreatePageNode(node));
+            var validNodes = nodes.Where(node => IsValidNode(node, parent)).ToList();
+            
+            return validNodes.Select(node => CreatePageNode(node));
         }
 
         private static bool IsValidNode(NavigationNode node, NavigationNode parent)
         {
-            return !string.IsNullOrEmpty(node.Title) &&
-                   ((parent == null && node.Children != null && node.Children.Count != 0) || parent != null);
+            // 必须有标题
+            if (string.IsNullOrEmpty(node.Title))
+                return false;
+
+            // 如果是根节点（parent == null），必须有子节点才能显示
+            // 如果有父节点（parent != null），即使没有子节点也可以显示（叶子节点）
+            if (parent == null)
+            {
+                // 根节点必须有子节点
+                return node.Children != null && node.Children.Count > 0;
+            }
+            else
+            {
+                // 子节点总是有效的（无论是否有子节点）
+                return true;
+            }
         }
 
         private static object CreatePageNode(NavigationNode node)
         {
+            // 递归转换子节点
+            var children = ConvertToPageFormat(node.Children, node);
+            
             var pageNode = new
             {
                 label = node.Title,
-                url = node.Children.Count != 0 ? null : node.Path,
+                url = (node.Children == null || node.Children.Count == 0) ? node.Path : null,
                 link = node.Link,
                 icon = node.Icon,
                 permission = node.Permission,
                 visible = node.Visible,
-                children = ConvertToPageFormat(node.Children, node),
+                children = children,
                 schemaApi = GetSchemaApi(node),
                 schema = GetScheme(node)
             };

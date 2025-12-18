@@ -1,12 +1,6 @@
-﻿using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.Navigation.Models;
 using CodeSpirit.Navigation.Services;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,317 +11,221 @@ using CodeSpirit.Core.Enums;
 namespace CodeSpirit.Navigation
 {
     /// <summary>
-    /// 站点导航服务实现
+    /// 站点导航服务实现（重构后）
     /// </summary>
-    public partial class NavigationService : INavigationService
+    public class NavigationService : INavigationService
     {
-        private readonly IActionDescriptorCollectionProvider _actionProvider;
-        private readonly IDistributedCache _cache;
+        private readonly INavigationTreeBuilder _treeBuilder;
+        private readonly INavigationCacheManager _cacheManager;
+        private readonly INavigationFilterService _filterService;
         private readonly ILogger<NavigationService> _logger;
-        private readonly IConfiguration _configuration;
 
-        private const string CACHE_KEY_PREFIX = "CodeSpirit:Navigation:Module:";
-        private const string MODULE_NAMES_CACHE_KEY = "CodeSpirit:Navigation:ModuleNames";
-
-        private static readonly DistributedCacheEntryOptions _cacheOptions = new()
-        {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(365),
-            SlidingExpiration = TimeSpan.FromDays(90)
-        };
-
+        /// <summary>
+        /// 初始化导航服务
+        /// </summary>
+        /// <param name="treeBuilder">导航树构建器</param>
+        /// <param name="cacheManager">缓存管理器</param>
+        /// <param name="filterService">过滤服务</param>
+        /// <param name="logger">日志记录器</param>
         public NavigationService(
-            IActionDescriptorCollectionProvider actionProvider,
-            IDistributedCache cache,
-            ILogger<NavigationService> logger,
-            IConfiguration configuration)
+            INavigationTreeBuilder treeBuilder,
+            INavigationCacheManager cacheManager,
+            INavigationFilterService filterService,
+            ILogger<NavigationService> logger)
         {
-            _actionProvider = actionProvider;
-            _cache = cache;
+            _treeBuilder = treeBuilder;
+            _cacheManager = cacheManager;
+            _filterService = filterService;
             _logger = logger;
-            _configuration = configuration;
         }
 
         /// <summary>
-        /// 获取导航树
+        /// 获取导航树（简化后）
         /// </summary>
         /// <param name="platformType">平台类型</param>
         /// <returns>导航节点列表</returns>
         public async Task<List<NavigationNode>> GetNavigationTreeAsync(PlatformType platformType = PlatformType.Both)
         {
-            var allModuleNodes = new List<NavigationNode>();
-
             try
             {
-                var moduleNames = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY);
+                // 1. 尝试从缓存获取完整导航树
+                var cachedNodes = await _cacheManager.GetCachedNavigationAsync();
 
-                if (moduleNames == null)
+                if (cachedNodes == null)
                 {
-                    _logger.LogWarning("No navigation modules found in cache");
-                    return allModuleNodes;
+                    // 2. 构建导航树
+                    cachedNodes = _treeBuilder.BuildNavigationTree();
+
+                    // 3. 写入缓存
+                    await _cacheManager.SetCachedNavigationAsync(cachedNodes);
                 }
 
-                // 根据查询的平台类型确定需要查询的缓存键列表
-                var cacheKeysToQuery = new List<(string moduleName, PlatformType platform)>();
-                
-                foreach (var moduleName in moduleNames)
+                // 4. 根据平台类型在内存中过滤
+                // 注意：这里只应用平台过滤，认证和权限过滤应该在 Controller 层通过 FilterNodesByContext 进行
+                var context = new NavigationFilterContext
                 {
-                    switch (platformType)
-                    {
-                        case PlatformType.Both:
-                            // 查询Both时，从所有平台缓存中聚合结果
-                            cacheKeysToQuery.Add((moduleName, PlatformType.System));
-                            cacheKeysToQuery.Add((moduleName, PlatformType.Tenant));
-                            cacheKeysToQuery.Add((moduleName, PlatformType.Both));
-                            break;
-                        case PlatformType.System:
-                            // 查询System平台时，包含System和Both缓存
-                            cacheKeysToQuery.Add((moduleName, PlatformType.System));
-                            cacheKeysToQuery.Add((moduleName, PlatformType.Both));
-                            break;
-                        case PlatformType.Tenant:
-                            // 查询Tenant平台时，包含Tenant和Both缓存
-                            cacheKeysToQuery.Add((moduleName, PlatformType.Tenant));
-                            cacheKeysToQuery.Add((moduleName, PlatformType.Both));
-                            break;
-                        case PlatformType.None:
-                        default:
-                            // 查询None或其他类型时，只查询对应的缓存
-                            cacheKeysToQuery.Add((moduleName, platformType));
-                            break;
-                    }
+                    PlatformType = platformType,
+                    // 设置 IsAuthenticated = true，避免 AuthenticationFilter 过滤掉所有节点
+                    // 实际的认证过滤应该在 Controller 层根据用户实际状态进行
+                    IsAuthenticated = true
+                };
+
+                // 调试日志：记录过滤前的节点平台类型
+                if (cachedNodes != null && cachedNodes.Any())
+                {
+                    var platformTypes = cachedNodes.Select(n => n.PlatformType).Distinct().ToList();
+                    _logger.LogDebug(
+                        "Filtering {Count} nodes for platform {PlatformType}. Node platform types: {NodePlatformTypes}",
+                        cachedNodes.Count,
+                        platformType,
+                        string.Join(", ", platformTypes));
                 }
 
-                // 并发查询所有缓存键
-                var queryTasks = cacheKeysToQuery.Select(async item =>
-                {
-                    try
-                    {
-                        var cacheKey = GetModuleCacheKey(item.moduleName, item.platform);
-                        var moduleNodes = await _cache.GetAsync<List<NavigationNode>>(cacheKey);
-                        return moduleNodes ?? new List<NavigationNode>();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, $"Failed to retrieve navigation for module '{item.moduleName}' on platform '{item.platform}'. This module will be skipped.");
-                        return new List<NavigationNode>();
-                    }
-                });
+                var filtered = _filterService.FilterNodes(cachedNodes, context);
+                
+                _logger.LogDebug(
+                    "Filtered {Count} nodes for platform {PlatformType}, result: {ResultCount} nodes",
+                    cachedNodes?.Count ?? 0,
+                    platformType,
+                    filtered?.Count ?? 0);
 
-                var allResults = await Task.WhenAll(queryTasks);
-                
-                // 合并所有结果，去重（同一个模块可能从多个缓存中获取到）
-                var moduleDict = new Dictionary<string, NavigationNode>();
-                foreach (var moduleNodes in allResults)
-                {
-                    foreach (var node in moduleNodes)
-                    {
-                        // 使用模块名作为键，避免重复
-                        if (!moduleDict.ContainsKey(node.Name))
-                        {
-                            moduleDict[node.Name] = node;
-                        }
-                    }
-                }
-                
-                allModuleNodes.AddRange(moduleDict.Values);
+                return filtered;
             }
             catch (Exception ex)
             {
-                // 优雅处理模块列表缓存异常
-                _logger.LogError(ex, "Failed to retrieve navigation module list. Navigation will be empty.");
-                return allModuleNodes;
+                _logger.LogError(ex, "Failed to get navigation tree");
+                return new List<NavigationNode>();
             }
-
-            return allModuleNodes;
         }
 
         /// <summary>
-        /// 根据用户权限过滤导航节点
+        /// 根据权限过滤导航节点（保持向后兼容）
         /// </summary>
         /// <param name="nodes">导航节点列表</param>
         /// <param name="hasPermissionService">权限服务</param>
         /// <returns>过滤后的导航节点列表</returns>
         public virtual List<NavigationNode> FilterNodesByPermission(List<NavigationNode> nodes, IHasPermissionService hasPermissionService)
         {
-            if (nodes == null || !nodes.Any())
+            var context = new NavigationFilterContext
             {
-                return [];
-            }
+                PermissionService = hasPermissionService
+            };
 
-            if (hasPermissionService == null)
-            {
-                _logger.LogWarning("Permission service not available. Skipping permission filtering.");
-                return nodes;
-            }
-
-            var result = new List<NavigationNode>();
-
-            foreach (var node in nodes)
-            {
-                // 深拷贝节点，避免引用问题
-                var nodeCopy = node.Clone();
-                
-                // 首先递归处理子节点
-                var filteredChildren = FilterNodesByPermission(node.Children, hasPermissionService);
-                
-                // 检查节点自身权限或子节点是否有权限
-                bool hasPermission = string.IsNullOrEmpty(node.Permission) || 
-                                     hasPermissionService.HasNavigationPermission(node.Permission) || 
-                                     filteredChildren.Any();
-
-                if (hasPermission)
-                {
-                    // 设置过滤后的子节点集合
-                    nodeCopy.Children = filteredChildren;
-                    result.Add(nodeCopy);
-                }
-            }
-
-            return result;
+            return _filterService.FilterNodes(nodes, context);
         }
 
         /// <summary>
-        /// 根据平台类型过滤导航节点
+        /// 根据平台类型过滤导航节点（保持向后兼容）
         /// </summary>
         /// <param name="nodes">导航节点列表</param>
         /// <param name="platformType">平台类型</param>
         /// <returns>过滤后的导航节点列表</returns>
         public virtual List<NavigationNode> FilterNodesByPlatform(List<NavigationNode> nodes, PlatformType platformType)
         {
-            if (nodes == null || !nodes.Any())
+            var context = new NavigationFilterContext
             {
-                return [];
-            }
+                PlatformType = platformType
+            };
 
-            var result = new List<NavigationNode>();
-
-            foreach (var node in nodes)
-            {
-                // 检查节点是否支持当前平台类型
-                if ((node.PlatformType & platformType) != 0)
-                {
-                    var nodeCopy = node.Clone();
-                    // 递归处理子节点
-                    nodeCopy.Children = FilterNodesByPlatform(node.Children, platformType);
-                    result.Add(nodeCopy);
-                }
-            }
-
-            return result;
+            return _filterService.FilterNodes(nodes, context);
         }
 
         /// <summary>
-        /// 根据上下文过滤导航节点（包含平台、权限、版本、设备等）
+        /// 根据上下文过滤导航节点
         /// </summary>
         /// <param name="nodes">导航节点列表</param>
         /// <param name="context">过滤上下文</param>
         /// <returns>过滤后的导航节点列表</returns>
         public virtual List<NavigationNode> FilterNodesByContext(List<NavigationNode> nodes, NavigationFilterContext context)
         {
-            if (nodes == null || !nodes.Any())
+            return _filterService.FilterNodes(nodes, context);
+        }
+
+        /// <summary>
+        /// 初始化导航树（简化后）
+        /// </summary>
+        public async Task InitializeNavigationTree()
+        {
+            _logger.LogInformation("Starting navigation tree initialization");
+
+            try
             {
-                return [];
+                // 1. 构建当前服务的导航树
+                var navigationTree = _treeBuilder.BuildNavigationTree();
+
+                _logger.LogInformation(
+                    "Built navigation tree with {Count} modules for current service: {Modules}",
+                    navigationTree.Count,
+                    string.Join(", ", navigationTree.Select(m => $"{m.Name}({m.PlatformType})")));
+
+                // 2. 获取现有缓存
+                var existingCache = await _cacheManager.GetCachedNavigationAsync();
+                
+                if (existingCache != null && existingCache.Any())
+                {
+                    // 3. 合并策略：合并当前服务的模块到现有缓存中
+                    var existingModuleNames = existingCache.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    var newModules = navigationTree.Where(m => !existingModuleNames.Contains(m.Name)).ToList();
+                    
+                    if (newModules.Any())
+                    {
+                        _logger.LogInformation(
+                            "Merging {NewCount} new modules into existing cache with {ExistingCount} modules. New modules: {NewModules}",
+                            newModules.Count,
+                            existingCache.Count,
+                            string.Join(", ", newModules.Select(m => m.Name)));
+                        
+                        // 合并到现有缓存
+                        var mergedCache = existingCache.ToList();
+                        mergedCache.AddRange(newModules);
+                        
+                        // 写入合并后的缓存
+                        await _cacheManager.SetCachedNavigationAsync(mergedCache);
+                        
+                        _logger.LogInformation(
+                            "Navigation tree merged successfully. Total modules: {TotalCount}",
+                            mergedCache.Count);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "No new modules to merge. Existing cache already contains all modules from current service.");
+                    }
+                }
+                else
+                {
+                    // 4. 如果缓存不存在，直接写入
+                    _logger.LogInformation(
+                        "No existing cache found. Writing {Count} modules to cache: {Modules}",
+                        navigationTree.Count,
+                        string.Join(", ", navigationTree.Select(m => $"{m.Name}({m.PlatformType})")));
+                    
+                    await _cacheManager.SetCachedNavigationAsync(navigationTree);
+                }
+
+                // 5. 验证缓存写入
+                var cached = await _cacheManager.GetCachedNavigationAsync();
+                _logger.LogInformation(
+                    "Navigation tree initialization completed. Cached {CachedCount} modules, verified {VerifiedCount} modules",
+                    navigationTree.Count,
+                    cached?.Count ?? 0);
             }
-
-            var result = new List<NavigationNode>();
-
-            foreach (var node in nodes)
+            catch (Exception ex)
             {
-                var nodeCopy = node.Clone();
-                
-                // 递归处理子节点
-                var filteredChildren = FilterNodesByContext(node.Children, context);
-                
-                // 检查各种过滤条件
-                bool shouldInclude = true;
-
-                // 平台类型过滤
-                if ((node.PlatformType & context.PlatformType) == 0)
-                {
-                    shouldInclude = false;
-                }
-
-                // 认证过滤
-                if (shouldInclude && node.RequireAuth && !context.IsAuthenticated)
-                {
-                    shouldInclude = false;
-                }
-
-                // 实验性功能过滤
-                if (shouldInclude && node.IsExperimental && !context.IsDevelopment)
-                {
-                    shouldInclude = false;
-                }
-
-                // 版本过滤
-                if (shouldInclude && !string.IsNullOrEmpty(context.CurrentVersion))
-                {
-                    if (!string.IsNullOrEmpty(node.MinVersion) && 
-                        CompareVersions(context.CurrentVersion, node.MinVersion) < 0)
-                    {
-                        shouldInclude = false;
-                    }
-
-                    if (!string.IsNullOrEmpty(node.MaxVersion) && 
-                        CompareVersions(context.CurrentVersion, node.MaxVersion) > 0)
-                    {
-                        shouldInclude = false;
-                    }
-                }
-
-                // 设备类型过滤
-                if (shouldInclude && !string.IsNullOrEmpty(context.DeviceType) && 
-                    node.SupportedDevices?.Contains(context.DeviceType) == false)
-                {
-                    shouldInclude = false;
-                }
-
-                // 分组过滤
-                if (shouldInclude && context.GroupFilter?.Length > 0)
-                {
-                    // 如果设置了分组过滤器，只包含匹配分组的节点
-                    if (string.IsNullOrEmpty(node.Group) || !context.GroupFilter.Contains(node.Group))
-                    {
-                        shouldInclude = false;
-                    }
-                }
-
-                // 标签过滤
-                if (shouldInclude && context.UserTags?.Length > 0 && node.Tags?.Length > 0)
-                {
-                    // 检查是否有交集
-                    if (!node.Tags.Intersect(context.UserTags).Any())
-                    {
-                        shouldInclude = false;
-                    }
-                }
-
-                // 权限过滤
-                if (shouldInclude && context.PermissionService != null && 
-                    !string.IsNullOrEmpty(node.Permission) && 
-                    !context.PermissionService.HasNavigationPermission(node.Permission))
-                {
-                    shouldInclude = false;
-                }
-
-                // 注意：Visible 字段不在服务端过滤，而是返回给前端让前端控制显示
-                // 这样前端可以根据 Visible 字段决定是否显示该导航项
-
-                // 如果节点本身不满足条件，但有子节点满足条件，则包含该节点
-                if (!shouldInclude && filteredChildren.Any())
-                {
-                    shouldInclude = true;
-                }
-
-                if (shouldInclude)
-                {
-                    nodeCopy.Children = filteredChildren;
-                    result.Add(nodeCopy);
-                }
+                _logger.LogError(ex, "Failed to initialize navigation tree");
+                throw;
             }
+        }
 
-            // 按 Order 和 Priority 排序
-            return result.OrderBy(n => n.Order).ThenByDescending(n => n.Priority).ToList();
+        /// <summary>
+        /// 清除指定模块的导航缓存（简化后）
+        /// </summary>
+        /// <param name="moduleName">模块名称</param>
+        /// <param name="platformType">平台类型，保留以保持API兼容性，但不再使用</param>
+        public async Task ClearModuleNavigationCacheAsync(string moduleName, PlatformType? platformType = null)
+        {
+            // platformType 参数保留以保持 API 兼容性，但不再使用
+            await _cacheManager.ClearModuleCacheAsync(moduleName);
         }
 
         /// <summary>
@@ -335,56 +233,7 @@ namespace CodeSpirit.Navigation
         /// </summary>
         public async Task ClearAllNavigationCacheAsync()
         {
-            try
-            {
-                var moduleNames = await _cache.GetAsync<List<string>>(MODULE_NAMES_CACHE_KEY);
-                if (moduleNames != null)
-                {
-                    foreach (var moduleName in moduleNames)
-                    {
-                        await ClearModuleNavigationCacheAsync(moduleName);
-                    }
-                }
-
-                await _cache.RemoveAsync(MODULE_NAMES_CACHE_KEY);
-                _logger.LogInformation("Cleared all navigation cache");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to clear all navigation cache");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// 获取模块缓存键
-        /// </summary>
-        /// <param name="moduleName">模块名称</param>
-        /// <param name="platformType">平台类型</param>
-        /// <returns>缓存键</returns>
-        private string GetModuleCacheKey(string moduleName, PlatformType platformType)
-        {
-            return $"{CACHE_KEY_PREFIX}{moduleName}:{platformType}";
-        }
-
-        /// <summary>
-        /// 比较版本号
-        /// </summary>
-        /// <param name="version1">版本1</param>
-        /// <param name="version2">版本2</param>
-        /// <returns>比较结果</returns>
-        private int CompareVersions(string version1, string version2)
-        {
-            try
-            {
-                var v1 = new Version(version1);
-                var v2 = new Version(version2);
-                return v1.CompareTo(v2);
-            }
-            catch
-            {
-                return string.Compare(version1, version2, StringComparison.OrdinalIgnoreCase);
-            }
+            await _cacheManager.ClearAllCacheAsync();
         }
     }
 }

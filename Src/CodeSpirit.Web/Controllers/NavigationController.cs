@@ -115,21 +115,29 @@ namespace CodeSpirit.Web.Controllers
 
                 // 获取租户平台的导航
                 var tree = await _navigationService.GetNavigationTreeAsync(PlatformType.Tenant);
+                
+                _logger.LogInformation("Retrieved navigation tree with {Count} nodes for platform {PlatformType}", tree?.Count ?? 0, PlatformType.Tenant);
 
                 // 创建租户上下文过滤条件
+                var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
                 var filterContext = new NavigationFilterContext
                 {
                     PlatformType = PlatformType.Tenant,
                     PermissionService = _hasPermissionService,
                     DeviceType = deviceType,
-                    IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
+                    IsAuthenticated = isAuthenticated,
                     IsDevelopment = IsEnvironmentDevelopment(),
                     GroupFilter = groupFilter ?? [],
                     UserTags = GetUserTags()
                 };
 
+                _logger.LogInformation("Filter context: IsAuthenticated={IsAuthenticated}, DeviceType={DeviceType}, IsDevelopment={IsDevelopment}, User={User}", 
+                    filterContext.IsAuthenticated, filterContext.DeviceType, filterContext.IsDevelopment, User.Identity?.Name ?? "Anonymous");
+
                 // 使用新的上下文过滤功能
                 var filteredNodes = _navigationService.FilterNodesByContext(tree, filterContext);
+                
+                _logger.LogInformation("Filtered navigation tree has {Count} nodes", filteredNodes?.Count ?? 0);
 
                 // 使用标准的页面格式转换，无需特殊处理租户路径
                 var pageTree = ConvertToPageFormat(filteredNodes)?.ToList() ?? [];

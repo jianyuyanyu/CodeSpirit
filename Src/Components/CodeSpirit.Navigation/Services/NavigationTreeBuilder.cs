@@ -52,6 +52,7 @@ namespace CodeSpirit.Navigation.Services
 
             // 1. 获取所有模块名称
             var moduleNames = GetAllModuleNames();
+            _logger.LogInformation("Found {Count} modules: {Modules}", moduleNames.Count, string.Join(", ", moduleNames));
 
             // 2. 为每个模块构建导航树
             var allModules = new List<NavigationNode>();
@@ -60,7 +61,16 @@ namespace CodeSpirit.Navigation.Services
                 try
                 {
                     var moduleNodes = BuildModuleNavigationTree(moduleName);
-                    allModules.AddRange(moduleNodes);
+                    if (moduleNodes != null && moduleNodes.Any())
+                    {
+                        _logger.LogDebug("Built navigation for module {ModuleName}: {NodeCount} nodes, PlatformType={PlatformType}", 
+                            moduleName, moduleNodes.Count, moduleNodes.First().PlatformType);
+                        allModules.AddRange(moduleNodes);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Module {ModuleName} returned empty navigation tree", moduleName);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -79,9 +89,11 @@ namespace CodeSpirit.Navigation.Services
         {
             // 首先尝试从代码构建导航树
             var codeNavigation = BuildCodeBasedNavigation(moduleName);
+            _logger.LogDebug("Module {ModuleName}: codeNavigation={Count} nodes", moduleName, codeNavigation?.Count ?? 0);
 
             // 然后加载配置文件中的导航
             var configNavigation = LoadNavigationFromConfig(moduleName);
+            _logger.LogDebug("Module {ModuleName}: configNavigation={HasConfig}", moduleName, configNavigation != null);
 
             // 如果两者都存在且代码导航不为空列表，进行合并
             if (configNavigation != null && codeNavigation.Count > 0)
@@ -89,6 +101,7 @@ namespace CodeSpirit.Navigation.Services
                 MergeNavigationNodes(configNavigation, codeNavigation[0]);
                 var result = new List<NavigationNode> { configNavigation };
                 ProcessPlatformTypeInheritance(result);
+                _logger.LogDebug("Module {ModuleName}: merged result, PlatformType={PlatformType}", moduleName, result.First().PlatformType);
                 return result;
             }
 
@@ -99,6 +112,11 @@ namespace CodeSpirit.Navigation.Services
 
             // 处理平台类型继承
             ProcessPlatformTypeInheritance(navigationResult);
+
+            if (navigationResult != null && navigationResult.Any())
+            {
+                _logger.LogDebug("Module {ModuleName}: final result, PlatformType={PlatformType}", moduleName, navigationResult.First().PlatformType);
+            }
 
             return navigationResult;
         }
@@ -459,10 +477,16 @@ namespace CodeSpirit.Navigation.Services
             var codeModules = GetCurrentModules();
             var configModules = GetConfigModules();
 
-            return codeModules.Union(configModules)
+            _logger.LogDebug("Code modules: {Modules}", string.Join(", ", codeModules));
+            _logger.LogDebug("Config modules: {Modules}", string.Join(", ", configModules));
+
+            var allModules = codeModules.Union(configModules)
                 .Where(p => !string.IsNullOrWhiteSpace(p))
                 .Distinct()
                 .ToList();
+
+            _logger.LogDebug("All modules: {Modules}", string.Join(", ", allModules));
+            return allModules;
         }
 
         /// <summary>

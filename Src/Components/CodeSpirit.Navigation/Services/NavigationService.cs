@@ -150,18 +150,60 @@ namespace CodeSpirit.Navigation
 
             try
             {
-                // 1. 构建导航树
+                // 1. 构建当前服务的导航树
                 var navigationTree = _treeBuilder.BuildNavigationTree();
 
                 _logger.LogInformation(
-                    "Built navigation tree with {Count} modules before caching: {Modules}",
+                    "Built navigation tree with {Count} modules for current service: {Modules}",
                     navigationTree.Count,
                     string.Join(", ", navigationTree.Select(m => $"{m.Name}({m.PlatformType})")));
 
-                // 2. 写入缓存
-                await _cacheManager.SetCachedNavigationAsync(navigationTree);
+                // 2. 获取现有缓存
+                var existingCache = await _cacheManager.GetCachedNavigationAsync();
+                
+                if (existingCache != null && existingCache.Any())
+                {
+                    // 3. 合并策略：合并当前服务的模块到现有缓存中
+                    var existingModuleNames = existingCache.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    var newModules = navigationTree.Where(m => !existingModuleNames.Contains(m.Name)).ToList();
+                    
+                    if (newModules.Any())
+                    {
+                        _logger.LogInformation(
+                            "Merging {NewCount} new modules into existing cache with {ExistingCount} modules. New modules: {NewModules}",
+                            newModules.Count,
+                            existingCache.Count,
+                            string.Join(", ", newModules.Select(m => m.Name)));
+                        
+                        // 合并到现有缓存
+                        var mergedCache = existingCache.ToList();
+                        mergedCache.AddRange(newModules);
+                        
+                        // 写入合并后的缓存
+                        await _cacheManager.SetCachedNavigationAsync(mergedCache);
+                        
+                        _logger.LogInformation(
+                            "Navigation tree merged successfully. Total modules: {TotalCount}",
+                            mergedCache.Count);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "No new modules to merge. Existing cache already contains all modules from current service.");
+                    }
+                }
+                else
+                {
+                    // 4. 如果缓存不存在，直接写入
+                    _logger.LogInformation(
+                        "No existing cache found. Writing {Count} modules to cache: {Modules}",
+                        navigationTree.Count,
+                        string.Join(", ", navigationTree.Select(m => $"{m.Name}({m.PlatformType})")));
+                    
+                    await _cacheManager.SetCachedNavigationAsync(navigationTree);
+                }
 
-                // 3. 验证缓存写入
+                // 5. 验证缓存写入
                 var cached = await _cacheManager.GetCachedNavigationAsync();
                 _logger.LogInformation(
                     "Navigation tree initialization completed. Cached {CachedCount} modules, verified {VerifiedCount} modules",

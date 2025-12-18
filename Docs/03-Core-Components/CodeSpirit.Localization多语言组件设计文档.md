@@ -5,7 +5,7 @@
 - **组件名称**：CodeSpirit.Localization
 - **版本**：1.0.0
 - **创建日期**：2024-12
-- **最后更新**：2024-12-17
+- **最后更新**：2025-12-18
 - **状态**：已实施 ✅
 
 ## 1. 概述
@@ -23,6 +23,7 @@ CodeSpirit.Localization 是一个完整的前后端多语言国际化解决方�
 - ✅ **动态切换**：用户可实时切换语言，无需重新登录
 - ✅ **AMIS 兼容**：深度集成 AMIS locale 机制，支持组件本地化
 - ✅ **DataAnnotations 支持**：验证特性自动本地化
+- ✅ **DTO描述多语言**：支持字段描述信息的多语言
 - ✅ **缓存优化**：多层缓存机制，提升性能
 - ✅ **零侵入设计**：利用 Settings 组件存储配置，无需修改业务表结构
 
@@ -933,6 +934,41 @@ public class CreateQuestionDto
 **验证错误输出**：
 - 中文：`题目内容不能为空`、`题目内容最多2000字符`
 - 英文：`Content is required`、`Content must not exceed 2000 characters`
+
+### 4.2 DTO 描述信息多语言
+
+除了验证消息，DTO 字段的描述信息（Description）也支持多语言，通过 `LocalizedDescriptionAttribute` 实现。
+
+**特性说明**：
+- 继承自 `DescriptionAttribute`，完全向后兼容
+- 支持 `ResourceKey` + `ResourceType` 模式
+- 运行时根据当前文化自动解析资源
+- 支持回退文本机制
+
+**资源文件组织**：
+- **共享资源**：`CodeSpirit.Localization/Resources/` - 通用资源
+- **服务资源**：`ApiServices/{ServiceName}/Resources/` - 服务特定资源
+
+**使用示例**：
+
+```csharp
+using CodeSpirit.Core.Attributes;
+using CodeSpirit.ExamApi.Resources;
+
+public class CreateQuestionDto
+{
+    [LocalizedDescription(
+        "根据题目内容生成合适的选项",  // 回退文本
+        ResourceKey = "Description.Question.Options",
+        ResourceType = typeof(ExamDisplayResources)
+    )]
+    public List<string> Options { get; set; }
+}
+```
+
+**资源键命名规范**：`Description.{EntityName}.{PropertyName}`
+
+详细使用说明请参考：[多语言国际化使用指南](../../01-Core-Docs/多语言国际化使用指南.md#4-dto-描述信息多语言)
 
 ## 5. 使用指南
 

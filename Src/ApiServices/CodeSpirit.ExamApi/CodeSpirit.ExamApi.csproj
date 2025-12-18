@@ -54,4 +54,16 @@
 		<ProjectReference Include="..\..\Components\CodeSpirit.Localization\CodeSpirit.Localization.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- 嵌入资源文件 -->
+		<EmbeddedResource Update="Resources\ExamDisplay.resx">
+			<Generator>PublicResXFileCodeGenerator</Generator>
+			<LastGenOutput>ExamDisplay.Designer.cs</LastGenOutput>
+		</EmbeddedResource>
+		<EmbeddedResource Update="Resources\ExamDisplay.en.resx">
+			<Generator>PublicResXFileCodeGenerator</Generator>
+			<LastGenOutput>ExamDisplay.en.Designer.cs</LastGenOutput>
+		</EmbeddedResource>
+	</ItemGroup>
+
 </Project>

@@ -1,6 +1,7 @@
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.ExamApi.Data.Models.Enums;
+using CodeSpirit.ExamApi.Resources;
 using CodeSpirit.Localization.Resources;
 using Newtonsoft.Json;
 using System.ComponentModel;
@@ -48,7 +49,11 @@ public class CreateQuestionDto
     [Display(Name = "Options", ResourceType = typeof(DisplayResources))]
     [Required(ErrorMessageResourceType = typeof(ValidationResources), 
              ErrorMessageResourceName = "Required")]
-    [Description("根据题目内容生成合适的选项，单选题通常4个选项，多选题可以有更多选项")]
+    [LocalizedDescription(
+        "根据题目内容生成合适的选项，单选题通常4个选项，多选题可以有更多选项",
+        ResourceKey = "Description.Question.Options",
+        ResourceType = typeof(ExamDisplayResources)
+    )]
     [AiFieldFill(Weight = 3, Priority = 1)]
     [AmisArrayField(
         Items = "{ \"type\":\"input-text\", \"required\":true }",
@@ -69,7 +74,11 @@ public class CreateQuestionDto
     [StringLength(1000,
         ErrorMessageResourceType = typeof(ValidationResources),
         ErrorMessageResourceName = "StringLengthMax")]
-    [Description("多选题请用逗号分隔，判断题答案必须是True或False。")]
+    [LocalizedDescription(
+        "多选题请用逗号分隔，判断题答案必须是True或False。",
+        ResourceKey = "Description.Question.CorrectAnswer",
+        ResourceType = typeof(ExamDisplayResources)
+    )]
     [AiFieldFill(Weight = 3, Priority = 2)]
     public string CorrectAnswer { get; set; } = string.Empty;
 
@@ -80,7 +89,11 @@ public class CreateQuestionDto
     [StringLength(2000,
         ErrorMessageResourceType = typeof(ValidationResources),
         ErrorMessageResourceName = "StringLengthMax")]
-    [Description("详细解释正确答案的原因，帮助学生理解知识点")]
+    [LocalizedDescription(
+        "详细解释正确答案的原因，帮助学生理解知识点",
+        ResourceKey = "Description.Question.Analysis",
+        ResourceType = typeof(ExamDisplayResources)
+    )]
     [AiFieldFill(Weight = 2, Priority = 3)]
     [AmisTextareaField(MaxLength = 2000, ShowCounter = true)]
     public string? Analysis { get; set; }
@@ -89,7 +102,11 @@ public class CreateQuestionDto
     /// 知识点
     /// </summary>
     [Display(Name = "KnowledgePoints", ResourceType = typeof(DisplayResources))]
-    [Description("列出该题目涉及的主要知识点，用逗号分隔")]
+    [LocalizedDescription(
+        "列出该题目涉及的主要知识点，用逗号分隔",
+        ResourceKey = "Description.Question.KnowledgePoints",
+        ResourceType = typeof(ExamDisplayResources)
+    )]
     [AiFieldFill(Weight = 2, Priority = 4)]
     public string? KnowledgePoints { get; set; }
 
@@ -123,7 +140,11 @@ public class CreateQuestionDto
     /// 标签
     /// </summary>
     [Display(Name = "Tags", ResourceType = typeof(DisplayResources))]
-    [Description("为题目添加相关标签，便于分类和搜索")]
+    [LocalizedDescription(
+        "为题目添加相关标签，便于分类和搜索",
+        ResourceKey = "Description.Question.Tags",
+        ResourceType = typeof(ExamDisplayResources)
+    )]
     [AiFieldFill(Weight = 1, Priority = 5)]
     [AmisSelectField(
         Source = "${ROOT_API}/api/exam/Questions/tags",

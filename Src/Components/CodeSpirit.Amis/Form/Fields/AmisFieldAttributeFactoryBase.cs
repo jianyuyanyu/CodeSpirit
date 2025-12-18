@@ -1,8 +1,9 @@
-﻿// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
+// 文件路径: CodeSpirit.Amis.Form/AmisFieldAttributeFactoryBase.cs
 
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Helpers;
+using CodeSpirit.Core.Attributes;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
 using System.ComponentModel.DataAnnotations;
@@ -99,7 +100,7 @@ namespace CodeSpirit.Amis.Form.Fields
             }
 
             // 处理描述信息
-            AddDescription(member, field);
+            AddDescription(member, field, utilityHelper);
 
             // 处理额外的自定义配置
             utilityHelper.HandleAdditionalConfig(fieldAttr.AdditionalConfig, field);
@@ -203,28 +204,15 @@ namespace CodeSpirit.Amis.Form.Fields
         /// </summary>
         /// <param name="member">成员信息</param>
         /// <param name="field">AMIS字段配置</param>
-        private void AddDescription(ICustomAttributeProvider member, JObject field)
+        /// <param name="utilityHelper">实用工具类（用于获取当前语言）</param>
+        private void AddDescription(ICustomAttributeProvider member, JObject field, UtilityHelper utilityHelper)
         {
-            string description = GetDescription(member);
+            // 使用 CustomAttributeProviderExtensions 中的统一方法获取描述
+            string description = CustomAttributeProviderExtensions.GetLocalizedDescriptionInternal(member, utilityHelper);
             if (!string.IsNullOrEmpty(description))
             {
                 field["description"] = description;
             }
-        }
-
-        /// <summary>
-        /// 获取成员的描述信息
-        /// </summary>
-        /// <param name="member">成员信息</param>
-        /// <returns>描述文本</returns>
-        private string GetDescription(ICustomAttributeProvider member)
-        {
-            return member switch
-            {
-                MemberInfo m => m.GetCustomAttribute<DescriptionAttribute>()?.Description,
-                ParameterInfo p => p.GetCustomAttribute<DescriptionAttribute>()?.Description,
-                _ => null
-            };
         }
     }
 }

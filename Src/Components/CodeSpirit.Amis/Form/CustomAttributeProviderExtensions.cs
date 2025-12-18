@@ -3,6 +3,7 @@
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
+using CodeSpirit.Core.Attributes;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
@@ -89,8 +90,8 @@ namespace CodeSpirit.Amis.Form
                 ["type"] = GetFormFieldType(type)
             };
 
-            AddCommonValidations(member, field);
-            AddTypeSpecificConfigurations(member, type, field);
+            AddCommonValidations(member, field, utilityHelper);
+            AddTypeSpecificConfigurations(member, type, field, utilityHelper);
 
             return field;
         }
@@ -305,10 +306,13 @@ namespace CodeSpirit.Amis.Form
         /// <summary>
         /// 添加通用验证规则
         /// </summary>
-        private static void AddCommonValidations(ICustomAttributeProvider member, JObject field)
+        /// <param name="member">成员信息</param>
+        /// <param name="field">AMIS 字段配置</param>
+        /// <param name="utilityHelper">实用工具类（可选，用于获取当前语言）</param>
+        private static void AddCommonValidations(ICustomAttributeProvider member, JObject field, UtilityHelper? utilityHelper = null)
         {
             AddValidationAttributes(member, field);
-            AddDescription(member, field);
+            AddDescription(member, field, utilityHelper);
         }
 
         /// <summary>
@@ -461,13 +465,119 @@ namespace CodeSpirit.Amis.Form
         /// <summary>
         /// 添加描述信息
         /// </summary>
-        private static void AddDescription(ICustomAttributeProvider member, JObject field)
+        /// <param name="member">成员信息</param>
+        /// <param name="field">AMIS 字段配置</param>
+        /// <param name="utilityHelper">实用工具类（可选，用于获取当前语言）</param>
+        private static void AddDescription(ICustomAttributeProvider member, JObject field, UtilityHelper? utilityHelper = null)
         {
-            string description = member.GetAttribute<DescriptionAttribute>()?.Description;
+            string description = GetLocalizedDescription(member, utilityHelper);
             if (!string.IsNullOrEmpty(description))
             {
                 field["description"] = description;
             }
+        }
+
+        /// <summary>
+        /// 获取本地化的描述信息（内部方法，供其他类使用）
+        /// </summary>
+        /// <param name="member">成员信息</param>
+        /// <param name="utilityHelper">实用工具类（可选，用于获取当前语言）</param>
+        internal static string GetLocalizedDescriptionInternal(ICustomAttributeProvider member, UtilityHelper? utilityHelper = null)
+        {
+            return GetLocalizedDescription(member, utilityHelper);
+        }
+
+        /// <summary>
+        /// 获取本地化的描述信息
+        /// </summary>
+        /// <param name="member">成员信息</param>
+        /// <param name="utilityHelper">实用工具类（可选，用于获取当前语言）</param>
+        private static string GetLocalizedDescription(ICustomAttributeProvider member, UtilityHelper? utilityHelper = null)
+        {
+            // 获取当前语言文化信息，优先从 UtilityHelper 获取（如果提供）
+            CultureInfo currentCulture = utilityHelper != null 
+                ? utilityHelper.GetCurrentCulture() 
+                : GetCurrentCulture();
+            
+            // 优先检查 LocalizedDescriptionAttribute
+            var localizedDescAttr = member switch
+            {
+                MemberInfo m => m.GetCustomAttribute<LocalizedDescriptionAttribute>(),
+                ParameterInfo p => p.GetCustomAttribute<LocalizedDescriptionAttribute>(),
+                _ => null
+            };
+
+            if (localizedDescAttr != null)
+            {
+                // 如果指定了 ResourceType 和 ResourceKey，从资源文件中获取本地化文本
+                if (localizedDescAttr.ResourceType != null && !string.IsNullOrEmpty(localizedDescAttr.ResourceKey))
+                {
+                    try
+                    {
+                        var resourceType = localizedDescAttr.ResourceType;
+                        
+                        // 获取 ResourceManager
+                        var resourceManagerProp = resourceType.GetProperty("ResourceManager", BindingFlags.Public | BindingFlags.Static);
+                        if (resourceManagerProp != null)
+                        {
+                            var resourceManager = resourceManagerProp.GetValue(null) as ResourceManager;
+                            if (resourceManager != null)
+                            {
+                                // 先获取默认资源文件中的值（用于比较）
+                                var defaultCulture = new CultureInfo("zh-CN");
+                                var defaultText = resourceManager.GetString(localizedDescAttr.ResourceKey, defaultCulture);
+                                
+                                // 使用当前文化获取本地化文本
+                                var localizedText = resourceManager.GetString(localizedDescAttr.ResourceKey, currentCulture);
+                                
+                                // 如果获取到了本地化文本
+                                if (!string.IsNullOrEmpty(localizedText))
+                                {
+                                    // 如果当前文化是英文，且返回的文本与默认文本不同，说明找到了英文资源文件
+                                    if (currentCulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        // 如果返回的文本与默认文本不同，说明找到了英文资源文件
+                                        if (localizedText != defaultText)
+                                        {
+                                            return localizedText;
+                                        }
+                                        
+                                        // 如果相同，可能回退到了默认资源文件，尝试直接使用 "en" 文化
+                                        var enCulture = new CultureInfo("en");
+                                        var enText = resourceManager.GetString(localizedDescAttr.ResourceKey, enCulture);
+                                        if (!string.IsNullOrEmpty(enText) && enText != defaultText)
+                                        {
+                                            return enText;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // 非英文文化，直接返回获取到的文本
+                                        return localizedText;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // 如果资源获取失败，回退到基类描述
+                    }
+                }
+                
+                // 使用基类的描述（回退文本）
+                return localizedDescAttr.Description;
+            }
+
+            // 回退到标准 DescriptionAttribute
+            var descAttr = member switch
+            {
+                MemberInfo m => m.GetCustomAttribute<DescriptionAttribute>(),
+                ParameterInfo p => p.GetCustomAttribute<DescriptionAttribute>(),
+                _ => null
+            };
+
+            return descAttr?.Description;
         }
         #endregion
 
@@ -475,7 +585,11 @@ namespace CodeSpirit.Amis.Form
         /// <summary>
         /// 添加类型相关特殊配置
         /// </summary>
-        private static void AddTypeSpecificConfigurations(ICustomAttributeProvider member, Type type, JObject field)
+        /// <param name="member">成员信息</param>
+        /// <param name="type">类型</param>
+        /// <param name="field">AMIS 字段配置</param>
+        /// <param name="utilityHelper">实用工具类（可选，用于获取当前语言）</param>
+        private static void AddTypeSpecificConfigurations(ICustomAttributeProvider member, Type type, JObject field, UtilityHelper? utilityHelper = null)
         {
             if (type.IsEnumType())
             {

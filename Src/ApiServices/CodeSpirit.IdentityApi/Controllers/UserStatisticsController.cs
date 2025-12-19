@@ -1,4 +1,4 @@
-﻿using CodeSpirit.Charts;
+using CodeSpirit.Charts;
 using CodeSpirit.Charts.Attributes;
 using CodeSpirit.Charts.Extensions;
 using CodeSpirit.Charts.Models;
@@ -7,6 +7,7 @@ using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Resources;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -15,7 +16,7 @@ using System.Reflection;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("用户统计")]
-    [Navigation(Icon = "fa-solid fa-chart-bar", PlatformType = PlatformType.Tenant)]
+    [Navigation(Icon = "fa-solid fa-chart-bar", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.UserStatistics", TitleResourceType = typeof(NavigationResources))]
     public class UserStatisticsController : ApiControllerBase
     {
         private readonly IUserService _userService;

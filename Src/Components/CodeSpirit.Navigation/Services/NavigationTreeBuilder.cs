@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
 
@@ -267,13 +268,26 @@ namespace CodeSpirit.Navigation.Services
                 }
             }
 
-            var moduleNode = new NavigationNode(moduleName, moduleDisplayName, modulePath)
+            // 确定模块显示名称和资源键信息
+            string moduleTitle = moduleDisplayName ?? moduleName;
+            string moduleTitleResourceKey = null;
+            string moduleTitleResourceType = null;
+
+            if (moduleAttr != null && !string.IsNullOrEmpty(moduleAttr.DisplayNameResourceKey) && moduleAttr.DisplayNameResourceType != null)
+            {
+                moduleTitleResourceKey = moduleAttr.DisplayNameResourceKey;
+                moduleTitleResourceType = moduleAttr.DisplayNameResourceType.FullName;
+            }
+
+            var moduleNode = new NavigationNode(moduleName, moduleTitle, modulePath)
             {
                 ModuleName = moduleName,
                 Permission = moduleName.ToCamelCase(),
                 Icon = moduleAttr?.Icon,
                 PlatformType = inferredPlatformType,
-                OriginalPlatformType = inferredPlatformType
+                OriginalPlatformType = inferredPlatformType,
+                TitleResourceKey = moduleTitleResourceKey,
+                TitleResourceType = moduleTitleResourceType
             };
 
             foreach (var controller in controllers)
@@ -324,15 +338,45 @@ namespace CodeSpirit.Navigation.Services
         private NavigationNode CreateNavigationNode(string moduleName, NavigationAttribute attr, string defaultName, MemberInfo memberInfo, string defaultPath)
         {
             var displayAttr = memberInfo.GetCustomAttribute<System.ComponentModel.DisplayNameAttribute>();
+            var displayAttrWithResource = memberInfo.GetCustomAttribute<System.ComponentModel.DataAnnotations.DisplayAttribute>();
             var descriptionAttr = memberInfo.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>();
 
-            var node = new NavigationNode(defaultName, attr.Title ?? displayAttr?.DisplayName ?? defaultName, attr.Path ?? defaultPath)
+            // 确定标题和资源键信息
+            string title = attr.Title ?? displayAttr?.DisplayName ?? defaultName;
+            string titleResourceKey = null;
+            string titleResourceType = null;
+
+            // 优先使用 NavigationAttribute 的资源键
+            if (!string.IsNullOrEmpty(attr.TitleResourceKey) && attr.TitleResourceType != null)
+            {
+                titleResourceKey = attr.TitleResourceKey;
+                titleResourceType = attr.TitleResourceType.FullName;
+            }
+            // 其次使用 DisplayAttribute 的资源键
+            else if (displayAttrWithResource != null && !string.IsNullOrEmpty(displayAttrWithResource.Name) && displayAttrWithResource.ResourceType != null)
+            {
+                titleResourceKey = displayAttrWithResource.Name;
+                titleResourceType = displayAttrWithResource.ResourceType.FullName;
+            }
+
+            // 确定描述和资源键信息
+            string description = attr.Description ?? descriptionAttr?.Description;
+            string descriptionResourceKey = null;
+            string descriptionResourceType = null;
+
+            if (!string.IsNullOrEmpty(attr.DescriptionResourceKey) && attr.DescriptionResourceType != null)
+            {
+                descriptionResourceKey = attr.DescriptionResourceKey;
+                descriptionResourceType = attr.DescriptionResourceType.FullName;
+            }
+
+            var node = new NavigationNode(defaultName, title, attr.Path ?? defaultPath)
             {
                 Icon = attr.Icon,
                 Order = attr.Order,
                 ParentPath = attr.ParentPath,
                 Hidden = attr.Hidden,
-                Description = attr.Description ?? descriptionAttr?.Description,
+                Description = description,
                 IsExternal = attr.IsExternal,
                 Target = attr.Target,
                 ModuleName = moduleName,
@@ -349,7 +393,11 @@ namespace CodeSpirit.Navigation.Services
                 Shortcut = attr.Shortcut,
                 Badge = attr.Badge,
                 BadgeType = attr.BadgeType,
-                Visible = attr.Visible
+                Visible = attr.Visible,
+                TitleResourceKey = titleResourceKey,
+                TitleResourceType = titleResourceType,
+                DescriptionResourceKey = descriptionResourceKey,
+                DescriptionResourceType = descriptionResourceType
             };
 
             // 解析元数据JSON

@@ -6,6 +6,7 @@ using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Authorization;
@@ -18,7 +19,7 @@ namespace CodeSpirit.IdentityApi.Controllers.System;
 /// 系统平台用户管理控制器
 /// </summary>
 [DisplayName("用户管理")]
-[Navigation(Icon = "fa-solid fa-users-gear", PlatformType = PlatformType.System)]
+[Navigation(Icon = "fa-solid fa-users-gear", PlatformType = PlatformType.System, TitleResourceKey = "Controller.SystemUsers", TitleResourceType = typeof(NavigationResources))]
 public class SystemUsersController : ApiControllerBase
 {
     private readonly IUserService _userService;

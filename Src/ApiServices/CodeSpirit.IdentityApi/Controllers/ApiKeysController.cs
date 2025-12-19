@@ -4,6 +4,7 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Dtos.ApiKey;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Resources;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +15,7 @@ namespace CodeSpirit.IdentityApi.Controllers;
 /// </summary>
 [Authorize]
 [DisplayName("API密钥管理")]
-[Navigation(Icon = "fa-solid fa-key")]
+[Navigation(Icon = "fa-solid fa-key", TitleResourceKey = "Controller.ApiKeys", TitleResourceType = typeof(NavigationResources))]
 public class ApiKeysController : ApiControllerBase
 {
     private readonly IApiKeyService _apiKeyService;

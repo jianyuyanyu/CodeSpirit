@@ -22,16 +22,19 @@ namespace CodeSpirit.Web.Controllers
         private const string DefaultDashboardUrl = "/";
         private const string DefaultDashboardIcon = "fa-solid fa-gauge-high";
         private readonly INavigationService _navigationService;
+        private readonly INavigationLocalizationService _localizationService;
         private readonly ILogger<NavigationController> _logger;
         private readonly IHasPermissionService _hasPermissionService;
         private readonly DashboardConfig _dashboardConfig;
 
         public NavigationController(
             INavigationService navigationService,
+            INavigationLocalizationService localizationService,
             ILogger<NavigationController> logger,
             IHasPermissionService hasPermissionService)
         {
             _navigationService = navigationService;
+            _localizationService = localizationService;
             _logger = logger;
             _hasPermissionService = hasPermissionService;
         }
@@ -55,6 +58,9 @@ namespace CodeSpirit.Web.Controllers
             {
                 var tree = await _navigationService.GetNavigationTreeAsync(platformType);
 
+                // 本地化导航树
+                var localizedTree = _localizationService.LocalizeNavigationTree(tree);
+
                 // 创建上下文过滤条件
                 var filterContext = new NavigationFilterContext
                 {
@@ -68,7 +74,7 @@ namespace CodeSpirit.Web.Controllers
                 };
 
                 // 使用新的上下文过滤功能
-                var filteredNodes = _navigationService.FilterNodesByContext(tree, filterContext);
+                var filteredNodes = _navigationService.FilterNodesByContext(localizedTree, filterContext);
                 var pageTree = ConvertToPageFormat(filteredNodes)?.ToList() ?? [];
 
                 if (pageTree.Any() && includeDashboard)
@@ -118,6 +124,9 @@ namespace CodeSpirit.Web.Controllers
                 
                 _logger.LogInformation("Retrieved navigation tree with {Count} nodes for platform {PlatformType}", tree?.Count ?? 0, PlatformType.Tenant);
 
+                // 本地化导航树
+                var localizedTree = _localizationService.LocalizeNavigationTree(tree);
+
                 // 创建租户上下文过滤条件
                 var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
                 var filterContext = new NavigationFilterContext
@@ -135,7 +144,7 @@ namespace CodeSpirit.Web.Controllers
                     filterContext.IsAuthenticated, filterContext.DeviceType, filterContext.IsDevelopment, User.Identity?.Name ?? "Anonymous");
 
                 // 使用新的上下文过滤功能
-                var filteredNodes = _navigationService.FilterNodesByContext(tree, filterContext);
+                var filteredNodes = _navigationService.FilterNodesByContext(localizedTree, filterContext);
                 
                 _logger.LogInformation("Filtered navigation tree has {Count} nodes", filteredNodes?.Count ?? 0);
                 
@@ -190,7 +199,11 @@ namespace CodeSpirit.Web.Controllers
             try
             {
                 var tree = await _navigationService.GetNavigationTreeAsync(platformType);
-                var filteredNodes = _navigationService.FilterNodesByPermission(tree, _hasPermissionService);
+                
+                // 本地化导航树
+                var localizedTree = _localizationService.LocalizeNavigationTree(tree);
+                
+                var filteredNodes = _navigationService.FilterNodesByPermission(localizedTree, _hasPermissionService);
                 return Ok(filteredNodes);
             }
             catch (Exception ex)

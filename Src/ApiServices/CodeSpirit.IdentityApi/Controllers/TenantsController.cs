@@ -18,7 +18,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     /// 租户管理控制器
     /// </summary>
     [DisplayName("租户管理")]
-    [Navigation(Icon = "fa-solid fa-building", PlatformType = PlatformType.System)]
+    [Navigation(Icon = "fa-solid fa-building", PlatformType = PlatformType.System, TitleResourceKey = "Controller.Tenants", TitleResourceType = typeof(CodeSpirit.Navigation.Resources.NavigationResources))]
     public class TenantsController : TenantApiControllerBase
     {
         private readonly ITenantService _tenantService;

@@ -1090,11 +1090,18 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 examRecord.Status = ExamRecordStatus.Submitted;
                 examRecord.Duration = (int)Math.Ceiling((now - examRecord.CreatedAt).TotalMinutes);
 
-                // 更新考试记录
-                await Repository.UpdateAsync(examRecord);
+                // ✅ 事务一致性修复：将考试记录状态更新和自动批改放在同一事务中
+                // 确保如果批改失败，考试记录状态也会回滚
+                await Repository.ExecuteInTransactionAsync(async () =>
+                {
+                    // 更新考试记录状态（在事务中，不立即保存）
+                    await Repository.UpdateAsync(examRecord, saveChanges: false);
 
-                // 如果是客观题，可以自动评分
-                await AutoGradeObjectiveQuestions(examRecord);
+                    // 如果是客观题，可以自动评分（内部会保存答案记录和更新状态）
+                    await AutoGradeObjectiveQuestions(examRecord);
+
+                    // 事务提交时会自动保存所有更改
+                });
 
                 // ✅ 设置已完成考试次数缓存（3小时过期）
                 var completedCountCacheKey = new ExamCacheOptions.CompletedExamCount(examRecord.ExamSettingId, studentId);
@@ -1358,30 +1365,95 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
             .Where(a => a.ExamRecordId == examRecord.Id)
             .ToListAsync();
 
-        // 加载所有答案关联的题目和题目版本
+        if (!answerRecords.Any())
+        {
+            _logger.LogWarning("考试记录 {ExamRecordId} 没有答案记录，跳过自动评分", examRecord.Id);
+            return;
+        }
+
+        // ✅ 性能优化：批量加载所有题目版本和题目（解决 N+1 查询问题）
+        var questionVersionIds = answerRecords
+            .Select(a => a.QuestionVersionId)
+            .Distinct()
+            .ToList();
+
+        var questionVersions = await _questionVersionRepository.CreateQuery()
+            .Include(qv => qv.Question)
+            .Where(qv => questionVersionIds.Contains(qv.Id))
+            .ToListAsync();
+
+        // 创建字典以便快速查找
+        var questionVersionDict = questionVersions.ToDictionary(qv => qv.Id);
+        var questionDict = questionVersions
+            .Where(qv => qv.Question != null)
+            .ToDictionary(qv => qv.Id, qv => qv.Question!);
+
+        // 关联题目和题目版本到答案记录
+        var skippedRecords = new List<ExamAnswerRecord>();
         foreach (var answer in answerRecords)
         {
-            answer.Question = await _questionVersionRepository.CreateQuery()
-                .Include(qv => qv.Question)
-                .Where(qv => qv.Id == answer.QuestionVersionId)
-                .Select(qv => qv.Question)
-                .FirstOrDefaultAsync();
-
-            answer.QuestionVersion = await _questionVersionRepository.GetByIdAsync(answer.QuestionVersionId);
+            if (questionVersionDict.TryGetValue(answer.QuestionVersionId, out var questionVersion))
+            {
+                answer.QuestionVersion = questionVersion;
+                if (questionDict.TryGetValue(answer.QuestionVersionId, out var question))
+                {
+                    answer.Question = question;
+                }
+                else
+                {
+                    skippedRecords.Add(answer);
+                    _logger.LogWarning(
+                        "答案记录无法评分：QuestionVersion 存在但 Question 为 NULL，ExamRecordId={ExamRecordId}, AnswerRecordId={AnswerRecordId}, QuestionId={QuestionId}, QuestionVersionId={QuestionVersionId}",
+                        examRecord.Id, answer.Id, answer.QuestionId, answer.QuestionVersionId);
+                }
+            }
+            else
+            {
+                skippedRecords.Add(answer);
+                _logger.LogWarning(
+                    "答案记录无法评分：QuestionVersion 不存在，ExamRecordId={ExamRecordId}, AnswerRecordId={AnswerRecordId}, QuestionId={QuestionId}, QuestionVersionId={QuestionVersionId}",
+                    examRecord.Id, answer.Id, answer.QuestionId, answer.QuestionVersionId);
+            }
         }
 
         // 使用评分器进行评分
         var grader = new Graders.ObjectiveQuestionGrader();
         var result = grader.Grade(answerRecords, examRecord.ExamSetting.ExamPaper.PassScore);
 
+        // ✅ 关键修复：保存评分后的答案记录（包括 IsCorrect 和 Score）
+        // 只保存被评分器处理过的答案记录（客观题）
+        var gradedRecords = answerRecords
+            .Where(a => a.Question != null && 
+                       (a.Question.Type == QuestionType.SingleChoice || 
+                        a.Question.Type == QuestionType.MultipleChoice || 
+                        a.Question.Type == QuestionType.TrueFalse) &&
+                       a.IsCorrect.HasValue) // 确保已被评分
+            .ToList();
+
+        if (gradedRecords.Any())
+        {
+            await _answerRecordRepository.UpdateRangeAsync(gradedRecords);
+            _logger.LogDebug("已保存 {Count} 条答案记录的评分结果，考试记录ID: {ExamRecordId}", 
+                gradedRecords.Count, examRecord.Id);
+        }
+
+        // 如果存在被跳过的记录，记录警告
+        if (skippedRecords.Any())
+        {
+            _logger.LogWarning("有 {Count} 条答案记录因数据不完整被跳过评分，考试记录ID: {ExamRecordId}", 
+                skippedRecords.Count, examRecord.Id);
+        }
+
         // 如果全部为客观题，更新考试记录状态
+        // 注意：如果在事务中调用，UpdateAsync 的 saveChanges 参数会被忽略，统一在事务提交时保存
         if (result.IsAllObjective)
         {
             await ApplyScoreConversion(examRecord, result.TotalScore);
             examRecord.Status = ExamRecordStatus.Graded;
             examRecord.GradedTime = DateTime.UtcNow;
 
-            await Repository.UpdateAsync(examRecord);
+            // 在事务中，即使 saveChanges=true，也会在事务提交时统一保存
+            await Repository.UpdateAsync(examRecord, saveChanges: true);
         }
     }
 

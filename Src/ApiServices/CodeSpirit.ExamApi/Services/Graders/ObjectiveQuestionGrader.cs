@@ -35,13 +35,16 @@ public class ObjectiveQuestionGrader
         var objectiveQuestionTypes = new[] { QuestionType.SingleChoice, QuestionType.MultipleChoice, QuestionType.TrueFalse };
         double totalScore = 0;
 
-        // 筛选客观题
+        // 筛选客观题（必须同时满足：Question 不为 null、QuestionVersion 不为 null、且为客观题类型）
         var allAnswers = answerRecords.ToList();
         var objectiveAnswers = allAnswers
-            .Where(a => a.Question != null && objectiveQuestionTypes.Contains(a.Question.Type))
+            .Where(a => a.Question != null && 
+                       a.QuestionVersion != null && 
+                       objectiveQuestionTypes.Contains(a.Question.Type))
             .ToList();
 
         // 评分
+        // 注意：objectiveAnswers 已经过滤了 Question 和 QuestionVersion 不为 null 的记录
         foreach (var answer in objectiveAnswers)
         {
             bool isCorrect = false;

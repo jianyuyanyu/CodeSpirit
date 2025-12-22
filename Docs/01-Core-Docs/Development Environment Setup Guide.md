@@ -4,7 +4,7 @@
 
 This guide will help you quickly set up the development environment for CodeSpirit (码灵), a low-code development framework. CodeSpirit is built on .NET 10 and Aspire 13.0, and you can start the complete development environment with just a few simple steps.
 
-**Last Updated**: December 2025  
+**Last Updated**: December 22, 2025  
 **Framework Version**: v2.0.0
 
 ![image-20251218200855805](../../Res/image-20251218200855805.png)
@@ -57,7 +57,7 @@ dotnet --version
 
 ### 2. Install Development Tools
 
-#### Visual Studio 2024 (Recommended)
+#### Visual Studio 2026 (Recommended)
 - Download: https://visualstudio.microsoft.com/vs/
 - Select workload: **ASP.NET and Web Development**
 
@@ -138,7 +138,10 @@ After startup, access:
 - **Aspire Dashboard**: http://localhost:17109 (opens automatically)
 - **Web Application**: https://localhost:7120 (specific port displayed after startup)
 
-> **Note**: Actual port numbers may vary based on system configuration. Please check the Aspire Dashboard for accurate port information.
+> **Note**: 
+>
+> 1. Actual port numbers may vary based on system configuration. Please check the Aspire Dashboard for accurate port information.
+> 2. If the login page is not displayed properly, please configure according to the Required Parameters Configuration section below.
 
 #### Or Using Visual Studio
 
@@ -245,7 +248,11 @@ The project uses the following default configurations, automatically managed by 
 
 ## Required Parameters Configuration
 
-CodeSpirit uses .NET Aspire's parameter management mechanism to configure sensitive information and environment-related parameters. Before the first startup, you need to configure the following required parameters.
+CodeSpirit uses .NET Aspire's parameter management mechanism to configure sensitive information and environment-related parameters. Before the first startup, you need to configure the following required parameters. The prompt UI is shown below:
+
+![image-20251222221113504](../../Res/image-20251222221113504.png)
+
+![image-20251222221245897](../../Res/image-20251222221245897.png)
 
 ### Parameter Configuration Methods
 
@@ -319,6 +326,9 @@ dotnet user-secrets set "llm-ApiKey" "your-llm-api-key-here"
 
 # Set AI Form Fill LLM API Key
 dotnet user-secrets set "ai-form-fill-llm-ApiKey" "your-ai-form-fill-llm-api-key-here"
+
+# Clear all secrets
+# dotnet user-secrets clear
 ```
 
 #### Method 2: Using appsettings.json (Alternative for Development Environment)

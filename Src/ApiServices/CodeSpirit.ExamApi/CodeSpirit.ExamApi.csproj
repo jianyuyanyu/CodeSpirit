@@ -8,8 +8,6 @@
 		<UserSecretsId>5edcf4b6-a4ef-47c6-b452-ede79ea812f6</UserSecretsId>
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 		<DockerfileContext>..\..</DockerfileContext>
-		<!-- 定义条件编译符号，启用 PDF 导出功能 -->
-		<!--<DefineConstants>$(DefineConstants);ENABLE_PDF_EXPORT</DefineConstants>-->
 	</PropertyGroup>
 
 	<ItemGroup>

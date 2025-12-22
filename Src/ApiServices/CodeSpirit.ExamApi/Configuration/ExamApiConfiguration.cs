@@ -11,9 +11,6 @@ using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.ExamApi.Services.TextParsers.v2;
 using CodeSpirit.ExamApi.Tasks;
 using CodeSpirit.MultiTenant.Extensions;
-#if ENABLE_PDF_EXPORT
-using CodeSpirit.PdfGeneration.Extensions;
-#endif
 using CodeSpirit.ScheduledTasks.Extensions;
 using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.Data;
@@ -83,11 +80,6 @@ public class ExamApiConfiguration : BaseApiConfiguration
         // 注册AI题目生成和SignalR服务
         AddAIAndSignalRServices(services, configuration);
         
-#if ENABLE_PDF_EXPORT
-        // 注册PDF生成服务
-        services.AddPdfGeneration(configuration);
-#endif
-        
         // 注册 QuestPDF 服务（轻量级PDF生成，默认启用）
         AddQuestPdfServices(services);
         
@@ -149,11 +141,6 @@ public class ExamApiConfiguration : BaseApiConfiguration
         
         // 使用AI表单填充自动端点
         app.UseAiFormFillEndpoints();
-        
-#if ENABLE_PDF_EXPORT
-        // 初始化PDF生成服务
-        await app.UsePdfGenerationAsync();
-#endif
     }
     
     /// <summary>

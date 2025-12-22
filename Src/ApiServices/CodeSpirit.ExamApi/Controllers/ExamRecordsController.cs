@@ -416,7 +416,7 @@ public class ExamRecordsController : ApiControllerBase
             ["className"] = "mb-2",
             ["header"] = new JObject
             {
-                ["title"] = $"{index}. {question.Content}",
+                ["title"] = $"<span class='word-break'>{index}. {question.Content}</span>",
                 ["badge"] = new JObject
                 {
                     ["label"] = statusLabel,
@@ -520,6 +520,7 @@ public class ExamRecordsController : ApiControllerBase
                     ["level"] = "info",
                     ["showIcon"] = true,
                     ["title"] = "学生答案",
+                    ["className"] = "word-break",
                     ["body"] = string.IsNullOrEmpty(studentAnswer) ? "未作答" : studentAnswer
                 });
 
@@ -530,6 +531,7 @@ public class ExamRecordsController : ApiControllerBase
                     ["level"] = "success",
                     ["showIcon"] = true,
                     ["title"] = "参考答案",
+                    ["className"] = "word-break",
                     ["body"] = correctAnswer
                 });
                 break;

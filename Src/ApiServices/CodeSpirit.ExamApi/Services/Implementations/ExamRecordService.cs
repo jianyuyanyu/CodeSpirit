@@ -682,16 +682,19 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                 ExamPaperId = x.ExamSetting.ExamPaperId,
                 TotalScore = x.ExamSetting.ExamPaper.TotalScore,
                 StudentScore = x.Score,
-                Answers = x.AnswerRecords == null ? new List<ClientExamAnswerWithCorrectDto>() : x.AnswerRecords.Select(a => new ClientExamAnswerWithCorrectDto
-                {
-                    QuestionId = a.QuestionId,
-                    Answer = a.Answer,
-                    CorrectAnswer = a.QuestionVersion.CorrectAnswer,
-                    QuestionType = a.Question.Type.ToString(),
-                    Score = a.Score,
-                    IsCorrect = a.IsCorrect,
-                    DefaultScore = a.QuestionVersion.DefaultScore
-                }).ToList()
+                Answers = x.AnswerRecords == null ? new List<ClientExamAnswerWithCorrectDto>() : x.AnswerRecords
+                    .OrderBy(a => a.OrderNumber)
+                    .Select(a => new ClientExamAnswerWithCorrectDto
+                    {
+                        QuestionId = a.QuestionId,
+                        Answer = a.Answer,
+                        CorrectAnswer = a.QuestionVersion.CorrectAnswer,
+                        QuestionType = a.Question.Type.ToString(),
+                        Score = a.Score,
+                        IsCorrect = a.IsCorrect,
+                        DefaultScore = a.QuestionVersion.DefaultScore,
+                        OrderNumber = a.OrderNumber
+                    }).ToList()
             }).FirstOrDefaultAsync();
         if (examRecord == null)
         {
@@ -2089,7 +2092,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     QuestionType = a.QuestionVersion.Question.Type.ToString(),
                     Score = a.Score,
                     IsCorrect = a.IsCorrect,
-                    DefaultScore = a.QuestionVersion.DefaultScore
+                    DefaultScore = a.QuestionVersion.DefaultScore,
+                    OrderNumber = a.OrderNumber
                 })
                 .ToList();
 

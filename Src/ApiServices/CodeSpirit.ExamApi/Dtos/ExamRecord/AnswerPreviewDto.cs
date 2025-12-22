@@ -37,6 +37,12 @@ namespace CodeSpirit.ExamApi.Dtos.ExamRecord
         /// </summary>
         [DisplayName("题目分值")]
         public int DefaultScore { get; set; }
+        
+        /// <summary>
+        /// 题目序号（答卷中的顺序）
+        /// </summary>
+        [DisplayName("题目序号")]
+        public int OrderNumber { get; set; }
     }
 
     public class AnswerPreviewDto

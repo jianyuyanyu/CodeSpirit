@@ -180,6 +180,21 @@ public class ExamRecordsController : ApiControllerBase
             return NotFound("试卷不存在");
         }
 
+        // 创建题目字典，以QuestionId为键，包含OrderNumber（答卷中的题目顺序）
+        var questionOrderDict = preview.Answers
+            .ToDictionary(a => a.QuestionId, a => a.OrderNumber);
+        
+        // 创建题目信息字典，以QuestionId为键
+        var questionInfoDict = examPaper.Questions
+            .ToDictionary(q => q.QuestionId, q => q);
+
+        // 按照答卷的题目顺序排序题目列表
+        var orderedQuestions = preview.Answers
+            .OrderBy(a => a.OrderNumber)
+            .Select(a => questionInfoDict.ContainsKey(a.QuestionId) ? questionInfoDict[a.QuestionId] : null)
+            .Where(q => q != null)
+            .ToList()!;
+
         // 计算总得分和成绩换算信息
         double finalScore = preview.StudentScore ?? 0;
         bool isScoreConverted = examPaper.EnableScoreConversion && examPaper.OriginalTotalScore.HasValue && examPaper.ConversionRatio.HasValue;
@@ -197,8 +212,8 @@ public class ExamRecordsController : ApiControllerBase
             originalScore = finalScore / (double)examPaper.ConversionRatio!.Value;
         }
 
-        // 按题目类型分组
-        var questionsByType = examPaper.Questions
+        // 按题目类型分组（使用排序后的题目列表）
+        var questionsByType = orderedQuestions
             .GroupBy(q => q.Type.ToString())
             .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -334,9 +349,9 @@ public class ExamRecordsController : ApiControllerBase
             ["body"] = new JArray()
         };
 
-        // 遍历所有题目
+        // 按照答卷的题目顺序遍历所有题目
         int questionIndex = 1;
-        foreach (var question in examPaper.Questions)
+        foreach (var question in orderedQuestions)
         {
             var questionCard = CreateQuestionCard(question, questionIndex++, preview.Answers);
             ((JArray)allTab["body"]).Add(questionCard);
@@ -354,11 +369,18 @@ public class ExamRecordsController : ApiControllerBase
                 ["body"] = new JArray()
             };
 
-            var typeQuestions = questionsByType[type];
+            // 按照答卷的题目顺序排序该类型的题目
+            var typeQuestions = questionsByType[type]
+                .OrderBy(q => questionOrderDict.ContainsKey(q.QuestionId) ? questionOrderDict[q.QuestionId] : int.MaxValue)
+                .ToList();
+            
             foreach (var question in typeQuestions)
             {
-                int globalIndex = examPaper.Questions.IndexOf(question) + 1;
-                var questionCard = CreateQuestionCard(question, globalIndex, preview.Answers);
+                // 使用答卷中的顺序号
+                int orderNumber = questionOrderDict.ContainsKey(question.QuestionId) 
+                    ? questionOrderDict[question.QuestionId] 
+                    : orderedQuestions.IndexOf(question) + 1;
+                var questionCard = CreateQuestionCard(question, orderNumber, preview.Answers);
                 ((JArray)typeTab["body"]).Add(questionCard);
             }
 

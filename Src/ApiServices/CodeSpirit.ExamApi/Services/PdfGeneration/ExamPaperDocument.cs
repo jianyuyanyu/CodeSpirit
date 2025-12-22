@@ -330,8 +330,23 @@ public class ExamPaperDocument : IDocument
             column.Item().Text("成绩统计").Bold().FontSize(12);
             column.Item().PaddingVertical(5);
 
-            // 统计题型得分
-            var questionsByType = _examPaper.Questions
+            // 统计题型得分（使用答卷中的题目顺序）
+            // 创建题目顺序字典
+            var questionOrderDict = _record.Answers
+                .ToDictionary(a => a.QuestionId, a => a.OrderNumber);
+            
+            // 创建题目信息字典
+            var questionInfoDict = _record.Questions
+                .ToDictionary(q => q.QuestionId, q => q);
+
+            // 按照答卷的题目顺序排序题目列表
+            var orderedQuestions = _record.Answers
+                .OrderBy(a => a.OrderNumber)
+                .Select(a => questionInfoDict.ContainsKey(a.QuestionId) ? questionInfoDict[a.QuestionId] : null)
+                .Where(q => q != null)
+                .ToList()!;
+
+            var questionsByType = orderedQuestions
                 .GroupBy(q => q.Type.ToString())
                 .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -376,7 +391,7 @@ public class ExamPaperDocument : IDocument
                 table.Cell().Background(Colors.Grey.Lighten3).Padding(5)
                     .Text("总分").Bold();
                 table.Cell().Background(Colors.Grey.Lighten3).Padding(5)
-                    .Text(_examPaper.Questions.Count.ToString()).AlignCenter().Bold();
+                    .Text(orderedQuestions.Count.ToString()).AlignCenter().Bold();
                 table.Cell().Background(Colors.Grey.Lighten3).Padding(5)
                     .Text($"{_record.TotalScore}/{_examPaper.TotalScore}").AlignCenter().Bold();
             });
@@ -390,8 +405,24 @@ public class ExamPaperDocument : IDocument
     {
         container.Column(column =>
         {
-            // 按题型分组
-            var questionsByType = _examPaper.Questions
+            // 使用答卷中的题目顺序（_record.Questions 已经按照 OrderNumber 排序）
+            // 创建题目顺序字典，以QuestionId为键
+            var questionOrderDict = _record.Answers
+                .ToDictionary(a => a.QuestionId, a => a.OrderNumber);
+            
+            // 创建题目信息字典，以QuestionId为键
+            var questionInfoDict = _record.Questions
+                .ToDictionary(q => q.QuestionId, q => q);
+
+            // 按照答卷的题目顺序排序题目列表
+            var orderedQuestions = _record.Answers
+                .OrderBy(a => a.OrderNumber)
+                .Select(a => questionInfoDict.ContainsKey(a.QuestionId) ? questionInfoDict[a.QuestionId] : null)
+                .Where(q => q != null)
+                .ToList()!;
+
+            // 按题型分组（使用排序后的题目列表）
+            var questionsByType = orderedQuestions
                 .GroupBy(q => q.Type.ToString())
                 .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -400,7 +431,10 @@ public class ExamPaperDocument : IDocument
             foreach (var type in questionsByType.Keys)
             {
                 string typeName = GetQuestionTypeName(type);
-                var typeQuestions = questionsByType[type];
+                // 按照答卷的题目顺序排序该类型的题目
+                var typeQuestions = questionsByType[type]
+                    .OrderBy(q => questionOrderDict.ContainsKey(q.QuestionId) ? questionOrderDict[q.QuestionId] : int.MaxValue)
+                    .ToList();
 
                 // 题型标题
                 column.Item().PaddingTop(10).BorderBottom(1).BorderColor(Colors.Grey.Lighten1)
@@ -409,10 +443,15 @@ public class ExamPaperDocument : IDocument
                     .Bold()
                     .FontSize(12);
 
-                // 该题型下的所有题目
+                // 该题型下的所有题目（按答卷顺序）
                 foreach (var question in typeQuestions)
                 {
-                    column.Item().PaddingTop(8).Element(c => ComposeQuestion(c, question, questionIndex++));
+                    // 使用答卷中的顺序号
+                    int orderNumber = questionOrderDict.ContainsKey(question.QuestionId) 
+                        ? questionOrderDict[question.QuestionId] 
+                        : questionIndex;
+                    column.Item().PaddingTop(8).Element(c => ComposeQuestion(c, question, orderNumber));
+                    questionIndex++;
                 }
             }
         });

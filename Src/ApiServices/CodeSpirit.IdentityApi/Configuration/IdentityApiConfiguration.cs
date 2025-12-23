@@ -8,6 +8,7 @@ using CodeSpirit.IdentityApi.EventHandlers;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
+using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Events;
 using CodeSpirit.Shared.EventBus.Extensions;
@@ -43,52 +44,12 @@ public class IdentityApiConfiguration : BaseApiConfiguration
     /// <param name="configuration">配置对象</param>
     public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 使用传统方式配置数据库，因为统一启动框架暂时不支持直接使用Aspire扩展方法
-        // TODO: 后续需要修改统一启动框架以支持Aspire数据库集成
-        var databaseType = configuration.GetValue<string>("DatabaseType") ?? "MySql";
-        var connectionString = configuration.GetConnectionString(ConnectionStringKey);
-        Console.WriteLine($"Identity API 使用数据库类型: {databaseType}");
-
-        if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
-        {
-            // 注册MySQL特定的DbContext用于迁移
-            services.AddDbContext<MySqlDbContext>(options =>
-            {
-                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
-            });
-            
-            // 注册ApplicationDbContext，使用MySQL配置
-            services.AddDbContext<ApplicationDbContext>(options =>
-            {
-                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
-            });
-            
-            Console.WriteLine("已配置MySql数据库");
-        }
-        else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
-        {
-            // 注册SQL Server特定的DbContext用于迁移
-            services.AddDbContext<SqlServerDbContext>(options =>
-            {
-                options.UseSqlServer(connectionString);
-            });
-            
-            // 注册ApplicationDbContext，使用SQL Server配置
-            services.AddDbContext<ApplicationDbContext>(options =>
-            {
-                options.UseSqlServer(connectionString);
-            });
-            
-            Console.WriteLine("已配置SqlServer数据库");
-        }
-        else
-        {
-            throw new InvalidOperationException($"不支持的数据库类型: {databaseType}");
-        }
+        // 调用基类方法以初始化路径前缀配置
+        base.ConfigureServices(services, configuration);
         
-        // 注册DbContext基类解析
-        services.AddScoped<DbContext>(provider =>
-            provider.GetRequiredService<ApplicationDbContext>());
+        // 使用统一的多数据库配置方法（支持 MySQL 和 SQL Server）
+        DatabaseMigrationHelper.ConfigureMultiDatabaseDbContext<ApplicationDbContext, MySqlDbContext, SqlServerDbContext>(
+            services, configuration, ConnectionStringKey);
         
         // 添加自定义业务服务
         AddCustomServices(services);
@@ -204,25 +165,9 @@ public class IdentityApiConfiguration : BaseApiConfiguration
     /// <returns>异步任务</returns>
     private static async Task ApplyDatabaseMigrationsAsync(IServiceProvider services, IConfiguration configuration, ILogger logger)
     {
-        var databaseType = configuration.GetValue<string>("DatabaseType") ?? "MySql";
-        logger.LogInformation("开始应用 {DatabaseType} 数据库迁移...", databaseType);
-        
-        if (databaseType.Equals("MySql", StringComparison.OrdinalIgnoreCase))
-        {
-            var mySqlContext = services.GetRequiredService<MySqlDbContext>();
-            await mySqlContext.Database.MigrateAsync();
-            logger.LogInformation("MySQL 数据库迁移应用完成");
-        }
-        else if (databaseType.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
-        {
-            var sqlServerContext = services.GetRequiredService<SqlServerDbContext>();
-            await sqlServerContext.Database.MigrateAsync();
-            logger.LogInformation("SQL Server 数据库迁移应用完成");
-        }
-        else
-        {
-            throw new InvalidOperationException($"不支持的数据库类型: {databaseType}");
-        }
+        // 使用统一的数据库迁移方法
+        await DatabaseMigrationHelper.ApplyDatabaseMigrationsAsync<MySqlDbContext, SqlServerDbContext>(
+            services, configuration, logger, "IdentityApi");
     }
     
     /// <summary>

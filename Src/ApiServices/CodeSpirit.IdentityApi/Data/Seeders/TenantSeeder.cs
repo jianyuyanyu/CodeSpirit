@@ -48,15 +48,19 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
             {
                 _logger.LogInformation("开始执行租户种子数据初始化...");
 
-                // 使用数据库事务确保数据一致性
-                using var transaction = await _context.Database.BeginTransactionAsync();
-
-                try
+                // 使用执行策略来支持重试机制
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
                 {
-                    // 1. 确保默认租户存在
-                    _logger.LogInformation("步骤1: 开始确保默认租户存在...");
-                    var isDefaultTenantCreated = await EnsureDefaultTenantAsync();
-                    _logger.LogInformation("步骤1完成: 默认租户创建状态 = {IsCreated}", isDefaultTenantCreated);
+                    // 使用数据库事务确保数据一致性
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+
+                    try
+                    {
+                        // 1. 确保默认租户存在
+                        _logger.LogInformation("步骤1: 开始确保默认租户存在...");
+                        var isDefaultTenantCreated = await EnsureDefaultTenantAsync();
+                        _logger.LogInformation("步骤1完成: 默认租户创建状态 = {IsCreated}", isDefaultTenantCreated);
 
                     // 2. 确保系统租户存在
                     _logger.LogInformation("步骤2: 开始确保系统租户存在...");
@@ -123,13 +127,14 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     // 验证租户创建结果
                     await VerifyTenantCreationAsync();
 
-                    _logger.LogInformation("租户种子数据初始化完成");
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+                        _logger.LogInformation("租户种子数据初始化完成");
+                    }
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -287,16 +292,9 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
             {
                 _logger.LogInformation("开始检查默认租户是否存在...");
                 
-                // 检查数据库连接
-                var canConnect = await _context.Database.CanConnectAsync();
-                _logger.LogInformation("数据库连接状态: {CanConnect}", canConnect ? "正常" : "失败");
+                // 注意：不在这里检查数据库连接，因为此方法在事务内部调用
+                // 如果数据库连接有问题，后续的查询操作会自动抛出异常
                 
-                if (!canConnect)
-                {
-                    _logger.LogError("无法连接到数据库，默认租户创建失败!");
-                    throw new InvalidOperationException("数据库连接失败");
-                }
-
                 var existingTenant = await _context.Tenants
                     .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.DefaultTenantId);
                 

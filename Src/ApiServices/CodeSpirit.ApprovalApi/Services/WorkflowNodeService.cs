@@ -145,33 +145,38 @@ public class WorkflowNodeService : BaseCRUDService<WorkflowNode, WorkflowNodeDto
             throw new BusinessException($"节点配置验证失败：{string.Join(", ", errors)}");
         }
 
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
+        // 使用执行策略包装事务操作，以支持重试执行策略
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
-            // 更新工作流配置
-            workflow.Configuration = dto.ProcessConfig;
-            workflow.UpdatedAt = DateTime.UtcNow;
-
-            // 删除现有节点
-            await DeleteByWorkflowDefinitionIdAsync(dto.WorkflowDefinitionId);
-
-            // 创建新节点
-            var batchDto = new BatchCreateWorkflowNodesDto
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                WorkflowDefinitionId = dto.WorkflowDefinitionId,
-                Nodes = dto.Nodes
-            };
+                // 更新工作流配置
+                workflow.Configuration = dto.ProcessConfig;
+                workflow.UpdatedAt = DateTime.UtcNow;
 
-            await BatchCreateAsync(batchDto);
+                // 删除现有节点
+                await DeleteByWorkflowDefinitionIdAsync(dto.WorkflowDefinitionId);
 
-            await transaction.CommitAsync();
-            return true;
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+                // 创建新节点
+                var batchDto = new BatchCreateWorkflowNodesDto
+                {
+                    WorkflowDefinitionId = dto.WorkflowDefinitionId,
+                    Nodes = dto.Nodes
+                };
+
+                await BatchCreateAsync(batchDto);
+
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
     }
 
     /// <summary>

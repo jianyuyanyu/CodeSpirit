@@ -909,53 +909,58 @@ namespace CodeSpirit.IdentityApi.Data.Seeders
                     return;
                 }
 
-                // 使用新的事务
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
+                // 使用执行策略包装事务操作，以支持 MySqlRetryingExecutionStrategy
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
                 {
-                    // 再次检查是否已存在
-                    var existingTenant = await _context.Tenants
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.DefaultTenantId);
-
-                    if (existingTenant != null)
+                    // 使用新的事务
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
                     {
-                        _logger.LogInformation("默认租户已存在，无需强制创建: {TenantId}", existingTenant.TenantId);
-                        return;
+                        // 再次检查是否已存在
+                        var existingTenant = await _context.Tenants
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(t => t.TenantId == TenantConstants.DefaultTenantId);
+
+                        if (existingTenant != null)
+                        {
+                            _logger.LogInformation("默认租户已存在，无需强制创建: {TenantId}", existingTenant.TenantId);
+                            return;
+                        }
+
+                        var defaultTenant = new TenantInfo
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            TenantId = TenantConstants.DefaultTenantId,
+                            Name = TenantConstants.DefaultTenantName,
+                            DisplayName = TenantConstants.DefaultTenantDisplayName,
+                            Description = TenantConstants.DefaultTenantDescription,
+                            Strategy = TenantStrategy.SharedDatabase,
+                            IsActive = true,
+                            Configuration = "{}",
+                            ThemeConfig = "{}",
+                            MaxUsers = 10000,
+                            StorageLimit = 102400L,
+                            ExpiresAt = null,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = 1L,
+                            IsDeleted = false
+                        };
+
+                        _context.Tenants.Add(defaultTenant);
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        _logger.LogInformation("强制创建默认租户成功: {TenantId}, ID: {Id}",
+                            defaultTenant.TenantId, defaultTenant.Id);
                     }
-
-                    var defaultTenant = new TenantInfo
+                    catch (Exception ex)
                     {
-                        Id = Guid.NewGuid().ToString(),
-                        TenantId = TenantConstants.DefaultTenantId,
-                        Name = TenantConstants.DefaultTenantName,
-                        DisplayName = TenantConstants.DefaultTenantDisplayName,
-                        Description = TenantConstants.DefaultTenantDescription,
-                        Strategy = TenantStrategy.SharedDatabase,
-                        IsActive = true,
-                        Configuration = "{}",
-                        ThemeConfig = "{}",
-                        MaxUsers = 10000,
-                        StorageLimit = 102400L,
-                        ExpiresAt = null,
-                        CreatedAt = DateTime.UtcNow,
-                        CreatedBy = 1L,
-                        IsDeleted = false
-                    };
-
-                    _context.Tenants.Add(defaultTenant);
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-
-                    _logger.LogInformation("强制创建默认租户成功: {TenantId}, ID: {Id}",
-                        defaultTenant.TenantId, defaultTenant.Id);
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    _logger.LogError(ex, "强制创建默认租户时发生事务错误: {Message}", ex.Message);
-                    throw;
-                }
+                        await transaction.RollbackAsync();
+                        _logger.LogError(ex, "强制创建默认租户时发生事务错误: {Message}", ex.Message);
+                        throw;
+                    }
+                });
             }
             catch (Exception ex)
             {

@@ -123,510 +123,517 @@ namespace CodeSpirit.Amis.Column
                 var jsonPropertyAttr = prop.GetCustomAttribute<Newtonsoft.Json.JsonPropertyAttribute>();
                 string fieldName = jsonPropertyAttr?.PropertyName ?? prop.Name.ToCamelCase();
 
-            JObject column = new()
-            {
-                ["name"] = fieldName,
-                ["label"] = displayName,
-                ["sortable"] = true,
-                ["type"] = GetColumnType(prop)
-            };
-
-            // 检查是否有显式的列类型特性
-            TplColumnAttribute tplAttr = prop.GetCustomAttribute<TplColumnAttribute>();
-            if (tplAttr != null && !tplAttr.Template.IsNullOrWhiteSpace())
-            {
-                column["tpl"] = tplAttr.Template;
-            }
-
-            // 首先处理 AmisColumnAttribute 配置（最高优先级）
-            AmisColumnAttribute columnAttr = (AmisColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(AmisColumnAttribute));
-            if (columnAttr != null)
-            {
-                
-                if (!string.IsNullOrEmpty(columnAttr.Name))
+                JObject column = new()
                 {
-                    column["name"] = columnAttr.Name;
-                    fieldName = columnAttr.Name; // 更新fieldName用于后续处理
+                    ["name"] = fieldName,
+                    ["label"] = displayName,
+                    ["sortable"] = true,
+                    ["type"] = GetColumnType(prop)
+                };
+
+                // 检查是否有显式的列类型特性
+                TplColumnAttribute tplAttr = prop.GetCustomAttribute<TplColumnAttribute>();
+                if (tplAttr != null && !tplAttr.Template.IsNullOrWhiteSpace())
+                {
+                    column["tpl"] = tplAttr.Template;
                 }
 
-                if (!string.IsNullOrEmpty(columnAttr.Label))
+                // 首先处理 AmisColumnAttribute 配置（最高优先级）
+                AmisColumnAttribute columnAttr = (AmisColumnAttribute)Attribute.GetCustomAttribute(prop, typeof(AmisColumnAttribute));
+                if (columnAttr != null)
                 {
-                    column["label"] = columnAttr.Label;
-                }
 
-                column["sortable"] = columnAttr.Sortable;
-
-                if (!string.IsNullOrEmpty(columnAttr.Type))
-                {
-                    column["type"] = columnAttr.Type;
-                }
-
-                column["quickEdit"] = columnAttr.QuickEdit;
-
-                if (!string.IsNullOrEmpty(columnAttr.Remark))
-                {
-                    column["remark"] = columnAttr.Remark;
-                }
-
-                column["copyable"] = columnAttr.Copyable;
-
-                if (!string.IsNullOrEmpty(columnAttr.Fixed))
-                {
-                    column["fixed"] = columnAttr.Fixed;
-                }
-
-                column["hidden"] = columnAttr.Hidden;
-
-                if (!columnAttr.Toggled)
-                {
-                    column["toggled"] = columnAttr.Toggled;
-                }
-
-                if (columnAttr.Disabled)
-                    column["disabled"] = columnAttr.Disabled;
-
-                // 添加背景色阶配置
-                if (columnAttr.BackgroundScaleColors?.Length >= 2)
-                {
-                    column["backgroundScale"] = new JObject
+                    if (!string.IsNullOrEmpty(columnAttr.Name))
                     {
-                        ["min"] = columnAttr.BackgroundScaleMin,
-                        ["max"] = columnAttr.BackgroundScaleMax,
-                        ["colors"] = new JArray(columnAttr.BackgroundScaleColors)
-                    };
-                }
-
-                // 如果AmisColumnAttribute明确指定了类型，则直接返回，不进行其他自动推断
-                // 但是 EachColumnAttribute 需要特殊处理，不能早期返回
-                if (!string.IsNullOrEmpty(columnAttr.Type) && !(columnAttr is EachColumnAttribute))
-                {
-                    // 在早期返回之前，先处理状态映射
-                    if (columnAttr.Type == "status" || 
-                        columnAttr.StatusMapping != StatusMapping.None || 
-                        !string.IsNullOrEmpty(columnAttr.CustomStatusMap))
-                    {
-                        _statusColumnHandler.ApplyStatusColumnConfiguration(column, prop);
+                        column["name"] = columnAttr.Name;
+                        fieldName = columnAttr.Name; // 更新fieldName用于后续处理
                     }
-                    
+
+                    if (!string.IsNullOrEmpty(columnAttr.Label))
+                    {
+                        column["label"] = columnAttr.Label;
+                    }
+
+                    column["sortable"] = columnAttr.Sortable;
+
+                    if (!string.IsNullOrEmpty(columnAttr.Type))
+                    {
+                        column["type"] = columnAttr.Type;
+                    }
+
+                    column["quickEdit"] = columnAttr.QuickEdit;
+
+                    if (!string.IsNullOrEmpty(columnAttr.Remark))
+                    {
+                        column["remark"] = columnAttr.Remark;
+                    }
+
+                    column["copyable"] = columnAttr.Copyable;
+
+                    if (!string.IsNullOrEmpty(columnAttr.Fixed))
+                    {
+                        column["fixed"] = columnAttr.Fixed;
+                    }
+
+                    column["hidden"] = columnAttr.Hidden;
+
+                    if (!columnAttr.Toggled)
+                    {
+                        column["toggled"] = columnAttr.Toggled;
+                    }
+
+                    if (columnAttr.Disabled)
+                        column["disabled"] = columnAttr.Disabled;
+
+                    // 添加背景色阶配置
+                    if (columnAttr.BackgroundScaleColors?.Length >= 2)
+                    {
+                        column["backgroundScale"] = new JObject
+                        {
+                            ["min"] = columnAttr.BackgroundScaleMin,
+                            ["max"] = columnAttr.BackgroundScaleMax,
+                            ["colors"] = new JArray(columnAttr.BackgroundScaleColors)
+                        };
+                    }
+
+                    // 如果AmisColumnAttribute明确指定了类型，则直接返回，不进行其他自动推断
+                    // 但是 EachColumnAttribute 需要特殊处理，不能早期返回
+                    if (!string.IsNullOrEmpty(columnAttr.Type) && !(columnAttr is EachColumnAttribute))
+                    {
+                        // 在早期返回之前，先处理状态映射
+                        if (columnAttr.Type == "status" ||
+                            columnAttr.StatusMapping != StatusMapping.None ||
+                            !string.IsNullOrEmpty(columnAttr.CustomStatusMap))
+                        {
+                            _statusColumnHandler.ApplyStatusColumnConfiguration(column, prop);
+                        }
+
+                        // 如果是主键，依然需要隐藏该列
+                        if (IsPrimaryKey(prop))
+                        {
+                            column["hidden"] = true;
+                        }
+
+                        return column;
+                    }
+                }
+
+                // 处理日期列特性
+                DateColumnAttribute dateAttr = prop.GetCustomAttribute<DateColumnAttribute>();
+                if (dateAttr != null)
+                {
+                    column["type"] = "date";
+
+                    // 设置日期格式
+                    if (!string.IsNullOrEmpty(dateAttr.Format))
+                    {
+                        column["format"] = dateAttr.Format;
+                    }
+                    else
+                    {
+                        // 根据属性类型设置默认格式
+                        Type propType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                        if (propType == typeof(DateTime) || propType == typeof(DateTimeOffset))
+                        {
+                            if (prop.Name.IndexOf("Time", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                prop.Name.IndexOf("Created", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                prop.Name.IndexOf("Updated", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                prop.Name.IndexOf("Modified", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                column["format"] = "YYYY-MM-DD HH:mm:ss";
+                            }
+                            else
+                            {
+                                column["format"] = "YYYY-MM-DD";
+                            }
+                        }
+                    }
+
+                    // 设置输入格式
+                    if (!string.IsNullOrEmpty(dateAttr.InputFormat))
+                    {
+                        column["inputFormat"] = dateAttr.InputFormat;
+                    }
+
+                    // 设置占位符
+                    if (!string.IsNullOrEmpty(dateAttr.Placeholder))
+                    {
+                        column["placeholder"] = dateAttr.Placeholder;
+                    }
+
+                    // 设置相对时间显示
+                    if (dateAttr.FromNow)
+                    {
+                        column["fromNow"] = true;
+                    }
+                }
+
+                // 处理没有DateColumnAttribute但是是日期时间类型的属性
+                Type underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                if (dateAttr == null && (underlyingType == typeof(DateTime) || underlyingType == typeof(DateTimeOffset)))
+                {
+                    // 应用智能日期格式化和优化配置
+                    ApplyDateTimeColumnOptimization(column, prop, fieldName, underlyingType);
+                }
+
+                // 处理 Tags 列 - 检查是显式的TagsColumnAttribute还是要自动应用
+                TagsColumnAttribute tagsAttr = prop.GetCustomAttribute<TagsColumnAttribute>();
+                bool isTagsField = prop.Name.Equals("Tags", StringComparison.OrdinalIgnoreCase);
+                bool isStringArrayType = IsStringArrayProperty(prop);
+
+                // 如果有TagsColumnAttribute特性或者是符合自动应用条件的属性
+                if (tagsAttr != null || (isTagsField && isStringArrayType))
+                {
+                    // 如果是自动应用的标签列，使用默认配置创建TagsColumnAttribute
+                    tagsAttr ??= new TagsColumnAttribute();
+
+                    // 应用标签列配置
+                    JObject tagsColumn = CreateTagsColumn(column, fieldName, tagsAttr);
+
+                    // 应用AmisColumnAttribute的配置（如果有的话）
+                    if (columnAttr != null)
+                    {
+                        ApplyAmisColumnAttributeToColumn(tagsColumn, columnAttr, prop);
+                    }
+
                     // 如果是主键，依然需要隐藏该列
                     if (IsPrimaryKey(prop))
                     {
-                        column["hidden"] = true;
+                        tagsColumn["hidden"] = true;
                     }
 
-                    return column;
+                    return tagsColumn;
                 }
-            }
 
-            // 处理日期列特性
-            DateColumnAttribute dateAttr = prop.GetCustomAttribute<DateColumnAttribute>();
-            if (dateAttr != null)
-            {
-                column["type"] = "date";
+                // 处理所有的字符串数组类型（List<string>、string[]等）
+                if (isStringArrayType)
+                {
+                    JObject stringArrayColumn = CreateStringArrayColumn(column, fieldName);
 
-                // 设置日期格式
-                if (!string.IsNullOrEmpty(dateAttr.Format))
-                {
-                    column["format"] = dateAttr.Format;
-                }
-                else
-                {
-                    // 根据属性类型设置默认格式
-                    Type propType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-                    if (propType == typeof(DateTime) || propType == typeof(DateTimeOffset))
+                    // 应用AmisColumnAttribute的配置（如果有的话）
+                    if (columnAttr != null)
                     {
-                        if (prop.Name.IndexOf("Time", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            prop.Name.IndexOf("Created", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            prop.Name.IndexOf("Updated", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            prop.Name.IndexOf("Modified", StringComparison.OrdinalIgnoreCase) >= 0)
+                        ApplyAmisColumnAttributeToColumn(stringArrayColumn, columnAttr, prop);
+                    }
+
+                    // 如果是主键，依然需要隐藏该列
+                    if (IsPrimaryKey(prop))
+                    {
+                        stringArrayColumn["hidden"] = true;
+                    }
+
+                    return stringArrayColumn;
+                }
+
+                // 处理枚举类型的映射列
+                if (_utilityHelper.IsEnumProperty(prop))
+                {
+                    column["type"] = "mapping";
+                    column["map"] = GetEnumMapping(prop.PropertyType);
+                }
+
+                // 处理图标字段
+                if (IsIconField(prop))
+                {
+                    column["type"] = "icon";
+
+                    // 设置默认的vendor为空字符串，以支持自定义图标
+                    column["vendor"] = "";
+
+                    // 处理 IconColumn 特定配置
+                    IconColumnAttribute iconAttr = prop.GetCustomAttribute<IconColumnAttribute>();
+                    if (iconAttr != null)
+                    {
+                        // 设置图标厂商
+                        column["vendor"] = iconAttr.Vendor ?? "";
+
+                        // 构建CSS类名来控制图标样式
+                        var cssClasses = new List<string>();
+
+                        // 添加大小相关的CSS类
+                        if (!string.IsNullOrEmpty(iconAttr.Size))
                         {
-                            column["format"] = "YYYY-MM-DD HH:mm:ss";
+                            string sizeClass = GetIconSizeClass(iconAttr.Size);
+                            if (!string.IsNullOrEmpty(sizeClass))
+                            {
+                                cssClasses.Add(sizeClass);
+                            }
+                        }
+
+                        // 添加颜色相关的CSS类
+                        if (!string.IsNullOrEmpty(iconAttr.Color))
+                        {
+                            string colorClass = GetIconColorClass(iconAttr.Color);
+                            if (!string.IsNullOrEmpty(colorClass))
+                            {
+                                cssClasses.Add(colorClass);
+                            }
+                        }
+
+                        // 添加自定义CSS类名
+                        if (!string.IsNullOrEmpty(iconAttr.ClassName))
+                        {
+                            cssClasses.Add(iconAttr.ClassName);
+                        }
+
+                        // 设置组合后的CSS类名
+                        if (cssClasses.Count > 0)
+                        {
+                            column["className"] = string.Join(" ", cssClasses);
+                        }
+
+                        // 设置旋转动画
+                        if (iconAttr.Spin)
+                        {
+                            column["spin"] = iconAttr.Spin;
+                        }
+
+                        // 处理默认图标
+                        if (!string.IsNullOrEmpty(iconAttr.DefaultIcon))
+                        {
+                            column["icon"] = "${" + fieldName + " || '" + iconAttr.DefaultIcon + "'}";
                         }
                         else
                         {
-                            column["format"] = "YYYY-MM-DD";
+                            column["icon"] = "${" + fieldName + "}";
                         }
-                    }
-                }
 
-                // 设置输入格式
-                if (!string.IsNullOrEmpty(dateAttr.InputFormat))
-                {
-                    column["inputFormat"] = dateAttr.InputFormat;
-                }
-
-                // 设置占位符
-                if (!string.IsNullOrEmpty(dateAttr.Placeholder))
-                {
-                    column["placeholder"] = dateAttr.Placeholder;
-                }
-
-                // 设置相对时间显示
-                if (dateAttr.FromNow)
-                {
-                    column["fromNow"] = true;
-                }
-            }
-
-            // 处理没有DateColumnAttribute但是是日期时间类型的属性
-            Type underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-            if (dateAttr == null && (underlyingType == typeof(DateTime) || underlyingType == typeof(DateTimeOffset)))
-            {
-                // 应用智能日期格式化和优化配置
-                ApplyDateTimeColumnOptimization(column, prop, fieldName, underlyingType);
-            }
-
-            // 处理 Tags 列 - 检查是显式的TagsColumnAttribute还是要自动应用
-            TagsColumnAttribute tagsAttr = prop.GetCustomAttribute<TagsColumnAttribute>();
-            bool isTagsField = prop.Name.Equals("Tags", StringComparison.OrdinalIgnoreCase);
-            bool isStringArrayType = IsStringArrayProperty(prop);
-
-            // 如果有TagsColumnAttribute特性或者是符合自动应用条件的属性
-            if (tagsAttr != null || (isTagsField && isStringArrayType))
-            {
-                // 如果是自动应用的标签列，使用默认配置创建TagsColumnAttribute
-                tagsAttr ??= new TagsColumnAttribute();
-
-                // 应用标签列配置
-                JObject tagsColumn = CreateTagsColumn(column, fieldName, tagsAttr);
-
-                // 应用AmisColumnAttribute的配置（如果有的话）
-                if (columnAttr != null)
-                {
-                    ApplyAmisColumnAttributeToColumn(tagsColumn, columnAttr, prop);
-                }
-
-                // 如果是主键，依然需要隐藏该列
-                if (IsPrimaryKey(prop))
-                {
-                    tagsColumn["hidden"] = true;
-                }
-
-                return tagsColumn;
-            }
-
-            // 处理所有的字符串数组类型（List<string>、string[]等）
-            if (isStringArrayType)
-            {
-                JObject stringArrayColumn = CreateStringArrayColumn(column, fieldName);
-
-                // 应用AmisColumnAttribute的配置（如果有的话）
-                if (columnAttr != null)
-                {
-                    ApplyAmisColumnAttributeToColumn(stringArrayColumn, columnAttr, prop);
-                }
-
-                // 如果是主键，依然需要隐藏该列
-                if (IsPrimaryKey(prop))
-                {
-                    stringArrayColumn["hidden"] = true;
-                }
-
-                return stringArrayColumn;
-            }
-
-            // 处理枚举类型的映射列
-            if (_utilityHelper.IsEnumProperty(prop))
-            {
-                column["type"] = "mapping";
-                column["map"] = GetEnumMapping(prop.PropertyType);
-            }
-
-            // 处理图标字段
-            if (IsIconField(prop))
-            {
-                column["type"] = "icon";
-                
-                // 设置默认的vendor为空字符串，以支持自定义图标
-                column["vendor"] = "";
-                
-                // 处理 IconColumn 特定配置
-                IconColumnAttribute iconAttr = prop.GetCustomAttribute<IconColumnAttribute>();
-                if (iconAttr != null)
-                {
-                    // 设置图标厂商
-                    column["vendor"] = iconAttr.Vendor ?? "";
-                    
-                    // 构建CSS类名来控制图标样式
-                    var cssClasses = new List<string>();
-                    
-                    // 添加大小相关的CSS类
-                    if (!string.IsNullOrEmpty(iconAttr.Size))
-                    {
-                        string sizeClass = GetIconSizeClass(iconAttr.Size);
-                        if (!string.IsNullOrEmpty(sizeClass))
+                        // 处理文本显示配置
+                        if (iconAttr.ShowText)
                         {
-                            cssClasses.Add(sizeClass);
+                            column["type"] = "tpl";
+                            string textTemplate = CreateIconWithTextTemplate(fieldName, iconAttr);
+                            column["tpl"] = textTemplate;
+                            column.Remove("icon"); // 移除icon属性，因为使用tpl模板
                         }
-                    }
-                    
-                    // 添加颜色相关的CSS类
-                    if (!string.IsNullOrEmpty(iconAttr.Color))
-                    {
-                        string colorClass = GetIconColorClass(iconAttr.Color);
-                        if (!string.IsNullOrEmpty(colorClass))
-                        {
-                            cssClasses.Add(colorClass);
-                        }
-                    }
-                    
-                    // 添加自定义CSS类名
-                    if (!string.IsNullOrEmpty(iconAttr.ClassName))
-                    {
-                        cssClasses.Add(iconAttr.ClassName);
-                    }
-                    
-                    // 设置组合后的CSS类名
-                    if (cssClasses.Count > 0)
-                    {
-                        column["className"] = string.Join(" ", cssClasses);
-                    }
-                    
-                    // 设置旋转动画
-                    if (iconAttr.Spin)
-                    {
-                        column["spin"] = iconAttr.Spin;
-                    }
-                    
-                    // 处理默认图标
-                    if (!string.IsNullOrEmpty(iconAttr.DefaultIcon))
-                    {
-                        column["icon"] = "${" + fieldName + " || '" + iconAttr.DefaultIcon + "'}";
                     }
                     else
                     {
+                        // 设置默认图标配置
                         column["icon"] = "${" + fieldName + "}";
-                    }
-                    
-                    // 处理文本显示配置
-                    if (iconAttr.ShowText)
-                    {
-                        column["type"] = "tpl";
-                        string textTemplate = CreateIconWithTextTemplate(fieldName, iconAttr);
-                        column["tpl"] = textTemplate;
-                        column.Remove("icon"); // 移除icon属性，因为使用tpl模板
+                        // 不设置默认className，使用浏览器默认样式
                     }
                 }
-                else
+                // 处理图片或头像字段
+                else if (IsImageField(prop))
                 {
-                    // 设置默认图标配置
-                    column["icon"] = "${" + fieldName + "}";
-                    // 不设置默认className，使用浏览器默认样式
-                }
-            }
-            // 处理图片或头像字段
-            else if (IsImageField(prop))
-            {
-                string columnType = GetImageColumnType(prop);
-                column["type"] = columnType;
+                    string columnType = GetImageColumnType(prop);
+                    column["type"] = columnType;
 
-                // 处理 Avatar 特定配置
-                if (columnType == "avatar")
-                {
-                    AvatarColumnAttribute avatarAttr = prop.GetCustomAttribute<AvatarColumnAttribute>();
-                    if (avatarAttr != null)
+                    // 处理 Avatar 特定配置
+                    if (columnType == "avatar")
                     {
-                        if (!string.IsNullOrEmpty(avatarAttr.Size))
+                        AvatarColumnAttribute avatarAttr = prop.GetCustomAttribute<AvatarColumnAttribute>();
+                        if (avatarAttr != null)
                         {
-                            column["size"] = avatarAttr.Size;
-                        }
+                            if (!string.IsNullOrEmpty(avatarAttr.Size))
+                            {
+                                column["size"] = avatarAttr.Size;
+                            }
 
-                        if (!string.IsNullOrEmpty(avatarAttr.Shape))
-                        {
-                            column["shape"] = avatarAttr.Shape;
-                        }
+                            if (!string.IsNullOrEmpty(avatarAttr.Shape))
+                            {
+                                column["shape"] = avatarAttr.Shape;
+                            }
 
-                        if (!string.IsNullOrEmpty(avatarAttr.Icon))
-                        {
-                            column["icon"] = avatarAttr.Icon;
-                        }
+                            if (!string.IsNullOrEmpty(avatarAttr.Icon))
+                            {
+                                column["icon"] = avatarAttr.Icon;
+                            }
 
-                        if (!string.IsNullOrEmpty(avatarAttr.Text))
-                        {
-                            column["text"] = avatarAttr.Text;
-                        }
+                            if (!string.IsNullOrEmpty(avatarAttr.Text))
+                            {
+                                column["text"] = avatarAttr.Text;
+                            }
 
-                        if (!string.IsNullOrEmpty(avatarAttr.Fit))
-                        {
-                            column["fit"] = avatarAttr.Fit;
-                        }
+                            if (!string.IsNullOrEmpty(avatarAttr.Fit))
+                            {
+                                column["fit"] = avatarAttr.Fit;
+                            }
 
-                        if (avatarAttr.Gap.HasValue)
-                        {
-                            column["gap"] = avatarAttr.Gap.Value;
-                        }
+                            if (avatarAttr.Gap.HasValue)
+                            {
+                                column["gap"] = avatarAttr.Gap.Value;
+                            }
 
-                        if (!string.IsNullOrEmpty(avatarAttr.OnError))
-                        {
-                            column["onError"] = avatarAttr.OnError;
-                        }
+                            if (!string.IsNullOrEmpty(avatarAttr.OnError))
+                            {
+                                column["onError"] = avatarAttr.OnError;
+                            }
 
-                        if (!string.IsNullOrEmpty(avatarAttr.Src))
+                            if (!string.IsNullOrEmpty(avatarAttr.Src))
+                            {
+                                column["src"] = avatarAttr.Src;
+                            }
+                        }
+                        else
                         {
-                            column["src"] = avatarAttr.Src;
+                            // 设置默认头像配置
+                            column["size"] = "default";
+                            column["shape"] = "circle";
                         }
                     }
-                    else
+                    else if (columnType == "image")
                     {
-                        // 设置默认头像配置
-                        column["size"] = "default";
-                        column["shape"] = "circle";
+                        // 设置默认图片配置
+                        column["enlargeAble"] = true;
+                        column["thumbMode"] = "cover";
+                        column["thumbRatio"] = "1:1";
                     }
                 }
-                else if (columnType == "image")
-                {
-                    // 设置默认图片配置
-                    column["enlargeAble"] = true;
-                    column["thumbMode"] = "cover";
-                    column["thumbRatio"] = "1:1";
-                }
-            }
 
-            // 处理时长字段（支持所有数值类型）
-            if (IsDurationField(prop))
-            {
-                ApplyDurationColumnFormat(column, prop, fieldName);
-            }
-
-            // 处理数值类型的格式化
-            Type numericUnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-            if (numericUnderlyingType == typeof(decimal) || numericUnderlyingType == typeof(double) || numericUnderlyingType == typeof(float))
-            {
-                // 如果时长字段已经处理过，则跳过
+                // 处理时长字段（支持所有数值类型）
                 if (IsDurationField(prop))
                 {
-                    // 时长字段已处理，跳过
+                    ApplyDurationColumnFormat(column, prop, fieldName);
                 }
-                // 如果是金额相关字段，添加货币格式
-                else if (prop.Name.IndexOf("Amount", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    prop.Name.IndexOf("Price", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    prop.Name.IndexOf("Cost", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    prop.Name.IndexOf("Fee", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    prop.Name.IndexOf("Money", StringComparison.OrdinalIgnoreCase) >= 0)
+
+                // 处理数值类型的格式化
+                Type numericUnderlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                if (numericUnderlyingType == typeof(decimal) || numericUnderlyingType == typeof(double) || numericUnderlyingType == typeof(float))
+                {
+                    // 如果时长字段已经处理过，则跳过
+                    if (IsDurationField(prop))
+                    {
+                        // 时长字段已处理，跳过
+                    }
+                    // 如果是金额相关字段，添加货币格式
+                    else if (prop.Name.IndexOf("Amount", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        prop.Name.IndexOf("Price", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        prop.Name.IndexOf("Cost", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        prop.Name.IndexOf("Fee", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        prop.Name.IndexOf("Money", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        column["type"] = "tpl";
+                        column["tpl"] = "¥${" + fieldName + "|number:2}";
+                    }
+                    else if (prop.Name.IndexOf("Rate", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             prop.Name.IndexOf("Percent", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             prop.Name.IndexOf("Ratio", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        // 百分比显示
+                        column["type"] = "tpl";
+                        column["tpl"] = "${" + fieldName + "|percent}";
+                    }
+                }
+
+                // 处理状态列
+                if (_statusColumnHandler.IsStatusColumn(prop))
+                {
+                    _statusColumnHandler.ApplyStatusColumnConfiguration(column, prop);
+                }
+
+                // 处理链接字段
+                if (prop.Name.IndexOf("Url", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    prop.Name.IndexOf("Link", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    prop.Name.IndexOf("Website", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
+                    if (dataTypeAttr?.DataType == DataType.Url)
+                    {
+                        column["type"] = "link";
+                        column["href"] = "${" + fieldName + "}";
+                        column["body"] = "${" + fieldName + "}";
+                    }
+                }
+
+                // 处理电子邮件字段
+                if (prop.Name.IndexOf("Email", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    prop.Name.IndexOf("Mail", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
+                    if (dataTypeAttr?.DataType == DataType.EmailAddress)
+                    {
+                        column["type"] = "link";
+                        column["href"] = "mailto:${" + fieldName + "}";
+                        column["body"] = "${" + fieldName + "}";
+                    }
+                }
+
+                // 处理电话号码字段
+                if (prop.Name.IndexOf("Phone", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    prop.Name.IndexOf("Tel", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    prop.Name.IndexOf("Mobile", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
+                    if (dataTypeAttr?.DataType == DataType.PhoneNumber)
+                    {
+                        // 使用增强的电话号码显示格式
+                        column["type"] = "tpl";
+                        column["tpl"] = "<a href=\"tel:${" + fieldName + "}\" class=\"text-primary\"><i class=\"fa fa-phone\"></i> ${" + fieldName + "}</a>";
+                        column["copyable"] = true; // 支持复制
+                    }
+                    else
+                    {
+                        // 即使没有DataType特性，也要优化显示
+                        column["type"] = "tpl";
+                        column["tpl"] = "<span class=\"text-muted\"><i class=\"fa fa-phone\"></i></span> <a href=\"tel:${" + fieldName + "}\" class=\"text-primary\">${" + fieldName + "}</a>";
+                        column["copyable"] = true;
+                    }
+                    column["sortable"] = true;
+                }
+
+                // 处理密码字段（通常应该隐藏或脱敏）
+                if (prop.Name.IndexOf("Password", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    prop.Name.IndexOf("Pwd", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     column["type"] = "tpl";
-                    column["tpl"] = "¥${" + fieldName + "|number:2}";
+                    column["tpl"] = "******";
+                    column["sortable"] = false;
                 }
-                else if (prop.Name.IndexOf("Rate", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                         prop.Name.IndexOf("Percent", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                         prop.Name.IndexOf("Ratio", StringComparison.OrdinalIgnoreCase) >= 0)
+
+                // 处理文本长度较长的字段，自动截断显示
+                if (numericUnderlyingType == typeof(string))
                 {
-                    // 百分比显示
-                    column["type"] = "tpl";
-                    column["tpl"] = "${" + fieldName + "|percent}";
+                    if (_longTextHandler.IsLongTextField(prop))
+                    {
+                        _longTextHandler.ApplyLongTextColumnOptimization(column, prop, fieldName);
+                    }
                 }
-            }
 
-            // 处理状态列
-            if (_statusColumnHandler.IsStatusColumn(prop))
-            {
-                _statusColumnHandler.ApplyStatusColumnConfiguration(column, prop);
-            }
-
-            // 处理链接字段
-            if (prop.Name.IndexOf("Url", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                prop.Name.IndexOf("Link", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                prop.Name.IndexOf("Website", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
-                if (dataTypeAttr?.DataType == DataType.Url)
+                // 处理 Each 类型列
+                EachColumnAttribute eachAttr = prop.GetCustomAttribute<EachColumnAttribute>();
+                if (eachAttr != null)
                 {
-                    column["type"] = "link";
-                    column["href"] = "${" + fieldName + "}";
-                    column["body"] = "${" + fieldName + "}";
+                    ApplyEachColumnAttribute(column, eachAttr, fieldName);
                 }
-            }
-
-            // 处理电子邮件字段
-            if (prop.Name.IndexOf("Email", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                prop.Name.IndexOf("Mail", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
-                if (dataTypeAttr?.DataType == DataType.EmailAddress)
+                // 处理 List 类型属性（只有在没有 EachColumnAttribute 时才处理）
+                else if (IsListProperty(prop))
                 {
-                    column["type"] = "link";
-                    column["href"] = "mailto:${" + fieldName + "}";
-                    column["body"] = "${" + fieldName + "}";
-                }
-            }
+                    column["type"] = "list";
 
-            // 处理电话号码字段
-            if (prop.Name.IndexOf("Phone", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                prop.Name.IndexOf("Tel", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                prop.Name.IndexOf("Mobile", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                DataTypeAttribute dataTypeAttr = prop.GetCustomAttribute<DataTypeAttribute>();
-                if (dataTypeAttr?.DataType == DataType.PhoneNumber)
+                    // 获取 List 类型的配置
+                    JObject listItem = CreateListItemConfiguration(prop);
+                    if (listItem != null)
+                    {
+                        column["listItem"] = listItem;
+                    }
+                }
+
+                // 如果任何时候列的类型被设置为switch，并且不存在QuickSave方法，则设置disabled为true
+                if (column["type"]?.ToString() == "switch" && amisContext.Actions.QuickSave == null)
                 {
-                    // 使用增强的电话号码显示格式
-                    column["type"] = "tpl";
-                    column["tpl"] = "<a href=\"tel:${" + fieldName + "}\" class=\"text-primary\"><i class=\"fa fa-phone\"></i> ${" + fieldName + "}</a>";
-                    column["copyable"] = true; // 支持复制
+                    column["disabled"] = true;
                 }
-                else
+
+                // 如果是主键，则隐藏该列
+                if (IsPrimaryKey(prop))
                 {
-                    // 即使没有DataType特性，也要优化显示
-                    column["type"] = "tpl";
-                    column["tpl"] = "<span class=\"text-muted\"><i class=\"fa fa-phone\"></i></span> <a href=\"tel:${" + fieldName + "}\" class=\"text-primary\">${" + fieldName + "}</a>";
-                    column["copyable"] = true;
+                    column["hidden"] = true;
                 }
-                column["sortable"] = true;
-            }
 
-            // 处理密码字段（通常应该隐藏或脱敏）
-            if (prop.Name.IndexOf("Password", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                prop.Name.IndexOf("Pwd", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                column["type"] = "tpl";
-                column["tpl"] = "******";
-                column["sortable"] = false;
-            }
-
-            // 处理文本长度较长的字段，自动截断显示
-            if (numericUnderlyingType == typeof(string))
-            {
-                if (_longTextHandler.IsLongTextField(prop))
+                // 最后再次应用AmisColumnAttribute的配置（确保覆盖所有自动推断的设置）
+                if (columnAttr != null)
                 {
-                    _longTextHandler.ApplyLongTextColumnOptimization(column, prop, fieldName);
+                    ApplyAmisColumnAttributeToColumn(column, columnAttr, prop);
                 }
-            }
 
-            // 处理 Each 类型列
-            EachColumnAttribute eachAttr = prop.GetCustomAttribute<EachColumnAttribute>();
-            if (eachAttr != null)
-            {
-                ApplyEachColumnAttribute(column, eachAttr, fieldName);
-            }
-            // 处理 List 类型属性（只有在没有 EachColumnAttribute 时才处理）
-            else if (IsListProperty(prop))
-            {
-                column["type"] = "list";
-
-                // 获取 List 类型的配置
-                JObject listItem = CreateListItemConfiguration(prop);
-                if (listItem != null)
+                // 处理 Badge 角标
+                BadgeAttribute badgeAttr = prop.GetCustomAttribute<BadgeAttribute>();
+                if (badgeAttr != null)
                 {
-                    column["listItem"] = listItem;
+                    ApplyBadgeConfiguration(column, badgeAttr);
                 }
-            }
-
-            // 如果任何时候列的类型被设置为switch，并且不存在QuickSave方法，则设置disabled为true
-            if (column["type"]?.ToString() == "switch" && amisContext.Actions.QuickSave == null)
-            {
-                column["disabled"] = true;
-            }
-
-            // 如果是主键，则隐藏该列
-            if (IsPrimaryKey(prop))
-            {
-                column["hidden"] = true;
-            }
-
-            // 最后再次应用AmisColumnAttribute的配置（确保覆盖所有自动推断的设置）
-            if (columnAttr != null)
-            {
-                ApplyAmisColumnAttributeToColumn(column, columnAttr, prop);
-            }
 
                 return column;
             }
@@ -636,7 +643,7 @@ namespace CodeSpirit.Amis.Column
                 // 优先使用 JsonProperty 特性的 PropertyName
                 var jsonPropertyAttr = prop.GetCustomAttribute<Newtonsoft.Json.JsonPropertyAttribute>();
                 string fieldName = jsonPropertyAttr?.PropertyName ?? prop.Name.ToCamelCase();
-                
+
                 return new JObject
                 {
                     ["name"] = fieldName,
@@ -1047,7 +1054,7 @@ namespace CodeSpirit.Amis.Column
 
             // 获取属性的基础类型（处理可空类型）
             Type underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-            
+
             // 如果不是字符串类型，则不是图片字段
             if (underlyingType != typeof(string))
             {
@@ -1057,9 +1064,9 @@ namespace CodeSpirit.Amis.Column
             string propName = prop.Name.ToLowerInvariant();
 
             // 排除明显不是图片的字段（包含计数、数量、尺寸等词汇）
-            if (propName.Contains("count") || propName.Contains("size") || 
-                propName.Contains("length") || propName.Contains("width") || 
-                propName.Contains("height") || propName.Contains("number") || 
+            if (propName.Contains("count") || propName.Contains("size") ||
+                propName.Contains("length") || propName.Contains("width") ||
+                propName.Contains("height") || propName.Contains("number") ||
                 propName.Contains("quantity") || propName.Contains("amount") ||
                 propName.Contains("total") || propName.Contains("sum"))
             {
@@ -1068,14 +1075,14 @@ namespace CodeSpirit.Amis.Column
 
             // 检查是否为明确的图片字段名称模式
             // 注意：包含"icon"的字段现在由IsIconField处理，这里只处理图片URL相关的
-            return (propName.EndsWith("image") || propName.EndsWith("avatar") || 
+            return (propName.EndsWith("image") || propName.EndsWith("avatar") ||
                     propName.EndsWith("photo") || propName.EndsWith("picture") ||
                     propName.EndsWith("logo") ||
                     propName.StartsWith("image") || propName.StartsWith("avatar") ||
                     propName.StartsWith("photo") || propName.StartsWith("picture") ||
                     propName.StartsWith("logo") ||
                     // 支持常见的图片字段命名
-                    propName == "image" || propName == "avatar" || 
+                    propName == "image" || propName == "avatar" ||
                     propName == "photo" || propName == "picture" ||
                     propName == "logo" ||
                     propName.Contains("imageurl") || propName.Contains("photourl") ||
@@ -1101,7 +1108,7 @@ namespace CodeSpirit.Amis.Column
 
             // 获取属性的基础类型（处理可空类型）
             Type underlyingType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-            
+
             // 如果不是字符串类型，则不是图标字段
             if (underlyingType != typeof(string))
             {
@@ -1111,7 +1118,7 @@ namespace CodeSpirit.Amis.Column
             string propName = prop.Name.ToLowerInvariant();
 
             // 排除明显不是图标的字段
-            if (propName.Contains("url") || propName.Contains("path") || 
+            if (propName.Contains("url") || propName.Contains("path") ||
                 propName.Contains("image") || propName.Contains("photo") ||
                 propName.Contains("picture") || propName.Contains("avatar"))
             {
@@ -1119,7 +1126,7 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 检查是否为明确的图标字段名称模式
-            return propName == "icon" || 
+            return propName == "icon" ||
                    propName.EndsWith("icon") ||
                    propName.StartsWith("icon") ||
                    propName.Contains("_icon") ||
@@ -1141,7 +1148,7 @@ namespace CodeSpirit.Amis.Column
         {
             string iconTemplate = "";
             string textTemplate = "${" + fieldName + "Text || " + fieldName + "}";
-            
+
             // 构建图标部分
             if (!string.IsNullOrEmpty(iconAttr.DefaultIcon))
             {
@@ -1151,38 +1158,38 @@ namespace CodeSpirit.Amis.Column
             {
                 iconTemplate = "<i class=\"${" + fieldName + "}\"";
             }
-            
+
             // 构建CSS类名
             var iconClasses = new List<string>();
-            
+
             // 添加大小类
             string sizeClass = GetIconSizeClass(iconAttr.Size);
             if (!string.IsNullOrEmpty(sizeClass))
             {
                 iconClasses.Add(sizeClass);
             }
-            
+
             // 添加颜色类
             string colorClass = GetIconColorClass(iconAttr.Color);
             if (!string.IsNullOrEmpty(colorClass))
             {
                 iconClasses.Add(colorClass);
             }
-            
+
             // 添加自定义CSS类
             if (!string.IsNullOrEmpty(iconAttr.ClassName))
             {
                 iconClasses.Add(iconAttr.ClassName);
             }
-            
+
             // 应用CSS类名
             if (iconClasses.Count > 0)
             {
                 iconTemplate += " class=\"" + string.Join(" ", iconClasses) + "\"";
             }
-            
+
             iconTemplate += "></i>";
-            
+
             // 根据文本位置组合模板
             return iconAttr.TextPosition?.ToLower() switch
             {
@@ -1235,7 +1242,7 @@ namespace CodeSpirit.Amis.Column
             return color.ToLower() switch
             {
                 "primary" => "text-primary",
-                "secondary" => "text-secondary", 
+                "secondary" => "text-secondary",
                 "success" => "text-success",
                 "danger" => "text-danger",
                 "warning" => "text-warning",
@@ -1244,8 +1251,8 @@ namespace CodeSpirit.Amis.Column
                 "dark" => "text-dark",
                 "muted" => "text-muted",
                 // 对于自定义颜色值（如 #ff0000），不处理，让用户通过 ClassName 自定义
-                _ => color.StartsWith("#") || color.StartsWith("rgb") || color.StartsWith("hsl") 
-                     ? "" 
+                _ => color.StartsWith("#") || color.StartsWith("rgb") || color.StartsWith("hsl")
+                     ? ""
                      : $"text-{color}" // 尝试构建 text-{color} 类名
             };
         }
@@ -1271,18 +1278,18 @@ namespace CodeSpirit.Amis.Column
         private JObject CreateOperationsColumn(string controllerName, Type dataType, ApiRoutesInfo apiRoute, CrudActions actions)
         {
             JArray buttons = [];
-            
+
             // 获取所有自定义操作按钮，用于检查是否有重复的标准操作
             List<JObject> customButtons = buttonHelper.GetCustomOperationsButtons<OperationAttribute>();
-            
+
             // 检查是否有自定义的编辑操作
             bool hasCustomEditOperation = HasCustomOperationWithLabel(customButtons, "编辑");
-            
+
             // 检查是否有自定义的删除操作
             bool hasCustomDeleteOperation = HasCustomOperationWithLabel(customButtons, "删除");
-            
+
             // 检查是否有自定义的查看/详情操作
-            bool hasCustomDetailOperation = HasCustomOperationWithLabel(customButtons, "查看") || 
+            bool hasCustomDetailOperation = HasCustomOperationWithLabel(customButtons, "查看") ||
                                            HasCustomOperationWithLabel(customButtons, "详情");
 
             // 添加详情按钮（如果没有自定义的查看操作）
@@ -1357,7 +1364,7 @@ namespace CodeSpirit.Amis.Column
         /// <returns>如果存在指定标签的操作则返回true，否则返回false</returns>
         private bool HasCustomOperationWithLabel(List<JObject> customButtons, string label)
         {
-            return customButtons.Any(btn => 
+            return customButtons.Any(btn =>
                 btn["label"]?.ToString().Equals(label, StringComparison.OrdinalIgnoreCase) == true);
         }
 
@@ -1536,8 +1543,8 @@ namespace CodeSpirit.Amis.Column
 
             // 处理状态映射配置
             // 如果明确设置了 Type = "status" 或者配置了状态映射，则应用状态映射
-            if (columnAttr.Type == "status" || 
-                columnAttr.StatusMapping != StatusMapping.None || 
+            if (columnAttr.Type == "status" ||
+                columnAttr.StatusMapping != StatusMapping.None ||
                 !string.IsNullOrEmpty(columnAttr.CustomStatusMap))
             {
                 _statusColumnHandler.ApplyStatusColumnConfiguration(column, prop);
@@ -1808,6 +1815,86 @@ namespace CodeSpirit.Amis.Column
                 {
                     column["defaultSort"] = "desc";
                 }
+            }
+        }
+
+        /// <summary>
+        /// 应用 Badge 角标配置到列
+        /// </summary>
+        /// <param name="column">列对象</param>
+        /// <param name="badgeAttr">Badge特性</param>
+        private void ApplyBadgeConfiguration(JObject column, BadgeAttribute badgeAttr)
+        {
+            JObject badgeConfig = new JObject();
+
+            // 设置角标类型
+            if (!string.IsNullOrEmpty(badgeAttr.Mode))
+            {
+                badgeConfig["mode"] = badgeAttr.Mode;
+            }
+
+            // 设置角标文案
+            if (!string.IsNullOrEmpty(badgeAttr.Text))
+            {
+                badgeConfig["text"] = badgeAttr.Text;
+            }
+
+            // 设置角标大小
+            if (badgeAttr.Size > 0)
+            {
+                badgeConfig["size"] = badgeAttr.Size;
+            }
+
+            // 设置角标级别
+            if (!string.IsNullOrEmpty(badgeAttr.Level))
+            {
+                badgeConfig["level"] = badgeAttr.Level;
+            }
+
+            // 设置封顶数字
+            if (badgeAttr.OverflowCount > 0)
+            {
+                badgeConfig["overflowCount"] = badgeAttr.OverflowCount;
+            }
+
+            // 设置角标位置
+            if (!string.IsNullOrEmpty(badgeAttr.Position))
+            {
+                badgeConfig["position"] = badgeAttr.Position;
+            }
+
+            // 设置位置偏移
+            if (badgeAttr.OffsetX != 0)
+            {
+                badgeConfig["offset"] = new JArray { badgeAttr.OffsetX, badgeAttr.OffsetY };
+            }
+            else if (badgeAttr.OffsetY != 0)
+            {
+                badgeConfig["offset"] = new JArray { 0, badgeAttr.OffsetY };
+            }
+
+            // 设置动画
+            if (badgeAttr.Animation)
+            {
+                badgeConfig["animation"] = true;
+            }
+
+            // 设置显示条件
+            if (!string.IsNullOrEmpty(badgeAttr.VisibleOn))
+            {
+                badgeConfig["visibleOn"] = badgeAttr.VisibleOn;
+            }
+
+            // 设置自定义类名
+            if (!string.IsNullOrEmpty(badgeAttr.ClassName))
+            {
+                badgeConfig["className"] = badgeAttr.ClassName;
+            }
+
+            // 只有当 badgeConfig 有配置时才添加到列中
+            if (badgeConfig.Count > 0)
+            {
+                column["badge"] = badgeConfig;
             }
         }
 

@@ -369,48 +369,53 @@ namespace CodeSpirit.Amis.Helpers
             // 查找带有 [Operation] 特性的所有方法
             foreach (MethodInfo method in methods)
             {
-                TOperation op = method.GetCustomAttribute<TOperation>(inherit: false);
+                // 使用 GetCustomAttributes（复数）以支持一个方法有多个相同类型的特性
+                var operations = method.GetCustomAttributes<TOperation>(inherit: false);
                 var hasHeaderOp = method.GetCustomAttribute<HeaderOperationAttribute>(inherit: false) != null;
                 
-                // 如果是查找头部操作，只处理真正的HeaderOperationAttribute
-                if (isHeader && typeof(TOperation) == typeof(HeaderOperationAttribute))
+                // 遍历方法上的所有操作特性
+                foreach (TOperation op in operations)
                 {
-                    // 确保方法确实有HeaderOperationAttribute
-                    if (op == null || !hasHeaderOp)
+                    // 如果是查找头部操作，只处理真正的HeaderOperationAttribute
+                    if (isHeader && typeof(TOperation) == typeof(HeaderOperationAttribute))
+                    {
+                        // 确保方法确实有HeaderOperationAttribute
+                        if (op == null || !hasHeaderOp)
+                        {
+                            continue;
+                        }
+                    }
+                    // 如果不是查找头部操作，排除有HeaderOperationAttribute的方法
+                    else if (!isHeader && hasHeaderOp)
                     {
                         continue;
                     }
-                }
-                // 如果不是查找头部操作，排除有HeaderOperationAttribute的方法
-                else if (!isHeader && hasHeaderOp)
-                {
-                    continue;
-                }
 
-                if (op != null && op.IsBulkOperation == isBulkOperation)
-                {
-                    var permissionCode = _permissionService.GetPermissionCode(method);
-                    var hasPermission = _permissionService.HasPermission(permissionCode);
-
-                    _logger.LogWarning("[ButtonHelper权限检查] 方法: {MethodName}, 权限代码: {PermissionCode}, 检查结果: {HasPermission}",
-                        method.Name, permissionCode, hasPermission);
-
-                    if (hasPermission)
+                    if (op != null && op.IsBulkOperation == isBulkOperation)
                     {
-                        // 为每个操作方法创建按钮
-                        JObject button = CreateCustomOperationButton(op, method);
+                        var permissionCode = _permissionService.GetPermissionCode(method);
+                        var hasPermission = _permissionService.HasPermission(permissionCode);
 
-                        // Add redirect configuration if specified
-                        if (op.ActionType == "ajax" && !string.IsNullOrEmpty(op.Redirect))
+                        _logger.LogWarning("[ButtonHelper权限检查] 方法: {MethodName}, 权限代码: {PermissionCode}, 检查结果: {HasPermission}",
+                            method.Name, permissionCode, hasPermission);
+
+                        if (hasPermission)
                         {
-                            button["redirect"] = op.Redirect;
+                            // 为每个操作方法创建按钮
+                            JObject button = CreateCustomOperationButton(op, method);
+
+                            // Add redirect configuration if specified
+                            if (op.ActionType == "ajax" && !string.IsNullOrEmpty(op.Redirect))
+                            {
+                                button["redirect"] = op.Redirect;
+                            }
+                            buttons.Add(button);
+                            _logger.LogWarning("[ButtonHelper权限检查] 按钮已添加: {ButtonLabel}", op.Label);
                         }
-                        buttons.Add(button);
-                        _logger.LogWarning("[ButtonHelper权限检查] 按钮已添加: {ButtonLabel}", op.Label);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("[ButtonHelper权限检查] 权限不足，按钮未添加: {ButtonLabel}", op.Label);
+                        else
+                        {
+                            _logger.LogWarning("[ButtonHelper权限检查] 权限不足，按钮未添加: {ButtonLabel}", op.Label);
+                        }
                     }
                 }
             }
@@ -433,20 +438,24 @@ namespace CodeSpirit.Amis.Helpers
             
             foreach (MethodInfo method in methods)
             {
-                var headerOp = method.GetCustomAttribute<HeaderOperationAttribute>(inherit: false);
-                if (headerOp != null && !headerOp.IsBulkOperation)
+                // 使用 GetCustomAttributes（复数）以支持一个方法有多个相同类型的特性
+                var headerOperations = method.GetCustomAttributes<HeaderOperationAttribute>(inherit: false);
+                foreach (var headerOp in headerOperations)
                 {
-                    var permissionCode = _permissionService.GetPermissionCode(method);
-                    var hasPermission = _permissionService.HasPermission(permissionCode);
-
-                    if (hasPermission)
+                    if (headerOp != null && !headerOp.IsBulkOperation)
                     {
-                        JObject button = CreateCustomOperationButton(headerOp, method);
-                        if (headerOp.ActionType == "ajax" && !string.IsNullOrEmpty(headerOp.Redirect))
+                        var permissionCode = _permissionService.GetPermissionCode(method);
+                        var hasPermission = _permissionService.HasPermission(permissionCode);
+
+                        if (hasPermission)
                         {
-                            button["redirect"] = headerOp.Redirect;
+                            JObject button = CreateCustomOperationButton(headerOp, method);
+                            if (headerOp.ActionType == "ajax" && !string.IsNullOrEmpty(headerOp.Redirect))
+                            {
+                                button["redirect"] = headerOp.Redirect;
+                            }
+                            buttons.Add(button);
                         }
-                        buttons.Add(button);
                     }
                 }
             }

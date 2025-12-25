@@ -4,23 +4,26 @@ using CodeSpirit.IdentityApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CodeSpirit.IdentityApi.Migrations.SqlServer
+namespace CodeSpirit.IdentityApi.Migrations.MySql
 {
-    [DbContext(typeof(SqlServerDbContext))]
-    partial class SqlServerDbContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(MySqlDbContext))]
+    [Migration("20251225082309_ConfigureApiKeyManualId")]
+    partial class ConfigureApiKeyManualId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "9.0.9")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ApiKey", b =>
                 {
@@ -28,59 +31,59 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("KeyHash")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("LastUsedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Permissions")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Prefix")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasColumnType("varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -116,45 +119,45 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -163,8 +166,7 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
 
                     b.HasIndex("NormalizedName", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ApplicationRole_NormalizedName_TenantId")
-                        .HasFilter("[NormalizedName] IS NOT NULL");
+                        .HasDatabaseName("IX_ApplicationRole_NormalizedName_TenantId");
 
                     b.ToTable("ApplicationRole", (string)null);
                 });
@@ -179,96 +181,96 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
 
                     b.Property<string>("AvatarUrl")
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("Gender")
                         .HasColumnType("int");
 
                     b.Property<string>("IdNo")
                         .HasMaxLength(18)
-                        .HasColumnType("nvarchar(18)");
+                        .HasColumnType("varchar(18) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTimeOffset?>("LastLoginTime")
-                        .HasColumnType("datetimeoffset");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("varchar(15)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.HasKey("Id");
 
@@ -279,8 +281,7 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
 
                     b.HasIndex("NormalizedUserName", "TenantId")
                         .IsUnique()
-                        .HasDatabaseName("IX_ApplicationUser_NormalizedUserName_TenantId")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+                        .HasDatabaseName("IX_ApplicationUser_NormalizedUserName_TenantId");
 
                     b.HasIndex("TenantId", "IdNo")
                         .IsUnique()
@@ -299,12 +300,12 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.HasKey("UserId", "RoleId");
 
@@ -331,29 +332,29 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<long?>("ManagerId")
                         .HasColumnType("bigint");
@@ -361,7 +362,7 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long?>("ParentId")
                         .HasColumnType("bigint");
@@ -372,10 +373,10 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -405,23 +406,23 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
 
                     b.Property<string>("Address")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("AvatarUrl")
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("BirthDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
@@ -431,20 +432,20 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
 
                     b.Property<string>("Email")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("EmergencyContact")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("EmergencyPhone")
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("EmployeeNo")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("EmploymentStatus")
                         .HasColumnType("int");
@@ -453,49 +454,49 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("HireDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("IdNo")
                         .HasMaxLength(18)
-                        .HasColumnType("nvarchar(18)");
+                        .HasColumnType("varchar(18) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("JobLevel")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasColumnType("varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Position")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Remarks")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("TerminationDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -534,26 +535,26 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("FailureReason")
                         .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)");
+                        .HasColumnType("varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("IPAddress")
                         .HasMaxLength(45)
-                        .HasColumnType("nvarchar(45)");
+                        .HasColumnType("varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<bool>("IsSuccess")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime>("LoginTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long?>("UserId")
                         .HasColumnType("bigint");
@@ -561,7 +562,7 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                     b.Property<string>("UserName")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.HasKey("Id");
 
@@ -589,34 +590,34 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("ExpiryTime")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<bool>("IsRevoked")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsUsed")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("JwtId")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
@@ -641,51 +642,51 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
             modelBuilder.Entity("CodeSpirit.MultiTenant.Models.TenantInfo", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Configuration")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("ConnectionString")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("DisplayName")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Domain")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("LogoUrl")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<int>("MaxUsers")
                         .HasColumnType("int");
@@ -693,7 +694,7 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long>("StorageLimit")
                         .HasColumnType("bigint");
@@ -703,18 +704,18 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
 
                     b.Property<string>("TablePrefix")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("ThemeConfig")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long?>("UpdatedBy")
                         .HasColumnType("bigint");
@@ -746,13 +747,13 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long>("RoleId")
                         .HasColumnType("bigint");
@@ -770,13 +771,13 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
@@ -791,13 +792,13 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<long>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("ProviderKey")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<long>("UserId")
                         .HasColumnType("bigint");
@@ -815,13 +816,13 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .HasColumnType("bigint");
 
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.Property<string>("Value")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
@@ -834,11 +835,11 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("PermissionIds")
                         .HasMaxLength(5000)
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varchar(5000)");
 
                     b.Property<long>("RoleId")
                         .HasColumnType("bigint");
@@ -846,7 +847,7 @@ namespace CodeSpirit.IdentityApi.Migrations.SqlServer
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
                     b.HasKey("Id");
 

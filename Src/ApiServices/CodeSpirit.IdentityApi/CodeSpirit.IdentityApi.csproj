@@ -35,4 +35,9 @@
 		<ProjectReference Include="..\..\CodeSpirit.Shared\CodeSpirit.Shared.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Data\Migrations\MySql\" />
+	  <Folder Include="Data\Migrations\SqlServer\" />
+	</ItemGroup>
+
 </Project>

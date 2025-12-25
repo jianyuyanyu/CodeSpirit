@@ -438,6 +438,34 @@ namespace CodeSpirit.IdentityApi.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            // 配置 ApiKey 实体
+            builder.Entity<ApiKey>(entity =>
+            {
+                entity.ToTable(nameof(ApiKey));
+                // 移除标识种子，支持手动插入ID
+                entity.Property(a => a.Id).ValueGeneratedNever();
+
+                // 索引 KeyHash，提高密钥验证查询的性能
+                entity.HasIndex(a => a.KeyHash)
+                    .HasDatabaseName("IX_ApiKey_KeyHash");
+
+                // 索引 UserId，提高按用户查询的性能
+                entity.HasIndex(a => a.UserId)
+                    .HasDatabaseName("IX_ApiKey_UserId");
+
+                // 索引 IsActive，提高按状态过滤的性能
+                entity.HasIndex(a => a.IsActive)
+                    .HasDatabaseName("IX_ApiKey_IsActive");
+
+                // 索引 ExpiresAt，便于清理过期密钥
+                entity.HasIndex(a => a.ExpiresAt)
+                    .HasDatabaseName("IX_ApiKey_ExpiresAt");
+
+                // 租户感知的复合索引
+                entity.HasIndex(a => new { a.TenantId, a.UserId })
+                    .HasDatabaseName("IX_ApiKey_TenantId_UserId");
+            });
+
             ConfigureGlobalFiltersOnModelCreating(builder);
         }
 

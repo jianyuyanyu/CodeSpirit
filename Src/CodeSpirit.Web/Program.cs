@@ -15,7 +15,9 @@ using CodeSpirit.Shared.Services.Background;
 using CodeSpirit.Shared.Services.Files;
 using CodeSpirit.UdlCards.Extensions;
 using CodeSpirit.MultiTenant.Abstractions;
+using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.Caching.Extensions;
+using CodeSpirit.Caching.Services;
 using CodeSpirit.LLM;
 using CodeSpirit.ScheduledTasks.Extensions;
 using CodeSpirit.Web.Extensions;
@@ -84,6 +86,10 @@ public class Program
         // 统一缓存服务（使用配置文件中的Caching节）
         builder.Services.AddCodeSpiritCaching(builder.Configuration, "webfrontend");
         builder.Services.AddMemoryCache();
+        
+        // 注册缓存管理服务
+        builder.Services.AddScoped<ICacheManagementService, RedisCacheManagementService>();
+        
         builder.Services.AddCorsPolicy();
         builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 

@@ -1,6 +1,7 @@
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Services;
 using CodeSpirit.SurveyApi.Dtos.Question;
 using CodeSpirit.SurveyApi.Models;
@@ -13,7 +14,7 @@ namespace CodeSpirit.SurveyApi.Controllers;
 /// 问卷题目管理控制器
 /// </summary>
 [DisplayName("题目管理")]
-[Navigation(Icon = "fa-solid fa-question-circle", PlatformType = PlatformType.Tenant)]
+[Navigation(Icon = "fa-solid fa-question-circle", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.Questions", TitleResourceType = typeof(NavigationResources))]
 public class QuestionsController : ApiControllerBase
 {
     private readonly IQuestionService _questionService;

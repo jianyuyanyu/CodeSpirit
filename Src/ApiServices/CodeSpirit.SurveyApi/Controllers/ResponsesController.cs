@@ -1,6 +1,8 @@
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Core.Enums;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.SurveyApi.Dtos.Response;
 using CodeSpirit.SurveyApi.Models;
 using CodeSpirit.SurveyApi.Services.Interfaces;
@@ -16,7 +18,7 @@ namespace CodeSpirit.SurveyApi.Controllers;
 /// 问卷回答管理控制器
 /// </summary>
 [DisplayName("答卷管理")]
-[Navigation(Icon = "fa-solid fa-clipboard-list")]
+[Navigation(Icon = "fa-solid fa-clipboard-list", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.Responses", TitleResourceType = typeof(NavigationResources))]
 public class ResponsesController : ApiControllerBase
 {
     private readonly IResponseService _responseService;

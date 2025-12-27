@@ -48,6 +48,7 @@ namespace CodeSpirit.Web.Controllers
         /// <param name="includeDashboard">是否包含控制台首页，默认为true</param>
         /// <returns>Page格式的导航树JSON</returns>
         [HttpGet("site")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<ActionResult<object>> GetNavigationPageTree(
             [FromQuery] PlatformType platformType = PlatformType.Both,
             [FromQuery] string deviceType = "desktop",
@@ -106,6 +107,7 @@ namespace CodeSpirit.Web.Controllers
         /// <param name="includeDashboard">是否包含控制台首页，默认为true</param>
         /// <returns>Page格式的导航树JSON</returns>
         [HttpGet("tenant")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<ActionResult<object>> GetTenantNavigationPageTree(
             [FromQuery] string tenantId,
             [FromQuery] string deviceType = "desktop",
@@ -193,6 +195,7 @@ namespace CodeSpirit.Web.Controllers
         /// <param name="platformType">平台类型</param>
         /// <returns>原始格式的导航树</returns>
         [HttpGet("tree")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<ActionResult<List<NavigationNode>>> GetNavigationTree(
             [FromQuery] PlatformType platformType = PlatformType.Both)
         {

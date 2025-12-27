@@ -13,7 +13,7 @@ namespace CodeSpirit.IdentityApi.Controllers.System
     /// 系统平台登录日志管理控制器
     /// </summary>
     [DisplayName("登录日志")]
-    [Navigation(Icon = "fa-solid fa-clock-rotate-left", PlatformType = PlatformType.System)]
+    [Navigation(Icon = "fa-solid fa-clock-rotate-left", PlatformType = PlatformType.System, TitleResourceKey = "Controller.LoginLogs", TitleResourceType = typeof(CodeSpirit.Navigation.Resources.NavigationResources))]
     public partial class SystemLoginLogsController : ApiControllerBase
     {
         private readonly ILoginLogService _loginLogService;

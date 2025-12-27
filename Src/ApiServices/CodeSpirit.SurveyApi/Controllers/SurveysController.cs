@@ -3,6 +3,7 @@ using CodeSpirit.AiFormFill.Services;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.Core.Extensions;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.AI;
 using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Services;
@@ -25,7 +26,7 @@ namespace CodeSpirit.SurveyApi.Controllers;
 /// 问卷管理控制器
 /// </summary>
 [DisplayName("问卷管理")]
-[Navigation(Icon = "fa-solid fa-poll", PlatformType = PlatformType.Tenant)]
+[Navigation(Icon = "fa-solid fa-poll", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.Surveys", TitleResourceType = typeof(NavigationResources))]
 public class SurveysController : ApiControllerBase
 {
     private readonly ISurveyService _surveyService;

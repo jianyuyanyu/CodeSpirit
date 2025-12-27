@@ -9,6 +9,7 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Resources;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -20,7 +21,7 @@ namespace CodeSpirit.IdentityApi.Controllers.System;
 /// 系统平台用户统计控制器
 /// </summary>
 [DisplayName("用户统计")]
-[Navigation(Icon = "fa-solid fa-chart-line", PlatformType = PlatformType.System)]
+[Navigation(Icon = "fa-solid fa-chart-line", PlatformType = PlatformType.System, TitleResourceKey = "Controller.UserStatistics", TitleResourceType = typeof(NavigationResources))]
 public class SystemUserStatisticsController : ApiControllerBase
 {
     private readonly IUserService _userService;

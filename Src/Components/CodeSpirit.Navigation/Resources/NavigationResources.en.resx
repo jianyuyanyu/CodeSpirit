@@ -100,5 +100,41 @@
   <data name="Controller.SystemPermissions" xml:space="preserve">
     <value>Permission Management</value>
   </data>
+  <data name="Module.Survey" xml:space="preserve">
+    <value>Survey</value>
+  </data>
+  <data name="Controller.Questions" xml:space="preserve">
+    <value>Question Management</value>
+  </data>
+  <data name="Controller.Surveys" xml:space="preserve">
+    <value>Survey Management</value>
+  </data>
+  <data name="Controller.Responses" xml:space="preserve">
+    <value>Response Management</value>
+  </data>
+  <data name="Controller.SurveyCategories" xml:space="preserve">
+    <value>Category Management</value>
+  </data>
+  <data name="Controller.SurveyDrafts" xml:space="preserve">
+    <value>Draft Management</value>
+  </data>
+  <data name="Module.Exam" xml:space="preserve">
+    <value>Exam Center</value>
+  </data>
+  <data name="Module.Pathfinder" xml:space="preserve">
+    <value>Smart Tasks</value>
+  </data>
+  <data name="Module.Messaging" xml:space="preserve">
+    <value>Message Center</value>
+  </data>
+  <data name="Module.File" xml:space="preserve">
+    <value>File Storage</value>
+  </data>
+  <data name="Module.Config" xml:space="preserve">
+    <value>Configuration Center</value>
+  </data>
+  <data name="Module.Approval" xml:space="preserve">
+    <value>Smart Approval</value>
+  </data>
 </root>
 

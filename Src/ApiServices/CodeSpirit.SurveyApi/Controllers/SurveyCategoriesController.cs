@@ -1,12 +1,13 @@
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.Core.Enums;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.SurveyApi.Dtos.SurveyCategory;
 using CodeSpirit.SurveyApi.Services.Interfaces;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
-using CodeSpirit.Core.Enums;
 
 namespace CodeSpirit.SurveyApi.Controllers;
 
@@ -14,7 +15,7 @@ namespace CodeSpirit.SurveyApi.Controllers;
 /// 问卷分类管理控制器
 /// </summary>
 [DisplayName("问卷分类管理")]
-[Navigation(Icon = "fa-solid fa-folder-tree", PlatformType = PlatformType.Tenant)]
+[Navigation(Icon = "fa-solid fa-folder-tree", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.SurveyCategories", TitleResourceType = typeof(NavigationResources))]
 public class SurveyCategoriesController : ApiControllerBase
 {
     private readonly ISurveyCategoryService _surveyCategoryService;

@@ -1,5 +1,6 @@
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Amis.Form;
 using CodeSpirit.Core.Extensions;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
@@ -103,7 +104,7 @@ namespace CodeSpirit.Amis.Helpers
             foreach (var prop in properties)
             {
                 var cardFieldAttr = prop.GetCustomAttribute<AmisCardFieldAttribute>();
-                var displayNameAttr = prop.GetCustomAttribute<DisplayNameAttribute>();
+                var displayName = prop.GetDisplayName();
                 var propName = prop.Name.ToCamelCase();
 
                 if (cardFieldAttr != null)
@@ -189,8 +190,7 @@ namespace CodeSpirit.Amis.Helpers
 
             foreach (var prop in properties)
             {
-                var displayNameAttr = prop.GetCustomAttribute<DisplayNameAttribute>();
-                var fieldName = displayNameAttr?.DisplayName ?? prop.Name;
+                var fieldName = prop.GetDisplayName();
                 var cardFieldAttr = prop.GetCustomAttribute<AmisCardFieldAttribute>();
 
                 if (!string.IsNullOrEmpty(cardFieldAttr?.Template))

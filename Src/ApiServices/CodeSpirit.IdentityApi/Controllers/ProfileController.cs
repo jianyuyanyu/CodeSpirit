@@ -4,6 +4,7 @@ using CodeSpirit.Core.Attributes;
 using CodeSpirit.Audit.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Profile;
+using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;

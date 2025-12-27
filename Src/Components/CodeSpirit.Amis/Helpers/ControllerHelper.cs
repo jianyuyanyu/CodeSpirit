@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CodeSpirit.Amis.Form;
+using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
@@ -54,22 +55,8 @@ namespace CodeSpirit.Amis.Helpers
 
         public string GetControllerDisplayName(Type controllerType)
         {
-            // 优先使用 Display 特性
-            DisplayAttribute displayAttribute = controllerType.GetCustomAttribute<DisplayAttribute>();
-            if (displayAttribute != null && !string.IsNullOrEmpty(displayAttribute.Name))
-            {
-                return displayAttribute.Name;
-            }
-
-            // 其次使用 Description 特性
-            DisplayNameAttribute displayNameAttribute = controllerType.GetCustomAttribute<DisplayNameAttribute>();
-            if (displayNameAttribute != null && !string.IsNullOrEmpty(displayNameAttribute.DisplayName))
-            {
-                return displayNameAttribute.DisplayName;
-            }
-
-            // 最后使用控制器名称
-            return GetControllerName(controllerType).ToSpacedWords();
+            // 使用 GetDisplayName 扩展方法，支持多语言资源
+            return controllerType.GetDisplayName();
         }
 
         public string GetMethodRoute(MethodInfo methodInfo)

@@ -1,4 +1,5 @@
 ﻿using CodeSpirit.Amis.Column;
+using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Amis.Attributes;
@@ -136,7 +137,7 @@ namespace CodeSpirit.Amis
             JObject pageConfig = new()
             {
                 ["type"] = "page",
-                ["title"] = controllerType.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? $"{controllerName} 管理",
+                ["title"] = controllerType.GetDisplayName(_utilityHelper),
                 ["body"] = new JArray()
                 {
                     crudConfig

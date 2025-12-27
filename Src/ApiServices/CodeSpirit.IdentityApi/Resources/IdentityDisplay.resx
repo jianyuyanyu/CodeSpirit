@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  
+  <!-- 用户字段显示名称 -->
+  <data name="Name" xml:space="preserve">
+    <value>姓名</value>
+  </data>
+  <data name="UserName" xml:space="preserve">
+    <value>用户名</value>
+  </data>
+  <data name="IdNo" xml:space="preserve">
+    <value>身份证</value>
+  </data>
+  <data name="AvatarUrl" xml:space="preserve">
+    <value>头像</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>电子邮箱</value>
+  </data>
+  <data name="Roles" xml:space="preserve">
+    <value>分配角色</value>
+  </data>
+  <data name="Gender" xml:space="preserve">
+    <value>性别</value>
+  </data>
+  <data name="PhoneNumber" xml:space="preserve">
+    <value>手机号码</value>
+  </data>
+  <data name="IsActive" xml:space="preserve">
+    <value>是否激活</value>
+  </data>
+  <data name="LastLoginTime" xml:space="preserve">
+    <value>最后登录时间</value>
+  </data>
+  <data name="LockoutEnabled" xml:space="preserve">
+    <value>启用锁定</value>
+  </data>
+  <data name="LockoutEnd" xml:space="preserve">
+    <value>锁定结束时间</value>
+  </data>
+  <data name="AccessFailedCount" xml:space="preserve">
+    <value>访问失败次数</value>
+  </data>
+  <data name="Role" xml:space="preserve">
+    <value>角色</value>
+  </data>
+  
+  <!-- Gender 枚举 -->
+  <data name="Gender.Male" xml:space="preserve">
+    <value>男</value>
+  </data>
+  <data name="Gender.Female" xml:space="preserve">
+    <value>女</value>
+  </data>
+  <data name="Gender.Other" xml:space="preserve">
+    <value>其他</value>
+  </data>
+  
+  <!-- 其他字段 -->
+  <data name="Tenant" xml:space="preserve">
+    <value>租户</value>
+  </data>
+  <data name="CreatedAt" xml:space="preserve">
+    <value>创建时间</value>
+  </data>
+  <data name="Separator" xml:space="preserve">
+    <value>-</value>
+  </data>
+  
+  <!-- 租户统计相关字段 -->
+  <data name="TenantId" xml:space="preserve">
+    <value>租户ID</value>
+  </data>
+  <data name="TenantName" xml:space="preserve">
+    <value>租户名称</value>
+  </data>
+  <data name="TenantDisplayName" xml:space="preserve">
+    <value>租户显示名称</value>
+  </data>
+  <data name="TotalUsers" xml:space="preserve">
+    <value>总用户数</value>
+  </data>
+  <data name="ActiveUsers" xml:space="preserve">
+    <value>活跃用户数</value>
+  </data>
+  <data name="InactiveUsers" xml:space="preserve">
+    <value>禁用用户数</value>
+  </data>
+  <data name="AdminUsers" xml:space="preserve">
+    <value>管理员用户数</value>
+  </data>
+  <data name="NormalUsers" xml:space="preserve">
+    <value>普通用户数</value>
+  </data>
+  <data name="NewUsersThisMonth" xml:space="preserve">
+    <value>本月新增用户数</value>
+  </data>
+  <data name="ActiveUsersThisMonth" xml:space="preserve">
+    <value>本月活跃用户数</value>
+  </data>
+  <data name="LastActiveTime" xml:space="preserve">
+    <value>最后活跃时间</value>
+  </data>
+  <data name="GrowthRate" xml:space="preserve">
+    <value>用户增长率</value>
+  </data>
+  <data name="ActivityRate" xml:space="preserve">
+    <value>用户活跃度</value>
+  </data>
+  
+  <!-- DTO 描述信息 -->
+  <data name="Description.User.UserName" xml:space="preserve">
+    <value>用户名只能包含字母、数字和下划线</value>
+  </data>
+  <data name="Description.User.Roles" xml:space="preserve">
+    <value>为用户分配相应的角色以授予权限</value>
+  </data>
+  <data name="Description.User.AvatarUrl" xml:space="preserve">
+    <value>请上传您的头像</value>
+  </data>
+</root>
+

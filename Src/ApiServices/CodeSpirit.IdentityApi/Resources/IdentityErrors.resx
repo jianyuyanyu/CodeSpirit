@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  
+  <!-- 用户管理错误消息 -->
+  <data name="UserNameExists" xml:space="preserve">
+    <value>用户名已存在！</value>
+  </data>
+  <data name="EmailExists" xml:space="preserve">
+    <value>邮箱已存在！</value>
+  </data>
+  <data name="NoDataToExport" xml:space="preserve">
+    <value>没有数据可供导出</value>
+  </data>
+  <data name="UserNotFound" xml:space="preserve">
+    <value>用户不存在！</value>
+  </data>
+  <data name="OnlyAdminCanImpersonate" xml:space="preserve">
+    <value>只有超级管理员可以使用模拟登录功能！</value>
+  </data>
+  <data name="CannotImpersonateDisabledUser" xml:space="preserve">
+    <value>无法模拟已禁用的用户！</value>
+  </data>
+  <data name="UserActivated" xml:space="preserve">
+    <value>用户已激活成功！</value>
+  </data>
+  <data name="UserDeactivated" xml:space="preserve">
+    <value>用户已禁用成功！</value>
+  </data>
+  <data name="PasswordResetSuccess" xml:space="preserve">
+    <value>密码已重置成功！</value>
+  </data>
+  <data name="UserUnlocked" xml:space="preserve">
+    <value>用户已成功解锁。</value>
+  </data>
+  <data name="BatchImportSuccess" xml:space="preserve">
+    <value>成功批量导入了 {0} 个用户！</value>
+  </data>
+  <data name="BatchDeleteSuccess" xml:space="preserve">
+    <value>成功删除 {0} 个用户！</value>
+  </data>
+  <data name="BatchDeletePartialSuccess" xml:space="preserve">
+    <value>成功删除 {0} 个用户，但以下用户删除失败: {1}</value>
+  </data>
+  <data name="PasswordDisplayOnce" xml:space="preserve">
+    <value>注意：密码只显示一次，请及时保存!</value>
+  </data>
+  <data name="ConfirmResetPassword" xml:space="preserve">
+    <value>确定要重置密码吗？</value>
+  </data>
+  <data name="ConfirmUnlockUser" xml:space="preserve">
+    <value>确定要解除用户锁定吗？</value>
+  </data>
+  <data name="ConfirmImpersonateUser" xml:space="preserve">
+    <value>确定要模拟此用户登录吗？</value>
+  </data>
+  <data name="ConfirmBatchDelete" xml:space="preserve">
+    <value>确定要批量删除?</value>
+  </data>
+  <data name="ResetPasswordResult" xml:space="preserve">
+    <value>重置密码结果</value>
+  </data>
+</root>
+

@@ -1,6 +1,7 @@
 ﻿using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Amis.Attributes.Columns;
 using CodeSpirit.Amis.Extensions;
+using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Core.Attributes;
@@ -116,8 +117,8 @@ namespace CodeSpirit.Amis.Column
         {
             try
             {
-                // 获取属性的显示名称，优先使用 DisplayNameAttribute
-                string displayName = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase();
+                // 获取属性的显示名称，优先使用 DisplayAttribute（支持 ResourceType 多语言），然后使用 DisplayNameAttribute
+                string displayName = prop.GetDisplayName(_utilityHelper);
                 // 将属性名称转换为 camelCase 以符合 AMIS 的命名约定
                 // 优先使用 JsonProperty 特性的 PropertyName，确保与 JSON 序列化一致
                 var jsonPropertyAttr = prop.GetCustomAttribute<Newtonsoft.Json.JsonPropertyAttribute>();
@@ -647,7 +648,7 @@ namespace CodeSpirit.Amis.Column
                 return new JObject
                 {
                     ["name"] = fieldName,
-                    ["label"] = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? prop.Name.ToTitleCase(),
+                    ["label"] = prop.GetDisplayName(_utilityHelper),
                     ["sortable"] = false,
                     ["type"] = "text",
                     ["quickEdit"] = false,

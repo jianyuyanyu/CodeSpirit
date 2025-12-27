@@ -1,6 +1,8 @@
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Core.Dtos;
+using CodeSpirit.IdentityApi.Resources;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeSpirit.IdentityApi.Dtos.User;
 
@@ -12,31 +14,31 @@ public class SystemUserQueryDto : QueryDtoBase
     /// <summary>
     /// 用户名
     /// </summary>
-    [DisplayName("用户名")]
+    [Display(Name = nameof(UserName), ResourceType = typeof(IdentityDisplayResources))]
     public string? UserName { get; set; }
 
     /// <summary>
     /// 邮箱
     /// </summary>
-    [DisplayName("邮箱")]
+    [Display(Name = nameof(Email), ResourceType = typeof(IdentityDisplayResources))]
     public string? Email { get; set; }
 
     /// <summary>
     /// 手机号
     /// </summary>
-    [DisplayName("手机号")]
+    [Display(Name = nameof(PhoneNumber), ResourceType = typeof(IdentityDisplayResources))]
     public string? PhoneNumber { get; set; }
 
     /// <summary>
     /// 是否激活
     /// </summary>
-    [DisplayName("是否激活")]
+    [Display(Name = nameof(IsActive), ResourceType = typeof(IdentityDisplayResources))]
     public bool? IsActive { get; set; }
 
     /// <summary>
     /// 租户ID
     /// </summary>
-    [DisplayName("租户")]
+    [Display(Name = nameof(Tenant), ResourceType = typeof(IdentityDisplayResources))]
     [AmisSelectField(
         Source = "${ROOT_API}/api/identity/Tenants/active",
         ValueField = "tenantId",
@@ -53,7 +55,7 @@ public class SystemUserQueryDto : QueryDtoBase
     /// <summary>
     /// 创建时间开始
     /// </summary>
-    [DisplayName("创建时间")]
+    [Display(Name = "CreatedAt", ResourceType = typeof(IdentityDisplayResources))]
     [AmisDatetimeFieldAttribute(
         DisplayFormat = "YYYY-MM-DD HH:mm:ss",
         Clearable = true,
@@ -64,7 +66,7 @@ public class SystemUserQueryDto : QueryDtoBase
     /// <summary>
     /// 创建时间结束
     /// </summary>
-    [DisplayName("-")]
+    [Display(Name = "Separator", ResourceType = typeof(IdentityDisplayResources))]
     [AmisDatetimeFieldAttribute(
         DisplayFormat = "YYYY-MM-DD HH:mm:ss",
         Clearable = true,
@@ -75,7 +77,7 @@ public class SystemUserQueryDto : QueryDtoBase
     /// <summary>
     /// 最后登录时间开始
     /// </summary>
-    [DisplayName("最后登录时间")]
+    [Display(Name = "LastLoginTime", ResourceType = typeof(IdentityDisplayResources))]
     [AmisDatetimeFieldAttribute(
         DisplayFormat = "YYYY-MM-DD HH:mm:ss",
         Clearable = true,
@@ -86,7 +88,7 @@ public class SystemUserQueryDto : QueryDtoBase
     /// <summary>
     /// 最后登录时间结束
     /// </summary>
-    [DisplayName("-")]
+    [Display(Name = "Separator", ResourceType = typeof(IdentityDisplayResources))]
     [AmisDatetimeFieldAttribute(
         DisplayFormat = "YYYY-MM-DD HH:mm:ss",
         Clearable = true,

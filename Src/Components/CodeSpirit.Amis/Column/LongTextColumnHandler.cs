@@ -1,4 +1,5 @@
 using CodeSpirit.Amis.Attributes.Columns;
+using CodeSpirit.Amis.Form;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -209,8 +210,7 @@ namespace CodeSpirit.Amis.Column
         /// <returns>弹窗内容字符串</returns>
         private string CreatePopOverBody(PropertyInfo prop, string fieldName)
         {
-            var displayNameAttr = prop.GetCustomAttribute<DisplayNameAttribute>();
-            string title = displayNameAttr?.DisplayName ?? GetPopOverTitle(prop);
+            string title = prop.GetDisplayName();
 
             // 使用简洁的格式，支持换行和长文本显示
             return $"<div style='max-width: 400px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; line-height: 1.4;'>" +
@@ -322,10 +322,10 @@ namespace CodeSpirit.Amis.Column
         /// <returns>弹窗标题</returns>
         public string GetPopOverTitle(PropertyInfo prop)
         {
-            var displayNameAttr = prop.GetCustomAttribute<DisplayNameAttribute>();
-            if (displayNameAttr != null && !string.IsNullOrEmpty(displayNameAttr.DisplayName))
+            var displayName = prop.GetDisplayName();
+            if (!string.IsNullOrEmpty(displayName) && displayName != prop.Name)
             {
-                return displayNameAttr.DisplayName;
+                return displayName;
             }
             
             string propName = prop.Name.ToLowerInvariant();

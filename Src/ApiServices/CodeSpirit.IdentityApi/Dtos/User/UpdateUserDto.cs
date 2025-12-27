@@ -1,16 +1,23 @@
 ﻿using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.IdentityApi.Data.Models;
+using CodeSpirit.IdentityApi.Resources;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
+namespace CodeSpirit.IdentityApi.Dtos.User;
+
+/// <summary>
+/// 更新用户数据传输对象
+/// </summary>
 public class UpdateUserDto
 {
     [Required]
     [MaxLength(20)]
-    [DisplayName("姓名")]
+    [Display(Name = nameof(Name), ResourceType = typeof(IdentityDisplayResources))]
     public string Name { get; set; }
 
     [MaxLength(18)]
-    [DisplayName("身份证")]
+    [Display(Name = nameof(IdNo), ResourceType = typeof(IdentityDisplayResources))]
     public string IdNo { get; set; }
 
     [MaxLength(255)]
@@ -26,10 +33,10 @@ public class UpdateUserDto
     )]
     public string AvatarUrl { get; set; }
 
-    [DisplayName("是否激活")]
+    [Display(Name = nameof(IsActive), ResourceType = typeof(IdentityDisplayResources))]
     public bool IsActive { get; set; }
 
-    [DisplayName("分配角色")]
+    [Display(Name = nameof(Roles), ResourceType = typeof(IdentityDisplayResources))]
     [AmisSelectField(
         Source = "${ROOT_API}/api/identity/Roles",
         ValueField = "name",
@@ -43,9 +50,9 @@ public class UpdateUserDto
     )]
     public List<string> Roles { get; set; }
 
-    [DisplayName("性别")]
+    [Display(Name = nameof(Gender), ResourceType = typeof(IdentityDisplayResources))]
     public Gender Gender { get; set; }
 
-    [DisplayName("手机号码")]
+    [Display(Name = nameof(PhoneNumber), ResourceType = typeof(IdentityDisplayResources))]
     public string PhoneNumber { get; set; }
 }

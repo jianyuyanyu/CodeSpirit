@@ -4,6 +4,7 @@ using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Auth;
+using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Jwt;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.AspNetCore.Identity;

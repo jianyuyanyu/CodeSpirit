@@ -128,7 +128,7 @@
 **/Generated*/
 **/generated/
 **/Templates/Generated/
-**/*Designer.cs
+# **/*Designer.cs
 **/*.g.cs
 **/*.g.i.cs
 

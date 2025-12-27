@@ -69,7 +69,7 @@ namespace CodeSpirit.Amis.Form.Fields
                         ["label"] = field["label"],
                         ["required"] = field["required"],
                         ["createInputTable"] = attr.CreateInputTable,
-                        ["columns"] = attr.CreateInputTable ? ExtractPropertyInfo(itemType) : new JArray()
+                        ["columns"] = attr.CreateInputTable ? ExtractPropertyInfo(itemType, utilityHelper) : new JArray()
                     }
                 },
                 ["schemaApi"] = $"js:/amis/configs/common/enhanced-import.js?type={itemType.Name}"
@@ -82,8 +82,9 @@ namespace CodeSpirit.Amis.Form.Fields
         /// 提取属性信息生成表格列配置
         /// </summary>
         /// <param name="targetType">目标类型</param>
+        /// <param name="utilityHelper">工具助手（用于获取当前语言）</param>
         /// <returns>列配置数组</returns>
-        public JArray ExtractPropertyInfo(Type targetType)
+        public JArray ExtractPropertyInfo(Type targetType, UtilityHelper utilityHelper)
         {
             if (targetType == null) return new JArray();
 
@@ -96,11 +97,10 @@ namespace CodeSpirit.Amis.Form.Fields
                 var jsonProperty = property.GetCustomAttribute<JsonPropertyAttribute>();
                 string fieldName = jsonProperty?.PropertyName ?? property.Name;
 
-                // 获取显示名称
-                var displayName = property.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? fieldName;
+                // 获取显示名称（支持多语言资源）
+                var displayName = property.GetDisplayName(utilityHelper);
 
-                // 创建表单字段（注意：这里无法传递 utilityHelper，因为 ExtractPropertyInfo 是静态上下文）
-                // 会回退到使用 CultureInfo.CurrentUICulture，这在大多数情况下应该是正确的
+                // 创建表单字段
                 var field = property.CreateFormField(fieldName: fieldName, lableName: displayName);
 
                 // 添加必填验证

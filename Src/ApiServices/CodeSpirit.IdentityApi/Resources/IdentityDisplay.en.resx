@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  
+  <!-- User Field Display Names -->
+  <data name="Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="UserName" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="IdNo" xml:space="preserve">
+    <value>ID Number</value>
+  </data>
+  <data name="AvatarUrl" xml:space="preserve">
+    <value>Avatar</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="Roles" xml:space="preserve">
+    <value>Assign Roles</value>
+  </data>
+  <data name="Gender" xml:space="preserve">
+    <value>Gender</value>
+  </data>
+  <data name="PhoneNumber" xml:space="preserve">
+    <value>Phone Number</value>
+  </data>
+  <data name="IsActive" xml:space="preserve">
+    <value>Is Active</value>
+  </data>
+  <data name="LastLoginTime" xml:space="preserve">
+    <value>Last Login Time</value>
+  </data>
+  <data name="LockoutEnabled" xml:space="preserve">
+    <value>Lockout Enabled</value>
+  </data>
+  <data name="LockoutEnd" xml:space="preserve">
+    <value>Lockout End Time</value>
+  </data>
+  <data name="AccessFailedCount" xml:space="preserve">
+    <value>Access Failed Count</value>
+  </data>
+  <data name="Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  
+  <!-- Gender Enum -->
+  <data name="Gender.Male" xml:space="preserve">
+    <value>Male</value>
+  </data>
+  <data name="Gender.Female" xml:space="preserve">
+    <value>Female</value>
+  </data>
+  <data name="Gender.Other" xml:space="preserve">
+    <value>Other</value>
+  </data>
+  
+  <!-- Other Fields -->
+  <data name="Tenant" xml:space="preserve">
+    <value>Tenant</value>
+  </data>
+  <data name="CreatedAt" xml:space="preserve">
+    <value>Created At</value>
+  </data>
+  <data name="Separator" xml:space="preserve">
+    <value>-</value>
+  </data>
+  
+  <!-- Tenant Statistics Fields -->
+  <data name="TenantId" xml:space="preserve">
+    <value>Tenant ID</value>
+  </data>
+  <data name="TenantName" xml:space="preserve">
+    <value>Tenant Name</value>
+  </data>
+  <data name="TenantDisplayName" xml:space="preserve">
+    <value>Tenant Display Name</value>
+  </data>
+  <data name="TotalUsers" xml:space="preserve">
+    <value>Total Users</value>
+  </data>
+  <data name="ActiveUsers" xml:space="preserve">
+    <value>Active Users</value>
+  </data>
+  <data name="InactiveUsers" xml:space="preserve">
+    <value>Inactive Users</value>
+  </data>
+  <data name="AdminUsers" xml:space="preserve">
+    <value>Admin Users</value>
+  </data>
+  <data name="NormalUsers" xml:space="preserve">
+    <value>Normal Users</value>
+  </data>
+  <data name="NewUsersThisMonth" xml:space="preserve">
+    <value>New Users This Month</value>
+  </data>
+  <data name="ActiveUsersThisMonth" xml:space="preserve">
+    <value>Active Users This Month</value>
+  </data>
+  <data name="LastActiveTime" xml:space="preserve">
+    <value>Last Active Time</value>
+  </data>
+  <data name="GrowthRate" xml:space="preserve">
+    <value>User Growth Rate</value>
+  </data>
+  <data name="ActivityRate" xml:space="preserve">
+    <value>User Activity Rate</value>
+  </data>
+  
+  <!-- DTO Descriptions -->
+  <data name="Description.User.UserName" xml:space="preserve">
+    <value>Username can only contain letters, numbers and underscores</value>
+  </data>
+  <data name="Description.User.Roles" xml:space="preserve">
+    <value>Assign roles to the user to grant permissions</value>
+  </data>
+  <data name="Description.User.AvatarUrl" xml:space="preserve">
+    <value>Please upload your avatar</value>
+  </data>
+</root>
+

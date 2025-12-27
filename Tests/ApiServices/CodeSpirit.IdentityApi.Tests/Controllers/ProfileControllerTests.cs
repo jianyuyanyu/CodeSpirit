@@ -2,6 +2,7 @@ using CodeSpirit.Authorization;
 using CodeSpirit.Core;
 using CodeSpirit.IdentityApi.Controllers;
 using CodeSpirit.IdentityApi.Dtos.Profile;
+using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Moq;

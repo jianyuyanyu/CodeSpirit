@@ -1,14 +1,20 @@
-﻿@using Microsoft.Extensions.Options
+@using Microsoft.Extensions.Options
 @using CodeSpirit.Web.Options
+@using Microsoft.Extensions.Localization
+@using SharedResources = CodeSpirit.Localization.Resources.SharedResources
 @inject IOptions<SiteSettings> SiteOptions
+@inject IStringLocalizer<SharedResources> SharedLocalizer
 @{
     var cdnEnabled = SiteOptions.Value.EnableCdn;
     var resourceBase = cdnEnabled ? SiteOptions.Value.CdnUrl : "";
     var sdkVersion = "6.13.0";
+    var currentCulture = System.Globalization.CultureInfo.CurrentUICulture;
+    var currentLanguage = currentCulture.Name;
+    var amisLocale = currentLanguage == "en" ? "en-US" : "zh-CN";
 }
 
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="@currentLanguage">
 <head>
     <meta charset="UTF-8" />
     <title>@ViewData["Title"] - @Html.Raw(SiteOptions.Value.SiteName)</title>
@@ -43,7 +49,47 @@
             resourceBase: '@resourceBase',
             apiBaseUrl: '@SiteOptions.Value.ApiBaseUrl'
         };
+
+    // AMIS Locale 配置
+    // 注意：AMIS JS SDK 从 1.1.0 开始已内置英文翻译（en-US），无需额外语言包文件
+    // 只需在 amis.embed() 的 options 中设置 locale: 'en-US' 或 'zh-CN' 即可
+    window.amisLocale = '@amisLocale';
     </script>
+
+    <!-- i18n 辅助工具 -->
+    <resource path="js/i18n-helper.js" type="js" />
+    
+    <!-- 初始化 i18n -->
+    <script>
+        // 初始化 i18n（资源可以从服务器端注入）
+        window.CodeSpirit.i18n.init('@currentLanguage', {
+            // 可以在这里注入常用的前端资源
+            // 'Common.Save': '@SharedLocalizer["Common.Save"]',
+            // 'Common.Cancel': '@SharedLocalizer["Common.Cancel"]'
+        });
+    </script>
+
+    <!-- 动态加载 AMIS locale 文件（仅用于非内置语言，如德语 de-DE） -->
+    @if (amisLocale != "zh-CN" && amisLocale != "en-US")
+    {
+        <script>
+            // 异步加载 AMIS locale 文件（仅用于非内置语言）
+            // 注意：AMIS JS SDK 内置支持 en-US 和 zh-CN，无需额外加载
+            (function() {
+                var script = document.createElement('script');
+                script.src = '/sdk/@(sdkVersion)/locale/@(amisLocale).js';
+                script.async = true;
+                script.onload = function() {
+                    // AMIS locale 加载完成后的回调
+                    if (window.amisRequire && window.amisRequire.config) {
+                        // 配置 AMIS 使用对应的 locale
+                        console.log('AMIS locale loaded: @amisLocale');
+                    }
+                };
+                document.head.appendChild(script);
+            })();
+        </script>
+    }
 
     <!-- 脚本 -->
     <resource path="sdk/@(sdkVersion)/sdk.js" type="js" />

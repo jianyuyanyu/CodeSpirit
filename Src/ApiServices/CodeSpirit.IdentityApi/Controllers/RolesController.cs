@@ -1,16 +1,17 @@
-﻿using CodeSpirit.Core;
+using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers;
 using CodeSpirit.IdentityApi.Dtos.Role;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
 
 [DisplayName("角色管理")]
-[Navigation(Icon = "fa-solid fa-user-tag", PlatformType = PlatformType.Tenant)]
+[Navigation(Icon = "fa-solid fa-user-tag", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.Roles", TitleResourceType = typeof(NavigationResources))]
 public class RolesController : ApiControllerBase
 {
     private readonly IRoleService _roleService;

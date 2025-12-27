@@ -1,9 +1,11 @@
+using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Navigation.Services;
 using CodeSpirit.Navigation.Services.Filters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace CodeSpirit.Navigation.Extensions
@@ -25,6 +27,14 @@ namespace CodeSpirit.Navigation.Extensions
             services.AddSingleton<INavigationCacheManager, NavigationCacheManager>();
             services.AddSingleton<INavigationFilterService, NavigationFilterService>();
             services.AddSingleton<INavigationService, NavigationService>();
+            
+            // 注册本地化服务（Scoped，因为需要访问 HttpContext）
+            // 注意：CultureResolver 应该在 Amis 组件中注册，如果没有注册则这里注册一个
+            if (!services.Any(s => s.ServiceType == typeof(CultureResolver)))
+            {
+                services.AddScoped<CultureResolver>();
+            }
+            services.AddScoped<INavigationLocalizationService, NavigationLocalizationService>();
 
             // 注册所有过滤器
             services.AddSingleton<INavigationFilter, PlatformFilter>();

@@ -4,6 +4,7 @@ using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Department;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -16,7 +17,7 @@ namespace CodeSpirit.IdentityApi.Controllers;
 /// 部门管理控制器
 /// </summary>
 [DisplayName("部门管理")]
-[Navigation(Icon = "fa-solid fa-sitemap", PlatformType = PlatformType.Tenant)]
+[Navigation(Icon = "fa-solid fa-sitemap", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.Departments", TitleResourceType = typeof(NavigationResources))]
 [Audit(EntityName = nameof(Department), LogRequestParams = true, LogResponseData = true)] // 👈 添加审计特性，设置默认行为
 public class DepartmentsController : ApiControllerBase
 {

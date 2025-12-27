@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using CodeSpirit.Core.Enums;
 using Newtonsoft.Json;
@@ -16,9 +16,29 @@ namespace CodeSpirit.Navigation.Models
         public string Name { get; set; }
 
         /// <summary>
-        /// 显示标题
+        /// 显示标题（回退文本）
         /// </summary>
         public string Title { get; set; }
+
+        /// <summary>
+        /// 标题的资源键名称（用于多语言支持）
+        /// </summary>
+        public string TitleResourceKey { get; set; }
+
+        /// <summary>
+        /// 标题的资源类型名称（用于多语言支持，Type 的 FullName，用于反序列化）
+        /// </summary>
+        public string TitleResourceType { get; set; }
+
+        /// <summary>
+        /// 描述的资源键名称（用于多语言支持）
+        /// </summary>
+        public string DescriptionResourceKey { get; set; }
+
+        /// <summary>
+        /// 描述的资源类型名称（用于多语言支持，Type 的 FullName，用于反序列化）
+        /// </summary>
+        public string DescriptionResourceType { get; set; }
 
         /// <summary>
         /// 路由路径
@@ -201,6 +221,10 @@ namespace CodeSpirit.Navigation.Models
                 Badge = Badge,
                 BadgeType = BadgeType,
                 Visible = Visible,
+                TitleResourceKey = TitleResourceKey,
+                TitleResourceType = TitleResourceType,
+                DescriptionResourceKey = DescriptionResourceKey,
+                DescriptionResourceType = DescriptionResourceType,
                 Children = []
             };
 

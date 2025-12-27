@@ -1,4 +1,4 @@
-﻿// Controllers/AuthController.cs
+// Controllers/AuthController.cs
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
@@ -14,7 +14,7 @@ namespace CodeSpirit.IdentityApi.Controllers
     /// 租户平台登录日志管理控制器
     /// </summary>
     [DisplayName("登录日志")]
-    [Navigation(Icon = "fa-solid fa-clock-rotate-left", PlatformType = PlatformType.Tenant)]
+    [Navigation(Icon = "fa-solid fa-clock-rotate-left", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.LoginLogs", TitleResourceType = typeof(CodeSpirit.Navigation.Resources.NavigationResources))]
     public partial class LoginLogsController : ApiControllerBase
     {
         private readonly ILoginLogService _loginLogService;

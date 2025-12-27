@@ -7,6 +7,7 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Dtos.Permission;
+using CodeSpirit.Navigation.Resources;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using System.ComponentModel;
@@ -17,7 +18,7 @@ namespace CodeSpirit.IdentityApi.Controllers.System;
 /// 系统平台权限管理控制器
 /// </summary>
 [DisplayName("权限管理")]
-[Navigation(Icon = "fa-solid fa-key", PlatformType = PlatformType.System)]
+[Navigation(Icon = "fa-solid fa-key", PlatformType = PlatformType.System, TitleResourceKey = "Controller.SystemPermissions", TitleResourceType = typeof(NavigationResources))]
 public class SystemPermissionsController : ApiControllerBase
 {
     private readonly IPermissionService _permissionService;

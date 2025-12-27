@@ -11,9 +11,29 @@ namespace CodeSpirit.Core.Attributes;
 public class NavigationAttribute : Attribute
 {
     /// <summary>
-    /// 导航项的显示名称
+    /// 导航项的显示名称（回退文本）
     /// </summary>
     public string Title { get; set; }
+
+    /// <summary>
+    /// 标题的资源键名称（用于多语言支持）
+    /// </summary>
+    public string TitleResourceKey { get; set; }
+
+    /// <summary>
+    /// 标题的资源类型（包含 ResourceManager 的类）
+    /// </summary>
+    public Type TitleResourceType { get; set; }
+
+    /// <summary>
+    /// 描述的资源键名称（用于多语言支持）
+    /// </summary>
+    public string DescriptionResourceKey { get; set; }
+
+    /// <summary>
+    /// 描述的资源类型（包含 ResourceManager 的类）
+    /// </summary>
+    public Type DescriptionResourceType { get; set; }
 
     /// <summary>
     /// 导航项的路由路径

@@ -1,4 +1,3 @@
-﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json.Linq;
 
@@ -8,17 +7,20 @@ namespace CodeSpirit.Amis.Helpers
     {
         private readonly IMemoryCache _cache;
         private readonly ICurrentUser currentUser;
+        private readonly CultureResolver _cultureResolver;
 
-        public CachingHelper(IMemoryCache cache, ICurrentUser currentUser)
+        public CachingHelper(IMemoryCache cache, ICurrentUser currentUser, CultureResolver cultureResolver)
         {
             _cache = cache;
             this.currentUser = currentUser;
+            _cultureResolver = cultureResolver;
         }
 
         public string GenerateCacheKey(string controllerName)
         {
             string rolesHash = GetUserRolesHash();
-            return $"AmisJson_{controllerName.ToLower()}_{rolesHash.GetHashCode()}";
+            string language = _cultureResolver.GetCurrentLanguage();
+            return $"AmisJson_{controllerName.ToLower()}_{language}_{rolesHash.GetHashCode()}";
         }
 
         private string GetUserRolesHash()

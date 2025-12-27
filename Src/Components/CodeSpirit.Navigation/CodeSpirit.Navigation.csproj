@@ -3,6 +3,7 @@
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>disable</Nullable>
+		<GenerateSatelliteAssemblies>true</GenerateSatelliteAssemblies>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -15,5 +16,13 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
+	  <ProjectReference Include="..\CodeSpirit.Amis\CodeSpirit.Amis.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- 资源文件嵌入配置 -->
+		<!-- 注意：不配置 Generator，避免与手动维护的 NavigationResources.cs 冲突 -->
+		<EmbeddedResource Update="Resources\NavigationResources.resx" />
+		<EmbeddedResource Update="Resources\NavigationResources.en.resx" />
 	</ItemGroup>
 </Project>

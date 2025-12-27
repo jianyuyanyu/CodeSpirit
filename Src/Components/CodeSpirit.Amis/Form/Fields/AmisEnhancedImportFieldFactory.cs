@@ -99,7 +99,8 @@ namespace CodeSpirit.Amis.Form.Fields
                 // 获取显示名称
                 var displayName = property.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? fieldName;
 
-                // 创建表单字段
+                // 创建表单字段（注意：这里无法传递 utilityHelper，因为 ExtractPropertyInfo 是静态上下文）
+                // 会回退到使用 CultureInfo.CurrentUICulture，这在大多数情况下应该是正确的
                 var field = property.CreateFormField(fieldName: fieldName, lableName: displayName);
 
                 // 添加必填验证

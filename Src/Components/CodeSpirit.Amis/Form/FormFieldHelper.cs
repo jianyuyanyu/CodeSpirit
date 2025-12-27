@@ -1,4 +1,4 @@
-﻿// 文件路径: CodeSpirit.Amis.Helpers/FormFieldHelper.cs
+// 文件路径: CodeSpirit.Amis.Helpers/FormFieldHelper.cs
 
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Form.Fields;
@@ -271,7 +271,7 @@ namespace CodeSpirit.Amis.Form
                 // 如果工厂未创建字段，使用默认方法创建
                 if (field == null)
                 {
-                    field = param.CreateFormField();
+                    field = param.CreateFormField(utilityHelper: _utilityHelper);
                 }
                 else
                 {
@@ -324,7 +324,7 @@ namespace CodeSpirit.Amis.Form
             // 如果工厂未创建字段，使用默认方法创建
             if (field == null)
             {
-                field = prop.CreateFormField();
+                field = prop.CreateFormField(utilityHelper: _utilityHelper);
                 
                 // 对于非工厂创建的字段，也应用AI增强功能
                 if (field != null)

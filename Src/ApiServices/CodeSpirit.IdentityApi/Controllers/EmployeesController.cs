@@ -4,6 +4,7 @@ using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Employee;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -14,7 +15,7 @@ namespace CodeSpirit.IdentityApi.Controllers;
 /// 职工管理控制器
 /// </summary>
 [DisplayName("职工管理")]
-[Navigation(Icon = "fa-solid fa-user-tie", PlatformType = PlatformType.Tenant)]
+[Navigation(Icon = "fa-solid fa-user-tie", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.Employees", TitleResourceType = typeof(NavigationResources))]
 public class EmployeesController : ApiControllerBase
 {
     private readonly IEmployeeService _employeeService;

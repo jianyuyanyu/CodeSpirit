@@ -8,11 +8,22 @@ namespace CodeSpirit.Core
     public class ValidationException : AppServiceException
     {
         /// <summary>
+        /// 资源键（用于本地化）
+        /// </summary>
+        public string? ResourceKey { get; }
+
+        /// <summary>
+        /// 参数（用于本地化消息格式化）
+        /// </summary>
+        public object[]? Parameters { get; }
+
+        /// <summary>
         /// 数据验证异常
         /// </summary>
         /// <param name="message">错误消息</param>
         public ValidationException(string message) : base(400, message)
         {
+            ResourceKey = message;
         }
 
         /// <summary>
@@ -22,6 +33,32 @@ namespace CodeSpirit.Core
         /// <param name="message">错误消息</param>
         public ValidationException(int code, string message) : base(code, message)
         {
+            ResourceKey = message;
+        }
+
+        /// <summary>
+        /// 数据验证异常（支持资源键和参数）
+        /// </summary>
+        /// <param name="resourceKey">资源键</param>
+        /// <param name="parameters">参数</param>
+        public ValidationException(string resourceKey, params object[] parameters) 
+            : base(400, resourceKey)
+        {
+            ResourceKey = resourceKey;
+            Parameters = parameters;
+        }
+
+        /// <summary>
+        /// 数据验证异常（支持资源键、参数和错误代码）
+        /// </summary>
+        /// <param name="code">错误代码</param>
+        /// <param name="resourceKey">资源键</param>
+        /// <param name="parameters">参数</param>
+        public ValidationException(int code, string resourceKey, params object[] parameters) 
+            : base(code, resourceKey)
+        {
+            ResourceKey = resourceKey;
+            Parameters = parameters;
         }
     }
 } 

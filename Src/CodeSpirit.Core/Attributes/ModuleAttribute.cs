@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace CodeSpirit.Core.Attributes
 {
@@ -13,7 +13,20 @@ namespace CodeSpirit.Core.Attributes
         /// </summary>
         public string Name { get; }
 
+        /// <summary>
+        /// 模块显示名称（回退文本）
+        /// </summary>
         public string DisplayName { get; }
+
+        /// <summary>
+        /// 显示名称的资源键名称（用于多语言支持）
+        /// </summary>
+        public string DisplayNameResourceKey { get; set; }
+
+        /// <summary>
+        /// 显示名称的资源类型（包含 ResourceManager 的类）
+        /// </summary>
+        public Type DisplayNameResourceType { get; set; }
 
         public string Icon { get; set; }
 

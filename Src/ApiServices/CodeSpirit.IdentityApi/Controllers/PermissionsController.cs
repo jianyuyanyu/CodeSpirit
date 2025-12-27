@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using CodeSpirit.Authorization;
 using CodeSpirit.Authorization.Extensions;
 using CodeSpirit.Core;
@@ -7,6 +7,7 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Dtos.Permission;
+using CodeSpirit.Navigation.Resources;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using System.ComponentModel;
@@ -14,7 +15,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("权限管理")]
-    [Navigation(Icon = "fa-solid fa-lock", PlatformType = PlatformType.Tenant)]
+    [Navigation(Icon = "fa-solid fa-lock", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.Permissions", TitleResourceType = typeof(NavigationResources))]
     public class PermissionsController : ApiControllerBase
     {
         private readonly IPermissionService _permissionService;

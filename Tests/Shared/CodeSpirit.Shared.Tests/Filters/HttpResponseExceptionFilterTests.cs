@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Data;
@@ -22,13 +23,15 @@ public class HttpResponseExceptionFilterTests
 {
     private readonly Mock<ILogger<HttpResponseExceptionFilter>> _mockLogger;
     private readonly Mock<IWebHostEnvironment> _mockEnvironment;
+    private readonly Mock<IStringLocalizerFactory> _mockLocalizerFactory;
     private readonly HttpResponseExceptionFilter _filter;
 
     public HttpResponseExceptionFilterTests()
     {
         _mockLogger = new Mock<ILogger<HttpResponseExceptionFilter>>();
         _mockEnvironment = new Mock<IWebHostEnvironment>();
-        _filter = new HttpResponseExceptionFilter(_mockLogger.Object, _mockEnvironment.Object);
+        _mockLocalizerFactory = new Mock<IStringLocalizerFactory>();
+        _filter = new HttpResponseExceptionFilter(_mockLogger.Object, _mockEnvironment.Object, _mockLocalizerFactory.Object);
     }
 
     /// <summary>

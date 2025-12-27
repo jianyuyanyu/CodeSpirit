@@ -25,6 +25,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\Src\Components\CodeSpirit.Navigation\CodeSpirit.Navigation.csproj" />
+		<ProjectReference Include="..\..\..\Src\Components\CodeSpirit.Amis\CodeSpirit.Amis.csproj" />
 		<ProjectReference Include="..\..\Shared\CodeSpirit.Components.TestsBase\CodeSpirit.Components.TestsBase.csproj" />
 	</ItemGroup>
 

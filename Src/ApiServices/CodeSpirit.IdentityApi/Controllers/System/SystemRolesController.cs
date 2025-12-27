@@ -4,6 +4,7 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Dtos.Role;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
@@ -14,7 +15,7 @@ namespace CodeSpirit.IdentityApi.Controllers.System;
 /// 系统平台角色管理控制器
 /// </summary>
 [DisplayName("角色管理")]
-[Navigation(Icon = "fa-solid fa-user-shield", PlatformType = PlatformType.System)]
+[Navigation(Icon = "fa-solid fa-user-shield", PlatformType = PlatformType.System, TitleResourceKey = "Controller.SystemRoles", TitleResourceType = typeof(NavigationResources))]
 public class SystemRolesController : ApiControllerBase
 {
     private readonly IRoleService _roleService;

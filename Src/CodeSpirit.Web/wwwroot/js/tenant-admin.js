@@ -97,8 +97,37 @@
                     items: [
                         {
                             type: 'container',
-                            className: 'flex-1',
-                            body: []
+                            className: 'flex items-center',
+                            body: [
+                                {
+                                    type: 'select',
+                                    name: 'language',
+                                    className: 'language-selector',
+                                    value: '${language}',
+                                    options: [
+                                        {
+                                            label: '简体中文',
+                                            value: 'zh-CN'
+                                        },
+                                        {
+                                            label: 'English',
+                                            value: 'en'
+                                        }
+                                    ],
+                                    clearable: false,
+                                    searchable: false,
+                                    onEvent: {
+                                        change: {
+                                            actions: [
+                                                {
+                                                    actionType: 'custom',
+                                                    script: "var lang = event.data && event.data.value ? event.data.value : null; if (window.CodeSpirit && window.CodeSpirit.i18n && lang) { window.CodeSpirit.i18n.switchLanguage(lang); } else { console.error('i18n helper not loaded or invalid language value:', lang); }"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
                         },
                         {
                             type: 'dropdown-button',
@@ -107,16 +136,6 @@
                             trigger: 'click',
                             closeOnClick: true,
                             buttons: [
-                                {
-                                    type: 'button',
-                                    label: '个人设置',
-                                    icon: 'fa fa-cog',
-                                    actionType: 'url',
-                                    url: '/profile'
-                                },
-                                {
-                                    type: 'divider'
-                                },
                                 {
                                     type: 'button',
                                     label: '退出登录',
@@ -146,8 +165,15 @@
     /**
      * AMIS实例配置
      */
+    // 获取当前语言，用于设置 AMIS locale
+    const currentLanguage = (window.CodeSpirit && window.CodeSpirit.i18n) 
+        ? window.CodeSpirit.i18n.getCurrentLanguage() 
+        : 'zh-CN';
+    const amisLocale = currentLanguage === 'en' ? 'en-US' : 'zh-CN';
+    
     let amisOptions = {
         location: history.location,
+        locale: amisLocale, // AMIS 内置支持 en-US 和 zh-CN，无需额外语言包文件
         data: {
             tenant: {
                 id: tenantId,
@@ -158,7 +184,8 @@
             notifications: {
                 count: 0,
                 hasUnread: false
-            }
+            },
+            language: currentLanguage
         },
         context: {
             WEB_HOST: window.webHost || '',

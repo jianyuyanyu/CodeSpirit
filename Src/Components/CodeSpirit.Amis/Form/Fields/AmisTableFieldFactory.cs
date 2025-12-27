@@ -1,6 +1,7 @@
 using CodeSpirit.Amis.Attributes.FormFields;
 using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Helpers;
+using CodeSpirit.Core.Attributes;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -32,7 +33,7 @@ namespace CodeSpirit.Amis.Form.Factories
             {
                 ["type"] = "input-table",
                 ["name"] = prop.Name.ToCamelCase(),
-                ["label"] = prop.GetDisplayName(),
+                ["label"] = prop.GetDisplayName(utilityHelper),
                 ["addable"] = attr.Addable,
                 ["removable"] = attr.Removable,
                 ["draggable"] = attr.Draggable,
@@ -45,7 +46,7 @@ namespace CodeSpirit.Amis.Form.Factories
             };
 
             // 添加描述信息（如果有）
-            var description = prop.GetAttribute<DescriptionAttribute>()?.Description;
+            string description = GetLocalizedDescription(prop, utilityHelper);
             if (!string.IsNullOrEmpty(description))
             {
                 field["description"] = description;
@@ -73,6 +74,17 @@ namespace CodeSpirit.Amis.Form.Factories
             return field;
         }
 
+        /// <summary>
+        /// 获取本地化的描述信息
+        /// </summary>
+        /// <param name="prop">属性信息</param>
+        /// <param name="utilityHelper">实用工具类（用于获取当前语言）</param>
+        private string GetLocalizedDescription(PropertyInfo prop, UtilityHelper utilityHelper)
+        {
+            // 使用 CustomAttributeProviderExtensions 中的统一方法获取描述
+            return CustomAttributeProviderExtensions.GetLocalizedDescriptionInternal(prop, utilityHelper);
+        }
+
         private List<JObject> GenerateColumns(Type elementType, UtilityHelper utilityHelper, AmisTableFieldAttribute tableFieldAttr)
         {
             var columns = new List<JObject>();
@@ -89,11 +101,11 @@ namespace CodeSpirit.Amis.Form.Factories
                 var column = new JObject
                 {
                     ["name"] = prop.Name.ToCamelCase(),
-                    ["label"] = prop.GetDisplayName()
+                    ["label"] = prop.GetDisplayName(utilityHelper)
                 };
 
                 // 添加描述信息（如果有）
-                var description = prop.GetAttribute<DescriptionAttribute>()?.Description;
+                string description = GetLocalizedDescription(prop, utilityHelper);
                 if (!string.IsNullOrEmpty(description))
                 {
                     column["remark"] = description;
@@ -160,7 +172,7 @@ namespace CodeSpirit.Amis.Form.Factories
             var type = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
             
             // 获取描述信息（用于所有快速编辑配置）
-            var description = prop.GetAttribute<DescriptionAttribute>()?.Description;
+            string description = GetLocalizedDescription(prop, utilityHelper);
 
             // 优先检查是否有自定义的 Amis 字段特性
             

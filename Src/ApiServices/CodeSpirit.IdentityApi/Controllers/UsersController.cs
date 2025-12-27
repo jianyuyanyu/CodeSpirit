@@ -1,10 +1,11 @@
-﻿using CodeSpirit.Core;
+using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +14,7 @@ using System.ComponentModel;
 namespace CodeSpirit.IdentityApi.Controllers
 {
     [DisplayName("用户管理")]
-    [Navigation(Icon = "fa-solid fa-users", PlatformType = PlatformType.Tenant)]
+    [Navigation(Icon = "fa-solid fa-users", PlatformType = PlatformType.Tenant, TitleResourceKey = "Controller.Users", TitleResourceType = typeof(NavigationResources))]
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _userService;

@@ -140,6 +140,22 @@ namespace CodeSpirit.Navigation.Resources
         {
             get { return ResourceManager.GetString("Module.Tenant", CultureInfo.CurrentUICulture) ?? "租户管理"; }
         }
+        
+        /// <summary>
+        /// 系统设置控制器
+        /// </summary>
+        public static string Controller_SystemSettings
+        {
+            get { return ResourceManager.GetString("Controller.SystemSettings", CultureInfo.CurrentUICulture) ?? "系统设置"; }
+        }
+        
+        /// <summary>
+        /// 租户设置控制器
+        /// </summary>
+        public static string Controller_TenantSettings
+        {
+            get { return ResourceManager.GetString("Controller.TenantSettings", CultureInfo.CurrentUICulture) ?? "租户设置"; }
+        }
     }
 }
 

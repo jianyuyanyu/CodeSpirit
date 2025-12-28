@@ -1,5 +1,6 @@
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.Authorization;
 using CodeSpirit.Core.DependencyInjection;
 using CodeSpirit.Core.Extensions;
 using CodeSpirit.Core.IdGenerator;
@@ -34,6 +35,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         private readonly IMapper _mapper;
         private readonly ILogger<QuestionService> _logger;
         private readonly ISettingsService _settingsService;
+        private readonly ICurrentUser _currentUser;
         private QuestionTextParserV2 _questionTextParserV2;
         private readonly IIdGenerator _idGenerator;
         private readonly LLMAssistant _llmAssistant;
@@ -48,6 +50,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             QuestionTextParserV2 questionTextParserV2,
             IIdGenerator idGenerator,
             ISettingsService settingsService,
+            ICurrentUser currentUser,
             LLMAssistant llmAssistant,
             IDistributedCache distributedCache)
             : base(repository, mapper)
@@ -60,6 +63,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             _questionTextParserV2 = questionTextParserV2;
             _idGenerator = idGenerator;
             _settingsService = settingsService;
+            _currentUser = currentUser;
             _llmAssistant = llmAssistant;
             _distributedCache = distributedCache;
         }
@@ -2413,8 +2417,14 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
         public async Task<QuestionSettingsDto> GetQuestionSettingsAsync()
         {
-            // 从设置服务获取题目唯一性校验模式
-            var uniquenessModeString = await _settingsService.GetGlobalSettingAsync("Question", "UniquenessMode");
+            var tenantId = _currentUser.TenantId;
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                throw new AppServiceException(400, "租户ID不能为空");
+            }
+
+            // 从设置服务获取题目唯一性校验模式（租户设置）
+            var uniquenessModeString = await _settingsService.GetTenantSettingAsync("Question", "UniquenessMode", tenantId);
             
             // 解析枚举值，默认为分类唯一
             var uniquenessMode = QuestionUniquenessMode.Category;
@@ -2432,11 +2442,19 @@ namespace CodeSpirit.ExamApi.Services.Implementations
 
         public async Task<bool> UpdateQuestionSettingsAsync(QuestionSettingsDto settings)
         {
-            // 保存题目唯一性校验模式设置
-            await _settingsService.SetGlobalSettingAsync(
+            var tenantId = _currentUser.TenantId;
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                throw new AppServiceException(400, "租户ID不能为空");
+            }
+
+            // 保存题目唯一性校验模式设置（租户设置）
+            await _settingsService.SetTenantSettingAsync(
                 "Question", 
                 "UniquenessMode", 
-                settings.UniquenessMode.ToString());
+                settings.UniquenessMode.ToString(),
+                tenantId,
+                "更新题目设置");
 
             return true;
         }

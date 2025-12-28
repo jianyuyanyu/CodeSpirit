@@ -100,5 +100,11 @@
   <data name="Controller.SystemPermissions" xml:space="preserve">
     <value>权限管理</value>
   </data>
+  <data name="Controller.SystemSettings" xml:space="preserve">
+    <value>系统设置</value>
+  </data>
+  <data name="Controller.TenantSettings" xml:space="preserve">
+    <value>租户设置</value>
+  </data>
 </root>
 

@@ -58,89 +58,50 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Module.Identity" xml:space="preserve">
-    <value>User Center</value>
+  <data name="Id" xml:space="preserve">
+    <value>ID</value>
   </data>
-  <data name="Module.Tenant" xml:space="preserve">
-    <value>Tenant Management</value>
+  <data name="Module" xml:space="preserve">
+    <value>Module</value>
   </data>
-  <data name="Controller.Users" xml:space="preserve">
-    <value>User Management</value>
+  <data name="Key" xml:space="preserve">
+    <value>Key</value>
   </data>
-  <data name="Controller.Roles" xml:space="preserve">
-    <value>Role Management</value>
+  <data name="Value" xml:space="preserve">
+    <value>Value</value>
   </data>
-  <data name="Controller.ApiKeys" xml:space="preserve">
-    <value>API Key Management</value>
+  <data name="Name" xml:space="preserve">
+    <value>Name</value>
   </data>
-  <data name="Controller.Tenants" xml:space="preserve">
-    <value>Tenant Management</value>
+  <data name="Description" xml:space="preserve">
+    <value>Description</value>
   </data>
-  <data name="Controller.Departments" xml:space="preserve">
-    <value>Department Management</value>
+  <data name="ValueType" xml:space="preserve">
+    <value>Value Type</value>
   </data>
-  <data name="Controller.Employees" xml:space="preserve">
-    <value>Employee Management</value>
+  <data name="Scope" xml:space="preserve">
+    <value>Scope</value>
   </data>
-  <data name="Controller.Permissions" xml:space="preserve">
-    <value>Permission Management</value>
+  <data name="Group" xml:space="preserve">
+    <value>Group</value>
   </data>
-  <data name="Controller.UserStatistics" xml:space="preserve">
-    <value>User Statistics</value>
+  <data name="IsSystemDefault" xml:space="preserve">
+    <value>System Default</value>
   </data>
-  <data name="Controller.LoginLogs" xml:space="preserve">
-    <value>Login Logs</value>
+  <data name="CreatedAt" xml:space="preserve">
+    <value>Created At</value>
   </data>
-  <data name="Controller.SystemUsers" xml:space="preserve">
-    <value>User Management</value>
+  <data name="UpdatedAt" xml:space="preserve">
+    <value>Updated At</value>
   </data>
-  <data name="Controller.SystemRoles" xml:space="preserve">
-    <value>Role Management</value>
+  <data name="TenantId" xml:space="preserve">
+    <value>Tenant ID</value>
   </data>
-  <data name="Controller.SystemPermissions" xml:space="preserve">
-    <value>Permission Management</value>
+  <data name="Reason" xml:space="preserve">
+    <value>Reason</value>
   </data>
-  <data name="Module.Survey" xml:space="preserve">
-    <value>Survey</value>
-  </data>
-  <data name="Controller.Questions" xml:space="preserve">
-    <value>Question Management</value>
-  </data>
-  <data name="Controller.Surveys" xml:space="preserve">
-    <value>Survey Management</value>
-  </data>
-  <data name="Controller.Responses" xml:space="preserve">
-    <value>Response Management</value>
-  </data>
-  <data name="Controller.SurveyCategories" xml:space="preserve">
-    <value>Category Management</value>
-  </data>
-  <data name="Controller.SurveyDrafts" xml:space="preserve">
-    <value>Draft Management</value>
-  </data>
-  <data name="Module.Exam" xml:space="preserve">
-    <value>Exam Center</value>
-  </data>
-  <data name="Module.Pathfinder" xml:space="preserve">
-    <value>Smart Tasks</value>
-  </data>
-  <data name="Module.Messaging" xml:space="preserve">
-    <value>Message Center</value>
-  </data>
-  <data name="Module.File" xml:space="preserve">
-    <value>File Storage</value>
-  </data>
-  <data name="Module.Config" xml:space="preserve">
-    <value>Configuration Center</value>
-  </data>
-  <data name="Module.Approval" xml:space="preserve">
-    <value>Smart Approval</value>
-  </data>
-  <data name="Controller.SystemSettings" xml:space="preserve">
-    <value>System Settings</value>
-  </data>
-  <data name="Controller.TenantSettings" xml:space="preserve">
-    <value>Tenant Settings</value>
+  <data name="ScopeId" xml:space="preserve">
+    <value>Scope ID</value>
   </data>
 </root>
 

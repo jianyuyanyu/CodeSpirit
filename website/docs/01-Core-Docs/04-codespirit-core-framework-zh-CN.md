@@ -1,0 +1,1063 @@
+﻿# CodeSpirit.Core 核心框架
+
+## 概述
+
+CodeSpirit.Core是整个框架的核心模块，定义了系统的基础抽象、通用类型和核心接口。它遵循Clean Architecture的领域层设计原则，不依赖任何外部框架，为整个系统提供稳定的基础。
+
+**框架版本**: .NET 10  
+**最后更新**: 2025年12月
+
+## 核心组件架构
+
+```mermaid
+graph TB
+    subgraph "API响应体系"
+        ApiResponse[ApiResponse&lt;T&gt;]
+        PageList[PageList&lt;T&gt;]
+    end
+    
+    subgraph "异常处理体系"
+        BusinessException[BusinessException]
+        ValidationException[ValidationException]
+        AppServiceException[AppServiceException]
+    end
+    
+    subgraph "用户上下文"
+        ICurrentUser[ICurrentUser接口]
+        CurrentUserImpl[CurrentUser实现]
+    end
+    
+    subgraph "依赖注入标记"
+        IScopedDependency[IScopedDependency]
+        ITransientDependency[ITransientDependency]
+        ISingletonDependency[ISingletonDependency]
+    end
+    
+    subgraph "权限体系"
+        AuthorizationInterfaces[权限接口]
+        PermissionAttributes[权限特性]
+    end
+    
+    subgraph "事件总线"
+        EventBusInterfaces[事件总线接口]
+        DomainEvents[领域事件]
+    end
+    
+    subgraph "扩展方法"
+        Extensions[扩展方法集合]
+        Utilities[工具类]
+    end
+```
+
+## 1. API响应体系
+
+### 1.1 ApiResponse`<T>` - 统一API响应格式
+
+**设计目的**: 为所有API提供统一的响应格式，确保前后端交互的一致性。
+
+```csharp
+/// <summary>
+/// 跳转方式枚举
+/// </summary>
+public enum RedirectType
+{
+    /// <summary>
+    /// 当前窗口跳转
+    /// </summary>
+    Self = 0,
+    
+    /// <summary>
+    /// 新窗口打开
+    /// </summary>
+    Blank = 1,
+    
+    /// <summary>
+    /// 替换当前页面
+    /// </summary>
+    Replace = 2
+}
+
+/// <summary>
+/// 跳转信息
+/// </summary>
+public class RedirectInfo
+{
+    /// <summary>
+    /// 跳转地址
+    /// </summary>
+    public string Url { get; set; }
+    
+    /// <summary>
+    /// 跳转方式
+    /// </summary>
+    public RedirectType Type { get; set; } = RedirectType.Self;
+    
+    /// <summary>
+    /// 延迟时间（毫秒）
+    /// </summary>
+    public int Delay { get; set; } = 0;
+    
+    /// <summary>
+    /// 是否显示跳转提示
+    /// </summary>
+    public bool ShowMessage { get; set; } = true;
+    
+    /// <summary>
+    /// 跳转提示文本
+    /// </summary>
+    public string Message { get; set; } = "正在跳转...";
+}
+
+/// <summary>
+/// 通用 API 响应封装类
+/// </summary>
+/// <typeparam name="T">数据类型</typeparam>
+public class ApiResponse`<T>` where T : class
+{
+    /// <summary>
+    /// 状态码，0 表示成功，非 0 表示错误
+    /// </summary>
+    public int Status { get; set; }
+
+    /// <summary>
+    /// 响应消息
+    /// </summary>
+    public string Msg { get; set; }
+
+    /// <summary>
+    /// 响应数据
+    /// </summary>
+    public T Data { get; set; }
+    
+    /// <summary>
+    /// 跳转信息
+    /// </summary>
+    public RedirectInfo Redirect { get; set; }
+
+    /// <summary>
+    /// 创建成功响应
+    /// </summary>
+    public static ApiResponse`<T>` Success(T data, string msg = "操作成功！")
+    {
+        return data == null ? throw new ArgumentNullException(nameof(data)) : new ApiResponse`<T>`(0, msg, data);
+    }
+    
+    /// <summary>
+    /// 创建成功响应并跳转
+    /// </summary>
+    public static ApiResponse`<T>` SuccessWithRedirect(T data, string url, string msg = "操作成功！", RedirectType redirectType = RedirectType.Self, int delay = 1500)
+    {
+        if (data == null) throw new ArgumentNullException(nameof(data));
+        if (string.IsNullOrEmpty(url)) throw new ArgumentNullException(nameof(url));
+        
+        return new ApiResponse`<T>`(0, msg, data, new RedirectInfo
+        {
+            Url = url,
+            Type = redirectType,
+            Delay = delay,
+            Message = msg
+        });
+    }
+
+    /// <summary>
+    /// 创建错误响应
+    /// </summary>
+    public static ApiResponse`<T>` Error(int status, string msg, T data = null)
+    {
+        if (status == 0) throw new ArgumentException("Error status code cannot be 0.", nameof(status));
+        if (string.IsNullOrWhiteSpace(msg)) throw new ArgumentException("Error message cannot be empty.", nameof(msg));
+        return new ApiResponse`<T>`(status, msg, data);
+    }
+}
+
+/// <summary>
+/// 非泛型 API 响应类
+/// </summary>
+public class ApiResponse : ApiResponse`<string>`
+{
+    /// <summary>
+    /// 创建成功响应
+    /// </summary>
+    public static ApiResponse Success(string msg = "操作成功！")
+    {
+        return new ApiResponse(0, msg);
+    }
+    
+    /// <summary>
+    /// 创建成功响应并跳转
+    /// </summary>
+    public static ApiResponse SuccessWithRedirect(string url, string msg = "操作成功！", RedirectType redirectType = RedirectType.Self, int delay = 1500)
+    {
+        if (string.IsNullOrEmpty(url)) throw new ArgumentNullException(nameof(url));
+        
+        return new ApiResponse(0, msg, new RedirectInfo
+        {
+            Url = url,
+            Type = redirectType,
+            Delay = delay,
+            Message = msg
+        });
+    }
+    
+    /// <summary>
+    /// 创建错误响应
+    /// </summary>
+    public static ApiResponse Error(int status, string msg)
+    {
+        if (status == 0) throw new ArgumentException("Error status code cannot be 0.", nameof(status));
+        if (string.IsNullOrWhiteSpace(msg)) throw new ArgumentException("Error message cannot be empty.", nameof(msg));
+        return new ApiResponse(status, msg);
+    }
+}
+```
+
+**使用示例**:
+```csharp
+// 成功响应
+return Ok(ApiResponse<UserDto>.Success(userDto, "用户创建成功"));
+
+// 错误响应
+return BadRequest(ApiResponse`<string>`.Error(400, "用户名已存在"));
+```
+
+### 1.2 PageList`<T>` - 分页数据封装
+
+**设计目的**: 提供统一的分页数据结构，支持前端分页组件。
+
+```csharp
+/// <summary>
+/// 列表数据封装类
+/// </summary>
+/// <typeparam name="T">数据类型</typeparam>
+public class PageList`<T>`
+{
+    /// <summary>
+    /// 数据项列表
+    /// </summary>
+    public List`<T>` Items { get; set; }
+
+    /// <summary>
+    /// 总数
+    /// </summary>
+    public int Total { get; set; }
+
+    public PageList() { }
+
+    public PageList(List`<T>` items, int total)
+    {
+        Items = items;
+        Total = total;
+    }
+}
+```
+
+**使用示例**:
+```csharp
+// 创建分页数据
+var users = await userRepository.GetUsersAsync(pageIndex, pageSize);
+var totalCount = await userRepository.GetUserCountAsync();
+var pageList = new PageList<UserDto>(users, totalCount);
+
+return Ok(ApiResponse<PageList<UserDto>>.Success(pageList));
+```
+
+## 2. 异常处理体系
+
+### 2.1 BusinessException - 业务异常
+
+**设计目的**: 处理业务逻辑相关的异常情况。
+
+```csharp
+/// <summary>
+/// 业务异常类
+/// </summary>
+public class BusinessException : Exception
+{
+    public int ErrorCode { get; }
+
+    public BusinessException(string message) : base(message)
+    {
+        ErrorCode = 400;
+    }
+
+    public BusinessException(int errorCode, string message) : base(message)
+    {
+        ErrorCode = errorCode;
+    }
+
+    public BusinessException(string message, Exception innerException) 
+        : base(message, innerException)
+    {
+        ErrorCode = 400;
+    }
+}
+```
+
+### 2.2 ValidationException - 验证异常
+
+**设计目的**: 处理数据验证相关的异常。
+
+```csharp
+/// <summary>
+/// 验证异常类
+/// </summary>
+public class ValidationException : Exception
+{
+    public Dictionary<string, string[]> Errors { get; }
+
+    public ValidationException(string message) : base(message)
+    {
+        Errors = new Dictionary<string, string[]>();
+    }
+
+    public ValidationException(Dictionary<string, string[]> errors) 
+        : base("验证失败")
+    {
+        Errors = errors;
+    }
+}
+```
+
+### 2.3 AppServiceException - 应用服务异常
+
+**设计目的**: 处理应用服务层的异常。
+
+```csharp
+/// <summary>
+/// 应用服务异常类
+/// </summary>
+public class AppServiceException : Exception
+{
+    public AppServiceException(string message) : base(message) { }
+    
+    public AppServiceException(string message, Exception innerException) 
+        : base(message, innerException) { }
+}
+```
+
+## 3. 用户上下文体系
+
+### 3.1 ICurrentUser - 当前用户接口
+
+**设计目的**: 提供当前登录用户信息的抽象接口。
+
+```csharp
+/// <summary>
+/// 当前用户接口，定义获取当前用户信息的基本操作
+/// </summary>
+public interface ICurrentUser : IScopedDependency
+{
+    /// <summary>
+    /// 获取用户ID
+    /// </summary>
+    long? Id { get; }
+
+    /// <summary>
+    /// 获取用户名
+    /// </summary>
+    string UserName { get; }
+
+    /// <summary>
+    /// 获取用户角色列表
+    /// </summary>
+    string[] Roles { get; }
+
+    /// <summary>
+    /// 判断用户是否已认证
+    /// </summary>
+    bool IsAuthenticated { get; }
+
+    /// <summary>
+    /// 获取用户的所有声明（Claims）
+    /// </summary>
+    IEnumerable<Claim> Claims { get; }
+
+    /// <summary>
+    /// 获取用户权限集合
+    /// </summary>
+    HashSet`<string>` Permissions { get; }
+
+    /// <summary>
+    /// 获取当前用户的租户ID
+    /// </summary>
+    string? TenantId { get; }
+
+    /// <summary>
+    /// 获取当前用户的租户名称
+    /// </summary>
+    string? TenantName { get; }
+
+    /// <summary>
+    /// 判断用户是否属于指定角色
+    /// </summary>
+    /// <param name="role">角色名称</param>
+    /// <returns>如果用户属于该角色返回true，否则返回false</returns>
+    bool IsInRole(string role);
+
+    /// <summary>
+    /// 判断用户是否属于指定租户
+    /// </summary>
+    /// <param name="tenantId">租户ID</param>
+    /// <returns>如果用户属于该租户返回true，否则返回false</returns>
+    bool IsInTenant(string tenantId);
+}
+```
+
+## 4. 依赖注入标记接口
+
+### 4.1 生命周期标记接口
+
+**设计目的**: 通过标记接口自动注册服务，简化依赖注入配置。
+
+```csharp
+/// <summary>
+/// 作用域注入标记接口
+/// 在同一个作用域中构造的是同一个实例
+/// </summary>
+public interface IScopedDependency
+{
+}
+
+/// <summary>
+/// 瞬时注入标记接口
+/// 每次请求都创建新实例
+/// </summary>
+public interface ITransientDependency
+{
+}
+
+/// <summary>
+/// 单例注入标记接口
+/// 整个应用程序生命周期中只有一个实例
+/// </summary>
+public interface ISingletonDependency
+{
+}
+```
+
+### 4.2 自动注册扩展
+
+```csharp
+public static class ServiceCollectionExtensions
+{
+    /// <summary>
+    /// 自动注册标记接口的服务
+    /// </summary>
+    public static IServiceCollection AddAutoRegistration(
+        this IServiceCollection services, 
+        params Assembly[] assemblies)
+    {
+        // 注册 Scoped 服务
+        services.Scan(scan => scan
+            .FromAssemblies(assemblies)
+            .AddClasses(classes => classes.AssignableTo<IScopedDependency>())
+            .AsImplementedInterfaces()
+            .WithScopedLifetime());
+
+        // 注册 Transient 服务
+        services.Scan(scan => scan
+            .FromAssemblies(assemblies)
+            .AddClasses(classes => classes.AssignableTo<ITransientDependency>())
+            .AsImplementedInterfaces()
+            .WithTransientLifetime());
+
+        // 注册 Singleton 服务
+        services.Scan(scan => scan
+            .FromAssemblies(assemblies)
+            .AddClasses(classes => classes.AssignableTo<ISingletonDependency>())
+            .AsImplementedInterfaces()
+            .WithSingletonLifetime());
+
+        return services;
+    }
+}
+```
+
+## 5. 权限体系
+
+### 5.1 权限接口定义
+
+```csharp
+/// <summary>
+/// 权限服务接口：用于管理和查询应用的权限
+/// </summary>
+public interface IHasPermissionService
+{
+    /// <summary>
+    /// 检查权限代码是否存在
+    /// </summary>
+    /// <param name="permissionCode">权限代码</param>
+    /// <returns>true 表示权限存在，false 表示权限不存在</returns>
+    bool HasPermission(string permissionCode);
+
+    /// <summary>
+    /// 获取指定方法的权限代码
+    /// </summary>
+    /// <param name="methodInfo">方法信息</param>
+    /// <returns>权限代码</returns>
+    string GetPermissionCode(System.Reflection.MethodInfo methodInfo);
+
+    /// <summary>
+    /// 检查导航权限代码是否存在
+    /// </summary>
+    /// <param name="permissionCode">导航权限代码</param>
+    /// <returns>true 表示权限存在，false 表示权限不存在</returns>
+    /// <remarks>
+    /// 导航权限仅检查一级和二级权限。
+    /// 例如，对于权限 "exam_examPapers_createExamPaper"，
+    /// 只会检查 "exam" 和 "exam_examPapers" 的权限。
+    /// </remarks>
+    bool HasNavigationPermission(string permissionCode);
+}
+```
+
+### 5.2 权限特性
+
+```csharp
+/// <summary>
+/// 权限要求特性
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public class RequirePermissionAttribute : Attribute
+{
+    public string Permission { get; }
+
+    public RequirePermissionAttribute(string permission)
+    {
+        Permission = permission;
+    }
+}
+```
+
+## 6. 多租户支持
+
+### 6.1 IMultiTenant 接口
+
+```csharp
+/// <summary>
+/// 多租户接口，标识实体支持租户隔离
+/// </summary>
+public interface IMultiTenant
+{
+    /// <summary>
+    /// 租户ID
+    /// </summary>
+    string TenantId { get; set; }
+}
+```
+
+### 6.2 租户常量
+
+```csharp
+/// <summary>
+/// 租户相关常量
+/// </summary>
+public static class TenantConstants
+{
+    /// <summary>
+    /// 默认租户ID
+    /// </summary>
+    public const string DefaultTenantId = "default";
+}
+```
+
+## 7. 其他核心组件
+
+### 7.1 唯一性验证服务
+
+```csharp
+/// <summary>
+/// 唯一性验证服务接口
+/// </summary>
+public interface IUniqueValidationService
+{
+    /// <summary>
+    /// 验证字段值是否唯一
+    /// </summary>
+    Task`<bool>` IsUniqueAsync`<T>`(string propertyName, object value, object? excludeId = null) where T : class;
+}
+```
+
+### 7.2 唯一性验证特性
+
+```csharp
+/// <summary>
+/// 唯一性验证特性
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public class UniqueAttribute : ValidationAttribute
+{
+    /// <summary>
+    /// 实体类型
+    /// </summary>
+    public Type EntityType { get; set; }
+    
+    /// <summary>
+    /// 验证字段值是否唯一
+    /// </summary>
+    protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+    {
+        // 实现唯一性验证逻辑
+    }
+}
+```
+
+## 8. 扩展方法集合
+
+### 7.1 字符串扩展
+
+```csharp
+public static class StringExtensions
+{
+    /// <summary>
+    /// 判断字符串是否为空或null
+    /// </summary>
+    public static bool IsNullOrEmpty(this string str)
+    {
+        return string.IsNullOrEmpty(str);
+    }
+
+    /// <summary>
+    /// 判断字符串是否为空白或null
+    /// </summary>
+    public static bool IsNullOrWhiteSpace(this string str)
+    {
+        return string.IsNullOrWhiteSpace(str);
+    }
+
+    /// <summary>
+    /// 安全截取字符串
+    /// </summary>
+    public static string SafeSubstring(this string str, int startIndex, int length)
+    {
+        if (str.IsNullOrEmpty() || startIndex >= str.Length)
+            return string.Empty;
+
+        if (startIndex + length > str.Length)
+            length = str.Length - startIndex;
+
+        return str.Substring(startIndex, length);
+    }
+}
+```
+
+### 7.2 集合扩展
+
+```csharp
+public static class CollectionExtensions
+{
+    /// <summary>
+    /// 判断集合是否为空或null
+    /// </summary>
+    public static bool IsNullOrEmpty`<T>`(this IEnumerable`<T>` source)
+    {
+        return source == null || !source.Any();
+    }
+
+    /// <summary>
+    /// 安全的ForEach操作
+    /// </summary>
+    public static void SafeForEach`<T>`(this IEnumerable`<T>` source, Action`<T>` action)
+    {
+        if (source.IsNullOrEmpty() || action == null)
+            return;
+
+        foreach (var item in source)
+        {
+            action(item);
+        }
+    }
+}
+```
+
+## 9. 工具类
+
+### 8.1 ID生成器
+
+```csharp
+/// <summary>
+/// ID生成器接口
+/// </summary>
+public interface IIdGenerator : ISingletonDependency
+{
+    /// <summary>
+    /// 生成新的ID
+    /// </summary>
+    /// <returns>生成的ID</returns>
+    long NewId();
+}
+
+/// <summary>
+/// 雪花算法ID生成器
+/// </summary>
+public class SnowflakeIdGenerator : IIdGenerator
+{
+    // 雪花算法实现...
+}
+```
+
+### 8.2 时间工具
+
+```csharp
+/// <summary>
+/// 时间工具类
+/// </summary>
+public static class TimeHelper
+{
+    /// <summary>
+    /// 获取当前时间戳（毫秒）
+    /// </summary>
+    public static long GetCurrentTimestamp()
+    {
+        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    }
+
+    /// <summary>
+    /// 时间戳转DateTime
+    /// </summary>
+    public static DateTime TimestampToDateTime(long timestamp)
+    {
+        return DateTimeOffset.FromUnixTimeMilliseconds(timestamp).DateTime;
+    }
+
+    /// <summary>
+    /// DateTime转时间戳
+    /// </summary>
+    public static long DateTimeToTimestamp(DateTime dateTime)
+    {
+        return new DateTimeOffset(dateTime).ToUnixTimeMilliseconds();
+    }
+}
+```
+
+## 10. 使用示例
+
+### 9.1 创建业务服务
+
+```csharp
+public class UserService : IUserService, IScopedDependency
+{
+    private readonly IRepository<User> _userRepository;
+    private readonly ICurrentUser _currentUser;
+    private readonly IEventBus _eventBus;
+
+    public UserService(
+        IRepository<User> userRepository,
+        ICurrentUser currentUser,
+        IEventBus eventBus)
+    {
+        _userRepository = userRepository;
+        _currentUser = currentUser;
+        _eventBus = eventBus;
+    }
+
+    public async Task<ApiResponse<UserDto>> CreateUserAsync(CreateUserDto dto)
+    {
+        try
+        {
+            // 业务验证
+            if (await _userRepository.AnyAsync(u => u.UserName == dto.UserName))
+            {
+                throw new BusinessException("用户名已存在");
+            }
+
+            // 创建用户
+            var user = new User
+            {
+                UserName = dto.UserName,
+                Email = dto.Email,
+                CreatedBy = _currentUser.Id,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _userRepository.AddAsync(user);
+
+            // 发布领域事件
+            await _eventBus.PublishAsync(new UserCreatedEvent
+            {
+                UserId = user.Id,
+                UserName = user.UserName,
+                OccurredOn = DateTime.UtcNow
+            });
+
+            var userDto = user.MapTo<UserDto>();
+            return ApiResponse<UserDto>.Success(userDto, "用户创建成功");
+        }
+        catch (BusinessException ex)
+        {
+            return ApiResponse<UserDto>.Error(ex.ErrorCode, ex.Message);
+        }
+    }
+}
+```
+
+### 9.2 控制器使用
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+
+    public UsersController(IUserService userService)
+    {
+        _userService = userService;
+    }
+
+    [HttpPost]
+    [RequirePermission("User.Create")]
+    public async Task<IActionResult> CreateUser(CreateUserDto dto)
+    {
+        var result = await _userService.CreateUserAsync(dto);
+        
+        if (result.Status == 0)
+            return Ok(result);
+        else
+            return BadRequest(result);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetUsers([FromQuery] UserQueryDto query)
+    {
+        var result = await _userService.GetUsersAsync(query);
+        return Ok(result);
+    }
+}
+```
+
+## 11. 最佳实践
+
+### 10.1 异常处理
+
+1. **使用特定的异常类型**：根据不同的错误场景使用相应的异常类型
+2. **提供有意义的错误消息**：错误消息应该清晰地描述问题
+3. **避免暴露敏感信息**：不要在异常消息中包含敏感数据
+
+### 10.2 依赖注入
+
+1. **优先使用接口**：通过接口定义依赖关系
+2. **合理选择生命周期**：根据服务特性选择合适的生命周期
+3. **避免循环依赖**：设计时注意避免服务间的循环依赖
+
+### 10.3 API设计
+
+1. **统一响应格式**：所有API都应该使用ApiResponse格式
+2. **合理的HTTP状态码**：根据操作结果返回合适的状态码
+3. **清晰的错误信息**：提供有助于调试的错误信息
+
+## 12. 共享服务组件 (CodeSpirit.Shared)
+
+### 11.1 增强批量导入服务
+
+**设计目的**: 提供统一的批量导入解决方案，支持Excel模板生成、数据验证和错误处理。
+
+#### 11.1.1 导入模板服务 (IImportTemplateService)
+
+```csharp
+/// <summary>
+/// 导入模板服务接口
+/// </summary>
+public interface IImportTemplateService
+{
+    /// <summary>
+    /// 生成Excel导入模板
+    /// </summary>
+    /// <typeparam name="T">导入DTO类型</typeparam>
+    /// <param name="fileName">文件名</param>
+    /// <returns>Excel文件字节数组</returns>
+    Task<byte[]> GenerateExcelTemplateAsync`<T>`(string? fileName = null) where T : class;
+
+    /// <summary>
+    /// 根据类型名称生成Excel导入模板
+    /// </summary>
+    /// <param name="typeName">类型名称</param>
+    /// <param name="fileName">文件名</param>
+    /// <returns>Excel文件字节数组</returns>
+    Task<byte[]> GenerateExcelTemplateByTypeNameAsync(string typeName, string? fileName = null);
+
+    /// <summary>
+    /// 获取导入模板的列信息
+    /// </summary>
+    /// <typeparam name="T">导入DTO类型</typeparam>
+    /// <returns>列信息列表</returns>
+    List<ImportColumnInfo> GetImportColumns`<T>`() where T : class;
+}
+```
+
+**特性**:
+- 基于DTO属性自动生成Excel模板
+- 支持字段验证规则（Required、DisplayName等）
+- 自动生成示例数据和字段说明
+- 支持中文列名和注释
+
+#### 11.1.2 增强批量导入助手 (EnhancedBatchImportHelper)
+
+```csharp
+/// <summary>
+/// 增强的批量导入助手类（使用组合模式）
+/// </summary>
+/// <typeparam name="TBatchImportDto">批量导入DTO类型</typeparam>
+public class EnhancedBatchImportHelper<TBatchImportDto> where TBatchImportDto : class
+{
+    /// <summary>
+    /// 增强的批量导入
+    /// </summary>
+    /// <param name="importData">导入数据</param>
+    /// <param name="importProcessor">导入处理器，返回null表示成功，返回错误消息表示失败</param>
+    /// <param name="validator">自定义验证器</param>
+    /// <returns>导入结果</returns>
+    public async Task<BatchImportResultDto> EnhancedBatchImportAsync(
+        IEnumerable<TBatchImportDto> importData,
+        Func<TBatchImportDto, int, Task<string?>> importProcessor,
+        Func<TBatchImportDto, int, Task<List<ValidationError>>>? validator = null);
+        
+    /// <summary>
+    /// 获取导入结果
+    /// </summary>
+    /// <param name="importId">导入ID</param>
+    /// <returns>导入结果</returns>
+    public async Task<BatchImportResultDto?> GetImportResultAsync(string importId);
+
+    /// <summary>
+    /// 导出失败记录
+    /// </summary>
+    /// <param name="failedRecords">失败记录</param>
+    /// <returns>Excel文件字节数组</returns>
+    public async Task<byte[]> ExportFailedRecordsAsync(List<ImportFailedRecord> failedRecords);
+}
+```
+
+**特性**:
+- 支持DataAnnotations验证和自定义验证器
+- 分布式缓存支持，可跟踪导入进度
+- 详细的错误记录和失败数据导出
+- 异步处理，支持大批量数据导入
+
+#### 11.1.3 批量导入DTO基类
+
+```csharp
+/// <summary>
+/// 增强的批量导入数据基础DTO类
+/// </summary>
+/// <typeparam name="T">要导入的数据类型</typeparam>
+public class EnhancedBatchImportDtoBase`<T>`
+{
+    /// <summary>
+    /// Excel导入的数据集合
+    /// </summary>
+    [AmisEnhancedImportField(
+        Label = "批量导入数据", 
+        Placeholder = "请先下载模板，填写数据后上传Excel文件",
+        MaxLength = 1000,
+        ShowTemplateDownload = true,
+        ShowImportResult = true,
+        TemplateDownloadText = "下载导入模板",
+        ImportButtonText = "开始导入"
+    )]
+    [DisplayName("导入数据")]
+    public List`<T>` ImportData { get; set; } = new List`<T>`();
+}
+```
+
+### 11.2 API控制器基类增强
+
+**新增功能**:
+- 支持中文文件名的文件下载方法
+- Excel和CSV文件下载的便捷方法
+- 统一的文件响应头处理
+
+```csharp
+/// <summary>
+/// 下载Excel文件（支持中文文件名）
+/// </summary>
+/// <param name="fileBytes">文件字节数组</param>
+/// <param name="fileName">文件名（支持中文）</param>
+/// <returns>文件下载结果</returns>
+protected ActionResult DownloadExcelFile(byte[] fileBytes, string fileName)
+{
+    return DownloadFile(fileBytes, fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+}
+
+/// <summary>
+/// 下载文件（支持中文文件名）
+/// </summary>
+/// <param name="fileBytes">文件字节数组</param>
+/// <param name="fileName">文件名（支持中文）</param>
+/// <param name="contentType">MIME类型</param>
+/// <returns>文件下载结果</returns>
+protected ActionResult DownloadFile(byte[] fileBytes, string fileName, string contentType)
+{
+    // 设置正确的Content-Disposition头以支持中文文件名
+    Response.Headers["Content-Disposition"] = $"attachment; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
+    
+    return File(fileBytes, contentType);
+}
+```
+
+## 13. AMIS组件增强
+
+### 12.1 增强导入字段特性
+
+```csharp
+/// <summary>
+/// 增强的批量导入字段特性，支持模板下载、结果展示等功能
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = false)]
+public class AmisEnhancedImportFieldAttribute : AmisFormFieldAttribute
+{
+    /// <summary>
+    /// 是否创建输入表格预览
+    /// </summary>
+    public bool CreateInputTable { get; set; } = true;
+
+    /// <summary>
+    /// 最大导入条数限制
+    /// </summary>
+    public int MaxLength { get; set; } = 1000;
+
+    /// <summary>
+    /// 是否显示模板下载按钮
+    /// </summary>
+    public bool ShowTemplateDownload { get; set; } = true;
+
+    /// <summary>
+    /// 是否显示导入结果
+    /// </summary>
+    public bool ShowImportResult { get; set; } = true;
+
+    /// <summary>
+    /// 模板下载按钮文本
+    /// </summary>
+    public string TemplateDownloadText { get; set; } = "下载导入模板";
+
+    /// <summary>
+    /// 导入按钮文本
+    /// </summary>
+    public string ImportButtonText { get; set; } = "开始导入";
+}
+```
+
+### 12.2 AMIS CRUD配置构建器增强
+
+**新增功能**:
+- 支持增强导入字段的自动识别和配置
+- 自动生成模板下载和导入结果查询API
+- 集成失败记录导出功能
+
+## 总结
+
+CodeSpirit.Core作为框架的核心模块，现在提供了：
+
+1. **统一的API响应格式**：确保前后端交互的一致性，支持跳转信息
+2. **完善的异常处理体系**：支持不同类型的异常处理
+3. **灵活的依赖注入机制**：通过标记接口简化服务注册
+4. **强大的权限体系**：支持细粒度的权限控制和导航权限检查
+5. **多租户支持**：通过IMultiTenant接口实现数据隔离
+6. **丰富的扩展方法**：提供常用的工具方法
+7. **唯一性验证服务**：支持数据唯一性验证
+8. **增强批量导入服务**：智能Excel模板生成、数据验证和错误处理
+9. **AMIS组件增强**：支持复杂的前端交互组件生成
+10. **ID生成器**：基于雪花算法的分布式ID生成
+
+这些核心组件为整个框架提供了坚实的基础，确保了系统的稳定性、可扩展性和可维护性。基于.NET 10构建，充分利用了最新的C# 13特性，为开发者提供了更好的开发体验。 

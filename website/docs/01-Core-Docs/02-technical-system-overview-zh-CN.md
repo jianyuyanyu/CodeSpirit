@@ -1,0 +1,307 @@
+## 总体技术体系说明
+
+**最后更新**: 2025年1月  
+**框架版本**: v2.0.0
+
+## 1. 架构概览
+
+CodeSpirit（码灵）是一款基于 .NET 10 构建的全栈低代码开发框架，通过智能代码生成引擎与AI深度协同，实现后端驱动式全栈开发范式。框架采用Clean Architecture分层设计，提供从界面生成、业务逻辑编排到系统运维的全生命周期支持。
+
+### 1.1 架构图
+
+```mermaid
+flowchart TD
+    classDef uiLayer fill:#f9d1d1,stroke:#333,stroke-width:1px
+    classDef backendLayer fill:#d1f9d1,stroke:#333,stroke-width:1px
+    classDef cloudLayer fill:#d1d1f9,stroke:#333,stroke-width:1px
+    
+    subgraph UI["智能界面生成引擎"]
+        direction LR
+        A1["🧭 动态导航系统"] --> A2["📝 智能表单"]
+        A2 --> A3["📊 智能表格"]
+        A3 --> A4["📦 批量处理"]
+    end
+    
+    subgraph Backend["企业级后端架构"]
+        direction LR
+        B1["🔐 权限系统"] --> B2["💾 ORM扩展"]
+        B2 --> B3["🏢 多租户"]
+        B3 --> B4["📋 审计服务"]
+    end
+    
+    subgraph Cloud["云原生底座"]
+        direction LR
+        C1["🚀 .NET Aspire"] --> C2["⚙️ 配置中心（内置）"]
+        C2 --> C3["☸️ K8s支持"]
+        C3 --> C4["📦 分布式缓存"]
+    end
+    
+    UI --> Backend
+    Backend --> Cloud
+    
+    class UI uiLayer
+    class Backend backendLayer
+    class Cloud cloudLayer
+```
+
+## 2. 核心技术栈
+
+| 类别         | 技术选型                                    |
+| :----------- | :------------------------------------------ |
+| **框架**     | .NET 10                                     |
+| **语言**     | C# 13（支持Primary Constructor等新特性）    |
+| **后端架构** | Clean Architecture + DDD                    |
+| **ORM**      | Entity Framework Core（含软删除、审计追踪） |
+| **前端生成** | AMIS（动态表单/表格生成）                   |
+| **微服务**   | Aspire 13.0（服务发现、健康检查）           |
+| **容器编排** | Kubernetes（支持自动扩缩容）                |
+| **身份认证** | JWT + OAuth2.0（RBAC/ABAC混合模型）         |
+| **数据访问** | Repository Pattern + CQRS（部分模块）       |
+| **数据库**   | MySQL 8.0 / SQL Server 2022（多数据库支持） |
+| **时序数据库** | GreptimeDB（审计日志存储）                |
+
+## 3. 主要技术组件
+
+#### 动态导航系统
+
+- **权限同步**：基于RBAC模型自动生成菜单树，支持`PageAttribute`注解配置可见性
+- **多级导航**：支持无限级嵌套菜单，自动处理路由懒加载
+
+#### CRUD生成
+
+- **自动化表单**：根据`QueryDto`生成查询条件（支持20+字段类型，如日期范围、下拉选择）
+- **验证集成**：基于数据注解自动生成前端校验规则（如`[Required]`→必填提示）
+- **批量处理**：Excel导入/导出模板自动生成，支持数据校验与异步任务
+
+#### 权限系统（RBAC+ABAC）
+
+- **权限树管理**：通过`IPermissionService`动态加载权限节点
+- **细粒度控制**：支持基于属性（如用户部门、数据范围）的动态权限判定
+
+#### 审计日志
+
+- **全链路追踪**：记录操作人、时间、IP地址及数据变更详情
+- **实体基类**：`AuditableEntityBase<TKey>`自动记录创建/修改信息
+- **时序数据库**：使用GreptimeDB存储审计日志，支持高效查询和分析
+
+#### 实体框架扩展
+
+- **全局过滤器**：自动注入多租户隔离（`TenantId`）和软删除（`IsDeleted`）
+- **雪花ID生成**：分布式环境下唯一主键支持
+- **多数据库支持**：同时支持MySQL和SQL Server，通过配置切换
+
+#### 服务自动注册
+
+通过标记接口实现依赖注入自动化：
+
+- `IScopedDependency`：如数据库上下文（DbContext）
+- `ITransientDependency`：如工具类服务
+- `ISingletonDependency`：如配置中心客户端
+
+#### 配置中心
+
+- **多环境配置管理**：支持开发、测试、生产等多环境配置
+- **配置项实体**: ConfigItem（配置项管理）
+- **应用管理**: App（应用注册和管理）
+- **配置发布管理**：支持配置发布和版本控制
+- **版本控制与回滚**：配置历史版本管理和回滚功能
+- **实时推送**：基于SignalR的配置变更实时推送
+
+#### 通用CRUD服务
+
+提供泛型CRUD服务基类，简化数据操作:
+
+```csharp
+public abstract class BaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDto> : 
+  IBaseCRUDService<TEntity, TDto, TKey, TCreateDto, TUpdateDto> 
+  where TEntity : class
+  where TDto : class
+  where TKey : IEquatable<TKey>
+  where TCreateDto : class
+  where TUpdateDto : class
+{
+  // 提供标准的CRUD操作方法
+  // 支持分页查询、批量操作、软删除等
+}
+```
+
+#### 增强批量导入系统
+
+**核心特性:**
+
+- **智能Excel模板生成**: 基于DTO属性自动生成带验证规则的Excel导入模板
+- **数据验证与错误追踪**: 支持DataAnnotations验证和自定义业务验证
+- **分布式缓存支持**: 可跟踪导入进度和结果，支持大规模并发导入
+- **失败记录管理**: 详细记录失败原因，支持失败数据导出和修正
+
+**技术实现:**
+
+```csharp
+// 导入模板服务 - 智能生成Excel模板
+public interface IImportTemplateService
+{
+    Task<byte[]> GenerateExcelTemplateAsync<T>(string? fileName = null) where T : class;
+    List<ImportColumnInfo> GetImportColumns<T>() where T : class;
+}
+
+// 增强批量导入助手 - 处理导入逻辑
+public class EnhancedBatchImportHelper<TBatchImportDto>
+{
+    public async Task<BatchImportResultDto> EnhancedBatchImportAsync(
+        IEnumerable<TBatchImportDto> importData,
+        Func<TBatchImportDto, int, Task<string?>> importProcessor,
+        Func<TBatchImportDto, int, Task<List<ValidationError>>>? validator = null);
+}
+
+// 增强批量导入服务混入 - 标准化接口
+public interface IEnhancedBatchImportService<TBatchImportDto>
+{
+    Task<BatchImportResultDto> EnhancedBatchImportAsync(IEnumerable<TBatchImportDto> importData);
+    Task<BatchImportResultDto?> GetImportResultAsync(string importId);
+    Task<byte[]> ExportFailedRecordsAsync(List<ImportFailedRecord> failedRecords);
+}
+```
+
+**前端集成:**
+
+通过AMIS增强导入字段特性，自动生成完整的导入界面：
+
+```csharp
+[AmisEnhancedImportField(
+    Label = "批量导入数据", 
+    Placeholder = "请先下载模板，填写数据后上传Excel文件",
+    MaxLength = 1000,
+    ShowTemplateDownload = true,
+    ShowImportResult = true
+)]
+public List<StudentBatchImportItemDto> ImportData { get; set; }
+```
+
+#### 聚合器（CodeSpirit.Aggregator）
+
+**提供高级数据聚合能力:**
+
+- **字段动态替换**：支持静态和动态字段替换
+- **数据源关联**：通过HTTP API关联外部数据源
+- **模板化展示**：支持模板化数据展示格式
+
+**语法规则：**
+
+- **静态替换**  
+  直接使用模板修改字段值，无需请求外部数据源：
+
+  ```plaintext
+  createdBy#User-{value}
+  ```
+
+  - **效果**：`10001` → `User-10001`
+
+- **动态替换**  
+  通过数据源获取字段值，替换原值：
+
+  ```plaintext
+  updatedBy=/user/{value}.name
+  ```
+
+  - 请求 `/user/10002` 获取 `name` 字段值，如 `User-10002`
+  - **效果**：`10002` → `User-10002`
+
+- **动态补充**  
+  将数据源字段追加到原值后（默认分隔符为空格）：
+
+  ```plaintext
+  items.createdBy=/user/{value}.fullName#{value} ({field})
+  ```
+
+  - 若原值为 `10003`，数据源返回 `fullName: "User-10003"`
+  - **效果**：`10003` → `10003 (User-10003)`
+
+- **开箱易用：**
+
+  ```csharp
+  /// <summary>
+  /// 配置发布历史DTO
+  /// </summary>
+  public class ConfigPublishHistoryDto
+  {
+      /// <summary>
+      /// 应用ID
+      /// </summary>
+      [DisplayName("应用ID")]
+      public string AppId { get; set; }
+  
+      /// <summary>
+      /// 发布时间
+      /// </summary>
+      [DisplayName("发布时间")]
+      [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd HH:mm:ss}")]
+      public DateTime CreatedAt { get; set; }
+  
+      /// <summary>
+      /// 发布人（通过聚合器获取用户信息）
+      /// </summary>
+      [DisplayName("发布人")]
+      [AggregateField(dataSource: "http://identity/api/identity/users/{value}.data.name", template: "用户: {field}")]
+      public string CreatedBy { get; set; }
+  }
+  ```
+
+#### AI表单智能填充（CodeSpirit.AiFormFill）
+
+**功能特性**:
+- **智能表单填充**：基于LLM的智能表单数据填充
+- **上下文理解**：理解表单字段语义和关联关系
+- **多LLM支持**：支持OpenAI、阿里云等多种LLM提供商
+
+#### UDL卡片组件（CodeSpirit.UdlCards）
+
+**功能特性**:
+- **卡片生成器**：支持多种卡片类型（统计卡片、信息卡片、图表卡片等）
+- **布局管理**：灵活的卡片布局配置
+- **数据绑定**：支持动态数据绑定和更新
+
+#### 定时任务组件（CodeSpirit.ScheduledTasks）
+
+**功能特性**:
+- **任务调度**：支持Cron表达式的定时任务调度
+- **任务管理**：任务的创建、更新、删除和暂停
+- **执行监控**：任务执行状态监控和日志记录
+
+  
+
+### 4. 项目结构
+
+CodeSpirit框架采用以下项目结构：
+
+```c#
+Src/
+├── ApiServices/
+│   ├── CodeSpirit.IdentityApi/           # 身份认证API
+│   ├── CodeSpirit.OrderApi/              # 订单服务API
+│   └── CodeSpirit.ConfigCenter/          # 配置中心
+│       └── CodeSpirit.ConfigCenter.Client/ # 配置中心客户端
+├── Components/
+│   ├── CodeSpirit.Aggregator/            # 聚合器组件
+│   ├── CodeSpirit.Amis/                  # UI生成引擎
+│   ├── CodeSpirit.Authorization/         # 权限组件
+│   ├── CodeSpirit.Navigation/            # 导航组件
+│   ├── CodeSpirit.LLM/                   # 大语言模型组件
+│   ├── CodeSpirit.Charts/                # 智能图表组件
+│   ├── CodeSpirit.PdfGeneration/         # PDF生成组件
+│   ├── CodeSpirit.Settings/              # 设置管理组件
+│   ├── CodeSpirit.Audit/                 # 审计追踪组件
+│   └── CodeSpirit.MultiTenant/           # 多租户组件
+├── CodeSpirit.AppHost/                   # Aspire应用宿主
+├── CodeSpirit.Core/                      # 核心定义
+├── CodeSpirit.ServiceDefaults/           # 服务默认配置
+├── CodeSpirit.Shared/                    # 共享库
+├── CodeSpirit.Web/                       # Web相关组件
+└── Tests/
+    ├── Components/
+    │   ├── CodeSpirit.Aggregator.Tests/
+    │   ├── CodeSpirit.Authorization.Tests/
+    │   └── CodeSpirit.Components.TestsBase/
+    ├── ApiServices/
+    │   └── CodeSpirit.IdentityApi.Tests/
+    └── CodeSpirit.Tests/                 # 通用测试
+```

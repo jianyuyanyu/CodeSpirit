@@ -1,0 +1,45 @@
+{
+  "MultiTenant": {
+    "Enabled": true,
+    "DefaultTenantId": "default",
+    "EnableTenantValidation": true,
+    "EnableTenantCache": true,
+    "CacheExpirationMinutes": 30,
+    "ResolveFromHeader": true,
+    "TenantHeaderName": "X-Tenant-Id",
+    "ResolveFromQuery": false,
+    "TenantQueryName": "tenantId",
+    "ResolveFromSubdomain": false,
+    "ResolveFromPath": false,
+    "TenantPathPrefix": "tenant-",
+    "FailureStrategy": "UseDefault"
+  },
+  "TenantEventBus": {
+    "EnableTenantIsolation": true,
+    "DataProtectionLevel": "Controlled",
+    "EnableEventAudit": true,
+    "EnableTenantIsolatedQueues": true,
+    "TenantQueueNameTemplate": "{EventName}.{TenantId}",
+    "MaxRetryCount": 3,
+    "RetryDelayMilliseconds": 1000,
+    "EnableEventDuplication": false,
+    "EventExpirationMinutes": 60
+  },
+  "RabbitMQ": {
+    "ConnectionString": "amqp://guest:guest@localhost:5672/",
+    "ExchangeName": "codespirit_tenant_event_bus",
+    "DeadLetterExchangeName": "codespirit_tenant_event_bus.dlx",
+    "RetryCount": 5,
+    "RetryDelayMilliseconds": 2000,
+    "EnablePersistence": true,
+    "PrefetchCount": 10
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "CodeSpirit.Shared.EventBus": "Debug",
+      "CodeSpirit.MultiTenant": "Information",
+      "Microsoft.EntityFrameworkCore": "Warning"
+    }
+  }
+}

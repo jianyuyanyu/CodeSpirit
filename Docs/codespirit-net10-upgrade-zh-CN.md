@@ -497,9 +497,9 @@ builder.Services.TryAddEventingSubscriber<MyEventSubscriber>();
 
 ### 8.2 相关文档
 
-- [CodeSpirit 框架核心亮点](./CodeSpirit框架核心亮点.md)
-- [开发环境搭建指南](./01-Core-Docs/开发环境搭建指南.md)
-- [总体技术体系说明](./01-Core-Docs/总体技术体系说明.md)
+- [CodeSpirit 框架核心亮点](./codespirit-framework-highlights-zh-CN.md)
+- [开发环境搭建指南](./01-Core-Docs/03-development-environment-setup-zh-CN.md)
+- [总体技术体系说明](./01-Core-Docs/02-technical-system-overview-zh-CN.md)
 
 ---
 

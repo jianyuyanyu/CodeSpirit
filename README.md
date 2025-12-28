@@ -136,7 +136,7 @@ CodeSpirit provides a complete AI integration solution covering the full chain f
 - 🌊 Streaming response optimization, improving user experience
 - ⚡ Intelligent batching and concurrency control, supporting large-scale data processing
 
-See [CodeSpirit AI Feature Deep Dive](./Docs/CodeSpirit-AI特色功能详解.md) for details
+See [CodeSpirit AI Feature Deep Dive](./Docs/codespirit-ai-features-zh-CN.md) for details
 
 ### II. Intelligent UI Generation Engine
 
@@ -240,8 +240,8 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 
 ### 📘 Core Documentation
 
-1. [🤖 CodeSpirit AI Feature Deep Dive](./Docs/CodeSpirit-AI特色功能详解.md) - Detailed introduction to AI-related core features and innovations ⭐
-2. [💎 CodeSpirit Framework Core Highlights](./Docs/CodeSpirit框架核心亮点.md) - Framework technical architecture, core components and best practices ⭐
+1. [🤖 CodeSpirit AI Feature Deep Dive](./Docs/codespirit-ai-features-zh-CN.md) - Detailed introduction to AI-related core features and innovations ⭐
+2. [💎 CodeSpirit Framework Core Highlights](./Docs/codespirit-framework-highlights-zh-CN.md) - Framework technical architecture, core components and best practices ⭐
 3. [🏗️ Project Overall Architecture Design](./Docs/01-Core-Docs/01-project-architecture-en-US.md) - Overall project architecture design and principles | [中文版](./Docs/01-Core-Docs/01-project-architecture-zh-CN.md)
 4. [🏗️ Overall Technical System Overview](./Docs/01-Core-Docs/02-technical-system-overview-en-US.md) - Technical architecture and design philosophy | [中文版](./Docs/01-Core-Docs/02-technical-system-overview-zh-CN.md)
 5. [🔧 Development Environment Setup Guide](./Docs/01-Core-Docs/03-development-environment-setup-en-US.md) - Complete development environment configuration guide | [中文版](./Docs/01-Core-Docs/03-development-environment-setup-zh-CN.md)
@@ -250,10 +250,10 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 8. [💻 CRUD Development Example](./Docs/01-Core-Docs/06-crud-development-example-en-US.md) - Complete CRUD development example based on QuestionCategory module ⭐ | [中文版](./Docs/01-Core-Docs/06-crud-development-example-zh-CN.md)
 9. [🌐 Internationalization (i18n) Guide](./Docs/01-Core-Docs/07-i18n-localization-guide-en-US.md) - Multi-language support and localization guide | [中文版](./Docs/01-Core-Docs/07-i18n-localization-guide-zh-CN.md)
 10. [☁️ Alibaba Cloud Qwen Free Trial Guide](./Docs/01-Core-Docs/08-aliyun-qwen-free-trial-guide-en-US.md) - Zero-cost AI experience with detailed setup guide | [中文版](./Docs/01-Core-Docs/08-aliyun-qwen-free-trial-guide-zh-CN.md)
-10. [🎯 AMIS UI Generation Engine](./Docs/02-UI-Generation/CodeSpirit.Amis智能界面生成引擎.md) - Intelligent UI generation core component
-11. [👮 Authorization Component](./Docs/04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md) - Comprehensive permission system with RBAC+ABAC hybrid model
-12. [🚀 Unified Startup Framework Usage Guide](./Docs/03-Core-Components/CodeSpirit统一启动框架使用指南.md) - Unified API project startup framework, simplifying project creation and configuration
-13. [📚 Exam System Technical Architecture](./Docs/09-Exam-System/考试系统完整说明文档.md) - Complete exam system case with 200+ features covering question bank, exams, scores, AI question generation
+11. [🎯 AMIS UI Generation Engine](./Docs/02-UI-Generation/codespirit-amis-engine-zh-CN.md) - Intelligent UI generation core component
+12. [👮 Authorization Component](./Docs/04-Identity-Auth/codespirit-authorization-guide-zh-CN.md) - Comprehensive permission system with RBAC+ABAC hybrid model
+13. [🚀 Unified Startup Framework Usage Guide](./Docs/03-Core-Components/codespirit-unified-startup-guide-zh-CN.md) - Unified API project startup framework, simplifying project creation and configuration
+14. [📚 Exam System Technical Architecture](./Docs/09-Exam-System/exam-system-complete-documentation-zh-CN.md) - Complete exam system case with 200+ features covering question bank, exams, scores, AI question generation
 
 ### 📚 Complete Documentation Navigation
 

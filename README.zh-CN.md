@@ -147,7 +147,7 @@ CodeSpirit 提供完整的 AI 集成解决方案，涵盖从基础 LLM 调用到
 - 🌊 流式响应优化，提升用户体验
 - ⚡ 智能分批与并发控制，支持大规模数据处理
 
-详见 [CodeSpirit AI特色功能详解](./Docs/CodeSpirit-AI特色功能详解.md)
+详见 [CodeSpirit AI特色功能详解](./Docs/codespirit-ai-features-zh-CN.md)
 
 ### 二、智能界面生成引擎
 
@@ -251,8 +251,8 @@ https://codespirit-app.xin-lai.com/
 
 ### 📘 核心文档
 
-1. [🤖 CodeSpirit AI特色功能详解](./Docs/CodeSpirit-AI特色功能详解.md) - 详细介绍框架中AI相关的核心特性和创新点 ⭐
-2. [💎 CodeSpirit框架核心亮点](./Docs/CodeSpirit框架核心亮点.md) - 框架整体技术架构、核心组件和最佳实践 ⭐
+1. [🤖 CodeSpirit AI特色功能详解](./Docs/codespirit-ai-features-zh-CN.md) - 详细介绍框架中AI相关的核心特性和创新点 ⭐
+2. [💎 CodeSpirit框架核心亮点](./Docs/codespirit-framework-highlights-zh-CN.md) - 框架整体技术架构、核心组件和最佳实践 ⭐
 3. [🏗️ 项目整体架构设计](./Docs/01-Core-Docs/01-project-architecture-zh-CN.md) - 整体项目架构设计和原则 | [English](./Docs/01-Core-Docs/01-project-architecture-en-US.md)
 4. [🏗️ 总体技术体系说明](./Docs/01-Core-Docs/02-technical-system-overview-zh-CN.md) - 技术架构和设计理念 | [English](./Docs/01-Core-Docs/02-technical-system-overview-en-US.md)
 5. [🔧 开发环境搭建指南](./Docs/01-Core-Docs/03-development-environment-setup-zh-CN.md) - 完整的开发环境配置指南 | [English](./Docs/01-Core-Docs/03-development-environment-setup-en-US.md)
@@ -264,101 +264,99 @@ https://codespirit-app.xin-lai.com/
 
 ### 🎨 界面生成引擎
 
-11. [🎯 AMIS界面生成引擎](./Docs/02-UI-Generation/CodeSpirit.Amis智能界面生成引擎.md) - 智能界面生成核心组件
-12. [📊 AMIS列自动推断功能](./Docs/02-UI-Generation/AMIS列自动推断功能说明.md) - 智能表格列生成详解
-13. [📝 表单默认值设置](./Docs/02-UI-Generation/CodeSpirit.Amis表单默认值使用指南.md) - 表单默认值配置指南
-14. [📋 表单项组使用指南](./Docs/02-UI-Generation/CodeSpirit.Amis表单项组使用指南.md) - 表单字段分组和组织，包含可视化示例和最佳实践
-15. [📈 智能图表组件](./Docs/02-UI-Generation/CodeSpirit.Charts智能图表使用指南.md) - 数据可视化解决方案
-16. [⏰ 日期时间列优化](./Docs/02-UI-Generation/日期时间列优化功能总结.md) - 时间字段智能处理
-17. [🃏 UDL Cards卡片使用指南](./Docs/02-UI-Generation/CodeSpirit.UDL-Cards卡片使用指南.md) - 统一卡片系统使用说明和最佳实践
-18. [🛠️ UDL Cards SDK使用指南](./Docs/02-UI-Generation/CodeSpirit.UdlCards.SDK使用指南.md) - C# SDK详细使用指南和API参考
-19. [🎨 UDL UI描述语言设计方案](./Docs/02-UI-Generation/UDL-UI描述语言设计方案.md) - 统一UI描述语言架构设计
-20. [🎯 UDL Cards详细实现方案](./Docs/02-UI-Generation/UDL-Cards详细实现方案.md) - 卡片组件库实现指南
-21. [🎮 UDL Cards简易实现方案](./Docs/02-UI-Generation/UDL-Cards简易实现方案.md) - UDL Cards快速实现指南
-22. [🔗 AMIS侧边栏联动功能使用指南](./Docs/02-UI-Generation/CodeSpirit.Amis侧边栏联动功能使用指南.md) - 侧边栏联动功能，支持动态过滤和导航
-23. [🤖 AI智能表单使用指南](./Docs/02-UI-Generation/CodeSpirit.Amis.AiForm智能表单使用指南.md) - AI驱动的长时间任务处理框架
-24. [⚙️ OperationAttribute配置使用指南](./Docs/02-UI-Generation/OperationAttribute-Actions配置使用指南.md) - 操作特性配置和动作按钮自定义
-25. [📦 增强批量导入组件使用指南](./Docs/02-UI-Generation/增强批量导入组件使用指南.md) - 批量数据导入功能增强
+11. [🎯 AMIS界面生成引擎](./Docs/02-UI-Generation/codespirit-amis-engine-zh-CN.md) - 智能界面生成核心组件
+12. [📊 AMIS列自动推断功能](./Docs/02-UI-Generation/amis-column-inference-zh-CN.md) - 智能表格列生成详解
+13. [📝 表单默认值设置](./Docs/02-UI-Generation/codespirit-amis-form-defaults-guide-zh-CN.md) - 表单默认值配置指南
+14. [📋 表单项组使用指南](./Docs/02-UI-Generation/codespirit-amis-form-group-guide-zh-CN.md) - 表单字段分组和组织，包含可视化示例和最佳实践
+15. [📈 智能图表组件](./Docs/02-UI-Generation/codespirit-charts-guide-zh-CN.md) - 数据可视化解决方案
+16. [⏰ 日期时间列优化](./Docs/02-UI-Generation/datetime-column-optimization-zh-CN.md) - 时间字段智能处理
+17. [🃏 UDL Cards卡片使用指南](./Docs/02-UI-Generation/codespirit-udl-cards-guide-zh-CN.md) - 统一卡片系统使用说明和最佳实践
+18. [🛠️ UDL Cards SDK使用指南](./Docs/02-UI-Generation/codespirit-udlcards-sdk-guide-zh-CN.md) - C# SDK详细使用指南和API参考
+19. [🎨 UDL UI描述语言设计方案](./Docs/02-UI-Generation/udl-ui-description-language-design-zh-CN.md) - 统一UI描述语言架构设计
+20. [🎯 UDL Cards详细实现方案](./Docs/02-UI-Generation/udl-cards-detailed-implementation-zh-CN.md) - 卡片组件库实现指南
+21. [🎮 UDL Cards简易实现方案](./Docs/02-UI-Generation/udl-cards-simple-implementation-zh-CN.md) - UDL Cards快速实现指南
+22. [🔗 AMIS侧边栏联动功能使用指南](./Docs/02-UI-Generation/codespirit-amis-sidebar-linkage-guide-zh-CN.md) - 侧边栏联动功能，支持动态过滤和导航
+23. [🤖 AI智能表单使用指南](./Docs/02-UI-Generation/codespirit-amis-aiform-guide-zh-CN.md) - AI驱动的长时间任务处理框架
+24. [⚙️ OperationAttribute配置使用指南](./Docs/02-UI-Generation/operation-attribute-actions-guide-zh-CN.md) - 操作特性配置和动作按钮自定义
+25. [📦 增强批量导入组件使用指南](./Docs/02-UI-Generation/enhanced-bulk-import-guide-zh-CN.md) - 批量数据导入功能增强
 
 ### 🔧 核心组件
 
-26. [🤖 AI表单智能填充组件使用指南](./Docs/03-Core-Components/CodeSpirit.AI表单智能填充组件使用指南.md) - 独立AI表单填充组件，支持全局和字段触发模式，零代码自动端点生成，NuGet就绪架构
-27. [🧭 Navigation导航组件](./Docs/03-Core-Components/CodeSpirit.Navigation导航组件使用指南.md) - 智能导航系统，支持多平台、权限过滤和上下文感知
-28. [🔗 聚合器使用指南](./Docs/03-Core-Components/CodeSpirit.Aggregator聚合器使用指南.md) - 数据聚合和字段替换
-29. [⚙️ 设置管理组件](./Docs/03-Core-Components/CodeSpirit.Settings设置管理组件使用指南.md) - 配置管理解决方案
-30. [🔒 分布式锁使用指南](./Docs/03-Core-Components/CodeSpirit分布式锁使用指南.md) - 分布式锁实现和使用
-31. [📄 PDF生成组件](./Docs/03-Core-Components/CodeSpirit.PdfGeneration使用指南.md) - PDF文档生成服务
-32. [🕒 时间处理机制](./Docs/03-Core-Components/CodeSpirit时间处理机制.md) - 统一时间处理方案
-33. [🌐 客户端IP服务](./Docs/03-Core-Components/ClientIpService使用指南.md) - 客户端IP获取和处理
-34. [📋 审计组件集成使用指南](./Docs/03-Core-Components/CodeSpirit.Audit审计组件集成使用指南.md) - 完整的审计系统集成和使用
-35. [🤖 LLM审计组件设计方案](./Docs/03-Core-Components/CodeSpirit.LLM.Audit-LLM审计组件设计方案.md) - LLM调用审计追踪设计
-36. [📊 LLM审计使用指南](./Docs/03-Core-Components/CodeSpirit.LLM.Audit-使用指南.md) - LLM审计组件使用方法
-37. [⏰ 定时任务组件README](./Docs/03-Core-Components/CodeSpirit.ScheduledTasks-README.md) - 定时任务组件概览
-38. [📅 定时任务组件使用指南](./Docs/03-Core-Components/CodeSpirit.ScheduledTasks定时任务组件使用指南.md) - 定时任务组件详细使用说明
-39. [🏗️ 定时任务技术设计文档](./Docs/03-Core-Components/CodeSpirit.ScheduledTasks技术设计文档.md) - 定时任务组件架构设计
-40. [🚫 NoAudit特性使用指南](./Docs/03-Core-Components/NoAuditAttribute-README.md) - 审计排除特性使用说明
-41. [🚀 统一启动框架使用指南](./Docs/03-Core-Components/CodeSpirit统一启动框架使用指南.md) - 统一API项目启动框架，简化项目创建和配置
-42. [🏗️ 统一启动框架核心架构](./Docs/03-Core-Components/CodeSpirit统一启动框架核心架构.md) - 统一启动框架的架构设计和实现原理
-43. [📦 API配置类开发指南](./Docs/03-Core-Components/CodeSpirit.API配置类开发指南.md) - API配置类的开发规范和最佳实践
-44. [🔌 中间件插入点使用指南](./Docs/03-Core-Components/CodeSpirit中间件插入点使用指南.md) - 中间件插入点的使用方法和扩展机制
-45. [🔄 统一启动框架迁移指南](./Docs/03-Core-Components/CodeSpirit统一启动框架迁移指南.md) - 现有项目迁移到统一启动框架的详细指南
-46. [📝 Scrutor依赖注入集成指南](./Docs/03-Core-Components/Scrutor依赖注入集成指南.md) - Scrutor库在框架中的集成和使用方法
-47. [🖼️ 图片处理服务集成指南](./Docs/03-Core-Components/CodeSpirit.ImageProcessingService图片处理服务集成指南.md) - 图片处理服务的集成和使用
-48. [📎 实体文件引用事件处理器使用指南](./Docs/03-Core-Components/CodeSpirit.EntityFileReferenceHandler实体文件引用事件处理器使用指南.md) - 实体文件引用的自动管理
-49. [🏷️ 资源管理组件使用指南](./Docs/03-Core-Components/ResourceTagHelper资源管理组件使用指南.md) - 资源标签助手的使用方法
+26. [🤖 AI表单智能填充组件使用指南](./Docs/03-Core-Components/codespirit-ai-form-fill-guide-zh-CN.md) - 独立AI表单填充组件，支持全局和字段触发模式，零代码自动端点生成，NuGet就绪架构
+27. [🧭 Navigation导航组件](./Docs/03-Core-Components/codespirit-navigation-guide-zh-CN.md) - 智能导航系统，支持多平台、权限过滤和上下文感知
+28. [🔗 聚合器使用指南](./Docs/03-Core-Components/codespirit-aggregator-guide-zh-CN.md) - 数据聚合和字段替换
+29. [⚙️ 设置管理组件](./Docs/03-Core-Components/codespirit-settings-guide-zh-CN.md) - 配置管理解决方案
+30. [🔒 分布式锁使用指南](./Docs/03-Core-Components/codespirit-distributed-lock-guide-zh-CN.md) - 分布式锁实现和使用
+31. [📄 PDF生成组件](./Docs/03-Core-Components/codespirit-pdf-generation-guide-zh-CN.md) - PDF文档生成服务
+32. [🕒 时间处理机制](./Docs/03-Core-Components/codespirit-time-handling-zh-CN.md) - 统一时间处理方案
+33. [🌐 客户端IP服务](./Docs/03-Core-Components/client-ip-service-guide-zh-CN.md) - 客户端IP获取和处理
+34. [📋 审计组件集成使用指南](./Docs/03-Core-Components/codespirit-audit-integration-guide-zh-CN.md) - 完整的审计系统集成和使用
+35. [🤖 LLM审计组件设计方案](./Docs/03-Core-Components/codespirit-llm-audit-design-zh-CN.md) - LLM调用审计追踪设计
+36. [📊 LLM审计使用指南](./Docs/03-Core-Components/codespirit-llm-audit-guide-zh-CN.md) - LLM审计组件使用方法
+37. [⏰ 定时任务组件文档](./Docs/03-Core-Components/codespirit-scheduled-tasks-doc-zh-CN.md) - 定时任务组件概览
+38. [📅 统一启动框架使用指南](./Docs/03-Core-Components/codespirit-unified-startup-guide-zh-CN.md) - 统一API项目启动框架，简化项目创建和配置
+39. [🏗️ 统一启动框架核心架构](./Docs/03-Core-Components/codespirit-unified-startup-architecture-zh-CN.md) - 统一启动框架的架构设计和实现原理
+40. [📦 API配置类开发指南](./Docs/03-Core-Components/codespirit-api-config-dev-guide-zh-CN.md) - API配置类的开发规范和最佳实践
+41. [🔌 中间件插入点使用指南](./Docs/03-Core-Components/codespirit-middleware-insertion-guide-zh-CN.md) - 中间件插入点的使用方法和扩展机制
+42. [🔄 统一启动框架迁移指南](./Docs/03-Core-Components/codespirit-unified-startup-migration-zh-CN.md) - 现有项目迁移到统一启动框架的详细指南
+43. [📝 Scrutor依赖注入集成指南](./Docs/03-Core-Components/scrutor-di-integration-guide-zh-CN.md) - Scrutor库在框架中的集成和使用方法
+44. [🖼️ 图片处理服务集成指南](./Docs/03-Core-Components/codespirit-image-processing-service-guide-zh-CN.md) - 图片处理服务的集成和使用
+45. [📎 实体文件引用事件处理器使用指南](./Docs/03-Core-Components/codespirit-entity-file-reference-handler-guide-zh-CN.md) - 实体文件引用的自动管理
+46. [🏷️ 资源管理组件使用指南](./Docs/03-Core-Components/resource-tag-helper-guide-zh-CN.md) - 资源标签助手的使用方法
+47. [🚫 NoAudit特性使用指南](./Docs/03-Core-Components/no-audit-attribute-readme-zh-CN.md) - 审计排除特性使用说明
 
 ### 🔐 身份认证与权限
 
-50. [🔑 身份认证服务](./Docs/04-Identity-Auth/CodeSpirit.IdentityApi身份认证服务.md) - 完整的身份认证服务架构
-51. [👮 权限组件详解](./Docs/04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md) - 基于RBAC+ABAC混合模型的综合权限系统
-52. [🎫 前端认证管理器](./Docs/04-Identity-Auth/CodeSpirit.TokenManager前端认证管理器使用指南.md) - 前端认证管理和令牌处理
-53. [⚙️ 可设置用户接口指南](./Docs/04-Identity-Auth/ISettableCurrentUser可设置用户接口使用指南.md) - 可设置当前用户接口，支持动态用户上下文场景
-54. [👥 职工管理及组织结构管理功能说明](./Docs/04-Identity-Auth/职工管理及组织结构管理功能说明.md) - 职工和组织架构管理功能
-55. [🏢 部门管理AI快速初始化功能说明](./Docs/04-Identity-Auth/部门管理AI快速初始化功能说明.md) - AI辅助部门结构初始化
+48. [🔑 身份认证服务](./Docs/04-Identity-Auth/codespirit-identity-api-zh-CN.md) - 完整的身份认证服务架构
+49. [👮 权限组件详解](./Docs/04-Identity-Auth/codespirit-authorization-guide-zh-CN.md) - 基于RBAC+ABAC混合模型的综合权限系统
+50. [🎫 前端认证管理器](./Docs/04-Identity-Auth/codespirit-token-manager-guide-zh-CN.md) - 前端认证管理和令牌处理
+51. [⚙️ 可设置用户接口指南](./Docs/04-Identity-Auth/isettable-current-user-guide-zh-CN.md) - 可设置当前用户接口，支持动态用户上下文场景
+52. [👥 职工管理及组织结构管理功能说明](./Docs/04-Identity-Auth/employee-organization-management-zh-CN.md) - 职工和组织架构管理功能
+53. [🏢 部门管理AI快速初始化功能说明](./Docs/04-Identity-Auth/department-ai-initialization-zh-CN.md) - AI辅助部门结构初始化
 
 ### 🏢 多租户架构
 
-56. [🏗️ 多租户组件整改计划](./Docs/05-Multi-Tenancy/CodeSpirit多租户组件整改计划.md) - 多租户架构改进和实施计划
-57. [🎯 租户解析器使用指南](./Docs/05-Multi-Tenancy/CodeSpirit.TenantResolver租户解析器使用指南.md) - 租户解析和上下文管理
-58. [🔍 数据筛选器使用指南](./Docs/05-Multi-Tenancy/CodeSpirit.DataFilter数据筛选器使用指南.md) - 数据过滤和租户隔离机制
-59. [🗄️ 多租户数据库上下文架构](./Docs/05-Multi-Tenancy/CodeSpirit 多租户数据库上下文架构.md) - 多租户数据库架构设计
-60. [🖥️ 多租户登录页面使用指南](./Docs/05-Multi-Tenancy/多租户登录页面使用指南.md) - 多租户登录界面实现
-61. [🎯 租户感知事件系统设计](./Docs/05-Multi-Tenancy/CodeSpirit 租户感知事件系统设计.md) - 全面的租户感知事件总线架构和实现方案
+54. [🏗️ 多租户组件整改计划](./Docs/05-Multi-Tenancy/codespirit-multi-tenant-refactor-plan-zh-CN.md) - 多租户架构改进和实施计划
+55. [🎯 租户解析器使用指南](./Docs/05-Multi-Tenancy/codespirit-tenant-resolver-guide-zh-CN.md) - 租户解析和上下文管理
+56. [🔍 数据筛选器使用指南](./Docs/05-Multi-Tenancy/codespirit-data-filter-guide-zh-CN.md) - 数据过滤和租户隔离机制
+57. [🗄️ 多租户数据库上下文架构](./Docs/05-Multi-Tenancy/codespirit-multi-tenant-dbcontext-architecture-zh-CN.md) - 多租户数据库架构设计
+58. [🖥️ 多租户登录页面使用指南](./Docs/05-Multi-Tenancy/multi-tenant-login-page-guide-zh-CN.md) - 多租户登录界面实现
+59. [🎯 租户感知事件系统设计](./Docs/05-Multi-Tenancy/codespirit-tenant-aware-event-system-design-zh-CN.md) - 全面的租户感知事件总线架构和实现方案
 
 ### 🚀 基础设施与运维
 
-62. [🐰 RabbitMQ集成指南](./Docs/06-Infrastructure/RabbitMQ-Aspire-Integration.md) - 消息队列集成方案
-63. [🔧 RabbitMQ故障排除](./Docs/06-Infrastructure/RabbitMQ故障排除指南.md) - 常见问题解决方案
-64. [🔍 Elasticsearch迁移总结](./Docs/06-Infrastructure/Elasticsearch-Aspire-Migration-Summary.md) - 搜索引擎集成指南
-65. [🌐 跨域策略配置指南](./Docs/06-Infrastructure/CodeSpirit跨域策略配置指南.md) - CORS跨域资源共享配置和安全策略
-66. [📁 文件存储服务方案实现](./Docs/06-Infrastructure/CodeSpirit文件存储服务方案实现.md) - 文件存储服务架构设计和实现方案
-67. [🌐 API地址配置指南](./Docs/06-Infrastructure/API地址配置指南.md) - API服务地址配置说明
-68. [🔧 API路径前缀配置指南](./Docs/06-Infrastructure/API路径前缀配置指南.md) - API路径前缀配置方法
-69. [🚀 Aspire9.5优化指南](./Docs/06-Infrastructure/CodeSpirit.AppHost-Aspire9.5优化指南.md) - Aspire 9.5版本优化实践
-70. [🗄️ Aspire数据库集成实现指南](./Docs/06-Infrastructure/CodeSpirit.Aspire数据库集成实现指南.md) - Aspire数据库集成详细实现
-71. [🎯 Aspire数据库集成统一方案](./Docs/06-Infrastructure/CodeSpirit.Aspire数据库集成统一方案.md) - Aspire数据库集成统一架构
-72. [💾 统一缓存组件指南](./Docs/06-Infrastructure/CodeSpirit.Caching统一缓存组件指南.md) - 分布式缓存组件使用说明
-73. [📄 PuppeteerSharp问题解决指南](./Docs/06-Infrastructure/CodeSpirit.PdfGeneration-PuppeteerSharp问题解决指南.md) - PDF生成组件常见问题解决
-74. [🗄️ 多数据库DbContext架构使用指南](./Docs/06-Infrastructure/多数据库DbContext架构使用指南.md) - 多数据库支持架构设计
+60. [🐰 RabbitMQ集成指南](./Docs/06-Infrastructure/rabbitmq-aspire-integration-zh-CN.md) - 消息队列集成方案
+61. [🔧 RabbitMQ故障排除](./Docs/06-Infrastructure/rabbitmq-troubleshooting-guide-zh-CN.md) - 常见问题解决方案
+62. [🔍 Elasticsearch迁移总结](./Docs/06-Infrastructure/elasticsearch-aspire-migration-summary-zh-CN.md) - 搜索引擎集成指南
+63. [🌐 跨域策略配置指南](./Docs/06-Infrastructure/codespirit-cors-configuration-guide-zh-CN.md) - CORS跨域资源共享配置和安全策略
+64. [📁 文件存储服务方案实现](./Docs/06-Infrastructure/codespirit-file-storage-service-implementation-zh-CN.md) - 文件存储服务架构设计和实现方案
+65. [🌐 API地址配置指南](./Docs/06-Infrastructure/api-address-configuration-guide-zh-CN.md) - API服务地址配置说明
+66. [🔧 API路径前缀配置指南](./Docs/06-Infrastructure/api-path-prefix-configuration-guide-zh-CN.md) - API路径前缀配置方法
+67. [🚀 Aspire9.5优化指南](./Docs/06-Infrastructure/codespirit-apphost-aspire95-optimization-zh-CN.md) - Aspire 9.5版本优化实践
+68. [🗄️ Aspire数据库集成实现指南](./Docs/06-Infrastructure/codespirit-aspire-database-integration-guide-zh-CN.md) - Aspire数据库集成详细实现
+69. [🎯 Aspire数据库集成统一方案](./Docs/06-Infrastructure/codespirit-aspire-database-unified-solution-zh-CN.md) - Aspire数据库集成统一架构
+70. [💾 统一缓存组件指南](./Docs/06-Infrastructure/codespirit-caching-guide-zh-CN.md) - 分布式缓存组件使用说明
+71. [📄 PuppeteerSharp问题解决指南](./Docs/06-Infrastructure/codespirit-pdf-puppeteer-troubleshooting-zh-CN.md) - PDF生成组件常见问题解决
+72. [🗄️ 多数据库DbContext架构使用指南](./Docs/06-Infrastructure/multi-database-dbcontext-architecture-guide-zh-CN.md) - 多数据库支持架构设计
 
 ### 🌐 API与通信
 
-75. [🔗 通用API跳转机制使用指南](./Docs/07-API-Communication/CodeSpirit通用API跳转机制使用指南.md) - 通用API路由和通信机制
+73. [🔗 通用API跳转机制使用指南](./Docs/07-API-Communication/codespirit-api-redirect-mechanism-guide-zh-CN.md) - 通用API路由和通信机制
 
 ### 📊 项目管理
 
-76. [📋 技术债管理文档](./Docs/08-Project-Management/技术债管理文档.md) - 技术债跟踪和管理规范
+74. [📋 技术债管理文档](./Docs/08-Project-Management/technical-debt-management-zh-CN.md) - 技术债跟踪和管理规范
 
 ### 📝 考试系统
 
-77. [📚 考试系统概览](./Docs/09-Exam-System/README.md) - 完整的考试系统文档导航和快速参考
-78. [🏗️ 考试系统技术架构](./Docs/09-Exam-System/考试系统完整说明文档.md) - 全面的技术架构、API设计和安全机制
-79. [📋 考试系统业务功能](./Docs/09-Exam-System/考试系统业务功能清单.md) - 完整业务功能清单，涵盖12大模块200+功能特性
+75. [📚 考试系统概览](./Docs/09-Exam-System/README.md) - 完整的考试系统文档导航和快速参考
+76. [🏗️ 考试系统技术架构](./Docs/09-Exam-System/exam-system-complete-documentation-zh-CN.md) - 全面的技术架构、API设计和安全机制
+77. [📋 考试系统业务功能](./Docs/09-Exam-System/exam-system-feature-list-zh-CN.md) - 完整业务功能清单，涵盖12大模块200+功能特性
 
 ### 📋 问卷调查系统
 
-80. [📊 问卷调查模块方案设计](./Docs/09-Survey-System/问卷调查模块方案设计.md) - 问卷调查系统架构设计方案
-81. [📝 题目类型特定字段实现说明](./Docs/09-Survey-System/题目类型特定字段实现说明.md) - 题目类型字段实现细节
+78. [📊 问卷调查模块方案设计](./Docs/09-Survey-System/survey-module-design-zh-CN.md) - 问卷调查系统架构设计方案
+79. [📝 题目类型特定字段实现说明](./Docs/09-Survey-System/question-type-specific-fields-zh-CN.md) - 题目类型字段实现细节
 
 ### 🚀 赞助与技术支持
 

@@ -9,32 +9,44 @@
 
 ```
 Docs/
-├── 01-Core-Docs/                   # 📘 核心文档 (5个文件)
-├── 02-UI-Generation/               # 🎨 界面生成引擎 (16个文件)  
-├── 03-Core-Components/             # 🔧 核心组件 (35个文件)
-├── 04-Identity-Auth/               # 🔐 身份认证与权限 (7个文件)
-├── 05-Multi-Tenancy/               # 🏢 多租户架构 (7个文件)
-├── 06-Infrastructure/              # 🚀 基础设施与运维 (13个文件)
-├── 07-API-Communication/           # 🌐 API与通信 (1个文件)
-├── 08-Project-Management/          # 📊 项目管理 (1个文件)
-├── 09-Exam-System/                 # 📝 考试系统 (3个文件)
-├── 09-Survey-System/               # 📋 问卷调查系统 (2个文件)
-├── 10-Pathfinder-Project/          # 🎯 Pathfinder项目 (4个文件)
-├── 文档分类摘要.md                 # 本文件
-├── CodeSpirit-AI特色功能详解.md   # AI特色功能总览
-├── CodeSpirit框架核心亮点.md       # 框架核心亮点
-└── 配置示例.json                   # 配置文件示例
+├── 01-Core-Docs/                          # 📘 核心文档 (8个文件)
+├── 02-UI-Generation/                      # 🎨 界面生成引擎 (16个文件)  
+├── 03-Core-Components/                    # 🔧 核心组件 (35个文件)
+├── 04-Identity-Auth/                      # 🔐 身份认证与权限 (7个文件)
+├── 05-Multi-Tenancy/                      # 🏢 多租户架构 (7个文件)
+├── 06-Infrastructure/                     # 🚀 基础设施与运维 (13个文件)
+├── 07-API-Communication/                  # 🌐 API与通信 (1个文件)
+├── 08-Project-Management/                 # 📊 项目管理 (1个文件)
+├── 09-Exam-System/                        # 📝 考试系统 (3个文件)
+├── 09-Survey-System/                      # 📋 问卷调查系统 (2个文件)
+├── 10-Pathfinder-Project/                 # 🎯 Pathfinder项目 (4个文件)
+├── codespirit-ai-features-zh-CN.md        # AI特色功能总览
+├── codespirit-framework-highlights-zh-CN.md  # 框架核心亮点
+├── codespirit-net10-upgrade-zh-CN.md      # .NET 10升级说明
+├── documentation-catalog-zh-CN.md         # 本文件 - 文档分类摘要
+└── 配置示例.json                          # 配置文件示例
 ```
 
 ## 🏗️ 分类结构详解
 
-### 📘 01-Core-Docs (5个文件)
+### 📘 01-Core-Docs (8个文件)
 **核心文档**：项目架构、开发环境、核心框架等基础文档
-- 开发环境搭建指南.md  
-- 项目整体架构设计.md
-- 总体技术体系说明.md
-- CodeSpirit.Core核心框架.md
-- CodeSpirit统一异常处理指南.md
+- 01-project-architecture-zh-CN.md (项目整体架构设计)
+- 01-project-architecture-en-US.md
+- 02-technical-system-overview-zh-CN.md (总体技术体系说明)
+- 02-technical-system-overview-en-US.md
+- 03-development-environment-setup-zh-CN.md (开发环境搭建指南)
+- 03-development-environment-setup-en-US.md
+- 04-codespirit-core-framework-zh-CN.md (CodeSpirit.Core核心框架)
+- 04-codespirit-core-framework-en-US.md
+- 05-unified-exception-handling-zh-CN.md (统一异常处理指南)
+- 05-unified-exception-handling-en-US.md
+- 06-crud-development-example-zh-CN.md (CRUD开发示例)
+- 06-crud-development-example-en-US.md
+- 07-i18n-localization-guide-zh-CN.md (多语言国际化使用指南)
+- 07-i18n-localization-guide-en-US.md
+- 08-aliyun-qwen-free-trial-guide-zh-CN.md (阿里云通义千问免费体验指南)
+- 08-aliyun-qwen-free-trial-guide-en-US.md
 
 ### 🎨 02-UI-Generation (16个文件)
 **界面生成引擎**：AMIS引擎、智能图表、UDL系统等前端生成相关
@@ -158,9 +170,9 @@ Docs/
 ## 📈 文档使用建议
 
 ### 🚀 快速入门路径
-1. 📘 [项目整体架构设计](./01-Core-Docs/项目整体架构设计.md)
-2. 🔧 [开发环境搭建指南](./01-Core-Docs/开发环境搭建指南.md)
-3. 💎 [CodeSpirit.Core核心框架](./01-Core-Docs/CodeSpirit.Core核心框架.md)
+1. 📘 [项目整体架构设计](./01-Core-Docs/01-project-architecture-zh-CN.md)
+2. 🔧 [开发环境搭建指南](./01-Core-Docs/03-development-environment-setup-zh-CN.md)
+3. 💎 [CodeSpirit.Core核心框架](./01-Core-Docs/04-codespirit-core-framework-zh-CN.md)
 4. 🎯 [AMIS界面生成引擎](./02-UI-Generation/CodeSpirit.Amis智能界面生成引擎.md)
 5. 📊 [分布式审计完整指南](./03-Core-Components/CodeSpirit.Audit分布式审计完整指南.md)
 6. 🚀 [统一启动框架使用指南](./03-Core-Components/CodeSpirit统一启动框架使用指南.md)

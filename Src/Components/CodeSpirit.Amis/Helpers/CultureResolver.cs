@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Globalization;
 
 namespace CodeSpirit.Amis.Helpers;
@@ -8,15 +9,18 @@ namespace CodeSpirit.Amis.Helpers;
 /// </summary>
 public class CultureResolver
 {
-    private readonly IHttpContextAccessor? _httpContextAccessor;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<CultureResolver> _logger;
 
     /// <summary>
     /// 初始化文化信息解析器
     /// </summary>
     /// <param name="httpContextAccessor">HTTP上下文访问器</param>
-    public CultureResolver(IHttpContextAccessor? httpContextAccessor = null)
+    /// <param name="logger">日志记录器</param>
+    public CultureResolver(IHttpContextAccessor httpContextAccessor, ILogger<CultureResolver> logger)
     {
         _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
     }
 
     /// <summary>
@@ -27,11 +31,13 @@ public class CultureResolver
     {
         try
         {
-            var httpContext = _httpContextAccessor?.HttpContext;
+            var httpContext = _httpContextAccessor.HttpContext;
+            
             if (httpContext != null)
             {
                 // 1. 优先从请求特性中获取（UseCodeSpiritRequestLocalization 中间件设置）
                 var requestCultureFeature = httpContext.Features.Get<Microsoft.AspNetCore.Localization.IRequestCultureFeature>();
+                
                 if (requestCultureFeature?.RequestCulture?.UICulture != null)
                 {
                     return requestCultureFeature.RequestCulture.UICulture;
@@ -39,6 +45,7 @@ public class CultureResolver
                 
                 // 2. 尝试从线程当前文化获取（由本地化中间件设置）
                 var currentCulture = CultureInfo.CurrentUICulture;
+                
                 if (currentCulture != null && currentCulture.Name != "zh-CN")
                 {
                     // 如果当前文化不是默认值，则使用它
@@ -48,26 +55,30 @@ public class CultureResolver
                 // 3. 作为最后的回退，直接从 Cookie 读取
                 // 这是为了处理异步或缓存场景下中间件尚未执行的情况
                 var cultureCookie = httpContext.Request.Cookies[".AspNetCore.Culture"];
+                
                 if (!string.IsNullOrEmpty(cultureCookie))
                 {
                     var language = ParseCultureFromCookie(cultureCookie);
+                    
                     if (!string.IsNullOrEmpty(language))
                     {
                         try
                         {
                             return new CultureInfo(language);
                         }
-                        catch
+                        catch (Exception ex)
                         {
                             // 如果语言代码无效，继续尝试其他方式
+                            _logger.LogWarning(ex, "Cookie 中的语言代码无效: {Language}", language);
                         }
                     }
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
             // 如果获取失败，回退到线程当前文化
+            _logger.LogWarning(ex, "获取文化信息时发生异常");
         }
         
         // 4. 最终回退到线程当前文化（应该由 UseCodeSpiritRequestLocalization 中间件设置）

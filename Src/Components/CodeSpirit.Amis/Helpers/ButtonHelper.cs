@@ -2,6 +2,7 @@
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Core.Attributes;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -18,8 +19,10 @@ namespace CodeSpirit.Amis.Helpers
         private readonly AmisApiHelper amisApiHelper;
         private readonly FormFieldHelper formFieldHelper;
         private readonly ILogger<ButtonHelper> _logger;
+        private readonly IStringLocalizerFactory _localizerFactory;
+        private readonly CultureResolver _cultureResolver;
 
-        public ButtonHelper(IHasPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper, ILogger<ButtonHelper> logger)
+        public ButtonHelper(IHasPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper, ILogger<ButtonHelper> logger, IStringLocalizerFactory localizerFactory, CultureResolver cultureResolver)
         {
             _permissionService = permissionService;
             this.amisContext = amisContext;
@@ -27,6 +30,8 @@ namespace CodeSpirit.Amis.Helpers
             this.amisApiHelper = amisApiHelper;
             this.formFieldHelper = formFieldHelper;
             _logger = logger;
+            _localizerFactory = localizerFactory;
+            _cultureResolver = cultureResolver;
         }
 
         /// <summary>
@@ -47,6 +52,148 @@ namespace CodeSpirit.Amis.Helpers
                 DialogSize.Custom => "custom",
                 _ => "md"
             };
+        }
+
+        /// <summary>
+        /// 获取本地化的文本
+        /// 优先从资源文件加载，如果资源不存在则使用回退文本
+        /// </summary>
+        /// <param name="resourceKey">资源键</param>
+        /// <param name="resourceType">资源类型</param>
+        /// <param name="fallbackText">回退文本</param>
+        /// <returns>本地化文本</returns>
+        private string GetLocalizedText(string resourceKey, Type resourceType, string fallbackText)
+        {
+            // 如果未指定资源键或资源类型，直接返回回退文本
+            if (string.IsNullOrEmpty(resourceKey) || resourceType == null)
+                return fallbackText;
+            
+            try
+            {
+                // 通过 CultureResolver 获取当前语言文化信息（而不是直接使用 CurrentUICulture）
+                var currentCulture = _cultureResolver.GetCurrentCulture();
+                
+                // 获取 ResourceManager 属性
+                var resourceManagerProp = resourceType.GetProperty("ResourceManager", BindingFlags.Public | BindingFlags.Static);
+                
+                if (resourceManagerProp != null)
+                {
+                    var resourceManager = resourceManagerProp.GetValue(null) as System.Resources.ResourceManager;
+                    if (resourceManager != null)
+                    {
+                        // 先获取默认资源文件中的值（用于比较）
+                        var defaultCulture = new System.Globalization.CultureInfo("zh-CN");
+                        var defaultText = resourceManager.GetString(resourceKey, defaultCulture);
+                        
+                        // 使用当前文化获取本地化文本
+                        var localizedText = resourceManager.GetString(resourceKey, currentCulture);
+                        
+                        // 如果获取到了本地化文本
+                        if (!string.IsNullOrEmpty(localizedText))
+                        {
+                            // 如果当前文化是英文，且返回的文本与默认文本不同，说明找到了英文资源文件
+                            if (currentCulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase))
+                            {
+                                // 如果返回的文本与默认文本不同，说明找到了英文资源文件
+                                if (localizedText != defaultText)
+                                {
+                                    return localizedText;
+                                }
+                                
+                                // 如果相同，可能回退到了默认资源文件，尝试直接使用 "en" 文化
+                                var enCulture = new System.Globalization.CultureInfo("en");
+                                var enText = resourceManager.GetString(resourceKey, enCulture);
+                                if (!string.IsNullOrEmpty(enText) && enText != defaultText)
+                                {
+                                    return enText;
+                                }
+                            }
+                            else
+                            {
+                                // 非英文文化，直接返回获取到的文本
+                                return localizedText;
+                            }
+                        }
+                    }
+                }
+                
+                // 如果 ResourceManager 属性不可用，手动创建 ResourceManager
+                // 这是针对占位类（placeholder class）的处理，如 OperationsResources
+                string baseName = resourceType.Name;
+                if (baseName.EndsWith("Resources"))
+                {
+                    baseName = baseName.Substring(0, baseName.Length - "Resources".Length);
+                }
+                
+                var resourceNamespace = resourceType.Namespace;
+                var resourceFullName = $"{resourceNamespace}.{baseName}";
+                
+                // 手动创建 ResourceManager
+                var manualResourceManager = new System.Resources.ResourceManager(
+                    resourceFullName,
+                    resourceType.Assembly);
+                
+                // 先获取默认资源文件中的值（用于比较）
+                var defaultCulture2 = new System.Globalization.CultureInfo("zh-CN");
+                var defaultText2 = manualResourceManager.GetString(resourceKey, defaultCulture2);
+                
+                // 使用当前文化获取本地化文本
+                var localizedText2 = manualResourceManager.GetString(resourceKey, currentCulture);
+                
+                // 如果获取到了本地化文本
+                if (!string.IsNullOrEmpty(localizedText2))
+                {
+                    // 如果当前文化是英文，且返回的文本与默认文本不同，说明找到了英文资源文件
+                    if (currentCulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // 如果返回的文本与默认文本不同，说明找到了英文资源文件
+                        if (localizedText2 != defaultText2)
+                        {
+                            return localizedText2;
+                        }
+                        
+                        // 如果相同，可能回退到了默认资源文件，尝试直接使用 "en" 文化
+                        var enCulture2 = new System.Globalization.CultureInfo("en");
+                        var enText2 = manualResourceManager.GetString(resourceKey, enCulture2);
+                        if (!string.IsNullOrEmpty(enText2) && enText2 != defaultText2)
+                        {
+                            return enText2;
+                        }
+                        
+                        // 如果还是没有找到英文资源，使用回退文本
+                        if (!string.IsNullOrEmpty(fallbackText))
+                        {
+                            return fallbackText;
+                        }
+                    }
+                    else
+                    {
+                        // 非英文文化，直接返回获取到的文本
+                        return localizedText2;
+                    }
+                }
+                
+                // 如果资源不存在，使用回退文本
+                if (!string.IsNullOrEmpty(fallbackText))
+                    return fallbackText;
+                
+                return localizedText2 ?? resourceKey;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get localized text for key: {ResourceKey} from type: {ResourceType}", 
+                    resourceKey, resourceType?.FullName);
+                return fallbackText;
+            }
+        }
+
+        /// <summary>
+        /// 获取 SharedResources 类型（通过反射动态加载，避免循环依赖）
+        /// </summary>
+        private static Type GetSharedResourcesType()
+        {
+            return Type.GetType("CodeSpirit.Localization.Resources.SharedResources, CodeSpirit.Localization") 
+                ?? typeof(object);
         }
 
         // 创建一个通用的按钮模板
@@ -190,6 +337,33 @@ namespace CodeSpirit.Amis.Helpers
                 "发送通知" => "fa fa-bullhorn",
                 "版本对比" => "fa fa-code-fork",
                 "回滚版本" => "fa fa-undo",
+                "续期" => "fa fa-calendar-plus-o",
+                "撤销" => "fa fa-times-circle",
+                "重新生成" => "fa fa-refresh",
+                "快速创建" => "fa fa-magic",
+                "进入登录" => "fa fa-sign-in",
+                
+                // 英文映射
+                "Add" or "Create" => "fa fa-plus",
+                "Edit" or "Update" => "fa fa-edit",
+                "Delete" or "Remove" => "fa fa-trash",
+                "View" or "Detail" => "fa fa-eye",
+                "Reset Password" => "fa fa-key",
+                "Unlock" => "fa fa-unlock",
+                "Impersonate Login" => "fa fa-user-secret",
+                "Batch Delete" => "fa fa-trash-o",
+                "Enable" => "fa fa-check-circle",
+                "Disable" => "fa fa-ban",
+                "Renew" => "fa fa-calendar-plus-o",
+                "Revoke" => "fa fa-times-circle",
+                "Regenerate" => "fa fa-refresh",
+                "Quick Create" => "fa fa-magic",
+                "Redirect Login" => "fa fa-sign-in",
+                "Close" => "fa fa-times",
+                "Save" => "fa fa-save",
+                "Cancel" => "fa fa-times",
+                "Submit" => "fa fa-check",
+                "Confirm" => "fa fa-check",
 
                 _ => null // 其他情况不设置图标
             };
@@ -203,12 +377,15 @@ namespace CodeSpirit.Amis.Helpers
         // 创建"新增"按钮
         public JObject CreateHeaderButton(string title = "新增", ApiRouteInfo route = null, IEnumerable<ParameterInfo> formParameters = null, string size = null, DialogSize dialogSize = DialogSize.MD, string customActions = null, MethodInfo method = null)
         {
+            // 尝试本地化标题
+            string localizedTitle = GetLocalizedText("Common.Add", GetSharedResourcesType(), title);
+            
             // 如果没有指定size，则使用dialogSize参数
             string dialogSizeString = size ?? ConvertDialogSizeToString(dialogSize);
 
             JObject dialogBody = new()
             {
-                ["title"] = title,
+                ["title"] = localizedTitle,
                 ["size"] = dialogSizeString,
                 ["body"] = new JObject
                 {
@@ -242,13 +419,13 @@ namespace CodeSpirit.Amis.Helpers
             }
             // 如果 customActions 为 null，则使用默认按钮（不设置 actions 属性）
 
-            return CreateButton(title, "dialog", dialogOrDrawer: dialogBody, dialogSize: dialogSize);
+            return CreateButton(localizedTitle, "dialog", dialogOrDrawer: dialogBody, dialogSize: dialogSize);
         }
 
         // 创建"编辑"按钮
         public JObject CreateEditButton(ApiRouteInfo updateRoute, IEnumerable<ParameterInfo> updateParameters, DialogSize dialogSize = DialogSize.MD, MethodInfo method = null)
         {
-            string title = "编辑";
+            string title = GetLocalizedText("Common.Edit", GetSharedResourcesType(), "编辑");
             string dialogSizeString = ConvertDialogSizeToString(dialogSize);
 
             JObject drawerBody = new()
@@ -271,7 +448,8 @@ namespace CodeSpirit.Amis.Helpers
 
         public JObject CreateDetailButton(ApiRouteInfo detailRoute, IEnumerable<PropertyInfo> detailPropertites, DialogSize dialogSize = DialogSize.LG)
         {
-            string title = "查看";
+            string title = GetLocalizedText("Common.View", GetSharedResourcesType(), "查看");
+            string closeText = GetLocalizedText("Common.Close", GetSharedResourcesType(), "关闭");
             JArray controls = [];
 
             List<JObject> formFields = GetFormFieldsWithAiSupport(detailPropertites, null, isReadOnly: true);
@@ -338,7 +516,7 @@ namespace CodeSpirit.Amis.Helpers
                         new JObject
                         {
                             ["type"] = "button",
-                            ["label"] = "关闭",
+                            ["label"] = closeText,
                             ["actionType"] = "close"
                         }
                     }
@@ -350,13 +528,16 @@ namespace CodeSpirit.Amis.Helpers
         // 创建"删除"按钮
         public JObject CreateDeleteButton(ApiRouteInfo deleteRoute)
         {
+            string label = GetLocalizedText("Common.Delete", GetSharedResourcesType(), "删除");
+            string confirmText = GetLocalizedText("Common.ConfirmDelete", GetSharedResourcesType(), "确定要删除吗？");
+            
             JObject api = new()
             {
                 ["url"] = deleteRoute.ApiPath,
                 ["method"] = deleteRoute.HttpMethod
             };
 
-            return CreateButton("删除", "ajax", api: api, confirmText: "确定要删除吗？");
+            return CreateButton(label, "ajax", api: api, confirmText: confirmText);
         }
 
         // 获取自定义操作按钮
@@ -466,10 +647,13 @@ namespace CodeSpirit.Amis.Helpers
         // 创建自定义操作按钮
         public JObject CreateCustomOperationButton(OperationAttribute op, MethodInfo method)
         {
+            // 获取本地化的按钮标签
+            string label = GetLocalizedText(op.LabelResourceKey, op.LabelResourceType, op.Label);
+            
             JObject button = new()
             {
                 ["type"] = "button",
-                ["label"] = op.Label,
+                ["label"] = label,
                 ["actionType"] = op.ActionType
             };
 
@@ -501,13 +685,15 @@ namespace CodeSpirit.Amis.Helpers
                 button["api"] = api;
 
                 // 添加反馈弹框配置
-                if (!string.IsNullOrEmpty(op.FeedbackTitle) && !op.FeedbackBodyTpl.IsNullOrWhiteSpace())
+                if (!string.IsNullOrEmpty(op.FeedbackTitleResourceKey) || (!string.IsNullOrEmpty(op.FeedbackTitle) && !op.FeedbackBodyTpl.IsNullOrWhiteSpace()))
                 {
+                    string feedbackTitle = GetLocalizedText(op.FeedbackTitleResourceKey, op.FeedbackTitleResourceType, op.FeedbackTitle);
+                    
                     if (op.FeedbackBodyTpl.StartsWith("{"))
                     {
                         button["feedback"] = new JObject
                         {
-                            ["title"] = op.FeedbackTitle,
+                            ["title"] = feedbackTitle,
                             ["body"] = JObject.Parse(op.FeedbackBodyTpl)
                         };
                     }
@@ -515,7 +701,7 @@ namespace CodeSpirit.Amis.Helpers
                     {
                         button["feedback"] = new JObject
                         {
-                            ["title"] = op.FeedbackTitle,
+                            ["title"] = feedbackTitle,
                             ["body"] = op.FeedbackBodyTpl
                         };
                     }
@@ -530,7 +716,7 @@ namespace CodeSpirit.Amis.Helpers
             //输入表单
             else if (op.ActionType == "form")
             {
-                string title = op.Label;
+                string title = label;
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
                 var formOptions = new JObject
                 {
@@ -591,12 +777,12 @@ namespace CodeSpirit.Amis.Helpers
             {
                 // 对于 service 类型，创建一个 service 弹窗
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
-                button = CreateServiceDialogButton(op.Label, route, op.DialogSize, op.Actions);
+                button = CreateServiceDialogButton(label, route, op.DialogSize, op.Actions);
             }
             //出参表单
             else if (op.ActionType == "return-form")
             {
-                string title = op.Label;
+                string title = label;
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
                 JObject drawerBody = new()
                 {
@@ -641,15 +827,15 @@ namespace CodeSpirit.Amis.Helpers
             // AI表单
             else if (op.ActionType == "aiForm")
             {
-                string title = op.Label;
+                string title = label;
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
                 button = CreateAiFormButton(op, title, route, method);
             }
 
             // 添加其他通用配置
-            if (!string.IsNullOrEmpty(op.ConfirmText))
+            if (!string.IsNullOrEmpty(op.ConfirmTextResourceKey) || !string.IsNullOrEmpty(op.ConfirmText))
             {
-                button["confirmText"] = op.ConfirmText;
+                button["confirmText"] = GetLocalizedText(op.ConfirmTextResourceKey, op.ConfirmTextResourceType, op.ConfirmText);
             }
 
             if (op.ActionType.Equals("download", StringComparison.OrdinalIgnoreCase))

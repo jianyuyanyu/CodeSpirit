@@ -3,7 +3,9 @@ using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Dtos.ApiKey;
+using CodeSpirit.IdentityApi.Resources;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Localization.Resources;
 using CodeSpirit.Navigation.Resources;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -110,7 +112,11 @@ public class ApiKeysController : ApiControllerBase
     /// 撤销API密钥
     /// </summary>
     [HttpPut("{id}/revoke")]
-    [Operation("撤销", "ajax", null, "确定要撤销此API密钥吗？撤销后将无法使用。", "isActive == true")]
+    [Operation("撤销", "ajax", null, "确定要撤销此API密钥吗？撤销后将无法使用。", "isActive == true",
+        LabelResourceKey = "Operations.Revoke",
+        LabelResourceType = typeof(OperationsResources),
+        ConfirmTextResourceKey = "Operations.ConfirmRevokeApiKey",
+        ConfirmTextResourceType = typeof(OperationsResources))]
     [DisplayName("撤销API密钥")]
     public async Task<ActionResult<ApiResponse>> RevokeApiKey(long id)
     {
@@ -128,6 +134,12 @@ public class ApiKeysController : ApiControllerBase
     /// </summary>
     [HttpPut("{id}/regenerate")]
     [Operation("重新生成", "ajax", null, "⚠️ 重新生成后，旧密钥将立即失效。确定要继续吗？", null,
+        LabelResourceKey = "Operations.Regenerate",
+        LabelResourceType = typeof(OperationsResources),
+        ConfirmTextResourceKey = "Operations.ConfirmRegenerateApiKey",
+        ConfirmTextResourceType = typeof(OperationsResources),
+        FeedbackTitleResourceKey = "Operations.FeedbackRegenerateApiKey",
+        FeedbackTitleResourceType = typeof(OperationsResources),
         FeedbackTitle = "✅ 密钥重新生成成功",
         FeedbackBodyTpl = @"{
             'type': 'form',

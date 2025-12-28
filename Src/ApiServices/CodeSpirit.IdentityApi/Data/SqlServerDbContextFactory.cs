@@ -15,7 +15,7 @@ public class SqlServerDbContextFactory : IDesignTimeDbContextFactory<SqlServerDb
 {
     public SqlServerDbContext CreateDbContext(string[] args)
     {
-        var optionsBuilder = new DbContextOptionsBuilder();
+        var optionsBuilder = new DbContextOptionsBuilder<SqlServerDbContext>();
         
         // SQL Server连接字符串 - 优先从环境变量获取，否则使用默认值
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__identity-api") 

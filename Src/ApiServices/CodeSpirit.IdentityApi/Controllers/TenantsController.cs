@@ -2,8 +2,10 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Tenant;
+using CodeSpirit.IdentityApi.Resources;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Localization.Resources;
 using CodeSpirit.Shared.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -155,7 +157,11 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="tenantId">租户ID</param>
         /// <returns>删除结果</returns>
         [HttpDelete("{tenantId}")]
-        [Operation("删除", "ajax", null, "确定要删除该租户吗？删除后将无法恢复！", "tenantId != 'system'")]
+        [Operation("删除", "ajax", null, "确定要删除该租户吗？删除后将无法恢复！", "tenantId != 'system'",
+            LabelResourceKey = "Common.Delete",
+            LabelResourceType = typeof(SharedResources),
+            ConfirmTextResourceKey = "Operations.ConfirmDeleteTenant",
+            ConfirmTextResourceType = typeof(OperationsResources))]
         [DisplayName("删除租户")]
         public async Task<ActionResult<ApiResponse>> DeleteTenant(string tenantId)
         {
@@ -180,7 +186,11 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="tenantId">租户ID</param>
         /// <returns>操作结果</returns>
         [HttpPut("{tenantId}/enable")]
-        [Operation("启用", "ajax", null, "确定要启用该租户吗？", "!isActive")]
+        [Operation("启用", "ajax", null, "确定要启用该租户吗？", "!isActive",
+            LabelResourceKey = "Common.Enable",
+            LabelResourceType = typeof(SharedResources),
+            ConfirmTextResourceKey = "Operations.ConfirmEnableTenant",
+            ConfirmTextResourceType = typeof(OperationsResources))]
         [DisplayName("启用租户")]
         public async Task<ActionResult<ApiResponse>> EnableTenant(string tenantId)
         {
@@ -198,7 +208,11 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="tenantId">租户ID</param>
         /// <returns>操作结果</returns>
         [HttpPut("{tenantId}/disable")]
-        [Operation("禁用", "ajax", null, "确定要禁用该租户吗？", "isActive && tenantId != 'system'")]
+        [Operation("禁用", "ajax", null, "确定要禁用该租户吗？", "isActive && tenantId != 'system'",
+            LabelResourceKey = "Common.Disable",
+            LabelResourceType = typeof(SharedResources),
+            ConfirmTextResourceKey = "Operations.ConfirmDisableTenant",
+            ConfirmTextResourceType = typeof(OperationsResources))]
         [DisplayName("禁用租户")]
         public async Task<ActionResult<ApiResponse>> DisableTenant(string tenantId)
         {
@@ -261,7 +275,9 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="request">续期请求</param>
         /// <returns>操作结果</returns>
         [HttpPut("{tenantId}/renew")]
-        [Operation("续期", "form", null, null, "tenantId != 'system'")]
+        [Operation("续期", "form", null, null, "tenantId != 'system'",
+            LabelResourceKey = "Operations.Renew",
+            LabelResourceType = typeof(OperationsResources))]
         [DisplayName("续期租户")]
         public async Task<ActionResult<ApiResponse>> RenewTenant(string tenantId, [FromBody] TenantRenewRequest request)
         {
@@ -345,7 +361,12 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="id">租户ID</param>
         /// <returns>跳转结果</returns>
         [HttpPost("{tenantId}/redirect-login")]
-        [Operation("进入登录", "ajax", null, "确定要进入该租户的登录页面吗？", "isActive == true", Redirect = "/${tenantId}/login")]
+        [Operation("进入登录", "ajax", null, "确定要进入该租户的登录页面吗？", "isActive == true",
+            LabelResourceKey = "Operations.RedirectLogin",
+            LabelResourceType = typeof(OperationsResources),
+            ConfirmTextResourceKey = "Operations.ConfirmRedirectLogin",
+            ConfirmTextResourceType = typeof(OperationsResources),
+            Redirect = "/${tenantId}/login")]
         [DisplayName("跳转租户登录")]
         public async Task<ActionResult<ApiResponse<object>>> RedirectToTenantLogin(string tenantId)
         {

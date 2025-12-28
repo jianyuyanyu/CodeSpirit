@@ -88,4 +88,22 @@
   <data name="Common.Close" xml:space="preserve">
     <value>关闭</value>
   </data>
+  <data name="Common.View" xml:space="preserve">
+    <value>查看</value>
+  </data>
+  <data name="Common.Enable" xml:space="preserve">
+    <value>启用</value>
+  </data>
+  <data name="Common.Disable" xml:space="preserve">
+    <value>禁用</value>
+  </data>
+  <data name="Common.BatchDelete" xml:space="preserve">
+    <value>批量删除</value>
+  </data>
+  <data name="Common.ConfirmDelete" xml:space="preserve">
+    <value>确定要删除吗？</value>
+  </data>
+  <data name="Common.ConfirmBatchDelete" xml:space="preserve">
+    <value>确定要批量删除吗？</value>
+  </data>
 </root>

@@ -33,11 +33,12 @@
 		<!-- 资源文件嵌入配置 -->
 		<!-- 注意：不配置 Generator，避免与手动维护的 Resources 类冲突 -->
 		<!-- DisplayResources 和 ValidationResources 用于 DataAnnotations 强类型引用 -->
-		<!-- ErrorsResources 和 SharedResources 作为 IStringLocalizer<T> 的占位类 -->
+		<!-- ErrorsResources、SharedResources 和 OperationsResources 作为 IStringLocalizer<T> 的占位类 -->
 		<EmbeddedResource Update="Resources\Shared.resx" />
 		<EmbeddedResource Update="Resources\Errors.resx" />
 		<EmbeddedResource Update="Resources\Validation.resx" />
 		<EmbeddedResource Update="Resources\Display.resx" />
+		<EmbeddedResource Update="Resources\Operations.resx" />
 	</ItemGroup>
 
 </Project>

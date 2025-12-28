@@ -3,7 +3,9 @@ using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Dtos.Role;
+using CodeSpirit.IdentityApi.Resources;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Localization.Resources;
 using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
@@ -90,7 +92,11 @@ public class SystemRolesController : ApiControllerBase
     /// <param name="id">角色ID</param>
     /// <returns>删除结果</returns>
     [HttpDelete("{id}")]
-    [Operation("删除", "ajax", null, "确定要删除此系统角色吗？", "permissionIds.length == 0 && name !='SystemAdmin' && name !='TenantOperator' && name !='SystemAuditor'")]
+    [Operation("删除", "ajax", null, "确定要删除此系统角色吗？", "permissionIds.length == 0 && name !='SystemAdmin' && name !='TenantOperator' && name !='SystemAuditor'",
+        LabelResourceKey = "Common.Delete",
+        LabelResourceType = typeof(SharedResources),
+        ConfirmTextResourceKey = "Operations.ConfirmDeleteSystemRole",
+        ConfirmTextResourceType = typeof(IdentityDisplayResources))]
     [DisplayName("删除系统角色")]
     public async Task<ActionResult<ApiResponse>> DeleteSystemRole(long id)
     {

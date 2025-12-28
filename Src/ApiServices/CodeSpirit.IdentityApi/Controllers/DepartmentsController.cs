@@ -3,7 +3,9 @@ using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Dtos.Department;
+using CodeSpirit.IdentityApi.Resources;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Localization.Resources;
 using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
@@ -178,7 +180,11 @@ public class DepartmentsController : ApiControllerBase
     /// AI快速初始化组织结构
     /// </summary>
     [HttpPost("quick-init")]
-    [HeaderOperation("快速创建", "form", null, null, Icon = "fa-solid fa-magic", DialogSize = DialogSize.XL)]
+    [HeaderOperation("快速创建", "form", null, null,
+        LabelResourceKey = "Operations.QuickCreate",
+        LabelResourceType = typeof(OperationsResources),
+        Icon = "fa-solid fa-magic",
+        DialogSize = DialogSize.XL)]
     [DisplayName("快速初始化组织结构")]
     public async Task<ActionResult<ApiResponse>> QuickInitOrganization([FromBody] GenerateOrganizationStructureDto request)
     {

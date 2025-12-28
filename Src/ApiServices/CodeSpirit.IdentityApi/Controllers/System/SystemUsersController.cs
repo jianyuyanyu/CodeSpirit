@@ -5,7 +5,9 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.User;
+using CodeSpirit.IdentityApi.Resources;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Localization.Resources;
 using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.Dtos.Common;
@@ -235,6 +237,12 @@ public class SystemUsersController : ApiControllerBase
     /// <returns>重置结果</returns>
     [HttpPost("{id}/resetPassword")]
     [Operation("重置密码", "ajax", null, "确定要重置密码吗？", "isActive == true",
+        LabelResourceKey = "Operations.ResetPassword",
+        LabelResourceType = typeof(OperationsResources),
+        ConfirmTextResourceKey = "Operations.ConfirmResetPassword",
+        ConfirmTextResourceType = typeof(OperationsResources),
+        FeedbackTitleResourceKey = "Operations.FeedbackResetPassword",
+        FeedbackTitleResourceType = typeof(OperationsResources),
         FeedbackTitle = "重置密码结果",
         FeedbackBodyTpl = @"{
             'type': 'form',
@@ -274,7 +282,11 @@ public class SystemUsersController : ApiControllerBase
     /// <param name="id">用户ID</param>
     /// <returns>解锁结果</returns>
     [HttpPut("{id}/unlock")]
-    [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？", "lockoutEnd != null")]
+    [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？", "lockoutEnd != null",
+        LabelResourceKey = "Operations.Unlock",
+        LabelResourceType = typeof(OperationsResources),
+        ConfirmTextResourceKey = "Operations.ConfirmUnlock",
+        ConfirmTextResourceType = typeof(OperationsResources))]
     [DisplayName("解锁用户")]
     public async Task<ActionResult<ApiResponse>> UnlockUser(long id)
     {
@@ -292,7 +304,11 @@ public class SystemUsersController : ApiControllerBase
     /// <param name="request">批量操作请求</param>
     /// <returns>删除结果</returns>
     [HttpPost("batch/delete")]
-    [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
+    [Operation("批量删除", "ajax", null, "确定要批量删除?", null, true,
+        LabelResourceKey = "Common.BatchDelete",
+        LabelResourceType = typeof(SharedResources),
+        ConfirmTextResourceKey = "Common.ConfirmBatchDelete",
+        ConfirmTextResourceType = typeof(SharedResources))]
     [DisplayName("批量删除用户")]
     public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
     {

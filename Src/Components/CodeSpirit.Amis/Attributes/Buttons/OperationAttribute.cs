@@ -220,6 +220,38 @@ public class OperationAttribute : Attribute
     public string Actions { get; set; }
 
     /// <summary>
+    /// 按钮标签的资源键（用于多语言）
+    /// 如果指定，将从资源文件中读取按钮文本
+    /// </summary>
+    public string LabelResourceKey { get; set; }
+
+    /// <summary>
+    /// 按钮标签的资源类型（用于多语言）
+    /// 如：typeof(SharedResources) 或 typeof(IdentityDisplayResources)
+    /// </summary>
+    public Type LabelResourceType { get; set; }
+
+    /// <summary>
+    /// 确认文本的资源键（用于多语言）
+    /// </summary>
+    public string ConfirmTextResourceKey { get; set; }
+
+    /// <summary>
+    /// 确认文本的资源类型（用于多语言）
+    /// </summary>
+    public Type ConfirmTextResourceType { get; set; }
+
+    /// <summary>
+    /// 反馈标题的资源键（用于多语言）
+    /// </summary>
+    public string FeedbackTitleResourceKey { get; set; }
+
+    /// <summary>
+    /// 反馈标题的资源类型（用于多语言）
+    /// </summary>
+    public Type FeedbackTitleResourceType { get; set; }
+
+    /// <summary>
     /// 使用枚举类型的构造函数（推荐）
     /// </summary>
     /// <param name="label">按钮标签</param>

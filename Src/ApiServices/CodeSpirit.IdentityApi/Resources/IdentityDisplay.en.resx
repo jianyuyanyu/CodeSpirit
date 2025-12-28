@@ -176,5 +176,74 @@
   <data name="Description.User.AvatarUrl" xml:space="preserve">
     <value>Please upload your avatar</value>
   </data>
+  
+  <!-- Operation Labels -->
+  <data name="Operations.ResetPassword" xml:space="preserve">
+    <value>Reset Password</value>
+  </data>
+  <data name="Operations.Unlock" xml:space="preserve">
+    <value>Unlock</value>
+  </data>
+  <data name="Operations.ImpersonateLogin" xml:space="preserve">
+    <value>Impersonate Login</value>
+  </data>
+  <data name="Operations.Revoke" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="Operations.Regenerate" xml:space="preserve">
+    <value>Regenerate</value>
+  </data>
+  <data name="Operations.Renew" xml:space="preserve">
+    <value>Renew</value>
+  </data>
+  <data name="Operations.QuickCreate" xml:space="preserve">
+    <value>Quick Create</value>
+  </data>
+  <data name="Operations.RedirectLogin" xml:space="preserve">
+    <value>Redirect Login</value>
+  </data>
+  
+  <!-- Confirmation Messages -->
+  <data name="Operations.ConfirmResetPassword" xml:space="preserve">
+    <value>Are you sure you want to reset password?</value>
+  </data>
+  <data name="Operations.ConfirmUnlock" xml:space="preserve">
+    <value>Are you sure you want to unlock this user?</value>
+  </data>
+  <data name="Operations.ConfirmImpersonateLogin" xml:space="preserve">
+    <value>Are you sure you want to impersonate this user?</value>
+  </data>
+  <data name="Operations.ConfirmDeleteTenant" xml:space="preserve">
+    <value>Are you sure you want to delete this tenant? This action cannot be undone!</value>
+  </data>
+  <data name="Operations.ConfirmEnableTenant" xml:space="preserve">
+    <value>Are you sure you want to enable this tenant?</value>
+  </data>
+  <data name="Operations.ConfirmDisableTenant" xml:space="preserve">
+    <value>Are you sure you want to disable this tenant?</value>
+  </data>
+  <data name="Operations.ConfirmDeleteRole" xml:space="preserve">
+    <value>Are you sure you want to delete this role?</value>
+  </data>
+  <data name="Operations.ConfirmDeleteSystemRole" xml:space="preserve">
+    <value>Are you sure you want to delete this system role?</value>
+  </data>
+  <data name="Operations.ConfirmRevokeApiKey" xml:space="preserve">
+    <value>Are you sure you want to revoke this API key? It will be unusable after revocation.</value>
+  </data>
+  <data name="Operations.ConfirmRegenerateApiKey" xml:space="preserve">
+    <value>⚠️ After regeneration, the old key will become invalid immediately. Are you sure you want to continue?</value>
+  </data>
+  <data name="Operations.ConfirmRedirectLogin" xml:space="preserve">
+    <value>Are you sure you want to redirect to this tenant's login page?</value>
+  </data>
+  
+  <!-- Feedback Titles -->
+  <data name="Operations.FeedbackResetPassword" xml:space="preserve">
+    <value>Reset Password Result</value>
+  </data>
+  <data name="Operations.FeedbackRegenerateApiKey" xml:space="preserve">
+    <value>✅ API Key Regenerated Successfully</value>
+  </data>
 </root>
 

@@ -4,7 +4,9 @@ using CodeSpirit.Core.Dtos;
 using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Dtos.User;
+using CodeSpirit.IdentityApi.Resources;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Localization.Resources;
 using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Authorization;
@@ -121,6 +123,12 @@ namespace CodeSpirit.IdentityApi.Controllers
         // POST: /api/Users/{id}/resetRandomPassword
         [HttpPost("{id}/resetRandomPassword")]
         [Operation("重置密码", "ajax", null, "确定要重置密码吗？", "isActive == true", 
+            LabelResourceKey = "Operations.ResetPassword",
+            LabelResourceType = typeof(OperationsResources),
+            ConfirmTextResourceKey = "Operations.ConfirmResetPassword",
+            ConfirmTextResourceType = typeof(OperationsResources),
+            FeedbackTitleResourceKey = "Operations.FeedbackResetPassword",
+            FeedbackTitleResourceType = typeof(OperationsResources),
             FeedbackTitle = "重置密码结果",
             FeedbackBodyTpl = @"{
                 'type': 'form',
@@ -152,7 +160,11 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // PUT: /api/Users/{id}/unlock
         [HttpPut("{id}/unlock")]
-        [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？", "lockoutEnd != null")]
+        [Operation("解锁", "ajax", null, "确定要解除用户锁定吗？", "lockoutEnd != null",
+            LabelResourceKey = "Operations.Unlock",
+            LabelResourceType = typeof(OperationsResources),
+            ConfirmTextResourceKey = "Operations.ConfirmUnlock",
+            ConfirmTextResourceType = typeof(OperationsResources))]
         [DisplayName("解锁用户")]
         public async Task<ActionResult<ApiResponse>> UnlockUser(long id)
         {
@@ -171,7 +183,12 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // POST: api/Users/{id}/impersonate
         [HttpPost("{id}/impersonate")]
-        [Operation("模拟登录", "ajax", null, "确定要模拟此用户登录吗？", "isActive == true", Redirect = "/impersonate?token=${token}&tenantId=${tenantId}")]
+        [Operation("模拟登录", "ajax", null, "确定要模拟此用户登录吗？", "isActive == true",
+            LabelResourceKey = "Operations.ImpersonateLogin",
+            LabelResourceType = typeof(OperationsResources),
+            ConfirmTextResourceKey = "Operations.ConfirmImpersonateLogin",
+            ConfirmTextResourceType = typeof(OperationsResources),
+            Redirect = "/impersonate?token=${token}&tenantId=${tenantId}")]
         [DisplayName("模拟用户登录")]
         public async Task<ActionResult<ApiResponse<object>>> ImpersonateUser(long id)
         {
@@ -211,7 +228,11 @@ namespace CodeSpirit.IdentityApi.Controllers
 
         // POST: api/Users/batch/delete
         [HttpPost("batch/delete")]
-        [Operation("批量删除", "ajax", null, "确定要批量删除?", isBulkOperation: true)]
+        [Operation("批量删除", "ajax", null, "确定要批量删除?", null, true,
+            LabelResourceKey = "Common.BatchDelete",
+            LabelResourceType = typeof(SharedResources),
+            ConfirmTextResourceKey = "Common.ConfirmBatchDelete",
+            ConfirmTextResourceType = typeof(SharedResources))]
         [DisplayName("批量删除用户")]
         public async Task<ActionResult<ApiResponse>> BatchDelete([FromBody] BatchOperationDto<long> request)
         {

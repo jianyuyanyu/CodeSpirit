@@ -4,7 +4,9 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.IdentityApi.Constants;
 using CodeSpirit.IdentityApi.Controllers;
 using CodeSpirit.IdentityApi.Dtos.Role;
+using CodeSpirit.IdentityApi.Resources;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Localization.Resources;
 using CodeSpirit.Navigation.Resources;
 using CodeSpirit.Shared.Dtos.Common;
 using Microsoft.AspNetCore.Mvc;
@@ -54,7 +56,11 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Operation("删除", "ajax", null, "确定要删除此角色吗？", "name !='Admin'")]
+    [Operation("删除", "ajax", null, "确定要删除此角色吗？", "name !='Admin'",
+        LabelResourceKey = "Common.Delete",
+        LabelResourceType = typeof(SharedResources),
+        ConfirmTextResourceKey = "Operations.ConfirmDeleteRole",
+        ConfirmTextResourceType = typeof(IdentityDisplayResources))]
     [DisplayName("删除角色")]
     public async Task<ActionResult<ApiResponse>> Delete(long id)
     {

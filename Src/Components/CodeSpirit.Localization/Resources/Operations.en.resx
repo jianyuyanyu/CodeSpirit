@@ -58,52 +58,88 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Common.Save" xml:space="preserve">
-    <value>Save</value>
+  
+  <!-- Operation Button Labels -->
+  <data name="Operations.ResetPassword" xml:space="preserve">
+    <value>Reset Password</value>
   </data>
-  <data name="Common.Cancel" xml:space="preserve">
-    <value>Cancel</value>
+  <data name="Operations.Unlock" xml:space="preserve">
+    <value>Unlock</value>
   </data>
-  <data name="Common.Delete" xml:space="preserve">
-    <value>Delete</value>
+  <data name="Operations.ImpersonateLogin" xml:space="preserve">
+    <value>Impersonate Login</value>
   </data>
-  <data name="Common.Confirm" xml:space="preserve">
-    <value>Confirm</value>
-  </data>
-  <data name="Common.Search" xml:space="preserve">
-    <value>Search</value>
-  </data>
-  <data name="Common.Edit" xml:space="preserve">
-    <value>Edit</value>
-  </data>
-  <data name="Common.Add" xml:space="preserve">
-    <value>Add</value>
-  </data>
-  <data name="Common.Submit" xml:space="preserve">
-    <value>Submit</value>
-  </data>
-  <data name="Common.Reset" xml:space="preserve">
-    <value>Reset</value>
-  </data>
-  <data name="Common.Close" xml:space="preserve">
-    <value>Close</value>
-  </data>
-  <data name="Common.View" xml:space="preserve">
-    <value>View</value>
-  </data>
-  <data name="Common.Enable" xml:space="preserve">
-    <value>Enable</value><value>Enable</value>
-  </data>
-  <data name="Common.Disable" xml:space="preserve">
-    <value>Disable</value>
-  </data>
-  <data name="Common.BatchDelete" xml:space="preserve">
+  <data name="Operations.BatchDelete" xml:space="preserve">
     <value>Batch Delete</value>
   </data>
-  <data name="Common.ConfirmDelete" xml:space="preserve">
-    <value>Are you sure you want to delete?</value>
+  <data name="Operations.Enable" xml:space="preserve">
+    <value>Enable</value>
   </data>
-  <data name="Common.ConfirmBatchDelete" xml:space="preserve">
+  <data name="Operations.Disable" xml:space="preserve">
+    <value>Disable</value>
+  </data>
+  <data name="Operations.Renew" xml:space="preserve">
+    <value>Renew</value>
+  </data>
+  <data name="Operations.Revoke" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="Operations.Regenerate" xml:space="preserve">
+    <value>Regenerate</value>
+  </data>
+  <data name="Operations.QuickCreate" xml:space="preserve">
+    <value>Quick Create</value>
+  </data>
+  <data name="Operations.EnterLogin" xml:space="preserve">
+    <value>Enter Login</value>
+  </data>
+  
+  <!-- Confirmation Messages -->
+  <data name="Operations.ConfirmResetPassword" xml:space="preserve">
+    <value>Are you sure you want to reset password?</value>
+  </data>
+  <data name="Operations.ConfirmUnlock" xml:space="preserve">
+    <value>Are you sure you want to unlock this user?</value>
+  </data>
+  <data name="Operations.ConfirmBatchDelete" xml:space="preserve">
     <value>Are you sure you want to batch delete?</value>
   </data>
+  <data name="Operations.ConfirmDelete" xml:space="preserve">
+    <value>Are you sure you want to delete?</value>
+  </data>
+  <data name="Operations.ConfirmEnable" xml:space="preserve">
+    <value>Are you sure you want to enable?</value>
+  </data>
+  <data name="Operations.ConfirmDisable" xml:space="preserve">
+    <value>Are you sure you want to disable?</value>
+  </data>
+  <data name="Operations.ConfirmRenew" xml:space="preserve">
+    <value>Are you sure you want to renew?</value>
+  </data>
+  <data name="Operations.ConfirmRevoke" xml:space="preserve">
+    <value>Are you sure you want to revoke?</value>
+  </data>
+  <data name="Operations.ConfirmRegenerate" xml:space="preserve">
+    <value>Are you sure you want to regenerate?</value>
+  </data>
+  
+  <!-- Feedback Titles -->
+  <data name="Operations.FeedbackResetPassword" xml:space="preserve">
+    <value>Reset Password Result</value>
+  </data>
+  <data name="Operations.FeedbackBatchDelete" xml:space="preserve">
+    <value>Batch Delete Result</value>
+  </data>
+  <data name="Operations.FeedbackRegenerate" xml:space="preserve">
+    <value>Regenerate Result</value>
+  </data>
+  
+  <!-- Feedback Body -->
+  <data name="Operations.FeedbackBodyResetPassword" xml:space="preserve">
+    <value>New Password: ${passwordResetResult}</value>
+  </data>
+  <data name="Operations.FeedbackBodyRegenerate" xml:space="preserve">
+    <value>New Key: ${key}</value>
+  </data>
 </root>
+

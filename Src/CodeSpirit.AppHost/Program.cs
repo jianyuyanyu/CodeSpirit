@@ -179,7 +179,8 @@ var identityService = builder.AddStandardApiService<Projects.CodeSpirit_Identity
         cache: cache,
         rabbitmqService: rabbitmqService,
         identityService: null!, // 第一个身份服务，传入 null
-        databaseType: databaseType)
+        databaseType: databaseType,
+        settingsDb: settingsDb)  // IdentityApi 需要访问设置数据库
     .WithReference(seqService)
     .WithReference(configService)
     .WithHealthCheck()

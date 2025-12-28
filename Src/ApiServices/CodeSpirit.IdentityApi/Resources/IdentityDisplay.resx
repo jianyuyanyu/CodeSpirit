@@ -176,5 +176,74 @@
   <data name="Description.User.AvatarUrl" xml:space="preserve">
     <value>请上传您的头像</value>
   </data>
+  
+  <!-- 操作标签 -->
+  <data name="Operations.ResetPassword" xml:space="preserve">
+    <value>重置密码</value>
+  </data>
+  <data name="Operations.Unlock" xml:space="preserve">
+    <value>解锁</value>
+  </data>
+  <data name="Operations.ImpersonateLogin" xml:space="preserve">
+    <value>模拟登录</value>
+  </data>
+  <data name="Operations.Revoke" xml:space="preserve">
+    <value>撤销</value>
+  </data>
+  <data name="Operations.Regenerate" xml:space="preserve">
+    <value>重新生成</value>
+  </data>
+  <data name="Operations.Renew" xml:space="preserve">
+    <value>续期</value>
+  </data>
+  <data name="Operations.QuickCreate" xml:space="preserve">
+    <value>快速创建</value>
+  </data>
+  <data name="Operations.RedirectLogin" xml:space="preserve">
+    <value>进入登录</value>
+  </data>
+  
+  <!-- 确认消息 -->
+  <data name="Operations.ConfirmResetPassword" xml:space="preserve">
+    <value>确定要重置密码吗？</value>
+  </data>
+  <data name="Operations.ConfirmUnlock" xml:space="preserve">
+    <value>确定要解除用户锁定吗？</value>
+  </data>
+  <data name="Operations.ConfirmImpersonateLogin" xml:space="preserve">
+    <value>确定要模拟此用户登录吗？</value>
+  </data>
+  <data name="Operations.ConfirmDeleteTenant" xml:space="preserve">
+    <value>确定要删除该租户吗？删除后将无法恢复！</value>
+  </data>
+  <data name="Operations.ConfirmEnableTenant" xml:space="preserve">
+    <value>确定要启用该租户吗？</value>
+  </data>
+  <data name="Operations.ConfirmDisableTenant" xml:space="preserve">
+    <value>确定要禁用该租户吗？</value>
+  </data>
+  <data name="Operations.ConfirmDeleteRole" xml:space="preserve">
+    <value>确定要删除此角色吗？</value>
+  </data>
+  <data name="Operations.ConfirmDeleteSystemRole" xml:space="preserve">
+    <value>确定要删除此系统角色吗？</value>
+  </data>
+  <data name="Operations.ConfirmRevokeApiKey" xml:space="preserve">
+    <value>确定要撤销此API密钥吗？撤销后将无法使用。</value>
+  </data>
+  <data name="Operations.ConfirmRegenerateApiKey" xml:space="preserve">
+    <value>⚠️ 重新生成后，旧密钥将立即失效。确定要继续吗？</value>
+  </data>
+  <data name="Operations.ConfirmRedirectLogin" xml:space="preserve">
+    <value>确定要进入该租户的登录页面吗？</value>
+  </data>
+  
+  <!-- 反馈标题 -->
+  <data name="Operations.FeedbackResetPassword" xml:space="preserve">
+    <value>重置密码结果</value>
+  </data>
+  <data name="Operations.FeedbackRegenerateApiKey" xml:space="preserve">
+    <value>✅ 密钥重新生成成功</value>
+  </data>
 </root>
 

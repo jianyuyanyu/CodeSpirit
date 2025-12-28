@@ -58,52 +58,88 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Common.Save" xml:space="preserve">
-    <value>Save</value>
+  
+  <!-- 操作按钮标签 -->
+  <data name="Operations.ResetPassword" xml:space="preserve">
+    <value>重置密码</value>
   </data>
-  <data name="Common.Cancel" xml:space="preserve">
-    <value>Cancel</value>
+  <data name="Operations.Unlock" xml:space="preserve">
+    <value>解锁</value>
   </data>
-  <data name="Common.Delete" xml:space="preserve">
-    <value>Delete</value>
+  <data name="Operations.ImpersonateLogin" xml:space="preserve">
+    <value>模拟登录</value>
   </data>
-  <data name="Common.Confirm" xml:space="preserve">
-    <value>Confirm</value>
+  <data name="Operations.BatchDelete" xml:space="preserve">
+    <value>批量删除</value>
   </data>
-  <data name="Common.Search" xml:space="preserve">
-    <value>Search</value>
+  <data name="Operations.Enable" xml:space="preserve">
+    <value>启用</value>
   </data>
-  <data name="Common.Edit" xml:space="preserve">
-    <value>Edit</value>
+  <data name="Operations.Disable" xml:space="preserve">
+    <value>禁用</value>
   </data>
-  <data name="Common.Add" xml:space="preserve">
-    <value>Add</value>
+  <data name="Operations.Renew" xml:space="preserve">
+    <value>续期</value>
   </data>
-  <data name="Common.Submit" xml:space="preserve">
-    <value>Submit</value>
+  <data name="Operations.Revoke" xml:space="preserve">
+    <value>撤销</value>
   </data>
-  <data name="Common.Reset" xml:space="preserve">
-    <value>Reset</value>
+  <data name="Operations.Regenerate" xml:space="preserve">
+    <value>重新生成</value>
   </data>
-  <data name="Common.Close" xml:space="preserve">
-    <value>Close</value>
+  <data name="Operations.QuickCreate" xml:space="preserve">
+    <value>快速创建</value>
   </data>
-  <data name="Common.View" xml:space="preserve">
-    <value>View</value>
+  <data name="Operations.EnterLogin" xml:space="preserve">
+    <value>进入登录</value>
   </data>
-  <data name="Common.Enable" xml:space="preserve">
-    <value>Enable</value><value>Enable</value>
+  
+  <!-- 确认消息 -->
+  <data name="Operations.ConfirmResetPassword" xml:space="preserve">
+    <value>确定要重置密码吗？</value>
   </data>
-  <data name="Common.Disable" xml:space="preserve">
-    <value>Disable</value>
+  <data name="Operations.ConfirmUnlock" xml:space="preserve">
+    <value>确定要解除用户锁定吗？</value>
   </data>
-  <data name="Common.BatchDelete" xml:space="preserve">
-    <value>Batch Delete</value>
+  <data name="Operations.ConfirmBatchDelete" xml:space="preserve">
+    <value>确定要批量删除吗？</value>
   </data>
-  <data name="Common.ConfirmDelete" xml:space="preserve">
-    <value>Are you sure you want to delete?</value>
+  <data name="Operations.ConfirmDelete" xml:space="preserve">
+    <value>确定要删除吗？</value>
   </data>
-  <data name="Common.ConfirmBatchDelete" xml:space="preserve">
-    <value>Are you sure you want to batch delete?</value>
+  <data name="Operations.ConfirmEnable" xml:space="preserve">
+    <value>确定要启用吗？</value>
+  </data>
+  <data name="Operations.ConfirmDisable" xml:space="preserve">
+    <value>确定要禁用吗？</value>
+  </data>
+  <data name="Operations.ConfirmRenew" xml:space="preserve">
+    <value>确定要续期吗？</value>
+  </data>
+  <data name="Operations.ConfirmRevoke" xml:space="preserve">
+    <value>确定要撤销吗？</value>
+  </data>
+  <data name="Operations.ConfirmRegenerate" xml:space="preserve">
+    <value>确定要重新生成吗？</value>
+  </data>
+  
+  <!-- 反馈标题 -->
+  <data name="Operations.FeedbackResetPassword" xml:space="preserve">
+    <value>重置密码结果</value>
+  </data>
+  <data name="Operations.FeedbackBatchDelete" xml:space="preserve">
+    <value>批量删除结果</value>
+  </data>
+  <data name="Operations.FeedbackRegenerate" xml:space="preserve">
+    <value>重新生成结果</value>
+  </data>
+  
+  <!-- 反馈内容 -->
+  <data name="Operations.FeedbackBodyResetPassword" xml:space="preserve">
+    <value>新密码：${passwordResetResult}</value>
+  </data>
+  <data name="Operations.FeedbackBodyRegenerate" xml:space="preserve">
+    <value>新密钥：${key}</value>
   </data>
 </root>
+

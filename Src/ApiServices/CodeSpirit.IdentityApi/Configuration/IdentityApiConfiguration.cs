@@ -8,6 +8,7 @@ using CodeSpirit.IdentityApi.EventHandlers;
 using CodeSpirit.IdentityApi.Services;
 using CodeSpirit.LLM;
 using CodeSpirit.MultiTenant.Extensions;
+using CodeSpirit.Settings.Extensions;
 using CodeSpirit.Shared.Data;
 using CodeSpirit.Shared.DistributedLock;
 using CodeSpirit.Shared.EventBus.Events;
@@ -65,6 +66,9 @@ public class IdentityApiConfiguration : BaseApiConfiguration
                 
         // 注册多租户服务
         services.AddCodeSpiritMultiTenant(configuration);
+        
+        // 注册设置管理服务（包含数据库）
+        services.AddSettingsManagerWithDatabase(configuration);
         
         // 注册Charts服务
         RegisterChartServices(services);
@@ -144,6 +148,9 @@ public class IdentityApiConfiguration : BaseApiConfiguration
         {
             // 首先应用数据库迁移
             await ApplyDatabaseMigrationsAsync(services, configuration, logger);
+            
+            // 初始化设置数据库
+            await app.UseSettingsManagerAsync();
             
             // 然后执行数据初始化
             await DataSeeder.SeedAsync(services);

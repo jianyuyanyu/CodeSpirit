@@ -21,7 +21,7 @@ namespace CodeSpirit.IdentityApi.Data
         /// <param name="currentUser">当前用户</param>
         /// <param name="entityFileReferenceEventHandler">实体文件引用事件处理器</param>
         public MySqlDbContext(
-            DbContextOptions options,
+            DbContextOptions<MySqlDbContext> options,
             IServiceProvider serviceProvider,
             IHttpContextAccessor httpContextAccessor,
             ICurrentUser currentUser,

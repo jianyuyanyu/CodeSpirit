@@ -1,4 +1,4 @@
-# CodeSpirit 多语言国际化使用指南
+# CodeSpirit 多语言国际化使用指南（Beta）
 
 ## 📋 概述
 
@@ -6,7 +6,9 @@ CodeSpirit 框架现已支持完整的前后端多语言国际化功能，提供
 
 **版本**: v1.0.0  
 **支持语言**: 简体中文（zh-CN）、英文（en）  
-**更新日期**: 2025年12月18日
+**更新日期**: 2025年12月28日
+
+![image-20251228144325806](../../Res/image-20251228144325806.png)
 
 ## 🎯 核心特性
 
@@ -126,6 +128,8 @@ public class CreateQuestionDto
 
 中文环境：`题目内容不能为空`  
 英文环境：`Content is required`
+
+![image-20251228144458888](../../Res/image-20251228144458888.png)
 
 ### 4. DTO 描述信息多语言
 
@@ -306,9 +310,14 @@ CodeSpirit.SurveyApi/Resources/
 ### 场景 1：用户切换语言
 
 1. 用户在导航栏选择 "English"
+
 2. JavaScript 调用 `CodeSpirit.i18n.switchLanguage('en')`
+
 3. 设置 Cookie 并刷新页面
+
 4. 所有内容显示为英文
+
+   ![image-20251228144624297](../../Res/image-20251228144624297.png)
 
 ### 场景 2：租户设置默认语言
 
@@ -337,6 +346,273 @@ AMIS 组件会自动根据当前语言加载对应的 locale 文件：
 - **英文环境**：动态加载 `sdk/6.13.0/locale/en-US.js`
 
 AMIS 内置组件（日期选择器、分页器等）会自动显示对应语言。
+
+![image-20251228144653246](../../Res/image-20251228144653246.png)
+
+## 🧭 导航组件多语言
+
+导航组件（`CodeSpirit.Navigation`）提供了完整的多语言支持，用于实现动态导航菜单的多语言切换。
+
+![image-20251228145339114](../../Res/image-20251228145339114.png)
+
+### 导航资源文件
+
+导航组件使用专用的资源文件：
+
+**资源文件位置**：
+```
+CodeSpirit.Navigation/Resources/
+  ├── NavigationResources.cs         # 资源占位类
+  ├── NavigationResources.resx       # 中文资源
+  └── NavigationResources.en.resx    # 英文资源
+```
+
+**资源键命名规范**：
+- 模块名称：`Module.{ModuleName}`（如 `Module.Identity`、`Module.Survey`）
+- 控制器名称：`Controller.{ControllerName}`（如 `Controller.Users`、`Controller.Roles`）
+
+### 在控制器中使用
+
+导航组件支持两种特性来配置多语言：`Module` 特性和 `NavigationAttribute` 特性。
+
+#### 使用 Module 特性（推荐）
+
+`Module` 特性用于定义模块级别的多语言配置，通常放在 `ApiControllerBase` 上：
+
+```csharp
+using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
+using CodeSpirit.Navigation.Resources;
+
+// 模块级配置（在 ApiControllerBase 上）
+[Module("identity", 
+    displayName: "用户中心",  // 回退文本
+    DisplayNameResourceKey = "Module.Identity",           // 资源键
+    DisplayNameResourceType = typeof(NavigationResources), // 资源类型
+    Icon = "fa-solid fa-user-group")]
+[Navigation(
+    Icon = "fa-solid fa-user-group", 
+    PlatformType = PlatformType.Both,
+    TitleResourceKey = "Module.Identity",           // 与 Module 的资源键保持一致
+    TitleResourceType = typeof(NavigationResources)
+)]
+public abstract class ApiControllerBase : CodeSpirit.Shared.Controllers.ApiControllerBase
+{
+}
+```
+
+#### 使用 NavigationAttribute 特性
+
+`NavigationAttribute` 用于控制器级别的多语言配置：
+
+```csharp
+using CodeSpirit.Core.Attributes;
+using CodeSpirit.Navigation.Resources;
+using System.ComponentModel;
+
+// 控制器级配置
+[DisplayName("用户管理")]
+[Navigation(
+    Icon = "fa-solid fa-users", 
+    PlatformType = PlatformType.Tenant,
+    TitleResourceKey = "Controller.Users",
+    TitleResourceType = typeof(NavigationResources)
+)]
+public class UsersController : ApiControllerBase
+{
+}
+```
+
+### 配置要点
+
+**Module 特性**：
+1. **DisplayNameResourceKey**：指定模块名称的资源键（必填）
+2. **DisplayNameResourceType**：指定资源类型，通常为 `typeof(NavigationResources)`（必填）
+3. **displayName**：回退文本，当资源不可用时显示（必填，建议提供）
+
+**NavigationAttribute 特性**：
+1. **TitleResourceKey**：指定资源键名称（推荐填写，与 Module 的 DisplayNameResourceKey 保持一致）
+2. **TitleResourceType**：指定资源类型，通常为 `typeof(NavigationResources)`（推荐填写）
+3. **Title**：回退文本，当资源不可用时显示（可选，建议提供）
+
+> **最佳实践**：在模块级配置中，建议在 `Navigation` 特性中也设置 `TitleResourceKey` 和 `TitleResourceType`，与 `Module` 特性的资源键保持一致，确保导航多语言功能完整可靠。
+
+### 工作原理
+
+1. **自动扫描**：系统启动时，导航组件自动扫描所有控制器的 `NavigationAttribute`
+2. **资源解析**：根据当前语言（`CultureInfo.CurrentUICulture`）解析对应的资源文本
+3. **缓存机制**：解析后的导航树缓存到分布式缓存（Redis），提升性能
+4. **动态切换**：用户切换语言后，导航菜单会自动显示对应语言
+
+### ⚠️ 重要注意事项
+
+#### 1. 缓存问题
+
+导航组件使用分布式缓存来提升性能，但在以下情况下可能导致多语言不生效：
+
+**症状**：切换语言后，导航菜单仍显示旧语言
+
+**原因**：导航树已缓存，未重新解析多语言资源
+
+**解决方案**：清空导航缓存
+
+##### 方法1：通过缓存管理界面
+
+1. 访问系统平台的**缓存管理**页面（路由：`/cacheManagement`）
+2. 在缓存列表中搜索或找到导航缓存键：`CodeSpirit:Navigation:All`
+3. 点击该缓存项的"删除"按钮清空缓存
+
+> **注意**：缓存管理功能仅系统管理员可访问，属于系统平台功能。
+
+##### 方法2：通过代码 API 调用
+
+```csharp
+// 清空所有导航缓存
+await _navigationService.ClearAllNavigationCacheAsync();
+
+// 清空特定模块缓存（实际上也会清空整个缓存）
+await _navigationService.ClearModuleNavigationCacheAsync("Identity");
+
+// 重新初始化导航树（清空并重建缓存）
+await _navigationService.InitializeNavigationTree();
+```
+
+##### 方法3：通过 HTTP API 调用
+
+```bash
+# 清空所有导航缓存
+DELETE /api/navigation/cache
+
+# 清空特定模块缓存
+DELETE /api/navigation/cache?moduleName=Identity
+
+# 重新初始化导航树（清空并重建缓存）
+POST /api/navigation/initialize
+```
+
+#### 2. 资源文件编译
+
+确保资源文件正确配置为嵌入式资源：
+
+```xml
+<ItemGroup>
+  <EmbeddedResource Include="Resources\NavigationResources.resx">
+    <Generator>PublicResXFileCodeGenerator</Generator>
+  </EmbeddedResource>
+  <EmbeddedResource Include="Resources\NavigationResources.en.resx" />
+</ItemGroup>
+```
+
+#### 3. 开发建议
+
+- **模块配置**：推荐同时使用 `Module` 和 `Navigation` 特性配置模块级多语言
+- **回退文本**：始终提供回退文本（`displayName`、`Title`），确保资源不可用时仍能显示
+- **添加新导航项**：添加后需清空缓存，确保新项生效
+- **修改资源文本**：修改后需重新编译项目，并清空缓存
+- **测试多语言**：切换语言后若不生效，优先检查缓存
+- **资源键一致性**：`Module` 的 `DisplayNameResourceKey` 和 `Navigation` 的 `TitleResourceKey` 通常使用相同的资源键
+
+### 完整示例
+
+以下是用户中心模块的完整多语言配置示例（来自实际代码）：
+
+```csharp
+using CodeSpirit.Core;
+using CodeSpirit.Core.Attributes;
+using CodeSpirit.Core.Enums;
+using CodeSpirit.Navigation.Resources;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel;
+
+namespace CodeSpirit.IdentityApi.Controllers
+{
+    /// <summary>
+    /// 身份认证API控制器基类
+    /// </summary>
+    [ApiController]
+    [Authorize(policy: "DynamicPermissions")]
+    [Route("api/identity/[controller]")]
+    // 模块级配置（使用 Module 和 Navigation 特性）
+    [Module("identity", 
+        displayName: "用户中心",  // 回退文本
+        DisplayNameResourceKey = "Module.Identity",           // 资源键
+        DisplayNameResourceType = typeof(NavigationResources), // 资源类型
+        Icon = "fa-solid fa-user-group")]
+    [Navigation(
+        Icon = "fa-solid fa-user-group",
+        PlatformType = PlatformType.Both,
+        TitleResourceKey = "Module.Identity",
+        TitleResourceType = typeof(NavigationResources)
+    )]
+    public abstract class ApiControllerBase : CodeSpirit.Shared.Controllers.ApiControllerBase
+    {
+    }
+
+    /// <summary>
+    /// 用户管理控制器
+    /// </summary>
+    [DisplayName("用户管理")]
+    [Navigation(
+        Icon = "fa-solid fa-users", 
+        PlatformType = PlatformType.Tenant,
+        TitleResourceKey = "Controller.Users",
+        TitleResourceType = typeof(NavigationResources)
+    )]
+    public class UsersController : ApiControllerBase
+    {
+        private readonly IUserService _userService;
+
+        public UsersController(IUserService userService)
+        {
+            _userService = userService;
+        }
+
+        /// <summary>
+        /// 获取用户列表
+        /// </summary>
+        [HttpGet]
+        [DisplayName("获取用户列表")]
+        public async Task<ActionResult<ApiResponse<PageList<UserDto>>>> GetUsers([FromQuery] UserQueryDto queryDto)
+        {
+            PageList<UserDto> users = await _userService.GetUsersAsync(queryDto);
+            return SuccessResponse(users);
+        }
+    }
+}
+```
+
+**资源文件内容**：
+
+```xml
+<!-- NavigationResources.resx (中文) -->
+<data name="Module.Identity">
+  <value>用户中心</value>
+</data>
+<data name="Controller.Users">
+  <value>用户管理</value>
+</data>
+
+<!-- NavigationResources.en.resx (英文) -->
+<data name="Module.Identity">
+  <value>User Center</value>
+</data>
+<data name="Controller.Users">
+  <value>User Management</value>
+</data>
+```
+
+### 缓存键说明
+
+导航组件使用以下缓存键：
+
+- **缓存键**：`CodeSpirit:Navigation:All`
+- **缓存策略**：单一缓存 + 内存过滤
+- **缓存时间**：绝对过期 365 天，滑动过期 90 天
+- **清空时机**：
+  - 添加/修改导航项后
+  - 修改资源文件后
+  - 切换语言不生效时
 
 ## 📊 扩展支持
 
@@ -390,20 +666,6 @@ AMIS 内置组件（日期选择器、分页器等）会自动显示对应语言
   }
 }
 ```
-
-## 🧪 测试
-
-运行本地化组件测试：
-
-```bash
-dotnet test Tests/Components/CodeSpirit.Localization.Tests/
-```
-
-测试覆盖：
-- ✅ 语言提供者优先级
-- ✅ Cookie 语言解析
-- ✅ Settings 集成
-- ✅ 回退机制
 
 ## 🎨 UI 组件
 
@@ -498,35 +760,6 @@ A:
 
 无需修改任何代码逻辑。
 
-## ✅ 已完成功能
-
-- [x] Localization 组件创建
-- [x] 语言提供者（Cookie / User / Tenant / Global）
-- [x] Settings 组件集成
-- [x] 异常处理本地化
-- [x] DataAnnotations 验证本地化
-- [x] DTO描述信息多语言支持（LocalizedDescriptionAttribute）
-- [x] 前端 i18n 辅助工具
-- [x] 语言切换器 UI
-- [x] AMIS locale 集成
-- [x] ExamApi DTO 示例迁移
-- [x] 单元测试
-
-## 🔜 后续工作
-
-- [ ] 补充更多资源翻译（持续进行）
-- [ ] 其他 API 服务 DTO 迁移
-- [ ] 前端页面文本迁移
-- [ ] AMIS 配置页面文本迁移
-- [ ] 翻译质量 Review
-
-## 🎓 使用示例
-
-完整示例请参考：
-- `Src/ApiServices/CodeSpirit.ExamApi/Dtos/Question/CreateQuestionDto.cs`（DTO 验证特性和描述多语言）
-- `Src/CodeSpirit.Web/Components/Shared/MainNav.razor`（语言切换器）
-- `Tests/Components/CodeSpirit.Localization.Tests/`（单元测试）
-
 ## 📝 DTO描述多语言常见问题
 
 ### Q: 如何为DTO字段添加多语言描述？
@@ -552,3 +785,28 @@ A: 检查以下几点：
 ### Q: 可以在运行时动态切换语言吗？
 
 A: 可以。`LocalizedDescriptionAttribute` 会根据 `CultureInfo.CurrentUICulture` 自动获取对应语言的资源。语言切换由 `CodeSpirit.Localization` 组件的中间件处理。
+
+
+### Q: 导航组件支持哪些多语言配置方式？
+
+A: 导航组件支持两种配置方式：
+
+1. **推荐方式**：使用 `NavigationAttribute` 的 `TitleResourceKey` 和 `TitleResourceType`
+
+```csharp
+[Navigation(
+    TitleResourceKey = "Controller.Users",
+    TitleResourceType = typeof(NavigationResources)
+)]
+```
+
+2. **向后兼容**：使用 `DisplayAttribute` 的 `Name` 和 `ResourceType`
+
+```csharp
+[Display(
+    Name = "Controller.Users",
+    ResourceType = typeof(NavigationResources)
+)]
+```
+
+如果同时配置了两者，`NavigationAttribute` 的配置优先级更高。

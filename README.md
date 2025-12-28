@@ -242,13 +242,14 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 
 1. [🤖 CodeSpirit AI Feature Deep Dive](./Docs/CodeSpirit-AI特色功能详解.md) - Detailed introduction to AI-related core features and innovations ⭐
 2. [💎 CodeSpirit Framework Core Highlights](./Docs/CodeSpirit框架核心亮点.md) - Framework technical architecture, core components and best practices ⭐
-3. [🏗️ Overall Technical System Overview](./Docs/01-Core-Docs/Overall%20Technical%20System%20Overview.md) - Technical architecture and design philosophy | [中文版](./Docs/01-Core-Docs/总体技术体系说明.md)
-4. [🏛️ Backend Architecture](./Docs/01-Core-Docs/后端架构.md) - Backend architecture design description
-5. [🏗️ Project Overall Architecture Design](./Docs/01-Core-Docs/Project%20Overall%20Architecture%20Design.md) - Overall project architecture design and principles | [中文版](./Docs/01-Core-Docs/项目整体架构设计.md)
-6. [🔧 Development Environment Setup Guide](./Docs/01-Core-Docs/Development%20Environment%20Setup%20Guide.md) - Complete development environment configuration guide | [中文版](./Docs/01-Core-Docs/开发环境搭建指南.md)
-7. [💎 CodeSpirit.Core Core Framework](./Docs/01-Core-Docs/CodeSpirit.Core%20Core%20Framework.md) - Core framework components and architecture | [中文版](./Docs/01-Core-Docs/CodeSpirit.Core核心框架.md)
-8. [⚠️ CodeSpirit Unified Exception Handling Guide](./Docs/01-Core-Docs/CodeSpirit%20Unified%20Exception%20Handling%20Guide.md) - Enterprise-level exception handling mechanisms and AMIS API compatibility | [中文版](./Docs/01-Core-Docs/CodeSpirit统一异常处理指南.md)
-9. [💻 CRUD Development Example](./Docs/01-Core-Docs/CRUD%20Development%20Example.md) - Complete CRUD development example based on QuestionCategory module ⭐ | [中文版](./Docs/01-Core-Docs/CRUD开发示例.md)
+3. [🏗️ Project Overall Architecture Design](./Docs/01-Core-Docs/01-project-architecture-en-US.md) - Overall project architecture design and principles | [中文版](./Docs/01-Core-Docs/01-project-architecture-zh-CN.md)
+4. [🏗️ Overall Technical System Overview](./Docs/01-Core-Docs/02-technical-system-overview-en-US.md) - Technical architecture and design philosophy | [中文版](./Docs/01-Core-Docs/02-technical-system-overview-zh-CN.md)
+5. [🔧 Development Environment Setup Guide](./Docs/01-Core-Docs/03-development-environment-setup-en-US.md) - Complete development environment configuration guide | [中文版](./Docs/01-Core-Docs/03-development-environment-setup-zh-CN.md)
+6. [💎 CodeSpirit.Core Core Framework](./Docs/01-Core-Docs/04-codespirit-core-framework-en-US.md) - Core framework components and architecture | [中文版](./Docs/01-Core-Docs/04-codespirit-core-framework-zh-CN.md)
+7. [⚠️ CodeSpirit Unified Exception Handling Guide](./Docs/01-Core-Docs/05-unified-exception-handling-en-US.md) - Enterprise-level exception handling mechanisms and AMIS API compatibility | [中文版](./Docs/01-Core-Docs/05-unified-exception-handling-zh-CN.md)
+8. [💻 CRUD Development Example](./Docs/01-Core-Docs/06-crud-development-example-en-US.md) - Complete CRUD development example based on QuestionCategory module ⭐ | [中文版](./Docs/01-Core-Docs/06-crud-development-example-zh-CN.md)
+9. [🌐 Internationalization (i18n) Guide](./Docs/01-Core-Docs/07-i18n-localization-guide-en-US.md) - Multi-language support and localization guide | [中文版](./Docs/01-Core-Docs/07-i18n-localization-guide-zh-CN.md)
+10. [☁️ Alibaba Cloud Qwen Free Trial Guide](./Docs/01-Core-Docs/08-aliyun-qwen-free-trial-guide-en-US.md) - Zero-cost AI experience with detailed setup guide | [中文版](./Docs/01-Core-Docs/08-aliyun-qwen-free-trial-guide-zh-CN.md)
 10. [🎯 AMIS UI Generation Engine](./Docs/02-UI-Generation/CodeSpirit.Amis智能界面生成引擎.md) - Intelligent UI generation core component
 11. [👮 Authorization Component](./Docs/04-Identity-Auth/CodeSpirit.Authorization权限组件详解.md) - Comprehensive permission system with RBAC+ABAC hybrid model
 12. [🚀 Unified Startup Framework Usage Guide](./Docs/03-Core-Components/CodeSpirit统一启动框架使用指南.md) - Unified API project startup framework, simplifying project creation and configuration

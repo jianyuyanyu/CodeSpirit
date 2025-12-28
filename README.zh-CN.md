@@ -253,14 +253,14 @@ https://codespirit-app.xin-lai.com/
 
 1. [🤖 CodeSpirit AI特色功能详解](./Docs/CodeSpirit-AI特色功能详解.md) - 详细介绍框架中AI相关的核心特性和创新点 ⭐
 2. [💎 CodeSpirit框架核心亮点](./Docs/CodeSpirit框架核心亮点.md) - 框架整体技术架构、核心组件和最佳实践 ⭐
-3. [🏗️ 总体技术体系说明](./Docs/01-Core-Docs/总体技术体系说明.md) - 技术架构和设计理念
-4. [🏛️ 后端架构](./Docs/01-Core-Docs/后端架构.md) - 后端架构设计说明
-5. [🏗️ 项目整体架构设计](./Docs/01-Core-Docs/项目整体架构设计.md) - 整体项目架构设计和原则
-6. [🔧 开发环境搭建指南](./Docs/01-Core-Docs/开发环境搭建指南.md) - 完整的开发环境配置指南
-7. [☁️ 阿里云通义千问免费体验指南](./Docs/01-Core-Docs/阿里云通义千问免费体验指南.md) - 零成本体验 AI 能力，详细注册指南、配置教程和成本分析 ⭐
-8. [💎 CodeSpirit.Core核心框架](./Docs/01-Core-Docs/CodeSpirit.Core核心框架.md) - 核心框架组件和架构
-9. [⚠️ 统一异常处理指南](./Docs/01-Core-Docs/CodeSpirit统一异常处理指南.md) - 企业级异常处理机制和Amis API兼容性
-10. [💻 CRUD开发示例](./Docs/01-Core-Docs/CRUD开发示例.md) - 基于题目分类管理模块的完整CRUD开发示例 ⭐
+3. [🏗️ 项目整体架构设计](./Docs/01-Core-Docs/01-project-architecture-zh-CN.md) - 整体项目架构设计和原则 | [English](./Docs/01-Core-Docs/01-project-architecture-en-US.md)
+4. [🏗️ 总体技术体系说明](./Docs/01-Core-Docs/02-technical-system-overview-zh-CN.md) - 技术架构和设计理念 | [English](./Docs/01-Core-Docs/02-technical-system-overview-en-US.md)
+5. [🔧 开发环境搭建指南](./Docs/01-Core-Docs/03-development-environment-setup-zh-CN.md) - 完整的开发环境配置指南 | [English](./Docs/01-Core-Docs/03-development-environment-setup-en-US.md)
+6. [💎 CodeSpirit.Core核心框架](./Docs/01-Core-Docs/04-codespirit-core-framework-zh-CN.md) - 核心框架组件和架构 | [English](./Docs/01-Core-Docs/04-codespirit-core-framework-en-US.md)
+7. [⚠️ CodeSpirit统一异常处理指南](./Docs/01-Core-Docs/05-unified-exception-handling-zh-CN.md) - 企业级异常处理机制和Amis API兼容性 | [English](./Docs/01-Core-Docs/05-unified-exception-handling-en-US.md)
+8. [💻 CRUD开发示例](./Docs/01-Core-Docs/06-crud-development-example-zh-CN.md) - 基于题目分类管理模块的完整CRUD开发示例 ⭐ | [English](./Docs/01-Core-Docs/06-crud-development-example-en-US.md)
+9. [🌐 多语言国际化使用指南](./Docs/01-Core-Docs/07-i18n-localization-guide-zh-CN.md) - 多语言支持和本地化指南 | [English](./Docs/01-Core-Docs/07-i18n-localization-guide-en-US.md)
+10. [☁️ 阿里云通义千问免费体验指南](./Docs/01-Core-Docs/08-aliyun-qwen-free-trial-guide-zh-CN.md) - 零成本体验 AI 能力，详细注册指南、配置教程和成本分析 ⭐ | [English](./Docs/01-Core-Docs/08-aliyun-qwen-free-trial-guide-en-US.md)
 
 ### 🎨 界面生成引擎
 

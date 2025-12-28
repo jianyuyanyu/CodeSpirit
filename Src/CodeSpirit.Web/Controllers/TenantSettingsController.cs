@@ -19,7 +19,7 @@ namespace CodeSpirit.Web.Controllers;
 /// 用于管理租户特定的设置
 /// </summary>
 [Display(Name = "Controller.TenantSettings", ResourceType = typeof(NavigationResources))]
-[Navigation(Icon = "fa-solid fa-building-user", Order = 101, PlatformType = PlatformType.Tenant)]
+[Navigation(Icon = "fa-solid fa-building-user", Order = 101, PlatformType = PlatformType.Both)]
 public class TenantSettingsController : ApiControllerBase
 {
     private readonly ISettingsService _settingsService;

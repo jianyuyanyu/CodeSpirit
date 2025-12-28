@@ -57,6 +57,28 @@ namespace CodeSpirit.Web.Controllers
         {
             try
             {
+                // 1. 获取当前版本
+                var currentVersion = await _navigationService.GetNavigationVersionAsync();
+                if (string.IsNullOrEmpty(currentVersion))
+                {
+                    currentVersion = "initial";
+                }
+
+                // 2. 设置响应头
+                Response.Headers.ETag = $"\"{currentVersion}\"";
+                Response.Headers.CacheControl = "private, must-revalidate";
+
+                // 3. 检查客户端If-None-Match头
+                if (Request.Headers.IfNoneMatch.Any())
+                {
+                    var clientETag = Request.Headers.IfNoneMatch.FirstOrDefault();
+                    if (clientETag == $"\"{currentVersion}\"")
+                    {
+                        _logger.LogDebug("ETag matched, returning 304 Not Modified");
+                        return StatusCode(304); // Not Modified
+                    }
+                }
+
                 var tree = await _navigationService.GetNavigationTreeAsync(platformType);
 
                 // 本地化导航树
@@ -119,6 +141,28 @@ namespace CodeSpirit.Web.Controllers
                 if (string.IsNullOrEmpty(tenantId))
                 {
                     return BadRequest(new { Message = "租户ID不能为空" });
+                }
+
+                // 1. 获取当前版本
+                var currentVersion = await _navigationService.GetNavigationVersionAsync();
+                if (string.IsNullOrEmpty(currentVersion))
+                {
+                    currentVersion = "initial";
+                }
+
+                // 2. 设置响应头
+                Response.Headers.ETag = $"\"{currentVersion}\"";
+                Response.Headers.CacheControl = "private, must-revalidate";
+
+                // 3. 检查客户端If-None-Match头
+                if (Request.Headers.IfNoneMatch.Any())
+                {
+                    var clientETag = Request.Headers.IfNoneMatch.FirstOrDefault();
+                    if (clientETag == $"\"{currentVersion}\"")
+                    {
+                        _logger.LogDebug("ETag matched for tenant navigation, returning 304 Not Modified");
+                        return StatusCode(304); // Not Modified
+                    }
                 }
 
                 // 获取租户平台的导航
@@ -260,13 +304,40 @@ namespace CodeSpirit.Web.Controllers
             try
             {
                 await _navigationService.InitializeNavigationTree();
-                _logger.LogInformation("Navigation tree initialized by user {User}", User.Identity?.Name);
-                return Ok(new { Message = "导航树初始化成功" });
+                var version = await _navigationService.GetNavigationVersionAsync();
+                _logger.LogInformation("Navigation tree initialized by user {User}, version: {Version}", 
+                    User.Identity?.Name, version);
+                return Ok(new { Message = "导航树初始化成功", Version = version });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to initialize navigation tree");
                 return StatusCode(500, new { Message = "导航树初始化失败", Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// 获取导航版本信息
+        /// </summary>
+        [HttpGet("version")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<ActionResult<object>> GetNavigationVersion()
+        {
+            try
+            {
+                var version = await _navigationService.GetNavigationVersionAsync();
+                
+                return Ok(new 
+                { 
+                    version = version ?? "not-initialized",
+                    timestamp = DateTime.UtcNow,
+                    server = Environment.MachineName
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get navigation version");
+                return StatusCode(500, new { Message = "获取导航版本失败", Error = ex.Message });
             }
         }
 

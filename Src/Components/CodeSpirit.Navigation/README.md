@@ -737,6 +737,72 @@ public class NavigationManagementController : ControllerBase
 - **优雅降级**：缓存异常时不影响应用正常运行
 - **内存优化**：相比多平台缓存方案，内存占用降低约 66%
 
+#### 2.1 版本控制机制
+
+导航组件实现了基于内容哈希的版本控制系统，支持HTTP ETag标准缓存：
+
+**核心特性**：
+- **单对象封装**：版本号和导航数据封装在 `NavigationCacheData` 中，仅占用1个Redis键
+- **自动版本计算**：基于导航树内容的SHA256哈希自动生成版本号
+- **ETag支持**：客户端可通过HTTP ETag头实现智能缓存
+- **自动失效检测**：导航内容变化时自动更新版本号
+
+**缓存键设计**：
+```
+唯一缓存键：CodeSpirit:Navigation:All
+存储内容：NavigationCacheData {
+  "version": "a7f3e9d2b5c1...",  // SHA256哈希（16字符）
+  "updatedAt": "2025-12-28T10:00:00Z",
+  "nodes": [...]
+}
+```
+
+**ETag使用示例**：
+
+客户端首次请求：
+```http
+GET /api/navigation/site
+```
+
+服务器响应：
+```http
+HTTP/1.1 200 OK
+ETag: "a7f3e9d2b5c1"
+Cache-Control: private, must-revalidate
+
+{ "pages": { ... } }
+```
+
+客户端后续请求（版本未变化）：
+```http
+GET /api/navigation/site
+If-None-Match: "a7f3e9d2b5c1"
+```
+
+服务器响应：
+```http
+HTTP/1.1 304 Not Modified
+ETag: "a7f3e9d2b5c1"
+```
+
+**版本查询API**：
+```http
+GET /api/navigation/version
+
+响应：
+{
+  "version": "a7f3e9d2b5c1",
+  "timestamp": "2025-12-28T10:00:00Z",
+  "server": "SERVER-01"
+}
+```
+
+**优势**：
+- ✅ **零缓存膨胀**：每次更新完全覆盖旧数据，不产生多版本
+- ✅ **原子性保证**：版本和数据同步写入，天然一致
+- ✅ **自动失效**：导航内容变化时版本自动更新
+- ✅ **向后兼容**：支持旧格式缓存自动迁移
+
 ### 3. 导航合并策略
 
 当同时存在代码定义和配置文件定义时：

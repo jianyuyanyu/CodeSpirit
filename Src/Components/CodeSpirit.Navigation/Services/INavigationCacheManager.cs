@@ -16,10 +16,22 @@ namespace CodeSpirit.Navigation.Services
         Task<List<NavigationNode>> GetCachedNavigationAsync();
 
         /// <summary>
+        /// 获取缓存的导航数据（包含版本）
+        /// </summary>
+        /// <returns>缓存的导航数据，如果不存在则返回null</returns>
+        Task<NavigationCacheData> GetCachedNavigationDataAsync();
+
+        /// <summary>
         /// 设置导航树缓存
         /// </summary>
         /// <param name="nodes">导航节点列表</param>
         Task SetCachedNavigationAsync(List<NavigationNode> nodes);
+
+        /// <summary>
+        /// 获取当前缓存版本号
+        /// </summary>
+        /// <returns>版本哈希值，如果不存在则返回null</returns>
+        Task<string> GetCurrentVersionAsync();
 
         /// <summary>
         /// 清除所有导航缓存

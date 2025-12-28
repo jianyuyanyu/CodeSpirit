@@ -158,13 +158,13 @@ namespace CodeSpirit.Navigation
                     navigationTree.Count,
                     string.Join(", ", navigationTree.Select(m => $"{m.Name}({m.PlatformType})")));
 
-                // 2. 获取现有缓存
-                var existingCache = await _cacheManager.GetCachedNavigationAsync();
+                // 2. 获取现有缓存数据（包含版本信息）
+                var existingCacheData = await _cacheManager.GetCachedNavigationDataAsync();
                 
-                if (existingCache != null && existingCache.Any())
+                if (existingCacheData != null && existingCacheData.Nodes != null && existingCacheData.Nodes.Any())
                 {
                     // 3. 合并策略：合并当前服务的模块到现有缓存中
-                    var existingModuleNames = existingCache.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    var existingModuleNames = existingCacheData.Nodes.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     var newModules = navigationTree.Where(m => !existingModuleNames.Contains(m.Name)).ToList();
                     
                     if (newModules.Any())
@@ -172,15 +172,32 @@ namespace CodeSpirit.Navigation
                         _logger.LogInformation(
                             "Merging {NewCount} new modules into existing cache with {ExistingCount} modules. New modules: {NewModules}",
                             newModules.Count,
-                            existingCache.Count,
+                            existingCacheData.Nodes.Count,
                             string.Join(", ", newModules.Select(m => m.Name)));
                         
+                        // 记录旧版本
+                        var oldVersion = existingCacheData.Version;
+                        
                         // 合并到现有缓存
-                        var mergedCache = existingCache.ToList();
+                        var mergedCache = existingCacheData.Nodes.ToList();
                         mergedCache.AddRange(newModules);
                         
-                        // 写入合并后的缓存
+                        // 写入合并后的缓存（自动计算新版本）
                         await _cacheManager.SetCachedNavigationAsync(mergedCache);
+                        
+                        // 获取新版本并比较
+                        var newVersion = await _cacheManager.GetCurrentVersionAsync();
+                        
+                        if (oldVersion != newVersion)
+                        {
+                            _logger.LogWarning(
+                                "Navigation content changed! Old version: {OldVersion}, New version: {NewVersion}, Added {Count} modules", 
+                                oldVersion, newVersion, newModules.Count);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Navigation content unchanged, version: {Version}", newVersion);
+                        }
                         
                         _logger.LogInformation(
                             "Navigation tree merged successfully. Total modules: {TotalCount}",
@@ -189,7 +206,8 @@ namespace CodeSpirit.Navigation
                     else
                     {
                         _logger.LogInformation(
-                            "No new modules to merge. Existing cache already contains all modules from current service.");
+                            "No new modules to merge. Existing cache already contains all modules from current service. Version: {Version}",
+                            existingCacheData.Version);
                     }
                 }
                 else
@@ -201,6 +219,10 @@ namespace CodeSpirit.Navigation
                         string.Join(", ", navigationTree.Select(m => $"{m.Name}({m.PlatformType})")));
                     
                     await _cacheManager.SetCachedNavigationAsync(navigationTree);
+                    var version = await _cacheManager.GetCurrentVersionAsync();
+                    _logger.LogInformation(
+                        "Navigation tree initialized, version: {Version}, {Count} modules", 
+                        version, navigationTree.Count);
                 }
 
                 // 5. 验证缓存写入
@@ -234,6 +256,14 @@ namespace CodeSpirit.Navigation
         public async Task ClearAllNavigationCacheAsync()
         {
             await _cacheManager.ClearAllCacheAsync();
+        }
+
+        /// <summary>
+        /// 获取当前导航版本号
+        /// </summary>
+        public async Task<string> GetNavigationVersionAsync()
+        {
+            return await _cacheManager.GetCurrentVersionAsync();
         }
     }
 }

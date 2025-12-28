@@ -58,6 +58,12 @@ namespace CodeSpirit.Navigation.Services
         /// 清除所有导航缓存
         /// </summary>
         Task ClearAllNavigationCacheAsync();
+
+        /// <summary>
+        /// 获取当前导航版本号
+        /// </summary>
+        /// <returns>版本哈希值，如果不存在则返回null</returns>
+        Task<string> GetNavigationVersionAsync();
     }
 
     /// <summary>

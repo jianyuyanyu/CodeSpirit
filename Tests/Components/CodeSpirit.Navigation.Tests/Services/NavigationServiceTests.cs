@@ -160,12 +160,148 @@ namespace CodeSpirit.Navigation.Tests.Services
             _treeBuilderMock.Setup(x => x.BuildNavigationTree())
                 .Returns(navigationTree);
 
+            _cacheManagerMock.Setup(x => x.GetCachedNavigationDataAsync())
+                .ReturnsAsync((NavigationCacheData)null);
+
+            _cacheManagerMock.Setup(x => x.GetCurrentVersionAsync())
+                .ReturnsAsync("test-version-123");
+
             // 执行
             await _service.InitializeNavigationTree();
 
             // 断言
             _treeBuilderMock.Verify(x => x.BuildNavigationTree(), Times.Once);
             _cacheManagerMock.Verify(x => x.SetCachedNavigationAsync(navigationTree), Times.Once);
+        }
+
+        /// <summary>
+        /// 测试：初始化导航树时应检测版本变化
+        /// </summary>
+        [Fact]
+        public async Task InitializeNavigationTree_WhenVersionChanges_ShouldDetectChange()
+        {
+            // 安排
+            var existingNodes = new List<NavigationNode>
+            {
+                new NavigationNode("existing", "Existing", "/existing")
+            };
+
+            var newNodes = new List<NavigationNode>
+            {
+                new NavigationNode("new", "New", "/new")
+            };
+
+            var existingCacheData = new NavigationCacheData
+            {
+                Version = "old-version-123",
+                UpdatedAt = System.DateTime.UtcNow.AddHours(-1),
+                Nodes = existingNodes
+            };
+
+            _treeBuilderMock.Setup(x => x.BuildNavigationTree())
+                .Returns(newNodes);
+
+            _cacheManagerMock.Setup(x => x.GetCachedNavigationDataAsync())
+                .ReturnsAsync(existingCacheData);
+
+            _cacheManagerMock.Setup(x => x.GetCurrentVersionAsync())
+                .ReturnsAsync("new-version-456");
+
+            // 执行
+            await _service.InitializeNavigationTree();
+
+            // 断言
+            _treeBuilderMock.Verify(x => x.BuildNavigationTree(), Times.Once);
+            _cacheManagerMock.Verify(x => x.SetCachedNavigationAsync(It.IsAny<List<NavigationNode>>()), Times.Once);
+            _cacheManagerMock.Verify(x => x.GetCurrentVersionAsync(), Times.Once);
+        }
+
+        /// <summary>
+        /// 测试：初始化导航树时版本未变化应记录日志
+        /// </summary>
+        [Fact]
+        public async Task InitializeNavigationTree_WhenVersionUnchanged_ShouldLogInfo()
+        {
+            // 安排 - 模拟有模块合并但内容相同导致版本未变化的情况
+            var existingNodes = new List<NavigationNode>
+            {
+                new NavigationNode("existing", "Existing", "/existing")
+            };
+
+            var newNodes = new List<NavigationNode>
+            {
+                new NavigationNode("new", "New", "/new")
+            };
+
+            // 合并后的节点（与existingNodes相同，模拟合并后内容未变化）
+            var mergedNodes = new List<NavigationNode>
+            {
+                new NavigationNode("existing", "Existing", "/existing"),
+                new NavigationNode("new", "New", "/new")
+            };
+
+            var existingCacheData = new NavigationCacheData
+            {
+                Version = "same-version-123",
+                UpdatedAt = System.DateTime.UtcNow.AddHours(-1),
+                Nodes = existingNodes
+            };
+
+            _treeBuilderMock.Setup(x => x.BuildNavigationTree())
+                .Returns(newNodes);
+
+            _cacheManagerMock.Setup(x => x.GetCachedNavigationDataAsync())
+                .ReturnsAsync(existingCacheData);
+
+            _cacheManagerMock.Setup(x => x.SetCachedNavigationAsync(It.IsAny<List<NavigationNode>>()))
+                .Returns(Task.CompletedTask);
+
+            _cacheManagerMock.Setup(x => x.GetCurrentVersionAsync())
+                .ReturnsAsync("same-version-123"); // 版本未变化
+
+            // 执行
+            await _service.InitializeNavigationTree();
+
+            // 断言
+            _treeBuilderMock.Verify(x => x.BuildNavigationTree(), Times.Once);
+            _cacheManagerMock.Verify(x => x.SetCachedNavigationAsync(It.IsAny<List<NavigationNode>>()), Times.Once);
+            _cacheManagerMock.Verify(x => x.GetCurrentVersionAsync(), Times.Once);
+        }
+
+        /// <summary>
+        /// 测试：获取导航版本号应委托给缓存管理器
+        /// </summary>
+        [Fact]
+        public async Task GetNavigationVersionAsync_ShouldDelegateToCacheManager()
+        {
+            // 安排
+            var expectedVersion = "test-version-789";
+            _cacheManagerMock.Setup(x => x.GetCurrentVersionAsync())
+                .ReturnsAsync(expectedVersion);
+
+            // 执行
+            var result = await _service.GetNavigationVersionAsync();
+
+            // 断言
+            Assert.Equal(expectedVersion, result);
+            _cacheManagerMock.Verify(x => x.GetCurrentVersionAsync(), Times.Once);
+        }
+
+        /// <summary>
+        /// 测试：获取导航版本号，缓存为空时应返回null
+        /// </summary>
+        [Fact]
+        public async Task GetNavigationVersionAsync_WhenCacheEmpty_ShouldReturnNull()
+        {
+            // 安排
+            _cacheManagerMock.Setup(x => x.GetCurrentVersionAsync())
+                .ReturnsAsync((string)null);
+
+            // 执行
+            var result = await _service.GetNavigationVersionAsync();
+
+            // 断言
+            Assert.Null(result);
         }
 
         /// <summary>

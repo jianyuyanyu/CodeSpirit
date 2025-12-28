@@ -2,8 +2,11 @@ using CodeSpirit.Navigation.Extensions;
 using CodeSpirit.Navigation.Models;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace CodeSpirit.Navigation.Services
@@ -39,24 +42,96 @@ namespace CodeSpirit.Navigation.Services
         }
 
         /// <summary>
-        /// 获取缓存的导航树
+        /// 计算导航树内容的SHA256哈希值
+        /// </summary>
+        /// <param name="nodes">导航节点列表</param>
+        /// <returns>16字符的Base64编码哈希值</returns>
+        private string ComputeContentHash(List<NavigationNode> nodes)
+        {
+            if (nodes == null || nodes.Count == 0)
+            {
+                return "empty";
+            }
+
+            try
+            {
+                var json = JsonConvert.SerializeObject(nodes, new JsonSerializerSettings
+                {
+                    Formatting = Formatting.None,
+                    NullValueHandling = NullValueHandling.Ignore,
+                    DefaultValueHandling = DefaultValueHandling.Ignore
+                });
+
+                using var sha256 = SHA256.Create();
+                var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
+                var base64Hash = Convert.ToBase64String(hashBytes);
+                // 取前16字符作为ETag（去除Base64填充字符）
+                return base64Hash.Substring(0, Math.Min(16, base64Hash.Length)).Replace("=", "").Replace("+", "-").Replace("/", "_");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to compute content hash");
+                // 如果计算失败，返回时间戳作为fallback
+                return DateTime.UtcNow.Ticks.ToString("X").Substring(0, Math.Min(16, DateTime.UtcNow.Ticks.ToString("X").Length));
+            }
+        }
+
+        /// <summary>
+        /// 获取缓存的导航数据（包含版本）
+        /// </summary>
+        public async Task<NavigationCacheData> GetCachedNavigationDataAsync()
+        {
+            try
+            {
+                var cached = await _cache.GetAsync<NavigationCacheData>(NAVIGATION_CACHE_KEY);
+
+                if (cached == null)
+                {
+                    _logger.LogDebug("Navigation cache data miss");
+                }
+                else
+                {
+                    _logger.LogDebug("Navigation cache data hit, version: {Version}, {Count} modules", 
+                        cached.Version, cached.Nodes?.Count ?? 0);
+                }
+
+                return cached;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get cached navigation data");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 获取缓存的导航树（保持向后兼容）
         /// </summary>
         public async Task<List<NavigationNode>> GetCachedNavigationAsync()
         {
             try
             {
-                var cached = await _cache.GetAsync<List<NavigationNode>>(NAVIGATION_CACHE_KEY);
-
-                if (cached == null)
+                var cacheData = await GetCachedNavigationDataAsync();
+                
+                // 如果新格式的缓存数据存在，返回其中的节点
+                if (cacheData != null && cacheData.Nodes != null)
                 {
-                    _logger.LogDebug("Navigation cache miss");
-                }
-                else
-                {
-                    _logger.LogDebug("Navigation cache hit, {Count} modules", cached.Count);
+                    _logger.LogDebug("Navigation cache hit (new format), {Count} modules", cacheData.Nodes.Count);
+                    return cacheData.Nodes;
                 }
 
-                return cached;
+                // 尝试读取旧格式的缓存（向后兼容）
+                var oldCached = await _cache.GetAsync<List<NavigationNode>>(NAVIGATION_CACHE_KEY);
+                if (oldCached != null)
+                {
+                    _logger.LogDebug("Navigation cache hit (old format), {Count} modules", oldCached.Count);
+                    // 如果存在旧格式缓存，自动迁移到新格式
+                    await SetCachedNavigationAsync(oldCached);
+                    return oldCached;
+                }
+
+                _logger.LogDebug("Navigation cache miss");
+                return null;
             }
             catch (Exception ex)
             {
@@ -66,19 +141,45 @@ namespace CodeSpirit.Navigation.Services
         }
 
         /// <summary>
-        /// 设置导航树缓存
+        /// 设置导航树缓存（自动计算版本号）
         /// </summary>
         public async Task SetCachedNavigationAsync(List<NavigationNode> nodes)
         {
             try
             {
-                await _cache.SetAsync(NAVIGATION_CACHE_KEY, nodes, _cacheOptions);
-                _logger.LogInformation("Navigation cache set, {Count} modules", nodes.Count);
+                var version = ComputeContentHash(nodes);
+                var cacheData = new NavigationCacheData
+                {
+                    Version = version,
+                    UpdatedAt = DateTime.UtcNow,
+                    Nodes = nodes
+                };
+
+                await _cache.SetAsync(NAVIGATION_CACHE_KEY, cacheData, _cacheOptions);
+                _logger.LogInformation("Navigation cache updated, version: {Version}, {Count} modules", 
+                    version, nodes.Count);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to set navigation cache");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// 获取当前缓存版本号
+        /// </summary>
+        public async Task<string> GetCurrentVersionAsync()
+        {
+            try
+            {
+                var cacheData = await GetCachedNavigationDataAsync();
+                return cacheData?.Version;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get current version");
+                return null;
             }
         }
 

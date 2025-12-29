@@ -6,7 +6,9 @@
 
 ### 核心文档
 
-1. **[考试系统完整说明文档](./考试系统完整说明文档.md)**
+1. **考试系统完整说明文档**
+   - [中文版 (zh-CN)](./exam-system-complete-documentation-zh-CN.md)
+   - [English (en-US)](./exam-system-complete-documentation-en-US.md)
    - 系统架构设计
    - 技术实现细节  
    - API接口文档
@@ -14,7 +16,7 @@
    - 部署配置指南
    - 开发规范
 
-2. **[考试系统业务功能清单](./考试系统业务功能清单.md)**
+2. **[考试系统业务功能清单 (zh-CN)](./exam-system-feature-list-zh-CN.md)**
    - 用户角色定义
    - 完整功能清单
    - 功能实现状态
@@ -46,8 +48,8 @@
 ## 📖 快速导航
 
 ### 🚀 **新手入门**
-1. 先阅读 [业务功能清单](./考试系统业务功能清单.md) 了解系统整体功能
-2. 再查看 [完整说明文档](./考试系统完整说明文档.md) 的系统概述部分
+1. 先阅读 [业务功能清单](./exam-system-feature-list-zh-CN.md) 了解系统整体功能
+2. 再查看 [完整说明文档](./exam-system-complete-documentation-zh-CN.md) 的系统概述部分
 3. 根据角色需要深入阅读相关章节
 
 ### 🔍 **快速查找**
@@ -80,9 +82,9 @@
 - ✅ 高可用部署
 
 ### 📈 **技术栈**
-- 后端：.NET 9 + ASP.NET Core + EF Core
+- 后端：.NET 10 + ASP.NET Core + EF Core + Aspire
 - 前端：Amis UI + TypeScript + React  
-- 数据库：SQL Server + Redis
+- 数据库：SQL Server/MySql + Redis
 - 容器：Docker + Kubernetes
 - 监控：SignalR + 实时图表
 
@@ -95,13 +97,11 @@
 ## 🔄 更新记录
 
 - **v1.0** (2024年12月) - 初始版本，完整功能梳理
-- **v1.1** (2025年6月) - 更新时间调整，内容优化
+- **v1.1** (2025年12月) - 文档链接修正，添加英文文档引用
 
 ## 📞 技术支持
 
-- 技术支持邮箱：support@codespirit.com
-- 开发者社区：https://github.com/codespirit-org  
-- 文档仓库：定期更新，版本同步
+- 请关注公众号：CodeSpirit-码灵
 
 ---
 

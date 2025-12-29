@@ -66,9 +66,9 @@
 			<Generator>PublicResXFileCodeGenerator</Generator>
 			<LastGenOutput>ExamDisplay.Designer.cs</LastGenOutput>
 		</EmbeddedResource>
+		<!-- 附属资源文件不需要代码生成器 -->
 		<EmbeddedResource Update="Resources\ExamDisplay.en.resx">
-			<Generator>PublicResXFileCodeGenerator</Generator>
-			<LastGenOutput>ExamDisplay.en.Designer.cs</LastGenOutput>
+			<DependentUpon>ExamDisplay.resx</DependentUpon>
 		</EmbeddedResource>
 	</ItemGroup>
 

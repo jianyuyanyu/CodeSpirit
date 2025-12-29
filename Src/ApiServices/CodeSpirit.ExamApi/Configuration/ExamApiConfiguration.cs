@@ -314,8 +314,11 @@ public class ExamApiConfiguration : BaseApiConfiguration
             // 注册考试缓存预热任务处理器
             services.AddTaskHandler<ExamCacheWarmupTaskHandler>();
             
-            // ✅ 注册考试记录预生成任务处理器
+            // ✅ 注册考试记录预生成任务处理器（用于手动触发）
             services.AddTaskHandler<ExamRecordPreGenerationTaskHandler>();
+            
+            // ✅ 注册考试记录定时预生成任务处理器（每天凌晨1点执行）
+            services.AddTaskHandler<ExamRecordScheduledPreGenerationTaskHandler>();
             
             // ✅ 注册考试记录清理任务处理器
             services.AddTaskHandler<ExamRecordCleanupTaskHandler>();

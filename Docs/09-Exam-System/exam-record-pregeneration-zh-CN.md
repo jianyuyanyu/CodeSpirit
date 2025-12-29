@@ -16,15 +16,16 @@
 
 ### 1.2 解决方案
 
-**考试记录预生成方案**通过在考试发布后，通过后台任务批量预生成所有学生的考试记录和答题记录，将数据库写入操作从"考试开始时刻"提前到"考试发布时刻"，从而：
+**考试记录预生成方案**通过定时任务（每天凌晨1点）批量预生成所有已发布且尚未开始的考试的记录和答题记录，将数据库写入操作从"考试开始时刻"提前到"凌晨低负载时段"，从而：
 
 - ✅ **性能提升**：开始考试耗时从 200-500ms 降低到 10-50ms（命中预生成记录时）
-- ✅ **并发优化**：数据库写入压力分散到考试发布时，避免高峰期压力
+- ✅ **并发优化**：数据库写入压力分散到凌晨低负载时段，避免影响正在进行的考试
 - ✅ **用户体验**：学生点击开始后即刻进入考试，无感知延迟
 - ✅ **数据一致性**：题目顺序预先确定，避免并发冲突
 
 ### 1.3 核心特性
 
+- **定时预生成**：每天凌晨1点通过定时任务统一预生成，避免影响正在进行的考试
 - **智能预生成**：仅预生成第一次考试记录（`AttemptNumber = 1`），后续考试动态创建
 - **缓存优化**：预生成记录写入缓存，开始考试时优先查询缓存，减少数据库查询
 - **智能检测**：开始考试时自动检测预生成记录，命中则快速启动，未命中则动态创建
@@ -42,27 +43,27 @@ sequenceDiagram
     participant Admin as 管理员
     participant Controller as ExamSettingsController
     participant Service as ExamSettingService
-    participant BgTask as 后台预生成任务
+    participant ScheduledTask as 定时预生成任务
     participant Cache as 缓存层
     participant DB as 数据库
     participant Student as 学生
     participant StartExam as CreateExamRecordAsync
     
-    Note over Admin,StartExam: 阶段1：考试发布与预生成
+    Note over Admin,Service: 阶段1：考试发布
     Admin->>Controller: 发布考试
     Controller->>Service: PublishExamSettingAsync
     Service->>DB: 更新考试状态为Published
-    Service-->>BgTask: 异步触发预生成任务
     Service-->>Admin: 返回成功
     
-    Note over BgTask,DB: 后台异步预生成（分批处理）
-    BgTask->>DB: 获取学生分组列表
-    BgTask->>DB: 分批创建ExamRecord(NotStarted)
-    BgTask->>DB: 批量创建ExamAnswerRecord
-    BgTask->>Cache: 写入预生成记录ID（过期时间=考试结束时间）
-    BgTask->>BgTask: 打印详细日志
+    Note over ScheduledTask,DB: 阶段2：定时预生成（每天凌晨1点）
+    ScheduledTask->>DB: 查询已发布且尚未开始的考试
+    ScheduledTask->>DB: 检查是否已预生成
+    ScheduledTask->>DB: 分批创建ExamRecord(NotStarted)
+    ScheduledTask->>DB: 批量创建ExamAnswerRecord
+    ScheduledTask->>Cache: 写入预生成记录ID（过期时间=考试结束时间）
+    ScheduledTask->>ScheduledTask: 打印详细日志
     
-    Note over Student,StartExam: 阶段2：学生开始考试
+    Note over Student,StartExam: 阶段3：学生开始考试
     Student->>StartExam: 点击开始考试
     StartExam->>Cache: 查询预生成记录ID
     alt 缓存命中
@@ -74,38 +75,43 @@ sequenceDiagram
         StartExam-->>Student: 常规启动(200-500ms) ⚠️
     end
     
-    Note over BgTask,DB: 阶段3：定时清理（每天凌晨2点）
-    BgTask->>DB: 查询已结束考试的NotStarted记录
-    BgTask->>DB: 批量删除未使用记录
-    BgTask->>Cache: 清理相关缓存
+    Note over ScheduledTask,DB: 阶段4：定时清理（每天凌晨2点）
+    ScheduledTask->>DB: 查询已结束考试的NotStarted记录
+    ScheduledTask->>DB: 批量删除未使用记录
+    ScheduledTask->>Cache: 清理相关缓存
 ```
 
 ### 2.2 数据流设计
 
 ```mermaid
 graph TB
-    A[考试发布] --> B[触发后台预生成任务]
-    B --> C[获取学生分组列表]
-    C --> D[分批处理学生列表]
-    D --> E[创建ExamRecord<br/>Status=NotStarted]
-    E --> F[创建ExamAnswerRecord列表]
-    F --> G[写入缓存<br/>Key: exam:pregenerated:{examId}:{studentId}:1<br/>Value: recordId<br/>Expire: 考试结束时间+1小时]
-    G --> H{是否还有批次?}
-    H -->|是| D
-    H -->|否| I[预生成完成]
+    A[考试发布] --> B[更新状态为Published]
+    B --> C[等待定时任务执行]
     
-    J[学生开始考试] --> K[查询缓存]
-    K --> L{缓存命中?}
-    L -->|是| M[加载预生成记录]
-    M --> N[更新状态为InProgress<br/>设置StartTime]
-    N --> O[快速启动 ✅]
-    L -->|否| P[动态创建记录]
-    P --> Q[常规启动 ⚠️]
+    D[定时任务<br/>每天凌晨1点] --> E[查询已发布且尚未开始的考试]
+    E --> F{是否已预生成?}
+    F -->|是| G[跳过该考试]
+    F -->|否| H[获取学生分组列表]
+    H --> I[分批处理学生列表]
+    I --> J[创建ExamRecord<br/>Status=NotStarted]
+    J --> K[创建ExamAnswerRecord列表]
+    K --> L[写入缓存<br/>Key: exam:pregenerated:{examId}:{studentId}:1<br/>Value: recordId<br/>Expire: 考试结束时间+1小时]
+    L --> M{是否还有批次?}
+    M -->|是| I
+    M -->|否| N[预生成完成]
     
-    R[定时清理任务] --> S[查询已结束考试]
-    S --> T[查找NotStarted记录]
-    T --> U[批量删除]
-    U --> V[清理缓存]
+    O[学生开始考试] --> P[查询缓存]
+    P --> Q{缓存命中?}
+    Q -->|是| R[加载预生成记录]
+    R --> S[更新状态为InProgress<br/>设置StartTime]
+    S --> T[快速启动 ✅]
+    Q -->|否| U[动态创建记录]
+    U --> V[常规启动 ⚠️]
+    
+    W[定时清理任务<br/>每天凌晨2点] --> X[查询已结束考试]
+    X --> Y[查找NotStarted记录]
+    Y --> Z[批量删除]
+    Z --> AA[清理缓存]
 ```
 
 ### 2.3 核心组件
@@ -137,8 +143,16 @@ graph TB
 
 #### 2.3.3 任务处理器
 
-**预生成任务处理器** (`ExamRecordPreGenerationTaskHandler`)：
-- 接收考试发布事件
+**定时预生成任务处理器** (`ExamRecordScheduledPreGenerationTaskHandler`)：
+- 定时执行（每天凌晨1点）
+- 查询所有已发布且尚未开始的考试
+- 检查是否已预生成，避免重复处理
+- 分批处理学生列表
+- 记录详细日志
+
+**手动预生成任务处理器** (`ExamRecordPreGenerationTaskHandler`)：
+- 用于手动触发单个考试的预生成
+- 接收考试ID参数
 - 分批处理学生列表
 - 记录详细日志
 
@@ -314,9 +328,12 @@ WHERE Status = 0  -- NotStarted
 
 #### 5.1.1 预生成触发
 
-- **触发时机**：考试发布时（`PublishExamSettingAsync`）
-- **执行方式**：异步后台任务，不阻塞发布流程
-- **执行范围**：仅预生成第一次考试记录（`AttemptNumber = 1`）
+- **触发时机**：定时任务（每天凌晨1点）
+- **执行方式**：定时任务统一执行，避免影响正在进行的考试
+- **执行范围**：
+  - 仅预生成已发布且尚未开始的考试（`Status = Published` AND `StartTime > 当前时间`）
+  - 仅预生成第一次考试记录（`AttemptNumber = 1`）
+  - 自动跳过已预生成的考试，避免重复处理
 
 #### 5.1.2 清理触发
 
@@ -328,17 +345,23 @@ WHERE Status = 0  -- NotStarted
 
 ### 5.2 日志记录
 
-#### 5.2.1 预生成日志
+#### 5.2.1 定时预生成日志
 
 ```
-[INFO] 开始执行考试记录预生成任务
-[INFO] 目标考试ID: 123
+[INFO] ========================================
+[INFO] 考试记录定时预生成任务开始执行
+[INFO] ========================================
+[INFO] 找到 3 个已发布且尚未开始的考试
+[INFO] 考试 123 (数学期末考试) 已预生成，跳过
+[INFO] 开始为考试 456 (英语期末考试) 预生成记录
 [INFO] 获取到 1000 名学生需要预生成记录
 [INFO] 开始分批预生成，每批 50 名学生，共 20 批，批次间延迟 200ms
 [INFO] 第 1/20 批完成：成功 50，失败 0
 ...
 [WARN] ⚠️ 距离考试开始时间不足 5 分钟，停止预生成。已处理: 800/1000，剩余: 200 名学生未处理
-[INFO] 预生成完成 - 总计: 1000, 成功: 798, 失败: 2, 跳过: 200
+[INFO] 考试 456 预生成完成 - 成功: 798, 跳过: 200
+[INFO] 定时预生成完成 - 总计: 3, 成功: 2, 跳过: 1, 失败: 0
+[INFO] ========================================
 ```
 
 #### 5.2.2 开始考试日志
@@ -372,11 +395,21 @@ WHERE Status = 0  -- NotStarted
   "ScheduledTasks": {
     "Tasks": [
       {
+        "Id": "exam-record-scheduled-pregeneration",
+        "Name": "考试记录定时预生成",
+        "Description": "每天凌晨1点为所有已发布且尚未开始的考试预生成记录",
+        "Type": "Cron",
+        "CronExpression": "0 0 1 * * *",
+        "HandlerType": "CodeSpirit.ExamApi.Tasks.ExamRecordScheduledPreGenerationTaskHandler",
+        "Timeout": "00:30:00",
+        "Enabled": true
+      },
+      {
         "Id": "exam-record-cleanup",
         "Name": "考试记录垃圾数据清理",
         "Description": "清理未使用的预生成考试记录",
         "HandlerType": "CodeSpirit.ExamApi.Tasks.ExamRecordCleanupTaskHandler",
-        "CronExpression": "0 2 * * *",
+        "CronExpression": "0 0 2 * * *",
         "Parameters": "{\"cleanupDays\": 7}",
         "Enabled": true
       }
@@ -385,7 +418,9 @@ WHERE Status = 0  -- NotStarted
 }
 ```
 
-**Cron表达式说明**：`0 2 * * *` 表示每天凌晨2点执行
+**Cron表达式说明**：
+- `0 0 1 * * *` 表示每天凌晨1点执行（预生成任务）
+- `0 0 2 * * *` 表示每天凌晨2点执行（清理任务）
 
 ---
 
@@ -428,9 +463,12 @@ WHERE Status = 0  -- NotStarted
 
 #### 6.5.2 发布时机建议
 
-- **推荐**：考试开始前至少 30 分钟发布，确保预生成有充足时间完成
-- **最低要求**：考试开始前至少 10 分钟发布
-- **紧急情况**：如果必须在 5 分钟内发布，预生成会自动停止，系统会降级为动态创建模式
+- **推荐**：考试开始前至少 1 天发布，确保在次日凌晨1点完成预生成
+- **最低要求**：考试开始前至少 1 小时发布（如果发布时间晚于凌晨1点，预生成将在下一个凌晨1点执行）
+- **注意事项**：
+  - 预生成任务在每天凌晨1点统一执行，不会在发布时立即执行
+  - 如果考试在凌晨1点之后发布且当天开考，首批学生会使用动态创建模式（性能略差）
+  - 建议提前发布考试，以便享受预生成带来的性能优化
 
 #### 6.5.3 系统负载控制
 

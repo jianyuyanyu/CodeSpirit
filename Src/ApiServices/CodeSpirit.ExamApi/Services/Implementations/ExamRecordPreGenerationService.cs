@@ -217,6 +217,9 @@ public class ExamRecordPreGenerationService : IExamRecordPreGenerationService, I
             throw new InvalidOperationException($"考试 {examId} 没有题目数据");
         }
         
+        // 注意：租户上下文已通过ICurrentUser设置，MultiTenantDbContext会自动从ICurrentUser.TenantId获取
+        // 因此创建实体时不需要显式设置TenantId，框架会自动设置
+        
         await _examRecordRepository.ExecuteInTransactionAsync(async () =>
         {
             foreach (var studentId in studentIds)
@@ -240,6 +243,7 @@ public class ExamRecordPreGenerationService : IExamRecordPreGenerationService, I
                     }
                     
                     // 创建考试记录（NotStarted状态）
+                    // TenantId会由MultiTenantDbContext在SaveChanges时自动设置（从ICurrentUser.TenantId获取）
                     var examRecord = new ExamRecord
                     {
                         ExamSettingId = examId,
@@ -249,6 +253,7 @@ public class ExamRecordPreGenerationService : IExamRecordPreGenerationService, I
                         IpAddress = string.Empty,
                         DeviceInfo = string.Empty
                         // ⚠️ StartTime 在实际开始时设置
+                        // ⚠️ TenantId 由MultiTenantDbContext自动设置
                     };
                     
                     await _examRecordRepository.AddAsync(examRecord);
@@ -280,6 +285,7 @@ public class ExamRecordPreGenerationService : IExamRecordPreGenerationService, I
                             QuestionVersionId = question.QuestionVersionId,
                             OrderNumber = i + 1,
                             IsMarked = false
+                            // TenantId会由MultiTenantDbContext在SaveChanges时自动设置（从ICurrentUser.TenantId获取）
                         });
                     }
                     

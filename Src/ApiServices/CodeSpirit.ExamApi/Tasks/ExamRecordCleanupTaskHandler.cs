@@ -1,7 +1,6 @@
-using CodeSpirit.Caching.Abstractions;
+using CodeSpirit.ExamApi.Data;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
-using CodeSpirit.ExamApi.Services.Interfaces;
 using CodeSpirit.ScheduledTasks.Services;
 using CodeSpirit.Shared.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -14,23 +13,23 @@ namespace CodeSpirit.ExamApi.Tasks;
 /// </summary>
 public class ExamRecordCleanupTaskHandler : ITaskHandler
 {
+    private readonly ExamDbContext _dbContext;
     private readonly IRepository<ExamRecord> _examRecordRepository;
-    private readonly IExamRecordPreGenerationService _preGenerationService;
-    private readonly ICacheService _cacheService;
     private readonly ILogger<ExamRecordCleanupTaskHandler> _logger;
     
     /// <summary>
     /// 构造函数
     /// </summary>
+    /// <param name="dbContext">数据库上下文</param>
+    /// <param name="examRecordRepository">考试记录仓储</param>
+    /// <param name="logger">日志记录器</param>
     public ExamRecordCleanupTaskHandler(
+        ExamDbContext dbContext,
         IRepository<ExamRecord> examRecordRepository,
-        IExamRecordPreGenerationService preGenerationService,
-        ICacheService cacheService,
         ILogger<ExamRecordCleanupTaskHandler> logger)
     {
+        _dbContext = dbContext;
         _examRecordRepository = examRecordRepository;
-        _preGenerationService = preGenerationService;
-        _cacheService = cacheService;
         _logger = logger;
     }
     
@@ -59,15 +58,18 @@ public class ExamRecordCleanupTaskHandler : ITaskHandler
             
             _logger.LogInformation("清理条件: 状态=NotStarted + 考试已结束 + 创建时间早于 {Threshold}", threshold);
             
-            // 查询需要清理的记录
-            var query = _examRecordRepository.CreateQuery()
-                .Include(r => r.ExamSetting)
-                .Where(r => 
-                    r.Status == ExamRecordStatus.NotStarted &&  // 未开始的
-                    r.ExamSetting.EndTime < DateTime.UtcNow &&  // 考试已结束
-                    r.CreatedAt < threshold);                    // 创建时间超过阈值
-            
-            var recordsToDelete = await query.ToListAsync(cancellationToken);
+            // 查询需要清理的记录（禁用租户过滤器，因为这是系统级别的定时任务）
+            var recordsToDelete = await _dbContext.WithoutMultiTenantFilterAsync(async () =>
+            {
+                var query = _examRecordRepository.CreateQuery()
+                    .Include(r => r.ExamSetting)
+                    .Where(r => 
+                        r.Status == ExamRecordStatus.NotStarted &&  // 未开始的
+                        r.ExamSetting.EndTime < DateTime.UtcNow &&  // 考试已结束
+                        r.CreatedAt < threshold);                    // 创建时间超过阈值
+                
+                return await query.ToListAsync(cancellationToken);
+            });
             
             if (!recordsToDelete.Any())
             {
@@ -76,34 +78,27 @@ public class ExamRecordCleanupTaskHandler : ITaskHandler
                 return "无垃圾数据需要清理";
             }
             
-            _logger.LogInformation("找到 {Count} 条垃圾数据，开始清理...", recordsToDelete.Count);
+            _logger.LogInformation("找到 {Count} 条垃圾数据（跨所有租户），开始清理...", recordsToDelete.Count);
             
-            // 批量删除数据库记录（答题记录会级联删除）
-            await _examRecordRepository.DeleteRangeAsync(recordsToDelete);
+            // 按租户分组显示统计信息
+            var groupedByTenant = recordsToDelete.GroupBy(r => r.TenantId)
+                .Select(g => new { TenantId = g.Key, Count = g.Count() })
+                .ToList();
             
-            // ✅ 关键优化：同步删除缓存
-            var cacheDeletedCount = 0;
-            foreach (var record in recordsToDelete)
+            foreach (var group in groupedByTenant)
             {
-                try
-                {
-                    var cacheKey = _preGenerationService.GetPreGeneratedRecordCacheKey(
-                        record.ExamSettingId, 
-                        record.StudentId, 
-                        record.AttemptNumber);
-                    
-                    await _cacheService.RemoveAsync(cacheKey);
-                    cacheDeletedCount++;
-                    
-                    _logger.LogDebug("已删除缓存: {CacheKey}", cacheKey);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "删除缓存失败: 记录ID={RecordId}", record.Id);
-                }
+                _logger.LogInformation("租户 {TenantId}: {Count} 条记录", group.TenantId, group.Count);
             }
             
-            var result = $"清理完成 - 删除数据库记录: {recordsToDelete.Count} 条, 删除缓存: {cacheDeletedCount} 个";
+            // 批量删除数据库记录（答题记录会级联删除）
+            // 注意：删除操作需要在禁用租户过滤器的上下文中执行
+            await _dbContext.WithoutMultiTenantFilterAsync(async () =>
+            {
+                await _examRecordRepository.DeleteRangeAsync(recordsToDelete);
+                return Task.CompletedTask;
+            });
+            
+            var result = $"清理完成 - 删除数据库记录: {recordsToDelete.Count} 条 (跨 {groupedByTenant.Count} 个租户)";
             _logger.LogInformation(result);
             _logger.LogInformation("========================================");
             

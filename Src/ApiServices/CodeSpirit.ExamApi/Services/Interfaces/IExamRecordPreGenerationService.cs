@@ -26,15 +26,6 @@ public interface IExamRecordPreGenerationService
         IEnumerable<long> studentIds, 
         int attemptNumber = 1,
         CancellationToken cancellationToken = default);
-    
-    /// <summary>
-    /// 获取预生成缓存键
-    /// </summary>
-    /// <param name="examId">考试ID</param>
-    /// <param name="studentId">学生ID</param>
-    /// <param name="attemptNumber">考试次数</param>
-    /// <returns>缓存键</returns>
-    string GetPreGeneratedRecordCacheKey(long examId, long studentId, int attemptNumber);
 }
 
 /// <summary>

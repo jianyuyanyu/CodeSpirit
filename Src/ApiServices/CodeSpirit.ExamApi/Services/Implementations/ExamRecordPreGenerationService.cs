@@ -62,14 +62,6 @@ public class ExamRecordPreGenerationService : IExamRecordPreGenerationService, I
     }
     
     /// <summary>
-    /// 获取预生成缓存键
-    /// </summary>
-    public string GetPreGeneratedRecordCacheKey(long examId, long studentId, int attemptNumber)
-    {
-        return $"exam_pregenerated_record_{examId}_{studentId}_{attemptNumber}";
-    }
-    
-    /// <summary>
     /// 为指定考试预生成所有学生的考试记录
     /// </summary>
     public async Task<PreGenerationResult> PreGenerateExamRecordsAsync(long examId, CancellationToken cancellationToken = default)

@@ -8,6 +8,12 @@ namespace CodeSpirit.ExamApi.Data.Models.Enums;
 public enum ExamRecordStatus
 {
     /// <summary>
+    /// 未开始（预生成状态）
+    /// </summary>
+    [Display(Name = "未开始")]
+    NotStarted = 0,
+    
+    /// <summary>
     /// 进行中
     /// </summary>
     [Display(Name = "进行中")]

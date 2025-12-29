@@ -59,10 +59,11 @@ public class MonitorService : IMonitorService, IScopedDependency
             throw new ArgumentException("考试不存在", nameof(examId));
         }
 
-        // 获取该考试的所有考试记录
+        // 获取该考试的所有考试记录（排除预生成的记录）
         var examRecords = await _examRecordRepository.CreateQuery()
             .Include(r => r.Student)
             .Where(r => r.ExamSettingId == examId)
+            .Where(r => r.Status != ExamRecordStatus.NotStarted)  // ✅ 排除预生成记录
             .ToListAsync();
 
         // 获取考试的所有题目数量

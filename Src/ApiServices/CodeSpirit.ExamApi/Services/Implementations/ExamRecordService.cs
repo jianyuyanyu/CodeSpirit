@@ -39,6 +39,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     private readonly IScoreConversionService _scoreConversionService;
     private readonly IExamCacheService _examCacheService;
     private readonly ICacheService _cacheService;
+    private readonly IExamRecordPreGenerationService _preGenerationService;
 
     /// <summary>
     /// 构造函数
@@ -55,6 +56,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     /// <param name="scoreConversionService">分数转换服务</param>
     /// <param name="examCacheService">考试缓存服务</param>
     /// <param name="cacheService">缓存服务</param>
+    /// <param name="preGenerationService">预生成服务</param>
     public ExamRecordService(
         IRepository<ExamRecord> repository,
         IRepository<ExamAnswerRecord> answerRecordRepository,
@@ -67,7 +69,8 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         ISettingsService settingsService,
         IScoreConversionService scoreConversionService,
         IExamCacheService examCacheService,
-        ICacheService cacheService) : base(repository, mapper)
+        ICacheService cacheService,
+        IExamRecordPreGenerationService preGenerationService) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
         _examSettingRepository = examSettingRepository;
@@ -79,6 +82,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         _scoreConversionService = scoreConversionService ?? throw new ArgumentNullException(nameof(scoreConversionService));
         _examCacheService = examCacheService ?? throw new ArgumentNullException(nameof(examCacheService));
         _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
+        _preGenerationService = preGenerationService ?? throw new ArgumentNullException(nameof(preGenerationService));
     }
 
     /// <summary>
@@ -96,6 +100,12 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         if (queryDto is ExamRecordQueryDto examRecordQueryDto)
         {
             var query = Repository.CreateQuery().AsNoTracking();
+
+            // ✅ 默认排除预生成记录（除非明确查询NotStarted状态）
+            if (!examRecordQueryDto.Status.HasValue || examRecordQueryDto.Status.Value != ExamRecordStatus.NotStarted)
+            {
+                query = query.Where(x => x.Status != ExamRecordStatus.NotStarted);
+            }
 
             // 合并传入的查询条件
             if (predicate != null)
@@ -816,6 +826,59 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
                     // 如果存在进行中的记录（但没有答题记录，将被删除），使用其尝试次数
                     nextAttemptNumber = existingRecord.AttemptNumber;
                 }
+
+                // 尝试查找预生成的考试记录
+                var preGeneratedRecord = await Repository.CreateQuery()
+                    .FirstOrDefaultAsync(r => 
+                        r.ExamSettingId == examId && 
+                        r.StudentId == studentId && 
+                        r.AttemptNumber == nextAttemptNumber &&
+                        r.Status == ExamRecordStatus.NotStarted);
+                
+                if (preGeneratedRecord != null)
+                {
+                    // 使用预生成记录
+                    _logger.LogInformation("✅ 找到预生成记录 - 考试ID: {ExamId}, 学生ID: {StudentId}, 记录ID: {RecordId}",
+                        examId, studentId, preGeneratedRecord.Id);
+                    
+                    // 更新状态和开始时间
+                    preGeneratedRecord.Status = ExamRecordStatus.InProgress;
+                    preGeneratedRecord.StartTime = DateTime.UtcNow;
+                    preGeneratedRecord.IpAddress = userIp;
+                    preGeneratedRecord.DeviceInfo = deviceInfo;
+                    
+                    await Repository.UpdateAsync(preGeneratedRecord);
+                    
+                    // ⚡⚡⚡ 极致性能优化：更新考试记录缓存（Write-Through模式），避免缓存穿透
+                    try
+                    {
+                        var cacheKey = new ExamCacheOptions.ExamRecordCache(preGeneratedRecord.Id);
+                        var updatedCache = new ExamRecordCacheDto
+                        {
+                            Id = preGeneratedRecord.Id,
+                            ExamSettingId = preGeneratedRecord.ExamSettingId,
+                            StudentId = preGeneratedRecord.StudentId,
+                            Status = ExamRecordStatus.InProgress, // 已更新为进行中
+                            StartTime = preGeneratedRecord.StartTime,
+                            ScreenSwitchCount = preGeneratedRecord.ScreenSwitchCount
+                        };
+                        await _cacheService.SetAsync(cacheKey.Key, updatedCache, cacheKey.Options);
+                        _logger.LogDebug("已更新考试记录缓存: RecordId={RecordId}, Status=InProgress", preGeneratedRecord.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        // 缓存更新失败不影响主流程，但记录警告
+                        _logger.LogWarning(ex, "更新考试记录缓存失败: RecordId={RecordId}", preGeneratedRecord.Id);
+                    }
+                    
+                    _logger.LogInformation("✅ 使用预生成记录成功，记录ID: {RecordId}", preGeneratedRecord.Id);
+                    
+                    return preGeneratedRecord;
+                }
+
+                // 未找到预生成记录，执行动态创建
+                _logger.LogWarning("⚠️ 未找到预生成记录，执行动态创建 - 考试ID: {ExamId}, 学生ID: {StudentId}",
+                    examId, studentId);
 
                 // ✅ 使用数据库事务确保考试记录和答题记录的原子性
                 // 分布式锁 + 数据库事务：双重保障数据一致性

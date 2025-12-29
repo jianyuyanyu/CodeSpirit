@@ -42,17 +42,13 @@ var cache = builder.AddRedis("cache")
                    });
 
 // 添加 Seq 日志服务
-var seqService = builder.AddSeq("seq")
+var seqService = builder.AddSeq("seq", port: 5341)  // 在AddSeq时直接指定端口
                     //.WithImageTag("2024.3")
                  .WithDataVolume()
                  .ExcludeFromManifest()
                  .WithLifetime(ContainerLifetime.Persistent)
                  // .WithDeploymentImageTag(_ => $"seq-2024.3") // Aspire 9.5 实验性功能
-                 //.WithHttpEndpoint(port: 5341, targetPort: 80, name: "seq-ui")
-                 .WithUrlForEndpoint("seq", url => url.DisplayLocation = UrlDisplayLocation.SummaryAndDetails)
-                 .WithEnvironment("ACCEPT_EULA", "Y")
-                 .WithUrlForEndpoint("seq-ui", url =>
-                     url.DisplayText = "Seq 日志界面");
+                 .WithEnvironment("ACCEPT_EULA", "Y");
 
 // 添加 RabbitMQ 服务
 var rabbitmqService = builder.AddRabbitMQ("rabbitmq", parameters.RabbitMq.Username, parameters.RabbitMq.Password)

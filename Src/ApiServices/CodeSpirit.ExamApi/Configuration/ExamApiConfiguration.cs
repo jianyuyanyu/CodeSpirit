@@ -313,6 +313,12 @@ public class ExamApiConfiguration : BaseApiConfiguration
             
             // 注册考试缓存预热任务处理器
             services.AddTaskHandler<ExamCacheWarmupTaskHandler>();
+            
+            // ✅ 注册考试记录预生成任务处理器
+            services.AddTaskHandler<ExamRecordPreGenerationTaskHandler>();
+            
+            // ✅ 注册考试记录清理任务处理器
+            services.AddTaskHandler<ExamRecordCleanupTaskHandler>();
         }
         catch (Exception ex)
         {

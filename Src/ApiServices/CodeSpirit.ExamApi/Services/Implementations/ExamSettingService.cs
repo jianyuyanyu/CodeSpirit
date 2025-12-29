@@ -6,9 +6,13 @@ using CodeSpirit.ExamApi.Dtos.Client;
 using CodeSpirit.ExamApi.Dtos.ExamSetting;
 using CodeSpirit.ExamApi.Extensions;
 using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.ExamApi.Tasks;
+using CodeSpirit.ScheduledTasks.Services;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
 using LinqKit;
+using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 
 namespace CodeSpirit.ExamApi.Services.Implementations;
 
@@ -25,6 +29,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     private readonly ILogger<ExamSettingService> _logger;
     private readonly ExamDbContext _context;
     private readonly IExamCacheService _examCacheService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     /// <summary>
     /// 构造函数
@@ -37,6 +42,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     /// <param name="logger">日志记录器</param>
     /// <param name="context">数据库上下文</param>
     /// <param name="examCacheService">考试缓存服务</param>
+    /// <param name="serviceScopeFactory">服务范围工厂</param>
     public ExamSettingService(
         IRepository<ExamSetting> repository,
         IRepository<ExamPaper> examPaperRepository,
@@ -45,7 +51,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         IMapper mapper,
         ILogger<ExamSettingService> logger,
         ExamDbContext context,
-        IExamCacheService examCacheService)
+        IExamCacheService examCacheService,
+        IServiceScopeFactory serviceScopeFactory)
         : base(repository, mapper)
     {
         _repository = repository;
@@ -56,6 +63,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         _logger = logger;
         _context = context;
         _examCacheService = examCacheService;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     /// <summary>
@@ -513,6 +521,32 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         {
             _logger.LogWarning(ex, "预热考试发布后的缓存失败: {ExamId}", id);
         }
+        
+        // ✅ 新增：异步触发预生成任务（不阻塞发布流程）
+        // 使用独立的 Scope 避免 DbContext 被释放
+        _ = Task.Run(async () =>
+        {
+            // 创建新的 Scope，确保 DbContext 生命周期独立
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+                try
+                {
+                    _logger.LogInformation("🚀 触发考试记录预生成任务 - 考试ID: {ExamId}", id);
+                    
+                    var taskParams = JsonConvert.SerializeObject(new { examId = id });
+                    var handler = scope.ServiceProvider.GetRequiredService<ExamRecordPreGenerationTaskHandler>();
+                    
+                    await handler.ExecuteAsync(taskParams, CancellationToken.None);
+                    
+                    _logger.LogInformation("✅ 考试记录预生成任务执行完成 - 考试ID: {ExamId}", id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ 考试记录预生成任务执行失败 - 考试ID: {ExamId}", id);
+                    // 预生成失败不影响发布流程，学生开始考试时会动态创建
+                }
+            }
+        });
     }
 
     /// <summary>

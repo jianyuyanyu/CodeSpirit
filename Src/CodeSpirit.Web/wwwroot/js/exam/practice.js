@@ -11,7 +11,9 @@
 
     // 检查用户认证状态
     if (!TokenManager.isAuthenticated()) {
-        window.location.href = `/${window.tenantId}/exam/login`;
+        // 保存当前页面URL用于登录后跳转
+        const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/${window.tenantId}/exam/login?redirect=${currentUrl}`;
         return;
     }
 
@@ -34,6 +36,17 @@
         QUESTION_CHANGE_DELAY: 300       // 题目切换延迟(毫秒)
     };
 
+    /**
+     * 通用API请求函数
+     * 使用ExamApiManager进行统一的API请求处理
+     * @param {string} url - API地址
+     * @param {object} options - 请求选项
+     * @returns {Promise<any>} API响应数据
+     */
+    async function apiRequest(url, options = {}) {
+        return window.ExamApiManager.request(url, options);
+    }
+
     // 全局数据对象
     window.globalData = {
         user: {
@@ -51,6 +64,12 @@
             totalQuestions: 0,
             questions: [],
             answers: new Map()
+        },
+        tenant: {
+            id: window.tenantId,
+            name: '练习平台',
+            logo: '/logo.png',
+            description: ''
         }
     };
 
@@ -142,6 +161,55 @@
     };
 
     /**
+     * 加载租户信息（使用缓存）
+     * 参考application.js中的实现方式
+     * @returns {Promise<Object>} 租户信息
+     */
+    async function loadTenantInfo() {
+        try {
+            // 使用缓存的登录配置接口
+            const tenantConfig = await window.ExamApiManager.getLoginConfig(window.tenantId);
+            
+            // 转换为练习页面需要的格式
+            const tenantInfo = {
+                id: window.tenantId,
+                name: tenantConfig.displayName || tenantConfig.name || '练习平台',
+                logo: tenantConfig.logoUrl || '/logo.png',
+                description: tenantConfig.description || ''
+            };
+            
+            // 更新全局数据
+            window.GlobalData.set('tenant', tenantInfo);
+            
+            // 同步到AMIS实例
+            if (window.amisInstance) {
+                window.GlobalData.syncToAmis(window.amisInstance, ['tenant']);
+            }
+            
+            console.log('[练习] 租户信息加载成功:', tenantInfo);
+            return tenantInfo;
+        } catch (error) {
+            console.warn('[练习] 租户信息加载失败:', error);
+            const fallbackInfo = { 
+                id: window.tenantId,
+                name: '练习平台', 
+                logo: '/logo.png',
+                description: '' 
+            };
+            
+            // 更新全局数据为默认值
+            window.GlobalData.set('tenant', fallbackInfo);
+            
+            // 同步到AMIS实例
+            if (window.amisInstance) {
+                window.GlobalData.syncToAmis(window.amisInstance, ['tenant']);
+            }
+            
+            return fallbackInfo;
+        }
+    }
+
+    /**
      * 加载练习数据
      * @param {string} practiceId - 练习ID
      * @returns {Promise<boolean>} 加载是否成功
@@ -150,30 +218,17 @@
         console.log('[练习] 开始加载练习数据:', practiceId);
         
         try {
-            const response = await fetch(window.ExamApiManager.transformUrl(`/exam/api/client/practice/${practiceId}/start`), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + TokenManager.getToken(),
-                    'X-Forwarded-With': 'CodeSpirit'
-                }
+            const data = await apiRequest(`/exam/api/exam/client/practice/${practiceId}/start`, {
+                method: 'POST'
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const data = await response.json();
+            
             console.log('[练习] 服务器响应:', data);
 
             // 检查标准API响应格式
-            if (data.status === 'success' && data.data) {
-                return await processPracticeData(data.data);
-            } else if (data.status === 0 && data.data) {
-                // 兼容旧格式
-                return await processPracticeData(data.data);
+            if (data) {
+                return await processPracticeData(data);
             } else {
-                console.error('[练习] 服务器返回错误:', data.message || data.msg || '未知错误');
+                console.error('[练习] 服务器返回错误: 数据为空');
                 return false;
             }
         } catch (error) {
@@ -480,43 +535,22 @@
      */
     async function sendAnswerToServer(recordId, questionId, answer, retryCount = 0) {
         try {
-            const response = await fetch(window.ExamApiManager.transformUrl(`/exam/api/client/practice/${recordId}/save-answer`), {
+            const data = await apiRequest(`/exam/api/exam/client/practice/${recordId}/save-answer`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + TokenManager.getToken(),
-                    'X-Forwarded-With': 'CodeSpirit'
-                },
                 body: JSON.stringify({
                     questionId: String(questionId),
                     answer: answer
                 })
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const data = await response.json();
             
-            if (data.status === 0) {
-                console.log('[练习] 答案已保存到服务器:', questionId);
-                return true;
-            } else {
-                console.error('[练习] 服务器返回错误:', data.msg);
-                if (retryCount < CONSTANTS.MAX_RETRY_COUNT) {
-                    console.log('[练习] 重试保存答案...');
-                    await new Promise(resolve => setTimeout(resolve, CONSTANTS.RETRY_DELAY));
-                    return await sendAnswerToServer(recordId, questionId, answer, retryCount + 1);
-                }
-                return false;
-            }
+            console.log('[练习] 答案已保存到服务器:', questionId);
+            return true;
         } catch (error) {
             console.error('[练习] 发送答案到服务器失败:', error);
             
             if (retryCount < CONSTANTS.MAX_RETRY_COUNT) {
                 console.log('[练习] 重试保存答案...');
-                await new Promise(resolve => setTimeout(resolve, CONSTANTS.RETRY_DELAY));
+                await new Promise(resolve => setTimeout(resolve, CONSTANTS.RETRY_DELAY * (retryCount + 1)));
                 return await sendAnswerToServer(recordId, questionId, answer, retryCount + 1);
             }
             
@@ -595,40 +629,24 @@
             showLoading('正在提交练习...');
             
             // 调用完成练习API
-            const response = await fetch(window.ExamApiManager.transformUrl(`/exam/api/client/practice/${recordId}/complete`), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + TokenManager.getToken(),
-                    'X-Forwarded-With': 'CodeSpirit'
-                }
+            const data = await apiRequest(`/exam/api/exam/client/practice/${recordId}/complete`, {
+                method: 'POST'
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const data = await response.json();
             
-            if (data.status === 'success' || data.status === 0) {
-                console.log('[练习] 练习完成成功');
-                
-                // 显示完成提示
-                if (window.amisInstance) {
-                    window.amisInstance.getComponentByName('app')?.dispatchEvent('toast', {
-                        level: 'success',
-                        msg: '练习已完成！'
-                    });
-                }
-                
-                // 延迟2秒后跳转到我的练习界面
-                setTimeout(() => {
-                    window.location.href = `/${window.tenantId}/exam/practice-history`;
-                }, 2000);
-                
-            } else {
-                throw new Error(data.message || '完成练习失败');
+            console.log('[练习] 练习完成成功');
+            
+            // 显示完成提示
+            if (window.amisInstance) {
+                window.amisInstance.getComponentByName('app')?.dispatchEvent('toast', {
+                    level: 'success',
+                    msg: '练习已完成！'
+                });
             }
+            
+            // 延迟2秒后跳转到我的练习界面
+            setTimeout(() => {
+                window.location.href = `/${window.tenantId}/exam/practice-history`;
+            }, 2000);
             
         } catch (error) {
             console.error('[练习] 完成练习失败:', error);
@@ -708,7 +726,7 @@
                                 items: [
                                     {
                                         type: 'tpl',
-                                        tpl: '<div class="logo"><img src="' + (window.siteSettings ? window.siteSettings.logoUrl : '/logo.png') + '" /><span>' + (window.siteSettings ? window.siteSettings.clientAppName : '考试系统') + '</span></div>',
+                                        tpl: '<div class="logo"><img src="${tenant.logo}" /><span>${tenant.name}</span></div>',
                                         className: 'client-logo'
                                     },
                                     {
@@ -1067,6 +1085,10 @@
         
         setTimeout(async () => {
             try {
+                // 先加载租户信息
+                await loadTenantInfo();
+                
+                // 再加载练习数据
                 const success = await loadPractice(practiceId);
                 if (success) {
                     isInitialized = true;

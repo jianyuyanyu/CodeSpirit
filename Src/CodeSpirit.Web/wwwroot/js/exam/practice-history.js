@@ -6,6 +6,17 @@
 (function() {
     'use strict';
 
+    // 确保TokenManager已初始化
+    TokenManager.initClientMode(window.tenantId, 'exam');
+    
+    // 检查用户认证状态
+    if (!TokenManager.isAuthenticated()) {
+        // 保存当前页面URL用于登录后跳转
+        const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/${window.tenantId}/exam/login?redirect=${currentUrl}`;
+        return;
+    }
+
     // 常量定义
     const CONSTANTS = {
         MAX_RETRY_COUNT: 3,
@@ -25,6 +36,48 @@
     let amisInstance = null;
 
     /**
+     * 通用API请求函数
+     * 使用ExamApiManager进行统一的API请求处理
+     * @param {string} url - API地址
+     * @param {object} options - 请求选项
+     * @returns {Promise<any>} API响应数据
+     */
+    async function apiRequest(url, options = {}) {
+        return window.ExamApiManager.request(url, options);
+    }
+
+    /**
+     * 加载租户信息（使用缓存）
+     * 参考application.js中的实现方式
+     * @returns {Promise<Object>} 租户信息
+     */
+    async function loadTenantInfo() {
+        try {
+            // 使用缓存的登录配置接口
+            const tenantConfig = await window.ExamApiManager.getLoginConfig(window.tenantId);
+            
+            // 转换为练习页面需要的格式
+            const tenantInfo = {
+                id: window.tenantId,
+                name: tenantConfig.displayName || tenantConfig.name || '练习平台',
+                logo: tenantConfig.logoUrl || '/logo.png',
+                description: tenantConfig.description || ''
+            };
+            
+            console.log('[我的练习] 租户信息加载成功:', tenantInfo);
+            return tenantInfo;
+        } catch (error) {
+            console.warn('[我的练习] 租户信息加载失败:', error);
+            return { 
+                id: window.tenantId,
+                name: '练习平台', 
+                logo: '/logo.png',
+                description: '' 
+            };
+        }
+    }
+
+    /**
      * 加载练习统计数据
      * @returns {Promise<boolean>} 加载是否成功
      */
@@ -32,28 +85,13 @@
         try {
             console.log('[我的练习] 开始加载练习统计数据');
             
-            const response = await fetch(window.ExamApiManager.transformUrl('/exam/api/client/practice/analysis'), {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + (window.TokenManager ? window.TokenManager.getToken() : ''),
-                    'X-Forwarded-With': 'CodeSpirit'
-                }
+            const data = await apiRequest('/exam/api/exam/client/practice/analysis', {
+                method: 'GET'
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const data = await response.json();
             
-            if (data.status === 'success' || data.status === 0) {
-                practiceStats = data.data || data.result;
-                console.log('[我的练习] 练习统计数据加载成功:', practiceStats);
-                return true;
-            } else {
-                throw new Error(data.message || '获取练习统计失败');
-            }
+            practiceStats = data;
+            console.log('[我的练习] 练习统计数据加载成功:', practiceStats);
+            return true;
         } catch (error) {
             console.error('[我的练习] 加载练习统计数据失败:', error);
             practiceStats = getDefaultStats();
@@ -134,44 +172,26 @@
                 console.log('[我的练习] 添加状态筛选:', statusFilter);
             }
 
-            const url = window.ExamApiManager.transformUrl(`/exam/api/client/practice/records?${queryParams}`);
-            console.log('[我的练习] 请求URL:', url);
-
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + (window.TokenManager ? window.TokenManager.getToken() : ''),
-                    'X-Forwarded-With': 'CodeSpirit'
-                }
+            const data = await apiRequest(`/exam/api/exam/client/practice/records?${queryParams}`, {
+                method: 'GET'
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const data = await response.json();
+            
             console.log('[我的练习] API返回数据:', data);
             
-            if (data.status === 0 || data.status === 'success') {
-                const result = data.data;
-                practiceRecords = result.items || [];
-                currentPage = page;
-                
-                // 计算总页数
-                const totalCount = result.total || 0;
-                totalPages = Math.ceil(totalCount / pageSize);
-                
-                console.log('[我的练习] 练习记录加载成功:', {
-                    records: practiceRecords.length,
-                    currentPage,
-                    totalPages,
-                    totalCount
-                });
-                return true;
-            } else {
-                throw new Error(data.msg || data.message || '获取练习记录失败');
-            }
+            practiceRecords = data.items || [];
+            currentPage = page;
+            
+            // 计算总页数
+            const totalCount = data.total || 0;
+            totalPages = Math.ceil(totalCount / pageSize);
+            
+            console.log('[我的练习] 练习记录加载成功:', {
+                records: practiceRecords.length,
+                currentPage,
+                totalPages,
+                totalCount
+            });
+            return true;
         } catch (error) {
             console.error('[我的练习] 加载练习记录失败:', error);
             practiceRecords = [];
@@ -621,7 +641,7 @@
     }
 
     // 我的练习历史页面配置
-    function getPracticeHistoryPageConfig(initialStats) {
+    function getPracticeHistoryPageConfig(initialStats, tenantInfo) {
         const tenantId = window.tenantId || '';
         const homeUrl = tenantId ? `/${tenantId}/exam/app` : '/exam/app';
         const practiceUrl = tenantId ? `/${tenantId}/exam/practice` : '/exam/practice';
@@ -630,6 +650,12 @@
             type: 'page',
             className: 'practice-history-page',
             data: {
+                tenant: tenantInfo || { 
+                    id: window.tenantId,
+                    name: '练习平台', 
+                    logo: '/logo.png',
+                    description: '' 
+                },
                 stats: initialStats || processStats(getDefaultStats()),
                 practiceRecords: [],
                 pagination: {
@@ -662,7 +688,7 @@
                                     items: [
                                         {
                                             type: 'tpl',
-                                            tpl: '<div class="logo"><img src="' + (window.siteSettings ? window.siteSettings.logoUrl : '/logo.png') + '" /><span>' + (window.siteSettings ? window.siteSettings.clientAppName : '考试系统') + '</span></div>',
+                                            tpl: '<div class="logo"><img src="${tenant.logo}" /><span>${tenant.name}</span></div>',
                                             className: 'client-logo'
                                         },
                                         {
@@ -1003,11 +1029,17 @@
     /**
      * 初始化Amis实例
      */
-    function initializeAmis() {
+    function initializeAmis(tenantInfo) {
         console.log('[我的练习] 开始初始化Amis实例');
         
         // 初始化数据
         const initialData = {
+            tenant: tenantInfo || { 
+                id: window.tenantId,
+                name: '练习平台', 
+                logo: '/logo.png',
+                description: '' 
+            },
             stats: processStats(getDefaultStats()),
             practiceRecords: [],
             pagination: {
@@ -1021,7 +1053,7 @@
         // 初始化AMIS
         let amisInstance = amis.embed(
             '#root',
-            getPracticeHistoryPageConfig(initialData.stats),
+            getPracticeHistoryPageConfig(initialData.stats, initialData.tenant),
             {
                 location: history.location,
                 data: initialData, // 在环境中也设置数据
@@ -1105,9 +1137,11 @@
         showLoading('正在加载页面资源...');
         
         try {
+            // 先加载租户信息
+            const tenantInfo = await loadTenantInfo();
             
             // 初始化Amis
-            initializeAmis();
+            initializeAmis(tenantInfo);
             
             showLoading('正在加载练习数据...');
             

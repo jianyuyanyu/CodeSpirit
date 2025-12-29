@@ -12,7 +12,9 @@
         
         // Check auth
         if (!TokenManager.isAuthenticated()) {
-            window.location.href = `/${window.tenantId}/exam/login`;
+            // 保存当前页面URL用于登录后跳转
+            const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/${window.tenantId}/exam/login?redirect=${currentUrl}`;
             return;
         }
     }
@@ -31,7 +33,12 @@
     
     // App data
     const appData = {
-        tenant: { name: '练习平台' },
+        tenant: { 
+            id: window.tenantId,
+            name: '练习平台',
+            logo: '/logo.png',
+            description: ''
+        },
         practiceStatistics: {
             totalPracticeCount: 0,
             correctCount: 0,
@@ -41,48 +48,43 @@
         availablePractices: []
     };
     
-    // API request function
+    /**
+     * 通用API请求函数
+     * 使用ExamApiManager进行统一的API请求处理
+     * @param {string} url - API地址
+     * @param {object} options - 请求选项
+     * @returns {Promise<any>} API响应数据
+     */
     async function apiRequest(url, options = {}) {
+        return window.ExamApiManager.request(url, options);
+    }
+
+    /**
+     * 加载租户信息（使用缓存）
+     * 参考application.js中的实现方式
+     * @returns {Promise<Object>} 租户信息
+     */
+    async function loadTenantInfo() {
         try {
-            const token = TokenManager?.getToken();
-            const response = await fetch(window.ExamApiManager.transformUrl(url), {
-                ...options,
-                headers: {
-                    'Authorization': token ? 'Bearer ' + token : '',
-                    'TenantId': window.tenantId,
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
-            });
+            // 使用缓存的登录配置接口
+            const tenantConfig = await window.ExamApiManager.getLoginConfig(window.tenantId);
             
-            if (response.status === 401) {
-                window.location.href = `/${window.tenantId}/exam/login`;
-                throw new Error('认证失败');
-            }
+            // 转换为练习页面需要的格式
+            const tenantInfo = {
+                id: window.tenantId,
+                name: tenantConfig.displayName || tenantConfig.name || '练习平台',
+                logo: tenantConfig.logoUrl || '/logo.png',
+                description: tenantConfig.description || ''
+            };
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
+            // 更新应用数据
+            Object.assign(appData.tenant, tenantInfo);
             
-            const result = await response.json();
-            if (!result) {
-                throw new Error('返回数据为空');
-            }
-            
-            // 如果返回的是直接数据，则直接返回
-            if (result.recordId || result.id) {
-                return result;
-            }
-            
-            // 否则检查标准响应格式
-            if (result.status !== 0) {
-                throw new Error(result.msg || '请求失败');
-            }
-            
-            return result.data || result;
+            console.log('[练习] 租户信息加载成功:', tenantInfo);
+            return tenantInfo;
         } catch (error) {
-            console.error('API请求失败:', error);
-            throw error;
+            console.warn('[练习] 租户信息加载失败:', error);
+            return appData.tenant; // 返回默认值
         }
     }
     
@@ -108,7 +110,7 @@
                     items: [
                         {
                             type: "tpl",
-                            tpl: "<i class='fa fa-leaf mr-2'></i>${tenant.name}"
+                            tpl: "<div style='display: flex; align-items: center;'><img src='${tenant.logo}' style='height: 32px; margin-right: 8px;' alt='logo' /><span>${tenant.name}</span></div>"
                         },
                         {
                             type: "flex",
@@ -280,7 +282,7 @@
     window.startPractice = async function(practiceId) {
         try {
             showLoading(true);
-            const result = await apiRequest(`/exam/api/client/practice/${practiceId}/start`, {
+            const result = await apiRequest(`/exam/api/exam/client/practice/${practiceId}/start`, {
                 method: 'POST'
             });
             
@@ -320,11 +322,14 @@
         try {
             showLoading(true);
             
-            const [stats, practices] = await Promise.all([
-                apiRequest(`/exam/api/client/practice/analysis`).catch(() => ({})),
-                apiRequest(`/exam/api/client/practice/settings`).catch(() => ([]))
+            // 并行加载租户信息、统计数据和练习列表
+            const [tenantInfo, stats, practices] = await Promise.all([
+                loadTenantInfo().catch(() => appData.tenant),
+                apiRequest(`/exam/api/exam/client/practice/analysis`).catch(() => ({})),
+                apiRequest(`/exam/api/exam/client/practice/settings`).catch(() => ([]))
             ]);
             
+            Object.assign(appData.tenant, tenantInfo);
             Object.assign(appData.practiceStatistics, stats);
             // Format dates in practice data
             appData.availablePractices = practices.map(practice => ({

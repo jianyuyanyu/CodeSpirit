@@ -17,7 +17,7 @@ namespace CodeSpirit.ExamApi.Controllers.Client;
 /// 客户端练习控制器
 /// </summary>
 [DisplayName("练习")]
-[Route("api/client/practice")]
+[Route("api/exam/client/practice")]
 [NoAudit("练习系统客户端接口频繁调用，不需要记录审计日志")]
 [DisableAggregator]
 public class PracticeController : ApiControllerBase

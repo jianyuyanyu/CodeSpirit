@@ -11,7 +11,9 @@
     
     // 检查用户认证状态
     if (!TokenManager.isAuthenticated()) {
-        window.location.href = `/${window.tenantId}/exam/login`;
+        // 保存当前页面URL用于登录后跳转
+        const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/${window.tenantId}/exam/login?redirect=${currentUrl}`;
         return;
     }
 

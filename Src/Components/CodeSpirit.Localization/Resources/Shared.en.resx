@@ -92,7 +92,7 @@
     <value>View</value>
   </data>
   <data name="Common.Enable" xml:space="preserve">
-    <value>Enable</value><value>Enable</value>
+    <value>Enable</value>
   </data>
   <data name="Common.Disable" xml:space="preserve">
     <value>Disable</value>
@@ -105,5 +105,17 @@
   </data>
   <data name="Common.ConfirmBatchDelete" xml:space="preserve">
     <value>Are you sure you want to batch delete?</value>
+  </data>
+  <data name="Common.ExportCurrentPage" xml:space="preserve">
+    <value>Export Current Page</value>
+  </data>
+  <data name="Common.ExportAll" xml:space="preserve">
+    <value>Export All</value>
+  </data>
+  <data name="Common.Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="Common.Operation" xml:space="preserve">
+    <value>Operation</value>
   </data>
 </root>

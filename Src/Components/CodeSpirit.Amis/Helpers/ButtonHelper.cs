@@ -21,6 +21,16 @@ namespace CodeSpirit.Amis.Helpers
         private readonly ILogger<ButtonHelper> _logger;
         private readonly IStringLocalizerFactory _localizerFactory;
         private readonly CultureResolver _cultureResolver;
+        
+        /// <summary>
+        /// 缓存 SharedResources 类型，避免重复反射查找
+        /// </summary>
+        private static Type _sharedResourcesType;
+        
+        /// <summary>
+        /// 用于缓存类型的锁对象
+        /// </summary>
+        private static readonly object _typeLock = new object();
 
         public ButtonHelper(IHasPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper, ILogger<ButtonHelper> logger, IStringLocalizerFactory localizerFactory, CultureResolver cultureResolver)
         {
@@ -62,7 +72,7 @@ namespace CodeSpirit.Amis.Helpers
         /// <param name="resourceType">资源类型</param>
         /// <param name="fallbackText">回退文本</param>
         /// <returns>本地化文本</returns>
-        private string GetLocalizedText(string resourceKey, Type resourceType, string fallbackText)
+        public string GetLocalizedText(string resourceKey, Type resourceType, string fallbackText)
         {
             // 如果未指定资源键或资源类型，直接返回回退文本
             if (string.IsNullOrEmpty(resourceKey) || resourceType == null)
@@ -189,11 +199,24 @@ namespace CodeSpirit.Amis.Helpers
 
         /// <summary>
         /// 获取 SharedResources 类型（通过反射动态加载，避免循环依赖）
+        /// 使用缓存机制提升性能
         /// </summary>
-        private static Type GetSharedResourcesType()
+        public static Type GetSharedResourcesType()
         {
-            return Type.GetType("CodeSpirit.Localization.Resources.SharedResources, CodeSpirit.Localization") 
-                ?? typeof(object);
+            // 双重检查锁定模式，确保线程安全且性能最优
+            if (_sharedResourcesType == null)
+            {
+                lock (_typeLock)
+                {
+                    if (_sharedResourcesType == null)
+                    {
+                        _sharedResourcesType = Type.GetType("CodeSpirit.Localization.Resources.SharedResources, CodeSpirit.Localization") 
+                            ?? typeof(object);
+                    }
+                }
+            }
+            
+            return _sharedResourcesType;
         }
 
         // 创建一个通用的按钮模板

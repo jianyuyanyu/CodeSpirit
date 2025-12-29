@@ -1345,16 +1345,22 @@ namespace CodeSpirit.Amis.Column
             }
 
             // 如果没有任何按钮，则不添加操作列
-            return buttons.Count == 0
-                ? null
-                : new JObject
-                {
-                    ["name"] = "operation",
-                    ["label"] = "操作",
-                    ["type"] = "operation",
-                    ["buttons"] = buttons,
-                    ["fixed"] = "right"
-                };
+            if (buttons.Count == 0)
+            {
+                return null;
+            }
+            
+            // 获取本地化的"操作"标签
+            string operationLabel = buttonHelper.GetLocalizedText("Common.Operation", ButtonHelper.GetSharedResourcesType(), "操作");
+            
+            return new JObject
+            {
+                ["name"] = "operation",
+                ["label"] = operationLabel,
+                ["type"] = "operation",
+                ["buttons"] = buttons,
+                ["fixed"] = "right"
+            };
         }
 
         /// <summary>

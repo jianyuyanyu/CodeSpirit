@@ -106,4 +106,16 @@
   <data name="Common.ConfirmBatchDelete" xml:space="preserve">
     <value>确定要批量删除吗？</value>
   </data>
+  <data name="Common.ExportCurrentPage" xml:space="preserve">
+    <value>导出当前页</value>
+  </data>
+  <data name="Common.ExportAll" xml:space="preserve">
+    <value>导出全部</value>
+  </data>
+  <data name="Common.Filter" xml:space="preserve">
+    <value>筛选</value>
+  </data>
+  <data name="Common.Operation" xml:space="preserve">
+    <value>操作</value>
+  </data>
 </root>

@@ -269,19 +269,25 @@ namespace CodeSpirit.Amis
             // 卡片模式不支持导出按钮
             if (!isCardMode)
             {
+                // 获取本地化的导出标签
+                string exportCurrentPageLabel = _buttonHelper.GetLocalizedText("Common.ExportCurrentPage", ButtonHelper.GetSharedResourcesType(), "导出当前页");
+                
                 buttons.Add(new JObject()
                 {
                     ["type"] = "export-excel",
-                    ["label"] = "导出当前页",
+                    ["label"] = exportCurrentPageLabel,
                     //["filename"] = ""
                 });
 
                 if (_amisContext.Actions.Export != null)
                 {
+                    // 获取本地化的导出全部标签
+                    string exportAllLabel = _buttonHelper.GetLocalizedText("Common.ExportAll", ButtonHelper.GetSharedResourcesType(), "导出全部");
+                    
                     buttons.Add(new JObject()
                     {
                         ["type"] = "export-excel",
-                        ["label"] = "导出全部",
+                        ["label"] = exportAllLabel,
                         ["api"] = new JObject
                         {
                             ["url"] = _amisContext.ApiRoutes.Export.ApiPath,
@@ -325,9 +331,14 @@ namespace CodeSpirit.Amis
         /// </summary>
         private JObject BuildFilterConfig(IEnumerable<JObject> searchFields)
         {
+            // 获取本地化文本
+            string filterLabel = _buttonHelper.GetLocalizedText("Common.Filter", ButtonHelper.GetSharedResourcesType(), "筛选");
+            string searchLabel = _buttonHelper.GetLocalizedText("Common.Search", ButtonHelper.GetSharedResourcesType(), "搜索");
+            string resetLabel = _buttonHelper.GetLocalizedText("Common.Reset", ButtonHelper.GetSharedResourcesType(), "重置");
+            
             return new JObject
             {
-                ["title"] = "筛选",
+                ["title"] = filterLabel,
                 ["mode"] = "horizontal",
                 ["columnCount"] = 4, // 一行最多显示4列
                 ["autoFocus"] = false,
@@ -337,13 +348,13 @@ namespace CodeSpirit.Amis
                     new JObject
                     {
                         ["type"] = "submit",
-                        ["label"] = "搜索",
+                        ["label"] = searchLabel,
                         ["level"] = "primary"
                     },
                     new JObject
                     {
                         ["type"] = "reset",
-                        ["label"] = "重置"
+                        ["label"] = resetLabel
                     }
                 }
             };

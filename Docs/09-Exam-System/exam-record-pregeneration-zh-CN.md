@@ -88,14 +88,19 @@ graph TB
     A[考试发布] --> B[更新状态为Published]
     B --> C[等待定时任务执行]
     
-    D[定时任务<br/>每天凌晨1点] --> E[查询已发布且尚未开始的考试]
+    D["定时任务
+    每天凌晨1点"] --> E[查询已发布且尚未开始的考试]
     E --> F{是否已预生成?}
     F -->|是| G[跳过该考试]
     F -->|否| H[获取学生分组列表]
     H --> I[分批处理学生列表]
-    I --> J[创建ExamRecord<br/>Status=NotStarted]
+    I --> J["创建ExamRecord
+    Status=NotStarted"]
     J --> K[创建ExamAnswerRecord列表]
-    K --> L[写入缓存<br/>Key: exam:pregenerated:{examId}:{studentId}:1<br/>Value: recordId<br/>Expire: 考试结束时间+1小时]
+    K --> L["写入缓存
+    Key: exam:pregenerated:examId:studentId:1
+    Value: recordId
+    Expire: 考试结束时间+1小时"]
     L --> M{是否还有批次?}
     M -->|是| I
     M -->|否| N[预生成完成]
@@ -103,12 +108,14 @@ graph TB
     O[学生开始考试] --> P[查询缓存]
     P --> Q{缓存命中?}
     Q -->|是| R[加载预生成记录]
-    R --> S[更新状态为InProgress<br/>设置StartTime]
-    S --> T[快速启动 ✅]
+    R --> S["更新状态为InProgress
+    设置StartTime"]
+    S --> T["快速启动 ✅"]
     Q -->|否| U[动态创建记录]
-    U --> V[常规启动 ⚠️]
+    U --> V["常规启动 ⚠️"]
     
-    W[定时清理任务<br/>每天凌晨2点] --> X[查询已结束考试]
+    W["定时清理任务
+    每天凌晨2点"] --> X[查询已结束考试]
     X --> Y[查找NotStarted记录]
     Y --> Z[批量删除]
     Z --> AA[清理缓存]

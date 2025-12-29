@@ -39,7 +39,6 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
     private readonly IScoreConversionService _scoreConversionService;
     private readonly IExamCacheService _examCacheService;
     private readonly ICacheService _cacheService;
-    private readonly IExamRecordPreGenerationService _preGenerationService;
 
     /// <summary>
     /// 构造函数
@@ -69,8 +68,7 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         ISettingsService settingsService,
         IScoreConversionService scoreConversionService,
         IExamCacheService examCacheService,
-        ICacheService cacheService,
-        IExamRecordPreGenerationService preGenerationService) : base(repository, mapper)
+        ICacheService cacheService) : base(repository, mapper)
     {
         _answerRecordRepository = answerRecordRepository;
         _examSettingRepository = examSettingRepository;
@@ -82,7 +80,6 @@ public class ExamRecordService : BaseCRUDService<ExamRecord, ExamRecordDto, long
         _scoreConversionService = scoreConversionService ?? throw new ArgumentNullException(nameof(scoreConversionService));
         _examCacheService = examCacheService ?? throw new ArgumentNullException(nameof(examCacheService));
         _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
-        _preGenerationService = preGenerationService ?? throw new ArgumentNullException(nameof(preGenerationService));
     }
 
     /// <summary>

@@ -253,7 +253,7 @@ Please follow "麦扣聊技术" WeChat Official Account for the latest demo acco
 11. [🎯 AMIS UI Generation Engine](./Docs/02-UI-Generation/codespirit-amis-engine-zh-CN.md) - Intelligent UI generation core component
 12. [👮 Authorization Component](./Docs/04-Identity-Auth/codespirit-authorization-guide-zh-CN.md) - Comprehensive permission system with RBAC+ABAC hybrid model
 13. [🚀 Unified Startup Framework Usage Guide](./Docs/03-Core-Components/codespirit-unified-startup-guide-zh-CN.md) - Unified API project startup framework, simplifying project creation and configuration
-14. [📚 Exam System Technical Architecture](./Docs/09-Exam-System/exam-system-complete-documentation-zh-CN.md) - Complete exam system case with 200+ features covering question bank, exams, scores, AI question generation
+14. [📚 Exam System Complete Documentation](./Docs/09-Exam-System/exam-system-complete-documentation-en-US.md) - Business-oriented comprehensive guide covering roles, functions, processes and scenarios | [中文版](./Docs/09-Exam-System/exam-system-complete-documentation-zh-CN.md)
 
 ### 📚 Complete Documentation Navigation
 

@@ -350,7 +350,7 @@ https://codespirit-app.xin-lai.com/
 ### 📝 考试系统
 
 75. [📚 考试系统概览](./Docs/09-Exam-System/README.md) - 完整的考试系统文档导航和快速参考
-76. [🏗️ 考试系统技术架构](./Docs/09-Exam-System/exam-system-complete-documentation-zh-CN.md) - 全面的技术架构、API设计和安全机制
+76. [🏗️ 考试系统完整说明文档](./Docs/09-Exam-System/exam-system-complete-documentation-zh-CN.md) - 业务视角全面指南，涵盖角色权限、核心功能、业务流程和应用场景 | [English](./Docs/09-Exam-System/exam-system-complete-documentation-en-US.md)
 77. [📋 考试系统业务功能](./Docs/09-Exam-System/exam-system-feature-list-zh-CN.md) - 完整业务功能清单，涵盖12大模块200+功能特性
 
 ### 📋 问卷调查系统

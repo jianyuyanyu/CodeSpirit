@@ -61,7 +61,7 @@ public class ExamRecordCleanupTaskHandler : ITaskHandler
             // 查询需要清理的记录（禁用租户过滤器，因为这是系统级别的定时任务）
             var recordsToDelete = await _dbContext.WithoutMultiTenantFilterAsync(async () =>
             {
-                var query = _examRecordRepository.CreateQuery()
+                var query = _dbContext.Set<ExamRecord>()
                     .Include(r => r.ExamSetting)
                     .Where(r => 
                         r.Status == ExamRecordStatus.NotStarted &&  // 未开始的
@@ -94,7 +94,9 @@ public class ExamRecordCleanupTaskHandler : ITaskHandler
             // 注意：删除操作需要在禁用租户过滤器的上下文中执行
             await _dbContext.WithoutMultiTenantFilterAsync(async () =>
             {
-                await _examRecordRepository.DeleteRangeAsync(recordsToDelete);
+                // 直接使用 DbContext 操作以避免并发问题
+                _dbContext.Set<ExamRecord>().RemoveRange(recordsToDelete);
+                await _dbContext.SaveChangesAsync(cancellationToken);
                 return Task.CompletedTask;
             });
             

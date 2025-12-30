@@ -6,6 +6,7 @@ using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.ExamPaper;
 using CodeSpirit.ExamApi.Services.Interfaces;
+using CodeSpirit.Shared.Extensions;
 using CodeSpirit.Shared.Extensions.Extensions;
 using CodeSpirit.Shared.Repositories;
 using CodeSpirit.Shared.Services;
@@ -88,37 +89,109 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         }
 
         /// <summary>
-        /// 获取分页列表
+        /// 获取分页列表（使用投影查询优化性能）
         /// </summary>
         public async Task<PageList<ExamPaperDto>> GetExamPapersAsync(ExamPaperQueryDto queryDto)
         {
             var predicate = GetExamPaperQueryPredicate(queryDto);
-            return await base.GetPagedListAsync(queryDto, predicate);
+            
+            // 使用投影查询，在SQL层面计算题目数量
+            var query = _examPaperRepository.Find(predicate);
+            
+            // 应用排序
+            query = query.ApplySorting(queryDto.OrderBy, queryDto.OrderDir);
+            
+            // 获取总数
+            var totalCount = await query.CountAsync();
+            
+            // 分页并投影
+            var items = await query
+                .Skip((queryDto.Page - 1) * queryDto.PerPage)
+                .Take(queryDto.PerPage)
+                .Select(p => new ExamPaperDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    QuestionCount = p.ExamPaperQuestions.Count, // SQL层面的COUNT查询
+                    Type = p.Type,
+                    TotalScore = p.TotalScore,
+                    PassScore = p.PassScore,
+                    Duration = p.Duration,
+                    RandomRules = p.RandomRules,
+                    DifficultyLevel = p.DifficultyLevel,
+                    Version = p.Version,
+                    UsageCount = p.UsageCount,
+                    AverageScore = p.AverageScore,
+                    PassRate = p.PassRate,
+                    Status = p.Status,
+                    IsPreviewChecked = p.IsPreviewChecked,
+                    EnableScoreConversion = p.EnableScoreConversion,
+                    OriginalTotalScore = p.OriginalTotalScore,
+                    OriginalPassScore = p.OriginalPassScore,
+                    ConversionTargetFullScore = p.ConversionTargetFullScore,
+                    ConversionDecimalPlaces = p.ConversionDecimalPlaces,
+                    ConversionRatio = p.ConversionRatio,
+                    ConversionDescription = !p.EnableScoreConversion || !p.OriginalTotalScore.HasValue || !p.ConversionRatio.HasValue
+                        ? string.Empty
+                        : $"成绩换算：{p.OriginalTotalScore.Value}分制 → {p.TotalScore}分制，" +
+                          $"换算比例：{p.ConversionRatio.Value:F4}，" +
+                          $"及格分：{(p.OriginalPassScore ?? p.OriginalTotalScore.Value)} → {p.PassScore}，" +
+                          $"小数保留：{p.ConversionDecimalPlaces}位。" +
+                          $"换算公式：换算后成绩 = 原始成绩 × {p.ConversionRatio.Value:F4}（保留{p.ConversionDecimalPlaces}位小数）",
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
+                .ToListAsync();
+            
+            return new PageList<ExamPaperDto>(items, totalCount);
         }
 
         /// <summary>
-        /// 获取带题目列表的试卷
+        /// 获取试卷详情（含题目数量）
         /// </summary>
         public override async Task<ExamPaperDto> GetAsync(long id)
         {
-            var examPaper = await _examPaperRepository
+            // 使用投影查询，在SQL层面计算题目数量，避免加载整个集合
+            var examPaperDto = await _examPaperRepository
                 .Find(p => p.Id == id)
-                .Include(p => p.ExamPaperQuestions)
-                    .ThenInclude(q => q.Question)
-                .Include(p => p.ExamPaperQuestions)
-                    .ThenInclude(q => q.QuestionVersion)
+                .Select(p => new ExamPaperDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    QuestionCount = p.ExamPaperQuestions.Count, // SQL层面的COUNT查询
+                    Type = p.Type,
+                    TotalScore = p.TotalScore,
+                    PassScore = p.PassScore,
+                    Duration = p.Duration,
+                    RandomRules = p.RandomRules,
+                    DifficultyLevel = p.DifficultyLevel,
+                    Version = p.Version,
+                    UsageCount = p.UsageCount,
+                    AverageScore = p.AverageScore,
+                    PassRate = p.PassRate,
+                    Status = p.Status,
+                    IsPreviewChecked = p.IsPreviewChecked,
+                    EnableScoreConversion = p.EnableScoreConversion,
+                    OriginalTotalScore = p.OriginalTotalScore,
+                    OriginalPassScore = p.OriginalPassScore,
+                    ConversionTargetFullScore = p.ConversionTargetFullScore,
+                    ConversionDecimalPlaces = p.ConversionDecimalPlaces,
+                    ConversionRatio = p.ConversionRatio,
+                    ConversionDescription = !p.EnableScoreConversion || !p.OriginalTotalScore.HasValue || !p.ConversionRatio.HasValue
+                        ? string.Empty
+                        : $"成绩换算：{p.OriginalTotalScore.Value}分制 → {p.TotalScore}分制，" +
+                          $"换算比例：{p.ConversionRatio.Value:F4}，" +
+                          $"及格分：{(p.OriginalPassScore ?? p.OriginalTotalScore.Value)} → {p.PassScore}，" +
+                          $"小数保留：{p.ConversionDecimalPlaces}位。" +
+                          $"换算公式：换算后成绩 = 原始成绩 × {p.ConversionRatio.Value:F4}（保留{p.ConversionDecimalPlaces}位小数）",
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
                 .FirstOrDefaultAsync();
 
-            if (examPaper == null)
-            {
-                return null;
-            }
-
-            var examPaperDto = _mapper.Map<ExamPaperDto>(examPaper);
-            examPaperDto.Questions = _mapper.Map<List<ExamPaperQuestionDto>>(
-                examPaper.ExamPaperQuestions.OrderBy(q => q.OrderNumber).ToList());
-
-            return examPaperDto;
+            return examPaperDto!;
         }
 
         /// <summary>
@@ -374,7 +447,8 @@ namespace CodeSpirit.ExamApi.Services.Implementations
                     await UpdateExamPaperDifficulty(examPaper, examPaperQuestions);
                 }
             });
-            return await GetAsync(examPaper.Id);
+            var result = await GetAsync(examPaper!.Id);
+            return result!;
         }
 
         public async Task<IEnumerable<ExamPaperDto>> GetAllExamPapersByStatusAsync(ExamPaperStatus examPaperStatus = ExamPaperStatus.Published)
@@ -810,7 +884,7 @@ namespace CodeSpirit.ExamApi.Services.Implementations
         /// </summary>
         /// <param name="questionId">题目ID</param>
         /// <returns>最新版本的题目</returns>
-        private async Task<QuestionVersion> GetLatestQuestionVersion(long questionId)
+        private async Task<QuestionVersion?> GetLatestQuestionVersion(long questionId)
         {
             return await _questionVersionRepository
                 .Find(v => v.QuestionId == questionId)
@@ -854,6 +928,23 @@ namespace CodeSpirit.ExamApi.Services.Implementations
             }));
             
             return $"\"{escaped}\"";
+        }
+
+        /// <summary>
+        /// 获取试卷的题目列表
+        /// </summary>
+        /// <param name="examPaperId">试卷ID</param>
+        /// <returns>题目列表</returns>
+        public async Task<List<ExamPaperQuestionDto>> GetExamPaperQuestionsAsync(long examPaperId)
+        {
+            var examPaperQuestions = await _examPaperQuestionRepository
+                .Find(q => q.ExamPaperId == examPaperId)
+                .Include(q => q.Question)
+                .Include(q => q.QuestionVersion)
+                .OrderBy(q => q.OrderNumber)
+                .ToListAsync();
+
+            return _mapper.Map<List<ExamPaperQuestionDto>>(examPaperQuestions);
         }
     }
 }

@@ -29,6 +29,12 @@ public class ExamPaperDto
     public string? Description { get; set; }
 
     /// <summary>
+    /// 题目数量
+    /// </summary>
+    [DisplayName("题目数量")]
+    public int QuestionCount { get; set; }
+
+    /// <summary>
     /// 试卷类型
     /// </summary>
     [DisplayName("试卷类型")]
@@ -162,12 +168,6 @@ public class ExamPaperDto
     /// </summary>
     [DisplayName("原始及格分显示")]
     public int OriginalPassScoreDisplay => OriginalPassScore ?? PassScore;
-
-    /// <summary>
-    /// 试卷包含的题目列表
-    /// </summary>
-    [DisplayName("题目列表")]
-    public List<ExamPaperQuestionDto> Questions { get; set; } = [];
 
     /// <summary>
     /// 创建时间

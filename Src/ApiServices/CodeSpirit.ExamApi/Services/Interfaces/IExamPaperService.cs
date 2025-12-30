@@ -60,4 +60,11 @@ public interface IExamPaperService : IBaseCRUDService<ExamPaper, ExamPaperDto, l
     /// <param name="id">试卷ID</param>
     /// <returns>操作结果</returns>
     Task MarkPreviewedAsync(long id);
+
+    /// <summary>
+    /// 获取试卷的题目列表
+    /// </summary>
+    /// <param name="examPaperId">试卷ID</param>
+    /// <returns>题目列表</returns>
+    Task<List<ExamPaperQuestionDto>> GetExamPaperQuestionsAsync(long examPaperId);
 }

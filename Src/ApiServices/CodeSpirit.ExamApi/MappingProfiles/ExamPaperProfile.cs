@@ -26,6 +26,7 @@ public class ExamPaperProfile : Profile
             CreateExamPaperDto>();
 
         // 试卷实体到DTO的自定义映射
+        // 注意：QuestionCount 应在 Service 层使用投影查询计算，避免加载整个集合
         CreateMap<ExamPaper, ExamPaperDto>()
             .ForMember(dest => dest.ConversionDescription, opt => opt.MapFrom(src =>
                 !src.EnableScoreConversion || !src.OriginalTotalScore.HasValue || !src.ConversionRatio.HasValue

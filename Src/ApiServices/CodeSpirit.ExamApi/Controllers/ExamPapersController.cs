@@ -282,8 +282,11 @@ public class ExamPapersController : ApiControllerBase
             return NotFound("试卷不存在");
         }
 
+        // 获取试卷题目列表
+        var examPaperQuestions = await _examPaperService.GetExamPaperQuestionsAsync(id);
+
         // 执行试卷和题目验证
-        var validationResult = _examPaperCheckService.ValidateExamPaper(examPaper);
+        var validationResult = _examPaperCheckService.ValidateExamPaper(examPaper, examPaperQuestions);
 
         // 使用JObject/JArray构建表单
         var formItems = new JArray();
@@ -379,7 +382,7 @@ public class ExamPapersController : ApiControllerBase
         formItems.Add(headerInfo);
 
         // 按题型分组题目
-        var questionsByType = examPaper.Questions
+        var questionsByType = examPaperQuestions
             .GroupBy(q => q.Type.ToString())
             .ToDictionary(g => g.Key, g => g.ToList());
 

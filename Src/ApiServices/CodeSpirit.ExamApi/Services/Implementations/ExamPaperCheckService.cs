@@ -14,8 +14,9 @@ public class ExamPaperCheckService : IExamPaperCheckService, IScopedDependency
     /// 验证试卷和题目
     /// </summary>
     /// <param name="examPaper">试卷DTO</param>
+    /// <param name="questions">题目列表</param>
     /// <returns>验证结果</returns>
-    public ExamPaperCheckResult ValidateExamPaper(ExamPaperDto examPaper)
+    public ExamPaperCheckResult ValidateExamPaper(ExamPaperDto examPaper, List<ExamPaperQuestionDto> questions)
     {
         var result = new ExamPaperCheckResult
         {
@@ -26,7 +27,7 @@ public class ExamPaperCheckService : IExamPaperCheckService, IScopedDependency
         var questionContents = new Dictionary<string, List<int>>(); // 用于检测题目重复
         int questionIndex = 1;
 
-        foreach (var question in examPaper.Questions)
+        foreach (var question in questions)
         {
             var questionValidation = new QuestionCheckResult
             {
@@ -80,7 +81,7 @@ public class ExamPaperCheckService : IExamPaperCheckService, IScopedDependency
         }
 
         // 检查题目数量
-        var totalQuestions = examPaper.Questions.Count;
+        var totalQuestions = questions.Count;
         if (totalQuestions != 100 && totalQuestions != 120)
         {
             result.PaperWarnings.Add($"试卷题目数量为 {totalQuestions} 题，建议设置为100题或120题");

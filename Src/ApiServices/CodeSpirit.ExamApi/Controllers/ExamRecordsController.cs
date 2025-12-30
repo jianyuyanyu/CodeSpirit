@@ -165,12 +165,15 @@ public class ExamRecordsController : ApiControllerBase
             return NotFound("试卷不存在");
         }
 
+        // 获取试卷题目列表
+        var examPaperQuestions = await _examPaperService.GetExamPaperQuestionsAsync(preview.ExamPaperId);
+
         // 创建题目字典，以QuestionId为键，包含OrderNumber（答卷中的题目顺序）
         var questionOrderDict = preview.Answers
             .ToDictionary(a => a.QuestionId, a => a.OrderNumber);
         
         // 创建题目信息字典，以QuestionId为键
-        var questionInfoDict = examPaper.Questions
+        var questionInfoDict = examPaperQuestions
             .ToDictionary(q => q.QuestionId, q => q);
 
         // 按照答卷的题目顺序排序题目列表

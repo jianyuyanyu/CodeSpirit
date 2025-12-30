@@ -68,5 +68,11 @@ public class SharedAvailableExamDto
     /// </summary>
     [DisplayName("无组限制")]
     public bool IsOpenToAll { get; set; }
+    
+    /// <summary>
+    /// 允许的考试次数（0表示不限制）
+    /// </summary>
+    [DisplayName("允许考试次数")]
+    public int AllowedAttempts { get; set; }
 }
 

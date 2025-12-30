@@ -1,5 +1,7 @@
 using AutoMapper;
+using CodeSpirit.Caching.Abstractions;
 using CodeSpirit.Core.DependencyInjection;
+using CodeSpirit.ExamApi.Caching;
 using CodeSpirit.ExamApi.Data.Models;
 using CodeSpirit.ExamApi.Data.Models.Enums;
 using CodeSpirit.ExamApi.Dtos.Client;
@@ -27,6 +29,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     private readonly ILogger<ExamSettingService> _logger;
     private readonly ExamDbContext _context;
     private readonly IExamCacheService _examCacheService;
+    private readonly ICacheService _cacheService;
 
     /// <summary>
     /// 构造函数
@@ -39,6 +42,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
     /// <param name="logger">日志记录器</param>
     /// <param name="context">数据库上下文</param>
     /// <param name="examCacheService">考试缓存服务</param>
+    /// <param name="cacheService">缓存服务</param>
     public ExamSettingService(
         IRepository<ExamSetting> repository,
         IRepository<ExamPaper> examPaperRepository,
@@ -47,7 +51,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         IMapper mapper,
         ILogger<ExamSettingService> logger,
         ExamDbContext context,
-        IExamCacheService examCacheService)
+        IExamCacheService examCacheService,
+        ICacheService cacheService)
         : base(repository, mapper)
     {
         _repository = repository;
@@ -58,6 +63,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
         _logger = logger;
         _context = context;
         _examCacheService = examCacheService;
+        _cacheService = cacheService;
     }
 
     /// <summary>
@@ -595,10 +601,28 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                 return new List<ClientExamDto>();
             }
 
-            // ✅ 第4步：在内存中根据考试时间判断状态（开始考试时会有专门的判断逻辑）
+            // ✅ 第4步：在内存中根据考试时间和已完成次数过滤（开始考试时会有专门的判断逻辑）
             var now = DateTime.UtcNow;
-            var result = filteredExams.Select(e =>
+            var result = new List<ClientExamDto>();
+            
+            foreach (var e in filteredExams)
             {
+                // ✅ 检查已完成次数（如果有次数限制）
+                if (e.AllowedAttempts > 0)
+                {
+                    var completedCountCacheKey = new ExamCacheOptions.CompletedExamCount(e.Id, studentId);
+                    int? completedCountValue = await _cacheService.GetAsync<int>(completedCountCacheKey.Key);
+                    var completedCount = completedCountValue ?? 0;
+                    
+                    // 如果已达到次数上限，跳过该考试
+                    if (completedCount >= e.AllowedAttempts)
+                    {
+                        _logger.LogWarning("学生已达考试次数上限，跳过: ExamId={ExamId}, StudentId={StudentId}, CompletedCount={CompletedCount}, AllowedAttempts={AllowedAttempts}", 
+                            e.Id, studentId, completedCount, e.AllowedAttempts);
+                        continue;
+                    }
+                }
+                
                 // 根据考试时间确定状态
                 string status;
                 if (e.StartTime <= now && e.EndTime >= now)
@@ -614,7 +638,7 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                     status = "已结束";
                 }
 
-                return new ClientExamDto
+                result.Add(new ClientExamDto
                 {
                     Id = e.Id,
                     Name = e.Name,
@@ -625,8 +649,8 @@ public class ExamSettingService : BaseCRUDService<ExamSetting, ExamSettingDto, l
                     TotalScore = e.TotalScore,
                     Status = status,
                     HasResult = false // 开始考试时会进行详细判断
-                };
-            }).ToList();
+                });
+            }
 
             _logger.LogInformation("成功获取学生可参加的考试列表，考试数量: {Count}, StudentId={StudentId}", result.Count, studentId);
             return result;

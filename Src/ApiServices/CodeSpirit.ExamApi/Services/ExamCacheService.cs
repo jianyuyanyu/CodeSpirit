@@ -1083,6 +1083,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                     e.StartTime,
                     e.EndTime,
                     e.Duration,
+                    e.AllowedAttempts,
                     TotalScore = e.ExamPaper != null ? e.ExamPaper.TotalScore : 0,
                     // 获取考生组ID列表
                     StudentGroupIds = e.StudentGroups.Select(sg => sg.StudentGroupId).ToList()
@@ -1099,6 +1100,7 @@ public class ExamCacheService : IExamCacheService, IScopedDependency
                 EndTime = e.EndTime,
                 Duration = e.Duration,
                 TotalScore = e.TotalScore,
+                AllowedAttempts = e.AllowedAttempts,
                 StudentGroupIds = e.StudentGroupIds,
                 IsOpenToAll = !e.StudentGroupIds.Any() // 如果没有考生组限制，则对所有人开放
             }).ToList();

@@ -1146,7 +1146,7 @@ The system provides standardized interfaces to support docking with the followin
 
 If you need technical support or have any questions, please contact us through the following methods:
 
-- **Project Repository**: https://github.com/codespirit/code-spirit
+- **Project Repository**: https://github.com/xin-lai/CodeSpirit
 - **Issue Feedback**: Submit issues on GitHub
 - **Documentation Contribution**: Welcome to submit Pull Requests to improve documentation
 

@@ -7,6 +7,7 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.ScheduledTasks.Models;
 using CodeSpirit.ScheduledTasks.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Http.Headers;
 
 namespace CodeSpirit.Web.Controllers;
 
@@ -14,12 +15,14 @@ namespace CodeSpirit.Web.Controllers;
 /// 定时任务管理控制器
 /// </summary>
 [DisplayName("定时任务")]
-[Navigation(Icon = "fa-solid fa-clock", PlatformType = PlatformType.Tenant)]
+[Navigation(Icon = "fa-solid fa-clock", PlatformType = PlatformType.System)]
 public class ScheduledTasksController : ApiControllerBase
 {
     private readonly IScheduledTaskService _taskService;
     private readonly IScheduledTaskQueryService _queryService;
     private readonly ITaskExecutor _taskExecutor;
+    private readonly ITaskHandlerRegistry _registry;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ScheduledTasksController> _logger;
 
     /// <summary>
@@ -28,16 +31,22 @@ public class ScheduledTasksController : ApiControllerBase
     /// <param name="taskService">任务服务</param>
     /// <param name="queryService">查询服务</param>
     /// <param name="taskExecutor">任务执行器</param>
+    /// <param name="registry">任务注册表</param>
+    /// <param name="httpClientFactory">HTTP客户端工厂</param>
     /// <param name="logger">日志记录器</param>
     public ScheduledTasksController(
         IScheduledTaskService taskService,
         IScheduledTaskQueryService queryService,
         ITaskExecutor taskExecutor,
+        ITaskHandlerRegistry registry,
+        IHttpClientFactory httpClientFactory,
         ILogger<ScheduledTasksController> logger)
     {
         _taskService = taskService;
         _queryService = queryService;
         _taskExecutor = taskExecutor;
+        _registry = registry;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -127,30 +136,30 @@ public class ScheduledTasksController : ApiControllerBase
         }
     }
 
-    /// <summary>
-    /// 删除定时任务
-    /// </summary>
-    /// <param name="id">任务ID</param>
-    /// <returns>删除结果</returns>
-    [HttpDelete("{id}")]
-    [DisplayName("删除任务")]
-    public async Task<ActionResult<ApiResponse>> DeleteTask(string id)
-    {
-        try
-        {
-            var success = await _taskService.DeleteTaskAsync(id);
-            if (!success)
-            {
-                return NotFound(ApiResponse.Error(404, "任务不存在"));
-            }
+    // /// <summary>
+    // /// 删除定时任务
+    // /// </summary>
+    // /// <param name="id">任务ID</param>
+    // /// <returns>删除结果</returns>
+    // [HttpDelete("{id}")]
+    // [DisplayName("删除任务")]
+    // public async Task<ActionResult<ApiResponse>> DeleteTask(string id)
+    // {
+    //     try
+    //     {
+    //         var success = await _taskService.DeleteTaskAsync(id);
+    //         if (!success)
+    //         {
+    //             return NotFound(ApiResponse.Error(404, "任务不存在"));
+    //         }
 
-            return Ok(ApiResponse.Success("任务删除成功"));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse.Error(400, ex.Message));
-        }
-    }
+    //         return Ok(ApiResponse.Success("任务删除成功"));
+    //     }
+    //     catch (InvalidOperationException ex)
+    //     {
+    //         return BadRequest(ApiResponse.Error(400, ex.Message));
+    //     }
+    // }
 
     /// <summary>
     /// 启用定时任务
@@ -202,12 +211,58 @@ public class ScheduledTasksController : ApiControllerBase
     {
         try
         {
-            var executionId = await _taskService.TriggerTaskAsync(id);
-            return Ok(ApiResponse<object>.Success(new { executionId }, "任务触发成功"));
+            // 1. 查询任务所属服务
+            var serviceName = await _registry.GetTaskServiceNameAsync(id);
+            
+            if (string.IsNullOrEmpty(serviceName))
+            {
+                _logger.LogWarning("无法确定任务所属服务 - TaskId: {TaskId}", id);
+                return BadRequest(ApiResponse.Error(400, "无法确定任务所属服务"));
+            }
+            
+            // 2. 获取当前用户的 JWT Token
+            var authHeader = Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                return Unauthorized(ApiResponse.Error(401, "未提供有效的认证令牌"));
+            }
+            
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+            
+            // 3. 构建执行端点 URL（通过 Aspire 服务发现）
+            var serviceUrl = $"http://{serviceName}";
+            var executeUrl = $"{serviceUrl}/api/scheduled-tasks/execute/{id}";
+            
+            _logger.LogInformation("🚀 触发任务执行 - TaskId: {TaskId}, ServiceName: {ServiceName}, Url: {Url}, UserId: {UserId}", 
+                id, serviceName, executeUrl, User.FindFirst("id")?.Value ?? "unknown");
+            
+            // 4. 使用 HttpClient 调用（传递 JWT Token）
+            var httpClient = _httpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Authorization = 
+                new AuthenticationHeaderValue("Bearer", token);
+            
+            var response = await httpClient.PostAsync(executeUrl, null);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            
+            // 5. 返回结果
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("✅ 任务触发成功 - TaskId: {TaskId}, ServiceName: {ServiceName}, UserId: {UserId}", 
+                    id, serviceName, User.FindFirst("id")?.Value ?? "unknown");
+                return Ok(ApiResponse.Success("任务触发成功"));
+            }
+            else
+            {
+                _logger.LogWarning("❌ 任务触发失败 - TaskId: {TaskId}, ServiceName: {ServiceName}, StatusCode: {StatusCode}, Response: {Response}, UserId: {UserId}", 
+                    id, serviceName, response.StatusCode, responseContent, User.FindFirst("id")?.Value ?? "unknown");
+                return StatusCode((int)response.StatusCode, 
+                    ApiResponse.Error((int)response.StatusCode, $"任务触发失败: {responseContent}"));
+            }
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return BadRequest(ApiResponse.Error(400, ex.Message));
+            _logger.LogError(ex, "触发任务执行异常 - TaskId: {TaskId}", id);
+            return StatusCode(500, ApiResponse.Error(500, $"任务触发失败: {ex.Message}"));
         }
     }
 

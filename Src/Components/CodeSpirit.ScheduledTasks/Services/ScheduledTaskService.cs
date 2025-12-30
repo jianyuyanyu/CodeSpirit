@@ -15,6 +15,7 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
 {
     private readonly ICacheService _cacheService;
     private readonly ITaskExecutor _taskExecutor;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ScheduledTaskService> _logger;
     private readonly ScheduledTasksOptions _options;
 
@@ -23,16 +24,19 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
     /// </summary>
     /// <param name="cacheService">缓存服务</param>
     /// <param name="taskExecutor">任务执行器</param>
+    /// <param name="serviceProvider">服务提供者</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="options">配置选项</param>
     public ScheduledTaskService(
         ICacheService cacheService,
         ITaskExecutor taskExecutor,
+        IServiceProvider serviceProvider,
         ILogger<ScheduledTaskService> logger,
         IOptions<ScheduledTasksOptions> options)
     {
         _cacheService = cacheService;
         _taskExecutor = taskExecutor;
+        _serviceProvider = serviceProvider;
         _logger = logger;
         _options = options.Value;
     }
@@ -265,9 +269,10 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             throw new InvalidOperationException("任务正在执行中，无法重复触发");
         }
 
+        // 执行任务
         var execution = await _taskExecutor.ExecuteAsync(task, cancellationToken);
 
-        _logger.LogInformation("手动触发任务执行 - TaskId: {TaskId}, ExecutionId: {ExecutionId}", taskId, execution.Id);
+        _logger.LogInformation("手动触发任务执行成功 - TaskId: {TaskId}, ExecutionId: {ExecutionId}", taskId, execution.Id);
 
         return execution.Id;
     }
@@ -311,6 +316,17 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
     public async Task<int> LoadTasksFromConfigurationAsync(CancellationToken cancellationToken = default)
     {
         var loadedCount = 0;
+        
+        // 获取注册表服务（如果可用）
+        ITaskHandlerRegistry? registry = null;
+        try
+        {
+            registry = _serviceProvider.GetService<ITaskHandlerRegistry>();
+        }
+        catch
+        {
+            // 注册表可能未注册，忽略
+        }
 
         foreach (var taskDefinition in _options.Tasks)
         {
@@ -330,6 +346,12 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
 
                 await UpdateNextExecuteTimeInternalAsync(task);
                 await SaveTaskAsync(task);
+                
+                // ✅ 注册任务所属服务
+                if (registry != null && !string.IsNullOrEmpty(_options.ServiceName))
+                {
+                    await registry.RegisterTaskServiceAsync(task.Id, _options.ServiceName, cancellationToken);
+                }
                 
                 loadedCount++;
                 

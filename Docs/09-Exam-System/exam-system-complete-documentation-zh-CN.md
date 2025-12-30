@@ -1104,7 +1104,7 @@ graph TD
 
 如需技术支持或有任何疑问，请通过以下方式联系我们：
 
-- **项目仓库**：https://github.com/codespirit/code-spirit
+- **项目仓库**：https://github.com/xin-lai/CodeSpirit
 - **问题反馈**：在 GitHub 提交 Issue
 - **文档贡献**：欢迎提交 Pull Request 改进文档
 

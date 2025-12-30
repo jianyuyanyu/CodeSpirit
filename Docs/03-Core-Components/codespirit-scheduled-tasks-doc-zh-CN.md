@@ -14,63 +14,95 @@ CodeSpirit.ScheduledTasks 是一个基于分布式缓存的定时任务组件，
 ## 核心特性
 
 - ✅ **基于缓存存储**: 使用Redis分布式缓存，无需数据库
+- ✅ **去中心化架构**: 每个微服务独立管理自己的任务，通过HTTP端点支持跨服务触发
 - ✅ **分布式执行**: 利用分布式锁确保多实例环境下任务不重复执行
 - ✅ **超时终止**: 支持任务执行超时自动终止机制
 - ✅ **多种任务类型**: 支持Cron表达式定时任务和延迟任务
 - ✅ **配置文件定义**: 支持通过appsettings.json预定义任务
 - ✅ **查询服务**: 提供专门的查询服务接口
 - ✅ **AMIS管理界面**: 在Web项目中集成管理界面
+- ✅ **JWT认证**: Web UI触发任务时使用JWT认证，复用现有认证体系
+- ✅ **服务发现**: 自动注册任务处理器，支持动态服务发现
 
 ## 架构设计
 
-### 整体架构
+### 整体架构（去中心化）
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Web UI        │    │   API Services  │    │   Background    │
-│   (AMIS)        │    │                 │    │   Services      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-         ┌─────────────────────────────────────────────────┐
-         │           Core Services Layer                   │
-         │  ┌─────────────────┐  ┌─────────────────┐      │
-         │  │ TaskService     │  │ QueryService    │      │
-         │  └─────────────────┘  └─────────────────┘      │
-         │  ┌─────────────────┐  ┌─────────────────┐      │
-         │  │ TaskExecutor    │  │ TaskScheduler   │      │
-         │  └─────────────────┘  └─────────────────┘      │
-         └─────────────────────────────────────────────────┘
-                                 │
-         ┌─────────────────────────────────────────────────┐
-         │           Infrastructure Layer                  │
-         │  ┌─────────────────┐  ┌─────────────────┐      │
-         │  │ Cache Service   │  │ Lock Provider   │      │
-         │  └─────────────────┘  └─────────────────┘      │
-         └─────────────────────────────────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │     Redis       │
-                    │   (Cache/Lock)  │
-                    └─────────────────┘
+┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
+│   Web UI        │         │   ExamApi       │         │   OtherApi      │
+│   (AMIS)        │         │                 │         │                 │
+└─────────────────┘         └─────────────────┘         └─────────────────┘
+       │                            │                            │
+       │  1. 查询任务所属服务        │                            │
+       │  (TaskHandlerRegistry)     │                            │
+       ├────────────────────────────┼────────────────────────────┤
+       │                            │                            │
+       │  2. HTTP调用执行端点        │                            │
+       │  POST /api/scheduled-tasks │                            │
+       │  /execute/{taskId}         │                            │
+       │  (JWT认证)                 │                            │
+       │                            │                            │
+       │  3. 执行任务               │                            │
+       │  (TaskExecutor)            │                            │
+       │                            │                            │
+       │  后台服务                  │  后台服务                  │
+       │  (ScheduledTaskBackground) │  (ScheduledTaskBackground) │
+       │  扫描本服务任务            │  扫描本服务任务            │
+       │  自动执行                  │  自动执行                  │
+       │                            │                            │
+       └────────────────────────────┴────────────────────────────┘
+                            │
+                    ┌───────┴────────┐
+                    │  Redis Cache   │
+                    │  - 任务注册表   │
+                    │  - 任务定义     │
+                    │  - 执行历史     │
+                    │  - 分布式锁     │
+                    └────────────────┘
 ```
+
+### 去中心化设计优势
+
+1. **服务自治**：每个服务独立管理自己的任务，无需中央协调
+2. **无单点故障**：没有中央调度器，服务故障不影响其他服务
+3. **性能优化**：每个服务只扫描自己的任务，减少Redis查询
+4. **易于扩展**：新增服务只需配置ServiceName，无需修改其他服务
+5. **简化维护**：代码更清晰，职责更明确
 
 ![image-20251022212037710](../../Res/image-20251022212037710.png)
 
 ### 核心组件
 
-#### 任务调度器 (TaskScheduler)
-- 扫描待执行任务
+#### 任务注册表 (ITaskHandlerRegistry)
+- 存储任务处理器与服务名的映射关系
+- 支持查询任务所属服务
+- 基于Redis实现，支持分布式环境
+- 服务启动时自动注册任务处理器
+
+#### 任务执行端点 (ScheduledTaskExecutionController)
+- 提供统一的HTTP执行端点：`POST /api/scheduled-tasks/execute/{taskId}`
+- 使用JWT认证，复用现有认证体系
+- 验证任务归属，确保安全执行
+- 每个服务都提供此端点，供Web UI调用
+
+#### 任务处理器注册服务 (TaskHandlerRegistrationService)
+- 服务启动时自动扫描并注册任务处理器
+- 将任务与服务的映射关系写入Redis
+- 支持动态服务发现
+
+#### 任务调度器 (ScheduledTaskBackgroundService)
+- 扫描待执行任务（只扫描本服务的任务）
 - 管理任务执行队列
 - 处理任务超时
-- 基于时间轮算法的高效调度
+- 为每个任务创建独立的作用域，确保Scoped服务正确解析
 
 #### 任务执行器 (TaskExecutor)
 - 执行具体任务
 - 管理执行上下文
 - 处理异常和超时
 - 支持并发执行和优雅终止
+- 从正确的作用域中解析任务处理器和依赖服务
 
 #### 分布式锁提供者 (IDistributedLockProvider)
 - 提供分布式锁机制
@@ -85,10 +117,12 @@ CodeSpirit.ScheduledTasks 是一个基于分布式缓存的定时任务组件，
 ### 数据存储结构
 
 ```
-CodeSpirit:ScheduledTasks:Tasks:{TaskId}        -> 任务定义
-CodeSpirit:ScheduledTasks:Executions:{ExecId}   -> 执行记录
-CodeSpirit:ScheduledTasks:Index:Active          -> 活跃任务索引
-CodeSpirit:ScheduledTasks:Lock:{TaskId}         -> 分布式锁
+CodeSpirit:ScheduledTasks:Tasks:{TaskId}              -> 任务定义
+CodeSpirit:ScheduledTasks:Executions:{ExecId}         -> 执行记录
+CodeSpirit:ScheduledTasks:Index:Active                -> 活跃任务索引
+CodeSpirit:ScheduledTasks:Lock:{TaskId}               -> 分布式锁
+CodeSpirit:ScheduledTasks:Registry:{ServiceName}      -> 服务任务处理器列表（新增）
+CodeSpirit:ScheduledTasks:TaskService:{TaskId}        -> 任务所属服务映射（新增）
 ```
 
 ## 快速开始
@@ -98,8 +132,17 @@ CodeSpirit:ScheduledTasks:Lock:{TaskId}         -> 分布式锁
 在 `Program.cs` 中注册服务：
 
 ```csharp
+// 添加定时任务服务（需要指定服务名称，用于任务注册和服务发现）
 builder.Services.AddCodeSpiritScheduledTasks(builder.Configuration, "YourServiceName");
+
+// 注册任务处理器（自动注册到任务注册表）
+builder.Services.AddTaskHandler<YourTaskHandler>();
 ```
+
+**重要说明**：
+- `ServiceName` 参数用于标识当前服务，任务处理器会自动注册到该服务名下
+- 每个服务只执行属于自己服务的任务
+- Web UI 通过查询任务注册表找到任务所属服务，然后调用该服务的执行端点
 
 ### 2. 配置选项
 
@@ -109,6 +152,7 @@ builder.Services.AddCodeSpiritScheduledTasks(builder.Configuration, "YourService
 {
   "ScheduledTasks": {
     "Enabled": true,
+    "ServiceName": "your-service",  // ✅ 必填：服务名称，用于任务注册和服务发现
     "DefaultTimeout": "00:30:00",
     "MaxConcurrentTasks": 10,
     "TaskCleanupInterval": "01:00:00",
@@ -122,12 +166,17 @@ builder.Services.AddCodeSpiritScheduledTasks(builder.Configuration, "YourService
         "CronExpression": "0 2 * * *",
         "Timeout": "00:15:00",
         "Enabled": true,
-        "HandlerType": "YourApp.Tasks.DailyCleanupTaskHandler"
+        "HandlerType": "YourApp.Tasks.DailyCleanupTaskHandler"  // ✅ 只需类型名称，无需程序集名称
       }
     ]
   }
 }
 ```
+
+**配置说明**：
+- `ServiceName`：必填，用于标识当前服务，任务会自动注册到该服务名下
+- `HandlerType`：只需类型名称（如 `YourApp.Tasks.DailyCleanupTaskHandler`），无需包含程序集名称
+- `Parameters`：JSON字符串格式，任务处理器中需要自行反序列化
 
 ### 3. 创建任务处理器
 
@@ -136,16 +185,33 @@ builder.Services.AddCodeSpiritScheduledTasks(builder.Configuration, "YourService
 ```csharp
 public class DailyCleanupTaskHandler : ITaskHandler
 {
+    private readonly ExamDbContext _dbContext;
     private readonly ILogger<DailyCleanupTaskHandler> _logger;
 
-    public async Task ExecuteAsync(TaskExecutionContext context, CancellationToken cancellationToken)
+    public DailyCleanupTaskHandler(
+        ExamDbContext dbContext,
+        ILogger<DailyCleanupTaskHandler> logger)
+    {
+        _dbContext = dbContext;
+        _logger = logger;
+    }
+
+    public async Task<string?> ExecuteAsync(string? parameters, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("开始执行清理任务");
         
         // 实现任务逻辑
+        // 注意：DbContext等Scoped服务会自动从正确的作用域中解析
         await DoCleanupAsync(cancellationToken);
         
         _logger.LogInformation("清理任务执行完成");
+        return "清理任务执行成功";
+    }
+
+    private async Task DoCleanupAsync(CancellationToken cancellationToken)
+    {
+        // 任务逻辑实现
+        await Task.CompletedTask;
     }
 }
 ```
@@ -153,8 +219,17 @@ public class DailyCleanupTaskHandler : ITaskHandler
 注册处理器：
 
 ```csharp
+// ✅ 使用 AddTaskHandler 扩展方法注册（推荐）
+builder.Services.AddTaskHandler<DailyCleanupTaskHandler>();
+
+// 或者手动注册（不推荐）
 builder.Services.AddScoped<DailyCleanupTaskHandler>();
 ```
+
+**重要提示**：
+- 任务处理器会自动注册到任务注册表
+- 使用 `AddTaskHandler<T>()` 可以确保处理器正确注册
+- 任务处理器中注入的 `DbContext` 等 Scoped 服务会自动从正确的作用域中解析
 
 ## 核心概念
 
@@ -216,12 +291,57 @@ Task<ScheduledTask?> GetTaskAsync(string taskId);
 // 任务控制
 Task<bool> EnableTaskAsync(string taskId);
 Task<bool> DisableTaskAsync(string taskId);
-Task<string> TriggerTaskAsync(string taskId);
+Task<string> TriggerTaskAsync(string taskId);  // Web UI会自动查询任务所属服务并调用对应端点
 Task<bool> CancelExecutionAsync(string executionId);
 
 // 配置管理
-Task<int> LoadTasksFromConfigurationAsync();
+Task<int> LoadTasksFromConfigurationAsync();  // 自动注册任务到当前服务
 ```
+
+### ITaskHandlerRegistry（任务注册表）
+
+```csharp
+// 注册任务处理器
+Task RegisterHandlersAsync(string serviceName, IEnumerable<string> handlerTypes);
+
+// 注册任务所属服务
+Task RegisterTaskServiceAsync(string taskId, string serviceName);
+
+// 查询任务所属服务
+Task<string?> GetTaskServiceNameAsync(string taskId);
+
+// 检查任务是否属于服务
+Task<bool> IsTaskOwnedByServiceAsync(string taskId, string serviceName);
+
+// 获取服务的任务处理器列表
+Task<List<string>> GetServiceHandlersAsync(string serviceName);
+```
+
+### HTTP执行端点
+
+每个服务都提供了统一的执行端点，供Web UI或其他服务调用：
+
+```http
+POST /api/scheduled-tasks/execute/{taskId}
+Authorization: Bearer {JWT_TOKEN}
+```
+
+**响应示例**：
+```json
+{
+  "status": 0,
+  "message": "任务已成功触发执行",
+  "data": {
+    "executionId": "guid-string"
+  }
+}
+```
+
+**错误响应**：
+- `404`：任务不存在
+- `400`：任务不属于当前服务 或 任务正在执行中
+- `401`：未提供有效的认证令牌
+- `500`：任务执行异常
 
 ### IScheduledTaskQueryService（查询服务）
 
@@ -345,12 +465,17 @@ Task<TaskStatistics> GetTaskStatisticsAsync();
 - Cron表达式错误
 - 任务处理器类型配置错误
 - 分布式锁被其他实例持有
+- ServiceName未配置或配置错误
+- 任务未注册到当前服务
 
 **排查步骤**:
 1. 检查任务状态是否为 Enabled
 2. 验证Cron表达式是否正确
-3. 确认任务处理器类型是否注册
-4. 检查日志中的锁获取信息
+3. 确认任务处理器类型是否注册（使用 `AddTaskHandler<T>`）
+4. 检查 `ServiceName` 配置是否正确
+5. 验证任务是否已注册到当前服务（查看Redis中的注册表）
+6. 检查日志中的锁获取信息
+7. 查看任务注册服务的日志，确认处理器注册成功
 
 #### 任务重复执行
 **可能原因**:
@@ -420,9 +545,14 @@ Src/Components/CodeSpirit.ScheduledTasks/
 │   ├── IScheduledTaskQueryService.cs
 │   ├── ScheduledTaskQueryService.cs
 │   ├── ITaskExecutor.cs
-│   └── TaskExecutor.cs
+│   ├── TaskExecutor.cs
+│   ├── ITaskHandlerRegistry.cs      # ✅ 任务注册表接口（新增）
+│   └── TaskHandlerRegistry.cs       # ✅ 任务注册表实现（新增）
 ├── Background/                       # 后台服务
-│   └── ScheduledTaskBackgroundService.cs
+│   ├── ScheduledTaskBackgroundService.cs
+│   └── TaskHandlerRegistrationService.cs  # ✅ 任务处理器注册服务（新增）
+├── Controllers/                      # API控制器
+│   └── ScheduledTaskExecutionController.cs # ✅ 统一执行端点（新增）
 ├── Extensions/                       # 扩展方法
 │   └── ServiceCollectionExtensions.cs
 └── Helpers/                         # 辅助类
@@ -446,6 +576,8 @@ dotnet test Tests/Components/CodeSpirit.ScheduledTasks.Tests/
 - ✅ 分布式锁测试
 - ✅ 配置加载测试
 - ✅ 并发执行测试
+- ✅ 任务注册表测试（新增）
+- ✅ 执行端点控制器测试（新增）
 
 ## 依赖组件
 
@@ -462,10 +594,14 @@ dotnet test Tests/Components/CodeSpirit.ScheduledTasks.Tests/
 
 ### 已实现功能
 - ✅ 核心数据模型和服务
+- ✅ 去中心化架构（每个服务独立管理任务）
 - ✅ 分布式任务调度
 - ✅ Cron表达式和延迟任务支持
 - ✅ 超时控制和取消机制
-- ✅ Web管理界面
+- ✅ Web管理界面（支持跨服务触发）
+- ✅ HTTP执行端点（JWT认证）
+- ✅ 任务处理器自动注册
+- ✅ 服务发现机制
 - ✅ 单元测试覆盖
 - ✅ 完整文档
 
@@ -477,6 +613,8 @@ dotnet test Tests/Components/CodeSpirit.ScheduledTasks.Tests/
 - 🔄 任务工作流支持
 - 🔄 动态任务参数传递
 - 🔄 可视化任务编辑器
+- 🔄 任务执行链路追踪
+- 🔄 更完善的服务发现机制
 
 ## 部署建议
 

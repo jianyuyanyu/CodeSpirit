@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System;
 using Xunit;
 using TaskStatus = CodeSpirit.ScheduledTasks.Models.TaskStatus;
 
@@ -39,9 +40,14 @@ public class ScheduledTaskServiceTests
         var optionsMock = new Mock<IOptions<ScheduledTasksOptions>>();
         optionsMock.Setup(x => x.Value).Returns(_options);
 
+        var mockServiceProvider = new Mock<IServiceProvider>();
+        mockServiceProvider.Setup(x => x.GetService(typeof(ITaskHandlerRegistry)))
+            .Returns((ITaskHandlerRegistry?)null);
+
         _service = new ScheduledTaskService(
             _mockCacheService.Object,
             _mockTaskExecutor.Object,
+            mockServiceProvider.Object,
             _mockLogger.Object,
             optionsMock.Object);
     }

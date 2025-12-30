@@ -7,12 +7,15 @@ CodeSpirit.ScheduledTasks 是一个基于缓存的分布式定时任务组件，
 ## 核心特性
 
 - **基于缓存存储**：使用Redis分布式缓存存储任务信息，无需数据库依赖
+- **去中心化架构**：每个微服务独立管理自己的任务，通过HTTP端点支持跨服务触发
 - **分布式执行**：利用分布式锁确保多实例环境下任务不重复执行
 - **超时终止**：支持任务执行超时自动终止机制
 - **多种任务类型**：支持Cron表达式定时任务、延迟任务和一次性任务
 - **配置文件定义**：支持通过appsettings.json预定义任务
 - **查询服务**：提供专门的查询服务接口
 - **AMIS管理界面**：在Web项目中集成管理界面
+- **JWT认证**：Web UI触发任务时使用JWT认证，复用现有认证体系
+- **服务发现**：自动注册任务处理器，支持动态服务发现
 
 ## 快速开始
 
@@ -29,13 +32,18 @@ CodeSpirit.ScheduledTasks 是一个基于缓存的分布式定时任务组件，
 在 `Program.cs` 中注册定时任务服务：
 
 ```csharp
-// 添加定时任务服务
+// 添加定时任务服务（需要指定服务名称，用于服务发现）
 builder.Services.AddCodeSpiritScheduledTasks(builder.Configuration, "YourServiceName");
 
-// 注册任务处理器
+// 注册任务处理器（自动注册到任务注册表）
 builder.Services.AddTaskHandler<SampleTaskHandler>();
 builder.Services.AddTaskHandler<DataCleanupTaskHandler>();
 ```
+
+**重要说明**：
+- `ServiceName` 参数用于标识当前服务，任务处理器会自动注册到该服务名下
+- 每个服务只执行属于自己服务的任务
+- Web UI 通过查询任务注册表找到任务所属服务，然后调用该服务的执行端点
 
 ### 3. 配置选项
 
@@ -45,9 +53,12 @@ builder.Services.AddTaskHandler<DataCleanupTaskHandler>();
 {
   "ScheduledTasks": {
     "Enabled": true,
+    "ServiceName": "your-service",  // ✅ 必填：服务名称，用于任务注册和服务发现
     "DefaultTimeout": "00:30:00",
     "MaxConcurrentTasks": 10,
     "ScanInterval": "00:00:30",
+    "TaskCleanupInterval": "01:00:00",
+    "ExecutionHistoryRetention": "7.00:00:00",
     "Tasks": [
       {
         "Id": "sample-task",
@@ -56,10 +67,8 @@ builder.Services.AddTaskHandler<DataCleanupTaskHandler>();
         "Type": "Cron",
         "CronExpression": "0 */5 * * * *",
         "Enabled": true,
-        "HandlerType": "CodeSpirit.ScheduledTasks.Examples.SampleTaskHandler",
-        "Parameters": {
-          "message": "Hello from scheduled task!"
-        }
+        "HandlerType": "YourApp.Tasks.SampleTaskHandler",  // ✅ 只需类型名称，无需程序集名称
+        "Parameters": "{\"message\": \"Hello from scheduled task!\"}"
       },
       {
         "Id": "cleanup-task",
@@ -68,16 +77,19 @@ builder.Services.AddTaskHandler<DataCleanupTaskHandler>();
         "Type": "Cron",
         "CronExpression": "0 0 2 * * *",
         "Enabled": true,
-        "HandlerType": "CodeSpirit.ScheduledTasks.Examples.DataCleanupTaskHandler",
+        "HandlerType": "YourApp.Tasks.DataCleanupTaskHandler",
         "Timeout": "01:00:00",
-        "Parameters": {
-          "cleanupDays": 30
-        }
+        "Parameters": "{\"cleanupDays\": 30}"
       }
     ]
   }
 }
 ```
+
+**配置说明**：
+- `ServiceName`：必填，用于标识当前服务，任务会自动注册到该服务名下
+- `HandlerType`：只需类型名称（如 `YourApp.Tasks.SampleTaskHandler`），无需包含程序集名称
+- `Parameters`：JSON字符串格式，任务处理器中需要自行反序列化
 
 ## 任务类型
 
@@ -209,6 +221,60 @@ public class MyTaskParameters
 }
 ```
 
+## 架构设计
+
+### 去中心化架构
+
+CodeSpirit.ScheduledTasks 采用去中心化架构，每个微服务独立管理自己的任务：
+
+```
+┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
+│   Web UI        │         │   ExamApi       │         │   OtherApi      │
+│   (AMIS)        │         │                 │         │                 │
+└─────────────────┘         └─────────────────┘         └─────────────────┘
+       │                            │                            │
+       │  1. 查询任务所属服务        │                            │
+       ├────────────────────────────┼────────────────────────────┤
+       │                            │                            │
+       │  2. HTTP调用执行端点        │                            │
+       │  POST /api/scheduled-tasks │                            │
+       │  /execute/{taskId}         │                            │
+       │                            │                            │
+       │  3. JWT认证                │                            │
+       │                            │                            │
+       │  4. 执行任务               │                            │
+       │                            │                            │
+       │  后台服务                  │  后台服务                  │
+       │  扫描本服务任务            │  扫描本服务任务            │
+       │  自动执行                  │  自动执行                  │
+       │                            │                            │
+       └────────────────────────────┴────────────────────────────┘
+                            │
+                    ┌───────┴────────┐
+                    │  Redis Cache   │
+                    │  - 任务注册表   │
+                    │  - 任务定义     │
+                    │  - 执行历史     │
+                    └────────────────┘
+```
+
+### 核心组件
+
+#### 任务注册表 (ITaskHandlerRegistry)
+- 存储任务处理器与服务名的映射关系
+- 支持查询任务所属服务
+- 基于Redis实现，支持分布式环境
+
+#### 任务执行端点 (ScheduledTaskExecutionController)
+- 提供统一的HTTP执行端点：`POST /api/scheduled-tasks/execute/{taskId}`
+- 使用JWT认证，复用现有认证体系
+- 验证任务归属，确保安全执行
+
+#### 任务处理器注册服务 (TaskHandlerRegistrationService)
+- 服务启动时自动扫描并注册任务处理器
+- 将任务与服务的映射关系写入Redis
+- 支持动态服务发现
+
 ## 管理API
 
 ### 任务管理
@@ -227,8 +293,28 @@ var success = await taskService.DeleteTaskAsync(taskId);
 await taskService.EnableTaskAsync(taskId);
 await taskService.DisableTaskAsync(taskId);
 
-// 手动触发任务
+// 手动触发任务（Web UI会自动查询任务所属服务并调用对应端点）
 var executionId = await taskService.TriggerTaskAsync(taskId);
+```
+
+### HTTP执行端点
+
+每个服务都提供了统一的执行端点，供Web UI或其他服务调用：
+
+```http
+POST /api/scheduled-tasks/execute/{taskId}
+Authorization: Bearer {JWT_TOKEN}
+```
+
+**响应示例**：
+```json
+{
+  "status": 0,
+  "message": "任务已成功触发执行",
+  "data": {
+    "executionId": "guid-string"
+  }
+}
 ```
 
 ### 查询服务
@@ -277,6 +363,15 @@ CronHelper.Presets.Weekdays;        // 工作日
 ```
 
 ## 分布式支持
+
+### 去中心化执行
+
+每个服务只执行属于自己的任务，天然支持分布式环境：
+
+- **服务自治**：每个服务独立管理自己的任务
+- **自动注册**：服务启动时自动注册任务处理器
+- **服务发现**：通过任务注册表查询任务所属服务
+- **HTTP调用**：Web UI通过HTTP调用对应服务的执行端点
 
 ### 分布式锁
 
@@ -440,9 +535,21 @@ var cpuUsage = metrics.ContainsKey("CpuUsage") ? metrics["CpuUsage"] : null;
    - 考虑拆分长时间任务
 
 4. **处理器未找到**
-   - 确认处理器类型名称正确
-   - 检查处理器是否已注册到DI容器
-   - 验证程序集是否正确加载
+   - 确认处理器类型名称正确（只需类型名称，无需程序集名称）
+   - 检查处理器是否已注册到DI容器（使用 `AddTaskHandler<T>`）
+   - 验证服务名称（ServiceName）是否正确配置
+   - 检查任务注册表（Redis）中是否有该服务的注册信息
+
+5. **任务不属于当前服务**
+   - 确认 `ServiceName` 配置正确
+   - 检查任务是否已注册到当前服务
+   - 验证任务处理器的注册状态
+
+6. **HTTP调用失败**
+   - 检查服务发现配置（Aspire服务发现）
+   - 验证JWT Token是否有效
+   - 确认目标服务是否正常运行
+   - 检查网络连接
 
 ### 调试技巧
 

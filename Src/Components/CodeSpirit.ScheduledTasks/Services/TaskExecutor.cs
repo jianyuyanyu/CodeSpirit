@@ -14,7 +14,7 @@ namespace CodeSpirit.ScheduledTasks.Services;
 /// </summary>
 public class TaskExecutor : ITaskExecutor
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ICacheService _cacheService;
     private readonly IDistributedLockProvider _lockProvider;
     private readonly ILogger<TaskExecutor> _logger;
@@ -28,19 +28,19 @@ public class TaskExecutor : ITaskExecutor
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="serviceProvider">服务提供者</param>
+    /// <param name="serviceScopeFactory">服务作用域工厂（用于创建作用域来解析任务处理器及其依赖）</param>
     /// <param name="cacheService">缓存服务</param>
     /// <param name="lockProvider">分布式锁提供者</param>
     /// <param name="logger">日志记录器</param>
     /// <param name="options">配置选项</param>
     public TaskExecutor(
-        IServiceProvider serviceProvider,
+        IServiceScopeFactory serviceScopeFactory,
         ICacheService cacheService,
         IDistributedLockProvider lockProvider,
         ILogger<TaskExecutor> logger,
         IOptions<ScheduledTasksOptions> options)
     {
-        _serviceProvider = serviceProvider;
+        _serviceScopeFactory = serviceScopeFactory;
         _cacheService = cacheService;
         _lockProvider = lockProvider;
         _logger = logger;
@@ -83,14 +83,21 @@ public class TaskExecutor : ITaskExecutor
 
         try
         {
+            // ✅ 创建新作用域来解析任务处理器
+            // 虽然 TaskExecutor 是从作用域中解析的，但构造函数注入的 IServiceProvider 可能不是作用域的服务提供者
+            // 为了确保 DbContext 等 Scoped 服务从正确的作用域中解析，我们为每次任务执行创建独立的作用域
+            // 这样可以确保任务处理器及其依赖（如 DbContext）在整个任务执行期间都有效
+            using var scope = _serviceScopeFactory.CreateScope();
+            var serviceProvider = scope.ServiceProvider;
+            
             // 分布式锁控制
             if (task.ExecutionStrategy == ExecutionStrategy.Distributed)
             {
-                await ExecuteWithDistributedLockAsync(task, context);
+                await ExecuteWithDistributedLockAsync(task, context, serviceProvider);
             }
             else
             {
-                await ExecuteTaskInternalAsync(task, context);
+                await ExecuteTaskInternalAsync(task, context, serviceProvider);
             }
         }
         catch (Exception ex)
@@ -112,7 +119,8 @@ public class TaskExecutor : ITaskExecutor
     /// </summary>
     /// <param name="task">任务信息</param>
     /// <param name="context">执行上下文</param>
-    private async Task ExecuteWithDistributedLockAsync(ScheduledTask task, TaskExecutionContext context)
+    /// <param name="serviceProvider">服务提供者（从当前作用域获取）</param>
+    private async Task ExecuteWithDistributedLockAsync(ScheduledTask task, TaskExecutionContext context, IServiceProvider serviceProvider)
     {
         var lockKey = $"{_options.CacheKeyPrefix}Lock:{task.Id}";
         var timeout = task.Timeout ?? _options.DefaultTimeout;
@@ -132,7 +140,7 @@ public class TaskExecutor : ITaskExecutor
 
         try
         {
-            await ExecuteTaskInternalAsync(task, context);
+            await ExecuteTaskInternalAsync(task, context, serviceProvider);
         }
         finally
         {
@@ -145,7 +153,8 @@ public class TaskExecutor : ITaskExecutor
     /// </summary>
     /// <param name="task">任务信息</param>
     /// <param name="context">执行上下文</param>
-    private async Task ExecuteTaskInternalAsync(ScheduledTask task, TaskExecutionContext context)
+    /// <param name="serviceProvider">服务提供者（从当前作用域获取）</param>
+    private async Task ExecuteTaskInternalAsync(ScheduledTask task, TaskExecutionContext context, IServiceProvider serviceProvider)
     {
         var execution = context.Execution;
         var timeout = task.Timeout ?? _options.DefaultTimeout;
@@ -159,9 +168,9 @@ public class TaskExecutor : ITaskExecutor
             using var timeoutCts = TaskTimeoutHelper.CreateTimeoutToken(timeout, context.CancellationTokenSource.Token);
             context.TimeoutCancellationTokenSource = timeoutCts;
 
-            // 获取任务处理器
+            // ✅ 从当前作用域的服务提供者获取任务处理器
             execution.AddLog($"开始获取任务处理器: {task.HandlerType}");
-            var handler = GetTaskHandler(task.HandlerType);
+            var handler = GetTaskHandler(task.HandlerType, serviceProvider);
             if (handler == null)
             {
                 // 如果找不到任务处理器，说明此任务不属于当前服务，跳过执行
@@ -215,62 +224,75 @@ public class TaskExecutor : ITaskExecutor
     /// 获取任务处理器
     /// </summary>
     /// <param name="handlerTypeName">处理器类型名称</param>
-    /// <returns>任务处理器</returns>
-    private ITaskHandler? GetTaskHandler(string handlerTypeName)
+    /// <param name="serviceProvider">服务提供者（从当前作用域获取，确保 DbContext 等 Scoped 服务正确解析）</param>
+    /// <returns>任务处理器实例</returns>
+    private ITaskHandler? GetTaskHandler(string handlerTypeName, IServiceProvider serviceProvider)
     {
         try
         {
             _logger.LogDebug("开始查找任务处理器: {HandlerType}", handlerTypeName);
             
-            // 首先尝试直接获取类型
-            var handlerType = Type.GetType(handlerTypeName);
-            _logger.LogDebug("Type.GetType结果: {Result}", handlerType?.FullName ?? "null");
+            // 解析类型名称（移除程序集名称部分，如果存在）
+            var pureTypeName = handlerTypeName;
+            var commaIndex = handlerTypeName.IndexOf(',');
+            if (commaIndex > 0)
+            {
+                pureTypeName = handlerTypeName.Substring(0, commaIndex).Trim();
+            }
             
-            // 如果直接获取失败，尝试在所有已加载的程序集中搜索
+            // 尝试直接获取类型
+            var handlerType = Type.GetType(pureTypeName);
+            
+            // 如果直接获取失败，尝试在当前程序集中搜索
             if (handlerType == null)
             {
-                _logger.LogDebug("直接获取类型失败，开始在已加载程序集中搜索");
-                handlerType = FindTypeInLoadedAssemblies(handlerTypeName);
-                _logger.LogDebug("程序集搜索结果: {Result}", handlerType?.FullName ?? "null");
+                var entryAssembly = Assembly.GetEntryAssembly();
+                if (entryAssembly != null)
+                {
+                    handlerType = entryAssembly.GetType(pureTypeName);
+                }
+            }
+            
+            // 如果仍然找不到，尝试在所有已加载的程序集中搜索
+            if (handlerType == null)
+            {
+                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    try
+                    {
+                        handlerType = assembly.GetType(pureTypeName);
+                        if (handlerType != null)
+                        {
+                            break;
+                        }
+                    }
+                    catch
+                    {
+                        // 忽略单个程序集的异常
+                    }
+                }
             }
 
             if (handlerType != null)
             {
-                _logger.LogDebug("找到类型，尝试从服务容器获取实例");
+                _logger.LogDebug("找到类型: {TypeName}", handlerType.FullName);
                 
-                // 尝试从服务容器获取
-                var handler = _serviceProvider.GetService(handlerType) as ITaskHandler;
+                // ✅ 从传入的服务提供者（当前作用域）获取任务处理器
+                // 这确保 DbContext 等 Scoped 服务从正确的作用域中解析
+                var handler = serviceProvider.GetService(handlerType) as ITaskHandler;
                 if (handler != null)
                 {
                     _logger.LogDebug("从服务容器获取任务处理器成功: {HandlerType}", handlerTypeName);
                     return handler;
                 }
 
-                _logger.LogDebug("从服务容器获取任务处理器失败，检查是否实现ITaskHandler接口");
-                
-                // 尝试通过反射创建（如果类型实现了ITaskHandler接口）
-                if (typeof(ITaskHandler).IsAssignableFrom(handlerType))
-                {
-                    _logger.LogDebug("类型实现了ITaskHandler接口，尝试通过反射创建: {HandlerType}", handlerTypeName);
-                    var instance = Activator.CreateInstance(handlerType) as ITaskHandler;
-                    if (instance != null)
-                    {
-                        _logger.LogDebug("通过反射创建任务处理器成功: {HandlerType}", handlerTypeName);
-                        return instance;
-                    }
-                    else
-                    {
-                        _logger.LogError("通过反射创建任务处理器失败: {HandlerType}", handlerTypeName);
-                    }
-                }
-                else
-                {
-                    _logger.LogError("类型未实现ITaskHandler接口: {HandlerType}", handlerTypeName);
-                }
+                _logger.LogWarning("任务处理器类型已找到，但无法从服务容器获取: {HandlerType}", handlerTypeName);
+            }
+            else
+            {
+                _logger.LogWarning("未找到任务处理器类型: {HandlerType}", handlerTypeName);
             }
 
-            // 如果找不到任务处理器，这是正常的（可能属于其他服务）
-            _logger.LogDebug("在当前服务中未找到任务处理器: {HandlerType}", handlerTypeName);
             return null;
         }
         catch (Exception ex)
@@ -280,43 +302,6 @@ public class TaskExecutor : ITaskExecutor
         }
     }
 
-    /// <summary>
-    /// 在已加载的程序集中查找类型
-    /// </summary>
-    /// <param name="typeName">类型名称</param>
-    /// <returns>找到的类型，如果未找到则返回null</returns>
-    private Type? FindTypeInLoadedAssemblies(string typeName)
-    {
-        try
-        {
-            // 在所有已加载的程序集中搜索类型
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var type = assembly.GetType(typeName);
-                    if (type != null)
-                    {
-                        _logger.LogDebug("在程序集 {AssemblyName} 中找到类型: {TypeName}", assembly.FullName, typeName);
-                        return type;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // 忽略单个程序集的异常，继续搜索其他程序集
-                    _logger.LogDebug(ex, "在程序集 {AssemblyName} 中搜索类型 {TypeName} 时发生异常", assembly.FullName, typeName);
-                }
-            }
-
-            _logger.LogWarning("在所有已加载的程序集中都未找到类型: {TypeName}", typeName);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "搜索类型时发生异常: {TypeName}", typeName);
-            return null;
-        }
-    }
 
     /// <summary>
     /// 取消任务执行
@@ -324,7 +309,7 @@ public class TaskExecutor : ITaskExecutor
     /// <param name="executionId">执行ID</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>是否取消成功</returns>
-    public async Task<bool> CancelAsync(string executionId, CancellationToken cancellationToken = default)
+    public Task<bool> CancelAsync(string executionId, CancellationToken cancellationToken = default)
     {
         if (_runningTasks.TryGetValue(executionId, out var context))
         {
@@ -332,10 +317,10 @@ public class TaskExecutor : ITaskExecutor
             context.Execution.AddLog("收到取消请求");
             
             _logger.LogInformation("任务执行被取消 - ExecutionId: {ExecutionId}", executionId);
-            return true;
+            return Task.FromResult(true);
         }
 
-        return false;
+        return Task.FromResult(false);
     }
 
     /// <summary>

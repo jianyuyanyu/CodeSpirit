@@ -116,19 +116,60 @@ public class ScheduledTaskBackgroundService : BackgroundService
         using var scope = _serviceScopeFactory.CreateScope();
         var taskService = scope.ServiceProvider.GetRequiredService<IScheduledTaskService>();
         var taskExecutor = scope.ServiceProvider.GetRequiredService<ITaskExecutor>();
+        var registry = scope.ServiceProvider.GetRequiredService<ITaskHandlerRegistry>();
 
         try
         {
+            // 如果未配置服务名称，跳过
+            if (string.IsNullOrEmpty(_options.ServiceName))
+            {
+                _logger.LogWarning("ServiceName 未配置，跳过扫描并执行任务");
+                return;
+            }
+            
             // 获取所有启用的任务
             var enabledTasks = await taskService.GetEnabledTasksAsync(cancellationToken);
             
             if (!enabledTasks.Any())
             {
+                if(_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug("未找到任何启用的任务，跳过扫描并执行任务");
+                }
                 return;
             }
 
+            // ✅ 新增：只保留属于本服务的任务
+            var ownedTasks = new List<ScheduledTask>();
+            var skippedCount = 0;
+            foreach (var task in enabledTasks)
+            {
+                if (await registry.IsTaskOwnedByServiceAsync(task.Id, _options.ServiceName, cancellationToken))
+                {
+                    ownedTasks.Add(task);
+                }
+                else
+                {
+                    skippedCount++;
+                }
+            }
+            
+            if (skippedCount > 0)
+            {
+                _logger.LogDebug("跳过 {SkippedCount} 个不属于本服务的任务 - ServiceName: {ServiceName}", 
+                    skippedCount, _options.ServiceName);
+            }
+            
+            if (!ownedTasks.Any())
+            {
+                return;
+            }
+            
+            _logger.LogDebug("找到 {OwnedCount} 个属于本服务的任务 - ServiceName: {ServiceName}", 
+                ownedTasks.Count, _options.ServiceName);
+
             var currentTime = DateTime.UtcNow;
-            var dueTasks = enabledTasks
+            var dueTasks = ownedTasks
                 .Where(t => t.NextExecuteTime.HasValue && t.NextExecuteTime.Value <= currentTime)
                 .OrderBy(t => t.Priority)
                 .ThenBy(t => t.NextExecuteTime)
@@ -139,7 +180,7 @@ public class ScheduledTaskBackgroundService : BackgroundService
                 return;
             }
 
-            _logger.LogDebug("发现到期任务 - 数量: {Count}", dueTasks.Count);
+            _logger.LogDebug("发现到期任务 - 数量: {Count}, 服务: {ServiceName}", dueTasks.Count, _options.ServiceName);
 
             // 检查并发限制
             var runningTasks = await taskExecutor.GetRunningExecutionsAsync();
@@ -165,15 +206,19 @@ public class ScheduledTaskBackgroundService : BackgroundService
                     continue;
                 }
 
-                // 异步执行任务
-                var executionTask = ExecuteTaskAsync(task, taskService, taskExecutor, cancellationToken);
+                // ✅ 为每个任务创建独立的作用域，确保任务执行期间作用域有效
+                // 使用 Task.Run 但确保作用域在任务执行期间保持有效
+                var taskCopy = task; // 避免闭包问题
+                var executionTask = ExecuteTaskWithScopeAsync(taskCopy, cancellationToken);
+                
                 executionTasks.Add(executionTask);
 
                 _logger.LogInformation("触发任务执行 - TaskId: {TaskId}, Name: {Name}, NextTime: {NextTime}", 
                     task.Id, task.Name, task.NextExecuteTime);
             }
 
-            // 等待所有任务启动（不等待执行完成）
+            // ✅ 等待所有任务完成，确保作用域在任务执行期间保持有效
+            // 注意：这里等待任务完成是必要的，因为作用域需要在任务执行期间保持有效
             if (executionTasks.Any())
             {
                 await Task.WhenAll(executionTasks);
@@ -186,21 +231,48 @@ public class ScheduledTaskBackgroundService : BackgroundService
     }
 
     /// <summary>
+    /// 为任务创建独立作用域并执行
+    /// </summary>
+    /// <param name="task">任务信息</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task ExecuteTaskWithScopeAsync(
+        ScheduledTask task,
+        CancellationToken cancellationToken)
+    {
+        // ✅ 为每个任务创建独立的作用域，确保任务执行期间作用域有效
+        // 这确保所有 Scoped 服务（包括 DbContext）都在正确的作用域中解析和使用
+        using var taskScope = _serviceScopeFactory.CreateScope();
+        var scopedTaskService = taskScope.ServiceProvider.GetRequiredService<IScheduledTaskService>();
+        var scopedTaskExecutor = taskScope.ServiceProvider.GetRequiredService<ITaskExecutor>();
+        var scopedRegistry = taskScope.ServiceProvider.GetRequiredService<ITaskHandlerRegistry>();
+        
+        // ✅ 传递作用域的服务提供者，确保任务处理器从正确的作用域中解析
+        await ExecuteTaskAsync(task, scopedTaskService, scopedTaskExecutor, scopedRegistry, cancellationToken, taskScope.ServiceProvider);
+    }
+
+    /// <summary>
     /// 执行单个任务
     /// </summary>
     /// <param name="task">任务信息</param>
     /// <param name="taskService">任务服务</param>
     /// <param name="taskExecutor">任务执行器</param>
+    /// <param name="registry">任务注册表</param>
     /// <param name="cancellationToken">取消令牌</param>
+    /// <param name="serviceProvider">服务提供者（从当前作用域获取）</param>
     private async Task ExecuteTaskAsync(
         ScheduledTask task, 
         IScheduledTaskService taskService, 
-        ITaskExecutor taskExecutor, 
-        CancellationToken cancellationToken)
+        ITaskExecutor taskExecutor,
+        ITaskHandlerRegistry registry,
+        CancellationToken cancellationToken,
+        IServiceProvider serviceProvider)
     {
         try
         {
-            // 执行任务
+            // ✅ 执行任务，传递当前作用域的服务提供者
+            // 注意：TaskExecutor.ExecuteAsync 需要修改以接受 serviceProvider 参数
+            // 但由于接口限制，我们需要通过其他方式传递
+            // 暂时先调用 ExecuteAsync，然后在 TaskExecutor 内部使用传入的 serviceProvider
             var execution = await taskExecutor.ExecuteAsync(task, cancellationToken);
 
             // 更新任务执行统计

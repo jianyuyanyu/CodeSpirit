@@ -49,8 +49,12 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<IScheduledTaskService>() as IScheduledTaskQueryService 
             ?? throw new InvalidOperationException("ScheduledTaskService must implement IScheduledTaskQueryService"));
         services.AddScoped<ITaskExecutor, TaskExecutor>();
+        
+        // 注册任务处理器注册表
+        services.AddSingleton<ITaskHandlerRegistry, TaskHandlerRegistry>();
 
         // 注册后台服务
+        services.AddHostedService<TaskHandlerRegistrationService>();
         services.AddHostedService<ScheduledTaskBackgroundService>();
 
         return services;
@@ -85,8 +89,12 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<IScheduledTaskService>() as IScheduledTaskQueryService 
             ?? throw new InvalidOperationException("ScheduledTaskService must implement IScheduledTaskQueryService"));
         services.AddScoped<ITaskExecutor, TaskExecutor>();
+        
+        // 注册任务处理器注册表
+        services.AddSingleton<ITaskHandlerRegistry, TaskHandlerRegistry>();
 
         // 注册后台服务
+        services.AddHostedService<TaskHandlerRegistrationService>();
         services.AddHostedService<ScheduledTaskBackgroundService>();
 
         return services;

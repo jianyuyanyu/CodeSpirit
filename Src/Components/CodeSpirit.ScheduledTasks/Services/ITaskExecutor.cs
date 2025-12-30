@@ -12,8 +12,9 @@ public interface ITaskExecutor
     /// </summary>
     /// <param name="task">任务信息</param>
     /// <param name="cancellationToken">取消令牌</param>
+    /// <param name="triggerType">触发类型，默认为 "Scheduled"</param>
     /// <returns>执行记录</returns>
-    Task<TaskExecution> ExecuteAsync(ScheduledTask task, CancellationToken cancellationToken = default);
+    Task<TaskExecution> ExecuteAsync(ScheduledTask task, CancellationToken cancellationToken = default, string triggerType = "Scheduled");
 
     /// <summary>
     /// 取消任务执行

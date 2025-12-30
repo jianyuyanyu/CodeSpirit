@@ -52,8 +52,9 @@ public class TaskExecutor : ITaskExecutor
     /// </summary>
     /// <param name="task">任务信息</param>
     /// <param name="cancellationToken">取消令牌</param>
+    /// <param name="triggerType">触发类型，默认为 "Scheduled"</param>
     /// <returns>执行记录</returns>
-    public async Task<TaskExecution> ExecuteAsync(ScheduledTask task, CancellationToken cancellationToken = default)
+    public async Task<TaskExecution> ExecuteAsync(ScheduledTask task, CancellationToken cancellationToken = default, string triggerType = "Scheduled")
     {
         var executionId = Guid.NewGuid().ToString();
         var execution = new TaskExecution
@@ -64,7 +65,7 @@ public class TaskExecutor : ITaskExecutor
             Status = TaskStatus.Running,
             StartTime = DateTime.UtcNow,
             Parameters = task.Parameters,
-            TriggerType = "Scheduled",
+            TriggerType = triggerType,
             ExecutionNode = Environment.MachineName
         };
 
@@ -358,14 +359,56 @@ public class TaskExecutor : ITaskExecutor
         try
         {
             var cacheKey = $"{_options.CacheKeyPrefix}Executions:{execution.Id}";
-            await _cacheService.SetAsync(cacheKey, execution, new CodeSpirit.Caching.Models.CacheOptions
+            var cacheOptions = new CodeSpirit.Caching.Models.CacheOptions
             {
+                Level = CodeSpirit.Caching.Models.CacheLevel.L2Only, // 分布式环境仅使用Redis缓存
                 AbsoluteExpiration = _options.ExecutionHistoryRetention
-            });
+            };
+            
+            // 保存执行记录
+            await _cacheService.SetAsync(cacheKey, execution, cacheOptions);
+            
+            // 更新执行记录索引（按 TaskId 索引）
+            await UpdateExecutionIndexAsync(execution.TaskId, execution.Id);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "保存执行记录失败 - ExecutionId: {ExecutionId}", execution.Id);
+        }
+    }
+
+    /// <summary>
+    /// 更新执行记录索引（按 TaskId 索引执行记录ID列表）
+    /// </summary>
+    /// <param name="taskId">任务ID</param>
+    /// <param name="executionId">执行记录ID</param>
+    private async Task UpdateExecutionIndexAsync(string taskId, string executionId)
+    {
+        try
+        {
+            var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{taskId}";
+            var executionIds = await _cacheService.GetAsync<List<string>>(indexKey) ?? new List<string>();
+            
+            // 如果执行记录ID不在索引中，添加到索引
+            if (!executionIds.Contains(executionId))
+            {
+                executionIds.Add(executionId);
+                // 限制索引大小，只保留最近的执行记录（例如最近1000条）
+                if (executionIds.Count > 1000)
+                {
+                    executionIds = executionIds.Skip(executionIds.Count - 1000).ToList();
+                }
+                
+                await _cacheService.SetAsync(indexKey, executionIds, new CodeSpirit.Caching.Models.CacheOptions
+                {
+                    Level = CodeSpirit.Caching.Models.CacheLevel.L2Only,
+                    AbsoluteExpiration = _options.ExecutionHistoryRetention
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "更新执行记录索引失败 - TaskId: {TaskId}, ExecutionId: {ExecutionId}", taskId, executionId);
         }
     }
 }

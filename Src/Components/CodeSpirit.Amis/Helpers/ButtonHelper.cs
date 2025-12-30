@@ -1,7 +1,10 @@
-﻿using CodeSpirit.Amis.Extensions;
+﻿using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Extensions;
 using CodeSpirit.Amis.Form;
+using CodeSpirit.Amis.Handlers;
 using CodeSpirit.Amis.Helpers.Dtos;
 using CodeSpirit.Core.Attributes;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -21,6 +24,8 @@ namespace CodeSpirit.Amis.Helpers
         private readonly ILogger<ButtonHelper> _logger;
         private readonly IStringLocalizerFactory _localizerFactory;
         private readonly CultureResolver _cultureResolver;
+        private readonly IServiceProvider _serviceProvider;
+        private CrudDialogHandler _crudDialogHandler;
         
         /// <summary>
         /// 缓存 SharedResources 类型，避免重复反射查找
@@ -32,7 +37,7 @@ namespace CodeSpirit.Amis.Helpers
         /// </summary>
         private static readonly object _typeLock = new object();
 
-        public ButtonHelper(IHasPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper, ILogger<ButtonHelper> logger, IStringLocalizerFactory localizerFactory, CultureResolver cultureResolver)
+        public ButtonHelper(IHasPermissionService permissionService, AmisContext amisContext, ApiRouteHelper apiRouteHelper, AmisApiHelper amisApiHelper, FormFieldHelper formFieldHelper, ILogger<ButtonHelper> logger, IStringLocalizerFactory localizerFactory, CultureResolver cultureResolver, IServiceProvider serviceProvider)
         {
             _permissionService = permissionService;
             this.amisContext = amisContext;
@@ -42,6 +47,22 @@ namespace CodeSpirit.Amis.Helpers
             _logger = logger;
             _localizerFactory = localizerFactory;
             _cultureResolver = cultureResolver;
+            _serviceProvider = serviceProvider;
+        }
+
+        /// <summary>
+        /// 获取 CrudDialogHandler（延迟解析以避免循环依赖）
+        /// </summary>
+        private CrudDialogHandler CrudDialogHandler
+        {
+            get
+            {
+                if (_crudDialogHandler == null)
+                {
+                    _crudDialogHandler = _serviceProvider.GetRequiredService<CrudDialogHandler>();
+                }
+                return _crudDialogHandler;
+            }
         }
 
         /// <summary>
@@ -802,6 +823,22 @@ namespace CodeSpirit.Amis.Helpers
                 var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
                 button = CreateServiceDialogButton(label, route, op.DialogSize, op.Actions);
             }
+            // CRUD对话框
+            else if (op.ActionType == "crudDialog")
+            {
+                // 对于 crudDialog 类型，创建一个 CRUD 弹窗
+                // 检查是否是 CrudDialogOperationAttribute
+                if (op is CrudDialogOperationAttribute crudDialogOp)
+                {
+                    var route = apiRouteHelper.GetApiRouteInfoForMethod(method);
+                    button = CreateCrudDialogButton(crudDialogOp, route, label);
+                }
+                else
+                {
+                    // 向后兼容：如果使用的是 OperationAttribute，尝试转换
+                    throw new InvalidOperationException($"CrudDialog 操作类型必须使用 CrudDialogOperationAttribute，而不是 OperationAttribute。方法: {method.DeclaringType?.Name}.{method.Name}");
+                }
+            }
             //出参表单
             else if (op.ActionType == "return-form")
             {
@@ -984,6 +1021,94 @@ namespace CodeSpirit.Amis.Helpers
 
             CreateIcon(title, button);
             return button;
+        }
+
+        /// <summary>
+        /// 创建 CRUD 对话框按钮
+        /// </summary>
+        /// <param name="operation">CRUD对话框操作特性配置</param>
+        /// <param name="route">API路由信息</param>
+        /// <param name="title">对话框标题</param>
+        /// <returns>按钮配置对象</returns>
+        public JObject CreateCrudDialogButton(CrudDialogOperationAttribute operation, ApiRouteInfo route, string title)
+        {
+            ArgumentNullException.ThrowIfNull(operation);
+            ArgumentNullException.ThrowIfNull(route);
+
+            string sizeString = ConvertDialogSizeToString(operation.DialogSize);
+
+            // 使用 CrudDialogHandler 生成 schema
+            var schema = CrudDialogHandler.GenerateCrudDialogSchema(operation);
+
+            // 构建 Service 弹窗（与 Service 类型类似，但使用生成的 schema）
+            JObject serviceBody = new()
+            {
+                ["title"] = title,
+                ["size"] = sizeString,
+                ["closeOnEsc"] = true,
+                ["closeOnOutside"] = false,
+                ["showCloseButton"] = true,
+                ["body"] = new JObject
+                {
+                    ["type"] = "service",
+                    ["schemaApi"] = new JObject
+                    {
+                        ["url"] = route.ApiPath,
+                        ["method"] = route.HttpMethod,
+                        ["data"] = new JObject
+                        {
+                            ["&"] = "$$" // 传递当前行数据
+                        }
+                    },
+                    ["body"] = "${body}" // 使用Service返回的body内容
+                }
+            };
+
+            // 处理自定义 actions 配置
+            if (!string.IsNullOrEmpty(operation.Actions))
+            {
+                try
+                {
+                    var actions = JsonConvert.DeserializeObject<JArray>(operation.Actions);
+                    serviceBody["actions"] = actions;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning("解析 CrudDialog Actions 配置失败: {Error}, 使用默认配置", ex.Message);
+                    // 使用默认关闭按钮
+                    serviceBody["actions"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["type"] = "button",
+                            ["label"] = "关闭",
+                            ["actionType"] = "close",
+                            ["level"] = "default"
+                        }
+                    };
+                }
+            }
+            else if (operation.Actions == "")
+            {
+                // 空字符串表示不显示底部按钮
+                serviceBody["actions"] = new JArray();
+            }
+            else
+            {
+                // 默认显示关闭按钮
+                serviceBody["actions"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["type"] = "button",
+                        ["label"] = "关闭",
+                        ["actionType"] = "close",
+                        ["level"] = "default"
+                    }
+                };
+            }
+
+            return CreateButton(title, "dialog", dialogOrDrawer: serviceBody, dialogSize: operation.DialogSize);
         }
 
         /// <summary>

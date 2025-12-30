@@ -465,12 +465,70 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
     /// <returns>执行历史</returns>
     public async Task<PageList<TaskExecution>> GetAllExecutionHistoryAsync(ExecutionQueryDto queryDto, CancellationToken cancellationToken = default)
     {
-        // 这里简化实现，实际应该从缓存中获取执行历史
-        // 由于缓存中的执行记录可能很多，这里只返回正在执行的任务作为示例
-        var runningExecutions = await _taskExecutor.GetRunningExecutionsAsync();
+        var allExecutions = new List<TaskExecution>();
         
-        var filteredExecutions = runningExecutions.AsQueryable();
-
+        // 如果指定了 TaskId，从索引中获取该任务的执行记录
+        if (!string.IsNullOrWhiteSpace(queryDto.TaskId))
+        {
+            var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{queryDto.TaskId}";
+            var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+            
+            // 批量获取执行记录
+            foreach (var executionId in executionIds)
+            {
+                var cacheKey = $"{_options.CacheKeyPrefix}Executions:{executionId}";
+                var execution = await _cacheService.GetAsync<TaskExecution>(cacheKey, cancellationToken);
+                if (execution != null)
+                {
+                    allExecutions.Add(execution);
+                }
+            }
+        }
+        else
+        {
+            // 如果没有指定 TaskId，获取所有任务的执行记录
+            // 先获取所有任务ID
+            var allTasks = await GetAllTasksAsync(cancellationToken);
+            foreach (var task in allTasks)
+            {
+                var indexKey = $"{_options.CacheKeyPrefix}Index:Executions:{task.Id}";
+                var executionIds = await _cacheService.GetAsync<List<string>>(indexKey, cancellationToken) ?? new List<string>();
+                
+                foreach (var executionId in executionIds)
+                {
+                    var cacheKey = $"{_options.CacheKeyPrefix}Executions:{executionId}";
+                    var execution = await _cacheService.GetAsync<TaskExecution>(cacheKey, cancellationToken);
+                    if (execution != null)
+                    {
+                        allExecutions.Add(execution);
+                    }
+                }
+            }
+        }
+        
+        // 合并正在执行的任务（可能还没有保存到缓存）
+        var runningExecutions = await _taskExecutor.GetRunningExecutionsAsync();
+        foreach (var runningExecution in runningExecutions)
+        {
+            // 如果执行记录不在列表中，添加它
+            if (!allExecutions.Any(e => e.Id == runningExecution.Id))
+            {
+                allExecutions.Add(runningExecution);
+            }
+            else
+            {
+                // 如果已在列表中，更新为最新的状态（正在执行的任务状态可能已更新）
+                var existingIndex = allExecutions.FindIndex(e => e.Id == runningExecution.Id);
+                if (existingIndex >= 0)
+                {
+                    allExecutions[existingIndex] = runningExecution;
+                }
+            }
+        }
+        
+        // 应用过滤条件
+        var filteredExecutions = allExecutions.AsQueryable();
+        
         if (!string.IsNullOrWhiteSpace(queryDto.TaskId))
         {
             filteredExecutions = filteredExecutions.Where(e => e.TaskId == queryDto.TaskId);
@@ -626,7 +684,7 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
     private async Task SaveTaskAsync(ScheduledTask task)
     {
         var cacheKey = $"{_options.CacheKeyPrefix}Tasks:{task.Id}";
-        await _cacheService.SetAsync(cacheKey, task);
+        await _cacheService.SetAsync(cacheKey, task, CodeSpirit.Caching.Models.CacheOptions.L2Only());
         
         // 更新索引，确保任务ID在索引中
         await AddTaskToIndexAsync(task.Id);
@@ -646,7 +704,7 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             if (!taskIds.Contains(taskId))
             {
                 taskIds.Add(taskId);
-                await _cacheService.SetAsync(indexKey, taskIds);
+                await _cacheService.SetAsync(indexKey, taskIds, CodeSpirit.Caching.Models.CacheOptions.L2Only());
                 _logger.LogDebug("任务ID已添加到索引 - TaskId: {TaskId}", taskId);
             }
         }
@@ -680,7 +738,7 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             }
             
             // 更新索引
-            await _cacheService.SetAsync(indexKey, validTaskIds);
+            await _cacheService.SetAsync(indexKey, validTaskIds, CodeSpirit.Caching.Models.CacheOptions.L2Only());
             
             _logger.LogDebug("更新任务索引完成 - 任务数量: {Count}", validTaskIds.Count);
         }

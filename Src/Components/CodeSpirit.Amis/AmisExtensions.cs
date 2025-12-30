@@ -2,6 +2,7 @@ using CodeSpirit.Amis.Column;
 using CodeSpirit.Amis.Form;
 using CodeSpirit.Amis.Form.Factories;
 using CodeSpirit.Amis.Form.Fields;
+using CodeSpirit.Amis.Handlers;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Middleware;
 using Microsoft.AspNetCore.Builder;
@@ -33,7 +34,11 @@ namespace CodeSpirit.Amis
             services.AddScoped<UtilityHelper>();
             services.AddScoped<AmisApiHelper>();
             services.AddScoped<ApiRouteHelper>();
+            // 使用延迟解析避免循环依赖：
+            // ColumnHelper -> ButtonHelper -> CrudDialogHandler -> ColumnHelper
+            // CrudDialogHandler 和 ButtonHelper 都使用 IServiceProvider 延迟解析依赖
             services.AddScoped<ColumnHelper>();
+            services.AddScoped<CrudDialogHandler>();
             services.AddScoped<ButtonHelper>();
             services.AddScoped<FormFieldHelper>();
             services.AddScoped<SearchFieldHelper>();

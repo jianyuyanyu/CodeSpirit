@@ -80,11 +80,12 @@ public class ScheduledTaskExecutionController : ControllerBase
             }
             
             // 4. 执行任务（异步执行，不等待完成）
+            // 手动触发时，设置 TriggerType 为 "Manual"
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    var execution = await _taskExecutor.ExecuteAsync(task, cancellationToken);
+                    var execution = await _taskExecutor.ExecuteAsync(task, cancellationToken, triggerType: "Manual");
                     _logger.LogInformation("任务执行完成 - TaskId: {TaskId}, ExecutionId: {ExecutionId}, Status: {Status}", 
                         taskId, execution.Id, execution.Status);
                 }

@@ -84,6 +84,7 @@ public class TaskHandlerRegistry : ITaskHandlerRegistry
             {
                 await cacheService.SetAsync(registryKey, json, new CodeSpirit.Caching.Models.CacheOptions
                 {
+                    Level = CodeSpirit.Caching.Models.CacheLevel.L2Only, // 分布式环境仅使用Redis缓存
                     AbsoluteExpiration = null // 永久存储，直到服务重启
                 }, cancellationToken);
             });
@@ -111,6 +112,7 @@ public class TaskHandlerRegistry : ITaskHandlerRegistry
             {
                 await cacheService.SetAsync(taskServiceKey, serviceName, new CodeSpirit.Caching.Models.CacheOptions
                 {
+                    Level = CodeSpirit.Caching.Models.CacheLevel.L2Only, // 分布式环境仅使用Redis缓存
                     AbsoluteExpiration = null // 永久存储
                 }, cancellationToken);
             });

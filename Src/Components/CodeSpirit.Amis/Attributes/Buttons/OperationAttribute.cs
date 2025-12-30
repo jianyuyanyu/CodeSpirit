@@ -81,7 +81,13 @@ public enum OperationActionType
     /// AI表单操作
     /// </summary>
     [Display(Name = "AI表单操作")]
-    AiForm = 5
+    AiForm = 5,
+
+    /// <summary>
+    /// CRUD对话框（弹窗显示列表数据）
+    /// </summary>
+    [Display(Name = "CRUD对话框")]
+    CrudDialog = 6
 }
 
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = true)]
@@ -104,6 +110,7 @@ public class OperationAttribute : Attribute
         OperationActionType.Link => "link",
         OperationActionType.Service => "service",
         OperationActionType.AiForm => "aiForm",
+        OperationActionType.CrudDialog => "crudDialog",
         _ => "ajax"
     };
     
@@ -289,6 +296,7 @@ public class OperationAttribute : Attribute
             "link" => OperationActionType.Link,
             "service" => OperationActionType.Service,
             "aiform" => OperationActionType.AiForm,
+            "cruddialog" or "crudDialog" => OperationActionType.CrudDialog,
             _ => OperationActionType.Ajax
         };
         Api = api;

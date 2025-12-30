@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 using CodeSpirit.Amis.Attributes;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
@@ -7,6 +8,8 @@ using CodeSpirit.Core.Enums;
 using CodeSpirit.ScheduledTasks.Models;
 using CodeSpirit.ScheduledTasks.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Headers;
 
 namespace CodeSpirit.Web.Controllers;
@@ -286,14 +289,36 @@ public class ScheduledTasksController : ApiControllerBase
     }
 
     /// <summary>
-    /// 获取任务执行历史
+    /// 获取任务执行历史（弹窗 Schema）
+    /// </summary>
+    /// <param name="id">任务ID</param>
+    /// <returns>执行历史弹窗 Schema</returns>
+    [HttpGet("{id}/executions")]
+    [CrudDialogOperation("执行历史",
+        DataApi = "/api/web/ScheduledTasks/${id}/executions/data",
+        DataType = typeof(TaskExecution),
+        Icon = "fa-solid fa-clock-rotate-left",
+        DialogSize = DialogSize.XL,
+        EnableRefresh = true,
+        PerPage = 10,
+        RowActions = "[{\"type\":\"button\",\"label\":\"详情\",\"level\":\"link\",\"actionType\":\"dialog\",\"dialog\":{\"title\":\"执行详情\",\"size\":\"lg\",\"body\":{\"type\":\"form\",\"wrapWithPanel\":false,\"controls\":[{\"type\":\"static\",\"name\":\"taskName\",\"label\":\"任务名称\"},{\"type\":\"static\",\"name\":\"startTime\",\"label\":\"开始时间\",\"format\":\"YYYY-MM-DD HH:mm:ss\"},{\"type\":\"static\",\"name\":\"endTime\",\"label\":\"结束时间\",\"format\":\"YYYY-MM-DD HH:mm:ss\"},{\"type\":\"static\",\"name\":\"status\",\"label\":\"执行状态\"},{\"type\":\"static\",\"name\":\"triggerType\",\"label\":\"触发方式\"},{\"type\":\"static\",\"name\":\"executionNode\",\"label\":\"执行节点\"},{\"type\":\"static\",\"name\":\"retryCount\",\"label\":\"重试次数\"},{\"type\":\"static\",\"name\":\"result\",\"label\":\"执行结果\"},{\"type\":\"static\",\"name\":\"errorMessage\",\"label\":\"错误信息\"},{\"type\":\"static-json\",\"name\":\"logs\",\"label\":\"执行日志\"},{\"type\":\"static-json\",\"name\":\"metrics\",\"label\":\"性能指标\"}]}}}]")]
+    [DisplayName("获取执行历史")]
+    public ActionResult<ApiResponse> GetTaskExecutions(string id)
+    {
+        //TODO:后续通过Dto方法简化RowActions的定义
+        // 使用基类封装的通用方法生成 schema
+        return GenerateCrudDialogSchema(new Dictionary<string, string> { { "id", id } });
+    }
+
+    /// <summary>
+    /// 获取任务执行历史数据
     /// </summary>
     /// <param name="id">任务ID</param>
     /// <param name="queryDto">查询参数</param>
-    /// <returns>执行历史</returns>
-    [HttpGet("{id}/executions")]
-    [DisplayName("获取执行历史")]
-    public async Task<ActionResult<ApiResponse>> GetTaskExecutions(string id, [FromQuery] CodeSpirit.Core.Dtos.QueryDtoBase queryDto)
+    /// <returns>执行历史数据</returns>
+    [HttpGet("{id}/executions/data")]
+    [DisplayName("获取执行历史数据")]
+    public async Task<ActionResult<ApiResponse>> GetTaskExecutionsData(string id, [FromQuery] CodeSpirit.Core.Dtos.QueryDtoBase queryDto)
     {
         var result = await _queryService.GetExecutionHistoryAsync(id, queryDto);
         return Ok(ApiResponse<object>.Success(result));

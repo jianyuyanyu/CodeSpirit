@@ -1,3 +1,5 @@
+using CodeSpirit.Amis.Attributes.Columns;
+
 namespace CodeSpirit.ScheduledTasks.Models;
 
 /// <summary>
@@ -98,6 +100,7 @@ public class TaskExecution
     /// 执行日志
     /// </summary>
     [DisplayName("执行日志")]
+    [AmisColumn(Type = "json")]
     public List<string> Logs { get; set; } = new();
 
     /// <summary>

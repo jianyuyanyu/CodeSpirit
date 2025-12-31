@@ -684,7 +684,7 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
     private async Task SaveTaskAsync(ScheduledTask task)
     {
         var cacheKey = $"{_options.CacheKeyPrefix}Tasks:{task.Id}";
-        await _cacheService.SetAsync(cacheKey, task, CodeSpirit.Caching.Models.CacheOptions.L2Only());
+        await _cacheService.SetAsync(cacheKey, task, CodeSpirit.Caching.Models.CacheOptions.L2NeverExpires());
         
         // 更新索引，确保任务ID在索引中
         await AddTaskToIndexAsync(task.Id);
@@ -704,7 +704,7 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             if (!taskIds.Contains(taskId))
             {
                 taskIds.Add(taskId);
-                await _cacheService.SetAsync(indexKey, taskIds, CodeSpirit.Caching.Models.CacheOptions.L2Only());
+                await _cacheService.SetAsync(indexKey, taskIds, CodeSpirit.Caching.Models.CacheOptions.L2NeverExpires());
                 _logger.LogDebug("任务ID已添加到索引 - TaskId: {TaskId}", taskId);
             }
         }
@@ -738,7 +738,7 @@ public class ScheduledTaskService : IScheduledTaskService, IScheduledTaskQuerySe
             }
             
             // 更新索引
-            await _cacheService.SetAsync(indexKey, validTaskIds, CodeSpirit.Caching.Models.CacheOptions.L2Only());
+            await _cacheService.SetAsync(indexKey, validTaskIds, CodeSpirit.Caching.Models.CacheOptions.L2NeverExpires());
             
             _logger.LogDebug("更新任务索引完成 - 任务数量: {Count}", validTaskIds.Count);
         }

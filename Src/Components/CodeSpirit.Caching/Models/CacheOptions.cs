@@ -105,4 +105,14 @@ public class CacheOptions
         L1Expiration = l1Expiration,
         L2Expiration = l2Expiration
     };
+
+    /// <summary>
+    /// 创建仅使用L2缓存且永不过期的选项
+    /// </summary>
+    /// <returns>L2缓存且永不过期的选项</returns>
+    public static CacheOptions L2NeverExpires() => new()
+    {
+        Level = CacheLevel.L2Only,
+        L2Expiration = TimeSpan.FromDays(3650) // 设置10年过期时间，在业务层面相当于永不过期
+    };
 }

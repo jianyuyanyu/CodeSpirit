@@ -49,6 +49,11 @@ namespace CodeSpirit.IdentityApi.Data
         /// </summary>
         public DbSet<TenantInfo> Tenants { get; set; }
 
+        /// <summary>
+        /// 第三方账号实体集
+        /// </summary>
+        public DbSet<ThirdPartyAccount> ThirdPartyAccounts { get; set; }
+
         private readonly IServiceProvider serviceProvider;
         private readonly ILogger<ApplicationDbContext> logger;
         private readonly ChangeTracker changeTracker;
@@ -464,6 +469,34 @@ namespace CodeSpirit.IdentityApi.Data
                 // 租户感知的复合索引
                 entity.HasIndex(a => new { a.TenantId, a.UserId })
                     .HasDatabaseName("IX_ApiKey_TenantId_UserId");
+            });
+
+            // 配置第三方账号实体
+            builder.Entity<ThirdPartyAccount>(entity =>
+            {
+                entity.ToTable(nameof(ThirdPartyAccount));
+                entity.Property(e => e.Id).ValueGeneratedNever();
+                
+                // 租户+平台+OpenId唯一索引
+                entity.HasIndex(e => new { e.TenantId, e.PlatformType, e.OpenId })
+                    .IsUnique()
+                    .HasDatabaseName("IX_ThirdPartyAccount_TenantId_PlatformType_OpenId");
+                
+                // 租户+UnionId唯一索引（如果UnionId存在）
+                entity.HasIndex(e => new { e.TenantId, e.UnionId })
+                    .IsUnique()
+                    .HasDatabaseName("IX_ThirdPartyAccount_TenantId_UnionId")
+                    .HasFilter("[UnionId] IS NOT NULL");
+                
+                // 用户ID索引（用于查询用户的所有第三方账号）
+                entity.HasIndex(e => e.UserId)
+                    .HasDatabaseName("IX_ThirdPartyAccount_UserId");
+                
+                // 配置与用户的关系
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             ConfigureGlobalFiltersOnModelCreating(builder);

@@ -188,6 +188,10 @@ public class IdentityApiConfiguration : BaseApiConfiguration
 
         // 注册自定义授权处理程序（这个需要特殊处理，因为是 Identity 框架的组件）
         services.AddScoped<SignInManager<ApplicationUser>, CustomSignInManager>();
+
+        // 注册第三方API服务
+        services.AddScoped<Services.ThirdParty.WeChatApiService>();
+        services.AddScoped<Services.ThirdParty.IThirdPartyApiService, Services.ThirdParty.ThirdPartyApiServiceFactory>();
     }
     
     /// <summary>

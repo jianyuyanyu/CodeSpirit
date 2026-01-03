@@ -3,6 +3,7 @@ using CodeSpirit.Amis.Form.Fields;
 using CodeSpirit.Amis.Helpers;
 using CodeSpirit.Amis.Tests.Examples;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using System.Reflection;
@@ -21,7 +22,10 @@ public class AmisSwitchFieldFactoryTests
     public AmisSwitchFieldFactoryTests()
     {
         _factory = new AmisSwitchFieldFactory();
-        _utilityHelper = new UtilityHelper();
+        var httpContextAccessor = new Microsoft.AspNetCore.Http.HttpContextAccessor();
+        var loggerFactory = new LoggerFactory();
+        var logger = loggerFactory.CreateLogger<CultureResolver>();
+        _utilityHelper = new UtilityHelper(new CultureResolver(httpContextAccessor, logger));
     }
 
     [Fact]

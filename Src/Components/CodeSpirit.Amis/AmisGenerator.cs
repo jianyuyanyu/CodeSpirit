@@ -1,9 +1,11 @@
-﻿using CodeSpirit.Amis.Helpers;
+﻿using CodeSpirit.Amis.Attributes;
+using CodeSpirit.Amis.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
+using System.Reflection;
 
 namespace CodeSpirit.Amis
 {
@@ -113,6 +115,23 @@ namespace CodeSpirit.Amis
             if (_cachingHelper.TryGetValue(cacheKey, out JObject cachedAmisJson))
             {
                 return cachedAmisJson;
+            }
+
+            // ⭐ 检查是否为设置页面（在CRUD检查之前）
+            var settingsPageAttr = controllerType.GetCustomAttribute<Attributes.SettingsPageAttribute>();
+            if (settingsPageAttr != null)
+            {
+                var settingsBuilder = _serviceProvider.GetRequiredService<SettingsPageConfigBuilder>();
+                JObject settingsConfig = settingsBuilder.GenerateSettingsPageConfig(controllerType, settingsPageAttr);
+                
+                if (settingsConfig != null)
+                {
+                    MemoryCacheEntryOptions cacheOptions = new MemoryCacheEntryOptions()
+                        .SetSlidingExpiration(TimeSpan.FromMinutes(30));
+                    _cachingHelper.Set(cacheKey, settingsConfig, cacheOptions);
+                }
+                
+                return settingsConfig;
             }
 
             _amisContext.Actions = _crudHelper.HasCrudActions(controllerType);

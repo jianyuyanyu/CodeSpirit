@@ -31,6 +31,27 @@ namespace CodeSpirit.Amis.Form.Fields
                     field["labelField"] = attr.LabelField;
                 if(!string.IsNullOrEmpty(attr.ValueField))
                     field["valueField"] = attr.ValueField;
+                
+                // 处理静态Options属性：将 "value1:label1,value2:label2" 转换为 options 数组
+                if (!string.IsNullOrEmpty(attr.Options))
+                {
+                    var options = new JArray();
+                    var optionPairs = attr.Options.Split(',');
+                    foreach (var pair in optionPairs)
+                    {
+                        var parts = pair.Split(':');
+                        if (parts.Length == 2)
+                        {
+                            options.Add(new JObject
+                            {
+                                ["label"] = parts[1].Trim(),
+                                ["value"] = parts[0].Trim()
+                            });
+                        }
+                    }
+                    field["options"] = options;
+                }
+                
                 field["multiple"] = attr.Multiple;
                 field["joinValues"] = attr.JoinValues;
                 field["extractValue"] = attr.ExtractValue;

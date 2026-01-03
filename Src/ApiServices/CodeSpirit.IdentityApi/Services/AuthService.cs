@@ -1,12 +1,17 @@
 ﻿// Services/AuthService.cs
 using AutoMapper;
 using CodeSpirit.Core;
+using CodeSpirit.Core.IdGenerator;
 using CodeSpirit.IdentityApi.Data;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Auth;
 using CodeSpirit.IdentityApi.Dtos.User;
 using CodeSpirit.IdentityApi.Jwt;
+using CodeSpirit.IdentityApi.Models;
+using CodeSpirit.IdentityApi.Services.ThirdParty;
+using CodeSpirit.Settings.Services.Interfaces;
 using CodeSpirit.Shared.Repositories;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
@@ -28,6 +33,11 @@ namespace CodeSpirit.IdentityApi.Services
         private readonly ILogger<AuthService> _logger;
         private readonly IRoleService _roleService;
         private readonly ApplicationDbContext _context;
+        private readonly IThirdPartyApiService _thirdPartyApiService;
+        private readonly ISettingsService _settingsService;
+        private readonly ICurrentUser _currentUser;
+        private readonly IIdGenerator _idGenerator;
+        private readonly IDataProtectionProvider _dataProtectionProvider;
         private readonly int _refreshTokenExpirationDays;
 
         public AuthService(
@@ -40,7 +50,12 @@ namespace CodeSpirit.IdentityApi.Services
             IJwtTokenHandler jwtHandler,
             ILogger<AuthService> logger,
             IRoleService roleService,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IThirdPartyApiService thirdPartyApiService,
+            ISettingsService settingsService,
+            ICurrentUser currentUser,
+            IIdGenerator idGenerator,
+            IDataProtectionProvider dataProtectionProvider)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -52,6 +67,11 @@ namespace CodeSpirit.IdentityApi.Services
             _logger = logger;
             _roleService = roleService;
             _context = context;
+            _thirdPartyApiService = thirdPartyApiService;
+            _settingsService = settingsService;
+            _currentUser = currentUser;
+            _idGenerator = idGenerator;
+            _dataProtectionProvider = dataProtectionProvider;
 
             // 刷新令牌过期时间，默认7天
             if (!int.TryParse(_configuration["Jwt:RefreshTokenExpirationDays"], out _refreshTokenExpirationDays))
@@ -667,6 +687,309 @@ namespace CodeSpirit.IdentityApi.Services
 
             // 返回成功结果
             return AuthResultDto.CreateSuccess(token, refreshToken, userDto);
+        }
+
+        /// <summary>
+        /// 第三方平台登录方法
+        /// </summary>
+        public async Task<AuthResultDto> ThirdPartyLoginAsync(ThirdPartyLoginModel model, string ipAddress, string userAgent)
+        {
+            try
+            {
+                // 1. 获取平台配置
+                var config = GetPlatformConfig(model.PlatformType, model.TenantId);
+                
+                // 2. 调用第三方API获取会话信息
+                var sessionInfo = await _thirdPartyApiService.GetSessionAsync(
+                    model.PlatformType, 
+                    model.Credential, 
+                    config);
+                
+                // 3. 查找用户（优先UnionId，其次OpenId+PlatformType）
+                ApplicationUser user = null;
+                ThirdPartyAccount account = null;
+                
+                if (!string.IsNullOrEmpty(sessionInfo.UnionId))
+                {
+                    account = await FindAccountByUnionIdAsync(sessionInfo.UnionId, model.TenantId);
+                }
+                
+                if (account == null)
+                {
+                    account = await FindAccountByOpenIdAsync(
+                        model.PlatformType, 
+                        sessionInfo.OpenId, 
+                        model.TenantId);
+                }
+                
+                // 4. 如果账号不存在，创建新用户和账号
+                if (account == null)
+                {
+                    user = await CreateThirdPartyUserAsync(model.TenantId, model.PlatformType);
+                    account = await CreateThirdPartyAccountAsync(
+                        user.Id, 
+                        model.TenantId, 
+                        model.PlatformType, 
+                        sessionInfo);
+                }
+                else
+                {
+                    user = account.User ?? await _context.Users.FindAsync(account.UserId);
+                    
+                    // 更新账号信息（UnionId、SessionKey等）
+                    await UpdateThirdPartyAccountAsync(account, sessionInfo);
+                }
+                
+                // 5. 验证用户状态并处理登录
+                if (user == null || !user.IsActive)
+                {
+                    return AuthResultDto.CreateFailure("账号已被禁用");
+                }
+                
+                return await ProcessSuccessfulLoginAsync(user, ipAddress, userAgent, model.TenantId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "第三方登录异常，平台类型: {PlatformType}", model.PlatformType);
+                return AuthResultDto.CreateFailure($"第三方登录失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 微信登录方法（兼容性包装）
+        /// </summary>
+        public async Task<AuthResultDto> WeChatLoginAsync(WeChatLoginModel model, string ipAddress, string userAgent)
+        {
+            var thirdPartyModel = new ThirdPartyLoginModel
+            {
+                PlatformType = ThirdPartyPlatformType.WeChatMiniProgram,
+                Credential = model.Code,
+                TenantId = model.TenantId
+            };
+            
+            return await ThirdPartyLoginAsync(thirdPartyModel, ipAddress, userAgent);
+        }
+
+        /// <summary>
+        /// 通过UnionId查找第三方账号
+        /// </summary>
+        private async Task<ThirdPartyAccount> FindAccountByUnionIdAsync(string unionId, string tenantId)
+        {
+            return await _context.ThirdPartyAccounts
+                .Include(a => a.User)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(a => a.UnionId == unionId && a.TenantId == tenantId);
+        }
+
+        /// <summary>
+        /// 通过OpenId和平台类型查找第三方账号
+        /// </summary>
+        private async Task<ThirdPartyAccount> FindAccountByOpenIdAsync(
+            ThirdPartyPlatformType platformType, 
+            string openId, 
+            string tenantId)
+        {
+            return await _context.ThirdPartyAccounts
+                .Include(a => a.User)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(a => 
+                    a.PlatformType == platformType && 
+                    a.OpenId == openId && 
+                    a.TenantId == tenantId);
+        }
+
+        /// <summary>
+        /// 创建第三方用户
+        /// </summary>
+        private async Task<ApplicationUser> CreateThirdPartyUserAsync(string tenantId, ThirdPartyPlatformType platformType)
+        {
+            var userId = _idGenerator.NewId();
+            var userName = GenerateThirdPartyUserName(platformType, userId);
+            
+            var user = new ApplicationUser
+            {
+                Id = userId,
+                TenantId = tenantId,
+                UserName = userName,
+                NormalizedUserName = userName.ToUpperInvariant(),
+                Name = GetPlatformDisplayName(platformType),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = 0
+            };
+            
+            var result = await _userManager.CreateAsync(user);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException($"创建用户失败: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            }
+            
+            return user;
+        }
+
+        /// <summary>
+        /// 创建第三方账号
+        /// </summary>
+        private async Task<ThirdPartyAccount> CreateThirdPartyAccountAsync(
+            long userId,
+            string tenantId,
+            ThirdPartyPlatformType platformType,
+            ThirdPartySessionInfo sessionInfo)
+        {
+            var account = new ThirdPartyAccount
+            {
+                Id = _idGenerator.NewId(),
+                UserId = userId,
+                TenantId = tenantId,
+                PlatformType = platformType,
+                OpenId = sessionInfo.OpenId,
+                UnionId = sessionInfo.UnionId,
+                SessionKey = EncryptSessionKey(sessionInfo.SessionKey),
+                IsPrimary = true,
+                LastLoginTime = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = 0
+            };
+            
+            await _context.ThirdPartyAccounts.AddAsync(account);
+            await _context.SaveChangesAsync();
+            
+            return account;
+        }
+
+        /// <summary>
+        /// 更新第三方账号信息
+        /// </summary>
+        private async Task UpdateThirdPartyAccountAsync(ThirdPartyAccount account, ThirdPartySessionInfo sessionInfo)
+        {
+            bool updated = false;
+            
+            // 确保实体被跟踪
+            var trackedAccount = _context.ThirdPartyAccounts.Local.FirstOrDefault(a => a.Id == account.Id);
+            if (trackedAccount == null)
+            {
+                _context.ThirdPartyAccounts.Attach(account);
+            }
+            else
+            {
+                account = trackedAccount;
+            }
+            
+            // 更新UnionId（如果之前不存在）
+            if (string.IsNullOrEmpty(account.UnionId) && !string.IsNullOrEmpty(sessionInfo.UnionId))
+            {
+                account.UnionId = sessionInfo.UnionId;
+                updated = true;
+            }
+            
+            // 更新SessionKey
+            if (!string.IsNullOrEmpty(sessionInfo.SessionKey))
+            {
+                account.SessionKey = EncryptSessionKey(sessionInfo.SessionKey);
+                updated = true;
+            }
+            
+            // 更新最后登录时间
+            account.LastLoginTime = DateTime.UtcNow;
+            account.UpdatedAt = DateTime.UtcNow;
+            account.UpdatedBy = account.UserId;
+            
+            if (updated)
+            {
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// 生成第三方用户用户名
+        /// </summary>
+        private string GenerateThirdPartyUserName(ThirdPartyPlatformType platformType, long userId)
+        {
+            var prefix = platformType switch
+            {
+                ThirdPartyPlatformType.WeChatMiniProgram => "wx",
+                ThirdPartyPlatformType.AlipayMiniProgram => "alipay",
+                _ => "tp"
+            };
+            return $"{prefix}_{userId}";
+        }
+
+        /// <summary>
+        /// 获取平台显示名称
+        /// </summary>
+        private string GetPlatformDisplayName(ThirdPartyPlatformType platformType)
+        {
+            return platformType switch
+            {
+                ThirdPartyPlatformType.WeChatMiniProgram => "微信用户",
+                ThirdPartyPlatformType.AlipayMiniProgram => "支付宝用户",
+                _ => "第三方用户"
+            };
+        }
+
+        /// <summary>
+        /// 加密SessionKey
+        /// </summary>
+        private string EncryptSessionKey(string sessionKey)
+        {
+            if (string.IsNullOrEmpty(sessionKey))
+            {
+                return string.Empty;
+            }
+            
+            var protector = _dataProtectionProvider.CreateProtector("ThirdParty.SessionKey");
+            return protector.Protect(sessionKey);
+        }
+
+        /// <summary>
+        /// 获取平台配置（优先从设置服务读取，其次从appsettings.json）
+        /// </summary>
+        private ThirdPartyPlatformConfig GetPlatformConfig(ThirdPartyPlatformType platformType, string tenantId)
+        {
+            // 优先从设置服务读取
+            try
+            {
+                var settings = _settingsService.GetTenantSettingAsync<Dtos.Settings.ThirdPartyLoginSettingsDto>(
+                    "ThirdPartyLogin", 
+                    "Configuration", 
+                    tenantId).Result;
+                
+                if (settings != null)
+                {
+                    return platformType switch
+                    {
+                        ThirdPartyPlatformType.WeChatMiniProgram => new ThirdPartyPlatformConfig
+                        {
+                            AppId = settings.WeChatAppId ?? string.Empty,
+                            AppSecret = settings.WeChatAppSecret ?? string.Empty
+                        },
+                        ThirdPartyPlatformType.AlipayMiniProgram => new ThirdPartyPlatformConfig
+                        {
+                            AppId = settings.AlipayAppId ?? string.Empty,
+                            AppSecret = settings.AlipayAppSecret ?? string.Empty
+                        },
+                        _ => throw new NotSupportedException($"不支持的平台类型: {platformType}")
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "从设置服务读取配置失败，将使用appsettings.json配置");
+            }
+            
+            // 从appsettings.json读取（备用）
+            var configSection = platformType switch
+            {
+                ThirdPartyPlatformType.WeChatMiniProgram => _configuration.GetSection("ThirdParty:WeChat"),
+                ThirdPartyPlatformType.AlipayMiniProgram => _configuration.GetSection("ThirdParty:Alipay"),
+                _ => throw new NotSupportedException($"不支持的平台类型: {platformType}")
+            };
+            
+            return new ThirdPartyPlatformConfig
+            {
+                AppId = configSection["AppId"] ?? string.Empty,
+                AppSecret = configSection["AppSecret"] ?? string.Empty
+            };
         }
     }
 

@@ -28,6 +28,7 @@ namespace CodeSpirit.IdentityApi.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly IClientIpService _clientIpService;
         private readonly ICurrentUser _currentUser;
+        private readonly CodeSpirit.MultiTenant.Abstractions.ITenantStore _tenantStore;
 
         /// <summary>
         /// 初始化授权控制器
@@ -37,18 +38,21 @@ namespace CodeSpirit.IdentityApi.Controllers
         /// <param name="logger">日志记录器</param>
         /// <param name="clientIpService">客户端IP地址获取服务</param>
         /// <param name="currentUser">当前用户服务</param>
+        /// <param name="tenantStore">租户存储服务</param>
         public AuthController(
             IAuthService authService,
             SignInManager<ApplicationUser> signInManager,
             ILogger<AuthController> logger,
             IClientIpService clientIpService,
-            ICurrentUser currentUser)
+            ICurrentUser currentUser,
+            CodeSpirit.MultiTenant.Abstractions.ITenantStore tenantStore)
         {
             _authService = authService;
             _signInManager = signInManager;
             _logger = logger;
             _clientIpService = clientIpService;
             _currentUser = currentUser;
+            _tenantStore = tenantStore;
         }
 
         /// <summary>
@@ -345,6 +349,136 @@ namespace CodeSpirit.IdentityApi.Controllers
                 "assessment" => "评估系统",
                 _ => "客户端系统"
             };
+        }
+
+        /// <summary>
+        /// 第三方平台登录接口（通用）
+        /// </summary>
+        /// <param name="model">第三方登录请求</param>
+        /// <returns>登录结果</returns>
+        [HttpPost("third-party/login")]
+        [AllowAnonymous]
+        [DisplayName("第三方平台登录")]
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> ThirdPartyLogin([FromBody] ThirdPartyLoginModel model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadResponse<AuthTokenResponse>("请求参数验证失败");
+                }
+
+                // 验证租户ID
+                if (string.IsNullOrEmpty(model.TenantId))
+                {
+                    return BadResponse<AuthTokenResponse>("租户ID不能为空");
+                }
+
+                // 验证租户是否存在和有效
+                var tenantInfo = await _tenantStore.GetTenantAsync(model.TenantId);
+                if (tenantInfo == null || !tenantInfo.IsActive)
+                {
+                    return BadResponse<AuthTokenResponse>("租户不存在或已禁用");
+                }
+
+                // 设置租户上下文（用于后续数据库操作）
+                HttpContext.Items["TenantId"] = model.TenantId;
+
+                var ipAddress = _clientIpService.GetClientIpAddress(HttpContext);
+                var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+                // 调用服务方法
+                var result = await _authService.ThirdPartyLoginAsync(model, ipAddress, userAgent);
+                if (!result.Success)
+                {
+                    return BadResponse<AuthTokenResponse>(result.Message);
+                }
+
+                // 返回结果（包含租户信息）
+                var response = new AuthTokenResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    User = result.UserInfo,
+                    TenantInfo = new TenantInfoDto
+                    {
+                        TenantId = tenantInfo.TenantId,
+                        TenantName = tenantInfo.Name
+                    }
+                };
+
+                return SuccessResponse(response, "第三方登录成功");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "第三方登录异常");
+                return BadResponse<AuthTokenResponse>("第三方登录失败，请检查登录信息或联系管理员！");
+            }
+        }
+
+        /// <summary>
+        /// 微信登录接口（兼容性，内部转换为ThirdPartyLogin）
+        /// </summary>
+        /// <param name="model">微信登录请求</param>
+        /// <returns>登录结果</returns>
+        [HttpPost("wechat/login")]
+        [AllowAnonymous]
+        [DisplayName("微信登录")]
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> WeChatLogin([FromBody] WeChatLoginModel model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadResponse<AuthTokenResponse>("请求参数验证失败");
+                }
+
+                // 验证租户ID
+                if (string.IsNullOrEmpty(model.TenantId))
+                {
+                    return BadResponse<AuthTokenResponse>("租户ID不能为空");
+                }
+
+                // 验证租户是否存在和有效
+                var tenantInfo = await _tenantStore.GetTenantAsync(model.TenantId);
+                if (tenantInfo == null || !tenantInfo.IsActive)
+                {
+                    return BadResponse<AuthTokenResponse>("租户不存在或已禁用");
+                }
+
+                // 设置租户上下文（用于后续数据库操作）
+                HttpContext.Items["TenantId"] = model.TenantId;
+
+                var ipAddress = _clientIpService.GetClientIpAddress(HttpContext);
+                var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+                // 调用服务方法
+                var result = await _authService.WeChatLoginAsync(model, ipAddress, userAgent);
+                if (!result.Success)
+                {
+                    return BadResponse<AuthTokenResponse>(result.Message);
+                }
+
+                // 返回结果（包含租户信息）
+                var response = new AuthTokenResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    User = result.UserInfo,
+                    TenantInfo = new TenantInfoDto
+                    {
+                        TenantId = tenantInfo.TenantId,
+                        TenantName = tenantInfo.Name
+                    }
+                };
+
+                return SuccessResponse(response, "微信登录成功");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "微信登录异常");
+                return BadResponse<AuthTokenResponse>("微信登录失败，请检查登录信息或联系管理员！");
+            }
         }
     }
 }

@@ -69,5 +69,23 @@ namespace CodeSpirit.IdentityApi.Services
         /// <param name="tenantId">租户ID（可选）</param>
         /// <returns>登录结果</returns>
         Task<(bool Success, string Message, string Token, UserDto UserInfo)> ImpersonateLoginAsync(string userName, string tenantId = null);
+
+        /// <summary>
+        /// 第三方平台登录方法
+        /// </summary>
+        /// <param name="model">第三方登录请求</param>
+        /// <param name="ipAddress">客户端IP地址</param>
+        /// <param name="userAgent">客户端信息</param>
+        /// <returns>登录结果</returns>
+        Task<AuthResultDto> ThirdPartyLoginAsync(ThirdPartyLoginModel model, string ipAddress, string userAgent);
+
+        /// <summary>
+        /// 微信小程序登录方法
+        /// </summary>
+        /// <param name="model">微信登录请求</param>
+        /// <param name="ipAddress">客户端IP地址</param>
+        /// <param name="userAgent">客户端信息</param>
+        /// <returns>登录结果</returns>
+        Task<AuthResultDto> WeChatLoginAsync(WeChatLoginModel model, string ipAddress, string userAgent);
     }
 }

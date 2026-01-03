@@ -311,52 +311,53 @@ https://codespirit-app.xin-lai.com/
 49. [👮 权限组件详解](./Docs/04-Identity-Auth/codespirit-authorization-guide-zh-CN.md) - 基于RBAC+ABAC混合模型的综合权限系统
 50. [🎫 前端认证管理器](./Docs/04-Identity-Auth/codespirit-token-manager-guide-zh-CN.md) - 前端认证管理和令牌处理
 51. [⚙️ 可设置用户接口指南](./Docs/04-Identity-Auth/isettable-current-user-guide-zh-CN.md) - 可设置当前用户接口，支持动态用户上下文场景
-52. [👥 职工管理及组织结构管理功能说明](./Docs/04-Identity-Auth/employee-organization-management-zh-CN.md) - 职工和组织架构管理功能
-53. [🏢 部门管理AI快速初始化功能说明](./Docs/04-Identity-Auth/department-ai-initialization-zh-CN.md) - AI辅助部门结构初始化
+52. [🔐 第三方登录通用化架构](./Docs/04-Identity-Auth/third-party-login-architecture-zh-CN.md) - 支持微信、支付宝等多平台的第三方登录系统，UnionId统一识别，完整测试覆盖 ⭐
+53. [👥 职工管理及组织结构管理功能说明](./Docs/04-Identity-Auth/employee-organization-management-zh-CN.md) - 职工和组织架构管理功能
+54. [🏢 部门管理AI快速初始化功能说明](./Docs/04-Identity-Auth/department-ai-initialization-zh-CN.md) - AI辅助部门结构初始化
 
 ### 🏢 多租户架构
 
-54. [🏗️ 多租户组件整改计划](./Docs/05-Multi-Tenancy/codespirit-multi-tenant-refactor-plan-zh-CN.md) - 多租户架构改进和实施计划
-55. [🎯 租户解析器使用指南](./Docs/05-Multi-Tenancy/codespirit-tenant-resolver-guide-zh-CN.md) - 租户解析和上下文管理
-56. [🔍 数据筛选器使用指南](./Docs/05-Multi-Tenancy/codespirit-data-filter-guide-zh-CN.md) - 数据过滤和租户隔离机制
-57. [🗄️ 多租户数据库上下文架构](./Docs/05-Multi-Tenancy/codespirit-multi-tenant-dbcontext-architecture-zh-CN.md) - 多租户数据库架构设计
-58. [🖥️ 多租户登录页面使用指南](./Docs/05-Multi-Tenancy/multi-tenant-login-page-guide-zh-CN.md) - 多租户登录界面实现
-59. [🎯 租户感知事件系统设计](./Docs/05-Multi-Tenancy/codespirit-tenant-aware-event-system-design-zh-CN.md) - 全面的租户感知事件总线架构和实现方案
+55. [🏗️ 多租户组件整改计划](./Docs/05-Multi-Tenancy/codespirit-multi-tenant-refactor-plan-zh-CN.md) - 多租户架构改进和实施计划
+56. [🎯 租户解析器使用指南](./Docs/05-Multi-Tenancy/codespirit-tenant-resolver-guide-zh-CN.md) - 租户解析和上下文管理
+57. [🔍 数据筛选器使用指南](./Docs/05-Multi-Tenancy/codespirit-data-filter-guide-zh-CN.md) - 数据过滤和租户隔离机制
+58. [🗄️ 多租户数据库上下文架构](./Docs/05-Multi-Tenancy/codespirit-multi-tenant-dbcontext-architecture-zh-CN.md) - 多租户数据库架构设计
+59. [🖥️ 多租户登录页面使用指南](./Docs/05-Multi-Tenancy/multi-tenant-login-page-guide-zh-CN.md) - 多租户登录界面实现
+60. [🎯 租户感知事件系统设计](./Docs/05-Multi-Tenancy/codespirit-tenant-aware-event-system-design-zh-CN.md) - 全面的租户感知事件总线架构和实现方案
 
 ### 🚀 基础设施与运维
 
-60. [🐰 RabbitMQ集成指南](./Docs/06-Infrastructure/rabbitmq-aspire-integration-zh-CN.md) - 消息队列集成方案
-61. [🔧 RabbitMQ故障排除](./Docs/06-Infrastructure/rabbitmq-troubleshooting-guide-zh-CN.md) - 常见问题解决方案
-62. [🔍 Elasticsearch迁移总结](./Docs/06-Infrastructure/elasticsearch-aspire-migration-summary-zh-CN.md) - 搜索引擎集成指南
-63. [🌐 跨域策略配置指南](./Docs/06-Infrastructure/codespirit-cors-configuration-guide-zh-CN.md) - CORS跨域资源共享配置和安全策略
-64. [📁 文件存储服务方案实现](./Docs/06-Infrastructure/codespirit-file-storage-service-implementation-zh-CN.md) - 文件存储服务架构设计和实现方案
-65. [🌐 API地址配置指南](./Docs/06-Infrastructure/api-address-configuration-guide-zh-CN.md) - API服务地址配置说明
-66. [🔧 API路径前缀配置指南](./Docs/06-Infrastructure/api-path-prefix-configuration-guide-zh-CN.md) - API路径前缀配置方法
-67. [🚀 Aspire9.5优化指南](./Docs/06-Infrastructure/codespirit-apphost-aspire95-optimization-zh-CN.md) - Aspire 9.5版本优化实践
-68. [🗄️ Aspire数据库集成实现指南](./Docs/06-Infrastructure/codespirit-aspire-database-integration-guide-zh-CN.md) - Aspire数据库集成详细实现
-69. [🎯 Aspire数据库集成统一方案](./Docs/06-Infrastructure/codespirit-aspire-database-unified-solution-zh-CN.md) - Aspire数据库集成统一架构
-70. [💾 统一缓存组件指南](./Docs/06-Infrastructure/codespirit-caching-guide-zh-CN.md) - 分布式缓存组件使用说明
-71. [📄 PuppeteerSharp问题解决指南](./Docs/06-Infrastructure/codespirit-pdf-puppeteer-troubleshooting-zh-CN.md) - PDF生成组件常见问题解决
-72. [🗄️ 多数据库DbContext架构使用指南](./Docs/06-Infrastructure/multi-database-dbcontext-architecture-guide-zh-CN.md) - 多数据库支持架构设计
+61. [🐰 RabbitMQ集成指南](./Docs/06-Infrastructure/rabbitmq-aspire-integration-zh-CN.md) - 消息队列集成方案
+62. [🔧 RabbitMQ故障排除](./Docs/06-Infrastructure/rabbitmq-troubleshooting-guide-zh-CN.md) - 常见问题解决方案
+63. [🔍 Elasticsearch迁移总结](./Docs/06-Infrastructure/elasticsearch-aspire-migration-summary-zh-CN.md) - 搜索引擎集成指南
+64. [🌐 跨域策略配置指南](./Docs/06-Infrastructure/codespirit-cors-configuration-guide-zh-CN.md) - CORS跨域资源共享配置和安全策略
+65. [📁 文件存储服务方案实现](./Docs/06-Infrastructure/codespirit-file-storage-service-implementation-zh-CN.md) - 文件存储服务架构设计和实现方案
+66. [🌐 API地址配置指南](./Docs/06-Infrastructure/api-address-configuration-guide-zh-CN.md) - API服务地址配置说明
+67. [🔧 API路径前缀配置指南](./Docs/06-Infrastructure/api-path-prefix-configuration-guide-zh-CN.md) - API路径前缀配置方法
+68. [🚀 Aspire9.5优化指南](./Docs/06-Infrastructure/codespirit-apphost-aspire95-optimization-zh-CN.md) - Aspire 9.5版本优化实践
+69. [🗄️ Aspire数据库集成实现指南](./Docs/06-Infrastructure/codespirit-aspire-database-integration-guide-zh-CN.md) - Aspire数据库集成详细实现
+70. [🎯 Aspire数据库集成统一方案](./Docs/06-Infrastructure/codespirit-aspire-database-unified-solution-zh-CN.md) - Aspire数据库集成统一架构
+71. [💾 统一缓存组件指南](./Docs/06-Infrastructure/codespirit-caching-guide-zh-CN.md) - 分布式缓存组件使用说明
+72. [📄 PuppeteerSharp问题解决指南](./Docs/06-Infrastructure/codespirit-pdf-puppeteer-troubleshooting-zh-CN.md) - PDF生成组件常见问题解决
+73. [🗄️ 多数据库DbContext架构使用指南](./Docs/06-Infrastructure/multi-database-dbcontext-architecture-guide-zh-CN.md) - 多数据库支持架构设计
 
 ### 🌐 API与通信
 
-73. [🔗 通用API跳转机制使用指南](./Docs/07-API-Communication/codespirit-api-redirect-mechanism-guide-zh-CN.md) - 通用API路由和通信机制
+74. [🔗 通用API跳转机制使用指南](./Docs/07-API-Communication/codespirit-api-redirect-mechanism-guide-zh-CN.md) - 通用API路由和通信机制
 
 ### 📊 项目管理
 
-74. [📋 技术债管理文档](./Docs/08-Project-Management/technical-debt-management-zh-CN.md) - 技术债跟踪和管理规范
+75. [📋 技术债管理文档](./Docs/08-Project-Management/technical-debt-management-zh-CN.md) - 技术债跟踪和管理规范
 
 ### 📝 考试系统
 
-75. [📚 考试系统概览](./Docs/09-Exam-System/README.md) - 完整的考试系统文档导航和快速参考
-76. [🏗️ 考试系统完整说明文档](./Docs/09-Exam-System/exam-system-complete-documentation-zh-CN.md) - 业务视角全面指南，涵盖角色权限、核心功能、业务流程和应用场景 | [English](./Docs/09-Exam-System/exam-system-complete-documentation-en-US.md)
-77. [📋 考试系统业务功能](./Docs/09-Exam-System/exam-system-feature-list-zh-CN.md) - 完整业务功能清单，涵盖12大模块200+功能特性
+76. [📚 考试系统概览](./Docs/09-Exam-System/README.md) - 完整的考试系统文档导航和快速参考
+77. [🏗️ 考试系统完整说明文档](./Docs/09-Exam-System/exam-system-complete-documentation-zh-CN.md) - 业务视角全面指南，涵盖角色权限、核心功能、业务流程和应用场景 | [English](./Docs/09-Exam-System/exam-system-complete-documentation-en-US.md)
+78. [📋 考试系统业务功能](./Docs/09-Exam-System/exam-system-feature-list-zh-CN.md) - 完整业务功能清单，涵盖12大模块200+功能特性
 
 ### 📋 问卷调查系统
 
-78. [📊 问卷调查模块方案设计](./Docs/09-Survey-System/survey-module-design-zh-CN.md) - 问卷调查系统架构设计方案
-79. [📝 题目类型特定字段实现说明](./Docs/09-Survey-System/question-type-specific-fields-zh-CN.md) - 题目类型字段实现细节
+79. [📊 问卷调查模块方案设计](./Docs/09-Survey-System/survey-module-design-zh-CN.md) - 问卷调查系统架构设计方案
+80. [📝 题目类型特定字段实现说明](./Docs/09-Survey-System/question-type-specific-fields-zh-CN.md) - 题目类型字段实现细节
 
 ### 🚀 赞助与技术支持
 

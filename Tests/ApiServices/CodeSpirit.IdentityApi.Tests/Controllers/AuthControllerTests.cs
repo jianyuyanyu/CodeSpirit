@@ -43,7 +43,13 @@ namespace CodeSpirit.IdentityApi.Tests.Controllers
             _mockClientIpService.Setup(x => x.GetClientIpAddress(It.IsAny<HttpContext>()))
                 .Returns("127.0.0.1");
 
-            _controller = new AuthController(_mockAuthService.Object, _mockSignInManager.Object, _mockLogger.Object, _mockClientIpService.Object, new Mock<ICurrentUser>().Object);
+            _controller = new AuthController(
+                _mockAuthService.Object, 
+                _mockSignInManager.Object, 
+                _mockLogger.Object, 
+                _mockClientIpService.Object, 
+                new Mock<ICurrentUser>().Object,
+                new Mock<CodeSpirit.MultiTenant.Abstractions.ITenantStore>().Object);
         }
 
         [Fact]

@@ -21,5 +21,10 @@ namespace CodeSpirit.IdentityApi.Dtos.Auth
         /// 用户信息
         /// </summary>
         public UserDto User { get; set; }
+
+        /// <summary>
+        /// 租户信息
+        /// </summary>
+        public TenantInfoDto? TenantInfo { get; set; }
     }
 } 

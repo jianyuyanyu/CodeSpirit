@@ -46,6 +46,7 @@ namespace CodeSpirit.Amis
             services.AddScoped<CardHelper>();
             services.AddScoped<AmisCRUDConfigBuilder>();
             services.AddScoped<StatisticsConfigBuilder>();
+            services.AddScoped<SettingsPageConfigBuilder>();
             services.AddScoped<AmisContext>();
 
             // 注册AI表单增强器

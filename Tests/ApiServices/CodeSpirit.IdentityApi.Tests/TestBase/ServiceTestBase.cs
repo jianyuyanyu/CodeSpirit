@@ -71,6 +71,8 @@ namespace CodeSpirit.IdentityApi.Tests.TestBase
             MockHttpContextAccessor = new Mock<IHttpContextAccessor>();
             MockCurrentUser = new Mock<ICurrentUser>();
             MockDataFilter = new Mock<IDataFilter>();
+            // EntityFileReferenceEventHandler需要构造函数参数，暂时不Mock，在SetupInMemoryDatabase中注册真实实例
+            // MockEntityFileReferenceEventHandler = new Mock<CodeSpirit.IdentityApi.EventHandlers.EntityFileReferenceEventHandler>();
             
             // 不再模拟 UserManager、RoleManager 和 SignInManager
             // 将使用真实的实现
@@ -123,6 +125,9 @@ namespace CodeSpirit.IdentityApi.Tests.TestBase
             
             // 添加日志工厂和 Identity 所需的日志服务
             services.AddLogging(builder => builder.AddDebug());
+            
+            // 注册EntityFileReferenceEventHandler - 使用真实实例，因为Mock需要构造函数参数
+            services.AddScoped<CodeSpirit.IdentityApi.EventHandlers.EntityFileReferenceEventHandler>();
             
             // 创建服务提供者
             ServiceProvider = services.BuildServiceProvider();

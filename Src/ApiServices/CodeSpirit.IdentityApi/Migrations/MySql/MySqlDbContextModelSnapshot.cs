@@ -636,6 +636,79 @@ namespace CodeSpirit.IdentityApi.Migrations.MySql
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ThirdPartyAccount", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("LastLoginTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("OpenId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<int>("PlatformType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SessionKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<string>("UnionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_ThirdPartyAccount_UserId");
+
+                    b.HasIndex("TenantId", "UnionId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ThirdPartyAccount_TenantId_UnionId")
+                        .HasFilter("[UnionId] IS NOT NULL");
+
+                    b.HasIndex("TenantId", "PlatformType", "OpenId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ThirdPartyAccount_TenantId_PlatformType_OpenId");
+
+                    b.ToTable("ThirdPartyAccount", (string)null);
+                });
+
             modelBuilder.Entity("CodeSpirit.MultiTenant.Models.TenantInfo", b =>
                 {
                     b.Property<string>("Id")
@@ -929,6 +1002,17 @@ namespace CodeSpirit.IdentityApi.Migrations.MySql
                 });
 
             modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.RefreshToken", b =>
+                {
+                    b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CodeSpirit.IdentityApi.Data.Models.ThirdPartyAccount", b =>
                 {
                     b.HasOne("CodeSpirit.IdentityApi.Data.Models.ApplicationUser", "User")
                         .WithMany()

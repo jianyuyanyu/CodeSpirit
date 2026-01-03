@@ -12,7 +12,7 @@ Docs/
 ├── 01-Core-Docs/                          # 📘 核心文档 (8个文件)
 ├── 02-UI-Generation/                      # 🎨 界面生成引擎 (17个文件)  
 ├── 03-Core-Components/                    # 🔧 核心组件 (35个文件)
-├── 04-Identity-Auth/                      # 🔐 身份认证与权限 (7个文件)
+├── 04-Identity-Auth/                      # 🔐 身份认证与权限 (8个文件)
 ├── 05-Multi-Tenancy/                      # 🏢 多租户架构 (7个文件)
 ├── 06-Infrastructure/                     # 🚀 基础设施与运维 (13个文件)
 ├── 07-API-Communication/                  # 🌐 API与通信 (1个文件)
@@ -48,7 +48,7 @@ Docs/
 - 08-aliyun-qwen-free-trial-guide-zh-CN.md (阿里云通义千问免费体验指南)
 - 08-aliyun-qwen-free-trial-guide-en-US.md
 
-### 🎨 02-UI-Generation (17个文件)
+### 🎨 02-UI-Generation (18个文件)
 **界面生成引擎**：AMIS引擎、智能图表、UDL系统等前端生成相关
 - AMIS列自动推断功能说明.md
 - CodeSpirit.Amis.AiForm智能表单使用指南.md ⭐ **新增**
@@ -58,6 +58,7 @@ Docs/
 - CodeSpirit.Amis表单项组使用指南.md
 - CodeSpirit.Amis表单默认值使用指南.md
 - CodeSpirit.Charts智能图表使用指南.md
+- CodeSpirit.SettingsPage设置页自动生成指南.md ⭐ **新增**
 - CodeSpirit.UDL-Cards卡片使用指南.md
 - CodeSpirit.UdlCards.SDK使用指南.md
 - CrudDialogOperation使用指南.md ⭐ **新增**
@@ -106,15 +107,16 @@ Docs/
 - ResourceTagHelper资源管理组件使用指南.md
 - Scrutor依赖注入集成指南.md
 
-### 🔐 04-Identity-Auth (7个文件)
-**身份认证与权限**：身份认证、权限管理、前端集成、权限继承机制、组织结构管理
+### 🔐 04-Identity-Auth (8个文件)
+**身份认证与权限**：身份认证、权限管理、前端集成、权限继承机制、组织结构管理、第三方登录
 - CodeSpirit.Authorization权限组件详解.md
 - CodeSpirit.Authorization权限继承使用指南.md
 - CodeSpirit.IdentityApi身份认证服务.md
 - CodeSpirit.TokenManager前端认证管理器使用指南.md
 - ISettableCurrentUser可设置用户接口使用指南.md
-- 职工管理及组织结构管理功能说明.md ⭐ **新增**
-- 部门管理AI快速初始化功能说明.md ⭐ **新增**
+- 第三方登录通用化架构.md ⭐ **新增**
+- 职工管理及组织结构管理功能说明.md
+- 部门管理AI快速初始化功能说明.md
 
 ### 🏢 05-Multi-Tenancy (7个文件)
 **多租户架构**：多租户设计、租户解析、数据隔离、租户感知事件系统等

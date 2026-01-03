@@ -41,17 +41,23 @@
         /// </summary>
         public bool Searchable { get; set; } = false;
 
-        /// <summary>
-        /// 是否允许清除选项，仅适用于 "select" 类型字段。
-        /// </summary>
-        public bool Clearable { get; set; } = false;
+    /// <summary>
+    /// 是否允许清除选项，仅适用于 "select" 类型字段。
+    /// </summary>
+    public bool Clearable { get; set; } = false;
 
-        /// <summary>
-        /// 初始化一个新的 <see cref="AmisSelectFieldAttribute"/> 实例。
-        /// </summary>
-        public AmisSelectFieldAttribute() : base("select")
-        {
-        }
+    /// <summary>
+    /// 静态选项数据，格式为 "value1:label1,value2:label2"，仅适用于 "select" 类型字段。
+    /// 例如: "zh-CN:简体中文,en-US:English"
+    /// </summary>
+    public string Options { get; set; }
+
+    /// <summary>
+    /// 初始化一个新的 <see cref="AmisSelectFieldAttribute"/> 实例。
+    /// </summary>
+    public AmisSelectFieldAttribute() : base("select")
+    {
+    }
 
         /// <summary>
         /// 初始化一个新的 <see cref="AmisSelectFieldAttribute"/> 实例，并设置 select 类型字段的属性。

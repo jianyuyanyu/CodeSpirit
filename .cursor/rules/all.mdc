@@ -1,104 +1,121 @@
 ---
-description: CodeSpirit项目全局开发规范 - 定义代码风格、架构模式、技术栈和项目结构要求
+description: CodeSpirit 全局开发规范概览 - 核心原则和规范索引
 globs: 
 alwaysApply: true
 ---
 
 # 通用要求
 
-- 请结合下方的技术栈
-- 请基于下面的项目结构理解当前项目，必须严格遵守下面的项目结构要求及规范
-- 创建EF迁移时必须按数据库目录进行创建迁移，目前已支持SQL Server和MySQL
-- 当前是分布式程序，需优先考虑符合分布式服务的场景，考虑服务高可用、容错、降级
+- 严格遵守项目结构规范，保持代码组织一致性
+- EF 迁移按数据库目录创建（SqlServer/MySql）
+- 分布式程序优先考虑：高可用、容错、降级、最终一致性
+- 所有面向用户的文本必须支持多语言（中文/英文）
+- 异步编程：所有 I/O 操作使用 `async/await`，禁止 `Task.Result` 和 `Task.Wait()`
 
-# CodeSpirit 开发规范
+> 💡 **详细规范**: 本文件是全局概览，详细规范请参考专项文档
 
-## 技术栈
+# 技术栈
 
-- 框架：.NET 9
-- 编排：.NET Aspire
-- 数据库：SQL Server / MySQL（多数据库支持）
-- 缓存：分布式缓存（Redis）
-- 消息队列：RabbitMQ
-- 前端：React + AMIS (AntD主题)
+- **框架**: .NET 10 + Aspire 13.0
+- **数据库**: MySQL 8.0 / SQL Server 2022 + GreptimeDB（审计）
+- **缓存/消息**: Redis + RabbitMQ
+- **前端**: React + AMIS (AntD 主题)
+- **AI**: OpenAI、通义千问、DeepSeek
 
-## 代码规范
+# 核心规范
 
-### 文件组织
-- 每个 .cs 文件只定义一个顶级类型
-- 文件夹结构反映命名空间结构
-- 添加新项目/文件时遵循项目结构规范
+## 统一启动框架
+- Program.cs 仅需 2 行代码 + 配置类继承 `BaseApiConfiguration`
+- 📖 [详细规范](mdc:.cursor/rules/startup-framework.mdc)
 
-### 文档注释
-- 所有公共成员必须添加 XML 文档注释
-- 必须包含：`<summary>`、`<param>`、`<returns>`、`<exception>`
-- 复杂业务逻辑添加详细行内注释
+## 依赖注入
+- 自动注册：`IScopedDependency` / `ITransientDependency` / `ISingletonDependency`
+- 📖 [详细规范](mdc:.cursor/rules/dependency-injection.mdc)
 
-## 数据访问
+## 命名约定
+- 实体：`User`、DTO：`CreateUserDto`、服务：`UserService`、控制器：`UsersController`
+- 📖 [详细规范](mdc:.cursor/rules/naming-conventions.mdc)
 
-### Entity Framework Core
-- 使用 Code First 迁移
-- 实体配置使用 `IEntityTypeConfiguration<T>`
-- 按数据库创建独立迁移（SqlServer/MySql）
-- 只读查询使用 `AsNoTracking()`
-- 避免 N+1 查询，合理使用 `Include`
+## API 设计
+- RESTful 标准 + 统一响应格式 `ApiResponse<T>` + 操作特性标记
+- 📖 [详细规范](mdc:.cursor/rules/api-design.mdc)
 
-### 多租户
-- 所有实体应分析是否需要租户隔离，并实现接口 IMultiTenant
-- 自动应用租户过滤器
+## 多语言国际化
+- 支持中英文 + 资源文件 + DTO 验证特性多语言
+- 📖 [详细规范](mdc:.cursor/rules/i18n.mdc)
+
+## AI 功能开发
+- AI 表单填充（`[AiFormFill]`）+ AI 长任务（`aiForm`）+ LLM 集成
+- 📖 [详细规范](mdc:.cursor/rules/ai-development.mdc)
 
 ## 性能优化
+- 异步编程 + 多级缓存（L1+L2）+ EF Core 查询优化
+- 📖 [详细规范](mdc:.cursor/rules/performance.mdc)
 
-### 异步编程
-- I/O 操作必须使用异步方法（`async/await`）
-- 避免 `Task.Result` 和 `Task.Wait()`
+## 安全规范
+- 权限控制（`[Authorize]` + `[RequirePermission]`）+ 审计追踪 + 数据加密
+- 📖 [详细规范](mdc:.cursor/rules/security.mdc)
 
-## 组件使用
+# 数据访问
 
-### LLM集成
-- 使用 `CodeSpirit.LLM` 抽象
+- **Code First 迁移**: 按数据库创建独立迁移（SqlServer/MySql）
+- **实体配置**: `IEntityTypeConfiguration<T>`
+- **只读查询**: `AsNoTracking()`，避免 N+1 用 `Include` + `AsSplitQuery()`
+- **多租户**: 实体实现 `IMultiTenant`，自动应用租户过滤器
 
-### AMIS
-- 使用 `antd` 主题
-- CSS类使用 `antd-` 前缀
+# 代码质量
 
-## 调试运行
+- 一个 .cs 文件一个顶级类型
+- XML 文档注释：`<summary>`, `<param>`, `<returns>`, `<exception>`
+- 时间使用 UTC 格式
 
-- 启动项目：`CodeSpirit.AppHost`（Aspire 协调程序）
+# 组件使用
 
+- **AMIS**: `antd` 主题，CSS 类用 `antd-` 前缀，特性驱动
+- **LLM**: 使用 `ILLMClientFactory`，提示词指定 JSON 输出
+
+# 调试运行
+
+- **启动**: `CodeSpirit.AppHost` (Aspire 协调) → `aspire run` 或 F5
+- **Dashboard**: Aspire 管理面板
+- **健康检查**: `/health`
 
 # 项目结构
 
+```
 Src/
-├── ApiServices/                          # API服务层
-│   ├── CodeSpirit.AiCardsApi/           # AI卡片API服务
-│   ├── CodeSpirit.ApprovalApi/          # 审批工作流API服务
-│   ├── CodeSpirit.ConfigCenter/         # 配置中心API
-│   ├── CodeSpirit.ExamApi/              # 考试系统API
-│   ├── CodeSpirit.FileStorageApi/       # 文件存储API
-│   ├── CodeSpirit.IdentityApi/          # 身份认证API
-│   ├── CodeSpirit.MessagingApi/         # 消息服务API
-│   └── CodeSpirit.SurveyApi/            # 问卷调查API
-├── Components/                           # 独立组件库
-│   ├── CodeSpirit.Aggregator/           # 数据聚合器组件
-│   ├── CodeSpirit.AiFormFill/           # AI表单智能填充组件
-│   ├── CodeSpirit.Amis/                 # AMIS界面生成引擎
-│   ├── CodeSpirit.Audit/                # 审计追踪组件
-│   ├── CodeSpirit.Authorization/        # 权限管理组件
-│   ├── CodeSpirit.Caching/              # 分布式缓存组件
-│   ├── CodeSpirit.Charts/               # 智能图表组件
-│   ├── CodeSpirit.ConfigCenter.Client/ # 配置中心客户端
-│   ├── CodeSpirit.LLM/                  # 大语言模型集成组件
-│   ├── CodeSpirit.Messaging/            # 消息队列组件
-│   ├── CodeSpirit.MultiTenant/          # 多租户组件
-│   ├── CodeSpirit.Navigation/           # 导航组件
-│   ├── CodeSpirit.PdfGeneration/        # PDF生成组件
-│   ├── CodeSpirit.ScheduledTasks/       # 定时任务组件
-│   ├── CodeSpirit.Settings/             # 设置管理组件
-│   ├── CodeSpirit.Shared/               # 组件共享库
-│   └── CodeSpirit.UdlCards/             # UDL卡片组件
-├── CodeSpirit.AppHost/                   # Aspire应用宿主（启动项目）
-├── CodeSpirit.Core/                      # 核心框架定义
-├── CodeSpirit.ServiceDefaults/           # 服务默认配置
-├── CodeSpirit.Shared/                    # 全局共享库
-├── CodeSpirit.Web/                       # Web前端项目
+├── ApiServices/        # 14个API服务（Identity, Exam, Survey, AI等）
+├── Components/         # 多个核心组件（Amis, LLM, Caching等）
+├── CodeSpirit.AppHost/ # Aspire应用宿主
+├── CodeSpirit.Core/    # 核心框架
+└── CodeSpirit.Web/     # Web前端
+```
+
+📖 [完整项目结构](mdc:.cursor/rules/project-structure.mdc)
+
+# 规范文档索引
+
+## 通用规范
+- [C#通用规范](mdc:.cursor/rules/cs.mdc) - XML注释、时间格式、序列化
+- [命名约定](mdc:.cursor/rules/naming-conventions.mdc) - 实体、DTO、服务、控制器命名
+
+## 按文件类型
+- [DTO规范](mdc:.cursor/rules/dto.mdc) - DTO特性、验证、映射
+- [控制器规范](mdc:.cursor/rules/controller.mdc) - API控制器、操作特性
+- [服务类规范](mdc:.cursor/rules/service.mdc) - 服务接口、实现、生命周期
+- [枚举规范](mdc:.cursor/rules/enum.mdc) - 枚举定义、多语言支持
+
+## 专项规范
+- [API设计](mdc:.cursor/rules/api-design.mdc) - RESTful、路由、响应格式
+- [依赖注入](mdc:.cursor/rules/dependency-injection.mdc) - Scrutor自动注册
+- [启动框架](mdc:.cursor/rules/startup-framework.mdc) - Program.cs配置
+- [多语言](mdc:.cursor/rules/i18n.mdc) - 资源文件、本地化
+- [AI开发](mdc:.cursor/rules/ai-development.mdc) - AI表单、长任务、LLM
+- [性能优化](mdc:.cursor/rules/performance.mdc) - 异步、缓存、查询
+- [安全规范](mdc:.cursor/rules/security.mdc) - 权限、审计、加密
+- [测试规范](mdc:.cursor/rules/testing.mdc) - 单元测试、集成测试、Mock使用
+
+## 项目结构
+- [项目结构](mdc:.cursor/rules/project-structure.mdc) - 完整目录树
+
+> 💡 专项规范会根据文件类型自动应用

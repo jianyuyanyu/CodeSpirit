@@ -277,6 +277,14 @@ namespace CodeSpirit.Amis.Column
                     ApplyDateTimeColumnOptimization(column, prop, fieldName, underlyingType);
                 }
 
+                // 处理图片集字段（优先于字符串数组处理，因为图片集也是数组类型）
+                ImagesColumnAttribute imagesAttr = prop.GetCustomAttribute<ImagesColumnAttribute>();
+                if (imagesAttr != null)
+                {
+                    ApplyImagesColumnAttribute(column, imagesAttr, fieldName);
+                    return column;
+                }
+
                 // 处理 Tags 列 - 检查是显式的TagsColumnAttribute还是要自动应用
                 TagsColumnAttribute tagsAttr = prop.GetCustomAttribute<TagsColumnAttribute>();
                 bool isTagsField = prop.Name.Equals("Tags", StringComparison.OrdinalIgnoreCase);
@@ -833,6 +841,12 @@ namespace CodeSpirit.Amis.Column
             if (avatarAttr != null)
             {
                 return "avatar";
+            }
+
+            ImagesColumnAttribute imagesAttr = prop.GetCustomAttribute<ImagesColumnAttribute>();
+            if (imagesAttr != null)
+            {
+                return "images";
             }
 
             // 检查是否为图标字段
@@ -1822,6 +1836,65 @@ namespace CodeSpirit.Amis.Column
                 {
                     column["defaultSort"] = "desc";
                 }
+            }
+        }
+
+        /// <summary>
+        /// 应用图片集列配置
+        /// </summary>
+        /// <param name="column">列对象</param>
+        /// <param name="imagesAttr">ImagesColumnAttribute 特性</param>
+        /// <param name="fieldName">字段名</param>
+        private void ApplyImagesColumnAttribute(JObject column, ImagesColumnAttribute imagesAttr, string fieldName)
+        {
+            column["type"] = "images";
+
+            // 设置图片来源
+            if (!string.IsNullOrEmpty(imagesAttr.Src))
+            {
+                column["src"] = imagesAttr.Src;
+            }
+
+            // 设置原图地址
+            if (!string.IsNullOrEmpty(imagesAttr.OriginalSrc))
+            {
+                column["originalSrc"] = imagesAttr.OriginalSrc;
+            }
+
+            // 是否可放大
+            column["enlargeAble"] = imagesAttr.EnlargeAble;
+
+            // 是否显示工具栏
+            column["showToolbar"] = imagesAttr.ShowToolbar;
+
+            // 设置缩略图模式
+            if (!string.IsNullOrEmpty(imagesAttr.ThumbMode))
+            {
+                column["thumbMode"] = imagesAttr.ThumbMode;
+            }
+
+            // 设置缩略图比例
+            if (!string.IsNullOrEmpty(imagesAttr.ThumbRatio))
+            {
+                column["thumbRatio"] = imagesAttr.ThumbRatio;
+            }
+
+            // 设置分隔符（用于分割字符串类型的图片列表）
+            if (!string.IsNullOrEmpty(imagesAttr.Delimiter))
+            {
+                column["delimiter"] = imagesAttr.Delimiter;
+            }
+
+            // 设置默认显示数量
+            if (imagesAttr.ShowCount > 0)
+            {
+                column["showCount"] = imagesAttr.ShowCount;
+            }
+
+            // 设置自定义CSS类名
+            if (!string.IsNullOrEmpty(imagesAttr.ClassName))
+            {
+                column["className"] = imagesAttr.ClassName;
             }
         }
 

@@ -619,7 +619,16 @@ namespace CodeSpirit.IdentityApi.Data
                 {
                     if (addedObj.CreatedBy == default)
                     {
-                        addedObj.CreatedBy = CurrentUserId ?? throw new InvalidOperationException("Cannot set CreatedBy: CurrentUserId is null");
+                        // 当 CurrentUserId 为 null 时（如第三方登录创建用户等系统级操作），使用 0 表示系统用户
+                        if (CurrentUserId.HasValue)
+                        {
+                            addedObj.CreatedBy = CurrentUserId.Value;
+                        }
+                        else
+                        {
+                            addedObj.CreatedBy = 0;
+                            logger.LogDebug("审计字段 CreatedBy 使用系统默认值 0，实体类型: {EntityType}", entry.Entity.GetType().Name);
+                        }
                     }
 
                     if (addedObj.CreatedAt == default)

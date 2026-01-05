@@ -49,10 +49,7 @@ public class UserSettingsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<WeChatLoginSettingsDto>>> GetWeChatLoginSettings()
     {
         var tenantId = _currentUser.TenantId ?? "default";
-        var settings = await _settingsService.GetTenantSettingAsync<WeChatLoginSettingsDto>(
-            "ThirdPartyLogin", 
-            "WeChat", 
-            tenantId);
+        var settings = await _settingsService.GetTenantSettingAsync<WeChatLoginSettingsDto>(tenantId);
         return SuccessResponse(settings ?? new WeChatLoginSettingsDto());
     }
     
@@ -68,8 +65,6 @@ public class UserSettingsController : ApiControllerBase
     {
         var tenantId = _currentUser.TenantId ?? "default";
         var success = await _settingsService.SetTenantSettingAsync(
-            "ThirdPartyLogin",
-            "WeChat",
             dto,
             tenantId,
             $"用户 {_currentUser.UserName} 更新微信登录设置");
@@ -90,10 +85,7 @@ public class UserSettingsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<AlipayLoginSettingsDto>>> GetAlipayLoginSettings()
     {
         var tenantId = _currentUser.TenantId ?? "default";
-        var settings = await _settingsService.GetTenantSettingAsync<AlipayLoginSettingsDto>(
-            "ThirdPartyLogin", 
-            "Alipay", 
-            tenantId);
+        var settings = await _settingsService.GetTenantSettingAsync<AlipayLoginSettingsDto>(tenantId);
         return SuccessResponse(settings ?? new AlipayLoginSettingsDto());
     }
     
@@ -109,8 +101,6 @@ public class UserSettingsController : ApiControllerBase
     {
         var tenantId = _currentUser.TenantId ?? "default";
         var success = await _settingsService.SetTenantSettingAsync(
-            "ThirdPartyLogin",
-            "Alipay",
             dto,
             tenantId,
             $"用户 {_currentUser.UserName} 更新支付宝登录设置");
@@ -131,10 +121,7 @@ public class UserSettingsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<NotificationSettingsDto>>> GetNotificationSettings()
     {
         var tenantId = _currentUser.TenantId ?? "default";
-        var settings = await _settingsService.GetTenantSettingAsync<NotificationSettingsDto>(
-            "UserSettings", 
-            "Notification", 
-            tenantId);
+        var settings = await _settingsService.GetTenantSettingAsync<NotificationSettingsDto>(tenantId);
         return SuccessResponse(settings ?? new NotificationSettingsDto());
     }
     
@@ -150,8 +137,6 @@ public class UserSettingsController : ApiControllerBase
     {
         var tenantId = _currentUser.TenantId ?? "default";
         var success = await _settingsService.SetTenantSettingAsync(
-            "UserSettings",
-            "Notification",
             dto,
             tenantId,
             $"用户 {_currentUser.UserName} 更新通知设置");
@@ -172,10 +157,7 @@ public class UserSettingsController : ApiControllerBase
     public async Task<ActionResult<ApiResponse<UserPreferencesDto>>> GetUserPreferences()
     {
         var tenantId = _currentUser.TenantId ?? "default";
-        var settings = await _settingsService.GetTenantSettingAsync<UserPreferencesDto>(
-            "UserSettings", 
-            "Preferences", 
-            tenantId);
+        var settings = await _settingsService.GetTenantSettingAsync<UserPreferencesDto>(tenantId);
         return SuccessResponse(settings ?? new UserPreferencesDto());
     }
     
@@ -191,8 +173,6 @@ public class UserSettingsController : ApiControllerBase
     {
         var tenantId = _currentUser.TenantId ?? "default";
         var success = await _settingsService.SetTenantSettingAsync(
-            "UserSettings",
-            "Preferences",
             dto,
             tenantId,
             $"用户 {_currentUser.UserName} 更新用户偏好设置");
@@ -200,6 +180,42 @@ public class UserSettingsController : ApiControllerBase
         return success ? SuccessResponse("用户偏好设置保存成功") : BadResponse("保存设置失败");
     }
     
+    #endregion
+
+    #region 短信验证码设置
+
+    /// <summary>
+    /// 获取短信验证码设置
+    /// </summary>
+    /// <returns>短信验证码设置</returns>
+    [HttpGet("sms")]
+    [DisplayName("获取短信验证码设置")]
+    public async Task<ActionResult<ApiResponse<SmsSettingsDto>>> GetSmsSettings()
+    {
+        var tenantId = _currentUser.TenantId ?? "default";
+        var settings = await _settingsService.GetTenantSettingAsync<SmsSettingsDto>(tenantId);
+        return SuccessResponse(settings ?? new SmsSettingsDto());
+    }
+
+    /// <summary>
+    /// 保存短信验证码设置
+    /// </summary>
+    /// <param name="dto">短信验证码设置DTO</param>
+    /// <returns>操作结果</returns>
+    [HttpPut("sms")]
+    [DisplayName("保存短信验证码设置")]
+    [HeaderOperation("短信验证码", "form", Icon = "fa-solid fa-comment-sms", DialogSize = DialogSize.LG)]
+    public async Task<ActionResult<ApiResponse>> SaveSmsSettings([FromBody] SmsSettingsDto dto)
+    {
+        var tenantId = _currentUser.TenantId ?? "default";
+        var success = await _settingsService.SetTenantSettingAsync(
+            dto,
+            tenantId,
+            $"用户 {_currentUser.UserName} 更新短信验证码设置");
+
+        return success ? SuccessResponse("短信验证码设置保存成功") : BadResponse("保存设置失败");
+    }
+
     #endregion
 }
 

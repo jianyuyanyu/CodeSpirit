@@ -4,11 +4,14 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.IdentityApi.Data.Models;
 using CodeSpirit.IdentityApi.Dtos.Auth;
+using CodeSpirit.IdentityApi.Dtos.Settings;
 using CodeSpirit.IdentityApi.Services;
+using CodeSpirit.Settings.Services.Interfaces;
 using CodeSpirit.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Linq;
@@ -478,6 +481,152 @@ namespace CodeSpirit.IdentityApi.Controllers
             {
                 _logger.LogError(ex, "微信登录异常");
                 return BadResponse<AuthTokenResponse>("微信登录失败，请检查登录信息或联系管理员！");
+            }
+        }
+
+        /// <summary>
+        /// 获取微信手机号接口
+        /// </summary>
+        /// <param name="request">手机号获取请求</param>
+        /// <returns>手机号信息</returns>
+        [HttpPost("wechat/phone")]
+        [Authorize]
+        [DisplayName("获取微信手机号")]
+        public async Task<ActionResult<ApiResponse<WeChatPhoneResult>>> GetWeChatPhone([FromBody] WeChatPhoneRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadResponse<WeChatPhoneResult>("请求参数验证失败");
+                }
+
+                // 从请求头或当前用户获取租户ID
+                var tenantId = HttpContext.Request.Headers["TenantId"].FirstOrDefault() 
+                              ?? HttpContext.Items["TenantId"]?.ToString()
+                              ?? _currentUser.TenantId;
+
+                if (string.IsNullOrEmpty(tenantId))
+                {
+                    return BadResponse<WeChatPhoneResult>("租户ID不能为空");
+                }
+
+                // 调用服务方法获取手机号
+                var result = await _authService.GetWeChatPhoneAsync(request.Code, tenantId);
+                return SuccessResponse(result, "获取手机号成功");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取微信手机号异常");
+                return BadResponse<WeChatPhoneResult>($"获取手机号失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 发送短信验证码接口
+        /// </summary>
+        /// <param name="request">发送验证码请求</param>
+        /// <returns>发送结果</returns>
+        [HttpPost("sms/send")]
+        [AllowAnonymous]
+        [DisplayName("发送短信验证码")]
+        public async Task<ActionResult<ApiResponse<SendSmsCodeResponse>>> SendSmsCode([FromBody] SendSmsCodeRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadResponse<SendSmsCodeResponse>("请求参数验证失败");
+                }
+
+                // 从请求头或模型中获取租户ID
+                var tenantId = HttpContext.Request.Headers["TenantId"].FirstOrDefault() 
+                              ?? HttpContext.Items["TenantId"]?.ToString()
+                              ?? request.TenantId ?? "default";
+
+                // 调用短信验证码服务发送验证码
+                var smsCodeService = HttpContext.RequestServices.GetRequiredService<ISmsCodeService>();
+                var success = await smsCodeService.SendCodeAsync(request.PhoneNumber, tenantId);
+
+                if (!success)
+                {
+                    return BadResponse<SendSmsCodeResponse>("发送验证码失败，请稍后重试");
+                }
+
+                // 获取短信设置以获取有效期
+                var settingsService = HttpContext.RequestServices.GetRequiredService<ISettingsService>();
+                var settings = await settingsService.GetTenantSettingAsync<SmsSettingsDto>(tenantId);
+                var expiresInSeconds = settings?.CodeExpireSeconds ?? 300;
+
+                var response = new SendSmsCodeResponse
+                {
+                    Success = true,
+                    ExpiresInSeconds = expiresInSeconds,
+                    Message = "验证码发送成功"
+                };
+
+                return SuccessResponse(response, "验证码发送成功");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "发送短信验证码异常");
+                return BadResponse<SendSmsCodeResponse>($"发送验证码失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 短信验证码登录接口
+        /// </summary>
+        /// <param name="request">短信登录请求</param>
+        /// <returns>登录结果</returns>
+        [HttpPost("sms/login")]
+        [AllowAnonymous]
+        [DisplayName("短信验证码登录")]
+        public async Task<ActionResult<ApiResponse<AuthTokenResponse>>> SmsLogin([FromBody] SmsLoginRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadResponse<AuthTokenResponse>("请求参数验证失败");
+                }
+
+                // 从请求头或模型中获取租户ID
+                var tenantId = HttpContext.Request.Headers["TenantId"].FirstOrDefault() 
+                              ?? HttpContext.Items["TenantId"]?.ToString()
+                              ?? request.TenantId;
+
+                if (string.IsNullOrEmpty(tenantId))
+                {
+                    return BadResponse<AuthTokenResponse>("租户ID不能为空");
+                }
+
+                // 设置租户上下文
+                HttpContext.Items["TenantId"] = tenantId;
+
+                var ipAddress = _clientIpService.GetClientIpAddress(HttpContext);
+                var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+                // 调用服务方法进行登录
+                var result = await _authService.SmsLoginAsync(request, ipAddress, userAgent);
+                if (!result.Success)
+                {
+                    return BadResponse<AuthTokenResponse>(result.Message);
+                }
+
+                var response = new AuthTokenResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    User = result.UserInfo
+                };
+
+                return SuccessResponse(response, "短信验证码登录成功");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "短信验证码登录异常");
+                return BadResponse<AuthTokenResponse>($"短信验证码登录失败: {ex.Message}");
             }
         }
     }

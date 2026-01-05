@@ -44,28 +44,45 @@ public MyService(ISettingsService settingsService)
     _settingsService = settingsService;
 }
 
-// 获取全局设置
+// 方式一：传统方式（需要手动传入 module 和 key）
 var value = await _settingsService.GetGlobalSettingAsync("System", "Theme");
-
-// 获取用户设置
 var userValue = await _settingsService.GetUserSettingAsync("System", "Theme", userId);
-
-// 获取类型化设置
 var config = await _settingsService.GetGlobalSettingAsync<AppConfig>("System", "Configuration");
+
+// 方式二：使用 SettingsDto 特性（推荐，避免字符串拼写错误）
+// 1. 定义 DTO 并添加特性
+[SettingsDto("System", "Theme")]
+public class ThemeSettingsDto
+{
+    public string Theme { get; set; } = "Light";
+}
+
+// 2. 使用简化 API（自动从特性获取 module/key）
+var themeSettings = await _settingsService.GetGlobalSettingAsync<ThemeSettingsDto>();
+var userThemeSettings = await _settingsService.GetUserSettingAsync<ThemeSettingsDto>(userId);
+var tenantThemeSettings = await _settingsService.GetTenantSettingAsync<ThemeSettingsDto>(tenantId);
 ```
 
 #### 设置值
 
 ```csharp
-// 设置全局设置
+// 方式一：传统方式（需要手动传入 module 和 key）
 await _settingsService.SetGlobalSettingAsync("System", "Theme", "Dark", "更新默认主题");
-
-// 设置用户设置
 await _settingsService.SetUserSettingAsync("System", "Theme", "Light", userId, "用户偏好设置");
 
-// 设置对象
 var config = new AppConfig { /* 配置内容 */ };
 await _settingsService.SetGlobalSettingAsync("System", "Configuration", config);
+
+// 方式二：使用 SettingsDto 特性（推荐）
+[SettingsDto("System", "Theme")]
+public class ThemeSettingsDto
+{
+    public string Theme { get; set; } = "Light";
+}
+
+var themeSettings = new ThemeSettingsDto { Theme = "Dark" };
+await _settingsService.SetGlobalSettingAsync(themeSettings, "更新默认主题");
+await _settingsService.SetTenantSettingAsync(themeSettings, tenantId, "租户主题设置");
 ```
 
 ## 3. 核心概念
@@ -234,9 +251,36 @@ AppConfig config = allSettings.GetJson<AppConfig>("Configuration");
 var cacheKey = $"Settings:System:Global::{key}";
 ```
 
-### 5.3 定义常量
+### 5.3 使用 SettingsDto 特性（推荐）
 
-为常用设置键定义常量，避免硬编码：
+为设置 DTO 添加 `[SettingsDto]` 特性，可以简化 API 调用并避免模块名/配置键字符串不一致的问题：
+
+```csharp
+// 定义设置 DTO
+[SettingsDto("ThirdPartyLogin", "WeChat")]
+public class WeChatLoginSettingsDto
+{
+    public string AppId { get; set; } = string.Empty;
+    public string AppSecret { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = false;
+}
+
+// 读取设置（无需手动传入 module/key）
+var settings = await _settingsService.GetTenantSettingAsync<WeChatLoginSettingsDto>(tenantId);
+
+// 保存设置
+await _settingsService.SetTenantSettingAsync(dto, tenantId, "更新微信配置");
+```
+
+**优势：**
+- ✅ 类型安全：编译时检查，IDE 智能提示
+- ✅ 集中管理：配置键在 DTO 类上定义，修改只需改一处
+- ✅ 避免不一致：消除模块名/配置键字符串拼写错误
+- ✅ 性能优化：反射结果自动缓存，每个类型只反射一次
+
+### 5.4 定义常量（传统方式）
+
+如果使用传统方式，为常用设置键定义常量，避免硬编码：
 
 ```csharp
 public static class SettingKeys
@@ -316,26 +360,32 @@ public IActionResult GetSettingsForm()
 ### 全局设置管理
 - `GetGlobalSettingAsync(string module, string key)` - 获取全局设置
 - `GetGlobalSettingAsync<T>(string module, string key)` - 获取类型化全局设置
+- `GetGlobalSettingAsync<T>()` - 获取类型化全局设置（从 DTO 特性自动获取 module/key，需标记 `[SettingsDto]`）
 - `GetAllGlobalSettingsAsync(string module)` - 获取模块的所有全局设置
 - `SetGlobalSettingAsync(string module, string key, string value, string? reason)` - 设置全局设置
 - `SetGlobalSettingAsync<T>(string module, string key, T value, string? reason)` - 设置类型化全局设置
+- `SetGlobalSettingAsync<T>(T value, string? reason)` - 设置类型化全局设置（从 DTO 特性自动获取 module/key，需标记 `[SettingsDto]`）
 - `BatchSetGlobalSettingsAsync(string module, Dictionary<string, string> settings, string? reason)` - 批量设置全局设置
 
 ### 用户设置管理
 - `GetUserSettingAsync(string module, string key, string userId)` - 获取用户设置
 - `GetUserSettingAsync<T>(string module, string key, string userId)` - 获取类型化用户设置
+- `GetUserSettingAsync<T>(string userId)` - 获取类型化用户设置（从 DTO 特性自动获取 module/key，需标记 `[SettingsDto]`）
 - `GetAllUserSettingsAsync(string module, string userId)` - 获取用户的所有设置
 - `SetUserSettingAsync(string module, string key, string value, string userId, string? reason)` - 设置用户设置
 - `SetUserSettingAsync<T>(string module, string key, T value, string userId, string? reason)` - 设置类型化用户设置
+- `SetUserSettingAsync<T>(T value, string userId, string? reason)` - 设置类型化用户设置（从 DTO 特性自动获取 module/key，需标记 `[SettingsDto]`）
 - `BatchSetUserSettingsAsync(string module, Dictionary<string, string> settings, string userId, string? reason)` - 批量设置用户设置
 - `ResetUserSettingToDefaultAsync(string module, string? key, string userId)` - 重置用户设置为全局默认值
 
 ### 租户设置管理
 - `GetTenantSettingAsync(string module, string key, string tenantId)` - 获取租户设置
 - `GetTenantSettingAsync<T>(string module, string key, string tenantId)` - 获取类型化租户设置
+- `GetTenantSettingAsync<T>(string tenantId)` - 获取类型化租户设置（从 DTO 特性自动获取 module/key，需标记 `[SettingsDto]`）
 - `GetAllTenantSettingsAsync(string module, string tenantId)` - 获取租户的所有设置
 - `SetTenantSettingAsync(string module, string key, string value, string tenantId, string? reason)` - 设置租户设置
 - `SetTenantSettingAsync<T>(string module, string key, T value, string tenantId, string? reason)` - 设置类型化租户设置
+- `SetTenantSettingAsync<T>(T value, string tenantId, string? reason)` - 设置类型化租户设置（从 DTO 特性自动获取 module/key，需标记 `[SettingsDto]`）
 - `BatchSetTenantSettingsAsync(string module, Dictionary<string, string> settings, string tenantId, string? reason)` - 批量设置租户设置
 - `ResetTenantSettingToDefaultAsync(string module, string? key, string tenantId)` - 重置租户设置为全局默认值
 

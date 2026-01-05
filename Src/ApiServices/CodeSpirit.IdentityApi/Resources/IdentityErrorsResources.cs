@@ -181,6 +181,14 @@ namespace CodeSpirit.IdentityApi.Resources
         {
             get { return ResourceManager.GetString("ResetPasswordResult", CultureInfo.CurrentUICulture) ?? "重置密码结果"; }
         }
+        
+        /// <summary>
+        /// 第三方登录配置未找到
+        /// </summary>
+        public static string ThirdPartyLoginSettingsNotFound
+        {
+            get { return ResourceManager.GetString("ThirdPartyLoginSettingsNotFound", CultureInfo.CurrentUICulture) ?? "第三方登录配置未找到，请联系管理员在系统设置中配置相关参数。"; }
+        }
     }
 }
 

@@ -117,5 +117,10 @@
   <data name="ResetPasswordResult" xml:space="preserve">
     <value>重置密码结果</value>
   </data>
+  
+  <!-- 第三方登录错误消息 -->
+  <data name="ThirdPartyLoginSettingsNotFound" xml:space="preserve">
+    <value>第三方登录配置未找到，请联系管理员在系统设置中配置相关参数。</value>
+  </data>
 </root>
 

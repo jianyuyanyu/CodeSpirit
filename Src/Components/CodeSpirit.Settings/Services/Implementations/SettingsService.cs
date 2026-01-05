@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using System.Text;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
+using CodeSpirit.Settings.Helpers;
 
 namespace CodeSpirit.Settings.Services.Implementations;
 
@@ -270,6 +271,13 @@ public class SettingsService : ISettingsService
     }
     
     /// <inheritdoc/>
+    public async Task<T?> GetGlobalSettingAsync<T>() where T : class, new()
+    {
+        var (module, key) = SettingsDtoHelper.GetSettingsKey<T>();
+        return await GetGlobalSettingAsync<T>(module, key);
+    }
+    
+    /// <inheritdoc/>
     public async Task<Dictionary<string, string>> GetAllGlobalSettingsAsync(string module)
     {
         var cacheKey = GenerateCacheKey("AllGlobal", module);
@@ -346,6 +354,13 @@ public class SettingsService : ISettingsService
             _logger.LogError(ex, "反序列化用户设置值时出错: {Module}, {Key}, {UserId}", module, key, userId);
             return null;
         }
+    }
+    
+    /// <inheritdoc/>
+    public async Task<T?> GetUserSettingAsync<T>(string userId) where T : class, new()
+    {
+        var (module, key) = SettingsDtoHelper.GetSettingsKey<T>();
+        return await GetUserSettingAsync<T>(module, key, userId);
     }
     
     /// <inheritdoc/>
@@ -490,6 +505,13 @@ public class SettingsService : ISettingsService
     }
     
     /// <inheritdoc/>
+    public async Task<bool> SetGlobalSettingAsync<T>(T value, string? reason = null) where T : class
+    {
+        var (module, key) = SettingsDtoHelper.GetSettingsKey<T>();
+        return await SetGlobalSettingAsync(module, key, value, reason);
+    }
+    
+    /// <inheritdoc/>
     public async Task<bool> SetUserSettingAsync(string module, string key, string value, string userId, string? reason = null)
     {
         try
@@ -614,6 +636,13 @@ public class SettingsService : ISettingsService
             _logger.LogError(ex, "序列化并设置用户设置对象时出错: {Module}, {Key}, {UserId}", module, key, userId);
             return false;
         }
+    }
+    
+    /// <inheritdoc/>
+    public async Task<bool> SetUserSettingAsync<T>(T value, string userId, string? reason = null) where T : class
+    {
+        var (module, key) = SettingsDtoHelper.GetSettingsKey<T>();
+        return await SetUserSettingAsync(module, key, value, userId, reason);
     }
     
     /// <inheritdoc/>
@@ -953,6 +982,13 @@ public class SettingsService : ISettingsService
     }
     
     /// <inheritdoc/>
+    public async Task<T?> GetTenantSettingAsync<T>(string tenantId) where T : class, new()
+    {
+        var (module, key) = SettingsDtoHelper.GetSettingsKey<T>();
+        return await GetTenantSettingAsync<T>(module, key, tenantId);
+    }
+    
+    /// <inheritdoc/>
     public async Task<T?> GetTenantSettingAsync<T>(string module, string key, string tenantId) where T : class, new()
     {
         var cacheKey = GenerateCacheKey("TenantObj", module, key, tenantId, typeof(T).Name);
@@ -1148,6 +1184,13 @@ public class SettingsService : ISettingsService
             _logger.LogError(ex, "序列化并设置租户设置对象时出错: {Module}, {Key}, {TenantId}", module, key, tenantId);
             return false;
         }
+    }
+    
+    /// <inheritdoc/>
+    public async Task<bool> SetTenantSettingAsync<T>(T value, string tenantId, string? reason = null) where T : class
+    {
+        var (module, key) = SettingsDtoHelper.GetSettingsKey<T>();
+        return await SetTenantSettingAsync(module, key, value, tenantId, reason);
     }
     
     /// <inheritdoc/>

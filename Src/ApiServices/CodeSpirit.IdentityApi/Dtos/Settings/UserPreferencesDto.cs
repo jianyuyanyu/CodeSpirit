@@ -1,4 +1,5 @@
 using CodeSpirit.Amis.Attributes.FormFields;
+using CodeSpirit.Settings.Attributes;
 using System.ComponentModel;
 
 namespace CodeSpirit.IdentityApi.Dtos.Settings;
@@ -6,6 +7,7 @@ namespace CodeSpirit.IdentityApi.Dtos.Settings;
 /// <summary>
 /// 用户偏好设置DTO
 /// </summary>
+[SettingsDto("UserSettings", "Preferences")]
 public class UserPreferencesDto
 {
     /// <summary>

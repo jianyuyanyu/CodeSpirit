@@ -66,5 +66,59 @@ public class WeChatApiService : IThirdPartyApiService
             throw;
         }
     }
+    
+    /// <summary>
+    /// 获取微信手机号（基于 code）
+    /// </summary>
+    /// <param name="code">手机号授权码</param>
+    /// <param name="config">平台配置</param>
+    /// <returns>手机号信息</returns>
+    public virtual async Task<WeChatPhoneResult> GetPhoneNumberAsync(string code, ThirdPartyPlatformConfig config)
+    {
+        try
+        {
+            // 创建微信API客户端
+            var client = new WechatApiClient(new WechatApiClientOptions
+            {
+                AppId = config.AppId,
+                AppSecret = config.AppSecret
+            });
+            
+            // 调用获取手机号接口（新版基于 code）
+            var request = new WxaBusinessGetUserPhoneNumberRequest
+            {
+                Code = code
+            };
+            
+            var response = await client.ExecuteWxaBusinessGetUserPhoneNumberAsync(request);
+            
+            // 检查响应是否成功
+            if (!response.IsSuccessful())
+            {
+                _logger.LogError("获取微信手机号失败: {ErrorCode} - {ErrorMessage}", 
+                    response.ErrorCode, response.ErrorMessage);
+                throw new InvalidOperationException($"获取手机号失败: {response.ErrorMessage}");
+            }
+            
+            // 转换为结果
+            var phoneInfo = response.PhoneInfo;
+            if (phoneInfo == null)
+            {
+                throw new InvalidOperationException("手机号信息为空");
+            }
+            
+            return new WeChatPhoneResult
+            {
+                PhoneNumber = phoneInfo.PhoneNumber ?? string.Empty,
+                CountryCode = phoneInfo.CountryCode ?? "86",
+                PurePhoneNumber = phoneInfo.PurePhoneNumber ?? string.Empty
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取微信手机号异常");
+            throw;
+        }
+    }
 }
 

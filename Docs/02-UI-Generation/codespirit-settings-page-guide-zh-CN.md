@@ -13,6 +13,8 @@ CodeSpirit 提供了一套基于属性标记的设置页自动生成机制，能
 - ✅ **多种布局模式**：支持 line、card、radio 等 Tab 模式
 - ✅ **完全声明式**：通过特性标记即可完成配置
 
+![image-20260105155158435](../../Res/image-20260105155158435.png)
+
 ## 设计理念
 
 ### 核心思想
@@ -282,50 +284,6 @@ public class UserSettingsController : ApiControllerBase
     // 第三个 Tab
     [HeaderOperation("通知设置", "form")]
     public Task SaveNotification() { }
-}
-```
-
-## 生成的 AMIS 配置示例
-
-输入的控制器代码会生成如下 AMIS 配置：
-
-```json
-{
-  "type": "page",
-  "title": "用户设置",
-  "body": {
-    "type": "tabs",
-    "tabsMode": "line",
-    "animated": true,
-    "tabs": [
-      {
-        "title": "微信登录",
-        "icon": "fa-brands fa-weixin",
-        "tab": {
-          "type": "form",
-          "initApi": "GET /api/user-settings/wechat-login",
-          "api": {
-            "url": "PUT /api/user-settings/wechat-login",
-            "method": "PUT"
-          },
-          "body": [
-            {
-              "type": "input-text",
-              "name": "appId",
-              "label": "微信小程序AppId"
-            },
-            {
-              "type": "switch",
-              "name": "enabled",
-              "label": "启用微信登录"
-            }
-          ],
-          "submitText": "保存设置",
-          "mode": "horizontal"
-        }
-      }
-    ]
-  }
 }
 ```
 
